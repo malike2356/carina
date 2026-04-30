@@ -41,3 +41,9 @@ storage/logs/*
 uploads/
 media/
 *.sql
+
+# Brain prompts (keep knowledge folder)
+brain/prompts/
+memory.md
+instructions.md
+CLAUDE.md
