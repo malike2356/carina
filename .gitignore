@@ -1,0 +1,43 @@
+# Ignore all large directories
+_ignore/
+bweh/
+nawafs/
+zaps/
+velox/
+verlox/
+
+# Node modules
+node_modules/
+npm-debug.log*
+
+# PHP dependencies
+vendor/
+composer.lock
+
+# Build files
+public/build/
+storage/
+*.cache
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+storage/logs/*
+
+# Uploads
+uploads/
+media/
+*.sql
