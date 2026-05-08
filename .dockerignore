@@ -1,0 +1,15 @@
+laravel/vendor/
+laravel/node_modules/
+laravel/.git/
+laravel/storage/logs/
+laravel/storage/framework/cache/
+python/__pycache__/
+python/.venv/
+mobile/
+ml/
+docs/
+architecture/
+prompts/
+.git/
+*.md
+!laravel/README.md

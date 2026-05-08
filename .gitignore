@@ -1,0 +1,46 @@
+# Dependencies
+laravel/vendor/
+laravel/node_modules/
+python/__pycache__/
+python/.venv/
+python/venv/
+
+# Environment — never commit
+laravel/.env
+laravel/.env.*.local
+*.env.local
+
+# Secrets and certs
+docker/nginx/ssl/
+/etc/carina/
+*.pem
+*.key
+*.p12
+
+# Laravel generated
+laravel/storage/logs/
+laravel/storage/framework/cache/
+laravel/storage/framework/sessions/
+laravel/storage/framework/views/
+laravel/bootstrap/cache/
+laravel/public/build/
+laravel/public/hot
+laravel/.phpunit.cache/
+laravel/.phpunit.result.cache
+
+# Python
+python/*.pyc
+python/model_weights/
+python/fine_tuned/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Mobile (scaffolded, not built yet)
+mobile/android/.gradle/
+mobile/android/build/
+mobile/ios/Pods/
+mobile/ios/.build/
