@@ -169,7 +169,13 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    /*
+    | When SESSION_SECURE_COOKIE is not set, default follows APP_ENV: true in production
+    | so cookies are not sent over plain HTTP; null in non-production for local HTTP dev.
+    */
+    'secure' => env('SESSION_SECURE_COOKIE') !== null
+        ? filter_var(env('SESSION_SECURE_COOKIE'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+        : (env('APP_ENV') === 'production' ? true : null),
 
     /*
     |--------------------------------------------------------------------------

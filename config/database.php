@@ -101,16 +101,18 @@ return [
 
         // stancl/tenancy uses 'central' as the authoritative central connection
         'central' => [
-            'driver' => 'pgsql',
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'propreneur_central'),
-            'username' => env('DB_USERNAME', 'propreneur'),
-            'password' => env('DB_PASSWORD', ''),
+            'driver' => env('CENTRAL_DB_DRIVER', 'pgsql'),
+            'url' => env('CENTRAL_DB_URL'),
+            'host' => env('CENTRAL_DB_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('CENTRAL_DB_PORT', env('DB_PORT', '5432')),
+            'database' => env('CENTRAL_DB_DATABASE', env('DB_DATABASE', 'propreneur_central')),
+            'username' => env('CENTRAL_DB_USERNAME', env('DB_USERNAME', 'propreneur')),
+            'password' => env('CENTRAL_DB_PASSWORD', env('DB_PASSWORD', '')),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            'foreign_key_constraints' => env('CENTRAL_DB_DRIVER', 'pgsql') === 'sqlite',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
@@ -118,32 +120,55 @@ return [
         // Must NOT share the 'tenant' key - stancl nulls that key via offsetUnset()
         // during purgeTenantConnection(), which breaks the driver lookup in manager().
         'tenant_template' => [
-            'driver' => 'pgsql',
+            'driver' => env('TENANCY_DB_DRIVER', env('CENTRAL_DB_DRIVER', 'pgsql')),
             'host' => env('TENANCY_DB_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('TENANCY_MAINTENANCE_DB', env('DB_DATABASE', 'propreneur_central')),
+            'database' => env('TENANCY_MAINTENANCE_DB', env('CENTRAL_DB_DATABASE', env('DB_DATABASE', 'propreneur_central'))),
             'username' => env('TENANCY_DB_USERNAME', env('DB_USERNAME', 'propreneur')),
             'password' => env('TENANCY_DB_PASSWORD', env('DB_PASSWORD', '')),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            'foreign_key_constraints' => env('TENANCY_DB_DRIVER', env('CENTRAL_DB_DRIVER', 'pgsql')) === 'sqlite',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
         // Runtime slot: stancl/tenancy overwrites this with the active tenant's DB config.
         'tenant' => [
-            'driver' => 'pgsql',
+            'driver' => env('TENANCY_DB_DRIVER', env('CENTRAL_DB_DRIVER', 'pgsql')),
             'host' => env('TENANCY_DB_HOST', env('DB_HOST', '127.0.0.1')),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('TENANCY_MAINTENANCE_DB', env('DB_DATABASE', 'propreneur_central')),
+            'database' => env('TENANCY_MAINTENANCE_DB', env('CENTRAL_DB_DATABASE', env('DB_DATABASE', 'propreneur_central'))),
             'username' => env('TENANCY_DB_USERNAME', env('DB_USERNAME', 'propreneur')),
             'password' => env('TENANCY_DB_PASSWORD', env('DB_PASSWORD', '')),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
+            'foreign_key_constraints' => env('TENANCY_DB_DRIVER', env('CENTRAL_DB_DRIVER', 'pgsql')) === 'sqlite',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        /*
+        | Optional read-only MySQL (or SQLite in tests) containing Propreneur v1.0 tenant data.
+        */
+        'v1_legacy' => [
+            'driver' => env('V1_LEGACY_DB_DRIVER', 'mysql'),
+            'url' => env('V1_LEGACY_DB_URL'),
+            'host' => env('V1_LEGACY_DB_HOST', '127.0.0.1'),
+            'port' => env('V1_LEGACY_DB_PORT', '3306'),
+            'database' => env('V1_LEGACY_DB_DATABASE', 'propreneur_v1'),
+            'username' => env('V1_LEGACY_DB_USERNAME', 'root'),
+            'password' => env('V1_LEGACY_DB_PASSWORD', ''),
+            'unix_socket' => env('V1_LEGACY_DB_SOCKET', ''),
+            'charset' => env('V1_LEGACY_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('V1_LEGACY_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'foreign_key_constraints' => env('V1_LEGACY_DB_DRIVER', 'mysql') === 'sqlite',
         ],
 
         'sqlsrv' => [

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Propreneur: Save listing",
+  "version": "1.0.0",
+  "description": "Send the current tab listing URL to your Propreneur workspace as a draft deal (user-initiated; uses your API token).",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "action": {
+    "default_title": "Save to Propreneur",
+    "default_popup": "popup.html"
+  }
+}

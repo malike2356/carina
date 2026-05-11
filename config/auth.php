@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\User;
 use App\Models\Central\PlatformUser;
+use App\Models\Tenant\User as TenantUser;
 
 return [
 
@@ -69,7 +69,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'model' => env('AUTH_MODEL', TenantUser::class),
         ],
         'platform_users' => [
             'driver' => 'eloquent',
@@ -100,6 +100,14 @@ return [
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'platform_users' => [
+            'provider' => 'platform_users',
+            'connection' => 'central',
+            'table' => 'platform_password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],

@@ -43,7 +43,15 @@ media/
 *.sql
 
 # Brain prompts (keep knowledge folder)
-brain/prompts/
 memory.md
 instructions.md
 CLAUDE.md
+
+# Temp / backups
+tmp/
+
+# V1 artefacts
+propreneur_1.0/
+
+# Marketing site (separate repo)
+propreneur.co.uk/

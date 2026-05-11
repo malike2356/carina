@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Save to Propreneur</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 13px; margin: 0; padding: 12px; width: 320px; }
+    label { display: block; margin-top: 8px; font-weight: 600; }
+    input, select { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px 8px; }
+    button { margin-top: 12px; width: 100%; padding: 8px; cursor: pointer; }
+    #status { margin-top: 10px; font-size: 12px; word-break: break-word; }
+    .hint { color: #555; font-size: 11px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h1 style="font-size:14px;margin:0 0 8px;">Save to Propreneur</h1>
+  <p class="hint">Open a listing page in this tab, then save. Uses your personal API token from Propreneur.</p>
+  <label for="apiBase">Workspace API base URL</label>
+  <input id="apiBase" type="url" placeholder="https://your-workspace.propreneur.test:8000" autocomplete="off">
+  <div class="hint">Same origin as your workspace (no trailing slash).</div>
+  <label for="token">API token</label>
+  <input id="token" type="password" placeholder="Bearer token from Propreneur" autocomplete="off">
+  <label for="strategy">Default strategy</label>
+  <select id="strategy">
+    <option value="btl">Buy-to-Let</option>
+    <option value="brr">BRR</option>
+    <option value="hmo">HMO</option>
+    <option value="r2r">Rent-to-rent</option>
+    <option value="sa">Serviced accommodation</option>
+    <option value="flip">Flip</option>
+    <option value="commercial">Commercial</option>
+  </select>
+  <button type="button" id="saveBtn">Save current tab</button>
+  <button type="button" id="storeBtn" style="margin-top:6px;background:#eee;border:1px solid #ccc;">Remember settings</button>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -58,3 +58,7 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
 # Propreneur V2
+
+## Tests and CI database
+
+Pest uses PostgreSQL `propreneur_testing` with pgvector (see `phpunit.xml` and `CLAUDE.md` *Tests*). Before running `php artisan test` locally, create the database, enable `vector`, and run central migrations with `APP_ENV=testing`. GitHub Actions runs the same migrate step before tests (`.github/workflows/test.yml`).

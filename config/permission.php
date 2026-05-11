@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\Tenant\TenantPermission;
+use App\Models\Tenant\TenantRole;
 use Spatie\Permission\DefaultTeamResolver;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 return [
 
@@ -17,7 +17,7 @@ return [
          * `Spatie\Permission\Contracts\Permission` contract.
          */
 
-        'permission' => Permission::class,
+        'permission' => TenantPermission::class,
 
         /*
          * When using the "HasRoles" trait from this package, we need to know which
@@ -28,7 +28,7 @@ return [
          * `Spatie\Permission\Contracts\Role` contract.
          */
 
-        'role' => Role::class,
+        'role' => TenantRole::class,
 
     ],
 
