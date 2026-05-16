@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Models\Central\FeatureFlag;
 use App\Models\Central\PlatformPermission;
 use App\Models\Central\PlatformUser;
+use App\Models\Central\SecurityActivityLog;
+use App\Models\Central\SecurityFinding;
 use App\Services\Carina\CarinaService;
 use App\Services\Security\PatchScanService;
 use App\Services\Security\SastScanService;
@@ -128,10 +130,10 @@ it('records activity from SCOUT form', function () {
         ])
         ->assertRedirect();
 
-    $this->assertDatabaseHas('security_activity_logs', [
-        'title' => 'Quarterly review scheduled',
-        'category' => 'note',
-    ], 'central');
+    expect(SecurityActivityLog::query()
+        ->where('title', 'Quarterly review scheduled')
+        ->where('category', 'note')
+        ->exists())->toBeTrue();
 });
 
 it('runs SCOUT config clear action and logs activity', function () {
@@ -143,10 +145,10 @@ it('runs SCOUT config clear action and logs activity', function () {
         ])
         ->assertRedirect();
 
-    $this->assertDatabaseHas('security_activity_logs', [
-        'title' => 'SCOUT action: config cache cleared',
-        'category' => 'remediation',
-    ], 'central');
+    expect(SecurityActivityLog::query()
+        ->where('title', 'SCOUT action: config cache cleared')
+        ->where('category', 'remediation')
+        ->exists())->toBeTrue();
 });
 
 it('runs SCOUT optimize clear action and logs activity', function () {
@@ -158,10 +160,10 @@ it('runs SCOUT optimize clear action and logs activity', function () {
         ])
         ->assertRedirect();
 
-    $this->assertDatabaseHas('security_activity_logs', [
-        'title' => 'SCOUT action: optimize clear',
-        'category' => 'remediation',
-    ], 'central');
+    expect(SecurityActivityLog::query()
+        ->where('title', 'SCOUT action: optimize clear')
+        ->where('category', 'remediation')
+        ->exists())->toBeTrue();
 });
 
 it('runs SCOUT composer audit action and logs row count', function () {
@@ -177,10 +179,10 @@ it('runs SCOUT composer audit action and logs row count', function () {
         ])
         ->assertRedirect();
 
-    $this->assertDatabaseHas('security_activity_logs', [
-        'title' => 'SCOUT action: Composer dependency audit',
-        'category' => 'audit',
-    ], 'central');
+    expect(SecurityActivityLog::query()
+        ->where('title', 'SCOUT action: Composer dependency audit')
+        ->where('category', 'audit')
+        ->exists())->toBeTrue();
 });
 
 it('runs SCOUT sast scan action and logs row count', function () {
@@ -196,10 +198,65 @@ it('runs SCOUT sast scan action and logs row count', function () {
         ])
         ->assertRedirect();
 
-    $this->assertDatabaseHas('security_activity_logs', [
-        'title' => 'SCOUT action: PHPStan static analysis',
-        'category' => 'audit',
-    ], 'central');
+    expect(SecurityActivityLog::query()
+        ->where('title', 'SCOUT action: PHPStan static analysis')
+        ->where('category', 'audit')
+        ->exists())->toBeTrue();
+});
+
+it('applyActionCommand returns JSON for valid action', function () {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($admin, 'platform')
+        ->postJson(route('admin.scout.actions.command'), ['action' => 'config_clear'])
+        ->assertOk()
+        ->assertJsonPath('ok', true);
+});
+
+it('rejects invalid action slug', function () {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($admin, 'platform')
+        ->post(route('admin.scout.actions.apply'), ['action' => 'drop_database'])
+        ->assertForbidden();
+});
+
+it('non-admin cannot apply remediation actions', function () {
+    $user = PlatformUser::factory()->create();
+
+    $this->actingAs($user, 'platform')
+        ->post(route('admin.scout.actions.apply'), ['action' => 'config_clear'])
+        ->assertForbidden();
+});
+
+it('storeActivity creates a log entry', function () {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($admin, 'platform')
+        ->post(route('admin.scout.activity.store'), [
+            'category' => 'note',
+            'title' => 'Manual note from test',
+            'body' => 'Test body.',
+        ])
+        ->assertRedirect();
+
+    expect(SecurityActivityLog::where('title', 'Manual note from test')->exists())->toBeTrue();
+});
+
+it('updateFinding changes status and creates activity log', function () {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+    $finding = SecurityFinding::query()->create([
+        'severity' => 'low',
+        'title' => 'Test finding for SCOUT patch',
+        'status' => 'open',
+    ]);
+
+    $this->actingAs($admin, 'platform')
+        ->patch(route('admin.scout.findings.update', $finding), ['status' => 'resolved'])
+        ->assertRedirect();
+
+    expect($finding->fresh()->status)->toBe('resolved');
+    expect($finding->fresh()->resolved_at)->not->toBeNull();
 });
 
 it('posts SCOUT Carina message and returns assistant reply JSON', function () {

@@ -42,7 +42,8 @@ uploads/
 media/
 *.sql
 
-# Brain prompts (keep knowledge folder)
+# Brain prompts (keep knowledge folder; prompts are local-only)
+brain/prompts/
 memory.md
 instructions.md
 CLAUDE.md
