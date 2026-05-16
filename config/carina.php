@@ -28,8 +28,8 @@ return [
     'conversation_retention_days' => (int) env('CARINA_CONVERSATION_RETENTION_DAYS', 90),
 
     /**
-     * Root directory for operator-curated Carina masterbrain markdown (repo: brain/masterbrain).
-     * Override in tests with a temp directory; leave null for default {@see base_path('brain/masterbrain')}.
+     * Root directory for operator-curated Carina masterbrain markdown (default: config paths.brain.masterbrain).
+     * Override in tests with a temp directory; leave empty for default. BRAIN_MASTERBRAIN_PATH sets the same default root for all code paths; CARINA_MASTERBRAIN_PATH wins in CarinaKnowledgeTrainingService when set.
      */
     'masterbrain_path' => env('CARINA_MASTERBRAIN_PATH'),
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Central\FeatureFlag;
 use App\Models\Tenant\DealAnalysis;
 use App\Models\Tenant\User;
 use App\Services\Tenancy\TenantCreationService;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->seed(FeatureFlagSeeder::class);
+    FeatureFlag::query()->where('key', 'stripe_billing_api')->update(['enabled' => false]);
     $this->withoutMiddleware(VerifyCsrfToken::class);
 });
 

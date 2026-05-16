@@ -9,7 +9,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | propreneur-v2 is the Business Edition product. Community Edition runs on
-    | propreneur_1.0. Feature ownership for paid-only modules is documented here
+    | propreneur-v1. Feature ownership for paid-only modules is documented here
     | for billing, navigation, and upgrade copy.
     |
     */

@@ -13,10 +13,23 @@ beforeEach(function (): void {
 });
 
 it('registers and finds a tool by name', function (): void {
-    $tool = new class extends CarinaTool {
-        public function name(): string { return 'test_tool'; }
-        public function description(): string { return 'Test tool'; }
-        public function inputSchema(): array { return ['type' => 'object', 'properties' => []]; }
+    $tool = new class extends CarinaTool
+    {
+        public function name(): string
+        {
+            return 'test_tool';
+        }
+
+        public function description(): string
+        {
+            return 'Test tool';
+        }
+
+        public function inputSchema(): array
+        {
+            return ['type' => 'object', 'properties' => []];
+        }
+
         public function execute(array $args, ?User $user, CarinaConversation $conversation): ToolResult
         {
             return new ToolResult(true, 'done');
@@ -33,26 +46,60 @@ it('returns null for unknown tool name', function (): void {
 });
 
 it('filters out tools whose authorize returns false', function (): void {
-    $publicTool = new class extends CarinaTool {
-        public function name(): string { return 'public'; }
-        public function description(): string { return ''; }
-        public function inputSchema(): array { return ['type' => 'object', 'properties' => []]; }
+    $publicTool = new class extends CarinaTool
+    {
+        public function name(): string
+        {
+            return 'public';
+        }
+
+        public function description(): string
+        {
+            return '';
+        }
+
+        public function inputSchema(): array
+        {
+            return ['type' => 'object', 'properties' => []];
+        }
+
         public function execute(array $args, ?User $user, CarinaConversation $conversation): ToolResult
         {
             return new ToolResult(true, 'done');
         }
-        public function authorize(?User $user): bool { return true; }
+
+        public function authorize(?User $user): bool
+        {
+            return true;
+        }
     };
 
-    $restrictedTool = new class extends CarinaTool {
-        public function name(): string { return 'restricted'; }
-        public function description(): string { return ''; }
-        public function inputSchema(): array { return ['type' => 'object', 'properties' => []]; }
+    $restrictedTool = new class extends CarinaTool
+    {
+        public function name(): string
+        {
+            return 'restricted';
+        }
+
+        public function description(): string
+        {
+            return '';
+        }
+
+        public function inputSchema(): array
+        {
+            return ['type' => 'object', 'properties' => []];
+        }
+
         public function execute(array $args, ?User $user, CarinaConversation $conversation): ToolResult
         {
             return new ToolResult(true, 'done');
         }
-        public function authorize(?User $user): bool { return false; }
+
+        public function authorize(?User $user): bool
+        {
+            return false;
+        }
     };
 
     $this->registry->register($publicTool);
@@ -66,10 +113,23 @@ it('filters out tools whose authorize returns false', function (): void {
 });
 
 it('returns correct Anthropic schema format', function (): void {
-    $tool = new class extends CarinaTool {
-        public function name(): string { return 'test'; }
-        public function description(): string { return 'A tool'; }
-        public function inputSchema(): array { return ['type' => 'object', 'properties' => ['a' => ['type' => 'string']], 'required' => ['a']]; }
+    $tool = new class extends CarinaTool
+    {
+        public function name(): string
+        {
+            return 'test';
+        }
+
+        public function description(): string
+        {
+            return 'A tool';
+        }
+
+        public function inputSchema(): array
+        {
+            return ['type' => 'object', 'properties' => ['a' => ['type' => 'string']], 'required' => ['a']];
+        }
+
         public function execute(array $args, ?User $user, CarinaConversation $conversation): ToolResult
         {
             return new ToolResult(true, 'done');
@@ -91,10 +151,23 @@ it('returns correct Anthropic schema format', function (): void {
 });
 
 it('returns correct OpenAI schema format', function (): void {
-    $tool = new class extends CarinaTool {
-        public function name(): string { return 'test'; }
-        public function description(): string { return 'A tool'; }
-        public function inputSchema(): array { return ['type' => 'object', 'properties' => [], 'required' => []]; }
+    $tool = new class extends CarinaTool
+    {
+        public function name(): string
+        {
+            return 'test';
+        }
+
+        public function description(): string
+        {
+            return 'A tool';
+        }
+
+        public function inputSchema(): array
+        {
+            return ['type' => 'object', 'properties' => [], 'required' => []];
+        }
+
         public function execute(array $args, ?User $user, CarinaConversation $conversation): ToolResult
         {
             return new ToolResult(true, 'done');

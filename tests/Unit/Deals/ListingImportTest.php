@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Deals\Contracts\ListingImportDriverInterface;
+use App\Services\Deals\Drivers\ChainListingImportDriver;
 use App\Services\Deals\ListingImportService;
 use Illuminate\Support\Facades\Http;
 
@@ -19,6 +20,7 @@ beforeEach(function (): void {
     $app = app();
     $app->forgetInstance(ListingImportDriverInterface::class);
     $app->forgetInstance(ListingImportService::class);
+    $app->forgetInstance(ChainListingImportDriver::class);
 });
 
 it('extracts listing data from json-ld on the fetched page', function (): void {

@@ -2,29 +2,29 @@
 
 declare(strict_types=1);
 
+use App\Models\Tenant\CarinaConversation;
+use App\Models\Tenant\ComplianceItem;
+use App\Models\Tenant\Contact;
+use App\Models\Tenant\Pipeline;
+use App\Models\Tenant\PipelineDeal;
+use App\Models\Tenant\PipelineStage;
+use App\Models\Tenant\Property;
 use App\Models\Tenant\TenantRole;
 use App\Models\Tenant\User;
-use App\Models\Tenant\Contact;
-use App\Models\Tenant\Property;
-use App\Models\Tenant\Pipeline;
-use App\Models\Tenant\PipelineStage;
-use App\Models\Tenant\PipelineDeal;
-use App\Models\Tenant\ComplianceItem;
-use App\Models\Tenant\CarinaConversation;
 use App\Services\Carina\CarinaAccessGate;
-use App\Services\Carina\Tools\SearchContactsTool;
-use App\Services\Carina\Tools\CreateContactTool;
-use App\Services\Carina\Tools\GetPropertyTool;
 use App\Services\Carina\Tools\AddPipelineCardTool;
-use App\Services\Carina\Tools\UpdateContactTool;
-use App\Services\Carina\Tools\ListPropertiesTool;
-use App\Services\Carina\Tools\DeleteContactTool;
 use App\Services\Carina\Tools\ClosePipelineDealTool;
+use App\Services\Carina\Tools\CreateContactTool;
+use App\Services\Carina\Tools\DeleteContactTool;
 use App\Services\Carina\Tools\GetComplianceItemsTool;
+use App\Services\Carina\Tools\GetPropertyTool;
+use App\Services\Carina\Tools\ListPropertiesTool;
+use App\Services\Carina\Tools\SearchContactsTool;
+use App\Services\Carina\Tools\UpdateContactTool;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Factories\Tenant\UserFactory;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -40,6 +40,7 @@ function createTenantUserWithRole(string $role): User
     TenantRole::findOrCreate($role, 'web');
     $user = UserFactory::new()->createOne([]);
     $user->syncRoles([$role]);
+
     return $user;
 }
 
@@ -57,6 +58,7 @@ function createTenantUserAndHost(string $role): array
     $user->syncRoles([$role]);
     completeTenantWorkspaceOnboarding();
     $host = $tenant->domains->first()->domain.'.propreneur.test';
+
     return ['user' => $user, 'host' => $host];
 }
 
@@ -69,6 +71,7 @@ function setUpToolTest(string $role): array
         'title' => 'Test',
         'messages' => [['role' => 'user', 'content' => 'Hi']],
     ]);
+
     return [$user, $conversation, $result['host']];
 }
 

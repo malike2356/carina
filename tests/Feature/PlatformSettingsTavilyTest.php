@@ -48,7 +48,7 @@ it('persists tavily settings from platform keys ai form', function (): void {
     expect(PlatformSetting::query()->where('key', 'tavily_max_results')->value('value'))->toBe('7');
 });
 
-it('persists PropertyData platform integrations settings from the integrations tab', function (): void {
+it('persists PropertyData platform settings from the ai tab', function (): void {
     $this->withoutMiddleware(ValidateCsrfToken::class);
 
     $admin = PlatformUser::factory()->superAdmin()->create();
@@ -56,7 +56,7 @@ it('persists PropertyData platform integrations settings from the integrations t
     app(SettingsController::class)->bootstrap();
 
     $payload = [];
-    foreach (PlatformSetting::query()->where('group', 'integrations')->get() as $row) {
+    foreach (PlatformSetting::query()->where('group', 'ai')->get() as $row) {
         if ($row->type === 'boolean') {
             $payload[$row->key] = $row->value === '1' ? '1' : '0';
         } else {
@@ -68,10 +68,40 @@ it('persists PropertyData platform integrations settings from the integrations t
     $payload['propertydata_allow_tenant_byok'] = '0';
 
     $this->actingAs($admin, 'platform')
-        ->post(route('admin.platform-settings.update-group', 'integrations'), $payload)
+        ->post(route('admin.platform-settings.update-group', 'ai'), $payload)
         ->assertSessionHasNoErrors()
         ->assertRedirect();
 
     expect(PlatformSetting::query()->where('key', 'propertydata_platform_api_key')->value('value'))->toBe('pd-platform-test-key')
-        ->and(PlatformSetting::query()->where('key', 'propertydata_allow_tenant_byok')->value('value'))->toBe('0');
+        ->and(PlatformSetting::query()->where('key', 'propertydata_allow_tenant_byok')->value('value'))->toBe('0')
+        ->and(PlatformSetting::query()->where('key', 'propertydata_platform_api_key')->first()?->group)->toBe('ai');
+});
+
+it('keeps encrypted api keys when the password field is left empty on save', function (): void {
+    $this->withoutMiddleware(ValidateCsrfToken::class);
+
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    PlatformSetting::query()->updateOrCreate(
+        ['key' => 'tavily_api_key'],
+        ['group' => 'ai', 'value' => 'tvly-keep-me', 'type' => 'string', 'label' => 'Tavily', 'is_encrypted' => true],
+    );
+
+    $payload = [];
+    foreach (PlatformSetting::query()->where('group', 'ai')->get() as $row) {
+        if ($row->type === 'boolean') {
+            $payload[$row->key] = $row->value === '1' ? '1' : '0';
+        } elseif ($row->key === 'tavily_api_key') {
+            $payload[$row->key] = '';
+        } else {
+            $payload[$row->key] = $row->value;
+        }
+    }
+
+    $this->actingAs($admin, 'platform')
+        ->post(route('admin.platform-settings.update-group', 'ai'), $payload)
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect(PlatformSetting::query()->where('key', 'tavily_api_key')->value('value'))->toBe('tvly-keep-me');
 });

@@ -14,7 +14,7 @@ use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Support\Str;
 
 afterEach(function (): void {
-    \Mockery::close();
+    Mockery::close();
 });
 
 it('skips sms step when contact has no phone number', function (): void {
@@ -55,7 +55,7 @@ it('skips sms step when contact has no phone number', function (): void {
         'is_active' => true,
     ]);
 
-    $sms = \Mockery::mock(SmsService::class);
+    $sms = Mockery::mock(SmsService::class);
     $sms->shouldNotReceive('sendSms');
     app()->instance(SmsService::class, $sms);
 
@@ -125,10 +125,10 @@ it('sends sms when contact phone is present and marks step sent', function (): v
         'is_active' => true,
     ]);
 
-    $sms = \Mockery::mock(SmsService::class);
+    $sms = Mockery::mock(SmsService::class);
     $sms->shouldReceive('sendSms')
         ->once()
-        ->with(\Mockery::on(fn (string $to): bool => str_contains($to, '447700900123')), \Mockery::type('string'))
+        ->with(Mockery::on(fn (string $to): bool => str_contains($to, '447700900123')), Mockery::type('string'))
         ->andReturn(['sid' => 'SM123', 'status' => 'queued']);
     app()->instance(SmsService::class, $sms);
 
@@ -198,7 +198,7 @@ it('skips sms when Twilio is not configured', function (): void {
         'is_active' => true,
     ]);
 
-    $sms = \Mockery::mock(SmsService::class);
+    $sms = Mockery::mock(SmsService::class);
     $sms->shouldReceive('sendSms')
         ->once()
         ->andReturn(['status' => 'error', 'message' => 'SMS provider is not configured.']);

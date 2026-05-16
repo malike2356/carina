@@ -112,7 +112,7 @@ it('learn_from_correction skips masterbrain write when incognito', function (): 
 
     $tenantId = 'test-tenant-'.uniqid();
 
-    $path = base_path("brain/masterbrain/accounting/{$tenantId}/rules.json");
+    $path = (string) config('paths.brain.masterbrain')."/accounting/{$tenantId}/rules.json";
     if (File::exists($path)) {
         File::delete($path);
     }

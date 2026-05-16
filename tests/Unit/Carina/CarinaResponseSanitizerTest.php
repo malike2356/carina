@@ -27,10 +27,10 @@ it('recovers inner text when pseudo-tool blocks are the only output', function (
     $m = new ReflectionMethod(CarinaService::class, 'finalizeAssistantReply');
     $m->setAccessible(true);
 
-    expect($m->invoke($svc, '<search>Laud Paul-Gablah</search>'))->toBe('Laud Paul-Gablah');
+    expect($m->invoke($svc, '<search>Laud Paul-Gablah</search>', '', 'tenant'))->toBe('Laud Paul-Gablah');
 
     $onlyTags = '<search>x</search><tool_call>y</tool_call>';
-    expect($m->invoke($svc, $onlyTags))->toBe("x\n\ny");
+    expect($m->invoke($svc, $onlyTags, '', 'tenant'))->toBe("x\n\ny");
 });
 
 it('uses a generic fallback when nothing usable remains after stripping', function (): void {
@@ -38,7 +38,7 @@ it('uses a generic fallback when nothing usable remains after stripping', functi
     $m = new ReflectionMethod(CarinaService::class, 'finalizeAssistantReply');
     $m->setAccessible(true);
 
-    expect($m->invoke($svc, '<search></search><tool_call>  </tool_call>'))->toContain('could not generate');
+    expect($m->invoke($svc, '<search></search><tool_call>  </tool_call>', '', 'tenant'))->toContain('could not generate');
 });
 
 it('loads canonical product inventory and persona attribution from config', function (): void {

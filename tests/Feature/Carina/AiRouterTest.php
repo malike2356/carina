@@ -87,6 +87,42 @@ it('test_falls_back_to_platform_default_when_no_byok', function (): void {
     expect($bundle->providers['groq']['api_key'] ?? null)->toBe('gsk-platform-registry');
 });
 
+it('merges_tenant_ai_settings_even_when_byok_feature_flag_disabled', function (): void {
+    FeatureFlag::syncFromCatalogue();
+    FeatureFlag::query()->where('key', 'byok_ai')->update(['enabled' => false]);
+
+    PlatformSetting::query()->updateOrCreate(
+        ['key' => 'byok_enabled'],
+        ['group' => 'ai', 'value' => '0', 'type' => 'boolean', 'label' => 'BYOK', 'description' => null, 'is_encrypted' => false, 'is_public' => false],
+    );
+
+    $tenant = createCentralTenant();
+
+    $groq = AiProvider::query()->where('slug', 'groq')->firstOrFail();
+    $groq->update([
+        'api_key' => 'gsk-registry-only',
+        'api_base_url' => 'https://api.platform-groq.invalid/openai/v1',
+        'is_enabled' => true,
+    ]);
+
+    TenantAiSetting::query()->create([
+        'tenant_id' => $tenant->id,
+        'default_ai_provider_id' => $groq->id,
+        'provider_overrides' => [
+            'groq' => [
+                'api_key' => 'gsk-tenant-override',
+                'base_url' => 'https://api.byok-tenant.invalid/openai/v1',
+                'model' => 'custom-chat',
+            ],
+        ],
+    ]);
+
+    $bundle = app(AiRuntimeResolutionService::class)->resolve((string) $tenant->id);
+
+    expect($bundle->providers['groq']['api_key'] ?? null)->toBe('gsk-tenant-override')
+        ->and($bundle->providers['groq']['model'] ?? null)->toBe('custom-chat');
+});
+
 it('test_returns_correct_model_for_chat_use_case', function (): void {
     $bundle = new AiRuntimeBundle([
         'openai' => [

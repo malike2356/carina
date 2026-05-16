@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Central\PlatformUser;
+use App\Models\Tenant\InvestorPortalUser;
 use App\Models\Tenant\User as TenantUser;
 
 return [
@@ -47,6 +48,10 @@ return [
             'driver' => 'session',
             'provider' => 'platform_users',
         ],
+        'investor_portal' => [
+            'driver' => 'session',
+            'provider' => 'investor_portal_users',
+        ],
     ],
 
     /*
@@ -74,6 +79,10 @@ return [
         'platform_users' => [
             'driver' => 'eloquent',
             'model' => PlatformUser::class,
+        ],
+        'investor_portal_users' => [
+            'driver' => 'eloquent',
+            'model' => InvestorPortalUser::class,
         ],
     ],
 

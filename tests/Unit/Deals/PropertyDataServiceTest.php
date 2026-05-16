@@ -30,24 +30,30 @@ it('fetches sold prices from PropertyData API', function (): void {
 
 it('fetches rental estimate from PropertyData API', function (): void {
     Http::fake([
-        'https://api.propertydata.co.uk/rent_estimate*' => Http::response([
+        'https://api.propertydata.co.uk/rents*' => Http::response([
             'status' => 'success',
-            'data' => ['lower' => 900, 'mid' => 1100, 'upper' => 1300],
+            'data' => [
+                'long_let' => [
+                    'average' => 254,
+                    '70pc_range' => [220, 290],
+                ],
+            ],
         ], 200),
     ]);
 
     $service = new PropertyDataService('test-api-key');
+    Cache::flush();
     $result = $service->rentalEstimate('B1 1AA', 3);
 
     expect($result['status'])->toBe('success')
-        ->and($result['data']['mid'])->toBe(1100);
+        ->and($result['data']['mid'])->toBe(1101);
 });
 
 it('caches responses for 24 hours', function (): void {
     Http::fake([
-        'https://api.propertydata.co.uk/average_yields*' => Http::response([
+        'https://api.propertydata.co.uk/yields*' => Http::response([
             'status' => 'success',
-            'data' => ['gross_yield' => 5.2],
+            'data' => ['long_let' => ['gross_yield' => '5.2%']],
         ], 200),
     ]);
 
@@ -141,4 +147,26 @@ it('call forwards to arbitrary endpoint', function (): void {
     $service = new PropertyDataService('test-api-key');
     $r = $service->call('crime', ['postcode' => 'LS11AA']);
     expect($r['status'])->toBe('success');
+});
+
+it('reports whether an api key is present', function (): void {
+    expect((new PropertyDataService('x'))->hasApiKey())->toBeTrue()
+        ->and((new PropertyDataService(''))->hasApiKey())->toBeFalse();
+});
+
+it('fetches carina lite bundle in testing environment', function (): void {
+    Http::fake([
+        'https://api.propertydata.co.uk/yields*' => Http::response(['status' => 'success', 'data' => ['long_let' => ['gross_yield' => '5.0%']]], 200),
+        'https://api.propertydata.co.uk/sold-prices*' => Http::response(['status' => 'success', 'data' => []], 200),
+        'https://api.propertydata.co.uk/rents*' => Http::response(['status' => 'success', 'data' => ['long_let' => ['average' => 230.769230769]]], 200),
+        'https://api.propertydata.co.uk/valuation-sale*' => Http::response(['status' => 'success', 'data' => ['estimate' => 240000]], 200),
+    ]);
+
+    Cache::flush();
+    $service = new PropertyDataService('test-api-key');
+    $bundle = $service->fetchCarinaLiteForPostcode('B1 1AA', 2, 'flat', 8);
+
+    expect($bundle['average_yields']['status'] ?? '')->toBe('success')
+        ->and($bundle['rent_estimate']['data']['mid'] ?? 0)->toBe(1000);
+    Http::assertSentCount(4);
 });

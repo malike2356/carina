@@ -1,13 +1,15 @@
 <?php
 
-require __DIR__.'/vendor/autoload.php';
-
-$app = require_once __DIR__.'/bootstrap/app.php';
-$app->make(Kernel::class)->bootstrap();
+declare(strict_types=1);
 
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+
+require __DIR__.'/../vendor/autoload.php';
+
+$app = require_once __DIR__.'/../bootstrap/app.php';
+$app->make(Kernel::class)->bootstrap();
 
 echo "=== Migrating tenant test -> xelox ===\n\n";
 
@@ -135,7 +137,7 @@ if (! empty($verify)) {
             echo "  Users table not found. You may need to run tenant migrations.\n";
             echo "  Run: php artisan tenants:migrate --tenant=xelox\n";
         }
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo '  Error connecting to tenant DB: '.$e->getMessage()."\n";
         echo "  You can still create the user manually via tinker.\n";
     }

@@ -52,6 +52,7 @@ it('renders compliance show with issued_at, vault links, and property documents'
     $html = view('tenant.compliance.show', [
         'item' => $item,
         'propertyDocuments' => collect([$doc]),
+        'vaultDocuments' => collect(),
         'carinaAiEnabled' => false,
     ])->render();
 

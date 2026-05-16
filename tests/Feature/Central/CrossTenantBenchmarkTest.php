@@ -19,12 +19,10 @@ it('returns below_minimum_cohort when fewer than five active tenants exist', fun
     createCentralTenant(['slug' => 'bench-one', 'is_active' => true]);
 
     $this->actingAs($this->superAdmin, 'platform')
-        ->getJson(route('admin.analytics.cross-tenant-benchmark'))
+        ->get(route('admin.analytics.cross-tenant-benchmark'))
         ->assertOk()
-        ->assertJson([
-            'ok' => false,
-            'reason' => 'below_minimum_cohort',
-        ]);
+        ->assertSee('Cohort size below minimum')
+        ->assertSee('Cross-tenant benchmark');
 });
 
 it('returns anonymised cohort rows for five or more active tenants', function (): void {
@@ -38,20 +36,12 @@ it('returns anonymised cohort rows for five or more active tenants', function ()
     }
 
     $response = $this->actingAs($this->superAdmin, 'platform')
-        ->getJson(route('admin.analytics.cross-tenant-benchmark'));
+        ->get(route('admin.analytics.cross-tenant-benchmark'));
 
     $response->assertOk()
-        ->assertJsonPath('ok', true)
-        ->assertJsonPath('disclaimer', '[Analysis based on anonymised aggregated data. No individual tenant data has been used.]');
-
-    $rows = $response->json('rows');
-    expect($rows)->toBeArray()->not->toBeEmpty();
-
-    foreach ($rows as $row) {
-        expect($row)->not->toHaveKey('company_name')
-            ->not->toHaveKey('owner_email')
-            ->not->toHaveKey('owner_name')
-            ->and($row)->toHaveKey('plan')
-            ->and($row)->toHaveKey('is_active');
-    }
+        ->assertDontSee('Secret Co')
+        ->assertDontSee('secret0@example.test')
+        ->assertSee('total_workspaces')
+        ->assertSee('plan')
+        ->assertSee('is_active');
 });

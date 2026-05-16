@@ -50,6 +50,18 @@ it('serves journal create at journals/create without treating create as an entry
         ->assertOk()
         ->assertSee('Property profit and loss');
 
+    $this->get('http://'.$host.'/accounting/balance-sheet')
+        ->assertOk()
+        ->assertSee('Balance sheet');
+
+    $this->get('http://'.$host.'/accounting/income-statement')
+        ->assertOk()
+        ->assertSee('Income statement');
+
+    $this->get('http://'.$host.'/accounting/expenses')
+        ->assertOk()
+        ->assertSee('Expenses');
+
     $this->get('http://'.$host.'/accounting/ledger')
         ->assertOk()
         ->assertSee('Account ledger');
@@ -85,6 +97,8 @@ it('denies journal create page to external_accountant', function (): void {
     $this->get('http://'.$host.'/accounting/journals/create')->assertForbidden();
 
     $this->get('http://'.$host.'/accounting/ledger')->assertOk();
+    $this->get('http://'.$host.'/accounting/balance-sheet')->assertOk();
+    $this->get('http://'.$host.'/accounting/income-statement')->assertOk();
     $this->get('http://'.$host.'/accounting/chart')->assertOk();
     $this->get('http://'.$host.'/accounting')->assertOk();
 });

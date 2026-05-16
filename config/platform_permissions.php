@@ -55,6 +55,11 @@ return [
                     'label' => 'Manage subscription plans',
                     'description' => 'Create, edit, and remove catalogue plans (modules, limits, Stripe price IDs).',
                 ],
+                [
+                    'name' => 'view-platform-revenue',
+                    'label' => 'View platform revenue',
+                    'description' => 'Open /admin/revenue for MRR, paid invoices, trends, and exports.',
+                ],
             ],
         ],
         [

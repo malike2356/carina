@@ -30,6 +30,21 @@ return [
         'secret' => env('MAILGUN_SECRET'),
     ],
 
+    /*
+    | Inbound CRM email webhooks (POST /webhooks/email/inbound).
+    | Mailgun: signing key from Mailgun control panel (Settings > Webhooks), or MAILGUN_SECRET.
+    | Postmark: server API token used to verify X-Postmark-Signature (HMAC-SHA256 of raw body).
+    | Shared secret: optional X-Propreneur-Inbound-Secret header for other providers.
+    | require_signature: null = required in production when any credential is set; always skippable in local/testing without credentials.
+    */
+    'inbound_email_webhook' => [
+        'mailgun_signing_key' => env('MAILGUN_WEBHOOK_SIGNING_KEY', env('MAILGUN_SECRET')),
+        'postmark_server_token' => env('POSTMARK_SERVER_TOKEN', env('POSTMARK_API_KEY')),
+        'shared_secret' => env('INBOUND_EMAIL_WEBHOOK_SECRET'),
+        'max_timestamp_skew_seconds' => (int) env('INBOUND_EMAIL_WEBHOOK_MAX_SKEW', 900),
+        'require_signature' => env('INBOUND_EMAIL_WEBHOOK_REQUIRE_SIGNATURE'),
+    ],
+
     'twilio' => [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_TOKEN'),
@@ -53,6 +68,14 @@ return [
         'access_token' => env('GOOGLE_CALENDAR_ACCESS_TOKEN'),
     ],
 
+    'zoho' => [
+        'client_id' => env('ZOHO_CLIENT_ID'),
+        'client_secret' => env('ZOHO_CLIENT_SECRET'),
+        'redirect_uri' => env('ZOHO_REDIRECT_URI'),
+        'oauth_scope' => env('ZOHO_OAUTH_SCOPE', 'ZohoBooks.fullaccess.all'),
+        'accounts_url' => env('ZOHO_ACCOUNTS_URL', 'https://accounts.zoho.com'),
+    ],
+
     'xero' => [
         'access_token' => env('XERO_ACCESS_TOKEN'),
         'tenant_id' => env('XERO_TENANT_ID'),
@@ -66,9 +89,11 @@ return [
 
     'propertydata' => [
         /** Fallback when no platform key is stored in central platform_settings (integrations group). */
-        'key' => env('PROPERTYDATA_API_KEY'),
+        'key' => (string) (env('PROPERTYDATA_API_KEY') ?: env('PROPERTY_DATA_API_KEY')),
         /** Public site for manual area research (no API key required in browser). */
         'public_research_url' => env('PROPERTYDATA_PUBLIC_URL', 'https://www.propertydata.co.uk'),
+        /** Force cURL IPv4 resolution (helps flaky IPv6 networks when calling api.propertydata.co.uk). */
+        'http_force_ipv4' => filter_var(env('PROPERTY_DATA_HTTP_FORCE_IPV4', false), FILTER_VALIDATE_BOOL),
     ],
 
     /**

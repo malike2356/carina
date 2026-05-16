@@ -38,6 +38,11 @@ it('shows investors overview and updates funnel stage for an investor contact', 
         ->assertOk()
         ->assertSee('Investor overview');
 
+    $this->get('http://'.$host.'/investors/funnel')
+        ->assertOk()
+        ->assertSee('Your investor capital journey', false)
+        ->assertSee('Source', false);
+
     $this->post('http://'.$host.'/investors/funnel/'.$investor->id, [
         'investor_funnel_stage' => 'qualified',
         'qualification_score' => '7',

@@ -1,34 +1,32 @@
-# Propreneur: Save listing (browser extension)
+# Propreneur Capture (browser extension)
 
-Manifest V3 extension for Chromium (Chrome, Edge, Brave) and Firefox (temporary load).
+Manifest V3 extension for Chromium (Chrome, Edge, Brave). Firefox may load temporarily from `manifest.json`.
 
 ## What it does
 
-While you view a property listing in your browser, click the extension and it POSTs the **current tab URL** to your workspace `POST /api/deal-extension-capture` with your **Sanctum personal access token**. The server runs the same listing import as the in-app URL paste flow and creates a **draft** deal for your user. You are the one loading the page; this is not an unmanned crawl of the portal.
+On a supported listing tab (Rightmove, Zoopla, OnTheMarket, OpenRent, SpareRoom), the popup injects a small content script that reads the DOM, builds an `import` payload (title, images, postcode, etc.), and POSTs it to your workspace `POST /api/deal-extension-capture` with your **Sanctum personal access token**. If DOM capture fails, you can still send the tab URL for server-side import (chain driver). If you already have a draft for that listing, the client can retry with `merge_listing_media: true` to merge gallery URLs.
 
 ## Install (developer / sideload)
 
-1. In Propreneur, open **Deals → Manual search → Browser extension** (or **Deals → Sourcing → Browser extension**) and create an API token.
+1. In Propreneur, open **Deals → Sourcing → Browser extension** and create a personal API token.
 2. **Chrome / Edge:** `chrome://extensions` → Developer mode → **Load unpacked** → select this folder.
-3. **Firefox:** `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on** → choose `manifest.json`.
+3. Open **Extension options** (right-click the extension icon, or use the link in the popup) and set **Workspace API base URL** and **token**.
 
 ## Configure
 
-1. Open the extension popup.
-2. **Workspace API base URL:** full origin of your tenant site, e.g. `https://xelox.propreneur.test:8000` (no trailing slash).
-3. **API token:** paste the token shown once when you created it in Propreneur.
-4. Choose strategy and click **Remember settings**.
-5. Open a supported listing page in a tab, then click **Save current tab**.
-
-## Optional: send a pre-built import payload
-
-Advanced integrations can POST JSON with an `import` object (same shape as a successful `ListingImportService` response) instead of `url`. The extension UI only sends `url` by default.
+1. **Options page:** workspace origin (e.g. `https://xelox.propreneur.test:8000`, no trailing slash) and API token. Save.
+2. Open a listing on a supported portal, click the extension icon.
+3. Review the preview, choose strategy, **Save to Propreneur**.
 
 ## Files
 
-- `manifest.json` — MV3 manifest.
-- `popup.html` / `popup.js` — popup UI and fetch logic.
+- `manifest.json` — MV3 manifest, portal `host_permissions`, broad http(s) for workspace API calls.
+- `options.html` / `options.js` — workspace URL and token.
+- `popup.html` / `popup.js` — preview, capture, save, duplicate merge retry.
+- `content-scripts/shared.js` — helpers for extractors.
+- `content-scripts/rightmove.js` (and zoopla, onthemarket, openrent, spareroom) — DOM snapshot payloads.
+- `icons/` — toolbar icons.
 
 ## Packaging for stores
 
-Zip this directory for Chrome Web Store / Edge Add-ons review when you are ready; update `manifest.json` with icons, privacy policy URL, and a stable extension id for stricter CORS if you move off `Access-Control-Allow-Origin: *`.
+Zip this directory for Chrome Web Store / Edge Add-ons when ready; supply a privacy policy and justify broad `https://*/*` host permission or narrow it to your production tenant hostnames if policy requires.

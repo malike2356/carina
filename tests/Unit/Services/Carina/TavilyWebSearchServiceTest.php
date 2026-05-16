@@ -100,3 +100,27 @@ it('augmentForQuery skips keyword gate', function (): void {
 
     Http::assertSentCount(1);
 });
+
+it('forces search without keyword match when requested', function (): void {
+    Config::set('ai.tavily.enabled', true);
+    Config::set('ai.tavily.trigger', 'keywords');
+    Http::fake([
+        'https://api.tavily.com/search' => Http::response([
+            'answer' => '',
+            'results' => [
+                ['title' => 'Gov', 'url' => 'https://gov.test', 'content' => 'Rules'],
+            ],
+        ], 200),
+    ]);
+
+    $svc = app(TavilyWebSearchService::class);
+    $out = $svc->augmentForUserMessage('Hello', true, 'UK buy to let stamp duty 2026', true);
+
+    expect($out)->toContain('PropertyData')->toContain('https://gov.test');
+
+    Http::assertSent(function ($request): bool {
+        $d = $request->data();
+
+        return str_contains((string) ($d['query'] ?? ''), 'UK buy to let');
+    });
+});

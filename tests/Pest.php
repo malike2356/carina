@@ -42,6 +42,7 @@ function completeTenantWorkspaceOnboarding(): void
     $state = app(WorkspaceOnboardingService::class)->getState();
     $state['completed_at'] = now()->toIso8601String();
     $state['max_unlocked_step'] = WorkspaceOnboardingService::TOTAL_STEPS;
+    $state['setup_deferred'] = false;
 
     TenantSetting::query()->updateOrCreate(
         ['key' => WorkspaceOnboardingService::SETTINGS_KEY],

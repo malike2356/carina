@@ -1,6 +1,7 @@
 #!/bin/bash
 # Pre-deploy safety check — run locally before every production merge
 set -e
+cd "$(dirname "$0")/.."
 
 echo "=== PRE-DEPLOY CHECK ==="
 echo ""

@@ -17,6 +17,9 @@ from __future__ import annotations
 import json
 import sys
 from collections import defaultdict
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def method_str(route: dict) -> str:
@@ -128,16 +131,14 @@ def main() -> int:
     # --- 66 tenant ---
     t_lines = common_header("HTTP routes: tenant subdomain", "66-api-routes-tenant-subdomain.md")
     t_lines.extend(render_tables(by_section, tenant_order))
-    path_t = "brain/knowledge/66-api-routes-tenant-subdomain.md"
-    with open(path_t, "w", encoding="utf-8") as f:
-        f.write("\n".join(t_lines).rstrip() + "\n")
+    path_t = ROOT / "brain" / "knowledge" / "66-api-routes-tenant-subdomain.md"
+    path_t.write_text("\n".join(t_lines).rstrip() + "\n", encoding="utf-8")
 
     # --- 67 central / misc ---
     c_lines = common_header("HTTP routes: central, Filament, and other", "67-api-routes-central-filament-misc.md")
     c_lines.extend(render_tables(by_section, central_order))
-    path_c = "brain/knowledge/67-api-routes-central-filament-misc.md"
-    with open(path_c, "w", encoding="utf-8") as f:
-        f.write("\n".join(c_lines).rstrip() + "\n")
+    path_c = ROOT / "brain" / "knowledge" / "67-api-routes-central-filament-misc.md"
+    path_c.write_text("\n".join(c_lines).rstrip() + "\n", encoding="utf-8")
 
     # --- 64 index (small; best for RAG chunking) ---
     n_tenant = sum(len(by_section[s]) for s in tenant_order if s in by_section)
@@ -174,9 +175,8 @@ def main() -> int:
         "- `59-carina-propreneur-full-codex.md`",
         "",
     ]
-    path_i = "brain/knowledge/64-api-route-consolidated.md"
-    with open(path_i, "w", encoding="utf-8") as f:
-        f.write("\n".join(idx).rstrip() + "\n")
+    path_i = ROOT / "brain" / "knowledge" / "64-api-route-consolidated.md"
+    path_i.write_text("\n".join(idx).rstrip() + "\n", encoding="utf-8")
 
     print(f"Wrote {path_i}, {path_t}, {path_c}", file=sys.stderr)
     print(f"  total={total} tenant_split={n_tenant} central_split={n_central}", file=sys.stderr)

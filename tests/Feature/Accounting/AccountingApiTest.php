@@ -690,6 +690,8 @@ it('denies journal writes to external_accountant while allowing read exports', f
     $this->getJson('http://'.$host.'/api/accounting/accounts/'.$bankId.'/activity?from='.$from.'&to='.$to)->assertOk();
     $this->getJson('http://'.$host.'/api/accounting/journal-entries')->assertOk();
     $this->getJson('http://'.$host.'/api/accounting/trial-balance?as_of='.now()->format('Y-m-d'))->assertOk();
+    $this->getJson('http://'.$host.'/api/accounting/balance-sheet?as_of='.now()->format('Y-m-d'))->assertOk();
+    $this->getJson('http://'.$host.'/api/accounting/income-statement?from='.$from.'&to='.$to)->assertOk();
 
     $this->postJson('http://'.$host.'/api/accounting/journal-entries', [
         'entry_date' => now()->format('Y-m-d'),
@@ -704,4 +706,65 @@ it('denies journal writes to external_accountant while allowing read exports', f
         'name' => 'Blocked custom',
         'type' => 'expense',
     ])->assertForbidden();
+});
+
+it('serves balance sheet and workspace income statement JSON and CSV exports', function (): void {
+    Http::preventStrayRequests();
+
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Accounting Reports '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@accounting-reports.test',
+        'plan' => 'starter',
+    ]);
+
+    $host = $tenant->slug.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    FeatureFlag::syncFromCatalogue();
+    FeatureFlag::query()->where('key', 'accounting')->update(['enabled' => true]);
+    completeTenantWorkspaceOnboarding();
+    $user = User::query()->firstOrFail();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web');
+
+    $byCode = collect($this->getJson('http://'.$host.'/api/accounting/accounts')->assertOk()->json('data'))->keyBy('code');
+    $bankId = (int) $byCode['1000']['id'];
+    $incomeId = (int) $byCode['4000']['id'];
+
+    $create = $this->postJson('http://'.$host.'/api/accounting/journal-entries', [
+        'entry_date' => now()->format('Y-m-d'),
+        'reference' => 'BS-PNL-'.uniqid(),
+        'lines' => [
+            ['gl_account_id' => $bankId, 'debit_minor' => 25000, 'credit_minor' => 0],
+            ['gl_account_id' => $incomeId, 'debit_minor' => 0, 'credit_minor' => 25000],
+        ],
+    ]);
+    $create->assertCreated();
+    $entryId = (int) $create->json('data.id');
+    $this->postJson('http://'.$host.'/api/accounting/journal-entries/'.$entryId.'/post')->assertOk();
+
+    $asOf = now()->format('Y-m-d');
+    $bs = $this->getJson('http://'.$host.'/api/accounting/balance-sheet?as_of='.$asOf);
+    $bs->assertOk();
+    expect((int) $bs->json('data.total_assets_minor'))->toBe(25000);
+
+    $from = now()->subDay()->format('Y-m-d');
+    $to = now()->addDay()->format('Y-m-d');
+    $is = $this->getJson('http://'.$host.'/api/accounting/income-statement?from='.$from.'&to='.$to);
+    $is->assertOk();
+    expect((int) $is->json('data.income_minor'))->toBe(25000)
+        ->and((int) $is->json('data.net_operating_minor'))->toBe(25000);
+
+    $this->getJson('http://'.$host.'/api/accounting/income-statement?from='.$to.'&to='.$from)->assertStatus(422);
+
+    $csvBs = $this->get('http://'.$host.'/api/accounting/exports/balance-sheet.csv?as_of='.$asOf);
+    $csvBs->assertOk();
+    expect(str_contains($csvBs->streamedContent(), 'total_assets'))->toBeTrue();
+
+    $csvIs = $this->get('http://'.$host.'/api/accounting/exports/income-statement.csv?from='.$from.'&to='.$to);
+    $csvIs->assertOk();
+    expect(str_contains($csvIs->streamedContent(), 'net_operating_minor'))->toBeTrue();
 });

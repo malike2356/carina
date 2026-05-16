@@ -32,9 +32,9 @@ afterEach(function (): void {
 it('property-data endpoint returns combined data as json', function (): void {
     Http::fake([
         'https://api.propertydata.co.uk/sold-prices*' => Http::response(['status' => 'success', 'data' => []], 200),
-        'https://api.propertydata.co.uk/rent_estimate*' => Http::response(['status' => 'success', 'data' => ['mid' => 1200]], 200),
-        'https://api.propertydata.co.uk/average_yields*' => Http::response(['status' => 'success', 'data' => []], 200),
-        'https://api.propertydata.co.uk/valuations*' => Http::response(['status' => 'success', 'data' => []], 200),
+        'https://api.propertydata.co.uk/rents*' => Http::response(['status' => 'success', 'data' => ['long_let' => ['average' => 277]]], 200),
+        'https://api.propertydata.co.uk/yields*' => Http::response(['status' => 'success', 'data' => ['long_let' => ['gross_yield' => '5.2%']]], 200),
+        'https://api.propertydata.co.uk/valuation-sale*' => Http::response(['status' => 'success', 'data' => ['estimate' => 200000]], 200),
     ]);
 
     $svc = app(TenantCreationService::class);

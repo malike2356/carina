@@ -6,6 +6,7 @@ use App\Models\Central\FeatureFlag;
 use App\Models\Central\Tenant;
 use App\Models\Tenant\User;
 use App\Services\Deals\Contracts\ListingImportDriverInterface;
+use App\Services\Deals\Drivers\ChainListingImportDriver;
 use App\Services\Deals\ListingImportService;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
@@ -26,6 +27,7 @@ beforeEach(function (): void {
     ]);
     app()->forgetInstance(ListingImportDriverInterface::class);
     app()->forgetInstance(ListingImportService::class);
+    app()->forgetInstance(ChainListingImportDriver::class);
 });
 
 it('import-listing endpoint returns json and validates url', function (): void {

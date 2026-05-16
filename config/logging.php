@@ -73,6 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/carina-security.log'),
+            'level' => 'warning',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
@@ -125,6 +133,14 @@ return [
 
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
+        ],
+
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/carina-security.log'),
+            'level' => 'warning',
+            'days' => 90,
+            'replace_placeholders' => true,
         ],
 
     ],

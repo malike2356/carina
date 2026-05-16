@@ -37,7 +37,7 @@ it('shows deal workspace and sourcing criteria pages for the tenant user', funct
 
     $this->get('http://'.$host.'/deals/workspace')
         ->assertOk()
-        ->assertSee('Deal workspace', false)
+        ->assertSee('Deals hub', false)
         ->assertSee('Deal shortlists', false)
         ->assertSee('Area profiles', false);
 
@@ -47,7 +47,7 @@ it('shows deal workspace and sourcing criteria pages for the tenant user', funct
 
     $this->get('http://'.$host.'/deals/sourcing/inbox')
         ->assertOk()
-        ->assertSee('Sourcing inbox', false);
+        ->assertSee('Match inbox', false);
 });
 
 it('lists sourcing matcher alerts on the inbox with open as deal', function (): void {

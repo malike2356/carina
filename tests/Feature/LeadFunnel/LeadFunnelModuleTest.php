@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Jobs\LeadFunnel\CreateCrmContactJob;
 use App\Models\Central\FeatureFlag;
+use App\Models\Tenant\Contact;
 use App\Models\Tenant\LeadFunnel\InboundLead;
+use App\Services\LeadFunnel\LeadFunnelEmailTrackingService;
 use App\Services\LeadFunnel\LeadIngestionService;
 use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Support\Facades\Queue;
@@ -13,7 +16,7 @@ it('ingests landing page leads and dispatches CRM job', function (): void {
 
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([
-        'company_name' => 'Lead Funnel '.uniqid(),
+        'company_name' => 'Marketing Intake '.uniqid(),
         'owner_name' => 'Owner',
         'owner_email' => 'owner-'.uniqid().'@lead-funnel.test',
         'plan' => 'starter',
@@ -33,7 +36,7 @@ it('ingests landing page leads and dispatches CRM job', function (): void {
     expect($lead->segment)->toBe('investor')
         ->and($lead->status)->toBe('processing');
 
-    Queue::assertPushed(\App\Jobs\LeadFunnel\CreateCrmContactJob::class);
+    Queue::assertPushed(CreateCrmContactJob::class);
     tenancy()->end();
 });
 
@@ -81,6 +84,48 @@ it('meta verify returns challenge with correct token', function (): void {
     $response = $this->get('/api/webhooks/meta/verify?hub_mode=subscribe&hub_verify_token=verify-token&hub_challenge=12345');
 
     $response->assertOk()->assertSee('12345', false);
+});
+
+it('meta verify rejects wrong token', function (): void {
+    config(['lead_funnel.meta.webhook_verify_token' => 'verify-token']);
+
+    $response = $this->get('/api/webhooks/meta/verify?hub_mode=subscribe&hub_verify_token=wrong&hub_challenge=12345');
+
+    $response->assertForbidden();
+});
+
+it('records email open engagement from tracking route', function (): void {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Track '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@track.test',
+        'plan' => 'starter',
+    ]);
+
+    tenancy()->initialize($tenant);
+    $contact = Contact::query()->create([
+        'first_name' => 'Track',
+        'last_name' => 'Lead',
+        'name' => 'Track Lead',
+        'email' => 'track-'.uniqid().'@example.test',
+        'source' => 'facebook',
+        'type' => 'investor',
+        'lead_funnel_stage_id' => 1,
+        'custom_fields' => [],
+    ]);
+    $token = app(LeadFunnelEmailTrackingService::class)
+        ->register((string) $tenant->getKey(), $contact->id);
+    tenancy()->end();
+
+    $response = $this->get('/api/lead-funnel/track/open/'.$token);
+
+    $response->assertOk();
+
+    tenancy()->initialize($tenant);
+    $contact->refresh();
+    expect((int) ($contact->custom_fields['email_opens'] ?? 0))->toBe(1);
+    tenancy()->end();
 });
 
 it('meta receive rejects invalid signature', function (): void {

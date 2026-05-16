@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Deals\Contracts\ListingImportDriverInterface;
+use App\Services\Deals\Drivers\ChainListingImportDriver;
 use App\Services\Deals\ListingImportService;
 use Illuminate\Support\Facades\Http;
 
@@ -21,6 +22,7 @@ beforeEach(function (): void {
     $app = app();
     $app->forgetInstance(ListingImportDriverInterface::class);
     $app->forgetInstance(ListingImportService::class);
+    $app->forgetInstance(ChainListingImportDriver::class);
 });
 
 it('uses partner driver when configured and maps JSON response', function (): void {
@@ -132,6 +134,44 @@ it('chain driver falls back to url when partner returns HTTP error', function ()
     expect($result['success'])->toBeTrue()
         ->and($result['import_driver'])->toBe('chain')
         ->and($result['title'])->toBe('After partner fail');
+});
+
+it('chain driver uses portal rightmove driver before generic url driver', function (): void {
+    config([
+        'listings.import_driver' => 'chain',
+        'listings.partner.enabled' => false,
+        'listings.chain.try_partner_first' => true,
+    ]);
+    app()->forgetInstance(ListingImportDriverInterface::class);
+    app()->forgetInstance(ListingImportService::class);
+    app()->forgetInstance(ChainListingImportDriver::class);
+
+    $jsonLd = json_encode([
+        '@context' => 'https://schema.org',
+        '@type' => 'Product',
+        'name' => 'Portal chain',
+        'offers' => ['price' => 111000],
+        'image' => ['https://media.rightmove.co.uk/x/a.jpg'],
+        'address' => [
+            'streetAddress' => '9 Chain Road',
+            'addressLocality' => 'Leeds',
+            'postalCode' => 'LS1 1AA',
+        ],
+    ]);
+
+    Http::fake([
+        'https://www.rightmove.co.uk/properties/portal-chain' => Http::response(
+            '<html><head><script type="application/ld+json">'.$jsonLd.'</script></head><body></body></html>',
+            200,
+        ),
+    ]);
+
+    $service = app(ListingImportService::class);
+    $result = $service->importFromUrl('https://www.rightmove.co.uk/properties/portal-chain');
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['import_driver'])->toBe('chain')
+        ->and($result['title'])->toBe('Portal chain');
 });
 
 it('uses api_key header when LISTINGS_PARTNER_AUTH_SCHEME is api_key', function (): void {

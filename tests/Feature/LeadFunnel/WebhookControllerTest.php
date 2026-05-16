@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Jobs\LeadFunnel\CreateCrmContactJob;
 use App\Jobs\LeadFunnel\ProcessMetaWebhookJob;
+use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Support\Facades\Queue;
 
 it('meta verify returns challenge with correct token', function (): void {
@@ -36,4 +38,51 @@ it('meta receive returns forbidden on invalid signature', function (): void {
     ]);
 
     $response->assertForbidden();
+});
+
+it('meta verify returns forbidden when verify token does not match', function (): void {
+    config(['lead_funnel.meta.webhook_verify_token' => 'correct-token']);
+
+    $response = $this->get('/api/webhooks/meta/verify?hub_mode=subscribe&hub_verify_token=wrong-token&hub_challenge=99999');
+
+    $response->assertForbidden();
+});
+
+it('landing page ingest creates a captured prospect and dispatches person-link job', function (): void {
+    Queue::fake();
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'LP Ingest Test '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'lp-ingest-'.uniqid().'@test.test',
+        'plan' => 'starter',
+    ]);
+
+    $response = $this->postJson('/api/leads/ingest', [
+        'name' => 'Test Lead',
+        'email' => 'testlead@example.test',
+        'phone' => '07700900000',
+        'tenant_slug' => $tenant->slug,
+    ]);
+
+    $response->assertOk()->assertJson(['status' => 'received']);
+    Queue::assertPushed(CreateCrmContactJob::class);
+});
+
+it('landing page ingest returns received when tenant slug is not found', function (): void {
+    $response = $this->postJson('/api/leads/ingest', [
+        'name' => 'Ghost Lead',
+        'email' => 'ghost@example.test',
+        'tenant_slug' => 'no-such-tenant-xyz',
+    ]);
+
+    $response->assertOk()->assertJson(['status' => 'received']);
+});
+
+it('landing page ingest returns received when required fields are missing', function (): void {
+    $response = $this->postJson('/api/leads/ingest', [
+        'name' => 'No Email',
+        'tenant_slug' => 'some-slug',
+    ]);
+
+    $response->assertOk()->assertJson(['status' => 'received']);
 });

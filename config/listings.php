@@ -1,6 +1,11 @@
 <?php
 
 declare(strict_types=1);
+use App\Services\Deals\Drivers\OnTheMarketListingImportDriver;
+use App\Services\Deals\Drivers\OpenRentListingImportDriver;
+use App\Services\Deals\Drivers\RightmoveListingImportDriver;
+use App\Services\Deals\Drivers\SpareRoomListingImportDriver;
+use App\Services\Deals\Drivers\ZooplaListingImportDriver;
 
 return [
 
@@ -14,10 +19,37 @@ return [
     | chain   — Try partner when configured; otherwise fall back to url.
     |
     */
-    'import_driver' => env('LISTINGS_IMPORT_DRIVER', 'url'),
+    'import_driver' => env('LISTINGS_IMPORT_DRIVER', 'chain'),
 
     'url' => [
         'timeout' => (int) env('LISTINGS_URL_TIMEOUT', 15),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Portal-specific HTTP drivers (used by chain before generic url driver)
+    |--------------------------------------------------------------------------
+    */
+    'portal_drivers' => [
+        'rightmove' => RightmoveListingImportDriver::class,
+        'zoopla' => ZooplaListingImportDriver::class,
+        'onthemarket' => OnTheMarketListingImportDriver::class,
+        'openrent' => OpenRentListingImportDriver::class,
+        'spareroom' => SpareRoomListingImportDriver::class,
+    ],
+
+    'browser_render' => [
+        'enabled' => (bool) env('LISTING_BROWSER_RENDER', false),
+        'service_url' => env('LISTING_SCRAPING_SERVICE_URL'),
+        'fallback_on_failure' => (bool) env('LISTING_BROWSER_RENDER_FALLBACK', true),
+    ],
+
+    'user_agents' => [
+        'desktop' => env(
+            'LISTINGS_HTTP_USER_AGENT',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        ),
+        'mobile' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
     ],
 
     'partner' => [

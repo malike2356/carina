@@ -1,90 +1,199 @@
 (function () {
-  const ext = typeof browser !== 'undefined' ? browser : chrome;
+  var ext = typeof browser !== 'undefined' ? browser : chrome;
 
-  const apiBaseEl = document.getElementById('apiBase');
-  const tokenEl = document.getElementById('token');
-  const strategyEl = document.getElementById('strategy');
-  const statusEl = document.getElementById('status');
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function showState(name) {
+    ['loading', 'unsupported', 'preview', 'success', 'error'].forEach(function (s) {
+      var el = byId('state-' + s);
+      if (!el) {
+        return;
+      }
+      el.classList.toggle('active', s === name);
+    });
+  }
+
+  function portalScriptForUrl(url) {
+    var u = url.toLowerCase();
+    if (u.indexOf('rightmove.co.uk') !== -1) {
+      return 'rightmove';
+    }
+    if (u.indexOf('zoopla.co.uk') !== -1) {
+      return 'zoopla';
+    }
+    if (u.indexOf('onthemarket.com') !== -1) {
+      return 'onthemarket';
+    }
+    if (u.indexOf('openrent.co.uk') !== -1) {
+      return 'openrent';
+    }
+    if (u.indexOf('spareroom.co.uk') !== -1) {
+      return 'spareroom';
+    }
+    return null;
+  }
+
+  function postCapture(base, token, jsonBody) {
+    return fetch(base + '/api/deal-extension-capture', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: jsonBody,
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        return { ok: r.ok, status: r.status, body: j };
+      });
+    });
+  }
 
   ext.storage.sync.get(['apiBase', 'token', 'strategy'], function (data) {
-    if (data.apiBase) {
-      apiBaseEl.value = data.apiBase;
-    }
-    if (data.token) {
-      tokenEl.value = data.token;
-    }
     if (data.strategy) {
-      strategyEl.value = data.strategy;
+      byId('strategy').value = data.strategy;
     }
   });
 
-  document.getElementById('storeBtn').addEventListener('click', function () {
-    ext.storage.sync.set({
-      apiBase: apiBaseEl.value.trim(),
-      token: tokenEl.value.trim(),
-      strategy: strategyEl.value,
-    }, function () {
-      statusEl.textContent = 'Settings saved in this browser.';
-    });
+  byId('openOptions').addEventListener('click', function (e) {
+    e.preventDefault();
+    if (ext.runtime.openOptionsPage) {
+      ext.runtime.openOptionsPage();
+    }
   });
 
-  document.getElementById('saveBtn').addEventListener('click', function () {
-    statusEl.textContent = '';
-    const base = apiBaseEl.value.trim().replace(/\/$/, '');
-    const token = tokenEl.value.trim();
-    if (!base || !token) {
-      statusEl.textContent = 'Set API base URL and token first (then Remember settings).';
+  var capturedPayload = null;
+  var activeTabUrl = '';
 
+  ext.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    var tab = tabs[0];
+    if (!tab || !tab.id || !tab.url) {
+      showState('unsupported');
+      return;
+    }
+    activeTabUrl = tab.url;
+    if (!/^https?:\/\//i.test(activeTabUrl)) {
+      showState('unsupported');
+      return;
+    }
+    var portal = portalScriptForUrl(activeTabUrl);
+    if (!portal) {
+      showState('unsupported');
       return;
     }
 
-    ext.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const tab = tabs[0];
-      if (!tab || !tab.url) {
-        statusEl.textContent = 'No active tab URL.';
-
+    var files = ['content-scripts/shared.js', 'content-scripts/' + portal + '.js'];
+    ext.scripting.executeScript({ target: { tabId: tab.id }, files: files }, function () {
+      if (ext.runtime.lastError) {
+        showState('error');
+        byId('errorText').textContent = ext.runtime.lastError.message || 'Could not inject capture script.';
         return;
       }
-      const u = tab.url;
-      if (!/^https?:\/\//i.test(u)) {
-        statusEl.textContent = 'This tab URL cannot be sent (not http/https).';
-
-        return;
-      }
-
-      statusEl.textContent = 'Saving…';
-
-      fetch(base + '/api/deal-extension-capture', {
-        method: 'POST',
-        headers: {
-          Authorization: 'Bearer ' + token,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+      ext.scripting.executeScript(
+        {
+          target: { tabId: tab.id },
+          func: function () {
+            return window.__propreneurListingPayload || null;
+          },
         },
-        body: JSON.stringify({
-          url: u,
-          strategy: strategyEl.value,
-        }),
-      })
-        .then(function (r) {
-          return r.json().then(function (body) {
-            return { ok: r.ok, status: r.status, body: body };
-          });
-        })
+        function (results) {
+          var payload = results && results[0] && results[0].result ? results[0].result : null;
+          if (!payload || !payload.success) {
+            showState('preview');
+            byId('previewTitle').textContent = 'Could not read listing from this page';
+            byId('previewAddr').textContent = 'You can still send the tab URL for a server-side import.';
+            byId('previewPrice').textContent = '';
+            byId('previewImg').hidden = true;
+            capturedPayload = null;
+            byId('fallbackUrlBtn').hidden = false;
+            return;
+          }
+          capturedPayload = payload;
+          showState('preview');
+          byId('previewTitle').textContent = payload.title || 'Listing';
+          byId('previewAddr').textContent = payload.address || payload.postcode || '';
+          byId('previewPrice').textContent = payload.price != null ? '£' + Number(payload.price).toLocaleString('en-GB') : '';
+          var imgEl = byId('previewImg');
+          if (payload.images && payload.images[0]) {
+            imgEl.src = payload.images[0];
+            imgEl.hidden = false;
+          } else {
+            imgEl.hidden = true;
+          }
+          byId('fallbackUrlBtn').hidden = false;
+        },
+      );
+    });
+  });
+
+  byId('fallbackUrlBtn').addEventListener('click', function () {
+    capturedPayload = null;
+    byId('saveBtn').click();
+  });
+
+  byId('saveBtn').addEventListener('click', function () {
+    byId('status').textContent = '';
+    ext.storage.sync.get(['apiBase', 'token', 'strategy'], function (data) {
+      var base = (data.apiBase || '').trim().replace(/\/$/, '');
+      var token = (data.token || '').trim();
+      var strategy = byId('strategy').value || data.strategy || 'btl';
+      if (!base || !token) {
+        byId('status').textContent = 'Set workspace URL and token in Options first.';
+        if (ext.runtime.openOptionsPage) {
+          ext.runtime.openOptionsPage();
+        }
+        return;
+      }
+
+      var jsonBody;
+      if (capturedPayload) {
+        jsonBody = JSON.stringify({ import: capturedPayload, strategy: strategy });
+      } else {
+        jsonBody = JSON.stringify({ url: activeTabUrl, strategy: strategy });
+      }
+
+      postCapture(base, token, jsonBody)
         .then(function (res) {
           if (res.ok && res.body && res.body.data) {
-            const d = res.body.data;
+            ext.storage.sync.set({ strategy: strategy });
+            showState('success');
+            var d = res.body.data;
             if (d.deal_url) {
-              statusEl.innerHTML = 'Created draft. <a target="_blank" rel="noopener" href="' + d.deal_url + '">Open deal</a>';
+              byId('successLink').innerHTML = '<a target="_blank" rel="noopener" href="' + d.deal_url + '">Open deal</a>';
             } else {
-              statusEl.textContent = JSON.stringify(res.body);
+              byId('successLink').textContent = JSON.stringify(res.body);
             }
-          } else {
-            statusEl.textContent = (res.body && (res.body.message || res.body.error)) || ('HTTP ' + res.status);
+            return null;
           }
+          if (res.status === 409 && capturedPayload) {
+            return postCapture(
+              base,
+              token,
+              JSON.stringify({ import: capturedPayload, strategy: strategy, merge_listing_media: true }),
+            );
+          }
+          return res;
+        })
+        .then(function (res) {
+          if (!res) {
+            return;
+          }
+          if (res.ok && res.body && res.body.data && res.body.data.status === 'merged_duplicate') {
+            showState('success');
+            var d = res.body.data;
+            byId('successLink').innerHTML = d.deal_url
+              ? '<a target="_blank" rel="noopener" href="' + d.deal_url + '">Open deal (gallery merged)</a>'
+              : 'Gallery merged into existing deal.';
+            return;
+          }
+          showState('error');
+          byId('errorText').textContent = (res.body && (res.body.message || res.body.error)) || 'HTTP ' + res.status;
         })
         .catch(function (e) {
-          statusEl.textContent = 'Network error: ' + (e && e.message ? e.message : String(e));
+          showState('error');
+          byId('errorText').textContent = e && e.message ? e.message : String(e);
         });
     });
   });

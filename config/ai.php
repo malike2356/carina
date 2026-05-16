@@ -108,6 +108,17 @@ return [
     ],
 
     /*
+     * On-demand PropertyData.co.uk API for Carina (lite parallel bundle per postcode).
+     * Saved deal snapshots (Market intelligence) still apply separately; this layer answers ad-hoc area questions.
+     * On failure or empty responses, Carina may force a Tavily web search (if configured) alongside RAG.
+     */
+    'carina_propertydata' => [
+        'enabled' => filter_var(env('CARINA_PROPERTYDATA_ENABLED', 'true'), FILTER_VALIDATE_BOOL),
+        'timeout_seconds' => max(3, min(30, (int) env('CARINA_PROPERTYDATA_TIMEOUT', 8))),
+        'max_postcodes' => max(1, min(3, (int) env('CARINA_PROPERTYDATA_MAX_POSTCODES', 2))),
+    ],
+
+    /*
      * Carina system persona — appended to every tenant context.
      */
     'carina_persona' => 'You are Carina, the AI assistant built into Propreneur, a property investment management platform for UK landlords and investors, developed by VERLOX Ltd alongside the product. You understand UK property law, lettings regulations, HMO licensing, BTL/BRR/R2R/SA strategies, yield calculations, and HMRC landlord rules. Unless the user clearly asks for engineering, API, SQL, or integration minutiae, lead with a conversational explanation they can use without wading through internal jargon. Do not open with or fill the reply with API lists, SQL, JSON dumps, Laravel route names, file paths, or long tables copied from internal documentation unless they asked for that level of detail. When the context includes technical material, translate what matters into plain English first; add a short optional "Technical detail" subsection only when it genuinely helps or they requested it. Be concise, precise, and proactive. Always use £ and UK-specific context. Never invent or embellish: only state facts supported by workspace context, cited web excerpts, knowledge-base context, or the user messages in this thread; if you lack support, omit the detail or say clearly that you do not know. When asked who built Propreneur or Carina, say VERLOX Ltd (UK). Do not use emojis, emoticons, or decorative unicode symbols in replies. Use plain hyphens instead of unicode em dashes in your answers.',
@@ -124,7 +135,7 @@ Modules (status reflects the current v2 codebase direction; say "check the lates
 2. CRM — contacts, interactions, import/export, investor scores (shipped core).
 3. Pipeline (Kanban) — deal stages and cards (shipped).
 4. Communications Hub — sequences, enrollments, automation hooks (partial).
-5. Accounting — double-entry journals, chart of accounts, ledgers, exports (shipped).
+5. Accounting — double-entry journals, operational expenses (receipts, draft/post to GL), chart of accounts, ledgers, balance sheet, income statement, CSV exports, integration_metadata for Zoho Books / Xero / Sage / FreeAgent / QuickBooks (connector registry; OAuth completion per vendor), Carina accounting hub and read-only agent tools (shipped / expanding).
 6. Compliance — obligations tracking and property document bridge (partial).
 7. Document Vault — structured doc storage (not started as standalone module).
 8. Project Management — not started.
@@ -157,6 +168,22 @@ TXT,
             'groq' => env('AI_SPEECH_GROQ_MODEL', 'whisper-large-v3-turbo'),
         ],
         'timeout_seconds' => (int) env('AI_SPEECH_TRANSCRIPTION_TIMEOUT', 120),
+    ],
+
+    'carina_security' => [
+        'input_block_threshold' => (float) env('CARINA_INPUT_BLOCK_THRESHOLD', 0.7),
+        'anomaly_probe_threshold' => (int) env('CARINA_ANOMALY_PROBE_THRESHOLD', 3),
+        'output_filter_enabled' => filter_var(env('CARINA_OUTPUT_FILTER_ENABLED', 'true'), FILTER_VALIDATE_BOOL),
+        'security_log_channel' => env('CARINA_SECURITY_LOG_CHANNEL', 'security'),
+    ],
+
+    'carina_insights' => [
+        'enabled' => filter_var(env('CARINA_INSIGHTS_ENABLED', 'true'), FILTER_VALIDATE_BOOL),
+        'min_conversation_messages' => (int) env('CARINA_INSIGHTS_MIN_MESSAGES', 6),
+        'min_conversation_age_days' => (int) env('CARINA_INSIGHTS_MIN_AGE_DAYS', 30),
+        'daily_extraction_limit' => (int) env('CARINA_INSIGHTS_DAILY_LIMIT', 20),
+        'min_quality_score_for_promotion' => (float) env('CARINA_INSIGHTS_MIN_PROMOTE_SCORE', 0.6),
+        'knowledge_subdirectory' => env('CARINA_INSIGHTS_SUBDIR', 'conversation-insights'),
     ],
 
 ];

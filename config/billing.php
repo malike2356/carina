@@ -99,6 +99,8 @@ return [
             $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Accounting),
             $m(BillingModule::Vcal),
+            $m(BillingModule::LeadFunnel),
+            $m(BillingModule::HrPayroll),
         ],
         'operator' => [
             $m(BillingModule::DealEngine),
@@ -112,6 +114,8 @@ return [
             $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Accounting),
             $m(BillingModule::Vcal),
+            $m(BillingModule::LeadFunnel),
+            $m(BillingModule::HrPayroll),
         ],
         'mentor' => [
             $m(BillingModule::DealEngine),
@@ -127,6 +131,8 @@ return [
             $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Accounting),
             $m(BillingModule::Vcal),
+            $m(BillingModule::LeadFunnel),
+            $m(BillingModule::HrPayroll),
         ],
         'trial_expanded' => [
             $m(BillingModule::DealEngine),
@@ -142,6 +148,8 @@ return [
             $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Accounting),
             $m(BillingModule::Vcal),
+            $m(BillingModule::LeadFunnel),
+            $m(BillingModule::HrPayroll),
         ],
     ],
 

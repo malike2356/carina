@@ -34,8 +34,10 @@ function tenantHostUserWithOnboardingComplete(): array
         ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
         ['value' => json_encode([
             'completed_at' => now()->toIso8601String(),
+            'onboarding_version' => 2,
             'max_unlocked_step' => WorkspaceOnboardingService::TOTAL_STEPS,
             'workspace' => ['display_name' => 'Sidebar Nav Co'],
+            'strategy' => ['primary' => 'btl', 'target_postcodes_raw' => ''],
             'profile' => ['name' => 'Owner', 'phone' => null],
             'preferences' => ['timezone' => 'Europe/London'],
             'preferences_skipped' => false,

@@ -50,8 +50,12 @@ CLAUDE.md
 # Temp / backups
 tmp/
 
-# V1 artefacts
+# Sibling hub trees (never nest inside v2)
+propreneur-v1/
+propreneur-mobile/
+propreneur-mobile-apps/
 propreneur_1.0/
+mobileApp/
 
 # Marketing site (separate repo)
 propreneur.co.uk/

@@ -45,3 +45,33 @@ it('duplicates a property via PropertyService', function () {
 
     tenancy()->end();
 });
+
+it('persists primary_image_url on tenant properties', function () {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Img Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@img.test',
+        'plan' => 'starter',
+    ]);
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+
+    $url = 'https://cdn.example.test/properties/1/hero.jpg';
+
+    $property = Property::query()->create([
+        'address_line1' => '9 Photo Lane',
+        'city' => 'Manchester',
+        'postcode' => 'M1 1AA',
+        'property_type' => 'flat',
+        'status' => 'lead',
+        'primary_image_url' => $url,
+        'created_by' => $user->id,
+    ]);
+
+    expect($property->fresh()->primary_image_url)->toBe($url);
+
+    tenancy()->end();
+});

@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->withoutMiddleware(VerifyCsrfToken::class);
 });
 
-it('supports CRM contacts JSON API including validation', function () {
+it('supports people directory JSON API including validation', function () {
     $tenant = app(TenantCreationService::class)->createTenant([
         'company_name' => 'CRM API '.uniqid(),
         'owner_name' => 'Owner',
