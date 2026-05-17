@@ -50,6 +50,11 @@ trait RefreshDatabase
     {
         $this->prepareTestingConnectionsForMigrate();
 
+        // Terminate any idle-in-transaction connections left by a previous test's tenant creation
+        // or stancl bootstrapper. They hold row locks on central tables (tenants, domains) that
+        // block migrate:fresh DROP TABLE and seeder INSERT operations.
+        $this->terminateIdleInTransactionConnections();
+
         if (RefreshDatabaseState::$migrated && ! $this->centralTestingSchemaIntact()) {
             RefreshDatabaseState::$migrated = false;
         }
@@ -168,6 +173,35 @@ trait RefreshDatabase
                 }
             }
         });
+    }
+
+    /**
+     * Terminate any idle-in-transaction connections on the testing catalog that were left open
+     * by a previous test's tenant creation or stancl bootstrapper. Without this, migrate:fresh
+     * (DROP TABLE ... CASCADE) blocks waiting for AccessExclusiveLock on tables held by the
+     * stale transaction.
+     */
+    private function terminateIdleInTransactionConnections(): void
+    {
+        if (! app()->environment('testing')) {
+            return;
+        }
+
+        $templateName = PostgresSharedTestDatabase::templateAppDatabaseConnectionName();
+        if (config("database.connections.{$templateName}.driver") !== 'pgsql') {
+            return;
+        }
+
+        try {
+            DB::connection($templateName)->statement("
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE datname = current_database()
+                  AND pid <> pg_backend_pid()
+                  AND state = 'idle in transaction'
+            ");
+        } catch (Throwable) {
+        }
     }
 
     private function purgeSharedPhysicalDatabaseConnections(): void
