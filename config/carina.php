@@ -27,6 +27,8 @@ return [
 
     'conversation_retention_days' => (int) env('CARINA_CONVERSATION_RETENTION_DAYS', 90),
 
+    'prompt_cache_ttl' => (int) env('CARINA_PROMPT_CACHE_TTL', 3600),
+
     /**
      * Root directory for operator-curated Carina masterbrain markdown (default: config paths.brain.masterbrain).
      * Override in tests with a temp directory; leave empty for default. BRAIN_MASTERBRAIN_PATH sets the same default root for all code paths; CARINA_MASTERBRAIN_PATH wins in CarinaKnowledgeTrainingService when set.
