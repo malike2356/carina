@@ -26,7 +26,7 @@ it('treats null plan limits as unlimited usage', function () {
         'plan' => 'starter',
     ]);
 
-    $mentorPlan = SubscriptionPlan::on('central')->where('slug', 'mentor_network')->first();
+    $mentorPlan = SubscriptionPlan::on('central')->where('slug', 'academy')->first();
     expect($mentorPlan)->not->toBeNull();
     expect($mentorPlan->features['limits']['properties'] ?? null)->toBeNull();
 
@@ -35,7 +35,7 @@ it('treats null plan limits as unlimited usage', function () {
         'plan_id' => $mentorPlan->id,
         'stripe_customer_id' => 'cus_usage_test',
         'stripe_subscription_id' => 'sub_usage_test_'.uniqid(),
-        'plan' => 'mentor_network',
+        'plan' => 'academy',
         'status' => 'active',
         'trial_ends_at' => null,
         'current_period_start' => now(),

@@ -242,18 +242,18 @@ it('denies mentoring hub on paid stripe billing when plan excludes mentoring_os'
     $this->get('http://'.$host.'/mentoring')->assertForbidden();
 });
 
-it('allows mentoring hub on mentor_network subscription when stripe billing is enabled', function (): void {
+it('allows mentoring hub on academy subscription when stripe billing is enabled', function (): void {
     FeatureFlag::query()->where('key', 'stripe_billing_api')->update(['enabled' => true]);
 
     $tenant = app(TenantCreationService::class)->createTenant([
         'company_name' => 'Mentor Plan '.uniqid(),
         'owner_name' => 'Owner',
         'owner_email' => 'owner-'.uniqid().'@mentor-plan.test',
-        'plan' => 'mentor_network',
+        'plan' => 'academy',
     ]);
     $host = mentoringTenantHost($tenant);
 
-    $mentorPlan = SubscriptionPlan::query()->where('slug', 'mentor_network')->first();
+    $mentorPlan = SubscriptionPlan::query()->where('slug', 'academy')->first();
     expect($mentorPlan)->not->toBeNull();
 
     Subscription::query()->create([
@@ -261,7 +261,7 @@ it('allows mentoring hub on mentor_network subscription when stripe billing is e
         'plan_id' => $mentorPlan->id,
         'stripe_customer_id' => 'cus_mentor_plan',
         'stripe_subscription_id' => 'sub_mentor_plan_'.uniqid(),
-        'plan' => 'mentor_network',
+        'plan' => 'academy',
         'status' => 'active',
         'trial_ends_at' => null,
         'current_period_start' => now(),

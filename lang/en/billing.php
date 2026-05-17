@@ -11,7 +11,7 @@ return [
 
     'subscriptions' => [
         'page_title' => 'Subscriptions',
-        'intro' => 'Manage your workspace plan, payment method, and invoices. Checkout returns here after you pay.',
+        'intro' => 'Manage your workspace plan, payment method, and invoices. Checkout returns here after you pay. Mobile app and programmatic API access are included on the Operator plan and above (not on Investor).',
         'section_subscription' => 'Subscription',
         'section_invoices' => 'Invoices',
         'current_period_ends' => 'Current period ends :date.',

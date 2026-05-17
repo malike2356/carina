@@ -72,5 +72,8 @@ jobs:
             brain/knowledge/67-api-routes-central-filament-misc.md \
             scripts/build-route-knowledge.py
 
+      - name: Verify API docs contract is current
+        run: php artisan api:docs:build --check
+
       - name: Run tests
         run: php artisan test

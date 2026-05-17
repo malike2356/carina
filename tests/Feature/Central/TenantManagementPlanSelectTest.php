@@ -14,13 +14,13 @@ beforeEach(function () {
 
 it('shows subscription catalogue plan names on tenant edit', function () {
     SubscriptionPlan::on('central')->updateOrCreate(
-        ['slug' => 'mentor_network'],
+        ['slug' => 'academy'],
         [
-            'name' => 'Mentor Network',
-            'price' => '299.00',
+            'name' => 'Academy',
+            'price' => '199.00',
             'currency' => 'GBP',
             'interval' => 'month',
-            'features' => ['display_name' => 'Mentor Network', 'modules' => [], 'limits' => []],
+            'features' => ['display_name' => 'Academy', 'modules' => [], 'limits' => []],
             'is_active' => true,
             'sort_order' => 30,
         ]
@@ -32,7 +32,7 @@ it('shows subscription catalogue plan names on tenant edit', function () {
         'company_name' => 'Plan Select Test Ltd',
         'owner_name' => 'Owner',
         'owner_email' => 'owner-plan-select@example.test',
-        'plan' => 'mentor_network',
+        'plan' => 'academy',
         'is_active' => true,
         'trial_ends_at' => now()->addDays(7),
     ]));
@@ -43,6 +43,6 @@ it('shows subscription catalogue plan names on tenant edit', function () {
     $this->actingAs($admin, 'platform')
         ->get(route('admin.saas-tenancy.edit', $tenant))
         ->assertOk()
-        ->assertSee('Mentor Network')
-        ->assertSeeHtml('value="mentor_network"');
+        ->assertSee('Academy')
+        ->assertSeeHtml('value="academy"');
 });

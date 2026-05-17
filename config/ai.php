@@ -131,25 +131,23 @@ return [
 Propreneur v2 is organised as thirteen numbered product modules plus add-on surfaces, plus central platform services. If the user asks for a full feature list, product map, or "what Propreneur does", answer from this inventory only. Do not substitute a generic landlord-SaaS or competitor-style catalogue.
 
 Modules (status reflects the current v2 codebase direction; say "check the latest release notes" if they need legal guarantees):
-1. Deal Engine — underwriting, deal analyses, calculators, sourcing workspace (partial; active build).
-2. CRM — contacts, interactions, import/export, investor scores (shipped core).
+1. Deal Engine — underwriting, deal analyses, calculators, sourcing workspace (active build).
+2. CRM — contacts, interactions, import/export, investor scores (shipped).
 3. Pipeline (Kanban) — deal stages and cards (shipped).
-4. Communications Hub — sequences, enrollments, automation hooks (partial).
-5. Accounting — double-entry journals, operational expenses (receipts, draft/post to GL), chart of accounts, ledgers, balance sheet, income statement, CSV exports, integration_metadata for Zoho Books / Xero / Sage / FreeAgent / QuickBooks (connector registry; OAuth completion per vendor), Carina accounting hub and read-only agent tools (shipped / expanding).
-6. Compliance — obligations tracking and property document bridge (partial).
-7. Document Vault — structured doc storage (not started as standalone module).
-8. Project Management — not started.
-9. HR and Payroll — not started.
-10. Booking (viCal) — scheduling and public booking (partial; phase 1 shipped).
-11. Mentoring OS — tenant mentoring hub, programmes, cohorts, mentorship threads linked to CRM and pipeline (partial); community API also exposes mentorship messages.
+4. Communications Hub — sequences, enrollments, automation hooks.
+5. Accounting — double-entry journals, operational expenses, chart of accounts, ledgers, balance sheet, income statement, CSV exports, integrations with Zoho Books / Xero / Sage / FreeAgent / QuickBooks, Carina accounting hub and read-only agent tools (shipped).
+6. Compliance — obligations tracking and property document bridge.
+7. Document Vault — structured document storage.
+8. Project Management.
+9. HR and Payroll.
+10. Booking (viCal) — scheduling and public booking.
+11. Mentoring OS — tenant mentoring hub, programmes, cohorts, mentorship threads linked to CRM and pipeline; community features also expose mentorship messaging.
 12. Reporting and Intelligence — dashboards, definitions, exports, analytics (shipped).
-13. Carina AI — this assistant, tenant and platform UIs, RAG, Tavily option, usage limits (shipped).
+13. Carina AI — this assistant, tenant and platform interfaces, knowledge retrieval, web search option, usage limits (shipped).
 
-Add-on billing-gated surfaces (not always one of the thirteen): Community and learning — posts, groups, courses, quizzes, learning paths, badges (tenant API and hub shipped in part under subscription module community_learning). Investors hub — workspace Blade surfaces under /investors for funnel, pipeline, KYC helpers (CRM-gated). Investor portal — separate Sanctum JSON auth under /api/investor-portal for investor_portal_users. Workspace automation — rules and runs under /settings/automation. Integrations, Stripe billing API, platform backups and DR, SCOUT security console, v1 migration tools are central or cross-cutting; see brain/knowledge/59 through 63 for mechanical indexes.
+Add-on surfaces (available with applicable subscription): Community and learning — posts, groups, courses, quizzes, learning paths, badges. Investors hub — workspace pages for deal pipeline, KYC helpers. Investor portal — separate login and dashboard for external investors to view deal opportunities. Workspace automation — rules and automated actions. Integrations, billing platform, backups, and migration tools are central platform services.
 
-Central platform (non-tenant): tenant and domain lifecycle, subscriptions, platform admin users, feature flags, AI provider catalogue, SCOUT security posture views. Tenant workspaces are isolated PostgreSQL databases behind subdomain routing.
-
-Canonical prose for engineers lives under brain/knowledge/ (start at 00-README.md and 59-carina-propreneur-full-codex.md). Workspace RAG vectors come from uploaded or ingested documents, not from reading the git tree at runtime unless operators run rag:ingest-brain-knowledge.
+Central platform (non-tenant): tenant and domain lifecycle, subscriptions, platform admin users, feature flags, AI provider management, security posture views. Each workspace runs on an isolated database behind subdomain routing.
 TXT,
 
     /*
@@ -184,6 +182,8 @@ TXT,
         'daily_extraction_limit' => (int) env('CARINA_INSIGHTS_DAILY_LIMIT', 20),
         'min_quality_score_for_promotion' => (float) env('CARINA_INSIGHTS_MIN_PROMOTE_SCORE', 0.6),
         'knowledge_subdirectory' => env('CARINA_INSIGHTS_SUBDIR', 'conversation-insights'),
+        'auto_promote_enabled' => filter_var(env('CARINA_INSIGHTS_AUTO_PROMOTE', false), FILTER_VALIDATE_BOOL),
+        'auto_promote_min_score' => (float) env('CARINA_INSIGHTS_AUTO_PROMOTE_MIN_SCORE', 0.8),
     ],
 
 ];

@@ -25,6 +25,7 @@ return [
      */
     'central_domains' => [
         'propreneur.test',
+        'propreneur.uk',
         'propreneur.co.uk',
         'v2.propreneur.co.uk',
         '127.0.0.1',

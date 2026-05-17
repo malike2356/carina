@@ -78,6 +78,43 @@ it('cruds refurb catalogue items as tenant admin', function () {
     tenancy()->end();
 });
 
+it('auto-generates unique code from label when code is omitted', function () {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Catalogue slug '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@refurbcatslug.test',
+        'plan' => 'starter',
+    ]);
+
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $admin = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    tenancy()->end();
+
+    $this->actingAs($admin, 'web');
+
+    $payload = [
+        'label' => 'Kitchen Refit',
+        'category' => 'finishes',
+        'default_unit_cost' => 50,
+        'default_quantity' => 1,
+        'unit' => 'each',
+        'is_active' => true,
+    ];
+
+    $first = $this->postJson('http://'.$host.'/api/refurb-catalogue/items', $payload);
+    $first->assertCreated();
+    expect($first->json('data.code'))->toBe('kitchen_refit');
+
+    $second = $this->postJson('http://'.$host.'/api/refurb-catalogue/items', $payload);
+    $second->assertCreated();
+    expect($second->json('data.code'))->toBe('kitchen_refit_2');
+});
+
 it('denies catalogue mutations without manage permission', function () {
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([

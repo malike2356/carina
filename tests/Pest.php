@@ -8,6 +8,7 @@ use App\Services\Onboarding\WorkspaceOnboardingService;
 use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Illuminate\Testing\TestResponse;
 use Tests\Concerns\RefreshDatabase;
 use Tests\TestCase;
 
@@ -53,6 +54,43 @@ function completeTenantWorkspaceOnboarding(): void
 /**
  * @param  array<string, mixed>  $overrides
  */
+/**
+ * Authenticate as the first tenant user; returns tenant HTTP host for requests.
+ */
+function actingAsTenant(?Tenant $tenant = null): string
+{
+    if ($tenant === null) {
+        $tenant = app(TenantCreationService::class)->createTenant([
+            'company_name' => 'Help Test '.uniqid(),
+            'owner_name' => 'Owner',
+            'owner_email' => 'owner-'.uniqid().'@help.test',
+            'plan' => 'starter',
+        ]);
+    }
+
+    $host = $tenant->domains->firstOrFail()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    test()->actingAs($user, 'web');
+
+    return $host;
+}
+
+function tenantHttpUrl(string $host, string $path): string
+{
+    return 'http://'.$host.'/'.ltrim($path, '/');
+}
+
+function tenantGet(string $host, string $path): TestResponse
+{
+    return test()->withServerVariables(['HTTP_HOST' => $host])
+        ->get('http://'.$host.'/'.ltrim($path, '/'));
+}
+
 function createCentralTenant(array $overrides = []): Tenant
 {
     $slug = $overrides['slug'] ?? ('t-'.Str::lower(Str::random(8)));

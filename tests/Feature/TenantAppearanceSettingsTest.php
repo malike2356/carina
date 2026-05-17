@@ -33,7 +33,10 @@ it('renders tenant appearance settings page', function (): void {
     $this->actingAs($user, 'web')
         ->get('http://'.$host.'/settings/appearance')
         ->assertOk()
-        ->assertSee('Workspace Theme');
+        ->assertSee('Workspace Theme')
+        ->assertSee('Workspace branding')
+        ->assertSee('Logo URL')
+        ->assertSee('Favicon URL');
 });
 
 it('updates tenant appearance preset from settings page', function (): void {
@@ -56,9 +59,13 @@ it('updates tenant appearance preset from settings page', function (): void {
     tenancy()->end();
 
     $this->actingAs($user, 'web')
-        ->put('http://'.$host.'/settings/appearance', ['theme_preset_id' => $darkId])
+        ->put('http://'.$host.'/settings/appearance', [
+            'theme_preset_id' => $darkId,
+            'logo_url' => '',
+            'favicon_url' => '',
+        ])
         ->assertRedirect('http://'.$host.'/settings/appearance')
-        ->assertSessionHas('success');
+        ->assertSessionHas('success', 'Workspace appearance updated.');
 
     $this->actingAs($user, 'web')
         ->getJson('http://'.$host.'/api/theme')

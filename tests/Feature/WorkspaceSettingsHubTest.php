@@ -25,5 +25,5 @@ it('shows the tenant settings hub for an authenticated user after onboarding', f
         ->assertOk()
         ->assertSee('Settings', false)
         ->assertSee('Manage your workspace', false)
-        ->assertSee('Dashboard', false);
+        ->assertSee('My profile', false);
 });

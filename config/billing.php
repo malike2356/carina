@@ -24,13 +24,11 @@ return [
     | Stripe Price IDs (override subscription_plans.stripe_price_id when set)
     |--------------------------------------------------------------------------
     */
-    'price_solo' => env('STRIPE_PRICE_SOLO'),
+    'price_investor' => env('STRIPE_PRICE_INVESTOR'),
     'price_operator' => env('STRIPE_PRICE_OPERATOR'),
-    'price_mentor_network' => env('STRIPE_PRICE_MENTOR_NETWORK'),
-    'price_starter_payg' => env('STRIPE_PRICE_STARTER_PAYG'),
+    'price_academy' => env('STRIPE_PRICE_ACADEMY'),
 
-    // Business Edition is paid from day one; use Community Edition for a free path.
-    'default_trial_days' => (int) env('BILLING_DEFAULT_TRIAL_DAYS', 0),
+    'default_trial_days' => (int) env('BILLING_DEFAULT_TRIAL_DAYS', 14),
 
     'subscription_active_statuses' => ['active', 'trialing'],
 
@@ -82,25 +80,39 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Workspace API access (mobile + Sanctum PAT)
+    |--------------------------------------------------------------------------
+    |
+    | Programmatic API is included in the subscription on Operator and above —
+    | not a separate SKU. Investor (and any plan below minimum_plan_sort_order)
+    | does not receive API access.
+    |
+    | Policy: brain/knowledge/103-workspace-api-access-policy.md
+    | Enforcement middleware: TBD (see knowledge doc).
+    |
+    */
+    'api_access' => [
+        'minimum_plan_slug' => 'operator',
+        'minimum_plan_sort_order' => 10,
+        'denied_plan_slugs' => ['investor'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Module sets (referenced by plan rows and trial_module_set)
     |--------------------------------------------------------------------------
     */
     'module_sets' => [
-        'starter' => [
+        'investor' => [
             $m(BillingModule::DealEngine),
             $m(BillingModule::Crm),
             $m(BillingModule::Pipeline),
             $m(BillingModule::Compliance),
             $m(BillingModule::CarinaAi),
-            $m(BillingModule::CarinaAgent),
-            $m(BillingModule::CommunityLearning),
-            $m(BillingModule::MentoringOs),
-            $m(BillingModule::Integrations),
-            $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Accounting),
+            $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Vcal),
-            $m(BillingModule::LeadFunnel),
-            $m(BillingModule::HrPayroll),
+            $m(BillingModule::Integrations),
         ],
         'operator' => [
             $m(BillingModule::DealEngine),
@@ -200,12 +212,27 @@ return [
     | Subscription plan catalogue (source of truth for SubscriptionPlanSeeder)
     |--------------------------------------------------------------------------
     |
-    | stripe_price_key: key under this config file (e.g. price_solo).
+    | stripe_price_key: key under this config file (e.g. price_investor).
     | module_set: key under module_sets.
     | limits: null means unlimited for that meter.
     |
     */
     'plans' => [
+        [
+            'slug' => 'investor',
+            'name' => 'Investor',
+            'display_name' => 'Investor',
+            'price' => '49.00',
+            'currency' => 'GBP',
+            'interval' => 'month',
+            'sort_order' => 5,
+            'stripe_price_key' => 'price_investor',
+            'module_set' => 'investor',
+            'limits' => [
+                'properties' => 25,
+                'team_seats' => 3,
+            ],
+        ],
         [
             'slug' => 'operator',
             'name' => 'Operator',
@@ -222,14 +249,14 @@ return [
             ],
         ],
         [
-            'slug' => 'mentor_network',
-            'name' => 'Mentor Network',
-            'display_name' => 'Mentor Network',
-            'price' => '299.00',
+            'slug' => 'academy',
+            'name' => 'Academy',
+            'display_name' => 'Academy',
+            'price' => '199.00',
             'currency' => 'GBP',
             'interval' => 'month',
             'sort_order' => 20,
-            'stripe_price_key' => 'price_mentor_network',
+            'stripe_price_key' => 'price_academy',
             'module_set' => 'mentor',
             'limits' => [
                 'properties' => null,

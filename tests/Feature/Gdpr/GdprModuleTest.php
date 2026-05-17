@@ -141,3 +141,47 @@ it('anonymizes stale CRM contacts when a retention policy says so', function ():
     expect($contact->fresh()->first_name)->toBe('Redacted');
     tenancy()->end();
 });
+
+it('shows the member privacy settings page with export and deletion actions', function (): void {
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'GDPR privacy UI '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@gdpr-privacy-ui.test',
+        'plan' => 'mentor_network',
+    ]);
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->where('email', $tenant->owner_email)->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web')
+        ->get('http://'.$host.'/settings/privacy')
+        ->assertOk()
+        ->assertSee('Download my data', false)
+        ->assertSee('Delete my account', false)
+        ->assertSee('Request data export', false);
+});
+
+it('shows admin guidance on the data subject requests queue', function (): void {
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'GDPR admin UI '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@gdpr-admin-ui.test',
+        'plan' => 'mentor_network',
+    ]);
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $owner = User::query()->where('email', $tenant->owner_email)->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    $this->actingAs($owner, 'web')
+        ->get('http://'.$host.'/admin/gdpr/requests')
+        ->assertOk()
+        ->assertSee('What this queue is for', false)
+        ->assertSee('Privacy &amp; your data', false)
+        ->assertSee('No requests yet', false);
+});

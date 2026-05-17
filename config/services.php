@@ -138,4 +138,19 @@ return [
         ],
     ],
 
+    /*
+    | Origins allowed to call POST /api/v1/signup from the static marketing site.
+    */
+    'marketing_site' => [
+        'allowed_origins' => array_values(array_filter([
+            'https://propreneur.uk',
+            'http://propreneur.uk',
+            'https://propreneur.co.uk',
+            'http://propreneur.co.uk',
+            'http://localhost:8200',
+            'http://127.0.0.1:8200',
+            env('MARKETING_SITE_ORIGIN'),
+        ])),
+    ],
+
 ];
