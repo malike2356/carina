@@ -26,3 +26,10 @@ it('returns fallback chain from config', function () {
 
     expect($svc->getFallbackLocales('fr'))->toContain('en');
 });
+
+it('includes uk regional locales in the shipped catalogue', function () {
+    $locales = config('localization.available_locales', []);
+
+    expect(array_keys($locales))->toContain('cy', 'gd', 'ga', 'kw', 'uls');
+    expect($locales['cy']['native'])->toBe('Cymraeg');
+});

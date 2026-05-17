@@ -12,6 +12,12 @@ return [
 
     'available_locales' => [
         'en' => ['label' => 'English', 'native' => 'English'],
+        // UK nations and regions (statutory / Charter-recognised; BSL is accessibility, not a UI locale)
+        'cy' => ['label' => 'Welsh', 'native' => 'Cymraeg'],
+        'gd' => ['label' => 'Scottish Gaelic', 'native' => 'Gàidhlig'],
+        'ga' => ['label' => 'Irish', 'native' => 'Gaeilge'],
+        'kw' => ['label' => 'Cornish', 'native' => 'Kernewek'],
+        'uls' => ['label' => 'Ulster Scots', 'native' => 'Ulstèr-Scotch'],
         'fr' => ['label' => 'French', 'native' => 'Français'],
         'es' => ['label' => 'Spanish', 'native' => 'Español'],
         'de' => ['label' => 'German', 'native' => 'Deutsch'],
@@ -36,6 +42,11 @@ return [
     */
 
     'fallback_chains' => [
+        'cy' => ['en'],
+        'gd' => ['en'],
+        'ga' => ['en'],
+        'kw' => ['en'],
+        'uls' => ['en'],
         'fr' => ['en'],
         'es' => ['en'],
         'de' => ['en'],
