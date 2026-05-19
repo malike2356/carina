@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
+    DB::connection('central')->table('academy_sso_tokens')->truncate();
 });
 
 it('stores and consumes an academy sso token once', function (): void {

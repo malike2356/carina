@@ -15,6 +15,15 @@ beforeEach(function (): void {
     if (Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->doesntExist()) {
         $this->artisan('academy:ensure-workspace');
     }
+    // Clean up any leftover test records from previous runs
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    if ($academy) {
+        $academy->run(function (): void {
+            CourseAssignment::query()
+                ->whereIn('certificate_code', ['CERT-UNIT-TEST-ABCD1234', 'CERT-EXPIRED-UNIT-TEST'])
+                ->delete();
+        });
+    }
 });
 
 it('masks holder name for privacy', function (): void {
