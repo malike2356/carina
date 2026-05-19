@@ -11,8 +11,8 @@ return [
     'version' => '2.0.0',
 
     'servers' => [
-        ['url' => 'https://{tenant}.propreneur.co.uk', 'description' => 'Tenant workspace', 'variables' => ['tenant' => ['default' => 'xelox']]],
-        ['url' => 'https://propreneur.co.uk', 'description' => 'Platform admin'],
+        ['url' => 'https://{tenant}.propreneur.uk', 'description' => 'Tenant workspace', 'variables' => ['tenant' => ['default' => 'xelox']]],
+        ['url' => 'https://propreneur.uk', 'description' => 'Platform admin'],
     ],
 
     'include_prefixes' => [
