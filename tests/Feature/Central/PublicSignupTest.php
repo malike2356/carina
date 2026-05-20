@@ -46,7 +46,7 @@ it('provisions a workspace from the marketing signup api', function (): void {
 it('rejects duplicate owner email without creating another workspace', function (): void {
     $email = 'duplicate-owner-'.uniqid().'@example.test';
 
-    $this->postJson('/api/v1/signup', [
+    $first = $this->postJson('/api/v1/signup', [
         'first_name' => 'First',
         'last_name' => 'Tenant',
         'email' => $email,
@@ -57,6 +57,8 @@ it('rejects duplicate owner email without creating another workspace', function 
     ], [
         'Origin' => 'http://localhost:8200',
     ])->assertCreated();
+
+    $slug = $first->json('tenant');
 
     expect(Tenant::query()->whereRaw('LOWER(owner_email) = ?', [strtolower($email)])->count())->toBe(1);
 
@@ -73,7 +75,9 @@ it('rejects duplicate owner email without creating another workspace', function 
     ])
         ->assertUnprocessable()
         ->assertJsonPath('success', false)
-        ->assertJsonPath('errors.email.0', 'An account with this email already exists.');
+        ->assertJsonPath('errors.email.0', 'An account with this email already exists.')
+        ->assertJsonPath('tenant', $slug)
+        ->assertJson(fn ($json) => $json->whereType('login_url', 'string')->etc());
 
     expect(Tenant::query()->whereRaw('LOWER(owner_email) = ?', [strtolower($email)])->count())->toBe(1);
 });
