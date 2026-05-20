@@ -115,11 +115,4 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
-    /*
-    | Resend free tier often allows one verified domain (e.g. propreneur.co.uk) while
-    | the app runs on propreneur.uk. When using the resend mailer, @propreneur.uk
-    | senders are rewritten to this domain automatically.
-    */
-    'resend_verified_domain' => env('MAIL_RESEND_VERIFIED_DOMAIN', 'propreneur.co.uk'),
-
 ];

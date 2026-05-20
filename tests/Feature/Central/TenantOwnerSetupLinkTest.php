@@ -7,6 +7,7 @@ use App\Models\Central\FeatureFlag;
 use App\Models\Central\PlatformUser;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function (): void {
@@ -16,6 +17,8 @@ beforeEach(function (): void {
 });
 
 it('sends owner password setup link from saas tenancy edit', function (): void {
+    Config::set('mail.default', 'array');
+
     $tenant = app(TenantCreationService::class)->createTenant([
         'company_name' => 'Setup Link Co '.uniqid(),
         'owner_name' => 'Owner',

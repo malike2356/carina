@@ -22,9 +22,9 @@ it('uses resend from cached config when platform mail_mailer is smtp without hos
     expect(config('mail.default'))->toBe('resend');
 });
 
-it('rewrites propreneur.uk from address to resend verified domain', function (): void {
+it('uses configured from address for resend instead of platform_settings override', function (): void {
     Config::set('mail.default', 'resend');
-    Config::set('mail.resend_verified_domain', 'propreneur.co.uk');
+    Config::set('mail.from.address', 'noreply@verified-domain.test');
     Config::set('services.resend.key', 're_test_key');
 
     PlatformSetting::query()->updateOrCreate(
@@ -33,10 +33,10 @@ it('rewrites propreneur.uk from address to resend verified domain', function ():
     );
     PlatformSetting::query()->updateOrCreate(
         ['key' => 'email_from_address'],
-        ['value' => 'contact@propreneur.uk', 'group' => 'mail', 'is_encrypted' => false]
+        ['value' => 'wrong@unverified.test', 'group' => 'mail', 'is_encrypted' => false]
     );
 
     app(PlatformMailConfigService::class)->bootstrap();
 
-    expect(config('mail.from.address'))->toBe('contact@propreneur.co.uk');
+    expect(config('mail.from.address'))->toBe('noreply@verified-domain.test');
 });
