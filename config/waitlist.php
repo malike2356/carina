@@ -50,5 +50,9 @@ return [
         'strategy_cap' => 25,
         'timeline_hot' => 20,
         'timeline_warm' => 10,
+        'marketing_phone' => 5,
+        'marketing_message' => 5,
+        'marketing_plan_operator' => 15,
+        'marketing_plan_academy' => 20,
     ],
 ];

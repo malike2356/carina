@@ -1,5 +1,7 @@
 # Propreneur v2 — Deployment Runbook
 
+**Git ↔ production mirror (read this first):** [`GIT_PRODUCTION_MIRROR.md`](GIT_PRODUCTION_MIRROR.md) — keep GitHub, tsalach, and aman on the same commit; recover from either side if one is lost.
+
 ## Infrastructure map (remember this)
 
 | Role | Hostname / SSH | What lives there | Deploy how |
@@ -87,8 +89,10 @@ sudo supervisorctl restart propreneur-horizon propreneur-scheduler
 
 | File | Purpose |
 |------|---------|
-| `scripts/deploy-to-production.sh` | Local: `git pull` → `rsync` → SSH remote steps |
+| `scripts/deploy-to-production.sh` | Local: `git pull` → `rsync` → SSH remote steps → writes `storage/app/deploy-manifest.json` |
 | `scripts/deploy-remote.sh` | Server: composer, migrate, cache clear, supervisor restart |
+| `scripts/check-production-mirror.sh` | Compare local `HEAD` with production deploy manifest |
+| `scripts/sync-from-production.sh` | Recovery: rsync code from aman → local, then commit and push to GitHub |
 | `scripts/deploy.env.example` | Copy to `scripts/deploy.env` (gitignored): `DEPLOY_SSH`, paths |
 
 Flags: `--dry-run`, `--build-assets`, `--skip-migrate`, `--optimize`, `--no-restart`. See script header comments.
