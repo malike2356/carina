@@ -9,6 +9,7 @@ use App\Services\Onboarding\UserFeatureProfileService;
 use App\Services\Onboarding\WorkspaceOnboardingService;
 use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function (): void {
     $this->withoutMiddleware(VerifyCsrfToken::class);
@@ -78,6 +79,31 @@ it('sourcer_packager launch redirects to dashboard without error', function (): 
     expect($user->feature_preferences['persona'] ?? null)->toBe('sourcer_packager');
     expect($user->feature_preferences['active_modules'] ?? [])->toContain(BillingModule::Pipeline->value);
     tenancy()->end();
+});
+
+it('dashboard loads when pipeline tables are missing after sourcer launch', function (): void {
+    [$tenant, $host, $user] = personaOnboardingHost();
+
+    tenancy()->initialize($tenant);
+    $service = app(WorkspaceOnboardingService::class);
+    $state = $service->getState();
+    $state['persona'] = ['slug' => 'sourcer_packager'];
+    $state['max_unlocked_step'] = WorkspaceOnboardingService::TOTAL_STEPS;
+    $state['completed_at'] = now()->toIso8601String();
+    TenantSetting::query()->updateOrCreate(
+        ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
+        ['value' => json_encode($state), 'group' => 'onboarding']
+    );
+    app(\App\Services\Onboarding\UserFeatureProfileService::class)->setPersona($user, 'sourcer_packager');
+
+    if (Schema::connection('tenant')->hasTable('pipelines')) {
+        Schema::connection('tenant')->rename('pipelines', '_pipelines_hidden_for_test');
+    }
+    tenancy()->end();
+
+    $this->actingAs($user, 'web')
+        ->get('http://'.$host.'/')
+        ->assertOk();
 });
 
 it('launch calls setPersona on the user', function (): void {
