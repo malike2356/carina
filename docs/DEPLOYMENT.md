@@ -100,6 +100,7 @@ Flags: `--dry-run`, `--build-assets`, `--skip-migrate`, `--optimize`, `--no-rest
 | `rsync: failed to set times` + exit **23** | Harmless: `www` owns dirs; rsync cannot set mtimes | Safe to continue; script uses `-O` to reduce noise |
 | `composer.phar: Permission denied` | Deploy user cannot execute the phar directly | Use wrapper: `DEPLOY_REMOTE_COMPOSER=/usr/local/bin/composer` in `deploy.env`, or create wrapper (see Composer section below) |
 | `filament:upgrade` → `Permission denied` on `public/js/filament/...` | Rsync wrote assets as `malike`; composer runs as `www` | `sudo chown -R www:www storage bootstrap/cache public/js public/css` then re-run `deploy-remote.sh` |
+| `vendor/composer/...` Permission denied | `vendor/` owned by `malike` after rsync | `sudo chown -R www:www vendor` (or full app tree) then re-run `deploy-remote.sh` |
 | HTTP 500 / `PailServiceProvider` not found | Dev `bootstrap/cache/packages.php` synced to production | On aman: `rm -f bootstrap/cache/packages.php bootstrap/cache/services.php` then `php artisan package:discover`. Deploy script now excludes those files from rsync. |
 | `Command "DEPLOY_REMOTE_USER=www" is not defined` | SSH env vars not exported to remote deploy script | Pull latest `deploy-to-production.sh` (explicit `export` in remote heredoc). |
 | `git pull` → Already up-to-date but code missing on server | Changes not pushed to `main` | `git push` from tsalach, then redeploy |

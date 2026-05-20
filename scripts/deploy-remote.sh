@@ -70,14 +70,21 @@ run_composer() {
   echo "==> ${composer_shell}install --no-dev"
   if [[ "$(id -un)" == "$REMOTE_USER" ]]; then
     bash -lc "cd '$REMOTE_ROOT' && ${composer_shell}install --no-dev --optimize-autoloader --no-interaction"
-  else
-    sudo -u "$REMOTE_USER" -H bash -lc "cd '$REMOTE_ROOT' && ${composer_shell}install --no-dev --optimize-autoloader --no-interaction"
+    return
   fi
+
+  if sudo -u "$REMOTE_USER" -H bash -lc "cd '$REMOTE_ROOT' && ${composer_shell}install --no-dev --optimize-autoloader --no-interaction"; then
+    return
+  fi
+
+  echo "WARN: composer as ${REMOTE_USER} failed (vendor permissions?). Retrying as $(id -un)…" >&2
+  bash -lc "cd '$REMOTE_ROOT' && ${composer_shell}install --no-dev --optimize-autoloader --no-interaction"
+  ensure_runtime_ownership
 }
 
 ensure_runtime_ownership() {
-  # Rsync as malike leaves public/js|css owned by malike; composer (www) runs filament:upgrade there.
-  local -a paths=(storage bootstrap/cache public/js public/css)
+  # Rsync as malike leaves vendor/public assets owned by malike; composer runs as www.
+  local -a paths=(vendor storage bootstrap/cache public/js public/css)
   if ! command -v sudo >/dev/null 2>&1; then
     echo "WARN: sudo not available; skip ownership fix (filament:upgrade may fail)." >&2
     return 0
@@ -85,7 +92,7 @@ ensure_runtime_ownership() {
   echo "==> ensure ${REMOTE_USER} owns runtime + public asset dirs"
   sudo chown -R "$REMOTE_USER:$REMOTE_USER" "${paths[@]}" 2>/dev/null || {
     echo "WARN: chown failed (need sudo). On server run:" >&2
-    echo "  sudo chown -R ${REMOTE_USER}:${REMOTE_USER} storage bootstrap/cache public/js public/css" >&2
+    echo "  sudo chown -R ${REMOTE_USER}:${REMOTE_USER} vendor storage bootstrap/cache public/js public/css" >&2
   }
   sudo chmod -R ug+rwX storage bootstrap/cache 2>/dev/null || true
 }
