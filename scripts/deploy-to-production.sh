@@ -102,7 +102,7 @@ if [[ "$BUILD_ASSETS_LOCAL" == "1" ]]; then
   SKIP_NPM=1
 fi
 
-RSYNC_OPTS=(-avz --human-readable)
+RSYNC_OPTS=(-rltz --human-readable --no-perms --no-group)
 if [[ "$RSYNC_DELETE" == "1" ]]; then
   RSYNC_OPTS+=(--delete)
 fi
@@ -112,6 +112,7 @@ RSYNC_EXCLUDES=(
   --exclude '.git'
   --exclude '.env'
   --exclude '.env.*'
+  --exclude 'vendor'
   --exclude 'node_modules'
   --exclude 'storage/logs'
   --exclude 'storage/framework/cache/data'
@@ -134,8 +135,14 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
+RSYNC_EXIT=0
 rsync "${RSYNC_OPTS[@]}" "${RSYNC_EXCLUDES[@]}" \
-  "$REPO_ROOT/" "${DEPLOY_SSH}:${DEPLOY_REMOTE_ROOT}/"
+  "$REPO_ROOT/" "${DEPLOY_SSH}:${DEPLOY_REMOTE_ROOT}/" || RSYNC_EXIT=$?
+
+if [[ "$RSYNC_EXIT" -ne 0 ]]; then
+  echo "WARN: rsync exited with code ${RSYNC_EXIT} (often permission on www-owned files). Continuing post-deploy." >&2
+  echo "      Remote composer install refreshes vendor; fix ownership with deploy-remote.sh." >&2
+fi
 
 echo "==> upload deploy-remote.sh and run post-deploy"
 ssh "$DEPLOY_SSH" \

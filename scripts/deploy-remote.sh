@@ -86,6 +86,12 @@ if [[ -w storage ]] || sudo -u "$REMOTE_USER" test -w storage 2>/dev/null; then
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) deploy-remote" >> storage/deploy.txt
 fi
 
+if [[ "$(id -un)" == "root" ]] || sudo -n true 2>/dev/null; then
+  echo "==> ensure storage/bootstrap owned by $REMOTE_USER"
+  sudo chown -R "$REMOTE_USER:$REMOTE_USER" storage bootstrap/cache 2>/dev/null || true
+  sudo chmod -R ug+rwX storage bootstrap/cache 2>/dev/null || true
+fi
+
 if [[ "$RESTART_SUPERVISOR" == "1" ]]; then
   echo "==> supervisor restart ($SUP_HORIZON, $SUP_SCHEDULER)"
   if command -v supervisorctl >/dev/null 2>&1; then
