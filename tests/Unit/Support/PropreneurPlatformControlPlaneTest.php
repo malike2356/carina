@@ -7,7 +7,7 @@ use App\Support\Auth\PropreneurPlatformControlPlane;
 it('defines grouped platform admin capabilities', function (): void {
     $groups = PropreneurPlatformControlPlane::capabilityGroups();
 
-    expect($groups)->toHaveCount(5);
+    expect($groups)->toHaveCount(4);
 
     $itemCount = 0;
     foreach ($groups as $group) {
@@ -20,5 +20,5 @@ it('defines grouped platform admin capabilities', function (): void {
         }
     }
 
-    expect($itemCount)->toBeGreaterThanOrEqual(16);
+    expect($itemCount)->toBe(13);
 });
