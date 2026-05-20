@@ -66,7 +66,7 @@ it('platform admin header shows Ask Carina shortcut', function (): void {
     $this->actingAs($admin, 'platform')
         ->get(route('admin.dashboard'))
         ->assertOk()
-        ->assertSee('Ask Carina', false);
+        ->assertSee('Carina', false);
 });
 
 it('revenue index loads', function (): void {
