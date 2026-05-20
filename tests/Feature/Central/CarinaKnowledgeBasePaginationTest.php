@@ -26,6 +26,7 @@ it('paginates knowledge base file list', function (): void {
             ->assertOk()
             ->assertSee('Showing 1', false)
             ->assertSee('of 30 files', false)
+            ->assertSee('pagination-propreneur__page--active', false)
             ->assertSee('doc-1.md', false)
             ->assertDontSee('doc-26.md', false);
 
