@@ -117,4 +117,22 @@ return [
         'paused' => 'Paused',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Module access denied (403) — plan or persona feature hub
+    |--------------------------------------------------------------------------
+    */
+    'feature_access' => [
+        'page_title' => 'Module not available',
+        'heading' => ':module is not available',
+        'body_plan' => 'Your workspace subscription does not include :module, or billing has not been activated for this workspace yet. Ask a workspace admin to review Plans and billing, or contact support if you believe this is a mistake.',
+        'body_user_profile' => ':module is turned off for your user profile. You can re-enable it in Feature preferences if your workspace plan includes it.',
+        'requested' => 'You tried to open :path.',
+        'back_dashboard' => 'Back to dashboard',
+        'upgrade_plan' => 'Plans and billing',
+        'open_feature_hub' => 'Feature preferences',
+        'contact_support' => 'Contact support',
+        'footer_hint' => 'If you reached this page from a sidebar link, your plan or profile may have changed recently. Try signing out and back in after your admin updates billing.',
+    ],
+
 ];
