@@ -5,7 +5,16 @@
 #
 set -euo pipefail
 
-REMOTE_ROOT="${DEPLOY_REMOTE_ROOT:?DEPLOY_REMOTE_ROOT required}"
+# When run on the server directly (not via deploy-to-production.sh), default to cwd
+if [[ -z "${DEPLOY_REMOTE_ROOT:-}" ]]; then
+  if [[ -f artisan ]]; then
+    DEPLOY_REMOTE_ROOT="$(pwd)"
+  elif [[ -f "$(dirname "${BASH_SOURCE[0]}")/../artisan" ]]; then
+    DEPLOY_REMOTE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  fi
+fi
+
+REMOTE_ROOT="${DEPLOY_REMOTE_ROOT:?DEPLOY_REMOTE_ROOT required (cd to app root or export DEPLOY_REMOTE_ROOT=/www/wwwroot/propreneur-v2)}"
 REMOTE_PHP="${DEPLOY_REMOTE_PHP:-php}"
 REMOTE_COMPOSER="${DEPLOY_REMOTE_COMPOSER:-composer}"
 REMOTE_USER="${DEPLOY_REMOTE_USER:-www}"
@@ -34,17 +43,62 @@ run_artisan() {
   fi
 }
 
-run_composer() {
-  # shellcheck disable=SC2086
-  if [[ "$(id -un)" == "$REMOTE_USER" ]]; then
-    $REMOTE_COMPOSER install --no-dev --optimize-autoloader --no-interaction
+composer_argv() {
+  local -a cmd=()
+  if [[ -n "${REMOTE_COMPOSER:-}" && "${REMOTE_COMPOSER}" != "composer" ]]; then
+    read -r -a cmd <<< "$REMOTE_COMPOSER"
+  elif [[ -x /usr/local/bin/composer ]]; then
+    cmd=(/usr/local/bin/composer)
+  elif [[ -x /www/server/composer/composer ]]; then
+    cmd=(/www/server/composer/composer)
+  elif [[ -f /usr/local/bin/composer.phar ]]; then
+    cmd=("$REMOTE_PHP" /usr/local/bin/composer.phar)
   else
-    # shellcheck disable=SC2086
-    sudo -u "$REMOTE_USER" -H $REMOTE_COMPOSER install --no-dev --optimize-autoloader --no-interaction
+    echo "ERROR: No composer found. Set DEPLOY_REMOTE_COMPOSER in deploy.env or install /usr/local/bin/composer on the server." >&2
+    exit 1
+  fi
+  # If only a .phar path was configured, run it via PHP CLI
+  if [[ ${#cmd[@]} -eq 1 && "${cmd[0]}" == *.phar ]]; then
+    cmd=("$REMOTE_PHP" "${cmd[0]}")
+  fi
+  printf '%q ' "${cmd[@]}"
+}
+
+run_composer() {
+  local composer_shell
+  composer_shell="$(composer_argv)"
+  echo "==> ${composer_shell}install --no-dev"
+  if [[ "$(id -un)" == "$REMOTE_USER" ]]; then
+    bash -lc "cd '$REMOTE_ROOT' && ${composer_shell}install --no-dev --optimize-autoloader --no-interaction"
+  else
+    sudo -u "$REMOTE_USER" -H bash -lc "cd '$REMOTE_ROOT' && ${composer_shell}install --no-dev --optimize-autoloader --no-interaction"
   fi
 }
 
+ensure_runtime_ownership() {
+  # Rsync as malike leaves public/js|css owned by malike; composer (www) runs filament:upgrade there.
+  local -a paths=(storage bootstrap/cache public/js public/css)
+  if ! command -v sudo >/dev/null 2>&1; then
+    echo "WARN: sudo not available; skip ownership fix (filament:upgrade may fail)." >&2
+    return 0
+  fi
+  echo "==> ensure ${REMOTE_USER} owns runtime + public asset dirs"
+  sudo chown -R "$REMOTE_USER:$REMOTE_USER" "${paths[@]}" 2>/dev/null || {
+    echo "WARN: chown failed (need sudo). On server run:" >&2
+    echo "  sudo chown -R ${REMOTE_USER}:${REMOTE_USER} storage bootstrap/cache public/js public/css" >&2
+  }
+  sudo chmod -R ug+rwX storage bootstrap/cache 2>/dev/null || true
+}
+
 echo "==> Remote deploy in $REMOTE_ROOT"
+
+clear_bootstrap_package_cache() {
+  echo "==> clear bootstrap package cache (avoid dev providers on production)"
+  rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php 2>/dev/null || true
+}
+
+ensure_runtime_ownership
+clear_bootstrap_package_cache
 
 if [[ "$SKIP_COMPOSER" != "1" ]]; then
   echo "==> composer install --no-dev"
@@ -86,11 +140,7 @@ if [[ -w storage ]] || sudo -u "$REMOTE_USER" test -w storage 2>/dev/null; then
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) deploy-remote" >> storage/deploy.txt
 fi
 
-if [[ "$(id -un)" == "root" ]] || sudo -n true 2>/dev/null; then
-  echo "==> ensure storage/bootstrap owned by $REMOTE_USER"
-  sudo chown -R "$REMOTE_USER:$REMOTE_USER" storage bootstrap/cache 2>/dev/null || true
-  sudo chmod -R ug+rwX storage bootstrap/cache 2>/dev/null || true
-fi
+ensure_runtime_ownership
 
 if [[ "$RESTART_SUPERVISOR" == "1" ]]; then
   echo "==> supervisor restart ($SUP_HORIZON, $SUP_SCHEDULER)"

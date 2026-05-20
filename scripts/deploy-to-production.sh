@@ -27,7 +27,8 @@ DEPLOY_SSH="${DEPLOY_SSH:-malike@80.190.81.208}"
 DEPLOY_REMOTE_ROOT="${DEPLOY_REMOTE_ROOT:-/www/wwwroot/propreneur-v2}"
 DEPLOY_GIT_BRANCH="${DEPLOY_GIT_BRANCH:-main}"
 DEPLOY_REMOTE_PHP="${DEPLOY_REMOTE_PHP:-/www/server/php/83/bin/php}"
-DEPLOY_REMOTE_COMPOSER="${DEPLOY_REMOTE_COMPOSER:-/www/server/php/83/bin/php /usr/local/bin/composer.phar}"
+# Prefer aaPanel/global wrapper; override in deploy.env if needed
+DEPLOY_REMOTE_COMPOSER="${DEPLOY_REMOTE_COMPOSER:-/usr/local/bin/composer}"
 DEPLOY_REMOTE_USER="${DEPLOY_REMOTE_USER:-www}"
 DEPLOY_SUPERVISOR_HORIZON="${DEPLOY_SUPERVISOR_HORIZON:-propreneur-horizon}"
 DEPLOY_SUPERVISOR_SCHEDULER="${DEPLOY_SUPERVISOR_SCHEDULER:-propreneur-scheduler}"
@@ -102,7 +103,8 @@ if [[ "$BUILD_ASSETS_LOCAL" == "1" ]]; then
   SKIP_NPM=1
 fi
 
-RSYNC_OPTS=(-rltz --human-readable --no-perms --no-group)
+# -O: do not set dir mtimes (avoids hundreds of "failed to set times" on www-owned trees)
+RSYNC_OPTS=(-rlzO --human-readable --no-perms --no-group --omit-dir-times)
 if [[ "$RSYNC_DELETE" == "1" ]]; then
   RSYNC_OPTS+=(--delete)
 fi
@@ -118,6 +120,9 @@ RSYNC_EXCLUDES=(
   --exclude 'storage/framework/cache/data'
   --exclude 'storage/framework/sessions'
   --exclude 'storage/framework/views'
+  --exclude 'bootstrap/cache/packages.php'
+  --exclude 'bootstrap/cache/services.php'
+  --exclude 'bootstrap/cache/config.php'
   --exclude 'storage/app/public'
   --exclude 'storage/app/private'
   --exclude '.claude'
@@ -160,8 +165,19 @@ ssh "$DEPLOY_SSH" \
   RESTART_SUPERVISOR="$RESTART_SUPERVISOR" \
   bash -s <<'REMOTE'
 set -euo pipefail
-REMOTE_ROOT="${DEPLOY_REMOTE_ROOT:?}"
-bash "${REMOTE_ROOT}/scripts/deploy-remote.sh"
+export DEPLOY_REMOTE_ROOT="${DEPLOY_REMOTE_ROOT:?}"
+export DEPLOY_REMOTE_PHP="${DEPLOY_REMOTE_PHP:-/www/server/php/83/bin/php}"
+export DEPLOY_REMOTE_COMPOSER="${DEPLOY_REMOTE_COMPOSER:-/usr/local/bin/composer}"
+export DEPLOY_REMOTE_USER="${DEPLOY_REMOTE_USER:-www}"
+export DEPLOY_SUPERVISOR_HORIZON="${DEPLOY_SUPERVISOR_HORIZON:-propreneur-horizon}"
+export DEPLOY_SUPERVISOR_SCHEDULER="${DEPLOY_SUPERVISOR_SCHEDULER:-propreneur-scheduler}"
+export DEPLOY_BUILD_ON_SERVER="${DEPLOY_BUILD_ON_SERVER:-0}"
+export SKIP_COMPOSER="${SKIP_COMPOSER:-0}"
+export SKIP_MIGRATE="${SKIP_MIGRATE:-0}"
+export SKIP_NPM="${SKIP_NPM:-0}"
+export OPTIMIZE="${OPTIMIZE:-0}"
+export RESTART_SUPERVISOR="${RESTART_SUPERVISOR:-1}"
+bash "${DEPLOY_REMOTE_ROOT}/scripts/deploy-remote.sh"
 REMOTE
 
 echo ""

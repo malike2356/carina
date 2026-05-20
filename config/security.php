@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 return [
+    // Dedicated inbox for security anomaly emails (super admins still get in-app notifications).
+    'alert_email' => env('SECURITY_ALERT_EMAIL'),
+
     'anomaly_detection' => [
         'enabled' => env('ANOMALY_DETECTION_ENABLED', true),
         'brute_force_threshold' => (int) env('ANOMALY_BRUTE_FORCE_THRESHOLD', 5),

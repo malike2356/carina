@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Jobs\Security\NotifySecurityAnomalyJob;
 use App\Mail\Tenant\WorkspaceEmailVerificationMail;
+use App\Models\Central\SecurityEvent;
 use App\Models\Central\Tenant;
 use App\Models\Tenant\User;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 
 beforeEach(function (): void {
@@ -81,6 +84,26 @@ it('rejects duplicate owner email without creating another workspace', function 
         ->assertJsonMissingPath('login_url');
 
     expect(Tenant::query()->whereRaw('LOWER(owner_email) = ?', [strtolower($email)])->count())->toBe(1);
+});
+
+it('records signup honeypot as a high security event', function (): void {
+    Bus::fake();
+
+    $this->postJson('/api/v1/signup', [
+        'first_name' => 'Bot',
+        'last_name' => 'Spam',
+        'email' => 'bot-'.uniqid().'@spam.test',
+        'password' => 'password123',
+        'company_name' => 'Spam Co',
+        'company_website' => 'https://spam.example',
+    ])->assertCreated();
+
+    expect(SecurityEvent::query()->where('event', 'signup_honeypot')->exists())->toBeTrue();
+
+    Bus::assertDispatched(NotifySecurityAnomalyJob::class, fn (NotifySecurityAnomalyJob $job): bool => $job->anomalyType === 'signup_honeypot'
+        && $job->severity === SecurityEvent::SEVERITY_HIGH);
+
+    expect(Tenant::query()->where('owner_email', 'like', '%@spam.test')->exists())->toBeFalse();
 });
 
 it('maps legacy mentor network plan to academy', function (): void {
