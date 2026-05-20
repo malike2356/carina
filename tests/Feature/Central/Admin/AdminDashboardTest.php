@@ -50,6 +50,25 @@ it('carina admin index loads', function (): void {
         ->assertOk();
 });
 
+it('quick carina chat opens a new conversation', function (): void {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($admin, 'platform')
+        ->get(route('admin.carina.chat'))
+        ->assertRedirect();
+
+    expect(\App\Models\Central\PlatformCarinaConversation::query()->where('platform_user_id', $admin->id)->count())->toBe(1);
+});
+
+it('platform admin header shows Ask Carina shortcut', function (): void {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($admin, 'platform')
+        ->get(route('admin.dashboard'))
+        ->assertOk()
+        ->assertSee('Ask Carina', false);
+});
+
 it('revenue index loads', function (): void {
     $admin = PlatformUser::factory()->superAdmin()->create();
 
