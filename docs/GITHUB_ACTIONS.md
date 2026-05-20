@@ -2,22 +2,47 @@
 
 ## Symptom: every push emails “Run failed at startup”
 
-If Actions show **startup_failure** in **0 seconds** with **no job logs**, check the run in the API or UI:
+Two separate problems were found on **2026-05-20**:
 
-- **Bad:** `path: "BuildFailed"` — ghost workflow from an old broken `.github/workflows/test.yml` (usually unquoted `on:` parsed as YAML boolean `true`).
-- **Good:** `path: ".github/workflows/pest.yml"` — current workflow.
+### 1. Ghost workflow (`BuildFailed`)
 
-The active workflow file is **`.github/workflows/pest.yml`** (name: **CI**).
+The first `test.yml` used unquoted `on:` (YAML 1.1 treats that as boolean `true`). GitHub registered workflow id **274831299** with `path: "BuildFailed"`. **Pushes still trigger that ghost**, even after the file was renamed or removed.
 
-### Fix applied (2026-05-20)
+- Commits with **no** files under `.github/workflows/` do **not** trigger a run (no email).
+- Any commit that **adds** a workflow file may trigger the ghost again on `push`.
 
-1. Removed `ci.yml` (rename did not stop the ghost hook).
-2. Added fresh `pest.yml` with valid `on:` triggers and `workflow_dispatch`.
-3. If emails still reference **BuildFailed**, open **Actions** → select the broken workflow → **⋯** → delete/disable, or ignore until GitHub clears the stale registration.
+Clearing the ghost fully may require GitHub support, or time after the broken workflow is gone from the default branch.
 
-### Billing (private repo)
+### 2. Account / billing block (real `pest.yml` workflow)
 
-`malike2356/propreneur-v2` is **private**. Free accounts include **2,000 Actions minutes/month**. If minutes are exhausted and no payment method is on file, runs can fail before jobs start. Check: [GitHub billing → Actions](https://github.com/settings/billing).
+Manual runs of workflow **CI** (`pest.yml`, id **280523311**) also end in **startup_failure** with **0 jobs** — the workflow file is valid (actionlint passes), but GitHub never starts a runner.
+
+For **private** repos, this usually means:
+
+- **Actions minutes used up** for the billing cycle, and/or  
+- **No valid payment method** on the account ([billing docs](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions))
+
+Check: [https://github.com/settings/billing](https://github.com/settings/billing) → Actions usage / payment method.
+
+**Until billing is fixed:** `pest.yml` is **`workflow_dispatch` only** (no `push`/`pull_request`) to avoid extra failed push notifications. Run manually when ready:
+
+```bash
+gh workflow run CI --repo malike2356/propreneur-v2 --ref main
+```
+
+After billing works, re-enable in `pest.yml`:
+
+```yaml
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+  workflow_dispatch:
+```
+
+### Workflow file
+
+**`.github/workflows/pest.yml`** (workflow name: **CI**).
 
 ## Local parity
 

@@ -1,11 +1,8 @@
 name: CI
 
+# Push/PR disabled until account billing allows Actions on this private repo.
+# Manual runs: gh workflow run CI --repo malike2356/propreneur-v2 --ref main
 on:
-  push:
-    branches:
-      - main
-      - staging
-  pull_request:
   workflow_dispatch:
 
 permissions:
