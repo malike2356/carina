@@ -65,7 +65,15 @@ return [
     ],
 
     'google_calendar' => [
+        'client_id' => env('GOOGLE_CALENDAR_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CALENDAR_CLIENT_SECRET'),
         'access_token' => env('GOOGLE_CALENDAR_ACCESS_TOKEN'),
+    ],
+
+    'microsoft_calendar' => [
+        'client_id' => env('MICROSOFT_CALENDAR_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CALENDAR_CLIENT_SECRET'),
+        'tenant_id' => env('MICROSOFT_CALENDAR_TENANT_ID', 'common'),
     ],
 
     'zoho' => [
@@ -77,8 +85,31 @@ return [
     ],
 
     'xero' => [
+        'client_id' => env('XERO_CLIENT_ID'),
+        'client_secret' => env('XERO_CLIENT_SECRET'),
+        'redirect_uri' => env('XERO_REDIRECT_URI'),
+        'scopes' => env('XERO_OAUTH_SCOPES', 'openid profile email accounting.transactions accounting.contacts accounting.settings offline_access'),
+        'default_account_code' => env('XERO_DEFAULT_ACCOUNT_CODE', '200'),
+        /** Legacy env-based tokens (optional; OAuth via IntegrationConfig is preferred). */
         'access_token' => env('XERO_ACCESS_TOKEN'),
         'tenant_id' => env('XERO_TENANT_ID'),
+    ],
+
+    'freeagent' => [
+        'client_id' => env('FREEAGENT_CLIENT_ID'),
+        'client_secret' => env('FREEAGENT_CLIENT_SECRET'),
+        'redirect_uri' => env('FREEAGENT_REDIRECT_URI'),
+        'api_base' => env('FREEAGENT_API_BASE', 'https://api.freeagent.com/v2'),
+    ],
+
+    'sage' => [
+        'client_id' => env('SAGE_CLIENT_ID'),
+        'client_secret' => env('SAGE_CLIENT_SECRET'),
+        'redirect_uri' => env('SAGE_REDIRECT_URI'),
+        'api_base' => env('SAGE_API_BASE', 'https://api.accounting.sage.com/v3.1'),
+        'country' => env('SAGE_COUNTRY', 'gb'),
+        'scope' => env('SAGE_OAUTH_SCOPE', 'full_access'),
+        'auth_filter' => env('SAGE_AUTH_FILTER', 'apiv3.1'),
     ],
 
     'quickbooks' => [

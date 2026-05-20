@@ -10,7 +10,7 @@ it('seeds investor, operator, and academy plans from config', function (): void 
 
     $slugs = SubscriptionPlan::query()->where('is_active', true)->pluck('slug')->sort()->values()->toArray();
 
-    expect($slugs)->toBe(['academy', 'investor', 'operator']);
+    expect($slugs)->toBe(['academy', 'founder', 'investor', 'operator']);
 });
 
 it('renames mentor_network to academy when no academy row exists', function (): void {
