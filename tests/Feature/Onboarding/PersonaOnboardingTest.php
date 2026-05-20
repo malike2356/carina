@@ -46,6 +46,40 @@ it('persona step stores slug in onboarding state', function (): void {
     tenancy()->end();
 });
 
+it('sourcer_packager launch redirects to dashboard without error', function (): void {
+    [$tenant, $host, $user] = personaOnboardingHost();
+
+    tenancy()->initialize($tenant);
+    $service = app(WorkspaceOnboardingService::class);
+    $state = $service->getState();
+    $state['persona'] = ['slug' => 'sourcer_packager'];
+    $state['max_unlocked_step'] = WorkspaceOnboardingService::TOTAL_STEPS;
+    $state['strategy'] = [
+        'target_area' => 'Portsmouth, Hampshire',
+        'deal_types' => ['bmv', 'r2r', 'hmo'],
+        'compliance_status' => 'aml_progress',
+    ];
+    TenantSetting::query()->updateOrCreate(
+        ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
+        ['value' => json_encode($state), 'group' => 'onboarding']
+    );
+    tenancy()->end();
+
+    $this->actingAs($user, 'web')
+        ->post('http://'.$host.'/onboarding/launch', ['confirm' => '1'])
+        ->assertRedirect();
+
+    $this->actingAs($user, 'web')
+        ->get('http://'.$host.'/')
+        ->assertOk();
+
+    tenancy()->initialize($tenant);
+    $user->refresh();
+    expect($user->feature_preferences['persona'] ?? null)->toBe('sourcer_packager');
+    expect($user->feature_preferences['active_modules'] ?? [])->toContain(BillingModule::Pipeline->value);
+    tenancy()->end();
+});
+
 it('launch calls setPersona on the user', function (): void {
     [$tenant, $host, $user] = personaOnboardingHost();
 
