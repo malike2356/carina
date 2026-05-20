@@ -15,16 +15,16 @@ use Database\Seeders\Central\FeatureFlagSeeder;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
-    if (! Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->exists()) {
+    if (! Tenant::on('central')->where('slug', AcademyWorkspace::slug())->exists()) {
         $this->artisan('academy:ensure-workspace');
     }
-    Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail()->run(function (): void {
+    Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail()->run(function (): void {
         AcademyWorkspace::markAsAcademy();
     });
 });
 
 it('hides correct answers in quiz_active mode', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $tool = app(GetQuizContextTool::class);
     $result = null;
 
@@ -57,7 +57,7 @@ it('hides correct answers in quiz_active mode', function (): void {
 });
 
 it('includes correct answers in quiz_review mode', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $tool = app(GetQuizContextTool::class);
     $result = null;
 

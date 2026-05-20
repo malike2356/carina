@@ -14,13 +14,13 @@ use Database\Seeders\Central\FeatureFlagSeeder;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
-    if (Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->doesntExist()) {
+    if (Tenant::on('central')->where('slug', AcademyWorkspace::slug())->doesntExist()) {
         $this->artisan('academy:ensure-workspace');
     }
 });
 
 it('awards academy badges on certification', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
 
     $academy->run(function (): void {
         $user = User::factory()->create();

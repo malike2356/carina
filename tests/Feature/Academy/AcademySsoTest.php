@@ -21,7 +21,7 @@ beforeEach(function (): void {
 
 function academyHost(Tenant $tenant): string
 {
-    return AcademyWorkspace::PUBLIC_SUBDOMAIN.'.propreneur.test';
+    return AcademyWorkspace::publicSubdomain().'.propreneur.test';
 }
 
 it('returns academy redirect url for authenticated tenant user', function (): void {
@@ -51,10 +51,10 @@ it('returns academy redirect url for authenticated tenant user', function (): vo
 });
 
 it('provisions user on sso callback', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->first();
     if ($academy === null) {
         $this->artisan('academy:ensure-workspace')->assertSuccessful();
-        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     }
 
     $source = app(TenantCreationService::class)->createTenant([
@@ -81,10 +81,10 @@ it('provisions user on sso callback', function (): void {
 });
 
 it('enrolls a learner in an academy course via slug route', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->first();
     if ($academy === null) {
         $this->artisan('academy:ensure-workspace')->assertSuccessful();
-        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     }
 
     $course = null;
@@ -116,10 +116,10 @@ it('enrolls a learner in an academy course via slug route', function (): void {
 });
 
 it('renders academy courses as progressive lesson steps', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->first();
     if ($academy === null) {
         $this->artisan('academy:ensure-workspace')->assertSuccessful();
-        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     }
 
     $course = null;
@@ -161,10 +161,10 @@ it('renders academy courses as progressive lesson steps', function (): void {
 });
 
 it('shows only academy learning navigation in the academy workspace', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->first();
     if ($academy === null) {
         $this->artisan('academy:ensure-workspace')->assertSuccessful();
-        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     }
 
     $user = null;
@@ -188,10 +188,10 @@ it('shows only academy learning navigation in the academy workspace', function (
 });
 
 it('opens carina in academy teaching mode for a course', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->first();
     if ($academy === null) {
         $this->artisan('academy:ensure-workspace')->assertSuccessful();
-        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+        $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     }
 
     $course = null;

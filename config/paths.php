@@ -18,6 +18,10 @@ $mb = env('BRAIN_MASTERBRAIN_PATH');
 $pr = env('BRAIN_PROMPTS_PATH');
 
 return [
+    'academy' => [
+        'workspace_slug' => env('ACADEMY_WORKSPACE_SLUG', 'academy'),
+        'public_subdomain' => env('ACADEMY_PUBLIC_SUBDOMAIN', 'academy'),
+    ],
     'brain' => [
         'knowledge' => (is_string($kb) && $kb !== '')
             ? $trim((string) $kb)

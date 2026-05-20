@@ -16,14 +16,14 @@ use Illuminate\Support\Facades\File;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
-    if (Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->doesntExist()) {
+    if (Tenant::on('central')->where('slug', AcademyWorkspace::slug())->doesntExist()) {
         $this->artisan('academy:ensure-workspace');
     }
 });
 
 function academyTenantForSync(): Tenant
 {
-    return Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    return Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
 }
 
 function mockGeneratedCourse(): GeneratedCourse

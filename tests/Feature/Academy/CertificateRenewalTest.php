@@ -15,13 +15,13 @@ use Database\Seeders\Central\FeatureFlagSeeder;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
-    if (Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->doesntExist()) {
+    if (Tenant::on('central')->where('slug', AcademyWorkspace::slug())->doesntExist()) {
         $this->artisan('academy:ensure-workspace');
     }
 });
 
 it('detects when renewal is required', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $renewal = app(AcademyRenewalService::class);
 
     $academy->run(function () use ($renewal): void {
@@ -40,7 +40,7 @@ it('detects when renewal is required', function (): void {
 });
 
 it('returns five renewal quiz questions', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $renewal = app(AcademyRenewalService::class);
 
     $academy->run(function () use ($renewal): void {
@@ -63,7 +63,7 @@ it('returns five renewal quiz questions', function (): void {
 });
 
 it('extends certificate on passing renewal', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $renewal = app(AcademyRenewalService::class);
 
     $academy->run(function () use ($renewal): void {
@@ -95,7 +95,7 @@ it('extends certificate on passing renewal', function (): void {
 });
 
 it('does not extend certificate when renewal quiz fails', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $renewal = app(AcademyRenewalService::class);
 
     $academy->run(function () use ($renewal): void {

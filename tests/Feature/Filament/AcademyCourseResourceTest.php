@@ -12,13 +12,13 @@ use Database\Seeders\Central\FeatureFlagSeeder;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
-    if (Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->doesntExist()) {
+    if (Tenant::on('central')->where('slug', AcademyWorkspace::slug())->doesntExist()) {
         $this->artisan('academy:ensure-workspace');
     }
 });
 
 it('publishCourse sets academy status and is_published', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
 
     $academy->run(function (): void {
         $course = Course::query()->create([
@@ -37,7 +37,7 @@ it('publishCourse sets academy status and is_published', function (): void {
 });
 
 it('unpublishCourse returns course to draft', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
 
     $academy->run(function (): void {
         $course = Course::query()->create([
@@ -56,7 +56,7 @@ it('unpublishCourse returns course to draft', function (): void {
 
 it('exposes academy courses in filament when academy workspace is selected', function (): void {
     $admin = PlatformUser::factory()->admin()->create();
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
 
     $courseName = 'Filament Visible Course '.uniqid();
     $academy->run(function () use ($courseName): void {
@@ -78,7 +78,7 @@ it('exposes academy courses in filament when academy workspace is selected', fun
 
 it('exposes academy course create and edit screens with lesson sessions', function (): void {
     $admin = PlatformUser::factory()->admin()->create();
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
 
     $course = null;
     $academy->run(function () use (&$course): void {

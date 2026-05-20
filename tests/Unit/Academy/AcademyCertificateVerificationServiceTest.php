@@ -12,11 +12,11 @@ use Database\Seeders\Central\FeatureFlagSeeder;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
-    if (Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->doesntExist()) {
+    if (Tenant::on('central')->where('slug', AcademyWorkspace::slug())->doesntExist()) {
         $this->artisan('academy:ensure-workspace');
     }
     // Clean up any leftover test records from previous runs
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->first();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->first();
     if ($academy) {
         $academy->run(function (): void {
             CourseAssignment::query()
@@ -27,7 +27,7 @@ beforeEach(function (): void {
 });
 
 it('masks holder name for privacy', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $service = app(AcademyCertificateVerificationService::class);
     $code = 'CERT-UNIT-TEST-ABCD1234';
 
@@ -52,7 +52,7 @@ it('masks holder name for privacy', function (): void {
 });
 
 it('reports expired status', function (): void {
-    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::SLUG)->firstOrFail();
+    $academy = Tenant::on('central')->where('slug', AcademyWorkspace::slug())->firstOrFail();
     $service = app(AcademyCertificateVerificationService::class);
     $code = 'CERT-EXPIRED-UNIT-TEST';
 
