@@ -12,9 +12,11 @@
 ssh malike@80.190.81.208
 cd /www/wwwroot/propreneur-v2
 git pull origin main
+mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
 /usr/bin/php83 /usr/local/bin/composer.phar install --no-dev --optimize-autoloader --no-interaction
 npm ci && npx vite build
 /usr/bin/php83 artisan migrate --force
+/usr/bin/php83 artisan config:clear
 /usr/bin/php83 artisan config:cache
 /usr/bin/php83 artisan route:cache
 /usr/bin/php83 artisan view:cache
@@ -93,6 +95,8 @@ npm install && npx vite build
 sed -i "s/APP_ENV=production/APP_ENV=staging/" .env
 /usr/bin/php83 artisan app:reseed-dev-accounts
 sed -i "s/APP_ENV=staging/APP_ENV=production/" .env
+mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
+/usr/bin/php83 artisan config:clear
 /usr/bin/php83 artisan config:cache && /usr/bin/php83 artisan route:cache && /usr/bin/php83 artisan view:cache
 sudo chown -R www:www /www/wwwroot/propreneur-v2
 ```
