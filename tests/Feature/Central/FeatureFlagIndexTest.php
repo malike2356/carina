@@ -31,3 +31,28 @@ it('filters feature flags by search query', function (): void {
         ->assertSee('Design System Lab')
         ->assertDontSee('Deal Engine');
 });
+
+it('filters feature flags by marketing category', function (): void {
+    FeatureFlag::syncFromCatalogue();
+
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($admin, 'platform')
+        ->get(route('admin.flags.index', ['category' => 'marketing']))
+        ->assertOk()
+        ->assertSee('Marketing intake', false)
+        ->assertSee('Speed-to-lead', false)
+        ->assertDontSee('Deal Engine');
+});
+
+it('updates labels and descriptions when syncing the catalogue', function (): void {
+    FeatureFlag::syncFromCatalogue();
+
+    $flag = FeatureFlag::query()->where('key', 'community_learning')->first();
+    expect($flag)->not->toBeNull()
+        ->and($flag->label)->toBe('Community and learning');
+
+    $project = FeatureFlag::query()->where('key', 'project_management')->first();
+    expect($project)->not->toBeNull()
+        ->and($project->description)->toContain('/projects');
+});
