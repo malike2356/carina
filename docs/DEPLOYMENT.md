@@ -1,13 +1,35 @@
 # Propreneur v2 — Deployment Runbook
 
-**Server:** Contabo VPS (hostname `aman`) — `80.190.81.208`  
+## Infrastructure map (remember this)
+
+| Role | Hostname / SSH | What lives there | Deploy how |
+|------|----------------|------------------|------------|
+| **Local dev** | **`tsalach`** (your PC) | Git clones, Cursor, XAMPP optional (`/opt/lampp/htdocs/VERLOX/propreneur/…`) | `git pull`, `./scripts/deploy-to-production.sh` — **never** “production deploy” from here to itself |
+| **MIS / API (v2)** | **`aman`** — `malike@80.190.81.208` | Laravel app `propreneur.uk` + `*.propreneur.uk` at `/www/wwwroot/propreneur-v2` | **Rsync from tsalach** (no `.git` on server). See [Quick deploy](#quick-deploy-code-update) |
+| **Marketing** | **HostGator** — `n15dzk3l@bwehltd.com`, path `~/propreneur.co.uk` | Static site `propreneur.co.uk` (HTML, `start.html`, legal pages) | **`git pull`** on HostGator after push to GitHub — **not** rsync to aman |
+
+**Do not mix:** Marketing deploy does **not** go to Contabo. MIS deploy does **not** use HostGator `~/propreneur.co.uk`.
+
+**Signup API:** Marketing `start.html` calls `PROPRENEUR_API_BASE_URL` → `https://propreneur.uk` (aman).
+
+---
+
+### MIS production (this document)
+
+**Server:** Contabo VPS (hostname **`aman`**) — `80.190.81.208`  
+**SSH user:** `malike`  
 **App path:** `/www/wwwroot/propreneur-v2`  
 **Domain:** `propreneur.uk` (central) + `*.propreneur.uk` (tenant workspaces)  
 **DNS / edge:** Cloudflare (proxied), registrar on Cloudflare  
 **Panel:** aaPanel (Nginx 1.24, PHP 8.3 FPM, Supervisor plugin)  
 **Stack:** PostgreSQL 16, Redis 7, Meilisearch, Laravel Horizon
 
-**Marketing site:** `propreneur.co.uk` — separate repo/host; not this runbook.
+**Security:** Production has **no `.git` directory** (removed on purpose). Deploy via **rsync from tsalach**, not `git pull` on aman.
+
+### Marketing (separate)
+
+Repo folder: `propreneur.co.uk/` (sibling of `propreneur-v2/` in the monorepo checkout).  
+Runbook: `propreneur.co.uk/README.md` — HostGator `git pull`, not this file.
 
 ---
 
@@ -29,14 +51,15 @@
 
 ## Quick deploy (code update)
 
-Production has **no `.git`** (security). Deploy from your dev machine with **git pull + rsync**:
+Production has **no `.git`** (security). Deploy **from tsalach** with **git pull + rsync**:
 
 ```bash
-cd propreneur-v2
-cp scripts/deploy.env.example scripts/deploy.env   # once: set DEPLOY_SSH, paths
+# On tsalach (local dev) — NOT on aman
+cd /opt/lampp/htdocs/VERLOX/propreneur/propreneur-v2   # or your clone path
+cp scripts/deploy.env.example scripts/deploy.env   # once: DEPLOY_SSH=malike@80.190.81.208
 chmod +x scripts/deploy-to-production.sh scripts/deploy-remote.sh
 
-# Typical release (pull main, sync, composer, migrate, restart Horizon)
+# Typical release (pull main, sync to aman, composer, migrate, restart Horizon)
 ./scripts/deploy-to-production.sh
 
 # First time or UI/asset change: build Vite locally, then deploy
