@@ -110,17 +110,20 @@ Flags: `--dry-run`, `--build-assets`, `--skip-migrate`, `--optimize`, `--no-rest
 
 **Carina ↔ Slack:** full integration guide and phased build plan → [`docs/CARINA_SLACK_INTEGRATION.md`](CARINA_SLACK_INTEGRATION.md).
 | `git pull` → Already up-to-date but code missing on server | Changes not pushed to `main` | `git push` from tsalach, then redeploy |
+| `fatal: not a git repository` on aman | **Expected** — production has no `.git` | Deploy from **tsalach** with `./scripts/deploy-to-production.sh`, not `git pull` on the server |
+| `No arguments expected for "config:clear" command, got "route:clear"` | Multiple artisan commands on one line without `&&` | Run each command separately (see below) |
 
 **Finish a failed post-deploy on aman** (after rsync succeeded):
 
 ```bash
 ssh malike@80.190.81.208
 cd /www/wwwroot/propreneur-v2
-/usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction
-# or, if no wrapper:
-/www/server/php/83/bin/php /usr/local/bin/composer.phar install --no-dev --optimize-autoloader --no-interaction
+sudo chown -R www:www vendor storage bootstrap/cache public/js public/css
+sudo -u www -H /www/server/php/83/bin/php /usr/local/bin/composer.phar install --no-dev --optimize-autoloader --no-interaction
 sudo -u www -H /www/server/php/83/bin/php artisan migrate --force
-sudo -u www -H /www/server/php/83/bin/php artisan config:clear route:clear view:clear
+sudo -u www -H /www/server/php/83/bin/php artisan config:clear
+sudo -u www -H /www/server/php/83/bin/php artisan route:clear
+sudo -u www -H /www/server/php/83/bin/php artisan view:clear
 sudo supervisorctl restart propreneur-horizon propreneur-scheduler
 ```
 
