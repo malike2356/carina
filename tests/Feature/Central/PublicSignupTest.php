@@ -25,7 +25,8 @@ it('provisions a workspace from the marketing signup api', function (): void {
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('success', true);
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('requires_email_verification', true);
 
     $slug = $response->json('tenant');
     expect($slug)->toBeString();
@@ -77,7 +78,7 @@ it('rejects duplicate owner email without creating another workspace', function 
         ->assertJsonPath('success', false)
         ->assertJsonPath('errors.email.0', 'An account with this email already exists.')
         ->assertJsonPath('tenant', $slug)
-        ->assertJson(fn ($json) => $json->whereType('login_url', 'string')->etc());
+        ->assertJsonMissingPath('login_url');
 
     expect(Tenant::query()->whereRaw('LOWER(owner_email) = ?', [strtolower($email)])->count())->toBe(1);
 });
