@@ -23,6 +23,7 @@ storage/
 .env
 .env.*
 !.env.example
+scripts/deploy.env
 
 # IDE
 .vscode/

@@ -8,19 +8,34 @@
 
 ## Quick deploy (code update)
 
+Production has **no `.git`** (security). Deploy from your dev machine with **git pull + rsync**:
+
+```bash
+cd propreneur-v2
+cp scripts/deploy.env.example scripts/deploy.env   # once: set DEPLOY_SSH, paths
+chmod +x scripts/deploy-to-production.sh scripts/deploy-remote.sh
+
+# Typical release (pull main, sync, composer, migrate, restart Horizon)
+./scripts/deploy-to-production.sh
+
+# First time or UI/asset change: build Vite locally, then deploy
+./scripts/deploy-to-production.sh --build-assets
+
+# Preview sync only
+./scripts/deploy-to-production.sh --dry-run
+```
+
+`scripts/deploy.env` is gitignored. Never rsync `.env` — production secrets stay on the server only.
+
+### Manual deploy on server (emergency)
+
 ```bash
 ssh malike@80.190.81.208
 cd /www/wwwroot/propreneur-v2
-git pull origin main
-mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
-/usr/bin/php83 /usr/local/bin/composer.phar install --no-dev --optimize-autoloader --no-interaction
-npm ci && npx vite build
-/usr/bin/php83 artisan migrate --force
-/usr/bin/php83 artisan config:clear
-/usr/bin/php83 artisan config:cache
-/usr/bin/php83 artisan route:cache
-/usr/bin/php83 artisan view:cache
-/usr/bin/php83 artisan event:cache
+# edit files or receive rsync from laptop — no git pull
+/www/server/php/83/bin/php /usr/local/bin/composer.phar install --no-dev --optimize-autoloader --no-interaction
+/www/server/php/83/bin/php artisan migrate --force
+/www/server/php/83/bin/php artisan config:clear
 sudo supervisorctl restart propreneur-horizon propreneur-scheduler
 ```
 
