@@ -43,6 +43,26 @@ it('skips welcome email when send_welcome_email is false', function (): void {
     Mail::assertNothingSent();
 });
 
+it('creates missing owner user when sending welcome email', function (): void {
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'Missing Owner Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@missing-owner.test',
+        'plan' => 'starter',
+        'send_welcome_email' => false,
+    ]);
+
+    $tenant->run(function () use ($tenant): void {
+        \App\Models\Tenant\User::query()
+            ->whereRaw('LOWER(email) = ?', [strtolower((string) $tenant->owner_email)])
+            ->update(['email' => 'orphaned-'.uniqid().'@missing-owner.test']);
+    });
+
+    expect(app(TenantWelcomeEmailService::class)->send($tenant)->sent)->toBeTrue();
+
+    Mail::assertSent(TenantProvisionedWelcomeMail::class);
+});
+
 it('welcome service sends mail with reset link', function (): void {
     $tenant = app(TenantCreationService::class)->createTenant([
         'company_name' => 'Direct Welcome Co '.uniqid(),
@@ -52,7 +72,7 @@ it('welcome service sends mail with reset link', function (): void {
         'send_welcome_email' => false,
     ]);
 
-    expect(app(TenantWelcomeEmailService::class)->send($tenant))->toBeTrue();
+    expect(app(TenantWelcomeEmailService::class)->send($tenant)->sent)->toBeTrue();
 
     Mail::assertSent(TenantProvisionedWelcomeMail::class);
 });
