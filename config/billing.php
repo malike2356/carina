@@ -223,6 +223,21 @@ return [
     */
     'plans' => [
         [
+            'slug' => 'ascensor',
+            'name' => 'Ascensor',
+            'display_name' => 'Ascensor',
+            'price' => '0.00',
+            'currency' => 'GBP',
+            'interval' => 'month',
+            'sort_order' => 1,
+            'stripe_price_key' => null,
+            'module_set' => 'operator',
+            'limits' => [
+                'properties' => 50,
+                'team_seats' => 5,
+            ],
+        ],
+        [
             'slug' => 'investor',
             'name' => 'Investor',
             'display_name' => 'Investor',
