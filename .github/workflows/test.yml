@@ -1,6 +1,6 @@
 name: Tests
 
-on:
+"on":
   push:
     branches: [main, staging]
   pull_request:
