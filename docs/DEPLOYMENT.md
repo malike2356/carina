@@ -1,8 +1,29 @@
 # Propreneur v2 — Deployment Runbook
 
-**Server:** Contabo VPS — `80.190.81.208`
-**Domain:** `propreneur.uk` (main) + `*.propreneur.uk` (tenant subdomains)
-**Stack:** Ubuntu 24.04, Nginx 1.24 (aaPanel), PHP 8.3 FPM, PostgreSQL 16, Redis 7, Meilisearch 1.12, Supervisor
+**Server:** Contabo VPS (hostname `aman`) — `80.190.81.208`  
+**App path:** `/www/wwwroot/propreneur-v2`  
+**Domain:** `propreneur.uk` (central) + `*.propreneur.uk` (tenant workspaces)  
+**DNS / edge:** Cloudflare (proxied), registrar on Cloudflare  
+**Panel:** aaPanel (Nginx 1.24, PHP 8.3 FPM, Supervisor plugin)  
+**Stack:** PostgreSQL 16, Redis 7, Meilisearch, Laravel Horizon
+
+**Marketing site:** `propreneur.co.uk` — separate repo/host; not this runbook.
+
+---
+
+## Production architecture (summary)
+
+| Layer | Role |
+|-------|------|
+| **Cloudflare** | DNS, TLS edge, `www` → apex redirect, DDoS/cache |
+| **Nginx (aaPanel)** | Docroot `.../public`, tenant `*.propreneur.uk` vhosts |
+| **PHP 8.3 FPM** | Must read full project tree (`vendor/`, `storage/`) |
+| **PostgreSQL** | Central DB + per-tenant DBs (stancl/tenancy) |
+| **Redis** | Sessions, cache, queues |
+| **Supervisor** | `propreneur-horizon`, `propreneur-scheduler` (configs in `/etc/supervisor/conf.d/`) |
+| **Horizon** | Processes Redis queues including **`security`** (alert emails) |
+
+**Security:** Production has **no `.git` directory** (removed on purpose). Deploy via **rsync from a dev machine**, not `git pull` on the server.
 
 ---
 
@@ -38,6 +59,195 @@ cd /www/wwwroot/propreneur-v2
 /www/server/php/83/bin/php artisan config:clear
 sudo supervisorctl restart propreneur-horizon propreneur-scheduler
 ```
+
+### Deploy script reference
+
+| File | Purpose |
+|------|---------|
+| `scripts/deploy-to-production.sh` | Local: `git pull` → `rsync` → SSH remote steps |
+| `scripts/deploy-remote.sh` | Server: composer, migrate, cache clear, supervisor restart |
+| `scripts/deploy.env.example` | Copy to `scripts/deploy.env` (gitignored): `DEPLOY_SSH`, paths |
+
+Flags: `--dry-run`, `--build-assets`, `--skip-migrate`, `--optimize`, `--no-restart`. See script header comments.
+
+---
+
+## aaPanel site settings (propreneur.uk)
+
+Configured in **Website** → **propreneur.uk** → **Directory** / **PHP**.
+
+| Setting | Required value | Notes |
+|---------|----------------|-------|
+| **Site directory** | `/www/wwwroot/propreneur-v2/public` | Laravel web root only |
+| **Running directory** | `/` | Default for Laravel |
+| **Anti-XSS attack** | **OFF** | When ON, `open_basedir` is limited to `public/` and Laravel breaks (`vendor/`, `storage/` blocked) |
+| **Write access log** | ON | Optional |
+
+If Anti-XSS must stay on, set **open_basedir** (PHP site settings) to:
+
+```text
+/www/wwwroot/propreneur-v2/:/tmp/
+```
+
+**Not** `.../public/:/tmp/` alone.
+
+After changes: restart **PHP 8.3** from App Store.
+
+### Health check (CLI)
+
+```bash
+curl -sI https://propreneur.uk/admin | head -3
+# Expect: HTTP/2 302 → location: https://propreneur.uk/platform/login
+
+curl -sI -L https://propreneur.uk/admin | tail -3
+# Expect: HTTP/2 200 on login page
+```
+
+Raw `open_basedir` warnings on `/admin` mean Anti-XSS or `.user.ini` still restricts PHP to `public/` only.
+
+---
+
+## Cloudflare (propreneur.uk)
+
+### DNS records (typical)
+
+| Type | Name | Content | Proxy |
+|------|------|---------|--------|
+| A | `@` / `propreneur.uk` | `80.190.81.208` | Proxied |
+| A | `*` | `80.190.81.208` | Proxied (tenant subdomains) |
+| CNAME | `www` | `propreneur.uk` | Proxied |
+| A | `mail` | server IP | DNS only (email; exposes IP — optional to tidy) |
+| MX / TXT | `@` | mail / SPF | DNS only |
+
+### Redirect rule (required)
+
+**Rules** → **Redirect Rules** → template **Redirect from WWW to root**:
+
+- Match: `https://www.*`
+- Action: 301 → `https://${1}`
+- Status: Active
+
+Without this (or equivalent nginx redirect), requests with `Host: www.propreneur.uk` hit Laravel as tenant slug **`www`** and flood logs with `TenantCouldNotBeIdentifiedOnDomainException`.
+
+Verify:
+
+```bash
+curl -sI https://www.propreneur.uk | grep -E 'HTTP|location'
+# HTTP/2 301
+# location: https://propreneur.uk/
+```
+
+### SSL
+
+- **SSL/TLS** → **Full (strict)** when origin has valid Let’s Encrypt cert  
+- **Always Use HTTPS**: On
+
+---
+
+## Nginx (origin)
+
+Manage in aaPanel **Website** → **Config**, or `/www/server/panel/vhost/nginx/propreneur.uk.conf`.
+
+**Rules:**
+
+1. Document root always `.../propreneur-v2/public`.
+2. **Do not** put `*.propreneur.uk` on a blanket HTTP redirect to apex (breaks tenant URLs).
+3. Prefer **separate** HTTPS server for `www` that only 301s to apex (backup if Cloudflare bypassed).
+4. Tenant HTTPS needs wildcard cert (`*.propreneur.uk`) — see [Wildcard SSL](#wildcard-ssl-for-tenant-subdomains).
+
+Reference vhost (copy-ready) — see repo history or maintain in panel; key blocks:
+
+- HTTP: `propreneur.uk` + `www` only → `https://propreneur.uk`
+- HTTPS: `www.propreneur.uk` → 301 apex
+- HTTPS: `propreneur.uk` → PHP app
+- HTTP: regex `*.propreneur.uk` → PHP app
+- HTTPS: regex `*.propreneur.uk` → PHP app (after wildcard cert)
+
+Access logs:
+
+| Log | Path |
+|-----|------|
+| Central | `/www/wwwlogs/propreneur-v2.log` |
+| Tenants (HTTP) | `/www/wwwlogs/propreneur-v2-tenant.log` |
+
+Reload: `sudo nginx -t && sudo systemctl restart nginx` (aaPanel “Nginx restart” if `nginx -s reload` fails with PID error).
+
+---
+
+## Horizon and queues
+
+**Supervisor programs** (live configs — aaPanel “Daemon list” may stay empty; use CLI):
+
+```bash
+sudo supervisorctl status
+# propreneur-horizon    RUNNING
+# propreneur-scheduler  RUNNING
+```
+
+Configs: `/etc/supervisor/conf.d/propreneur-horizon.conf`, `propreneur-scheduler.conf`.
+
+**Horizon** must include the **`security`** queue (security anomaly notification emails):
+
+```php
+// config/horizon.php — defaults.supervisor-1.queue
+'queue' => ['default', 'rag-processing', 'carina', 'security'],
+```
+
+After changing:
+
+```bash
+php artisan config:clear
+sudo supervisorctl restart propreneur-horizon
+redis-cli LLEN queues:security   # 0 when idle
+```
+
+**Other queues** used in code but not in Horizon defaults yet: `lead-intake`, `automations`, `deals` — add when those features go live in production.
+
+**Do not** run a long-lived `queue:work` alongside Horizon for the same queues (duplicate workers).
+
+Horizon UI (if enabled): `https://propreneur.uk/horizon` — restrict to trusted operators.
+
+---
+
+## Logs and forensics (on-server)
+
+All paths under `/www/wwwroot/propreneur-v2/storage/logs/` unless noted.
+
+| File | Contents |
+|------|----------|
+| `laravel-YYYY-MM-DD.log` | App errors (`LOG_LEVEL=error` in prod → mostly errors + stack traces) |
+| `carina-security-YYYY-MM-DD.log` | Carina security channel (warnings+) |
+| `vcal-calendar-sync.log` | Scheduled vCal sync |
+| `storage/deploy.txt` | Timestamp written by `deploy-remote.sh` |
+
+Nginx: `/www/wwwlogs/propreneur-v2.log` (and tenant variant).
+
+**No central log SaaS** configured — logs stay on VPS. For charts: aaPanel **Website** → **Logs**, or install **GoAccess** on nginx access logs.
+
+**Typical noise fix:** `www` redirect (Cloudflare + nginx) stops huge `Tenant could not be identified on domain www` entries in `laravel-*.log`.
+
+```bash
+grep -c 'domain www' storage/logs/laravel-$(date +%F).log
+```
+
+Recommended `.env` logging (production):
+
+```env
+LOG_CHANNEL=stack
+LOG_STACK=daily
+LOG_LEVEL=warning
+LOG_DAILY_DAYS=30
+```
+
+---
+
+## Laravel central domains
+
+`config/tenancy.php` → `central_domains` must include apex hosts (not tenant slugs):
+
+- `propreneur.uk`
+- `www.propreneur.uk` (belt-and-braces if a request bypasses redirect)
+- `propreneur.co.uk`, `127.0.0.1`, `localhost` as needed for local/staging
 
 ---
 
@@ -118,51 +328,7 @@ sudo chown -R www:www /www/wwwroot/propreneur-v2
 
 ### 4. Nginx vhost
 
-File: `/www/server/panel/vhost/nginx/propreneur.uk.conf`
-
-```nginx
-# HTTP -> HTTPS redirect
-server {
-    listen 80;
-    server_name propreneur.uk www.propreneur.uk;
-    return 301 https://propreneur.uk$request_uri;
-}
-
-# HTTPS main domain
-server {
-    listen 443 ssl http2;
-    server_name propreneur.uk www.propreneur.uk;
-    ssl_certificate     /etc/letsencrypt/live/propreneur.uk/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/propreneur.uk/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    root /www/wwwroot/propreneur-v2/public;
-    index index.php;
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ \.php$ {
-        fastcgi_pass  unix:/tmp/php-cgi-83.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
-
-# Tenant subdomains (HTTP — add SSL wildcard cert when available)
-server {
-    listen 80;
-    server_name ~^(?<subdomain>[^.]+)\.propreneur\.uk$;
-    root /www/wwwroot/propreneur-v2/public;
-    index index.php;
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ \.php$ {
-        fastcgi_pass  unix:/tmp/php-cgi-83.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
-```
-
-Reload: `sudo /www/server/nginx/sbin/nginx -s reload`
+See **[Nginx (origin)](#nginx-origin)** for current layout. Do not use a single `server_name` line that includes both `www` and the app on HTTPS without redirecting `www` first.
 
 ### 5. SSL
 
@@ -185,7 +351,7 @@ Files in `/etc/supervisor/conf.d/`:
 **propreneur-horizon.conf:**
 ```ini
 [program:propreneur-horizon]
-command=/usr/bin/php83 /www/wwwroot/propreneur-v2/artisan horizon
+command=/www/server/php/83/bin/php /www/wwwroot/propreneur-v2/artisan horizon
 autostart=true
 autorestart=true
 user=www
@@ -197,7 +363,7 @@ stopwaitsecs=3600
 **propreneur-scheduler.conf:**
 ```ini
 [program:propreneur-scheduler]
-command=/usr/bin/php83 /www/wwwroot/propreneur-v2/artisan schedule:work
+command=/www/server/php/83/bin/php /www/wwwroot/propreneur-v2/artisan schedule:work
 autostart=true
 autorestart=true
 user=www
@@ -268,7 +434,30 @@ cd /www/wwwroot/propreneur-v2
 | URL | Purpose |
 |-----|---------|
 | `https://propreneur.uk/platform/login` | Platform super-admin login |
-| `http://xelox.propreneur.uk/login` | Xelox tenant login |
+| `https://propreneur.uk/admin` | Redirects to platform login when guest |
+| `https://{slug}.propreneur.uk/login` | Tenant workspace login |
 | `https://propreneur.uk/health` | Health check endpoint |
-| `http://80.190.81.208:11650/5d12389b` | aaPanel (server management) |
-| `https://80.190.81.208:9090` | Cockpit (system monitoring) |
+| `https://propreneur.uk/horizon` | Queue dashboard (protect in production) |
+| `https://propreneur.uk/admin/security/scout` | SCOUT security console |
+| aaPanel | Server panel (port/path per host install) |
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|----------------|-----|
+| White page, `open_basedir` in HTML | Anti-XSS ON or `open_basedir` = `public/` only | aaPanel: Anti-XSS OFF or widen to project root; restart PHP |
+| `Tenant could not be identified on domain www` | `www` hits Laravel as tenant | Cloudflare WWW redirect; nginx www 301 |
+| `git pull` fails on server | No `.git` on production (expected) | Deploy with `scripts/deploy-to-production.sh` |
+| Security emails never send | `security` queue not in Horizon | Add to `config/horizon.php`; restart horizon |
+| `queues:security` grows | Horizon down or missing queue | `supervisorctl status propreneur-horizon` |
+| aaPanel Supervisor list empty | Programs in `/etc/supervisor/conf.d/` only | Use `supervisorctl status` |
+| `horizon:terminate` permission denied | CLI user ≠ `www` | `sudo supervisorctl restart propreneur-horizon` |
+| 25MB `laravel-*.log` in one day | Repeated `www` errors | Fix redirects; optional `LOG_LEVEL=warning` after stable |
+
+---
+
+## Changelog (ops notes)
+
+- **2026-05-20:** Production hardened: removed `.git` from server; rsync deploy scripts; Cloudflare WWW redirect; aaPanel Anti-XSS disabled for Laravel; Horizon `security` queue; nginx/www log noise documented.
