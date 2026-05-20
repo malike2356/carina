@@ -22,5 +22,11 @@ it('sends a reset notification for a platform user email', function () {
     $this->post(route('central.password.email'), ['email' => $user->email])
         ->assertSessionHas('status');
 
-    Notification::assertSentTo($user, PlatformResetPassword::class);
+    Notification::assertSentTo($user, PlatformResetPassword::class, function (PlatformResetPassword $notification) use ($user): bool {
+        $mail = $notification->toMail($user);
+
+        return str_contains((string) $mail->subject, 'Reset your')
+            && is_array($mail->view)
+            && ($mail->view['html'] ?? null) === 'mail.auth.reset-password-html';
+    });
 });
