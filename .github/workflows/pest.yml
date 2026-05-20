@@ -1,9 +1,19 @@
-name: Tests
+name: CI
 
-"on":
+on:
   push:
-    branches: [main, staging]
+    branches:
+      - main
+      - staging
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pest:
