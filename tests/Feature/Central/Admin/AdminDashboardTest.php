@@ -15,7 +15,10 @@ it('platform dashboard loads for super admin', function (): void {
     $this->actingAs($admin, 'platform')
         ->get(route('admin.dashboard'))
         ->assertOk()
-        ->assertSee('Active Workspaces');
+        ->assertSee('Active Workspaces')
+        ->assertSee('Inactive Workspaces')
+        ->assertSee('New workspaces (30d)')
+        ->assertSee('Paid subscriptions');
 });
 
 it('dashboard redirects for unauthenticated users', function (): void {
