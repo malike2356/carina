@@ -28,3 +28,14 @@ it('replaces entire response when filtered', function (): void {
     expect($result->response)->toContain('support@verlox.co.uk')
         ->and($result->response)->not->toContain('APP_KEY');
 });
+
+it('allows short Carina identity replies that repeat persona wording', function (): void {
+    $filter = new CarinaOutputFilter;
+    $prefix = mb_substr((string) config('ai.carina_persona'), 0, 200);
+    $reply = 'Hi! I am Carina, the AI assistant for the Propreneur platform team. I can help with feature flags, tenancy, and UK property context. What would you like to know?';
+
+    $result = $filter->filter($reply, $prefix);
+
+    expect($result->wasFiltered)->toBeFalse()
+        ->and($result->response)->toContain('Carina');
+});
