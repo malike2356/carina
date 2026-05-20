@@ -102,7 +102,9 @@ Flags: `--dry-run`, `--build-assets`, `--skip-migrate`, `--optimize`, `--no-rest
 | `filament:upgrade` → `Permission denied` on `public/js/filament/...` | Rsync wrote assets as `malike`; composer runs as `www` | `sudo chown -R www:www storage bootstrap/cache public/js public/css` then re-run `deploy-remote.sh` |
 | `vendor/composer/...` Permission denied | `vendor/` owned by `malike` after rsync | `sudo chown -R www:www vendor` (or full app tree) then re-run `deploy-remote.sh` |
 | HTTP 500 / `PailServiceProvider` not found | Dev `bootstrap/cache/packages.php` synced to production | On aman: `rm -f bootstrap/cache/packages.php bootstrap/cache/services.php` then `php artisan package:discover`. Deploy script now excludes those files from rsync. |
-| `Command "DEPLOY_REMOTE_USER=www" is not defined` | SSH env vars not exported to remote deploy script | Pull latest `deploy-to-production.sh` (explicit `export` in remote heredoc). |
+| `Command "DEPLOY_REMOTE_USER=www" is not defined` | SSH env vars not exported to remote deploy script | Pull latest `deploy-to-production.sh` (inline exports in remote heredoc). |
+
+**Carina ↔ Slack:** full integration guide and phased build plan → [`docs/CARINA_SLACK_INTEGRATION.md`](CARINA_SLACK_INTEGRATION.md).
 | `git pull` → Already up-to-date but code missing on server | Changes not pushed to `main` | `git push` from tsalach, then redeploy |
 
 **Finish a failed post-deploy on aman** (after rsync succeeded):

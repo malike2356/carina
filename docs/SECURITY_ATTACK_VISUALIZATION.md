@@ -56,4 +56,4 @@ When `SECURITY_ALERT_EMAIL` is set, email goes to that address only; super admin
 3. Slack webhook on CRITICAL only.
 4. Tenant-scoped security read-only view for workspace admins.
 
-See also: `brain/masterbrain/verification_and_ops/05-security-posture-and-scout.md`.
+See also: `brain/masterbrain/verification_and_ops/05-security-posture-and-scout.md`, `docs/CARINA_SLACK_INTEGRATION.md` (Carina in Slack — separate from security alert email).

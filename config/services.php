@@ -170,6 +170,15 @@ return [
     ],
 
     /*
+    | Carina Remote — Slack Events API (tenant inbound /api/remote/inbound/slack).
+    | See docs/CARINA_SLACK_INTEGRATION.md
+    */
+    'slack_remote' => [
+        'bot_token' => env('SLACK_BOT_TOKEN'),
+        'signing_secret' => env('SLACK_SIGNING_SECRET'),
+    ],
+
+    /*
     | Origins allowed to call POST /api/v1/signup from the static marketing site.
     */
     'marketing_site' => [
