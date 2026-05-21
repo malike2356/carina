@@ -13,9 +13,15 @@ beforeEach(function (): void {
 });
 
 it('import endpoint returns 409 when demo data is already loaded', function (): void {
-    $host = actingAsTenant();
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'Demo API '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'api-'.uniqid().'@import.test',
+        'plan' => 'operator',
+    ]);
+    $host = actingAsTenant($tenant);
 
-    tenancy()->initialize(tenant());
+    tenancy()->initialize($tenant);
     app(DemoDataService::class)->import('hmo_investor');
     tenancy()->end();
 
