@@ -152,6 +152,10 @@ run_artisan route:clear
 run_artisan view:clear
 run_artisan event:clear
 
+echo "==> sync Carina RAG (knowledge + masterbrain)"
+run_artisan rag:ingest-brain-knowledge || echo "WARN: rag:ingest-brain-knowledge failed (non-fatal)" >&2
+run_artisan rag:sync-masterbrain || echo "WARN: rag:sync-masterbrain failed (non-fatal)" >&2
+
 if [[ "$OPTIMIZE" == "1" ]]; then
   echo "==> optimize (config/route/view cache)"
   run_artisan config:cache
