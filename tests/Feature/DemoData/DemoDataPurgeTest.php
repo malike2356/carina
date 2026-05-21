@@ -60,6 +60,8 @@ it('purge does not delete real data', function (): void {
         'address_line1' => '99 Real Street',
         'city' => 'Portsmouth',
         'postcode' => 'PO1 1AA',
+        'property_type' => 'terraced',
+        'country' => 'GB',
         'status' => 'owned',
         'strategy' => 'buy_to_let',
         'is_demo_data' => false,
