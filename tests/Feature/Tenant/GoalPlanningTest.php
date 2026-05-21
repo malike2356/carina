@@ -70,6 +70,24 @@ it('GoalPlanningService calculates correct deal count for BTL', function () {
     expect($result['income_gap'])->toBe(1000.0);
 });
 
+it('goal show page loads without server error', function () {
+    $this->post($this->baseUrl.'/goals', [
+        'title' => 'Show page test goal',
+        'strategy' => 'btl',
+        'target_monthly_income' => 2000,
+        'starting_capital' => 40000,
+        'timeline_years' => 2,
+    ]);
+
+    tenancy()->initialize($this->tenant);
+    $goal = InvestmentGoal::query()->where('title', 'Show page test goal')->firstOrFail();
+    tenancy()->end();
+
+    $this->get($this->baseUrl.'/goals/'.$goal->id)
+        ->assertOk()
+        ->assertSee('Show page test goal', false);
+});
+
 it('completing a milestone updates progress', function () {
     $this->post($this->baseUrl.'/goals', [
         'title' => 'Milestone test',
