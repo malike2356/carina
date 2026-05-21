@@ -145,6 +145,7 @@ RSYNC_EXCLUDES=(
   --exclude 'bootstrap/cache/config.php'
   --exclude 'storage/app/public'
   --exclude 'storage/app/private'
+  --exclude 'public/storage'
   --exclude '.claude'
   --exclude 'tests'
   --exclude 'brain/prompts'

@@ -133,6 +133,12 @@ fi
 
 mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache
 
+if [[ ! -L public/storage ]] || [[ "$(readlink public/storage)" != "$REMOTE_ROOT/storage/app/public" ]]; then
+  echo "==> fix public/storage symlink"
+  rm -f public/storage
+  ln -s "$REMOTE_ROOT/storage/app/public" public/storage
+fi
+
 if [[ "$SKIP_MIGRATE" != "1" ]]; then
   echo "==> artisan migrate --force"
   run_artisan migrate --force
