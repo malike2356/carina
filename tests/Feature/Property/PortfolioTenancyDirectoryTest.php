@@ -53,7 +53,16 @@ it('shows the tenancies directory for an authenticated tenant user', function ()
         ->assertOk()
         ->assertSee('Tenancies')
         ->assertSee('Actions')
-        ->assertSee('Delete')
+        ->assertSee('View')
         ->assertSee('Jane Renter')
         ->assertSee('9 Lettings Lane');
+
+    $tenancy = PropertyTenancy::query()->where('tenant_name', 'Jane Renter')->firstOrFail();
+
+    $this->get('http://'.$host.'/properties/tenancies/'.$tenancy->id)
+        ->assertOk()
+        ->assertSee('Jane Renter')
+        ->assertSee('Manage tenancy')
+        ->assertSee('9 Lettings Lane')
+        ->assertSee('£1,250.00');
 });

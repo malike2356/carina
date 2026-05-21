@@ -100,21 +100,23 @@ it('updates and ends a tenancy from the property show page', function () {
     $pid = $property->id;
     $tid = $tenancy->id;
 
-    $this->put($base.'/properties/'.$pid.'/tenancies/'.$tid, [
-        'tenant_name' => 'After Name',
-        'rent_amount' => '825',
-        'start_date' => '2025-01-01',
-        'end_date' => '',
-        'deposit' => '',
-    ])->assertRedirect($base.'/properties/'.$pid);
+    $this->from($base.'/properties/'.$pid)
+        ->put($base.'/properties/'.$pid.'/tenancies/'.$tid, [
+            'tenant_name' => 'After Name',
+            'rent_amount' => '825',
+            'start_date' => '2025-01-01',
+            'end_date' => '',
+            'deposit' => '',
+        ])->assertRedirect($base.'/properties/'.$pid);
 
     $tenancy->refresh();
     expect($tenancy->tenant_name)->toBe('After Name')
         ->and((float) $tenancy->rent_amount)->toBe(825.0);
 
-    $this->post($base.'/properties/'.$pid.'/tenancies/'.$tid.'/end', [
-        'end_date' => '2026-01-15',
-    ])->assertRedirect($base.'/properties/'.$pid);
+    $this->from($base.'/properties/'.$pid)
+        ->post($base.'/properties/'.$pid.'/tenancies/'.$tid.'/end', [
+            'end_date' => '2026-01-15',
+        ])->assertRedirect($base.'/properties/'.$pid);
 
     $tenancy->refresh();
     expect($tenancy->end_date?->toDateString())->toBe('2026-01-15');
@@ -177,7 +179,8 @@ it('hard deletes a tenancy and rejects delete when tenancy does not belong to th
 
     expect(PropertyTenancy::query()->whereKey($tid)->exists())->toBeTrue();
 
-    $this->delete($base.'/properties/'.$propertyA->id.'/tenancies/'.$tid)
+    $this->from($base.'/properties/'.$propertyA->id)
+        ->delete($base.'/properties/'.$propertyA->id.'/tenancies/'.$tid)
         ->assertRedirect($base.'/properties/'.$propertyA->id)
         ->assertSessionHas('success', 'Tenancy removed.');
 
@@ -236,8 +239,11 @@ it('deletes a tenancy from the workspace directory', function () {
         ->assertSee('Listed Then Gone')
         ->assertSee('Delete');
 
-    $this->delete($base.'/properties/'.$pid.'/tenancies/'.$tid)
-        ->assertRedirect($base.'/properties/'.$pid)
+    $this->from($base.'/properties/tenancies')
+        ->delete($base.'/properties/'.$pid.'/tenancies/'.$tid, [
+            'redirect_to' => 'tenancies_index',
+        ])
+        ->assertRedirect($base.'/properties/tenancies')
         ->assertSessionHas('success', 'Tenancy removed.');
 
     expect(PropertyTenancy::query()->whereKey($tid)->exists())->toBeFalse();
