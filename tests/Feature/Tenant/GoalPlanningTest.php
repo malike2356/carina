@@ -38,6 +38,24 @@ it('goals index returns 200', function () {
     $response->assertOk();
 });
 
+it('accepts target monthly income that is not aligned to step 100', function () {
+    $response = $this->post($this->baseUrl.'/goals', [
+        'title' => '£5000/mo passive income in 3 years',
+        'strategy' => 'r2r',
+        'target_monthly_income' => 5000,
+        'current_monthly_income' => 0,
+        'starting_capital' => 2000,
+        'timeline_years' => 3,
+    ]);
+
+    $response->assertRedirect();
+
+    tenancy()->initialize($this->tenant);
+    $goal = InvestmentGoal::query()->where('title', '£5000/mo passive income in 3 years')->firstOrFail();
+    expect((float) $goal->target_monthly_income)->toBe(5000.0);
+    tenancy()->end();
+});
+
 it('creating a goal generates milestones', function () {
     $response = $this->post($this->baseUrl.'/goals', [
         'title' => 'Test: £3k/mo in 3 years',
