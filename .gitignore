@@ -45,6 +45,7 @@ media/
 
 # Brain prompts and local reference packs (keep knowledge folder; prompts and reference are local-only)
 brain/prompts/
+prompts/
 brain/reference/
 memory.md
 instructions.md
