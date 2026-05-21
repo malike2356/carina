@@ -61,4 +61,4 @@ propreneur_1.0/
 mobileApp/
 
 # Marketing site (separate repo)
-propreneur.co.uk/
+propreneur.co.uk/app/Console/Commands/SeedDemoDataCommand.php
