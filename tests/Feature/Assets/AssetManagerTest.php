@@ -3,10 +3,13 @@
 declare(strict_types=1);
 
 use App\Billing\BillingModule;
+use App\DemoData\Services\DemoDataService;
 use App\Models\Central\FeatureFlag;
+use App\Models\Tenant\Asset;
 use App\Models\Tenant\AssetIncome;
 use App\Models\Tenant\Property;
 use App\Models\Tenant\User;
+use App\Services\Onboarding\UserFeatureProfileService;
 use App\Services\Assets\AssetManagerService;
 use App\Services\Assets\NetWorthService;
 use App\Services\Carina\CarinaBaselineContextService;
@@ -238,6 +241,21 @@ it('dashboard net worth widget is injected when module is active', function (): 
 
     $this->actingAs($user, 'web');
     $this->get('http://'.$host.'/')->assertOk()->assertSee('Net worth');
+});
+
+it('demo imported asset show page loads without server error', function (): void {
+    [$tenant, $host, $user] = assetManagerTenant();
+
+    tenancy()->initialize($tenant);
+    app(UserFeatureProfileService::class)->setPersona($user, 'portfolio_manager');
+    app(DemoDataService::class)->import('mixed_portfolio', $user->id);
+    $asset = Asset::query()->where('is_demo_data', true)->firstOrFail();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web')
+        ->get('http://'.$host.'/assets/'.$asset->id)
+        ->assertOk()
+        ->assertSee($asset->name, false);
 });
 
 it('carina baseline context includes asset summary when assets exist', function (): void {
