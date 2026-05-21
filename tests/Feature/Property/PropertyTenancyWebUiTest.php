@@ -49,11 +49,15 @@ it('creates a tenancy from the property show page and lists it on the workspace 
         'deposit' => '1000',
     ])->assertRedirect($base.'/properties/'.$property->id);
 
+    $tenancyId = PropertyTenancy::query()->where('property_id', $property->id)->value('id');
+
     $this->get($base.'/properties/'.$property->id)
         ->assertOk()
         ->assertSee('Lettings')
         ->assertSee('tenancies')
-        ->assertSee('Alex Tenant');
+        ->assertSee('Alex Tenant')
+        ->assertSee($base.'/properties/tenancies/'.$tenancyId, false)
+        ->assertSee('Dossier');
 
     $this->get($base.'/properties/tenancies')
         ->assertOk()
