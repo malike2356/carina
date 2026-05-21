@@ -115,4 +115,9 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    // Dedicated subdomain for catching inbound reply emails.
+    // Set to a subdomain with its own MX records pointing to Resend inbound
+    // so that the root domain's MX (e.g. HostGator) is not affected.
+    'inbound_domain' => env('MAIL_INBOUND_DOMAIN', ''),
+
 ];
