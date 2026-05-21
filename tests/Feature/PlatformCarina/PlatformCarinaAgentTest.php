@@ -83,6 +83,6 @@ it('platform carina sendmessage returns 503 when no ai provider', function (): v
     config(['ai.providers' => $configProviders]);
 });
 
-it('registers ten platform carina tools', function (): void {
-    expect(count(app(PlatformCarinaToolRegistry::class)->all()))->toBe(10);
+it('registers thirteen platform carina tools', function (): void {
+    expect(count(app(PlatformCarinaToolRegistry::class)->all()))->toBe(13);
 });
