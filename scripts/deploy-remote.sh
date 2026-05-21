@@ -140,8 +140,10 @@ if [[ ! -L public/storage ]] || [[ "$(readlink public/storage)" != "$REMOTE_ROOT
 fi
 
 if [[ "$SKIP_MIGRATE" != "1" ]]; then
-  echo "==> artisan migrate --force"
+  echo "==> artisan migrate --force (central)"
   run_artisan migrate --force
+  echo "==> artisan tenants:migrate --force"
+  run_artisan tenants:migrate --force
 fi
 
 echo "==> clear caches"
