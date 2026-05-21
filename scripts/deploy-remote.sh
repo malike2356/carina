@@ -38,9 +38,17 @@ fi
 run_artisan() {
   if [[ "$(id -un)" == "$REMOTE_USER" ]]; then
     "$REMOTE_PHP" artisan "$@"
-  else
-    sudo -u "$REMOTE_USER" -H "$REMOTE_PHP" artisan "$@"
+    return
   fi
+
+  if sudo -u "$REMOTE_USER" -H "$REMOTE_PHP" artisan "$@" 2>/dev/null; then
+    return
+  fi
+
+  echo "WARN: sudo -u ${REMOTE_USER} artisan $* failed (no passwordless sudo?). Retrying as $(id -un)..." >&2
+  echo "      Add to /etc/sudoers.d/propreneur-deploy to avoid this:" >&2
+  echo "      malike ALL=(${REMOTE_USER}) NOPASSWD: ${REMOTE_PHP} /www/wwwroot/propreneur-v2/artisan *" >&2
+  "$REMOTE_PHP" artisan "$@"
 }
 
 composer_argv() {
