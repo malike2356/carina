@@ -193,4 +193,11 @@ return [
         ])),
     ],
 
+    'microsoft_graph' => [
+        'client_id' => env('MICROSOFT_GRAPH_CLIENT_ID', ''),
+        'client_secret' => env('MICROSOFT_GRAPH_CLIENT_SECRET', ''),
+        'tenant_id' => env('MICROSOFT_GRAPH_TENANT_ID', 'common'),
+        'access_token' => env('MICROSOFT_GRAPH_ACCESS_TOKEN', ''),
+    ],
+
 ];
