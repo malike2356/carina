@@ -38,7 +38,22 @@ beforeEach(function (): void {
 
 it('strategy finder index page returns 200', function (): void {
     $response = $this->get($this->baseUrl.'/strategy-finder');
-    $response->assertOk();
+    $response->assertOk()
+        ->assertSee('IT, tech & systems');
+});
+
+it('run endpoint accepts tech professional skills', function (): void {
+    $response = $this->postJson($this->baseUrl.'/strategy-finder/run', [
+        'capital_bucket' => '50_to_100k',
+        'primary_goal' => 'passive_income',
+        'weekly_hours' => '5_to_15',
+        'risk_tolerance' => 'medium',
+        'pro_skills' => 'tech',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('top_strategy', 'sa')
+        ->assertJsonStructure(['skill_insight' => ['headline', 'body', 'why_match']]);
 });
 
 it('run endpoint returns top_strategy and projections', function (): void {
