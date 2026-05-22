@@ -38,7 +38,7 @@ it('creates archives deals and exposes refurb lines on the mobile API', function
         'device_uuid' => '22222222-2222-2222-2222-222222222222',
     ]);
     $login->assertOk();
-    $headers = ['Authorization' => 'Bearer '.$login->json('token')];
+    $headers = ['Authorization' => 'Bearer '.$login->json('access_token')];
 
     $create = $this->postJson('http://'.$host.'/api/v1/mobile/deals', [
         'strategy' => 'btl',

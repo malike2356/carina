@@ -38,7 +38,7 @@ it('creates updates and archives properties via the mobile API', function (): vo
         'device_uuid' => '11111111-1111-1111-1111-111111111111',
     ]);
     $login->assertOk();
-    $headers = ['Authorization' => 'Bearer '.$login->json('token')];
+    $headers = ['Authorization' => 'Bearer '.$login->json('access_token')];
 
     $create = $this->postJson('http://'.$host.'/api/v1/mobile/properties', [
         'address_line1' => '1 Test Street',

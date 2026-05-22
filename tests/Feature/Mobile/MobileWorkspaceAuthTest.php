@@ -35,7 +35,7 @@ it('issues a sanctum token and returns the workspace user profile', function ():
     $login->assertOk()
         ->assertJsonStructure(['token', 'token_type', 'user' => ['id', 'name', 'email']]);
 
-    $token = (string) $login->json('token');
+    $token = (string) $login->json('access_token');
 
     tenancy()->initialize($tenant);
     expect(PersonalAccessToken::query()->count())->toBe(1);
