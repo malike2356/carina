@@ -1260,6 +1260,28 @@ return [
             ],
         ],
     ],
+    [
+        'name' => 'search_local_listings',
+        'description' => 'Search the workspace listing database using a natural language query or structured filters. Returns matching listings ranked by relevance. Use when the user asks to find deals or properties matching certain criteria.',
+        'gate' => 'sourcing',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'query' => [
+                    'type' => 'string',
+                    'description' => 'Free-text search e.g. "3-bed Leeds under 180k 8% yield HMO"',
+                ],
+                'max_price' => ['type' => 'number', 'description' => 'Maximum price in GBP'],
+                'min_beds' => ['type' => 'integer', 'description' => 'Minimum bedrooms'],
+                'postcode_prefix' => ['type' => 'string', 'description' => 'Postcode prefix e.g. LS, M, B'],
+                'property_type' => ['type' => 'string', 'description' => 'house, flat, hmo, commercial'],
+                'strategy' => ['type' => 'string', 'description' => 'btl, hmo, brr, sa, flip, r2r, commercial'],
+                'min_yield_pct' => ['type' => 'number', 'description' => 'Minimum gross yield %'],
+                'limit' => ['type' => 'integer', 'description' => 'Max results (default 8, max 20)'],
+            ],
+        ],
+    ],
     52 => [
         'name' => 'list_inbound_leads',
         'description' => 'View captured leads from social platforms.',
