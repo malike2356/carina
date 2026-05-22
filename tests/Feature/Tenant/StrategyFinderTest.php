@@ -39,7 +39,7 @@ beforeEach(function (): void {
 it('strategy finder index page returns 200', function (): void {
     $response = $this->get($this->baseUrl.'/strategy-finder');
     $response->assertOk()
-        ->assertSee('IT, tech & systems');
+        ->assertSee('IT, tech & systems', false);
 });
 
 it('run endpoint accepts tech professional skills', function (): void {
@@ -134,7 +134,7 @@ it('plan page loads after strategy finder save', function (): void {
 it('StrategyFinderService scores r2r highest for zero capital profile', function (): void {
     $service = app(StrategyFinderService::class);
     $scores = $service->score([
-        'capital_bucket' => 'under_25k',
+        'capital_bucket' => 'under_5k',
         'primary_goal' => 'build_quickly',
         'weekly_hours' => '2_to_5',
         'risk_tolerance' => 'low',
@@ -144,4 +144,33 @@ it('StrategyFinderService scores r2r highest for zero capital profile', function
     arsort($scores);
     $top = array_key_first($scores);
     expect($top)->toBe('r2r');
+});
+
+it('run endpoint returns feasibility structure with capital gap for under_5k profile', function (): void {
+    $response = $this->postJson($this->baseUrl.'/strategy-finder/run', [
+        'capital_bucket' => 'under_5k',      // midpoint £2,500
+        'primary_goal'   => 'build_quickly',
+        'weekly_hours'   => '2_to_5',
+        'risk_tolerance' => 'low',
+        'pro_skills'     => 'none',
+    ]);
+
+    $response->assertOk()
+        ->assertJsonStructure(['feasibility' => [
+            'can_start_top_today',
+            'top_entry_cost',
+            'capital_midpoint',
+            'capital_gap',
+            'bridge_strategy',
+            'bridge_entry_cost',
+            'bridge_gap',
+            'months_to_top',
+            'monthly_savings_assumption',
+        ]]);
+
+    // R2R is top (£3k entry) — £500 above the £2,500 midpoint. No cheaper bridge exists.
+    expect($response->json('feasibility.can_start_top_today'))->toBeFalse()
+        ->and($response->json('feasibility.capital_midpoint'))->toBe(2500)
+        ->and($response->json('feasibility.capital_gap'))->toBe(500)
+        ->and($response->json('feasibility.bridge_strategy'))->toBeNull();
 });
