@@ -81,18 +81,17 @@ it('shows Deal Engine in the tenant sidebar when the deal_engine feature flag is
     $response->assertSee('Active Deals', false);
 });
 
-it('links Academy in the overview to the LMS course catalog instead of external SSO', function (): void {
+it('links Academy in the overview to free platform courses instead of external SSO', function (): void {
     [, $host, $user] = tenantHostUserWithOnboardingComplete();
 
     FeatureFlag::syncFromCatalogue();
     FeatureFlag::query()->where('key', 'stripe_billing_api')->update(['enabled' => false]);
-    FeatureFlag::query()->where('key', 'community_learning')->update(['enabled' => true, 'tenant_overrides' => null]);
 
     $this->actingAs($user, 'web');
 
     $response = $this->get('http://'.$host.'/');
 
     $response->assertOk();
-    $response->assertSee('href="http://'.$host.'/lms"', false);
+    $response->assertSee('href="http://'.$host.'/platform-academy/learn"', false);
     $response->assertDontSee('data-academy-sso-trigger', false);
 });
