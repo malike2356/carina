@@ -104,8 +104,11 @@ if [[ "$BUILD_MOBILE" == "1" ]]; then
   fi
 
   # 3. Upload APK to production server.
+  #    The file may be owned by the www user (written by a prior web process), so we
+  #    remove it first (malike owns the directory and can unlink www-owned files in it),
+  #    then scp a fresh copy as malike.
   echo "==> [MOBILE] Uploading APK to server..."
-  ssh "$DEPLOY_SSH" "mkdir -p '$APK_REMOTE_DIR'"
+  ssh "$DEPLOY_SSH" "mkdir -p '$APK_REMOTE_DIR' && rm -f '$APK_REMOTE_PATH'"
   scp "$APK_SRC" "${DEPLOY_SSH}:${APK_REMOTE_PATH}"
 
   # 4. Update MOBILE_ANDROID_VERSION in server .env.
