@@ -51,7 +51,8 @@ return [
     'trial_expired' => [
         'page_title' => 'Trial ended',
         'heading' => 'Your trial has ended',
-        'body' => 'This workspace is on hold until billing is active. Contact support if you need help, or sign in below.',
+        'body' => 'This workspace is on hold until a plan is active. Pick a plan below to unlock it immediately, or contact support if you need help.',
+        'choose_plan' => 'Choose a plan to continue:',
         'support_cta' => 'Contact support',
         'back_to_sign_in' => 'Back to sign in',
     ],
