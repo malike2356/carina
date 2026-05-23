@@ -111,18 +111,19 @@ if [[ "$BUILD_MOBILE" == "1" ]]; then
   ssh "$DEPLOY_SSH" "mkdir -p '$APK_REMOTE_DIR' && rm -f '$APK_REMOTE_PATH'"
   scp "$APK_SRC" "${DEPLOY_SSH}:${APK_REMOTE_PATH}"
 
-  # 4. Update MOBILE_ANDROID_VERSION in server .env.
-  #    Delete ALL existing occurrences first (prevents duplicate lines), then append.
-  echo "==> [MOBILE] Updating MOBILE_ANDROID_VERSION on server to $NEW_VER..."
-  ssh "$DEPLOY_SSH" bash -s -- "$NEW_VER" <<'REMOTE'
+  # 4. Update MOBILE_ANDROID_VERSION in server .env (and ensure APK path is set).
+  echo "==> [MOBILE] Updating server .env ($NEW_VER, APK path)..."
+  ssh "$DEPLOY_SSH" bash -s -- "$NEW_VER" "$APK_REMOTE_PATH" <<'REMOTE'
 set -euo pipefail
 NEW_VER="$1"
+APK_PATH="$2"
 ENV_FILE="/www/wwwroot/propreneur-v2/.env"
-# Remove every existing MOBILE_ANDROID_VERSION line (handles duplicates).
+# Remove every existing occurrence of each var (handles duplicates).
 sed -i '/^MOBILE_ANDROID_VERSION=/d' "$ENV_FILE"
-# Append the single canonical line.
+sed -i '/^MOBILE_ANDROID_APK_PATH=/d' "$ENV_FILE"
 echo "MOBILE_ANDROID_VERSION=$NEW_VER" >> "$ENV_FILE"
-echo "    Server .env: MOBILE_ANDROID_VERSION=$NEW_VER"
+echo "MOBILE_ANDROID_APK_PATH=$APK_PATH" >> "$ENV_FILE"
+echo "    Server .env: MOBILE_ANDROID_VERSION=$NEW_VER  MOBILE_ANDROID_APK_PATH=$APK_PATH"
 REMOTE
 
   # 5. Clear Laravel config cache so the new version is visible immediately.
