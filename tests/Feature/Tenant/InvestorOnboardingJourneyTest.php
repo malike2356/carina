@@ -119,3 +119,28 @@ it('renders the plan page after completion', function () {
         ->assertOk()
         ->assertSee('My Investment Plan');
 });
+
+it('shows investor profile summary instead of redirecting to plan when already complete', function () {
+    [, $host, $user] = investorJourneyTenantHost();
+
+    $this->actingAs($user, 'web');
+
+    foreach ([
+        [1, ['experience_level' => 'beginner']],
+        [2, ['available_capital' => 80000]],
+        [3, ['weekly_hours_available' => 5, 'risk_appetite' => 'medium']],
+        [4, ['target_monthly_income' => 3000, 'target_years' => 4]],
+        [5, ['location_preference' => 'local_only']],
+    ] as [$stage, $answers]) {
+        $this->postJson('http://'.$host.'/investor-journey/stage', [
+            'stage' => $stage,
+            'answers' => $answers,
+        ]);
+    }
+
+    $this->get('http://'.$host.'/investor-journey')
+        ->assertOk()
+        ->assertSee('Your saved profile')
+        ->assertSee('Open Strategy Finder')
+        ->assertDontSee('Step 1 of 5', false);
+});
