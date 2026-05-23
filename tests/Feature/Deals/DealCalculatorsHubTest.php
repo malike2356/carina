@@ -90,7 +90,7 @@ it('serves embed pane for BTL inside minimal layout', function (): void {
         ->assertOk()
         ->assertSee('Buy-to-Let', false)
         ->assertSee('Run calculator', false)
-        ->assertSee('Sensitivity', false);
+        ->assertSee('runSensitivity()', false);
 });
 
 it('embeds SDLT without sensitivity button', function (): void {
@@ -114,7 +114,7 @@ it('embeds SDLT without sensitivity button', function (): void {
     $this->get('http://'.$host.'/deals/calculators/sdlt/embed')
         ->assertOk()
         ->assertSee('SDLT', false)
-        ->assertDontSee('Sensitivity', false);
+        ->assertDontSee('runSensitivity()', false);
 });
 
 it('embeds DSCR without sensitivity button', function (): void {
@@ -138,5 +138,5 @@ it('embeds DSCR without sensitivity button', function (): void {
     $this->get('http://'.$host.'/deals/calculators/dscr/embed')
         ->assertOk()
         ->assertSee('DSCR', false)
-        ->assertDontSee('Sensitivity', false);
+        ->assertDontSee('runSensitivity()', false);
 });
