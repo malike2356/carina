@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Models\Central\FeatureFlag;
+use App\Models\Tenant\Contact;
 use App\Models\Tenant\Property;
+use App\Models\Tenant\PropertyTenancy;
 use App\Models\Tenant\User;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
@@ -67,6 +69,34 @@ it('creates updates and archives properties via the mobile API', function (): vo
 
     $tenancies = $this->getJson('http://'.$host.'/api/v1/mobile/properties/'.$propertyId.'/tenancies', $headers);
     $tenancies->assertOk()->assertJsonStructure(['data']);
+
+    tenancy()->initialize($tenant);
+    $contact = Contact::query()->create([
+        'first_name' => 'Jane',
+        'last_name' => 'Tenant',
+        'email' => 'jane-'.uniqid().'@tenant.test',
+        'created_by' => $user->id,
+    ]);
+    $tenancy = PropertyTenancy::query()->create([
+        'property_id' => $propertyId,
+        'tenant_name' => 'Jane Tenant',
+        'contact_id' => $contact->id,
+        'rent_amount' => 950,
+        'start_date' => now()->subMonths(3),
+    ]);
+    tenancy()->end();
+
+    $tenanciesAfter = $this->getJson('http://'.$host.'/api/v1/mobile/properties/'.$propertyId.'/tenancies', $headers);
+    $tenanciesAfter->assertOk()->assertJsonFragment(['contact_id' => $contact->id]);
+
+    $dossier = $this->getJson(
+        'http://'.$host.'/api/v1/mobile/properties/'.$propertyId.'/tenancies/'.$tenancy->id,
+        $headers,
+    );
+    $dossier->assertOk()
+        ->assertJsonPath('data.display_name', 'Jane Tenant')
+        ->assertJsonPath('data.contact_id', $contact->id)
+        ->assertJsonStructure(['data' => ['dossier_gaps']]);
 
     $delete = $this->deleteJson('http://'.$host.'/api/v1/mobile/properties/'.$propertyId, [], $headers);
     $delete->assertOk();
