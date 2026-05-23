@@ -23,4 +23,18 @@ return [
         'expo_access_token' => env('EXPO_ACCESS_TOKEN'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Android app (sideload APK)
+    |--------------------------------------------------------------------------
+    |
+    | Set MOBILE_ANDROID_APK_PATH on the server (recommended) or MOBILE_ANDROID_APK_URL
+    | to an HTTPS URL. Tenant links use route tenant.mobile.android which serves or redirects.
+    |
+    */
+    'android_version' => env('MOBILE_ANDROID_VERSION', '1.0.0'),
+    'android_apk_path' => env('MOBILE_ANDROID_APK_PATH'),
+    'android_apk_url' => env('MOBILE_ANDROID_APK_URL'),
+    'ios_app_url' => env('MOBILE_IOS_APP_URL'),
+
 ];

@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 use App\Models\Central\FeatureFlag;
 use App\Models\Tenant\User;
+use App\Services\Ai\AiRuntimeResolutionService;
+use App\Services\Ai\Dto\AiRuntimeBundle;
 use App\Services\Carina\CarinaService;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function (): void {
     $this->seed(FeatureFlagSeeder::class);
@@ -123,4 +128,53 @@ it('shows and deletes a conversation', function (): void {
 
     $this->deleteJson('http://'.$host.'/api/v1/mobile/carina/conversations/'.$convId, [], $headers)
         ->assertNoContent();
+});
+
+it('transcribes voice audio via the mobile Carina speech endpoint', function (): void {
+    Config::set('ai.speech_transcription.provider_priority', ['openai']);
+    $this->mock(AiRuntimeResolutionService::class, function ($mock): void {
+        $mock->shouldReceive('resolve')->once()->andReturn(new AiRuntimeBundle(
+            [
+                'openai' => [
+                    'api_key' => 'sk-test-key',
+                    'base_url' => 'https://api.openai.com/v1',
+                    'model' => 'gpt-4o-mini',
+                ],
+            ],
+            ['openai']
+        ));
+    });
+    Http::fake([
+        'api.openai.com/*' => Http::response(['text' => 'What is a good BTL yield?'], 200),
+    ]);
+
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'Mobile Carina Voice '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@mobile-carina-voice.test',
+        'plan' => 'starter',
+    ]);
+
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    FeatureFlag::syncFromCatalogue();
+    $user = User::query()->where('email', $tenant->owner_email)->firstOrFail();
+    $user->forceFill(['password' => Hash::make('secret-carina-voice')])->save();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    $token = $this->postJson('http://'.$host.'/api/v1/mobile/auth/login', [
+        'email' => $tenant->owner_email,
+        'password' => 'secret-carina-voice',
+        'device_uuid' => '66666666-6666-6666-6666-666666666666',
+    ])->assertOk()->json('access_token');
+
+    $headers = ['Authorization' => 'Bearer '.$token];
+
+    $this->post('http://'.$host.'/api/v1/mobile/carina/speech-transcribe', [
+        'audio' => UploadedFile::fake()->createWithContent('carina-voice.m4a', str_repeat('x', 2048)),
+    ], $headers)
+        ->assertOk()
+        ->assertJsonPath('text', 'What is a good BTL yield?');
 });

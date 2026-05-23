@@ -16,7 +16,7 @@ beforeEach(function () {
     ]);
 });
 
-it('shows calculators workbench with list and iframe', function (): void {
+it('shows calculators workbench with hub nav and inline pane', function (): void {
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([
         'company_name' => 'Calc Hub '.uniqid(),
@@ -36,14 +36,14 @@ it('shows calculators workbench with list and iframe', function (): void {
 
     $this->get('http://'.$host.'/deals/calculators')
         ->assertOk()
-        ->assertSee('All calculators', false)
+        ->assertSee('Quick links', false)
         ->assertSee('Deal strategies', false)
-        ->assertSee('Underwriting tools', false)
+        ->assertSee('Financial tools', false)
         ->assertSee('Buy-to-Let', false)
         ->assertSee('SDLT', false)
-        ->assertSee('<iframe', false)
-        ->assertSee('name="deal-calculator-embed"', false)
-        ->assertSee('target="deal-calculator-embed"', false);
+        ->assertSee('id="calculator-workspace"', false)
+        ->assertSee('Run calculator', false)
+        ->assertDontSee('<iframe', false);
 });
 
 it('redirects legacy calculator slug URL to workbench with model query', function (): void {
@@ -90,7 +90,7 @@ it('serves embed pane for BTL inside minimal layout', function (): void {
         ->assertOk()
         ->assertSee('Buy-to-Let', false)
         ->assertSee('Run calculator', false)
-        ->assertSee('Sensitivity grid', false);
+        ->assertSee('Sensitivity', false);
 });
 
 it('embeds SDLT without sensitivity button', function (): void {
@@ -114,7 +114,7 @@ it('embeds SDLT without sensitivity button', function (): void {
     $this->get('http://'.$host.'/deals/calculators/sdlt/embed')
         ->assertOk()
         ->assertSee('SDLT', false)
-        ->assertDontSee('Sensitivity grid', false);
+        ->assertDontSee('Sensitivity', false);
 });
 
 it('embeds DSCR without sensitivity button', function (): void {
@@ -138,5 +138,5 @@ it('embeds DSCR without sensitivity button', function (): void {
     $this->get('http://'.$host.'/deals/calculators/dscr/embed')
         ->assertOk()
         ->assertSee('DSCR', false)
-        ->assertDontSee('Sensitivity grid', false);
+        ->assertDontSee('Sensitivity', false);
 });
