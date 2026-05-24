@@ -28,12 +28,15 @@ beforeEach(function (): void {
             'plan' => 'starter',
             'send_welcome_email' => false,
         ]);
-        $sharedUser = User::query()->where('email', $sharedTenant->owner_email)->firstOrFail();
     }
 
     $this->tenant = $sharedTenant;
-    $this->user = $sharedUser;
     tenancy()->initialize($this->tenant);
+
+    if ($sharedUser === null) {
+        $sharedUser = User::query()->where('email', $sharedTenant->owner_email)->firstOrFail();
+    }
+    $this->user = $sharedUser;
 
     BankTransactionRoomMatch::query()->delete();
     BankTransaction::query()->delete();
