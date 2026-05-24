@@ -83,6 +83,9 @@ return [
         'status_line' => 'Billing status',
         'no_subscription' => 'No active subscription yet. Choose a plan when you are ready.',
         'trial_until' => 'Trial access until :date.',
+        'room_count_line' => 'You have :count rooms (included in your plan: :included).',
+        'room_surcharge_line' => 'You are using :extra additional rooms at £:rate/room/mo (+£:surcharge/mo).',
+        'room_projected_monthly' => 'Projected monthly total: :symbol:total (plan base + room surcharge).',
         'manage_payment' => 'Payment and invoices',
         'price_suffix' => [
             'month' => '/month',

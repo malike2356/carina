@@ -26,6 +26,7 @@ return [
     */
     'price_investor' => env('STRIPE_PRICE_INVESTOR'),
     'price_operator' => env('STRIPE_PRICE_OPERATOR'),
+    'price_operator_per_room' => env('STRIPE_PRICE_OPERATOR_PER_ROOM'),
     'price_academy' => env('STRIPE_PRICE_ACADEMY'),
 
     'default_trial_days' => (int) env('BILLING_DEFAULT_TRIAL_DAYS', 14),
@@ -266,6 +267,9 @@ return [
                 'properties' => 150,
                 'team_seats' => 10,
             ],
+            'included_rooms' => 5,
+            'price_per_additional_room' => '3.00',
+            'stripe_price_per_room_key' => 'price_operator_per_room',
         ],
         [
             'slug' => 'academy',

@@ -12,8 +12,6 @@ use App\Services\Reporting\AnalyticsService;
 use App\Services\Reporting\CustomReportBuilderService;
 use App\Services\Reporting\DashboardWidgetService;
 use App\Services\Reporting\ExportService;
-use App\Services\Reporting\InvestorReportService;
-use App\Services\Reporting\PipelineAnalyticsService;
 use App\Services\Reporting\ReportGenerationService;
 use App\Services\Tenancy\TenantCreationService;
 use App\Support\Reporting\ReportTypes;
@@ -125,7 +123,7 @@ it('covers reporting HTTP API and tenant services in one lifecycle', function ()
         'is_visible' => true,
     ]);
 
-    $widgets = new DashboardWidgetService(new PipelineAnalyticsService, new InvestorReportService);
+    $widgets = app(DashboardWidgetService::class);
     expect($widgets->getWidgetData())->not->toBeEmpty();
     Cache::put('reporting:widget:'.$dw->id, ['x' => true], 600);
     $widgets->refreshWidgets();

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Central\FeatureFlag;
+use App\Models\Tenant\Document;
 use App\Models\Tenant\Project;
 use App\Models\Tenant\ProjectMilestone;
 use App\Models\Tenant\ProjectTask;
@@ -229,6 +230,78 @@ it('task actual costs roll up to project actual_cost_minor', function (): void {
     expect($stats['budget_minor'])->toBe(1000000);
     expect($stats['actual_cost_minor'])->toBe(400000);
     expect($stats['budget_remaining_minor'])->toBe(600000);
+    tenancy()->end();
+});
+
+it('project type refurb is stored and shown on index filter', function (): void {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Project Type Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@projects-type.test',
+        'plan' => 'starter',
+    ]);
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web');
+
+    $this->post('http://'.$host.'/projects', [
+        'title' => 'Full house refurb',
+        'type' => 'refurb',
+        'status' => 'planning',
+    ])->assertRedirect();
+
+    $this->get('http://'.$host.'/projects?type=refurb')
+        ->assertOk()
+        ->assertSee('Full house refurb', false);
+
+    tenancy()->initialize($tenant);
+    expect(Project::query()->where('title', 'Full house refurb')->value('type'))->toBe('refurb');
+    tenancy()->end();
+});
+
+it('user can attach a document vault file to a project', function (): void {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Project Doc Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@projects-doc.test',
+        'plan' => 'starter',
+    ]);
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    $project = Project::query()->create([
+        'title' => 'Planning pack project',
+        'status' => 'planning',
+        'created_by' => $user->id,
+    ]);
+    $document = Document::query()->create([
+        'created_by' => $user->id,
+        'title' => 'Structural survey PDF',
+        'category' => 'general',
+        'file_path' => 'documents/test-survey.pdf',
+        'original_filename' => 'survey.pdf',
+        'mime_type' => 'application/pdf',
+        'size_bytes' => 1024,
+    ]);
+    tenancy()->end();
+
+    $this->actingAs($user, 'web');
+
+    $this->post('http://'.$host.'/projects/'.$project->id.'/documents', [
+        'document_id' => $document->id,
+    ])->assertRedirect();
+
+    tenancy()->initialize($tenant);
+    expect($project->fresh()->documents()->whereKey($document->id)->exists())->toBeTrue();
     tenancy()->end();
 });
 
