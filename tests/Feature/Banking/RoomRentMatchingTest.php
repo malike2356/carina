@@ -17,21 +17,39 @@ use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Support\Carbon;
 
 beforeEach(function (): void {
-    $this->tenant = app(TenantCreationService::class)->createTenant([
-        'company_name' => 'Rent Match '.uniqid(),
-        'owner_name' => 'Owner',
-        'owner_email' => 'match-'.uniqid().'@test.test',
-        'plan' => 'starter',
-        'send_welcome_email' => false,
-    ]);
+    static $sharedTenant = null;
+    static $sharedUser = null;
+
+    if ($sharedTenant === null) {
+        $sharedTenant = app(TenantCreationService::class)->createTenant([
+            'company_name' => 'Rent Match Shared',
+            'owner_name' => 'Owner',
+            'owner_email' => 'rent-match-shared@test.test',
+            'plan' => 'starter',
+            'send_welcome_email' => false,
+        ]);
+        $sharedUser = User::query()->where('email', $sharedTenant->owner_email)->firstOrFail();
+    }
+
+    $this->tenant = $sharedTenant;
+    $this->user = $sharedUser;
     tenancy()->initialize($this->tenant);
-    $this->user = User::query()->where('email', $this->tenant->owner_email)->firstOrFail();
+
+    BankTransactionRoomMatch::query()->delete();
+    BankTransaction::query()->delete();
+    TenancyRentPayment::query()->delete();
+    PropertyTenancy::query()->delete();
+    Room::query()->forceDelete();
+    Property::query()->delete();
+
     GlAccount::query()->delete();
     app(ChartOfAccountsService::class)->ensureDefaultAccounts();
 });
 
 afterEach(function (): void {
-    tenancy()->end();
+    if (tenancy()->initialized) {
+        tenancy()->end();
+    }
 });
 
 function rentMatchHmoSetup(User $user): array
