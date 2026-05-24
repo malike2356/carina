@@ -16,6 +16,29 @@ return [
         'min_billing_modules' => [],
     ],
 
+    'wealth' => [
+        'name' => 'HNW Investor',
+        'label' => 'Propreneur Wealth',
+        'slug' => 'wealth',
+        'hidden_modules' => [
+            'pipeline', 'deal_calculators', 'deal_sourcing', 'mentoring',
+            'lead_funnel', 'vical', 'strategy_finder', 'community_deals',
+            'rooms', 'hmo_compliance', 'shared_bills', 'communications_hub',
+            'project_management',
+        ],
+        'carina_persona' => 'wealth',
+        'dashboard_widgets' => [
+            'wealth_net_worth_trend',
+            'wealth_asset_allocation',
+            'wealth_multi_currency_breakdown',
+            'wealth_property_portfolio_summary',
+            'wealth_rent_roll_overview',
+            'wealth_compliance_health',
+        ],
+        'knowledge_tags' => ['wealth', 'net_worth', 'multi_currency', 'portfolio'],
+        'min_billing_modules' => [BillingModule::MultiProperty->value, BillingModule::AssetManager->value],
+    ],
+
     'hmo' => [
         'name' => 'HMO Operator',
         'label' => 'Nexio',

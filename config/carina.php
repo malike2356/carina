@@ -27,6 +27,11 @@ return [
 
     'conversation_retention_days' => (int) env('CARINA_CONVERSATION_RETENTION_DAYS', 90),
 
+    'document_read' => [
+        'max_chars' => (int) env('CARINA_DOC_READ_MAX_CHARS', 50000),
+        'retention_hours' => (int) env('CARINA_DOC_READ_RETENTION_HOURS', 48),
+    ],
+
     'prompt_cache_ttl' => (int) env('CARINA_PROMPT_CACHE_TTL', 3600),
 
     /**

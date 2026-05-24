@@ -1,11 +1,14 @@
 <?php
 
 use App\Models\Central\AiProvider;
+use App\Models\Central\FeatureFlag;
 use App\Models\Central\Tenant;
 use App\Models\Tenant\TenantSetting;
 use App\Models\Tenant\User;
 use App\Services\Onboarding\WorkspaceOnboardingService;
 use App\Services\Tenancy\TenantCreationService;
+use Database\Seeders\Central\FeatureFlagSeeder;
+use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
@@ -158,4 +161,33 @@ function carina_assert_stream_chat_returns_sse(TestCase $test): void
 
     expect($body)->toContain('data:')
         ->and($body)->toContain('Streamed body');
+}
+
+/**
+ * @return array{tenant: Tenant, host: string, user: User}
+ */
+function enableProjectManagementForTests(): array
+{
+    test()->seed(FeatureFlagSeeder::class);
+    FeatureFlag::query()->where('key', 'stripe_billing_api')->update(['enabled' => false]);
+    FeatureFlag::query()->where('key', 'project_management')->update(['enabled' => true, 'tenant_overrides' => null]);
+    test()->withoutMiddleware(VerifyCsrfToken::class);
+
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Projects Test Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@projects.test',
+        'plan' => 'starter',
+    ]);
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    test()->actingAs($user, 'web');
+
+    return compact('tenant', 'host', 'user');
 }
