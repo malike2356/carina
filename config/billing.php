@@ -142,6 +142,7 @@ return [
             $m(BillingModule::MultiProperty),
             $m(BillingModule::MentoringOs),
             $m(BillingModule::CommunityLearning),
+            $m(BillingModule::ProjectManagement),
             $m(BillingModule::Integrations),
             $m(BillingModule::ReportingIntelligence),
             $m(BillingModule::Accounting),
