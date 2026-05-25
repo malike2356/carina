@@ -119,10 +119,93 @@ return [
         'POST:/api/v1/mobile/analytics' => 'done',
         'POST:/api/v1/mobile/crash-report' => 'done',
 
-        'GET:/api/v1/mobile/vcal/bookings' => 'shipped',
-        'GET:/api/v1/mobile/vcal/bookings/{booking}' => 'shipped',
-        'POST:/api/v1/mobile/vcal/bookings/{booking}/approve' => 'shipped',
-        'POST:/api/v1/mobile/vcal/bookings/{booking}/reject' => 'shipped',
-        'POST:/api/v1/mobile/vcal/bookings/{booking}/cancel' => 'shipped',
+        'GET:/api/v1/mobile/vcal/bookings' => 'done',
+        'GET:/api/v1/mobile/vcal/bookings/{booking}' => 'done',
+        'POST:/api/v1/mobile/vcal/bookings/{booking}/approve' => 'done',
+        'POST:/api/v1/mobile/vcal/bookings/{booking}/reject' => 'done',
+        'POST:/api/v1/mobile/vcal/bookings/{booking}/cancel' => 'done',
+
+        // ── Admin (mobile workspace admin slice) ──────────────────────────
+        'GET:/api/v1/mobile/admin/users' => 'done',
+        'POST:/api/v1/mobile/admin/users' => 'done',
+
+        // ── Assets / Net worth ────────────────────────────────────────────
+        'GET:/api/v1/mobile/assets' => 'done',
+        'GET:/api/v1/mobile/assets/allocation' => 'done',
+        'GET:/api/v1/mobile/assets/net-worth' => 'done',
+
+        // ── Billing ───────────────────────────────────────────────────────
+        'GET:/api/v1/mobile/billing/invoices' => 'done',
+        'GET:/api/v1/mobile/billing/invoices/{invoice}' => 'done',
+        'GET:/api/v1/mobile/billing/plans' => 'done',
+        'GET:/api/v1/mobile/billing/plans/{plan}' => 'done',
+        'GET:/api/v1/mobile/billing/portal' => 'done',
+
+        // ── Carina AI (read + write) ──────────────────────────────────────
+        'GET:/api/v1/mobile/carina/capabilities' => 'done',
+        'GET:/api/v1/mobile/carina/conversations' => 'done',
+        'POST:/api/v1/mobile/carina/conversations' => 'done',
+        'GET:/api/v1/mobile/carina/conversations/{id}' => 'done',
+        'DELETE:/api/v1/mobile/carina/conversations/{id}' => 'done',
+        'POST:/api/v1/mobile/carina/conversations/{id}/messages' => 'done',
+        'POST:/api/v1/mobile/carina/conversations/{id}/messages/stream' => 'done',
+        'POST:/api/v1/mobile/carina/conversations/{id}/agent/confirm' => 'done',
+        'POST:/api/v1/mobile/carina/conversations/{id}/documents' => 'done',
+        'POST:/api/v1/mobile/carina/speech-transcribe' => 'done',
+        'GET:/api/v1/mobile/carina/usage' => 'done',
+
+        // ── Compliance (full CRUD wired) ──────────────────────────────────
+        'GET:/api/v1/mobile/compliance/items' => 'done',
+        'POST:/api/v1/mobile/compliance/items' => 'done',
+        'GET:/api/v1/mobile/compliance/items/{compliance}' => 'done',
+        'PUT:/api/v1/mobile/compliance/items/{compliance}' => 'done',
+        'DELETE:/api/v1/mobile/compliance/items/{compliance}' => 'done',
+
+        // ── CRM contacts (full CRUD wired) ────────────────────────────────
+        'GET:/api/v1/mobile/crm/contacts' => 'done',
+        'POST:/api/v1/mobile/crm/contacts' => 'done',
+        'GET:/api/v1/mobile/crm/contacts/{contact}' => 'done',
+        'PUT:/api/v1/mobile/crm/contacts/{contact}' => 'done',
+        'DELETE:/api/v1/mobile/crm/contacts/{contact}' => 'done',
+        'GET:/api/v1/mobile/crm/contacts/{contact}/interactions' => 'done',
+        'POST:/api/v1/mobile/crm/contacts/{contact}/interactions' => 'done',
+        'GET:/api/v1/mobile/crm/contacts/{contact}/investor-score' => 'done',
+        'GET:/api/v1/mobile/crm/contacts/{contact}/matched-pipeline-deals' => 'done',
+
+        // ── Document Vault ────────────────────────────────────────────────
+        'GET:/api/v1/mobile/documents' => 'done',
+        'POST:/api/v1/mobile/documents' => 'done',
+        'POST:/api/v1/mobile/documents/scan-cert' => 'done',
+        'GET:/api/v1/mobile/documents/{document}' => 'done',
+        'PUT:/api/v1/mobile/documents/{document}' => 'done',
+        'DELETE:/api/v1/mobile/documents/{document}' => 'done',
+        'GET:/api/v1/mobile/documents/{document}/versions' => 'done',
+        'POST:/api/v1/mobile/documents/{document}/versions' => 'done',
+
+        // ── Mentoring OS ─────────────────────────────────────────────────
+        'GET:/api/v1/mobile/mentoring-os/programmes' => 'done',
+        'POST:/api/v1/mobile/mentoring-os/programmes' => 'done',
+        'GET:/api/v1/mobile/mentoring-os/programmes/{programme}' => 'done',
+        'PUT:/api/v1/mobile/mentoring-os/programmes/{programme}' => 'done',
+        'DELETE:/api/v1/mobile/mentoring-os/programmes/{programme}' => 'done',
+        'GET:/api/v1/mobile/mentoring-os/programmes/{programme}/cohorts' => 'done',
+        'POST:/api/v1/mobile/mentoring-os/programmes/{programme}/cohorts' => 'done',
+        'GET:/api/v1/mobile/mentoring-os/mentorships' => 'done',
+        'GET:/api/v1/mobile/mentoring-os/mentorships/{mentorship}' => 'done',
+        'GET:/api/v1/mobile/mentoring-os/mentorships/{mentorship}/goals' => 'done',
+        'POST:/api/v1/mobile/mentoring-os/mentorships/{mentorship}/goals' => 'done',
+        'PUT:/api/v1/mobile/mentoring-os/mentorships/{mentorship}/goals/{goal}' => 'done',
+        'DELETE:/api/v1/mobile/mentoring-os/mentorships/{mentorship}/goals/{goal}' => 'done',
+        'GET:/api/v1/mobile/mentoring-os/mentorships/{mentorship}/session-notes' => 'done',
+        'POST:/api/v1/mobile/mentoring-os/mentorships/{mentorship}/session-notes' => 'done',
+
+        // ── Pipeline (deal detail under /api/v1/mobile/) ──────────────────
+        'GET:/api/v1/mobile/pipeline/deals/{deal}' => 'done',
+
+        // ── Properties tenancy detail ────────────────────────────────────
+        'GET:/api/v1/mobile/properties/{property}/tenancies/{tenancy}' => 'done',
+
+        // ── Version / health ─────────────────────────────────────────────
+        'GET:/api/v1/mobile/version' => 'done',
     ],
 ];

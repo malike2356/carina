@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Central\FeatureFlag;
 use App\Models\Tenant\User;
+use App\Services\Deals\Calculators\DealCalculatorRegistry;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
 
@@ -36,14 +37,26 @@ it('shows calculators workbench with hub nav and inline pane', function (): void
 
     $this->get('http://'.$host.'/deals/calculators')
         ->assertOk()
-        ->assertSee('Quick links', false)
+        ->assertSee('All calculators', false)
         ->assertSee('Deal strategies', false)
         ->assertSee('Financial tools', false)
         ->assertSee('Buy-to-Let', false)
         ->assertSee('SDLT', false)
+        ->assertSee('Refurb costing', false)
+        ->assertSee('SA vs BTL comparison', false)
         ->assertSee('id="calculator-workspace"', false)
+        ->assertSee('#calculator-workspace', false)
         ->assertSee('Run calculator', false)
+        ->assertDontSee('Quick links', false)
         ->assertDontSee('<iframe', false);
+});
+
+it('exposes a non-empty heroicon path for every registered calculator slug', function (): void {
+    foreach (DealCalculatorRegistry::STRATEGIES as $slug) {
+        expect(DealCalculatorRegistry::iconPath($slug))
+            ->toBeString()
+            ->not->toBeEmpty();
+    }
 });
 
 it('redirects legacy calculator slug URL to workbench with model query', function (): void {
