@@ -159,7 +159,7 @@ it('truncates extracted text when max_chars is exceeded', function (): void {
     $path = storage_path('app/testing-long.txt');
     file_put_contents($path, str_repeat('A', 100));
 
-  $result = $service->extractFromPath($path, 'txt', 'long.txt');
+    $result = $service->extractFromPath($path, 'txt', 'long.txt');
 
     expect($result->truncated)->toBeTrue();
     expect($result->extractedText)->toContain('[...truncated at 20 characters');
@@ -279,7 +279,7 @@ it('injects attached document context into carina chat requests', function (): v
 });
 
 it('cleans up old conversation documents and stored files', function (): void {
-    [$tenant, ,] = carinaDocumentTenantHost();
+    [$tenant] = carinaDocumentTenantHost();
 
     tenancy()->initialize($tenant);
 
@@ -298,9 +298,12 @@ it('cleans up old conversation documents and stored files', function (): void {
         'extracted_text_preview' => 'old data',
         'token_count' => 3,
         'metadata' => [],
+    ]);
+
+    $doc->forceFill([
         'created_at' => now()->subHours(72),
         'updated_at' => now()->subHours(72),
-    ]);
+    ])->saveQuietly();
 
     Storage::disk('local')->put($doc->storage_path, 'old data');
     Storage::disk('local')->put(
