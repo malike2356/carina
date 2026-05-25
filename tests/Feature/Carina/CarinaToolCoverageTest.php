@@ -71,9 +71,8 @@ it('registers every prompt 223 tool in the Carina registry', function (): void {
         'list_contacts',
     ];
 
-    foreach ($expected as $toolName) {
-        expect($names)->toContain($toolName, "Tool '{$toolName}' is not registered in CarinaToolRegistry.");
-    }
+    $missing = array_values(array_diff($expected, $names));
+    expect($missing)->toBe([], 'Missing Carina tools: '.implode(', ', $missing));
 });
 
 it('create_property requires confirmation', function (): void {
@@ -110,11 +109,14 @@ it('every prompt 223 tool exposes a non-empty description and a valid input sche
     ];
 
     foreach ($newTools as $name) {
-        expect($byName)->toHaveKey($name, "Tool '{$name}' missing from registry.");
+        expect(array_key_exists($name, $byName))->toBeTrue();
         $tool = $byName[$name];
-        expect($tool->description())->toBeString()->not->toBeEmpty("Tool '{$name}' must have a non-empty description.");
+        $desc = $tool->description();
+        expect($desc)->toBeString();
+        expect(strlen($desc))->toBeGreaterThan(0);
         $schema = $tool->inputSchema();
-        expect($schema)->toBeArray()->toHaveKey('type', "Tool '{$name}' schema must include a type.");
+        expect($schema)->toBeArray();
+        expect(array_key_exists('type', $schema))->toBeTrue();
         expect($schema['type'])->toBe('object');
     }
 });
