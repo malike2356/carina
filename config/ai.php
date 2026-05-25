@@ -15,16 +15,26 @@ return [
 
     /*
      * How many texts to send in a single OpenAI-compatible /embeddings call.
-     * OpenAI accepts up to 2048; keep modest so a single 429 only loses one batch.
+     * OpenAI accepts up to 2048; keep modest so a single 429 only loses one
+     * batch AND the per-batch token cost stays well under the TPM ceiling.
+     * 32 × ~512 tokens ≈ 16k tokens per call.
      */
-    'embedding_batch_size' => (int) env('AI_EMBEDDING_BATCH_SIZE', 64),
+    'embedding_batch_size' => (int) env('AI_EMBEDDING_BATCH_SIZE', 32),
 
     /*
      * Cluster-wide soft cap on embedding calls per minute, shared across all
      * Horizon workers via RateLimiter. Set to 0 to disable. Set well under the
      * provider's documented limit (OpenAI Tier 1 = 3,000 RPM, Tier 2+ higher).
+     * Default 120 leaves headroom for both RPM and TPM caps.
      */
-    'embedding_rpm' => (int) env('AI_EMBEDDING_RPM', 200),
+    'embedding_rpm' => (int) env('AI_EMBEDDING_RPM', 120),
+
+    /*
+     * How long an individual worker will wait for an embedding slot (seconds).
+     * Higher = jobs queue up patiently behind the throttle instead of failing
+     * during deploy-time bursts.
+     */
+    'embedding_throttle_wait' => (int) env('AI_EMBEDDING_THROTTLE_WAIT', 120),
 
     /*
      * Max retry attempts in AiRouterService::routeRequest before giving up.

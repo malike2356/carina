@@ -24,6 +24,7 @@ SUP_SCHEDULER="${DEPLOY_SUPERVISOR_SCHEDULER:-propreneur-scheduler}"
 SKIP_COMPOSER="${SKIP_COMPOSER:-0}"
 SKIP_MIGRATE="${SKIP_MIGRATE:-0}"
 SKIP_NPM="${SKIP_NPM:-0}"
+SKIP_RAG="${SKIP_RAG:-1}"
 OPTIMIZE="${OPTIMIZE:-0}"
 RESTART_SUPERVISOR="${RESTART_SUPERVISOR:-1}"
 BUILD_ON_SERVER="${DEPLOY_BUILD_ON_SERVER:-0}"
@@ -152,9 +153,13 @@ run_artisan route:clear
 run_artisan view:clear
 run_artisan event:clear
 
-echo "==> sync Carina RAG (knowledge + masterbrain)"
-run_artisan rag:ingest-brain-knowledge || echo "WARN: rag:ingest-brain-knowledge failed (non-fatal)" >&2
-run_artisan rag:sync-masterbrain || echo "WARN: rag:sync-masterbrain failed (non-fatal)" >&2
+if [[ "$SKIP_RAG" != "1" ]]; then
+  echo "==> sync Carina RAG (knowledge + masterbrain)"
+  run_artisan rag:ingest-brain-knowledge || echo "WARN: rag:ingest-brain-knowledge failed (non-fatal)" >&2
+  run_artisan rag:sync-masterbrain || echo "WARN: rag:sync-masterbrain failed (non-fatal)" >&2
+else
+  echo "==> SKIP RAG ingest (run with DEPLOY_RAG=1 or scheduler will handle it)"
+fi
 
 if [[ "$OPTIMIZE" == "1" ]]; then
   echo "==> optimize (config/route/view cache)"

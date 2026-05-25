@@ -48,6 +48,7 @@ ALLOW_DIRTY=0
 SKIP_COMPOSER=0
 SKIP_MIGRATE=0
 SKIP_NPM=0
+SKIP_RAG=1
 BUILD_ASSETS_LOCAL=0
 OPTIMIZE=0
 RESTART_SUPERVISOR=1
@@ -64,6 +65,7 @@ usage() {
   echo "  --skip-composer     Skip composer on server"
   echo "  --skip-migrate      Skip migrate --force on server"
   echo "  --skip-npm          Skip npm build on server"
+  echo "  --with-rag          Run rag:ingest-brain-knowledge + sync-masterbrain (off by default)"
   echo "  --build-assets      npm ci && npm run build locally before rsync"
   echo "  --optimize          config/route/view cache on server (default: clear only)"
   echo "  --no-restart        Do not supervisorctl restart horizon/scheduler"
@@ -80,6 +82,7 @@ for arg in "$@"; do
     --skip-composer) SKIP_COMPOSER=1 ;;
     --skip-migrate) SKIP_MIGRATE=1 ;;
     --skip-npm) SKIP_NPM=1 ;;
+    --with-rag) SKIP_RAG=0 ;;
     --build-assets) BUILD_ASSETS_LOCAL=1 ;;
     --optimize) OPTIMIZE=1 ;;
     --no-restart) RESTART_SUPERVISOR=0 ;;
@@ -184,6 +187,7 @@ export DEPLOY_BUILD_ON_SERVER='${DEPLOY_BUILD_ON_SERVER}'
 export SKIP_COMPOSER='${SKIP_COMPOSER}'
 export SKIP_MIGRATE='${SKIP_MIGRATE}'
 export SKIP_NPM='${SKIP_NPM}'
+export SKIP_RAG='${SKIP_RAG}'
 export OPTIMIZE='${OPTIMIZE}'
 export RESTART_SUPERVISOR='${RESTART_SUPERVISOR}'
 bash "\${DEPLOY_REMOTE_ROOT}/scripts/deploy-remote.sh"
