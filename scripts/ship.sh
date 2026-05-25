@@ -44,6 +44,9 @@ else
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 fi
 
+echo "==> git pull --rebase origin main"
+git pull --rebase origin main
+
 echo "==> git push origin main"
 git push origin main
 
