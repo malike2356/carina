@@ -37,7 +37,12 @@ it('shows all mapped billing modules for mixed persona', function (): void {
 
     $service = app(PersonaService::class);
 
+    $cfg = $service->config($tenant);
+
     expect($service->isBillingModuleVisible(BillingModule::Pipeline->value, $tenant))->toBeTrue()
         ->and($service->isFeatureVisible('strategy_finder', $tenant))->toBeTrue()
-        ->and($service->isBillingModuleVisible(BillingModule::DealEngine->value, $tenant))->toBeTrue();
+        ->and($service->isBillingModuleVisible(BillingModule::DealEngine->value, $tenant))->toBeTrue()
+        ->and($cfg['name'])->toBe('Propreneur Ultimo')
+        ->and($cfg['description'])->toBe('Full platform')
+        ->and($service->allowedDashboardWidgetTypes($tenant))->toBe([]);
 });

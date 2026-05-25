@@ -6,8 +6,9 @@ use App\Billing\BillingModule;
 
 return [
     'mixed' => [
-        'name' => 'Full platform',
+        'name' => 'Propreneur Ultimo',
         'label' => 'Propreneur',
+        'description' => 'Full platform',
         'slug' => 'mixed',
         'hidden_modules' => [],
         'carina_persona' => null,
