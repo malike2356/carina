@@ -17,9 +17,9 @@ beforeEach(function () {
     $this->withoutMiddleware(VerifyCsrfToken::class);
 });
 
-it('exposes sixteen strategies in the deal calculator registry', function () {
-    expect(DealCalculatorRegistry::STRATEGIES)->toHaveCount(16)
-        ->and(DealCalculatorRegistry::playgroundNav())->toHaveCount(16);
+it('exposes eighteen strategies in the deal calculator registry', function () {
+    expect(DealCalculatorRegistry::STRATEGIES)->toHaveCount(18)
+        ->and(DealCalculatorRegistry::playgroundNav())->toHaveCount(18);
 });
 
 it('returns BTL calculator outputs as JSON', function () {
