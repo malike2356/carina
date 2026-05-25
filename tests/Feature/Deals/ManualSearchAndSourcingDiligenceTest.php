@@ -41,7 +41,8 @@ it('renders the manual search hub', function (): void {
     $this->actingAs($user, 'web')
         ->get('http://'.$host.'/deals/sourcing/manual-search')
         ->assertOk()
-        ->assertSee('Capture centre', false)
+        ->assertSee('Paste a listing URL to start', false)
+        ->assertSee('Sourcing setup', false)
         ->assertSee('PropertyData', false);
 });
 

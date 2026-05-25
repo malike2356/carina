@@ -107,7 +107,7 @@ it('keeps sale filter and view query when both are present on sourced listings',
         ->assertDontSee('Rent URL deal', false);
 });
 
-it('renders deal engine index as a table by default and as a card grid when view is grid', function (): void {
+it('renders the deal engine index as a property-first card grid', function (): void {
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([
         'company_name' => 'ViewMode Deals '.uniqid(),
@@ -144,19 +144,17 @@ it('renders deal engine index as a table by default and as a card grid when view
 
     $this->actingAs($user, 'web');
 
+    // After prompt 226 the deals index is always a property-first card grid;
+    // there is no longer a list/grid toggle. The ?view=grid query is now a
+    // no-op and the page renders the same card grid in both shapes.
     $this->get('http://'.$host.'/deals')
         ->assertOk()
         ->assertSee('Engine index view mode', false)
-        ->assertSee('<table class="w-full text-sm">', false)
-        ->assertDontSee('xl:grid-cols-3', false);
-
-    $this->get('http://'.$host.'/deals?view=grid')
-        ->assertOk()
-        ->assertSee('Engine index view mode', false)
-        ->assertSee('xl:grid-cols-3', false);
+        ->assertSee('xl:grid-cols-3', false)
+        ->assertSee('Start from a listing URL', false);
 });
 
-it('preserves view when filtering deals', function (): void {
+it('honours URL strategy filters on the deals index card grid', function (): void {
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([
         'company_name' => 'ViewMode Filter '.uniqid(),
@@ -175,7 +173,7 @@ it('preserves view when filtering deals', function (): void {
         'property_id' => null,
         'created_by' => $user->id,
         'strategy' => 'hmo',
-        'title' => 'Hidden BTL',
+        'title' => 'Hidden HMO',
         'metrics' => [],
         'status' => 'draft',
     ]);
@@ -193,9 +191,9 @@ it('preserves view when filtering deals', function (): void {
 
     $this->actingAs($user, 'web');
 
-    $this->get('http://'.$host.'/deals?strategy=btl&view=grid')
+    $this->get('http://'.$host.'/deals?strategy=btl')
         ->assertOk()
         ->assertSee('Visible BTL', false)
-        ->assertDontSee('Hidden BTL', false)
+        ->assertDontSee('Hidden HMO', false)
         ->assertSee('xl:grid-cols-3', false);
 });
