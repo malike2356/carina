@@ -81,7 +81,7 @@ it('shows Deal Engine in the tenant sidebar when the deal_engine feature flag is
     $response->assertSee('Active Deals', false);
 });
 
-it('links Academy in the overview to free platform courses instead of external SSO', function (): void {
+it('links Skill Up in the overview to free platform courses instead of external SSO', function (): void {
     [, $host, $user] = tenantHostUserWithOnboardingComplete();
 
     FeatureFlag::syncFromCatalogue();

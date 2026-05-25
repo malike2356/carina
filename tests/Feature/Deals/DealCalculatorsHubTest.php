@@ -44,9 +44,10 @@ it('shows calculators workbench with hub nav and inline pane', function (): void
         ->assertSee('SDLT', false)
         ->assertSee('Refurb costing', false)
         ->assertSee('SA vs BTL comparison', false)
-        ->assertSee('id="calculator-workspace"', false)
-        ->assertSee('#calculator-workspace', false)
-        ->assertSee('Run calculator', false)
+        ->assertSee('calculatorDrawer(', false)
+        ->assertSee('calculator-open', false)
+        ->assertSee('data-calc-slug', false)
+        ->assertSee('aria-modal="true"', false)
         ->assertDontSee('Quick links', false)
         ->assertDontSee('<iframe', false);
 });
@@ -57,6 +58,74 @@ it('exposes a non-empty heroicon path for every registered calculator slug', fun
             ->toBeString()
             ->not->toBeEmpty();
     }
+});
+
+it('exposes a UK brief for every deal strategy slug', function (): void {
+    foreach (DealCalculatorRegistry::DEAL_STRATEGY_SLUGS as $slug) {
+        expect(DealCalculatorRegistry::ukBrief($slug))
+            ->toBeString()
+            ->not->toBeEmpty();
+    }
+});
+
+it('returns no UK brief for financial-tool slugs', function (): void {
+    $strategies = DealCalculatorRegistry::DEAL_STRATEGY_SLUGS;
+    $tools = array_values(array_diff(DealCalculatorRegistry::STRATEGIES, $strategies));
+
+    foreach ($tools as $slug) {
+        expect(DealCalculatorRegistry::ukBrief($slug))->toBe('');
+    }
+});
+
+it('serves the drawer pane fragment for a strategy slug', function (): void {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Calc Pane '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@calc-pane.test',
+        'plan' => 'starter',
+    ]);
+
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web');
+
+    $response = $this->get('http://'.$host.'/deals/calculators/btl/pane');
+    $response->assertOk()
+        ->assertHeader('Content-Type', 'text/html; charset=UTF-8')
+        ->assertSee('UK context', false)
+        ->assertSee('Run calculator', false)
+        ->assertSee('window.__CALC_PANE_CONFIG__', false)
+        ->assertDontSee('<html', false);
+});
+
+it('returns no UK context block for a financial-tool pane', function (): void {
+    $service = app(TenantCreationService::class);
+    $tenant = $service->createTenant([
+        'company_name' => 'Calc Pane Tool '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@calc-pane-tool.test',
+        'plan' => 'starter',
+    ]);
+
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    tenancy()->initialize($tenant);
+    $user = User::query()->firstOrFail();
+    completeTenantWorkspaceOnboarding();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web');
+
+    $this->get('http://'.$host.'/deals/calculators/sdlt/pane')
+        ->assertOk()
+        ->assertSee('Run calculator', false)
+        ->assertDontSee('UK context', false);
 });
 
 it('redirects legacy calculator slug URL to workbench with model query', function (): void {
