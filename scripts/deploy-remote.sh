@@ -171,11 +171,32 @@ fi
 ensure_runtime_ownership
 
 if [[ "$RESTART_SUPERVISOR" == "1" ]]; then
+  echo "==> graceful horizon:terminate (signals all subscribers via Redis)"
+  run_artisan horizon:terminate || echo "WARN: horizon:terminate non-zero exit (likely no master running)." >&2
+  sleep 4
+
+  echo "==> kill any stray (non-supervisord) artisan horizon processes"
+  if command -v pgrep >/dev/null 2>&1; then
+    STRAY_PIDS=$(pgrep -af 'artisan horizon$' 2>/dev/null | awk '{print $1}' || true)
+    if [[ -n "$STRAY_PIDS" ]]; then
+      echo "WARN: stray horizon master PIDs after terminate: $STRAY_PIDS — sending TERM" >&2
+      sudo kill -TERM $STRAY_PIDS 2>/dev/null || true
+      sleep 3
+      STILL=$(pgrep -af 'artisan horizon$' 2>/dev/null | awk '{print $1}' || true)
+      if [[ -n "$STILL" ]]; then
+        echo "WARN: stray horizon survived TERM: $STILL — sending KILL" >&2
+        sudo kill -KILL $STILL 2>/dev/null || true
+      fi
+    fi
+  fi
+
   echo "==> supervisor restart ($SUP_HORIZON, $SUP_SCHEDULER)"
   if command -v supervisorctl >/dev/null 2>&1; then
     sudo supervisorctl restart "$SUP_HORIZON" "$SUP_SCHEDULER" || {
       echo "WARN: supervisorctl restart failed; try aaPanel Supervisor or check program names." >&2
     }
+    echo "==> final horizon master count (expect 1):"
+    pgrep -af 'artisan horizon$' 2>/dev/null | wc -l
   else
     echo "WARN: supervisorctl not found; restart Horizon manually." >&2
   fi
