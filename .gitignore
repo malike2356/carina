@@ -1,5 +1,6 @@
 # Ignore all large directories
 _ignore/
+docs/_internal/
 bweh/
 nawafs/
 zaps/
