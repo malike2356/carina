@@ -137,10 +137,11 @@ it('updates complimentary flag from tenant edit', function (): void {
             'owner_name' => $tenant->owner_name,
             'owner_email' => $tenant->owner_email,
             'plan' => 'operator',
+            'persona' => $tenant->persona ?? 'mixed',
             'is_active' => true,
             'is_complimentary' => true,
         ])
-        ->assertRedirect(route('admin.saas-tenancy.index'));
+        ->assertRedirect(route('admin.saas-tenancy.edit', $tenant));
 
     expect((bool) $tenant->fresh()->subscription?->is_complimentary)->toBeTrue();
 });
