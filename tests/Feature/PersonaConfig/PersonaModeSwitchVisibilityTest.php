@@ -2,13 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Models\Central\PlatformSetting;
 use App\Models\Tenant\User;
+use App\Services\Persona\PersonaWorkspaceModeSwitchPolicy;
 use App\Services\Persona\PersonaService;
 use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 
 beforeEach(function (): void {
     $this->withoutMiddleware(VerifyCsrfToken::class);
+
+    PlatformSetting::query()
+        ->where('key', PersonaWorkspaceModeSwitchPolicy::PLATFORM_SETTING_KEY)
+        ->delete();
+
+    config(['persona_workspace.mode_switch_min_workspace_age_days' => 0]);
 });
 
 it('shows workspace mode settings for new tenant admins without a 30 day wait', function (): void {
