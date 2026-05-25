@@ -1746,4 +1746,397 @@ return [
             ],
         ],
     ],
+
+    // ------------------------------------------------------------------
+    // Prompt 223 - Carina Tool Coverage (handler-backed module schemas)
+    // ------------------------------------------------------------------
+
+    // Phase B - Tenancy domain
+    73 => [
+        'name' => 'list_tenancies',
+        'description' => 'List property tenancies with property, tenant, monthly rent, deposit and status.',
+        'gate' => 'crm_read',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'property_id' => ['type' => 'integer'],
+                'status' => ['type' => 'string', 'enum' => ['active', 'ended']],
+                'limit' => ['type' => 'integer'],
+            ],
+        ],
+    ],
+    74 => [
+        'name' => 'get_tenancy',
+        'description' => 'Fetch a single tenancy with full property and contact context.',
+        'gate' => 'crm_read',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['tenancy_id' => ['type' => 'integer']],
+            'required' => ['tenancy_id'],
+        ],
+    ],
+    75 => [
+        'name' => 'create_tenancy',
+        'description' => 'Create a new tenancy on a property. Captures tenant name, start date, rent and optional deposit.',
+        'gate' => 'portfolio',
+        'confirm' => true,
+        'confirm_message' => 'Create a new tenancy record - this is binding for downstream compliance, billing and rent tracking.',
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'property_id' => ['type' => 'integer'],
+                'contact_id' => ['type' => 'integer'],
+                'tenant_name' => ['type' => 'string'],
+                'start_date' => ['type' => 'string'],
+                'end_date' => ['type' => 'string'],
+                'rent_amount' => ['type' => 'number'],
+                'deposit' => ['type' => 'number'],
+                'tenancy_type' => ['type' => 'string'],
+                'rent_frequency' => ['type' => 'string'],
+                'email' => ['type' => 'string'],
+                'phone' => ['type' => 'string'],
+                'notes' => ['type' => 'string'],
+            ],
+            'required' => ['property_id', 'start_date', 'rent_amount'],
+        ],
+    ],
+    76 => [
+        'name' => 'update_tenancy',
+        'description' => 'Update fields on a tenancy (rent, deposit, end date, notes, tenancy type).',
+        'gate' => 'portfolio',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'tenancy_id' => ['type' => 'integer'],
+                'rent_amount' => ['type' => 'number'],
+                'end_date' => ['type' => 'string'],
+                'deposit' => ['type' => 'number'],
+                'notes' => ['type' => 'string'],
+                'tenancy_type' => ['type' => 'string'],
+                'rent_frequency' => ['type' => 'string'],
+                'email' => ['type' => 'string'],
+                'phone' => ['type' => 'string'],
+            ],
+            'required' => ['tenancy_id'],
+        ],
+    ],
+    77 => [
+        'name' => 'end_tenancy',
+        'description' => 'Set the end date and notice expiry on a tenancy with an optional reason.',
+        'gate' => 'portfolio',
+        'confirm' => true,
+        'confirm_message' => 'End this tenancy on the specified date - downstream rent schedules and compliance items will close.',
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'tenancy_id' => ['type' => 'integer'],
+                'end_date' => ['type' => 'string'],
+                'reason' => ['type' => 'string'],
+            ],
+            'required' => ['tenancy_id', 'end_date'],
+        ],
+    ],
+    78 => [
+        'name' => 'get_rent_arrears',
+        'description' => 'Aggregate overdue rent payments by tenancy: total arrears, count of overdue payments, tenant and property.',
+        'gate' => 'financial',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['property_id' => ['type' => 'integer']],
+        ],
+    ],
+
+    // Phase C - Document Vault
+    79 => [
+        'name' => 'list_documents',
+        'description' => 'List documents in the vault. Filter by property, category, compliance item or contact.',
+        'gate' => 'crm_read',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'property_id' => ['type' => 'integer'],
+                'category' => ['type' => 'string'],
+                'compliance_item_id' => ['type' => 'integer'],
+                'contact_id' => ['type' => 'integer'],
+                'limit' => ['type' => 'integer'],
+            ],
+        ],
+    ],
+    80 => [
+        'name' => 'get_document_versions',
+        'description' => 'Return the version chain for a document (all documents sharing the same root_document_id).',
+        'gate' => 'crm_read',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['document_id' => ['type' => 'integer']],
+            'required' => ['document_id'],
+        ],
+    ],
+    81 => [
+        'name' => 'get_document_download_url',
+        'description' => 'Return the workspace URL that downloads a vault document.',
+        'gate' => 'crm_read',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['document_id' => ['type' => 'integer']],
+            'required' => ['document_id'],
+        ],
+    ],
+    82 => [
+        'name' => 'archive_document',
+        'description' => 'Remove a document from the vault. No soft-archive column exists on this workspace, so the record is deleted.',
+        'gate' => 'compliance',
+        'confirm' => true,
+        'confirm_message' => 'Delete this document from the vault (no soft-archive available).',
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['document_id' => ['type' => 'integer']],
+            'required' => ['document_id'],
+        ],
+    ],
+
+    // Phase D - Communications management
+    83 => [
+        'name' => 'list_communication_sequences',
+        'description' => 'List configured communication sequences with steps_count, slug, trigger key and active flag.',
+        'gate' => 'crm',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['is_active' => ['type' => 'boolean']],
+        ],
+    ],
+    84 => [
+        'name' => 'get_sequence_enrollment_status',
+        'description' => 'List a contact\'s active sequence enrollments with status, current step and timestamps.',
+        'gate' => 'crm',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'contact_id' => ['type' => 'integer'],
+                'sequence_slug' => ['type' => 'string'],
+            ],
+            'required' => ['contact_id'],
+        ],
+    ],
+    85 => [
+        'name' => 'pause_enrollment',
+        'description' => 'Cancel a contact\'s active enrollment (workspace status set does not include paused, so the row is cancelled).',
+        'gate' => 'crm',
+        'confirm' => true,
+        'confirm_message' => 'Cancel the contact\'s sequence enrollment - this stops further messages.',
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['enrollment_id' => ['type' => 'integer']],
+            'required' => ['enrollment_id'],
+        ],
+    ],
+    86 => [
+        'name' => 'get_sequence_stats',
+        'description' => 'Aggregate counts (total/active/completed/cancelled) for a sequence by slug.',
+        'gate' => 'crm',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['sequence_slug' => ['type' => 'string']],
+            'required' => ['sequence_slug'],
+        ],
+    ],
+
+    // Phase E - Reporting
+    87 => [
+        'name' => 'get_portfolio_overview',
+        'description' => 'Workspace-wide totals: active properties, portfolio value, active tenancies, monthly rent roll and occupancy %.',
+        'gate' => 'portfolio',
+        'confirm' => false,
+        'schema' => ['type' => 'object', 'properties' => []],
+    ],
+    88 => [
+        'name' => 'get_revenue_by_property',
+        'description' => 'Sum of income journal credits per property for the last N months. Default 3, max 24.',
+        'gate' => 'financial',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['months' => ['type' => 'integer']],
+        ],
+    ],
+    89 => [
+        'name' => 'get_compliance_dashboard_stats',
+        'description' => 'Counts of compliance items by status: total, overdue, due_within_30d, on_track and compliance_pct.',
+        'gate' => 'compliance',
+        'confirm' => false,
+        'schema' => ['type' => 'object', 'properties' => []],
+    ],
+
+    // Phase F - Project write tools (extend ProjectsToolHandler)
+    90 => [
+        'name' => 'create_project',
+        'description' => 'Create a new project with title, optional property/pipeline link, status active.',
+        'gate' => 'portfolio',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'title' => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+                'type' => ['type' => 'string'],
+                'priority' => ['type' => 'string'],
+                'property_id' => ['type' => 'integer'],
+                'pipeline_deal_id' => ['type' => 'integer'],
+                'target_completion_date' => ['type' => 'string'],
+            ],
+            'required' => ['title'],
+        ],
+    ],
+    91 => [
+        'name' => 'update_project_status',
+        'description' => 'Move a project to planning/active/on_hold/completed/cancelled. Sets completed_at when completed.',
+        'gate' => 'portfolio',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'project_id' => ['type' => 'integer'],
+                'status' => ['type' => 'string'],
+            ],
+            'required' => ['project_id', 'status'],
+        ],
+    ],
+    92 => [
+        'name' => 'add_project_task',
+        'description' => 'Add a task to a project with title, optional description, due_date, priority and assignee.',
+        'gate' => 'portfolio',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'project_id' => ['type' => 'integer'],
+                'title' => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+                'due_date' => ['type' => 'string'],
+                'priority' => ['type' => 'string'],
+                'assigned_to_user_id' => ['type' => 'integer'],
+            ],
+            'required' => ['project_id', 'title'],
+        ],
+    ],
+    93 => [
+        'name' => 'update_task',
+        'description' => 'Update a project task (title/status/due_date/assignee/priority/description).',
+        'gate' => 'portfolio',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'task_id' => ['type' => 'integer'],
+                'title' => ['type' => 'string'],
+                'status' => ['type' => 'string'],
+                'due_date' => ['type' => 'string'],
+                'assigned_to_user_id' => ['type' => 'integer'],
+                'priority' => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+            ],
+            'required' => ['task_id'],
+        ],
+    ],
+
+    // Phase G - viCal booking management
+    94 => [
+        'name' => 'list_bookings',
+        'description' => 'List viCal bookings with event type, attendee, status and time. Filter by event_type_id, status, property or contact.',
+        'gate' => 'authenticated',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'event_type_id' => ['type' => 'integer'],
+                'status' => ['type' => 'string'],
+                'property_id' => ['type' => 'integer'],
+                'contact_id' => ['type' => 'integer'],
+                'after_date' => ['type' => 'string'],
+                'limit' => ['type' => 'integer'],
+            ],
+        ],
+    ],
+    95 => [
+        'name' => 'cancel_booking',
+        'description' => 'Cancel a viCal booking with a reason; sets status=cancelled and timestamps cancelled_at.',
+        'gate' => 'portfolio',
+        'confirm' => true,
+        'confirm_message' => 'Cancel this booking and notify the host.',
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'booking_id' => ['type' => 'integer'],
+                'reason' => ['type' => 'string'],
+            ],
+            'required' => ['booking_id', 'reason'],
+        ],
+    ],
+    96 => [
+        'name' => 'reschedule_booking',
+        'description' => 'Move a viCal booking to a new start time; end time recomputed from event type duration.',
+        'gate' => 'portfolio',
+        'confirm' => true,
+        'confirm_message' => 'Reschedule this booking to a new start time.',
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'booking_id' => ['type' => 'integer'],
+                'new_start_time' => ['type' => 'string'],
+            ],
+            'required' => ['booking_id', 'new_start_time'],
+        ],
+    ],
+
+    // Phase N - Mentoring extensions
+    97 => [
+        'name' => 'list_cohort_members',
+        'description' => 'List the user accounts inside a mentorship cohort.',
+        'gate' => 'mentoring',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['cohort_id' => ['type' => 'integer']],
+            'required' => ['cohort_id'],
+        ],
+    ],
+    98 => [
+        'name' => 'update_mentorship_goal',
+        'description' => 'Update title/description/target_date/status/progress on a mentorship goal.',
+        'gate' => 'mentoring',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => [
+                'goal_id' => ['type' => 'integer'],
+                'title' => ['type' => 'string'],
+                'description' => ['type' => 'string'],
+                'target_date' => ['type' => 'string'],
+                'status' => ['type' => 'string'],
+                'progress_percent' => ['type' => 'integer'],
+            ],
+            'required' => ['goal_id'],
+        ],
+    ],
+    99 => [
+        'name' => 'check_certificate_status',
+        'description' => 'Check whether a user has been awarded a mentorship certificate. Falls back to completed milestones if the certificates table is not yet migrated.',
+        'gate' => 'mentoring',
+        'confirm' => false,
+        'schema' => [
+            'type' => 'object',
+            'properties' => ['user_id' => ['type' => 'integer']],
+            'required' => ['user_id'],
+        ],
+    ],
 ];
