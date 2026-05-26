@@ -24,11 +24,12 @@ it('builds show-working steps for the BTL calculator', function () {
     ]);
 
     expect($result)
-        ->toHaveKeys(['strategy', 'outputs', 'assumptions', 'working', 'attribution', 'supported']);
+        ->toHaveKeys(['strategy', 'outputs', 'assumptions', 'working', 'attribution', 'attribution_url', 'attribution_link_label', 'supported']);
 
     expect($result['strategy'])->toBe('btl');
     expect($result['supported'])->toBeTrue();
     expect($result['attribution'])->toContain('Xelox Properties');
+    expect($result['attribution_url'])->toBe('https://xeloxproperties.co.uk/blog/');
 
     $keys = collect($result['working'])->pluck('key')->all();
     expect($keys)->toContain(
@@ -45,9 +46,13 @@ it('builds show-working steps for the BTL calculator', function () {
     expect($gross['display_name'])->toBe('BTL Gross Yield')
         ->and($gross['unit'])->toBe('%')
         ->and($gross['formula'])->toContain('Monthly Rent')
-        ->and($gross['xelox_url'])->toContain('042-btl-gross-yield')
+        ->and($gross['xelox_slug'])->toContain('042-btl-gross-yield')
         ->and($gross['steps'])->not->toBeEmpty()
         ->and($gross['variables'])->not->toBeEmpty();
+
+    // Per-step URLs are deliberately not exposed; only the slug is kept as
+    // internal metadata. Citation links live on the single attribution.
+    expect($gross)->not->toHaveKey('xelox_url');
 });
 
 it('builds show-working steps for the SDLT calculator with profile-specific bands', function () {
@@ -66,7 +71,7 @@ it('builds show-working steps for the SDLT calculator with profile-specific band
     expect($total)->not->toBeNull()
         ->and($total['value'])->toContain('2,500')
         ->and($total['formula'])->toContain('0% × £0–£250k')
-        ->and($total['xelox_url'])->toContain('035-standard-residential-sdlt');
+        ->and($total['xelox_slug'])->toContain('035-standard-residential-sdlt');
 
     $effective = collect($result['working'])->firstWhere('key', 'effective_rate_pct');
     expect($effective)->not->toBeNull()

@@ -22,9 +22,14 @@ declare(strict_types=1);
 */
 
 return [
-    'xelox_base_url' => env('XELOX_BLOG_BASE_URL', 'https://xeloxproperties.co.uk/blog/calculations'),
+    // Single citation back to the Xelox blog index. Per-article URLs are
+    // intentionally not exposed in the UI (the articles may not be published
+    // yet — a broken link is worse than no link). Readers can browse the
+    // blog and find the relevant article themselves.
+    'xelox_blog_url' => env('XELOX_BLOG_URL', 'https://xeloxproperties.co.uk/blog/'),
 
     'attribution' => 'This calculation is based on methodology developed and proven by Xelox Properties Ltd.',
+    'attribution_link' => 'Read the full Xelox Properties blog',
 
     // ─────────────────────────────────────────────────────────────────
     // BTL — Buy-to-Let
