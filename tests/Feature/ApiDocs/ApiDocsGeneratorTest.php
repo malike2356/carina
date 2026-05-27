@@ -54,7 +54,7 @@ it('serves the api docs page for platform super admin', function (): void {
     $this->actingAs($admin, 'platform')
         ->get(route('admin.api-docs.index'))
         ->assertOk()
-        ->assertSee('API Documentation');
+        ->assertSee('API documentation', false);
 
     $this->actingAs($admin, 'platform')
         ->get(route('admin.api-docs.spec'))
