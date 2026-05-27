@@ -69,6 +69,24 @@ it('due diligence hub index renders', function (): void {
     $response->assertViewIs('tenant.due-diligence.index');
 });
 
+it('fetch endpoint returns helpful message when PropertyData key is missing', function (): void {
+    [, $host, $user] = ddHubTenantHostUser();
+    enableDealEngineForDdHub();
+    $this->actingAs($user, 'web');
+
+    $this->app->bind(\App\Services\Deals\PropertyDataService::class, fn () => new \App\Services\Deals\PropertyDataService(''));
+
+    $response = $this->postJson('http://'.$host.'/due-diligence/fetch', [
+        'postcode' => 'PO2 0AH',
+        'bedrooms' => 2,
+        'property_type' => 'flat',
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonPath('code', 'propertydata_key_missing')
+        ->assertJsonFragment(['message' => 'PropertyData API key is not configured. Add your key under Settings > API Keys, then try again.']);
+});
+
 it('fetch endpoint validates postcode required', function (): void {
     [, $host, $user] = ddHubTenantHostUser();
     enableDealEngineForDdHub();
