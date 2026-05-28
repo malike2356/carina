@@ -81,7 +81,53 @@ it('builds show-working steps for the SDLT calculator with profile-specific band
 it('exposes the working route map on the registry', function () {
     $maps = DealCalculatorRegistry::publicHttpRouteMaps();
     expect($maps)->toHaveKeys(['calculate', 'sensitivity', 'working']);
-    expect($maps['working'])->toHaveKeys(['btl', 'hmo', 'sdlt', 'brr', 'sa']);
+    expect($maps['working'])->toHaveKeys(['btl', 'hmo', 'sdlt', 'brr', 'sa', 'r2r']);
+});
+
+it('builds show-working steps for the R2R calculator with full operating and setup breakdown', function () {
+    $service = app(CalculatorWorkingService::class);
+
+    $result = $service->buildFor('r2r', [
+        'rent_per_room_monthly' => 700,
+        'subtenant_count' => 4,
+        'rent_to_landlord_monthly' => 1600,
+        'utilities_monthly' => 100,
+        'council_tax_monthly' => 90,
+        'insurance_monthly' => 25,
+        'management_pct_rent' => 0.08,
+        'maintenance_pct_rent' => 0.03,
+        'cleaning_monthly' => 60,
+        'compliance_monthly' => 50,
+        'void_months_subrent' => 1,
+        'landlord_deposit' => 3200,
+        'furnishing_setup' => 4500,
+    ]);
+
+    expect($result['supported'])->toBeTrue();
+
+    $keys = collect($result['working'])->pluck('key')->all();
+    expect($keys)->toContain(
+        'annual_gross_income',
+        'rent_difference_monthly',
+        'gross_margin_pct',
+        'monthly_operating_costs',
+        'monthly_profit',
+        'annual_profit',
+        'net_margin_pct',
+        'operating_cost_ratio_pct',
+        'breakeven_occupancy_pct',
+        'profit_per_door',
+        'setup_costs_total',
+        'return_on_setup_capital_pct',
+        'setup_recovery_months',
+        'ten_percent_rule_pass',
+        'minimum_income_rule_pass',
+    );
+
+    $opex = collect($result['working'])->firstWhere('key', 'monthly_operating_costs');
+    $opexVarNames = collect($opex['variables'] ?? [])->pluck('name')->all();
+    expect($opex['steps'])->not->toBeEmpty()
+        ->and($opexVarNames)->toContain('Management');
 });
 
 it('rejects unsupported strategies with 404 on the public working endpoint', function () {
@@ -103,6 +149,31 @@ it('returns working JSON via the public working endpoint for BTL', function () {
         ->assertJsonStructure(['working', 'attribution', 'outputs', 'assumptions']);
 
     expect($response->json('working'))->not->toBeEmpty();
+});
+
+it('returns working JSON via the public working endpoint for R2R', function () {
+    $response = $this->postJson(route('public.calculators.working', ['slug' => 'r2r']), [
+        'rent_per_room_monthly' => 700,
+        'subtenant_count' => 4,
+        'rent_to_landlord_monthly' => 1600,
+        'utilities_monthly' => 100,
+        'council_tax_monthly' => 90,
+        'insurance_monthly' => 25,
+        'management_pct_rent' => 0.08,
+        'maintenance_pct_rent' => 0.03,
+        'cleaning_monthly' => 60,
+        'compliance_monthly' => 50,
+        'void_months_subrent' => 1,
+        'landlord_deposit' => 3200,
+        'furnishing_setup' => 4500,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('strategy', 'r2r')
+        ->assertJsonPath('supported', true);
+
+    $keys = collect($response->json('working'))->pluck('key')->all();
+    expect($keys)->toContain('monthly_operating_costs', 'breakeven_occupancy_pct', 'setup_costs_total');
 });
 
 it('returns 422 with validation errors when required BTL inputs are missing', function () {

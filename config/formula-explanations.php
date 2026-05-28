@@ -397,6 +397,17 @@ return [
     // R2R — Rent-to-Rent
     // ─────────────────────────────────────────────────────────────────
     'r2r' => [
+        'annual_gross_income' => [
+            'display_name' => 'Annual gross income',
+            'unit' => '£',
+            'formula' => 'Subtenant rent × 12 (or rooms × rent per room × 12)',
+            'variables' => [
+                ['name' => 'Subtenant rent', 'description' => 'Total rent from all rooms or units each month.'],
+                ['name' => 'Lettable rooms', 'description' => 'Number of income-producing rooms or units.'],
+            ],
+            'plain_summary' => 'Total rent you expect to collect in a full year before voids and costs.',
+            'xelox_slug' => '060-r2r-gross-margin-the-spread-before-operating-costs',
+        ],
         'rent_difference_monthly' => [
             'display_name' => 'Gross rent margin (monthly)',
             'unit' => '£',
@@ -407,6 +418,29 @@ return [
             ],
             'plain_summary' => 'The spread before operating costs. If this is negative, the deal cannot work without renegotiating the head lease.',
             'xelox_slug' => '060-r2r-gross-margin-the-spread-before-operating-costs',
+        ],
+        'gross_margin_pct' => [
+            'display_name' => 'Gross margin %',
+            'unit' => '%',
+            'formula' => '(Gross margin ÷ Subtenant rent) × 100',
+            'variables' => [
+                ['name' => 'Gross margin', 'description' => 'Subtenant rent minus head rent, monthly.'],
+                ['name' => 'Subtenant rent', 'description' => 'Gross rent collected monthly.'],
+            ],
+            'plain_summary' => 'How much of each pound of rent is margin before you pay bills. A healthy HMO R2R often shows 25% to 40% here.',
+            'xelox_slug' => '060-r2r-gross-margin-the-spread-before-operating-costs',
+        ],
+        'monthly_operating_costs' => [
+            'display_name' => 'Monthly operating costs',
+            'unit' => '£',
+            'formula' => 'Management + Utilities + Council tax + Insurance + Maintenance + Cleaning + Compliance',
+            'variables' => [
+                ['name' => 'Management', 'description' => 'Agent fee or self-managed allowance.'],
+                ['name' => 'Utilities', 'description' => 'Gas, electric, water where operator pays.'],
+                ['name' => 'Council tax', 'description' => 'Often paid by the R2R operator on whole-property deals.'],
+            ],
+            'plain_summary' => 'Every monthly cost to run the property before profit. Keep the operating cost ratio under 30% of gross rent where possible.',
+            'xelox_slug' => '061-r2r-monthly-profit-the-operating-bottom-line',
         ],
         'monthly_profit' => [
             'display_name' => 'Net monthly profit',
@@ -440,6 +474,95 @@ return [
             ],
             'plain_summary' => 'How much of every pound of rent becomes profit after all costs and voids. Experienced operators often target 20%+ on stable HMO R2R.',
             'xelox_slug' => '063-r2r-net-margin-profit-as-a-percentage-of-income',
+        ],
+        'operating_cost_ratio_pct' => [
+            'display_name' => 'Operating cost ratio',
+            'unit' => '%',
+            'formula' => '(Monthly operating costs ÷ Subtenant rent) × 100',
+            'variables' => [
+                ['name' => 'Operating costs', 'description' => 'Sum of all monthly running costs.'],
+                ['name' => 'Subtenant rent', 'description' => 'Gross rent collected monthly.'],
+            ],
+            'plain_summary' => 'Operating costs as a share of gross rent. Above 35% usually means the deal is tight.',
+            'xelox_slug' => '064-r2r-operating-cost-ratio-keeping-costs-under-control',
+        ],
+        'breakeven_occupancy_pct' => [
+            'display_name' => 'Breakeven occupancy',
+            'unit' => '%',
+            'formula' => '((Head rent + Operating costs) ÷ Subtenant rent) × 100',
+            'variables' => [
+                ['name' => 'Head rent', 'description' => 'Monthly payment to the landlord.'],
+                ['name' => 'Operating costs', 'description' => 'Monthly running costs.'],
+                ['name' => 'Subtenant rent', 'description' => 'Gross rent at full occupancy.'],
+            ],
+            'plain_summary' => 'Minimum occupancy needed to cover head rent and running costs. Leave headroom below 100% for voids and churn.',
+            'xelox_slug' => '062-r2r-break-even-occupancy-how-many-rooms-must-be-full-to-avoid-losing-m',
+        ],
+        'profit_per_door' => [
+            'display_name' => 'Profit per door (annual)',
+            'unit' => '£',
+            'formula' => 'Annual profit ÷ Lettable rooms',
+            'variables' => [
+                ['name' => 'Annual profit', 'description' => 'Net profit after void allowance.'],
+                ['name' => 'Lettable rooms', 'description' => 'Income-producing rooms or units.'],
+            ],
+            'plain_summary' => 'Whether each room earns enough to justify setup and management effort. Under £100/month per door is often marginal.',
+            'xelox_slug' => '063-r2r-profit-per-door-the-per-room-metric-that-keeps-your-business-hones',
+        ],
+        'setup_costs_total' => [
+            'display_name' => 'Setup capital',
+            'unit' => '£',
+            'formula' => 'Deposit + Furnishing + Licence + Legal + Other',
+            'variables' => [
+                ['name' => 'Landlord deposit', 'description' => 'Typically 4 to 8 weeks head rent.'],
+                ['name' => 'Furnishing', 'description' => 'HMO or SA fit-out to licensing standard.'],
+            ],
+            'plain_summary' => 'Cash you put in before the first profitable month. Recovery time should ideally be under six months.',
+            'xelox_slug' => '062-r2r-annual-profit-the-year-one-outcome',
+        ],
+        'return_on_setup_capital_pct' => [
+            'display_name' => 'Return on setup capital',
+            'unit' => '%',
+            'formula' => '(Annual profit ÷ Setup capital) × 100',
+            'variables' => [
+                ['name' => 'Annual profit', 'description' => 'Year-one net profit after voids.'],
+                ['name' => 'Setup capital', 'description' => 'Total upfront cash invested.'],
+            ],
+            'plain_summary' => 'How hard your setup cash works in year one. R2R can beat BTL cash-on-cash because leverage is on the lease, not a mortgage.',
+            'xelox_slug' => '062-r2r-annual-profit-the-year-one-outcome',
+        ],
+        'setup_recovery_months' => [
+            'display_name' => 'Setup recovery (months)',
+            'unit' => 'months',
+            'formula' => 'Setup capital ÷ Monthly profit',
+            'variables' => [
+                ['name' => 'Setup capital', 'description' => 'Total upfront investment.'],
+                ['name' => 'Monthly profit', 'description' => 'Steady-state net profit per month.'],
+            ],
+            'plain_summary' => 'How many months of profit it takes to earn back your setup cash. Under six months is strong; over twelve is slow.',
+            'xelox_slug' => '062-r2r-annual-profit-the-year-one-outcome',
+        ],
+        'ten_percent_rule_pass' => [
+            'display_name' => '10% rule',
+            'unit' => '',
+            'formula' => 'Subtenant rent ≥ Head rent × (1 + 10%)',
+            'variables' => [
+                ['name' => 'Subtenant rent', 'description' => 'Gross monthly income.'],
+                ['name' => 'Head rent', 'description' => 'Monthly lease cost.'],
+            ],
+            'plain_summary' => 'Quick screen: gross rent must clear head rent by at least 10% before costs.',
+            'xelox_slug' => '060-r2r-gross-margin-the-spread-before-operating-costs',
+        ],
+        'minimum_income_rule_pass' => [
+            'display_name' => 'Minimum margin rule',
+            'unit' => '',
+            'formula' => 'Gross margin ≥ Head rent × Minimum margin %',
+            'variables' => [
+                ['name' => 'Gross margin', 'description' => 'Subtenant rent minus head rent.'],
+                ['name' => 'Head rent', 'description' => 'Monthly payment to landlord.'],
+            ],
+            'plain_summary' => 'Gross margin on head rent must meet your platform minimum (configurable). Filters deals that look full but have no real spread.',
+            'xelox_slug' => '060-r2r-gross-margin-the-spread-before-operating-costs',
         ],
     ],
 
