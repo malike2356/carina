@@ -33,7 +33,6 @@ function crmInboxShared(): array
         'owner_name' => 'Owner',
         'owner_email' => 'owner-crm-inbox-shared@crm-inbox.test',
         'plan' => 'starter',
-        'slug' => 'crm-inbox-shared',
     ]);
 
     $host = $tenant->slug.'.propreneur.test';
