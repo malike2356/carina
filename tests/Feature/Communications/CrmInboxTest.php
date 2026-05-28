@@ -33,6 +33,7 @@ function crmInboxShared(): array
         'owner_name' => 'Owner',
         'owner_email' => 'owner-crm-inbox-shared@crm-inbox.test',
         'plan' => 'starter',
+        'slug' => 'crm-inbox-shared',
     ]);
 
     $host = $tenant->slug.'.propreneur.test';
@@ -82,6 +83,7 @@ function crmInboxMailgunSignedPayload(array $fields): array
 
 it('creates a thread and sends an outbound email', function (): void {
     Mail::fake();
+    config(['mail.inbound_domain' => 'reply.propreneur.test']);
 
     $shared = crmInboxShared();
     $tenant = $shared['tenant'];
@@ -118,7 +120,8 @@ it('creates a thread and sends an outbound email', function (): void {
         ->where('direction', 'outbound')
         ->first();
     expect($message)->not->toBeNull()
-        ->and($message->body_text)->toContain('Hello');
+        ->and($message->body_text)->toContain('Hello')
+        ->and($message->reply_to)->toBe('replies+'.$tenant->slug.'--'.$thread->reply_token.'@reply.propreneur.test');
 
     expect(ContactInteraction::query()->where('contact_id', $contact->id)->where('type', 'email_sent')->exists())->toBeTrue();
 
