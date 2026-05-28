@@ -393,9 +393,59 @@ return [
         ],
     ],
 
+    // ─────────────────────────────────────────────────────────────────
+    // R2R — Rent-to-Rent
+    // ─────────────────────────────────────────────────────────────────
+    'r2r' => [
+        'rent_difference_monthly' => [
+            'display_name' => 'Gross rent margin (monthly)',
+            'unit' => '£',
+            'formula' => 'Subtenant rent − Head rent',
+            'variables' => [
+                ['name' => 'Subtenant rent', 'description' => 'Total rent collected from tenants or guests each month.'],
+                ['name' => 'Head rent', 'description' => 'Rent you pay the property owner under the management / R2R agreement.'],
+            ],
+            'plain_summary' => 'The spread before operating costs. If this is negative, the deal cannot work without renegotiating the head lease.',
+            'xelox_slug' => '060-r2r-gross-margin-the-spread-before-operating-costs',
+        ],
+        'monthly_profit' => [
+            'display_name' => 'Net monthly profit',
+            'unit' => '£',
+            'formula' => 'Gross margin − Operating costs',
+            'variables' => [
+                ['name' => 'Gross margin', 'description' => 'Subtenant rent minus head rent.'],
+                ['name' => 'Operating costs', 'description' => 'Management, utilities, council tax, insurance, maintenance, cleaning, compliance.'],
+            ],
+            'plain_summary' => 'What is left each month after you pay the landlord and run the property. This is the number that must stay positive.',
+            'xelox_slug' => '061-r2r-monthly-profit-the-operating-bottom-line',
+        ],
+        'annual_profit' => [
+            'display_name' => 'Annual net profit',
+            'unit' => '£',
+            'formula' => '(Monthly profit × 12) − (Gross margin × Void months)',
+            'variables' => [
+                ['name' => 'Monthly profit', 'description' => 'Net profit in a full month.'],
+                ['name' => 'Void months', 'description' => 'Allowance for empty rooms or gaps between tenants.'],
+            ],
+            'plain_summary' => 'Annualised profit after a void haircut on the gross margin. Use this for comparisons and setup capital return.',
+            'xelox_slug' => '062-r2r-annual-profit-the-year-one-outcome',
+        ],
+        'net_margin_pct' => [
+            'display_name' => 'Net margin',
+            'unit' => '%',
+            'formula' => '(Annual profit ÷ Annual gross income) × 100',
+            'variables' => [
+                ['name' => 'Annual profit', 'description' => 'Net profit after void allowance.'],
+                ['name' => 'Annual gross income', 'description' => 'Subtenant rent × 12.'],
+            ],
+            'plain_summary' => 'How much of every pound of rent becomes profit after all costs and voids. Experienced operators often target 20%+ on stable HMO R2R.',
+            'xelox_slug' => '063-r2r-net-margin-profit-as-a-percentage-of-income',
+        ],
+    ],
+
     /*
     | Phase 2+ slots (not implemented in this prompt):
-    |   r2r, flip, commercial, bmv_no_money_down, development, refurb,
+    |   flip, commercial, bmv_no_money_down, development, refurb,
     |   sa_vs_btl, npv_irr, dscr, income_multiples, coc_roe, ltv,
     |   breakeven_occupancy, bridging, mortgage, section_24, cgt, portfolio_*
     */
