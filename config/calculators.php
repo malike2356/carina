@@ -85,6 +85,39 @@ return [
     'outcome_min_roi_pct' => 10,
     'outcome_min_net_monthly_cashflow' => 0,
 
+    /*
+    |--------------------------------------------------------------------------
+    | Illustrative UI benchmarks (financial tools + quick verdict bands)
+    |--------------------------------------------------------------------------
+    | Used for Pass/Fail chips in the results panel only. They are NOT lender
+    | offers or tax advice. Core calculator maths lives in each engine; Show
+    | working exposes formulas. Admins can override via Platform Settings when
+    | mapped in CalculatorConfigService.
+    */
+    'illustrative_dscr_min' => 1.25,
+    'illustrative_ltv_btl_band_pct' => 75,
+    'illustrative_ltv_upper_band_pct' => 80,
+    'illustrative_breakeven_strong_pct' => 70,
+    'illustrative_breakeven_moderate_pct' => 75,
+    'illustrative_cap_rate_min_pct' => 4,
+    'illustrative_coc_strong_pct' => 8,
+    'illustrative_coc_moderate_pct' => 5,
+    'illustrative_bridging_cost_max_pct_of_loan' => 8,
+
+    // Quick "deal verdict" bands (results panel triage only; not saved to deals)
+    'verdict_yield_strong_pct' => 8,
+    'verdict_yield_marginal_pct' => 5,
+    'verdict_brr_recycled_strong_pct' => 75,
+    'verdict_brr_recycled_marginal_pct' => 50,
+    'verdict_sa_revenue_strong' => 40000,
+    'verdict_sa_revenue_marginal' => 20000,
+    'verdict_r2r_profit_strong' => 6000,
+    'verdict_r2r_profit_marginal' => 2400,
+    'verdict_r2r_margin_strong_pct' => 20,
+    'verdict_flip_roi_strong_pct' => 20,
+    'verdict_flip_roi_marginal_pct' => 10,
+    'verdict_flip_profit_strong' => 20000,
+
     // ---- Lock assumptions across calculators ----
     'lock_assumptions_across_calculators' => 0,
 ];
