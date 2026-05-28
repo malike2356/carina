@@ -200,6 +200,56 @@ return [
             'rule_of_thumb' => 'HMO cash-on-cash returns of 10–15% are normal; below 8% the extra work seldom pays off.',
             'xelox_slug' => '055-hmo-cash-on-cash-is-the-extra-work-worth-the-extra-return',
         ],
+        'monthly_cashflow' => [
+            'display_name' => 'HMO monthly cashflow',
+            'unit' => '£',
+            'formula' => '(NOI ÷ 12) − Monthly mortgage',
+            'variables' => [
+                ['name' => 'NOI', 'description' => 'Annual net operating income.'],
+            ],
+            'plain_summary' => 'What lands in your account each month after opex and mortgage.',
+            'xelox_slug' => '044-btl-monthly-cashflow-the-operating-reality-of-every-buy-to-let',
+        ],
+        'gross_yield_pct' => [
+            'display_name' => 'HMO gross yield',
+            'unit' => '%',
+            'formula' => '(Gross monthly rent × 12 ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'Gross monthly rent', 'description' => 'Rooms × rent per room.'],
+            ],
+            'plain_summary' => 'Headline yield before costs. HMO gross yields look high; always check net yield and cashflow.',
+            'xelox_slug' => '051-hmo-gross-potential-rent-how-much-a-house-share-could-earn',
+        ],
+        'breakeven_occupancy_pct' => [
+            'display_name' => 'HMO breakeven occupancy',
+            'unit' => '%',
+            'formula' => '((Opex + Annual mortgage) ÷ Gross potential rent) × 100',
+            'variables' => [
+                ['name' => 'Gross potential rent', 'description' => 'Full occupancy annual rent.'],
+            ],
+            'plain_summary' => 'Minimum occupancy to cover costs and debt.',
+            'xelox_slug' => '062-r2r-break-even-occupancy-how-many-rooms-must-be-full-to-avoid-losing-m',
+        ],
+        'profit_per_room' => [
+            'display_name' => 'Profit per room (annual)',
+            'unit' => '£',
+            'formula' => 'Annual cashflow ÷ Rooms',
+            'variables' => [
+                ['name' => 'Annual cashflow', 'description' => 'After mortgage.'],
+            ],
+            'plain_summary' => 'Whether each room earns enough to justify HMO management effort.',
+            'xelox_slug' => '063-r2r-profit-per-door-the-per-room-metric-that-keeps-your-business-hones',
+        ],
+        'operating_cost_ratio_pct' => [
+            'display_name' => 'HMO operating cost ratio',
+            'unit' => '%',
+            'formula' => '(Operating expenses ÷ Gross potential rent) × 100',
+            'variables' => [
+                ['name' => 'Operating expenses', 'description' => 'All opex before mortgage.'],
+            ],
+            'plain_summary' => 'Opex as a share of gross rent. Above 40% is usually tight.',
+            'xelox_slug' => '064-r2r-operating-cost-ratio-keeping-costs-under-control',
+        ],
     ],
 
     // ─────────────────────────────────────────────────────────────────
@@ -391,6 +441,36 @@ return [
             'plain_summary' => 'The hospitality-industry metric that blends rate and occupancy into a single number. The cleanest way to compare two SA properties.',
             'xelox_slug' => '067-revpar-revenue-per-available-room-night-the-hotel-industry-standard-fo',
         ],
+        'monthly_cashflow' => [
+            'display_name' => 'SA monthly cashflow',
+            'unit' => '£',
+            'formula' => '(NOI ÷ 12) − Monthly mortgage',
+            'variables' => [
+                ['name' => 'NOI', 'description' => 'Annual net operating income.'],
+            ],
+            'plain_summary' => 'Monthly profit after all SA costs and mortgage.',
+            'xelox_slug' => '044-btl-monthly-cashflow-the-operating-reality-of-every-buy-to-let',
+        ],
+        'net_margin_pct' => [
+            'display_name' => 'SA net margin',
+            'unit' => '%',
+            'formula' => '(NOI ÷ Annual revenue) × 100',
+            'variables' => [
+                ['name' => 'NOI', 'description' => 'After operating costs.'],
+            ],
+            'plain_summary' => 'Share of revenue that becomes NOI before debt.',
+            'xelox_slug' => '063-r2r-net-margin-profit-as-a-percentage-of-income',
+        ],
+        'operating_cost_ratio_pct' => [
+            'display_name' => 'SA operating cost ratio',
+            'unit' => '%',
+            'formula' => '(Operating costs ÷ Annual revenue) × 100',
+            'variables' => [
+                ['name' => 'Operating costs', 'description' => 'Cleaning, platform, utilities, etc.'],
+            ],
+            'plain_summary' => 'How much of each pound of revenue goes to running the business.',
+            'xelox_slug' => '064-r2r-operating-cost-ratio-keeping-costs-under-control',
+        ],
     ],
 
     // ─────────────────────────────────────────────────────────────────
@@ -566,10 +646,443 @@ return [
         ],
     ],
 
-    /*
-    | Phase 2+ slots (not implemented in this prompt):
-    |   flip, commercial, bmv_no_money_down, development, refurb,
-    |   sa_vs_btl, npv_irr, dscr, income_multiples, coc_roe, ltv,
-    |   breakeven_occupancy, bridging, mortgage, section_24, cgt, portfolio_*
-    */
+    'flip' => [
+        'total_cost' => [
+            'display_name' => 'Flip total cost',
+            'unit' => '£',
+            'formula' => 'Purchase + SDLT + legal + survey + refurb + finance + marketing + holding',
+            'variables' => [
+                ['name' => 'Purchase', 'description' => 'Agreed purchase price.'],
+                ['name' => 'Refurb', 'description' => 'Works budget.'],
+            ],
+            'plain_summary' => 'All cash tied up before sale. If total cost exceeds what you can sell for after selling costs, the flip loses money.',
+            'xelox_slug' => '085-flip-total-cost-what-you-spend-before-you-sell',
+        ],
+        'net_profit' => [
+            'display_name' => 'Flip net profit',
+            'unit' => '£',
+            'formula' => 'Selling price − Total cost − Selling costs',
+            'variables' => [
+                ['name' => 'Selling price', 'description' => 'Expected sale price after works.'],
+            ],
+            'plain_summary' => 'What is left after every cost. Active flippers often pay tax as trading income, not CGT.',
+            'xelox_slug' => '089-flip-net-profit-the-bottom-line-on-a-refurb-and-sell',
+        ],
+        'roi_pct' => [
+            'display_name' => 'Flip ROI',
+            'unit' => '%',
+            'formula' => '(Net profit ÷ Total cost) × 100',
+            'variables' => [
+                ['name' => 'Net profit', 'description' => 'Profit after all costs.'],
+                ['name' => 'Total cost', 'description' => 'Cash invested in the deal.'],
+            ],
+            'plain_summary' => 'Return on the cash you had in the deal for the hold period.',
+            'xelox_slug' => '090-flip-roi-return-on-the-cash-you-tied-up',
+        ],
+    ],
+
+    'bmv_no_money_down' => [
+        'discount_pct' => [
+            'display_name' => 'Discount from market',
+            'unit' => '%',
+            'formula' => '(Market value − Purchase price) ÷ Market value × 100',
+            'variables' => [
+                ['name' => 'Market value', 'description' => 'RICS or comparable value.'],
+                ['name' => 'Purchase price', 'description' => 'Agreed BMV price.'],
+            ],
+            'plain_summary' => 'How far below market you are buying. Same-day remortgage models often need 30%+ to recycle all cash.',
+            'xelox_slug' => '092-bmv-discount-how-far-below-market-you-are-buying',
+        ],
+        'remortgage_amount' => [
+            'display_name' => 'Remortgage proceeds',
+            'unit' => '£',
+            'formula' => 'Market value × LTV',
+            'variables' => [
+                ['name' => 'Market value', 'description' => 'Valuation at refinance.'],
+                ['name' => 'LTV', 'description' => 'Lender loan to value (often 75%).'],
+            ],
+            'plain_summary' => 'Cash released on the day-one remortgage against market value, not purchase price.',
+            'xelox_slug' => '094-bmv-remortgage-proceeds-cash-back-on-refinance',
+        ],
+        'net_cash_position' => [
+            'display_name' => 'Net cash position',
+            'unit' => '£',
+            'formula' => 'Remortgage − Purchase − Bridging fee − Legal − Valuation − SDLT',
+            'variables' => [
+                ['name' => 'Remortgage', 'description' => 'Gross loan advance.'],
+            ],
+            'plain_summary' => 'Positive means you take cash out or leave none in. Negative is how much you still need to fund.',
+            'xelox_slug' => '095-bmv-net-cash-position-did-you-achieve-no-money-down',
+        ],
+        'breakeven_discount_pct' => [
+            'display_name' => 'Breakeven discount',
+            'unit' => '%',
+            'formula' => 'Minimum discount so remortgage covers all costs',
+            'variables' => [
+                ['name' => 'Market value', 'description' => 'Valuation used for LTV.'],
+            ],
+            'plain_summary' => 'The discount you need from market to hit true no money down at your LTV and fee assumptions.',
+            'xelox_slug' => '097-bmv-breakeven-discount-the-minimum-bmv-to-recycle-all-cash',
+        ],
+    ],
+
+    'commercial' => [
+        'gross_yield_pct' => [
+            'display_name' => 'Commercial gross yield',
+            'unit' => '%',
+            'formula' => '(Passing rent ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'Passing rent', 'description' => 'Current rent roll.'],
+                ['name' => 'Purchase price', 'description' => 'Price paid or offered.'],
+            ],
+            'plain_summary' => 'Headline yield on passing rent before costs. Always pair with net initial yield.',
+            'xelox_slug' => '111-commercial-gross-yield-the-headline-number-on-a-commercial-deal',
+        ],
+        'net_initial_yield_pct' => [
+            'display_name' => 'Net initial yield (NIY)',
+            'unit' => '%',
+            'formula' => '((Passing rent − Operating costs) ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'Passing rent', 'description' => 'In-place rent.'],
+                ['name' => 'Operating costs', 'description' => 'Service charge, void, management, insurance, maintenance.'],
+            ],
+            'plain_summary' => 'What the asset earns today after opex, before finance. The standard commercial comparison metric.',
+            'xelox_slug' => '112-commercial-net-initial-yield-niy-the-real-yield-on-passing-rent',
+        ],
+        'reversionary_yield_pct' => [
+            'display_name' => 'Reversionary yield',
+            'unit' => '%',
+            'formula' => '((ERV − Operating costs) ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'ERV', 'description' => 'Estimated rental value at full market rent.'],
+            ],
+            'plain_summary' => 'Yield if all income moved to ERV. Shows upside when leases are below market.',
+            'xelox_slug' => '113-commercial-reversionary-yield-the-upside-when-rent-rolls-forward',
+        ],
+        'net_annual_income' => [
+            'display_name' => 'Net annual income',
+            'unit' => '£',
+            'formula' => 'Passing rent − Operating costs − Mortgage',
+            'variables' => [
+                ['name' => 'Passing rent', 'description' => 'Annual rent roll.'],
+            ],
+            'plain_summary' => 'Cash the asset generates after costs and debt service.',
+            'xelox_slug' => '114-commercial-net-income-after-costs-and-finance',
+        ],
+    ],
+
+    'development' => [
+        'gdv_total' => [
+            'display_name' => 'Gross development value (GDV)',
+            'unit' => '£',
+            'formula' => 'Unit values × unit count',
+            'variables' => [
+                ['name' => 'Units', 'description' => 'Homes or flats created.'],
+            ],
+            'plain_summary' => 'Total sales value on exit. Every development model starts here.',
+            'xelox_slug' => '098-development-gdv-gross-development-value',
+        ],
+        'gross_dev_costs' => [
+            'display_name' => 'Gross development costs',
+            'unit' => '£',
+            'formula' => 'Land + build + professional fees + contingency',
+            'variables' => [
+                ['name' => 'Build', 'description' => 'Construction and fit-out.'],
+            ],
+            'plain_summary' => 'Direct costs to deliver the scheme before finance interest.',
+            'xelox_slug' => '099-development-gdc-gross-development-costs',
+        ],
+        'equity_required' => [
+            'display_name' => 'Equity required',
+            'unit' => '£',
+            'formula' => 'Total project cost − Development loan',
+            'variables' => [
+                ['name' => 'Development loan', 'description' => 'Senior debt drawn on LTC/LTV caps.'],
+            ],
+            'plain_summary' => 'Your cash in the deal before profit.',
+            'xelox_slug' => '100-development-equity-how-much-cash-you-must-put-in',
+        ],
+        'sell_profit' => [
+            'display_name' => 'Development profit (sell)',
+            'unit' => '£',
+            'formula' => 'GDV − Total project cost − Exit costs',
+            'variables' => [
+                ['name' => 'GDV', 'description' => 'Gross development value.'],
+            ],
+            'plain_summary' => 'Profit if you sell all units on completion.',
+            'xelox_slug' => '101-development-profit-on-a-sell-exit',
+        ],
+        'sell_margin_pct' => [
+            'display_name' => 'Development margin',
+            'unit' => '%',
+            'formula' => '(Profit ÷ GDV) × 100',
+            'variables' => [
+                ['name' => 'Profit', 'description' => 'Sell exit profit.'],
+                ['name' => 'GDV', 'description' => 'Gross development value.'],
+            ],
+            'plain_summary' => 'Profit as a share of GDV. Lenders often want 20%+ on small schemes.',
+            'xelox_slug' => '102-development-margin-profit-as-a-percentage-of-gdv',
+        ],
+        'is_viable' => [
+            'display_name' => 'Development viability',
+            'unit' => '',
+            'formula' => 'Margin and profit vs platform hurdles',
+            'variables' => [
+                ['name' => 'Margin', 'description' => 'Sell margin %.'],
+            ],
+            'plain_summary' => 'Whether the scheme clears minimum profit and margin rules.',
+            'xelox_slug' => '102-development-margin-profit-as-a-percentage-of-gdv',
+        ],
+    ],
+
+    'dscr' => [
+        'dscr' => [
+            'display_name' => 'Debt service coverage ratio',
+            'unit' => 'x',
+            'formula' => 'Annual NOI ÷ Annual debt service',
+            'variables' => [
+                ['name' => 'NOI', 'description' => 'Net operating income.'],
+                ['name' => 'Debt service', 'description' => 'Mortgage principal and interest per year.'],
+            ],
+            'plain_summary' => 'How many times income covers the mortgage. Commercial lenders often want 1.25x or more.',
+            'xelox_slug' => '115-dscr-debt-service-coverage-how-lenders-stress-your-deal',
+        ],
+        'passes_1_25x' => [
+            'display_name' => '1.25x DSCR pass',
+            'unit' => '',
+            'formula' => 'DSCR ≥ 1.25',
+            'variables' => [
+                ['name' => 'DSCR', 'description' => 'Coverage ratio.'],
+            ],
+            'plain_summary' => 'Illustrative pass against a common lender hurdle.',
+            'xelox_slug' => '115-dscr-debt-service-coverage-how-lenders-stress-your-deal',
+        ],
+    ],
+
+    'bridging' => [
+        'interest_cost' => [
+            'display_name' => 'Bridging interest',
+            'unit' => '£',
+            'formula' => 'Loan × annual rate × (months ÷ 12)',
+            'variables' => [
+                ['name' => 'Loan', 'description' => 'Gross loan amount.'],
+            ],
+            'plain_summary' => 'Interest over the bridge term. Rolled interest is not compounded in this model.',
+            'xelox_slug' => '116-bridging-interest-cost',
+        ],
+        'total_financing_cost' => [
+            'display_name' => 'Total bridging cost',
+            'unit' => '£',
+            'formula' => 'Interest + arrangement + exit + broker',
+            'variables' => [
+                ['name' => 'Fees', 'description' => 'Arrangement and exit fees.'],
+            ],
+            'plain_summary' => 'All-in cost of the bridge before you repay principal.',
+            'xelox_slug' => '117-bridging-total-cost-interest-plus-fees',
+        ],
+        'cost_as_pct_of_loan' => [
+            'display_name' => 'Cost as % of loan',
+            'unit' => '%',
+            'formula' => '(Total cost ÷ Loan) × 100',
+            'variables' => [
+                ['name' => 'Total cost', 'description' => 'Interest and fees.'],
+            ],
+            'plain_summary' => 'Quick comparison across lenders and terms.',
+            'xelox_slug' => '117-bridging-total-cost-interest-plus-fees',
+        ],
+    ],
+
+    'mortgage' => [
+        'monthly_payment' => [
+            'display_name' => 'Monthly mortgage payment',
+            'unit' => '£',
+            'formula' => 'Amortisation or interest-only formula',
+            'variables' => [
+                ['name' => 'Loan', 'description' => 'Principal.'],
+                ['name' => 'Rate', 'description' => 'Annual interest rate.'],
+            ],
+            'plain_summary' => 'What you pay the lender each month.',
+            'xelox_slug' => '118-mortgage-monthly-payment',
+        ],
+        'total_interest_paid' => [
+            'display_name' => 'Total interest paid',
+            'unit' => '£',
+            'formula' => 'Total paid − Principal (repayment) or interest × months (IO)',
+            'variables' => [
+                ['name' => 'Term', 'description' => 'Years on the loan.'],
+            ],
+            'plain_summary' => 'Lifetime interest cost of the loan.',
+            'xelox_slug' => '119-mortgage-total-interest-over-the-term',
+        ],
+    ],
+
+    'ltv' => [
+        'ltv_pct' => [
+            'display_name' => 'Loan to value',
+            'unit' => '%',
+            'formula' => '(Loan ÷ Property value) × 100',
+            'variables' => [
+                ['name' => 'Loan', 'description' => 'Mortgage balance.'],
+                ['name' => 'Value', 'description' => 'Current or purchase value.'],
+            ],
+            'plain_summary' => 'How leveraged the property is.',
+            'xelox_slug' => '029-loan-to-value-the-single-most-important-number-in-property-finance',
+        ],
+        'equity_amount' => [
+            'display_name' => 'Equity in property',
+            'unit' => '£',
+            'formula' => 'Property value − Loan',
+            'variables' => [
+                ['name' => 'Value', 'description' => 'Property value.'],
+            ],
+            'plain_summary' => 'Your share of value before selling costs.',
+            'xelox_slug' => '029-loan-to-value-the-single-most-important-number-in-property-finance',
+        ],
+    ],
+
+    'breakeven_occupancy' => [
+        'breakeven_occupancy_pct' => [
+            'display_name' => 'Breakeven occupancy',
+            'unit' => '%',
+            'formula' => '(Opex + Debt service) ÷ Gross potential income × 100',
+            'variables' => [
+                ['name' => 'Opex', 'description' => 'Annual operating expenses.'],
+                ['name' => 'Debt service', 'description' => 'Annual mortgage.'],
+            ],
+            'plain_summary' => 'Minimum occupancy to cover all costs. Compare to your forecast occupancy.',
+            'xelox_slug' => '062-r2r-break-even-occupancy-how-many-rooms-must-be-full-to-avoid-losing-m',
+        ],
+    ],
+
+    'coc_roe' => [
+        'coc_pct' => [
+            'display_name' => 'Cash-on-cash return',
+            'unit' => '%',
+            'formula' => '(Annual cash flow ÷ Cash invested) × 100',
+            'variables' => [
+                ['name' => 'Cash flow', 'description' => 'Pre-tax annual cash flow.'],
+            ],
+            'plain_summary' => 'Return on the cash you put in.',
+            'xelox_slug' => '055-cash-on-cash-return-how-hard-your-deposit-is-working',
+        ],
+        'roe_pct' => [
+            'display_name' => 'Return on equity',
+            'unit' => '%',
+            'formula' => '(Net income ÷ Current equity) × 100',
+            'variables' => [
+                ['name' => 'Equity', 'description' => 'Current equity in the asset.'],
+            ],
+            'plain_summary' => 'Return on your equity stake after appreciation or paydown.',
+            'xelox_slug' => '056-return-on-equity-roe',
+        ],
+    ],
+
+    'income_multiples' => [
+        'noi_annual' => [
+            'display_name' => 'Net operating income',
+            'unit' => '£',
+            'formula' => 'Gross rent − Operating expenses',
+            'variables' => [
+                ['name' => 'Gross rent', 'description' => 'Annual rent.'],
+            ],
+            'plain_summary' => 'Income before debt.',
+            'xelox_slug' => '053-hmo-noi-net-operating-income-for-a-multi-let-property',
+        ],
+        'cap_rate_pct' => [
+            'display_name' => 'Cap rate',
+            'unit' => '%',
+            'formula' => '(NOI ÷ Price) × 100',
+            'variables' => [
+                ['name' => 'NOI', 'description' => 'Net operating income.'],
+            ],
+            'plain_summary' => 'Commercial-style yield on NOI.',
+            'xelox_slug' => '125-cap-rate-capitalisation-rate',
+        ],
+        'grm' => [
+            'display_name' => 'Gross rent multiplier',
+            'unit' => 'x',
+            'formula' => 'Price ÷ Annual gross rent',
+            'variables' => [
+                ['name' => 'Price', 'description' => 'Purchase price.'],
+            ],
+            'plain_summary' => 'How many years of gross rent equal the price. Lower can mean better value if opex is stable.',
+            'xelox_slug' => '126-gross-rent-multiplier-grm',
+        ],
+    ],
+
+    'strategy_finder' => [
+        'top_strategy' => [
+            'display_name' => 'Best fit strategy',
+            'unit' => '',
+            'formula' => 'Highest total score across capital, goal, time, risk, and skills',
+            'variables' => [
+                ['name' => 'Scores', 'description' => 'Weighted matrix for seven UK strategies.'],
+            ],
+            'plain_summary' => 'The strategy that best matches your profile today. Run the dedicated calculator next to model real numbers.',
+            'xelox_slug' => '124-strategy-finder-matching-your-profile-to-a-deal-strategy',
+        ],
+        'top_strategy_score' => [
+            'display_name' => 'Match score',
+            'unit' => '/100',
+            'formula' => 'Capital + Goal + Time + Risk + Skills',
+            'variables' => [
+                ['name' => 'Each dimension', 'description' => 'Up to 25 points per strategy per question.'],
+            ],
+            'plain_summary' => 'Higher is a stronger fit. Compare top three scores, not just the winner.',
+            'xelox_slug' => '124-strategy-finder-matching-your-profile-to-a-deal-strategy',
+        ],
+        'typical_monthly_income' => [
+            'display_name' => 'Typical monthly income',
+            'unit' => '£',
+            'formula' => 'Illustrative projection for your capital band',
+            'variables' => [
+                ['name' => 'Strategy', 'description' => 'Top matched strategy.'],
+            ],
+            'plain_summary' => 'Template income for your capital bracket; plug real deals into the strategy calculator.',
+            'xelox_slug' => '124-strategy-finder-matching-your-profile-to-a-deal-strategy',
+        ],
+        'typical_setup_capital' => [
+            'display_name' => 'Typical entry capital',
+            'unit' => '£',
+            'formula' => 'Deposit or setup from platform templates',
+            'variables' => [
+                ['name' => 'Capital band', 'description' => 'Your selected bracket.'],
+            ],
+            'plain_summary' => 'Cash you typically need to start or enter the strategy at your level.',
+            'xelox_slug' => '124-strategy-finder-matching-your-profile-to-a-deal-strategy',
+        ],
+        'can_start_top_strategy' => [
+            'display_name' => 'Can start today',
+            'unit' => '',
+            'formula' => 'Capital midpoint ≥ typical entry cost',
+            'variables' => [
+                ['name' => 'Capital gap', 'description' => 'Shortfall if not ready.'],
+            ],
+            'plain_summary' => 'Whether your capital band typically covers entry cost for the top strategy.',
+            'xelox_slug' => '124-strategy-finder-matching-your-profile-to-a-deal-strategy',
+        ],
+    ],
+
+    'npv_irr' => [
+        'npv' => [
+            'display_name' => 'Net present value',
+            'unit' => '£',
+            'formula' => 'Sum of discounted cash flows',
+            'variables' => [
+                ['name' => 'Discount rate', 'description' => 'Your required return.'],
+            ],
+            'plain_summary' => 'Value today of future cash flows. Positive NPV means the deal beats your hurdle rate.',
+            'xelox_slug' => '132-npv-net-present-value',
+        ],
+        'irr_pct' => [
+            'display_name' => 'Internal rate of return',
+            'unit' => '%',
+            'formula' => 'Rate where NPV = 0',
+            'variables' => [
+                ['name' => 'Cash flows', 'description' => 'Series including initial outlay.'],
+            ],
+            'plain_summary' => 'Annualised return implied by the cash flow series.',
+            'xelox_slug' => '133-irr-internal-rate-of-return',
+        ],
+    ],
 ];

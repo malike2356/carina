@@ -81,8 +81,63 @@ it('builds show-working steps for the SDLT calculator with profile-specific band
 it('exposes the working route map on the registry', function () {
     $maps = DealCalculatorRegistry::publicHttpRouteMaps();
     expect($maps)->toHaveKeys(['calculate', 'sensitivity', 'working']);
-    expect($maps['working'])->toHaveKeys(['btl', 'hmo', 'sdlt', 'brr', 'sa', 'r2r']);
+    expect($maps['working'])->toHaveKeys([
+        'btl', 'brr', 'hmo', 'r2r', 'sa', 'flip', 'bmv_no_money_down', 'commercial', 'development',
+        'strategy_finder',
+        'npv_irr', 'dscr', 'income_multiples', 'coc_roe', 'ltv', 'breakeven_occupancy',
+        'sdlt', 'bridging', 'mortgage',
+    ]);
 });
+
+it('builds show-working for every registered calculator strategy', function (string $slug) {
+    $service = app(CalculatorWorkingService::class);
+    expect($service->supports($slug))->toBeTrue();
+
+    $payloads = [
+        'btl' => ['purchase_price' => 250000, 'monthly_rent' => 1500, 'monthly_mortgage' => 850],
+        'brr' => ['purchase_price' => 200000, 'refurb_cost' => 25000, 'post_refurb_value' => 280000],
+        'hmo' => ['purchase_price' => 320000, 'rooms' => 5, 'rent_per_room_monthly' => 650],
+        'r2r' => ['rent_per_room_monthly' => 700, 'subtenant_count' => 4, 'rent_to_landlord_monthly' => 1600],
+        'sa' => ['nightly_rate' => 120, 'occupancy_pct' => 70],
+        'flip' => ['purchase_price' => 180000, 'refurb_cost' => 35000, 'selling_price' => 265000],
+        'bmv_no_money_down' => ['market_value' => 300000, 'purchase_price' => 190000],
+        'commercial' => ['purchase_price' => 500000, 'monthly_rent' => 4000],
+        'development' => [
+            'purchase_price' => 400000, 'build_cost_per_unit' => 120000, 'unit_count' => 4,
+            'average_unit_value' => 200000, 'average_monthly_rent' => 900, 'professional_fees' => 40000,
+            'project_months' => 18, 'exit_preference' => 'sell',
+        ],
+        'strategy_finder' => [
+            'capital_bucket' => '5k_to_25k',
+            'primary_goal' => 'passive_income',
+            'weekly_hours' => '2_to_5',
+            'risk_tolerance' => 'medium',
+            'pro_skills' => 'sales',
+        ],
+        'npv_irr' => ['cash_flows' => [-100000, 12000, 12000, 130000], 'discount_rate_annual' => 0.08],
+        'dscr' => ['annual_noi' => 24000, 'annual_debt_service' => 18000],
+        'income_multiples' => ['purchase_price' => 240000, 'monthly_rent' => 1200],
+        'coc_roe' => ['annual_pre_tax_cash_flow' => 6000, 'total_cash_invested' => 60000],
+        'ltv' => ['loan_amount' => 180000, 'property_value' => 250000],
+        'breakeven_occupancy' => [
+            'annual_operating_expenses' => 12000,
+            'annual_debt_service' => 10000,
+            'annual_gross_potential_income' => 30000,
+        ],
+        'sdlt' => ['purchase_price' => 300000, 'profile' => 'additional_property'],
+        'bridging' => ['loan_amount' => 200000, 'annual_interest_rate' => 0.11, 'term_months' => 12],
+        'mortgage' => ['loan_amount' => 180000, 'annual_interest_rate' => 0.055, 'term_years' => 25],
+    ];
+
+    $result = $service->buildFor($slug, $payloads[$slug]);
+    expect($result['supported'])->toBeTrue()
+        ->and($result['working'])->not->toBeEmpty();
+})->with([
+    'btl', 'brr', 'hmo', 'r2r', 'sa', 'flip', 'bmv_no_money_down', 'commercial', 'development',
+    'strategy_finder',
+    'npv_irr', 'dscr', 'income_multiples', 'coc_roe', 'ltv', 'breakeven_occupancy',
+    'sdlt', 'bridging', 'mortgage',
+]);
 
 it('builds show-working steps for the R2R calculator with full operating and setup breakdown', function () {
     $service = app(CalculatorWorkingService::class);
