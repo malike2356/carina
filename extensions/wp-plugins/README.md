@@ -1,6 +1,19 @@
 # WordPress plugins (Propreneur extensions)
 
-Optional plugins for tenant marketing sites running **WordPress + Kadence Blocks**.
+Optional plugins for tenant marketing sites running **WordPress** (Kadence, Astra, Elementor, etc.).
+
+## propreneur-calculators
+
+Embed all 27 Propreneur / Propcalc calculators on any WordPress page via shortcode. Engine runs on Propreneur API.
+
+**Full instructions:** [propreneur-calculators/README.md](./propreneur-calculators/README.md)
+
+### Quick start
+
+1. Zip folder `propreneur-calculators/` and upload via **Plugins → Add New**.
+2. Activate **Propreneur Calculators**.
+3. **Settings → Propreneur Calculators** → API base URL `https://propcalc.uk`.
+4. Add shortcode to a page: `[propreneur_calculators]`
 
 ## propreneur-lead-ingest
 
