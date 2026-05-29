@@ -92,6 +92,42 @@ it('allows super admin to view waitlist admin', function (): void {
         ->assertSee('Waitlist', false);
 });
 
+it('filters waitlist admin by propcalc origin and feedback tag', function (): void {
+    $admin = PlatformUser::factory()->superAdmin()->create();
+
+    WaitlistEntry::factory()->create([
+        'email' => 'propcalc-only@example.test',
+        'segment' => 'propcalc',
+        'user_type' => 'propcalc',
+        'interests' => ['brr', 'propcalc_pdf'],
+    ]);
+    WaitlistEntry::factory()->create([
+        'email' => 'propcalc-feedback@example.test',
+        'segment' => 'propcalc',
+        'user_type' => 'propcalc',
+        'interests' => ['propcalc_feedback'],
+    ]);
+    WaitlistEntry::factory()->create([
+        'email' => 'prelaunch@example.test',
+        'segment' => 'launch',
+        'user_type' => 'investor',
+        'interests' => ['source' => 'website'],
+    ]);
+
+    $this->actingAs($admin, 'platform')
+        ->get(route('admin.waitlist.index', ['origin' => 'propcalc']))
+        ->assertOk()
+        ->assertSee('propcalc-only@example.test', false)
+        ->assertSee('propcalc-feedback@example.test', false)
+        ->assertDontSee('prelaunch@example.test', false);
+
+    $this->actingAs($admin, 'platform')
+        ->get(route('admin.waitlist.index', ['origin' => 'propcalc', 'has_feedback' => 1]))
+        ->assertOk()
+        ->assertSee('propcalc-feedback@example.test', false)
+        ->assertDontSee('propcalc-only@example.test', false);
+});
+
 it('returns json status for known email', function (): void {
     WaitlistEntry::factory()->confirmed()->create(['email' => 'status@example.test']);
 
