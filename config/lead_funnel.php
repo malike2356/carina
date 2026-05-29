@@ -24,4 +24,9 @@ return [
     'oauth_state_ttl_seconds' => 600,
     'hot_lead_score_threshold' => 120,
     'dead_lead_score_threshold' => 10,
+
+    /**
+     * Create CRM contacts immediately for website/landing-page ingest (no queue worker required).
+     */
+    'sync_landing_page_crm' => env('LEAD_FUNNEL_SYNC_LANDING_PAGE_CRM', true),
 ];

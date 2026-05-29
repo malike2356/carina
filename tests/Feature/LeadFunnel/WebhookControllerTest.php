@@ -86,3 +86,27 @@ it('landing page ingest returns received when required fields are missing', func
 
     $response->assertOk()->assertJson(['status' => 'received']);
 });
+
+it('landing page ingest accepts faq-style fields with first name last name subject and message', function (): void {
+    Queue::fake();
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'FAQ Ingest Test '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'faq-ingest-'.uniqid().'@test.test',
+        'plan' => 'starter',
+    ]);
+
+    $response = $this->postJson('/api/leads/ingest', [
+        'first_name' => 'Jane',
+        'last_name' => 'Doe',
+        'email' => 'jane.doe@example.test',
+        'subject' => 'Guaranteed rent',
+        'message' => 'I have a 3-bed in Portsmouth.',
+        'source' => 'xeloxproperties.co.uk/faq',
+        'segment' => 'landlord',
+        'tenant_slug' => $tenant->slug,
+    ]);
+
+    $response->assertOk()->assertJson(['status' => 'received']);
+    Queue::assertPushed(CreateCrmContactJob::class);
+});
