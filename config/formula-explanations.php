@@ -1085,4 +1085,222 @@ return [
             'xelox_slug' => '133-irr-internal-rate-of-return',
         ],
     ],
+
+  // ─────────────────────────────────────────────────────────────────
+  // Propcalc utility / quick tools
+  // ─────────────────────────────────────────────────────────────────
+
+    'rental_yield' => [
+        'gross_yield_pct' => [
+            'display_name' => 'Gross yield',
+            'unit' => '%',
+            'formula' => '(Monthly rent × 12 ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'Monthly rent', 'description' => 'Gross rent per month.'],
+                ['name' => 'Purchase price', 'description' => 'Property price used as the denominator.'],
+            ],
+            'plain_summary' => 'Rent as a percentage of price before any costs.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+        'net_yield_pct' => [
+            'display_name' => 'Net yield',
+            'unit' => '%',
+            'formula' => '((Effective annual rent − Annual expenses) ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'Effective rent', 'description' => 'Gross rent minus void allowance.'],
+                ['name' => 'Annual expenses', 'description' => 'Mortgage interest, insurance, maintenance, fees, etc.'],
+            ],
+            'plain_summary' => 'Yield after void and running costs, still before tax.',
+            'xelox_slug' => '043-btl-net-yield-the-number-that-actually-matters',
+        ],
+        'monthly_net_income' => [
+            'display_name' => 'Monthly net income',
+            'unit' => '£',
+            'formula' => '(Effective annual rent − Annual expenses) ÷ 12',
+            'variables' => [
+                ['name' => 'Effective rent', 'description' => 'Annual rent after void.'],
+                ['name' => 'Annual expenses', 'description' => 'All annual operating costs entered.'],
+            ],
+            'plain_summary' => 'Average monthly surplus after costs.',
+            'xelox_slug' => '044-btl-monthly-cashflow-the-operating-reality-of-every-buy-to-let',
+        ],
+    ],
+
+    'btl_roi' => [
+        'cash_on_cash_pct' => [
+            'display_name' => 'Cash-on-cash return',
+            'unit' => '%',
+            'formula' => '(Annual cashflow ÷ Total cash invested) × 100',
+            'variables' => [
+                ['name' => 'Annual cashflow', 'description' => 'Monthly cashflow × 12.'],
+                ['name' => 'Total cash invested', 'description' => 'Deposit + SDLT + refurb + legal/survey.'],
+            ],
+            'plain_summary' => 'Return on the actual cash you put into the deal.',
+            'xelox_slug' => '048-btl-roi-return-on-investment-for-your-buy-to-let',
+        ],
+        'gross_yield_pct' => [
+            'display_name' => 'Gross yield',
+            'unit' => '%',
+            'formula' => '(Monthly rent × 12 ÷ Purchase price) × 100',
+            'variables' => [
+                ['name' => 'Monthly rent', 'description' => 'Gross rent.'],
+                ['name' => 'Purchase price', 'description' => 'Agreed purchase price.'],
+            ],
+            'plain_summary' => 'Rent versus price before mortgage and costs.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+        'monthly_cashflow' => [
+            'display_name' => 'Monthly cashflow',
+            'unit' => '£',
+            'formula' => 'Rent − Mortgage − Service charge − Agent − Maintenance − Insurance',
+            'variables' => [
+                ['name' => 'Rent', 'description' => 'Monthly rent.'],
+                ['name' => 'Mortgage', 'description' => 'Monthly mortgage payment (IO or repayment).'],
+            ],
+            'plain_summary' => 'What is left each month after major costs.',
+            'xelox_slug' => '044-btl-monthly-cashflow-the-operating-reality-of-every-buy-to-let',
+        ],
+    ],
+
+    'void_period' => [
+        'lost_rent_total' => [
+            'display_name' => 'Lost rent',
+            'unit' => '£',
+            'formula' => '(Monthly rent ÷ 4.33) × Void weeks',
+            'variables' => [
+                ['name' => 'Monthly rent', 'description' => 'Contract rent while vacant.'],
+                ['name' => 'Void weeks', 'description' => 'Weeks without a paying tenant.'],
+            ],
+            'plain_summary' => 'Income you miss while the property is empty.',
+            'xelox_slug' => '022-void-allowance-the-cost-new-landlords-always-forget',
+        ],
+        'total_void_cost' => [
+            'display_name' => 'Total void cost',
+            'unit' => '£',
+            'formula' => 'Lost rent + Running costs + Preparation costs',
+            'variables' => [
+                ['name' => 'Lost rent', 'description' => 'Rent lost over the void period.'],
+                ['name' => 'Running costs', 'description' => 'Mortgage, utilities, etc. while empty.'],
+                ['name' => 'Preparation', 'description' => 'Cleaning, marketing, checks between tenancies.'],
+            ],
+            'plain_summary' => 'Full cost of a void period including turnover.',
+            'xelox_slug' => '022-void-allowance-the-cost-new-landlords-always-forget',
+        ],
+    ],
+
+    'skip_hire' => [
+        'estimated_cubic_yards' => [
+            'display_name' => 'Estimated waste volume',
+            'unit' => 'yd³',
+            'formula' => 'Rooms×2 + Walls×1.5 + Units×3 + Flooring×0.08 + Bags×0.05',
+            'variables' => [
+                ['name' => 'Rooms stripped', 'description' => 'Rooms cleared to shell.'],
+                ['name' => 'Waste type', 'description' => 'Mixed waste or rubble/soil (capped for weight).'],
+            ],
+            'plain_summary' => 'Illustrative cubic yards from your strip-out inputs.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+        'total_estimate' => [
+            'display_name' => 'Total skip estimate',
+            'unit' => '£',
+            'formula' => 'Skip hire (location adjusted) + Permit allowance',
+            'variables' => [
+                ['name' => 'Recommended skip', 'description' => 'Smallest standard skip that fits the volume.'],
+                ['name' => 'Location', 'description' => 'Regional cost multiplier.'],
+            ],
+            'plain_summary' => 'Indicative hire plus allowance for highway permits if needed.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+    ],
+
+    'cgt' => [
+        'gross_gain' => [
+            'display_name' => 'Gross capital gain',
+            'unit' => '£',
+            'formula' => 'Sale proceeds − Purchase price − Purchase fees − Improvements − Sale fees',
+            'variables' => [
+                ['name' => 'Sale price', 'description' => 'Amount received on disposal.'],
+                ['name' => 'Cost base', 'description' => 'Purchase plus allowable costs.'],
+            ],
+            'plain_summary' => 'Gain before reliefs and annual exempt amount.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+        'cgt_due' => [
+            'display_name' => 'CGT due (illustrative)',
+            'unit' => '£',
+            'formula' => 'Taxable gain after PRR and allowance × CGT rate',
+            'variables' => [
+                ['name' => 'Taxable gain', 'description' => 'After private residence relief and £3,000 allowance.'],
+                ['name' => 'Rate', 'description' => '18% basic or 24% higher residential rate.'],
+            ],
+            'plain_summary' => 'Illustrative UK residential CGT; not tax advice.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+    ],
+
+    'mortgage_affordability' => [
+        'max_loan_amount' => [
+            'display_name' => 'Maximum loan',
+            'unit' => '£',
+            'formula' => '(Gross income × Multiplier) − (Annual commitments × 0.5)',
+            'variables' => [
+                ['name' => 'Gross income', 'description' => 'Your income plus joint income if any.'],
+                ['name' => 'Multiplier', 'description' => 'Illustrative income multiple (default 4.5×).'],
+                ['name' => 'Commitments', 'description' => 'Monthly credit/loans annualised; half deducted.'],
+            ],
+            'plain_summary' => 'Indicative borrowing before lender-specific rules.',
+            'xelox_slug' => '029-loan-to-value-the-single-most-important-number-in-property-finance',
+        ],
+        'max_purchase_price' => [
+            'display_name' => 'Maximum purchase price',
+            'unit' => '£',
+            'formula' => 'Maximum loan + Deposit',
+            'variables' => [
+                ['name' => 'Maximum loan', 'description' => 'From income multiple model.'],
+                ['name' => 'Deposit', 'description' => 'Cash you have for deposit.'],
+            ],
+            'plain_summary' => 'Price you could target with this deposit and income.',
+            'xelox_slug' => '029-loan-to-value-the-single-most-important-number-in-property-finance',
+        ],
+        'stressed_monthly_payment' => [
+            'display_name' => 'Stressed monthly payment',
+            'unit' => '£',
+            'formula' => 'Repayment mortgage at (interest rate + 3%) on max loan',
+            'variables' => [
+                ['name' => 'Max loan', 'description' => 'Full borrowing amount.'],
+                ['name' => 'Term', 'description' => 'Mortgage term in years.'],
+            ],
+            'plain_summary' => 'Simplified stress test: rate +3% on repayment basis.',
+            'xelox_slug' => '029-loan-to-value-the-single-most-important-number-in-property-finance',
+        ],
+    ],
+
+    'mini_refurb' => [
+        'refurb_total_estimate' => [
+            'display_name' => 'Refurb total estimate',
+            'unit' => '£',
+            'formula' => '(Room costs × Quality tier) + Contingency',
+            'variables' => [
+                ['name' => 'Room counts', 'description' => 'Bedrooms, bathrooms, receptions, kitchen.'],
+                ['name' => 'Quality tier', 'description' => 'Light, standard, or full spec.'],
+                ['name' => 'Contingency', 'description' => 'Percentage on top of subtotal.'],
+            ],
+            'plain_summary' => 'Quick estimate from catalogue averages; use BRR refurb builder for line items.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+    ],
+
+    'snagging_list' => [
+        'checklist_item_count' => [
+            'display_name' => 'Snagging checklist',
+            'unit' => 'items',
+            'formula' => 'Standard UK handover inspection list',
+            'variables' => [
+                ['name' => 'Property', 'description' => 'Address on the PDF header.'],
+                ['name' => 'Inspector', 'description' => 'Optional name on the report.'],
+            ],
+            'plain_summary' => '23 standard snagging items for new build or refurb handover; pass/fail on the PDF.',
+            'xelox_slug' => '042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let',
+        ],
+    ],
 ];

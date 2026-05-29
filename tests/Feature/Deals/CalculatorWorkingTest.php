@@ -86,6 +86,7 @@ it('exposes the working route map on the registry', function () {
         'strategy_finder',
         'npv_irr', 'dscr', 'income_multiples', 'coc_roe', 'ltv', 'breakeven_occupancy',
         'sdlt', 'bridging', 'mortgage',
+        ...DealCalculatorRegistry::UTILITY_TOOL_SLUGS,
     ]);
 });
 
