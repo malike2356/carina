@@ -18,8 +18,8 @@ beforeEach(function () {
 });
 
 it('exposes registered calculators with strategy finder first in playground nav', function () {
-    expect(DealCalculatorRegistry::STRATEGIES)->toHaveCount(19)
-        ->and(DealCalculatorRegistry::playgroundNav())->toHaveCount(19)
+    expect(DealCalculatorRegistry::STRATEGIES)->toHaveCount(27)
+        ->and(DealCalculatorRegistry::playgroundNav())->toHaveCount(27)
         ->and(DealCalculatorRegistry::playgroundNav()[0]['slug'])->toBe('strategy_finder');
 });
 
