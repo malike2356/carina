@@ -4,7 +4,7 @@
  * Plugin Name: Propreneur Calculators
  * Plugin URI: https://propreneur.uk
  * Description: Embed all 27 Propreneur / Propcalc property calculators on any WordPress page via shortcode. Engine runs on Propreneur; your site displays the UI.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: VERLOX Ltd
  * Author URI: https://propreneur.uk
  * License: GPL-2.0-or-later
@@ -19,7 +19,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('PROPRENEUR_CALCULATORS_VERSION', '1.0.1');
+define('PROPRENEUR_CALCULATORS_VERSION', '1.0.2');
 define('PROPRENEUR_CALCULATORS_FILE', __FILE__);
 define('PROPRENEUR_CALCULATORS_DIR', plugin_dir_path(__FILE__));
 define('PROPRENEUR_CALCULATORS_URL', plugin_dir_url(__FILE__));

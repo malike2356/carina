@@ -148,7 +148,7 @@ final class Propreneur_Calculators_Settings
             <table class="widefat striped" style="max-width:720px">
                 <thead><tr><th>Shortcode</th><th>Description</th></tr></thead>
                 <tbody>
-                    <tr><td><code>[propreneur_calculators]</code></td><td><?php esc_html_e('Full hub: all 27 calculators with sidebar picker + iframe.', 'propreneur-calculators'); ?></td></tr>
+                    <tr><td><code>[propreneur_calculators]</code></td><td><?php esc_html_e('Full hub: calculator tabs across the top + iframe below (like propcalc.uk).', 'propreneur-calculators'); ?></td></tr>
                     <tr><td><code>[propreneur_calculator slug="brr"]</code></td><td><?php esc_html_e('Single calculator embed.', 'propreneur-calculators'); ?></td></tr>
                 </tbody>
             </table>

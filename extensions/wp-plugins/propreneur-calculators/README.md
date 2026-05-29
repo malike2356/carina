@@ -30,8 +30,8 @@ Optional attributes:
 [propreneur_calculators default="brr" height="900"]
 ```
 
-- Sidebar lists all calculators (grouped: strategies, tools, utilities)
-- Main area loads the selected calculator in an iframe
+- Two tab rows at the top (**Deal strategies**, **Financial & quick tools**), calculator iframe below
+- Scroll horizontally on smaller screens if needed
 - Engine: `POST https://propcalc.uk/calculators/{slug}/run` (from inside the embed)
 
 ### Single calculator

@@ -12,7 +12,6 @@
     function initHub(root) {
         var picks = root.querySelectorAll('.propreneur-calculators-hub__pick');
         var iframe = root.querySelector('.propreneur-calculators-hub__iframe');
-        var labelEl = root.querySelector('[data-active-label]');
         var defaultSlug = root.getAttribute('data-default') || '';
         var minHeight = parseInt(root.getAttribute('data-height') || '880', 10) || 880;
 
@@ -24,9 +23,7 @@
             picks.forEach(function (btn) { btn.classList.remove('is-active'); });
             button.classList.add('is-active');
             iframe.src = button.getAttribute('data-embed-url') || '';
-            if (labelEl) {
-                labelEl.textContent = button.getAttribute('data-label') || '';
-            }
+            button.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
         }
 
         picks.forEach(function (button) {

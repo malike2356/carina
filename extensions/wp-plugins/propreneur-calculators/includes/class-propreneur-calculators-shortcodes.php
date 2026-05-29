@@ -44,8 +44,16 @@ final class Propreneur_Calculators_Shortcodes
 
         $groups = [
             'strategies' => __('Deal strategies', 'propreneur-calculators'),
-            'tools' => __('Underwriting tools', 'propreneur-calculators'),
-            'utilities' => __('Utility calculators', 'propreneur-calculators'),
+            'tools_and_utilities' => __('Financial & quick tools', 'propreneur-calculators'),
+        ];
+
+        $catalogGroups = $catalog['groups'] ?? [];
+        $groupItems = [
+            'strategies' => is_array($catalogGroups['strategies'] ?? null) ? $catalogGroups['strategies'] : [],
+            'tools_and_utilities' => array_values(array_merge(
+                is_array($catalogGroups['tools'] ?? null) ? $catalogGroups['tools'] : [],
+                is_array($catalogGroups['utilities'] ?? null) ? $catalogGroups['utilities'] : [],
+            )),
         ];
 
         ob_start();
@@ -57,37 +65,39 @@ final class Propreneur_Calculators_Shortcodes
         <?php endif; ?>
         <div class="propreneur-calculators-hub" id="<?php echo esc_attr($instanceId); ?>" data-default="<?php echo esc_attr($defaultSlug); ?>" data-height="<?php echo esc_attr((string) $height); ?>">
             <div class="propreneur-calculators-hub__layout">
-                <aside class="propreneur-calculators-hub__nav" aria-label="<?php esc_attr_e('Calculator list', 'propreneur-calculators'); ?>">
+                <nav class="propreneur-calculators-hub__tabs" aria-label="<?php esc_attr_e('Calculator tabs', 'propreneur-calculators'); ?>">
                     <?php foreach ($groups as $groupKey => $groupLabel) : ?>
                         <?php
-                        $items = $catalog['groups'][$groupKey] ?? [];
-                        if (! is_array($items) || $items === []) {
+                        $items = $groupItems[$groupKey] ?? [];
+                        if ($items === []) {
                             continue;
                         }
                         ?>
-                        <div class="propreneur-calculators-hub__group">
+                        <div class="propreneur-calculators-hub__tab-row">
                             <p class="propreneur-calculators-hub__group-title"><?php echo esc_html($groupLabel); ?></p>
-                            <ul class="propreneur-calculators-hub__list">
-                                <?php foreach ($items as $calc) : ?>
-                                    <?php if (! is_array($calc)) {
-                                        continue;
-                                    } ?>
-                                    <li>
-                                        <button type="button"
-                                                class="propreneur-calculators-hub__pick"
-                                                data-slug="<?php echo esc_attr((string) ($calc['slug'] ?? '')); ?>"
-                                                data-embed-url="<?php echo esc_url((string) ($calc['embed_url'] ?? '')); ?>"
-                                                data-label="<?php echo esc_attr((string) ($calc['label'] ?? '')); ?>">
-                                            <?php echo esc_html((string) ($calc['label'] ?? '')); ?>
-                                        </button>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
+                            <div class="propreneur-calculators-hub__tab-scroll">
+                                <ul class="propreneur-calculators-hub__list">
+                                    <?php foreach ($items as $calc) : ?>
+                                        <?php if (! is_array($calc)) {
+                                            continue;
+                                        } ?>
+                                        <li>
+                                            <button type="button"
+                                                    class="propreneur-calculators-hub__pick"
+                                                    data-slug="<?php echo esc_attr((string) ($calc['slug'] ?? '')); ?>"
+                                                    data-embed-url="<?php echo esc_url((string) ($calc['embed_url'] ?? '')); ?>"
+                                                    data-label="<?php echo esc_attr((string) ($calc['label'] ?? '')); ?>"
+                                                    title="<?php echo esc_attr((string) ($calc['label'] ?? '')); ?>">
+                                                <?php echo esc_html((string) ($calc['label'] ?? '')); ?>
+                                            </button>
+                                        </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
                         </div>
                     <?php endforeach; ?>
-                </aside>
+                </nav>
                 <div class="propreneur-calculators-hub__main">
-                    <p class="propreneur-calculators-hub__active-label" data-active-label></p>
                     <iframe class="propreneur-calculators-hub__iframe"
                             title="<?php esc_attr_e('Propreneur calculator', 'propreneur-calculators'); ?>"
                             loading="lazy"
