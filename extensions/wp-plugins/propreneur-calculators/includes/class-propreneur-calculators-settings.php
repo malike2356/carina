@@ -11,7 +11,7 @@ final class Propreneur_Calculators_Settings
     private const OPTION_KEY = 'propreneur_calculators_settings';
 
     private const DEFAULTS = [
-        'api_base_url' => 'https://propcalc.uk',
+        'api_base_url' => 'https://propreneur.uk',
         'default_slug' => 'strategy_finder',
         'iframe_height' => '880',
         'cache_minutes' => '60',
@@ -98,10 +98,16 @@ final class Propreneur_Calculators_Settings
         }
 
         $settings = self::get();
+        $warnPropcalcOnly = str_contains(strtolower($settings['api_base_url']), 'propcalc.uk');
         ?>
         <div class="wrap">
             <h1><?php echo esc_html__('Propreneur Calculators', 'propreneur-calculators'); ?></h1>
-            <p><?php echo esc_html__('Calculators run on Propreneur / Propcalc via API. Use shortcodes on any page.', 'propreneur-calculators'); ?></p>
+            <?php if ($warnPropcalcOnly) : ?>
+                <div class="notice notice-warning"><p>
+                    <?php esc_html_e('propcalc.uk is the marketing site only. For the WordPress plugin, set API base URL to https://propreneur.uk so /calculators/catalog works.', 'propreneur-calculators'); ?>
+                </p></div>
+            <?php endif; ?>
+            <p><?php echo esc_html__('Calculators run on Propreneur via API. Use shortcodes on any page.', 'propreneur-calculators'); ?></p>
 
             <form method="post" action="options.php">
                 <?php settings_fields('propreneur_calculators'); ?>
@@ -110,7 +116,9 @@ final class Propreneur_Calculators_Settings
                         <th scope="row"><label for="pc_api_base_url"><?php esc_html_e('API base URL', 'propreneur-calculators'); ?></label></th>
                         <td>
                             <input type="url" class="regular-text" id="pc_api_base_url" name="<?php echo esc_attr(self::OPTION_KEY); ?>[api_base_url]" value="<?php echo esc_attr($settings['api_base_url']); ?>">
-                            <p class="description"><?php esc_html_e('Usually https://propcalc.uk (catalog at /calculators/catalog).', 'propreneur-calculators'); ?></p>
+                            <p class="description">
+                                <?php esc_html_e('Use https://propreneur.uk (Laravel API). propcalc.uk is marketing-only and does not serve /calculators/catalog.', 'propreneur-calculators'); ?>
+                            </p>
                         </td>
                     </tr>
                     <tr>

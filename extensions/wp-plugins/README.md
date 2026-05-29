@@ -12,7 +12,7 @@ Embed all 27 Propreneur / Propcalc calculators on any WordPress page via shortco
 
 1. Zip folder `propreneur-calculators/` and upload via **Plugins → Add New**.
 2. Activate **Propreneur Calculators**.
-3. **Settings → Propreneur Calculators** → API base URL `https://propcalc.uk`.
+3. **Settings → Propreneur Calculators** → API base URL `https://propreneur.uk`
 4. Add shortcode to a page: `[propreneur_calculators]`
 
 ## propreneur-lead-ingest

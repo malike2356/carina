@@ -38,3 +38,14 @@ it('builds catalog payload with custom base url', function (): void {
     expect($payload['count'])->toBe(27)
         ->and($payload['calculators'][1]['embed_url'])->toBe('https://propcalc.uk/calculators/btl/embed');
 });
+
+it('allows public calculator run without csrf for wordpress iframe embeds', function (): void {
+    $this->postJson(route('public.calculators.run', ['slug' => 'strategy_finder']), [
+        'capital_bucket' => 'under_5k',
+        'primary_goal' => 'passive_income',
+        'weekly_hours' => '2_to_5',
+        'risk_tolerance' => 'medium',
+        'pro_skills' => 'tech',
+    ])->assertOk()
+        ->assertJsonPath('strategy', 'strategy_finder');
+});

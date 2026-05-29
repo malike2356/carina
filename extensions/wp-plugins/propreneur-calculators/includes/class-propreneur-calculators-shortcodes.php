@@ -27,8 +27,16 @@ final class Propreneur_Calculators_Shortcodes
 
         $catalog = Propreneur_Calculators_Api::fetch_catalog();
         if ($catalog === null) {
-            return self::error_box(__('Could not load calculators from Propreneur. Check Settings → Propreneur Calculators.', 'propreneur-calculators'));
+            $detail = Propreneur_Calculators_Api::last_error();
+
+            return self::error_box(
+                __('Could not load calculators from Propreneur.', 'propreneur-calculators')
+                .($detail ? ' '.$detail : ' '
+                    .__('Set API base URL to https://propreneur.uk under Settings → Propreneur Calculators.', 'propreneur-calculators'))
+            );
         }
+
+        $fallbackNotice = Propreneur_Calculators_Api::last_error();
 
         $defaultSlug = sanitize_key($atts['default']);
         $height = max(400, min(2400, (int) $atts['height']));
@@ -42,6 +50,11 @@ final class Propreneur_Calculators_Shortcodes
 
         ob_start();
         ?>
+        <?php if ($fallbackNotice) : ?>
+            <p class="propreneur-calculators-notice" style="margin:0 0 1rem;padding:0.75rem 1rem;border:1px solid #fcd34d;background:#fffbeb;color:#92400e;border-radius:8px;font-size:0.875rem;">
+                <?php echo esc_html($fallbackNotice); ?>
+            </p>
+        <?php endif; ?>
         <div class="propreneur-calculators-hub" id="<?php echo esc_attr($instanceId); ?>" data-default="<?php echo esc_attr($defaultSlug); ?>" data-height="<?php echo esc_attr((string) $height); ?>">
             <div class="propreneur-calculators-hub__layout">
                 <aside class="propreneur-calculators-hub__nav" aria-label="<?php esc_attr_e('Calculator list', 'propreneur-calculators'); ?>">
