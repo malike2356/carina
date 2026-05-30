@@ -7,10 +7,13 @@ use App\Models\Central\Tenant;
 use App\Models\Tenant\DueDiligenceSnapshot;
 use App\Models\Tenant\TenantSetting;
 use App\Models\Tenant\User;
+use App\Jobs\Deals\RunDueDiligenceFetchJob;
+use App\Services\Deals\DueDiligenceFetchRunStore;
 use App\Services\Deals\PropertyDueDiligenceService;
 use App\Services\Onboarding\WorkspaceOnboardingService;
 use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Support\Facades\Bus;
 
 beforeEach(function (): void {
     $this->withoutMiddleware(VerifyCsrfToken::class);
@@ -98,31 +101,51 @@ it('fetch endpoint validates postcode required', function (): void {
     $response->assertJsonValidationErrors(['postcode']);
 });
 
-it('fetch endpoint returns bundle on valid postcode', function (): void {
+it('fetch endpoint queues a background run and returns run id', function (): void {
+    Bus::fake();
+
     [, $host, $user] = ddHubTenantHostUser();
     enableDealEngineForDdHub();
     $this->actingAs($user, 'web');
 
-    $mock = Mockery::mock(PropertyDueDiligenceService::class);
-    $mock->shouldReceive('fetch')->once()->andReturn([
-        'status' => 'success',
-        'postcode' => 'SW1A2AA',
-        'inputs' => ['bedrooms' => 2, 'property_type' => 'flat'],
-        'fetched_at' => now()->toIso8601String(),
-        'sections' => [],
-        'epc' => ['configured' => false, 'certificate' => null],
-    ]);
-    $mock->shouldReceive('epcIsConfigured')->andReturn(false);
-    $this->app->instance(PropertyDueDiligenceService::class, $mock);
+    config(['services.propertydata.key' => 'test-pd-key']);
 
     $response = $this->postJson('http://'.$host.'/due-diligence/fetch', [
         'postcode' => 'SW1A 2AA',
         'bedrooms' => 2,
         'property_type' => 'flat',
+        'scan_mode' => 'core',
     ]);
 
-    $response->assertOk();
-    $response->assertJsonPath('bundle.status', 'success');
+    $response->assertOk()
+        ->assertJsonPath('status', 'pending')
+        ->assertJsonStructure(['run_id']);
+
+    Bus::assertDispatched(RunDueDiligenceFetchJob::class);
+});
+
+it('fetch status returns completed bundle from run store', function (): void {
+    [$tenant, $host, $user] = ddHubTenantHostUser();
+    enableDealEngineForDdHub();
+    $this->actingAs($user, 'web');
+
+    $store = app(DueDiligenceFetchRunStore::class);
+    $created = $store->create((string) $tenant->getTenantKey(), $user->id, ['postcode' => 'PO20AH']);
+    $runId = $created['run_id'];
+
+    $store->merge((string) $tenant->getTenantKey(), $runId, [
+        'status' => 'completed',
+        'result' => [
+            'bundle' => ['status' => 'success', 'postcode' => 'PO20AH', 'sections' => []],
+            'geo' => null,
+            'workspace_listings' => null,
+        ],
+    ]);
+
+    $this->getJson('http://'.$host.'/due-diligence/fetch/'.$runId)
+        ->assertOk()
+        ->assertJsonPath('status', 'completed')
+        ->assertJsonPath('bundle.status', 'success');
 });
 
 it('save snapshot persists to database', function (): void {

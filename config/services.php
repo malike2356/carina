@@ -125,6 +125,9 @@ return [
         'public_research_url' => env('PROPERTYDATA_PUBLIC_URL', 'https://www.propertydata.co.uk'),
         /** Force cURL IPv4 resolution (helps flaky IPv6 networks when calling api.propertydata.co.uk). */
         'http_force_ipv4' => filter_var(env('PROPERTY_DATA_HTTP_FORCE_IPV4', false), FILTER_VALIDATE_BOOL),
+        'batch_size' => (int) env('PROPERTYDATA_BATCH_SIZE', 4),
+        'batch_pause_ms' => (int) env('PROPERTYDATA_BATCH_PAUSE_MS', 10500),
+        'http_timeout_seconds' => (int) env('PROPERTYDATA_HTTP_TIMEOUT', 25),
     ],
 
     /**

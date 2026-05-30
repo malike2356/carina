@@ -19,6 +19,26 @@ return [
     | Valuation endpoints are intentionally excluded — they are fetched sequentially in
     | PropertyDataDueDiligenceBundleService::build() so their cache keys stay clean.
     */
+    /*
+    | Core scan: faster default (~1 min) for dashboard due diligence.
+    */
+    'postcode_parallel_core' => [
+        'demographics',
+        'crime',
+        'schools',
+        'prices',
+        'demand',
+        'demand-rent',
+        'growth',
+        'flood-risk',
+        'planning-applications',
+        'property-types',
+        'tenure-types',
+        'energy-efficiency',
+        'household-income',
+        'council-tax',
+    ],
+
     'postcode_parallel' => [
         'demographics',
         'population',
