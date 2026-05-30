@@ -32,7 +32,7 @@ it('hides and restores the getting started checklist on the dashboard', function
     $this->get($base.'/')
         ->assertOk()
         ->assertSee('Getting started')
-        ->assertSee('Hide for now');
+        ->assertSee('Hide and complete later');
 
     $this->post($base.'/getting-started/hide')
         ->assertRedirect($base.'/')
@@ -44,7 +44,7 @@ it('hides and restores the getting started checklist on the dashboard', function
 
     $this->get($base.'/')
         ->assertOk()
-        ->assertDontSee('Hide for now')
+        ->assertDontSee('Hide and complete later')
         ->assertSee('Show checklist again');
 
     $this->post($base.'/getting-started/show')
@@ -58,5 +58,5 @@ it('hides and restores the getting started checklist on the dashboard', function
     $this->get($base.'/')
         ->assertOk()
         ->assertSee('Getting started')
-        ->assertSee('Hide for now');
+        ->assertSee('Hide and complete later');
 });

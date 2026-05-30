@@ -176,7 +176,7 @@ it('run endpoint returns feasibility structure with capital gap for under_5k pro
         ->and($response->json('feasibility.bridge_strategy'))->toBeNull();
 });
 
-it('save with from=onboarding returns return_url pointing at onboarding step 4', function (): void {
+it('save with from=onboarding returns return_url pointing at dashboard', function (): void {
     $run = $this->postJson($this->baseUrl.'/strategy-finder/run', [
         'capital_bucket' => '50_to_100k',
         'primary_goal'   => 'passive_income',
@@ -193,7 +193,7 @@ it('save with from=onboarding returns return_url pointing at onboarding step 4',
 
     $save->assertOk()
         ->assertJsonPath('saved', true)
-        ->assertJsonPath('return_url', route('tenant.onboarding.show', ['step' => 4]));
+        ->assertJsonPath('return_url', route('tenant.dashboard'));
 });
 
 it('save without from returns null return_url', function (): void {
@@ -213,16 +213,7 @@ it('save without from returns null return_url', function (): void {
     $save->assertOk()->assertJsonPath('return_url', null);
 });
 
-it('save with from=onboarding advances wizard step for property_investor persona', function (): void {
-    tenancy()->initialize($this->tenant);
-    $service = app(WorkspaceOnboardingService::class);
-    $state = $service->getState();
-    $state['persona'] = ['slug' => 'property_investor'];
-    $state['max_unlocked_step'] = 3;
-    app(\App\Models\Tenant\TenantSetting::class)->query()
-        ->updateOrCreate(['key' => WorkspaceOnboardingService::SETTINGS_KEY], ['value' => json_encode($state), 'group' => 'onboarding']);
-    tenancy()->end();
-
+it('save with from=onboarding records strategy in workspace state', function (): void {
     $run = $this->postJson($this->baseUrl.'/strategy-finder/run', [
         'capital_bucket' => '50_to_100k',
         'primary_goal'   => 'passive_income',
@@ -239,7 +230,6 @@ it('save with from=onboarding advances wizard step for property_investor persona
 
     tenancy()->initialize($this->tenant);
     $updated = app(WorkspaceOnboardingService::class)->getState();
-    expect($updated['max_unlocked_step'])->toBe(4)
-        ->and($updated['strategy']['primary'])->toBe($run->json('top_strategy'));
+    expect($updated['strategy']['primary'])->toBe($run->json('top_strategy'));
     tenancy()->end();
 });

@@ -3,6 +3,18 @@
 declare(strict_types=1);
 
 return [
+    /**
+     * Platform-subsidised Carina messages (per workspace) before BYOK or paid included AI.
+     * Tenants with a saved AI key in Settings are not counted.
+     */
+    'platform_quota' => [
+        'trial_messages' => (int) env('CARINA_PLATFORM_TRIAL_MESSAGES', 25),
+        'free_messages' => (int) env('CARINA_PLATFORM_FREE_MESSAGES', 5),
+        'byok_preview_messages' => (int) env('CARINA_PLATFORM_BYOK_PREVIEW_MESSAGES', 10),
+        'low_balance_threshold' => (int) env('CARINA_PLATFORM_LOW_BALANCE', 3),
+        'lifetime_ttl_seconds' => (int) env('CARINA_PLATFORM_LIFETIME_TTL', 34_560_000),
+    ],
+
     'rate_limits' => [
         'tenant_hourly' => (int) env('CARINA_RATE_TENANT_HOURLY', 500),
         'tenant_daily' => (int) env('CARINA_RATE_TENANT_DAILY', 5000),

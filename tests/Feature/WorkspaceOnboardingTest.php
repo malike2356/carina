@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\Central\Tenant as CentralTenant;
-use App\Models\Tenant\SourcingCriterion;
+use App\Models\Tenant\Contact;
+use App\Models\Tenant\DealAnalysis;
 use App\Models\Tenant\TenantSetting;
 use App\Models\Tenant\User;
 use App\Services\Onboarding\UserFeatureProfileService;
@@ -15,7 +16,7 @@ beforeEach(function () {
     $this->withoutMiddleware(VerifyCsrfToken::class);
 });
 
-function onboardingTenantHost(): array
+function onboardingTenantHost(bool $resetPending = true): array
 {
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([
@@ -29,10 +30,31 @@ function onboardingTenantHost(): array
 
     tenancy()->initialize($tenant);
     $user = User::query()->firstOrFail();
+    if ($resetPending) {
+        TenantSetting::query()->where('key', WorkspaceOnboardingService::SETTINGS_KEY)->delete();
+        app(WorkspaceOnboardingService::class)->ensurePendingOnboardingRecordExists();
+    }
     tenancy()->end();
 
     return [$tenant, $host, $user];
 }
+
+it('auto-defers onboarding for new tenants when bootstrap flag is enabled', function () {
+    config(['workspace_onboarding.auto_defer_on_bootstrap' => true]);
+
+    [$tenant, $host, $user] = onboardingTenantHost(resetPending: false);
+
+    tenancy()->initialize($tenant);
+    $svc = app(WorkspaceOnboardingService::class);
+    expect($svc->isCompleted())->toBeTrue()
+        ->and($svc->isSetupDeferred())->toBeTrue()
+        ->and(Contact::query()->exists())->toBeTrue()
+        ->and(DealAnalysis::query()->exists())->toBeTrue();
+    tenancy()->end();
+
+    $this->actingAs($user, 'web');
+    $this->get('http://'.$host.'/')->assertOk();
+});
 
 it('treats a missing workspace_onboarding row as incomplete and sends the dashboard to onboarding', function () {
     [$tenant, $host, $user] = onboardingTenantHost();
@@ -71,21 +93,22 @@ it('redirects GET /onboarding/ to the current wizard step', function () {
         ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
         ['value' => json_encode([
             'completed_at' => null,
-            'onboarding_version' => 3,
-            'max_unlocked_step' => 3,
+            'onboarding_version' => WorkspaceOnboardingService::ONBOARDING_VERSION,
+            'max_unlocked_step' => 2,
             'persona' => ['slug' => 'property_investor'],
             'workspace' => ['display_name' => 'X'],
             'strategy' => ['primary' => 'btl', 'target_postcodes_raw' => ''],
             'profile' => ['name' => 'Y', 'phone' => null],
             'preferences' => ['timezone' => 'Europe/London'],
             'preferences_skipped' => false,
+            'setup_deferred' => false,
         ]), 'group' => 'onboarding']
     );
     tenancy()->end();
 
     $this->get('http://'.$host.'/onboarding/')
         ->assertRedirect()
-        ->assertRedirectContains('/onboarding/3');
+        ->assertRedirectContains('/onboarding/2');
 });
 
 it('redirects the dashboard to onboarding until the wizard is completed', function () {
@@ -102,14 +125,15 @@ it('redirects the dashboard to onboarding until the wizard is completed', functi
         ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
         ['value' => json_encode([
             'completed_at' => now()->toIso8601String(),
-            'onboarding_version' => 3,
-            'max_unlocked_step' => 6,
+            'onboarding_version' => WorkspaceOnboardingService::ONBOARDING_VERSION,
+            'max_unlocked_step' => 2,
             'persona' => ['slug' => 'property_investor'],
             'workspace' => ['display_name' => 'X'],
             'strategy' => ['primary' => 'btl', 'target_postcodes_raw' => ''],
             'profile' => ['name' => 'Y', 'phone' => null],
             'preferences' => ['timezone' => 'Europe/London'],
             'preferences_skipped' => false,
+            'setup_deferred' => false,
         ]), 'group' => 'onboarding']
     );
     tenancy()->end();
@@ -125,14 +149,15 @@ it('repairs central workspace_onboarding_completed_at when tenant JSON is comple
         ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
         ['value' => json_encode([
             'completed_at' => now()->toIso8601String(),
-            'onboarding_version' => 3,
-            'max_unlocked_step' => 6,
+            'onboarding_version' => WorkspaceOnboardingService::ONBOARDING_VERSION,
+            'max_unlocked_step' => 2,
             'persona' => ['slug' => 'property_investor'],
             'workspace' => ['display_name' => 'X'],
             'strategy' => ['primary' => 'btl', 'target_postcodes_raw' => ''],
             'profile' => ['name' => 'Y', 'phone' => null],
             'preferences' => ['timezone' => 'Europe/London'],
             'preferences_skipped' => false,
+            'setup_deferred' => false,
         ]), 'group' => 'onboarding']
     );
     CentralTenant::query()->whereKey($tenant->id)->update(['workspace_onboarding_completed_at' => null]);
@@ -146,61 +171,33 @@ it('repairs central workspace_onboarding_completed_at when tenant JSON is comple
     expect(CentralTenant::query()->find($tenant->id)?->workspace_onboarding_completed_at)->not->toBeNull();
 });
 
-it('advances steps sequentially and completes onboarding', function () {
+it('completes the two-step onboarding wizard', function () {
     [$tenant, $host, $user] = onboardingTenantHost();
 
     $this->actingAs($user, 'web');
 
-    $r6 = $this->get('http://'.$host.'/onboarding/6');
-    $r6->assertRedirect();
-    expect($r6->headers->get('Location'))->toContain('/onboarding/1');
+    $this->get('http://'.$host.'/onboarding/2')->assertRedirect();
 
     $r1 = $this->post('http://'.$host.'/onboarding/1', [
         'slug' => 'property_investor',
+        'display_name' => 'Acme Lets Ltd',
+        'name' => 'Owner Person',
+        'phone' => '',
     ]);
     $r1->assertRedirect();
     expect($r1->headers->get('Location'))->toContain('/onboarding/2');
 
     $r2 = $this->post('http://'.$host.'/onboarding/2', [
-        'display_name' => 'Acme Lets Ltd',
-    ]);
-    $r2->assertRedirect();
-    expect($r2->headers->get('Location'))->toContain('/onboarding/3');
-
-    $r3 = $this->post('http://'.$host.'/onboarding/3', [
-        'primary' => 'btl',
-        'target_postcodes_raw' => "M1\nB16",
-    ]);
-    $r3->assertRedirect();
-    expect($r3->headers->get('Location'))->toContain('/onboarding/4');
-
-    $r4 = $this->post('http://'.$host.'/onboarding/4', [
-        'name' => 'Owner Person',
-        'phone' => '',
-    ]);
-    $r4->assertRedirect();
-    expect($r4->headers->get('Location'))->toContain('/onboarding/5');
-
-    $r5 = $this->post('http://'.$host.'/onboarding/5', [
         'timezone' => 'Europe/London',
     ]);
-    $r5->assertRedirect();
-    expect($r5->headers->get('Location'))->toContain('/onboarding/6');
-
-    $rLaunch = $this->post('http://'.$host.'/onboarding/launch', [
-        'confirm' => '1',
-    ]);
-    $rLaunch->assertRedirect();
-    expect($rLaunch->headers->get('Location'))->not->toContain('/onboarding');
+    $r2->assertRedirect();
+    expect($r2->headers->get('Location'))->not->toContain('/onboarding');
 
     tenancy()->initialize($tenant);
     expect(app(WorkspaceOnboardingService::class)->isCompleted())->toBeTrue();
+    expect(app(WorkspaceOnboardingService::class)->isLaunchFinished())->toBeTrue();
     expect($user->fresh()->name)->toBe('Owner Person');
     expect($user->fresh()->feature_preferences['persona'] ?? null)->toBe('property_investor');
-    $criterion = SourcingCriterion::query()->where('created_by', $user->id)->first();
-    expect($criterion)->not->toBeNull();
-    expect($criterion->strategy)->toBe('btl');
-    expect($criterion->postcodes)->toBe(['M1', 'B16']);
     tenancy()->end();
 
     expect(CentralTenant::query()->find($tenant->id)?->workspace_onboarding_completed_at)->not->toBeNull();
@@ -208,21 +205,21 @@ it('advances steps sequentially and completes onboarding', function () {
     $this->get('http://'.$host.'/')->assertOk();
 });
 
-it('can skip preferences with defaults and complete onboarding', function () {
+it('can skip timezone with defaults and complete onboarding', function () {
     [$tenant, $host, $user] = onboardingTenantHost();
 
     $this->actingAs($user, 'web');
 
-    $this->post('http://'.$host.'/onboarding/1', ['slug' => 'property_investor']);
-    $this->post('http://'.$host.'/onboarding/2', ['display_name' => 'Skip Prefs Ltd']);
-    $this->post('http://'.$host.'/onboarding/3', ['primary' => 'hmo', 'target_postcodes_raw' => '']);
-    $this->post('http://'.$host.'/onboarding/4', ['name' => 'Taylor Example', 'phone' => '']);
+    $this->post('http://'.$host.'/onboarding/1', [
+        'slug' => 'property_investor',
+        'display_name' => 'Skip Prefs Ltd',
+        'name' => 'Taylor Example',
+        'phone' => '',
+    ]);
 
     $skip = $this->post('http://'.$host.'/onboarding/preferences/skip');
     $skip->assertRedirect();
-    expect($skip->headers->get('Location'))->toContain('/onboarding/6');
-
-    $this->post('http://'.$host.'/onboarding/launch', ['confirm' => '1']);
+    expect($skip->headers->get('Location'))->not->toContain('/onboarding');
 
     tenancy()->initialize($tenant);
     $state = app(WorkspaceOnboardingService::class)->getState();
@@ -264,31 +261,28 @@ it('allows revisiting earlier unlocked steps', function () {
 
     $this->post('http://'.$host.'/onboarding/1', [
         'slug' => 'property_investor',
-    ]);
-
-    $this->post('http://'.$host.'/onboarding/2', [
         'display_name' => 'First Name',
-    ]);
-
-    $this->post('http://'.$host.'/onboarding/3', [
-        'primary' => 'brr',
-        'target_postcodes_raw' => '',
+        'name' => 'Owner',
+        'phone' => '',
     ]);
 
     $this->get('http://'.$host.'/onboarding/1')->assertOk();
 
-    $this->post('http://'.$host.'/onboarding/2', [
+    $this->post('http://'.$host.'/onboarding/1', [
+        'slug' => 'portfolio_manager',
         'display_name' => 'Updated Workspace',
+        'name' => 'Owner',
+        'phone' => '',
     ]);
 
     tenancy()->initialize($tenant);
     $state = app(WorkspaceOnboardingService::class)->getState();
     expect($state['workspace']['display_name'])->toBe('Updated Workspace');
-    expect($state['strategy']['primary'])->toBe('brr');
+    expect($state['persona']['slug'])->toBe('portfolio_manager');
     tenancy()->end();
 });
 
-it('migrates legacy v1 in-progress onboarding JSON when loaded', function () {
+it('migrates legacy in-progress onboarding JSON when loaded', function () {
     [$tenant, , $user] = onboardingTenantHost();
 
     tenancy()->initialize($tenant);
@@ -309,9 +303,7 @@ it('migrates legacy v1 in-progress onboarding JSON when loaded', function () {
 
     tenancy()->initialize($tenant);
     $state = app(WorkspaceOnboardingService::class)->getState();
-    expect((int) $state['onboarding_version'])->toBe(3);
-    expect((int) $state['max_unlocked_step'])->toBe(6);
-    expect($state['strategy']['primary'])->toBe('');
-    expect($state['persona']['slug'] ?? '')->toBe('');
+    expect((int) $state['onboarding_version'])->toBe(WorkspaceOnboardingService::ONBOARDING_VERSION);
+    expect((int) $state['max_unlocked_step'])->toBe(2);
     tenancy()->end();
 });

@@ -38,7 +38,12 @@ it('persona step stores slug in onboarding state', function (): void {
     [$tenant, $host, $user] = personaOnboardingHost();
 
     $this->actingAs($user, 'web')
-        ->post('http://'.$host.'/onboarding/1', ['slug' => 'portfolio_manager'])
+        ->post('http://'.$host.'/onboarding/1', [
+            'slug' => 'portfolio_manager',
+            'display_name' => 'Portfolio Co',
+            'name' => 'Owner',
+            'phone' => '',
+        ])
         ->assertRedirect();
 
     tenancy()->initialize($tenant);
@@ -54,6 +59,8 @@ it('sourcer_packager launch redirects to dashboard without error', function (): 
     $service = app(WorkspaceOnboardingService::class);
     $state = $service->getState();
     $state['persona'] = ['slug' => 'sourcer_packager'];
+    $state['profile'] = ['name' => 'Owner', 'phone' => null];
+    $state['workspace'] = ['display_name' => 'Sourcer Co'];
     $state['max_unlocked_step'] = WorkspaceOnboardingService::TOTAL_STEPS;
     $state['strategy'] = [
         'target_area' => 'Portsmouth, Hampshire',
@@ -113,6 +120,8 @@ it('launch calls setPersona on the user', function (): void {
     $service = app(WorkspaceOnboardingService::class);
     $state = $service->getState();
     $state['persona'] = ['slug' => 'mentor_educator'];
+    $state['profile'] = ['name' => 'Owner', 'phone' => null];
+    $state['workspace'] = ['display_name' => 'Mentor Co'];
     $state['max_unlocked_step'] = WorkspaceOnboardingService::TOTAL_STEPS;
     TenantSetting::query()->updateOrCreate(
         ['key' => WorkspaceOnboardingService::SETTINGS_KEY],
@@ -251,7 +260,7 @@ it('v2 onboarding state migrates to v3 schema on first load', function (): void 
     );
 
     $state = app(WorkspaceOnboardingService::class)->getState();
-    expect($state['onboarding_version'])->toBe(3);
+    expect($state['onboarding_version'])->toBe(WorkspaceOnboardingService::ONBOARDING_VERSION);
     expect($state)->toHaveKey('persona');
     expect($state['persona']['slug'])->toBe('');
     tenancy()->end();

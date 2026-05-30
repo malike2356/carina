@@ -27,7 +27,8 @@ it('sends welcome email when admin provisions a tenant with flag enabled', funct
     Mail::assertSent(TenantProvisionedWelcomeMail::class, function (TenantProvisionedWelcomeMail $mail) use ($tenant): bool {
         return $mail->hasTo($tenant->owner_email)
             && str_contains($mail->loginUrl, $tenant->slug)
-            && $mail->passwordResetUrl !== null;
+            && $mail->magicLoginUrl !== null
+            && str_contains((string) $mail->magicLoginUrl, 'login/magic');
     });
 });
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Central\FeatureFlag;
 use App\Models\Tenant\TenantSetting;
 use App\Models\Tenant\User;
+use App\Services\Onboarding\WorkspaceOnboardingService;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -15,7 +16,7 @@ beforeEach(function (): void {
     $this->withoutMiddleware(VerifyCsrfToken::class);
 });
 
-it('step 2 saves experience level and capital range', function (): void {
+it('two-step wizard completes and persists workspace settings', function (): void {
     $service = app(TenantCreationService::class);
     $tenant = $service->createTenant([
         'company_name' => 'Onb depth '.uniqid(),
@@ -27,27 +28,27 @@ it('step 2 saves experience level and capital range', function (): void {
 
     tenancy()->initialize($tenant);
     $user = User::query()->firstOrFail();
+    TenantSetting::query()->where('key', WorkspaceOnboardingService::SETTINGS_KEY)->delete();
+    app(WorkspaceOnboardingService::class)->ensurePendingOnboardingRecordExists();
     tenancy()->end();
 
     $this->actingAs($user, 'web');
     $base = 'http://'.$host;
 
-    $this->post($base.'/onboarding/1', ['display_name' => 'Test WS'])->assertRedirect();
+    $this->post($base.'/onboarding/1', [
+        'slug' => 'property_investor',
+        'display_name' => 'Test WS',
+        'name' => 'Test User',
+        'phone' => '',
+    ])->assertRedirect();
+
     $this->post($base.'/onboarding/2', [
-        'primary' => 'btl',
-        'experience_level' => 'beginner',
-        'capital_range' => 'under_50k',
-        'target_postcodes_raw' => '',
-    ])->assertRedirect($base.'/onboarding/3');
-
-    $this->post($base.'/onboarding/3', ['name' => 'Test User', 'phone' => ''])->assertRedirect();
-    $this->post($base.'/onboarding/4', ['timezone' => 'Europe/London'])->assertRedirect();
-
-    $this->post($base.'/onboarding/launch', ['confirm' => '1'])->assertRedirect();
+        'timezone' => 'Europe/London',
+    ])->assertRedirect();
 
     tenancy()->initialize($tenant);
-    expect(TenantSetting::query()->where('key', 'workspace_experience_level')->value('value'))->toBe('beginner');
-    expect(TenantSetting::query()->where('key', 'workspace_capital_range')->value('value'))->toBe('under_50k');
+    expect(app(WorkspaceOnboardingService::class)->isLaunchFinished())->toBeTrue();
+    expect(TenantSetting::query()->where('key', 'workspace_display_name')->value('value'))->toBe('Test WS');
     tenancy()->end();
 });
 
