@@ -27,6 +27,24 @@ it('denies initiate when gdpr acknowledgement missing', function () {
         ->assertSessionHasErrors('gdpr');
 });
 
+it('redirects to tenant edit when redirect_to is tenant_edit', function () {
+    Notification::fake();
+
+    $admin = PlatformUser::factory()->superAdmin()->create();
+    $tenant = createCentralTenant(['allow_remote_access' => true]);
+
+    $this->actingAs($admin, 'platform')
+        ->post(route('admin.remote-access.gdpr-confirm'), ['gdpr_confirmed' => '1']);
+
+    $this->actingAs($admin, 'platform')
+        ->post(route('admin.remote-access.initiate', $tenant), [
+            'reason' => 'Help customer finish onboarding on mobile.',
+            'redirect_to' => 'tenant_edit',
+        ])
+        ->assertRedirect(route('admin.saas-tenancy.edit', $tenant))
+        ->assertSessionHas('remote_access_entry_url');
+});
+
 it('allows initiate when gdpr confirmed and toggle on', function () {
     Notification::fake();
 
