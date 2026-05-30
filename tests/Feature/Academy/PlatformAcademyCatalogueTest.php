@@ -53,5 +53,7 @@ it('shows platform academy courses on a workspace subdomain', function (): void 
         ->get('http://'.$host.'/platform-academy/learn')
         ->assertOk()
         ->assertSee($courseName, false)
-        ->assertSee('Free Propreneur Academy courses', false);
+        ->assertSee('Investor education and Propreneur platform training', false)
+        ->assertSee('Investor education', false)
+        ->assertSee('Platform training', false);
 });
