@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Exceptions\Byok\ByokKeyMissingException;
+use App\Models\Central\PlatformSetting;
 use App\Models\Central\SubscriptionPlan;
 use App\Models\Central\TenantAiSetting;
 use App\Models\Tenant\IntegrationConfig;
@@ -67,7 +68,12 @@ it('falls back to platform PropertyData key when plan does not require BYOK', fu
     tenancy()->end();
 });
 
-it('throws ByokKeyMissingException for PropertyData when BYOK plan has no tenant key', function (): void {
+it('uses platform PropertyData key on BYOK plan when subsidy allows preview', function (): void {
+    PlatformSetting::query()->updateOrCreate(
+        ['key' => 'propertydata_allow_platform_subsidy'],
+        ['value' => '1', 'group' => 'ai'],
+    );
+
     $tenant = app(TenantCreationService::class)->createTenant([
         'company_name' => 'PD BYOK '.uniqid(),
         'owner_name' => 'Owner',
@@ -78,8 +84,7 @@ it('throws ByokKeyMissingException for PropertyData when BYOK plan has no tenant
     tenancy()->initialize($tenant);
     config(['services.propertydata.key' => 'platform-pd-key-test']);
 
-    expect(fn () => app(PropertyDataCredentialResolver::class)->resolveEffectiveKey())
-        ->toThrow(ByokKeyMissingException::class);
+    expect(app(PropertyDataCredentialResolver::class)->resolveEffectiveKey())->toBe('platform-pd-key-test');
 
     tenancy()->end();
 });

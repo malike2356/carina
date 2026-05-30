@@ -181,4 +181,18 @@ return [
         'northern_ireland' => 'Northern Ireland',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Platform-subsidised PropertyData (trial / freemium preview before BYOK)
+    |--------------------------------------------------------------------------
+    */
+    'platform_access' => [
+        'subsidy_enabled_default' => filter_var(env('PROPERTYDATA_PLATFORM_SUBSIDY_DEFAULT', true), FILTER_VALIDATE_BOOL),
+        'trial_due_diligence_runs' => (int) env('PROPERTYDATA_PLATFORM_TRIAL_DD_RUNS', 3),
+        'free_due_diligence_runs' => (int) env('PROPERTYDATA_PLATFORM_FREE_DD_RUNS', 1),
+        'byok_preview_due_diligence_runs' => (int) env('PROPERTYDATA_PLATFORM_BYOK_PREVIEW_DD_RUNS', 2),
+        'low_balance_threshold' => (int) env('PROPERTYDATA_PLATFORM_LOW_BALANCE', 1),
+        'lifetime_ttl_seconds' => (int) env('PROPERTYDATA_PLATFORM_LIFETIME_TTL', 34_560_000),
+    ],
+
 ];
