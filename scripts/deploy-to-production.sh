@@ -67,7 +67,7 @@ usage() {
   echo "  --skip-npm          Skip npm build on server"
   echo "  --with-rag          Run rag:ingest-brain-knowledge + sync-masterbrain (off by default)"
   echo "  --build-assets      npm ci && npm run build locally before rsync"
-  echo "  --optimize          config/route/view cache on server (default: clear only)"
+  echo "  --optimize          config/view/event cache on server (route cache skipped; default: clear only)"
   echo "  --no-restart        Do not supervisorctl restart horizon/scheduler"
   echo "  --rsync-delete      Delete remote files not present locally (careful)"
   exit 0

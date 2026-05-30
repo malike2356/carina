@@ -162,11 +162,11 @@ else
 fi
 
 if [[ "$OPTIMIZE" == "1" ]]; then
-  echo "==> optimize (config/route/view cache)"
+  echo "==> optimize (config/view cache; route:cache skipped — tenant subdomain routes load in TenancyServiceProvider booted())"
   run_artisan config:cache
-  run_artisan route:cache
   run_artisan view:cache
   run_artisan event:cache
+  run_artisan route:clear
 fi
 
 if [[ -w storage ]] || sudo -u "$REMOTE_USER" test -w storage 2>/dev/null; then

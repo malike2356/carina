@@ -50,6 +50,20 @@ function miHubTenantHostUser(): array
     return [$tenant, $host, $user];
 }
 
+it('loads the market intelligence hub index when deal engine is enabled', function (): void {
+    [, $host, $user] = miHubTenantHostUser();
+
+    FeatureFlag::syncFromCatalogue();
+    FeatureFlag::query()->where('key', 'stripe_billing_api')->update(['enabled' => false]);
+    FeatureFlag::query()->where('key', 'deal_engine')->update(['enabled' => true]);
+
+    $this->actingAs($user, 'web');
+
+    $this->get('http://'.$host.'/market-intelligence')
+        ->assertOk()
+        ->assertSee('Market intelligence', false);
+});
+
 it('redirects unknown market intelligence tools to the hub with a message', function (): void {
     [, $host, $user] = miHubTenantHostUser();
 
