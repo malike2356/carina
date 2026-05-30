@@ -10,6 +10,7 @@ use App\Models\Tenant\User;
 use App\Jobs\Deals\RunDueDiligenceFetchJob;
 use App\Services\Deals\DueDiligenceFetchRunStore;
 use App\Services\Deals\PropertyDueDiligenceService;
+use App\Support\Integrations\PropertyDataCredentialResolver;
 use App\Services\Onboarding\WorkspaceOnboardingService;
 use App\Services\Tenancy\TenantCreationService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -77,7 +78,10 @@ it('fetch endpoint returns helpful message when PropertyData key is missing', fu
     enableDealEngineForDdHub();
     $this->actingAs($user, 'web');
 
-    $this->app->bind(\App\Services\Deals\PropertyDataService::class, fn () => new \App\Services\Deals\PropertyDataService(''));
+    $resolver = Mockery::mock(PropertyDataCredentialResolver::class);
+    $resolver->shouldReceive('resolveEffectiveKey')->andReturn('');
+    $resolver->shouldReceive('platformKeyConfigured')->andReturn(false);
+    $this->app->instance(PropertyDataCredentialResolver::class, $resolver);
 
     $response = $this->postJson('http://'.$host.'/due-diligence/fetch', [
         'postcode' => 'PO2 0AH',
@@ -101,7 +105,38 @@ it('fetch endpoint validates postcode required', function (): void {
     $response->assertJsonValidationErrors(['postcode']);
 });
 
-it('fetch endpoint queues a background run and returns run id', function (): void {
+it('fetch endpoint returns core bundle inline when PropertyData succeeds', function (): void {
+    [, $host, $user] = ddHubTenantHostUser();
+    enableDealEngineForDdHub();
+    $this->actingAs($user, 'web');
+
+    config(['services.propertydata.key' => 'test-pd-key']);
+
+    $mock = Mockery::mock(\App\Services\Deals\DueDiligenceFetchExecutor::class);
+    $mock->shouldReceive('execute')->once()->andReturn([
+        'bundle' => [
+            'status' => 'success',
+            'postcode' => 'PO20AH',
+            'sections' => [],
+            'epc' => ['configured' => false, 'certificate' => null],
+        ],
+        'geo' => null,
+        'workspace_listings' => null,
+    ]);
+    $this->app->instance(\App\Services\Deals\DueDiligenceFetchExecutor::class, $mock);
+
+    $this->postJson('http://'.$host.'/due-diligence/fetch', [
+        'postcode' => 'PO2 0AH',
+        'bedrooms' => 2,
+        'property_type' => 'flat',
+        'scan_mode' => 'core',
+    ])
+        ->assertOk()
+        ->assertJsonPath('status', 'completed')
+        ->assertJsonPath('bundle.status', 'success');
+});
+
+it('fetch endpoint queues a background run for full scan', function (): void {
     Bus::fake();
 
     [, $host, $user] = ddHubTenantHostUser();
@@ -110,14 +145,13 @@ it('fetch endpoint queues a background run and returns run id', function (): voi
 
     config(['services.propertydata.key' => 'test-pd-key']);
 
-    $response = $this->postJson('http://'.$host.'/due-diligence/fetch', [
+    $this->postJson('http://'.$host.'/due-diligence/fetch', [
         'postcode' => 'SW1A 2AA',
         'bedrooms' => 2,
         'property_type' => 'flat',
-        'scan_mode' => 'core',
-    ]);
-
-    $response->assertOk()
+        'scan_mode' => 'full',
+    ])
+        ->assertOk()
         ->assertJsonPath('status', 'pending')
         ->assertJsonStructure(['run_id']);
 
@@ -125,21 +159,18 @@ it('fetch endpoint queues a background run and returns run id', function (): voi
 });
 
 it('fetch status returns completed bundle from run store', function (): void {
-    [$tenant, $host, $user] = ddHubTenantHostUser();
+    [, $host, $user] = ddHubTenantHostUser();
     enableDealEngineForDdHub();
     $this->actingAs($user, 'web');
 
     $store = app(DueDiligenceFetchRunStore::class);
-    $created = $store->create((string) $tenant->getTenantKey(), $user->id, ['postcode' => 'PO20AH']);
+    $created = $store->create($user->id, ['postcode' => 'PO20AH', 'scan_mode' => 'full']);
     $runId = $created['run_id'];
 
-    $store->merge((string) $tenant->getTenantKey(), $runId, [
-        'status' => 'completed',
-        'result' => [
-            'bundle' => ['status' => 'success', 'postcode' => 'PO20AH', 'sections' => []],
-            'geo' => null,
-            'workspace_listings' => null,
-        ],
+    $store->markCompleted($runId, [
+        'bundle' => ['status' => 'success', 'postcode' => 'PO20AH', 'sections' => []],
+        'geo' => null,
+        'workspace_listings' => null,
     ]);
 
     $this->getJson('http://'.$host.'/due-diligence/fetch/'.$runId)
