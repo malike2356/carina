@@ -15,3 +15,7 @@ it('uses five columns for five overview stats', function (): void {
 it('uses four columns for eight tiles', function (): void {
     expect(DashboardGrid::classes(8))->toContain('lg:grid-cols-4');
 });
+
+it('uses seven columns on xl for seven tiles', function (): void {
+    expect(DashboardGrid::classes(7))->toContain('xl:grid-cols-7');
+});
