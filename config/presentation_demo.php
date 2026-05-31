@@ -25,6 +25,8 @@ return [
 
     'complete_onboarding_deferred' => (bool) env('PRESENTATION_DEMO_ONBOARDING_DEFERRED', true),
 
+    'hide_getting_started_checklist' => (bool) env('PRESENTATION_DEMO_HIDE_GETTING_STARTED', true),
+
     /*
     | When true, each allowlisted slug is reset nightly (see routes/console.php).
     */
