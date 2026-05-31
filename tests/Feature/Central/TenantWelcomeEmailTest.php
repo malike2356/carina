@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\Central\TenantProvisionedWelcomeMail;
 use App\Models\Central\FeatureFlag;
+use App\Models\Tenant\User;
 use App\Services\Mail\TenantWelcomeEmailService;
 use App\Services\Tenancy\TenantCreationService;
 use Database\Seeders\Central\FeatureFlagSeeder;
@@ -62,6 +63,28 @@ it('creates missing owner user when sending welcome email', function (): void {
     expect(app(TenantWelcomeEmailService::class)->send($tenant)->sent)->toBeTrue();
 
     Mail::assertSent(TenantProvisionedWelcomeMail::class);
+});
+
+it('marks owner email verified when sending welcome mail so magic links work', function (): void {
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'Verified Welcome Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@verified-welcome.test',
+        'plan' => 'starter',
+        'send_welcome_email' => false,
+    ]);
+
+    $tenant->run(function () use ($tenant): void {
+        $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower((string) $tenant->owner_email)])->firstOrFail();
+        $user->forceFill(['email_verified_at' => null])->save();
+    });
+
+    expect(app(TenantWelcomeEmailService::class)->send($tenant)->sent)->toBeTrue();
+
+    $tenant->run(function () use ($tenant): void {
+        $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower((string) $tenant->owner_email)])->firstOrFail();
+        expect($user->email_verified_at)->not->toBeNull();
+    });
 });
 
 it('welcome service sends mail with reset link', function (): void {
