@@ -16,7 +16,7 @@ beforeEach(function (): void {
     Mail::fake();
 });
 
-it('sends owner password setup link from saas tenancy edit', function (): void {
+it('sends owner sign-in link from saas tenancy edit', function (): void {
     Config::set('mail.default', 'array');
 
     $tenant = app(TenantCreationService::class)->createTenant([

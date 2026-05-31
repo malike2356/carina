@@ -28,8 +28,28 @@ it('sends welcome email when admin provisions a tenant with flag enabled', funct
     Mail::assertSent(TenantProvisionedWelcomeMail::class, function (TenantProvisionedWelcomeMail $mail) use ($tenant): bool {
         return $mail->hasTo($tenant->owner_email)
             && str_contains($mail->loginUrl, $tenant->slug)
+            && $mail->verificationUrl !== null
+            && str_contains((string) $mail->verificationUrl, '/email/verify/')
             && $mail->magicLoginUrl !== null
             && str_contains((string) $mail->magicLoginUrl, 'login/magic');
+    });
+});
+
+it('trusts owner email when admin provisions with trust_owner_email flag', function (): void {
+    $ownerEmail = 'owner-'.uniqid().'@trusted-admin.test';
+
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'Trusted Admin Co '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => $ownerEmail,
+        'plan' => 'starter',
+        'send_welcome_email' => false,
+        'trust_owner_email' => true,
+    ]);
+
+    $tenant->run(function () use ($ownerEmail): void {
+        $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($ownerEmail)])->firstOrFail();
+        expect($user->email_verified_at)->not->toBeNull();
     });
 });
 
