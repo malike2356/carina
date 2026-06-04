@@ -3,9 +3,9 @@
 Read `php artisan route:list --json` from stdin; write split route knowledge files.
 
 Outputs (paths relative to repo root):
-  brain/knowledge/64-api-route-consolidated.md  — short index + counts + links (RAG-friendly)
-  brain/knowledge/66-api-routes-tenant-subdomain.md — tenant.api.* + tenant web
-  brain/knowledge/67-api-routes-central-filament-misc.md — admin, platform auth, Filament, other
+  brain/knowledge/64-api-route-consolidated.md  - short index + counts + links (RAG-friendly)
+  brain/knowledge/66-api-routes-tenant-subdomain.md - tenant.api.* + tenant web
+  brain/knowledge/67-api-routes-central-filament-misc.md - admin, platform auth, Filament, other
 
 Security: stdin is route metadata only; no .env reads. Do not paste secrets into markdown.
 

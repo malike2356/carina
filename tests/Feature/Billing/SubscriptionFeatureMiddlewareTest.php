@@ -53,7 +53,7 @@ it('blocks properties for an active investor subscription when billing api is en
     $tenant->trial_ends_at = now()->subDay();
     $tenant->save();
 
-    // investor plan does not include multi_property — /properties should be gated
+    // investor plan does not include multi_property - /properties should be gated
     $investorId = SubscriptionPlan::on('central')->where('slug', 'investor')->value('id');
     expect($investorId)->not->toBeNull();
 

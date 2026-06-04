@@ -9,7 +9,7 @@ return [
     'default_provider' => env('AI_DEFAULT_PROVIDER', 'anthropic'),
 
     /*
-     * Embedding model for RAG (OpenAI-compatible /embeddings only — skips Anthropic in router).
+     * Embedding model for RAG (OpenAI-compatible /embeddings only - skips Anthropic in router).
      */
     'embedding_model' => env('AI_EMBEDDING_MODEL', 'text-embedding-3-small'),
 
@@ -96,7 +96,7 @@ return [
     ],
 
     /*
-     * Priority order for chat — first provider with a valid key wins.
+     * Priority order for chat - first provider with a valid key wins.
      * Override per-tenant via BYOK settings.
      */
     'priority' => explode(',', env('AI_PRIORITY', 'anthropic,groq,deepseek,openrouter,openai,google')),
@@ -113,7 +113,7 @@ return [
     ))),
 
     /*
-     * Tavily web search — optional live context for Carina (tenant chat, platform chat, deal narrative).
+     * Tavily web search - optional live context for Carina (tenant chat, platform chat, deal narrative).
      * Prefer storing the key and toggles under Admin → Platform keys → AI and Carina → Tavily (central DB).
      * Environment variables below are fallbacks when no database value is set.
      */
@@ -147,7 +147,7 @@ return [
     ],
 
     /*
-     * Carina system persona — appended to every tenant context.
+     * Carina system persona - appended to every tenant context.
      */
     'carina_persona' => 'You are Carina, the AI assistant built into Propreneur, a property investment management platform for UK landlords and investors, developed by VERLOX Ltd alongside the product. You understand UK property law, lettings regulations, HMO licensing, BTL/BRR/R2R/SA strategies, yield calculations, and HMRC landlord rules. Unless the user clearly asks for engineering, API, SQL, or integration minutiae, lead with a conversational explanation they can use without wading through internal jargon. Do not open with or fill the reply with API lists, SQL, JSON dumps, Laravel route names, file paths, or long tables copied from internal documentation unless they asked for that level of detail. When the context includes technical material, translate what matters into plain English first; add a short optional "Technical detail" subsection only when it genuinely helps or they requested it. Be concise, precise, and proactive. Always use £ and UK-specific context. Never invent or embellish: only state facts supported by workspace context, cited web excerpts, knowledge-base context, or the user messages in this thread; if you lack support, omit the detail or say clearly that you do not know. When asked who built Propreneur or Carina, say VERLOX Ltd (UK). Do not use emojis, emoticons, or decorative unicode symbols in replies. Use plain hyphens instead of unicode em dashes in your answers.',
 
@@ -159,21 +159,21 @@ return [
 Propreneur v2 is organised as thirteen numbered product modules plus add-on surfaces, plus central platform services. If the user asks for a full feature list, product map, or "what Propreneur does", answer from this inventory only. Do not substitute a generic landlord-SaaS or competitor-style catalogue.
 
 Modules (status reflects the current v2 codebase direction; say "check the latest release notes" if they need legal guarantees):
-1. Deal Engine — underwriting, deal analyses, calculators, sourcing workspace (active build).
-2. CRM — contacts, interactions, import/export, investor scores (shipped).
-3. Pipeline (Kanban) — deal stages and cards (shipped).
-4. Communications Hub — sequences, enrollments, automation hooks.
-5. Accounting — double-entry journals, operational expenses, chart of accounts, ledgers, balance sheet, income statement, CSV exports, integrations with Zoho Books / Xero / Sage / FreeAgent / QuickBooks, Carina accounting hub and read-only agent tools (shipped).
-6. Compliance — obligations tracking and property document bridge.
-7. Document Vault — structured document storage.
+1. Deal Engine - underwriting, deal analyses, calculators, sourcing workspace (active build).
+2. CRM - contacts, interactions, import/export, investor scores (shipped).
+3. Pipeline (Kanban) - deal stages and cards (shipped).
+4. Communications Hub - sequences, enrollments, automation hooks.
+5. Accounting - double-entry journals, operational expenses, chart of accounts, ledgers, balance sheet, income statement, CSV exports, integrations with Zoho Books / Xero / Sage / FreeAgent / QuickBooks, Carina accounting hub and read-only agent tools (shipped).
+6. Compliance - obligations tracking and property document bridge.
+7. Document Vault - structured document storage.
 8. Project Management.
 9. HR and Payroll.
-10. Booking (viCal) — scheduling and public booking.
-11. Mentoring OS — tenant mentoring hub, programmes, cohorts, mentorship threads linked to CRM and pipeline; community features also expose mentorship messaging.
-12. Reporting and Intelligence — dashboards, definitions, exports, analytics (shipped).
-13. Carina AI — this assistant, tenant and platform interfaces, knowledge retrieval, web search option, usage limits (shipped).
+10. Booking (viCal) - scheduling and public booking.
+11. Mentoring OS - tenant mentoring hub, programmes, cohorts, mentorship threads linked to CRM and pipeline; community features also expose mentorship messaging.
+12. Reporting and Intelligence - dashboards, definitions, exports, analytics (shipped).
+13. Carina AI - this assistant, tenant and platform interfaces, knowledge retrieval, web search option, usage limits (shipped).
 
-Add-on surfaces (available with applicable subscription): Community and learning — posts, groups, courses, quizzes, learning paths, badges. Investors hub — workspace pages for deal pipeline, KYC helpers. Investor portal — separate login and dashboard for external investors to view deal opportunities. Workspace automation — rules and automated actions. Integrations, billing platform, backups, and migration tools are central platform services.
+Add-on surfaces (available with applicable subscription): Community and learning - posts, groups, courses, quizzes, learning paths, badges. Investors hub - workspace pages for deal pipeline, KYC helpers. Investor portal - separate login and dashboard for external investors to view deal opportunities. Workspace automation - rules and automated actions. Integrations, billing platform, backups, and migration tools are central platform services.
 
 Central platform (non-tenant): tenant and domain lifecycle, subscriptions, platform admin users, feature flags, AI provider management, security posture views. Each workspace runs on an isolated database behind subdomain routing.
 TXT,

@@ -41,7 +41,7 @@ it('renders intake pool edit page with stored questions', function (): void {
                 'label' => 'Rough budget',
                 'type' => 'select',
                 'required' => true,
-                'choices' => ['Under £100k', '£100k–£250k'],
+                'choices' => ['Under £100k', '£100k-£250k'],
                 'disqualify_values' => ['Under £100k'],
                 'disqualify_message' => 'Not a fit for this programme.',
             ],

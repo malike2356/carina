@@ -169,7 +169,7 @@ it('run endpoint returns feasibility structure with capital gap for under_5k pro
             'monthly_savings_assumption',
         ]]);
 
-    // R2R is top (£3k entry) — £500 above the £2,500 midpoint. No cheaper bridge exists.
+    // R2R is top (£3k entry) - £500 above the £2,500 midpoint. No cheaper bridge exists.
     expect($response->json('feasibility.can_start_top_today'))->toBeFalse()
         ->and($response->json('feasibility.capital_midpoint'))->toBe(2500)
         ->and($response->json('feasibility.capital_gap'))->toBe(500)

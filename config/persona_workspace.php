@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
     /*
     |--------------------------------------------------------------------------
-    | Workspace mode switch — minimum workspace age (days)
+    | Workspace mode switch - minimum workspace age (days)
     |--------------------------------------------------------------------------
     |
     | Tenant admins see Settings → Workspace mode only after the workspace has

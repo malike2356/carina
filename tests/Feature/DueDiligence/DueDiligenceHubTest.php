@@ -210,7 +210,7 @@ it('save snapshot persists to database', function (): void {
     tenancy()->end();
 });
 
-it('snapshot is user-scoped — other user cannot view', function (): void {
+it('snapshot is user-scoped - other user cannot view', function (): void {
     [, $host, $owner] = ddHubTenantHostUser();
     enableDealEngineForDdHub();
 

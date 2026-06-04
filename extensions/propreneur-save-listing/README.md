@@ -20,12 +20,12 @@ On a supported listing tab (Rightmove, Zoopla, OnTheMarket, OpenRent, SpareRoom)
 
 ## Files
 
-- `manifest.json` — MV3 manifest, portal `host_permissions`, broad http(s) for workspace API calls.
-- `options.html` / `options.js` — workspace URL and token.
-- `popup.html` / `popup.js` — preview, capture, save, duplicate merge retry.
-- `content-scripts/shared.js` — helpers for extractors.
-- `content-scripts/rightmove.js` (and zoopla, onthemarket, openrent, spareroom) — DOM snapshot payloads.
-- `icons/` — toolbar icons.
+- `manifest.json` - MV3 manifest, portal `host_permissions`, broad http(s) for workspace API calls.
+- `options.html` / `options.js` - workspace URL and token.
+- `popup.html` / `popup.js` - preview, capture, save, duplicate merge retry.
+- `content-scripts/shared.js` - helpers for extractors.
+- `content-scripts/rightmove.js` (and zoopla, onthemarket, openrent, spareroom) - DOM snapshot payloads.
+- `icons/` - toolbar icons.
 
 ## Packaging for stores
 

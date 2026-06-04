@@ -88,7 +88,7 @@ fi
 
 MANIFEST_REMOTE="${DEPLOY_REMOTE_ROOT}/storage/app/deploy-manifest.json"
 echo "==> Production deploy manifest (if present):"
-ssh "$DEPLOY_SSH" "cat '$MANIFEST_REMOTE' 2>/dev/null || echo '(no manifest — deploy after enabling manifest write)'"
+ssh "$DEPLOY_SSH" "cat '$MANIFEST_REMOTE' 2>/dev/null || echo '(no manifest - deploy after enabling manifest write)'"
 echo ""
 
 rsync "${RSYNC_OPTS[@]}" "${RSYNC_EXCLUDES[@]}" \

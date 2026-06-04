@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sourced by deploy-to-production.sh — do not run directly.
+# Sourced by deploy-to-production.sh - do not run directly.
 
 deploy_git_check() {
   local branch="${1:-main}"
@@ -17,12 +17,12 @@ deploy_git_check() {
   fi
 
   if ! git remote get-url origin &>/dev/null; then
-    echo "WARN: No git remote 'origin' — cannot verify push mirror." >&2
+    echo "WARN: No git remote 'origin' - cannot verify push mirror." >&2
     return 0
   fi
 
   git fetch origin "$branch" --quiet 2>/dev/null || {
-    echo "WARN: Could not fetch origin/$branch — skipping push/pull parity check." >&2
+    echo "WARN: Could not fetch origin/$branch - skipping push/pull parity check." >&2
     return 0
   }
 
@@ -31,7 +31,7 @@ deploy_git_check() {
   remote_sha="$(git rev-parse "origin/$branch" 2>/dev/null || true)"
 
   if [[ -z "$remote_sha" ]]; then
-    echo "WARN: origin/$branch not found — push your branch to GitHub before deploy." >&2
+    echo "WARN: origin/$branch not found - push your branch to GitHub before deploy." >&2
     return 0
   fi
 

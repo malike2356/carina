@@ -66,11 +66,11 @@ it('builds show-working steps for the SDLT calculator with profile-specific band
     expect($result['supported'])->toBeTrue();
 
     // Under the registry's standard residential bands (0% up to £250k, 5% to
-    // £925k…) a £300k purchase produces £2,500 of SDLT — 5% on the £50k slice.
+    // £925k…) a £300k purchase produces £2,500 of SDLT - 5% on the £50k slice.
     $total = collect($result['working'])->firstWhere('key', 'sdlt_total');
     expect($total)->not->toBeNull()
         ->and($total['value'])->toContain('2,500')
-        ->and($total['formula'])->toContain('0% × £0–£250k')
+        ->and($total['formula'])->toContain('0% × £0-£250k')
         ->and($total['xelox_slug'])->toContain('035-standard-residential-sdlt');
 
     $effective = collect($result['working'])->firstWhere('key', 'effective_rate_pct');

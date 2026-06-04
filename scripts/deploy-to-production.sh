@@ -114,7 +114,7 @@ if [[ "$SKIP_GIT_PULL" != "1" ]]; then
       exit 1
     fi
   else
-    echo "WARN: No .git in $REPO_ROOT — skipping pull (rsync current tree only)." >&2
+    echo "WARN: No .git in $REPO_ROOT - skipping pull (rsync current tree only)." >&2
   fi
 fi
 
@@ -174,7 +174,7 @@ if [[ "$RSYNC_EXIT" -ne 0 ]]; then
 fi
 
 echo "==> upload deploy-remote.sh and run post-deploy"
-# Inline exports in the remote script — sshd often blocks AcceptEnv, so VAR=value ssh prefixes fail.
+# Inline exports in the remote script - sshd often blocks AcceptEnv, so VAR=value ssh prefixes fail.
 ssh "$DEPLOY_SSH" bash -s <<REMOTE
 set -euo pipefail
 export DEPLOY_REMOTE_ROOT='${DEPLOY_REMOTE_ROOT}'

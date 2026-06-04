@@ -173,7 +173,7 @@ return [
     ],
 
     /*
-    | Carina Remote — Slack Events API (tenant inbound /api/remote/inbound/slack).
+    | Carina Remote - Slack Events API (tenant inbound /api/remote/inbound/slack).
     | See docs/CARINA_SLACK_INTEGRATION.md
     */
     'slack_remote' => [

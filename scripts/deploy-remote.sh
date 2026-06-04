@@ -162,7 +162,7 @@ else
 fi
 
 if [[ "$OPTIMIZE" == "1" ]]; then
-  echo "==> optimize (config/view cache; route:cache skipped — tenant subdomain routes load in TenancyServiceProvider booted())"
+  echo "==> optimize (config/view cache; route:cache skipped - tenant subdomain routes load in TenancyServiceProvider booted())"
   run_artisan config:cache
   run_artisan view:cache
   run_artisan event:cache
@@ -184,12 +184,12 @@ if [[ "$RESTART_SUPERVISOR" == "1" ]]; then
   if command -v pgrep >/dev/null 2>&1; then
     STRAY_PIDS=$(pgrep -af 'artisan horizon$' 2>/dev/null | awk '{print $1}' || true)
     if [[ -n "$STRAY_PIDS" ]]; then
-      echo "WARN: stray horizon master PIDs after terminate: $STRAY_PIDS — sending TERM" >&2
+      echo "WARN: stray horizon master PIDs after terminate: $STRAY_PIDS - sending TERM" >&2
       sudo kill -TERM $STRAY_PIDS 2>/dev/null || true
       sleep 3
       STILL=$(pgrep -af 'artisan horizon$' 2>/dev/null | awk '{print $1}' || true)
       if [[ -n "$STILL" ]]; then
-        echo "WARN: stray horizon survived TERM: $STILL — sending KILL" >&2
+        echo "WARN: stray horizon survived TERM: $STILL - sending KILL" >&2
         sudo kill -KILL $STILL 2>/dev/null || true
       fi
     fi

@@ -14,9 +14,9 @@ return [
     | Listing import driver (single URL flow)
     |--------------------------------------------------------------------------
     |
-    | url     — Fetch public listing HTML and parse JSON-LD / Open Graph (free).
-    | partner — POST the listing URL (or payload) to a paid partner normaliser API.
-    | chain   — Try partner when configured; otherwise fall back to url.
+    | url     - Fetch public listing HTML and parse JSON-LD / Open Graph (free).
+    | partner - POST the listing URL (or payload) to a paid partner normaliser API.
+    | chain   - Try partner when configured; otherwise fall back to url.
     |
     */
     'import_driver' => env('LISTINGS_IMPORT_DRIVER', 'chain'),
@@ -61,8 +61,8 @@ return [
         'url_field' => env('LISTINGS_PARTNER_URL_FIELD', 'url'),
         /*
         | How the single-URL import authenticates to your partner adapter.
-        | bearer   — Authorization: Bearer {token} (default; Laravel Http::withToken).
-        | api_key  — Custom header (see api_key_header) with raw token value.
+        | bearer   - Authorization: Bearer {token} (default; Laravel Http::withToken).
+        | api_key  - Custom header (see api_key_header) with raw token value.
         */
         'auth_scheme' => env('LISTINGS_PARTNER_AUTH_SCHEME', 'bearer'),
         'api_key_header' => env('LISTINGS_PARTNER_API_KEY_HEADER', 'X-Api-Key'),
@@ -98,7 +98,7 @@ return [
     | own aggregator) supply stable fields, images, and contract-bound use rights.
     | Pipeline (when implemented): poll or receive webhook → normalise → dedupe
     | → upsert Property (+ rightmove_id / zoopla_id) → attach DealAnalysis / images
-    | per licence (store copies vs licensed CDN URLs — see ingestion.image_handling).
+    | per licence (store copies vs licensed CDN URLs - see ingestion.image_handling).
     |
     | LISTINGS_FEED_POLL_ENABLED gates the scheduler; credentials stay in .env only.
     |
@@ -114,8 +114,8 @@ return [
         'batch_bearer_token' => env('LISTINGS_FEED_BATCH_BEARER_TOKEN'),
         'batch_timeout' => (int) env('LISTINGS_FEED_BATCH_TIMEOUT', 120),
         /*
-        | licensed_cdn — persist partner image URLs only (contract must allow hotlinking).
-        | mirror_disk  — download and store under your disk (S3/local); higher storage, clearer compliance.
+        | licensed_cdn - persist partner image URLs only (contract must allow hotlinking).
+        | mirror_disk  - download and store under your disk (S3/local); higher storage, clearer compliance.
         */
         'image_handling' => env('LISTINGS_FEED_IMAGE_HANDLING', 'licensed_cdn'),
         /*

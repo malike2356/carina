@@ -91,7 +91,7 @@ it('enrols pipeline contacts when deal analysis status changes and sequence matc
         'delay_hours' => 0,
         'channel' => 'email',
         'subject' => 'Deal update',
-        'body' => 'Hi {{first_name}} — {{deal.title}}',
+        'body' => 'Hi {{first_name}} - {{deal.title}}',
         'is_active' => true,
     ]);
 

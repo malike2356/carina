@@ -1,5 +1,5 @@
 #!/bin/bash
-# Pre-deploy safety check — run locally before every production merge
+# Pre-deploy safety check - run locally before every production merge
 set -e
 cd "$(dirname "$0")/.."
 
@@ -10,7 +10,7 @@ echo "1. Pending central migrations:"
 php artisan migrate:status | grep "Pending" || echo "   None pending"
 
 echo ""
-echo "2. Pending tenant migrations (sample — first 3 tenants):"
+echo "2. Pending tenant migrations (sample - first 3 tenants):"
 php artisan tenants:run "migrate:status" | head -50 || true
 
 echo ""

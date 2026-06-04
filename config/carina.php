@@ -68,7 +68,7 @@ return [
         'template_tenant_id' => env('CARINA_TRAINING_TEMPLATE_TENANT_ID'),
         /** When true, successful masterbrain saves auto-queue RAG (overridable in platform_settings). */
         'auto_rag_after_save' => filter_var(env('CARINA_TRAINING_AUTO_RAG_AFTER_SAVE', false), FILTER_VALIDATE_BOOL),
-        /** selected | all_active — used when auto_rag_after_save is on (overridable in platform_settings). */
+        /** selected | all_active - used when auto_rag_after_save is on (overridable in platform_settings). */
         'auto_rag_scope' => env('CARINA_TRAINING_AUTO_RAG_SCOPE', 'selected'),
         'masterbrain_sync_max_files' => (int) env('CARINA_TRAINING_MASTERBRAIN_SYNC_MAX_FILES', 500),
         'masterbrain_sync_max_tenants' => (int) env('CARINA_TRAINING_MASTERBRAIN_SYNC_MAX_TENANTS', 500),

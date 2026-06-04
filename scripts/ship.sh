@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ship.sh — commit, push, deploy, verify in one command
+# ship.sh - commit, push, deploy, verify in one command
 # Usage: ./scripts/ship.sh "commit message" [--build-assets] [--skip-migrate] [--dry-run] [--build-mobile]
 #
 # Runs from repo root. Wraps:
@@ -36,7 +36,7 @@ echo "==> git add -A"
 git add -A
 
 if git diff --cached --quiet; then
-  echo "    (nothing staged — skipping commit)"
+  echo "    (nothing staged - skipping commit)"
 else
   echo "==> git commit"
   git commit -m "$MSG

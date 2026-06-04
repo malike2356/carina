@@ -77,7 +77,7 @@ it('detects capital gap for under_5k when cheapest strategy is still out of reac
         'pro_skills'     => 'none',
     ]);
 
-    // R2R scores highest (99 pts) but needs £3k — £500 above the £2,500 midpoint.
+    // R2R scores highest (99 pts) but needs £3k - £500 above the £2,500 midpoint.
     // No other strategy has a projection for under_5k, so bridge_strategy is null.
     $f = $result['feasibility'];
     expect($result['top_strategy'])->toBe('r2r')
@@ -98,7 +98,7 @@ it('detects capital gap and finds an affordable bridge strategy', function (): v
         'pro_skills'     => 'trades',
     ]);
 
-    // BRR scores highest (95 pts) but needs £90k — £15k above the £75k midpoint.
+    // BRR scores highest (95 pts) but needs £90k - £15k above the £75k midpoint.
     // HMO is next in score order at £55k which is affordable today.
     $f = $result['feasibility'];
     expect($result['top_strategy'])->toBe('brr')
@@ -122,7 +122,7 @@ it('reports no capital gap when strategy is affordable at bracket midpoint', fun
     ]);
 
     $f = $result['feasibility'];
-    // R2R is top at this level (needs £3k; midpoint is £15k) — no gap.
+    // R2R is top at this level (needs £3k; midpoint is £15k) - no gap.
     expect($f['can_start_top_today'])->toBeTrue()
         ->and($f['capital_gap'])->toBe(0);
 });

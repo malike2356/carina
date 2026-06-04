@@ -84,7 +84,7 @@ return [
     | Workspace API access (mobile + Sanctum PAT)
     |--------------------------------------------------------------------------
     |
-    | Programmatic API is included in the subscription on Operator and above —
+    | Programmatic API is included in the subscription on Operator and above -
     | not a separate SKU. Investor (and any plan below minimum_plan_sort_order)
     | does not receive API access.
     |
@@ -198,7 +198,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Stripe Checkout Session – compliance (UK / EU SaaS)
+    | Stripe Checkout Session - compliance (UK / EU SaaS)
     |--------------------------------------------------------------------------
     |
     | Defaults keep behaviour unchanged. Enable after Stripe Dashboard setup:

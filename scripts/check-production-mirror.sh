@@ -40,7 +40,7 @@ echo ""
 echo "==> Production manifest (${DEPLOY_SSH})"
 REMOTE_JSON="$(ssh "$DEPLOY_SSH" "cat '$MANIFEST_PATH' 2>/dev/null" || true)"
 if [[ -z "$REMOTE_JSON" ]]; then
-  echo "    (missing — run ./scripts/deploy-to-production.sh once to write it)"
+  echo "    (missing - run ./scripts/deploy-to-production.sh once to write it)"
   exit 0
 fi
 

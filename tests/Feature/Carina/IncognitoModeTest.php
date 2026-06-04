@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Section 15 — Incognito mode (session flag, metadata, blocked learning writes).
+ * Section 15 - Incognito mode (session flag, metadata, blocked learning writes).
  */
 
 use App\Models\Central\AiProvider;

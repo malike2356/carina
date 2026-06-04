@@ -50,13 +50,13 @@ it('sends enquiry reply synchronously to the contact email', function (): void {
     $this->actingAs($admin, 'platform')
         ->post(route('admin.enquiries.reply', $enquiry), [
             'reply_from_name' => 'Laud Paul',
-            'reply_body' => 'Thanks for reaching out — we will follow up shortly.',
+            'reply_body' => 'Thanks for reaching out - we will follow up shortly.',
         ])
         ->assertRedirect(route('admin.enquiries.show', $enquiry))
         ->assertSessionHas('status');
 
     $enquiry->refresh();
-    expect($enquiry->reply_body)->toBe('Thanks for reaching out — we will follow up shortly.')
+    expect($enquiry->reply_body)->toBe('Thanks for reaching out - we will follow up shortly.')
         ->and($enquiry->reply_from_name)->toBe('Laud Paul')
         ->and($enquiry->replied_at)->not->toBeNull()
         ->and($enquiry->reply_token)->not->toBeEmpty();

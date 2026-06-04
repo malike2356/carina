@@ -16,7 +16,7 @@ return [
     */
     /*
     | These are fetched in batches of 4 (respecting the 4-calls/10-second rate limit).
-    | Valuation endpoints are intentionally excluded — they are fetched sequentially in
+    | Valuation endpoints are intentionally excluded - they are fetched sequentially in
     | PropertyDataDueDiligenceBundleService::build() so their cache keys stay clean.
     */
     /*

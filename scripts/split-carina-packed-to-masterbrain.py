@@ -120,7 +120,7 @@ def main() -> None:
         complete[2121:2211],
     )
 
-    index_body = """# Carina 2.0 build prompt — implementation sections index
+    index_body = """# Carina 2.0 build prompt - implementation sections index
 
 **Full source:** `brain/prompts/08-carina-2-0-complete.md`
 
@@ -128,11 +128,11 @@ The following sections are **implementation specifications** (migrations, models
 
 | Sections | Topics |
 |----------|--------|
-| 4–13 | Database migrations through Pest tests |
+| 4-13 | Database migrations through Pest tests |
 | 20 | Implementation sequence checklist |
-| 21–28 (and duplicate block after line ~2255) | `carina:verify`, `_folder_index`, ethics log, brain modifiers, `CarinaAccessGate`, seeders, Filament, corrections |
+| 21-28 (and duplicate block after line ~2255) | `carina:verify`, `_folder_index`, ethics log, brain modifiers, `CarinaAccessGate`, seeders, Filament, corrections |
 
-**Extracted to masterbrain:** Sections 1–3, 14–15, 16 (folder map), 17 (CAP-01–17), 18–19 — see `Carina_RAG/19-*.md` through `22-*.md`.
+**Extracted to masterbrain:** Sections 1-3, 14-15, 16 (folder map), 17 (CAP-01-17), 18-19 - see `Carina_RAG/19-*.md` through `22-*.md`.
 
 For **Carina product behaviour**, prefer `brain/knowledge/08-carina.md`, `config/ai.php`, and shipped `App\\Services\\Carina\\` over this build prompt when they disagree.
 """

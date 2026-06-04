@@ -123,7 +123,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Module access denied (403) — plan or persona feature hub
+    | Module access denied (403) - plan or persona feature hub
     |--------------------------------------------------------------------------
     */
     'feature_access' => [

@@ -50,7 +50,7 @@ it('getClientPayloadForTenant returns dark mode for a dark preset', function ():
 it('getClientPayloadForTenant returns light when no override exists and default preset is light', function (): void {
     $preset = ThemePreset::defaultPreset();
     if ($preset === null || $preset->is_dark_mode) {
-        $this->markTestSkipped('Default preset is dark or missing — cannot assert light fallback.');
+        $this->markTestSkipped('Default preset is dark or missing - cannot assert light fallback.');
     }
 
     $tenant = createCentralTenant();

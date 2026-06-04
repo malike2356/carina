@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * API documentation contract — mirrors brain/prompts/19-mobile-api.md.
+ * API documentation contract - mirrors brain/prompts/19-mobile-api.md.
  * Add a row here whenever a mobile-relevant route is added or changed.
  */
 return [
