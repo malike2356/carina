@@ -42,6 +42,7 @@ it('logs in via v1 mobile api and returns access and refresh tokens', function (
             'expires_at',
             'refresh_expires_at',
             'user' => ['id', 'name', 'email'],
+            'config' => ['platform', 'version', 'features', 'endpoints'],
         ]);
 
     $access = (string) $login->json('access_token');

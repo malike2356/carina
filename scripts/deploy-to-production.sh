@@ -127,7 +127,8 @@ if [[ "$BUILD_ASSETS_LOCAL" == "1" ]]; then
 fi
 
 # -O: do not set dir mtimes (avoids hundreds of "failed to set times" on www-owned trees)
-RSYNC_OPTS=(-rlzO --human-readable --no-perms --no-group --omit-dir-times)
+# --chmod: force files to 664 so the web server (www) can always read new files regardless of local umask
+RSYNC_OPTS=(-rlzO --human-readable --no-perms --no-group --omit-dir-times --chmod=Fu=rw,Fg=rw,Fo=r)
 if [[ "$RSYNC_DELETE" == "1" ]]; then
   RSYNC_OPTS+=(--delete)
 fi

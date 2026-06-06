@@ -1,0 +1,230 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Carina CLI — interactive terminal chat with Carina AI.
+ *
+ * Usage:
+ *   php carina-cli --subdomain=glenn --key=car_xxxx
+ *   php carina-cli --url=https://glenn.propreneur.uk --key=car_xxxx
+ *
+ * Get an API key from: Settings → Carina remote → Generate key
+ */
+
+$opts = getopt('', ['subdomain:', 'url:', 'key:', 'help']);
+
+if (isset($opts['help'])) {
+    echo <<<HELP
+Carina CLI — chat with Carina from your terminal.
+
+OPTIONS:
+  --subdomain=NAME     Tenant subdomain (e.g. glenn → glenn.propreneur.uk)
+  --url=URL            Full base URL (e.g. https://glenn.propreneur.uk)
+  --key=KEY            Carina remote API key (from Settings → Carina remote)
+  --help               Show this help
+
+EXAMPLES:
+  php carina-cli --subdomain=glenn --key=car_xxxxxxxxxxxx
+  php carina-cli --url=https://glenn.propreneur.uk --key=car_xxxxxxxxxxxx
+
+COMMANDS:
+  /help                Show this help
+  /clear               Start a new session
+  /exit, /quit, /q     Exit
+
+HELP;
+    exit(0);
+}
+
+$baseUrl = rtrim($opts['url'] ?? '', '/');
+if ($baseUrl === '') {
+    $subdomain = $opts['subdomain'] ?? null;
+    if ($subdomain === null) {
+        fwrite(STDERR, "Error: --subdomain or --url is required. Use --help for usage.\n");
+        exit(1);
+    }
+    $baseUrl = "https://{$subdomain}.propreneur.uk";
+}
+
+$apiKey = $opts['key'] ?? null;
+if ($apiKey === null) {
+    fwrite(STDERR, "Error: --key is required. Use --help for usage.\n");
+    exit(1);
+}
+
+$sessionId = null;
+$endpoint = "{$baseUrl}/api/remote/carina/chat";
+
+// Terminal colours
+$bold  = "\033[1m";
+$dim   = "\033[2m";
+$cyan  = "\033[36m";
+$green = "\033[32m";
+$red   = "\033[31m";
+$reset = "\033[0m";
+
+function writeln(string $text, string $color = ''): void
+{
+    $suffix = $color !== '' ? "\033[0m" : '';
+    fwrite(STDOUT, $color . $text . $suffix . "\n");
+}
+
+function write(string $text, string $color = ''): void
+{
+    $suffix = $color !== '' ? "\033[0m" : '';
+    fwrite(STDOUT, $color . $text . $suffix);
+}
+
+/**
+ * @return array{ok: bool, reply?: string, session_id?: string, steps_used?: int, requires_confirmation?: bool, error?: string}
+ */
+function chat(string $message, ?string $sessionId): array
+{
+    global $endpoint, $apiKey;
+
+    $body = json_encode([
+        'message'    => $message,
+        'session_id' => $sessionId ?? '',
+        'channel'    => 'terminal',
+    ]);
+
+    $authHeader = 'Authorization: Bearer ' . $apiKey;
+
+    $ch = curl_init($endpoint);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $body,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            $authHeader,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 120,
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($response === false) {
+        return ['ok' => false, 'error' => $curlErr ?: 'cURL request failed'];
+    }
+
+    if ($response === '') {
+        return ['ok' => false, 'error' => 'Empty response from server'];
+    }
+
+    $data = json_decode($response, true);
+
+    // Check HTTP errors first — even if JSON is malformed, the HTTP code tells the story
+    if ($httpCode === 429) {
+        $msg = is_array($data) ? ($data['message'] ?? 'Rate limited') : 'Rate limited';
+        return ['ok' => false, 'error' => $msg . '. Wait a moment and try again.'];
+    }
+
+    if ($httpCode >= 400) {
+        $msg = is_array($data) ? ($data['message'] ?? $data['error'] ?? "HTTP {$httpCode}") : "HTTP {$httpCode}";
+        return ['ok' => false, 'error' => $msg];
+    }
+
+    if (! is_array($data)) {
+        return ['ok' => false, 'error' => 'Invalid JSON response from server'];
+    }
+
+    return [
+        'ok'                     => true,
+        'reply'                  => $data['reply'] ?? '',
+        'session_id'             => $data['session_id'] ?? ($sessionId ?? ''),
+        'steps_used'             => $data['steps_used'] ?? 0,
+        'requires_confirmation'  => $data['requires_confirmation'] ?? false,
+    ];
+}
+
+// ── Welcome banner ──────────────────────────────────────────────────────────
+writeln('');
+writeln('  ╭──────────────────────────────────────────────╮', $cyan);
+writeln('  │         Carina CLI — Terminal Chat            │', $cyan . $bold);
+writeln('  ╰──────────────────────────────────────────────╯', $cyan);
+writeln('');
+writeln("  Connected: {$baseUrl}", $dim);
+writeln("  Type /help for commands, /exit to quit.", $dim);
+writeln('  Carina is ready. Ask me anything.', $green);
+writeln('');
+
+// ── Main REPL loop ──────────────────────────────────────────────────────────
+while (true) {
+    write('  You › ', $bold . $green);
+
+    $rawInput = fgets(STDIN);
+
+    if ($rawInput === false) {
+        // Ctrl+D — exit cleanly
+        writeln('');
+        writeln('  Goodbye!', $dim);
+        writeln('');
+        break;
+    }
+
+    $input = trim($rawInput);
+
+    if ($input === '') {
+        continue;
+    }
+
+    // Commands
+    if (in_array($input, ['/exit', '/quit', '/q'], true)) {
+        writeln('');
+        writeln('  Goodbye!', $dim);
+        writeln('');
+        break;
+    }
+
+    if ($input === '/help') {
+        writeln('');
+        writeln('  Commands:', $dim);
+        writeln('    /help    Show commands', $dim);
+        writeln('    /clear   Start a new conversation', $dim);
+        writeln('    /exit    Quit (/quit, /q also work)', $dim);
+        writeln('  Anything else is sent to Carina.', $dim);
+        writeln('');
+        continue;
+    }
+
+    if ($input === '/clear') {
+        $sessionId = null;
+        writeln('  ✦ Session cleared. Fresh conversation started.', $dim);
+        writeln('');
+        continue;
+    }
+
+    // Send to Carina
+    writeln('');
+    write('  Carina › ', $bold . $cyan);
+
+    $start   = microtime(true);
+    $result  = chat($input, $sessionId);
+    $elapsed = round(microtime(true) - $start, 1);
+
+    if (! $result['ok']) {
+        writeln('Error: ' . $result['error'], $red);
+        writeln('');
+        continue;
+    }
+
+    writeln($result['reply']);
+
+    $meta = "{$result['steps_used']} steps · {$elapsed}s";
+    if ($result['requires_confirmation']) {
+        $meta .= ' · ⚠ needs confirmation';
+    }
+    writeln('  ' . $meta, $dim);
+    writeln('');
+
+    if (! empty($result['session_id'])) {
+        $sessionId = $result['session_id'];
+    }
+}

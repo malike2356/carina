@@ -203,4 +203,23 @@ return [
         'access_token' => env('MICROSOFT_GRAPH_ACCESS_TOKEN', ''),
     ],
 
+    'telegram' => [
+        'token' => env('TELEGRAM_BOT_TOKEN', ''),
+        'webhook_url' => env('TELEGRAM_WEBHOOK_URL', ''),
+    ],
+
+    'tts' => [
+        'provider' => env('TTS_PROVIDER', 'edge'),
+        'voice' => env('TTS_VOICE', 'en-GB-SoniaNeural'),
+    ],
+
+    'accountability_coach' => [
+        'active_persona' => env('ACCOUNTABILITY_COACH_DEFAULT_PERSONA', 'Supportive Mentor'),
+        'midday_time' => env('ACCOUNTABILITY_COACH_MIDDAY_TIME', '1 PM'),
+        'evening_time' => env('ACCOUNTABILITY_COACH_EVENING_TIME', '8 PM'),
+        'morning_time' => env('ACCOUNTABILITY_COACH_MORNING_CRON', '07:00'),
+        'midday_cron_time' => env('ACCOUNTABILITY_COACH_MIDDAY_CRON', '13:00'),
+        'evening_cron_time' => env('ACCOUNTABILITY_COACH_EVENING_CRON', '20:00'),
+    ],
+
 ];
