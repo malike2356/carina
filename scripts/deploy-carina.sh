@@ -7,8 +7,8 @@ set -euo pipefail
 
 VPS_HOST="80.190.81.208"
 VPS_USER="malike"
-CORE_REMOTE="/www/apps/carina-core"
-OPS_REMOTE="/www/apps/carina-ops"
+CORE_REMOTE="/home/malike/apps/core.carinaai.uk"
+OPS_REMOTE="/home/malike/apps/ops.carinaai.uk"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 CORE_LOCAL="$REPO_ROOT/core.carinaai.uk"
@@ -25,15 +25,7 @@ check_ssh() {
 install_node_tools() {
   ssh "${VPS_USER}@${VPS_HOST}" bash << 'REMOTE'
     set -euo pipefail
-    if ! command -v npm &>/dev/null; then
-      echo "npm not found - Node.js must be installed first"
-      exit 1
-    fi
-    if ! command -v corepack &>/dev/null; then
-      echo "corepack not found - will use npm"
-    else
-      corepack enable pnpm 2>/dev/null || true
-    fi
+    command -v npm &>/dev/null || { echo "npm not found - Node.js must be installed first"; exit 1; }
     echo "Node tools OK (node: $(node --version), npm: $(npm --version))"
 REMOTE
 }
@@ -145,7 +137,7 @@ main() {
   check_ssh
   install_node_tools
 
-  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p /www/apps/carina-core /www/apps/carina-ops"
+  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p /home/malike/apps/core.carinaai.uk /home/malike/apps/ops.carinaai.uk"
 
   deploy_app "core.carinaai.uk" "$CORE_LOCAL" "$CORE_REMOTE" \
     "dist/src/index.js" "carina-core" \
