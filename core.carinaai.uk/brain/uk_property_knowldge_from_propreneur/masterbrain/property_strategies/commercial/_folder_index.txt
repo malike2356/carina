@@ -1,0 +1,12 @@
+# Folder Index: property_strategies/commercial
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 39-46)
+
+39-commercial-property-beginners.md | Commercial Property Investment for Beginners
+40-commercial-lease-types.md | Commercial Lease Types: Understanding Your Options
+41-finding-commercial-deals.md | Finding Commercial Property Deals: Where to Look and What to Look For
+42-commercial-valuation.md | Commercial Property Valuation: Understanding Yields and What Drives Price
+43-mixed-use-investment.md | Mixed-Use Property Investment: Retail Below, Residential Above
+44-commercial-residential-conversion.md | Commercial to Residential Conversion: A Guide to Creating Value
+45-commercial-financing.md | Financing Commercial Property: What Investors Need to Know
+46-commercial-property-management.md | Managing Commercial Property: A Guide for New Investors

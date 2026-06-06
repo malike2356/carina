@@ -1,0 +1,90 @@
+<% title = 'Settings' %>
+<h1 class="text-2xl font-bold text-white mb-6">Settings</h1>
+
+<% if (!adminPasswordSet) { %>
+  <div class="mb-6 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+    WARNING: Admin password is still the default <code>changeme</code>. Set <code>ADMIN_PASSWORD</code> in <code>ops.carinaai.uk/.env</code> before exposing this panel.
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Carina agent</h2>
+    <dl class="text-sm space-y-2 text-gray-400">
+      <div><dt class="inline text-gray-500">API URL:</dt> <dd class="inline text-[#06b6d4]"><%= carinaApiUrl %></dd></div>
+    </dl>
+    <p id="carina-status" class="text-xs mt-3 text-gray-500">Not tested yet</p>
+    <button type="button" id="test-carina" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
+      Test connection
+    </button>
+  </section>
+
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Labyrinth Scout</h2>
+    <dl class="text-sm space-y-2 text-gray-400">
+      <div><dt class="inline text-gray-500">Scout URL:</dt> <dd class="inline text-[#06b6d4]"><%= scoutUrl %></dd></div>
+    </dl>
+    <p id="scout-status-msg" class="text-xs mt-3 text-gray-500">Not tested yet</p>
+    <button type="button" id="test-scout" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
+      Test connection
+    </button>
+  </section>
+</div>
+
+<section class="mt-8 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <h2 class="text-lg font-semibold text-white mb-3">Environment (read-only)</h2>
+  <ul class="text-sm text-gray-400 space-y-1 font-mono">
+    <li>PORT = <%= port %></li>
+    <li>CARINA_API_URL = <%= carinaApiUrl %></li>
+    <li>SCOUT_URL = <%= scoutUrl %></li>
+    <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
+    <li>SESSION_SECRET = (hidden)</li>
+    <li>CARINA_DB_URL = (hidden)</li>
+    <li>SCOUT_API_KEY = (hidden)</li>
+    <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
+  </ul>
+</section>
+
+<script>
+  document.getElementById('test-carina')?.addEventListener('click', async () => {
+    const el = document.getElementById('carina-status');
+    el.textContent = 'Testing...';
+    el.className = 'text-xs mt-3 text-gray-500';
+    try {
+      const r = await fetch('/settings/test-carina', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        el.textContent = 'Connected. Active provider: ' + (d.active || 'unknown') +
+          '. Providers: ' + (d.providers || []).join(', ');
+        el.className = 'text-xs mt-3 text-green-400';
+      } else {
+        el.textContent = 'Offline: ' + (d.error || 'unknown error');
+        el.className = 'text-xs mt-3 text-red-400';
+      }
+    } catch (e) {
+      el.textContent = 'Request failed';
+      el.className = 'text-xs mt-3 text-red-400';
+    }
+  });
+
+  document.getElementById('test-scout')?.addEventListener('click', async () => {
+    const el = document.getElementById('scout-status-msg');
+    el.textContent = 'Testing...';
+    el.className = 'text-xs mt-3 text-gray-500';
+    try {
+      const r = await fetch('/settings/test-scout', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        const n = (d.instances || []).length;
+        el.textContent = 'Connected. ' + n + ' instance(s) registered.';
+        el.className = 'text-xs mt-3 text-green-400';
+      } else {
+        el.textContent = 'Scout offline or unreachable';
+        el.className = 'text-xs mt-3 text-red-400';
+      }
+    } catch {
+      el.textContent = 'Request failed';
+      el.className = 'text-xs mt-3 text-red-400';
+    }
+  });
+</script>

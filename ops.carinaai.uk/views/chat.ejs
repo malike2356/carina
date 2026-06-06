@@ -1,0 +1,224 @@
+<% title = 'Chat' %>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  .chat-md pre { background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 4px; padding: 0.75rem; overflow-x: auto; }
+  .chat-md code { font-family: ui-monospace, monospace; font-size: 0.85em; }
+  .chat-md p { margin: 0.25rem 0; }
+</style>
+
+<div id="carina-offline-banner" class="hidden mb-4 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+  Carina is not running at <code class="text-amber-100"><%= carinaApiUrl %></code>. Start with: <code class="text-amber-100">cd core.carinaai.uk && pnpm dev</code>
+</div>
+
+<div class="flex gap-4 h-[calc(100vh-3rem)] -m-2">
+  <div class="flex-1 flex flex-col min-w-0 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div class="border-b border-[#2a2a2a] px-4 py-2 flex items-center justify-between text-xs">
+      <span id="provider-badge" class="text-gray-400">Provider: loading...</span>
+      <button type="button" id="clear-session" class="text-gray-500 hover:text-white">Clear session</button>
+    </div>
+    <div id="messages" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3"></div>
+    <footer class="border-t border-[#2a2a2a] p-3 flex gap-2">
+      <textarea id="input" rows="2" placeholder="Message Carina..."
+                class="flex-1 bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white text-sm resize-none"><%= prefill %></textarea>
+      <button id="send" type="button" class="bg-[#22c55e] text-black px-4 py-2 rounded font-medium shrink-0">Send</button>
+    </footer>
+  </div>
+
+  <aside class="w-72 shrink-0 flex flex-col gap-4">
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+      <h2 class="text-sm font-semibold text-white mb-2">VERLOX quick actions</h2>
+      <div class="flex flex-col gap-2 max-h-64 overflow-y-auto">
+        <% for (const action of quickActions) { %>
+          <button type="button" data-prompt="<%= action.message.replace(/"/g, '&quot;') %>"
+                  class="quick-action text-left text-xs bg-[#0f0f0f] border border-[#2a2a2a] rounded px-2 py-2 hover:border-[#22c55e] text-gray-300">
+            <%= action.label %>
+          </button>
+        <% } %>
+      </div>
+    </section>
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 flex-1">
+      <h2 class="text-sm font-semibold text-white mb-2">Session</h2>
+      <p id="session-id-display" class="text-xs text-gray-500 break-all font-mono"></p>
+      <p id="meta-info" class="text-xs text-gray-400 mt-2"></p>
+    </section>
+  </aside>
+</div>
+
+<script>
+  const API = '<%= carinaApiUrl %>';
+  const SESSION_KEY = 'carina-ops-session';
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const metaInfo = document.getElementById('meta-info');
+  const providerBadge = document.getElementById('provider-badge');
+  const offlineBanner = document.getElementById('carina-offline-banner');
+
+  let SESSION_ID = localStorage.getItem(SESSION_KEY);
+  if (!SESSION_ID) {
+    SESSION_ID = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY, SESSION_ID);
+  }
+  document.getElementById('session-id-display').textContent = SESSION_ID.slice(0, 8) + '...';
+
+  function autoGrow() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  }
+  inputEl.addEventListener('input', autoGrow);
+  autoGrow();
+
+  function enableInput() {
+    sendBtn.disabled = false;
+    inputEl.disabled = false;
+  }
+
+  function disableInput() {
+    sendBtn.disabled = true;
+    inputEl.disabled = true;
+  }
+
+  function showOffline() {
+    offlineBanner.classList.remove('hidden');
+    disableInput();
+  }
+
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function appendMessage(role, text) {
+    const wrap = document.createElement('div');
+    wrap.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
+    const inner = document.createElement('div');
+    inner.className = 'max-w-[90%] rounded-lg px-3 py-2 text-sm ' +
+      (role === 'user' ? 'bg-[#06b6d4] text-black' : 'bg-[#0f0f0f] border border-[#2a2a2a] text-gray-200');
+    const content = document.createElement('div');
+    content.className = role === 'assistant' ? 'chat-md whitespace-pre-wrap' : 'whitespace-pre-wrap';
+    if (role === 'user') {
+      content.textContent = text;
+    } else {
+      content.innerHTML = text ? '...' : '';
+    }
+    inner.appendChild(content);
+    wrap.appendChild(inner);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+    return content;
+  }
+
+  async function loadProvider() {
+    try {
+      const r = await fetch('/chat/provider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      if (!r.ok) throw new Error('offline');
+      const d = await r.json();
+      providerBadge.textContent = 'Provider: ' + (d.active || 'unknown');
+      return d.active;
+    } catch {
+      try {
+        const r = await fetch(API + '/api/providers');
+        const d = await r.json();
+        providerBadge.textContent = 'Provider: ' + (d.active || 'unknown');
+        return d.active;
+      } catch {
+        providerBadge.textContent = 'Provider: offline';
+        showOffline();
+        return null;
+      }
+    }
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+    appendMessage('user', text);
+    clearInput();
+    disableInput();
+
+    const provider = await loadProvider();
+    const msgDiv = appendMessage('assistant', '');
+    let full = '';
+
+    const url = new URL(API + '/api/chat/stream');
+    url.searchParams.set('message', text);
+    url.searchParams.set('sessionId', SESSION_ID);
+
+    const es = new EventSource(url.toString());
+    es.onmessage = (e) => {
+      if (e.data === '[DONE]') {
+        es.close();
+        if (full && typeof marked !== 'undefined') {
+          msgDiv.innerHTML = marked.parse(full);
+        }
+        metaInfo.textContent = 'Provider: ' + (provider || '?') + ' · ~' + Math.ceil(full.length / 4) + ' tokens (est.)';
+        enableInput();
+        return;
+      }
+      try {
+        const chunk = JSON.parse(e.data);
+        if (typeof chunk === 'string') {
+          full += chunk;
+        } else if (chunk.error) {
+          full = 'Error: ' + chunk.error;
+        } else {
+          full += String(chunk);
+        }
+      } catch {
+        full += e.data;
+      }
+      msgDiv.textContent = full;
+      scrollToBottom();
+    };
+    es.onerror = () => {
+      es.close();
+      if (!full) {
+        msgDiv.textContent = 'Connection error.';
+        showOffline();
+      }
+      enableInput();
+    };
+  }
+
+  function clearInput() {
+    inputEl.value = '';
+    autoGrow();
+  }
+
+  sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(inputEl.value); }
+  });
+
+  document.querySelectorAll('.quick-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inputEl.value = btn.getAttribute('data-prompt') || '';
+      autoGrow();
+      inputEl.focus();
+    });
+  });
+
+  document.getElementById('clear-session')?.addEventListener('click', async () => {
+    try {
+      await fetch(API + '/api/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: SESSION_ID }),
+      });
+    } catch {}
+    SESSION_ID = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY, SESSION_ID);
+    document.getElementById('session-id-display').textContent = SESSION_ID.slice(0, 8) + '...';
+    messagesEl.innerHTML = '';
+    metaInfo.textContent = 'Session cleared.';
+  });
+
+  loadProvider();
+  if (<%= prefill ? 'true' : 'false' %>) {
+    appendMessage('assistant', 'Prompt loaded. Edit and send when ready.');
+  }
+</script>

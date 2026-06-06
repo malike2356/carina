@@ -1,0 +1,13 @@
+# Folder Index: getting_started
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/introductory/
+
+post-01-what-is-property-sourcing-and-how-does-it-work-in-the-uk.md | What is Property Sourcing and How Does It Work in the UK
+post-02-why-portsmouth-is-an-underrated-property-investment-location-in-2026.md | Why Portsmouth is an Underrated Property Investment Location in 2026
+post-03-the-difference-between-rent-to-rent-and-buy-to-let.md | The Difference Between Rent to Rent and Buy to Let: Which is Right for You
+post-04-how-to-find-below-market-value-properties-in-hampshire.md | How to Find Below Market Value Properties in Hampshire
+post-05-what-uk-property-investors-need-to-know-about-aml-compliance.md | What UK Property Investors Need to Know About AML Compliance
+post-06-five-mistakes-first-time-property-investors-make.md | Five Mistakes First Time Property Investors Make and How to Avoid Them
+post-07-what-is-a-property-sourcing-fee-and-is-it-worth-paying.md | What is a Property Sourcing Fee and Is It Worth Paying
+post-08-isle-of-wight-property-market-opportunities-investors-are-missing.md | Isle of Wight Property Market: Opportunities Investors Are Missing
+post-09-how-to-analyse-a-rent-to-rent-deal-in-under-10-minutes.md | How to Analyse a Rent to Rent Deal in Under 10 Minutes

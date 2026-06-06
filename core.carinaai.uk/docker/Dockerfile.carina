@@ -1,0 +1,20 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+COPY tsconfig.json ./
+COPY src ./src
+COPY bin ./bin
+RUN pnpm build
+
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
+COPY src/skills/packs ./src/skills/packs
+COPY brain ./brain
+EXPOSE 3000 3001
+CMD ["node", "dist/src/index.js"]

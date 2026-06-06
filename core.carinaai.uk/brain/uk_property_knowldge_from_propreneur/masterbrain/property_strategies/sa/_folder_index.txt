@@ -1,0 +1,14 @@
+# Folder Index: property_strategies/sa
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 29-38)
+
+29-SA-vs-btl-investment.md | Service Accommodation vs Buy to Let: Which Investment Strategy Wins?
+30-airbnb-guest-experience.md | Creating a Five-Star Airbnb Guest Experience on the South Coast
+31-dynamic-pricing-strategies.md | Dynamic Pricing Strategies for Service Accommodation
+32-SA-regulations-licensing.md | Service Accommodation Regulations and Licensing on the South Coast
+33-SA-property-selection.md | Service Accommodation Property Selection: The Demand-First Approach
+34-managing-remote-sa-properties.md | Managing Remote Service Accommodation Properties
+35-sa-furnishing-staging.md | Service Accommodation Furnishing and Staging: Design for Commercial Return
+36-airbnb-review-management.md | Airbnb Review Management: Protecting and Improving Your Reputation
+37-seasonal-demand-sa.md | Managing Seasonal Demand for Service Accommodation
+38-scaling-sa-portfolio.md | Scaling a Service Accommodation Portfolio

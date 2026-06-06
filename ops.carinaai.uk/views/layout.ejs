@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Carina Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            carina: { bg: '#0f0f0f', card: '#1a1a1a', border: '#2a2a2a', text: '#e0e0e0', green: '#22c55e', cyan: '#06b6d4' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background: #0f0f0f; color: #e0e0e0; }
+    .nav-link.active { background: #2a2a2a; color: #22c55e; }
+    .badge-user { background: #06b6d4; color: #0f0f0f; }
+    .badge-assistant { background: #22c55e; color: #0f0f0f; }
+  </style>
+</head>
+<body class="min-h-screen flex">
+  <aside id="sidebar" class="w-56 shrink-0 border-r border-[#2a2a2a] bg-[#1a1a1a] flex flex-col p-4">
+    <div class="flex items-center justify-between mb-6">
+      <span class="font-bold text-white text-lg">Carina Admin</span>
+      <button type="button" id="toggle-nav" class="text-xs text-gray-400 hover:text-white lg:hidden">Hide</button>
+    </div>
+    <nav class="flex flex-col gap-1 text-sm flex-1">
+      <% const links = [
+        { href: '/', label: 'Dashboard', match: (p) => p === '/' },
+        { href: '/security', label: 'Security', match: (p) => p.startsWith('/security') },
+        { href: '/chat', label: 'Chat', match: (p) => p.startsWith('/chat') },
+        { href: '/memories', label: 'Memories', match: (p) => p.startsWith('/memories') },
+        { href: '/skills', label: 'Skills', match: (p) => p.startsWith('/skills') },
+        { href: '/rag', label: 'RAG Corpus', match: (p) => p.startsWith('/rag') },
+        { href: '/projects', label: 'Projects', match: (p) => p.startsWith('/projects') },
+        { href: '/settings', label: 'Settings', match: (p) => p.startsWith('/settings') },
+      ]; %>
+      <% for (const link of links) { %>
+        <a href="<%= link.href %>"
+           class="nav-link px-3 py-2 rounded-md text-gray-300 hover:bg-[#2a2a2a] hover:text-white <%= link.match(activePath || '') ? 'active' : '' %>">
+          <%= link.label %>
+        </a>
+      <% } %>
+    </nav>
+    <div class="mt-auto pt-4 border-t border-[#2a2a2a] text-xs text-gray-500">
+      <p>Carina v0.1.0</p>
+      <div id="scout-status" class="text-xs mt-1 flex items-center gap-1">
+        <span id="scout-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600"></span>
+        <span id="scout-label" class="text-gray-600">Scout</span>
+      </div>
+      <a href="<%= webUiUrl %>" target="_blank" rel="noopener" class="text-[#22c55e] hover:underline">Main web UI</a>
+      <form method="post" action="/logout" class="mt-2">
+        <button type="submit" class="text-gray-400 hover:text-white">Logout</button>
+      </form>
+    </div>
+  </aside>
+  <main class="flex-1 min-w-0 p-6 overflow-auto">
+    <%- body %>
+  </main>
+  <script>
+    document.getElementById('toggle-nav')?.addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('hidden');
+    });
+
+    (function scoutSidebarStatus() {
+      const dot = document.getElementById('scout-dot');
+      const label = document.getElementById('scout-label');
+      if (!dot || !label) return;
+
+      function setScout(live) {
+        dot.className = 'inline-block w-2 h-2 rounded-full ' + (live ? 'bg-green-500' : 'bg-red-600');
+        label.textContent = live ? 'Scout live' : 'Scout offline';
+        label.className = live ? 'text-green-500' : 'text-gray-600';
+      }
+
+      fetch('/security/events', { credentials: 'same-origin' })
+        .then((r) => setScout(r.ok))
+        .catch(() => setScout(false));
+    })();
+  </script>
+</body>
+</html>

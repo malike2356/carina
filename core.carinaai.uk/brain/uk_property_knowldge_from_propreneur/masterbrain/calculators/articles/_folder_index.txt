@@ -1,0 +1,178 @@
+# Folder Index: calculators/articles
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/Calculations/
+
+001-gross-yield-is-that-7-return-as-good-as-it-sounds.md | Gross Yield: Is That 7% Return as Good as It Sounds?
+002-net-yield-the-number-that-tells-you-if-a-deal-actually-works.md | Net Yield: The Number That Tells You If a Deal Actually Works
+003-net-initial-yield-the-professional-standard-for-valuing-income-propert.md | Net Initial Yield: The Professional Standard for Valuing Income Property
+004-reversionary-yield-what-your-property-will-be-worth-when-the-lease-end.md | Reversionary Yield: What Your Property Will Be Worth When the Lease Ends
+005-equivalent-yield-blending-current-income-with-future-potential.md | Equivalent Yield: Blending Current Income With Future Potential
+006-running-yield-what-your-property-is-actually-earning-you-today.md | Running Yield: What Your Property Is Actually Earning You Today
+007-true-yield-the-return-nobody-quotes-because-it-makes-every-deal-look-w.md | True Yield: The Return Nobody Quotes Because It Makes Every Deal Look Worse
+008-noi-yield-the-most-useful-metric-for-comparing-completely-different-pr.md | NOI Yield: The Most Useful Metric for Comparing Completely Different Properties
+009-return-on-investment-the-real-measure-of-whether-your-money-is-working.md | Return on Investment: The Real Measure of Whether Your Money Is Working
+010-cash-on-cash-return-the-number-that-cuts-through-smoke-and-mirrors.md | Cash-on-Cash Return: The Number That Cuts Through Smoke and Mirrors
+011-return-on-equity-the-number-that-tells-you-whether-to-sell-or-keep.md | Return on Equity: The Number That Tells You Whether to Sell or Keep
+012-total-return-income-plus-growth-the-full-picture.md | Total Return: Income Plus Growth -- The Full Picture
+013-annualised-return-the-honest-way-to-compare-investments-you-held-for-d.md | Annualised Return: The Honest Way to Compare Investments You Held for Different Lengths
+014-equity-multiple-did-you-double-your-money-or-not.md | Equity Multiple: Did You Double Your Money or Not?
+015-net-profit-what-you-actually-walk-away-with.md | Net Profit: What You Actually Walk Away With
+016-profit-on-cost-the-development-benchmark-every-lender-checks.md | Profit on Cost: The Development Benchmark Every Lender Checks
+017-profit-on-gdv-the-metric-every-developer-lives-by.md | Profit on GDV: The Metric Every Developer Lives By
+018-effective-gross-income-your-real-rent-after-voids.md | Effective Gross Income: Your Real Rent After Voids
+019-net-operating-income-the-property-s-performance-stripped-of-your-finan.md | Net Operating Income: The Property's Performance, Stripped of Your Financing
+020-before-tax-cash-flow-what-your-property-actually-pays-you.md | Before-Tax Cash Flow: What Your Property Actually Pays You
+021-monthly-cashflow-what-is-left-in-your-bank-account-at-the-end-of-the-m.md | Monthly Cashflow: What Is Left in Your Bank Account at the End of the Month
+022-void-allowance-the-cost-new-landlords-always-forget.md | Void Allowance: The Cost New Landlords Always Forget
+023-repayment-mortgage-monthly-payment-the-formula-behind-every-mortgage-q.md | Repayment Mortgage Monthly Payment: The Formula Behind Every Mortgage Quote
+024-interest-only-mortgage-the-default-choice-for-btl-investors.md | Interest-Only Mortgage: The Default Choice for BTL Investors
+025-total-interest-paid-how-much-the-bank-really-makes-on-your-mortgage.md | Total Interest Paid: How Much the Bank Really Makes on Your Mortgage
+026-total-cost-of-an-interest-only-mortgage-the-balloon-you-need-to-plan-f.md | Total Cost of an Interest-Only Mortgage: The Balloon You Need to Plan For
+027-outstanding-loan-balance-how-much-you-still-owe-at-any-point.md | Outstanding Loan Balance: How Much You Still Owe at Any Point
+028-bridging-loan-interest-how-to-calculate-the-true-cost-of-short-term-fi.md | Bridging Loan Interest: How to Calculate the True Cost of Short-Term Finance
+029-loan-to-value-the-single-most-important-number-in-property-finance.md | Loan to Value: The Single Most Important Number in Property Finance
+030-loan-to-cost-the-development-finance-metric.md | Loan to Cost: The Development Finance Metric
+031-btl-mortgage-stress-test-will-the-lender-say-yes.md | BTL Mortgage Stress Test: Will the Lender Say Yes?
+032-dscr-the-ratio-that-tells-lenders-whether-your-property-can-afford-its.md | DSCR: The Ratio That Tells Lenders Whether Your Property Can Afford Its Mortgage
+033-apr-how-to-compare-different-finance-quotes-on-a-level-playing-field.md | APR: How to Compare Different Finance Quotes on a Level Playing Field
+034-development-finance-interest-the-60-rule-every-developer-needs-to-know.md | Development Finance Interest: The 60% Rule Every Developer Needs to Know
+035-standard-residential-sdlt-how-stamp-duty-works-for-your-main-home.md | Standard Residential SDLT: How Stamp Duty Works for Your Main Home
+036-additional-dwelling-surcharge-sdlt-when-you-buy-a-second-home-or-btl.md | Additional Dwelling Surcharge: SDLT When You Buy a Second Home or BTL
+037-first-time-buyer-sdlt-relief-how-much-you-actually-save.md | First-Time Buyer SDLT Relief: How Much You Actually Save
+038-commercial-sdlt-how-stamp-duty-works-on-non-residential-property.md | Commercial SDLT: How Stamp Duty Works on Non-Residential Property
+039-lbtt-scotland-how-property-tax-works-north-of-the-border.md | LBTT Scotland: How Property Tax Works North of the Border
+040-ltt-wales-how-land-transaction-tax-works-for-welsh-property.md | LTT Wales: How Land Transaction Tax Works for Welsh Property
+041-effective-sdlt-rate-the-true-percentage-you-pay-on-your-purchase.md | Effective SDLT Rate: The True Percentage You Pay on Your Purchase
+042-btl-gross-yield-the-first-number-you-should-know-on-any-buy-to-let.md | BTL Gross Yield: The First Number You Should Know on Any Buy-to-Let
+043-btl-net-yield-the-number-that-actually-matters.md | BTL Net Yield: The Number That Actually Matters
+044-btl-monthly-cashflow-the-operating-reality-of-every-buy-to-let.md | BTL Monthly Cashflow: The Operating Reality of Every Buy-to-Let
+045-btl-void-allowance-the-one-month-a-year-that-changes-everything.md | BTL Void Allowance: The One Month a Year That Changes Everything
+046-btl-management-fee-what-letting-agents-actually-charge.md | BTL Management Fee: What Letting Agents Actually Charge
+047-btl-maintenance-reserve-the-1-rule-and-why-you-need-it.md | BTL Maintenance Reserve: The 1% Rule and Why You Need It
+048-btl-roi-return-on-investment-for-your-buy-to-let.md | BTL ROI: Return on Investment for Your Buy-to-Let
+049-btl-mortgage-rental-coverage-will-the-lender-say-yes.md | BTL Mortgage Rental Coverage: Will the Lender Say Yes?
+050-rental-yield-vs-mortgage-rate-spread-the-number-that-determines-whethe.md | Rental Yield vs Mortgage Rate Spread: The Number That Determines Whether You Make or Lose Money
+051-hmo-gross-potential-rent-how-much-a-house-share-could-earn.md | HMO Gross Potential Rent: How Much a House Share Could Earn
+052-hmo-effective-gross-rent-the-income-after-room-voids.md | HMO Effective Gross Rent: The Income After Room Voids
+053-hmo-noi-net-operating-income-for-a-multi-let-property.md | HMO NOI: Net Operating Income for a Multi-Let Property
+054-hmo-net-yield-the-real-return-on-your-multi-let-investment.md | HMO Net Yield: The Real Return on Your Multi-Let Investment
+055-hmo-cash-on-cash-is-the-extra-work-worth-the-extra-return.md | HMO Cash-on-Cash: Is the Extra Work Worth the Extra Return?
+056-hmo-profit-per-door-the-room-by-room-metric-that-keeps-you-honest.md | HMO Profit per Door: The Room-by-Room Metric That Keeps You Honest
+057-hmo-premium-over-btl-is-the-extra-yield-worth-the-extra-work.md | HMO Premium Over BTL: Is the Extra Yield Worth the Extra Work?
+058-rent-to-rent-monthly-spread-your-margin-between-rent-paid-and-rent-col.md | Rent-to-Rent Monthly Spread: Your Margin Between Rent Paid and Rent Collected
+059-rent-to-rent-monthly-profit-what-is-left-after-your-costs.md | Rent-to-Rent Monthly Profit: What Is Left After Your Costs
+060-rent-to-rent-annual-profit-the-number-that-includes-voids.md | Rent-to-Rent Annual Profit: The Number That Includes Voids
+061-rent-to-rent-net-margin-the-percentage-that-tells-you-how-efficient-yo.md | Rent-to-Rent Net Margin: The Percentage That Tells You How Efficient Your Operation Is
+062-r2r-break-even-occupancy-how-many-rooms-must-be-full-to-avoid-losing-m.md | R2R Break-Even Occupancy: How Many Rooms Must Be Full to Avoid Losing Money
+063-r2r-profit-per-door-the-per-room-metric-that-keeps-your-business-hones.md | R2R Profit per Door: The Per-Room Metric That Keeps Your Business Honest
+064-sa-annual-revenue-projecting-income-for-your-serviced-accommodation.md | SA Annual Revenue: Projecting Income for Your Serviced Accommodation
+065-sa-monthly-revenue-breaking-down-your-serviced-accommodation-income.md | SA Monthly Revenue: Breaking Down Your Serviced Accommodation Income
+066-adr-average-daily-rate-the-core-metric-for-every-serviced-accommodatio.md | ADR: Average Daily Rate -- The Core Metric for Every Serviced Accommodation
+067-revpar-revenue-per-available-room-night-the-hotel-industry-standard-fo.md | RevPAR: Revenue Per Available Room-Night -- The Hotel Industry Standard for SA Performance
+068-sa-occupancy-rate-the-percentage-that-makes-or-breaks-your-serviced-ac.md | SA Occupancy Rate: The Percentage That Makes or Breaks Your Serviced Accommodation
+069-sa-annual-noi-your-serviced-accommodation-s-true-operating-income.md | SA Annual NOI: Your Serviced Accommodation's True Operating Income
+070-sa-gross-yield-comparing-serviced-accommodation-returns-to-traditional.md | SA Gross Yield: Comparing Serviced Accommodation Returns to Traditional BTL
+071-sa-noi-yield-the-net-return-on-your-serviced-accommodation-investment.md | SA NOI Yield: The Net Return on Your Serviced Accommodation Investment
+072-sa-breakeven-occupancy-the-minimum-nights-you-must-book-to-break-even.md | SA Breakeven Occupancy: The Minimum Nights You Must Book to Break Even
+073-sa-cleaning-cost-per-stay-the-hidden-cost-that-eats-your-margin.md | SA Cleaning Cost per Stay: The Hidden Cost That Eats Your Margin
+074-brr-total-cost-what-you-actually-spend-before-refinancing.md | BRR Total Cost: What You Actually Spend Before Refinancing
+075-brr-after-refurb-value-the-number-that-makes-or-breaks-your-brr-deal.md | BRR After-Refurb Value: The Number That Makes or Breaks Your BRR Deal
+076-brr-refinance-proceeds-how-much-the-bank-will-give-you-after-refurb.md | BRR Refinance Proceeds: How Much the Bank Will Give You After Refurb
+077-brr-cash-left-in-how-much-of-your-own-money-is-still-stuck-in-the-deal.md | BRR Cash Left In: How Much of Your Own Money Is Still Stuck in the Deal
+078-brr-cash-out-when-you-get-all-your-money-back.md | BRR Cash Out: When You Get All Your Money Back
+079-brr-capital-recycled-what-percentage-of-your-investment-did-you-get-ba.md | BRR Capital Recycled: What Percentage of Your Investment Did You Get Back?
+080-brr-equity-created-how-much-value-you-built-through-the-refurb.md | BRR Equity Created: How Much Value You Built Through the Refurb
+081-brr-roi-the-return-on-whatever-cash-you-still-have-in-the-deal.md | BRR ROI: The Return on Whatever Cash You Still Have in the Deal
+082-brr-gross-yield-what-the-property-delivers-after-your-improvements.md | BRR Gross Yield: What the Property Delivers After Your Improvements
+083-brr-monthly-cashflow-what-the-refinanced-property-pays-you.md | BRR Monthly Cashflow: What the Refinanced Property Pays You
+084-brr-minimum-discount-the-bare-minimum-you-need-for-brr-to-work.md | BRR Minimum Discount: The Bare Minimum You Need for BRR to Work
+085-flip-total-acquisition-cost-what-you-actually-pay-to-buy-a-property.md | Flip Total Acquisition Cost: What You Actually Pay to Buy a Property
+086-flip-selling-costs-the-fees-that-cut-into-your-profit.md | Flip Selling Costs: The Fees That Cut Into Your Profit
+087-flip-net-profit-what-you-walk-away-with-after-everything.md | Flip Net Profit: What You Walk Away With After Everything
+088-flip-profit-margin-the-percentage-that-tells-you-if-the-deal-was-worth.md | Flip Profit Margin: The Percentage That Tells You If the Deal Was Worth It
+089-flip-roi-how-well-did-your-money-work-in-that-project.md | Flip ROI: How Well Did Your Money Work in That Project?
+090-flip-annualised-return-comparing-a-six-month-project-to-a-multi-year-h.md | Flip Annualised Return: Comparing a Six-Month Project to a Multi-Year Hold
+091-flip-maximum-purchase-price-how-to-back-calculate-from-your-target-pro.md | Flip Maximum Purchase Price: How to Back-Calculate from Your Target Profit
+092-bmv-discount-amount-how-much-below-market-value-are-you-actually-getti.md | BMV Discount Amount: How Much Below Market Value Are You Actually Getting?
+093-bmv-discount-percentage-the-number-that-tells-you-if-it-is-a-real-barg.md | BMV Discount Percentage: The Number That Tells You If It Is a Real Bargain
+094-bmv-same-day-remortgage-how-no-money-down-actually-works.md | BMV Same-Day Remortgage: How No Money Down Actually Works
+095-bmv-net-cash-position-did-you-get-your-money-out.md | BMV Net Cash Position: Did You Get Your Money Out?
+096-bmv-breakeven-discount-the-minimum-discount-to-walk-away-with-zero-cas.md | BMV Breakeven Discount: The Minimum Discount to Walk Away with Zero Cash In
+097-bmv-maximum-purchase-price-how-much-can-you-pay-and-still-pull-cash-ou.md | BMV Maximum Purchase Price: How Much Can You Pay and Still Pull Cash Out?
+098-gdv-gross-development-value-what-your-finished-project-will-be-worth.md | GDV: Gross Development Value -- What Your Finished Project Will Be Worth
+099-development-construction-cost-the-biggest-number-in-your-appraisal.md | Development Construction Cost: The Biggest Number in Your Appraisal
+100-development-contingency-the-10-buffer-that-saves-projects.md | Development Contingency: The 10% Buffer That Saves Projects
+101-gdc-gross-development-costs-everything-you-spend-before-completion.md | GDC: Gross Development Costs -- Everything You Spend Before Completion
+102-development-finance-loan-size-how-much-will-the-lender-provide.md | Development Finance Loan Size: How Much Will the Lender Provide?
+103-development-arrangement-fee-the-cost-of-setting-up-your-finance.md | Development Arrangement Fee: The Cost of Setting Up Your Finance
+104-development-finance-interest-calculating-the-cost-of-borrowing.md | Development Finance Interest: Calculating the Cost of Borrowing
+105-total-development-project-cost-the-true-number-before-you-sell.md | Total Development Project Cost: The True Number Before You Sell
+106-development-equity-required-how-much-cash-you-need-to-bring.md | Development Equity Required: How Much Cash You Need to Bring
+107-development-sell-exit-net-profit-on-the-completed-sale.md | Development Sell Exit: Net Profit on the Completed Sale
+108-development-hold-exit-refinancing-instead-of-selling.md | Development Hold Exit: Refinancing Instead of Selling
+109-residual-land-value-what-a-piece-of-land-is-actually-worth-for-develop.md | Residual Land Value: What a Piece of Land Is Actually Worth for Development
+110-development-appraisal-shorthand-the-rics-method-in-practice.md | Development Appraisal Shorthand: The RICS Method in Practice
+111-commercial-gross-yield-how-to-calculate-returns-on-commercial-property.md | Commercial Gross Yield: How to Calculate Returns on Commercial Property
+112-commercial-niy-the-industry-standard-for-valuing-income-property.md | Commercial NIY: The Industry Standard for Valuing Income Property
+113-commercial-reversionary-yield-what-happens-when-leases-roll-over.md | Commercial Reversionary Yield: What Happens When Leases Roll Over
+114-commercial-capital-value-the-investment-method-for-pricing-income-prop.md | Commercial Capital Value: The Investment Method for Pricing Income Property
+115-reversionary-capital-value-what-your-commercial-property-is-worth-at-m.md | Reversionary Capital Value: What Your Commercial Property Is Worth at Market Rent
+116-commercial-yield-shift-how-yield-changes-affect-your-capital-value.md | Commercial Yield Shift: How Yield Changes Affect Your Capital Value
+117-wault-the-most-important-number-in-commercial-property.md | WAULT: The Most Important Number in Commercial Property
+118-waulb-the-break-clause-version-of-wault.md | WAULB: The Break Clause Version of WAULT
+119-void-rate-in-commercial-property-the-cost-of-empty-space.md | Void Rate in Commercial Property: The Cost of Empty Space
+120-rent-per-square-foot-the-standard-commercial-property-metric.md | Rent per Square Foot: The Standard Commercial Property Metric
+121-erv-estimated-rental-value-what-a-commercial-unit-should-rent-for.md | ERV: Estimated Rental Value -- What a Commercial Unit Should Rent For
+122-rent-review-uplifts-how-much-your-commercial-rent-can-increase.md | Rent Review Uplifts: How Much Your Commercial Rent Can Increase
+123-service-charge-net-recovery-recovering-costs-from-commercial-tenants.md | Service Charge Net Recovery: Recovering Costs from Commercial Tenants
+124-comparable-method-the-most-common-way-to-value-a-property.md | Comparable Method: The Most Common Way to Value a Property
+125-investment-method-valuing-property-based-on-its-income.md | Investment Method: Valuing Property Based on Its Income
+126-dcf-discounted-cash-flow-valuation-for-property-investments.md | DCF: Discounted Cash Flow Valuation for Property Investments
+127-terminal-value-what-your-property-is-worth-at-the-end-of-your-hold-per.md | Terminal Value: What Your Property Is Worth at the End of Your Hold Period
+128-residual-valuation-working-out-what-a-site-is-worth-based-on-what-you-.md | Residual Valuation: Working Out What a Site Is Worth Based on What You Can Build
+129-drc-depreciated-replacement-cost-for-specialised-property.md | DRC: Depreciated Replacement Cost for Specialised Property
+130-grm-gross-rent-multiplier-the-quickest-way-to-compare-properties.md | GRM: Gross Rent Multiplier -- The Quickest Way to Compare Properties
+131-price-per-room-or-unit-a-simple-comparison-tool-for-property-sourcing.md | Price per Room or Unit: A Simple Comparison Tool for Property Sourcing
+132-npv-net-present-value-the-most-honest-way-to-evaluate-a-property-inves.md | NPV: Net Present Value -- The Most Honest Way to Evaluate a Property Investment
+133-irr-internal-rate-of-return-the-annualised-return-that-accounts-for-ti.md | IRR: Internal Rate of Return -- The Annualised Return That Accounts for Timing
+134-modified-irr-a-more-realistic-way-to-calculate-property-returns.md | Modified IRR: A More Realistic Way to Calculate Property Returns
+135-payback-period-how-long-until-you-get-your-money-back.md | Payback Period: How Long Until You Get Your Money Back?
+136-discounted-payback-period-payback-that-accounts-for-the-time-value-of-.md | Discounted Payback Period: Payback That Accounts for the Time Value of Money
+137-present-value-of-a-perpetuity-what-a-never-ending-income-stream-is-wor.md | Present Value of a Perpetuity: What a Never-Ending Income Stream Is Worth
+138-present-value-of-an-annuity-valuing-a-fixed-income-stream.md | Present Value of an Annuity: Valuing a Fixed Income Stream
+139-future-value-what-your-property-will-be-worth-tomorrow.md | Future Value: What Your Property Will Be Worth Tomorrow
+140-rule-of-72-the-simple-trick-to-estimate-how-long-it-takes-to-double-yo.md | Rule of 72: The Simple Trick to Estimate How Long It Takes to Double Your Money
+141-ltv-the-debt-ratio-that-governs-how-much-you-can-borrow.md | LTV: The Debt Ratio That Governs How Much You Can Borrow
+142-debt-yield-the-lender-s-safety-net.md | Debt Yield: The Lender's Safety Net
+143-dscr-the-ratio-that-determines-whether-your-property-can-afford-its-de.md | DSCR: The Ratio That Determines Whether Your Property Can Afford Its Debt
+144-icr-interest-cover-ratio-the-btl-stress-test-explained.md | ICR: Interest Cover Ratio -- The BTL Stress Test Explained
+145-break-even-ratio-what-occupancy-you-need-just-to-survive.md | Break-Even Ratio: What Occupancy You Need Just to Survive
+146-portfolio-ltv-your-overall-borrowing-position.md | Portfolio LTV: Your Overall Borrowing Position
+147-positive-leverage-when-borrowing-money-actually-boosts-your-returns.md | Positive Leverage: When Borrowing Money Actually Boosts Your Returns
+148-portfolio-gross-yield-the-overall-income-return-across-all-your-proper.md | Portfolio Gross Yield: The Overall Income Return Across All Your Properties
+149-portfolio-net-yield-what-your-entire-portfolio-earns-after-costs.md | Portfolio Net Yield: What Your Entire Portfolio Earns After Costs
+150-portfolio-value-the-total-worth-of-everything-you-own.md | Portfolio Value: The Total Worth of Everything You Own
+151-portfolio-equity-how-much-of-your-portfolio-you-actually-own.md | Portfolio Equity: How Much of Your Portfolio You Actually Own
+152-portfolio-annual-cashflow-the-total-cash-your-properties-generate.md | Portfolio Annual Cashflow: The Total Cash Your Properties Generate
+153-average-yield-weighted-the-honest-way-to-calculate-portfolio-performan.md | Average Yield Weighted: The Honest Way to Calculate Portfolio Performance
+154-portfolio-ltv-understand-your-overall-leverage.md | Portfolio LTV: Understand Your Overall Leverage
+155-concentration-risk-what-happens-if-one-part-of-your-portfolio-fails.md | Concentration Risk: What Happens If One Part of Your Portfolio Fails
+156-annual-capital-growth-how-fast-is-your-portfolio-appreciating.md | Annual Capital Growth: How Fast Is Your Portfolio Appreciating?
+157-compound-annual-growth-rate.md | Compound Annual Growth Rate
+158-expense-ratio-how-much-of-your-rental-income-goes-to-costs.md | Expense Ratio: How Much of Your Rental Income Goes to Costs?
+159-operating-cost-per-property-the-efficiency-metric-every-landlord-needs.md | Operating Cost per Property: The Efficiency Metric Every Landlord Needs
+160-void-rate-how-much-time-your-property-sits-empty.md | Void Rate: How Much Time Your Property Sits Empty
+161-occupancy-rate-the-metric-that-drives-sa-and-hmo-returns.md | Occupancy Rate: The Metric That Drives SA and HMO Returns
+162-refurb-cost-per-square-metre-budgeting-for-renovations-accurately.md | Refurb Cost per Square Metre: Budgeting for Renovations Accurately
+163-refurb-payback-period-how-long-until-your-renovation-pays-for-itself.md | Refurb Payback Period: How Long Until Your Renovation Pays for Itself?
+164-value-add-from-refurb-did-your-renovation-actually-create-equity.md | Value Add from Refurb: Did Your Renovation Actually Create Equity?
+165-sourcing-fee-how-much-should-you-pay-for-a-deal.md | Sourcing Fee: How Much Should You Pay for a Deal?
+166-rental-income-tax-how-hmrc-taxes-your-property-profits.md | Rental Income Tax: How HMRC Taxes Your Property Profits
+167-mortgage-interest-tax-relief-how-section-24-affects-your-net-income.md | Mortgage Interest Tax Relief: How Section 24 Affects Your Net Income
+168-cgt-capital-gains-tax-on-residential-property-what-you-pay-when-you-se.md | CGT: Capital Gains Tax on Residential Property -- What You Pay When You Sell
+169-cgt-calculation-how-to-include-every-cost-and-minimise-your-bill.md | CGT Calculation: How to Include Every Cost and Minimise Your Bill
+170-incorporation-and-sdlt-transferring-properties-into-a-limited-company.md | Incorporation and SDLT: Transferring Properties Into a Limited Company
+171-annual-tax-on-enveloped-dwellings.md | Annual Tax on Enveloped Dwellings
+172-vat-on-commercial-property-when-you-charge-it-and-when-you-do-not.md | VAT on Commercial Property: When You Charge It and When You Do Not
+173-fhl-tax-changes-how-the-abolition-of-furnished-holiday-let-rules-affec.md | FHL Tax Changes: How the Abolition of Furnished Holiday Let Rules Affects You
+174-nrcgt-tax-on-uk-property-for-non-resident-sellers.md | NRCGT: Tax on UK Property for Non-Resident Sellers

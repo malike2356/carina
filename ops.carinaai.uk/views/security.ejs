@@ -1,0 +1,296 @@
+<% title = 'Security' %>
+<div class="max-w-7xl">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-2xl font-bold text-white">Security</h1>
+    <div class="flex items-center gap-2 text-xs text-gray-400">
+      <span id="sse-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600"></span>
+      <span id="sse-label">Connecting...</span>
+    </div>
+  </div>
+
+  <% if (!scoutOnline) { %>
+    <div id="offline-banner" class="mb-4 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+      Labyrinth Scout is not running at <code class="text-amber-100"><%= scoutUrl %></code>.
+      Start it with: <code class="text-amber-100">cd console.labyrinthscout.com && pnpm dev</code>
+    </div>
+  <% } else { %>
+    <div id="offline-banner" class="hidden mb-4 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200"></div>
+  <% } %>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-[#1a1a1a] border border-red-800/60 rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Critical (24h)</p>
+      <p id="stat-critical" class="text-2xl font-bold text-red-400 mt-1"><%= scoutOnline ? stats.critical : '-' %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-amber-700/50 rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Warning (24h)</p>
+      <p id="stat-warning" class="text-2xl font-bold text-amber-400 mt-1"><%= scoutOnline ? stats.warning : '-' %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-cyan-800/50 rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Info (24h)</p>
+      <p id="stat-info" class="text-2xl font-bold text-cyan-400 mt-1"><%= scoutOnline ? stats.info : '-' %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-red-600 rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Breach (24h)</p>
+      <p id="stat-breach" class="text-2xl font-bold text-red-500 mt-1"><%= scoutOnline ? stats.breach : '-' %></p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <section class="lg:col-span-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <div class="flex flex-wrap gap-2 mb-3">
+        <span class="text-sm font-semibold text-white mr-2">Live events</span>
+        <% ['all', 'critical', 'warning', 'info', 'breach'].forEach(f => { %>
+          <button type="button" data-filter="<%= f %>"
+                  class="filter-btn text-xs px-2 py-1 rounded border border-[#2a2a2a] text-gray-400 hover:text-white <%= f === 'all' ? 'border-[#22c55e] text-[#22c55e]' : '' %>">
+            <%= f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1) %>
+          </button>
+        <% }) %>
+      </div>
+      <div id="event-stream" class="font-mono text-xs max-h-[500px] overflow-y-auto space-y-1"></div>
+    </section>
+
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <h2 class="text-sm font-semibold text-white mb-3">Agent instances</h2>
+      <div id="instances-panel" class="space-y-3">
+        <% if (!instances.length) { %>
+          <p class="text-gray-500 text-xs">No instances registered.</p>
+        <% } %>
+        <% for (const inst of instances) { %>
+          <div class="instance-row border border-[#2a2a2a] rounded p-3" data-id="<%= inst.id %>">
+            <div class="flex justify-between items-start gap-2">
+              <div>
+                <p class="text-sm font-medium text-white"><%= inst.name %></p>
+                <p class="text-xs text-gray-500"><%= inst.id %></p>
+                <span class="instance-status inline-block mt-1 text-xs px-2 py-0.5 rounded
+                  <%= inst.status === 'active' ? 'bg-green-900/40 text-green-400' : inst.status === 'suspended' ? 'bg-red-900/40 text-red-400' : 'bg-gray-800 text-gray-400' %>">
+                  <%= inst.status %>
+                </span>
+                <p class="instance-heartbeat text-xs text-gray-500 mt-1" data-heartbeat="<%= inst.last_heartbeat || '' %>">
+                  Last seen: <%= inst.secondsAgo != null ? inst.secondsAgo + 's ago' : 'never' %>
+                </p>
+              </div>
+              <div class="instance-actions shrink-0 flex flex-col gap-1">
+                <% if (inst.status === 'active') { %>
+                  <button type="button" class="kill-btn text-xs bg-red-900/50 text-red-300 px-2 py-1 rounded hover:bg-red-800"
+                          data-id="<%= inst.id %>" data-name="<%= inst.name %>">KILL</button>
+                <% } else if (inst.status === 'suspended') { %>
+                  <button type="button" class="resume-btn text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded hover:bg-green-800"
+                          data-id="<%= inst.id %>">RESUME</button>
+                <% } %>
+              </div>
+            </div>
+            <p class="instance-error text-xs text-red-400 mt-1 hidden"></p>
+          </div>
+        <% } %>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="kill-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+  <div class="bg-[#1a1a1a] border border-red-800 rounded-lg p-4 max-w-md w-full">
+    <h3 class="text-white font-semibold mb-2">Kill instance</h3>
+    <p id="kill-target-name" class="text-sm text-gray-400 mb-3"></p>
+    <textarea id="kill-reason" rows="3" placeholder="Reason for suspension..."
+              class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white mb-3"></textarea>
+    <div class="flex gap-2 justify-end">
+      <button type="button" id="kill-cancel" class="text-sm text-gray-400 px-3 py-1">Cancel</button>
+      <button type="button" id="kill-confirm" class="text-sm bg-red-700 text-white px-3 py-1 rounded">Confirm kill</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SCOUT_ONLINE = <%= scoutOnline ? 'true' : 'false' %>;
+  const SCOUT_URL = '<%= scoutUrl %>';
+  let activeFilter = 'all';
+  let reconnectDelay = 2000;
+  let es = null;
+  let killTargetId = null;
+
+  const streamEl = document.getElementById('event-stream');
+  const sseDot = document.getElementById('sse-dot');
+  const sseLabel = document.getElementById('sse-label');
+  const offlineBanner = document.getElementById('offline-banner');
+
+  function setDot(connected) {
+    sseDot.className = 'inline-block w-2 h-2 rounded-full ' + (connected ? 'bg-green-500' : 'bg-red-600');
+    sseLabel.textContent = connected ? 'SSE connected' : 'SSE disconnected';
+  }
+
+  function showOfflineBanner() {
+    offlineBanner.classList.remove('hidden');
+    offlineBanner.innerHTML =
+      'Labyrinth Scout is not running at <code class="text-amber-100">' + SCOUT_URL + '</code>. ' +
+      'Start it with: <code class="text-amber-100">cd console.labyrinthscout.com && pnpm dev</code>';
+    setDot(false);
+  }
+
+  function severityClass(sev) {
+    if (sev === 'critical' || sev === 'breach') return 'text-red-400 bg-red-950/50 border-red-800';
+    if (sev === 'warning') return 'text-amber-400 bg-amber-950/50 border-amber-800';
+    return 'text-cyan-400 bg-cyan-950/50 border-cyan-800';
+  }
+
+  function formatTime(iso) {
+    try {
+      const d = new Date(iso);
+      return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch { return '--:--:--'; }
+  }
+
+  function appendEvent(ev) {
+    const sev = (ev.severity || 'info').toLowerCase();
+    if (activeFilter !== 'all' && sev !== activeFilter) return;
+
+    const row = document.createElement('div');
+    row.className = 'event-row flex flex-wrap gap-2 py-1 border-b border-[#2a2a2a]/50 transition-colors duration-1000';
+    row.dataset.severity = sev;
+    const desc = (ev.description || '').slice(0, 80);
+    const inst = ev.instance_id || ev.source || '-';
+    row.innerHTML =
+      '<span class="text-gray-500 shrink-0">' + formatTime(ev.created_at) + '</span>' +
+      '<span class="px-1 rounded border text-[10px] uppercase ' + severityClass(sev) + '">' + sev + '</span>' +
+      '<span class="text-gray-400">' + (ev.event_type || '') + '</span>' +
+      '<span class="text-gray-300 flex-1 min-w-0 truncate">' + desc + '</span>' +
+      '<span class="text-gray-500 shrink-0">' + inst + '</span>';
+    streamEl.appendChild(row);
+    row.style.backgroundColor = 'rgba(34, 197, 94, 0.15)';
+    setTimeout(() => { row.style.backgroundColor = ''; }, 1000);
+    streamEl.scrollTop = streamEl.scrollHeight;
+  }
+
+  function updateStats(s) {
+    if (!s) return;
+    const map = { critical: 'stat-critical', warning: 'stat-warning', info: 'stat-info', breach: 'stat-breach' };
+    for (const [k, id] of Object.entries(map)) {
+      const el = document.getElementById(id);
+      if (el && s[k] != null) el.textContent = s[k];
+    }
+  }
+
+  function connectStream() {
+    if (es) { es.close(); es = null; }
+    es = new EventSource('/security/stream');
+    es.onopen = () => { setDot(true); reconnectDelay = 2000; };
+    es.onerror = () => {
+      setDot(false);
+      es.close();
+      setTimeout(connectStream, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+    };
+    es.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'event') appendEvent(msg.data);
+        if (msg.type === 'stats') updateStats(msg.data);
+        if (msg.type === 'offline') showOfflineBanner();
+      } catch {}
+    };
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeFilter = btn.dataset.filter || 'all';
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('border-[#22c55e]', 'text-[#22c55e]');
+      });
+      btn.classList.add('border-[#22c55e]', 'text-[#22c55e]');
+      document.querySelectorAll('.event-row').forEach(row => {
+        const sev = row.dataset.severity || '';
+        row.style.display = (activeFilter === 'all' || sev === activeFilter) ? '' : 'none';
+      });
+    });
+  });
+
+  const killModal = document.getElementById('kill-modal');
+  document.getElementById('kill-cancel')?.addEventListener('click', () => killModal.classList.add('hidden'));
+  document.getElementById('kill-confirm')?.addEventListener('click', async () => {
+    if (!killTargetId) return;
+    const reason = document.getElementById('kill-reason').value.trim() || 'ops panel kill';
+    const row = document.querySelector('.instance-row[data-id="' + killTargetId + '"]');
+    const errEl = row?.querySelector('.instance-error');
+    try {
+      const r = await fetch('/security/kill/' + encodeURIComponent(killTargetId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Kill failed');
+      const statusEl = row?.querySelector('.instance-status');
+      if (statusEl) { statusEl.textContent = 'suspended'; statusEl.className = 'instance-status inline-block mt-1 text-xs px-2 py-0.5 rounded bg-red-900/40 text-red-400'; }
+      const actions = row?.querySelector('.instance-actions');
+      if (actions) {
+        actions.innerHTML = '<button type="button" class="resume-btn text-xs bg-green-900/50 text-green-300 px-2 py-1 rounded" data-id="' + killTargetId + '">RESUME</button>';
+        bindResume(actions.querySelector('.resume-btn'));
+      }
+      killModal.classList.add('hidden');
+      if (errEl) errEl.classList.add('hidden');
+    } catch (err) {
+      if (errEl) { errEl.textContent = err.message || 'Kill failed'; errEl.classList.remove('hidden'); }
+    }
+  });
+
+  function bindKill(btn) {
+    btn?.addEventListener('click', () => {
+      killTargetId = btn.dataset.id;
+      document.getElementById('kill-target-name').textContent = btn.dataset.name || killTargetId;
+      document.getElementById('kill-reason').value = '';
+      killModal.classList.remove('hidden');
+    });
+  }
+
+  async function doResume(id, row) {
+    const errEl = row?.querySelector('.instance-error');
+    try {
+      const r = await fetch('/security/resume/' + encodeURIComponent(id), { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Resume failed');
+      const statusEl = row?.querySelector('.instance-status');
+      if (statusEl) { statusEl.textContent = 'active'; statusEl.className = 'instance-status inline-block mt-1 text-xs px-2 py-0.5 rounded bg-green-900/40 text-green-400'; }
+      const actions = row?.querySelector('.instance-actions');
+      if (actions) {
+        actions.innerHTML = '<button type="button" class="kill-btn text-xs bg-red-900/50 text-red-300 px-2 py-1 rounded" data-id="' + id + '" data-name="' + id + '">KILL</button>';
+        bindKill(actions.querySelector('.kill-btn'));
+      }
+      if (errEl) errEl.classList.add('hidden');
+    } catch (err) {
+      if (errEl) { errEl.textContent = err.message || 'Resume failed'; errEl.classList.remove('hidden'); }
+    }
+  }
+
+  function bindResume(btn) {
+    btn?.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const row = document.querySelector('.instance-row[data-id="' + id + '"]');
+      doResume(id, row);
+    });
+  }
+
+  document.querySelectorAll('.kill-btn').forEach(bindKill);
+  document.querySelectorAll('.resume-btn').forEach(bindResume);
+
+  setInterval(() => {
+    document.querySelectorAll('.instance-heartbeat').forEach(el => {
+      const hb = el.dataset.heartbeat;
+      if (!hb) return;
+      const sec = Math.max(0, Math.floor((Date.now() - new Date(hb).getTime()) / 1000));
+      el.textContent = 'Last seen: ' + sec + 's ago';
+    });
+  }, 5000);
+
+  if (SCOUT_ONLINE) {
+    fetch('/security/events').then(r => r.ok ? r.json() : null).then(data => {
+      const events = data?.events ?? data ?? [];
+      if (Array.isArray(events)) {
+        events.slice().reverse().forEach(appendEvent);
+      }
+    }).catch(() => {});
+    connectStream();
+  } else {
+    setDot(false);
+    sseLabel.textContent = 'Scout offline';
+  }
+</script>

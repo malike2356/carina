@@ -1,0 +1,14 @@
+# Folder Index: business_and_mindset/articles
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 47-56)
+
+47-building-investment-strategy.md | Building a Property Investment Strategy That Works
+48-risk-management-property.md | Risk Management in Property Investment: Protecting Your Portfolio
+49-portfolio-diversification.md | Diversifying Your Property Portfolio: Strategy and Practical Steps
+50-long-term-vs-short-term.md | Long-Term vs Short-Term Property Investment: Choosing the Right Approach
+51-capital-efficiency-property.md | Capital Efficiency in Property Investment: Making Every Pound Work
+52-avoiding-mindless-imitation.md | Avoiding Mindless Imitation: Finding Your Edge in Property Investment
+53-building-property-team.md | Building Your Property Team: Who You Need and When
+54-networking-property-investors.md | Networking for Property Investors: Building Relationships That Deliver Deals
+55-property-goals-kpis.md | Setting Property Goals and KPIs: How to Measure What Matters
+56-learning-from-mistakes.md | Learning from Property Investment Mistakes: Turning Setbacks into Strategy

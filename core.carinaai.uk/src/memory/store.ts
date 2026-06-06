@@ -1,0 +1,142 @@
+import pgvector from 'pgvector/pg';
+import { pool } from './db.js';
+import { embed } from './embeddings.js';
+import type { Memory, Role } from '../types/index.js';
+
+function rowToMemory(row: Record<string, unknown>): Memory {
+  return {
+    id: String(row.id),
+    sessionId: String(row.session_id),
+    role: row.role as Role,
+    content: String(row.content),
+    createdAt: new Date(String(row.created_at)),
+  };
+}
+
+export async function saveMemory(
+  sessionId: string,
+  role: Role,
+  content: string,
+): Promise<void> {
+  const embedding = await embed(content);
+  const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
+
+  await pool.query(
+    `INSERT INTO episodic_memories (session_id, role, content, embedding)
+     VALUES ($1, $2, $3, $4)`,
+    [sessionId, role, content, vectorSql],
+  );
+}
+
+export async function searchMemory(query: string, limit: number): Promise<Memory[]> {
+  const embedding = await embed(query);
+
+  if (embedding.length > 0) {
+    const vectorSql = pgvector.toSql(embedding);
+    const result = await pool.query(
+      `SELECT id, session_id, role, content, created_at
+       FROM episodic_memories
+       WHERE embedding IS NOT NULL
+       ORDER BY embedding <=> $1
+       LIMIT $2`,
+      [vectorSql, limit],
+    );
+    return result.rows.map(rowToMemory);
+  }
+
+  const fallback = await pool.query(
+    `SELECT id, session_id, role, content, created_at
+     FROM episodic_memories
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit],
+  );
+  return fallback.rows.map(rowToMemory);
+}
+
+export async function getSessionHistory(
+  sessionId: string,
+  limit: number,
+): Promise<Memory[]> {
+  const result = await pool.query(
+    `SELECT id, session_id, role, content, created_at
+     FROM episodic_memories
+     WHERE session_id = $1
+     ORDER BY created_at ASC
+     LIMIT $2`,
+    [sessionId, limit],
+  );
+  return result.rows.map(rowToMemory);
+}
+
+export async function clearSession(sessionId: string): Promise<void> {
+  await pool.query('DELETE FROM episodic_memories WHERE session_id = $1', [sessionId]);
+}
+
+export async function listRecentMemories(limit: number): Promise<Memory[]> {
+  const result = await pool.query(
+    `SELECT id, session_id, role, content, created_at
+     FROM episodic_memories
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit],
+  );
+  return result.rows.map(rowToMemory);
+}
+
+export async function deleteMemory(id: string): Promise<boolean> {
+  const result = await pool.query('DELETE FROM episodic_memories WHERE id = $1', [id]);
+  return (result.rowCount ?? 0) > 0;
+}
+
+export interface RagChunk {
+  id: string;
+  source: string;
+  pack: string;
+  content: string;
+}
+
+export async function searchRag(query: string, limit: number): Promise<RagChunk[]> {
+  const embedding = await embed(query);
+  if (embedding.length === 0) return [];
+
+  const vectorSql = pgvector.toSql(embedding);
+  const result = await pool.query(
+    `SELECT id, source, pack, content
+     FROM rag_chunks
+     WHERE embedding IS NOT NULL
+     ORDER BY embedding <=> $1
+     LIMIT $2`,
+    [vectorSql, limit],
+  );
+
+  return result.rows.map((row) => ({
+    id: String(row.id),
+    source: String(row.source),
+    pack: String(row.pack),
+    content: String(row.content),
+  }));
+}
+
+export async function isSourceIngested(source: string): Promise<boolean> {
+  const result = await pool.query(
+    'SELECT 1 FROM rag_chunks WHERE source = $1 LIMIT 1',
+    [source],
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+}
+
+export async function insertRagChunk(
+  source: string,
+  pack: string,
+  content: string,
+  embedding: number[],
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
+  await pool.query(
+    `INSERT INTO rag_chunks (source, pack, content, embedding, metadata)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [source, pack, content, vectorSql, JSON.stringify(metadata)],
+  );
+}

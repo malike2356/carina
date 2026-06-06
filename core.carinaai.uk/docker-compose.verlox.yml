@@ -1,0 +1,73 @@
+# docker-compose.verlox.yml
+# VERLOX PERSONAL STACK - for your own use only.
+# Runs: Carina + Labyrinth Scout + Platform Admin behind one entry point.
+# This file is NOT part of the sellable products. Never reference it in customer docs.
+#
+# Usage (local dev):
+#   docker compose -f docker-compose.yml -f docker-compose.verlox.yml up -d
+#
+# Usage (VPS):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.verlox.yml up -d
+
+services:
+  # Your personal admin dashboard - never exposed publicly
+  carina-admin:
+    build:
+      context: ../ops.carinaai.uk
+      dockerfile_inline: |
+        FROM node:22-alpine
+        WORKDIR /app
+        RUN corepack enable && corepack prepare pnpm@latest --activate
+        COPY package.json ./
+        RUN pnpm install
+        COPY . .
+        CMD ["node", "--import", "tsx/esm", "server.ts"]
+    environment:
+      PORT: "4000"
+      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina_central
+      CARINA_API_URL: http://carina-web:3000
+      SCOUT_URL: http://labyrinth-scout:4444
+      SCOUT_API_KEY: ${SCOUT_API_KEY:-changeme}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      SESSION_SECRET: ${SESSION_SECRET:-change-in-production}
+    depends_on:
+      - postgres
+    networks:
+      - carina
+    restart: unless-stopped
+    # NOT exposed on a public port - only accessible via nginx at ops.carinaai.uk
+    # nginx config: location / { proxy_pass http://carina-admin:4000; }
+
+  # Labyrinth Scout security server
+  labyrinth-scout:
+    build:
+      context: ../console.labyrinthscout.com
+      dockerfile_inline: |
+        FROM node:22-alpine
+        WORKDIR /app
+        RUN corepack enable && corepack prepare pnpm@latest --activate
+        COPY package.json ./
+        RUN pnpm install
+        COPY . .
+        RUN pnpm build
+        CMD ["node", "dist/src/server.js"]
+    environment:
+      SCOUT_PORT: "4444"
+      SCOUT_DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina_central
+      REDIS_URL: redis://redis:6379
+      SCOUT_API_KEY: ${SCOUT_API_KEY:-changeme}
+      SCOUT_TELEGRAM_BOT_TOKEN: ${SCOUT_TELEGRAM_BOT_TOKEN:-}
+      SCOUT_TELEGRAM_CHAT_ID: ${SCOUT_TELEGRAM_CHAT_ID:-}
+      SCOUT_RESEND_API_KEY: ${RESEND_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - carina
+    restart: unless-stopped
+
+networks:
+  carina:
+    external: true   # Shared with the base docker-compose stack

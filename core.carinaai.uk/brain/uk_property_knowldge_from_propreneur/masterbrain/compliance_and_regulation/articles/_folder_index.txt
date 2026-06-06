@@ -1,0 +1,12 @@
+# Folder Index: compliance_and_regulation/articles
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 66-73)
+
+66-aml-property-investors.md | What Property Investors Need to Know About Anti-Money Laundering Compliance
+67-hmo-licensing-guide.md | HMO Licensing: A Complete Guide for Landlords
+68-epc-requirements-landlords.md | EPC Requirements for Landlords: What You Need to Know in 2026
+69-gas-safety-electrical-compliance.md | Gas Safety and Electrical Compliance: A Landlord's Legal Obligations
+70-right-to-rent-checks.md | Right to Rent Checks: What Landlords Need to Know
+71-tenancy-deposit-schemes.md | Tenancy Deposit Schemes: Protection Rules Every Landlord Must Follow
+72-property-tax-planning.md | Property Tax Planning: Strategies for UK Investors
+73-data-protection-landlords.md | Data Protection for Landlords: GDPR Compliance Made Simple

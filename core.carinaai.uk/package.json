@@ -1,0 +1,92 @@
+{
+  "name": "carina-agent",
+  "version": "0.1.0",
+  "description": "Autonomous AI agent platform with skill packs",
+  "main": "dist/src/index.js",
+  "bin": {
+    "carina": "./dist/bin/carina.js"
+  },
+  "files": [
+    "dist/",
+    "src/skills/packs/",
+    "brain/",
+    "install.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/src/index.js",
+    "build": "node_modules/.bin/tsc && cp -r src/gateway/web dist/src/gateway/",
+    "cli": "tsx src/index.ts",
+    "carina": "tsx bin/carina.ts",
+    "hub": "tsx src/skills/hub/server.ts",
+    "ingest": "tsx src/skills/ingestion.ts --pack property-uk",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "admin": "tsx ../ops.carinaai.uk/server.ts",
+    "prepublishOnly": "pnpm build && pnpm test"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "autonomous",
+    "llm",
+    "property",
+    "carina"
+  ],
+  "author": "VERLOX Ltd",
+  "license": "MIT",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.5.1",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@google/generative-ai": "^0.24.1",
+    "@inquirer/prompts": "^7.10.1",
+    "bcryptjs": "^2.4.3",
+    "chalk": "^5.6.2",
+    "dotenv": "^17.4.2",
+    "ejs": "^3.1.10",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "express-session": "^1.18.0",
+    "ioredis": "^5.11.0",
+    "node-telegram-bot-api": "^0.67.0",
+    "openai": "^6.41.0",
+    "pg": "^8.21.0",
+    "pgvector": "^0.3.0",
+    "readline-sync": "^1.4.10",
+    "resend": "^6.12.4",
+    "stripe": "^20.4.0",
+    "tsx": "^4.22.4",
+    "twilio": "^5.12.2",
+    "uuid": "^14.0.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/ejs": "^3.1.5",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.18.0",
+    "@types/node": "^25.9.1",
+    "@types/node-telegram-bot-api": "^0.64.13",
+    "@types/pg": "^8.20.0",
+    "@types/uuid": "^11.0.0",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.1.8"
+  }
+}

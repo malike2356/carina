@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Agent</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root, [data-theme="dark"] {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --user-bg: #1f6feb;
+      --send: #238636;
+    }
+    [data-theme="light"] {
+      --bg: #ffffff; --surface: #f6f8fa; --border: #d0d7de;
+      --text: #24292f; --muted: #656d76; --accent: #0969da; --user-bg: #0969da;
+      --send: #1a7f37;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; overflow: hidden;
+    }
+    #sidebar {
+      width: 260px; min-width: 200px; border-right: 1px solid var(--border);
+      background: var(--surface); display: flex; flex-direction: column;
+      padding: 12px; gap: 8px;
+    }
+    #sidebar h2 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    #session-list { flex: 1; overflow-y: auto; font-size: 0.8rem; }
+    .session-item {
+      padding: 8px; border-radius: 6px; cursor: pointer; color: var(--text);
+      border: 1px solid transparent;
+    }
+    .session-item:hover, .session-item.active { background: var(--bg); border-color: var(--border); }
+    #pack-status { font-size: 0.75rem; color: var(--muted); padding: 8px; border-top: 1px solid var(--border); }
+    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    header h1 { font-size: 1rem; color: var(--accent); }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border); color: var(--text);
+      padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem;
+    }
+    #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .msg-wrap { display: flex; flex-direction: column; gap: 4px; max-width: 85%; }
+    .msg-wrap.user { align-self: flex-end; align-items: flex-end; }
+    .msg-wrap.carina { align-self: flex-start; }
+    .msg-meta { font-size: 0.7rem; color: var(--muted); display: flex; gap: 8px; }
+    .msg {
+      padding: 10px 14px; border-radius: 10px; line-height: 1.55; font-size: 0.9rem;
+      word-break: break-word;
+    }
+    .msg.user { background: var(--user-bg); color: #fff; }
+    .msg.carina { background: var(--surface); border: 1px solid var(--border); }
+    .msg.carina pre { background: var(--bg); padding: 10px; border-radius: 6px; overflow-x: auto; margin: 8px 0; }
+    .msg.carina code { font-size: 0.82rem; font-family: ui-monospace, monospace; }
+    .msg.carina p { margin: 0.4em 0; }
+    footer {
+      padding: 12px 16px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; align-items: flex-end;
+    }
+    #input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); padding: 10px 12px; border-radius: 8px;
+      font-family: inherit; font-size: 0.9rem; resize: none; min-height: 44px; max-height: 120px;
+      outline: none;
+    }
+    #input:focus { border-color: var(--accent); }
+    #send {
+      background: var(--send); color: #fff; border: none;
+      padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 0.875rem;
+    }
+    #send:disabled { opacity: 0.5; cursor: not-allowed; }
+    #palette {
+      display: none; position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+      width: min(400px, 90vw); background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    #palette.open { display: block; }
+    #palette input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); }
+    @media (max-width: 768px) {
+      #sidebar { display: none; }
+      #sidebar.open { display: flex; position: fixed; left: 0; top: 0; height: 100%; z-index: 50; }
+    }
+  </style>
+</head>
+<body>
+  <aside id="sidebar">
+    <h2>Carina</h2>
+    <button class="btn-ghost" id="new-session">New chat</button>
+    <h2>Sessions</h2>
+    <div id="session-list"></div>
+    <div id="pack-status">Pack: property-uk</div>
+  </aside>
+  <div id="main">
+    <header>
+      <h1>Carina Agent</h1>
+      <div class="header-actions">
+        <span id="provider-label" style="font-size:0.75rem;color:var(--muted)">provider: ...</span>
+        <button class="btn-ghost" id="toggle-sidebar">Menu</button>
+        <button class="btn-ghost" id="theme-toggle">Light</button>
+      </div>
+    </header>
+    <div id="messages"></div>
+    <footer>
+      <textarea id="input" rows="1" placeholder="Message Carina... (Enter send, Shift+Enter newline, / commands)"></textarea>
+      <button id="send">Send</button>
+    </footer>
+  </div>
+  <div id="palette">
+    <input type="text" id="palette-input" placeholder="Command palette (/help, /provider, /clear)">
+  </div>
+  <script>
+    const SESSION_KEY = 'carina_web_session_id';
+    const SESSIONS_KEY = 'carina_web_sessions';
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const providerLabel = document.getElementById('provider-label');
+    const sessionListEl = document.getElementById('session-list');
+    const palette = document.getElementById('palette');
+    const paletteInput = document.getElementById('palette-input');
+
+    marked.setOptions({ breaks: true });
+
+    function getSessions() {
+      try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function saveSessionEntry(id, preview) {
+      const sessions = getSessions().filter(s => s.id !== id);
+      sessions.unshift({ id, preview, at: Date.now() });
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions.slice(0, 20)));
+      renderSessionList();
+    }
+
+    function renderSessionList() {
+      const current = getSessionId();
+      sessionListEl.innerHTML = getSessions().map(s =>
+        `<div class="session-item ${s.id === current ? 'active' : ''}" data-id="${s.id}">${(s.preview || 'Chat').slice(0, 40)}</div>`
+      ).join('');
+      sessionListEl.querySelectorAll('.session-item').forEach(el => {
+        el.addEventListener('click', () => {
+          localStorage.setItem(SESSION_KEY, el.dataset.id);
+          messagesEl.innerHTML = '';
+          appendMessage('carina', 'Switched session.', null, 'system');
+          renderSessionList();
+        });
+      });
+    }
+
+    function getSessionId() {
+      let id = localStorage.getItem(SESSION_KEY);
+      if (!id) { id = crypto.randomUUID(); localStorage.setItem(SESSION_KEY, id); }
+      return id;
+    }
+
+    function newSessionId() {
+      const id = crypto.randomUUID();
+      localStorage.setItem(SESSION_KEY, id);
+      return id;
+    }
+
+    function formatTime() {
+      return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function fetchProvider() {
+      try {
+        const res = await fetch('/api/providers');
+        const data = await res.json();
+        providerLabel.textContent = 'provider: ' + data.active;
+        return data.active;
+      } catch {
+        providerLabel.textContent = 'provider: unknown';
+        return 'unknown';
+      }
+    }
+
+    function renderMd(text) {
+      const html = marked.parse(text);
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+      return wrap.innerHTML;
+    }
+
+    function appendMessage(role, content, provider, id) {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-wrap ' + role;
+      const meta = document.createElement('div');
+      meta.className = 'msg-meta';
+      const who = role === 'user' ? 'You' : 'Carina';
+      meta.textContent = who + ' · ' + formatTime() + (provider && provider !== 'system' ? ' · ' + provider : '');
+      const div = document.createElement('div');
+      div.className = 'msg ' + role;
+      if (role === 'carina' && content !== '...') {
+        div.innerHTML = renderMd(content);
+      } else {
+        div.textContent = content;
+      }
+      if (id) div.id = id;
+      wrap.appendChild(meta);
+      wrap.appendChild(div);
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return div;
+    }
+
+    async function handleLocalCommand(text) {
+      if (text === '/help') {
+        appendMessage('carina', '**Commands**\n- `/provider [name]` - switch LLM\n- `/memories` - list memories\n- `/clear` - new session\n- `/help` - this message\n\n**Keys:** Enter send, Shift+Enter newline, `/` command palette', null);
+        return true;
+      }
+      if (text.startsWith('/provider')) {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, sessionId: getSessionId() }),
+        });
+        const data = await res.json();
+        appendMessage('carina', data.reply || data.error || 'Done', await fetchProvider());
+        return true;
+      }
+      if (text === '/clear') {
+        await fetch('/api/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: getSessionId() }) });
+        newSessionId();
+        messagesEl.innerHTML = '';
+        appendMessage('carina', 'Session cleared.', null);
+        return true;
+      }
+      return false;
+    }
+
+    async function sendMessage(text) {
+      if (!text.trim()) return;
+      if (await handleLocalCommand(text.trim())) return;
+
+      appendMessage('user', text, null);
+      saveSessionEntry(getSessionId(), text);
+      inputEl.value = '';
+      sendBtn.disabled = true;
+
+      const sessionId = getSessionId();
+      const carinaEl = appendMessage('carina', '...', null, 'streaming');
+      let fullText = '';
+      let activeProvider = await fetchProvider();
+
+      const url = '/api/chat/stream?message=' + encodeURIComponent(text) + '&sessionId=' + encodeURIComponent(sessionId);
+      const es = new EventSource(url);
+
+      es.onmessage = (event) => {
+        if (event.data === '[DONE]') {
+          es.close();
+          carinaEl.innerHTML = renderMd(fullText);
+          const wrap = carinaEl.closest('.msg-wrap');
+          if (wrap) wrap.querySelector('.msg-meta').textContent = 'Carina · ' + formatTime() + ' · ' + activeProvider;
+          sendBtn.disabled = false;
+          fetchProvider();
+          return;
+        }
+        try {
+          const chunk = JSON.parse(event.data);
+          if (typeof chunk === 'string') {
+            fullText += chunk;
+            carinaEl.textContent = fullText;
+          } else if (chunk.error) {
+            fullText += '\nError: ' + chunk.error;
+            carinaEl.textContent = fullText;
+          }
+        } catch {
+          fullText += event.data;
+          carinaEl.textContent = fullText;
+        }
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      };
+
+      es.onerror = () => {
+        es.close();
+        if (!fullText) carinaEl.textContent = 'Connection error.';
+        sendBtn.disabled = false;
+      };
+    }
+
+    document.getElementById('new-session').addEventListener('click', () => {
+      newSessionId();
+      messagesEl.innerHTML = '';
+      appendMessage('carina', 'New session started.', null);
+      renderSessionList();
+    });
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      const html = document.documentElement;
+      const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+      html.dataset.theme = next;
+      document.getElementById('theme-toggle').textContent = next === 'dark' ? 'Light' : 'Dark';
+      document.getElementById('hljs-theme').href = next === 'dark'
+        ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css'
+        : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
+    });
+
+    document.getElementById('toggle-sidebar').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('open');
+    });
+
+    sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(inputEl.value); }
+      if (e.key === '/' && document.activeElement === inputEl && inputEl.value === '') {
+        e.preventDefault();
+        palette.classList.add('open');
+        paletteInput.focus();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !palette.classList.contains('open') && document.activeElement !== inputEl) {
+        palette.classList.add('open');
+        paletteInput.focus();
+      }
+    });
+
+    paletteInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const cmd = paletteInput.value.trim();
+        palette.classList.remove('open');
+        paletteInput.value = '';
+        if (cmd) { inputEl.value = cmd; sendMessage(cmd); }
+      }
+      if (e.key === 'Escape') palette.classList.remove('open');
+    });
+
+    renderSessionList();
+    fetchProvider();
+    appendMessage('carina', 'Carina ready. UK property pack loaded. Type a message or `/help`.', null);
+  </script>
+</body>
+</html>

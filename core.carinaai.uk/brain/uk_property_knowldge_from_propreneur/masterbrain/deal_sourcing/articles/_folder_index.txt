@@ -1,0 +1,13 @@
+# Folder Index: deal_sourcing/articles
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 02-10)
+
+02-how-sourcing-agents-find-off-market-deals.md | How Sourcing Agents Find Off-Market Deals
+03-BMV-properties-explained.md | Below Market Value Properties Explained
+04-property-sourcing-fees-guide.md | Property Sourcing Fees: A Complete Guide for UK Investors
+05-remote-property-sourcing.md | Remote Property Sourcing: How to Invest from Anywhere
+06-multiple-sourcing-agents-strategy.md | Should You Use Multiple Sourcing Agents at the Same Time
+07-sourcing-agreement-red-flags.md | Sourcing Agreement Red Flags Every Investor Should Know
+08-joint-venture-vs-sourcing-fees.md | Joint Venture vs Sourcing Fees: Which Model Works for You
+09-building-sourcing-agent-relationships.md | Building Strong Sourcing Agent Relationships: A Guide for Investors
+10-when-to-use-sourcing-agent.md | When to Use a Property Sourcing Agent (and When Not To)

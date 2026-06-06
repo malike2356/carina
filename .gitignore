@@ -1,14 +1,24 @@
 # Dependencies
-laravel/vendor/
-laravel/node_modules/
-python/__pycache__/
-python/.venv/
-python/venv/
+node_modules/
+platform_admin/node_modules/
+labyrinthscout/node_modules/
+
+# Python (archived)
+archive/python-fastapi-stub/__pycache__/
+
+# Build output
+dist/
 
 # Environment — never commit
+.env
 laravel/.env
 laravel/.env.*.local
 *.env.local
+
+# Runtime data
+data/memories/
+data/logs/
+data/hub-packs/
 
 # Secrets and certs
 docker/nginx/ssl/
@@ -44,3 +54,16 @@ mobile/android/.gradle/
 mobile/android/build/
 mobile/ios/Pods/
 mobile/ios/.build/
+
+# Labyrinth Scout
+labyrinthscout/node_modules/
+labyrinthscout/dist/
+labyrinthscout/.env
+
+# Archive - never commit
+archive/
+
+# Platform admin
+platform_admin/node_modules/
+carinaai.uk/
+HESTIACP_CREDENTIALS.txt

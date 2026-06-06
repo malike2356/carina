@@ -1,0 +1,41 @@
+<% const s = skill || {} %>
+<% const selectedTools = s.tools_used || [] %>
+<% const triggerStr = (s.trigger_keywords || []).join(', ') %>
+
+<% if (error) { %><p class="text-red-400 text-sm mb-4"><%= error %></p><% } %>
+
+<div class="space-y-4 max-w-2xl">
+  <div>
+    <label class="block text-sm text-gray-400 mb-1">Name</label>
+    <input name="name" value="<%= s.name || '' %>" required
+           class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
+  </div>
+  <div>
+    <label class="block text-sm text-gray-400 mb-1">Description</label>
+    <input name="description" value="<%= s.description || '' %>" required
+           class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
+  </div>
+  <div>
+    <label class="block text-sm text-gray-400 mb-1">Trigger keywords (comma-separated)</label>
+    <input name="trigger_keywords" value="<%= triggerStr %>"
+           class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
+  </div>
+  <div>
+    <label class="block text-sm text-gray-400 mb-1">Steps</label>
+    <textarea name="steps" rows="8" required
+              class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white font-mono text-sm"><%= s.steps || '' %></textarea>
+  </div>
+  <div>
+    <label class="block text-sm text-gray-400 mb-2">Tools used</label>
+    <div class="flex flex-wrap gap-3">
+      <% for (const tool of toolNames) { %>
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" name="tools" value="<%= tool %>"
+                 <%= selectedTools.includes(tool) ? 'checked' : '' %>
+                 class="rounded border-[#2a2a2a]">
+          <span><%= tool %></span>
+        </label>
+      <% } %>
+    </div>
+  </div>
+</div>

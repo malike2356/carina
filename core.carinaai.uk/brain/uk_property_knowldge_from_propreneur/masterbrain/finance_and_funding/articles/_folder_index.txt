@@ -1,0 +1,11 @@
+# Folder Index: finance_and_funding/articles
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 74-80)
+
+74-bridging-loans-explained.md | Bridging Loans Explained: Short-Term Finance for Property Investors
+75-development-finance.md | Development Finance: Funding Property Development Projects
+76-refinancing-strategies.md | Refinancing Strategies: How to Release Equity and Grow Your Portfolio
+77-raising-private-capital.md | Raising Private Capital for Property Investment
+78-investor-mortgage-guide.md | The Investor's Guide to Buy-to-Let Mortgages
+79-using-pensions-property.md | Using Your Pension to Invest in Property
+80-property-investment-checklist.md | The Ultimate Property Investment Checklist
