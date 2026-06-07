@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import os from 'os';
 import path from 'path';
 import { input, select, confirm } from '@inquirer/prompts';
 import { CARINA_DATA_DIR, CARINA_ENV_PATH, CARINA_HOME } from '../config/paths.js';
@@ -38,6 +39,26 @@ export async function runSetupWizard(): Promise<void> {
 
   if (installProperty) {
     lines.push('ACTIVE_SKILL_PACK=property-uk');
+  }
+
+  const connectScout = await confirm({
+    message: 'Connect to Labyrinth Scout for AI agent security monitoring? (https://labyrinthscout.com)',
+    default: false,
+  });
+
+  if (connectScout) {
+    const scoutKey = await input({
+      message: 'Paste your Labyrinth Scout API key (register at https://console.labyrinthscout.com/account/register):',
+    });
+    if (scoutKey.trim()) {
+      lines.push('LABYRINTH_ENABLED=true');
+      lines.push('LABYRINTH_URL=https://console.labyrinthscout.com');
+      lines.push('LABYRINTH_API_KEY=' + scoutKey.trim());
+      lines.push('LABYRINTH_INSTANCE_ID=carina-' + os.hostname());
+      lines.push('LABYRINTH_INSTANCE_NAME=Carina (' + os.hostname() + ')');
+    } else {
+      console.log('No key entered - skipping Scout pairing. Run "carina setup" again anytime to connect.');
+    }
   }
 
   lines.push('DATABASE_URL=postgresql://localhost:5432/carina');

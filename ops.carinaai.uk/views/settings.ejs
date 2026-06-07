@@ -7,6 +7,28 @@
   </div>
 <% } %>
 
+<% if (scoutOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Scout console password updated. Use the new password next time you visit console.labyrinthscout.com.
+  </div>
+<% } %>
+<% if (scoutErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+    <%= scoutErr %>
+  </div>
+<% } %>
+
+<% if (scoutPairOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Connected to Labyrinth Scout. Carina will start reporting security events on next restart.
+  </div>
+<% } %>
+<% if (scoutPairErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+    <%= scoutPairErr %>
+  </div>
+<% } %>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
   <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Carina agent</h2>
@@ -32,6 +54,52 @@
 </div>
 
 <section class="mt-8 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <h2 class="text-lg font-semibold text-white mb-1">Connect to Labyrinth Scout</h2>
+  <p class="text-xs text-gray-500 mb-1">
+    Status: <span class="<%= scoutPaired ? 'text-green-400' : 'text-amber-400' %>"><%= scoutPaired ? 'Paired' : 'Not paired' %></span>
+  </p>
+  <p class="text-xs text-gray-500 mb-4">
+    Paste your Scout API key to connect this Carina instance to your Labyrinth Scout account.
+    Don't have one? Register at
+    <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">console.labyrinthscout.com/account/register</a>
+    and generate a key from your account dashboard.
+  </p>
+  <form method="post" action="/settings/scout-pairing" class="flex flex-col gap-3 max-w-md">
+    <div>
+      <label class="block text-xs text-gray-400 mb-1" for="scoutApiKey">Connect to Labyrinth Scout? Paste your key</label>
+      <input id="scoutApiKey" name="scoutApiKey" type="password" required
+        placeholder="lscout_..."
+        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+    </div>
+    <button type="submit"
+      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+      Pair with Scout
+    </button>
+  </form>
+</section>
+
+<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <h2 class="text-lg font-semibold text-white mb-1">Scout console password</h2>
+  <p class="text-xs text-gray-500 mb-4">Changes the login password for console.labyrinthscout.com. Takes effect immediately - no restart needed.</p>
+  <form method="post" action="/settings/scout-password" class="flex flex-col gap-3 max-w-sm">
+    <div>
+      <label class="block text-xs text-gray-400 mb-1" for="newPassword">New password (min 8 chars)</label>
+      <input id="newPassword" name="newPassword" type="password" required minlength="8"
+        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+    </div>
+    <div>
+      <label class="block text-xs text-gray-400 mb-1" for="confirmPassword">Confirm password</label>
+      <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8"
+        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+    </div>
+    <button type="submit"
+      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+      Update password
+    </button>
+  </form>
+</section>
+
+<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
   <h2 class="text-lg font-semibold text-white mb-3">Environment (read-only)</h2>
   <ul class="text-sm text-gray-400 space-y-1 font-mono">
     <li>PORT = <%= port %></li>
