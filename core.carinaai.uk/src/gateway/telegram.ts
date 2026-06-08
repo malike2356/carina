@@ -1,9 +1,9 @@
 import TelegramBot from 'node-telegram-bot-api';
 import chalk from 'chalk';
 import { config } from '../config/index.js';
-import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
 import { getRouter } from './router.js';
-import type { CarinaMessage } from '../types/index.js';
+import { channelRegistry } from './channels/channel-registry.js';
+import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
@@ -15,21 +15,10 @@ I am an autonomous AI agent by VERLOX Ltd. I can search the web, read and write 
 Commands:
 /help - show commands
 /clear - reset session memory
-/provider [name] - switch LLM provider`;
+/model [provider] [model] - switch LLM provider`;
 
-function splitMessage(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text];
-  const chunks: string[] = [];
-  let rest = text;
-  while (rest.length > 0) {
-    chunks.push(rest.slice(0, maxLen));
-    rest = rest.slice(maxLen);
-  }
-  return chunks;
-}
-
-async function sendLong(bot: TelegramBot, chatId: number, text: string): Promise<void> {
-  for (const chunk of splitMessage(text, TELEGRAM_MAX)) {
+async function sendLong(bot: TelegramBot, chatId: number, text: string, adapter: TelegramAdapter): Promise<void> {
+  for (const chunk of adapter.formatForChannel(text)) {
     await bot.sendMessage(chatId, chunk);
   }
 }
@@ -38,6 +27,7 @@ async function streamToTelegram(
   bot: TelegramBot,
   chatId: number,
   generator: AsyncGenerator<string>,
+  adapter: TelegramAdapter,
 ): Promise<void> {
   let fullText = '';
   let messageId: number | null = null;
@@ -80,7 +70,7 @@ async function streamToTelegram(
 
   if (fullText.length > TELEGRAM_MAX && messageId !== null) {
     const remainder = fullText.slice(TELEGRAM_MAX);
-    await sendLong(bot, chatId, remainder);
+    await sendLong(bot, chatId, remainder, adapter);
   }
 }
 
@@ -105,6 +95,8 @@ export async function startTelegram(): Promise<void> {
 
   const useWebhook = Boolean(config.telegram.webhookUrl);
   const bot = new TelegramBot(token, { polling: !useWebhook });
+  const adapter = new TelegramAdapter(true, bot);
+  channelRegistry.register(adapter);
 
   if (useWebhook) {
     await bot.setWebHook(config.telegram.webhookUrl);
@@ -117,39 +109,14 @@ export async function startTelegram(): Promise<void> {
     if (!msg.text || !msg.from) return;
 
     const chatId = msg.chat.id;
-    const userId = msg.from.id.toString();
     const text = msg.text.trim();
 
     if (handleTelegramCommand(bot, chatId, text)) return;
 
-    // Route shared commands (/provider, /help, /memories, /clear) before hitting the agent
-    const asyncCmd = await handleGatewayCommandAsync(text);
-    if (asyncCmd.handled) {
-      await bot.sendMessage(chatId, asyncCmd.reply);
-      return;
-    }
-
-    const router = getRouter();
-    const sessionId = await router.getSession('telegram', userId);
-
-    if (text === '/clear') {
-      await router.clearSession(sessionId);
-      await bot.sendMessage(chatId, 'Session memory cleared.');
-      return;
-    }
-
     await bot.sendChatAction(chatId, 'typing');
 
-    const carinaMsg: CarinaMessage = {
-      id: String(msg.message_id),
-      sessionId,
-      content: text,
-      source: 'telegram',
-      timestamp: new Date(msg.date * 1000),
-    };
-
     try {
-      await streamToTelegram(bot, chatId, router.handle(carinaMsg));
+      await streamToTelegram(bot, chatId, getRouter().handleInbound('telegram', msg), adapter);
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       await bot.sendMessage(chatId, `Error: ${errMsg}`);

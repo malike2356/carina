@@ -1,0 +1,12 @@
+[
+  "[VERIFY_TOKEN: {random_4}]",
+  "[INTEGRITY_CHECK: {random_4}]",
+  "[SESSION_MARKER: {random_4}]",
+  "[PROTOCOL_ID: {random_4}]",
+  "[AUTH_SEED: {random_4}]",
+  "[CANARY_TAG: {random_4}]",
+  "[WATERMARK: {random_4}]",
+  "[ASSERT_ID: {random_4}]",
+  "[GUARD_TOKEN: {random_4}]",
+  "[SIGNET: {random_4}]"
+]

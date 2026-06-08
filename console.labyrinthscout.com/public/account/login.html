@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in - Labyrinth Scout</title>
+<link rel="stylesheet" href="/account/account.css">
+</head>
+<body>
+  <main class="auth-card">
+    <h1>Labyrinth Scout</h1>
+    <p class="sub">Sign in to manage your pairing keys</p>
+    <form id="login-form">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus>
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required minlength="8">
+      <p id="error" class="error" hidden></p>
+      <button type="submit">Sign in</button>
+    </form>
+    <p class="alt">No account yet? <a href="/account/register">Create one</a></p>
+  </main>
+  <script>
+    const form = document.getElementById('login-form');
+    const error = document.getElementById('error');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      error.hidden = true;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const res = await fetch('/account/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        error.textContent = data.error || 'Sign in failed';
+        error.hidden = false;
+        return;
+      }
+      window.location.href = '/account';
+    });
+  </script>
+</body>
+</html>

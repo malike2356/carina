@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skill Packs — Carina</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --text: #e4e6f0; --muted: #8890a8; --accent: #6c8cff;
+    --success: #4ade80; --warning: #f59e0b;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    max-width: 960px; margin: 0 auto; padding: 2rem 1rem;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+  .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .tab {
+    padding: 0.5rem 1.25rem; cursor: pointer; color: var(--muted);
+    border-bottom: 2px solid transparent; font-size: 0.875rem;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem;
+  }
+  .card h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+  .card .author { font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+  .card .desc { font-size: 0.8rem; color: var(--text); margin-bottom: 0.75rem; opacity: 0.85; }
+  .card .meta { display: flex; gap: 0.75rem; font-size: 0.7rem; color: var(--muted); margin-bottom: 0.75rem; }
+  .card .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  button {
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.4rem 0.75rem; font-size: 0.8rem; cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.success { background: var(--success); border-color: var(--success); color: #0f1117; }
+  button.warning { border-color: var(--warning); color: var(--warning); }
+  .badge {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px;
+    font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  }
+  .badge.installed { background: var(--success); color: #0f1117; }
+  .badge.available { background: var(--accent); color: #fff; }
+  .empty { text-align: center; color: var(--muted); padding: 3rem; }
+  .modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.6); z-index:10; justify-content:center; align-items:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem; width:100%; max-width:500px; }
+  .modal h2 { margin-bottom:1rem; }
+  .modal label { display:block; font-size:0.8rem; color:var(--muted); margin:0.5rem 0 0.25rem; }
+  .modal textarea { width:100%; min-height:80px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem; resize:vertical; }
+  .modal .btn-row { display:flex; gap:0.5rem; margin-top:1rem; justify-content:flex-end; }
+</style>
+</head>
+<body>
+<h1>Skill Packs</h1>
+<p class="subtitle">Browse, install, and configure vertical skill packs for Carina</p>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('available')">Available</div>
+  <div class="tab" onclick="switchTab('installed')">Installed</div>
+</div>
+<div class="grid" id="packGrid"></div>
+
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <h2 id="configTitle">Configure Pack</h2>
+    <label>Configuration (JSON)</label>
+    <textarea id="configJson">{}</textarea>
+    <div class="btn-row">
+      <button onclick="closeConfig()">Cancel</button>
+      <button class="primary" onclick="saveConfig()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/packs';
+let activeTab = 'available';
+let availablePacks = [];
+let installedPacks = [];
+let configPackName = '';
+
+async function loadAvailable() {
+  try {
+    const res = await fetch(`${API}/available`);
+    const data = await res.json();
+    availablePacks = data.packs || [];
+  } catch { availablePacks = []; }
+}
+
+async function loadInstalled() {
+  try {
+    const res = await fetch(`${API}/installed`);
+    const data = await res.json();
+    installedPacks = data.installed || [];
+  } catch { installedPacks = []; }
+}
+
+function isInstalled(name) {
+  return installedPacks.some(p => p.pack_name === name && p.status === 'installed');
+}
+
+function renderAvailable() {
+  const grid = document.getElementById('packGrid');
+  if (!availablePacks.length) {
+    grid.innerHTML = '<div class="empty">No packs available</div>';
+    return;
+  }
+  grid.innerHTML = availablePacks.map(p => {
+    const inst = isInstalled(p.name);
+    return `
+    <div class="card">
+      <h3>${esc(p.name)} <span class="badge ${inst ? 'installed' : 'available'}">${inst ? 'Installed' : 'Available'}</span></h3>
+      <div class="author">by ${esc(p.author || 'Carina')} · v${esc(p.version)}</div>
+      <div class="desc">${esc(p.description || '')}</div>
+      <div class="meta">
+        <span>${p.skill_count || 0} skills</span>
+        <span>${p.download_count || 0} downloads</span>
+      </div>
+      <div class="actions">
+        ${inst
+          ? `<button class="success" onclick="configurePack('${esc(p.name)}')">Configure</button>
+             <button class="warning" onclick="uninstallPack('${esc(p.name)}')">Uninstall</button>`
+          : `<button class="primary" onclick="installPack('${esc(p.name)}')">Install</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderInstalled() {
+  const grid = document.getElementById('packGrid');
+  if (!installedPacks.length) {
+    grid.innerHTML = '<div class="empty">No packs installed yet. Browse the Available tab.</div>';
+    return;
+  }
+  grid.innerHTML = installedPacks.map(p => `
+    <div class="card">
+      <h3>${esc(p.pack_name)} <span class="badge installed">Installed</span></h3>
+      <div class="author">v${esc(p.version)} · installed ${new Date(p.installed_at).toLocaleDateString()}</div>
+      <div class="actions" style="margin-top:0.75rem">
+        <button class="success" onclick="configurePack('${esc(p.pack_name)}')">Configure</button>
+        <button class="warning" onclick="uninstallPack('${esc(p.pack_name)}')">Uninstall</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function installPack(name) {
+  const res = await fetch(`${API}/${name}/install`, { method: 'POST' });
+  if (res.ok) {
+    await loadInstalled();
+    renderCurrent();
+  } else {
+    alert('Install failed');
+  }
+}
+
+async function uninstallPack(name) {
+  if (!confirm(`Uninstall "${name}"?`)) return;
+  const res = await fetch(`${API}/${name}/uninstall`, { method: 'POST' });
+  if (res.ok) {
+    await loadInstalled();
+    renderCurrent();
+  } else {
+    alert('Uninstall failed');
+  }
+}
+
+async function configurePack(name) {
+  configPackName = name;
+  document.getElementById('configTitle').textContent = `Configure: ${name}`;
+  try {
+    const res = await fetch(`${API}/${name}/config`);
+    const data = await res.json();
+    document.getElementById('configJson').value = JSON.stringify(data.config, null, 2);
+  } catch {
+    document.getElementById('configJson').value = '{}';
+  }
+  document.getElementById('configModal').classList.add('open');
+}
+
+function closeConfig() { document.getElementById('configModal').classList.remove('open'); }
+
+async function saveConfig() {
+  try {
+    const config = JSON.parse(document.getElementById('configJson').value);
+    const res = await fetch(`${API}/${configPackName}/config`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(config),
+    });
+    if (res.ok) closeConfig();
+    else alert('Save failed');
+  } catch {
+    alert('Invalid JSON');
+  }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'available' ? 0 : 1)));
+  renderCurrent();
+}
+
+function renderCurrent() {
+  if (activeTab === 'available') renderAvailable();
+  else renderInstalled();
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+document.getElementById('configModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeConfig(); });
+
+(async () => {
+  await Promise.all([loadAvailable(), loadInstalled()]);
+  renderCurrent();
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {
-  "name": "carina-agent",
+  "name": "carina",
   "version": "0.1.0",
   "description": "Autonomous AI agent platform with skill packs",
   "main": "dist/src/index.js",
@@ -8,9 +8,11 @@
   },
   "files": [
     "dist/",
+    "templates/",
     "src/skills/packs/",
     "brain/",
     "install.sh",
+    "README.cli.md",
     "README.md",
     "LICENSE"
   ],
@@ -20,7 +22,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/src/index.js",
-    "build": "node_modules/.bin/tsc && cp -r src/gateway/web dist/src/gateway/ && mkdir -p dist/src/web && cp -r src/web/pricing dist/src/web/",
+    "build": "node_modules/.bin/tsc && cp -r src/gateway/web dist/src/gateway/ && mkdir -p dist/src/security dist/src/web && cp src/security/injection-patterns.json dist/src/security/ && cp -r src/web/pricing dist/src/web/",
     "cli": "tsx src/index.ts",
     "carina": "tsx bin/carina.ts",
     "hub": "tsx src/skills/hub/server.ts",
@@ -54,14 +56,17 @@
     "@anthropic-ai/sdk": "^0.100.1",
     "@google/generative-ai": "^0.24.1",
     "@inquirer/prompts": "^7.10.1",
+    "@slack/bolt": "^4.6.0",
     "bcryptjs": "^2.4.3",
     "chalk": "^5.6.2",
+    "discord.js": "^14.19.3",
     "dotenv": "^17.4.2",
     "ejs": "^3.1.10",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.18.0",
     "ioredis": "^5.11.0",
+    "better-sqlite3": "^11.10.0",
     "node-telegram-bot-api": "^0.67.0",
     "openai": "^6.41.0",
     "pg": "^8.21.0",
@@ -72,6 +77,7 @@
     "tsx": "^4.22.4",
     "twilio": "^5.12.2",
     "uuid": "^14.0.0",
+    "yaml": "^2.8.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

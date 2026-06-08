@@ -1,0 +1,104 @@
+{
+  "patterns": [
+    {
+      "id": "INJ-001",
+      "pattern": "ignore\\s*(all\\s*)?(previous|above|prior)\\s*instructions",
+      "severity": "critical",
+      "description": "Attempts to make the assistant ignore prior instructions.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-002",
+      "pattern": "you\\s*(are\\s*)?now\\s*(a\\s*)?(different|new)\\s*assistant",
+      "severity": "critical",
+      "description": "Attempts to replace the assistant role.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-003",
+      "pattern": "system\\s*prompt\\s*(override|ignore)",
+      "severity": "high",
+      "description": "Direct system prompt override language.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-004",
+      "pattern": "forget\\s*(your\\s*)?(rules|constraints|guidelines)",
+      "severity": "critical",
+      "description": "Attempts to erase active safety constraints.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-005",
+      "pattern": "as\\s*(an\\s*)?(unconstrained|unrestricted|jailbroken)\\s*ai",
+      "severity": "critical",
+      "description": "Jailbreak framing.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-006",
+      "pattern": "[A-Za-z0-9+/]{60,}={0,2}",
+      "severity": "warning",
+      "description": "Suspicious long base64-like blob.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-007",
+      "pattern": "\\\\u[0-9A-Fa-f]{4}",
+      "severity": "warning",
+      "description": "Unicode escape sequence obfuscation.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-008",
+      "pattern": "<\\|.*?\\|>",
+      "severity": "high",
+      "description": "Model control token injection.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-009",
+      "pattern": "\\[INST\\]|\\[\\/INST\\]",
+      "severity": "high",
+      "description": "Llama instruction token injection.",
+      "scope": "input"
+    },
+    {
+      "id": "INJ-010",
+      "pattern": "<!--.*?(ignore|override|system|instructions|prompt).*?-->",
+      "flags": "is",
+      "severity": "critical",
+      "description": "Hidden HTML comment prompt injection in tool output.",
+      "scope": "tool_result"
+    },
+    {
+      "id": "INJ-011",
+      "pattern": "[\\u200B-\\u200D\\uFEFF\\u2060\\u00AD]",
+      "severity": "high",
+      "description": "Zero-width or soft-hyphen obfuscation in tool output.",
+      "scope": "tool_result"
+    },
+    {
+      "id": "INJ-012",
+      "pattern": "https?:\\/\\/[^\\s\"']+\\s*->\\s*https?:\\/\\/",
+      "severity": "warning",
+      "description": "Suspicious URL redirect chain in tool output.",
+      "scope": "tool_result"
+    },
+    {
+      "id": "INJ-013",
+      "pattern": "\\bACTUAL INSTRUCTIONS\\b|\\bREAL TASK\\b|\\bTRUE GOAL\\b",
+      "severity": "critical",
+      "description": "Hidden instruction marker in retrieved content.",
+      "scope": "tool_result"
+    }
+  ],
+  "whitelist": [
+    "system design",
+    "system architecture",
+    "instruction manual",
+    "instruction manuals",
+    "design system prompt",
+    "prompt engineering guide"
+  ]
+}

@@ -26,6 +26,21 @@ Your principles:
 You have access to tools for: web search, file operations, email, HTTP requests, shell, and code execution.
 Use them proactively when they will help complete the task.`;
 
+export type ProviderName = 'deepseek' | 'anthropic' | 'openai';
+
+export interface ProviderOverride {
+  name: string;
+  model?: string;
+}
+
+const DEFAULT_PROVIDER_MODELS: Record<ProviderName, string> = {
+  deepseek: config.deepseek.model,
+  anthropic: config.anthropic.model,
+  openai: config.openai.model,
+};
+
+export const KNOWN_LLM_PROVIDERS = Object.keys(DEFAULT_PROVIDER_MODELS) as ProviderName[];
+
 function parseToolCallsFromOpenAI(
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined,
 ): ToolCall[] {
@@ -49,10 +64,10 @@ export class ClaudeProvider implements LLMProvider {
     this.client = new Anthropic({ apiKey: config.anthropic.apiKey });
   }
 
-  async chat(messages: Message[], tools?: Tool[]): Promise<CarinaResponse> {
+  async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
     const toolDefs = anthropicTools(tools);
     const response = await this.client.messages.create({
-      model: config.anthropic.model,
+      model: model ?? config.anthropic.model,
       max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: toAnthropicMessages(messages),
@@ -76,10 +91,10 @@ export class ClaudeProvider implements LLMProvider {
     };
   }
 
-  async *stream(messages: Message[], tools?: Tool[]): AsyncGenerator<string | ToolCall> {
+  async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
     const toolDefs = anthropicTools(tools);
     const stream = this.client.messages.stream({
-      model: config.anthropic.model,
+      model: model ?? config.anthropic.model,
       max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: toAnthropicMessages(messages),
@@ -121,10 +136,10 @@ export class DeepSeekProvider implements LLMProvider {
     });
   }
 
-  async chat(messages: Message[], tools?: Tool[]): Promise<CarinaResponse> {
+  async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
     const toolDefs = openaiTools(tools);
     const response = await this.client.chat.completions.create({
-      model: 'deepseek-chat',
+      model: model ?? config.deepseek.model,
       max_tokens: 8192,
       messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
       ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
@@ -143,10 +158,10 @@ export class DeepSeekProvider implements LLMProvider {
     };
   }
 
-  async *stream(messages: Message[], tools?: Tool[]): AsyncGenerator<string | ToolCall> {
+  async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
     const toolDefs = openaiTools(tools);
     const stream = await this.client.chat.completions.create({
-      model: 'deepseek-chat',
+      model: model ?? config.deepseek.model,
       max_tokens: 8192,
       stream: true,
       messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
@@ -194,10 +209,10 @@ export class OpenAIProvider implements LLMProvider {
     this.client = new OpenAI({ apiKey: config.openai.apiKey });
   }
 
-  async chat(messages: Message[], tools?: Tool[]): Promise<CarinaResponse> {
+  async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
     const toolDefs = openaiTools(tools);
     const response = await this.client.chat.completions.create({
-      model: 'gpt-4o',
+      model: model ?? config.openai.model,
       max_tokens: 8192,
       messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
       ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
@@ -216,10 +231,10 @@ export class OpenAIProvider implements LLMProvider {
     };
   }
 
-  async *stream(messages: Message[], tools?: Tool[]): AsyncGenerator<string | ToolCall> {
+  async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
     const toolDefs = openaiTools(tools);
     const stream = await this.client.chat.completions.create({
-      model: 'gpt-4o',
+      model: model ?? config.openai.model,
       max_tokens: 8192,
       stream: true,
       messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
@@ -262,6 +277,7 @@ export class OpenAIProvider implements LLMProvider {
 export class LLMRouter {
   private providers: Map<string, LLMProvider> = new Map();
   private active: string;
+  private activeModels: Map<string, string> = new Map();
 
   constructor() {
     if (config.deepseek.apiKey)  this.providers.set('deepseek',  new DeepSeekProvider());
@@ -275,11 +291,12 @@ export class LLMRouter {
     }
   }
 
-  use(provider: string): void {
+  use(provider: string, model?: string): void {
     if (!this.providers.has(provider)) {
       throw new Error(`Provider "${provider}" is not configured. Add its API key to .env`);
     }
     this.active = provider;
+    if (model) this.activeModels.set(provider, model);
     console.log(`Switched to provider: ${provider}`);
   }
 
@@ -289,27 +306,53 @@ export class LLMRouter {
     return provider;
   }
 
-  // Fallback order: DeepSeek (primary) -> Claude -> OpenAI
-  private fallbackOrder(): LLMProvider[] {
-    const order = ['deepseek', 'anthropic', 'openai'];
-    const active = this.providers.get(this.active);
-    const rest = order
-      .filter(n => n !== this.active)
-      .map(n => this.providers.get(n))
-      .filter((p): p is LLMProvider => p !== undefined);
-    return active ? [active, ...rest] : rest;
+  currentModel(): string {
+    return this.modelFor(this.active);
   }
 
-  async chat(messages: Message[], tools?: Tool[]): Promise<CarinaResponse> {
-    const providers = this.fallbackOrder();
+  modelFor(provider: string): string {
+    return this.activeModels.get(provider) ?? DEFAULT_PROVIDER_MODELS[provider as ProviderName] ?? '';
+  }
+
+  isKnownProvider(provider: string): boolean {
+    return KNOWN_LLM_PROVIDERS.includes(provider as ProviderName);
+  }
+
+  isProviderConfigured(provider: string): boolean {
+    return this.providers.has(provider);
+  }
+
+  listKnown(): string[] {
+    return [...KNOWN_LLM_PROVIDERS];
+  }
+
+  // Fallback order: DeepSeek (primary) -> Claude -> OpenAI
+  private fallbackOrder(override?: ProviderOverride): Array<{ provider: LLMProvider; model?: string }> {
+    const order = ['deepseek', 'anthropic', 'openai'];
+    const activeName = override?.name ?? this.active;
+    const active = this.providers.get(activeName);
+    const rest = order
+      .filter(n => n !== activeName)
+      .map(n => this.providers.get(n))
+      .filter((p): p is LLMProvider => p !== undefined);
+    const activeModel = override?.model ?? (activeName ? this.activeModels.get(activeName) : undefined);
+    const providers = active ? [active, ...rest] : rest;
+    return providers.map((provider) => ({
+      provider,
+      model: provider.name === activeName ? activeModel : this.activeModels.get(provider.name),
+    }));
+  }
+
+  async chat(messages: Message[], tools?: Tool[], override?: ProviderOverride): Promise<CarinaResponse> {
+    const providers = this.fallbackOrder(override);
     let lastErr: unknown;
-    for (const provider of providers) {
+    for (const { provider, model } of providers) {
       try {
-        return await provider.chat(messages, tools);
+        return await provider.chat(messages, tools, model);
       } catch (err) {
         lastErr = err;
         const msg = err instanceof Error ? err.message : String(err);
-        if (provider.name !== providers.at(-1)?.name) {
+        if (provider.name !== providers.at(-1)?.provider.name) {
           console.warn(`[llm] ${provider.name} failed (${msg}), trying next provider...`);
         }
       }
@@ -317,17 +360,17 @@ export class LLMRouter {
     throw lastErr ?? new Error('All LLM providers failed.');
   }
 
-  async *stream(messages: Message[], tools?: Tool[]): AsyncGenerator<string | ToolCall> {
-    const providers = this.fallbackOrder();
+  async *stream(messages: Message[], tools?: Tool[], override?: ProviderOverride): AsyncGenerator<string | ToolCall> {
+    const providers = this.fallbackOrder(override);
     let lastErr: unknown;
-    for (const provider of providers) {
+    for (const { provider, model } of providers) {
       try {
-        yield* provider.stream(messages, tools);
+        yield* provider.stream(messages, tools, model);
         return;
       } catch (err) {
         lastErr = err;
         const msg = err instanceof Error ? err.message : String(err);
-        if (provider.name !== providers.at(-1)?.name) {
+        if (provider.name !== providers.at(-1)?.provider.name) {
           console.warn(`[llm] ${provider.name} stream failed (${msg}), trying next provider...`);
         }
       }

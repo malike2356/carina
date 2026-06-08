@@ -1,0 +1,13 @@
+provider: deepseek
+model: deepseek-chat
+dataDir: ~/.carina
+providers:
+  deepseek:
+    api_key: YOUR_DEEPSEEK_KEY_HERE
+    model: deepseek-chat
+  anthropic:
+    api_key: YOUR_ANTHROPIC_KEY_HERE
+    model: claude-sonnet-4-6
+  openai:
+    api_key: YOUR_OPENAI_KEY_HERE
+    model: gpt-4o

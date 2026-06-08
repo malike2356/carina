@@ -14,7 +14,7 @@ export interface CarinaMessage {
   id: string;
   sessionId: string;
   content: string;
-  source: 'cli' | 'telegram' | 'whatsapp' | 'web';
+  source: 'cli' | 'telegram' | 'whatsapp' | 'web' | 'discord' | 'slack' | 'sms';
   timestamp: Date;
 }
 
@@ -69,8 +69,8 @@ export interface Memory {
 
 export interface LLMProvider {
   name: string;
-  chat: (messages: Message[], tools?: Tool[]) => Promise<CarinaResponse>;
-  stream: (messages: Message[], tools?: Tool[]) => AsyncGenerator<string | ToolCall>;
+  chat: (messages: Message[], tools?: Tool[], model?: string) => Promise<CarinaResponse>;
+  stream: (messages: Message[], tools?: Tool[], model?: string) => AsyncGenerator<string | ToolCall>;
 }
 
 export type SubAgentType = 'research' | 'coding' | 'communication' | 'file' | 'direct';
@@ -91,6 +91,10 @@ export interface AgentOptions {
   systemPromptSuffix?: string;
   maxTurns?: number;
   persistMemory?: boolean;
+  providerOverride?: {
+    name: string;
+    model?: string;
+  };
   confirmTool?: (
     toolName: string,
     params: Record<string, unknown>,

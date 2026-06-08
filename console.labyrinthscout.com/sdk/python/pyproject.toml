@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "labyrinth-scout"
+version = "0.1.0"
+description = "Official Python SDK for Labyrinth Scout - AI agent security control plane"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+async = ["aiohttp>=3.9"]
+
+[project.urls]
+Homepage = "https://carinaai.uk"
+Repository = "https://github.com/verlox/labyrinth-scout"
+
+[tool.hatch.build.targets.wheel]
+packages = ["labyrinth_scout"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

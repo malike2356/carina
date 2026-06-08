@@ -7,6 +7,7 @@ import { CommunicationAgent } from './communication-agent.js';
 import { FileAgent } from './file-agent.js';
 import { ResearchAgent } from './research-agent.js';
 import type { ConfirmFn } from './tool-runner.js';
+import type { ProviderOverride } from '../brain/llm.js';
 import type { Message, SubAgentType, TaskPlan, TaskPlanStep } from '../types/index.js';
 
 export type OrchestratorEvent =
@@ -45,6 +46,7 @@ export class CarinaOrchestrator {
   private sessionId: string;
   private memoryReady: boolean;
   private confirmTool?: ConfirmFn;
+  private providerOverride?: ProviderOverride;
 
   constructor(
     sessionId: string,
@@ -55,6 +57,15 @@ export class CarinaOrchestrator {
     this.memoryReady = memoryReady;
     this.confirmTool = confirmTool;
     this.agent = new CarinaAgent(sessionId, memoryReady, confirmTool);
+  }
+
+  setProviderOverride(override: ProviderOverride): void {
+    this.providerOverride = override;
+    this.agent.setProviderOverride(override);
+  }
+
+  getProviderOverride(): ProviderOverride | undefined {
+    return this.agent.getProviderOverride() ?? this.providerOverride;
   }
 
   async decompose(task: string): Promise<TaskPlan> {
@@ -170,7 +181,7 @@ export class CarinaOrchestrator {
     originalTask: string,
     context: string,
   ): Promise<string> {
-    const sub = createSubAgent(step.agentType, this.sessionId, this.confirmTool);
+    const sub = createSubAgent(step.agentType, this.sessionId, this.confirmTool, this.providerOverride);
     const prompt = `Original task: ${originalTask}\n\nYour step: ${step.description}`;
     return sub.run(prompt, context);
   }
@@ -188,18 +199,19 @@ function createSubAgent(
   type: SubAgentType,
   sessionId: string,
   confirmTool?: ConfirmFn,
+  providerOverride?: ProviderOverride,
 ) {
   switch (type) {
     case 'research':
-      return new ResearchAgent(sessionId, confirmTool);
+      return new ResearchAgent(sessionId, confirmTool, providerOverride);
     case 'coding':
-      return new CodingAgent(sessionId, confirmTool);
+      return new CodingAgent(sessionId, confirmTool, providerOverride);
     case 'communication':
-      return new CommunicationAgent(sessionId, confirmTool);
+      return new CommunicationAgent(sessionId, confirmTool, providerOverride);
     case 'file':
-      return new FileAgent(sessionId, confirmTool);
+      return new FileAgent(sessionId, confirmTool, providerOverride);
     default:
-      return new ResearchAgent(sessionId, confirmTool);
+      return new ResearchAgent(sessionId, confirmTool, providerOverride);
   }
 }
 

@@ -1,17 +1,21 @@
 import { loadCarinaEnv } from './load-env.js';
+import { applyYamlConfigToEnv } from '../cli/config/loader.js';
 
 loadCarinaEnv();
+applyYamlConfigToEnv();
 
 export const config = {
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
-    model: 'claude-sonnet-4-6',
+    model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-6',
   },
   openai: {
     apiKey: process.env.OPENAI_API_KEY ?? '',
+    model: process.env.OPENAI_MODEL ?? 'gpt-4o',
   },
   deepseek: {
     apiKey: process.env.DEEPSEEK_API_KEY ?? '',
+    model: process.env.DEEPSEEK_MODEL ?? process.env.DEFAULT_MODEL ?? 'deepseek-chat',
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
@@ -49,10 +53,35 @@ export const config = {
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
     webhookUrl: process.env.TELEGRAM_WEBHOOK_URL ?? '',
   },
+  discord: {
+    botToken: process.env.DISCORD_BOT_TOKEN ?? '',
+    applicationId: process.env.DISCORD_APPLICATION_ID ?? '',
+    publicKey: process.env.DISCORD_PUBLIC_KEY ?? '',
+    allowedChannelIds: (process.env.DISCORD_ALLOWED_CHANNEL_IDS ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean),
+  },
+  slack: {
+    botToken: process.env.SLACK_BOT_TOKEN ?? '',
+    signingSecret: process.env.SLACK_SIGNING_SECRET ?? '',
+    appToken: process.env.SLACK_APP_TOKEN ?? '',
+    socketMode: process.env.SLACK_SOCKET_MODE === 'true',
+    port: parseInt(process.env.SLACK_PORT ?? '3002', 10),
+    allowedChannelIds: (process.env.SLACK_ALLOWED_CHANNEL_IDS ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean),
+  },
   twilio: {
     accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
     authToken: process.env.TWILIO_AUTH_TOKEN ?? '',
-    fromNumber: process.env.TWILIO_WHATSAPP_FROM ?? '',
+    fromNumber: process.env.TWILIO_WHATSAPP_FROM ?? process.env.TWILIO_FROM_NUMBER ?? '',
+  },
+  sms: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
+    authToken: process.env.TWILIO_AUTH_TOKEN ?? '',
+    fromNumber: process.env.TWILIO_FROM_NUMBER ?? '',
   },
   web: {
     enabled: process.env.WEB_ENABLED !== 'false',

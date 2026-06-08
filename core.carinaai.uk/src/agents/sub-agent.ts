@@ -1,5 +1,6 @@
 import { CarinaAgent, type TurnResult } from './carina.js';
 import type { ConfirmFn } from './tool-runner.js';
+import type { ProviderOverride } from '../brain/llm.js';
 
 export abstract class SubAgent {
   abstract name: string;
@@ -11,15 +12,18 @@ export abstract class SubAgent {
   protected memoryReady: boolean;
   protected confirmTool?: ConfirmFn;
   protected maxTurns = 10;
+  protected providerOverride?: ProviderOverride;
 
   constructor(
     sessionId: string,
     memoryReady: boolean,
     confirmTool?: ConfirmFn,
+    providerOverride?: ProviderOverride,
   ) {
     this.sessionId = sessionId;
     this.memoryReady = false;
     this.confirmTool = confirmTool;
+    this.providerOverride = providerOverride;
   }
 
   protected createAgent(): CarinaAgent {
@@ -29,6 +33,7 @@ export abstract class SubAgent {
       maxTurns: this.maxTurns,
       persistMemory: false,
       forceConfirm: this.requiresConfirmation,
+      providerOverride: this.providerOverride,
     });
   }
 

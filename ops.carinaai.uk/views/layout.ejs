@@ -4,18 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Carina Admin</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            carina: { bg: '#0f0f0f', card: '#1a1a1a', border: '#2a2a2a', text: '#e0e0e0', green: '#22c55e', cyan: '#06b6d4' }
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="/styles.css">
   <style>
     body { background: #0f0f0f; color: #e0e0e0; }
     .nav-link.active { background: #2a2a2a; color: #22c55e; }
@@ -26,7 +15,7 @@
 <body class="min-h-screen flex">
   <aside id="sidebar" class="w-56 shrink-0 border-r border-[#2a2a2a] bg-[#1a1a1a] flex flex-col p-4">
     <div class="flex items-center justify-between mb-6">
-      <span class="font-bold text-white text-lg">Carina Admin</span>
+      <a href="https://carinaai.uk" target="_blank" rel="noopener" class="font-bold text-white text-lg hover:text-[#22c55e] transition-colors">Carina Admin</a>
       <button type="button" id="toggle-nav" class="text-xs text-gray-400 hover:text-white lg:hidden">Hide</button>
     </div>
     <nav class="flex flex-col gap-1 text-sm flex-1">

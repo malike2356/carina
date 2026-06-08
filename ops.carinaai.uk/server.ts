@@ -1,4 +1,5 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import session from 'express-session';
 import chalk from 'chalk';
@@ -14,14 +15,19 @@ import { projectsRouter } from './routes/projects.js';
 import { securityRouter } from './routes/security.js';
 import { settingsRouter } from './routes/settings.js';
 
-dotenv.config();
+const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
+// tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
+const __opsDir = path.basename(__moduleDir) === 'dist' ? path.dirname(__moduleDir) : __moduleDir;
+dotenv.config({ path: path.join(__opsDir, '.env') });
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
-const viewsPath = path.join(process.cwd(), 'views');
+const viewsPath = path.join(__opsDir, 'views');
 
 app.set('view engine', 'ejs');
 app.set('views', viewsPath);
+
+app.use(express.static(path.join(__opsDir, 'public')));
 
 app.use((req, res, next) => {
   const original = res.render.bind(res) as (

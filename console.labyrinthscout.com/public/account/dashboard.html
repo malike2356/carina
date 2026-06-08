@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My account - Labyrinth Scout</title>
+<link rel="stylesheet" href="/account/account.css">
+</head>
+<body class="dashboard">
+  <header class="topbar">
+    <h1>Labyrinth Scout</h1>
+    <div>
+      <span id="email" class="email"></span>
+      <button id="logout" class="link-btn">Sign out</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Pairing keys</h2>
+      <p class="sub">Paste a key into your Carina setup wizard or <code>.env</code> as <code>LABYRINTH_API_KEY</code> to connect it to Scout.</p>
+      <div id="new-key" class="new-key" hidden>
+        <p class="hint">Copy this now, it will not be shown again:</p>
+        <code id="new-key-value"></code>
+      </div>
+      <table class="keys-table">
+        <thead><tr><th>Label</th><th>Key</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+        <tbody id="keys-body"></tbody>
+      </table>
+      <form id="key-form">
+        <input type="text" id="key-label" placeholder="Label (e.g. Production Carina)" maxlength="80">
+        <button type="submit">Generate new key</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Your instances</h2>
+      <p class="sub">Carina instances paired with one of your keys appear here once they send their first heartbeat.</p>
+      <table class="keys-table">
+        <thead><tr><th>Name</th><th>ID</th><th>Status</th><th>Last seen</th></tr></thead>
+        <tbody id="instances-body"></tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Recent events</h2>
+      <table class="keys-table">
+        <thead><tr><th>Severity</th><th>Source</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody id="events-body"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function timeAgo(iso) {
+      if (!iso) return 'never';
+      const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (seconds < 60) return seconds + 's ago';
+      if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+      if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+      return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    async function loadMe() {
+      const res = await fetch('/account/api/me');
+      if (!res.ok) { window.location.href = '/account/login'; return; }
+      const data = await res.json();
+      document.getElementById('email').textContent = data.email;
+    }
+
+    async function loadKeys() {
+      const res = await fetch('/account/api/keys');
+      const data = await res.json();
+      const body = document.getElementById('keys-body');
+      body.innerHTML = '';
+      for (const key of data.keys || []) {
+        const tr = document.createElement('tr');
+        const status = key.revokedAt ? '<span class="muted">revoked</span>' : '<button class="link-btn revoke" data-id="' + key.id + '">Revoke</button>';
+        tr.innerHTML =
+          '<td>' + escapeHtml(key.label) + '</td>' +
+          '<td><code>' + escapeHtml(key.keyPrefix) + '...</code></td>' +
+          '<td>' + timeAgo(key.createdAt) + '</td>' +
+          '<td>' + timeAgo(key.lastUsedAt) + '</td>' +
+          '<td>' + status + '</td>';
+        body.appendChild(tr);
+      }
+      for (const btn of body.querySelectorAll('.revoke')) {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Revoke this key? Any Carina using it will stop reporting to Scout.')) return;
+          await fetch('/account/api/keys/' + btn.dataset.id, { method: 'DELETE' });
+          loadKeys();
+        });
+      }
+    }
+
+    async function loadInstances() {
+      const res = await fetch('/account/api/instances');
+      const data = await res.json();
+      const body = document.getElementById('instances-body');
+      body.innerHTML = '';
+      for (const inst of data.instances || []) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + escapeHtml(inst.name) + '</td>' +
+          '<td><code>' + escapeHtml(inst.id) + '</code></td>' +
+          '<td><span class="status status-' + inst.status + '">' + inst.status + '</span></td>' +
+          '<td>' + timeAgo(inst.last_heartbeat) + '</td>';
+        body.appendChild(tr);
+      }
+      if (!data.instances || data.instances.length === 0) {
+        body.innerHTML = '<tr><td colspan="4" class="muted">No instances paired yet</td></tr>';
+      }
+    }
+
+    async function loadEvents() {
+      const res = await fetch('/account/api/events');
+      const data = await res.json();
+      const body = document.getElementById('events-body');
+      body.innerHTML = '';
+      for (const ev of data.events || []) {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><span class="status status-' + ev.severity + '">' + ev.severity + '</span></td>' +
+          '<td>' + escapeHtml(ev.source) + '</td>' +
+          '<td>' + escapeHtml(ev.event_type) + '</td>' +
+          '<td>' + escapeHtml(ev.description) + '</td>' +
+          '<td>' + timeAgo(ev.created_at) + '</td>';
+        body.appendChild(tr);
+      }
+      if (!data.events || data.events.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="muted">No events yet</td></tr>';
+      }
+    }
+
+    document.getElementById('key-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const label = document.getElementById('key-label').value;
+      const res = await fetch('/account/api/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('new-key').hidden = false;
+        document.getElementById('new-key-value').textContent = data.key;
+        document.getElementById('key-label').value = '';
+        loadKeys();
+      }
+    });
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await fetch('/account/logout', { method: 'POST' });
+      window.location.href = '/account/login';
+    });
+
+    loadMe();
+    loadKeys();
+    loadInstances();
+    loadEvents();
+    setInterval(() => { loadInstances(); loadEvents(); }, 30000);
+  </script>
+</body>
+</html>

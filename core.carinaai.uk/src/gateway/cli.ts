@@ -62,7 +62,7 @@ function prompt(): void {
   rl.question(chalk.cyan('\nYou: '), async (input) => {
     const trimmed = input.trim();
     if (!trimmed) { prompt(); return; }
-    if (trimmed.toLowerCase() === 'exit') {
+    if (trimmed.toLowerCase() === 'exit' || trimmed === '/exit') {
       console.log(chalk.gray('\nCarina: Goodbye.\n'));
       process.exit(0);
     }
@@ -76,11 +76,20 @@ function prompt(): void {
       return;
     }
 
-    const cmd = trimmed.startsWith('/memories')
+    const routeThroughGateway = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
+    const cmd = routeThroughGateway
+      ? { handled: false as const }
+      : trimmed.startsWith('/memories')
       ? await handleGatewayCommandAsync(trimmed)
       : handleGatewayCommand(trimmed);
     if (cmd.handled) {
+      if (cmd.action === 'clear') {
+        await getRouter().clearSession(sessionId);
+      }
       console.log(chalk.yellow(`\n  ${cmd.reply}\n`));
+      if (cmd.action === 'exit') {
+        process.exit(0);
+      }
       prompt();
       return;
     }
@@ -142,7 +151,7 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
   } else {
     console.log(chalk.gray('  Memory: unavailable (chat only)'));
   }
-  console.log(chalk.gray('  Type /help for commands, exit to quit\n'));
+  console.log(chalk.gray('  Type /help for commands, /exit to quit\n'));
   console.log(chalk.green('CLI gateway ready'));
 
   prompt();

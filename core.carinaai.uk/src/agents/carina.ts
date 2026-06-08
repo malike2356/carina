@@ -14,6 +14,7 @@ import type { ConfirmFn } from './tool-runner.js';
 import { executeToolCall } from './tool-runner.js';
 import { scanUserInput } from '../security/prompt-guard-middleware.js';
 import { isSessionBlocked } from '../security/index.js';
+import type { ProviderOverride } from '../brain/llm.js';
 import type { AgentOptions, Message, Tool, ToolCall } from '../types/index.js';
 
 const STOP_WORDS = new Set([
@@ -50,6 +51,9 @@ export class CarinaAgent {
   private maxTurns = 20;
   private persistMemory = true;
   private forceConfirm = false;
+  private providerOverride?: ProviderOverride;
+  private pendingProviderOverride?: ProviderOverride;
+  private toolCallInFlight = false;
 
   constructor(
     sessionId: string,
@@ -65,6 +69,19 @@ export class CarinaAgent {
     this.maxTurns = options.maxTurns ?? 20;
     this.persistMemory = options.persistMemory !== false;
     this.forceConfirm = options.forceConfirm ?? false;
+    this.providerOverride = options.providerOverride;
+  }
+
+  setProviderOverride(override: ProviderOverride): void {
+    if (this.toolCallInFlight) {
+      this.pendingProviderOverride = override;
+      return;
+    }
+    this.providerOverride = override;
+  }
+
+  getProviderOverride(): ProviderOverride | undefined {
+    return this.pendingProviderOverride ?? this.providerOverride;
   }
 
   getTools(): Tool[] {
@@ -166,10 +183,15 @@ export class CarinaAgent {
 
     while (turns < this.maxTurns) {
       turns++;
+      if (this.pendingProviderOverride) {
+        this.providerOverride = this.pendingProviderOverride;
+        this.pendingProviderOverride = undefined;
+      }
+
       const toolCalls: ToolCall[] = [];
       let textBuffer = '';
 
-      for await (const chunk of llm.stream(messages, tools)) {
+      for await (const chunk of llm.stream(messages, tools, this.providerOverride)) {
         if (typeof chunk === 'string') {
           textBuffer += chunk;
           turnText += chunk;
@@ -200,20 +222,25 @@ export class CarinaAgent {
         const status = `\n[using ${call.toolName}...]\n`;
         yield { type: 'tool', content: status };
 
-        const result = await executeToolCall(
-          call,
-          this.confirmTool,
-          this.forceConfirm,
-          this.sessionId,
-        );
-        messages.push({
-          role: 'tool_result',
-          content: '',
-          toolCallId: call.toolCallId,
-          toolName: call.toolName,
-          result,
-          timestamp: new Date(),
-        });
+        this.toolCallInFlight = true;
+        try {
+          const result = await executeToolCall(
+            call,
+            this.confirmTool,
+            this.forceConfirm,
+            this.sessionId,
+          );
+          messages.push({
+            role: 'tool_result',
+            content: '',
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            result,
+            timestamp: new Date(),
+          });
+        } finally {
+          this.toolCallInFlight = false;
+        }
       }
     }
 

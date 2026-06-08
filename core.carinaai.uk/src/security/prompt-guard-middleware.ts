@@ -40,7 +40,7 @@ export async function scanUserInput(text: string): Promise<string> {
   if (!g) return text;
   try {
     const result = await g.scanInput(text);
-    return result.isMalicious ? (result.sanitized ?? text) : text;
+    return result.isMalicious ? (result.message ?? result.sanitized ?? text) : text;
   } catch {
     return text;
   }

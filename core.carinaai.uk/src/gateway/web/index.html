@@ -350,7 +350,7 @@
   </div>
 
   <div id="palette">
-    <input type="text" id="palette-input" placeholder="Command palette (/help, /provider, /clear)">
+    <input type="text" id="palette-input" placeholder="Command palette (/help, /model, /clear)">
   </div>
 
   <!-- Personalise modal -->
@@ -442,7 +442,7 @@
         <div class="help-section">
           <h4>Slash commands</h4>
           <div class="kbd-row"><span class="label">/help</span><span>Show command reference</span></div>
-          <div class="kbd-row"><span class="label">/provider [name]</span><span>Switch the active LLM</span></div>
+          <div class="kbd-row"><span class="label">/model [provider]</span><span>Switch the active LLM</span></div>
           <div class="kbd-row"><span class="label">/clear</span><span>Start a fresh session</span></div>
         </div>
         <div class="help-section">
@@ -779,10 +779,10 @@
 
     async function handleLocalCommand(text) {
       if (text === '/help') {
-        appendMessage('carina', '**Commands**\n- `/provider [name]` - switch LLM\n- `/memories` - list memories\n- `/clear` - new session\n- `/help` - this message\n\n**Keys:** Enter send, Shift+Enter newline, `/` command palette', null);
+        appendMessage('carina', '**Commands**\n- `/model [provider] [model]` - switch LLM\n- `/provider [provider] [model]` - alias for `/model`\n- `/memories` - list memories\n- `/clear` - new session\n- `/help` - this message\n\n**Keys:** Enter send, Shift+Enter newline, `/` command palette', null);
         return true;
       }
-      if (text.startsWith('/provider')) {
+      if (text.startsWith('/provider') || text.startsWith('/model')) {
         const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -5,6 +5,8 @@ import { initRouter } from './gateway/router.js';
 import { startCLI } from './gateway/cli.js';
 import { startTelegram } from './gateway/telegram.js';
 import { startWeb } from './gateway/web.js';
+import { startDiscord } from './gateway/discord.js';
+import { startSlack } from './gateway/slack.js';
 import { config } from './config/index.js';
 import { isWhatsAppConfigured } from './gateway/whatsapp.js';
 import { initSandbox } from './tools/sandbox.js';
@@ -62,6 +64,9 @@ async function main(): Promise<void> {
   if (config.web.enabled) {
     gateways.push(startWeb());
   }
+
+  gateways.push(startDiscord());
+  gateways.push(startSlack());
 
   if (process.env.SKIP_CLI !== 'true') {
     gateways.push(startCLI({ memoryReady }));

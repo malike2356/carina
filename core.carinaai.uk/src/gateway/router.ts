@@ -4,6 +4,9 @@ import type { ConfirmFn } from '../agents/tool-runner.js';
 import { getRedis } from '../memory/redis.js';
 import type { CarinaMessage, Message } from '../types/index.js';
 import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
+import { hasImageAttachment } from './model-command.js';
+import { channelRegistry } from './channels/channel-registry.js';
+import type { ChannelMessage, ChannelName } from './channels/channel-adapter.interface.js';
 
 const memoryFallback = new Map<string, string>();
 
@@ -12,6 +15,7 @@ const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 export class GatewayRouter {
   private agents = new Map<string, CarinaOrchestrator>();
   private lastSeen = new Map<string, number>();
+  private sessionsWithRecentImages = new Set<string>();
   private memoryReady: boolean;
   private confirmTool?: ConfirmFn;
   private gcTimer: ReturnType<typeof setInterval>;
@@ -28,6 +32,7 @@ export class GatewayRouter {
       if (ts < cutoff) {
         this.agents.delete(id);
         this.lastSeen.delete(id);
+        this.sessionsWithRecentImages.delete(id);
       }
     }
   }
@@ -82,6 +87,7 @@ export class GatewayRouter {
     if (agent) {
       await agent.clear();
     }
+    this.sessionsWithRecentImages.delete(sessionId);
   }
 
   async *handle(message: CarinaMessage): AsyncGenerator<string> {
@@ -91,12 +97,28 @@ export class GatewayRouter {
       return;
     }
 
+    const trimmed = message.content.trim();
+    const isModelCommand = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
+    const commandAgent = isModelCommand ? this.getAgent(message.sessionId, message.source) : undefined;
     const cmd = message.content.startsWith('/memories')
       ? await handleGatewayCommandAsync(message.content)
-      : handleGatewayCommand(message.content);
+      : handleGatewayCommand(message.content, commandAgent
+        ? {
+            currentOverride: commandAgent.getProviderOverride(),
+            applyProviderOverride: (override) => commandAgent.setProviderOverride(override),
+            hasRecentImage: this.sessionsWithRecentImages.has(message.sessionId),
+          }
+        : {});
     if (cmd.handled) {
+      if (cmd.action === 'clear') {
+        await this.clearSession(message.sessionId);
+      }
       yield cmd.reply;
       return;
+    }
+
+    if (hasImageAttachment(message.content)) {
+      this.sessionsWithRecentImages.add(message.sessionId);
     }
 
     const agent = this.getAgent(message.sessionId, message.source);
@@ -110,6 +132,38 @@ export class GatewayRouter {
       }
     }
   }
+
+  async *handleInbound(channel: ChannelName, raw: unknown): AsyncGenerator<string> {
+    const inbound = await channelRegistry.getForInbound(channel, raw);
+    if (!inbound) return;
+
+    const externalKey = inbound.conversationId === inbound.externalUserId
+      ? inbound.externalUserId
+      : `${inbound.conversationId}:${inbound.externalUserId}`;
+    const sessionId = await this.getSession(inbound.channel, externalKey);
+
+    const text = buildInboundText(inbound);
+    const carinaMsg: CarinaMessage = {
+      id: inbound.id,
+      sessionId,
+      content: text,
+      source: inbound.channel,
+      timestamp: inbound.timestamp,
+    };
+
+    yield* this.handle(carinaMsg);
+  }
+}
+
+function buildInboundText(message: ChannelMessage): string {
+  const attachments = message.attachments ?? [];
+  if (attachments.length === 0) return message.text;
+
+  const lines = attachments.map((attachment) => {
+    const ref = attachment.path ?? attachment.url ?? attachment.id ?? 'unknown';
+    return `[attachment: ${ref}]`;
+  });
+  return message.text ? `${message.text}\n\n${lines.join('\n')}` : lines.join('\n');
 }
 
 let routerInstance: GatewayRouter | null = null;

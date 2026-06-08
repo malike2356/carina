@@ -5,21 +5,10 @@ import twilio from 'twilio';
 import chalk from 'chalk';
 import { config } from '../config/index.js';
 import { getRouter } from './router.js';
-import type { CarinaMessage } from '../types/index.js';
+import { channelRegistry } from './channels/channel-registry.js';
+import { WhatsAppAdapter } from './channels/adapters/whatsapp-adapter.js';
 
-const WHATSAPP_MAX = 1600;
 const DATA_DIR = path.resolve('data');
-
-function splitMessage(text: string, maxLen: number): string[] {
-  if (text.length <= maxLen) return [text];
-  const chunks: string[] = [];
-  let rest = text;
-  while (rest.length > 0) {
-    chunks.push(rest.slice(0, maxLen));
-    rest = rest.slice(maxLen);
-  }
-  return chunks;
-}
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {
   let full = '';
@@ -63,14 +52,10 @@ async function saveMedia(
   }
 }
 
-function buildUserMessage(body: string, mediaPaths: string[]): string {
-  if (mediaPaths.length === 0) return body;
-  const paths = mediaPaths.map((p) => `[attachment: ${p}]`).join('\n');
-  return body ? `${body}\n\n${paths}` : paths;
-}
-
 export function createWhatsAppRouter(): Router {
   const router = Router();
+  const adapter = new WhatsAppAdapter(isWhatsAppConfigured());
+  channelRegistry.register(adapter);
 
   router.post('/whatsapp', async (req: Request, res: Response) => {
     const signature = req.headers['x-twilio-signature'] as string | undefined;
@@ -89,7 +74,6 @@ export function createWhatsAppRouter(): Router {
     }
 
     const from = String(req.body.From ?? '');
-    const body = String(req.body.Body ?? '');
     const numMedia = parseInt(String(req.body.NumMedia ?? '0'), 10) || 0;
 
     const mediaPaths: string[] = [];
@@ -107,23 +91,14 @@ export function createWhatsAppRouter(): Router {
       }
     }
 
-    const gateway = getRouter();
-    const sessionId = await gateway.getSession('whatsapp', from);
-    const userText = buildUserMessage(body, mediaPaths);
-
-    const carinaMsg: CarinaMessage = {
-      id: String(req.body.MessageSid ?? Date.now()),
-      sessionId,
-      content: userText,
-      source: 'whatsapp',
-      timestamp: new Date(),
-    };
-
     try {
-      const reply = await collectResponse(gateway.handle(carinaMsg));
+      const reply = await collectResponse(getRouter().handleInbound('whatsapp', {
+        ...req.body,
+        __mediaPaths: mediaPaths,
+      }));
       const client = twilio(config.twilio.accountSid, config.twilio.authToken);
 
-      for (const chunk of splitMessage(reply || '(no response)', WHATSAPP_MAX)) {
+      for (const chunk of adapter.formatForChannel(reply || '(no response)')) {
         await client.messages.create({
           from: config.twilio.fromNumber,
           to: from,

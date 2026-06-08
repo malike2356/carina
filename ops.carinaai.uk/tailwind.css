@@ -1,0 +1,10 @@
+@import "tailwindcss";
+
+@theme {
+  --color-carina-bg: #0f0f0f;
+  --color-carina-card: #1a1a1a;
+  --color-carina-border: #2a2a2a;
+  --color-carina-text: #e0e0e0;
+  --color-carina-green: #22c55e;
+  --color-carina-cyan: #06b6d4;
+}

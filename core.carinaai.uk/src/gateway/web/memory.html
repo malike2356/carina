@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory — Carina</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
+    --text: #e4e6f0; --muted: #8890a8; --accent: #6c8cff;
+    --danger: #ff4d6a; --success: #4ade80;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    max-width: 900px; margin: 0 auto; padding: 2rem 1rem;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  .stats { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.75rem 1rem; min-width: 140px;
+  }
+  .stat-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+  .stat-card .value { font-size: 1.25rem; font-weight: 600; }
+  .controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  input, select, button {
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.5rem 0.75rem; font-size: 0.875rem;
+  }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.danger { border-color: var(--danger); color: var(--danger); }
+  .entry {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.5rem;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem;
+  }
+  .entry .meta { min-width: 80px; }
+  .entry .cat {
+    font-size: 0.7rem; text-transform: uppercase; color: var(--accent);
+    font-weight: 600;
+  }
+  .entry .pri {
+    font-size: 0.7rem; color: var(--muted);
+  }
+  .entry .content { flex: 1; font-size: 0.875rem; }
+  .entry .actions { display: flex; gap: 0.25rem; }
+  .entry .actions button { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6); z-index: 10; justify-content: center; align-items: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; width: 100%; max-width: 500px;
+  }
+  .modal h2 { margin-bottom: 1rem; }
+  .modal label { display: block; font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0.25rem; }
+  .modal input, .modal select, .modal textarea { width: 100%; }
+  .modal textarea { min-height: 100px; resize: vertical; }
+  .modal .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+  .empty { text-align: center; color: var(--muted); padding: 2rem; }
+</style>
+</head>
+<body>
+<h1>Memory</h1>
+<div class="stats" id="stats"></div>
+<div class="controls">
+  <input type="text" id="search" placeholder="Search memories..." style="flex:1; min-width:200px">
+  <select id="categoryFilter"><option value="">All categories</option></select>
+  <button class="primary" onclick="openModal()">+ New Entry</button>
+</div>
+<div id="entries"></div>
+<div id="pagination" style="display:flex;justify-content:center;gap:0.5rem;margin-top:1rem"></div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modalTitle">New Memory Entry</h2>
+    <input type="hidden" id="editId">
+    <label>Category</label>
+    <input type="text" id="editCategory" placeholder="general">
+    <label>Priority</label>
+    <select id="editPriority">
+      <option value="0">0 — Low</option>
+      <option value="1" selected>1 — Normal</option>
+      <option value="2">2 — High</option>
+    </select>
+    <label>Content</label>
+    <textarea id="editContent" placeholder="What should Carina remember?"></textarea>
+    <div class="btn-row">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="primary" onclick="saveEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/memory';
+let currentPage = 1;
+
+async function loadEntries(page = 1) {
+  currentPage = page;
+  const q = document.getElementById('search').value;
+  const cat = document.getElementById('categoryFilter').value;
+  const params = new URLSearchParams({ page: String(page) });
+  if (q) params.set('q', q);
+  if (cat) params.set('category', cat);
+  const res = await fetch(`${API}?${params}`);
+  const data = await res.json();
+  renderEntries(data.entries || []);
+  renderPagination(data.page, data.total_pages);
+}
+
+function renderEntries(entries) {
+  const el = document.getElementById('entries');
+  if (!entries.length) { el.innerHTML = '<div class="empty">No memories found</div>'; return; }
+  el.innerHTML = entries.map(e => `
+    <div class="entry">
+      <div class="meta">
+        <div class="cat">${esc(e.category)}</div>
+        <div class="pri">P${e.priority}</div>
+      </div>
+      <div class="content">${esc(e.content)}</div>
+      <div class="actions">
+        <button onclick="editEntry('${e.id}','${esc(e.category)}','${e.priority}','${esc(e.content).replace(/'/g,"\\'")}')">✎</button>
+        <button class="danger" onclick="deleteEntry('${e.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPagination(page, total) {
+  const el = document.getElementById('pagination');
+  if (total <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <button ${page <= 1 ? 'disabled' : ''} onclick="loadEntries(${page - 1})">←</button>
+    <span style="color:var(--muted);padding:0.5rem">${page} / ${total}</span>
+    <button ${page >= total ? 'disabled' : ''} onclick="loadEntries(${page + 1})">→</button>`;
+}
+
+async function loadStats() {
+  const res = await fetch(`${API}/stats`);
+  const data = await res.json();
+  const el = document.getElementById('stats');
+  const cats = data.categories || [];
+  const total = cats.reduce((s, c) => s + Number(c.count), 0);
+  const chars = cats.reduce((s, c) => s + Number(c.chars), 0);
+  el.innerHTML = `
+    <div class="stat-card"><div class="label">Entries</div><div class="value">${total}</div></div>
+    <div class="stat-card"><div class="label">Total chars</div><div class="value">${chars.toLocaleString()}</div></div>
+    ${cats.slice(0, 4).map(c => `<div class="stat-card"><div class="label">${esc(c.category)}</div><div class="value">${Number(c.count)}</div></div>`).join('')}
+  `;
+  const sel = document.getElementById('categoryFilter');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${esc(c.category)}">${esc(c.category)} (${c.count})</option>`).join('');
+  sel.value = current;
+}
+
+function openModal(id, cat, pri, content) {
+  document.getElementById('editId').value = id || '';
+  document.getElementById('editCategory').value = cat || 'general';
+  document.getElementById('editPriority').value = pri ?? '1';
+  document.getElementById('editContent').value = content || '';
+  document.getElementById('modalTitle').textContent = id ? 'Edit Memory' : 'New Memory Entry';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function editEntry(id, cat, pri, content) { openModal(id, cat, pri, content); }
+
+async function saveEntry() {
+  const id = document.getElementById('editId').value;
+  const body = {
+    category: document.getElementById('editCategory').value || 'general',
+    priority: Number(document.getElementById('editPriority').value),
+    content: document.getElementById('editContent').value,
+  };
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `${API}/${id}` : API;
+  const res = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if (res.ok) { closeModal(); loadEntries(currentPage); loadStats(); }
+  else alert('Save failed');
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this memory entry?')) return;
+  const res = await fetch(`${API}/${id}`, { method: 'DELETE' });
+  if (res.ok) { loadEntries(currentPage); loadStats(); }
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+document.getElementById('search').addEventListener('input', () => loadEntries(1));
+document.getElementById('categoryFilter').addEventListener('change', () => loadEntries(1));
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeModal(); });
+
+loadEntries();
+loadStats();
+</script>
+</body>
+</html>
