@@ -96,6 +96,15 @@ CREATE TABLE IF NOT EXISTS stripe_events (
   type TEXT NOT NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS check_in_state (
+  state_key TEXT PRIMARY KEY,
+  last_checks JSONB NOT NULL DEFAULT '{}',
+  last_check_at TIMESTAMPTZ,
+  last_contacted_at TIMESTAMPTZ,
+  rotation_position INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 
 const INDEXES = [

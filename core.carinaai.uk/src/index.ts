@@ -11,14 +11,18 @@ import { config } from './config/index.js';
 import { isWhatsAppConfigured } from './gateway/whatsapp.js';
 import { initSandbox } from './tools/sandbox.js';
 import { initKillSwitchListener, reportHeartbeat } from './security/index.js';
+import { TaskScheduler } from './agents/scheduled-tasks.js';
+import { createProactiveCheckInTask } from './agents/check-in.js';
 import './tools/index.js';
 
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let cleanupKillSwitch: (() => void) | null = null;
+let taskScheduler: TaskScheduler | null = null;
 
 async function shutdown(signal: string): Promise<void> {
   console.log(chalk.gray(`\nReceived ${signal}, shutting down...`));
   if (heartbeatInterval) clearInterval(heartbeatInterval);
+  taskScheduler?.stop();
   cleanupKillSwitch?.();
   await pool.end().catch(() => undefined);
   const redis = getRedis();
@@ -52,6 +56,13 @@ async function main(): Promise<void> {
   }
 
   initRouter(memoryReady);
+
+  if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
+    taskScheduler = new TaskScheduler();
+    taskScheduler.register(createProactiveCheckInTask('cli'));
+    taskScheduler.start();
+    console.log(chalk.gray('Proactive check-in cycle enabled'));
+  }
 
   const gateways: Promise<void>[] = [];
 
