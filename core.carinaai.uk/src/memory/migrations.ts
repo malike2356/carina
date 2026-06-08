@@ -81,6 +81,16 @@ CREATE TABLE IF NOT EXISTS usage_records (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS model_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  tokens_used INTEGER NOT NULL,
+  estimated_cost NUMERIC(12, 9) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS stripe_events (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
@@ -98,7 +108,11 @@ const INDEXES = [
   `CREATE INDEX IF NOT EXISTS idx_invoices_tenant_created
    ON invoices (tenant_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_usage_records_tenant_date
-   ON usage_records (tenant_id, date DESC)`,
+     ON usage_records (tenant_id, date DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_model_usage_session_created
+     ON model_usage (session_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_model_usage_created
+     ON model_usage (created_at DESC)`,
 ];
 
 // Migrate existing 1536-dim columns to 768 (DeepSeek native dimension).

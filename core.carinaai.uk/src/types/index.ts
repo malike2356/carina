@@ -23,6 +23,7 @@ export interface CarinaResponse {
   toolsUsed: string[];
   tokensUsed: number;
   provider: string;
+  toolCalls?: ToolCall[];
 }
 
 export interface Tool {

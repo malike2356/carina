@@ -27,6 +27,7 @@ const SECRET_PATTERNS = [
   /^Bearer\s+\S+/i,
   /^Basic\s+[a-zA-Z0-9+/]+=*/i,
 ];
+const SECRET_KEY_PATTERN = /(api[_-]?key|token|secret|password|authorization|auth)/i;
 
 const eventQueue: ScoutEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
@@ -54,7 +55,7 @@ function isLikelySecret(value: string): boolean {
 export function sanitiseParams(params: Record<string, unknown>): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(params)) {
-    if (typeof value === 'string' && isLikelySecret(value)) {
+    if (typeof value === 'string' && (SECRET_KEY_PATTERN.test(key) || isLikelySecret(value))) {
       result[key] = '[REDACTED]';
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       result[key] = sanitiseParams(value as Record<string, unknown>);

@@ -100,7 +100,8 @@ export class GatewayRouter {
     const trimmed = message.content.trim();
     const isModelCommand = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
     const commandAgent = isModelCommand ? this.getAgent(message.sessionId, message.source) : undefined;
-    const cmd = message.content.startsWith('/memories')
+    const needsAsyncCommand = message.content.startsWith('/memories') || message.content.startsWith('/usage');
+    const cmd = needsAsyncCommand
       ? await handleGatewayCommandAsync(message.content)
       : handleGatewayCommand(message.content, commandAgent
         ? {

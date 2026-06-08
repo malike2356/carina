@@ -7,6 +7,7 @@ import {
   toAnthropicMessages,
   toOpenAIMessages,
 } from './messages.js';
+import { classifyComplexity, type TaskComplexity } from './task-classifier.js';
 import type { Message, CarinaResponse, LLMProvider, Tool, ToolCall } from '../types/index.js';
 
 const SYSTEM_PROMPT = `You are Carina, an autonomous AI agent built by VERLOX Ltd.
@@ -82,12 +83,24 @@ export class ClaudeProvider implements LLMProvider {
     const toolsUsed = response.content
       .filter((b) => b.type === 'tool_use')
       .map((b) => (b.type === 'tool_use' ? b.name : ''));
+    const toolCalls = response.content
+      .filter((b) => b.type === 'tool_use')
+      .map((b) => (b.type === 'tool_use'
+        ? {
+            type: 'tool_call' as const,
+            toolName: b.name,
+            toolCallId: b.id,
+            params: b.input as Record<string, unknown>,
+          }
+        : undefined))
+      .filter((call): call is ToolCall => call !== undefined);
 
     return {
       content,
       toolsUsed,
       tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
       provider: 'anthropic',
+      toolCalls,
     };
   }
 
@@ -148,13 +161,15 @@ export class DeepSeekProvider implements LLMProvider {
     const msg = response.choices[0]?.message;
     const content = msg?.content ?? '';
     const usage = response.usage;
-    const toolsUsed = parseToolCallsFromOpenAI(msg?.tool_calls).map((t) => t.toolName);
+    const toolCalls = parseToolCallsFromOpenAI(msg?.tool_calls);
+    const toolsUsed = toolCalls.map((t) => t.toolName);
 
     return {
       content,
       toolsUsed,
       tokensUsed: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
       provider: 'deepseek',
+      toolCalls,
     };
   }
 
@@ -221,13 +236,15 @@ export class OpenAIProvider implements LLMProvider {
     const msg = response.choices[0]?.message;
     const content = msg?.content ?? '';
     const usage = response.usage;
-    const toolsUsed = parseToolCallsFromOpenAI(msg?.tool_calls).map((t) => t.toolName);
+    const toolCalls = parseToolCallsFromOpenAI(msg?.tool_calls);
+    const toolsUsed = toolCalls.map((t) => t.toolName);
 
     return {
       content,
       toolsUsed,
       tokensUsed: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
       provider: 'openai',
+      toolCalls,
     };
   }
 
@@ -345,6 +362,25 @@ export class LLMRouter {
 
   async chat(messages: Message[], tools?: Tool[], override?: ProviderOverride): Promise<CarinaResponse> {
     const providers = this.fallbackOrder(override);
+    return this.chatWithProviders(providers, messages, tools);
+  }
+
+  async chatRouted(
+    messages: Message[],
+    tools?: Tool[],
+    classification: TaskComplexity = classifyComplexity(messages),
+    override?: ProviderOverride,
+  ): Promise<CarinaResponse> {
+    if (override) return this.chat(messages, tools, override);
+    const startProvider = classification === 'simple' ? this.cheap().name : this.current().name;
+    return this.chatWithProviders(this.fallbackOrder({ name: startProvider }), messages, tools);
+  }
+
+  private async chatWithProviders(
+    providers: Array<{ provider: LLMProvider; model?: string }>,
+    messages: Message[],
+    tools?: Tool[],
+  ): Promise<CarinaResponse> {
     let lastErr: unknown;
     for (const { provider, model } of providers) {
       try {

@@ -1,4 +1,5 @@
 import { deleteMemory, listRecentMemories } from '../memory/store.js';
+import { formatCostReport, getMonthlyReport } from '../brain/cost-tracker.js';
 import {
   handleModelCommand,
   type ModelCommandContext,
@@ -24,6 +25,10 @@ export async function handleGatewayCommandAsync(input: string): Promise<CommandR
 
   if (trimmed === '/memories') {
     return { handled: true, reply: await formatMemoriesList() };
+  }
+
+  if (trimmed === '/usage' || trimmed === '/usage --month') {
+    return { handled: true, reply: formatCostReport(await getMonthlyReport()) };
   }
 
   const deleteMatch = trimmed.match(/^\/memories\s+delete\s+(\S+)$/i);
@@ -64,6 +69,7 @@ export function handleGatewayCommand(input: string, modelContext: ModelCommandCo
         '/provider [provider] [model] - alias for /model',
         '/memories - list episodic memories',
         '/memories delete <id> - delete a memory',
+        '/usage --month - show model token usage and estimated cost',
         '/clear - reset session memory',
         '/exit - quit the CLI',
         '/help - show this message',

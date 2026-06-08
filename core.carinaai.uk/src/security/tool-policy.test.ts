@@ -30,6 +30,7 @@ vi.mock('../config/index.js', () => ({
       instanceName: 'Test',
     },
     redis: { url: 'redis://localhost:6379' },
+    database: { url: 'postgresql://localhost:5432/carina_test' },
   },
 }));
 

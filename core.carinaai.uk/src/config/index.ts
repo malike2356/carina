@@ -45,6 +45,9 @@ export const config = {
     sessionTimeout: 60 * 60 * 1000,
     maxMemoryContext: 20,
     skillAutoWrite: process.env.SKILL_AUTO_WRITE !== 'false',
+    llmMonthlyBudgetUsd: process.env.CARINA_LLM_MONTHLY_BUDGET_USD
+      ? parseFloat(process.env.CARINA_LLM_MONTHLY_BUDGET_USD)
+      : null,
   },
   server: {
     port: parseInt(process.env.PORT ?? '3000', 10),

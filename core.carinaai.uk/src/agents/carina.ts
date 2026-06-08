@@ -1,4 +1,5 @@
 import { llm } from '../brain/llm.js';
+import { checkMonthlyBudget, recordUsage } from '../brain/cost-tracker.js';
 import { config } from '../config/index.js';
 import {
   getSessionHistory,
@@ -180,6 +181,7 @@ export class CarinaAgent {
     const toolsUsed: string[] = [];
     const toolCallLog: string[] = [];
     let turns = 0;
+    let budgetWarned = false;
 
     while (turns < this.maxTurns) {
       turns++;
@@ -188,17 +190,24 @@ export class CarinaAgent {
         this.pendingProviderOverride = undefined;
       }
 
-      const toolCalls: ToolCall[] = [];
-      let textBuffer = '';
+      const budget = await checkMonthlyBudget();
+      if (budget.status === 'blocked') {
+        yield { type: 'text', content: `[${budget.message}]` };
+        break;
+      }
+      if (budget.status === 'warn' && !budgetWarned) {
+        budgetWarned = true;
+        yield { type: 'text', content: `[${budget.message}]\n\n` };
+      }
 
-      for await (const chunk of llm.stream(messages, tools, this.providerOverride)) {
-        if (typeof chunk === 'string') {
-          textBuffer += chunk;
-          turnText += chunk;
-          yield { type: 'text', content: chunk };
-        } else {
-          toolCalls.push(chunk);
-        }
+      const response = await llm.chatRouted(messages, tools, undefined, this.providerOverride);
+      await recordUsage(this.sessionId, response.provider, response.tokensUsed, llm.modelFor(response.provider));
+
+      const textBuffer = response.content;
+      const toolCalls: ToolCall[] = response.toolCalls ?? [];
+      if (textBuffer) {
+        turnText += textBuffer;
+        yield { type: 'text', content: textBuffer };
       }
 
       if (toolCalls.length === 0) {

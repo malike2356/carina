@@ -79,7 +79,7 @@ function prompt(): void {
     const routeThroughGateway = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
     const cmd = routeThroughGateway
       ? { handled: false as const }
-      : trimmed.startsWith('/memories')
+      : trimmed.startsWith('/memories') || trimmed.startsWith('/usage')
       ? await handleGatewayCommandAsync(trimmed)
       : handleGatewayCommand(trimmed);
     if (cmd.handled) {
