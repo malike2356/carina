@@ -19,6 +19,7 @@ describe('Alert Escalation', () => {
   });
 
   afterEach(() => {
+    vi.clearAllTimers();
     vi.useRealTimers();
   });
 
@@ -40,8 +41,8 @@ describe('Alert Escalation', () => {
     scheduleEscalation('evt-3', 'critical', 'inst-1', 'test alert');
 
     vi.advanceTimersByTime(5 * 60 * 1000);
-    // Flush microtasks for the async dispatch
-    await vi.runAllTimersAsync();
+    await Promise.resolve();
+    await Promise.resolve();
 
     expect(mockDispatch).toHaveBeenCalledTimes(1);
     const dispatched = mockDispatch.mock.calls[0]![0];

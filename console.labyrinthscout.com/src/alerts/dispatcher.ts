@@ -25,7 +25,7 @@ const DEDUP_MAX_ALERTS = 3;
 
 interface AlertChannelRow {
   id: string;
-  channel_type: 'telegram' | 'email' | 'slack';
+  channel_type: string;
   severity_threshold: AlertSeverity;
   enabled: boolean;
   config: Record<string, string> | null;
@@ -49,7 +49,12 @@ export function toSecurityEvent(row: SecurityEventRow): SecurityEvent {
   };
 }
 
-function parseChannel(row: AlertChannelRow): AlertChannel {
+function isAdapterChannel(channelType: string): channelType is AlertChannel['channel_type'] {
+  return Object.prototype.hasOwnProperty.call(ADAPTERS, channelType);
+}
+
+function parseChannel(row: AlertChannelRow): AlertChannel | null {
+  if (!isAdapterChannel(row.channel_type)) return null;
   const config =
     row.config && typeof row.config === 'object' && !Array.isArray(row.config)
       ? (row.config as Record<string, string>)
@@ -65,7 +70,7 @@ function parseChannel(row: AlertChannelRow): AlertChannel {
 
 export const alertDispatcher = {
   async dispatch(event: SecurityEvent): Promise<void> {
-    const routedChannels = getChannelsForSeverity(event.severity);
+    const routedChannels = await loadChannelsForSeverity(event.severity);
 
     // Throttle check: suppress duplicates within 5 minutes per tenant+severity+type
     const throttleResult = await shouldSuppress(
@@ -87,20 +92,46 @@ export const alertDispatcher = {
     }
 
     const results = await Promise.allSettled(
-      routedChannels.map((ch) => dispatchToChannel(event, { channel_type: ch } as AlertChannel)),
+      routedChannels.map((ch) => dispatchToChannel(event, ch)),
     );
 
     results.forEach((result, index) => {
       if (result.status === 'rejected') {
         const ch = routedChannels[index];
         console.error(
-          `[AlertDispatcher] Channel ${ch} failed:`,
+          `[AlertDispatcher] Channel ${ch?.channel_type ?? 'unknown'} failed:`,
           result.reason,
         );
       }
     });
   },
 };
+
+async function loadChannelsForSeverity(severity: AlertSeverity): Promise<AlertChannel[]> {
+  try {
+    const result = await pool.query<AlertChannelRow>(
+      `SELECT id, channel_type, severity_threshold, enabled, config
+       FROM alert_channels
+       WHERE enabled = TRUE`,
+    );
+    return result.rows
+      .map(parseChannel)
+      .filter((channel): channel is AlertChannel => channel !== null)
+      .filter((channel) => SEVERITY_RANK[severity] >= SEVERITY_RANK[channel.severity_threshold]);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[AlertDispatcher] Channel lookup failed; using default routing:', msg);
+    return getChannelsForSeverity(severity)
+      .filter(isAdapterChannel)
+      .map((channel_type) => ({
+        id: `default-${channel_type}`,
+        channel_type,
+        severity_threshold: severity,
+        enabled: true,
+        config: {},
+      }));
+  }
+}
 
 async function dispatchToChannel(event: SecurityEvent, channel: AlertChannel): Promise<void> {
   const redis = getRedis();

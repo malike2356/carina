@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="scout-api-key" content="">
+  <title>Carina Security Dashboard</title>
+  <link rel="stylesheet" href="./css/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" defer></script>
+  <script src="./js/dashboard.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Labyrinth Scout</p>
+      <h1>Security Dashboard</h1>
+    </div>
+    <div class="topbar-meta">
+      <span id="connection-state" class="status-pill offline">Offline</span>
+      <span>Admin <strong id="admin-name">operator</strong></span>
+      <span>Updated <strong id="last-updated">never</strong></span>
+      <button id="kill-switch" class="danger-button" type="button">Kill Switch</button>
+    </div>
+  </header>
+
+  <main class="dashboard-shell">
+    <section class="metric-grid" aria-label="Security summary">
+      <article class="metric-card">
+        <span>Agents</span>
+        <strong id="metric-agents">0</strong>
+        <small id="metric-agents-detail">0 active, 0 suspended</small>
+      </article>
+      <article class="metric-card">
+        <span>Threats</span>
+        <strong id="metric-threats">0</strong>
+        <small id="metric-threats-detail">0 critical, 0 breach</small>
+      </article>
+      <article class="metric-card">
+        <span>Blocked</span>
+        <strong id="metric-blocked">0</strong>
+        <small id="metric-blocked-detail">Last 24 hours</small>
+      </article>
+      <article class="metric-card">
+        <span>Token Usage</span>
+        <strong id="metric-tokens">0%</strong>
+        <small id="metric-tokens-detail">0 / 0 tokens</small>
+        <div class="meter"><i id="token-meter"></i></div>
+      </article>
+    </section>
+
+    <section class="main-grid">
+      <article class="panel live-panel">
+        <div class="panel-head">
+          <h2>Live Feed</h2>
+          <button id="refresh-feed" class="ghost-button" type="button">Refresh</button>
+        </div>
+        <ol id="live-feed" class="feed-list"></ol>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <h2>Attacks (24H)</h2>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="threat-chart" aria-label="Threat chart"></canvas>
+        </div>
+        <div id="top-sources" class="source-list"></div>
+      </article>
+
+      <article class="panel agents-panel">
+        <div class="panel-head">
+          <h2>Agent Status</h2>
+        </div>
+        <div id="agent-list" class="agent-list"></div>
+      </article>
+    </section>
+
+    <section class="panel audit-panel">
+      <div class="panel-head audit-head">
+        <h2>Audit Log</h2>
+        <form id="audit-search" class="search-row">
+          <input id="audit-query" name="q" type="search" placeholder="Search event, source, session, INJ-001">
+          <button class="ghost-button" type="submit">Search</button>
+          <a id="audit-export" class="ghost-link" href="/api/export/events?format=csv">Export CSV</a>
+        </form>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Severity</th>
+              <th>Type</th>
+              <th>Instance</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody id="audit-log"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="kill-dialog" class="kill-dialog">
+    <form method="dialog">
+      <h2>Kill Switch</h2>
+      <p id="kill-message">This will immediately stop all active agents. Are you sure?</p>
+      <label for="kill-reason">Reason</label>
+      <textarea id="kill-reason" required minlength="3">Operator emergency stop</textarea>
+      <div class="dialog-actions">
+        <button class="ghost-button" value="cancel" type="submit">Cancel</button>
+        <button id="confirm-kill" class="danger-button" value="confirm" type="button">Activate</button>
+      </div>
+      <p id="kill-result" class="dialog-result"></p>
+    </form>
+  </dialog>
+</body>
+</html>

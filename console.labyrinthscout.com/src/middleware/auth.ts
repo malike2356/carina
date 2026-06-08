@@ -21,17 +21,19 @@ function keysMatch(provided: string, expected: string): boolean {
 }
 
 function isAllowedIp(req: Request): boolean {
-  if (config.auth.ipWhitelist.length === 0) return true;
+  const ipWhitelist = config.auth.ipWhitelist ?? [];
+  if (ipWhitelist.length === 0) return true;
   const ip = req.ip ?? req.socket.remoteAddress ?? '';
-  return config.auth.ipWhitelist.includes(ip) || config.auth.ipWhitelist.includes(ip.replace(/^::ffff:/, ''));
+  return ipWhitelist.includes(ip) || ipWhitelist.includes(ip.replace(/^::ffff:/, ''));
 }
 
 function verifyTotp(req: Request): boolean {
-  if (!config.auth.totpSecret) return true;
+  const totpSecret = config.auth.totpSecret;
+  if (!totpSecret) return true;
   const token = req.headers['x-scout-totp'];
   if (typeof token !== 'string' || !/^\d{6}$/.test(token)) return false;
   const nowStep = Math.floor(Date.now() / 30_000);
-  return [-1, 0, 1].some((offset) => token === generateTotp(config.auth.totpSecret, nowStep + offset));
+  return [-1, 0, 1].some((offset) => token === generateTotp(totpSecret, nowStep + offset));
 }
 
 function generateTotp(secret: string, step: number): string {

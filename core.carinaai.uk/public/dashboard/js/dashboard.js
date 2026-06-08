@@ -1,0 +1,265 @@
+(function () {
+  const state = {
+    apiKey: document.querySelector('meta[name="scout-api-key"]')?.content || window.SCOUT_API_KEY || '',
+    agents: [],
+    events: [],
+    threatChart: null,
+    activeInstanceId: null,
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function headers(extra) {
+    return {
+      ...(state.apiKey ? { 'X-Scout-Key': state.apiKey } : {}),
+      ...(extra || {}),
+    };
+  }
+
+  async function fetchJson(path, options) {
+    const res = await fetch(path, { ...options, headers: headers(options && options.headers) });
+    if (!res.ok) throw new Error(`${path} returned ${res.status}`);
+    return res.json();
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[ch]));
+  }
+
+  function timeLabel(value) {
+    if (!value) return 'never';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'unknown';
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function setUpdated() {
+    $('last-updated').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function setConnection(online) {
+    const el = $('connection-state');
+    el.textContent = online ? 'Live' : 'Offline';
+    el.classList.toggle('online', online);
+    el.classList.toggle('offline', !online);
+  }
+
+  function normalizeEvent(raw) {
+    return raw && raw.data ? raw.data : raw;
+  }
+
+  function renderAgents(data) {
+    const agents = data.agents || data.instances || [];
+    state.agents = agents;
+    state.activeInstanceId = agents.find((agent) => agent.status === 'active')?.id || agents[0]?.id || state.activeInstanceId;
+
+    const active = Number(data.active ?? agents.filter((agent) => agent.status === 'active').length);
+    const suspended = Number(data.suspended ?? agents.filter((agent) => agent.status === 'suspended').length);
+    $('metric-agents').textContent = String(data.total ?? agents.length);
+    $('metric-agents-detail').textContent = `${active} active, ${suspended} suspended`;
+
+    $('agent-list').innerHTML = agents.length ? agents.map((agent) => `
+      <div class="agent-row">
+        <strong>${escapeHtml(agent.name || agent.id || 'unknown')}</strong>
+        <span class="agent-meta">${escapeHtml(agent.status || 'unknown')} - last seen ${escapeHtml(timeLabel(agent.last_heartbeat || agent.lastSeen))}</span>
+        ${agent.suspension_reason ? `<span class="agent-meta">${escapeHtml(agent.suspension_reason)}</span>` : ''}
+      </div>
+    `).join('') : '<div class="agent-row"><span class="agent-meta">No agents reporting yet</span></div>';
+  }
+
+  function renderThreats(data) {
+    const bySeverity = data.bySeverity || data.severity || {};
+    const critical = Number(bySeverity.critical || data.critical || 0);
+    const breach = Number(bySeverity.breach || data.breach || 0);
+    const warning = Number(bySeverity.warning || data.warning || 0);
+    const info = Number(bySeverity.info || data.info || 0);
+    const total = Number(data.total || critical + breach + warning + info);
+    const blocked = Number(data.blocked || data.blockedCount || 0);
+
+    $('metric-threats').textContent = String(total);
+    $('metric-threats-detail').textContent = `${critical} critical, ${breach} breach`;
+    $('metric-blocked').textContent = String(blocked);
+
+    updateThreatChart([info, warning, critical, breach]);
+
+    const sources = data.topSources || data.sources || [];
+    $('top-sources').innerHTML = sources.length ? sources.slice(0, 6).map((source) => `
+      <div class="source-row"><span>${escapeHtml(source.ip || source.source || 'unknown')}</span><strong>${escapeHtml(source.count || 0)}</strong></div>
+    `).join('') : '<div class="source-row"><span>No attack sources in the current window</span><strong>0</strong></div>';
+  }
+
+  function updateThreatChart(values) {
+    const canvas = $('threat-chart');
+    if (!window.Chart || !canvas) return;
+    if (!state.threatChart) {
+      state.threatChart = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Info', 'Warning', 'Critical', 'Breach'],
+          datasets: [{ data: values, backgroundColor: ['#60a5fa', '#f4bf50', '#ff5c6c', '#b455ff'], borderWidth: 0 }],
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#e7eef4' } } } },
+      });
+      return;
+    }
+    state.threatChart.data.datasets[0].data = values;
+    state.threatChart.update();
+  }
+
+  function renderUsage(data) {
+    const used = Number(data.used || data.tokens_used || 0);
+    const limit = Number(data.limit || data.token_limit || 0);
+    const pct = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : Number(data.percent || 0);
+    $('metric-tokens').textContent = `${pct}%`;
+    $('metric-tokens-detail').textContent = `${used.toLocaleString()} / ${limit.toLocaleString()} tokens`;
+    $('token-meter').style.width = `${Math.max(0, Math.min(100, pct))}%`;
+  }
+
+  function pushLiveEvent(raw) {
+    const event = normalizeEvent(raw);
+    if (!event || event.type === 'heartbeat') return;
+    state.events = [event, ...state.events.filter((item) => item.id !== event.id)].slice(0, 80);
+    renderLiveFeed();
+  }
+
+  function renderLiveFeed() {
+    $('live-feed').innerHTML = state.events.length ? state.events.slice(0, 40).map((event) => `
+      <li class="feed-item">
+        <div class="feed-meta">${escapeHtml(timeLabel(event.created_at))} - <span class="severity-${escapeHtml(event.severity)}">${escapeHtml(event.severity || 'info')}</span> - ${escapeHtml(event.instance_id || 'system')}</div>
+        <strong>${escapeHtml(event.event_type || event.type || 'event')}</strong>
+        <span>${escapeHtml(event.description || '')}</span>
+      </li>
+    `).join('') : '<li class="feed-item"><span class="feed-meta">Waiting for live events</span></li>';
+  }
+
+  function renderAudit(rows) {
+    $('audit-log').innerHTML = rows.length ? rows.map((event) => `
+      <tr>
+        <td>${escapeHtml(timeLabel(event.created_at))}</td>
+        <td class="severity-${escapeHtml(event.severity)}">${escapeHtml(event.severity)}</td>
+        <td>${escapeHtml(event.event_type)}</td>
+        <td>${escapeHtml(event.instance_id || 'system')}</td>
+        <td>${escapeHtml(event.description)}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="5">No audit events found</td></tr>';
+  }
+
+  async function loadAgents() {
+    try { renderAgents(await fetchJson('/api/dashboard/agent-status')); } catch { renderAgents({ agents: [] }); }
+  }
+
+  async function loadThreats() {
+    try { renderThreats(await fetchJson('/api/dashboard/threat-metrics')); } catch { renderThreats({}); }
+  }
+
+  async function loadUsage() {
+    try { renderUsage(await fetchJson('/api/dashboard/usage-analytics')); } catch { renderUsage({ used: 0, limit: 0, percent: 0 }); }
+  }
+
+  async function loadFeed() {
+    try {
+      const data = await fetchJson('/api/events?limit=40');
+      state.events = data.events || [];
+      renderLiveFeed();
+    } catch {
+      renderLiveFeed();
+    }
+  }
+
+  async function loadAudit(query) {
+    const q = query ? `?q=${encodeURIComponent(query)}&limit=100` : '?limit=100';
+    try {
+      const data = await fetchJson(`/api/dashboard/audit-log${q}`);
+      renderAudit(data.events || []);
+    } catch {
+      try {
+        const fallback = await fetchJson('/api/events?limit=100');
+        renderAudit(fallback.events || []);
+      } catch {
+        renderAudit([]);
+      }
+    }
+  }
+
+  function connectRealtime() {
+    if (window.SCOUT_REALTIME === 'websocket') {
+      const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+      const socket = new WebSocket(`${scheme}://${location.host}/api/dashboard/ws`);
+      socket.addEventListener('open', () => {
+        setConnection(true);
+        socket.send(JSON.stringify({ type: 'subscribe', channels: ['live_event', 'threat_update', 'agent_update', 'kill_switch_status', 'audit_results', 'token_update'] }));
+      });
+      socket.addEventListener('message', (message) => handleRealtimeMessage(JSON.parse(message.data)));
+      socket.addEventListener('close', () => setConnection(false));
+      socket.addEventListener('error', () => setConnection(false));
+      return;
+    }
+
+    if (!window.EventSource) return;
+    const stream = new EventSource('/api/sse');
+    stream.addEventListener('open', () => setConnection(true));
+    stream.addEventListener('error', () => setConnection(false));
+    ['live_event', 'threat_update', 'agent_update', 'audit_results', 'token_update', 'kill_switch_status'].forEach((name) => {
+      stream.addEventListener(name, (message) => handleRealtimeMessage(JSON.parse(message.data)));
+    });
+  }
+
+  function handleRealtimeMessage(message) {
+    const type = message.type;
+    const data = message.data || message;
+    if (type === 'live_event' || type === 'event') pushLiveEvent(data);
+    if (type === 'threat_update') void loadThreats();
+    if (type === 'agent_update') void loadAgents();
+    if (type === 'audit_results') void loadAudit($('audit-query').value.trim());
+    if (type === 'token_update') void loadUsage();
+    if (type === 'kill_switch_status') $('kill-result').textContent = data.confirmation || data.description || 'Kill switch status updated';
+    setUpdated();
+  }
+
+  async function activateKillSwitch() {
+    const reason = $('kill-reason').value.trim();
+    if (!reason) return;
+    const instanceId = state.activeInstanceId || 'all';
+    $('kill-result').textContent = 'Activating...';
+    try {
+      const data = await fetchJson(`/api/kill/${encodeURIComponent(instanceId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      $('kill-result').textContent = data.confirmation || `KILL SWITCH ACTIVATED - ${new Date().toISOString()} by operator`;
+      await Promise.allSettled([loadAgents(), loadAudit($('audit-query').value.trim())]);
+    } catch (err) {
+      $('kill-result').textContent = err.message || 'Kill switch failed';
+    }
+  }
+
+  async function refreshAll() {
+    await Promise.allSettled([loadAgents(), loadThreats(), loadUsage(), loadFeed(), loadAudit($('audit-query').value.trim())]);
+    setUpdated();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    $('refresh-feed').addEventListener('click', () => void loadFeed());
+    $('audit-search').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const query = $('audit-query').value.trim();
+      $('audit-export').href = `/api/export/events?format=csv${query ? `&q=${encodeURIComponent(query)}` : ''}`;
+      void loadAudit(query);
+    });
+    $('kill-switch').addEventListener('click', () => {
+      const active = state.agents.filter((agent) => agent.status === 'active').length;
+      $('kill-message').textContent = `This will immediately stop all ${active} active agents. Are you sure?`;
+      $('kill-result').textContent = '';
+      $('kill-dialog').showModal();
+    });
+    $('confirm-kill').addEventListener('click', () => void activateKillSwitch());
+
+    renderLiveFeed();
+    connectRealtime();
+    void refreshAll();
+    setInterval(refreshAll, 30000);
+  });
+}());
