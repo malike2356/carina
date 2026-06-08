@@ -4,6 +4,13 @@ import { applyYamlConfigToEnv } from '../cli/config/loader.js';
 loadCarinaEnv();
 applyYamlConfigToEnv();
 
+function intEnv(name: string, fallback: number): number {
+  const value = process.env[name];
+  if (!value) return fallback;
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export const config = {
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
@@ -25,6 +32,20 @@ export const config = {
   },
   redis: {
     url: process.env.REDIS_URL ?? 'redis://localhost:6379',
+  },
+  cache: {
+    ttlSeconds: {
+      webSearch: intEnv('CARINA_CACHE_TTL_WEB_SEARCH_SECONDS', 60 * 60),
+      propertyCompliance: intEnv('CARINA_CACHE_TTL_PROPERTY_COMPLIANCE_SECONDS', 24 * 60 * 60),
+      aiClassification: intEnv('CARINA_CACHE_TTL_AI_CLASSIFICATION_SECONDS', 60 * 60),
+      marketData: {
+        default: intEnv('CARINA_CACHE_TTL_MARKET_DATA_SECONDS', 30 * 60),
+        propertyData: intEnv(
+          'CARINA_CACHE_TTL_MARKET_DATA_PROPERTY_DATA_SECONDS',
+          intEnv('CARINA_CACHE_TTL_MARKET_DATA_SECONDS', 30 * 60),
+        ),
+      },
+    },
   },
   brave: {
     apiKey: process.env.BRAVE_SEARCH_API_KEY ?? '',

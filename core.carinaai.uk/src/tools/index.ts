@@ -1,7 +1,9 @@
 import { config } from '../config/index.js';
 import { propertyDataTool } from '../skills/packs/property-uk/tools/property-data.js';
 import { landRegistryTool } from '../skills/packs/property-uk/tools/land-registry.js';
+import '../skills/packs/property-uk/domain-data.js';
 import { registry } from './registry.js';
+import { domainLookupTool } from './domain-lookup.js';
 import { webSearchTool } from './web-search.js';
 import { fileReadTool, fileWriteTool } from './file.js';
 import { shellExecTool } from './shell.js';
@@ -10,6 +12,7 @@ import { emailSendTool, emailListTool } from './email.js';
 import { codeExecTool } from './code.js';
 
 registry.register(webSearchTool);
+registry.register(domainLookupTool);
 registry.register(fileReadTool);
 registry.register(fileWriteTool);
 registry.register(shellExecTool);

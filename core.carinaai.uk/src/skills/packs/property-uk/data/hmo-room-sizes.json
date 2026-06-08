@@ -1,0 +1,44 @@
+{
+  "dataset": "hmo_minimum_room_size",
+  "version": "2026-06-08",
+  "jurisdiction": "England",
+  "sources": [
+    {
+      "title": "The Licensing of Houses in Multiple Occupation (Mandatory Conditions of Licences) (England) Regulations 2018",
+      "url": "https://www.legislation.gov.uk/uksi/2018/616/regulation/2/made",
+      "note": "Sets national mandatory minimum sleeping-room sizes for licensed HMOs in England."
+    }
+  ],
+  "standards": {
+    "england_national_2018": {
+      "title": "England national mandatory HMO sleeping-room minimums",
+      "rooms": [
+        {
+          "occupants": "one_person_aged_10_or_over",
+          "minimumSquareMetres": 6.51
+        },
+        {
+          "occupants": "two_persons_aged_10_or_over",
+          "minimumSquareMetres": 10.22
+        },
+        {
+          "occupants": "one_person_under_10",
+          "minimumSquareMetres": 4.64
+        }
+      ],
+      "notes": [
+        "Rooms smaller than 4.64 square metres must not be used as sleeping accommodation.",
+        "Local licensing conditions can be stricter; verify the relevant council licence conditions before giving compliance advice."
+      ]
+    }
+  },
+  "postcodeAreaIndex": {
+    "PO": {
+      "standard": "england_national_2018",
+      "localAuthorityHint": "Portsmouth/Southampton/Isle of Wight postcode area",
+      "notes": [
+        "Indexed by postcode area only. A full postcode may cross council boundaries, so use this as a national statutory baseline and confirm local licence conditions."
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import type { Tool, ToolCall } from '../types/index.js';
 import { registry } from '../tools/index.js';
+import { getToolCacheTtlSeconds, withCache } from '../tools/cache.js';
 import { checkNotSuspended, reportToolCall, isToolQuarantined } from '../security/index.js';
 import { scanToolOutput } from '../security/prompt-guard-middleware.js';
 import { enforceToolPolicy } from '../security/tool-policy-middleware.js';
@@ -74,7 +75,10 @@ export async function executeToolCall(
   }
 
   try {
-    const result = await tool.execute(call.params);
+    const ttlSeconds = getToolCacheTtlSeconds(call.toolName, call.params);
+    const result = await withCache(call.toolName, call.params, ttlSeconds, () =>
+      tool.execute(call.params),
+    );
     const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
     void reportToolCall({
       toolName: call.toolName,
