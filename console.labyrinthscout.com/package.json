@@ -1,0 +1,47 @@
+{
+  "name": "labyrinth-scout",
+  "version": "0.1.0",
+  "description": "Security control plane for Carina AI agent instances",
+  "type": "module",
+  "bin": {
+    "scout": "dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.0.1",
+    "express-session": "^1.18.0",
+    "ioredis": "^5.4.1",
+    "pg": "^8.13.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.0",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.10",
+    "@types/supertest": "^7.2.0",
+    "@types/uuid": "^10.0.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.4.3",
+    "vitepress": "^1.6.4",
+    "vitest": "^4.1.8"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
