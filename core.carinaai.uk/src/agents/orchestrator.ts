@@ -8,7 +8,7 @@ import { FileAgent } from './file-agent.js';
 import { ResearchAgent } from './research-agent.js';
 import type { ConfirmFn } from './tool-runner.js';
 import type { ProviderOverride } from '../brain/llm.js';
-import type { Message, SubAgentType, TaskPlan, TaskPlanStep } from '../types/index.js';
+import type { AgentOptions, Message, SubAgentType, TaskPlan, TaskPlanStep } from '../types/index.js';
 
 export type OrchestratorEvent =
   | TurnEvent
@@ -52,11 +52,16 @@ export class CarinaOrchestrator {
     sessionId: string,
     memoryReady: boolean,
     confirmTool?: ConfirmFn,
+    options: AgentOptions = {},
   ) {
     this.sessionId = sessionId;
     this.memoryReady = memoryReady;
     this.confirmTool = confirmTool;
-    this.agent = new CarinaAgent(sessionId, memoryReady, confirmTool);
+    this.agent = new CarinaAgent(sessionId, memoryReady, confirmTool, options);
+  }
+
+  setSystemPromptSuffix(suffix: string): void {
+    this.agent.setSystemPromptSuffix(suffix);
   }
 
   setProviderOverride(override: ProviderOverride): void {

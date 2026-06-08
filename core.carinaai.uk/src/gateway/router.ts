@@ -16,6 +16,7 @@ export class GatewayRouter {
   private agents = new Map<string, CarinaOrchestrator>();
   private lastSeen = new Map<string, number>();
   private sessionsWithRecentImages = new Set<string>();
+  private sessionSystemPromptSuffixes = new Map<string, string>();
   private memoryReady: boolean;
   private confirmTool?: ConfirmFn;
   private gcTimer: ReturnType<typeof setInterval>;
@@ -45,6 +46,12 @@ export class GatewayRouter {
     this.confirmTool = fn;
   }
 
+  setSessionSystemPromptSuffix(sessionId: string, suffix: string): void {
+    this.sessionSystemPromptSuffixes.set(sessionId, suffix);
+    const agent = this.agents.get(sessionId);
+    if (agent) agent.setSystemPromptSuffix(suffix);
+  }
+
   async getSession(source: string, externalUserId: string): Promise<string> {
     const mapKey = `carina:gateway:${source}:${externalUserId}`;
     const redis = getRedis();
@@ -70,7 +77,11 @@ export class GatewayRouter {
     let agent = this.agents.get(sessionId);
     if (!agent) {
       const confirm = source === 'cli' ? this.confirmTool : undefined;
-      agent = new CarinaOrchestrator(sessionId, this.memoryReady, confirm);
+      agent = new CarinaOrchestrator(sessionId, this.memoryReady, confirm, {
+        systemPromptSuffix: source === 'cli'
+          ? this.sessionSystemPromptSuffixes.get(sessionId)
+          : undefined,
+      });
       this.agents.set(sessionId, agent);
     }
     return agent;

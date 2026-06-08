@@ -5,11 +5,16 @@ import { getRouter } from './router.js';
 import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
 import { listSkills } from '../skills/store.js';
 import { registry } from '../tools/index.js';
+import { CARINA_HOME } from '../config/paths.js';
+import { loadWorkspaceContext } from '../workspace/context-files.js';
+import { runBootstrapIfPresent } from '../workspace/bootstrap.js';
 import type { ConfirmFn } from '../agents/tool-runner.js';
 import type { CarinaMessage } from '../types/index.js';
 
 let memoryReady = false;
 let sessionId = '';
+let workspaceContextCount = 0;
+let bootstrapRan = false;
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -128,6 +133,11 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
 
   const router = getRouter();
   sessionId = await router.getSession('cli', 'local');
+  const workspaceContext = await loadWorkspaceContext(CARINA_HOME);
+  workspaceContextCount = workspaceContext.length;
+  if (workspaceContext.length > 0) {
+    router.setSessionSystemPromptSuffix(sessionId, workspaceContext.join('\n\n---\n\n'));
+  }
 
   const confirmTool: ConfirmFn = (toolName, params, reason) =>
     new Promise((resolve) => {
@@ -140,12 +150,27 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
     });
 
   router.setConfirmHandler(confirmTool);
+  bootstrapRan = await runBootstrapIfPresent(CARINA_HOME, async (instructions) => {
+    for await (const _ of router.handle({
+      id: `bootstrap-${Date.now()}`,
+      sessionId,
+      content: instructions,
+      source: 'cli',
+      timestamp: new Date(),
+    })) {
+      // consume the bootstrap turn; success is represented by the generator completing
+    }
+  });
 
   console.log(chalk.bold.white('\n  Carina Agent'));
   console.log(chalk.gray('  Built by VERLOX Ltd · carinaai.uk'));
   console.log(chalk.gray(`  Session: ${sessionId}`));
   console.log(chalk.gray(`  Provider: ${llm.list()[0]} (default)`));
   console.log(chalk.gray(`  Tools: ${registry.list().map((t) => t.name).join(', ')}`));
+  console.log(chalk.gray(`  Workspace context: ${workspaceContextCount} file${workspaceContextCount === 1 ? '' : 's'} loaded from ${CARINA_HOME}`));
+  if (bootstrapRan) {
+    console.log(chalk.gray('  Bootstrap: BOOTSTRAP.md completed and removed'));
+  }
   if (memoryReady) {
     console.log(chalk.gray('  Memory: PostgreSQL + pgvector active'));
   } else {

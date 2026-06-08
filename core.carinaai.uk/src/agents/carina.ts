@@ -81,6 +81,10 @@ export class CarinaAgent {
     this.providerOverride = override;
   }
 
+  setSystemPromptSuffix(suffix: string): void {
+    this.systemPromptSuffix = suffix;
+  }
+
   getProviderOverride(): ProviderOverride | undefined {
     return this.pendingProviderOverride ?? this.providerOverride;
   }
