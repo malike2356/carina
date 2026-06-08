@@ -28,6 +28,9 @@ export interface ChannelMessage {
   isDirect: boolean;
   isMention: boolean;
   isCommand: boolean;
+  chatType?: 'private' | 'group';
+  chatTitle?: string;
+  senderName?: string;
   threadId?: string;
   replyTo?: string;
   attachments?: Attachment[];

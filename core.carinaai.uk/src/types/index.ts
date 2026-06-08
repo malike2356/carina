@@ -16,6 +16,13 @@ export interface CarinaMessage {
   content: string;
   source: 'cli' | 'telegram' | 'whatsapp' | 'web' | 'discord' | 'slack' | 'sms';
   timestamp: Date;
+  chatType?: 'private' | 'group';
+  mentioned?: boolean;
+  chatId?: string;
+  chatTitle?: string;
+  senderName?: string;
+  messageId?: string;
+  replyToMessageId?: string;
 }
 
 export interface CarinaResponse {

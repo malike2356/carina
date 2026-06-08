@@ -4,6 +4,7 @@ import { config } from '../config/index.js';
 import { getRouter } from './router.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
+import { formatForPlatform } from './formatting.js';
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
@@ -18,7 +19,9 @@ Commands:
 /model [provider] [model] - switch LLM provider`;
 
 async function sendLong(bot: TelegramBot, chatId: number, text: string, adapter: TelegramAdapter): Promise<void> {
-  for (const chunk of adapter.formatForChannel(text)) {
+  const formatted = formatForPlatform(text, 'telegram');
+  const chunks = Array.isArray(formatted) ? formatted : adapter.formatForChannel(formatted);
+  for (const chunk of chunks) {
     await bot.sendMessage(chatId, chunk);
   }
 }
@@ -38,7 +41,8 @@ async function streamToTelegram(
     if (messageId === null || !pendingEdit) return;
     pendingEdit = false;
     lastEdit = Date.now();
-    const display = fullText || '...';
+    const formatted = formatForPlatform(fullText || '...', 'telegram');
+    const display = Array.isArray(formatted) ? formatted[0] : formatted;
     try {
       await bot.editMessageText(display.slice(0, TELEGRAM_MAX), {
         chat_id: chatId,
@@ -95,7 +99,9 @@ export async function startTelegram(): Promise<void> {
 
   const useWebhook = Boolean(config.telegram.webhookUrl);
   const bot = new TelegramBot(token, { polling: !useWebhook });
-  const adapter = new TelegramAdapter(true, bot);
+  const me = await bot.getMe();
+  const botUsername = me.username ?? 'carina';
+  const adapter = new TelegramAdapter(true, bot, botUsername);
   channelRegistry.register(adapter);
 
   if (useWebhook) {
@@ -110,10 +116,16 @@ export async function startTelegram(): Promise<void> {
 
     const chatId = msg.chat.id;
     const text = msg.text.trim();
+    const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
 
     if (handleTelegramCommand(bot, chatId, text)) return;
 
     await bot.sendChatAction(chatId, 'typing');
+    if (isGroup && adapter.parseInbound(msg)?.isMention) {
+      await bot.setMessageReaction(chatId, msg.message_id, {
+        reaction: [{ type: 'emoji', emoji: '👀' }],
+      }).catch(() => undefined);
+    }
 
     try {
       await streamToTelegram(bot, chatId, getRouter().handleInbound('telegram', msg), adapter);

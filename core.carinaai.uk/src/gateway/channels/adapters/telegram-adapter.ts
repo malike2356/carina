@@ -1,5 +1,6 @@
 import type TelegramBot from 'node-telegram-bot-api';
-import { formatForChannel } from '../channel-formatter.js';
+import { wasMentioned } from '../../group-chat.js';
+import { formatForPlatform } from '../../formatting.js';
 import type {
   ChannelMessage,
   IChannelAdapter,
@@ -14,6 +15,7 @@ export class TelegramAdapter implements IChannelAdapter {
   constructor(
     readonly enabled: boolean,
     private readonly bot?: Pick<TelegramBot, 'sendMessage'>,
+    private readonly botUsername = 'carina',
   ) {}
 
   parseInbound(raw: unknown): ChannelMessage | null {
@@ -23,6 +25,9 @@ export class TelegramAdapter implements IChannelAdapter {
     }
 
     const text = msg.text.trim();
+    const chatType = msg.chat.type === 'private' ? 'private' : 'group';
+    const firstName = msg.from.first_name ?? '';
+    const lastName = msg.from.last_name ?? '';
     return {
       id: String(msg.message_id),
       channel: 'telegram',
@@ -30,9 +35,15 @@ export class TelegramAdapter implements IChannelAdapter {
       conversationId: String(msg.chat.id),
       text,
       timestamp: new Date((msg.date ?? Math.floor(Date.now() / 1000)) * 1000),
-      isDirect: msg.chat.type === 'private',
-      isMention: /@carina\b/i.test(text),
+      isDirect: chatType === 'private',
+      isMention: wasMentioned(msg as TelegramRawMessage, this.botUsername),
       isCommand: text.startsWith('/'),
+      chatType,
+      chatTitle: 'title' in msg.chat ? msg.chat.title : undefined,
+      senderName: [firstName, lastName].filter(Boolean).join(' ') || msg.from.username,
+      replyTo: msg.reply_to_message?.message_id !== undefined
+        ? String(msg.reply_to_message.message_id)
+        : undefined,
       raw,
     };
   }
@@ -45,7 +56,8 @@ export class TelegramAdapter implements IChannelAdapter {
   }
 
   formatForChannel(text: string): string[] {
-    return formatForChannel('telegram', text);
+    const formatted = formatForPlatform(text, 'telegram');
+    return Array.isArray(formatted) ? formatted : [formatted];
   }
 
   validateWebhook(): boolean {

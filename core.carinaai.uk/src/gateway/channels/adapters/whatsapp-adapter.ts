@@ -1,6 +1,6 @@
 import twilio from 'twilio';
 import { config } from '../../../config/index.js';
-import { formatForChannel } from '../channel-formatter.js';
+import { formatForPlatform } from '../../formatting.js';
 import type {
   Attachment,
   ChannelMessage,
@@ -35,6 +35,7 @@ export class WhatsAppAdapter implements IChannelAdapter {
       isDirect: true,
       isMention: false,
       isCommand: text.startsWith('/'),
+      chatType: 'private',
       attachments,
       raw,
     };
@@ -53,7 +54,8 @@ export class WhatsAppAdapter implements IChannelAdapter {
   }
 
   formatForChannel(text: string): string[] {
-    return formatForChannel('whatsapp', text);
+    const formatted = formatForPlatform(text, 'whatsapp');
+    return Array.isArray(formatted) ? formatted : [formatted];
   }
 
   validateWebhook(input: WebhookValidationInput): boolean {

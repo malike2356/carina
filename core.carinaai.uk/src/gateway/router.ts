@@ -7,6 +7,7 @@ import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
 import { hasImageAttachment } from './model-command.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import type { ChannelMessage, ChannelName } from './channels/channel-adapter.interface.js';
+import { recordGroupResponse, shouldRespondInGroup } from './group-chat.js';
 
 const memoryFallback = new Map<string, string>();
 
@@ -109,6 +110,10 @@ export class GatewayRouter {
     }
 
     const trimmed = message.content.trim();
+    const groupDecision = shouldRespondInGroup({ message });
+    if (!groupDecision.respond) {
+      return;
+    }
     const isModelCommand = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
     const commandAgent = isModelCommand ? this.getAgent(message.sessionId, message.source) : undefined;
     const needsAsyncCommand = message.content.startsWith('/memories') || message.content.startsWith('/usage');
@@ -134,13 +139,30 @@ export class GatewayRouter {
     }
 
     const agent = this.getAgent(message.sessionId, message.source);
-    for await (const event of agent.turn(message.content)) {
+    const content = message.chatType === 'group'
+      ? `${buildGroupContext(message)}\n\nMessage:\n${message.content}`
+      : message.content;
+    const groupChunks: string[] = [];
+    for await (const event of agent.turn(content)) {
       if (
         event.type === 'text' ||
         event.type === 'tool' ||
         event.type === 'status'
       ) {
+        if (message.chatType === 'group') {
+          groupChunks.push(event.content);
+          continue;
+        }
         yield event.content;
+      }
+    }
+    if (message.chatType === 'group') {
+      const full = groupChunks.join('');
+      if (full.trim() !== 'NO_RESPONSE_NEEDED') {
+        yield full;
+        if (message.chatId && message.messageId && full.trim()) {
+          recordGroupResponse(message.chatId, message.messageId);
+        }
       }
     }
   }
@@ -161,10 +183,29 @@ export class GatewayRouter {
       content: text,
       source: inbound.channel,
       timestamp: inbound.timestamp,
+      chatType: inbound.chatType,
+      mentioned: inbound.isMention,
+      chatId: inbound.conversationId,
+      chatTitle: inbound.chatTitle,
+      senderName: inbound.senderName,
+      messageId: inbound.id,
+      replyToMessageId: inbound.replyTo,
     };
 
     yield* this.handle(carinaMsg);
   }
+}
+
+function buildGroupContext(message: CarinaMessage): string {
+  return `Telegram group context:
+- Chat: ${message.chatTitle ?? message.chatId ?? 'unknown'}
+- Sender: ${message.senderName ?? 'unknown'}
+- Mentioned or replied to Carina: ${message.mentioned ? 'yes' : 'no'}
+
+Speaking rules:
+- Respond only if you can add clear value.
+- If no response is needed, respond exactly: NO_RESPONSE_NEEDED
+- Send one concise response, not several fragments.`;
 }
 
 function buildInboundText(message: ChannelMessage): string {

@@ -7,6 +7,7 @@ import { config } from '../config/index.js';
 import { getRouter } from './router.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { WhatsAppAdapter } from './channels/adapters/whatsapp-adapter.js';
+import { formatForPlatform } from './formatting.js';
 
 const DATA_DIR = path.resolve('data');
 
@@ -98,7 +99,9 @@ export function createWhatsAppRouter(): Router {
       }));
       const client = twilio(config.twilio.accountSid, config.twilio.authToken);
 
-      for (const chunk of adapter.formatForChannel(reply || '(no response)')) {
+      const formatted = formatForPlatform(reply || '(no response)', 'whatsapp');
+      const chunks = Array.isArray(formatted) ? formatted : adapter.formatForChannel(formatted);
+      for (const chunk of chunks) {
         await client.messages.create({
           from: config.twilio.fromNumber,
           to: from,
