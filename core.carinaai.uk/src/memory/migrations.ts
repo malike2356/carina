@@ -45,6 +45,47 @@ CREATE TABLE IF NOT EXISTS inbound_emails (
   read BOOLEAN DEFAULT FALSE,
   received_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  tenant_id UUID PRIMARY KEY,
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'carina_bundle', 'enterprise')),
+  status TEXT NOT NULL,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT UNIQUE,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  scout_api_key TEXT UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS invoices (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  stripe_invoice_id TEXT NOT NULL UNIQUE,
+  amount INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  pdf_url TEXT,
+  period_start TIMESTAMPTZ,
+  period_end TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS usage_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  date DATE NOT NULL,
+  tokens_used INTEGER NOT NULL,
+  model TEXT NOT NULL,
+  cost_estimate NUMERIC(12, 6) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS stripe_events (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;
 
 const INDEXES = [
@@ -54,6 +95,10 @@ const INDEXES = [
   `CREATE INDEX IF NOT EXISTS rag_chunks_embedding_idx
    ON rag_chunks USING ivfflat (embedding vector_cosine_ops)
    WITH (lists = 100)`,
+  `CREATE INDEX IF NOT EXISTS idx_invoices_tenant_created
+   ON invoices (tenant_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_usage_records_tenant_date
+   ON usage_records (tenant_id, date DESC)`,
 ];
 
 // Migrate existing 1536-dim columns to 768 (DeepSeek native dimension).

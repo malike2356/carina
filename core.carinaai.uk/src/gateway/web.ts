@@ -7,7 +7,8 @@ import chalk from 'chalk';
 import { config } from '../config/index.js';
 import { llm } from '../brain/llm.js';
 import { emailWebhookRouter } from '../api/email-webhook.js';
-import { mountHostedRoutes, mountStripeWebhook } from '../api/hosted.js';
+import { mountHostedRoutes } from '../api/hosted.js';
+import { mountBillingRoutes, mountBillingWebhook } from '../api/billing-routes.js';
 import { subscribeRouter } from '../api/subscribe.js';
 import { getRouter } from './router.js';
 import { createWhatsAppRouter, isWhatsAppConfigured, logWhatsAppStatus } from './whatsapp.js';
@@ -23,6 +24,7 @@ const chatLimiter = rateLimit({
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_STATIC = path.join(__dirname, 'web');
+const PRICING_STATIC = path.join(__dirname, '..', 'web', 'pricing');
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {
   let full = '';
@@ -135,12 +137,21 @@ export async function startWeb(): Promise<void> {
     next();
   });
 
-  mountStripeWebhook(app);
+  mountBillingWebhook(app);
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
   app.use('/api/chat', chatLimiter);
   app.use('/api/subscribe', subscribeRouter);
+  mountBillingRoutes(app);
   mountHostedRoutes(app);
+
+  app.use('/pricing', express.static(PRICING_STATIC));
+  const pricingHtml = await fs.readFile(path.join(PRICING_STATIC, 'index.html'), 'utf-8').catch(() => null);
+  const checkoutHtml = await fs.readFile(path.join(PRICING_STATIC, 'checkout.html'), 'utf-8').catch(() => null);
+  const successHtml = await fs.readFile(path.join(PRICING_STATIC, 'success.html'), 'utf-8').catch(() => null);
+  if (pricingHtml) app.get('/pricing', (_req, res) => res.type('html').send(pricingHtml));
+  if (checkoutHtml) app.get('/checkout', (_req, res) => res.type('html').send(checkoutHtml));
+  if (successHtml) app.get('/billing/success', (_req, res) => res.type('html').send(successHtml));
 
   try {
     const html = await fs.readFile(path.join(WEB_STATIC, 'index.html'), 'utf-8');

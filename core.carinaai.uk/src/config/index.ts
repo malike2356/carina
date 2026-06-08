@@ -63,6 +63,11 @@ export const config = {
     jwtSecret: process.env.JWT_SECRET ?? 'change-me-in-production',
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+    stripePrices: {
+      scoutStandard: process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
+      carinaBundle: process.env.STRIPE_PRICE_CARINA_BUNDLE ?? '',
+      enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',
+    },
     freeDailyMessages: 100,
   },
   hub: {
