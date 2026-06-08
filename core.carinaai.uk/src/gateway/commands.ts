@@ -1,8 +1,11 @@
-import { llm } from '../brain/llm.js';
 import { deleteMemory, listRecentMemories } from '../memory/store.js';
+import {
+  handleModelCommand,
+  type ModelCommandContext,
+} from './model-command.js';
 
 export type CommandResult =
-  | { handled: true; reply: string }
+  | { handled: true; reply: string; action?: 'exit' | 'clear' }
   | { handled: false };
 
 async function formatMemoriesList(): Promise<string> {
@@ -36,24 +39,19 @@ export async function handleGatewayCommandAsync(input: string): Promise<CommandR
   return handleGatewayCommand(trimmed);
 }
 
-export function handleGatewayCommand(input: string): CommandResult {
+export function handleGatewayCommand(input: string, modelContext: ModelCommandContext = {}): CommandResult {
   const trimmed = input.trim();
 
-  if (trimmed.startsWith('/provider')) {
-    const parts = trimmed.split(/\s+/);
-    if (parts[1]) {
-      try {
-        llm.use(parts[1]);
-        return { handled: true, reply: `Provider switched to: ${parts[1]}` };
-      } catch (e: unknown) {
-        const msg = e instanceof Error ? e.message : String(e);
-        return { handled: true, reply: msg };
-      }
-    }
-    return {
-      handled: true,
-      reply: `Available providers: ${llm.list().join(', ')}\nUsage: /provider deepseek`,
-    };
+  if (trimmed === '/exit') {
+    return { handled: true, reply: 'Goodbye.', action: 'exit' };
+  }
+
+  if (trimmed === '/clear') {
+    return { handled: true, reply: 'Session memory cleared.', action: 'clear' };
+  }
+
+  if (trimmed.startsWith('/provider') || trimmed.startsWith('/model')) {
+    return handleModelCommand(trimmed, modelContext);
   }
 
   if (trimmed === '/help') {
@@ -61,11 +59,13 @@ export function handleGatewayCommand(input: string): CommandResult {
       handled: true,
       reply: [
         'Commands:',
-        '/provider [name] - switch LLM provider',
-        '/provider - list providers',
+        '/model [provider] [model] - switch LLM provider',
+        '/model list - list configured providers',
+        '/provider [provider] [model] - alias for /model',
         '/memories - list episodic memories',
         '/memories delete <id> - delete a memory',
         '/clear - reset session memory',
+        '/exit - quit the CLI',
         '/help - show this message',
       ].join('\n'),
     };
