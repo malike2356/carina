@@ -1,6 +1,6 @@
 # GET /api/public/trust
 
-Public, read-only trust metrics for the Carina trust dashboard (`carinaai.uk/trust.html`).
+Public, read-only trust metrics for the Carina trust dashboard (`carinaai.uk/trust`).
 
 No API key required. Returns aggregated security posture only; no session IDs, IP addresses, or raw event descriptions.
 
@@ -73,7 +73,7 @@ Each item in `attestations` is a SHA256 hash preview of a security summary deriv
 
 ## Public trust dashboard
 
-- Carina marketing page: [carinaai.uk/trust.html](https://carinaai.uk/trust.html)
+- Carina marketing page: [carinaai.uk/trust](https://carinaai.uk/trust)
 - Scout operator console links to the public dashboard from the header **PUBLIC TRUST** button
 
 ## CORS

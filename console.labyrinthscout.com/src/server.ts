@@ -88,8 +88,23 @@ function serveDashboard(_req: express.Request, res: express.Response): void {
   }
 }
 
+function redirectHtml(stem: string) {
+  return (_req: express.Request, res: express.Response): void => {
+    res.redirect(301, stem);
+  };
+}
+
+function servePublicPage(file: string) {
+  return (_req: express.Request, res: express.Response): void => {
+    res.sendFile(path.join(PUBLIC, file));
+  };
+}
+
 app.get('/', serveDashboard);
-app.get('/dashboard.html', serveDashboard);
+app.get('/dashboard', serveDashboard);
+app.get('/dashboard.html', redirectHtml('/dashboard'));
+app.get('/pricing', servePublicPage('pricing.html'));
+app.get('/pricing.html', redirectHtml('/pricing'));
 app.use(express.static(PUBLIC));
 
 app.use('/account', accountRouter);

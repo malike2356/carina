@@ -32,6 +32,11 @@ deploy_site() {
     --exclude='node_modules' \
     "${local_dir}/" "${VPS_USER}@${VPS_HOST}:${remote_dir}/"
   log "${label} deployed to ${remote_dir}"
+
+  if [[ -f "${local_dir}/nginx.clean-urls.conf" ]]; then
+    log "Nginx clean-URL snippet: ${local_dir}/nginx.clean-urls.conf"
+    log "Merge into aaPanel site config if /trust or other extensionless paths 404."
+  fi
 }
 
 main() {
