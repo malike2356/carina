@@ -26,7 +26,7 @@ deploy_site() {
 
   log "Deploying ${label}..."
   ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p ${remote_dir}"
-  rsync -az --delete \
+  rsync -rlptvz --delete --no-owner --no-group --omit-dir-times \
     --exclude='.git' \
     --exclude='prompts_ignore' \
     --exclude='node_modules' \
