@@ -1,6 +1,6 @@
 # Carina - Project Prompt
 
-Carina is a **general-purpose autonomous AI agent platform** built by VERLOX Ltd. The model is a horizontal core runtime with vertical skill packs installed on top. UK property is the default skill pack at install.
+Carina is a **general-purpose autonomous AI agent platform** built by VERLOX Ltd. The model is a horizontal core runtime with optional vertical skill packs installed on top. No domain pack is enabled by default; property-uk is one optional pack among several.
 
 **Runtime:** Node.js 22 LTS + TypeScript 5
 **Repo root:** `/opt/lampp/htdocs/VERLOX/Carina-ai/`
@@ -32,7 +32,7 @@ The `src/` directory is fully implemented and TypeScript-clean:
 | Docker sandbox for shell and code execution | Complete |
 | CarinaOrchestrator + 4 sub-agents | Complete |
 | Skill auto-generation with Jaccard deduplication | Complete |
-| Property-uk skill pack (6 skills + system prompt + tools) | Complete |
+| Optional skill packs (property-uk, engineering, etc.; none active by default) | Complete |
 | Hosted mode with Stripe (hosted-auth, migrations) | Complete |
 | Skills Hub server | Complete |
 | bin/carina.ts + setup wizard + install-pack | Complete |

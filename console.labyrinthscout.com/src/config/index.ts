@@ -45,6 +45,19 @@ export const config = {
     attesterPrivateKey: optional('TRUST_ATTESTER_PRIVATE_KEY'),
     erc8004Registry: optional('TRUST_ERC8004_REGISTRY'),
     platform: optional('TRUST_PLATFORM', 'agent-trust-on-base'),
+    attestationEnabled: optional('TRUST_ATTESTATION_ENABLED', 'true') !== 'false',
+    attestationIntervalDays: parseInt(optional('TRUST_ATTESTATION_INTERVAL_DAYS', '7'), 10),
+    subjectAgentWallet: optional('TRUST_SUBJECT_AGENT_WALLET'),
+    verificationEnabled: optional('TRUST_VERIFICATION_ENABLED', 'true') !== 'false',
+    verificationIntervalDays: parseInt(optional('TRUST_VERIFICATION_INTERVAL_DAYS', '7'), 10),
+    wavEndpoints: optional(
+      'TRUST_WAV_ENDPOINTS',
+      'https://core.carinaai.uk,https://console.labyrinthscout.com/api/public/trust',
+    )
+      .split(',')
+      .map((url) => url.trim())
+      .filter(Boolean),
+    erc8126ValidationRegistry: optional('TRUST_ERC8126_VALIDATION_REGISTRY'),
   },
   alerts: {
     telegram: {

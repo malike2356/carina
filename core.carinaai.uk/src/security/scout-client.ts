@@ -1,5 +1,6 @@
 import { config } from '../config/index.js';
 import { getRedis } from '../memory/redis.js';
+import { scoutContext } from './scout-context.js';
 
 export interface ScoutEvent {
   severity: 'info' | 'warning' | 'critical' | 'breach';
@@ -37,15 +38,33 @@ const METRICS_TTL_SECONDS = 360;
 const DETECT_INTERVAL_MS = 60_000;
 const sessionTimers = new Map<string, ReturnType<typeof setInterval>>();
 
+function scoutBaseUrl(): string {
+  return (config.labyrinth.url || process.env.LABYRINTH_URL || '').replace(/\/+$/, '');
+}
+
 function isEnabled(): boolean {
+  const ctx = scoutContext.getStore();
+  if (ctx) return scoutBaseUrl() !== '';
   return config.labyrinth.enabled && config.labyrinth.url !== '' && config.labyrinth.apiKey !== '';
 }
 
 function headers(): Record<string, string> {
+  const ctx = scoutContext.getStore();
+  const apiKey = ctx?.apiKey ?? config.labyrinth.apiKey;
   return {
     'Content-Type': 'application/json',
-    'X-Scout-Key': config.labyrinth.apiKey,
+    'X-Scout-Key': apiKey,
   };
+}
+
+function resolveInstanceId(fallback?: string): string {
+  const ctx = scoutContext.getStore();
+  return ctx?.instanceId ?? fallback ?? config.labyrinth.instanceId;
+}
+
+function resolveInstanceName(): string {
+  const ctx = scoutContext.getStore();
+  return ctx?.instanceName ?? config.labyrinth.instanceName;
 }
 
 function isLikelySecret(value: string): boolean {
@@ -70,7 +89,7 @@ async function postToScout(path: string, body: unknown): Promise<void> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 2000);
   try {
-    const res = await fetch(`${config.labyrinth.url}${path}`, {
+    const res = await fetch(`${scoutBaseUrl()}${path}`, {
       method: 'POST',
       headers: headers(),
       body: JSON.stringify(body),
@@ -132,7 +151,7 @@ export async function reportToolCall(call: ToolCallReport): Promise<void> {
       duration_ms: call.durationMs,
       success: call.success,
     },
-    instance_id: config.labyrinth.instanceId,
+    instance_id: resolveInstanceId(),
   };
 
   if (call.sessionId) {
@@ -171,6 +190,9 @@ export async function recordToolCall(
     multi.incr(`${base}:http_count`);
     multi.expire(`${base}:http_count`, METRICS_TTL_SECONDS);
   }
+  multi.rpush(`${base}:tool_sequence`, toolName);
+  multi.ltrim(`${base}:tool_sequence`, -32, -1);
+  multi.expire(`${base}:tool_sequence`, METRICS_TTL_SECONDS);
   await multi.exec();
 
   ensureMetricsFlush(sessionId);
@@ -179,7 +201,7 @@ export async function recordToolCall(
 function ensureMetricsFlush(sessionId: string): void {
   if (sessionTimers.has(sessionId)) return;
   const timer = setInterval(() => {
-    void flushMetricsToScout(config.labyrinth.instanceId, sessionId);
+    void flushMetricsToScout(resolveInstanceId(), sessionId);
   }, DETECT_INTERVAL_MS);
   sessionTimers.set(sessionId, timer);
 }
@@ -210,12 +232,13 @@ export async function flushMetricsToScout(
   if (!redis) return;
 
   const base = `scout:metrics:${sessionId}`;
-  const [toolCalls, toolsUsed, totalLen, shellCount, httpCount] = await Promise.all([
+  const [toolCalls, toolsUsed, totalLen, shellCount, httpCount, toolSequence] = await Promise.all([
     redis.get(`${base}:tool_calls`),
     redis.scard(`${base}:tools_used`),
     redis.get(`${base}:total_response_length`),
     redis.get(`${base}:shell_count`),
     redis.get(`${base}:http_count`),
+    redis.lrange(`${base}:tool_sequence`, 0, -1),
   ]);
 
   const tc = Number(toolCalls ?? 0);
@@ -227,6 +250,8 @@ export async function flushMetricsToScout(
     http_request_count: Number(httpCount ?? 0),
     injection_attempt_count: 0,
     egress_blocked_count: 0,
+    tool_sequence: toolSequence,
+    hour_utc: new Date().getUTCHours(),
   };
 
   await postToScout('/api/events', {
@@ -242,8 +267,8 @@ export async function flushMetricsToScout(
 export async function reportHeartbeat(): Promise<void> {
   if (!isEnabled()) return;
   await postToScout('/api/heartbeat', {
-    instance_id: config.labyrinth.instanceId,
-    name: config.labyrinth.instanceName,
+    instance_id: resolveInstanceId(),
+    name: resolveInstanceName(),
   });
 }
 

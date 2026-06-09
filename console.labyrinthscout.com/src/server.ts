@@ -35,6 +35,7 @@ import { killswitchRouter } from './api/killswitch-status.js';
 import { auditSearchRouter } from './api/audit-search.js';
 import { complianceRouter } from './api/compliance.js';
 import { publicTrustRouter } from './api/public-trust.js';
+import { trustEnterpriseRouter } from './api/trust-enterprise.js';
 import { startScheduler } from './scheduler.js';
 import { startProxyServer } from './proxy/openai-proxy.js';
 
@@ -133,6 +134,7 @@ app.use('/api/egress', requireApiKey, egressControlRouter);
 app.use('/api/killswitch', requireApiKey, killswitchRouter);
 app.use('/api/audit', requireApiKey, auditSearchRouter);
 app.use('/api/compliance', requireApiKey, complianceRouter);
+app.use('/api/trust', requireApiKey, trustEnterpriseRouter);
 app.use('/api/stream', sseRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

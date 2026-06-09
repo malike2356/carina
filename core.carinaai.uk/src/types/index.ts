@@ -13,8 +13,24 @@ export interface Message {
 export interface CarinaMessage {
   id: string;
   sessionId: string;
+  tenantId?: string;
   content: string;
-  source: 'cli' | 'telegram' | 'whatsapp' | 'web' | 'discord' | 'slack' | 'sms';
+  source:
+    | 'cli'
+    | 'telegram'
+    | 'whatsapp'
+    | 'web'
+    | 'discord'
+    | 'slack'
+    | 'sms'
+    | 'signal'
+    | 'matrix'
+    | 'mattermost'
+    | 'dingtalk'
+    | 'feishu'
+    | 'wechat'
+    | 'imessage'
+    | 'email';
   timestamp: Date;
   chatType?: 'private' | 'group';
   mentioned?: boolean;
@@ -99,6 +115,7 @@ export interface AgentOptions {
   systemPromptSuffix?: string;
   maxTurns?: number;
   persistMemory?: boolean;
+  tenantId?: string;
   providerOverride?: {
     name: string;
     model?: string;
@@ -109,4 +126,5 @@ export interface AgentOptions {
     reason: string,
   ) => Promise<boolean>;
   forceConfirm?: boolean;
+  abortSignal?: AbortSignal;
 }

@@ -17,6 +17,26 @@ check_ssh() {
     die "Cannot SSH to ${VPS_USER}@${VPS_HOST}. Check SSH key."
 }
 
+build_carina_docs() {
+  log "Building Carina docs (base /docs/)..."
+  (
+    cd "${REPO_ROOT}/core.carinaai.uk"
+    VP_BASE=/docs/ pnpm docs:build
+    rm -rf "${REPO_ROOT}/carinaai.uk/docs"
+    cp -a docs/.vitepress/dist "${REPO_ROOT}/carinaai.uk/docs"
+  )
+}
+
+build_scout_docs() {
+  log "Building Scout docs (base /docs/)..."
+  (
+    cd "${REPO_ROOT}/console.labyrinthscout.com"
+    VP_BASE=/docs/ pnpm docs:build
+    rm -rf "${REPO_ROOT}/labyrinthscout.com/docs"
+    cp -a docs/.vitepress/dist "${REPO_ROOT}/labyrinthscout.com/docs"
+  )
+}
+
 deploy_site() {
   local label="$1"
   local local_dir="$2"
@@ -45,12 +65,16 @@ main() {
 
   case "$target" in
     carina)
+      build_carina_docs
       deploy_site "carinaai.uk" "${REPO_ROOT}/carinaai.uk" "/www/wwwroot/carinaai.uk"
       ;;
     scout)
+      build_scout_docs
       deploy_site "labyrinthscout.com" "${REPO_ROOT}/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
     all)
+      build_carina_docs
+      build_scout_docs
       deploy_site "carinaai.uk" "${REPO_ROOT}/carinaai.uk" "/www/wwwroot/carinaai.uk"
       deploy_site "labyrinthscout.com" "${REPO_ROOT}/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;

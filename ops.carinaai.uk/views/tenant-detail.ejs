@@ -1,0 +1,125 @@
+<% title = 'Tenant detail' %>
+<div class="mb-6">
+  <a href="/tenants" class="text-sm text-[#06b6d4] hover:underline">&larr; All tenants</a>
+  <h1 class="text-2xl font-bold text-white mt-2"><%= tenant.email %></h1>
+  <p class="text-sm text-gray-500 font-mono mt-1"><%= tenant.id %></p>
+</div>
+
+<% if (message) { %>
+  <div class="mb-4 rounded-lg border px-4 py-3 text-sm <%= messageIsError ? 'border-red-600/50 bg-red-950/30 text-red-200' : 'border-green-600/50 bg-green-950/30 text-green-200' %>">
+    <%= message %>
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Account</h2>
+    <dl class="text-sm space-y-2 text-gray-400">
+      <div><dt class="text-gray-500">Tier</dt>
+        <dd class="text-white font-medium"><%= tenant.tier %></dd></div>
+      <div><dt class="text-gray-500">API key</dt>
+        <dd class="font-mono text-[#06b6d4]"><%= tenant.apiKeyMasked %></dd></div>
+      <div><dt class="text-gray-500">Schema</dt>
+        <dd class="font-mono text-gray-300"><%= tenant.schemaName %></dd></div>
+      <div><dt class="text-gray-500">Joined</dt>
+        <dd><%= new Date(tenant.createdAt).toLocaleString() %></dd></div>
+      <% if (tenant.stripeCustomerId) { %>
+      <div><dt class="text-gray-500">Stripe customer</dt>
+        <dd class="font-mono text-xs"><%= tenant.stripeCustomerId %></dd></div>
+      <% } %>
+    </dl>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Usage</h2>
+    <dl class="text-sm space-y-2 text-gray-400">
+      <div><dt class="text-gray-500">Messages today</dt>
+        <dd class="text-white text-xl font-bold"><%= tenant.messagesToday %>
+          <% if (tenant.tier === 'free') { %>
+            <span class="text-sm font-normal text-gray-500">/ <%= freeDailyLimit %></span>
+          <% } %>
+        </dd></div>
+      <div><dt class="text-gray-500">Quota day</dt>
+        <dd><%= tenant.messagesDay || 'n/a' %></dd></div>
+      <div><dt class="text-gray-500">Tokens this month</dt>
+        <dd class="text-white"><%= tenant.monthlyTokens.toLocaleString() %></dd></div>
+      <div><dt class="text-gray-500">Est. cost (month)</dt>
+        <dd>$<%= tenant.monthlyCost.toFixed(4) %></dd></div>
+    </dl>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Subscription</h2>
+    <% if (tenant.subscriptionPlan) { %>
+      <dl class="text-sm space-y-2 text-gray-400">
+        <div><dt class="text-gray-500">Plan</dt><dd class="text-white"><%= tenant.subscriptionPlan %></dd></div>
+        <div><dt class="text-gray-500">Status</dt><dd><%= tenant.subscriptionStatus %></dd></div>
+      </dl>
+    <% } else { %>
+      <p class="text-sm text-gray-500">No Stripe subscription row.</p>
+    <% } %>
+
+    <h2 class="text-lg font-semibold text-white mt-6 mb-3">Operator actions</h2>
+    <form method="post" action="/tenants/<%= tenant.id %>/tier" class="flex gap-2 mb-3">
+      <select name="tier" class="bg-[#0f0f0f] border border-[#2a2a2a] rounded px-2 py-1 text-sm text-white">
+        <option value="free" <%= tenant.tier === 'free' ? 'selected' : '' %>>free</option>
+        <option value="pro" <%= tenant.tier === 'pro' ? 'selected' : '' %>>pro</option>
+      </select>
+      <button type="submit" class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1 rounded">Set tier</button>
+    </form>
+    <form method="post" action="/tenants/<%= tenant.id %>/reset-quota">
+      <button type="submit" class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1 rounded">
+        Reset daily quota
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">BYOK providers</h2>
+    <% if (!tenant.providers.length) { %>
+      <p class="text-sm text-gray-500">No provider keys configured.</p>
+    <% } else { %>
+      <ul class="space-y-2 text-sm">
+        <% for (const p of tenant.providers) { %>
+          <li class="flex justify-between border-b border-[#2a2a2a] pb-2">
+            <span class="text-[#06b6d4] font-mono"><%= p.provider %></span>
+            <span class="<%= p.enabled ? 'text-green-400' : 'text-gray-500' %>"><%= p.enabled ? 'active' : 'disabled' %></span>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+    <p class="text-xs text-gray-600 mt-3">Keys are never shown here; tenants manage them at app.carinaai.uk/settings.</p>
+  </section>
+
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Recent usage records</h2>
+    <% if (!tenant.recentUsage.length) { %>
+      <p class="text-sm text-gray-500">No usage_records yet.</p>
+    <% } else { %>
+      <div class="overflow-x-auto max-h-64 overflow-y-auto">
+        <table class="w-full text-xs">
+          <thead class="text-gray-500 sticky top-0 bg-[#1a1a1a]">
+            <tr>
+              <th class="text-left py-1 pr-2">Date</th>
+              <th class="text-left py-1 pr-2">Model</th>
+              <th class="text-right py-1 pr-2">Tokens</th>
+              <th class="text-right py-1">Cost</th>
+            </tr>
+          </thead>
+          <tbody class="text-gray-300">
+            <% for (const u of tenant.recentUsage) { %>
+              <tr class="border-t border-[#2a2a2a]">
+                <td class="py-1 pr-2"><%= u.date %></td>
+                <td class="py-1 pr-2 font-mono"><%= u.model %></td>
+                <td class="py-1 pr-2 text-right"><%= u.tokensUsed.toLocaleString() %></td>
+                <td class="py-1 text-right">$<%= u.costEstimate.toFixed(4) %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>

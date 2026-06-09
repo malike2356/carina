@@ -4,6 +4,13 @@ import { getToolCacheTtlSeconds, withCache } from '../tools/cache.js';
 import { checkNotSuspended, reportToolCall, isToolQuarantined } from '../security/index.js';
 import { scanToolOutput } from '../security/prompt-guard-middleware.js';
 import { enforceToolPolicy } from '../security/tool-policy-middleware.js';
+import { enforceToolSequence, recordToolSequenceStep } from '../security/tool-sequence-middleware.js';
+import {
+  enforceJitCredentials,
+  finalizeJitCredentials,
+  grantJitCredentialsAfterConfirm,
+} from '../security/jit-credentials-middleware.js';
+import { getJitCredentialStore, requiresJitGrant } from '../security/jit-credentials.js';
 
 export type ConfirmFn = (
   toolName: string,
@@ -53,8 +60,12 @@ export async function executeToolCall(
     console.warn(`[dangerous tool] ${call.toolName}`);
   }
 
+  const needsJitApproval = requiresJitGrant(call.toolName)
+    && !getJitCredentialStore().hasValidGrant(sessionId, call.toolName, call.params)
+    && call.params._jit_granted !== true;
+
   const mustConfirm =
-    alwaysConfirm || (await needsUserConfirmation(tool, call.params));
+    alwaysConfirm || needsJitApproval || (await needsUserConfirmation(tool, call.params));
   if (mustConfirm) {
     if (!confirm) {
       return { error: 'Tool requires confirmation but no confirm handler is configured.' };
@@ -67,7 +78,14 @@ export async function executeToolCall(
       return { error: 'User declined tool execution.' };
     }
     call.params = { ...call.params, _confirmed: true };
+    grantJitCredentialsAfterConfirm(sessionId, call.toolName, call.params);
   }
+
+  const sequenceError = await enforceToolSequence(sessionId, call.toolName, call.params);
+  if (sequenceError) return sequenceError;
+
+  const jitError = enforceJitCredentials(sessionId, call.toolName, call.params);
+  if (jitError) return jitError;
 
   const policyError = await enforceToolPolicy(call.toolName, call.params, sessionId);
   if (policyError) {
@@ -75,11 +93,14 @@ export async function executeToolCall(
   }
 
   try {
+    const paramsWithSession = { ...call.params, _sessionId: sessionId };
     const ttlSeconds = getToolCacheTtlSeconds(call.toolName, call.params);
     const result = await withCache(call.toolName, call.params, ttlSeconds, () =>
-      tool.execute(call.params),
+      tool.execute(paramsWithSession),
     );
     const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+    recordToolSequenceStep(sessionId, call.toolName, call.params);
+    finalizeJitCredentials(sessionId, call.toolName, call.params);
     void reportToolCall({
       toolName: call.toolName,
       params: call.params,

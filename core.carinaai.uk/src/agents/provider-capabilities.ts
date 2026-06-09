@@ -1,3 +1,8 @@
+import {
+  buildProviderCapabilitiesMap,
+  buildProviderDisplayNames,
+} from '../brain/provider-registry.js';
+
 export interface ProviderCapabilities {
   chat: boolean;
   vision: boolean;
@@ -5,17 +10,9 @@ export interface ProviderCapabilities {
   tools: boolean;
 }
 
-export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
-  deepseek: { chat: true, vision: false, streaming: true, tools: true },
-  openai: { chat: true, vision: true, streaming: true, tools: true },
-  anthropic: { chat: true, vision: true, streaming: true, tools: true },
-};
+export const PROVIDER_CAPABILITIES = buildProviderCapabilitiesMap();
 
 export function providerDisplayName(provider: string): string {
-  const names: Record<string, string> = {
-    deepseek: 'DeepSeek',
-    openai: 'OpenAI',
-    anthropic: 'Anthropic',
-  };
+  const names = buildProviderDisplayNames();
   return names[provider] ?? provider;
 }

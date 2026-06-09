@@ -8,6 +8,7 @@ import { getRouter } from './router.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { WhatsAppAdapter } from './channels/adapters/whatsapp-adapter.js';
 import { formatForPlatform } from './formatting.js';
+import { isBaileysConfigured } from './baileys/whatsapp-baileys.js';
 
 const DATA_DIR = path.resolve('data');
 
@@ -55,6 +56,9 @@ async function saveMedia(
 
 export function createWhatsAppRouter(): Router {
   const router = Router();
+  if (isBaileysConfigured()) {
+    return router;
+  }
   const adapter = new WhatsAppAdapter(isWhatsAppConfigured());
   channelRegistry.register(adapter);
 
@@ -120,12 +124,17 @@ export function createWhatsAppRouter(): Router {
 }
 
 export function isWhatsAppConfigured(): boolean {
+  if (isBaileysConfigured()) return false;
   return Boolean(
     config.twilio.accountSid && config.twilio.authToken && config.twilio.fromNumber,
   );
 }
 
 export function logWhatsAppStatus(): void {
+  if (isBaileysConfigured()) {
+    console.log(chalk.gray('WhatsApp gateway: Baileys live bridge (Twilio webhook skipped)'));
+    return;
+  }
   if (isWhatsAppConfigured()) {
     console.log(chalk.gray('WhatsApp gateway: POST /webhooks/whatsapp'));
   } else {

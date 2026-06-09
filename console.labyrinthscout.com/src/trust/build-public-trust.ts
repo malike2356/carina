@@ -6,6 +6,15 @@ import {
   type TrustMetricsInput,
 } from './compute-trust-metrics.js';
 import { loadReferenceTrustIdentity } from './load-trust-identity.js';
+import {
+  loadRecentTrustAttestations,
+  mapAttestationRowToPublic,
+} from './load-trust-attestations.js';
+import type { TrustAttestation } from './compute-trust-metrics.js';
+import {
+  loadLatestTrustVerification,
+  mapVerificationRowToPublic,
+} from './erc8126/load-verifications.js';
 
 interface InstanceAggRow {
   agents_total: string;
@@ -100,8 +109,43 @@ export async function buildPublicTrustFromDb(now = new Date()) {
     ? 'live'
     : parseChainStatus(config.trust.erc8004Status, 'registering');
 
-  return buildPublicTrustPayload(metrics, {
+  const slug = identity?.slug ?? 'carina-reference';
+  const [onChainRows, verificationRow] = await Promise.all([
+    loadRecentTrustAttestations(slug),
+    loadLatestTrustVerification(slug),
+  ]);
+  const onChainAttestations = onChainRows.map(mapAttestationRowToPublic);
+
+  const erc8126Status = verificationRow
+    ? 'live'
+    : parseChainStatus(config.trust.erc8126Status, 'enterprise');
+
+  const payload = buildPublicTrustPayload(metrics, {
     erc8004: erc8004Status,
-    erc8126: parseChainStatus(config.trust.erc8126Status, 'enterprise'),
+    erc8126: erc8126Status,
   }, identity, now);
+
+  if (verificationRow) {
+    const verification = mapVerificationRowToPublic(verificationRow);
+    payload.verification = verification;
+    payload.risk_score = verification.unified_risk_score;
+    payload.risk_tier = verification.unified_risk_tier;
+    payload.risk_tier_label = verification.unified_risk_tier_label;
+  }
+
+  payload.attestations = mergeAttestations(onChainAttestations, payload.attestations);
+  return payload;
+}
+
+function mergeAttestations(
+  onChain: TrustAttestation[],
+  offChain: TrustAttestation[],
+): TrustAttestation[] {
+  const merged = [...onChain];
+  for (const item of offChain) {
+    if (merged.length >= 5) break;
+    if (item.on_chain) continue;
+    merged.push(item);
+  }
+  return merged.slice(0, 5);
 }

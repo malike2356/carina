@@ -34,7 +34,7 @@ describe('executeToolCall', () => {
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const result = await exec(makeCall('test-tool', { x: 1 }));
     expect(result).toMatchObject({ ok: true });
-    expect(mockTool.execute).toHaveBeenCalledWith({ x: 1 });
+    expect(mockTool.execute).toHaveBeenCalledWith({ x: 1, _sessionId: 'default-session' });
   });
 
   it('calls confirm handler before dangerous tool and aborts on denial', async () => {

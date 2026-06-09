@@ -1,4 +1,7 @@
 allowBuilds:
-  bcrypt: set this to true or false
+  '@whiskeysockets/baileys': true
+  bcrypt: true
   better-sqlite3: true
-  esbuild: set this to true or false
+  esbuild: true
+  protobufjs: true
+  sharp: true

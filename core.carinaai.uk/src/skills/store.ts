@@ -32,6 +32,7 @@ export async function findRelevantSkills(keywords: string[]): Promise<Skill[]> {
   const result = await pool.query(
     `SELECT * FROM skill_documents
      WHERE trigger_keywords && $1::text[]
+       AND COALESCE(status, 'active') = 'active'
      ORDER BY usage_count DESC
      LIMIT 5`,
     [keywords],
@@ -42,7 +43,7 @@ export async function findRelevantSkills(keywords: string[]): Promise<Skill[]> {
 export async function incrementSkillUsage(id: string): Promise<void> {
   await pool.query(
     `UPDATE skill_documents
-     SET usage_count = usage_count + 1, updated_at = NOW()
+     SET usage_count = usage_count + 1, updated_at = NOW(), last_used_at = NOW()
      WHERE id = $1`,
     [id],
   );
@@ -89,6 +90,65 @@ export async function findSkillByKeywordOverlap(
 export async function skillExistsByName(name: string): Promise<boolean> {
   const result = await pool.query(
     'SELECT 1 FROM skill_documents WHERE name = $1 LIMIT 1',
+    [name],
+  );
+  return result.rowCount !== null && result.rowCount > 0;
+}
+
+export async function getSkillByName(name: string): Promise<Skill | null> {
+  const result = await pool.query(
+    'SELECT * FROM skill_documents WHERE name = $1 LIMIT 1',
+    [name],
+  );
+  if (!result.rows[0]) return null;
+  return rowToSkill(result.rows[0]);
+}
+
+export async function updateSkill(
+  name: string,
+  updates: Partial<SkillInput>,
+): Promise<Skill> {
+  const fields: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (updates.description !== undefined) {
+    fields.push(`description = $${idx++}`);
+    values.push(updates.description);
+  }
+  if (updates.steps !== undefined) {
+    fields.push(`steps = $${idx++}`);
+    values.push(updates.steps);
+  }
+  if (updates.trigger !== undefined) {
+    fields.push(`trigger_keywords = $${idx++}`);
+    values.push(updates.trigger);
+  }
+  if (updates.toolsUsed !== undefined) {
+    fields.push(`tools_used = $${idx++}`);
+    values.push(updates.toolsUsed);
+  }
+
+  if (fields.length === 0) {
+    const existing = await getSkillByName(name);
+    if (!existing) throw new Error(`Skill not found: ${name}`);
+    return existing;
+  }
+
+  fields.push('updated_at = NOW()');
+  values.push(name);
+
+  const result = await pool.query(
+    `UPDATE skill_documents SET ${fields.join(', ')} WHERE name = $${idx} RETURNING *`,
+    values,
+  );
+  if (!result.rows[0]) throw new Error(`Skill not found: ${name}`);
+  return rowToSkill(result.rows[0]);
+}
+
+export async function deleteSkill(name: string): Promise<boolean> {
+  const result = await pool.query(
+    'DELETE FROM skill_documents WHERE name = $1',
     [name],
   );
   return result.rowCount !== null && result.rowCount > 0;

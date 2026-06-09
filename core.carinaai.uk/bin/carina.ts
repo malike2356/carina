@@ -62,6 +62,55 @@ async function listPacks(): Promise<void> {
   for (const p of packs) console.log('  -', p);
 }
 
+async function runProfileCommand(): Promise<void> {
+  const action = args[1] ?? 'list';
+  const name = args[2];
+  const {
+    listProfiles,
+    createProfile,
+    activateProfile,
+    getActiveProfileName,
+  } = await import('../src/profiles/manager.js');
+
+  if (action === 'list') {
+    const profiles = await listProfiles();
+    const active = getActiveProfileName();
+    if (profiles.length === 0) {
+      console.log('No profiles. Create one: carina profile create <name>');
+      return;
+    }
+    for (const p of profiles) {
+      console.log(active === p ? `* ${p}` : `  ${p}`);
+    }
+    return;
+  }
+
+  if (action === 'create') {
+    if (!name) {
+      console.error('Usage: carina profile create <name>');
+      process.exit(1);
+    }
+    const profile = await createProfile(name);
+    console.log(`Profile created: ${profile.name}`);
+    console.log(`  dir: ${profile.dir}`);
+    return;
+  }
+
+  if (action === 'use') {
+    if (!name) {
+      console.error('Usage: carina profile use <name>');
+      process.exit(1);
+    }
+    const profile = activateProfile(name);
+    console.log(`Active profile: ${profile.name}`);
+    console.log(`  CARINA_HOME=${profile.dir}`);
+    return;
+  }
+
+  console.error('Usage: carina profile <list|create|use> [name]');
+  process.exit(1);
+}
+
 async function runConfigCommand(): Promise<void> {
   const action = args[1] ?? 'list';
   const keyPath = args[2];
@@ -112,9 +161,18 @@ async function main(): Promise<void> {
     case 'config':
       await runConfigCommand();
       break;
+    case 'profile':
+      await runProfileCommand();
+      break;
     case 'chat':
       await runChat();
       break;
+    case 'tui': {
+      loadLocalEnv();
+      const { runTui } = await import('../src/tui/index.js');
+      await runTui({ memoryReady: true });
+      break;
+    }
     case 'install-pack': {
       const name = args[1];
       if (!name) {
@@ -128,6 +186,20 @@ async function main(): Promise<void> {
     case 'list-packs':
       await listPacks();
       break;
+    case 'ide': {
+      const action = args[1] ?? 'install';
+      const target = (args[2] ?? 'all') as 'vscode' | 'cursor' | 'all';
+      const { buildIdeExtensions, installIdeExtension } = await import('../src/cli/commands/ide.js');
+      if (action === 'build') {
+        await buildIdeExtensions();
+      } else if (action === 'install') {
+        await installIdeExtension(target);
+      } else {
+        console.error('Usage: carina ide <install|build> [vscode|cursor|all]');
+        process.exit(1);
+      }
+      break;
+    }
     case 'web':
       loadLocalEnv();
       process.env.WEB_ENABLED = 'true';
@@ -147,13 +219,20 @@ async function main(): Promise<void> {
 Usage:
   carina                  Start interactive CLI (default)
   carina chat             Start interactive CLI
+  carina tui              Rich terminal UI (provider/profile picker)
   carina setup            First-run setup wizard
   carina serve            Start local web/API server on localhost:3000
   carina config list      Print ~/.carina/config.yaml
   carina config get <key> Read a config value
   carina config set <key> <value>
+  carina profile list       List isolated profiles
+  carina profile create <n> Create a new profile
+  carina profile use <n>    Switch active profile
   carina install-pack <n> Install skill pack from Skills Hub
   carina list-packs       List installed skill packs
+  carina ide install      Build and install VS Code + Cursor extensions
+  carina ide install vscode|cursor
+  carina ide build        Build VSIX packages only
   carina web              Start web UI only
   carina --version        Print version
 `);

@@ -1,0 +1,9 @@
+{
+  "name": "productivity",
+  "version": "1.0.0",
+  "description": "Productivity integrations: Google, Notion, Airtable, OCR, maps, notes, weather, news",
+  "author": "VERLOX Ltd",
+  "category": "productivity",
+  "optional": true,
+  "skillCount": 8
+}

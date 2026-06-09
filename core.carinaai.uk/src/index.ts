@@ -10,10 +10,28 @@ import { startSlack } from './gateway/slack.js';
 import { config } from './config/index.js';
 import { isWhatsAppConfigured } from './gateway/whatsapp.js';
 import { initSandbox } from './tools/sandbox.js';
+import { startProcessCleanup, stopProcessCleanup } from './tools/process-registry.js';
 import { initKillSwitchListener, reportHeartbeat } from './security/index.js';
 import { TaskScheduler } from './agents/scheduled-tasks.js';
 import { createProactiveCheckInTask } from './agents/check-in.js';
+import { loadAndRegisterAllJobs, setJobDeliverCallback } from './agents/cron-scheduler.js';
+import { deliverJobOutput } from './agents/cron-delivery.js';
+import { initMemoryBackend } from './memory/backends/index.js';
+import { startBaileysWhatsApp, isBaileysConfigured } from './gateway/baileys/whatsapp-baileys.js';
+import { importInboundMedia, importWorkspaceFiles } from './sync/agent-sync.js';
+import { startSkillCuratorSchedule } from './skills/curator-scheduler.js';
+import { initSkills } from './skills/index.js';
+import { applyActiveProfileFromDisk } from './profiles/manager.js';
+import { channelRegistry } from './gateway/channels/channel-registry.js';
+import { registerProcessCompletionHandler } from './tools/process-notifications.js';
 import './tools/index.js';
+
+registerProcessCompletionHandler(async (event) => {
+  const adapter = channelRegistry.getByName(event.channel);
+  if (adapter?.enabled) {
+    await adapter.sendMessage(event.conversationId, event.message);
+  }
+});
 
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let cleanupKillSwitch: (() => void) | null = null;
@@ -34,13 +52,31 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 async function main(): Promise<void> {
+  applyActiveProfileFromDisk();
   await initSandbox();
+  startProcessCleanup();
   let memoryReady = false;
 
   try {
     await initDb();
+    initMemoryBackend();
     memoryReady = true;
-    console.log(chalk.gray('Memory store ready'));
+    const jobCount = await loadAndRegisterAllJobs();
+    await initSkills();
+    startSkillCuratorSchedule();
+    if (process.env.CARINA_IMPORT_WORKSPACE === 'true') {
+      const { imported } = await importWorkspaceFiles();
+      if (imported.length > 0) {
+        console.log(chalk.gray(`Workspace import: ${imported.join(', ')}`));
+      }
+    }
+    if (process.env.CARINA_IMPORT_MEDIA === 'true') {
+      const { imported, skipped } = await importInboundMedia();
+      if (imported.length > 0 || skipped > 0) {
+        console.log(chalk.gray(`Inbound media import: ${imported.length} new, ${skipped} skipped`));
+      }
+    }
+    console.log(chalk.gray(`Memory store ready (${jobCount} scheduled jobs loaded)`));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(chalk.yellow(`Memory store unavailable: ${msg}`));
@@ -56,6 +92,12 @@ async function main(): Promise<void> {
   }
 
   initRouter(memoryReady);
+  setJobDeliverCallback(async (job, output) => {
+    const sent = await deliverJobOutput(job, output);
+    if (sent.length > 0) {
+      console.log(chalk.gray(`[cron] delivered to ${sent.join(', ')}`));
+    }
+  });
 
   if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
     taskScheduler = new TaskScheduler();
@@ -78,15 +120,16 @@ async function main(): Promise<void> {
 
   gateways.push(startDiscord());
   gateways.push(startSlack());
+  gateways.push(startBaileysWhatsApp());
 
   if (process.env.SKIP_CLI !== 'true') {
     gateways.push(startCLI({ memoryReady }));
   }
 
-  if (!isWhatsAppConfigured()) {
+  if (!isBaileysConfigured() && !isWhatsAppConfigured()) {
     console.warn(
       chalk.yellow(
-        'WhatsApp gateway skipped: set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM',
+        'WhatsApp gateway skipped: set BAILEYS_WHATSAPP_ENABLED=true or Twilio credentials',
       ),
     );
   }

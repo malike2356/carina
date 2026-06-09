@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { pool } from '../memory/db.js';
 import { BILLING_PLANS, type BillingPlanId } from './plans.js';
 import { StripeService } from './stripe-service.js';
+import { provisionScoutTenant } from './scout-provisioning.js';
 
 export interface SubscriptionSnapshot {
   tenant_id: string;
@@ -79,7 +80,21 @@ export class SubscriptionManager {
       ],
     );
     await pool.query('UPDATE hosted_users SET tier = $1, stripe_customer_id = $2 WHERE id = $3', ['pro', customerId ?? null, tenantId]);
-    return result.rows[0] as SubscriptionSnapshot;
+
+    const userRow = await pool.query<{ email: string }>(
+      'SELECT email FROM hosted_users WHERE id = $1',
+      [tenantId],
+    );
+    const email = userRow.rows[0]?.email;
+    const snapshot = result.rows[0] as SubscriptionSnapshot;
+    if (email && snapshot.scout_api_key) {
+      void provisionScoutTenant({
+        email,
+        tenantId,
+        licenseKey: snapshot.scout_api_key,
+      });
+    }
+    return snapshot;
   }
 
   async syncStripeSubscription(subscription: Stripe.Subscription): Promise<void> {

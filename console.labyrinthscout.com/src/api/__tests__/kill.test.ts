@@ -17,6 +17,15 @@ vi.mock('../../api/sse.js', () => ({
   refreshAndBroadcastStats: vi.fn(),
 }));
 
+vi.mock('../../security/forensic-snapshot.js', () => ({
+  captureForensicSnapshot: vi.fn().mockResolvedValue({
+    snapshotId: 'snap-1',
+    instanceId: 'carina-local',
+    reason: 'policy violation',
+    artifacts: {},
+  }),
+}));
+
 describe('validateKillReason', () => {
   it('accepts a valid reason', async () => {
     const { validateKillReason } = await import('../../lib/instance-control.js');

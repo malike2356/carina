@@ -280,6 +280,12 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <div class="spec-panel audit"><h3>AUDIT LOG</h3><div class="audit-tools"><input id="audit-search" placeholder="Search audit log, e.g. INJ-001"><button id="audit-export">EXPORT</button></div><div id="audit-log-results"><div class="spec-empty">Loading audit log</div></div></div>
   </section>
 
+  <section class="spec-dashboard" aria-label="Enterprise trust layer">
+    <div class="spec-panel audit"><h3>ATTESTATION HISTORY</h3><div id="trust-history-results"><div class="spec-empty">Loading on-chain history</div></div></div>
+    <div class="spec-panel audit"><h3>INCIDENT TIMELINE</h3><div class="audit-tools"><select id="incident-type-filter"><option value="">All types</option><option value="type1">Type 1 runtime</option><option value="type2">Type 2 privilege</option><option value="type3">Type 3 reasoning</option></select></div><div id="incident-timeline-results"><div class="spec-empty">Loading incidents</div></div></div>
+    <div class="spec-panel audit"><h3>COMPLIANCE REPORT</h3><div class="audit-tools"><button id="compliance-export-json">EXPORT JSON</button><button id="compliance-export-pdf">EXPORT PDF</button></div><p class="spec-empty" style="padding:.75rem">SOC2, ISO27001, and EU AI Act readiness pack from live Scout telemetry.</p></div>
+  </section>
+
   <div class="cols">
     <!-- LEFT -->
     <div class="col-left">
@@ -2292,5 +2298,8 @@ document.addEventListener('mouseout', e => {
 <script src="/dashboard/js/widgets/audit-log.js"></script>
 <script src="/dashboard/js/widgets/live-feed.js"></script>
 <script src="/dashboard/js/widgets/kill-switch.js"></script>
+<script src="/dashboard/js/widgets/trust-history.js"></script>
+<script src="/dashboard/js/widgets/incident-timeline.js"></script>
+<script src="/dashboard/js/widgets/compliance-report.js"></script>
 </body>
 </html>

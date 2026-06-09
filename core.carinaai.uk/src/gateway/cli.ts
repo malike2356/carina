@@ -162,8 +162,8 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
     }
   });
 
-  console.log(chalk.bold.white('\n  Carina Agent'));
-  console.log(chalk.gray('  Built by VERLOX Ltd · carinaai.uk'));
+  console.log(chalk.bold.white('\n  Carina'));
+  console.log(chalk.gray('  General-purpose autonomous agent · VERLOX Ltd · carinaai.uk'));
   console.log(chalk.gray(`  Session: ${sessionId}`));
   console.log(chalk.gray(`  Provider: ${llm.list()[0]} (default)`));
   console.log(chalk.gray(`  Tools: ${registry.list().map((t) => t.name).join(', ')}`));

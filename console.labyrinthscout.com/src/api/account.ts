@@ -13,6 +13,12 @@ import {
 import { pool } from '../db.js';
 import { requireAccount, redirectIfAccountAuthed } from '../middleware/account-session.js';
 import type { InstanceStatus } from '../types.js';
+import {
+  loadAccountTrustSettings,
+  saveAccountTrustSettings,
+  type AccountTrustSettings,
+} from '../lib/trust-settings.js';
+import { loadRecentTrustAttestations } from '../trust/load-trust-attestations.js';
 
 export const accountRouter: IRouter = Router();
 
@@ -176,6 +182,53 @@ accountRouter.get('/api/instances', requireAccount, async (req: Request, res: Re
     console.error('[scout:account] instances query failed:', msg);
     res.status(500).json({ error: 'Database error' });
   }
+});
+
+accountRouter.get('/api/trust-settings', requireAccount, async (req: Request, res: Response): Promise<void> => {
+  const settings = await loadAccountTrustSettings(req.session.accountId as string);
+  res.json({ settings });
+});
+
+accountRouter.put('/api/trust-settings', requireAccount, async (req: Request, res: Response): Promise<void> => {
+  const body = (req.body ?? {}) as Partial<AccountTrustSettings>;
+  const settings = await saveAccountTrustSettings(req.session.accountId as string, {
+    tier: body.tier === 'enterprise' ? 'enterprise' : 'standard',
+    attestation_interval_days: body.attestation_interval_days ?? 7,
+    verification_interval_days: body.verification_interval_days ?? 7,
+  });
+  res.json({ settings });
+});
+
+accountRouter.get('/api/onboarding', requireAccount, async (req: Request, res: Response): Promise<void> => {
+  const accountId = req.session.accountId as string;
+  const [keys, instances, attestations] = await Promise.all([
+    listApiKeys(accountId),
+    pool.query<{ id: string; last_heartbeat: Date | null }>(
+      `SELECT id, last_heartbeat FROM carina_instances WHERE account_id = $1`,
+      [accountId],
+    ),
+    loadRecentTrustAttestations('carina-reference', 1),
+  ]);
+
+  const activeKeys = keys.filter((key) => !key.revokedAt);
+  const paired = instances.rows.length > 0;
+  const heartbeat = instances.rows.some((row) => row.last_heartbeat !== null);
+  const attested = attestations.length > 0;
+
+  const steps = [
+    { id: 'account', label: 'Create Scout account', done: true },
+    { id: 'api_key', label: 'Generate pairing API key', done: activeKeys.length > 0 },
+    { id: 'pair', label: 'Pair Carina instance', done: paired },
+    { id: 'heartbeat', label: 'Receive first heartbeat', done: heartbeat },
+    { id: 'attestation', label: 'First on-chain attestation', done: attested },
+  ];
+
+  res.json({
+    steps,
+    complete: steps.every((step) => step.done),
+    progress: steps.filter((step) => step.done).length,
+    total: steps.length,
+  });
 });
 
 accountRouter.get('/api/events', requireAccount, async (req: Request, res: Response): Promise<void> => {

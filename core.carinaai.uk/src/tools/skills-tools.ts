@@ -1,0 +1,149 @@
+import type { Tool } from '../types/index.js';
+import {
+  deleteSkill,
+  getSkillByName,
+  listSkills,
+  saveSkill,
+  updateSkill,
+} from '../skills/store.js';
+
+export const skillsListTool: Tool = {
+  name: 'skills-list',
+  description: 'List all skills available to the agent, including pack skills and user-uploaded skills.',
+  parameters: {
+    type: 'object',
+    properties: {
+      limit: { type: 'number', description: 'Max skills to return (default 50)' },
+    },
+  },
+  execute: async (params) => {
+    const limit = Math.max(1, Math.min(Number(params.limit ?? 50), 200));
+    const skills = await listSkills();
+    return {
+      count: skills.length,
+      skills: skills.slice(0, limit).map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        triggers: s.trigger,
+        usage_count: s.usageCount,
+      })),
+    };
+  },
+};
+
+export const skillViewTool: Tool = {
+  name: 'skill-view',
+  description: 'View the full content of a skill by name, including steps and tools used.',
+  parameters: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: 'Skill name' },
+    },
+    required: ['name'],
+  },
+  execute: async (params) => {
+    const name = String(params.name ?? '').trim();
+    if (!name) return { error: 'name is required' };
+
+    const skill = await getSkillByName(name);
+    if (!skill) return { error: `skill not found: ${name}` };
+
+    return {
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      triggers: skill.trigger,
+      steps: skill.steps,
+      tools_used: skill.toolsUsed,
+      usage_count: skill.usageCount,
+      created_at: skill.createdAt.toISOString(),
+    };
+  },
+};
+
+export const skillManageTool: Tool = {
+  name: 'skill-manage',
+  description:
+    'Create, update, or delete skills. Actions: create (new skill), update (patch fields), delete (remove by name).',
+  parameters: {
+    type: 'object',
+    properties: {
+      action: { type: 'string', enum: ['create', 'update', 'delete'] },
+      name: { type: 'string', description: 'Skill name' },
+      description: { type: 'string', description: 'Skill description (create/update)' },
+      triggers: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Trigger keywords (create/update)',
+      },
+      steps: { type: 'string', description: 'Skill steps markdown (create/update)' },
+      tools_used: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Tools this skill uses (create/update)',
+      },
+    },
+    required: ['action', 'name'],
+  },
+  needsConfirmation: (params) => {
+    const action = String(params.action ?? '').toLowerCase();
+    return action === 'delete' || action === 'update';
+  },
+  execute: async (params) => {
+    const action = String(params.action ?? '').toLowerCase();
+    const name = String(params.name ?? '').trim();
+    if (!name) return { error: 'name is required' };
+
+    if (action === 'create') {
+      const description = String(params.description ?? '').trim();
+      const steps = String(params.steps ?? '').trim();
+      const triggers = Array.isArray(params.triggers)
+        ? (params.triggers as string[]).map(String)
+        : [];
+      const toolsUsed = Array.isArray(params.tools_used)
+        ? (params.tools_used as string[]).map(String)
+        : [];
+
+      if (!description || !steps) {
+        return { error: 'description and steps are required for create' };
+      }
+
+      const existing = await getSkillByName(name);
+      if (existing) return { error: `skill already exists: ${name}` };
+
+      const skill = await saveSkill({ name, description, trigger: triggers, steps, toolsUsed });
+      return { status: 'created', id: skill.id, name: skill.name };
+    }
+
+    if (action === 'update') {
+      const existing = await getSkillByName(name);
+      if (!existing) return { error: `skill not found: ${name}` };
+
+      const updates: Record<string, unknown> = {};
+      if (params.description !== undefined) updates.description = String(params.description);
+      if (params.steps !== undefined) updates.steps = String(params.steps);
+      if (params.triggers !== undefined) {
+        updates.trigger = Array.isArray(params.triggers)
+          ? (params.triggers as string[]).map(String)
+          : [];
+      }
+      if (params.tools_used !== undefined) {
+        updates.toolsUsed = Array.isArray(params.tools_used)
+          ? (params.tools_used as string[]).map(String)
+          : [];
+      }
+
+      const skill = await updateSkill(name, updates);
+      return { status: 'updated', id: skill.id, name: skill.name };
+    }
+
+    if (action === 'delete') {
+      const removed = await deleteSkill(name);
+      if (!removed) return { error: `skill not found: ${name}` };
+      return { status: 'deleted', name };
+    }
+
+    return { error: `unknown action: ${action}` };
+  },
+};

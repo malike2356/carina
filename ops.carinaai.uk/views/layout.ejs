@@ -21,6 +21,7 @@
     <nav class="flex flex-col gap-1 text-sm flex-1">
       <% const links = [
         { href: '/', label: 'Dashboard', match: (p) => p === '/' },
+        { href: '/tenants', label: 'Tenants', match: (p) => p.startsWith('/tenants') },
         { href: '/security', label: 'Security', match: (p) => p.startsWith('/security') },
         { href: '/chat', label: 'Chat', match: (p) => p.startsWith('/chat') },
         { href: '/memories', label: 'Memories', match: (p) => p.startsWith('/memories') },

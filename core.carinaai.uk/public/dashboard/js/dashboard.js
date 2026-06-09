@@ -242,6 +242,12 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    if (document.body.dataset.tenantScout === 'true') {
+      const killBtn = $('kill-switch');
+      if (killBtn) killBtn.hidden = true;
+      const adminName = $('admin-name');
+      if (adminName) adminName.textContent = 'tenant';
+    }
     $('refresh-feed').addEventListener('click', () => void loadFeed());
     $('audit-search').addEventListener('submit', (event) => {
       event.preventDefault();

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { query } from '../lib/db.js';
+import { fetchTenantSummary, hostedTablesReady } from '../lib/tenants.js';
 
 export const dashboardRouter = Router();
 
@@ -52,7 +53,11 @@ dashboardRouter.get('/', async (_req, res) => {
       ),
     ]);
 
+    const tenantReady = await hostedTablesReady();
+    const tenantSummary = tenantReady ? await fetchTenantSummary() : null;
+
     res.render('dashboard', {
+      tenantSummary,
       stats: {
         totalMemories: memories.rows[0]?.count ?? '0',
         sessions: sessions.rows[0]?.count ?? '0',

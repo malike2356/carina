@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitepress';
 
+const docsBase = process.env.VP_BASE || '/';
+
 export default defineConfig({
+  base: docsBase,
   title: 'Labyrinth Scout',
   description: 'Security control plane for AI agents. Self-hosted or hosted by VERLOX.',
   themeConfig: {

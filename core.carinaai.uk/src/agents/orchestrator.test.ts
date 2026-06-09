@@ -27,14 +27,18 @@ describe('CarinaOrchestrator.decompose', () => {
       incrementSkillUsage: vi.fn().mockResolvedValue(undefined),
     }));
     vi.doMock('../skills/index.js', () => ({
-      getPackSystemSuffix: vi.fn().mockReturnValue(''),
+      getActivePackSuffixes: vi.fn().mockReturnValue(''),
       loadPackSkills: vi.fn().mockResolvedValue(0),
     }));
     vi.doMock('../skills/auto-writer.js', () => ({
       evaluateAndWriteSkill: vi.fn().mockResolvedValue(undefined),
     }));
+    vi.doMock('../memory/persistent-memory.js', () => ({
+      getAllPersistentContext: vi.fn().mockResolvedValue(''),
+    }));
     vi.doMock('../tools/index.js', () => ({
       registry: { list: () => [], get: () => undefined },
+      registerSessionTools: vi.fn(),
     }));
     const { CarinaOrchestrator } = await import('./orchestrator.js');
     return new CarinaOrchestrator('test-session', false);
@@ -66,13 +70,17 @@ describe('CarinaOrchestrator.decompose', () => {
       incrementSkillUsage: vi.fn().mockResolvedValue(undefined),
     }));
     vi.doMock('../skills/index.js', () => ({
-      getPackSystemSuffix: vi.fn().mockReturnValue(''),
+      getActivePackSuffixes: vi.fn().mockReturnValue(''),
     }));
     vi.doMock('../skills/auto-writer.js', () => ({
       evaluateAndWriteSkill: vi.fn().mockResolvedValue(undefined),
     }));
+    vi.doMock('../memory/persistent-memory.js', () => ({
+      getAllPersistentContext: vi.fn().mockResolvedValue(''),
+    }));
     vi.doMock('../tools/index.js', () => ({
       registry: { list: () => [], get: () => undefined },
+      registerSessionTools: vi.fn(),
     }));
     const { CarinaOrchestrator } = await import('./orchestrator.js');
     const orc = new CarinaOrchestrator('test-session', false);

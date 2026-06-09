@@ -5,6 +5,7 @@ import { getRouter } from './router.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
 import { formatForPlatform } from './formatting.js';
+import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective } from './telegram-audio.js';
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
@@ -16,7 +17,8 @@ I am an autonomous AI agent by VERLOX Ltd. I can search the web, read and write 
 Commands:
 /help - show commands
 /clear - reset session memory
-/model [provider] [model] - switch LLM provider`;
+/model [provider] [model] - switch LLM provider
+/speak [message] - get a voice reply (or add [speak] to any message)`;
 
 async function sendLong(bot: TelegramBot, chatId: number, text: string, adapter: TelegramAdapter): Promise<void> {
   const formatted = formatForPlatform(text, 'telegram');
@@ -115,12 +117,14 @@ export async function startTelegram(): Promise<void> {
     if (!msg.text || !msg.from) return;
 
     const chatId = msg.chat.id;
-    const text = msg.text.trim();
+    const rawText = msg.text.trim();
+    const speakRequested = wantsSpokenReply(rawText);
+    const text = speakRequested ? stripSpeakDirective(rawText) : rawText;
     const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
 
     if (handleTelegramCommand(bot, chatId, text)) return;
 
-    await bot.sendChatAction(chatId, 'typing');
+    await bot.sendChatAction(chatId, speakRequested ? 'record_voice' : 'typing');
     if (isGroup && adapter.parseInbound(msg)?.isMention) {
       await bot.setMessageReaction(chatId, msg.message_id, {
         reaction: [{ type: 'emoji', emoji: '👀' }],
@@ -128,7 +132,25 @@ export async function startTelegram(): Promise<void> {
     }
 
     try {
-      await streamToTelegram(bot, chatId, getRouter().handleInbound('telegram', msg), adapter);
+      const inboundMsg = speakRequested ? { ...msg, text: text || 'Give me a brief spoken summary.' } : msg;
+      const generator = getRouter().handleInbound('telegram', inboundMsg);
+
+      if (speakRequested) {
+        let fullReply = '';
+        for await (const chunk of generator) {
+          fullReply += chunk;
+        }
+        if (fullReply.trim()) {
+          await sendSpokenReply(bot, chatId, fullReply);
+        }
+        const formatted = formatForPlatform(fullReply, 'telegram');
+        const display = Array.isArray(formatted) ? formatted.join('\n') : formatted;
+        if (display.trim()) {
+          await bot.sendMessage(chatId, display.slice(0, TELEGRAM_MAX));
+        }
+      } else {
+        await streamToTelegram(bot, chatId, generator, adapter);
+      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       await bot.sendMessage(chatId, `Error: ${errMsg}`);

@@ -9,6 +9,17 @@ beforeEach(() => {
   mockQuery.mockReset();
 });
 
+async function loadEpisodicPostgres() {
+  vi.doMock('./db.js', () => ({ pool: mockPool }));
+  vi.doMock('./embeddings.js', () => ({
+    embed: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+  }));
+  vi.doMock('pgvector/pg', () => ({
+    default: { toSql: (v: number[]) => `[${v.join(',')}]` },
+  }));
+  return import('./episodic-postgres.js');
+}
+
 async function loadStore() {
   vi.doMock('./db.js', () => ({ pool: mockPool }));
   vi.doMock('./embeddings.js', () => ({
@@ -23,7 +34,7 @@ async function loadStore() {
 describe('saveMemory', () => {
   it('inserts a row into episodic_memories', async () => {
     mockQuery.mockResolvedValue({ rows: [] });
-    const { saveMemory } = await loadStore();
+    const { saveMemory } = await loadEpisodicPostgres();
     await saveMemory('session-1', 'user', 'hello world');
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO episodic_memories'),
@@ -40,7 +51,7 @@ describe('getSessionHistory', () => {
         { id: 'b', session_id: 's1', role: 'assistant', content: 'hello', created_at: new Date() },
       ],
     });
-    const { getSessionHistory } = await loadStore();
+    const { getSessionHistory } = await loadEpisodicPostgres();
     const result = await getSessionHistory('s1', 10);
     expect(result).toHaveLength(2);
     expect(result[0].role).toBe('user');
@@ -55,7 +66,7 @@ describe('getSessionHistory', () => {
 describe('clearSession', () => {
   it('deletes rows for the given session', async () => {
     mockQuery.mockResolvedValue({ rowCount: 3 });
-    const { clearSession } = await loadStore();
+    const { clearSession } = await loadEpisodicPostgres();
     await clearSession('session-to-clear');
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringContaining('DELETE FROM episodic_memories'),

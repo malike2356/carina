@@ -1,6 +1,10 @@
 # Getting Started
 
-## Prerequisites
+## Carina Cloud (no install)
+
+Use the hosted app at **[app.carinaai.uk](https://app.carinaai.uk)** if you prefer a browser workspace with BYOK keys and optional Pro security (Labyrinth Scout). Full guide: [Carina Cloud](/carina-cloud).
+
+## Prerequisites (self-hosted)
 
 | Requirement | Version | Notes |
 |---|---|---|

@@ -1,4 +1,6 @@
 export const propertyUkSystemSuffix = `
+[Optional pack: property-uk] Apply the following only for UK property investment tasks.
+
 You have specialist knowledge in UK property investment, including:
 - Buy-to-let and HMO regulations
 - BRR (Buy, Refurbish, Refinance) strategy

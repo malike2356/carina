@@ -1,7 +1,16 @@
 import { homedir } from 'os';
 import path from 'path';
+import { CARINA_RESOURCES_DIR } from '../config/paths.js';
 
 const BLOCKED_PREFIXES = ['/etc', '/usr', '/bin', '/sys', '/proc'];
+
+export function resolveResourcePath(raw: string): string {
+  if (raw.startsWith('@resources/') || raw.startsWith('resources://')) {
+    const rel = raw.replace(/^@resources\//, '').replace(/^resources:\/\//, '');
+    return path.join(CARINA_RESOURCES_DIR, rel);
+  }
+  return expandPath(raw);
+}
 
 export function expandPath(raw: string): string {
   if (raw.startsWith('~/')) {

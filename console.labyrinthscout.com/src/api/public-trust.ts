@@ -2,8 +2,11 @@ import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { config } from '../config/index.js';
 import { buildPublicTrustFromDb } from '../trust/build-public-trust.js';
+import { trustVerifyRouter } from './trust-verify.js';
 
 export const publicTrustRouter: IRouter = Router();
+
+publicTrustRouter.use('/verify', trustVerifyRouter);
 
 publicTrustRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
   if (!config.trust.publicEnabled) {

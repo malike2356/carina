@@ -1,0 +1,104 @@
+<% title = 'Tenants' %>
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-white">Hosted tenants</h1>
+    <p class="text-sm text-gray-400 mt-1">Carina Cloud accounts on app.carinaai.uk (BYOK, quotas, billing).</p>
+  </div>
+  <a href="<%= hostedAppUrl %>" target="_blank" rel="noopener"
+     class="text-sm text-[#06b6d4] hover:underline">Open <%= hostedAppUrl %></a>
+</div>
+
+<% if (message) { %>
+  <div class="mb-4 rounded-lg border px-4 py-3 text-sm <%= messageIsError ? 'border-red-600/50 bg-red-950/30 text-red-200' : 'border-green-600/50 bg-green-950/30 text-green-200' %>">
+    <%= message %>
+  </div>
+<% } %>
+
+<% if (!ready) { %>
+  <div class="rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-4 text-sm text-amber-200">
+    <p class="font-medium text-amber-100 mb-2">Hosted mode not initialized</p>
+    <p>The <code>hosted_users</code> table was not found in <code>CARINA_DB_URL</code>.</p>
+    <p class="mt-2 text-amber-200/80">Set <code>HOSTED_MODE=true</code> on Carina core and register at least one user at app.carinaai.uk, or run hosted migrations.</p>
+  </div>
+<% } else { %>
+
+  <% if (summary) { %>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Total tenants</p>
+      <p class="text-2xl font-bold text-white mt-1"><%= summary.total %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Free</p>
+      <p class="text-2xl font-bold text-white mt-1"><%= summary.freeCount %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Pro</p>
+      <p class="text-2xl font-bold text-[#22c55e] mt-1"><%= summary.proCount %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Msgs today (all)</p>
+      <p class="text-2xl font-bold text-white mt-1"><%= summary.messagesToday %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-sm">Tokens this month</p>
+      <p class="text-2xl font-bold text-white mt-1"><%= summary.monthlyTokens.toLocaleString() %></p>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="flex gap-2 mb-4 text-sm">
+    <a href="/tenants" class="px-3 py-1 rounded <%= !tierFilter ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">All</a>
+    <a href="/tenants?tier=free" class="px-3 py-1 rounded <%= tierFilter === 'free' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Free</a>
+    <a href="/tenants?tier=pro" class="px-3 py-1 rounded <%= tierFilter === 'pro' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Pro</a>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <% if (!tenants.length) { %>
+      <p class="p-6 text-gray-500 text-sm">No tenants yet.</p>
+    <% } else { %>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left">
+          <thead class="text-gray-400 border-b border-[#2a2a2a] bg-[#141414]">
+            <tr>
+              <th class="px-4 py-3 font-medium">Email</th>
+              <th class="px-4 py-3 font-medium">Tier</th>
+              <th class="px-4 py-3 font-medium">Today</th>
+              <th class="px-4 py-3 font-medium">BYOK keys</th>
+              <th class="px-4 py-3 font-medium">Tokens (month)</th>
+              <th class="px-4 py-3 font-medium">Subscription</th>
+              <th class="px-4 py-3 font-medium">Joined</th>
+              <th class="px-4 py-3 font-medium"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-[#2a2a2a]">
+            <% for (const t of tenants) { %>
+              <tr class="hover:bg-[#222]">
+                <td class="px-4 py-3 text-white"><%= t.email %></td>
+                <td class="px-4 py-3">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium <%= t.tier === 'pro' ? 'bg-green-900/50 text-green-300' : 'bg-gray-800 text-gray-300' %>">
+                    <%= t.tier %>
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-gray-300"><%= t.messagesToday %></td>
+                <td class="px-4 py-3 text-gray-300"><%= t.providerCount %></td>
+                <td class="px-4 py-3 text-gray-300"><%= t.monthlyTokens.toLocaleString() %></td>
+                <td class="px-4 py-3 text-gray-400">
+                  <% if (t.subscriptionPlan) { %>
+                    <%= t.subscriptionPlan %> <span class="text-gray-500">(<%= t.subscriptionStatus || 'n/a' %>)</span>
+                  <% } else { %>
+                    <span class="text-gray-600">none</span>
+                  <% } %>
+                </td>
+                <td class="px-4 py-3 text-gray-500"><%= new Date(t.createdAt).toLocaleDateString() %></td>
+                <td class="px-4 py-3">
+                  <a href="/tenants/<%= t.id %>" class="text-[#06b6d4] hover:underline">View</a>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+<% } %>

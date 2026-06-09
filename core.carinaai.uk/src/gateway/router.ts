@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { CarinaOrchestrator } from '../agents/orchestrator.js';
+import { llm } from '../brain/llm.js';
 import type { ConfirmFn } from '../agents/tool-runner.js';
 import { getRedis } from '../memory/redis.js';
 import type { CarinaMessage, Message } from '../types/index.js';
@@ -139,6 +140,10 @@ export class GatewayRouter {
     }
 
     const agent = this.getAgent(message.sessionId, message.source);
+    if (message.tenantId) {
+      agent.setTenantId(message.tenantId);
+      llm.setTenant(message.tenantId);
+    }
     const content = message.chatType === 'group'
       ? `${buildGroupContext(message)}\n\nMessage:\n${message.content}`
       : message.content;

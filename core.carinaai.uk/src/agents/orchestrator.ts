@@ -69,6 +69,10 @@ export class CarinaOrchestrator {
     this.agent.setProviderOverride(override);
   }
 
+  setTenantId(tenantId: string | undefined): void {
+    this.agent.setTenantId(tenantId);
+  }
+
   getProviderOverride(): ProviderOverride | undefined {
     return this.agent.getProviderOverride() ?? this.providerOverride;
   }

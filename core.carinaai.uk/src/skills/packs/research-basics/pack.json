@@ -1,0 +1,9 @@
+{
+  "name": "research-basics",
+  "version": "1.0.0",
+  "description": "Research skills: arXiv, RSS monitoring, investigation methodology, linked notes",
+  "author": "VERLOX Ltd",
+  "category": "research",
+  "optional": true,
+  "skillCount": 5
+}

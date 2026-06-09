@@ -1,6 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { config } from '../config/index.js';
+import { resolveApiKey } from './credential-pool.js';
 import {
   anthropicTools,
   openaiTools,
@@ -8,9 +10,35 @@ import {
   toOpenAIMessages,
 } from './messages.js';
 import { classifyComplexity, type TaskComplexity } from './task-classifier.js';
+import { OpenAICompatibleProvider } from './openai-compatible-provider.js';
+import { getTenantProvider } from './tenant-provider-keys.js';
+import type { TenantProviderOverride } from './tenant-provider-keys.js';
+import {
+  PROVIDER_DEFINITIONS,
+  PROVIDER_MAP,
+  KNOWN_LLM_PROVIDERS,
+  fallbackOrderNames,
+  isProviderConfigured,
+  providerApiKey,
+  providerModel,
+  type ProviderName,
+} from './provider-registry.js';
+import {
+  anthropicCacheControlBlocks,
+  getCachedSystemPrompt,
+  recordProviderCacheHit,
+} from './prompt-cache.js';
 import type { Message, CarinaResponse, LLMProvider, Tool, ToolCall } from '../types/index.js';
 
-const SYSTEM_PROMPT = `You are Carina, an autonomous AI agent built by VERLOX Ltd.
+export type { ProviderName };
+export { KNOWN_LLM_PROVIDERS };
+
+export interface ProviderOverride {
+  name: string;
+  model?: string;
+}
+
+export const SYSTEM_PROMPT = `You are Carina, an autonomous AI agent built by VERLOX Ltd.
 
 You are not a chatbot. You are an agent. You take actions, execute tasks, remember context, and improve over time.
 
@@ -27,21 +55,6 @@ Your principles:
 You have access to tools for: web search, file operations, email, HTTP requests, shell, and code execution.
 Use them proactively when they will help complete the task.`;
 
-export type ProviderName = 'deepseek' | 'anthropic' | 'openai';
-
-export interface ProviderOverride {
-  name: string;
-  model?: string;
-}
-
-const DEFAULT_PROVIDER_MODELS: Record<ProviderName, string> = {
-  deepseek: config.deepseek.model,
-  anthropic: config.anthropic.model,
-  openai: config.openai.model,
-};
-
-export const KNOWN_LLM_PROVIDERS = Object.keys(DEFAULT_PROVIDER_MODELS) as ProviderName[];
-
 function parseToolCallsFromOpenAI(
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined,
 ): ToolCall[] {
@@ -56,33 +69,43 @@ function parseToolCallsFromOpenAI(
     }));
 }
 
-// --- Claude ---
+function effectiveSystemPrompt(messages: Message[]): { prompt: string; cacheKey: string } {
+  const cached = getCachedSystemPrompt(messages);
+  const dynamic = cached.systemPrompt.trim();
+  const combined = dynamic ? `${SYSTEM_PROMPT}\n\n---\n\n${dynamic}` : SYSTEM_PROMPT;
+  return { prompt: combined, cacheKey: cached.cacheKey };
+}
+
 export class ClaudeProvider implements LLMProvider {
   name = 'anthropic';
   private client: Anthropic;
 
-  constructor() {
-    this.client = new Anthropic({ apiKey: config.anthropic.apiKey });
+  constructor(apiKeyOverride?: string) {
+    const def = PROVIDER_MAP.anthropic;
+    this.client = new Anthropic({
+      apiKey: apiKeyOverride
+        ?? resolveApiKey(providerApiKey(def), process.env[def.apiKeysPoolEnv]),
+    });
   }
 
   async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
+    const { prompt, cacheKey } = effectiveSystemPrompt(messages);
     const toolDefs = anthropicTools(tools);
     const response = await this.client.messages.create({
-      model: model ?? config.anthropic.model,
+      model: model ?? providerModel(PROVIDER_MAP.anthropic),
       max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      system: anthropicCacheControlBlocks(prompt),
       messages: toAnthropicMessages(messages),
       ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
     });
+
+    recordProviderCacheHit(this.name, cacheKey);
 
     const content = response.content
       .filter((b) => b.type === 'text')
       .map((b) => (b.type === 'text' ? b.text : ''))
       .join('');
 
-    const toolsUsed = response.content
-      .filter((b) => b.type === 'tool_use')
-      .map((b) => (b.type === 'tool_use' ? b.name : ''));
     const toolCalls = response.content
       .filter((b) => b.type === 'tool_use')
       .map((b) => (b.type === 'tool_use'
@@ -97,7 +120,7 @@ export class ClaudeProvider implements LLMProvider {
 
     return {
       content,
-      toolsUsed,
+      toolsUsed: toolCalls.map((t) => t.toolName),
       tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
       provider: 'anthropic',
       toolCalls,
@@ -105,20 +128,18 @@ export class ClaudeProvider implements LLMProvider {
   }
 
   async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
+    const { prompt } = effectiveSystemPrompt(messages);
     const toolDefs = anthropicTools(tools);
     const stream = this.client.messages.stream({
-      model: model ?? config.anthropic.model,
+      model: model ?? providerModel(PROVIDER_MAP.anthropic),
       max_tokens: 8192,
-      system: SYSTEM_PROMPT,
+      system: anthropicCacheControlBlocks(prompt),
       messages: toAnthropicMessages(messages),
       ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
     });
 
     for await (const chunk of stream) {
-      if (
-        chunk.type === 'content_block_delta' &&
-        chunk.delta.type === 'text_delta'
-      ) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
         yield chunk.delta.text;
       }
     }
@@ -137,175 +158,82 @@ export class ClaudeProvider implements LLMProvider {
   }
 }
 
-// --- DeepSeek (OpenAI-compatible API) ---
-export class DeepSeekProvider implements LLMProvider {
-  name = 'deepseek';
-  private client: OpenAI;
+export class GeminiProvider implements LLMProvider {
+  name = 'gemini';
+  private client: GoogleGenerativeAI;
 
-  constructor() {
-    this.client = new OpenAI({
-      apiKey: config.deepseek.apiKey,
-      baseURL: 'https://api.deepseek.com/v1',
-    });
+  constructor(apiKeyOverride?: string) {
+    const def = PROVIDER_MAP.gemini;
+    this.client = new GoogleGenerativeAI(
+      apiKeyOverride
+        ?? resolveApiKey(providerApiKey(def), process.env[def.apiKeysPoolEnv]),
+    );
   }
 
-  async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
-    const toolDefs = openaiTools(tools);
-    const response = await this.client.chat.completions.create({
-      model: model ?? config.deepseek.model,
-      max_tokens: 8192,
-      messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
-      ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
+  async chat(messages: Message[], _tools?: Tool[], model?: string): Promise<CarinaResponse> {
+    const { prompt } = effectiveSystemPrompt(messages);
+    const genModel = this.client.getGenerativeModel({ model: model ?? providerModel(PROVIDER_MAP.gemini) });
+    const history = messages.slice(0, -1).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+    const last = messages.at(-1)?.content ?? '';
+    const chat = genModel.startChat({
+      history,
+      systemInstruction: prompt,
     });
-
-    const msg = response.choices[0]?.message;
-    const content = msg?.content ?? '';
-    const usage = response.usage;
-    const toolCalls = parseToolCallsFromOpenAI(msg?.tool_calls);
-    const toolsUsed = toolCalls.map((t) => t.toolName);
-
+    const result = await chat.sendMessage(last);
     return {
-      content,
-      toolsUsed,
-      tokensUsed: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
-      provider: 'deepseek',
-      toolCalls,
+      content: result.response.text(),
+      toolsUsed: [],
+      tokensUsed: 0,
+      provider: 'gemini',
     };
   }
 
   async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
-    const toolDefs = openaiTools(tools);
-    const stream = await this.client.chat.completions.create({
-      model: model ?? config.deepseek.model,
-      max_tokens: 8192,
-      stream: true,
-      messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
-      ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-    });
-
-    const acc = new Map<number, { id: string; name: string; args: string }>();
-
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta;
-      if (delta?.content) yield delta.content;
-
-      if (delta?.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          const idx = tc.index ?? 0;
-          let entry = acc.get(idx);
-          if (!entry) {
-            entry = { id: tc.id ?? '', name: tc.function?.name ?? '', args: '' };
-            acc.set(idx, entry);
-          }
-          if (tc.id) entry.id = tc.id;
-          if (tc.function?.name) entry.name = tc.function.name;
-          if (tc.function?.arguments) entry.args += tc.function.arguments;
-        }
-      }
-    }
-
-    for (const entry of acc.values()) {
-      yield {
-        type: 'tool_call',
-        toolName: entry.name,
-        toolCallId: entry.id,
-        params: JSON.parse(entry.args || '{}') as Record<string, unknown>,
-      };
-    }
+    const response = await this.chat(messages, tools, model);
+    yield response.content;
   }
 }
 
-// --- OpenAI ---
-export class OpenAIProvider implements LLMProvider {
-  name = 'openai';
-  private client: OpenAI;
-
-  constructor() {
-    this.client = new OpenAI({ apiKey: config.openai.apiKey });
-  }
-
-  async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
-    const toolDefs = openaiTools(tools);
-    const response = await this.client.chat.completions.create({
-      model: model ?? config.openai.model,
-      max_tokens: 8192,
-      messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
-      ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-    });
-
-    const msg = response.choices[0]?.message;
-    const content = msg?.content ?? '';
-    const usage = response.usage;
-    const toolCalls = parseToolCallsFromOpenAI(msg?.tool_calls);
-    const toolsUsed = toolCalls.map((t) => t.toolName);
-
-    return {
-      content,
-      toolsUsed,
-      tokensUsed: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
-      provider: 'openai',
-      toolCalls,
-    };
-  }
-
-  async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
-    const toolDefs = openaiTools(tools);
-    const stream = await this.client.chat.completions.create({
-      model: model ?? config.openai.model,
-      max_tokens: 8192,
-      stream: true,
-      messages: toOpenAIMessages(messages, SYSTEM_PROMPT),
-      ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-    });
-
-    const acc = new Map<number, { id: string; name: string; args: string }>();
-
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta;
-      if (delta?.content) yield delta.content;
-
-      if (delta?.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          const idx = tc.index ?? 0;
-          let entry = acc.get(idx);
-          if (!entry) {
-            entry = { id: tc.id ?? '', name: tc.function?.name ?? '', args: '' };
-            acc.set(idx, entry);
-          }
-          if (tc.id) entry.id = tc.id;
-          if (tc.function?.name) entry.name = tc.function.name;
-          if (tc.function?.arguments) entry.args += tc.function.arguments;
-        }
-      }
-    }
-
-    for (const entry of acc.values()) {
-      yield {
-        type: 'tool_call',
-        toolName: entry.name,
-        toolCallId: entry.id,
-        params: JSON.parse(entry.args || '{}') as Record<string, unknown>,
-      };
-    }
-  }
+function createProvider(defName: string, tenantCreds?: TenantProviderOverride): LLMProvider | null {
+  const def = PROVIDER_MAP[defName];
+  if (!def) return null;
+  if (!tenantCreds?.apiKey && !isProviderConfigured(def)) return null;
+  if (def.kind === 'anthropic') return new ClaudeProvider(tenantCreds?.apiKey);
+  if (def.kind === 'gemini') return new GeminiProvider(tenantCreds?.apiKey);
+  return new OpenAICompatibleProvider(def, SYSTEM_PROMPT, tenantCreds
+    ? { apiKey: tenantCreds.apiKey, baseUrl: tenantCreds.baseUrl, model: tenantCreds.model }
+    : undefined);
 }
 
-// --- Router: picks provider based on config, falls back automatically ---
+async function resolveTenantCredentials(
+  tenantId: string | undefined,
+  providerName: string,
+): Promise<TenantProviderOverride | null> {
+  if (!tenantId) return null;
+  return getTenantProvider(tenantId, providerName);
+}
+
 export class LLMRouter {
   private providers: Map<string, LLMProvider> = new Map();
   private active: string;
   private activeModels: Map<string, string> = new Map();
+  private tenantId?: string;
+
+  setTenant(tenantId: string | undefined): void {
+    this.tenantId = tenantId;
+  }
 
   constructor() {
-    if (config.deepseek.apiKey)  this.providers.set('deepseek',  new DeepSeekProvider());
-    if (config.anthropic.apiKey) this.providers.set('anthropic', new ClaudeProvider());
-    if (config.openai.apiKey)    this.providers.set('openai',    new OpenAIProvider());
-
-    this.active = config.carina.defaultProvider;
-
-    if (!this.providers.has(this.active)) {
-      this.active = this.providers.keys().next().value ?? 'deepseek';
+    for (const def of PROVIDER_DEFINITIONS) {
+      const provider = createProvider(def.name);
+      if (provider) this.providers.set(def.name, provider);
     }
+
+    const preferred = process.env.DEFAULT_PROVIDER ?? config.carina.defaultProvider;
+    this.active = this.providers.has(preferred) ? preferred : (this.providers.keys().next().value ?? 'deepseek');
   }
 
   use(provider: string, model?: string): void {
@@ -319,7 +247,7 @@ export class LLMRouter {
 
   current(): LLMProvider {
     const provider = this.providers.get(this.active);
-    if (!provider) throw new Error(`No provider available. Check your .env API keys.`);
+    if (!provider) throw new Error('No provider available. Check your .env API keys.');
     return provider;
   }
 
@@ -328,7 +256,8 @@ export class LLMRouter {
   }
 
   modelFor(provider: string): string {
-    return this.activeModels.get(provider) ?? DEFAULT_PROVIDER_MODELS[provider as ProviderName] ?? '';
+    const def = PROVIDER_MAP[provider];
+    return this.activeModels.get(provider) ?? (def ? providerModel(def) : '');
   }
 
   isKnownProvider(provider: string): boolean {
@@ -343,26 +272,49 @@ export class LLMRouter {
     return [...KNOWN_LLM_PROVIDERS];
   }
 
-  // Fallback order: DeepSeek (primary) -> Claude -> OpenAI
   private fallbackOrder(override?: ProviderOverride): Array<{ provider: LLMProvider; model?: string }> {
-    const order = ['deepseek', 'anthropic', 'openai'];
     const activeName = override?.name ?? this.active;
-    const active = this.providers.get(activeName);
-    const rest = order
-      .filter(n => n !== activeName)
-      .map(n => this.providers.get(n))
-      .filter((p): p is LLMProvider => p !== undefined);
-    const activeModel = override?.model ?? (activeName ? this.activeModels.get(activeName) : undefined);
-    const providers = active ? [active, ...rest] : rest;
-    return providers.map((provider) => ({
-      provider,
-      model: provider.name === activeName ? activeModel : this.activeModels.get(provider.name),
-    }));
+    const order = fallbackOrderNames();
+    const names = [activeName, ...order.filter((n) => n !== activeName)];
+    const out: Array<{ provider: LLMProvider; model?: string }> = [];
+    for (const name of names) {
+      const provider = this.providers.get(name);
+      if (!provider) continue;
+      out.push({
+        provider,
+        model: name === activeName
+          ? (override?.model ?? this.activeModels.get(name))
+          : this.activeModels.get(name),
+      });
+    }
+    return out;
   }
 
-  async chat(messages: Message[], tools?: Tool[], override?: ProviderOverride): Promise<CarinaResponse> {
-    const providers = this.fallbackOrder(override);
-    return this.chatWithProviders(providers, messages, tools);
+  async chat(
+    messages: Message[],
+    tools?: Tool[],
+    override?: ProviderOverride,
+    tenantId?: string,
+  ): Promise<CarinaResponse> {
+    const effectiveTenantId = tenantId ?? this.tenantId;
+    const providerName = override?.name ?? this.active;
+    const tenantCreds = await resolveTenantCredentials(effectiveTenantId, providerName);
+    if (tenantCreds) {
+      const tenantProvider = createProvider(providerName, tenantCreds);
+      if (tenantProvider) {
+        try {
+          return await tenantProvider.chat(
+            messages,
+            tools,
+            tenantCreds.model ?? override?.model,
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[llm] tenant ${providerName} failed (${msg}), falling back to global...`);
+        }
+      }
+    }
+    return this.chatWithProviders(this.fallbackOrder(override), messages, tools);
   }
 
   async chatRouted(
@@ -370,9 +322,25 @@ export class LLMRouter {
     tools?: Tool[],
     classification: TaskComplexity = classifyComplexity(messages),
     override?: ProviderOverride,
+    tenantId?: string,
   ): Promise<CarinaResponse> {
-    if (override) return this.chat(messages, tools, override);
+    const effectiveTenantId = tenantId ?? this.tenantId;
+    if (override) return this.chat(messages, tools, override, effectiveTenantId);
+
     const startProvider = classification === 'simple' ? this.cheap().name : this.current().name;
+    const tenantCreds = await resolveTenantCredentials(effectiveTenantId, startProvider);
+    if (tenantCreds) {
+      const tenantProvider = createProvider(startProvider, tenantCreds);
+      if (tenantProvider) {
+        try {
+          return await tenantProvider.chat(messages, tools, tenantCreds.model);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[llm] tenant ${startProvider} failed (${msg}), falling back to global...`);
+        }
+      }
+    }
+
     return this.chatWithProviders(this.fallbackOrder({ name: startProvider }), messages, tools);
   }
 
@@ -418,9 +386,8 @@ export class LLMRouter {
     return [...this.providers.keys()];
   }
 
-  // DeepSeek -> OpenAI -> Claude for cheap meta-calls (skill eval, orchestration)
   cheap(): LLMProvider {
-    for (const name of ['deepseek', 'openai', 'anthropic']) {
+    for (const name of fallbackOrderNames()) {
       const p = this.providers.get(name);
       if (p) return p;
     }

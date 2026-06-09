@@ -8,9 +8,17 @@ import {
   saveMemory,
   clearSession,
 } from '../memory/store.js';
-import { findRelevantSkills, incrementSkillUsage } from '../skills/store.js';
-import { getPackSystemSuffix } from '../skills/index.js';
-import { registry } from '../tools/index.js';
+import { incrementSkillUsage } from '../skills/store.js';
+import { findSkillsIncludingSkillMd } from '../skills/index.js';
+import { compressTrajectory, isStaleToolCall } from './trajectory.js';
+import { isRagPackAllowed, isSkillAllowedForActivePacks } from '../skills/index.js';
+import { buildSystemPromptParts } from './system-prompt.js';
+import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
+import { loadCrossAgentContext } from '../sync/agent-sync.js';
+import { loadAllContacts, contactsContextBlock } from '../profiles/contacts.js';
+import { registry, registerSessionTools } from '../tools/index.js';
+import { getAllPersistentContext } from '../memory/persistent-memory.js';
+import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
 import type { ConfirmFn } from './tool-runner.js';
 import { executeToolCall } from './tool-runner.js';
 import { scanUserInput } from '../security/prompt-guard-middleware.js';
@@ -54,7 +62,9 @@ export class CarinaAgent {
   private forceConfirm = false;
   private providerOverride?: ProviderOverride;
   private pendingProviderOverride?: ProviderOverride;
+  private tenantId?: string;
   private toolCallInFlight = false;
+  private abortSignal?: AbortSignal;
 
   constructor(
     sessionId: string,
@@ -71,6 +81,13 @@ export class CarinaAgent {
     this.persistMemory = options.persistMemory !== false;
     this.forceConfirm = options.forceConfirm ?? false;
     this.providerOverride = options.providerOverride;
+    this.tenantId = options.tenantId;
+    this.abortSignal = options.abortSignal;
+    registerSessionTools(sessionId);
+  }
+
+  setTenantId(tenantId: string | undefined): void {
+    this.tenantId = tenantId;
   }
 
   setProviderOverride(override: ProviderOverride): void {
@@ -99,13 +116,34 @@ export class CarinaAgent {
     const meta: TurnMeta = { memoryTurns: 0, ragChunks: 0, skills: 0 };
     const contextParts: string[] = [];
 
-    const packSuffix = getPackSystemSuffix(config.carina.activePack);
-    if (packSuffix) contextParts.push(packSuffix);
+    contextParts.push(...buildSystemPromptParts());
     if (this.systemPromptSuffix) {
       contextParts.push(this.systemPromptSuffix);
     }
 
+    const personality = await loadProfilePersonality();
+    const personalitySuffix = personalityToSystemSuffix(personality);
+    if (personalitySuffix) {
+      contextParts.push(personalitySuffix);
+    }
+
+    const crossAgent = await loadCrossAgentContext();
+    if (crossAgent.length > 0) {
+      contextParts.push(crossAgent.join('\n\n---\n\n'));
+    }
+
+    const contacts = await loadAllContacts();
+    const contactBlock = contactsContextBlock(contacts.slice(0, 15));
+    if (contactBlock) {
+      contextParts.push(contactBlock);
+    }
+
     if (this.memoryReady) {
+      const persistent = await getAllPersistentContext();
+      if (persistent) {
+        contextParts.push(`Persistent memory:\n${persistent}`);
+      }
+
       const history = await getSessionHistory(
         this.sessionId,
         config.carina.maxMemoryContext,
@@ -124,19 +162,23 @@ export class CarinaAgent {
         contextParts.push(`Relevant past memories:\n${lines.join('\n')}`);
       }
 
-      const rag = await searchRag(userMessage, 3);
+      const rag = (await searchRag(userMessage, 3)).filter((chunk) => isRagPackAllowed(chunk.pack));
       if (rag.length > 0) {
         meta.ragChunks = rag.length;
-        const lines = rag.map((c) => `[${c.source}] ${c.content}`);
-        contextParts.push(`Domain knowledge (RAG):\n${lines.join('\n\n')}`);
+        const lines = rag.map((c) => `[${c.pack}/${c.source}] ${c.content}`);
+        contextParts.push(`Reference knowledge from installed packs (use only when relevant):\n${lines.join('\n\n')}`);
       }
 
       const keywords = extractKeywords(userMessage);
-      const skills = await findRelevantSkills(keywords);
+      const skills = (await findSkillsIncludingSkillMd(keywords)).filter((skill) =>
+        isSkillAllowedForActivePacks(skill.name),
+      );
       if (skills.length > 0) {
         meta.skills = skills.length;
         for (const skill of skills) {
-          await incrementSkillUsage(skill.id);
+          if (!skill.id.startsWith('skillmd:')) {
+            await incrementSkillUsage(skill.id);
+          }
         }
         const lines = skills.map(
           (s) => `Skill: ${s.name}\n${s.description}\nSteps:\n${s.steps}`,
@@ -172,6 +214,20 @@ export class CarinaAgent {
       return;
     }
 
+    const parentScope = !isSubagentSession(this.sessionId);
+    if (parentScope) beginParentTurn(this.sessionId);
+
+    try {
+      yield* this.runTurnLoop(userMessage, priorContext);
+    } finally {
+      if (parentScope) endParentTurn(this.sessionId);
+    }
+  }
+
+  private async *runTurnLoop(
+    userMessage: string,
+    priorContext?: string,
+  ): AsyncGenerator<TurnEvent> {
     const safeUserMessage = await scanUserInput(userMessage);
     const prompt = priorContext
       ? `${priorContext}\n\n---\n\nTask:\n${safeUserMessage}`
@@ -184,10 +240,16 @@ export class CarinaAgent {
     let turnText = '';
     const toolsUsed: string[] = [];
     const toolCallLog: string[] = [];
+    const recentToolCalls: ToolCall[] = [];
     let turns = 0;
     let budgetWarned = false;
 
     while (turns < this.maxTurns) {
+      if (this.abortSignal?.aborted) {
+        yield { type: 'text', content: '[Turn cancelled.]' };
+        break;
+      }
+
       turns++;
       if (this.pendingProviderOverride) {
         this.providerOverride = this.pendingProviderOverride;
@@ -204,7 +266,19 @@ export class CarinaAgent {
         yield { type: 'text', content: `[${budget.message}]\n\n` };
       }
 
-      const response = await llm.chatRouted(messages, tools, undefined, this.providerOverride);
+      const compressed = compressTrajectory(messages);
+      if (compressed !== messages) {
+        messages.length = 0;
+        messages.push(...compressed);
+      }
+
+      const response = await llm.chatRouted(
+        messages,
+        tools,
+        undefined,
+        this.providerOverride,
+        this.tenantId,
+      );
       await recordUsage(this.sessionId, response.provider, response.tokensUsed, llm.modelFor(response.provider));
 
       const textBuffer = response.content;
@@ -230,6 +304,22 @@ export class CarinaAgent {
       });
 
       for (const call of toolCalls) {
+        if (this.abortSignal?.aborted) break;
+
+        if (isStaleToolCall(call, recentToolCalls)) {
+          messages.push({
+            role: 'tool_result',
+            content: '',
+            toolCallId: call.toolCallId,
+            toolName: call.toolName,
+            result: { error: 'Stale duplicate tool call skipped. Try a different approach.' },
+            timestamp: new Date(),
+          });
+          continue;
+        }
+        recentToolCalls.push(call);
+        if (recentToolCalls.length > 20) recentToolCalls.shift();
+
         toolsUsed.push(call.toolName);
         toolCallLog.push(`${call.toolName}: ${JSON.stringify(call.params).slice(0, 120)}`);
         const status = `\n[using ${call.toolName}...]\n`;
@@ -253,6 +343,10 @@ export class CarinaAgent {
           });
         } finally {
           this.toolCallInFlight = false;
+          if (this.pendingProviderOverride) {
+            this.providerOverride = this.pendingProviderOverride;
+            this.pendingProviderOverride = undefined;
+          }
         }
       }
     }

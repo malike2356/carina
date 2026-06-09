@@ -7,7 +7,15 @@ export type ChannelName =
   | 'whatsapp'
   | 'discord'
   | 'slack'
-  | 'sms';
+  | 'sms'
+  | 'signal'
+  | 'matrix'
+  | 'mattermost'
+  | 'dingtalk'
+  | 'feishu'
+  | 'wechat'
+  | 'imessage'
+  | 'email';
 
 export interface Attachment {
   id?: string;

@@ -1,10 +1,11 @@
-# Phase 3.5 — Productivity + Media + Email + Gaming + Smart Home + Social + Note-taking + Red-teaming + Memory Skills
+# Phase 3.5 — Productivity + Media + Email + Smart Home + Social + Note-taking + Red-teaming + Memory Skills
 
 ## Task
-Port all remaining skill categories. These cover productivity tools, media handling, email, gaming, smart home control, social media, note-taking, red-teaming, and memory management.
+Port ALL remaining skill categories — every single Hermes skill except gaming. Carina is for serious business. No games, no gaming, no Minecraft, no Pokemon. Everything else must be ported.
 
 ## Productivity
 - **airtable**: Airtable REST API — records CRUD, filters, upserts
+- **client-proposals**: Write client-facing proposals, follow-ups, and scope documentation
 - **event-debrief**: Process event transcripts, recordings, and slides
 - **google-workspace**: Gmail, Calendar, Drive, Docs, Sheets via gws CLI or Python
 - **laud-agent-bridge**: Communicate between Carina and OpenClaw agents
@@ -27,10 +28,6 @@ Port all remaining skill categories. These cover productivity tools, media handl
 
 ## Email
 - **himalaya**: Himalaya CLI — IMAP/SMTP email from terminal
-
-## Gaming
-- **minecraft-modpack-server**: Host modded Minecraft servers (CurseForge, Modrinth)
-- **pokemon-player**: Play Pokemon via headless emulator + RAM reads
 
 ## Smart Home
 - **openhue**: Control Philips Hue lights, scenes, rooms via OpenHue CLI
@@ -56,5 +53,4 @@ Skills requiring API keys (Spotify, Notion, Airtable, Google, X/Twitter) must:
 2. Guide user through setup if missing
 3. Never hardcode tokens — read from env/config
 
-Gaming skills need appropriate emulators/runtimes installed.
 Smart home skills need network access to Hue bridge.

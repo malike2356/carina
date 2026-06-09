@@ -1,0 +1,9 @@
+.vscode/**
+.vscode-test/**
+src/**
+scripts/**
+cursor-package.json
+tsconfig.json
+**/*.map
+.gitignore
+pnpm-lock.yaml

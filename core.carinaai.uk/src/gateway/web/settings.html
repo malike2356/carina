@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Cloud - Settings</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636; --danger: #f85149;
+    }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 32px; }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    p { color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+    nav { margin-bottom: 24px; }
+    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; font-size: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
+    h2 { font-size: 16px; margin-bottom: 12px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input, select {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 14px;
+      margin-bottom: 12px;
+    }
+    button {
+      background: var(--send); color: #fff; border: none; border-radius: 6px;
+      padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    button.danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); margin-left: 8px; }
+    .provider-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .provider-row:last-child { border-bottom: none; }
+    .status { font-size: 12px; color: var(--muted); }
+    .status.on { color: #3fb950; }
+    .msg { font-size: 13px; margin-top: 12px; }
+    .msg.ok { color: #3fb950; }
+    .msg.err { color: var(--danger); }
+    code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="/">Chat</a>
+      <a href="/settings">Settings</a>
+      <a href="/billing">Billing</a>
+    </nav>
+    <h1>Settings</h1>
+    <p>Bring your own API keys (BYOK). Carina routes inference through your keys. Keys are encrypted at rest and never shown again after saving.</p>
+
+    <div class="card">
+      <h2>Account</h2>
+      <p id="account-email" class="status">Loading...</p>
+      <p>API key for programmatic access: <code id="api-key-mask">***</code></p>
+    </div>
+
+    <div class="card">
+      <h2>Configured providers</h2>
+      <div id="provider-list"></div>
+    </div>
+
+    <div class="card">
+      <h2>Add provider key</h2>
+      <label for="provider">Provider</label>
+      <select id="provider">
+        <option value="nvidia">NVIDIA NIM</option>
+        <option value="deepseek">DeepSeek</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
+        <option value="groq">Groq</option>
+        <option value="gemini">Gemini</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="mistral">Mistral</option>
+      </select>
+      <label for="apiKey">API key</label>
+      <input type="password" id="apiKey" placeholder="sk-... or nvapi-..." autocomplete="off">
+      <label for="model">Model (optional)</label>
+      <input type="text" id="model" placeholder="e.g. nemotron-mini-4b-instruct">
+      <button id="save-btn">Save key</button>
+      <div id="save-msg" class="msg" hidden></div>
+    </div>
+  </div>
+  <script>
+    function maskKey(key) {
+      if (!key || key.length < 8) return '***';
+      return key.slice(0, 8) + '...' + key.slice(-4);
+    }
+
+    async function loadAccount() {
+      const res = await fetch('/app/auth/me');
+      if (!res.ok) { location.href = '/hosted-login'; return null; }
+      return res.json();
+    }
+
+    async function loadProviders() {
+      const res = await fetch('/api/tenant/providers');
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.providers || [];
+    }
+
+    function renderProviders(providers) {
+      const el = document.getElementById('provider-list');
+      if (!providers.length) {
+        el.innerHTML = '<p class="status">No keys configured yet. Add one below.</p>';
+        return;
+      }
+      el.innerHTML = providers.map((p) =>
+        '<div class="provider-row">' +
+          '<span>' + p.provider + '</span>' +
+          '<span>' +
+            '<span class="status ' + (p.enabled ? 'on' : '') + '">' + (p.enabled ? 'active' : 'disabled') + '</span> ' +
+            '<button class="danger" data-provider="' + p.provider + '">Remove</button>' +
+          '</span>' +
+        '</div>'
+      ).join('');
+      el.querySelectorAll('button.danger').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Remove this provider key?')) return;
+          await fetch('/api/tenant/providers/' + btn.dataset.provider, { method: 'DELETE' });
+          refresh();
+        });
+      });
+    }
+
+    async function refresh() {
+      const user = await loadAccount();
+      if (!user) return;
+      document.getElementById('account-email').textContent = user.email + ' (' + user.tier + ' tier)';
+      document.getElementById('api-key-mask').textContent = maskKey(user.apiKey);
+      renderProviders(await loadProviders());
+    }
+
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      const msg = document.getElementById('save-msg');
+      msg.hidden = true;
+      const provider = document.getElementById('provider').value;
+      const apiKey = document.getElementById('apiKey').value.trim();
+      const model = document.getElementById('model').value.trim();
+      if (!apiKey) { msg.textContent = 'API key required'; msg.className = 'msg err'; msg.hidden = false; return; }
+      const res = await fetch('/api/tenant/providers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, model: model || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        msg.textContent = data.error || 'Save failed';
+        msg.className = 'msg err';
+        msg.hidden = false;
+        return;
+      }
+      document.getElementById('apiKey').value = '';
+      msg.textContent = 'Key saved for ' + provider;
+      msg.className = 'msg ok';
+      msg.hidden = false;
+      refresh();
+    });
+
+    refresh();
+  </script>
+</body>
+</html>

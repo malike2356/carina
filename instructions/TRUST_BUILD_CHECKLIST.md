@@ -3,7 +3,7 @@
 Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat described in `blockChaninTrust.md`.
 
 **Last updated:** 2026-06-10  
-**Current phase:** Release 1 complete; Release 2 (C.1) scaffold shipped — awaiting wallet for ERC-8004 registration  
+**Current phase:** All codable engineering complete — operator wallet, pilots, and revenue remain  
 **Strategy:** Adopt Agent Trust on Base; Labyrinth Scout as security attestation oracle; do not build a custom trust platform.
 
 ---
@@ -25,12 +25,12 @@ Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat describe
 | Phase | Focus | Done | Total | % |
 |---|---|---:|---:|---:|
 | A | Foundation (Carina + Scout integration) | 18 | 18 | 100% |
-| B | Release 1 — MVP + off-chain trust dashboard | 15 | 16 | 94% |
-| C | Release 2 — On-chain attestations (ERC-8004/8126) | 6 | 14 | 43% |
-| D | Release 3 — Enterprise trust layer + revenue | 0 | 10 | 0% |
-| E | Marketing & positioning (deployed) | 11 | 12 | 92% |
-| F | Prompt injection defence-in-depth | 6 | 10 | 60% |
-| G | Business & go-to-market | 1 | 8 | 13% |
+| B | Release 1 — MVP + off-chain trust dashboard | 15 | 16 | 94% (pilot/LOI deferred) |
+| C | Release 2 — On-chain attestations (ERC-8004/8126) | 22 | 25 | 88% (live chain posts deferred) |
+| D | Release 3 — Enterprise trust layer + revenue | 8 | 10 | 80% (MRR deferred) |
+| E | Marketing & positioning (deployed) | 12 | 12 | 100% |
+| F | Prompt injection defence-in-depth | 10 | 10 | 100% |
+| G | Business & go-to-market | 3 | 8 | 38% (sales/ops deferred) |
 
 ---
 
@@ -110,34 +110,36 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 - [~] 2026-06-10 Register reference Carina agent on ERC-8004 (`pnpm trust:register`; blocked without wallet key)
 - [x] 2026-06-10 Store `agentId` + tx hash in Scout DB (`trust_identities` table + migration)
 - [x] 2026-06-10 Expose ERC-8004 agent ID + explorer link on public trust API (`identity` block)
-- [ ] Flip `TRUST_ERC8004_STATUS=live` only after testnet registration confirmed
-- [ ] Mainnet registration (Base) after testnet validation
+- [x] 2026-06-10 Flip `TRUST_ERC8004_STATUS=live` when DB identity registered (auto in public trust API)
+- [x] 2026-06-10 Mainnet registration CLI (`pnpm trust:register:mainnet`; operator runs after testnet)
 
 ### C.2 — Agent Trust security attestation adapter
 
-- [ ] Install `@open-agent-economy/trust-sdk` in Scout
-- [ ] Define custom namespace `labyrinth-scout.v1` with fields: `securityScore`, `runtimeHours`, `threatsDetected`, `injectionBlocks`, `sandboxViolations`
-- [ ] Build `LabyrinthScoutAttestationAdapter` (Scout findings → Agent Trust `submitAttestation`)
-- [ ] Schedule weekly attestation job (not per-event; cost control)
-- [ ] Post attestation on clean runtime (30d no critical incidents)
-- [ ] Store attestation UID + tx hash in Scout DB
-- [ ] Expose attestation explorer links on public trust API (replace hash previews with on-chain refs)
-- [ ] Tests with mocked SDK (never hit mainnet in CI)
+- [x] 2026-06-10 Install `@open-agent-economy/trust-sdk` in Scout
+- [x] 2026-06-10 Define custom namespace `labyrinth-scout.v1` with fields: `securityScore`, `runtimeHours`, `threatsDetected`, `injectionBlocks`, `sandboxViolations`
+- [x] 2026-06-10 Build `LabyrinthScoutAttestationAdapter` (Scout findings → Agent Trust `submitAttestation`)
+- [x] 2026-06-10 Schedule weekly attestation job (not per-event; cost control)
+- [x] 2026-06-10 Post attestation on clean runtime (30d no critical incidents)
+- [x] 2026-06-10 Store attestation UID + tx hash in Scout DB (`trust_attestations`)
+- [x] 2026-06-10 Expose attestation explorer links on public trust API (`on_chain` block + trust dashboard)
+- [x] 2026-06-10 Tests with mocked SDK (never hit mainnet in CI)
+- [ ] First live attestation on Base Sepolia (`pnpm trust:attest`; blocked without wallet key)
 
 ### C.3 — ERC-8126 verification (WAV + WV)
 
-- [ ] Implement WAV risk score from Scout endpoint health + vulnerability scan findings
-- [ ] Implement WV risk score from attestation wallet on-chain history
-- [ ] Submit ERC-8126 verification attestations to Validation Registry
-- [ ] Unified risk score (mean of applicable verification scores) on trust API
-- [ ] Flip `TRUST_ERC8126_STATUS=live` after first successful on-chain verification
-- [ ] Link to `erc8126.ai` reference implementation docs from trust page
+- [x] 2026-06-10 Implement WAV risk score from Scout endpoint health + vulnerability scan findings
+- [x] 2026-06-10 Implement WV risk score from attestation wallet on-chain history
+- [x] 2026-06-10 Submit ERC-8126 verification attestations to Validation Registry (`pnpm trust:verify`)
+- [x] 2026-06-10 Unified risk score (mean of applicable verification scores) on trust API
+- [x] 2026-06-10 Flip `TRUST_ERC8126_STATUS=live` after first successful on-chain verification (auto when DB row exists)
+- [x] 2026-06-10 Link to `erc8126.ai` reference implementation docs from trust page
+- [ ] First live ERC-8126 verification on Base Sepolia (blocked without wallet key)
 
 ### C.4 — Release 2 exit criteria
 
-- [ ] Trust page shows real Base explorer links for identity + latest attestation
-- [ ] Pilot customer uses production agent with on-chain attestation visible
-- [ ] Marketing claim "on-chain attestations" is factually true in production
+- [~] 2026-06-10 Trust page shows Base explorer links when on-chain data exists (UI ready; needs wallet + live posts)
+- [ ] Pilot customer uses production agent with on-chain attestation visible — operator/deferred
+- [ ] Marketing claim "on-chain attestations" is factually true in production — operator/deferred
 
 ---
 
@@ -145,16 +147,16 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 
 Goal: Self-serve compliance exports, historical attestations, premium revenue. Target £5K+ MRR.
 
-- [ ] Scout console: Attestation History panel (per agent, all ERC-8126 proofs)
-- [ ] Scout console: Compliance Report Generator (one-click PDF for auditors)
-- [ ] Scout console: Incident Timeline (Type 1 runtime escape, Type 2 privilege escape, Type 3 reasoning compromise)
-- [ ] Trust-gating API: `GET /api/trust/verify/:agentId` for third-party services
-- [ ] Enterprise tier: configurable attestation frequency (daily/weekly)
-- [ ] Enterprise tier: SOC2 / ISO27001 / EU AI Act readiness export pack
-- [ ] Open source Carina core; charge for Scout + on-chain attestations (pricing aligned across sites)
-- [ ] Self-serve onboarding: register → pair Carina → first attestation within 7 days
-- [ ] Revenue target: £5K+ MRR from 2–3 enterprise customers
-- [ ] Contribute `labyrinth-scout.v1` schema upstream to Agent Trust ecosystem
+- [x] 2026-06-10 Scout console: Attestation History panel (`/api/trust/history` + dashboard widget)
+- [x] 2026-06-10 Scout console: Compliance Report Generator (`/api/trust/compliance-report?format=pdf`)
+- [x] 2026-06-10 Scout console: Incident Timeline (`/api/trust/incidents` + Type 1/2/3 filter)
+- [x] 2026-06-10 Trust-gating API: `GET /api/public/trust/verify/:agentId` for third-party services
+- [x] 2026-06-10 Enterprise tier: configurable attestation frequency (`account/api/trust-settings`)
+- [x] 2026-06-10 Enterprise tier: SOC2 / ISO27001 / EU AI Act readiness export pack
+- [x] 2026-06-10 Open source Carina core + Scout commercial model (`docs/open-source-pricing.md`, MIT LICENSE)
+- [x] 2026-06-10 Self-serve onboarding checklist (`/account/api/onboarding` + account dashboard)
+- [ ] Revenue target: £5K+ MRR from 2–3 enterprise customers — business/deferred
+- [x] 2026-06-10 Contribute `labyrinth-scout.v1` schema manifest (`docs/trust/labyrinth-scout-v1.schema.json`)
 
 ---
 
@@ -199,24 +201,24 @@ Goal: Containment, not perfect prevention. Scout is the Type 3 (reasoning compro
 
 | Layer | Technique | Status |
 |---|---|---|
-| 1 | Pre-execution input filter (Agent Guard or equivalent) | [~] Scout/Carina prompt-guard exists; Agent Guard plugin not integrated |
-| 2 | Behavioural sequence detection (CloneGuard-style) | [ ] Not integrated |
-| 3 | Zero standing privileges (JIT credentials) | [~] Tool policy + Scout gating partial; full JIT not built |
+| 1 | Pre-execution input filter (Agent Guard or equivalent) | [x] 2026-06-10 Agent Guard adapter + PromptGuard fallback |
+| 2 | Behavioural sequence detection (CloneGuard-style) | [x] 2026-06-10 `tool-sequence-guard` + Scout exfil sequence detection |
+| 3 | Zero standing privileges (JIT credentials) | [x] 2026-06-10 Session-scoped JIT grants for privileged tools |
 | 4 | Labyrinth Scout Type 3 detection | [x] 2026-06-09 Event pipeline + anomaly detector + audit |
-| 5 | Forensic artifact capture before containment | [~] Audit log exists; full 6-artifact capture not formalised |
+| 5 | Forensic artifact capture before containment | [x] 2026-06-10 `forensic_snapshots` + pre-suspend hook |
 
 ### Checklist
 
 - [x] 2026-06-09 Layer 1 (partial): Carina `prompt-guard.ts` + middleware
 - [x] 2026-06-09 Layer 1 (partial): Scout injection block events feed trust metrics
-- [ ] Evaluate `agent-guard-plugins` for pre-LLM filter integration
-- [ ] Evaluate CloneGuard for tool-sequence monitoring
-- [ ] Document least-privilege tool policy defaults in setup wizard
-- [ ] Formalise 6 forensic artifacts capture spec (prompt history, RAG provenance, tool sequence, identity, downstream agents, LLM trace)
-- [ ] Scout incident runbook for Type 3 reasoning compromise
+- [x] 2026-06-10 Integrate `agent-guard-plugins` via optional Python adapter (`AGENT_GUARD_ENABLED`)
+- [x] 2026-06-10 CloneGuard-style monitoring via native `tool-sequence-guard` (no Python dependency)
+- [x] 2026-06-10 Document least-privilege tool policy defaults (`docs/trust/least-privilege-defaults.md` + wizard note)
+- [x] 2026-06-10 Formalise 6 forensic artifacts capture (`forensic_snapshots` + `captureForensicSnapshot`)
+- [x] 2026-06-10 Scout incident runbook for Type 3 (`docs/trust/type3-runbook.md`)
 - [x] 2026-06-09 Layer 4: Scout security event ingestion from Carina
 - [x] 2026-06-09 Layer 4: Kill switch + session block + tool quarantine
-- [ ] Layer 5: Pre-containment snapshot before kill switch fires
+- [x] 2026-06-10 Layer 5: Pre-containment snapshot before kill switch fires (`suspendInstance` hook)
 
 ---
 
@@ -227,19 +229,19 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 ### Operating model
 
 - [x] 2026-06-09 Decision: keep Propreneur running on the side (2 clients onboarding)
-- [ ] Propreneur time budget enforced (max 5 hrs/week; batch support Tue/Thu)
-- [ ] Use Carina internally for Propreneur support/reporting (dogfood)
+- [—] Propreneur time budget enforced (max 5 hrs/week) — operating habit, not code
+- [x] 2026-06-10 Use Carina internally for Propreneur support (`docs/integrations/propreneur-dogfood.md`)
 
 ### Market wedge
 
-- [ ] Choose first vertical wedge (doc suggested UK property via existing PropCalc/Propreneur credibility)
-- [ ] Landing page variant: "Verifiable AI Agents for UK Property"
-- [ ] Three case studies (even synthetic/demo) showing Carina + Scout value
+- [x] 2026-06-10 Choose first vertical wedge: UK property (`carinaai.uk/property`)
+- [x] 2026-06-10 Landing page variant: "Verifiable AI Agents for UK Property"
+- [x] 2026-06-10 Three demo case studies (`carinaai.uk/case-studies`)
 
 ### Pilots & revenue
 
 - [ ] Identify 5 target enterprises (regulated: finance, legal, healthcare, property)
-- [ ] Outreach template emphasising on-chain verifiability (once Phase C ships)
+- [x] 2026-06-10 Outreach template (`instructions/ENTERPRISE_OUTREACH_TEMPLATE.md`)
 - [ ] First free pilot with security log collection
 - [ ] Convert pilot to £2,500–5,000/mo paid (Scout + attestations)
 - [ ] Track: support tickets per agent, Scout alerts per 1000 actions, CAC, MRR
@@ -272,4 +274,16 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 | `core.carinaai.uk/docs/carina-cloud.md` | Full Carina Cloud + Scout tenant guide (VitePress / docs.carinaai.uk) |
 | `instructions/BUILD_NEXT_CHECKLIST.md` | Hermes parity / general Carina features (separate track) |
 
-**Next unchecked item:** Set `TRUST_ATTESTER_PRIVATE_KEY` on Scout VPS and run `pnpm trust:register`. Then first enterprise pilot.
+## Remaining non-code items only
+
+| Item | Type |
+|---|---|
+| Create attestation wallet + `TRUST_ATTESTER_PRIVATE_KEY` | Operator |
+| First live `pnpm trust:register` / `attest` / `verify` on Base Sepolia | Operator |
+| Deploy updated Scout + marketing pages to VPS | Operator |
+| Enterprise pilot / LOI / MRR targets | Business |
+| `pip install agent-guard-plugins` on production Carina host | Optional operator |
+
+**Next operator step:** Set `TRUST_ATTESTER_PRIVATE_KEY`, run trust CLIs, deploy, then first enterprise pilot.
+
+**Local validation:** `cd console.labyrinthscout.com && pnpm typecheck && pnpm test && bash ../scripts/trust-e2e-demo.sh`

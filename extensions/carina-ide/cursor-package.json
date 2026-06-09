@@ -1,0 +1,113 @@
+{
+  "name": "carina-cursor",
+  "displayName": "Carina for Cursor",
+  "description": "Chat with your local Carina agent from Cursor. Tools, streaming, provider switch.",
+  "version": "0.1.0",
+  "publisher": "verlox",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Other"
+  ],
+  "keywords": [
+    "carina",
+    "cursor",
+    "ai",
+    "agent",
+    "llm"
+  ],
+  "activationEvents": [
+    "onView:carina.chat",
+    "onCommand:carina.ask",
+    "onCommand:carina.askSelection",
+    "onCommand:carina.checkConnection",
+    "onCommand:carina.listTools"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Carina",
+      "properties": {
+        "carina.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Carina web gateway URL (run: carina web or carina serve)"
+        },
+        "carina.provider": {
+          "type": "string",
+          "default": "",
+          "description": "Optional LLM provider override"
+        },
+        "carina.sessionId": {
+          "type": "string",
+          "default": "",
+          "description": "Optional fixed IDE session id"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "carina",
+          "title": "Carina",
+          "icon": "media/carina.svg"
+        }
+      ]
+    },
+    "views": {
+      "carina": [
+        {
+          "type": "webview",
+          "id": "carina.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "carina.ask",
+        "title": "Carina: Open Chat"
+      },
+      {
+        "command": "carina.askSelection",
+        "title": "Carina: Ask About Selection"
+      },
+      {
+        "command": "carina.checkConnection",
+        "title": "Carina: Check Connection"
+      },
+      {
+        "command": "carina.listTools",
+        "title": "Carina: List Tools"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "carina.askSelection",
+          "when": "editorHasSelection",
+          "group": "carina@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "carina.ask"
+        },
+        {
+          "command": "carina.askSelection",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "carina.checkConnection"
+        },
+        {
+          "command": "carina.listTools"
+        }
+      ]
+    }
+  }
+}

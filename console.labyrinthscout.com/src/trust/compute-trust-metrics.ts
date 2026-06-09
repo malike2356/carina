@@ -18,12 +18,22 @@ export interface TrustMetricsInput {
   lastHeartbeatAt: string | null;
 }
 
+export interface TrustAttestationOnChain {
+  uid: string | null;
+  tx_hash: string;
+  explorer_url: string;
+  namespace: string;
+  tag: string;
+  score: number;
+}
+
 export interface TrustAttestation {
   type: string;
   title: string;
   summary: string;
   hash_preview: string;
   at: string;
+  on_chain?: TrustAttestationOnChain | null;
 }
 
 export interface PublicTrustIdentity {
@@ -38,11 +48,39 @@ export interface PublicTrustIdentity {
   status: string | null;
 }
 
+export interface PublicTrustVerification {
+  unified_risk_score: number;
+  unified_risk_tier: RiskTier;
+  unified_risk_tier_label: string;
+  scores: {
+    wav: {
+      applicable: boolean;
+      risk_score: number;
+      notes: string;
+    };
+    wv: {
+      applicable: boolean;
+      risk_score: number;
+      notes: string;
+    };
+  };
+  on_chain: {
+    request_hash: string;
+    request_tx_hash: string | null;
+    response_tx_hash: string | null;
+    request_explorer_url: string | null;
+    response_explorer_url: string | null;
+    submitted_at: string;
+  } | null;
+  spec_url: string;
+}
+
 export interface PublicTrustPayload {
   generated_at: string;
   risk_score: number;
   risk_tier: RiskTier;
   risk_tier_label: string;
+  verification: PublicTrustVerification | null;
   identity: PublicTrustIdentity | null;
   monitoring: {
     scout_active: boolean;
@@ -211,6 +249,7 @@ export function buildPublicTrustPayload(
     risk_score: riskScore,
     risk_tier: riskTier,
     risk_tier_label: TIER_LABELS[riskTier],
+    verification: null,
     identity,
     monitoring: {
       scout_active: scoutActive,

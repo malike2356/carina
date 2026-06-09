@@ -80,6 +80,14 @@ export async function suspendInstance(
     return { ok: false, status: 400, error: 'Instance already suspended' };
   }
 
+  try {
+    const { captureForensicSnapshot } = await import('../security/forensic-snapshot.js');
+    await captureForensicSnapshot(instanceId, reason);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[scout:control] Forensic snapshot failed:', msg);
+  }
+
   await pool.query(
     `UPDATE carina_instances
      SET status = $1, suspension_reason = $2, updated_at = NOW()

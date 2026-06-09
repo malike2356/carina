@@ -268,9 +268,22 @@ export class AnomalyDetector {
   ): Promise<AnomalyResult | null> {
     const sequence = metrics.tool_sequence;
     if (!Array.isArray(sequence) || sequence.length < 3) return null;
+
+    if (this.detectExfilSequence(sequence)) {
+      return this.emitAnomaly(
+        instanceId,
+        sessionId,
+        'unusual_tool_sequence',
+        'tool_sequence_exfil',
+        sequence.length,
+        0,
+        4,
+      );
+    }
+
     const canonical = sequence.map((tool) => tool.replace('shell-exec', 'terminal'));
     const terminalCount = canonical.filter((tool) => tool === 'terminal').length;
-    const hasDestructiveTool = canonical.some((tool) => /delete|rm|write_file/.test(tool));
+    const hasDestructiveTool = canonical.some((tool) => /delete|rm|write_file|file-write/.test(tool));
     if (terminalCount < 3 || !hasDestructiveTool) return null;
 
     return this.emitAnomaly(
@@ -282,6 +295,22 @@ export class AnomalyDetector {
       0,
       3,
     );
+  }
+
+  private detectExfilSequence(sequence: string[]): boolean {
+    const recent = sequence.slice(-6);
+    let sawFileRead = false;
+    for (const tool of recent) {
+      if (tool === 'file-read') {
+        sawFileRead = true;
+        continue;
+      }
+      if (!sawFileRead) continue;
+      if (tool === 'http-request' || tool === 'email-send' || tool === 'shell-exec') {
+        return true;
+      }
+    }
+    return false;
   }
 
   private async detectUnusualHours(

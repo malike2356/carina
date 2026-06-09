@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { handleDataAccessRequest } from '../audit/compliance/data-access-request.js';
 import { handleDataDeletion } from '../audit/compliance/data-deletion.js';
+import { generateGdprReport } from '../audit/compliance/gdpr-report.js';
 
 export const complianceRouter: IRouter = Router();
 
@@ -27,6 +28,17 @@ complianceRouter.post('/sar', async (req: Request, res: Response): Promise<void>
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[compliance:sar] SAR failed:', msg);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+complianceRouter.get('/report', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const report = await generateGdprReport();
+    res.json(report);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[compliance:report] GDPR report failed:', msg);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

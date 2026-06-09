@@ -33,6 +33,17 @@ Carina automatically:
 - Flushes session metrics for anomaly detection
 - Subscribes to Redis for suspend/resume messages
 
+## Carina Cloud (hosted Pro)
+
+If you use [Carina Cloud](/carina-cloud) at app.carinaai.uk, Pro includes Scout in the product:
+
+- **`/security`** - pairing key, instances, recent events
+- **`/dashboard`** - tenant-scoped live security dashboard
+- Cloud chat is monitored automatically (`hosted:{userId}` instance)
+- The same `scout_live_*` key pairs self-hosted Carina to the same Scout account
+
+No separate Scout signup is required when you upgrade through Carina Cloud billing.
+
 ## Bundle pricing
 
 Use Scout with Carina and receive **20% off** hosted Scout Standard. Promo codes are generated during `carina setup` when both products are linked.

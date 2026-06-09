@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "description": "UK property entrepreneurship knowledge pack by VERLOX Ltd",
   "author": "VERLOX Ltd",
+  "category": "property",
+  "optional": true,
   "data": ["data/hmo-room-sizes.json"],
   "skillCount": 6
 }

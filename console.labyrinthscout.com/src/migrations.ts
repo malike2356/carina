@@ -235,6 +235,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   `);
 
   await client.query(`
+    ALTER TABLE accounts
+      ADD COLUMN IF NOT EXISTS trust_settings JSONB NOT NULL DEFAULT '{"tier":"standard","attestation_interval_days":7,"verification_interval_days":7}'::jsonb
+  `);
+
+  await client.query(`
     CREATE TABLE IF NOT EXISTS account_api_keys (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -417,6 +422,70 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
       registered_at TIMESTAMPTZ,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS trust_attestations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      identity_slug TEXT NOT NULL,
+      namespace TEXT NOT NULL,
+      tag TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      attestation_uid TEXT,
+      tx_hash TEXT NOT NULL,
+      chain_id INTEGER NOT NULL,
+      metrics JSONB NOT NULL DEFAULT '{}'::jsonb,
+      comment TEXT,
+      status TEXT NOT NULL DEFAULT 'submitted'
+        CHECK (status IN ('submitted', 'failed')),
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_trust_attestations_identity_submitted
+      ON trust_attestations (identity_slug, submitted_at DESC)
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS trust_verifications (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      identity_slug TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      chain_id INTEGER NOT NULL,
+      wav_risk_score INTEGER NOT NULL,
+      wv_risk_score INTEGER NOT NULL,
+      unified_risk_score INTEGER NOT NULL,
+      trust_response_score INTEGER NOT NULL,
+      request_hash TEXT NOT NULL,
+      request_tx_hash TEXT,
+      response_tx_hash TEXT,
+      response_uri TEXT,
+      status TEXT NOT NULL DEFAULT 'submitted'
+        CHECK (status IN ('submitted', 'failed')),
+      details JSONB NOT NULL DEFAULT '{}'::jsonb,
+      submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_trust_verifications_identity_submitted
+      ON trust_verifications (identity_slug, submitted_at DESC)
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS forensic_snapshots (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      instance_id TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      artifacts JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_forensic_snapshots_instance_created
+      ON forensic_snapshots (instance_id, created_at DESC)
   `);
 
   console.log('[scout:migrations] Schema ready');

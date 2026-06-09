@@ -14,6 +14,7 @@ import { chatRouter } from './routes/chat.js';
 import { projectsRouter } from './routes/projects.js';
 import { securityRouter } from './routes/security.js';
 import { settingsRouter } from './routes/settings.js';
+import { tenantsRouter } from './routes/tenants.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 // tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
@@ -92,6 +93,7 @@ app.use('/skills', skillsRouter);
 app.use('/rag', ragRouter);
 app.use('/chat', chatRouter);
 app.use('/projects', projectsRouter);
+app.use('/tenants', tenantsRouter);
 app.use('/settings', settingsRouter);
 
 app.use((_req, res) => {

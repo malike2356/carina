@@ -1,0 +1,9 @@
+{
+  "name": "finance",
+  "version": "1.0.0",
+  "description": "Finance skills: cashflow, invoicing, VAT, investment analysis, budget variance",
+  "author": "VERLOX Ltd",
+  "category": "finance",
+  "optional": true,
+  "skillCount": 5
+}

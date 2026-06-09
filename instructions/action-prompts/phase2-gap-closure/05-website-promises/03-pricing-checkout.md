@@ -1,81 +1,69 @@
-# Action: Build the Stripe Pricing & Checkout Flow (Genuinely Greenfield)
+# Action: Verify and Close Remaining Gaps in the Stripe Pricing & Checkout Flow
 
 ## Goal
-Build the full checkout flow that makes carinaai.uk's and labyrinthscout.com's pricing pages functional: plan selection, account creation, Stripe Checkout, subscription activation with an issued Scout API key, billing API, usage metering, and the Stripe webhook handler.
+This spec was written when the checkout flow was a genuine gap. **It no longer is — read this whole Context section before doing anything else.** The full billing system (Stripe service, subscription lifecycle, usage metering, invoicing, webhook handler, REST API, and three pricing/checkout/success pages) already exists, is wired into the server, and has a passing test suite (commit `1368a1d feat(billing): add Stripe checkout subscriptions`). Your job is NOT to build this from scratch — it is to verify the existing implementation against the spec, run the tests, and close the small number of real wiring gaps identified below (chiefly: the live marketing site does not link to the new pricing page).
 
-## Context
+## Context — CORRECTION to the original spec's gap analysis
 - Spec file: `chat.carinaai.uk/prompts/phase2-gap-closure/05-website-promises/03-pricing-checkout.md`
-- **Confirmed genuinely greenfield.** `grep -ril "stripe\|billing\|checkout\|subscription" core.carinaai.uk/src console.labyrinthscout.com/src ops.carinaai.uk --include="*.ts"` returns NOTHING in product code (only `node_modules` type definitions, if any). There is no prior billing system, Stripe account wiring, or subscription model anywhere in this monorepo to extend. This is the one spec in the batch that is a true build, not a gap-closure.
-- Read `carinaai.uk/index.html` and `labyrinthscout.com/index.html` FIRST — the spec says the pricing page must "match carinaai.uk design"; the real marketing pages (and whatever pricing tables they currently show, even if static/non-functional) are the actual design source of truth, not the spec's ASCII mockup (lines 34-51).
-- Read `console.labyrinthscout.com/src/api/honeypots.ts` or another representative admin API file to learn this codebase's conventions for: route registration, request validation, error response shape, and how the existing admin auth middleware works — the new billing routes must be authenticated consistently with everything else, and a customer-facing checkout flow needs its OWN (lighter-weight, public-facing) auth distinct from the admin routes.
-- **Critical environment-boundary note:** Stripe API keys, webhook signing secrets, and price/product IDs are credentials. Per this repo's CLAUDE.md security rules, NEVER hardcode them — they come from `.env`/`.access.config`-style env vars the user supplies. Write `stripe-service.ts` to read `process.env.STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`/`STRIPE_PRICE_*` and fail clearly at startup if they are missing, rather than silently running in a broken state.
-- Conventions: TypeScript strict, no emojis/em-dashes, PostgreSQL via existing `pool`/migration patterns, every new module gets `*.test.ts` with the Stripe SDK mocked (never hit the real Stripe API in tests).
+- **The spec (and an earlier draft of this action prompt) claimed this was "genuinely greenfield... no prior billing system, Stripe account wiring, or subscription model anywhere in this monorepo." That claim is FALSE as of the current codebase.** All of the following already exist, fully implemented and tested (run `pnpm vitest run src/billing` — 7 files, 14 tests, all passing):
+  - `core.carinaai.uk/src/billing/stripe-service.ts` — `StripeService` with `createCheckoutSession`, `handleWebhook`, `getSubscription`, `cancelSubscription`, `reactivateSubscription`, `updatePaymentMethod`
+  - `core.carinaai.uk/src/billing/subscription-manager.ts` — plan lifecycle, syncs from Stripe webhook events (never trusts client-side claims)
+  - `core.carinaai.uk/src/billing/usage-meter.ts` — `UsageMeter` with `recordUsage`/`getMonthlyUsage`/`status`, producing the exact 80%/100% threshold messages the spec describes ("You've used X of Y tokens this month" / blocked-with-upgrade-message)
+  - `core.carinaai.uk/src/billing/invoice-generator.ts` — records invoices from Stripe webhook events
+  - `core.carinaai.uk/src/billing/billing-api.ts` — REST handlers, mounted at `/api/billing`
+  - `core.carinaai.uk/src/billing/webhooks/stripe-webhook.ts` — `StripeWebhookHandler`; verifies signatures, is idempotent (checks `stripe_events` table before processing — replaying an event is a no-op), handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.payment_succeeded`
+  - `core.carinaai.uk/src/api/billing-routes.ts` — `mountBillingRoutes`/`mountBillingWebhook`, both called from `core.carinaai.uk/src/gateway/web.ts` (lines ~13, ~215-221), which also serves `/pricing`, `/checkout`, `/billing/success` from `src/web/pricing/{index,checkout,success}.html`
+  - `core.carinaai.uk/src/api/hosted-migrations.ts` (NOT `src/migrations.ts` — that file does not exist) — already defines `subscriptions`, `invoices`, `usage_records`, AND `stripe_events` tables with the exact columns this spec would have asked for (tenant_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_start/end, scout_api_key, etc.)
+  - `stripe` is already in `package.json` (`"stripe": "^20.4.0"`)
+  - Full test coverage: `__tests__/{stripe-service,subscription-manager,usage-meter,invoice-generator,billing-api,stripe-webhook}.test.ts`, all mocking the Stripe SDK (never hitting the real API)
+- **Do not recreate, overwrite, or "improve by rewriting" any of the above.** It is working, tested code. Treat every file in this list as something to READ and VERIFY, not replace.
+- Conventions: TypeScript strict, no emojis/em-dashes, PostgreSQL via the existing `pool` (see `src/memory/db.ts`), every module already has `*.test.ts` with the Stripe SDK mocked — extend these only if you find a genuine untested branch.
 
-## Files to create
+## Files to verify (read each in full; do not rewrite working code)
 ```
-core.carinaai.uk/src/web/pricing/
-  index.html                   — Pricing page (mirrors the REAL carinaai.uk design, not the spec's ASCII table)
-  checkout.html                — Plan selection + account creation + Stripe Checkout redirect
-  success.html                 — Post-payment confirmation (spec lines 81-96: shows API key + quick-start commands)
-  pricing.css
-core.carinaai.uk/src/billing/
-  stripe-service.ts            — StripeService class exactly per spec lines 100-113
-  subscription-manager.ts      — Plan lifecycle (create/upgrade/cancel/reactivate)
-  usage-meter.ts               — UsageRecord tracking + 80%/100% threshold messaging (spec lines 139-143)
-  invoice-generator.ts         — Invoice record + PDF generation/retrieval
-  billing-api.ts               — REST handlers for the 8 documented routes (lines 118-126)
-  webhooks/
-    stripe-webhook.ts          — Handles checkout.session.completed, customer.subscription.updated/deleted, invoice.payment_failed
-  __tests__/
-    stripe-service.test.ts
-    subscription-manager.test.ts
-    usage-meter.test.ts
-    invoice-generator.test.ts
-    billing-api.test.ts
-    stripe-webhook.test.ts
-core.carinaai.uk/src/api/
-  billing-routes.ts            — Route registration wiring billing-api.ts + stripe-webhook.ts into the server
+core.carinaai.uk/src/billing/stripe-service.ts
+core.carinaai.uk/src/billing/subscription-manager.ts
+core.carinaai.uk/src/billing/usage-meter.ts
+core.carinaai.uk/src/billing/invoice-generator.ts
+core.carinaai.uk/src/billing/billing-api.ts
+core.carinaai.uk/src/billing/webhooks/stripe-webhook.ts
+core.carinaai.uk/src/billing/plans.ts             — BILLING_PLANS / resolveStripePriceId; confirm the plan IDs match the live carinaai.uk pricing copy (Step 1)
+core.carinaai.uk/src/api/billing-routes.ts
+core.carinaai.uk/src/api/hosted-migrations.ts
+core.carinaai.uk/src/web/pricing/index.html
+core.carinaai.uk/src/web/pricing/checkout.html
+core.carinaai.uk/src/web/pricing/success.html
+core.carinaai.uk/src/web/pricing/pricing.css
+core.carinaai.uk/src/gateway/web.ts               — confirm /pricing, /checkout, /billing/success, /api/billing, /webhooks/stripe are all mounted (they appear to be at lines ~13, ~215-221 — verify and note the exact line numbers in your report)
 ```
-Note: placed under `core.carinaai.uk` since `packages/cloud` does not exist; if investigation in Step 1 finds a more appropriate "customer console / billing surface" location in this monorepo, use it instead and document why.
 
-## Files to modify
-- `core.carinaai.uk/src/migrations.ts` — add `subscriptions`, `invoices`, `usage_records` tables (tenant_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, etc. — design the minimal schema the `StripeService`/`SubscriptionManager`/`UsageMeter` interfaces require)
-- `core.carinaai.uk/src/gateway/web.ts` (or wherever the public marketing/console routes are registered) — add `/pricing`, `/checkout`, `/billing/success` routes
-- `.env.example` (or this project's equivalent template file — `find core.carinaai.uk -maxdepth 1 -iname ".env*"`) — document the new required Stripe env vars without ever putting real values in a committed file
+## Files to create (only if gaps below are confirmed real)
+```
+core.carinaai.uk/src/billing/__tests__/<name>.test.ts   — ONLY for any genuinely untested branch found in Step 4 (e.g. a webhook event type with no corresponding test case)
+```
+Do not create new top-level billing modules, pages, or routes — there is no remaining greenfield surface here.
 
 ## Step-by-step
-1. Read `carinaai.uk/index.html` and `labyrinthscout.com/index.html` in full. Extract the REAL pricing tiers, prices, and feature lists currently shown (even if the pages are static marketing pages with no checkout wired up) — these are the actual plan definitions `subscription-manager.ts` and the Stripe product/price configuration must match. If they differ from the spec's table (lines 34-51), the live site is the source of truth; note the discrepancy in a comment.
-2. Read an existing admin API file (e.g. `honeypots.ts`) to learn this codebase's request/response/error/auth conventions. Design the customer-facing billing routes to be consistent in style but with PUBLIC-FACING auth (the checkout flow runs before a paying customer has full console credentials — likely email+password account creation, not the admin password gate).
-3. Build `stripe-service.ts` implementing the five methods from spec lines 100-113 (`createCheckoutSession`, `handleWebhook`, `getSubscription`, `cancelSubscription`, `updatePaymentMethod`) using the official `stripe` npm package (`pnpm add stripe` if not already a dependency — confirm with `grep -n "\"stripe\"" core.carinaai.uk/package.json` first). All Stripe credentials come from env vars; throw a clear startup error if `STRIPE_SECRET_KEY` is missing.
-4. Add the database migrations: `subscriptions` (tenant_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_start/end, created_at), `invoices` (id, tenant_id, stripe_invoice_id, amount, status, pdf_url, period), `usage_records` (tenant_id, date, tokens_used, model, cost_estimate — matching spec lines 131-137 exactly).
-5. Build `subscription-manager.ts`: plan lifecycle on top of `stripe-service.ts` — creating a subscription records the local `subscriptions` row from the Stripe webhook event (NEVER trust client-side "payment succeeded" claims; only the webhook is authoritative), upgrading/canceling/reactivating call Stripe and update local state in lockstep.
-6. Build `usage-meter.ts`: records `UsageRecord`s as the agent consumes tokens (find where token counts are currently tracked for cost/logging purposes — `grep -rn "tokens_in\|tokens_out\|token.*usage" core.carinaai.uk/src` — and hook in there rather than adding a second token-counting path), computes monthly totals against the plan's limit, and produces the documented warning ("You've used 400K of 500K tokens this month") at 80% and the block message at 100%.
-7. Build `invoice-generator.ts`: on `invoice.payment_*` webhook events, records an `invoices` row referencing Stripe's hosted invoice PDF URL (Stripe generates and hosts invoice PDFs — do not build a parallel PDF renderer; `GET /api/billing/invoices/{id}` can redirect to or proxy Stripe's PDF URL).
-8. Build `stripe-webhook.ts`: verifies the webhook signature using `STRIPE_WEBHOOK_SECRET` (CRITICAL — an unverified webhook endpoint is a payment-fraud vector), then dispatches `checkout.session.completed` (activate subscription + issue a `scout_live_...` API key), `customer.subscription.updated` (sync plan/status), `customer.subscription.deleted` (mark canceled), `invoice.payment_failed` (mark past-due, notify the tenant via the existing `alertDispatcher` if one is wired for customer-facing notifications, or email directly).
-9. Build `billing-api.ts` implementing the 8 documented routes (lines 118-126), each scoped to the authenticated tenant, delegating to the modules above.
-10. Build the three HTML pages following the REAL carinaai.uk design (from Step 1): `index.html` (pricing tiers + CTAs), `checkout.html` (plan pre-selection → account creation form → redirect to Stripe-hosted Checkout via `createCheckoutSession`), `success.html` (the confirmation layout from spec lines 81-96, including the issued API key and the exact quick-start commands `scout deploy --license-key ***` / `carina config set scout.url ...`).
-11. Wire `/pricing`, `/checkout`, `/billing/success` routes and the webhook endpoint into the server's router registration.
+1. Read `carinaai.uk/index.html` in full (it is the real marketing site). Find its pricing section and "Get Scout" CTAs (currently at approx. lines 1349 and 1371, both `<a href="https://console.labyrinthscout.com">`). Compare its plan names/prices/copy against `core.carinaai.uk/src/billing/plans.ts` (`BILLING_PLANS`) and the rendered `core.carinaai.uk/src/web/pricing/index.html`. Note any mismatches (e.g., the marketing copy says one price, the Stripe plan config says another) — these are real bugs to fix in `plans.ts` or the HTML, whichever is the outlier relative to the other two.
+2. **Confirm the central wiring gap**: the live `carinaai.uk/index.html` "Get Scout — £99/mo" CTAs link straight to the external `https://console.labyrinthscout.com`, NOT to the working `/pricing` → `/checkout` → Stripe flow that already exists at `core.carinaai.uk/src/web/pricing/`. Determine which is correct by reading `console.labyrinthscout.com/docs/pricing.md` and checking whether `console.labyrinthscout.com` has its own (separate, possibly not-yet-built) checkout — `grep -rln "checkout\|stripe\|billing" console.labyrinthscout.com/src --include="*.ts"`. If the intended flow is the one already built in `core.carinaai.uk`, update the marketing site CTAs to point at `https://carinaai.uk/pricing` (or the correct production path) instead. If Scout has (or is meant to have) its own separate checkout, document that finding instead of changing anything — do not guess.
+3. Read `core.carinaai.uk/src/web/pricing/success.html` in full. It currently shows a static `scout deploy --license-key ***` placeholder and the text "Your Scout API key appears in your account once the webhook has completed" — it does NOT render the actual issued key inline. Determine whether this is the intended secure design (key only ever shown inside the authenticated account/dashboard, never on a static post-payment page that could be screenshotted/shared) or a real gap relative to the spec's "shows API key" requirement (spec lines 81-96 / this prompt's prior Expected-behaviour claim). If `billing-api.ts` already exposes a `GET /api/billing/subscription` (or similar) endpoint returning `scout_api_key` for the authenticated tenant, the secure pattern is: `success.html` should fetch it client-side post-redirect and render it (or link to the dashboard view that does) rather than embed it in static HTML. Implement that small fetch-and-render addition to `success.html` ONLY if you confirm the API already returns the key and nothing currently renders it anywhere — otherwise document why the current design is correct as-is.
+4. Run `pnpm vitest run src/billing` and confirm all 7 files / 14 tests still pass. Read each test file and cross-check it against `stripe-webhook.ts`'s five handled event types (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`, `invoice.payment_succeeded`) and `usage-meter.ts`'s three `UsageStatus` branches (under 80%, 80-99%, blocked at limit). If any branch has no corresponding test assertion, add ONE minimal test case for it in the existing `__tests__` file — do not restructure existing passing tests.
+5. Confirm webhook signature verification is exercised by a test that supplies a bad/forged signature and asserts rejection (the spec calls this out as critical — a payment-fraud vector). If `stripe-webhook.test.ts` does not already cover this, add it.
+6. Confirm idempotency: `stripe-webhook.ts` checks `stripe_events` for the event ID before processing (it does, per the code read in this prompt's Context). Confirm `stripe-webhook.test.ts` has a test that replays the same event ID twice and asserts the second call is a no-op (no double-write to `subscriptions`/`invoices`). Add this test if missing.
+7. Verify `.env.example` (or the project's env template — `find core.carinaai.uk -maxdepth 1 -iname ".env*"`) documents `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and any `STRIPE_PRICE_*` vars `plans.ts` reads. Add any that are missing, with placeholder values only (never real keys).
 
-## Expected behavior
-- `https://carinaai.uk/pricing` shows the Free/Scout/Enterprise tiers matching the real marketing site's current design and copy
-- Clicking "Get Scout" pre-selects the Scout Standard plan in checkout
-- Completing Stripe Checkout with test card `4242 4242 4242 4242` activates the subscription, issues a `scout_live_...` API key, and shows the confirmation page with the next-invoice date and quick-start commands
-- `GET /api/billing/subscription` (authenticated) returns `{ plan: "scout_standard", status: "active", next_invoice: "2026-07-07" }`
-- `POST /api/billing/cancel` then `GET .../subscription` shows `{ status: "canceled", ends_at: "..." }`; `POST .../reactivate` restores `{ status: "active" }`
-- A tenant who reaches 400K of a 500K token limit sees the documented warning; at 500K, new requests are blocked with the documented upgrade message
-- A forged webhook request (bad signature) is rejected with 400 and never mutates subscription state
+## Expected behavior (what should be true once your verification/fixes land)
+- `pnpm vitest run src/billing` passes with the original 14 tests plus any you added for genuinely uncovered branches
+- `https://carinaai.uk`'s "Get Scout" CTA leads a visitor through to the working `/pricing` → `/checkout` → Stripe → `/billing/success` flow that already exists (or you have documented, with evidence, why it correctly does not)
+- A forged webhook signature is rejected and a replayed valid event is a no-op — both proven by tests, not just code inspection
+- The success page's API-key handling matches a deliberate, documented security decision (either "renders the real key via an authenticated fetch" or "intentionally never shows it outside the authenticated dashboard, here's where it does appear")
+- `.env.example` documents every Stripe env var the code actually reads
 
 ## Test
-- `stripe-service.test.ts`: each method calls the (mocked) Stripe SDK with correct parameters and handles its responses/errors; NEVER calls the real Stripe API
-- `stripe-webhook.test.ts`: signature verification rejects tampered/forged payloads; each event type updates local state correctly and idempotently (replaying the same event twice does not double-activate or double-charge)
-- `subscription-manager.test.ts`: lifecycle transitions (create/upgrade/cancel/reactivate) keep local state and Stripe state consistent
-- `usage-meter.test.ts`: 80%/100% thresholds produce the exact documented messages; overage cost calculation matches `£0.002 per 1K tokens`
-- `invoice-generator.test.ts`: invoice records are created from webhook events and reference valid Stripe-hosted PDF URLs
-- `billing-api.test.ts`: each of the 8 routes is correctly tenant-scoped and authenticated
-- Run `pnpm test -- billing stripe usage subscription invoice` and confirm all pass
+- `pnpm vitest run src/billing` — all pass, including any new branch-coverage tests from steps 4-6
+- Manual: `curl -s http://localhost:3000/pricing | head -5` returns the pricing HTML; `curl -s http://localhost:3000/checkout | head -5` returns the checkout HTML (server must be running — `pnpm dev`)
+- Manual: a forged-signature POST to `/webhooks/stripe` returns 400 and inserts nothing into `stripe_events`
 
 ## Dependencies
-- Step 1 (reading the real marketing pages) determines the actual plan/price/feature data — do not hardcode the spec's illustrative numbers without confirming them against the live site copy
-- Requires `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and `STRIPE_PRICE_*` IDs supplied by the user via env vars — these do not exist yet and must be created in a Stripe account (test mode for development) before this can be exercised end-to-end; flag this clearly as a prerequisite the user must complete outside of code
-- `usage-meter.ts` depends on finding the existing token-counting code path (`grep -rn "tokens_in\|tokens_out"`) — hook into it rather than adding a parallel counter
-- The issued `scout_live_...` API key format and validation should be consistent with whatever key format `console.labyrinthscout.com` already issues/expects (check `licence-activator.ts` from spec 04-03 if it has landed, or `grep -rn "scout_live\|api_key.*format" console.labyrinthscout.com/src`)
+- None — this is a verification-and-small-fixes pass on a feature that is already built. It does not block or get blocked by any other phase2-gap-closure spec.
+- If Step 2 finds that `console.labyrinthscout.com` is supposed to have its own separate checkout (rather than linking to the one in `core.carinaai.uk`), that discovery may produce a NEW, separate follow-up spec — note it in your completion summary rather than scope-creeping this prompt to build it.

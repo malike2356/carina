@@ -66,6 +66,9 @@ export async function runSetupWizard(): Promise<void> {
     } else {
       console.log('No key entered - skipping Scout pairing. Run "carina setup" again anytime to connect.');
     }
+    console.log(
+      'Least-privilege defaults: keep shell-exec and email-send disabled until needed. See Scout docs/trust/least-privilege-defaults.md',
+    );
   }
 
   lines.push('DATABASE_URL=postgresql://localhost:5432/carina');

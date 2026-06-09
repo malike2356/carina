@@ -81,7 +81,7 @@ export async function domainLookup(
 export const domainLookupTool: Tool = {
   name: 'domain_lookup',
   description:
-    'Look up structured domain knowledge from installed Carina skill packs, such as UK property compliance reference data by postcode.',
+    'Look up structured reference data from an installed skill pack (requires property-uk). Example: UK HMO room-size rules by postcode.',
   parameters: {
     type: 'object',
     properties: {

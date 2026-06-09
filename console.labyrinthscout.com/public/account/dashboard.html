@@ -18,6 +18,38 @@
 
   <main class="grid">
     <section class="card">
+      <h2>Onboarding</h2>
+      <p class="sub">Self-serve path: register, pair Carina, receive heartbeat, then on-chain attestation (after wallet setup).</p>
+      <ul id="onboarding-steps" class="onboarding-list"></ul>
+    </section>
+
+    <section class="card">
+      <h2>Trust settings</h2>
+      <p class="sub">Enterprise tier can request daily attestations. Standard tier uses weekly defaults.</p>
+      <form id="trust-settings-form">
+        <label>Tier
+          <select id="trust-tier">
+            <option value="standard">Standard (weekly)</option>
+            <option value="enterprise">Enterprise (daily option)</option>
+          </select>
+        </label>
+        <label>Attestation interval (days)
+          <select id="trust-attest-days">
+            <option value="7">Weekly (7)</option>
+            <option value="1">Daily (1)</option>
+          </select>
+        </label>
+        <label>Verification interval (days)
+          <select id="trust-verify-days">
+            <option value="7">Weekly (7)</option>
+            <option value="1">Daily (1)</option>
+          </select>
+        </label>
+        <button type="submit">Save trust settings</button>
+      </form>
+    </section>
+
+    <section class="card">
       <h2>Pairing keys</h2>
       <p class="sub">Paste a key into your Carina setup wizard or <code>.env</code> as <code>LABYRINTH_API_KEY</code> to connect it to Scout.</p>
       <div id="new-key" class="new-key" hidden>
@@ -158,11 +190,47 @@
       window.location.href = '/account/login';
     });
 
+    async function loadOnboarding() {
+      const res = await fetch('/account/api/onboarding');
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = document.getElementById('onboarding-steps');
+      list.innerHTML = (data.steps || []).map(function (step) {
+        return '<li>' + (step.done ? '[done] ' : '[ ] ') + escapeHtml(step.label) + '</li>';
+      }).join('');
+    }
+
+    async function loadTrustSettings() {
+      const res = await fetch('/account/api/trust-settings');
+      if (!res.ok) return;
+      const data = await res.json();
+      const settings = data.settings || {};
+      document.getElementById('trust-tier').value = settings.tier || 'standard';
+      document.getElementById('trust-attest-days').value = String(settings.attestation_interval_days || 7);
+      document.getElementById('trust-verify-days').value = String(settings.verification_interval_days || 7);
+    }
+
+    document.getElementById('trust-settings-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      await fetch('/account/api/trust-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tier: document.getElementById('trust-tier').value,
+          attestation_interval_days: parseInt(document.getElementById('trust-attest-days').value, 10),
+          verification_interval_days: parseInt(document.getElementById('trust-verify-days').value, 10),
+        }),
+      });
+      loadTrustSettings();
+    });
+
     loadMe();
+    loadOnboarding();
+    loadTrustSettings();
     loadKeys();
     loadInstances();
     loadEvents();
-    setInterval(() => { loadInstances(); loadEvents(); }, 30000);
+    setInterval(function () { loadInstances(); loadEvents(); loadOnboarding(); }, 30000);
   </script>
 </body>
 </html>

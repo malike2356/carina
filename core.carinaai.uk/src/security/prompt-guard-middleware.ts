@@ -1,6 +1,7 @@
 import { config } from '../config/index.js';
 import { reportEvent } from './scout-client.js';
 import { PromptGuard, type SecurityEvent } from './prompt-guard.js';
+import { isAgentGuardEnabled, scanWithAgentGuard } from './agent-guard-adapter.js';
 
 let guard: PromptGuard | null = null;
 
@@ -36,6 +37,23 @@ function getGuard(): PromptGuard | null {
 }
 
 export async function scanUserInput(text: string): Promise<string> {
+  if (isAgentGuardEnabled()) {
+    const agentGuard = await scanWithAgentGuard(text);
+    if (!agentGuard.skipped && agentGuard.flagged) {
+      await reportEvent({
+        severity: 'warning',
+        source: 'agent-guard',
+        event_type: 'prompt_injection_blocked',
+        description: 'Agent Guard flagged input before LLM processing',
+        metadata: {
+          score: agentGuard.score,
+          preview: text.slice(0, 500),
+        },
+      });
+      return 'I cannot process this request because it was flagged by the security filter.';
+    }
+  }
+
   const g = getGuard();
   if (!g) return text;
   try {

@@ -1,6 +1,6 @@
 import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
-import type { ProviderName } from './llm.js';
+import { buildUsdPerTokenMap } from './provider-registry.js';
 
 type UsageRow = {
   provider: string;
@@ -31,15 +31,11 @@ export interface CostReport {
 
 // Estimated blended USD-per-token rates. These are intentionally env-overridable
 // because provider list prices drift and token direction is collapsed upstream.
-const DEFAULT_USD_PER_TOKEN: Record<ProviderName, number> = {
-  deepseek: 0.00000028,
-  anthropic: 0.000009,
-  openai: 0.0000075,
-};
+const DEFAULT_USD_PER_TOKEN: Record<string, number> = buildUsdPerTokenMap();
 
 export function estimateCost(provider: string, tokensUsed: number): number {
   const envKey = `CARINA_LLM_${provider.toUpperCase()}_USD_PER_TOKEN`;
-  const rate = Number(process.env[envKey] ?? DEFAULT_USD_PER_TOKEN[provider as ProviderName] ?? 0);
+  const rate = Number(process.env[envKey] ?? DEFAULT_USD_PER_TOKEN[provider] ?? 0);
   return roundCost(tokensUsed * rate);
 }
 

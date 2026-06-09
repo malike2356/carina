@@ -16,12 +16,13 @@ afterEach(async () => {
 });
 
 describe('file-read', () => {
-  it('reads an existing file', async () => {
+  it('reads an existing file with line numbers', async () => {
     await setup();
     const file = path.join(tmpDir, 'test.txt');
     await fs.writeFile(file, 'hello world');
-    const result = await fileReadTool.execute({ path: file });
-    expect(result).toBe('hello world');
+    const result = await fileReadTool.execute({ path: file }) as Record<string, unknown>;
+    expect(result.content).toBe('1|hello world');
+    expect(result.total_lines).toBe(1);
   });
 
   it('returns error string for missing file', async () => {
@@ -40,12 +41,24 @@ describe('file-read', () => {
     expect(result as string).toContain('Error');
   });
 
-  it('returns truncation notice for large files', async () => {
+  it('paginates large files with truncated flag', async () => {
     await setup();
     const file = path.join(tmpDir, 'large.txt');
-    await fs.writeFile(file, Buffer.alloc(110 * 1024, 'a'));
-    const result = await fileReadTool.execute({ path: file }) as string;
-    expect(result).toContain('[truncated');
+    const lines = Array.from({ length: 100 }, (_, i) => `line${i}`).join('\n');
+    await fs.writeFile(file, lines);
+    const result = await fileReadTool.execute({ path: file, offset: 1, limit: 10 }) as Record<string, unknown>;
+    expect(result.truncated).toBe(true);
+    expect(String(result.content)).toContain('1|line0');
+    expect(String(result.content)).toContain('10|line9');
+  });
+
+  it('suggests similar filenames on typo', async () => {
+    await setup();
+    const file = path.join(tmpDir, 'readme.md');
+    await fs.writeFile(file, 'docs');
+    const result = await fileReadTool.execute({ path: path.join(tmpDir, 'redme.md') }) as string;
+    expect(result).toContain('Did you mean');
+    expect(result).toContain('readme.md');
   });
 
   it('returns error for directories', async () => {
@@ -89,9 +102,18 @@ describe('file-write', () => {
   it('writes content to a new file', async () => {
     await setup();
     const file = path.join(tmpDir, 'output.txt');
-    await fileWriteTool.execute({ path: file, content: 'written by carina' });
+    const result = await fileWriteTool.execute({ path: file, content: 'written by carina' }) as Record<string, unknown>;
     const read = await fs.readFile(file, 'utf8');
     expect(read).toBe('written by carina');
+    expect(result.bytes).toBe(17);
+  });
+
+  it('reports new JSON syntax errors after write', async () => {
+    await setup();
+    const file = path.join(tmpDir, 'data.json');
+    await fs.writeFile(file, '{"ok": true}');
+    const result = await fileWriteTool.execute({ path: file, content: '{bad json' }) as Record<string, unknown>;
+    expect(result.syntax_errors).toBeDefined();
   });
 
   it('creates parent directories recursively', async () => {

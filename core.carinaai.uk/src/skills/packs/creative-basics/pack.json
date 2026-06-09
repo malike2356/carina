@@ -1,0 +1,9 @@
+{
+  "name": "creative-basics",
+  "version": "1.0.0",
+  "description": "Creative output skills: HTML design, diagrams, mockups, ASCII art, ideation",
+  "author": "VERLOX Ltd",
+  "category": "creative",
+  "optional": true,
+  "skillCount": 7
+}

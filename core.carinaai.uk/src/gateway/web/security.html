@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Cloud - Security</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636; --warn: #d29922;
+    }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 32px; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    h2 { font-size: 16px; margin-bottom: 12px; }
+    p { color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+    nav { margin-bottom: 24px; }
+    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; font-size: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .badge.ok { background: rgba(35,134,54,0.2); color: #3fb950; }
+    .badge.off { background: rgba(139,148,158,0.15); color: var(--muted); }
+    button, a.btn {
+      display: inline-block; background: var(--send); color: #fff; border: none;
+      border-radius: 6px; padding: 10px 16px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+    }
+    button.secondary, a.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); margin-left: 8px; }
+    pre.code {
+      background: #0b0f14; border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;
+      margin-top: 12px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; }
+    .notice { padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+    .notice.ok { background: rgba(35,134,54,0.15); color: #3fb950; }
+    .notice.warn { background: rgba(210,153,34,0.12); color: var(--warn); }
+    .mono { font-family: ui-monospace, monospace; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="/">Chat</a>
+      <a href="/settings">Settings</a>
+      <a href="/billing">Billing</a>
+      <a href="/security">Security</a>
+    </nav>
+    <h1>Labyrinth Scout</h1>
+    <p>Security monitoring for your Carina Cloud workspace and any self-hosted Carina you pair with Scout.</p>
+    <div id="notice" hidden></div>
+    <div id="inactive" class="card" hidden>
+      <h2>Scout not active</h2>
+      <p>Upgrade to Pro to enable Labyrinth Scout: real-time threat monitoring, audit logs, and injection shielding.</p>
+      <a class="btn" href="/billing">Upgrade to Pro</a>
+    </div>
+    <div id="active" hidden>
+      <div class="grid">
+        <div class="card">
+          <h2>Subscription</h2>
+          <p>Plan: <strong id="plan-label">-</strong></p>
+          <p>Status: <span id="status-badge" class="badge ok">active</span></p>
+          <p>Instance ID: <span class="mono" id="instance-id">-</span></p>
+          <a class="btn" href="/dashboard">Open security dashboard</a>
+        </div>
+        <div class="card">
+          <h2>Pairing key</h2>
+          <p>Use this key to connect a self-hosted Carina agent to the same Scout account.</p>
+          <p class="mono" id="key-masked">Loading...</p>
+          <button id="show-key-btn" class="secondary">Show full key</button>
+          <button id="copy-key-btn" class="secondary" hidden>Copy key</button>
+          <pre id="env-snippet" class="code" hidden></pre>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Monitored instances</h2>
+        <table>
+          <thead><tr><th>Name</th><th>ID</th><th>Status</th><th>Last seen</th></tr></thead>
+          <tbody id="instances-body"><tr><td colspan="4">Loading...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Recent security events</h2>
+        <table>
+          <thead><tr><th>When</th><th>Severity</th><th>Type</th><th>Description</th></tr></thead>
+          <tbody id="events-body"><tr><td colspan="4">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+    let fullKey = '';
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return 'never';
+      const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+      if (s < 60) return s + 's ago';
+      if (s < 3600) return Math.floor(s / 60) + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      return Math.floor(s / 86400) + 'd ago';
+    }
+
+    async function loadStatus() {
+      const res = await fetch('/app/auth/scout/status');
+      if (!res.ok) { location.href = '/hosted-login'; return; }
+      const data = await res.json();
+      const notice = document.getElementById('notice');
+      const params = new URLSearchParams(location.search);
+      if (params.get('activated') === '1' && data.active) {
+        notice.textContent = 'Scout is active. Your cloud chat is now monitored.';
+        notice.className = 'notice ok';
+        notice.hidden = false;
+      }
+
+      if (!data.active) {
+        document.getElementById('inactive').hidden = false;
+        return;
+      }
+
+      document.getElementById('active').hidden = false;
+      document.getElementById('plan-label').textContent = data.plan || 'scout_standard';
+      document.getElementById('instance-id').textContent = data.instanceId || '-';
+      document.getElementById('key-masked').textContent = data.scoutKeyMasked || '***';
+
+      const instBody = document.getElementById('instances-body');
+      const agents = data.instances || [];
+      instBody.innerHTML = agents.length ? agents.map((a) => `
+        <tr>
+          <td>${escapeHtml(a.name || a.id)}</td>
+          <td class="mono">${escapeHtml(a.id)}</td>
+          <td>${escapeHtml(a.status || 'unknown')}</td>
+          <td>${escapeHtml(a.secondsAgo != null ? a.secondsAgo + 's ago' : 'never')}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="4">No instances yet. Cloud chat will register automatically.</td></tr>';
+
+      const evtBody = document.getElementById('events-body');
+      const events = data.events || [];
+      evtBody.innerHTML = events.length ? events.map((e) => `
+        <tr>
+          <td>${escapeHtml(timeAgo(e.created_at))}</td>
+          <td>${escapeHtml(e.severity)}</td>
+          <td class="mono">${escapeHtml(e.event_type)}</td>
+          <td>${escapeHtml(e.description)}</td>
+        </tr>
+      `).join('') : '<tr><td colspan="4">No events yet.</td></tr>';
+    }
+
+    document.getElementById('show-key-btn').addEventListener('click', async () => {
+      const res = await fetch('/app/auth/scout/key');
+      const data = await res.json();
+      if (!res.ok) { alert(data.error || 'Could not load key'); return; }
+      fullKey = data.apiKey;
+      document.getElementById('key-masked').textContent = fullKey;
+      document.getElementById('env-snippet').textContent = data.envSnippet;
+      document.getElementById('env-snippet').hidden = false;
+      document.getElementById('copy-key-btn').hidden = false;
+    });
+
+    document.getElementById('copy-key-btn').addEventListener('click', async () => {
+      if (!fullKey) return;
+      await navigator.clipboard.writeText(fullKey);
+      alert('Scout API key copied');
+    });
+
+    load();
+    function load() { loadStatus(); }
+  </script>
+</body>
+</html>

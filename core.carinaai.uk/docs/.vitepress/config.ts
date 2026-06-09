@@ -1,12 +1,16 @@
 import { defineConfig } from 'vitepress';
 
+const docsBase = process.env.VP_BASE || '/';
+
 export default defineConfig({
+  base: docsBase,
   title: 'Carina',
   description: 'Autonomous AI agent with skill packs. Free. Open source.',
   themeConfig: {
     logo: '/logo.svg',
     nav: [
       { text: 'Guide', link: '/getting-started' },
+      { text: 'Carina Cloud', link: '/carina-cloud' },
       { text: 'Tools', link: '/tools/overview' },
       { text: 'Skill Packs', link: '/skill-packs/overview' },
       { text: 'Gateways', link: '/gateways/cli' },
@@ -20,6 +24,7 @@ export default defineConfig({
           { text: 'Install', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Self-hosting', link: '/self-hosting' },
+          { text: 'Carina Cloud (SaaS)', link: '/carina-cloud' },
         ],
       },
       {

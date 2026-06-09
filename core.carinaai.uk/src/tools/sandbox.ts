@@ -8,6 +8,7 @@ export interface SandboxOptions {
   timeout: number;
   memoryMb: number;
   networkDisabled: boolean;
+  workdir?: string;
 }
 
 export interface SandboxResult {
@@ -61,16 +62,23 @@ export async function runInSandbox(
   }
 
   const netFlag = options.networkDisabled ? '--network=none' : '';
+  const workdirMount = options.workdir
+    ? `-v '${shellEscape(options.workdir)}:/workdir:ro -w /workdir`
+    : '';
+  const wrappedCommand = options.workdir
+    ? `cd /workdir && ${command}`
+    : command;
   const dockerCmd = [
     'docker run --rm',
     netFlag,
+    workdirMount,
     `--memory=${options.memoryMb}m`,
     '--cpus=0.5',
     '--read-only',
     '--tmpfs /tmp:size=50m',
     image,
     'sh -c',
-    `'${shellEscape(command)}'`,
+    `'${shellEscape(wrappedCommand)}'`,
   ]
     .filter(Boolean)
     .join(' ');

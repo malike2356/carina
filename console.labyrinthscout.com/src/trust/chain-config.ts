@@ -8,11 +8,32 @@ export const ERC8004_IDENTITY_REGISTRY: Record<number, `0x${string}`> = {
   [BASE_MAINNET_CHAIN_ID]: '0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
 };
 
+export const ERC8004_VALIDATION_REGISTRY: Record<number, `0x${string}`> = {
+  [BASE_SEPOLIA_CHAIN_ID]: '0x8004B663056A597Dffe9eCcC1965A193B7388713',
+  [BASE_MAINNET_CHAIN_ID]: '0x8004BAa17C55a88189AE136b182e5fdA19dE9b63',
+};
+
+export const ERC8126_SPEC_URL = 'https://erc8126.ai/specification';
+
 export const DEFAULT_TRUST_CHAIN_ID = BASE_SEPOLIA_CHAIN_ID;
 
 export const DEFAULT_TRUST_RPC: Record<number, string> = {
   [BASE_SEPOLIA_CHAIN_ID]: 'https://sepolia.base.org',
   [BASE_MAINNET_CHAIN_ID]: 'https://mainnet.base.org',
+};
+
+export interface AgentTrustAddresses {
+  interactionRegistry: `0x${string}`;
+  attestationSchemaRegistry: `0x${string}`;
+  trustGraph: `0x${string}`;
+}
+
+export const AGENT_TRUST_CONTRACTS: Record<number, AgentTrustAddresses> = {
+  [BASE_SEPOLIA_CHAIN_ID]: {
+    interactionRegistry: '0x12F5C3fD1893bf9b2DeaA43AE1A2CCb122C3E707',
+    attestationSchemaRegistry: '0x64DaE82fE64D2fE96f90017FE51069C107BFe9d5',
+    trustGraph: '0x8DC39B04A9C32e16DD7bd8906a8ea0d9DE6cCbDF',
+  },
 };
 
 export const IDENTITY_REGISTRY_ABI = [

@@ -26,6 +26,11 @@ export const config = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? '',
+    model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash',
+  },
+  groq: {
+    apiKey: process.env.GROQ_API_KEY ?? '',
+    model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
   },
   database: {
     url: process.env.DATABASE_URL ?? 'postgresql://localhost:5432/carina',
@@ -63,6 +68,11 @@ export const config = {
   carina: {
     defaultProvider: (process.env.DEFAULT_PROVIDER ?? 'deepseek') as 'anthropic' | 'openai' | 'deepseek',
     activePack: process.env.ACTIVE_SKILL_PACK ?? '',
+    activePacks: (process.env.ACTIVE_SKILL_PACKS ?? process.env.ACTIVE_SKILL_PACK ?? '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean),
+    resourcesDir: process.env.CARINA_RESOURCES_DIR ?? '',
     sessionTimeout: 60 * 60 * 1000,
     maxMemoryContext: 20,
     skillAutoWrite: process.env.SKILL_AUTO_WRITE !== 'false',
@@ -72,6 +82,10 @@ export const config = {
   },
   server: {
     port: parseInt(process.env.PORT ?? '3000', 10),
+  },
+  tts: {
+    provider: (process.env.TTS_PROVIDER ?? 'edge') as 'edge' | 'openai',
+    voice: process.env.TTS_VOICE ?? 'en-GB-SoniaNeural',
   },
   telegram: {
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
@@ -116,6 +130,12 @@ export const config = {
     jwtSecret: process.env.JWT_SECRET ?? 'change-me-in-production',
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+    proPriceId: process.env.STRIPE_PRO_PRICE_ID ?? '',
+    appHost: process.env.CARINA_HOSTED_APP_HOST ?? 'app.carinaai.uk',
+    operatorHosts: (process.env.CARINA_OPERATOR_HOSTS ?? 'core.carinaai.uk,localhost')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean),
     stripePrices: {
       scoutStandard: process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
       enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',

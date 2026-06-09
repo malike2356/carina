@@ -30,6 +30,11 @@ const CONTEXT_FILES = [
     name: 'MEMORY.md',
     label: 'Curated Workspace Memory',
   },
+  {
+    name: 'SHARED_MEMORY.md',
+    label: 'Cross-Agent Shared Memory',
+    note: 'Cross-session facts synced via the agent-sync tool.',
+  },
 ] as const;
 
 export async function loadWorkspaceContext(homeDir: string): Promise<string[]> {

@@ -105,6 +105,101 @@ CREATE TABLE IF NOT EXISTS check_in_state (
   rotation_position INTEGER NOT NULL DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS persistent_facts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  target TEXT NOT NULL CHECK (target IN ('user', 'memory')),
+  content TEXT NOT NULL,
+  embedding VECTOR(768),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS scheduled_tasks (
+  id UUID PRIMARY KEY,
+  name TEXT,
+  schedule TEXT NOT NULL,
+  prompt TEXT,
+  script_path TEXT,
+  no_agent BOOLEAN DEFAULT false,
+  deliver TEXT DEFAULT 'origin',
+  repeat_count INT,
+  runs_remaining INT,
+  status TEXT DEFAULT 'active',
+  last_run TIMESTAMPTZ,
+  next_run TIMESTAMPTZ,
+  context_from TEXT[] DEFAULT '{}',
+  enabled_toolsets TEXT[] DEFAULT '{}',
+  workdir TEXT,
+  origin_session_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS scheduled_task_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id UUID NOT NULL REFERENCES scheduled_tasks(id) ON DELETE CASCADE,
+  output TEXT,
+  success BOOLEAN DEFAULT true,
+  completed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS kanban_cards (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id TEXT NOT NULL,
+  board_id TEXT NOT NULL DEFAULT 'default',
+  title TEXT NOT NULL,
+  description TEXT,
+  column_name TEXT NOT NULL DEFAULT 'backlog',
+  assignee TEXT,
+  priority INTEGER DEFAULT 0,
+  blocked BOOLEAN DEFAULT false,
+  block_reason TEXT,
+  linked_card_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS kanban_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  card_id UUID NOT NULL REFERENCES kanban_cards(id) ON DELETE CASCADE,
+  author TEXT NOT NULL DEFAULT 'agent',
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS blocked BOOLEAN DEFAULT false;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS block_reason TEXT;
+ALTER TABLE kanban_cards ADD COLUMN IF NOT EXISTS linked_card_id UUID;
+
+ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
+
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS chain_after TEXT[] DEFAULT '{}';
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS deliver_channels TEXT[] DEFAULT '{}';
+
+CREATE TABLE IF NOT EXISTS webhook_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  url TEXT NOT NULL,
+  events TEXT[] NOT NULL,
+  secret TEXT,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS tenant_provider_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  provider TEXT NOT NULL,
+  encrypted_api_key TEXT NOT NULL,
+  custom_base_url TEXT,
+  custom_model TEXT,
+  enabled BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(tenant_id, provider)
+);
 `;
 
 const INDEXES = [
@@ -122,7 +217,32 @@ const INDEXES = [
      ON model_usage (session_id, created_at DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_model_usage_created
      ON model_usage (created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_persistent_facts_target
+     ON persistent_facts (target, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status
+     ON scheduled_tasks (status, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_kanban_cards_session
+     ON kanban_cards (session_id, board_id, column_name)`,
+  `CREATE INDEX IF NOT EXISTS idx_webhook_subscriptions_active
+     ON webhook_subscriptions (active, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_tenant_provider_keys_tenant
+     ON tenant_provider_keys (tenant_id)`,
 ];
+
+const FTS_MIGRATION = `
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'episodic_memories' AND column_name = 'content_tsv'
+  ) THEN
+    ALTER TABLE episodic_memories
+      ADD COLUMN content_tsv tsvector
+      GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
+    CREATE INDEX episodic_memories_tsv_idx ON episodic_memories USING GIN (content_tsv);
+  END IF;
+END $$;
+`;
 
 // Migrate existing 1536-dim columns to 768 (DeepSeek native dimension).
 // Safe to run repeatedly - only fires when the old dimension is detected.
@@ -163,5 +283,10 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     } catch {
       // ivfflat requires at least one row; safe to skip and retry after ingest
     }
+  }
+  try {
+    await client.query(FTS_MIGRATION);
+  } catch {
+    // FTS column may already exist
   }
 }

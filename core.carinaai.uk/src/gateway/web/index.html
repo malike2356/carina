@@ -296,7 +296,19 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Personalise
         </button>
-        <button type="button" data-open-modal="settings" role="menuitem">
+        <a href="/settings" id="hosted-settings-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+          API keys (BYOK)
+        </a>
+        <a href="/billing" id="hosted-billing-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          Billing
+        </a>
+        <a href="/security" id="hosted-security-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security (Scout)
+        </a>
+        <button type="button" data-open-modal="settings" id="operator-settings-btn" role="menuitem">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
           Settings
         </button>
@@ -322,6 +334,7 @@
         </button>
         <h1>Carina Agent</h1>
         <span id="provider-label">provider: ...</span>
+        <span id="tier-badge" hidden style="font-size:0.75rem;color:var(--muted);margin-left:8px;"></span>
       </div>
       <div class="header-actions">
         <button class="icon-btn" id="header-new-chat" title="New chat">
@@ -332,6 +345,10 @@
         </button>
       </div>
     </header>
+    <div id="quota-banner" hidden style="margin:0 16px 8px;padding:10px 14px;border-radius:8px;background:rgba(248,81,73,0.12);color:#f85149;font-size:0.85rem;">
+      <span id="quota-banner-text"></span>
+      <a href="/billing" style="color:var(--accent);margin-left:8px;">Upgrade to Pro</a>
+    </div>
     <div id="messages"></div>
     <footer>
       <div class="composer">
@@ -504,6 +521,36 @@
       document.getElementById('user-display-name').textContent = profile.name || 'Operator';
       const avatars = [document.getElementById('user-avatar')];
       avatars.forEach((el) => { el.textContent = initial; el.style.background = profile.color || '#1f6feb'; });
+    }
+
+    async function loadHostedContext() {
+      try {
+        const res = await fetch('/api/hosted/context');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.hosted || !data.user) return;
+        document.body.dataset.hosted = 'true';
+        const email = data.user.email || '';
+        const tier = data.user.tier || 'free';
+        const name = email.split('@')[0] || 'User';
+        document.getElementById('user-display-name').textContent = name;
+        document.querySelector('.user-sub').textContent = tier + ' tier · BYOK';
+        document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+        document.getElementById('tier-badge').textContent = tier;
+        document.getElementById('tier-badge').hidden = false;
+        document.getElementById('hosted-settings-link').hidden = false;
+        document.getElementById('hosted-billing-link').hidden = false;
+        if (tier === 'pro') document.getElementById('hosted-security-link').hidden = false;
+        document.getElementById('operator-settings-btn').hidden = true;
+        const empty = document.querySelector('.empty-state p');
+        if (empty) empty.textContent = 'Add your LLM API keys in Settings, then ask anything. You pay your provider directly.';
+      } catch {}
+    }
+
+    function showQuotaBanner(message) {
+      const banner = document.getElementById('quota-banner');
+      document.getElementById('quota-banner-text').textContent = message;
+      banner.hidden = false;
     }
 
     function getPrefs() {
@@ -813,12 +860,28 @@
       autoGrow();
       sendBtn.disabled = true;
 
-      const sessionId = getSessionId();
+      const sessionId = document.body.dataset.hosted === 'true'
+        ? 'hosted-session'
+        : getSessionId();
       const carinaEl = appendMessage('carina', '...', null, 'streaming');
       let fullText = '';
       let activeProvider = await fetchProvider();
 
-      const url = '/api/chat/stream?message=' + encodeURIComponent(text) + '&sessionId=' + encodeURIComponent(sessionId);
+      if (document.body.dataset.hosted === 'true') {
+        try {
+          const res = await fetch('/api/chat/stream?message=' + encodeURIComponent(text));
+          if (res.status === 429) {
+            const data = await res.json();
+            showQuotaBanner(data.error || 'Daily limit reached.');
+            carinaEl.textContent = data.error || 'Daily limit reached.';
+            sendBtn.disabled = false;
+            return;
+          }
+        } catch {}
+      }
+
+      const url = '/api/chat/stream?message=' + encodeURIComponent(text)
+        + (document.body.dataset.hosted === 'true' ? '' : '&sessionId=' + encodeURIComponent(sessionId));
       const es = new EventSource(url);
 
       es.onmessage = (event) => {
@@ -1002,6 +1065,7 @@
     renderSessionList();
     renderEmptyState();
     fetchProvider();
+    loadHostedContext();
   </script>
 </body>
 </html>

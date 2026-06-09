@@ -15,11 +15,27 @@ import { subscribeRouter } from '../api/subscribe.js';
 import { memoryApiRouter } from '../api/memory-api.js';
 import { packsApiRouter } from '../api/packs-api.js';
 import { getRouter } from './router.js';
-import { checkWebPassword, redirectIfWebAuthed, requireWebAuth } from './web-auth.js';
+import {
+  checkWebPassword,
+  redirectIfHostedAuthed,
+  redirectIfWebAuthed,
+  requireWebAuth,
+} from './web-auth.js';
+import { enforceHostedQuota, resolveExternalId } from './hosted-chat.js';
+import { isHostedRequest } from './hosted-domain.js';
+import { mountHostedContextRoute, mountHostedWebRoutes } from '../api/hosted-web.js';
+import { mountHostedScoutRoutes } from '../api/hosted-scout.js';
+import { getTenantScoutCredentials, scoutServiceUrl } from '../billing/tenant-scout.js';
+import { ensureHostedScoutHeartbeat, runWithHostedScout } from './hosted-scout.js';
 import { createWhatsAppRouter, isWhatsAppConfigured, logWhatsAppStatus } from './whatsapp.js';
 import { createSmsRouter, isSmsConfigured, logSmsStatus } from './sms.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { WebAdapter } from './channels/adapters/web-adapter.js';
+import { setupAcpRoutes } from './acp.js';
+import { setupAcpIdeRoutes } from './acp-ide.js';
+import { mountExtraChannelWebhooks, registerExtraChannelAdapters } from './extra-channels.js';
+import { tenantKeysRouter } from '../api/tenant-keys.js';
+import { getUserByApiKey, verifyJwt } from '../api/hosted-auth.js';
 
 export type StartWebOptions = {
   localMode?: boolean;
@@ -38,6 +54,7 @@ const chatLimiter = rateLimit({
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_STATIC = path.join(__dirname, 'web');
 const PRICING_STATIC = path.join(__dirname, '..', 'web', 'pricing');
+const DASHBOARD_STATIC = path.join(__dirname, '..', '..', 'public', 'dashboard');
 const activeServers: Server[] = [];
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {
@@ -46,6 +63,17 @@ async function collectResponse(generator: AsyncGenerator<string>): Promise<strin
     full += chunk;
   }
   return full;
+}
+
+async function resolveTenantId(req: Request): Promise<string | undefined> {
+  if (req.hostedUser?.id) return req.hostedUser.id;
+  const header = req.headers.authorization ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) return undefined;
+  const jwtUser = verifyJwt(token);
+  if (jwtUser) return jwtUser.userId;
+  const apiUser = await getUserByApiKey(token);
+  return apiUser?.id;
 }
 
 function setupChatRoutes(app: Express): void {
@@ -73,22 +101,35 @@ function setupChatRoutes(app: Express): void {
 
   const handleChatSend = async (req: Request, res: Response): Promise<void> => {
     const message = String(req.body?.message ?? '').trim();
-    const externalId = String(req.body?.sessionId ?? 'anonymous');
 
     if (!message) {
       res.status(400).json({ error: 'message is required' });
       return;
     }
 
+    const quotaMessage = await enforceHostedQuota(req);
+    if (quotaMessage) {
+      res.status(429).json({ error: quotaMessage, upgradeUrl: '/billing' });
+      return;
+    }
+
     try {
-      const router = getRouter();
-      const sessionId = await router.getSession('web', externalId);
-      const reply = await collectResponse(router.handleInbound('web', {
-        id: String(Date.now()),
-        sessionId: externalId,
-        message,
-      }));
-      res.json({ reply, sessionId, provider: llm.current().name });
+      await runWithHostedScout(req, async () => {
+        await ensureHostedScoutHeartbeat(req);
+        const router = getRouter();
+        const externalId = resolveExternalId(req);
+        const sessionId = await router.getSession('web', externalId);
+        const tenantId = await resolveTenantId(req);
+        const reply = await collectResponse(router.handle({
+          id: String(Date.now()),
+          sessionId,
+          tenantId,
+          content: message,
+          source: 'web',
+          timestamp: new Date(),
+        }));
+        res.json({ reply, sessionId, provider: llm.current().name });
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: msg });
@@ -99,11 +140,7 @@ function setupChatRoutes(app: Express): void {
   app.post('/api/chat/send', express.json(), handleChatSend);
 
   app.post('/api/clear', express.json(), async (req: Request, res: Response) => {
-    const externalId = String(req.body?.sessionId ?? '');
-    if (!externalId) {
-      res.status(400).json({ error: 'sessionId is required' });
-      return;
-    }
+    const externalId = resolveExternalId(req);
     const router = getRouter();
     const sessionId = await router.getSession('web', externalId);
     await router.clearSession(sessionId);
@@ -112,10 +149,15 @@ function setupChatRoutes(app: Express): void {
 
   app.get('/api/chat/stream', async (req: Request, res: Response) => {
     const message = String(req.query.message ?? '').trim();
-    const externalId = String(req.query.sessionId ?? 'anonymous');
 
     if (!message) {
       res.status(400).json({ error: 'message is required' });
+      return;
+    }
+
+    const quotaMessage = await enforceHostedQuota(req);
+    if (quotaMessage) {
+      res.status(429).json({ error: quotaMessage, upgradeUrl: '/billing' });
       return;
     }
 
@@ -125,15 +167,25 @@ function setupChatRoutes(app: Express): void {
     res.flushHeaders();
 
     try {
-      const router = getRouter();
-      for await (const chunk of router.handleInbound('web', {
-        id: String(Date.now()),
-        sessionId: externalId,
-        message,
-      })) {
-        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-      }
-      res.write('data: [DONE]\n\n');
+      await runWithHostedScout(req, async () => {
+        await ensureHostedScoutHeartbeat(req);
+        const router = getRouter();
+        const externalId = resolveExternalId(req);
+        const sessionId = await router.getSession('web', externalId);
+        const tenantId = await resolveTenantId(req);
+        const stream = router.handle({
+          id: String(Date.now()),
+          sessionId,
+          tenantId,
+          content: message,
+          source: 'web',
+          timestamp: new Date(),
+        });
+        for await (const chunk of stream) {
+          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
+        res.write('data: [DONE]\n\n');
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
@@ -194,6 +246,7 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     app.use('/api/memory', memoryApiRouter);
     app.use('/api/packs', packsApiRouter);
     mountHostedRoutes(app);
+    mountHostedWebRoutes(app);
     app.use('/webhooks/email', emailWebhookRouter);
 
     if (isWhatsAppConfigured()) {
@@ -213,6 +266,8 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
 
   if (!localMode) {
     app.use('/pricing', express.static(PRICING_STATIC));
+    app.use('/dashboard', express.static(DASHBOARD_STATIC, { index: false }));
+
     const pricingHtml = await fs.readFile(path.join(PRICING_STATIC, 'index.html'), 'utf-8').catch(() => null);
     const checkoutHtml = await fs.readFile(path.join(PRICING_STATIC, 'checkout.html'), 'utf-8').catch(() => null);
     const successHtml = await fs.readFile(path.join(PRICING_STATIC, 'success.html'), 'utf-8').catch(() => null);
@@ -220,16 +275,41 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     if (checkoutHtml) app.get('/checkout', (_req, res) => res.type('html').send(checkoutHtml));
     if (successHtml) app.get('/billing/success', (_req, res) => res.type('html').send(successHtml));
 
-    // --- Private-instance gate: blocks public chat access behind CARINA_WEB_PASSWORD ---
     const loginHtml = await fs
       .readFile(path.join(WEB_STATIC, 'login.html'), 'utf-8')
       .catch(() => '<h1>Login page missing</h1>');
+    const hostedLoginHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'hosted-login.html'), 'utf-8')
+      .catch(() => null);
+    const hostedRegisterHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'hosted-register.html'), 'utf-8')
+      .catch(() => null);
+    const billingHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'billing.html'), 'utf-8')
+      .catch(() => null);
+    const settingsHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'settings.html'), 'utf-8')
+      .catch(() => null);
+    const securityHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'security.html'), 'utf-8')
+      .catch(() => null);
+    const dashboardIndexHtml = await fs
+      .readFile(path.join(DASHBOARD_STATIC, 'index.html'), 'utf-8')
+      .catch(() => null);
 
-    app.get('/login', redirectIfWebAuthed, (_req, res) => {
+    app.get('/login', redirectIfWebAuthed, (req, res) => {
+      if (isHostedRequest(req.hostname)) {
+        res.redirect('/hosted-login');
+        return;
+      }
       res.type('html').send(loginHtml);
     });
 
     app.post('/login', redirectIfWebAuthed, async (req, res) => {
+      if (isHostedRequest(req.hostname)) {
+        res.redirect('/hosted-login');
+        return;
+      }
       const password = String(req.body?.password ?? '');
       const ok = await checkWebPassword(password);
       if (!ok) {
@@ -240,11 +320,126 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
       res.redirect('/');
     });
 
+    if (hostedLoginHtml) {
+      app.get('/hosted-login', redirectIfHostedAuthed, (_req, res) => {
+        res.type('html').send(hostedLoginHtml);
+      });
+    }
+    if (hostedRegisterHtml) {
+      app.get('/hosted-register', redirectIfHostedAuthed, (_req, res) => {
+        res.type('html').send(hostedRegisterHtml);
+      });
+    }
+
     app.post('/logout', (req, res) => {
-      req.session.destroy(() => res.redirect('/login'));
+      const redirectTo = isHostedRequest(req.hostname) ? '/hosted-login' : '/login';
+      req.session.destroy(() => res.redirect(redirectTo));
     });
 
-    app.use(requireWebAuth);
+    app.use((req, res, next) => {
+      void requireWebAuth(req, res, next);
+    });
+
+    if (billingHtml) {
+      app.get('/billing', (req, res) => {
+        if (!isHostedRequest(req.hostname)) {
+          res.redirect('/');
+          return;
+        }
+        res.type('html').send(billingHtml);
+      });
+    }
+    if (settingsHtml) {
+      app.get('/settings', (req, res) => {
+        if (!isHostedRequest(req.hostname)) {
+          res.redirect('/');
+          return;
+        }
+        res.type('html').send(settingsHtml);
+      });
+    }
+    if (securityHtml) {
+      app.get('/security', (req, res) => {
+        if (!isHostedRequest(req.hostname)) {
+          res.redirect('/');
+          return;
+        }
+        res.type('html').send(securityHtml);
+      });
+    }
+
+    if (dashboardIndexHtml) {
+      app.get('/dashboard', async (req, res) => {
+        const scoutBase = scoutServiceUrl();
+        if (isHostedRequest(req.hostname)) {
+          if (req.hostedUser?.tier !== 'pro') {
+            res.redirect('/billing');
+            return;
+          }
+          const creds = await getTenantScoutCredentials(req.hostedUser.id, req.hostedUser.email);
+          if (!creds || !scoutBase) {
+            res.redirect('/security');
+            return;
+          }
+          const escapedKey = creds.apiKey.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+          let html = dashboardIndexHtml.replace(
+            '<meta name="scout-api-key" content="">',
+            `<meta name="scout-api-key" content="${escapedKey}">`,
+          );
+          html = html.replace('<body>', '<body data-tenant-scout="true">');
+          res.type('html').send(html);
+          return;
+        }
+        if (config.labyrinth.apiKey && scoutBase) {
+          const escapedKey = config.labyrinth.apiKey.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+          const html = dashboardIndexHtml.replace(
+            '<meta name="scout-api-key" content="">',
+            `<meta name="scout-api-key" content="${escapedKey}">`,
+          );
+          res.type('html').send(html);
+          return;
+        }
+        res.redirect('/');
+      });
+    }
+
+    const scoutBase = scoutServiceUrl();
+    if (scoutBase) {
+      const http = await import('node:http');
+      app.use(['/api/dashboard', '/api/events', '/api/sse'], async (req, res) => {
+        let apiKey = config.labyrinth.apiKey;
+        if (isHostedRequest(req.hostname)) {
+          if (req.hostedUser?.tier !== 'pro') {
+            res.status(403).json({ error: 'Scout requires a Pro subscription' });
+            return;
+          }
+          const creds = await getTenantScoutCredentials(req.hostedUser.id, req.hostedUser.email);
+          if (!creds) {
+            res.status(403).json({ error: 'Scout is not provisioned yet' });
+            return;
+          }
+          apiKey = creds.apiKey;
+        }
+        if (!apiKey) {
+          res.status(503).json({ error: 'Scout is not configured' });
+          return;
+        }
+        const scoutUrl = new URL(req.originalUrl, scoutBase);
+        const proxyReq = http.request(scoutUrl, {
+          method: req.method,
+          headers: { ...req.headers, host: scoutUrl.host, 'x-scout-key': apiKey },
+        }, (proxyRes) => {
+          res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+          proxyRes.pipe(res);
+        });
+        proxyReq.on('error', () => res.status(502).json({ error: 'Scout unreachable' }));
+        req.pipe(proxyReq);
+      });
+    }
+
+    mountHostedContextRoute(app);
+    mountHostedScoutRoutes(app);
+    app.use(tenantKeysRouter());
   }
 
   try {
@@ -269,6 +464,10 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
   }
 
   setupChatRoutes(app);
+  registerExtraChannelAdapters();
+  setupAcpRoutes(app);
+  setupAcpIdeRoutes(app);
+  mountExtraChannelWebhooks(app);
 
   // Catch-all error handler - must be last
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

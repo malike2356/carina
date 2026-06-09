@@ -1,6 +1,33 @@
 <% title = 'Dashboard' %>
 <h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
 
+<% if (tenantSummary) { %>
+<section class="mb-8 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <h2 class="text-lg font-semibold text-white">Hosted tenants</h2>
+    <a href="/tenants" class="text-sm text-[#06b6d4] hover:underline">Open tenant dashboard</a>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div>
+      <p class="text-gray-400 text-sm">Total</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.total %></p>
+    </div>
+    <div>
+      <p class="text-gray-400 text-sm">Free / Pro</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.freeCount %> / <span class="text-[#22c55e]"><%= tenantSummary.proCount %></span></p>
+    </div>
+    <div>
+      <p class="text-gray-400 text-sm">Msgs today</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.messagesToday %></p>
+    </div>
+    <div>
+      <p class="text-gray-400 text-sm">Tokens (month)</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.monthlyTokens.toLocaleString() %></p>
+    </div>
+  </div>
+</section>
+<% } %>
+
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <p class="text-gray-400 text-sm">Total memories</p>
