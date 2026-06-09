@@ -40,6 +40,11 @@ export const config = {
     publicEnabled: optional('TRUST_PUBLIC_ENABLED', 'true') !== 'false',
     erc8004Status: optional('TRUST_ERC8004_STATUS', 'registering'),
     erc8126Status: optional('TRUST_ERC8126_STATUS', 'enterprise'),
+    chainId: parseInt(optional('TRUST_CHAIN_ID', '84532'), 10),
+    chainRpc: optional('TRUST_CHAIN_RPC', 'https://sepolia.base.org'),
+    attesterPrivateKey: optional('TRUST_ATTESTER_PRIVATE_KEY'),
+    erc8004Registry: optional('TRUST_ERC8004_REGISTRY'),
+    platform: optional('TRUST_PLATFORM', 'agent-trust-on-base'),
   },
   alerts: {
     telegram: {

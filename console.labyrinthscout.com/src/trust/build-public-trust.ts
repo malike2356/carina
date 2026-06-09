@@ -5,6 +5,7 @@ import {
   type ChainStatus,
   type TrustMetricsInput,
 } from './compute-trust-metrics.js';
+import { loadReferenceTrustIdentity } from './load-trust-identity.js';
 
 interface InstanceAggRow {
   agents_total: string;
@@ -94,8 +95,13 @@ export async function buildPublicTrustFromDb(now = new Date()) {
       : null,
   };
 
+  const identity = await loadReferenceTrustIdentity();
+  const erc8004Status = identity?.registered
+    ? 'live'
+    : parseChainStatus(config.trust.erc8004Status, 'registering');
+
   return buildPublicTrustPayload(metrics, {
-    erc8004: parseChainStatus(config.trust.erc8004Status, 'registering'),
+    erc8004: erc8004Status,
     erc8126: parseChainStatus(config.trust.erc8126Status, 'enterprise'),
-  }, now);
+  }, identity, now);
 }

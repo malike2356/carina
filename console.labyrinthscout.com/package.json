@@ -12,6 +12,7 @@
     "build": "tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "trust:register": "tsx scripts/register-trust-identity.ts",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs"
   },
@@ -23,7 +24,8 @@
     "express-session": "^1.18.0",
     "ioredis": "^5.4.1",
     "pg": "^8.13.0",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "viem": "^2.31.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

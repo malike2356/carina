@@ -26,11 +26,24 @@ export interface TrustAttestation {
   at: string;
 }
 
+export interface PublicTrustIdentity {
+  registered: boolean;
+  slug: string | null;
+  name: string | null;
+  agent_id: string | null;
+  agent_registry: string | null;
+  wallet_address: string | null;
+  registry_explorer_url: string | null;
+  register_tx_url: string | null;
+  status: string | null;
+}
+
 export interface PublicTrustPayload {
   generated_at: string;
   risk_score: number;
   risk_tier: RiskTier;
   risk_tier_label: string;
+  identity: PublicTrustIdentity | null;
   monitoring: {
     scout_active: boolean;
     agents_protected: number;
@@ -181,6 +194,7 @@ export function buildAttestations(
 export function buildPublicTrustPayload(
   input: TrustMetricsInput,
   chain: { erc8004: ChainStatus; erc8126: ChainStatus },
+  identity: PublicTrustIdentity | null = null,
   now = new Date(),
 ): PublicTrustPayload {
   const generatedAt = now.toISOString();
@@ -197,6 +211,7 @@ export function buildPublicTrustPayload(
     risk_score: riskScore,
     risk_tier: riskTier,
     risk_tier_label: TIER_LABELS[riskTier],
+    identity,
     monitoring: {
       scout_active: scoutActive,
       agents_protected: input.agentsTotal,

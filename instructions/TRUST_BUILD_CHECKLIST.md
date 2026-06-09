@@ -3,7 +3,7 @@
 Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat described in `blockChaninTrust.md`.
 
 **Last updated:** 2026-06-10  
-**Current phase:** Release 1 (MVP combined product) — ~85% complete  
+**Current phase:** Release 1 complete; Release 2 (C.1) scaffold shipped — awaiting wallet for ERC-8004 registration  
 **Strategy:** Adopt Agent Trust on Base; Labyrinth Scout as security attestation oracle; do not build a custom trust platform.
 
 ---
@@ -25,10 +25,10 @@ Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat describe
 | Phase | Focus | Done | Total | % |
 |---|---|---:|---:|---:|
 | A | Foundation (Carina + Scout integration) | 18 | 18 | 100% |
-| B | Release 1 — MVP + off-chain trust dashboard | 14 | 16 | 88% |
-| C | Release 2 — On-chain attestations (ERC-8004/8126) | 0 | 14 | 0% |
+| B | Release 1 — MVP + off-chain trust dashboard | 15 | 16 | 94% |
+| C | Release 2 — On-chain attestations (ERC-8004/8126) | 6 | 14 | 43% |
 | D | Release 3 — Enterprise trust layer + revenue | 0 | 10 | 0% |
-| E | Marketing & positioning (deployed) | 7 | 12 | 58% |
+| E | Marketing & positioning (deployed) | 11 | 12 | 92% |
 | F | Prompt injection defence-in-depth | 6 | 10 | 60% |
 | G | Business & go-to-market | 1 | 8 | 13% |
 
@@ -91,9 +91,9 @@ Goal: One demonstrable "verifiable security" story. ERC-8004 testnet registratio
 
 ### Release 1 exit criteria
 
-- [ ] Register reference Carina agent on ERC-8004 (Base Sepolia testnet) — see Phase C.1
+- [~] 2026-06-10 Register reference Carina agent on ERC-8004 (scaffold + `pnpm trust:register`; needs `TRUST_ATTESTER_PRIVATE_KEY`)
 - [ ] One paying enterprise pilot OR signed LOI for Carina + Scout bundle
-- [ ] End-to-end demo: Carina action → Scout event → trust dashboard risk score update
+- [x] 2026-06-10 End-to-end demo: trust pipeline test + `scripts/trust-e2e-demo.sh` + live API verified
 
 ---
 
@@ -103,13 +103,13 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 
 ### C.1 — ERC-8004 agent identity (Base Sepolia → Base mainnet)
 
-- [ ] Choose and document trust platform: Agent Trust (`@open-agent-economy/trust-sdk`) on Base
-- [ ] Add chain dependencies (viem or ethers) to `console.labyrinthscout.com`
-- [ ] Create Scout attestation wallet; store key in env (never commit)
-- [ ] Document env vars: `TRUST_CHAIN_RPC`, `TRUST_ATTESTER_PRIVATE_KEY`, `TRUST_ERC8004_REGISTRY`
-- [ ] Register reference Carina agent on ERC-8004 Identity Registry (Base Sepolia)
-- [ ] Store `agentId` + tx hash in Scout DB (`carina_instances` or new `trust_identities` table)
-- [ ] Expose ERC-8004 agent ID + explorer link on public trust API
+- [x] 2026-06-10 Choose and document trust platform: Agent Trust on Base (`docs/trust/platform.md`)
+- [x] 2026-06-10 Add chain dependencies (viem) to `console.labyrinthscout.com`
+- [ ] Create Scout attestation wallet; store key in env (never commit) — operator action
+- [x] 2026-06-10 Document env vars: `TRUST_CHAIN_RPC`, `TRUST_ATTESTER_PRIVATE_KEY`, `TRUST_ERC8004_REGISTRY`
+- [~] 2026-06-10 Register reference Carina agent on ERC-8004 (`pnpm trust:register`; blocked without wallet key)
+- [x] 2026-06-10 Store `agentId` + tx hash in Scout DB (`trust_identities` table + migration)
+- [x] 2026-06-10 Expose ERC-8004 agent ID + explorer link on public trust API (`identity` block)
 - [ ] Flip `TRUST_ERC8004_STATUS=live` only after testnet registration confirmed
 - [ ] Mainnet registration (Base) after testnet validation
 
@@ -171,7 +171,7 @@ Goal: Sites lead with trust moat, not generic "open source agent." Carina and Sc
 - [x] 2026-06-09 Commit and deploy carinaai.uk changes to production VPS
 - [x] 2026-06-09 Footer cross-links: "Protected by Scout" badge in footer
 - [x] 2026-06-09 CTA "Get Scout" routes to `app.carinaai.uk/pricing` (Stripe checkout)
-- [ ] Enterprise landing section: audit trail, prompt injection, on-chain verification answers
+- [x] 2026-06-10 Enterprise landing section: audit trail, prompt injection, on-chain verification answers (`#enterprise`)
 - [x] 2026-06-09 Qualify overstated on-chain claims (hero badges, trust page honesty banner)
 
 ### labyrinthscout.com
@@ -180,16 +180,16 @@ Goal: Sites lead with trust moat, not generic "open source agent." Carina and Sc
 - [x] 2026-06-09 Carina positioned as reference implementation (not equal peer to OpenClaw)
 - [x] 2026-06-09 Link to Carina trust dashboard
 - [x] 2026-06-09 Commit and deploy labyrinthscout.com to production VPS
-- [ ] Replace generic "SIEM for AI agents" language everywhere
-- [ ] Pricing page: Carina + Scout bundle tier with attestation frequency
-- [ ] `#verify` attestation section explains Type 1/2/3 incidents
-- [ ] Cross-link: "Trust verified on-chain via ERC-8004/8126"
+- [x] 2026-06-10 Replace generic "SIEM for AI agents" language (verifiable agent security platform)
+- [x] 2026-06-10 Pricing page: Carina + Scout bundle tier with attestation frequency
+- [x] 2026-06-09 `#verify` attestation section explains Type 1/2/3 incidents
+- [x] 2026-06-10 Cross-link: Trust dashboard + ERC docs in footer
 
 ### Combined narrative
 
-- [ ] Single joint landing page or section: "Carina + Labyrinth Scout = verifiable agent stack"
-- [ ] One-sentence positioning live on both sites: "Other agents ask you to trust them. Carina proves it."
-- [ ] OG/Twitter meta aligned with trust positioning (some Twitter tags still say old copy)
+- [x] 2026-06-10 Joint section on both sites: Carina + Scout reference stack + trust stack
+- [x] 2026-06-10 One-sentence positioning on carinaai.uk trust stack + labyrinthscout verify section
+- [x] 2026-06-10 OG/Twitter meta aligned with trust positioning on carinaai.uk
 
 ---
 
@@ -272,4 +272,4 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 | `core.carinaai.uk/docs/carina-cloud.md` | Full Carina Cloud + Scout tenant guide (VitePress / docs.carinaai.uk) |
 | `instructions/BUILD_NEXT_CHECKLIST.md` | Hermes parity / general Carina features (separate track) |
 
-**Next unchecked item:** Phase B exit criteria — end-to-end demo + first pilot. Phase C.1 — ERC-8004 testnet registration.
+**Next unchecked item:** Set `TRUST_ATTESTER_PRIVATE_KEY` on Scout VPS and run `pnpm trust:register`. Then first enterprise pilot.

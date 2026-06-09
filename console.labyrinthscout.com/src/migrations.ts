@@ -224,8 +224,14 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      carina_tenant_id UUID UNIQUE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  await client.query(`
+    ALTER TABLE accounts
+      ADD COLUMN IF NOT EXISTS carina_tenant_id UUID UNIQUE
   `);
 
   await client.query(`
@@ -394,6 +400,23 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_compliance_requests_tenant
       ON compliance_requests (tenant_id)
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS trust_identities (
+      slug TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      agent_uri TEXT NOT NULL,
+      chain_id INTEGER NOT NULL,
+      registry_address TEXT NOT NULL,
+      agent_id TEXT,
+      wallet_address TEXT,
+      register_tx_hash TEXT,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'registering', 'live', 'failed')),
+      registered_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
   `);
 
   console.log('[scout:migrations] Schema ready');

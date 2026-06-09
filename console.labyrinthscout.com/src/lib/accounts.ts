@@ -18,6 +18,7 @@ export interface ApiKeySummary {
 }
 
 const KEY_PREFIX = 'lsk_';
+const LICENSE_RE = /^scout_(live|test)_/;
 
 function hashKey(plaintext: string): string {
   return createHash('sha256').update(plaintext).digest('hex');
@@ -126,8 +127,84 @@ export async function revokeApiKey(accountId: string, keyId: string): Promise<bo
   return (result.rowCount ?? 0) > 0;
 }
 
+export async function registerLicenseKey(
+  accountId: string,
+  plaintext: string,
+  label = 'Carina Cloud subscription',
+): Promise<void> {
+  if (!LICENSE_RE.test(plaintext)) {
+    throw new Error('Invalid Scout license key format');
+  }
+  const keyPrefix = plaintext.slice(0, Math.min(plaintext.length, 20));
+  await pool.query(
+    `INSERT INTO account_api_keys (account_id, key_hash, key_prefix, label)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (key_hash) DO NOTHING`,
+    [accountId, hashKey(plaintext), keyPrefix, label],
+  );
+}
+
+export async function findAccountByCarinaTenantId(tenantId: string): Promise<Account | null> {
+  const result = await pool.query<{ id: string; email: string; created_at: string }>(
+    `SELECT id, email, created_at FROM accounts WHERE carina_tenant_id = $1`,
+    [tenantId],
+  );
+  const row = result.rows[0];
+  return row ? toAccount(row) : null;
+}
+
+export async function provisionCarinaTenant(opts: {
+  email: string;
+  carinaTenantId: string;
+  licenseKey: string;
+}): Promise<{ accountId: string; created: boolean }> {
+  const email = opts.email.toLowerCase().trim();
+  let account = await findAccountByCarinaTenantId(opts.carinaTenantId);
+  let created = false;
+
+  if (!account) {
+    const byEmail = await pool.query<{ id: string; email: string; created_at: string }>(
+      `SELECT id, email, created_at FROM accounts WHERE email = $1`,
+      [email],
+    );
+    if (byEmail.rows[0]) {
+      account = toAccount(byEmail.rows[0]);
+      await pool.query(
+        `UPDATE accounts SET carina_tenant_id = $1 WHERE id = $2 AND carina_tenant_id IS NULL`,
+        [opts.carinaTenantId, account.id],
+      );
+    }
+  }
+
+  if (!account) {
+    const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), 12);
+    const result = await pool.query<{ id: string; email: string; created_at: string }>(
+      `INSERT INTO accounts (email, password_hash, carina_tenant_id)
+       VALUES ($1, $2, $3)
+       RETURNING id, email, created_at`,
+      [email, passwordHash, opts.carinaTenantId],
+    );
+    const row = result.rows[0];
+    if (!row) throw new Error('Account insert returned no row');
+    account = toAccount(row);
+    created = true;
+  } else {
+    await pool.query(`UPDATE accounts SET carina_tenant_id = $1 WHERE id = $2`, [
+      opts.carinaTenantId,
+      account.id,
+    ]);
+  }
+
+  await registerLicenseKey(account.id, opts.licenseKey);
+  return { accountId: account.id, created };
+}
+
 export async function findAccountByApiKey(plaintext: string): Promise<Account | null> {
-  if (!plaintext.startsWith(KEY_PREFIX)) return null;
+  const allowed =
+    plaintext.startsWith(KEY_PREFIX) ||
+    plaintext.startsWith('scout_live_') ||
+    plaintext.startsWith('scout_test_');
+  if (!allowed) return null;
   const result = await pool.query<{ id: string; email: string; created_at: string; key_id: string }>(
     `SELECT a.id, a.email, a.created_at, k.id AS key_id
      FROM account_api_keys k

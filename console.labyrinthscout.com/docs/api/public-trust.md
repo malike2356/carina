@@ -37,6 +37,17 @@ GET /api/public/trust
     "blocked_24h": 0
   },
   "attestations": [],
+  "identity": {
+    "registered": false,
+    "slug": "carina-reference",
+    "name": "Carina AI Agent",
+    "agent_id": null,
+    "agent_registry": null,
+    "wallet_address": null,
+    "registry_explorer_url": "https://sepolia.basescan.org/address/0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    "register_tx_url": null,
+    "status": "pending"
+  },
   "chain": {
     "erc8004_status": "registering",
     "erc8004_label": "Registering on Base Sepolia",

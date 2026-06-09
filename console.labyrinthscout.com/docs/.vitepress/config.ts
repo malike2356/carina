@@ -20,6 +20,7 @@ export default defineConfig({
           { text: 'Configuration', link: '/configuration' },
           { text: 'Dashboard', link: '/dashboard' },
           { text: 'Public Trust API', link: '/api/public-trust' },
+          { text: 'Trust platform', link: '/trust/platform' },
           { text: 'Pricing', link: '/pricing' },
         ],
       },
@@ -31,6 +32,13 @@ export default defineConfig({
           { text: 'Hermes', link: '/integration/hermes' },
           { text: 'Custom agents', link: '/integration/custom-agent' },
           { text: 'Docker', link: '/integration/docker' },
+        ],
+      },
+      {
+        text: 'Trust',
+        items: [
+          { text: 'Platform decision', link: '/trust/platform' },
+          { text: 'Public trust API', link: '/api/public-trust' },
         ],
       },
       {

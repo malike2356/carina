@@ -103,15 +103,25 @@ async function handleSessionMetrics(row: SecurityEventRow): Promise<void> {
 
 eventsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
   const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
+  const accountId = req.scoutAuth?.kind === 'account' ? req.scoutAuth.accountId : null;
   try {
     const result = await pool.query<SecurityEventRow>(
-      `SELECT id, severity, source, event_type, description, metadata,
-              ip_address, session_id, instance_id, mitigated, created_at,
-              acknowledged, acknowledged_at, acknowledged_note
-       FROM security_events
-       ORDER BY created_at DESC
-       LIMIT $1`,
-      [limit],
+      accountId
+        ? `SELECT e.id, e.severity, e.source, e.event_type, e.description, e.metadata,
+                  e.ip_address, e.session_id, e.instance_id, e.mitigated, e.created_at,
+                  e.acknowledged, e.acknowledged_at, e.acknowledged_note
+           FROM security_events e
+           JOIN carina_instances i ON i.id = e.instance_id
+           WHERE i.account_id = $1
+           ORDER BY e.created_at DESC
+           LIMIT $2`
+        : `SELECT id, severity, source, event_type, description, metadata,
+                  ip_address, session_id, instance_id, mitigated, created_at,
+                  acknowledged, acknowledged_at, acknowledged_note
+           FROM security_events
+           ORDER BY created_at DESC
+           LIMIT $1`,
+      accountId ? [accountId, limit] : [limit],
     );
     res.json({ events: result.rows.map(serializeRow) });
   } catch (err) {
