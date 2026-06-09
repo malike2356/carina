@@ -3,7 +3,7 @@
 Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat described in `blockChaninTrust.md`.
 
 **Last updated:** 2026-06-09  
-**Current phase:** Release 1 (MVP combined product) — ~60% complete  
+**Current phase:** Release 1 (MVP combined product) — ~85% complete  
 **Strategy:** Adopt Agent Trust on Base; Labyrinth Scout as security attestation oracle; do not build a custom trust platform.
 
 ---
@@ -25,10 +25,10 @@ Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat describe
 | Phase | Focus | Done | Total | % |
 |---|---|---:|---:|---:|
 | A | Foundation (Carina + Scout integration) | 18 | 18 | 100% |
-| B | Release 1 — MVP + off-chain trust dashboard | 9 | 16 | 56% |
+| B | Release 1 — MVP + off-chain trust dashboard | 14 | 16 | 88% |
 | C | Release 2 — On-chain attestations (ERC-8004/8126) | 0 | 14 | 0% |
 | D | Release 3 — Enterprise trust layer + revenue | 0 | 10 | 0% |
-| E | Marketing & positioning (deployed) | 4 | 12 | 33% |
+| E | Marketing & positioning (deployed) | 7 | 12 | 58% |
 | F | Prompt injection defence-in-depth | 6 | 10 | 60% |
 | G | Business & go-to-market | 1 | 8 | 13% |
 
@@ -77,14 +77,14 @@ Goal: One demonstrable "verifiable security" story. ERC-8004 testnet registratio
 - [x] 2026-06-09 Public trust API tests (`api/__tests__/public-trust.test.ts`)
 - [x] 2026-06-09 Carina `/trust.html` page (polls Scout API, renders score + attestations)
 - [x] 2026-06-09 Carina `trust.js` client (60s poll, error banner, tier colours)
-- [ ] Commit `carinaai.uk` trust page + homepage updates to git
-- [ ] Commit `console.labyrinthscout.com/src/trust/` to monorepo git
-- [ ] Deploy trust API to production Scout console
-- [ ] Deploy `carinaai.uk/trust.html` to production
-- [ ] Verify live trust page loads real Scout metrics (not demo/fallback)
-- [ ] Add "monitoring live / on-chain attestation planned" honesty banner until Phase C ships
-- [ ] Scout console widget: link to public trust dashboard from operator dashboard
-- [ ] Document trust API in Scout docs (`docs.labyrinthscout.com`)
+- [x] 2026-06-09 Commit `carinaai.uk` trust page + homepage updates to git (`c758fbd`)
+- [x] 2026-06-09 Commit `console.labyrinthscout.com/src/trust/` to monorepo git (`237ca91`)
+- [x] 2026-06-09 Deploy trust API to production Scout console (rsync + build; API live)
+- [x] 2026-06-09 Deploy `carinaai.uk/trust.html` to production VPS (`/www/wwwroot/carinaai.uk`)
+- [x] 2026-06-09 Verify live trust API returns real Scout metrics (risk_score 10, 1 agent active)
+- [x] 2026-06-09 Add "monitoring live / on-chain attestation planned" honesty banner until Phase C ships
+- [x] 2026-06-09 Scout console widget: PUBLIC TRUST link in operator dashboard header
+- [x] 2026-06-09 Document trust API in Scout docs (`docs/api/public-trust.md` + VitePress sidebar)
 
 ### Release 1 exit criteria
 
@@ -165,18 +165,18 @@ Goal: Sites lead with trust moat, not generic "open source agent." Carina and Sc
 - [x] 2026-06-09 Trust badge row (Scout, ERC-8004, ERC-8126, MIT)
 - [x] 2026-06-09 Three-layer "How Carina Earns Trust" section
 - [x] 2026-06-09 `/trust.html` trust dashboard page
-- [ ] Commit and deploy all carinaai.uk changes to production
-- [ ] Footer cross-links: "Protected by Labyrinth Scout" badge
-- [ ] CTA "Get Scout" routes through working `/pricing` → Stripe checkout (not dead console link)
+- [x] 2026-06-09 Commit and deploy carinaai.uk changes to production VPS
+- [x] 2026-06-09 Footer cross-links: "Protected by Scout" badge in footer
+- [x] 2026-06-09 CTA "Get Scout" routes to `app.carinaai.uk/pricing` (Stripe checkout)
 - [ ] Enterprise landing section: audit trail, prompt injection, on-chain verification answers
-- [ ] Remove or qualify any claims that overstate current on-chain status
+- [x] 2026-06-09 Qualify overstated on-chain claims (hero badges, trust page honesty banner)
 
 ### labyrinthscout.com
 
 - [x] 2026-06-09 Hero: "The verification layer for autonomous AI"
 - [x] 2026-06-09 Carina positioned as reference implementation (not equal peer to OpenClaw)
 - [x] 2026-06-09 Link to Carina trust dashboard
-- [ ] Commit and deploy labyrinthscout.com to production
+- [x] 2026-06-09 Commit and deploy labyrinthscout.com to production VPS
 - [ ] Replace generic "SIEM for AI agents" language everywhere
 - [ ] Pricing page: Carina + Scout bundle tier with attestation frequency
 - [ ] `#verify` attestation section explains Type 1/2/3 incidents
@@ -268,4 +268,4 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 | `ARCHITECTURE.md` | Internal wiring (Carina ↔ Scout ↔ ops) |
 | `instructions/BUILD_NEXT_CHECKLIST.md` | Hermes parity / general Carina features (separate track) |
 
-**Next unchecked item:** Phase B — commit and deploy trust stack to production.
+**Next unchecked item:** Phase B exit criteria — end-to-end demo + first pilot. Phase C.1 — ERC-8004 testnet registration.
