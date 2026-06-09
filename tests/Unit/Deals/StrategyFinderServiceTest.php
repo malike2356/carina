@@ -108,7 +108,7 @@ it('detects capital gap and finds an affordable bridge strategy', function (): v
         ->and($f['bridge_entry_cost'])->toBe(55000)
         ->and($f['bridge_gap'])->toBe(0)
         ->and($f['months_to_bridge'])->toBeNull()
-        ->and($f['months_to_top'])->toBe(30);  // 15000 / 500 = 30 months
+        ->and($f['months_to_top'])->toBe(30); // 15000 / 500 = 30 months
 });
 
 it('reports no capital gap when strategy is affordable at bracket midpoint', function (): void {

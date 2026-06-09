@@ -1,4 +1,4 @@
-# Carina Mobile App — Complete Architecture Blueprint
+# Carina Mobile App; Complete Architecture Blueprint
 
 **Version:** 1.0.0  
 **Date:** 2025-06-05  
@@ -32,9 +32,9 @@
 
 | Criterion | React Native (Expo) | Flutter | Native (Swift/Kotlin) |
 |---|---|---|---|
-| **Developer availability** | High — large JS/TS talent pool | Medium — Dart is niche | Low — needs two specialised teams |
-| **Time to market** | Fast — single codebase, Expo OTA updates | Fast — single codebase | Slowest — two separate codebases |
-| **Existing API compatibility** | Excellent — JS fetch, JSON, SSE streaming | Good — dart:io HTTP client | Good — URLSession / OkHttp |
+| **Developer availability** | High; large JS/TS talent pool | Medium; Dart is niche | Low; needs two specialised teams |
+| **Time to market** | Fast; single codebase, Expo OTA updates | Fast; single codebase | Slowest; two separate codebases |
+| **Existing API compatibility** | Excellent; JS fetch, JSON, SSE streaming | Good; dart:io HTTP client | Good; URLSession / OkHttp |
 | **Offline support** | AsyncStorage, NetInfo, SQLite via expo-sqlite | Hive/sqlite via sqflite | CoreData / Room |
 | **Camera integration** | expo-camera, expo-image-picker | camera plugin | AVCaptureSession / CameraX |
 | **Voice / audio** | expo-av (recording + playback) | record + audioplayers | AVAudioEngine / MediaRecorder |
@@ -48,11 +48,11 @@
 
 1. **Existing precedent:** The Propreneur v2 mobile app (`propreneur-mobile/v2`) already uses this exact stack. The Carina app can share setup, design tokens, auth patterns, and CI infrastructure.
 
-2. **SSE streaming:** The Carina API streams responses via `text/event-stream`. React Native's `fetch` with `ReadableStream` reader works cleanly for progressive text rendering in chat — this is critical for the Carina chat experience.
+2. **SSE streaming:** The Carina API streams responses via `text/event-stream`. React Native's `fetch` with `ReadableStream` reader works cleanly for progressive text rendering in chat; this is critical for the Carina chat experience.
 
 3. **Expo managed workflow:** `expo-camera`, `expo-av`, `expo-notifications`, `expo-image-picker`, `expo-document-picker`, `@react-native-community/netinfo` all provide native capabilities without ejecting.
 
-4. **OTA updates:** `expo-updates` allows pushing JS bundles directly — critical for rapid Carina persona/prompt iterations without App Store review.
+4. **OTA updates:** `expo-updates` allows pushing JS bundles directly; critical for rapid Carina persona/prompt iterations without App Store review.
 
 5. **Single codebase for iOS + Android** with platform-specific tweaks where needed (e.g., APNs vs FCM tokens).
 
@@ -92,17 +92,17 @@ sign-in.tsx          →  Login form (workspace slug + email + password)
 
 **Screens:**
 
-- **`app/sign-in.tsx`** — Workspace slug input, email, password. "Sign in" button. Error states for invalid credentials, disabled account, unverified email, 2FA required. Link to download new APK version.
+- **`app/sign-in.tsx`**; Workspace slug input, email, password. "Sign in" button. Error states for invalid credentials, disabled account, unverified email, 2FA required. Link to download new APK version.
 
-- **`app/_layout.tsx` (root)** — Auth gate: check SecureStore for token. If present, validate via `GET /api/mobile/v1/user/profile`. If valid, route to tabs. If invalid/expired, clear and show sign-in.
+- **`app/_layout.tsx` (root)**; Auth gate: check SecureStore for token. If present, validate via `GET /api/mobile/v1/user/profile`. If valid, route to tabs. If invalid/expired, clear and show sign-in.
 
-> **Note:** The existing legacy `POST /api/mobile/v1/auth/login` returns `token`, `token_type`, and `user` object. There is no explicit refresh token endpoint in the legacy routes — token expiry is handled by Sanctum's built-in token lifetime. If the token expires, the user re-authenticates. The V1 routes do have `POST /api/v1/mobile/auth/refresh`, but the Carina app uses the legacy `mobile/v1` namespace. For Phase 1, implement re-login on 401.
+> **Note:** The existing legacy `POST /api/mobile/v1/auth/login` returns `token`, `token_type`, and `user` object. There is no explicit refresh token endpoint in the legacy routes; token expiry is handled by Sanctum's built-in token lifetime. If the token expires, the user re-authenticates. The V1 routes do have `POST /api/v1/mobile/auth/refresh`, but the Carina app uses the legacy `mobile/v1` namespace. For Phase 1, implement re-login on 401.
 
 ### 2.2 Main Tabs (Bottom Tab Bar)
 
 ```
 (tabs)/
-  _layout.tsx        →  Tab navigator (3 tabs — see Navigation section)
+  _layout.tsx        →  Tab navigator (3 tabs; see Navigation section)
   index.tsx          →  Home / Dashboard
   carina.tsx         →  Chat with Carina
   settings.tsx       →  Settings / Profile
@@ -114,50 +114,50 @@ sign-in.tsx          →  Login form (workspace slug + email + password)
 
 **Sections (scrollable):**
 
-1. **Greeting header** — "Good morning, {user.name}" (time-aware). Below it: portfolio summary stat line — "X properties · £Y rent · Z% occupied".
+1. **Greeting header**; "Good morning, {user.name}" (time-aware). Below it: portfolio summary stat line; "X properties · £Y rent · Z% occupied".
 
-2. **Daily briefing card** — Pulled from `GET /api/mobile/v1/briefing/latest`. Shows the briefing text (collapsed to 3 lines with "Read more" expand). If `has_audio: true`, show a play button (streams `GET /api/mobile/v1/briefing/audio`). If no briefing available (`available: false`), show "No briefing yet — Carina will prepare one soon."
+2. **Daily briefing card**; Pulled from `GET /api/mobile/v1/briefing/latest`. Shows the briefing text (collapsed to 3 lines with "Read more" expand). If `has_audio: true`, show a play button (streams `GET /api/mobile/v1/briefing/audio`). If no briefing available (`available: false`), show "No briefing yet; Carina will prepare one soon."
 
-3. **Compliance status chip** — Pulled from `GET /api/mobile/v1/compliance/status`. Green / amber / red dot + "X items need attention" or "All clear". Tap → navigates to compliance list (modal or standalone screen).
+3. **Compliance status chip**; Pulled from `GET /api/mobile/v1/compliance/status`. Green / amber / red dot + "X items need attention" or "All clear". Tap → navigates to compliance list (modal or standalone screen).
 
-4. **Quick actions row** — Icon buttons: "Ask Carina", "My Properties", "Upload Floor Plan", "Voice Note".
+4. **Quick actions row**; Icon buttons: "Ask Carina", "My Properties", "Upload Floor Plan", "Voice Note".
 
-5. **Recent properties** (3–5) — Pulled from `GET /api/mobile/v1/portfolio/properties`. Horizontal scroll of property cards. Each shows address, type, monthly rent, tenant name.
+5. **Recent properties** (3-5); Pulled from `GET /api/mobile/v1/portfolio/properties`. Horizontal scroll of property cards. Each shows address, type, monthly rent, tenant name.
 
 **Data dependencies:** `GET /api/mobile/v1/user/profile`, `GET /api/mobile/v1/portfolio/summary`, `GET /api/mobile/v1/briefing/latest`, `GET /api/mobile/v1/compliance/status`, `GET /api/mobile/v1/portfolio/properties`
 
 ### 2.4 Carina Chat (`app/(tabs)/carina.tsx` and `app/carina/[id].tsx`)
 
-**Purpose:** The core interaction surface — text chat with Carina.
+**Purpose:** The core interaction surface; text chat with Carina.
 
 **Conversation list screen (`app/(tabs)/carina.tsx`):**
 - FlatList of past conversations. Each row: title, last message preview (truncated), timestamp.
 - Empty state: "No conversations yet. Tap + to start chatting with Carina."
 - FAB (+) at bottom-right → starts a new conversation (no API call until first message).
 - Tap row → navigates to `app/carina/[id].tsx`.
-- Swipe left → delete confirmation (calls mobile chat API with conversation context — the legacy `POST /api/mobile/v1/chat/send` accepts `conversation_id` to continue a conversation; the app maintains local conversation grouping).
+- Swipe left → delete confirmation (calls mobile chat API with conversation context; the legacy `POST /api/mobile/v1/chat/send` accepts `conversation_id` to continue a conversation; the app maintains local conversation grouping).
 
 **Chat screen (`app/carina/[id].tsx`):**
-- Message thread — user messages right-aligned (blue bubble), Carina messages left-aligned (grey bubble).
+- Message thread; user messages right-aligned (blue bubble), Carina messages left-aligned (grey bubble).
 - For agent mode responses: if `requires_confirmation: true`, show Approve / Reject buttons below the message. On approve, POST the confirmation token.
 - Text input bar pinned to bottom (above keyboard). Send button.
-- **Voice button** (mic icon) in the input bar — hold to record, release to send.
-- **Camera button** (camera icon) — opens camera for floor plan / image capture.
-- **Attachment button** (paperclip) — picks from gallery or document picker.
+- **Voice button** (mic icon) in the input bar; hold to record, release to send.
+- **Camera button** (camera icon); opens camera for floor plan / image capture.
+- **Attachment button** (paperclip); picks from gallery or document picker.
 - Typing indicator (animated dots) while streaming.
-- Progressive text rendering — use SSE streaming or poll if SSE not available.
+- Progressive text rendering; use SSE streaming or poll if SSE not available.
 
 **API calls:**
-- Send text: `POST /api/mobile/v1/chat/send` — `{ message, conversation_id? }`
-- Send voice: `POST /api/mobile/v1/chat/voice` — multipart `{ audio, conversation_id? }`
-- Send image: `POST /api/mobile/v1/chat/image` — multipart `{ image, property_id?, is_floor_plan?, conversation_id? }`
+- Send text: `POST /api/mobile/v1/chat/send`; `{ message, conversation_id? }`
+- Send voice: `POST /api/mobile/v1/chat/voice`; multipart `{ audio, conversation_id? }`
+- Send image: `POST /api/mobile/v1/chat/image`; multipart `{ image, property_id?, is_floor_plan?, conversation_id? }`
 
-> **Important:** The legacy `MobileChatController::send()` builds a full message by prepending the Carina mobile persona prompt from `carina-mobile-prompts.php`. The app just sends the raw user message — the server handles persona injection. The app doesn't need to include any persona/pre-prompt.
+> **Important:** The legacy `MobileChatController::send()` builds a full message by prepending the Carina mobile persona prompt from `carina-mobile-prompts.php`. The app just sends the raw user message; the server handles persona injection. The app doesn't need to include any persona/pre-prompt.
 
 **Agent confirmation flow:**
 1. User sends message → server returns `{ reply, actions, requires_confirmation, pending_action }`.
 2. If `requires_confirmation: true`, the app renders Approve/Reject buttons.
-3. User taps Approve → the app sends the confirmation. (Note: the legacy `MobileChatController` doesn't have a dedicated confirm endpoint — agent confirmations are handled inline in the agent loop. The `send` method returns the full result including whether confirmation is needed. For confirmations, the app should resend with the confirmation context in the message.)
+3. User taps Approve → the app sends the confirmation. (Note: the legacy `MobileChatController` doesn't have a dedicated confirm endpoint; agent confirmations are handled inline in the agent loop. The `send` method returns the full result including whether confirmation is needed. For confirmations, the app should resend with the confirmation context in the message.)
 
 ### 2.5 Portfolio Screens
 
@@ -173,7 +173,7 @@ sign-in.tsx          →  Login form (workspace slug + email + password)
 - "Upload Floor Plan" button → `app/camera/floor-plan.tsx` flow.
 - "Ask Carina about this property" → navigates to chat with property context.
 
-**Data source:** `GET /api/mobile/v1/portfolio/properties/{id}` — returns full property object with tenancies, compliance items, and recent payments.
+**Data source:** `GET /api/mobile/v1/portfolio/properties/{id}`; returns full property object with tenancies, compliance items, and recent payments.
 
 ### 2.6 Compliance Screens
 
@@ -201,17 +201,17 @@ sign-in.tsx          →  Login form (workspace slug + email + password)
 
 **Sections:**
 
-1. **Profile —** Name, email, phone, role, properties count. Read-only (the legacy `MobileUserController::profile` returns these fields). Edit name/phone via inline form → `PUT /api/mobile/v1/preferences`.
+1. **Profile;** Name, email, phone, role, properties count. Read-only (the legacy `MobileUserController::profile` returns these fields). Edit name/phone via inline form → `PUT /api/mobile/v1/preferences`.
 
-2. **Notifications —** Toggle push notifications on/off. Re-register token on toggle.
-   - Briefing time preference (`briefing_time` — stored server-side in `telegram_delivery_time`).
+2. **Notifications;** Toggle push notifications on/off. Re-register token on toggle.
+   - Briefing time preference (`briefing_time`; stored server-side in `telegram_delivery_time`).
    - Audio briefing enabled toggle.
 
-3. **Voice & TTS —** Toggle voice input enabled. Toggle briefing audio playback auto-play. (These are local preferences stored in AsyncStorage.)
+3. **Voice & TTS;** Toggle voice input enabled. Toggle briefing audio playback auto-play. (These are local preferences stored in AsyncStorage.)
 
-4. **Data & Storage —** Clear cached data button. Show app version.
+4. **Data & Storage;** Clear cached data button. Show app version.
 
-5. **Sign Out —** Clear SecureStore (token), navigate to sign-in.
+5. **Sign Out;** Clear SecureStore (token), navigate to sign-in.
 
 **API calls:** `GET /api/mobile/v1/user/profile`, `PUT /api/mobile/v1/preferences`, `POST /api/mobile/v1/notifications/register`
 
@@ -320,10 +320,10 @@ Push notification payloads include a `route` field that maps to these deep links
 Provider wraps the entire app.
 
 State:
-  token: string | null         — Sanctum Bearer token
-  user: UserProfile | null     — from GET /api/mobile/v1/user/profile
-  isLoading: boolean           — true while checking SecureStore on app launch
-  isAuthenticated: boolean     — derived from token != null
+  token: string | null; Sanctum Bearer token
+  user: UserProfile | null; from GET /api/mobile/v1/user/profile
+  isLoading: boolean; true while checking SecureStore on app launch
+  isAuthenticated: boolean; derived from token != null
 
 Actions:
   login(workspace, email, password) → POST /api/mobile/v1/auth/login
@@ -404,7 +404,7 @@ async function apiFetch(
   });
 
   if (res.status === 401) {
-    // Token expired — clear and redirect to sign-in
+    // Token expired; clear and redirect to sign-in
     await SecureStore.deleteItemAsync('propreneur_carina_token');
     // Navigation handled by AuthContext detecting token removal
   }
@@ -422,34 +422,34 @@ async function apiJson<T>(path: string, options?: RequestInit): Promise<T> {
 }
 ```
 
-### Endpoints Used (All Existing — No New APIs)
+### Endpoints Used (All Existing; No New APIs)
 
 | Method | Path | Controller Method | Request | Response |
 |---|---|---|---|---|
 | POST | `/auth/login` | `MobileAuthController::login` | `{ email, password, device_name? }` | `{ token, token_type, user }` |
-| POST | `/auth/logout` | `MobileAuthController::logout` | — | `{ message }` |
-| GET | `/user/profile` | `MobileUserController::profile` | — | `{ id, name, email, phone, role, properties_count, ... }` |
+| POST | `/auth/logout` | `MobileAuthController::logout` |; | `{ message }` |
+| GET | `/user/profile` | `MobileUserController::profile` |; | `{ id, name, email, phone, role, properties_count, ... }` |
 | PUT | `/preferences` | `MobileUserController::updatePreferences` | `{ briefing_time?, audio_enabled?, telegram_notifications_enabled? }` | `{ briefing_time, audio_enabled, ... }` |
 | POST | `/chat/send` | `MobileChatController::send` | `{ message, conversation_id? }` | `{ reply, conversation_id, actions, requires_confirmation, pending_action }` |
 | POST | `/chat/voice` | `MobileChatController::voice` | multipart `{ audio, conversation_id? }` | `{ transcription, reply, conversation_id, actions }` |
 | POST | `/chat/image` | `MobileChatController::image` | multipart `{ image, property_id?, is_floor_plan?, conversation_id? }` | `{ reply, image_url?, floor_plan_id?, conversation_id }` |
-| GET | `/portfolio/summary` | `MobilePortfolioController::summary` | — | `{ total_properties, active_tenancies, occupancy_rate_pct, total_monthly_rent, total_arrears_gbp, compliance_alerts_expiring_30d }` |
+| GET | `/portfolio/summary` | `MobilePortfolioController::summary` |; | `{ total_properties, active_tenancies, occupancy_rate_pct, total_monthly_rent, total_arrears_gbp, compliance_alerts_expiring_30d }` |
 | GET | `/portfolio/properties` | `MobilePortfolioController::properties` | `?per_page=&page=` | `{ data: Property[], meta: { current_page, last_page, ... } }` |
-| GET | `/portfolio/properties/{id}` | `MobilePortfolioController::property` | — | `{ id, address_line1, ..., tenancies: [], compliance_items: [], recent_payments: [] }` |
-| GET | `/compliance/status` | `MobileComplianceController::status` | — | `{ overall, critical_count, warnings, total_items }` |
+| GET | `/portfolio/properties/{id}` | `MobilePortfolioController::property` |; | `{ id, address_line1, ..., tenancies: [], compliance_items: [], recent_payments: [] }` |
+| GET | `/compliance/status` | `MobileComplianceController::status` |; | `{ overall, critical_count, warnings, total_items }` |
 | GET | `/compliance/items` | `MobileComplianceController::items` | `?per_page=&page=&status=` | `{ data: ComplianceItem[], meta }` |
-| GET | `/briefing/latest` | `MobileBriefingController::latest` | — | `{ date, text, has_audio, generated_at }` or `{ available: false }` |
-| GET | `/briefing/audio` | `MobileBriefingController::audio` | — | `Content-Type: audio/mpeg` binary stream |
+| GET | `/briefing/latest` | `MobileBriefingController::latest` |; | `{ date, text, has_audio, generated_at }` or `{ available: false }` |
+| GET | `/briefing/audio` | `MobileBriefingController::audio` |; | `Content-Type: audio/mpeg` binary stream |
 | POST | `/notifications/register` | `MobileNotificationController::register` | `{ fcm_token, platform? }` | `{ registered: true, platform }` |
 
 ### Token Refresh Flow
 
-The legacy `mobile/v1` API uses Sanctum personal access tokens. These do not automatically expire in the default Laravel Sanctum setup — they are long-lived. However, the server may revoke them.
+The legacy `mobile/v1` API uses Sanctum personal access tokens. These do not automatically expire in the default Laravel Sanctum setup; they are long-lived. However, the server may revoke them.
 
 **Strategy:** On 401 response from any endpoint:
 1. Clear the stored token.
 2. Navigate to sign-in screen (with a toast: "Session expired. Please sign in again.").
-3. No background refresh — the legacy API has no refresh endpoint.
+3. No background refresh; the legacy API has no refresh endpoint.
 
 > If the V1 refresh endpoint (`POST /api/v1/mobile/auth/refresh`) is backported to the legacy namespace in the future, add a transparent refresh interceptor.
 
@@ -545,15 +545,15 @@ interface ChatResponse {
   actions?: AgentAction[];
   requires_confirmation?: boolean;
   pending_action?: AgentAction | null;
-  transcription?: string;  // voice only
-  image_url?: string;       // image only
-  floor_plan_id?: number;   // floor plan only
+  transcription?: string; // voice only
+  image_url?: string; // image only
+  floor_plan_id?: number; // floor plan only
 }
 
 interface AgentAction {
   type: string;
   label: string;
-  token?: string;  // confirmation token
+  token?: string; // confirmation token
   payload?: Record<string, unknown>;
 }
 
@@ -576,8 +576,8 @@ interface PaginatedResponse<T> {
 
 | Feature | Offline Behaviour |
 |---|---|
-| Read cached briefing | Briefing text cached after first fetch — readable offline |
-| Read cached conversations | All chat messages stored in AsyncStorage — full history readable |
+| Read cached briefing | Briefing text cached after first fetch; readable offline |
+| Read cached conversations | All chat messages stored in AsyncStorage; full history readable |
 | Read cached property list | Last-fetched list available from AsyncStorage cache |
 | Read cached property detail | Last-viewed property detail cached |
 | Compose text messages | Messages queued locally, sent when online |
@@ -597,15 +597,15 @@ interface PaginatedResponse<T> {
 
 ```typescript
 interface QueuedMessage {
-  id: string;                       // uuid
+  id: string; // uuid
   type: 'text' | 'voice' | 'image';
   conversationId?: number;
-  content?: string;                 // text message
-  audioUri?: string;                // local file URI for voice
-  imageUri?: string;                // local file URI for image
-  propertyId?: number;              // for floor plan context
+  content?: string; // text message
+  audioUri?: string; // local file URI for voice
+  imageUri?: string; // local file URI for image
+  propertyId?: number; // for floor plan context
   isFloorPlan?: boolean;
-  queuedAt: string;                 // ISO timestamp
+  queuedAt: string; // ISO timestamp
   status: 'pending' | 'sending' | 'failed';
   retryCount: number;
 }
@@ -645,7 +645,7 @@ function useNetwork() {
 
 - **Banner:** A thin banner at the top of the screen: "You're offline. Messages will be sent when you reconnect." (amber background).
 - **Queued indicator:** A small badge on the Carina tab showing pending message count.
-- **Sending state:** Queued messages appear in the chat with a clock icon and "Sending..." label. On failure, show "Failed to send — tap to retry".
+- **Sending state:** Queued messages appear in the chat with a clock icon and "Sending..." label. On failure, show "Failed to send; tap to retry".
 
 ### Data Caching Implementation
 
@@ -677,10 +677,10 @@ function useNetwork() {
 
 | Type | Trigger | Payload | Deep Link |
 |---|---|---|---|
-| Daily briefing ready | CarinaScheduledRun completes `daily-portfolio-summary` | `{ title: "Carina", body: "Your daily briefing is ready — 5 properties, £3,200 rent collected", route: "carina://briefing" }` | `carina://briefing` |
+| Daily briefing ready | CarinaScheduledRun completes `daily-portfolio-summary` | `{ title: "Carina", body: "Your daily briefing is ready; 5 properties, £3,200 rent collected", route: "carina://briefing" }` | `carina://briefing` |
 | Compliance expiring | Compliance item expiring within 7 days | `{ title: "Compliance Alert", body: "Gas safety certificate for Flat 3 expires Friday", route: "carina://compliance" }` | `carina://compliance` |
 | Compliance expired | Compliance item now expired | `{ title: "Urgent: Expired", body: "EICR for 14 High Street expired yesterday", route: "carina://compliance", priority: "high" }` | `carina://compliance` |
-| Rent overdue | Arrears exceed threshold (configurable) | `{ title: "Rent Alert", body: "£950 overdue at Flat 3 — 14 days late", route: "carina://portfolio/{id}" }` | `carina://portfolio/{id}` |
+| Rent overdue | Arrears exceed threshold (configurable) | `{ title: "Rent Alert", body: "£950 overdue at Flat 3; 14 days late", route: "carina://portfolio/{id}" }` | `carina://portfolio/{id}` |
 | New Carina message | When Carina responds to a queued offline message | `{ title: "Carina replied", body: "I've updated the rent for Flat 3 to £950", route: "carina://chat" }` | `carina://chat` |
 
 ### Handling Incoming Notifications (App)
@@ -709,11 +709,11 @@ Notifications.addNotificationResponseReceivedListener(response => {
 2. App requests notification permission (`Notifications.requestPermissionsAsync()`).
 3. If granted, get Expo push token.
 4. `POST /api/mobile/v1/notifications/register` with `{ fcm_token: expoPushToken, platform: Platform.OS }`.
-5. On logout, the server-side token remains until overwritten by next login. (The legacy endpoint doesn't have an unregister — this is acceptable.)
+5. On logout, the server-side token remains until overwritten by next login. (The legacy endpoint doesn't have an unregister; this is acceptable.)
 
 ### Handling FCM vs APNs
 
-- Expo abstracts this — `expo-notifications` handles both FCM (Android) and APNs (iOS) through the Expo push notification service.
+- Expo abstracts this; `expo-notifications` handles both FCM (Android) and APNs (iOS) through the Expo push notification service.
 - The token sent to the server is the Expo push token, not a raw FCM/APNs token.
 - Server-side configuration in `config/mobile.php` (`expo_access_token`) is used by the server's notification dispatcher to send via Expo.
 
@@ -721,13 +721,13 @@ Notifications.addNotificationResponseReceivedListener(response => {
 
 ## 8. Camera & Voice
 
-### Camera — Floor Plan Capture
+### Camera; Floor Plan Capture
 
 **Flow: `app/camera/floor-plan.tsx`**
 
 1. User navigates from Home "Upload Floor Plan" quick action or from Property detail.
 2. Camera viewfinder opens (using `expo-camera` in photo mode).
-3. Optional: overlay a guideline rectangle — "Position the floor plan within the frame."
+3. Optional: overlay a guideline rectangle; "Position the floor plan within the frame."
 4. Capture button → photo taken.
 5. Preview screen: "Use Photo" or "Retake."
 6. Property association: dropdown list of properties (from cached `GET /portfolio/properties`).
@@ -784,7 +784,7 @@ async function uploadFloorPlan(
 }
 ```
 
-### Camera — General Photo
+### Camera; General Photo
 
 Same flow but:
 - `is_floor_plan: false`
@@ -800,7 +800,7 @@ Same flow but:
 3. Visual feedback: animated waveform, recording duration counter, "Release to send."
 4. User releases → recording stops.
 5. Audio file saved to local cache directory (`.m4a` format, iOS/Android native format).
-6. Upload: `POST /api/mobile/v1/chat/voice` — multipart with `audio` file and `conversation_id`.
+6. Upload: `POST /api/mobile/v1/chat/voice`; multipart with `audio` file and `conversation_id`.
 7. The server transcribes (via `CarinaSpeechTranscriptionService` using OpenAI Whisper or Groq) and passes the transcript through Carina's agent loop.
 8. Response includes `transcription` (what the server understood) and `reply` (Carina's response).
 9. Chat UI shows: user voice bubble (with transcription and playback button) + Carina response.
@@ -850,7 +850,7 @@ async function sendVoice(audioUri: string, conversationId?: number): Promise<Cha
 
 The server accepts: `webm, wav, mp4, m4a, mp3, ogg, mpeg, 3gp, caf`.
 
-On iOS, `expo-av` records in `.m4a` (AAC in MP4 container) — this is supported.
+On iOS, `expo-av` records in `.m4a` (AAC in MP4 container); this is supported.
 On Android, `.m4a` also works.
 
 ---
@@ -1051,7 +1051,7 @@ carina-mobile/
 │   └── notification-icon.png         # Push notification icon
 │
 ├── app/                              # Expo Router file-based routing
-│   ├── _layout.tsx                   # Root layout — AuthGate + QueryClientProvider
+│   ├── _layout.tsx                   # Root layout; AuthGate + QueryClientProvider
 │   ├── sign-in.tsx                   # Login screen
 │   │
 │   ├── (tabs)/
@@ -1196,15 +1196,15 @@ carina-mobile/
 | General photo camera | Low (2) | Simpler version of floor plan |
 | Root layout + auth gate | Medium (4) | Token validation, redirects, push setup, crash handler |
 
-### Phase 1 — MVP (Core Carina Experience)
+### Phase 1; MVP (Core Carina Experience)
 
 **Goal:** Chat, voice, daily briefing, portfolio glance, push notifications.  
-**Duration:** 3–4 weeks (1 developer)
+**Duration:** 3-4 weeks (1 developer)
 
 | Week | Deliverable | Screens |
 |---|---|---|
 | Week 1 | Project setup, auth flow, navigation shell | Sign-in, root layout, tab bar, empty screens |
-| Week 2 | Chat — text messaging, SSE streaming, conversation list | Chat list, chat screen, message bubbles, streaming text |
+| Week 2 | Chat; text messaging, SSE streaming, conversation list | Chat list, chat screen, message bubbles, streaming text |
 | Week 3 | Voice input, camera, portfolio summary | Voice recording/upload, floor plan camera, home dashboard with portfolio summary |
 | Week 4 | Briefings, push notifications, compliance status, settings | Briefing viewer + audio player, push registration + handling, compliance status banner, settings screen |
 
@@ -1222,10 +1222,10 @@ carina-mobile/
 - `camera/floor-plan.tsx`
 - `camera/photo.tsx`
 
-### Phase 2 — Polish & Enrichment
+### Phase 2; Polish & Enrichment
 
 **Goal:** Offline support, property detail enrichment, agent confirmations, TestFlight beta.  
-**Duration:** 2–3 weeks (1 developer)
+**Duration:** 2-3 weeks (1 developer)
 
 | Week | Deliverable |
 |---|---|
@@ -1239,25 +1239,25 @@ carina-mobile/
 - **Phase 2 (Polish):** 3 weeks
 - **Total:** 7 weeks (single developer)
 
-With 2 developers, the timeline compresses to approximately 4–5 weeks total.
+With 2 developers, the timeline compresses to approximately 4-5 weeks total.
 
 ### Dependencies
 
 | Dependency | Status | Owner |
 |---|---|---|
-| Mobile/v1 API endpoints | ✅ Deployed | Backend |
-| FCM/Expo push server key | ✅ Configured in `config/mobile.php` | DevOps |
-| edge-tts for briefing audio | ✅ Running on server | Backend |
-| CarinaSpeechTranscriptionService | ✅ Whisper/Groq configured | Backend |
-| Apple Developer account | ❌ Needed for iOS | Admin |
-| Google Play Console | ❌ Needed for Play Store | Admin |
+| Mobile/v1 API endpoints | Done:  Deployed | Backend |
+| FCM/Expo push server key | Done:  Configured in `config/mobile.php` | DevOps |
+| edge-tts for briefing audio | Done:  Running on server | Backend |
+| CarinaSpeechTranscriptionService | Done:  Whisper/Groq configured | Backend |
+| Apple Developer account | Failed:  Needed for iOS | Admin |
+| Google Play Console | Failed:  Needed for Play Store | Admin |
 | Expo account + project | Setup during Week 1 | Mobile dev |
 
 ### Risks
 
 | Risk | Mitigation |
 |---|---|
-| SSE streaming not working reliably on React Native | Fall back to polling — send message, poll for response every 1s until complete. The legacy `send` endpoint already returns the full reply synchronously. |
+| SSE streaming not working reliably on React Native | Fall back to polling; send message, poll for response every 1s until complete. The legacy `send` endpoint already returns the full reply synchronously. |
 | Voice recording format incompatibility | Test `.m4a` on both platforms early. Fall back to `.wav` if needed (both supported by server). |
 | Briefing audio streaming fails | Download MP3 fully before playback instead of streaming. |
 
@@ -1265,7 +1265,7 @@ With 2 developers, the timeline compresses to approximately 4–5 weeks total.
 
 ## Appendix A: Existing Carina Mobile Prompts
 
-The server uses these prompts (from `brain/prompts/carina_extended/carina-mobile-prompts.php`) when processing messages through `MobileChatController`. The app does NOT send these prompts — the server prepends them. Understanding them helps design the UX appropriately.
+The server uses these prompts (from `brain/prompts/carina_extended/carina-mobile-prompts.php`) when processing messages through `MobileChatController`. The app does NOT send these prompts; the server prepends them. Understanding them helps design the UX appropriately.
 
 | Prompt Key | Purpose | UX Implication |
 |---|---|---|
@@ -1273,7 +1273,7 @@ The server uses these prompts (from `brain/prompts/carina_extended/carina-mobile
 | `onboarding_wizard` | 5-step guided setup for new users | Home screen should detect if onboarding is needed and show wizard prompt in chat. |
 | `floor_plan_camera_interaction` | Analysis response format for floor plans | Floor plan results screen should parse and display structured output (type, area, rooms). |
 | `voice_note_processor_mobile` | Intent recognition from transcribed voice | Chat UI should show the transcription alongside Carina's response. |
-| `push_notification_generator` | 120-char notification text format | Notifications need tight character budget — preview text, not full message. |
+| `push_notification_generator` | 120-char notification text format | Notifications need tight character budget; preview text, not full message. |
 | `home_screen_greeting` | Personalised greeting with portfolio context | Home screen can use the same template logic client-side for instant rendering. |
 
 ## Appendix B: Existing Server Infrastructure Reference

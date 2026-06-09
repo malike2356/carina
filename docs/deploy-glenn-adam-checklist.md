@@ -1,13 +1,13 @@
-# Glenn & Adam — Carina Extended Deployment Checklist
+# Glenn & Adam; Carina Extended Deployment Checklist
 
 Last updated: 5 June 2026
-Status: All code built ✅, this is ops-to-live
+Status: All code built Done: , this is ops-to-live
 
 ---
 
 ## Pre-flight: Server Readiness
 
-- [ ] **PHP 8.3+** on production server (`php -v` — project requires >= 8.3)
+- [ ] **PHP 8.3+** on production server (`php -v`; project requires >= 8.3)
 - [ ] **Composer deps** installed (`composer install --no-dev --optimize-autoloader`)
 - [ ] **Node/edge-tts** for TTS: `pip install edge-tts` on server
 - [ ] **Laravel cache** cleared post-deploy: `php artisan optimize`
@@ -29,7 +29,7 @@ Status: All code built ✅, this is ops-to-live
 
 ---
 
-## Glenn — Email Pipeline
+## Glenn; Email Pipeline
 
 - [ ] Open HestiaCP → Mail → create dedicated inbound mailbox (e.g. `carina@glenn-domain.com` or use existing)
 - [ ] Get IMAP credentials (host, port 993, username, password)
@@ -46,7 +46,7 @@ Status: All code built ✅, this is ops-to-live
 
 ---
 
-## Glenn — Telegram Bot
+## Glenn; Telegram Bot
 
 - [ ] Create a Telegram bot via @BotFather → get bot token
 - [ ] Set webhook URL via command:
@@ -62,7 +62,7 @@ Status: All code built ✅, this is ops-to-live
 
 ---
 
-## Glenn — TTS (Text-to-Speech)
+## Glenn; TTS (Text-to-Speech)
 
 - [ ] Install edge-tts on server: `pip install edge-tts`
 - [ ] Verify `edge-tts --list-voices` works (lists installed voices)
@@ -73,7 +73,7 @@ Status: All code built ✅, this is ops-to-live
 
 ---
 
-## Glenn — Daily Briefing
+## Glenn; Daily Briefing
 
 - [ ] Populate Glenn's workspace: add properties, tenancies, rent records, compliance certificates
 - [ ] Add cron for daily briefing (e.g. 7:00 AM):
@@ -86,14 +86,14 @@ Status: All code built ✅, this is ops-to-live
 
 ---
 
-## Adam — Floor Plan Pipeline
+## Adam; Floor Plan Pipeline
 
 - [ ] Configure a vision-capable AI provider (OpenAI GPT-4V, Anthropic Claude Vision, or local)
   - [ ] Set API key in `.env` (`VISION_AI_PROVIDER=openai`, `VISION_AI_API_KEY=...`)
   - [ ] Verify `AiRouterService::routeVisionAnalysis()` routes to the right provider
 - [ ] Upload a test floor plan: `POST /api/floor-plans/upload` with an image file
 - [ ] Verify `AnalyseFloorPlan` job queues and processes
-- [ ] Check `floor_plans` table — status should go: `pending` → `processing` → `completed`
+- [ ] Check `floor_plans` table; status should go: `pending` → `processing` → `completed`
 - [ ] Verify extracted data: `property_type`, `extracted_rooms`, `overall_dimensions`, `structural_notes`
 - [ ] Generate a BOQ: `POST /api/floor-plans/generate-boq` with `refurb_type`
 - [ ] Verify `boq_reports` table has row with `grand_total`, `line_items`, `compliance_flags`
@@ -102,7 +102,7 @@ Status: All code built ✅, this is ops-to-live
 
 ---
 
-## Adam — Carina Agent Integration
+## Adam; Carina Agent Integration
 
 - [ ] Verify Adam can ask Carina: "analyse my floor plan at 123 High Street"
   - Carina calls `analyze_floor_plan` tool → returns status

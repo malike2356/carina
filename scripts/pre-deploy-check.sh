@@ -19,7 +19,7 @@ REQUIRED_KEYS=("APP_KEY" "DB_PASSWORD" "ANTHROPIC_API_KEY" "STRIPE_SECRET"
                "TENANCY_DB_PASSWORD" "REDIS_PASSWORD" "MEILISEARCH_KEY"
                "MAILGUN_SECRET" "STRIPE_WEBHOOK_SECRET")
 for key in "${REQUIRED_KEYS[@]}"; do
-  grep -q "^${key}=" .env && echo "   ✓ ${key}" || echo "   ✗ MISSING: ${key}"
+  grep -q "^${key}=" .env && echo "    ${key}" || echo "    MISSING: ${key}"
 done
 
 echo ""

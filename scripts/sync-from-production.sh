@@ -35,9 +35,9 @@ usage() {
 
 for arg in "$@"; do
   case "$arg" in
-    --dry-run) DRY_RUN=1 ;;
-    --yes) CONFIRM=1 ;;
-    -h|--help) usage ;;
+    --dry-run) DRY_RUN=1;
+    --yes) CONFIRM=1;
+    -h|--help) usage;
     *)
       echo "Unknown option: $arg" >&2
       exit 1

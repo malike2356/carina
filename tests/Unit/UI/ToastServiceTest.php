@@ -27,7 +27,7 @@ it('consuming pending toasts removes them from session', function () {
     $service = new ToastService;
     $service->warning('Watch out!');
 
-    $service->pending();  // consumes
+    $service->pending(); // consumes
 
     expect($service->pending())->toBeEmpty();
 });
