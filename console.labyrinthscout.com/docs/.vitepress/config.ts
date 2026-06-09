@@ -19,6 +19,7 @@ export default defineConfig({
           { text: 'Getting Started', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Dashboard', link: '/dashboard' },
+          { text: 'Public Trust API', link: '/api/public-trust' },
           { text: 'Pricing', link: '/pricing' },
         ],
       },
@@ -51,6 +52,7 @@ export default defineConfig({
           { text: 'Kill switch', link: '/api/kill-switch' },
           { text: 'Honeypots', link: '/api/honeypots' },
           { text: 'SSE stream', link: '/api/stream' },
+          { text: 'Public trust', link: '/api/public-trust' },
         ],
       },
       {

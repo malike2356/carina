@@ -9,6 +9,8 @@ import { initDb, pool } from './db.js';
 import { initRedis, getRedis } from './redis.js';
 import { requireApiKey } from './middleware/auth.js';
 import { accountRouter } from './api/account.js';
+import { provisionRouter } from './api/provision.js';
+import { requireProvisionSecret } from './middleware/provision-auth.js';
 import { eventsRouter } from './api/events.js';
 import { heartbeatRouter } from './api/heartbeat.js';
 import { sseRouter, initSseSubscriber } from './api/sse.js';
@@ -32,6 +34,7 @@ import { markersRouter } from './api/markers.js';
 import { killswitchRouter } from './api/killswitch-status.js';
 import { auditSearchRouter } from './api/audit-search.js';
 import { complianceRouter } from './api/compliance.js';
+import { publicTrustRouter } from './api/public-trust.js';
 import { startScheduler } from './scheduler.js';
 import { startProxyServer } from './proxy/openai-proxy.js';
 
@@ -90,6 +93,8 @@ app.get('/dashboard.html', serveDashboard);
 app.use(express.static(PUBLIC));
 
 app.use('/account', accountRouter);
+app.use('/api/internal', requireProvisionSecret, provisionRouter);
+app.use('/api/public/trust', publicTrustRouter);
 
 app.use('/api/events', requireApiKey, eventsRouter);
 app.use('/api/heartbeat', requireApiKey, heartbeatRouter);

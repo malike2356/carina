@@ -12,6 +12,8 @@ function optional(key: string, fallback = ''): string {
   return process.env[key] ?? fallback;
 }
 
+const operatorApiKey = require('SCOUT_API_KEY');
+
 export const config = {
   port: parseInt(optional('SCOUT_PORT', '4444'), 10),
   db: {
@@ -24,7 +26,8 @@ export const config = {
     url: optional('REDIS_URL', 'redis://localhost:6379'),
   },
   auth: {
-    apiKey: require('SCOUT_API_KEY'),
+    apiKey: operatorApiKey,
+    provisionSecret: optional('SCOUT_PROVISION_SECRET', operatorApiKey),
     sessionSecret: optional('SCOUT_SESSION_SECRET', 'change-me-in-production'),
     totpSecret: optional('SCOUT_TOTP_SECRET'),
     ipWhitelist: optional('SCOUT_IP_WHITELIST')
@@ -32,6 +35,11 @@ export const config = {
       .map((ip) => ip.trim())
       .filter(Boolean),
     sessionTimeoutMs: parseInt(optional('SCOUT_SESSION_TIMEOUT_MS', String(30 * 60 * 1000)), 10),
+  },
+  trust: {
+    publicEnabled: optional('TRUST_PUBLIC_ENABLED', 'true') !== 'false',
+    erc8004Status: optional('TRUST_ERC8004_STATUS', 'registering'),
+    erc8126Status: optional('TRUST_ERC8126_STATUS', 'enterprise'),
   },
   alerts: {
     telegram: {
