@@ -1,4 +1,4 @@
-# COMPARISON.md — Carina vs Hermes vs OpenClaw
+# COMPARISON.md; Carina vs Hermes vs OpenClaw
 
 ## Architecture
 
@@ -92,9 +92,9 @@
 
 The website comparison table is mostly accurate except:
 
-1. "Self-writing skills: Hermes — No" → FALSE. Hermes has skill_manage with create/patch/edit/delete.
-2. "Memory transparency: Hermes — No" → FALSE. Memory is injected every turn, fully viewable and editable.
-3. "Switch LLM mid-session: Hermes — No" → DEBATABLE. Multiple providers supported, profile switching possible.
-4. "npm install: Hermes — No" → IRRELEVANT. Different packaging, not a capability metric.
+1. "Self-writing skills: Hermes; No" → FALSE. Hermes has skill_manage with create/patch/edit/delete.
+2. "Memory transparency: Hermes; No" → FALSE. Memory is injected every turn, fully viewable and editable.
+3. "Switch LLM mid-session: Hermes; No" → DEBATABLE. Multiple providers supported, profile switching possible.
+4. "npm install: Hermes; No" → IRRELEVANT. Different packaging, not a capability metric.
 
 The Scout security features are accurately represented. Hermes has partial injection protection; Carina + Scout has full 3-layer protection.

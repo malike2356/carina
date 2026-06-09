@@ -47,7 +47,7 @@ describe('GET /api/public/trust', () => {
         erc8004_status: 'registering',
         erc8004_label: 'Registering on Base Sepolia',
         erc8126_status: 'enterprise',
-        erc8126_label: 'Enterprise tier — Q3 2026',
+        erc8126_label: 'Enterprise tier; Q3 2026',
       },
       source: 'labyrinth-scout',
     });

@@ -1,4 +1,4 @@
-# TOOLS.md — Complete Tool List to Implement
+# TOOLS.md; Complete Tool List to Implement
 
 Every tool Hermes has that Carina must replicate. Ordered by implementation priority.
 

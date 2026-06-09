@@ -1,4 +1,4 @@
-# Phase 1.4 — TTS Delivery Verification
+# Phase 1.4; TTS Delivery Verification
 
 ## Task
 Verify and fix the text-to-speech delivery system. Carina generates audio versions of briefings using Microsoft Edge TTS and delivers them via Telegram.

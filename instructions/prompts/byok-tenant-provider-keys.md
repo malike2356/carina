@@ -1,4 +1,4 @@
-# BYOK — Tenant Bring-Your-Own-Key Provider System
+# BYOK; Tenant Bring-Your-Own-Key Provider System
 
 Build a tenant-scoped API key system so each tenant brings their own LLM
 provider keys. Carina routes requests using the tenant's key, falling
@@ -149,7 +149,7 @@ File: `src/brain/llm.ts`
 import { getTenantProvider } from './tenant-provider-keys.js';
 ```
 
-### 3b. Modify the `LLMRouter` class — add a `tenantId` field and a method:
+### 3b. Modify the `LLMRouter` class; add a `tenantId` field and a method:
 
 ```typescript
 export class LLMRouter {
@@ -203,7 +203,7 @@ export class LLMRouter {
   }
 ```
 
-Actually, cleaner approach — override the provider resolution in `chatRouted`:
+Actually, cleaner approach; override the provider resolution in `chatRouted`:
 
 ### 3c. Replace `chatRouted` method:
 
@@ -375,7 +375,7 @@ describe('tenant provider keys', () => {
 1. Add NVIDIA to provider-registry.ts (step 0)
 2. Add migration (step 1)
 3. Create tenant-provider-keys.ts (step 2)
-4. Modify llm.ts (step 3c — the clean approach in chatRouted)
+4. Modify llm.ts (step 3c; the clean approach in chatRouted)
 5. Create tenant-keys.ts API routes (step 4)
 6. Register routes in web.ts (step 5)
 7. Wire tenantId in router.ts (step 6)
@@ -384,12 +384,12 @@ describe('tenant provider keys', () => {
 
 ## Pitfalls
 
-- NEVER log or echo the decrypted API key — use `***masked***` in logs
+- NEVER log or echo the decrypted API key; use `***masked***` in logs
 - The encryption key must be 32 bytes for AES-256. Set `TENANT_KEY_ENCRYPTION_KEY`
   in .env for production (32+ char random string)
 - Tenant IDs come from the existing subscriptions table
-- Provider keys are per-tenant, per-provider — one tenant can have multiple
+- Provider keys are per-tenant, per-provider; one tenant can have multiple
 - If a tenant has no key for a provider, fall back to global env var
-- Do NOT modify the PROVIDER_DEFINITIONS array structure — only append
-- The `setTenant()` call must happen BEFORE `chatRouted()` — set it in the
+- Do NOT modify the PROVIDER_DEFINITIONS array structure; only append
+- The `setTenant()` call must happen BEFORE `chatRouted()`; set it in the
   message handler in router.ts

@@ -1,16 +1,16 @@
-# Phase 2.11 — Kill Switch
+# Phase 2.11; Kill Switch
 
 ## Goal
-Build Scout's kill switch — the emergency stop for all agent processes. One button on the Scout dashboard immediately terminates all active agents, blocks new tool execution, and alerts all channels. This is the most visible Scout feature on both websites.
+Build Scout's kill switch; the emergency stop for all agent processes. One button on the Scout dashboard immediately terminates all active agents, blocks new tool execution, and alerts all channels. This is the most visible Scout feature on both websites.
 
 ## Files to create
 ```
 packages/scout/src/
   killswitch/
-    kill-switch.ts              — Core kill switch logic
-    kill-switch-api.ts          — Trigger/status endpoints
-    graceful-shutdown.ts        — Safe process termination
-    kill-switch-audit.ts        — Every activation logged immutably
+    kill-switch.ts; Core kill switch logic
+    kill-switch-api.ts; Trigger/status endpoints
+    graceful-shutdown.ts; Safe process termination
+    kill-switch-audit.ts; Every activation logged immutably
 ```
 
 ## How it works
@@ -63,7 +63,7 @@ Phase 4 (5+ seconds):
 Kill switch cannot be disarmed remotely. Recovery requires:
 ```bash
 # On the server:
-carina scout disarm --reason "Threat resolved — injection attack contained" --admin laud@carinaai.uk
+carina scout disarm --reason "Threat resolved; injection attack contained" --admin laud@carinaai.uk
 ```
 
 This ensures an attacker who compromises the dashboard cannot simply toggle the kill switch off.
@@ -71,14 +71,14 @@ This ensures an attacker who compromises the dashboard cannot simply toggle the 
 ## Dashboard widget
 ```
 ┌─────────────────────────────────┐
-│ ⚡ KILL SWITCH                   │
+│  KILL SWITCH                   │
 │                                  │
 │ Status: ARMED                    │
 │ All 47 agents operational        │
 │                                  │
-│ [EMERGENCY STOP — KILL ALL]     │
+│ [EMERGENCY STOP; KILL ALL]     │
 │                                  │
-│ ⚠️ This will immediately stop    │
+│ WARNING:  This will immediately stop    │
 │ all agent processes. Cannot be   │
 │ reversed from dashboard.         │
 │                                  │
@@ -92,7 +92,7 @@ This ensures an attacker who compromises the dashboard cannot simply toggle the 
 After triggering:
 ```
 ┌─────────────────────────────────┐
-│ ⚡ KILL SWITCH — ACTIVATED       │
+│  KILL SWITCH; ACTIVATED       │
 │                                  │
 │ Triggered: 2026-06-07 14:35:22  │
 │ By: laud@carinaai.uk             │
@@ -141,7 +141,7 @@ curl /api/admin/scout/killswitch/status
 
 # 4. Attempt to disarm remotely
 curl -X POST /api/admin/scout/killswitch/disarm
-# Expected: 403 — "Disarm requires server access. SSH: carina scout disarm"
+# Expected: 403; "Disarm requires server access. SSH: carina scout disarm"
 
 # 5. Verify alerts sent
 # Check Telegram, email, SMS for critical alert

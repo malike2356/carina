@@ -19,7 +19,7 @@ export class DiscordAdapter implements AlertAdapter {
 
     const content =
       formatAlert('discord', event.severity, event) ??
-      `**LABYRINTH ${event.severity.toUpperCase()}** — ${event.event_type}\n> ${event.description}`;
+      `**LABYRINTH ${event.severity.toUpperCase()}**; ${event.event_type}\n> ${event.description}`;
 
     const response = await fetch(webhookUrl, {
       method: 'POST',

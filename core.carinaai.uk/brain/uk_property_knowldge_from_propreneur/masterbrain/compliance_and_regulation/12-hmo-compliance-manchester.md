@@ -19,9 +19,9 @@ note: Auto-split for Carina RAG / masterbrain. Verify against live code if imple
 | 1 person over 10 | 6.51 m² |
 | 2 persons over 10 | 10.22 m² |
 
-☐ All bedrooms meet minimum sizes
-☐ No room under 4.64 m² used as sleeping accommodation
-☐ Council notified of any rooms under 4.64 m²
+ All bedrooms meet minimum sizes
+ No room under 4.64 m² used as sleeping accommodation
+ Council notified of any rooms under 4.64 m²
 
 ## Amenity Provision (1:5 ratio)
 
@@ -31,9 +31,9 @@ note: Auto-split for Carina RAG / masterbrain. Verify against live code if imple
 | 6-9 | 2 | 2 | 1 separate |
 | 10-14 | 3 | 3 | 2 separate |
 
-☐ WC has wash hand basin within same compartment
-☐ Bathrooms not more than 2 floors from sleeping accommodation
-☐ WC not more than 1 floor from sleeping accommodation
+ WC has wash hand basin within same compartment
+ Bathrooms not more than 2 floors from sleeping accommodation
+ WC not more than 1 floor from sleeping accommodation
 
 ## Kitchen Amenities
 
@@ -43,34 +43,34 @@ note: Auto-split for Carina RAG / masterbrain. Verify against live code if imple
 | 6-8 | 1 + dishwasher | 1 + combi microwave | 1 + separate freezer |
 | 9-10 | 2 | 2 | 2 + 1 separate |
 
-☐ Fire blanket adjacent to cooker exit door
-☐ Extractor fan (6 air changes per hour)
-☐ Suitable electrical sockets
+ Fire blanket adjacent to cooker exit door
+ Extractor fan (6 air changes per hour)
+ Suitable electrical sockets
 
 ## Fire Safety
 
-☐ Fire risk assessment completed (competent person)
-☐ Smoke alarms installed and tested annually
-☐ Carbon monoxide alarm in any room with solid fuel appliance
-☐ Fire doors with closers on all bedroom doors
-☐ Wired interlink fire alarm system (if required by risk assessment)
-☐ Emergency lighting (if complex/long escape routes)
-☐ Fire extinguishers (checked annually)
+ Fire risk assessment completed (competent person)
+ Smoke alarms installed and tested annually
+ Carbon monoxide alarm in any room with solid fuel appliance
+ Fire doors with closers on all bedroom doors
+ Wired interlink fire alarm system (if required by risk assessment)
+ Emergency lighting (if complex/long escape routes)
+ Fire extinguishers (checked annually)
 
 ## Mandatory HMO Licence Conditions
 
-☐ Annual gas safety certificate (Gas Safe registered)
-☐ 5-yearly electrical installation inspection (IEE Wiring Regulations)
-☐ Portable Appliance Test (PAT) certificate
-☐ Energy Performance Certificate (min E rating)
-☐ Written tenancy terms provided to occupiers
-☐ Waste disposal scheme in place
-☐ References from previous landlords for new tenants
+ Annual gas safety certificate (Gas Safe registered)
+ 5-yearly electrical installation inspection (IEE Wiring Regulations)
+ Portable Appliance Test (PAT) certificate
+ Energy Performance Certificate (min E rating)
+ Written tenancy terms provided to occupiers
+ Waste disposal scheme in place
+ References from previous landlords for new tenants
 
 ## Article 4 Check
 
-☐ Checked Article 4 status with council
-☐ Planning permission obtained (if required)
+ Checked Article 4 status with council
+ Planning permission obtained (if required)
 
 **Manchester Council Contact:**
 HMOlicensingenquiry@manchester.gov.uk | 0161 234 5500

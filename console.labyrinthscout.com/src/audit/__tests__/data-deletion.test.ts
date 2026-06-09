@@ -79,7 +79,7 @@ describe('handleDataDeletion (Right to Erasure)', () => {
     expect(result.anonymized.audit_log_entries).toBe(4);
   });
 
-  it('is idempotent — returns already_erased on second run', async () => {
+  it('is idempotent; returns already_erased on second run', async () => {
     // First call detects an existing completed erasure request
     mockQuery.mockResolvedValueOnce({
       rows: [{ id: 'era-req-existing' }],

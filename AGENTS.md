@@ -1,5 +1,9 @@
 # Repository Guidelines
 
+## Writing style (hard constraint)
+
+Never use em dashes (U+2014) or en dashes (U+2013). Use `;`, `:`, `,`, `-`, parentheses, or sentence breaks instead. Never use emojis anywhere. See `/opt/lampp/htdocs/verlox/AGENTS.md` and run `python3 ../scripts/fix-writing-style.py` after bulk doc edits.
+
 ## Project Structure & Module Organization
 
 This is the VERLOX Carina monorepo. Product code lives in `core.carinaai.uk/`, a Node.js/TypeScript agent with CLI entry points in `bin/`, source in `src/`, docs in `docs/`, and product data in `brain/`. The private operations panel is `ops.carinaai.uk/`, with Express routes in `routes/`, helpers in `lib/`, EJS templates in `views/`, and CSS generated to `public/styles.css`. Labyrinth Scout lives in `console.labyrinthscout.com/`, with server code in `src/` and dashboard/static assets in `public/`. Root `src/` contains shared CLI support. Deployment scripts are in `scripts/`.

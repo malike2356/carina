@@ -200,7 +200,7 @@ while (true) {
   if (done) break;
   const chunk = decoder.decode(value, { stream: true });
   accumulated += chunk;
-  res.write(chunk);  // stream chunk to client immediately
+  res.write(chunk); // stream chunk to client immediately
 }
 res.end();
 

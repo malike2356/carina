@@ -112,8 +112,8 @@ interface ScoutEvent {
 
 interface ToolCallReport {
   toolName: string;
-  params: Record<string, unknown>;    // sanitised before sending
-  resultSummary: string;              // first 200 chars of result
+  params: Record<string, unknown>; // sanitised before sending
+  resultSummary: string; // first 200 chars of result
   durationMs: number;
   sessionId?: string;
   success: boolean;
@@ -412,7 +412,7 @@ You must add two things:
 import { checkNotSuspended, reportToolCall } from '../security/index.js';
 
 // At the top of executeToolCall, before anything else:
-checkNotSuspended();  // throws AgentSuspendedError if suspended
+checkNotSuspended(); // throws AgentSuspendedError if suspended
 ```
 
 **After `tool.execute(call.params)`** (in both success and error paths), add:

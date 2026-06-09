@@ -13,9 +13,9 @@ export interface ClassifiedIncident {
 }
 
 const TYPE_LABELS: Record<IncidentType, string> = {
-  type1: 'Type 1 — Runtime escape',
-  type2: 'Type 2 — Privilege escape',
-  type3: 'Type 3 — Reasoning compromise',
+  type1: 'Type 1; Runtime escape',
+  type2: 'Type 2; Privilege escape',
+  type3: 'Type 3; Reasoning compromise',
   other: 'Security event',
 };
 

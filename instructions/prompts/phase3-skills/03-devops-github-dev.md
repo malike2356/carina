@@ -1,4 +1,4 @@
-# Phase 3.3 — DevOps + GitHub + Software Development Skills
+# Phase 3.3; DevOps + GitHub + Software Development Skills
 
 ## Task
 Port DevOps, GitHub, and software development skills. These cover Kanban orchestration, server troubleshooting, GitHub workflows, code review, TDD, debugging, and implementation planning.
@@ -63,7 +63,7 @@ Uses: pdb, debugpy, VS Code DAP integration.
 
 ### plan
 Plan mode: write markdown implementation plan to .hermes/plans/.
-No execution — planning only.
+No execution; planning only.
 
 ### requesting-code-review
 Pre-commit review: security scan, quality gates, auto-fix.

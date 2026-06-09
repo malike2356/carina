@@ -1,7 +1,7 @@
-# Phase 4.2 — Heartbeat System
+# Phase 4.2; Heartbeat System
 
 ## Task
-Implement the heartbeat system. Carina periodically checks in on the user — inbox, calendar, mentions, weather — and can do background maintenance tasks during idle time.
+Implement the heartbeat system. Carina periodically checks in on the user; inbox, calendar, mentions, weather; and can do background maintenance tasks during idle time.
 
 ## Specification
 

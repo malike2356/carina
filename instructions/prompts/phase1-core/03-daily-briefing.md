@@ -1,4 +1,4 @@
-# Phase 1.3 — Daily Briefing Verification
+# Phase 1.3; Daily Briefing Verification
 
 ## Task
 Verify and fix the daily portfolio briefing task. Carina runs a scheduled task that compiles a morning briefing: portfolio summary, compliance status, arrears, and recent email activity.

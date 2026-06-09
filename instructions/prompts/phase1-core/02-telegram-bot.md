@@ -1,4 +1,4 @@
-# Phase 1.2 — Telegram Bot Verification
+# Phase 1.2; Telegram Bot Verification
 
 ## Task
 Verify and fix the Telegram bot integration. Glenn interacts with Carina via Telegram. Messages arrive through a webhook, get queued, and Carina responds through the agentic loop.

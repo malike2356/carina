@@ -12,17 +12,17 @@ Dark navy base. Electric green for safe/active. Blood red for critical/breach. A
 
 Colour palette (CSS variables):
 ```css
---void:       #020409;       /* deepest background */
---navy:       #050c1a;       /* panel background */
---navy-lift:  #0a1628;       /* elevated surfaces */
+--void:       #020409; /* deepest background */
+--navy:       #050c1a; /* panel background */
+--navy-lift:  #0a1628; /* elevated surfaces */
 --border:     rgba(0,200,150,0.12);
---glow-green: #00c896;       /* active, safe, online */
---glow-red:   #ff2244;       /* critical, breach */
---glow-amber: #d4af37;       /* warning, brand */
---glow-cyan:  #00d4ff;       /* info, data */
---glow-purple:#9b59ff;       /* anomaly */
---text:       #8bafc0;       /* body text */
---text-bright:#cce8f4;       /* important text */
+--glow-green: #00c896; /* active, safe, online */
+--glow-red:   #ff2244; /* critical, breach */
+--glow-amber: #d4af37; /* warning, brand */
+--glow-cyan:  #00d4ff; /* info, data */
+--glow-purple:#9b59ff; /* anomaly */
+--text:       #8bafc0; /* body text */
+--text-bright:#cce8f4; /* important text */
 ```
 
 Font: `JetBrains Mono` for all data/numbers. `Inter` for labels. Both from Google Fonts CDN.
@@ -310,7 +310,7 @@ Large number, severity label, 24h trend arrow. Minimal - just the number in a gl
 
 ```
 ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-│ 🔴          │ │ 🟡          │ │ 🔵          │ │ ☠           │
+│           │ │           │ │           │ │            │
 │     12      │ │      7      │ │     143     │ │      0      │
 │  CRITICAL   │ │   WARNING   │ │    INFO     │ │   BREACH    │
 │  ▲3 today   │ │  ▼1 today   │ │  ▲22 today  │ │             │

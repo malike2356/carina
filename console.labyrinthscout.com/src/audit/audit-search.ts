@@ -6,7 +6,7 @@ export interface AuditSearchParams {
   event_type?: AuditEventType;
   severity?: AuditSeverity;
   from?: string; // ISO date string
-  to?: string;   // ISO date string
+  to?: string; // ISO date string
   query?: string; // free-text search against action and detail
   page?: number;
   per_page?: number;

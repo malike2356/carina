@@ -971,68 +971,68 @@ User guides and SOPs for Propreneur users.
 ## External Checklist
 
 ### Roof
-☐ Straight lines between tiles and along pitch?
-☐ Any bowing or dipping? (Risk: new roof £10k+)
-☐ Chimney brickwork and pots intact?
-☐ Flashing present at base of chimney? (Missing = leaks)
-☐ Roof tiles in straight rows? (Slipped/cracked = leaks)
+ Straight lines between tiles and along pitch?
+ Any bowing or dipping? (Risk: new roof £10k+)
+ Chimney brickwork and pots intact?
+ Flashing present at base of chimney? (Missing = leaks)
+ Roof tiles in straight rows? (Slipped/cracked = leaks)
 
 ### Gutters
-☐ All sections present? (Storms can remove sections)
-☐ Any holes or leaks?
-☐ Visible debris or water stains below?
+ All sections present? (Storms can remove sections)
+ Any holes or leaks?
+ Visible debris or water stains below?
 
 ### Brickwork & Pointing
-☐ Straight lines in brickwork? (Cracks = structural issues)
-☐ Pointing intact? (Chunks missing = repointing £2k)
+ Straight lines in brickwork? (Cracks = structural issues)
+ Pointing intact? (Chunks missing = repointing £2k)
 
 ## Internal Checklist
 
 ### Windows
-☐ Check from OUTSIDE: frame condition, lintel present
-☐ Check from INSIDE: single or double glazed?
-☐ Condensation BETWEEN panes? (Blown seal)
-☐ Condensation around frame? (Not sealed)
+ Check from OUTSIDE: frame condition, lintel present
+ Check from INSIDE: single or double glazed?
+ Condensation BETWEEN panes? (Blown seal)
+ Condensation around frame? (Not sealed)
 
 ### Doors
-☐ Exterior type: Wooden (poor) / PVC (good) / Composite (best)
-☐ Interior: Fire doors required for HMO bedrooms
+ Exterior type: Wooden (poor) / PVC (good) / Composite (best)
+ Interior: Fire doors required for HMO bedrooms
 
 ### Boiler
-☐ Brand (Viessmann, Alpha, Vaillant, Worcester, Ideal, BAXI = good)
-☐ Age (10+ years = replace £2k)
-☐ Run hot tap - takes >20 seconds? (Issue)
+ Brand (Viessmann, Alpha, Vaillant, Worcester, Ideal, BAXI = good)
+ Age (10+ years = replace £2k)
+ Run hot tap - takes >20 seconds? (Issue)
 
 ### Consumer Unit
-☐ Old black or plastic unit? = partial rewire £2k+
-☐ Metal unit? = up to standard
+ Old black or plastic unit? = partial rewire £2k+
+ Metal unit? = up to standard
 
 ### Plug Sockets
-☐ In skirting board? = likely need rewire
-☐ Only 1-2 per room? = likely need rewire
+ In skirting board? = likely need rewire
+ Only 1-2 per room? = likely need rewire
 
 ### Damp
-☐ Rising: tide marks, salt blooms (white), crumbling plaster
-☐ Penetrating: localised patches, often behind gutters
-☐ Condensation: moisture drops on windows, black mould
+ Rising: tide marks, salt blooms (white), crumbling plaster
+ Penetrating: localised patches, often behind gutters
+ Condensation: moisture drops on windows, black mould
 
 ### Loft
-☐ Get in if possible
-☐ Streaks of daylight? = holes in roof
-☐ Straight lines in rafters?
+ Get in if possible
+ Streaks of daylight? = holes in roof
+ Straight lines in rafters?
 
 ### Cracks
-☐ Diagonal (stair-step) = SERIOUS structural movement
-☐ Above doors/windows = failed lintel
+ Diagonal (stair-step) = SERIOUS structural movement
+ Above doors/windows = failed lintel
 
 ## Gardens & External Land
-☐ Overgrown? = include tidying costs
-☐ Japanese Knotweed? = CRITICAL - property unmortgageable
+ Overgrown? = include tidying costs
+ Japanese Knotweed? = CRITICAL - property unmortgageable
 
 ## After Viewing
-☐ Ask Carina to generate Viewing Report
-☐ Carina will estimate repair costs and flag red flags
-☐ Recommendation: Proceed / Negotiate / Avoid
+ Ask Carina to generate Viewing Report
+ Carina will estimate repair costs and flag red flags
+ Recommendation: Proceed / Negotiate / Avoid
 ```
 
 ---
@@ -1208,9 +1208,9 @@ Carina returns:
 | 1 person over 10 | 6.51 m² |
 | 2 persons over 10 | 10.22 m² |
 
-☐ All bedrooms meet minimum sizes
-☐ No room under 4.64 m² used as sleeping accommodation
-☐ Council notified of any rooms under 4.64 m²
+ All bedrooms meet minimum sizes
+ No room under 4.64 m² used as sleeping accommodation
+ Council notified of any rooms under 4.64 m²
 
 ## Amenity Provision (1:5 ratio)
 
@@ -1220,9 +1220,9 @@ Carina returns:
 | 6-9 | 2 | 2 | 1 separate |
 | 10-14 | 3 | 3 | 2 separate |
 
-☐ WC has wash hand basin within same compartment
-☐ Bathrooms not more than 2 floors from sleeping accommodation
-☐ WC not more than 1 floor from sleeping accommodation
+ WC has wash hand basin within same compartment
+ Bathrooms not more than 2 floors from sleeping accommodation
+ WC not more than 1 floor from sleeping accommodation
 
 ## Kitchen Amenities
 
@@ -1232,34 +1232,34 @@ Carina returns:
 | 6-8 | 1 + dishwasher | 1 + combi microwave | 1 + separate freezer |
 | 9-10 | 2 | 2 | 2 + 1 separate |
 
-☐ Fire blanket adjacent to cooker exit door
-☐ Extractor fan (6 air changes per hour)
-☐ Suitable electrical sockets
+ Fire blanket adjacent to cooker exit door
+ Extractor fan (6 air changes per hour)
+ Suitable electrical sockets
 
 ## Fire Safety
 
-☐ Fire risk assessment completed (competent person)
-☐ Smoke alarms installed and tested annually
-☐ Carbon monoxide alarm in any room with solid fuel appliance
-☐ Fire doors with closers on all bedroom doors
-☐ Wired interlink fire alarm system (if required by risk assessment)
-☐ Emergency lighting (if complex/long escape routes)
-☐ Fire extinguishers (checked annually)
+ Fire risk assessment completed (competent person)
+ Smoke alarms installed and tested annually
+ Carbon monoxide alarm in any room with solid fuel appliance
+ Fire doors with closers on all bedroom doors
+ Wired interlink fire alarm system (if required by risk assessment)
+ Emergency lighting (if complex/long escape routes)
+ Fire extinguishers (checked annually)
 
 ## Mandatory HMO Licence Conditions
 
-☐ Annual gas safety certificate (Gas Safe registered)
-☐ 5-yearly electrical installation inspection (IEE Wiring Regulations)
-☐ Portable Appliance Test (PAT) certificate
-☐ Energy Performance Certificate (min E rating)
-☐ Written tenancy terms provided to occupiers
-☐ Waste disposal scheme in place
-☐ References from previous landlords for new tenants
+ Annual gas safety certificate (Gas Safe registered)
+ 5-yearly electrical installation inspection (IEE Wiring Regulations)
+ Portable Appliance Test (PAT) certificate
+ Energy Performance Certificate (min E rating)
+ Written tenancy terms provided to occupiers
+ Waste disposal scheme in place
+ References from previous landlords for new tenants
 
 ## Article 4 Check
 
-☐ Checked Article 4 status with council
-☐ Planning permission obtained (if required)
+ Checked Article 4 status with council
+ Planning permission obtained (if required)
 
 **Manchester Council Contact:**
 HMOlicensingenquiry@manchester.gov.uk | 0161 234 5500

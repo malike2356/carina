@@ -1,4 +1,4 @@
-# Phase 5.1 — Model Routing with Local Models
+# Phase 5.1; Model Routing with Local Models
 
 ## Task
 Implement the model routing layer. Carina automatically routes queries between local models (Ollama) and cloud models based on task complexity, cost, and capability requirements.
@@ -21,11 +21,11 @@ Task Classifier (local, fast)
 
 ### Task classifier
 Classify incoming queries into:
-1. simple: "What's my portfolio summary?" — local, fast
-2. domain: "Is this HMO compliant in Portsmouth?" — fine-tuned local
-3. complex: "Analyze this 50-page deal pack and compare 3 exit strategies" — cloud
-4. vision: "Read the floor plan image" — cloud vision
-5. code: "Write a PHP migration" — cloud
+1. simple: "What's my portfolio summary?"; local, fast
+2. domain: "Is this HMO compliant in Portsmouth?"; fine-tuned local
+3. complex: "Analyze this 50-page deal pack and compare 3 exit strategies"; cloud
+4. vision: "Read the floor plan image"; cloud vision
+5. code: "Write a PHP migration"; cloud
 
 ### Ollama integration
 - Detect Ollama installation (check for ollama binary)

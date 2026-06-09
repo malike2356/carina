@@ -7,7 +7,7 @@ import type { AuditEventType } from '../audit-schemas.js';
  * event_type before they are eligible for deletion. The scheduled
  * retention job in audit-retention.ts applies these windows.
  *
- * audit_log rows of type 'admin' are kept for 2 years (730 days) —
+ * audit_log rows of type 'admin' are kept for 2 years (730 days);
  * this is the longest window because admin actions include compliance
  * requests, kill-switch events, and configuration changes that must
  * be preserved for legal and operational audits.
@@ -16,7 +16,7 @@ import type { AuditEventType } from '../audit-schemas.js';
  * 'auth' rows (also 365 days) to support security investigations.
  *
  * High-volume operational rows (tool_execution, model_request) are
- * kept for 90 days — sufficient for debugging and cost analysis
+ * kept for 90 days; sufficient for debugging and cost analysis
  * without excessive storage.
  */
 

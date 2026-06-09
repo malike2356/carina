@@ -110,7 +110,7 @@ describe('searchAuditLog', () => {
     expect(countCall[1].some((v) => String(v).includes('rate_limit'))).toBe(true);
   });
 
-  it('handles pagination — page 2', async () => {
+  it('handles pagination; page 2', async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [{ total: '100' }] })
       .mockResolvedValueOnce({ rows: [fakeRow()] });

@@ -164,8 +164,8 @@ REMOTE
 
 # Parse args
 case "${1:-deploy}" in
-  --init)  check_ssh && init_vps ;;
-  --ssl)   check_ssh && get_ssl ;;
-  deploy|"") check_ssh && deploy ;;
-  *) echo "Usage: bash deploy.sh [--init|--ssl]" && exit 1 ;;
+  --init)  check_ssh && init_vps;
+  --ssl)   check_ssh && get_ssl;
+  deploy|"") check_ssh && deploy;
+  *) echo "Usage: bash deploy.sh [--init|--ssl]" && exit 1;
 esac

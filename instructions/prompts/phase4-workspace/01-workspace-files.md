@@ -1,11 +1,11 @@
-# Phase 4.1 — Workspace System (AGENTS.md, SOUL.md, USER.md, etc.)
+# Phase 4.1; Workspace System (AGENTS.md, SOUL.md, USER.md, etc.)
 
 ## Task
 Port OpenClaw's workspace file system. Carina auto-loads workspace context files on session start and maintains daily memory journals.
 
 ## Files to implement
 
-### AGENTS.md — Workspace rules
+### AGENTS.md; Workspace rules
 Auto-loaded from current working directory on session start.
 Contains: workspace description, rules, conventions, red lines, tool notes.
 
@@ -25,23 +25,23 @@ Long-term: MEMORY.md
 - Don't run destructive commands without asking
 ```
 
-### SOUL.md — Agent personality
+### SOUL.md; Agent personality
 Loaded at session start. Defines tone, style, constraints.
 Format: Free text. "You are a warm, professional assistant."
 
-### IDENTITY.md — Agent identity
+### IDENTITY.md; Agent identity
 Loaded at session start. Defines who the agent IS in this workspace.
 Format: Name, role, capabilities, limitations.
 
-### USER.md — User profile
+### USER.md; User profile
 Loaded at session start. Defines who the user is.
 Format: Name, preferences, communication style, background.
 
-### TOOLS.md — Tool configuration
+### TOOLS.md; Tool configuration
 Tool-specific notes, API keys, configuration.
 Format: Per-tool sections with config values.
 
-### BOOTSTRAP.md — First-run setup
+### BOOTSTRAP.md; First-run setup
 Read on first run in a new workspace. Agent follows instructions to self-configure.
 Deleted after successful bootstrap.
 
@@ -54,7 +54,7 @@ Example:
 4. Delete this file when done
 ```
 
-### MEMORY.md — Curated long-term memory
+### MEMORY.md; Curated long-term memory
 Agent maintains this over time. Contains distilled learnings, not raw logs.
 Updated during heartbeat maintenance cycles.
 

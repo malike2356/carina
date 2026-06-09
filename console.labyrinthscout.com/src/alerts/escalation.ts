@@ -17,7 +17,7 @@ const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
 /**
  * Schedules escalation checks for CRITICAL alerts.
- * - 5 min: if unacknowledged, resend with "UNACKNOWLEDGED — ESCALATING" prefix
+ * - 5 min: if unacknowledged, resend with "UNACKNOWLEDGED; ESCALATING" prefix
  * - 15 min: if still unacknowledged, send emergency SMS
  */
 export function scheduleEscalation(
@@ -68,7 +68,7 @@ async function checkAndEscalate(
     const row = result.rows[0];
     if (!row || row.acknowledged) return;
 
-    const prefix = stage === '5min' ? 'UNACKNOWLEDGED — ESCALATING: ' : 'UNACKNOWLEDGED — CRITICAL ESCALATION: ';
+    const prefix = stage === '5min' ? 'UNACKNOWLEDGED; ESCALATING: ' : 'UNACKNOWLEDGED; CRITICAL ESCALATION: ';
 
     await alertDispatcher.dispatch({
       id: crypto.randomUUID(),

@@ -221,7 +221,7 @@ async heartbeat(): Promise<void> {
 async checkStatus(): Promise<StatusResponse> {
   if (!this.enabled) return { suspended: false };
   const res = await this.get(`/api/instances/${encodeURIComponent(this.instanceId)}/status`);
-  if (!res) return { suspended: false };  // Scout unreachable: default to not suspended
+  if (!res) return { suspended: false }; // Scout unreachable: default to not suspended
   if (!res.ok) return { suspended: false };
   try {
     const data = await res.json() as { suspended: boolean; reason?: string };
@@ -257,7 +257,7 @@ startKillSwitchPolling(
     }
   };
 
-  void poll();  // immediate first check
+  void poll(); // immediate first check
   this.pollingInterval = setInterval(() => void poll(), intervalMs);
 
   return () => {

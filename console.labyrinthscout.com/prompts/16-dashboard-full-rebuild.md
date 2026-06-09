@@ -169,8 +169,8 @@ Four cards side by side. Numbers centred both horizontally and vertically.
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  align-items: center;        /* horizontal centre */
-  justify-content: center;   /* vertical centre */
+  align-items: center; /* horizontal centre */
+  justify-content: center; /* vertical centre */
   padding: 0.4rem;
   position: relative;
   overflow: hidden;
@@ -263,7 +263,7 @@ Wait - that gives too much space to the radar. Better: keep radar in col 1 rows 
     "stream  heatmap    topevents";
 }
 
-.radar-panel  { grid-area: radar;  grid-row: 1 / 3; }
+.radar-panel  { grid-area: radar; grid-row: 1 / 3; }
 .stream-panel { grid-area: stream; grid-row: 3 / 5; }
 ```
 
@@ -280,8 +280,8 @@ Stream panel - **must scroll when full**:
 
 .stream {
   flex: 1;
-  overflow-y: scroll;   /* always show scrollbar - never hidden */
-  min-height: 0;        /* critical: without this flex child ignores overflow */
+  overflow-y: scroll; /* always show scrollbar - never hidden */
+  min-height: 0; /* critical: without this flex child ignores overflow */
   scrollbar-color: var(--glow-green) var(--navy);
   scrollbar-width: thin;
 }

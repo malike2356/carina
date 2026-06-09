@@ -55,9 +55,9 @@ composer global require laravel/installer
 bash  
 sudo \-u postgres psql
 
-CREATE USER propreneur WITH PASSWORD 'local\_dev\_password';  
-CREATE DATABASE propreneur\_central OWNER propreneur;  
-GRANT ALL PRIVILEGES ON DATABASE propreneur\_central TO propreneur;  
+CREATE USER propreneur WITH PASSWORD 'local\_dev\_password'; 
+CREATE DATABASE propreneur\_central OWNER propreneur; 
+GRANT ALL PRIVILEGES ON DATABASE propreneur\_central TO propreneur; 
 \\q
 
 stancl/tenancy creates tenant databases automatically when a tenant is created - you don't pre-create them. The central DB is the only one you manually create.
@@ -385,35 +385,35 @@ sudo chmod 600 /home/deploy/.ssh/authorized\_keys
 nginx  
 \# /etc/nginx/sites-available/propreneur-v2  
 server {  
-    listen 80;  
-    server\_name v2.propreneur.co.uk \*.v2.propreneur.co.uk;  
-    return 301 https://$host$request\_uri;  
+    listen 80; 
+    server\_name v2.propreneur.co.uk \*.v2.propreneur.co.uk; 
+    return 301 https://$host$request\_uri; 
 }
 
 server {  
-    listen 443 ssl http2;  
-    server\_name v2.propreneur.co.uk \*.v2.propreneur.co.uk;  
+    listen 443 ssl http2; 
+    server\_name v2.propreneur.co.uk \*.v2.propreneur.co.uk; 
       
-    root /var/www/propreneur-v2/current/public;  
-    index index.php;  
+    root /var/www/propreneur-v2/current/public; 
+    index index.php; 
       
-    ssl\_certificate     /etc/letsencrypt/live/v2.propreneur.co.uk/fullchain.pem;  
-    ssl\_certificate\_key /etc/letsencrypt/live/v2.propreneur.co.uk/privkey.pem;  
+    ssl\_certificate     /etc/letsencrypt/live/v2.propreneur.co.uk/fullchain.pem; 
+    ssl\_certificate\_key /etc/letsencrypt/live/v2.propreneur.co.uk/privkey.pem; 
       
     \# Security headers  
-    add\_header X-Frame-Options "SAMEORIGIN";  
-    add\_header X-Content-Type-Options "nosniff";  
-    add\_header Referrer-Policy "strict-origin-when-cross-origin";  
+    add\_header X-Frame-Options "SAMEORIGIN"; 
+    add\_header X-Content-Type-Options "nosniff"; 
+    add\_header Referrer-Policy "strict-origin-when-cross-origin"; 
       
     location / {  
-        try\_files $uri $uri/ /index.php?$query\_string;  
+        try\_files $uri $uri/ /index.php?$query\_string; 
     }  
       
     location \~ \\.php$ {  
-        fastcgi\_pass unix:/var/run/php/php8.3-fpm.sock;  
-        fastcgi\_param SCRIPT\_FILENAME $realpath\_root$fastcgi\_script\_name;  
-        include fastcgi\_params;  
-        fastcgi\_hide\_header X-Powered-By;  
+        fastcgi\_pass unix:/var/run/php/php8.3-fpm.sock; 
+        fastcgi\_param SCRIPT\_FILENAME $realpath\_root$fastcgi\_script\_name; 
+        include fastcgi\_params; 
+        fastcgi\_hide\_header X-Powered-By; 
     }  
       
     location \~ /\\.ht { deny all; }  
@@ -421,11 +421,11 @@ server {
       
     \# Static assets with long cache  
     location \~\* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2)$ {  
-        expires 1y;  
-        add\_header Cache-Control "public, immutable";  
+        expires 1y; 
+        add\_header Cache-Control "public, immutable"; 
     }  
       
-    client\_max\_body\_size 50M;  
+    client\_max\_body\_size 50M; 
 }
 
 The `*.v2.propreneur.co.uk` wildcard in `server_name` handles all tenant subdomains - `acme.v2.propreneur.co.uk`, `testco.v2.propreneur.co.uk` etc. all hit the same Nginx config.
@@ -533,7 +533,7 @@ echo "3. Config diff (staging .env vs expected keys):"
 REQUIRED\_KEYS=("APP\_KEY" "DB\_PASSWORD" "ANTHROPIC\_API\_KEY" "STRIPE\_SECRET" \\  
                "TENANCY\_DB\_PASSWORD" "REDIS\_PASSWORD" "MEILISEARCH\_KEY")  
 for key in "${REQUIRED\_KEYS\[@\]}"; do  
-  grep \-q "^${key}=" .env && echo "   ✓ ${key}" || echo "   ✗ MISSING: ${key}"  
+  grep \-q "^${key}=" .env && echo "    ${key}" || echo "    MISSING: ${key}"  
 done
 
 echo ""  
@@ -582,7 +582,7 @@ Route::get('/health', function () {
         'db' \=\> DB::connection()-\>getPdo() ? 'connected' : 'error',  
         'cache' \=\> Cache::store('redis')-\>put('health\_check', true, 10\) ? 'ok' : 'error',  
         'timestamp' \=\> now()-\>toISOString(),  
-    \]);  
+    \]); 
 });
 
 ### **Instant rollback**
@@ -649,17 +649,17 @@ This auto-runs all tenant migrations when a new tenant DB is created on sign-up.
 php  
 // tests/Feature/TenancyTest.php  
 it('isolates tenant data correctly', function () {  
-    $tenant1 \= Tenant::create(\['id' \=\> 'tenant1'\]);  
-    $tenant2 \= Tenant::create(\['id' \=\> 'tenant2'\]);  
+    $tenant1 \= Tenant::create(\['id' \=\> 'tenant1'\]); 
+    $tenant2 \= Tenant::create(\['id' \=\> 'tenant2'\]); 
       
-    tenancy()-\>initialize($tenant1);  
-    Property::factory()-\>create(\['address\_line1' \=\> 'Tenant 1 Property'\]);  
+    tenancy()-\>initialize($tenant1); 
+    Property::factory()-\>create(\['address\_line1' \=\> 'Tenant 1 Property'\]); 
       
-    tenancy()-\>initialize($tenant2);  
+    tenancy()-\>initialize($tenant2); 
     expect(Property::count())-\>toBe(0); // tenant 2 sees nothing  
       
-    tenancy()-\>end();  
-});  
+    tenancy()-\>end(); 
+}); 
 ---
 
 ## **Summary - The Full Flow in Practice**

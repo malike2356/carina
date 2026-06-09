@@ -1,4 +1,4 @@
-# Phase 2.2 — Provider Switching Mid-Session
+# Phase 2.2; Provider Switching Mid-Session
 
 ## Goal
 Implement the ability to switch AI providers mid-conversation without losing context. Users can type `/model openai` or `/model deepseek` during a chat session. The agent switches to the new model on the next turn while preserving conversation history. This fulfills the "Switch LLM mid-session" claim on the comparison table.
@@ -7,21 +7,21 @@ Implement the ability to switch AI providers mid-conversation without losing con
 ```
 packages/engine/src/
   routing/
-    provider-switcher.ts      — Mid-session provider switching logic
-    provider-capabilities.ts  — What each provider supports (vision, streaming, tools)
+    provider-switcher.ts; Mid-session provider switching logic
+    provider-capabilities.ts; What each provider supports (vision, streaming, tools)
   commands/
-    model-command.ts          — /model command handler
+    model-command.ts; /model command handler
 ```
 
 ## Files to modify
 ```
 packages/engine/src/
   agent/
-    agentic-loop.ts           — Accept dynamic provider override per turn
+    agentic-loop.ts; Accept dynamic provider override per turn
   chat/
-    chat-service.ts           — Handle /model command in message pipeline
+    chat-service.ts; Handle /model command in message pipeline
   config/
-    provider-config.ts        — Track active provider per session
+    provider-config.ts; Track active provider per session
 ```
 
 ## How it works
@@ -29,7 +29,7 @@ packages/engine/src/
 1. User types `/model openai`
 2. Agent acknowledges: "Switched to OpenAI. Using gpt-4o."
 3. Next message uses the new provider for API calls
-4. Conversation history is preserved — the new model sees all previous messages
+4. Conversation history is preserved; the new model sees all previous messages
 5. System prompt and tool definitions are reformatted for the new provider's API format
 6. If the new provider doesn't support a feature (e.g., DeepSeek doesn't do vision), warn the user: "Note: DeepSeek does not support image analysis. Vision features will be unavailable."
 
@@ -47,12 +47,12 @@ ollama (local)| Yes  | No     | Yes       | Partial
 
 ## Commands
 ```
-/model                    — Show current model
-/model list               — List available models
-/model openai             — Switch to OpenAI (uses default model)
-/model openai gpt-4o      — Switch to specific model
-/model deepseek           — Switch to DeepSeek
-/model anthropic claude-sonnet-4 — Switch to Claude
+/model; Show current model
+/model list; List available models
+/model openai; Switch to OpenAI (uses default model)
+/model openai gpt-4o; Switch to specific model
+/model deepseek; Switch to DeepSeek
+/model anthropic claude-sonnet-4; Switch to Claude
 ```
 
 ## Edge cases

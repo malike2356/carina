@@ -109,22 +109,22 @@ hero:
       link: https://github.com/verlox/carina
 
 features:
-  - icon: 🧠
+  - icon: 
     title: Persistent Memory
     details: Episodic memory with pgvector semantic search. Carina recalls relevant past conversations automatically across sessions.
-  - icon: ✨
+  - icon: 
     title: Self-Writing Skills
     details: After solving a complex problem, Carina writes a Skill document. She gets smarter every session without retraining.
-  - icon: 🔧
+  - icon: 
     title: Real Tool Execution
     details: Web search, files, shell (sandboxed), email, HTTP, code execution. She acts, not advises.
-  - icon: 🔄
+  - icon: 
     title: Switch Providers Mid-Session
     details: DeepSeek, Claude, GPT-4o. Type /provider anthropic. No restart.
-  - icon: 📦
+  - icon: 
     title: Vertical Skill Packs
     details: UK property knowledge built in. 95+ documents, 6 pre-built skills, PropertyData API pre-configured.
-  - icon: 🔒
+  - icon: 
     title: Labyrinth Scout Security
     details: Optional enterprise security control plane. Prompt injection detection, kill switch, real-time monitoring.
 ---

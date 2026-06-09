@@ -32,7 +32,7 @@ export async function shouldSuppress(
       return { suppress: false };
     }
 
-    // Within the window — suppress and aggregate
+    // Within the window; suppress and aggregate
     const aggregatedCount = await redis.incr(countKey);
     if (aggregatedCount === 1) {
       await redis.expire(countKey, 3600); // 1 hour window for escalation tracking

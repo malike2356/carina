@@ -5,7 +5,7 @@ import type { AuditEvent, AuditEventType, AuditSeverity } from './audit-schemas.
  * Thin normalizing writer that maps events from call sites into the
  * AuditEvent shape and inserts into the immutable audit_log table.
  *
- * Every insert goes through this single function — there is no other
+ * Every insert goes through this single function; there is no other
  * write path into audit_log. The kill-switch audit module also
  * delegates through this function (with event_type="admin",
  * action="kill_switch_triggered" / "kill_switch_disarmed").

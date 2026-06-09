@@ -1,7 +1,7 @@
-# Phase 2.6 — delegate_task Tool (Subagents)
+# Phase 2.6; delegate_task Tool (Subagents)
 
 ## Task
-Implement the `delegate_task` tool. This allows Carina to spawn parallel subagents that work on tasks in isolated contexts. The parent agent only receives the final summary — intermediate results never enter the parent's context window.
+Implement the `delegate_task` tool. This allows Carina to spawn parallel subagents that work on tasks in isolated contexts. The parent agent only receives the final summary; intermediate results never enter the parent's context window.
 
 ## Specification
 
@@ -18,11 +18,11 @@ Implement the `delegate_task` tool. This allows Carina to spawn parallel subagen
 
 ### Parameters
 - goal (string): What the subagent should accomplish (single task mode)
-- context (string): Background info — file paths, error messages, constraints
+- context (string): Background info; file paths, error messages, constraints
 - toolsets (array of strings): Tools to enable for this subagent
   - Available: terminal, file, web, browser, search, skills, session_search, vision
   - Default: inherits parent's enabled toolsets
-- tasks (array): Batch mode — array of { goal, context, toolsets }
+- tasks (array): Batch mode; array of { goal, context, toolsets }
 
 ### Subagent constraints (leaf role, default)
 - CAN use: terminal, file, read, write, search, web, browser
@@ -46,9 +46,9 @@ Implement the `delegate_task` tool. This allows Carina to spawn parallel subagen
 ### Implementation notes
 - Subagents are spawned as separate Carina agent instances
 - Each gets a fresh context window
-- Results are self-reports — parent should verify critical outputs
+- Results are self-reports; parent should verify critical outputs
 - For operations with external side-effects (HTTP POST, file writes): subagent returns verifiable handle (URL, ID, path), parent verifies
-- Max spawn depth configurable (default 1 — leaf only)
+- Max spawn depth configurable (default 1; leaf only)
 
 ### Verification
 ```bash

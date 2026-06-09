@@ -6,7 +6,7 @@
 
 ---
 
-## Current state — read these files first before writing anything
+## Current state; read these files first before writing anything
 
 Read ALL of the following before making changes:
 
@@ -29,7 +29,7 @@ Read ALL of the following before making changes:
 
 ## What needs to be BUILT (not stubs, working implementations)
 
-### 1. Security Tab (HIGHEST PRIORITY — missing entirely)
+### 1. Security Tab (HIGHEST PRIORITY; missing entirely)
 
 Add a Security tab that proxies Labyrinth Scout's live event stream.
 
@@ -56,17 +56,17 @@ export const SCOUT_BASE = SCOUT_URL;
 
 **New file: `routes/security.ts`**
 
-`GET /security` — renders `views/security.ejs`. Fetches initial data:
+`GET /security`; renders `views/security.ejs`. Fetches initial data:
 - `GET /api/status` from Scout for instances + 24h stats
 - If Scout offline: render with `scoutOnline: false` (banner shown, zeros in stats)
 
 Pass to view: `{ title:'Security', scoutOnline, stats, instances, scoutUrl: SCOUT_URL }`
 
-`GET /security/stream` — SSE proxy. Pipes Scout's `GET /api/stream` to the browser using `fetch` with streaming. Requires no auth header on Scout's stream endpoint (it's open to local network). Sets `Content-Type: text/event-stream`. On Scout offline: sends `data: {"type":"offline"}\n\n` and ends.
+`GET /security/stream`; SSE proxy. Pipes Scout's `GET /api/stream` to the browser using `fetch` with streaming. Requires no auth header on Scout's stream endpoint (it's open to local network). Sets `Content-Type: text/event-stream`. On Scout offline: sends `data: {"type":"offline"}\n\n` and ends.
 
-`POST /security/kill/:instanceId` — body `{ reason }`. Proxies to Scout `POST /api/kill/:instanceId`. Returns Scout's JSON response.
+`POST /security/kill/:instanceId`; body `{ reason }`. Proxies to Scout `POST /api/kill/:instanceId`. Returns Scout's JSON response.
 
-`POST /security/resume/:instanceId` — proxies to Scout `POST /api/resume/:instanceId`.
+`POST /security/resume/:instanceId`; proxies to Scout `POST /api/resume/:instanceId`.
 
 Mount in `server.ts`: `app.use('/security', requireAdmin, securityRouter);`
 
@@ -84,9 +84,9 @@ The security dashboard inside the ops layout. Shows:
 
 **If online:**
 
-Top: 4 stat cards (critical, warning, info, breach counts) — same style as dashboard stat cards.
+Top: 4 stat cards (critical, warning, info, breach counts); same style as dashboard stat cards.
 
-Middle: Live event stream — scrolling log, SSE connection to `/security/stream`. Each event row: timestamp | severity badge | event_type | description | instance. Severity badge coloured (red=critical/breach, amber=warning, cyan=info).
+Middle: Live event stream; scrolling log, SSE connection to `/security/stream`. Each event row: timestamp | severity badge | event_type | description | instance. Severity badge coloured (red=critical/breach, amber=warning, cyan=info).
 
 Right sidebar (or below on narrow): Instance chips showing each agent instance name, status, last heartbeat, with KILL and RESUME buttons. Kill shows a confirm dialog before POSTing.
 
@@ -112,11 +112,11 @@ function connectStream() {
 
 ---
 
-### 2. Chat Tab — complete SSE streaming (currently static render only)
+### 2. Chat Tab; complete SSE streaming (currently static render only)
 
 The existing `views/chat.ejs` has the HTML structure but no working SSE stream. Complete it.
 
-**Modify `routes/chat.ts`** — add a provider proxy:
+**Modify `routes/chat.ts`**; add a provider proxy:
 ```typescript
 chatRouter.post('/provider', async (req, res) => {
   const { provider } = req.body as { provider: string };
@@ -128,7 +128,7 @@ chatRouter.post('/provider', async (req, res) => {
 });
 ```
 
-**Modify `views/chat.ejs`** — complete the JavaScript so the chat actually works:
+**Modify `views/chat.ejs`**; complete the JavaScript so the chat actually works:
 
 The chat form sends a message and streams from Carina's SSE endpoint `GET /api/chat/stream?message=...&sessionId=...`.
 
@@ -179,19 +179,19 @@ Markdown rendering for assistant messages: use `marked.parse()` from CDN `https:
 
 **Modify `routes/settings.ts`** (create if not exists):
 
-`GET /settings` — renders `views/settings.ejs` with:
+`GET /settings`; renders `views/settings.ejs` with:
 - `carinaApiUrl` (from env)
 - `scoutUrl` (from env)
 - `adminPasswordSet` (true if ADMIN_PASSWORD !== 'changeme')
 - `skillAutoWrite` (from env SKILL_AUTO_WRITE)
 
-`POST /settings/test-carina` — tries `GET /api/providers` from Carina. Returns `{ok, providers, active}` or `{ok:false, error}`.
+`POST /settings/test-carina`; tries `GET /api/providers` from Carina. Returns `{ok, providers, active}` or `{ok:false, error}`.
 
-`POST /settings/test-scout` — tries `GET /api/status` from Scout. Returns `{ok, instances}` or `{ok:false}`.
+`POST /settings/test-scout`; tries `GET /api/status` from Scout. Returns `{ok, instances}` or `{ok:false}`.
 
 Mount in `server.ts`: `app.use('/settings', requireAdmin, settingsRouter);`
 
-**Complete `views/settings.ejs`** — show:
+**Complete `views/settings.ejs`**; show:
 - Connection status for Carina and Scout with "Test connection" buttons that POST via fetch
 - Current env var values (read-only display, never show passwords)
 - Warning if admin password is still 'changeme'
@@ -201,7 +201,7 @@ Mount in `server.ts`: `app.use('/settings', requireAdmin, settingsRouter);`
 
 ### 4. Add Security to navigation
 
-**Modify `views/layout.ejs`** — add Security to nav links array:
+**Modify `views/layout.ejs`**; add Security to nav links array:
 ```javascript
 const links = [
   { href: '/', label: 'Dashboard', match: (p) => p === '/' },
@@ -231,9 +231,9 @@ Ping `/security/stream` on page load. If Scout responds: dot green + label "Scou
 After all changes, run `node_modules/.bin/tsc --noEmit` in `ops.carinaai.uk/`. Fix all type errors. The `tsconfig.json` uses `NodeNext` module resolution.
 
 Key type issues to watch for:
-- `fetch()` is available in Node 22 — no polyfill needed
-- `AbortSignal.timeout()` is Node 18+ — available
-- EJS templates are not type-checked — don't try to type them
+- `fetch()` is available in Node 22; no polyfill needed
+- `AbortSignal.timeout()` is Node 18+; available
+- EJS templates are not type-checked; don't try to type them
 
 ---
 
@@ -288,7 +288,7 @@ ops.carinaai.uk/
 │   ├── db.ts                    Keep as-is
 │   ├── constants.ts             Keep as-is
 │   ├── projects.ts              Keep as-is
-│   └── scout.ts                 NEW — Scout HTTP proxy helper
+│   └── scout.ts                 NEW; Scout HTTP proxy helper
 ├── middleware/auth.ts           Keep as-is
 ├── routes/
 │   ├── auth.ts                  Keep as-is
@@ -296,17 +296,17 @@ ops.carinaai.uk/
 │   ├── memories.ts              Keep as-is
 │   ├── skills.ts                Keep as-is
 │   ├── rag.ts                   Keep as-is
-│   ├── chat.ts                  MODIFY — add provider proxy route
+│   ├── chat.ts                  MODIFY; add provider proxy route
 │   ├── projects.ts              Keep as-is
-│   ├── security.ts              NEW — Scout proxy routes
-│   └── settings.ts              NEW — settings + connection test routes
+│   ├── security.ts              NEW; Scout proxy routes
+│   └── settings.ts              NEW; settings + connection test routes
 └── views/
-    ├── layout.ejs               MODIFY — add Security + Settings nav, Scout indicator
+    ├── layout.ejs               MODIFY; add Security + Settings nav, Scout indicator
     ├── login.ejs                Keep as-is
     ├── dashboard.ejs            Keep as-is
-    ├── chat.ejs                 MODIFY — complete SSE streaming JS
-    ├── security.ejs             NEW — Scout event stream + instance controls
-    ├── settings.ejs             COMPLETE — add connection test UI
+    ├── chat.ejs                 MODIFY; complete SSE streaming JS
+    ├── security.ejs             NEW; Scout event stream + instance controls
+    ├── settings.ejs             COMPLETE; add connection test UI
     ├── memories/                Keep as-is
     ├── skills/                  Keep as-is
     ├── rag.ejs                  Keep as-is

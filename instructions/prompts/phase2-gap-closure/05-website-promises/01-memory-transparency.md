@@ -1,35 +1,35 @@
-# Phase 2.15 — Memory Transparency (View/Edit UI)
+# Phase 2.15; Memory Transparency (View/Edit UI)
 
 ## Goal
-Build the memory transparency feature — users can view and edit Carina's memory through a web interface. This fulfills "Memory transparency (view/edit)" on the comparison table and makes the persistent memory claim tangible.
+Build the memory transparency feature; users can view and edit Carina's memory through a web interface. This fulfills "Memory transparency (view/edit)" on the comparison table and makes the persistent memory claim tangible.
 
 ## Files to create
 ```
 packages/cloud/web/
   memory/
-    index.html                  — Memory management page
+    index.html; Memory management page
     css/memory.css
     js/
-      memory-viewer.js          — Display all memory entries
-      memory-editor.js          — Edit/add/delete entries
-      memory-search.js          — Search/filter memory
+      memory-viewer.js; Display all memory entries
+      memory-editor.js; Edit/add/delete entries
+      memory-search.js; Search/filter memory
 
 packages/cloud/src/
   api/
-    memory-api.ts               — REST API for memory management
+    memory-api.ts; REST API for memory management
     routes/
-      memory.routes.ts          — GET/PUT/DELETE /api/memory
+      memory.routes.ts; GET/PUT/DELETE /api/memory
 ```
 
 ## Memory API
 ```
-GET    /api/memory              — List all memory entries
-GET    /api/memory/{id}         — Get single entry
-POST   /api/memory              — Create new entry
-PUT    /api/memory/{id}         — Update entry
-DELETE /api/memory/{id}         — Delete entry
-GET    /api/memory/search?q=    — Search memory by text
-GET    /api/memory/stats        — Memory usage stats
+GET    /api/memory; List all memory entries
+GET    /api/memory/{id}; Get single entry
+POST   /api/memory; Create new entry
+PUT    /api/memory/{id}; Update entry
+DELETE /api/memory/{id}; Delete entry
+GET    /api/memory/search?q=; Search memory by text
+GET    /api/memory/stats; Memory usage stats
 ```
 
 ## UI layout
@@ -97,10 +97,10 @@ Recommendation: Memory is healthy. No action needed.
 ```
 
 ## What this proves to users
-1. Memory is real — they can see everything Carina remembers
-2. Memory is controllable — they can edit, delete, or add entries
-3. Memory is transparent — nothing is hidden
-4. Memory is bounded — they can see the limits and manage them
+1. Memory is real; they can see everything Carina remembers
+2. Memory is controllable; they can edit, delete, or add entries
+3. Memory is transparent; nothing is hidden
+4. Memory is bounded; they can see the limits and manage them
 
 This is the feature the comparison table claims Hermes doesn't have.
 

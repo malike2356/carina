@@ -1,4 +1,4 @@
-# Phase 2.7 — cronjob Tool
+# Phase 2.7; cronjob Tool
 
 ## Task
 Implement the `cronjob` tool. This allows Carina to schedule recurring tasks with cron syntax, run background watchdog scripts, chain jobs together, and deliver results to multiple channels.

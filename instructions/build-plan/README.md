@@ -1,18 +1,18 @@
 # Carina Build Instructions
 
-Welcome. You are here to build Carina — the autonomous AI agent that combines the best of Hermes + OpenClaw + property domain knowledge + enterprise security.
+Welcome. You are here to build Carina; the autonomous AI agent that combines the best of Hermes + OpenClaw + property domain knowledge + enterprise security.
 
 ## Start here
 
 Read these in order:
 
-1. AGENTS.md — Who you are and how you work together
-2. TARGET.md — What we are building toward
-3. ROADMAP.md — 5-phase build plan
-4. TOOLS.md — Complete tool list to implement
-5. WORKFLOW.md — How Claude, Cursor, and Hermes collaborate
-6. UNIQUE.md — What makes Carina truly unique
-7. COMPARISON.md — How Carina stacks up against Hermes and OpenClaw
+1. AGENTS.md; Who you are and how you work together
+2. TARGET.md; What we are building toward
+3. ROADMAP.md; 5-phase build plan
+4. TOOLS.md; Complete tool list to implement
+5. WORKFLOW.md; How Claude, Cursor, and Hermes collaborate
+6. UNIQUE.md; What makes Carina truly unique
+7. COMPARISON.md; How Carina stacks up against Hermes and OpenClaw
 
 ## Archive
 

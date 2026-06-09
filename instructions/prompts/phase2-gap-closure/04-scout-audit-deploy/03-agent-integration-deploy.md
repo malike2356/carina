@@ -1,28 +1,28 @@
-# Phase 2.14 — Agent Integration + Deploy Scout
+# Phase 2.14; Agent Integration + Deploy Scout
 
 ## Goal
-Build Scout's integration layer so it "works with any agent" — the primary claim on labyrinthscout.com. Plus the `scout deploy` command that makes the "Deploy Scout in 3 steps" promise real.
+Build Scout's integration layer so it "works with any agent"; the primary claim on labyrinthscout.com. Plus the `scout deploy` command that makes the "Deploy Scout in 3 steps" promise real.
 
 ## Files to create
 ```
 packages/scout/src/
   integration/
-    agent-adapter.interface.ts  — IAgentAdapter (any agent framework)
+    agent-adapter.interface.ts; IAgentAdapter (any agent framework)
     adapters/
-      carina-adapter.ts         — Carina agent integration (native)
-      hermes-adapter.ts         — Hermes agent integration
-      openclaw-adapter.ts       — OpenClaw integration
-      openai-adapter.ts         — OpenAI Assistants API integration
-      langchain-adapter.ts      — LangChain agent integration
-      generic-adapter.ts        — Generic REST adapter (any agent with an API)
-    adapter-registry.ts         — Discover and register adapters
-    scout-middleware.ts         — Express/Fastify middleware (drop-in)
-    scout-proxy.ts              — Reverse proxy mode (no code changes needed)
+      carina-adapter.ts; Carina agent integration (native)
+      hermes-adapter.ts; Hermes agent integration
+      openclaw-adapter.ts; OpenClaw integration
+      openai-adapter.ts; OpenAI Assistants API integration
+      langchain-adapter.ts; LangChain agent integration
+      generic-adapter.ts; Generic REST adapter (any agent with an API)
+    adapter-registry.ts; Discover and register adapters
+    scout-middleware.ts; Express/Fastify middleware (drop-in)
+    scout-proxy.ts; Reverse proxy mode (no code changes needed)
   deploy/
-    deploy-command.ts           — scout deploy (one-command setup)
-    docker-compose.yml          — Full Scout stack in Docker
-    env-template               — Environment variable template
-    license-activator.ts        — Licence key validation
+    deploy-command.ts; scout deploy (one-command setup)
+    docker-compose.yml; Full Scout stack in Docker
+    env-template; Environment variable template
+    license-activator.ts; Licence key validation
 ```
 
 ## Integration modes
@@ -63,7 +63,7 @@ const protectedOpenAI = scoutWrap(openai, {
 const response = await protectedOpenAI.chat.completions.create({...});
 ```
 
-## Deploy Scout — the 3-step promise
+## Deploy Scout; the 3-step promise
 
 ### Step 1: Deploy Scout
 ```bash

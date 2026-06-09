@@ -1,7 +1,7 @@
-# Phase 2.4 — execute_code Tool
+# Phase 2.4; execute_code Tool
 
 ## Task
-Implement the `execute_code` tool. This allows Carina to run Python scripts that can call other tools programmatically — enabling loops, conditionals, batching, and retry logic.
+Implement the `execute_code` tool. This allows Carina to run Python scripts that can call other tools programmatically; enabling loops, conditionals, batching, and retry logic.
 
 ## Specification
 

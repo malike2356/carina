@@ -8,14 +8,14 @@ import { RETENTION_POLICIES } from './compliance/retention-policy.js';
  * Runs as part of the existing scheduler (see scheduler.ts).
  *
  * IMPORTANT: This function deletes from audit_log despite the RLS
- * append-only policy. The RLS policy only permits INSERT — DELETE
+ * append-only policy. The RLS policy only permits INSERT; DELETE
  * operations will fail at the DB level. Retention-based deletion
  * uses a privileged bypass by operating via the pool's connection
  * which runs as the table owner (who bypasses RLS by default in
  * PostgreSQL).
  *
  * If the table owner cannot bypass RLS (e.g., due to FORCE ROW LEVEL
- * SECURITY on the table owner), retention will fail safely — logs
+ * SECURITY on the table owner), retention will fail safely; logs
  * remain and storage grows, which is preferable to silent data loss.
  */
 export async function runRetention(): Promise<void> {

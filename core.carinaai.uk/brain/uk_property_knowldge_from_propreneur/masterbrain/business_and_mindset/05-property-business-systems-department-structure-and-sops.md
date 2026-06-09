@@ -237,24 +237,24 @@ Checklist:
 ### SOP Folder Structure (Google Drive)
 
 ```
-📁 Property Business SOPs
-├── 📁 01-Lead-Generation
+ Property Business SOPs
+├──  01-Lead-Generation
 │   ├── Social-Media-Ad-Setup.md
 │   ├── Landing-Page-Creation.md
 │   └── Partner-Outreach.md
-├── 📁 02-Sales
+├──  02-Sales
 │   ├── Discovery-Call-Script.md
 │   ├── Objection-Handling.md
 │   └── Closing-Call-Checklist.md
-├── 📁 03-Operations
+├──  03-Operations
 │   ├── Deal-Sourcing-Rightmove.md
 │   ├── Viewing-Checklist.md
 │   └── Refurb-Project-Management.md
-├── 📁 04-Systems-And-Processes
+├──  04-Systems-And-Processes
 │   ├── CRM-Data-Entry-Standards.md
 │   ├── Weekly-Reporting.md
 │   └── Monthly-Accounts-Reconciliation.md
-└── 📁 Templates
+└──  Templates
     ├── SOP-Template.md
     ├── SOP-Checklist-Template.md
     └── SOP-Version-Log.md

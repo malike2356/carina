@@ -1,13 +1,13 @@
-# UNIQUE.md — What Makes Carina Different
+# UNIQUE.md; What Makes Carina Different
 
-These are the features that make Carina genuinely better than any other agent. Not marketing — actual technical differentiation.
+These are the features that make Carina genuinely better than any other agent. Not marketing; actual technical differentiation.
 
 ## 1. Domain knowledge at framework level
 
 Current agents (including Hermes) store domain knowledge in prompts and skills. This means:
 - Every session reloads the same knowledge from text files
 - The agent "knows" property law only as well as it remembers the prompt
-- No live data — everything is static text
+- No live data; everything is static text
 
 Carina does it differently:
 - UK property law database queried directly by the agent (not through a prompt)

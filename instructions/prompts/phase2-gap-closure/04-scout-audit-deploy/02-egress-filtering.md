@@ -1,18 +1,18 @@
-# Phase 2.13 — Egress Filtering & DLP (Data Loss Prevention)
+# Phase 2.13; Egress Filtering & DLP (Data Loss Prevention)
 
 ## Goal
-Build Scout's egress filtering — the last line of defense before data leaves the agent. Every outbound message is scanned for sensitive patterns (API keys, passwords, PII, internal IPs). Detected data is redacted or blocked. This fulfills "Egress Filtering & DLP" on both websites.
+Build Scout's egress filtering; the last line of defense before data leaves the agent. Every outbound message is scanned for sensitive patterns (API keys, passwords, PII, internal IPs). Detected data is redacted or blocked. This fulfills "Egress Filtering & DLP" on both websites.
 
 ## Files to create
 ```
 packages/scout/src/
   egress/
-    egress-filter.ts            — Main egress scanning pipeline
-    pattern-detector.ts         — Regex + ML pattern matching
-    redactor.ts                 — Safe redaction of detected data
-    sensitive-patterns.json     — Pattern library (API keys, PII, IPs)
-    egress-config.ts            — Per-tenant DLP rules
-    egress-audit.ts             — Logs every egress event
+    egress-filter.ts; Main egress scanning pipeline
+    pattern-detector.ts; Regex + ML pattern matching
+    redactor.ts; Safe redaction of detected data
+    sensitive-patterns.json; Pattern library (API keys, PII, IPs)
+    egress-config.ts; Per-tenant DLP rules
+    egress-audit.ts; Logs every egress event
 ```
 
 ## What gets scanned
@@ -67,7 +67,7 @@ Patterns:
 ## Per-tenant configuration
 ```typescript
 interface EgressConfig {
-  enabled: boolean;              // Default: true
+  enabled: boolean; // Default: true
   mode: 'block' | 'redact' | 'log'; // Default per pattern type
   
   patterns: {
@@ -80,8 +80,8 @@ interface EgressConfig {
     connection_string: 'block',  // Block DB connection strings
   };
   
-  custom_patterns: string[];     // Tenant-specific regex patterns
-  whitelist: string[];           // Patterns to never flag
+  custom_patterns: string[]; // Tenant-specific regex patterns
+  whitelist: string[]; // Patterns to never flag
 }
 ```
 
@@ -103,11 +103,11 @@ Egress filtering applies to ALL outbound channels:
 ```bash
 # 1. Test API key leak
 curl -X POST /api/chat/send -d '{"message": "my key is sk-abc123def456ghi789jkl012mno345pqr678stu"}'
-# Expected: blocked — "Message blocked by DLP: API key detected"
+# Expected: blocked; "Message blocked by DLP: API key detected"
 
 # 2. Test email redaction
 curl -X POST /api/chat/send -d '{"message": "contact me at laud@example.com"}'
-# Expected: redacted — "contact me at [EMAIL_REDACTED]"
+# Expected: redacted; "contact me at [EMAIL_REDACTED]"
 
 # 3. Test internal IP
 curl -X POST /api/chat/send -d '{"message": "server is at 10.0.0.15"}'

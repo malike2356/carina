@@ -3,7 +3,7 @@
 Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat described in `blockChaninTrust.md`.
 
 **Last updated:** 2026-06-10  
-**Current phase:** All codable engineering complete — operator wallet, pilots, and revenue remain  
+**Current phase:** All codable engineering complete; operator wallet, pilots, and revenue remain  
 **Strategy:** Adopt Agent Trust on Base; Labyrinth Scout as security attestation oracle; do not build a custom trust platform.
 
 ---
@@ -16,7 +16,7 @@ Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat describe
 4. Update the **Last updated** date and **Current phase** summary at the top.
 5. Do not mark marketing items complete until they are committed and deployed to production.
 
-**Status key:** `[x]` done | `[~]` partial | `[ ]` not started | `[—]` cancelled/deferred
+**Status key:** `[x]` done | `[~]` partial | `[ ]` not started | `[;]` cancelled/deferred
 
 ---
 
@@ -25,16 +25,16 @@ Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat describe
 | Phase | Focus | Done | Total | % |
 |---|---|---:|---:|---:|
 | A | Foundation (Carina + Scout integration) | 18 | 18 | 100% |
-| B | Release 1 — MVP + off-chain trust dashboard | 15 | 16 | 94% (pilot/LOI deferred) |
-| C | Release 2 — On-chain attestations (ERC-8004/8126) | 22 | 25 | 88% (live chain posts deferred) |
-| D | Release 3 — Enterprise trust layer + revenue | 8 | 10 | 80% (MRR deferred) |
+| B | Release 1; MVP + off-chain trust dashboard | 15 | 16 | 94% (pilot/LOI deferred) |
+| C | Release 2; On-chain attestations (ERC-8004/8126) | 22 | 25 | 88% (live chain posts deferred) |
+| D | Release 3; Enterprise trust layer + revenue | 8 | 10 | 80% (MRR deferred) |
 | E | Marketing & positioning (deployed) | 12 | 12 | 100% |
 | F | Prompt injection defence-in-depth | 10 | 10 | 100% |
 | G | Business & go-to-market | 3 | 8 | 38% (sales/ops deferred) |
 
 ---
 
-## Phase A — Foundation (Carina + Scout integration)
+## Phase A; Foundation (Carina + Scout integration)
 
 Carina executes; Scout supervises. No blockchain yet.
 
@@ -67,7 +67,7 @@ Carina executes; Scout supervises. No blockchain yet.
 
 ---
 
-## Phase B — Release 1 (weeks 1–6): Combined MVP + off-chain trust
+## Phase B; Release 1 (weeks 1-6): Combined MVP + off-chain trust
 
 Goal: One demonstrable "verifiable security" story. ERC-8004 testnet registration. First pilot customer or LOI.
 
@@ -97,15 +97,15 @@ Goal: One demonstrable "verifiable security" story. ERC-8004 testnet registratio
 
 ---
 
-## Phase C — Release 2 (weeks 7–12): On-chain attestations
+## Phase C; Release 2 (weeks 7-12): On-chain attestations
 
 Goal: Labyrinth Scout posts real security attestations on-chain. Risk score backed by verifiable proofs.
 
-### C.1 — ERC-8004 agent identity (Base Sepolia → Base mainnet)
+### C.1; ERC-8004 agent identity (Base Sepolia → Base mainnet)
 
 - [x] 2026-06-10 Choose and document trust platform: Agent Trust on Base (`docs/trust/platform.md`)
 - [x] 2026-06-10 Add chain dependencies (viem) to `console.labyrinthscout.com`
-- [ ] Create Scout attestation wallet; store key in env (never commit) — operator action
+- [ ] Create Scout attestation wallet; store key in env (never commit); operator action
 - [x] 2026-06-10 Document env vars: `TRUST_CHAIN_RPC`, `TRUST_ATTESTER_PRIVATE_KEY`, `TRUST_ERC8004_REGISTRY`
 - [~] 2026-06-10 Register reference Carina agent on ERC-8004 (`pnpm trust:register`; blocked without wallet key)
 - [x] 2026-06-10 Store `agentId` + tx hash in Scout DB (`trust_identities` table + migration)
@@ -113,7 +113,7 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 - [x] 2026-06-10 Flip `TRUST_ERC8004_STATUS=live` when DB identity registered (auto in public trust API)
 - [x] 2026-06-10 Mainnet registration CLI (`pnpm trust:register:mainnet`; operator runs after testnet)
 
-### C.2 — Agent Trust security attestation adapter
+### C.2; Agent Trust security attestation adapter
 
 - [x] 2026-06-10 Install `@open-agent-economy/trust-sdk` in Scout
 - [x] 2026-06-10 Define custom namespace `labyrinth-scout.v1` with fields: `securityScore`, `runtimeHours`, `threatsDetected`, `injectionBlocks`, `sandboxViolations`
@@ -125,7 +125,7 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 - [x] 2026-06-10 Tests with mocked SDK (never hit mainnet in CI)
 - [ ] First live attestation on Base Sepolia (`pnpm trust:attest`; blocked without wallet key)
 
-### C.3 — ERC-8126 verification (WAV + WV)
+### C.3; ERC-8126 verification (WAV + WV)
 
 - [x] 2026-06-10 Implement WAV risk score from Scout endpoint health + vulnerability scan findings
 - [x] 2026-06-10 Implement WV risk score from attestation wallet on-chain history
@@ -135,15 +135,15 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 - [x] 2026-06-10 Link to `erc8126.ai` reference implementation docs from trust page
 - [ ] First live ERC-8126 verification on Base Sepolia (blocked without wallet key)
 
-### C.4 — Release 2 exit criteria
+### C.4; Release 2 exit criteria
 
 - [~] 2026-06-10 Trust page shows Base explorer links when on-chain data exists (UI ready; needs wallet + live posts)
-- [ ] Pilot customer uses production agent with on-chain attestation visible — operator/deferred
-- [ ] Marketing claim "on-chain attestations" is factually true in production — operator/deferred
+- [ ] Pilot customer uses production agent with on-chain attestation visible; operator/deferred
+- [ ] Marketing claim "on-chain attestations" is factually true in production; operator/deferred
 
 ---
 
-## Phase D — Release 3 (weeks 13–20): Enterprise trust layer
+## Phase D; Release 3 (weeks 13-20): Enterprise trust layer
 
 Goal: Self-serve compliance exports, historical attestations, premium revenue. Target £5K+ MRR.
 
@@ -155,12 +155,12 @@ Goal: Self-serve compliance exports, historical attestations, premium revenue. T
 - [x] 2026-06-10 Enterprise tier: SOC2 / ISO27001 / EU AI Act readiness export pack
 - [x] 2026-06-10 Open source Carina core + Scout commercial model (`docs/open-source-pricing.md`, MIT LICENSE)
 - [x] 2026-06-10 Self-serve onboarding checklist (`/account/api/onboarding` + account dashboard)
-- [ ] Revenue target: £5K+ MRR from 2–3 enterprise customers — business/deferred
+- [ ] Revenue target: £5K+ MRR from 2-3 enterprise customers; business/deferred
 - [x] 2026-06-10 Contribute `labyrinth-scout.v1` schema manifest (`docs/trust/labyrinth-scout-v1.schema.json`)
 
 ---
 
-## Phase E — Marketing & positioning (must be deployed)
+## Phase E; Marketing & positioning (must be deployed)
 
 Goal: Sites lead with trust moat, not generic "open source agent." Carina and Scout read as one product.
 
@@ -195,7 +195,7 @@ Goal: Sites lead with trust moat, not generic "open source agent." Carina and Sc
 
 ---
 
-## Phase F — Prompt injection defence-in-depth
+## Phase F; Prompt injection defence-in-depth
 
 Goal: Containment, not perfect prevention. Scout is the Type 3 (reasoning compromise) layer.
 
@@ -222,14 +222,14 @@ Goal: Containment, not perfect prevention. Scout is the Type 3 (reasoning compro
 
 ---
 
-## Phase G — Business & go-to-market
+## Phase G; Business & go-to-market
 
 Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours.
 
 ### Operating model
 
 - [x] 2026-06-09 Decision: keep Propreneur running on the side (2 clients onboarding)
-- [—] Propreneur time budget enforced (max 5 hrs/week) — operating habit, not code
+- [;] Propreneur time budget enforced (max 5 hrs/week); operating habit, not code
 - [x] 2026-06-10 Use Carina internally for Propreneur support (`docs/integrations/propreneur-dogfood.md`)
 
 ### Market wedge
@@ -243,7 +243,7 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 - [ ] Identify 5 target enterprises (regulated: finance, legal, healthcare, property)
 - [x] 2026-06-10 Outreach template (`instructions/ENTERPRISE_OUTREACH_TEMPLATE.md`)
 - [ ] First free pilot with security log collection
-- [ ] Convert pilot to £2,500–5,000/mo paid (Scout + attestations)
+- [ ] Convert pilot to £2,500-5,000/mo paid (Scout + attestations)
 - [ ] Track: support tickets per agent, Scout alerts per 1000 actions, CAC, MRR
 
 ### Metrics targets (12 months)
@@ -256,11 +256,11 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 
 ## Deferred / out of scope (do not build unless strategy changes)
 
-- [—] Custom trust platform from scratch (adopt Agent Trust instead)
-- [—] SoulChain memory anchoring (evaluate after Phase C)
-- [—] x402 agent payments (future; after trust layer proven)
-- [—] ZKP/PDV private data verification (Phase C+ optional; Mnemom alternative)
-- [—] Full autonomous agent commerce (wallet, procurement) — Tier 4 vision, not now
+- [;] Custom trust platform from scratch (adopt Agent Trust instead)
+- [;] SoulChain memory anchoring (evaluate after Phase C)
+- [;] x402 agent payments (future; after trust layer proven)
+- [;] ZKP/PDV private data verification (Phase C+ optional; Mnemom alternative)
+- [;] Full autonomous agent commerce (wallet, procurement); Tier 4 vision, not now
 
 ---
 
@@ -269,7 +269,7 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 | Doc | Purpose |
 |---|---|
 | `instructions/blockChaninTrust.md` | Strategy conversation and rationale |
-| `instructions/TRUST_BUILD_CHECKLIST.md` | This file — living build tracker |
+| `instructions/TRUST_BUILD_CHECKLIST.md` | This file; living build tracker |
 | `ARCHITECTURE.md` | Internal wiring (Carina ↔ Scout ↔ ops) |
 | `core.carinaai.uk/docs/carina-cloud.md` | Full Carina Cloud + Scout tenant guide (VitePress / docs.carinaai.uk) |
 | `instructions/BUILD_NEXT_CHECKLIST.md` | Hermes parity / general Carina features (separate track) |

@@ -13,7 +13,7 @@ const templates: Record<string, TemplateSet> = {
   'telegram:critical': {
     body: (e) =>
       [
-        `*LABYRINTH CRITICAL — ${e.event_type}*`,
+        `*LABYRINTH CRITICAL; ${e.event_type}*`,
         `---`,
         `Instance: ${e.instance_id}`,
         `Time: ${e.created_at.toISOString()}`,
@@ -31,7 +31,7 @@ const templates: Record<string, TemplateSet> = {
       [
         `*BREACH DETECTED*`,
         ``,
-        `*LABYRINTH BREACH — ${e.event_type}*`,
+        `*LABYRINTH BREACH; ${e.event_type}*`,
         `---`,
         `Instance: ${e.instance_id}`,
         `Time: ${e.created_at.toISOString()}`,
@@ -47,7 +47,7 @@ const templates: Record<string, TemplateSet> = {
   'telegram:warning': {
     body: (e) =>
       [
-        `*LABYRINTH WARNING — ${e.event_type}*`,
+        `*LABYRINTH WARNING; ${e.event_type}*`,
         `---`,
         `Instance: ${e.instance_id}`,
         `Time: ${e.created_at.toISOString()}`,
@@ -61,7 +61,7 @@ const templates: Record<string, TemplateSet> = {
   'telegram:info': {
     body: (e) =>
       [
-        `LABYRINTH INFO — ${e.event_type}`,
+        `LABYRINTH INFO; ${e.event_type}`,
         `---`,
         `Instance: ${e.instance_id}`,
         `Time: ${e.created_at.toISOString()}`,
@@ -72,7 +72,7 @@ const templates: Record<string, TemplateSet> = {
       ].join('\n'),
   },
   'email:critical': {
-    subject: `[LABYRINTH CRITICAL] ${'{{event_type}}'} — ${'{{instance_id}}'}`,
+    subject: `[LABYRINTH CRITICAL] ${'{{event_type}}'}; ${'{{instance_id}}'}`,
     body: (e) =>
       [
         `CRITICAL ALERT: ${e.event_type}`,
@@ -92,7 +92,7 @@ const templates: Record<string, TemplateSet> = {
       ].join('\n'),
   },
   'email:breach': {
-    subject: `[BREACH] ${'{{event_type}}'} — ${'{{instance_id}}'}`,
+    subject: `[BREACH] ${'{{event_type}}'}; ${'{{instance_id}}'}`,
     body: (e) =>
       [
         `BREACH DETECTED: ${e.event_type}`,
@@ -112,7 +112,7 @@ const templates: Record<string, TemplateSet> = {
       ].join('\n'),
   },
   'email:warning': {
-    subject: `[LABYRINTH WARNING] ${'{{event_type}}'} — ${'{{instance_id}}'}`,
+    subject: `[LABYRINTH WARNING] ${'{{event_type}}'}; ${'{{instance_id}}'}`,
     body: (e) =>
       [
         `WARNING: ${e.event_type}`,
@@ -128,7 +128,7 @@ const templates: Record<string, TemplateSet> = {
       ].join('\n'),
   },
   'email:info': {
-    subject: `[LABYRINTH INFO] ${'{{event_type}}'} — ${'{{instance_id}}'}`,
+    subject: `[LABYRINTH INFO] ${'{{event_type}}'}; ${'{{instance_id}}'}`,
     body: (e) =>
       [
         `INFO: ${e.event_type}`,
@@ -143,20 +143,20 @@ const templates: Record<string, TemplateSet> = {
   },
   'sms:critical': {
     body: (e) =>
-      `[LABYRINTH CRITICAL] ${e.event_type} — Instance: ${e.instance_id} — ${e.description.slice(0, 100)} — Ref: ${e.id}`,
+      `[LABYRINTH CRITICAL] ${e.event_type}; Instance: ${e.instance_id}; ${e.description.slice(0, 100)}; Ref: ${e.id}`,
   },
   'sms:breach': {
     body: (e) =>
-      `[BREACH] ${e.event_type} — Instance: ${e.instance_id} — ${e.description.slice(0, 100)} — IMMEDIATE ACTION REQUIRED — Ref: ${e.id}`,
+      `[BREACH] ${e.event_type}; Instance: ${e.instance_id}; ${e.description.slice(0, 100)}; IMMEDIATE ACTION REQUIRED; Ref: ${e.id}`,
   },
   'sms:warning': {
     body: (e) =>
-      `[LABYRINTH WARNING] ${e.event_type} — Instance: ${e.instance_id} — ${e.description.slice(0, 120)} — Ref: ${e.id}`,
+      `[LABYRINTH WARNING] ${e.event_type}; Instance: ${e.instance_id}; ${e.description.slice(0, 120)}; Ref: ${e.id}`,
   },
   'discord:critical': {
     body: (e) =>
       [
-        `@here **LABYRINTH CRITICAL — ${e.event_type}**`,
+        `@here **LABYRINTH CRITICAL; ${e.event_type}**`,
         `> Instance: ${e.instance_id}`,
         `> Time: ${e.created_at.toISOString()}`,
         `> Session: ${e.session_id}`,
@@ -174,14 +174,14 @@ const templates: Record<string, TemplateSet> = {
         `> Time: ${e.created_at.toISOString()}`,
         `> ${e.description}`,
         ``,
-        `IMMEDIATE ACTION REQUIRED — treat as active intrusion.`,
+        `IMMEDIATE ACTION REQUIRED; treat as active intrusion.`,
         `Ref: ${e.id} | Dashboard: ${DASHBOARD}`,
       ].join('\n'),
   },
   'discord:warning': {
     body: (e) =>
       [
-        `**LABYRINTH WARNING — ${e.event_type}**`,
+        `**LABYRINTH WARNING; ${e.event_type}**`,
         `> Instance: ${e.instance_id}`,
         `> Time: ${e.created_at.toISOString()}`,
         `> ${e.description}`,
@@ -192,7 +192,7 @@ const templates: Record<string, TemplateSet> = {
   'discord:info': {
     body: (e) =>
       [
-        `**LABYRINTH INFO — ${e.event_type}**`,
+        `**LABYRINTH INFO; ${e.event_type}**`,
         `> Instance: ${e.instance_id}`,
         `> ${e.description}`,
         ``,

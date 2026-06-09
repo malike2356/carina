@@ -1,4 +1,4 @@
-# Phase 2.10 — Tool Allowlisting & Rate Limiting
+# Phase 2.10; Tool Allowlisting & Rate Limiting
 
 ## Goal
 Build Scout's tool allowlisting and rate limiting system. Admins control which tools each tenant can use and how frequently. This prevents abuse, contains compromised accounts, and fulfills the "Tool allowlisting & rate limiting" promise.
@@ -7,23 +7,23 @@ Build Scout's tool allowlisting and rate limiting system. Admins control which t
 ```
 packages/scout/src/
   allowlisting/
-    tool-allowlist.ts           — Tool allowlist enforcement
-    allowlist-config.ts         — Per-tenant allowlist configuration
-    allowlist-api.ts            — Admin API for managing allowlists
+    tool-allowlist.ts; Tool allowlist enforcement
+    allowlist-config.ts; Per-tenant allowlist configuration
+    allowlist-api.ts; Admin API for managing allowlists
   rate-limiting/
-    rate-limiter.ts             — Token bucket rate limiter
-    rate-limit-config.ts        — Per-tenant rate limit configuration
-    rate-limit-store.ts         — Redis-backed rate limit counters
-    rate-limit-api.ts           — Admin API for managing limits
+    rate-limiter.ts; Token bucket rate limiter
+    rate-limit-config.ts; Per-tenant rate limit configuration
+    rate-limit-store.ts; Redis-backed rate limit counters
+    rate-limit-api.ts; Admin API for managing limits
 ```
 
 ## Tool allowlisting
 
 ### Default allowlist (new tenant)
 All tools allowed except:
-- `terminal` (blocked by default — security risk)
-- `write_file` (blocked by default — can modify system)
-- `delete` (blocked by default — destructive)
+- `terminal` (blocked by default; security risk)
+- `write_file` (blocked by default; can modify system)
+- `delete` (blocked by default; destructive)
 
 ### Tier-based allowlists
 ```
@@ -99,9 +99,9 @@ Per IP:
 ### Token bucket algorithm
 ```typescript
 class TokenBucket {
-  capacity: number;        // Max tokens in bucket
-  refillRate: number;      // Tokens added per second
-  tokens: number;          // Current token count
+  capacity: number; // Max tokens in bucket
+  refillRate: number; // Tokens added per second
+  tokens: number; // Current token count
   lastRefill: Date;
   
   consume(count: number = 1): boolean {
@@ -110,7 +110,7 @@ class TokenBucket {
       this.tokens -= count;
       return true;
     }
-    return false;  // Rate limited
+    return false; // Rate limited
   }
 }
 ```

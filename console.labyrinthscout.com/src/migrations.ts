@@ -324,7 +324,7 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   // The old killswitch-specific columns (triggered_by, disarmed_by, reason,
   // agents_stopped, stop_duration_ms, affected_tenants, alerts_sent,
   // previously_triggered_by) now live inside the detail JSONB column.
-  // This table is IMMUTABLE — enforced by the RLS policy below.
+  // This table is IMMUTABLE; enforced by the RLS policy below.
   await client.query(`DROP TABLE IF EXISTS audit_log CASCADE`);
 
   await client.query(`
@@ -354,7 +354,7 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
       FOR INSERT WITH CHECK (true)
   `);
 
-  // No UPDATE or DELETE policies exist — those operations will fail
+  // No UPDATE or DELETE policies exist; those operations will fail
   // at the database level, guaranteeing immutability.
 
   await client.query(`
@@ -381,7 +381,7 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   // GDPR compliance request tracking table.
   // Records SARs and erasure requests with due dates for the
   // compliance dashboard. Does NOT store PII beyond tenant_id
-  // and email — the actual data exports and erasure confirmations
+  // and email; the actual data exports and erasure confirmations
   // are returned inline to the requester.
   await client.query(`
     CREATE TABLE IF NOT EXISTS compliance_requests (

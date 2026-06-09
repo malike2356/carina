@@ -68,7 +68,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .panel-lbl{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);padding:.3rem .6rem;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:.4rem;white-space:nowrap;min-height:26px}
 .panel-lbl .blink{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;animation:blink 1s step-end infinite}
 /* Tooltip system */
-/* Tooltips — appear BELOW element so overflow:hidden on .panel does not clip them */
+/* Tooltips; appear BELOW element so overflow:hidden on .panel does not clip them */
 [data-tip]{position:relative;cursor:default}
 [data-tip]:hover::after{
   content:attr(data-tip);
@@ -258,9 +258,9 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
       <div class="live-dot" id="live-dot"></div>
       <span id="live-label">CONNECTING</span>
     </div>
-    <span class="hdr-inst" id="hdr-inst">instance: –</span>
+    <span class="hdr-inst" id="hdr-inst">instance: -</span>
     <span class="hdr-admin">admin: operator</span>
-    <span class="hdr-admin">updated: <span id="last-updated">–</span></span>
+    <span class="hdr-admin">updated: <span id="last-updated">-</span></span>
     <button class="global-kill" id="global-kill-button">KILL SWITCH</button>
     <span class="kill-status" id="kill-status"></span>
     <a href="https://carinaai.uk/trust" target="_blank" rel="noopener" class="hdr-trust" title="Public trust dashboard">PUBLIC TRUST</a>
@@ -290,7 +290,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <!-- LEFT -->
     <div class="col-left">
       <div class="panel radar-panel" id="radar-panel">
-        <div class="panel-lbl" data-tip="Rotating scan — dots show event locations by severity ring">THREAT RADAR</div>
+        <div class="panel-lbl" data-tip="Rotating scan; dots show event locations by severity ring">THREAT RADAR</div>
         <div class="panel-body"><canvas id="radar-canvas"></canvas></div>
       </div>
       <div class="panel stream-panel">
@@ -600,7 +600,7 @@ function drawRadar(ts) {
 
   // Sweep arc
   sweepAngle = ((ts || 0) / 6000) * Math.PI * 2;
-  const sweepSpan = Math.PI / 9; // 20 degrees — precision scan beam
+  const sweepSpan = Math.PI / 9; // 20 degrees; precision scan beam
   const startA = sweepAngle - sweepSpan;
 
   const grad = ctx.createConicalGradient
@@ -631,7 +631,7 @@ function drawRadar(ts) {
   ctx.stroke();
   ctx.shadowBlur = 0;
 
-  // Draw threat dots — dots live 20s, blink on fresh impact, fade after 8s
+  // Draw threat dots; dots live 20s, blink on fresh impact, fade after 8s
   const now = Date.now();
   radarDots = radarDots.filter(d => now - d.born < 20000);
   radarDots.forEach(d => {
@@ -841,7 +841,7 @@ function drawAnomaly() {
     ctx.font = '7px JetBrains Mono';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    ctx.fillText('— inj/min', PAD.left + pw, PAD.top + 2);
+    ctx.fillText('; inj/min', PAD.left + pw, PAD.top + 2);
   }
 }
 
@@ -1082,7 +1082,7 @@ function drawGauge() {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Score number — positioned in the empty CENTRE of the semicircle arc, not inside the arc band
+  // Score number; positioned in the empty CENTRE of the semicircle arc, not inside the arc band
   const scoreCol = score > 75 ? '#ff2244' : score > 50 ? '#d4af37' : score > 25 ? '#00d4ff' : '#00c896';
   // The visual centre of the semicircle is roughly at cy - R*0.45
   const scoreCentreY = cy - R * 0.48;
@@ -1331,7 +1331,7 @@ async function loadEvents() {
     if (/injection/.test(ev.event_type)) {
       injPerMin[injPerMin.length - 1]++;
     }
-    // Freq bucket — use 60-minute window (1 bucket per minute) so chart is never blank at load
+    // Freq bucket; use 60-minute window (1 bucket per minute) so chart is never blank at load
     const ageM = Math.floor((Date.now() - new Date(ev.created_at).getTime()) / 60000);
     if (ageM >= 0 && ageM < 60) {
       const bi = 59 - ageM;
@@ -1344,7 +1344,7 @@ async function loadEvents() {
   streamBody.innerHTML = '';
   [...evs].reverse().slice(0, 50).forEach(ev => appendEvent(ev, false));
 
-  // Seed radar with recent events — gives dots to show on load
+  // Seed radar with recent events; gives dots to show on load
   evs.slice(0, 30).forEach(ev => {
     const ageMs = Math.min(18000, Date.now() - new Date(ev.created_at).getTime());
     addRadarDot(ev, ageMs);
@@ -1605,7 +1605,7 @@ function updateInstances() {
   instances.forEach(inst => {
     activeInstanceIds.add(inst.id);
     const age = inst.secondsAgo != null ? inst.secondsAgo : (inst.last_heartbeat ? Math.floor((Date.now() - new Date(inst.last_heartbeat)) / 1000) : null);
-    const ageStr = age != null ? (age < 60 ? `${age}s ago` : `${Math.floor(age/60)}m ago`) : '–';
+    const ageStr = age != null ? (age < 60 ? `${age}s ago` : `${Math.floor(age/60)}m ago`) : '-';
     const status = inst.status || 'offline';
 
     const chip = document.createElement('div');

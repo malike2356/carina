@@ -158,7 +158,7 @@ export function isSuspended(): boolean {
 
 export function initKillSwitchListener(): () => void {
   if (!process.env.LABYRINTH_ENABLED || process.env.LABYRINTH_ENABLED !== 'true') {
-    return () => {};  // no-op cleanup
+    return () => {}; // no-op cleanup
   }
 
   const instanceId = process.env.LABYRINTH_INSTANCE_ID;
@@ -202,10 +202,10 @@ export function initKillSwitchListener(): () => void {
     try {
       payload = JSON.parse(message);
     } catch {
-      return;  // malformed message, ignore
+      return; // malformed message, ignore
     }
 
-    if (payload.instance_id !== instanceId) return;  // not for this instance
+    if (payload.instance_id !== instanceId) return; // not for this instance
 
     if (payload.action === 'suspend') {
       suspended = true;
@@ -254,7 +254,7 @@ add:
 
 ```typescript
 if (process.env.LABYRINTH_ENABLED === 'true') {
-  checkNotSuspended();  // throws Error if suspended
+  checkNotSuspended(); // throws Error if suspended
 }
 ```
 

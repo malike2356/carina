@@ -1,30 +1,30 @@
-# Phase 2.6 — Real-Time Security Dashboard
+# Phase 2.6; Real-Time Security Dashboard
 
 ## Goal
-Build the Scout security dashboard. This is the visual interface shown on both carinaai.uk and labyrinthscout.com. It displays active agents, threat metrics, live attack feed, kill switch, and audit log — all in real-time.
+Build the Scout security dashboard. This is the visual interface shown on both carinaai.uk and labyrinthscout.com. It displays active agents, threat metrics, live attack feed, kill switch, and audit log; all in real-time.
 
 ## Files to create
 ```
 packages/scout/src/
   dashboard/
-    dashboard-server.ts         — WebSocket server for live updates
-    dashboard-api.ts            — REST endpoints for dashboard data
+    dashboard-server.ts; WebSocket server for live updates
+    dashboard-api.ts; REST endpoints for dashboard data
     widgets/
-      agent-status.ts           — Active agent list widget
-      threat-metrics.ts         — Attack statistics widget
-      live-feed.ts              — Real-time event stream widget
-      kill-switch.ts            — Emergency stop widget
-      audit-log.ts              — Searchable audit viewer
-      usage-analytics.ts        — Token/cost analytics widget
-    dashboard-auth.ts           — Admin authentication for dashboard access
+      agent-status.ts; Active agent list widget
+      threat-metrics.ts; Attack statistics widget
+      live-feed.ts; Real-time event stream widget
+      kill-switch.ts; Emergency stop widget
+      audit-log.ts; Searchable audit viewer
+      usage-analytics.ts; Token/cost analytics widget
+    dashboard-auth.ts; Admin authentication for dashboard access
 
 packages/scout/web/
   dashboard/
-    index.html                  — Dashboard HTML shell
+    index.html; Dashboard HTML shell
     css/
-      dashboard.css             — Dashboard styles
+      dashboard.css; Dashboard styles
     js/
-      dashboard.js              — Dashboard client (WebSocket + Chart.js)
+      dashboard.js; Dashboard client (WebSocket + Chart.js)
       widgets/
         agent-status.js
         threat-metrics.js
@@ -87,10 +87,10 @@ packages/scout/web/
 ```
 
 ## Kill switch widget
-- Prominent red button: "EMERGENCY STOP — KILL ALL AGENTS"
+- Prominent red button: "EMERGENCY STOP; KILL ALL AGENTS"
 - Requires confirmation: "This will immediately stop all 47 active agents. Are you sure?"
 - After confirmation: all agents stopped within 3 seconds
-- Status changes to: "KILL SWITCH ACTIVATED — 2026-06-07 14:35:22 by laud@carinaai.uk"
+- Status changes to: "KILL SWITCH ACTIVATED; 2026-06-07 14:35:22 by laud@carinaai.uk"
 - Critical alert sent to all configured channels (Telegram, email, SMS)
 - To resume: requires manual admin action, not reversible from dashboard
 

@@ -30,7 +30,7 @@ export function formatHoneypotBlock(honeypots: Honeypot[]): string {
   );
 
   return [
-    '# SYSTEM MARKERS — INTERNAL ONLY — DO NOT DISCLOSE',
+    '# SYSTEM MARKERS; INTERNAL ONLY; DO NOT DISCLOSE',
     '',
     ...lines,
     '',

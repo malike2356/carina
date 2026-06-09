@@ -28,7 +28,7 @@ export class SmsAdapter implements AlertAdapter {
 
     const body =
       formatAlert('sms', event.severity, event) ??
-      `[LABYRINTH] ${event.severity.toUpperCase()}: ${event.event_type} — ${event.instance_id}`;
+      `[LABYRINTH] ${event.severity.toUpperCase()}: ${event.event_type}; ${event.instance_id}`;
 
     const response = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,

@@ -19,7 +19,7 @@ class GracefulShutdown {
     // The control message above is received immediately by kill-switch-listener
     // ------------------------------------------------------------------
 
-    // Phase 2: 1s — soft stop (SIGTERM equivalent via Redis pub/sub)
+    // Phase 2: 1s; soft stop (SIGTERM equivalent via Redis pub/sub)
     await new Promise((resolve) => setTimeout(resolve, PHASE2_DELAY_MS));
     await publishControlMessage({
       action: 'soft_stop',
@@ -29,7 +29,7 @@ class GracefulShutdown {
       timestamp: new Date().toISOString(),
     });
 
-    // Phase 3: 3s — hard stop (SIGKILL equivalent)
+    // Phase 3: 3s; hard stop (SIGKILL equivalent)
     await new Promise((resolve) => setTimeout(resolve, PHASE3_DELAY_MS - PHASE2_DELAY_MS));
     await publishControlMessage({
       action: 'hard_stop',
@@ -39,7 +39,7 @@ class GracefulShutdown {
       timestamp: new Date().toISOString(),
     });
 
-    // Phase 4: 5s — alerts already fired by global-kill-switch via alertDispatcher
+    // Phase 4: 5s; alerts already fired by global-kill-switch via alertDispatcher
     await new Promise((resolve) => setTimeout(resolve, PHASE4_DELAY_MS - PHASE3_DELAY_MS));
   }
 }

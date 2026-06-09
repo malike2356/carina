@@ -257,7 +257,7 @@ Body:
 {
   type: 'api_key' | 'file';
   instanceId: string;
-  keyType?: 'openai' | 'anthropic' | 'deepseek';  // required when type === 'api_key'
+  keyType?: 'openai' | 'anthropic' | 'deepseek'; // required when type === 'api_key'
 }
 ```
 
@@ -400,7 +400,7 @@ CSS class `honeypot-triggered` (style: red background, bold text). Non-triggered
 
 ```javascript
 async function fetchHoneypots() {
-  const instanceId = getCurrentInstanceId();  // existing helper
+  const instanceId = getCurrentInstanceId(); // existing helper
   const res = await fetch(`/api/honeypots?instance_id=${instanceId}`, {
     headers: { 'X-Scout-Key': SCOUT_KEY }
   });

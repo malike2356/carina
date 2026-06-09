@@ -169,9 +169,9 @@ If the Pipeline module is active, you'll see the 5 most recently updated pipelin
 On the left side of the screen is the main navigation sidebar. The items shown depend on your subscription plan and which modules are active. The standard navigation structure is:
 
 ```
-📊 Dashboard
-🏠 Properties
-📈 Deals
+ Dashboard
+ Properties
+ Deals
   ├── Deals Workspace
   ├── Source Deals
   ├── Calculators
@@ -181,56 +181,56 @@ On the left side of the screen is the main navigation sidebar. The items shown d
   ├── Deal Tasks
   ├── Deal Shortlists
   └── Deal Shares
-📋 Pipeline
-👥 Contacts / CRM
+ Pipeline
+ Contacts / CRM
   ├── CRM Dashboard
   ├── Contacts
   ├── Inbox
   ├── Lead Funnel
   └── Qualification Forms
-🛡️ Compliance
+ Compliance
   ├── Overview
   ├── AML
   ├── Complaints
   ├── Regulatory Profile
   └── Requirements
-✉️ Communications
+ Communications
   ├── Sequences
   ├── Email Templates
   └── Inbox
-📅 Bookings (viCal)
+ Bookings (viCal)
   ├── Calendar
   ├── Event Types
   ├── Intake Pools
   └── Group Events
-🎓 Mentoring OS
+ Mentoring OS
   ├── Mentor Hub
   ├── Mentees
   ├── Packages
   ├── LMS
   └── Community
-💰 Accounting
+ Accounting
   ├── Dashboard
   ├── Expenses
   ├── Invoices
   ├── Receipts
   ├── Bank Reconciliation
   └── Integrations
-📁 Portfolio
+ Portfolio
   ├── Properties
   ├── Tenancies
   ├── Assets
   ├── Maintenance
   ├── Refurb Projects
   └── Works Orders
-👥 Staff (HR)
+ Staff (HR)
   ├── Team Hub
   ├── Leave
   └── Payroll
-📊 Reporting
+ Reporting
   ├── Reports
   └── Analytics
-⚙️ Settings
+ Settings
   ├── Workspace
   ├── Team
   ├── AI Settings

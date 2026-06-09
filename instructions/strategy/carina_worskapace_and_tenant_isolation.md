@@ -3,12 +3,12 @@ need to - advice
 
 ────────────────────────────────────────
 
-╭─ ⚕ Hermes ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+╭─  Hermes ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
     Three layers of separation. None of them are complicated.
     
-    Layer 1 — Database (automatic)
+    Layer 1; Database (automatic)
     
-    Every query runs through Postgres Row-Level Security. The engine doesn't know about tenants — the database enforces it.
+    Every query runs through Postgres Row-Level Security. The engine doesn't know about tenants; the database enforces it.
     
     sql
     -- Every table has this
@@ -17,9 +17,9 @@ need to - advice
       FOR ALL USING (tenant_id = current_setting('app.tenant_id'));
     
     
-    When you log in as laud, the database sees tenant_id = 'laud'. When a stranger logs in as jane, the database sees tenant_id = 'jane'. They can run identical queries — SELECT * FROM conversations — and get completely different results. The engine code never changes. The database walls do the work.
+    When you log in as laud, the database sees tenant_id = 'laud'. When a stranger logs in as jane, the database sees tenant_id = 'jane'. They can run identical queries; SELECT * FROM conversations; and get completely different results. The engine code never changes. The database walls do the work.
     
-    Layer 2 — API keys (per-tenant)
+    Layer 2; API keys (per-tenant)
     
     yaml
     laud's config
@@ -37,7 +37,7 @@ need to - advice
     
     For CLI users: they bring their own keys. For SaaS users: Carina Cloud provides keys (and bills for usage). Either way, laud's API calls go to laud's accounts. Jane's calls go to jane's accounts. If laud burns through $50 of API credits, jane's bill is $0.
     
-    Layer 3 — File system (per-tenant)
+    Layer 3; File system (per-tenant)
     
     
     /var/carina/tenants/
@@ -64,9 +64,9 @@ need to - advice
     carina chat
     
     
-    Behind the scenes, you're tenant laud in the database, same as everyone else. You get a Stripe invoice like everyone else. Your API keys are in your tenant config like everyone else. The admin panel you use to manage billing is the same admin panel — just with an is_admin flag that lets you see aggregate stats.
+    Behind the scenes, you're tenant laud in the database, same as everyone else. You get a Stripe invoice like everyone else. Your API keys are in your tenant config like everyone else. The admin panel you use to manage billing is the same admin panel; just with an is_admin flag that lets you see aggregate stats.
     
-    The one exception — Scout super-admin:
+    The one exception; Scout super-admin:
     
     You get a Scout dashboard at scout.carinaai.uk that no other tenant sees. This shows:
     - Total tenants, active sessions, token usage across all workspaces
@@ -74,7 +74,7 @@ need to - advice
     - Revenue, churn, growth metrics
     - Kill switch that stops ALL agents (not just one tenant)
     
-    This is the only "special" access. Everything else — chat, tools, skills, memory — is identical to what every other user has. You're tenant laud, not root.
+    This is the only "special" access. Everything else; chat, tools, skills, memory; is identical to what every other user has. You're tenant laud, not root.
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 ────────────────────────────────────────
@@ -82,7 +82,7 @@ need to - advice
 ────────────────────────────────────────
 
 
-╭─ ⚕ Hermes ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+╭─  Hermes ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
     Scout is security. Console is management. Different jobs, same platform.
     
     
@@ -115,7 +115,7 @@ need to - advice
     - 47 active tenants, 12 on free tier, 28 on Pro, 7 on Enterprise
     - 3 injection attacks blocked in the last hour
     - Token usage across the platform: 14.2M today
-    - Anomaly alert: tenant #34 spiking — 8x normal usage (checking)
+    - Anomaly alert: tenant #34 spiking; 8x normal usage (checking)
     - Kill switch: ARMED. All agents operational.
     - Revenue this month: £1,342. MRR growth: 18%
     

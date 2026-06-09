@@ -6,8 +6,8 @@ Labyrinth Scout adopts **Agent Trust on Base** for on-chain agent reputation. Sc
 
 | Choice | Verdict |
 |---|---|
-| Build custom trust platform | No — network effects and Sybil resistance already solved |
-| Agent Trust (`@open-agent-economy/trust-sdk`) on Base | Yes — production SDK, low fees, ERC-8004 aligned |
+| Build custom trust platform | No; network effects and Sybil resistance already solved |
+| Agent Trust (`@open-agent-economy/trust-sdk`) on Base | Yes; production SDK, low fees, ERC-8004 aligned |
 | Labyrinth Scout role | Security telemetry source → on-chain attestations (`labyrinth-scout.v1`) |
 
 ## ERC-8004 registries (Base Sepolia)

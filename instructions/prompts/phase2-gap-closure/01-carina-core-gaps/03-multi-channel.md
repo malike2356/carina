@@ -1,4 +1,4 @@
-# Phase 2.3 — Multi-Channel Integration (Discord, Slack, SMS)
+# Phase 2.3; Multi-Channel Integration (Discord, Slack, SMS)
 
 ## Goal
 Extend Carina beyond Telegram to Discord, Slack, and SMS. Each channel gets an adapter that normalizes incoming messages into Carina's internal format and formats outgoing responses for that platform's constraints. This fulfills "Every channel, one agent."
@@ -7,21 +7,21 @@ Extend Carina beyond Telegram to Discord, Slack, and SMS. Each channel gets an a
 ```
 packages/engine/src/
   channels/
-    channel-adapter.interface.ts    — IChannelAdapter interface
-    channel-registry.ts             — Registry of all channel adapters
+    channel-adapter.interface.ts; IChannelAdapter interface
+    channel-registry.ts; Registry of all channel adapters
     adapters/
-      discord-adapter.ts            — Discord bot integration
-      slack-adapter.ts              — Slack app integration
-      sms-adapter.ts                — SMS via Twilio
-      telegram-adapter.ts           — REFACTOR: move existing Telegram code here
-    channel-formatter.ts            — Platform-specific formatting rules
-    channel-capabilities.ts         — What each channel supports (reactions, embeds, audio, etc.)
+      discord-adapter.ts; Discord bot integration
+      slack-adapter.ts; Slack app integration
+      sms-adapter.ts; SMS via Twilio
+      telegram-adapter.ts; REFACTOR: move existing Telegram code here
+    channel-formatter.ts; Platform-specific formatting rules
+    channel-capabilities.ts; What each channel supports (reactions, embeds, audio, etc.)
 ```
 
 ## IChannelAdapter interface
 ```typescript
 interface IChannelAdapter {
-  name: string;                          // 'discord', 'slack', 'telegram', 'sms'
+  name: string; // 'discord', 'slack', 'telegram', 'sms'
   
   // Inbound
   parseInbound(raw: any): ChannelMessage; // Normalize incoming message
@@ -36,10 +36,10 @@ interface IChannelAdapter {
   formatForChannel(text: string): string; // Adapt markdown/HTML for platform
   
   // Capabilities
-  supportsReactions: boolean;            // Discord yes, SMS no
-  supportsEmbeds: boolean;               // Discord yes, Telegram no
-  supportsThreading: boolean;            // Slack yes, SMS no
-  maxMessageLength: number;              // Discord 2000, Telegram 4096, SMS 160
+  supportsReactions: boolean; // Discord yes, SMS no
+  supportsEmbeds: boolean; // Discord yes, Telegram no
+  supportsThreading: boolean; // Slack yes, SMS no
+  maxMessageLength: number; // Discord 2000, Telegram 4096, SMS 160
 }
 ```
 
@@ -85,14 +85,14 @@ All inbound messages are normalized to:
 ```typescript
 interface ChannelMessage {
   channel: 'discord' | 'slack' | 'telegram' | 'sms';
-  chatId: string;        // Channel/chat/DM identifier
-  userId: string;        // Sender identifier  
-  text: string;          // Message text
-  isCommand: boolean;    // Is this a /command?
-  isMention: boolean;    // Was the agent @mentioned?
-  isGroupChat: boolean;  // Is this a group conversation?
+  chatId: string; // Channel/chat/DM identifier
+  userId: string; // Sender identifier  
+  text: string; // Message text
+  isCommand: boolean; // Is this a /command?
+  isMention: boolean; // Was the agent @mentioned?
+  isGroupChat: boolean; // Is this a group conversation?
   attachments: Attachment[]; // Files, images, voice notes
-  threadId?: string;     // Thread identifier (Slack)
+  threadId?: string; // Thread identifier (Slack)
   replyToMessageId?: string; // Message being replied to
 }
 ```

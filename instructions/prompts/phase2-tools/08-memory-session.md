@@ -1,4 +1,4 @@
-# Phase 2.8 — Memory + Session Search Tools
+# Phase 2.8; Memory + Session Search Tools
 
 ## Task
 Implement the `memory` and `session_search` tools. These give Carina persistent knowledge across sessions and the ability to search past conversations.
@@ -14,8 +14,8 @@ Save durable information that persists across sessions. Memory is injected into 
 - remove: Delete an entry (old_text identifies it)
 
 ### Targets
-- 'user': Who the user is — name, role, preferences, communication style
-- 'memory': Agent's notes — environment facts, project conventions, tool quirks
+- 'user': Who the user is; name, role, preferences, communication style
+- 'memory': Agent's notes; environment facts, project conventions, tool quirks
 
 ### What to save
 - User corrects the agent or says "remember this"
@@ -47,7 +47,7 @@ Search past sessions stored in the local session database. FTS5-backed retrieval
 
 ### Three calling shapes
 
-1. DISCOVERY — pass `query`
+1. DISCOVERY; pass `query`
    ```
    session_search(query="auth refactor", limit=3)
    ```
@@ -59,7 +59,7 @@ Search past sessions stored in the local session database. FTS5-backed retrieval
      - messages: +/-5 messages around the match
      - bookend_end: last 3 messages (the resolution)
 
-2. SCROLL — pass `session_id` + `around_message_id`
+2. SCROLL; pass `session_id` + `around_message_id`
    ```
    session_search(session_id="abc123", around_message_id=12345, window=10)
    ```
@@ -67,7 +67,7 @@ Search past sessions stored in the local session database. FTS5-backed retrieval
    - Scroll forward: pass last message id as around_message_id
    - Scroll backward: pass first message id
 
-3. BROWSE — no args
+3. BROWSE; no args
    ```
    session_search()
    ```

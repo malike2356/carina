@@ -1,4 +1,4 @@
-# Phase 2.7 — Multi-Channel Alerting
+# Phase 2.7; Multi-Channel Alerting
 
 ## Goal
 Build Scout's alert delivery system. When a security event occurs (injection detected, anomaly flagged, kill switch triggered), alerts are sent to configured channels based on severity. This fulfills "Multi-channel alerting" on both websites.
@@ -7,40 +7,40 @@ Build Scout's alert delivery system. When a security event occurs (injection det
 ```
 packages/scout/src/
   alerting/
-    alert-service.ts            — Alert routing engine
-    alert-config.ts             — Per-tenant alert preferences
+    alert-service.ts; Alert routing engine
+    alert-config.ts; Per-tenant alert preferences
     channels/
-      telegram-alerter.ts       — Telegram alert delivery
-      email-alerter.ts          — Email alert delivery
-      discord-alerter.ts        — Discord alert delivery
-      sms-alerter.ts            — SMS alert delivery (Twilio)
-      dashboard-alerter.ts      — In-dashboard alert
-    alert-templates.ts          — Message templates per alert type
-    alert-throttle.ts           — Prevents alert storms
-    alert-escalation.ts         — Escalation if not acknowledged
+      telegram-alerter.ts; Telegram alert delivery
+      email-alerter.ts; Email alert delivery
+      discord-alerter.ts; Discord alert delivery
+      sms-alerter.ts; SMS alert delivery (Twilio)
+      dashboard-alerter.ts; In-dashboard alert
+    alert-templates.ts; Message templates per alert type
+    alert-throttle.ts; Prevents alert storms
+    alert-escalation.ts; Escalation if not acknowledged
 ```
 
 ## Alert severity levels
 ```
-CRITICAL — Immediate action required
+CRITICAL; Immediate action required
   - Kill switch triggered
   - Injection attack bypassed shield (all 3 layers failed)
   - Decoy credentials detected in output (data leak confirmed)
   - Unauthorized admin access detected
   
-HIGH — Urgent, needs attention within 30 minutes
+HIGH; Urgent, needs attention within 30 minutes
   - Injection attack with severity "critical" blocked
   - Anomaly: >5x normal token usage
   - Multiple injection attempts from same IP (potential coordinated attack)
   - Kill switch armed but not triggered
   
-MEDIUM — Review within 4 hours
+MEDIUM; Review within 4 hours
   - Injection attack with severity "high" blocked
   - Anomaly: unusual tool usage pattern
   - Stale marker detected (potential replay attack)
   - New IP accessing admin dashboard
   
-LOW — Review within 24 hours
+LOW; Review within 24 hours
   - Injection attempt with severity "medium" blocked  
   - Rate limit exceeded (single instance)
   - New tenant registered
@@ -62,7 +62,7 @@ const SEVERITY_ROUTING = {
 interface Alert {
   id: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  type: string;              // 'injection_blocked', 'anomaly_detected', etc.
+  type: string; // 'injection_blocked', 'anomaly_detected', etc.
   title: string;
   detail: string;
   tenant: string;
@@ -77,7 +77,7 @@ interface Alert {
 ## Template per channel
 ```
 Telegram (CRITICAL):
-🚨 CRITICAL: Injection Attack Bypassed Shield
+ CRITICAL: Injection Attack Bypassed Shield
 Tenant: tenant-34
 Time: 14:32:01 UTC
 Detail: All 3 detection layers missed INJ-007 variant
@@ -85,7 +85,7 @@ Action: Kill switch recommended. Dashboard: https://scout.carinaai.uk
 Ref: ALERT-2026-06-07-001
 
 Email (HIGH):
-Subject: [Scout HIGH] Injection Attack Blocked — tenant-07
+Subject: [Scout HIGH] Injection Attack Blocked; tenant-07
 Body: [detailed report with full context]
 
 SMS (CRITICAL):
@@ -101,7 +101,7 @@ Prevents alert storms:
 ## Escalation
 If a CRITICAL alert is not acknowledged within 5 minutes:
 - Resend to all channels
-- Add "UNACKNOWLEDGED — ESCALATING" prefix
+- Add "UNACKNOWLEDGED; ESCALATING" prefix
 If still unacknowledged after 15 minutes:
 - SMS to emergency contact number
 - Trigger auto-protection: temporarily increase shield sensitivity for affected tenant

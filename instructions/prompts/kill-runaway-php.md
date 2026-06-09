@@ -10,7 +10,7 @@ SSH: `ssh malike@80.190.81.208 -i ~/.ssh/id_ed25519`
 Host alias: `aman` (defined in ~/.ssh/config)
 User: malike (NO sudo password)
 
-## Steps — do ALL of them, don't stop after step 1
+## Steps; do ALL of them, don't stop after step 1
 
 ### Step 1: Verify the problem
 
@@ -73,11 +73,11 @@ ssh malike@80.190.81.208 -i ~/.ssh/id_ed25519 \
   'rm -f /www/wwwroot/propreneur-v2/bootstrap/cache/*.php && echo "Cache files removed"'
 ```
 
-Then try a quick config:clear (with timeout — 30 seconds max):
+Then try a quick config:clear (with timeout; 30 seconds max):
 
 ```bash
 ssh malike@80.190.81.208 -i ~/.ssh/id_ed25519 \
-  'cd /www/wwwroot/propreneur-v2 && timeout 30 php artisan config:clear 2>&1 || echo "Timed out or failed — skipping"'
+  'cd /www/wwwroot/propreneur-v2 && timeout 30 php artisan config:clear 2>&1 || echo "Timed out or failed; skipping"'
 ```
 
 Do NOT run `artisan config:cache`. That's what got stuck. Use `config:clear`.

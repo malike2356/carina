@@ -1,4 +1,4 @@
-# Phase 2.5 — Browser Automation Tools
+# Phase 2.5; Browser Automation Tools
 
 ## Task
 Implement all 9 browser automation tools. These give Carina the ability to navigate web pages, interact with forms, read page content, execute JavaScript, and extract data.

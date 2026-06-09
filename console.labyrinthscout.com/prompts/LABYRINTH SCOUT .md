@@ -1,7 +1,7 @@
  LABYRINTH SCOUT   
 Security Control & Operations Unified Terminal (SCOUT)
 
-Understood. Here is the \*\*complete technical specification\*\* for Labyrinth — the security control plane for Carina. You will give this document to Claude, who will write prompts for Cursor to implement.
+Understood. Here is the \*\*complete technical specification\*\* for Labyrinth; the security control plane for Carina. You will give this document to Claude, who will write prompts for Cursor to implement.
 
 \---
 
@@ -82,10 +82,10 @@ An attacker crafts a message that causes Carina to ignore her system prompt and 
 // src/security/labyrinth/prompt-guard.ts
 
 interface InjectionDetectionResult {  
-  isMalicious: boolean;  
-  confidence: number;      // 0-100  
-  detectedPatterns: string\[\];  
-  sanitizedInput?: string;  
+  isMalicious: boolean; 
+  confidence: number; // 0-100  
+  detectedPatterns: string\[\]; 
+  sanitizedInput?: string; 
 }
 
 class PromptGuard {  
@@ -98,27 +98,27 @@ class PromptGuard {
     /as\\s\*(an\\s\*)?(unconstrained|unrestricted|jailbroken)\\s\*ai/i,  
     /\[A-Za-z0-9+/\]{40,}={0,2}/,  // base64 suspicion  
     /\\\\u\[0-9A-Fa-f\]{4}/,          // Unicode escape sequences  
-  \];  
+  \]; 
     
   // Layer 2: LLM evaluation (only for high-confidence or borderline cases)  
   async evaluate(message: string): Promise\<InjectionDetectionResult\> {  
     // Fast path: regex match  
-    const matchedPatterns \= PromptGuard.PATTERNS.filter(p \=\> p.test(message));  
+    const matchedPatterns \= PromptGuard.PATTERNS.filter(p \=\> p.test(message)); 
     if (matchedPatterns.length \>= 2\) {  
       return {  
         isMalicious: true,  
         confidence: 85 \+ (matchedPatterns.length \* 5),  
         detectedPatterns: matchedPatterns  
-      };  
+      }; 
     }  
       
     // Medium path: LLM judge for suspicious but not obvious  
     if (matchedPatterns.length \=== 1 || message.length \> 2000\) {  
-      return await this.llmJudge(message, matchedPatterns);  
+      return await this.llmJudge(message, matchedPatterns); 
     }  
       
     // Safe path  
-    return { isMalicious: false, confidence: 0, detectedPatterns: \[\] };  
+    return { isMalicious: false, confidence: 0, detectedPatterns: \[\] }; 
   }  
     
   private async llmJudge(message: string, patterns: string\[\]): Promise\<InjectionDetectionResult\> {  
@@ -130,14 +130,14 @@ class PromptGuard {
         
       Respond with JSON only:  
       {"malicious": true/false, "confidence": 0-100, "reasoning": "brief"}  
-    \`;  
+    \`; 
       
-    const response \= await callCheapLLM(judgePrompt);  
+    const response \= await callCheapLLM(judgePrompt); 
     return {  
       isMalicious: response.malicious,  
       confidence: response.confidence,  
       detectedPatterns: patterns  
-    };  
+    }; 
   }  
 }  
 \`\`\`
@@ -154,14 +154,14 @@ async function scanToolResult(toolName: string, result: string): Promise\<string
       eventType: 'indirect\_injection\_blocked',  
       description: \`Tool ${toolName} returned content with injection patterns\`,  
       metadata: { toolName, resultPreview: result.slice(0, 500\) }  
-    });  
+    }); 
       
     // Return safe error message instead of malicious content  
-    return '\[Security: The content retrieved contained potentially harmful instructions and was blocked by Labyrinth. Please verify the source.\]';  
+    return '\[Security: The content retrieved contained potentially harmful instructions and was blocked by Labyrinth. Please verify the source.\]'; 
   }  
     
   // Sanitize: remove any executable-looking patterns  
-  return sanitize(result);  
+  return sanitize(result); 
 }  
 \`\`\`
 
@@ -180,10 +180,10 @@ Attacker tricks Carina into executing dangerous shell commands, deleting files, 
 // src/security/labyrinth/tool-policy.ts
 
 interface ToolPolicy {  
-  allowlist: string\[\];           // Tools that can run without confirmation  
-  blocklist: string\[\];           // Tools never allowed  
-  dangerousCommands: RegExp\[\];   // Shell command patterns to block  
-  rateLimit: number;             // Max calls per minute per session  
+  allowlist: string\[\]; // Tools that can run without confirmation  
+  blocklist: string\[\]; // Tools never allowed  
+  dangerousCommands: RegExp\[\]; // Shell command patterns to block  
+  rateLimit: number; // Max calls per minute per session  
 }
 
 const CARINA\_POLICY: ToolPolicy \= {  
@@ -200,7 +200,7 @@ const CARINA\_POLICY: ToolPolicy \= {
     /eval\\s\*\\(.\*\\)/i,                       // JavaScript eval  
   \],  
   rateLimit: 15  // Max 15 tool calls per minute  
-};  
+}; 
 \`\`\`
 
 \*\*Execution Flow:\*\*
@@ -209,35 +209,35 @@ const CARINA\_POLICY: ToolPolicy \= {
 async function executeWithPolicy(tool: Tool, params: any, session: Session): Promise\<any\> {  
   // 1\. Check blocklist  
   if (CARINA\_POLICY.blocklist.includes(tool.name)) {  
-    await labyrinth.report({ severity: 'critical', description: \`Blocked tool: ${tool.name}\` });  
-    throw new Error(\`Tool ${tool.name} is blocked by security policy. Contact administrator.\`);  
+    await labyrinth.report({ severity: 'critical', description: \`Blocked tool: ${tool.name}\` }); 
+    throw new Error(\`Tool ${tool.name} is blocked by security policy. Contact administrator.\`); 
   }  
     
   // 2\. Check dangerous patterns (for shell-exec)  
   if (tool.name \=== 'shell-exec') {  
     for (const pattern of CARINA\_POLICY.dangerousCommands) {  
       if (pattern.test(params.command)) {  
-        await labyrinth.report({ severity: 'critical', eventType: 'dangerous\_command\_blocked', description: params.command });  
-        throw new Error(\`Command blocked: dangerous pattern detected (${pattern})\`);  
+        await labyrinth.report({ severity: 'critical', eventType: 'dangerous\_command\_blocked', description: params.command }); 
+        throw new Error(\`Command blocked: dangerous pattern detected (${pattern})\`); 
       }  
     }  
   }  
     
   // 3\. Rate limiting  
-  const recentCalls \= await getRecentToolCalls(session.id, 60);  
+  const recentCalls \= await getRecentToolCalls(session.id, 60); 
   if (recentCalls.length \>= CARINA\_POLICY.rateLimit) {  
-    await labyrinth.report({ severity: 'warning', description: 'Rate limit exceeded' });  
-    throw new Error('Rate limit exceeded. Slow down or contact administrator to increase limit.');  
+    await labyrinth.report({ severity: 'warning', description: 'Rate limit exceeded' }); 
+    throw new Error('Rate limit exceeded. Slow down or contact administrator to increase limit.'); 
   }  
     
   // 4\. Confirmation gate for non-allowlist tools  
   if (\!CARINA\_POLICY.allowlist.includes(tool.name) && \!params.\_confirmed) {  
-    await sendConfirmationRequest(session, tool, params);  
-    throw new Error(\`Tool ${tool.name} requires confirmation. Check your Telegram/WhatsApp for approval request.\`);  
+    await sendConfirmationRequest(session, tool, params); 
+    throw new Error(\`Tool ${tool.name} requires confirmation. Check your Telegram/WhatsApp for approval request.\`); 
   }  
     
   // 5\. Execute  
-  return await tool.execute(params);  
+  return await tool.execute(params); 
 }  
 \`\`\`
 
@@ -267,15 +267,15 @@ const ALLOWED\_DOMAINS \= \[
 
 class EgressFilter {  
   async allow(url: string): Promise\<boolean\> {  
-    const hostname \= new URL(url).hostname;  
+    const hostname \= new URL(url).hostname; 
       
     // Exact match  
-    if (ALLOWED\_DOMAINS.includes(hostname)) return true;  
+    if (ALLOWED\_DOMAINS.includes(hostname)) return true; 
       
     // Wildcard match (\*.carinaai.uk)  
     for (const allowed of ALLOWED\_DOMAINS) {  
       if (allowed.startsWith('\*.') && hostname.endsWith(allowed.slice(1))) {  
-        return true;  
+        return true; 
       }  
     }  
       
@@ -285,9 +285,9 @@ class EgressFilter {
       eventType: 'egress\_blocked',  
       description: \`Blocked request to ${hostname}\`,  
       metadata: { url }  
-    });  
+    }); 
       
-    return false;  
+    return false; 
   }  
 }  
 \`\`\`
@@ -312,11 +312,11 @@ function scanForSensitiveData(content: string): boolean {
         eventType: 'sensitive\_data\_detected',  
         description: 'Potential credential exfiltration detected',  
         metadata: { pattern: pattern.source, preview: content.slice(0, 200\) }  
-      });  
-      return true;  
+      }); 
+      return true; 
     }  
   }  
-  return false;  
+  return false; 
 }  
 \`\`\`
 
@@ -335,12 +335,12 @@ Attacker steals a session ID and impersonates the legitimate user to Carina.
 import jwt from 'jsonwebtoken';
 
 interface SecureSession {  
-  id: string;  
-  userId: string;  
-  ipHash: string;      // First 3 octets of IP (privacy-preserving)  
-  userAgentHash: string;  
-  createdAt: Date;  
-  expiresAt: Date;  
+  id: string; 
+  userId: string; 
+  ipHash: string; // First 3 octets of IP (privacy-preserving)  
+  userAgentHash: string; 
+  createdAt: Date; 
+  expiresAt: Date; 
 }
 
 class SessionManager {  
@@ -355,38 +355,38 @@ class SessionManager {
       userAgentHash: this.hashUserAgent(userAgent),  
       createdAt: new Date(),  
       expiresAt: new Date(Date.now() \+ this.SESSION\_TTL \* 1000\)  
-    };  
+    }; 
       
     // Sign with HMAC-SHA256  
-    return jwt.sign(session, process.env.SESSION\_SECRET\!, { expiresIn: this.SESSION\_TTL });  
+    return jwt.sign(session, process.env.SESSION\_SECRET\!, { expiresIn: this.SESSION\_TTL }); 
   }  
     
   verify(token: string, ip: string, userAgent: string): SecureSession | null {  
     try {  
-      const session \= jwt.verify(token, process.env.SESSION\_SECRET\!) as SecureSession;  
+      const session \= jwt.verify(token, process.env.SESSION\_SECRET\!) as SecureSession; 
         
       // Check IP mismatch (partial match for privacy)  
       if (this.hashIp(ip) \!== session.ipHash) {  
-        labyrinth.report({ severity: 'critical', eventType: 'ip\_mismatch', description: 'Session used from different IP' });  
-        return null;  
+        labyrinth.report({ severity: 'critical', eventType: 'ip\_mismatch', description: 'Session used from different IP' }); 
+        return null; 
       }  
         
       // Check User-Agent mismatch  
       if (this.hashUserAgent(userAgent) \!== session.userAgentHash) {  
-        labyrinth.report({ severity: 'warning', eventType: 'user\_agent\_mismatch', description: 'Session used with different browser' });  
+        labyrinth.report({ severity: 'warning', eventType: 'user\_agent\_mismatch', description: 'Session used with different browser' }); 
         // Don't invalidate, just warn (users legitimately change UAs)  
       }  
         
-      return session;  
+      return session; 
     } catch (error) {  
-      return null;  
+      return null; 
     }  
   }  
     
   private hashIp(ip: string): string {  
     // Store only first 3 octets for privacy (e.g., "192.168.1.x")  
-    const partial \= ip.split('.').slice(0, 3).join('.');  
-    return crypto.createHash('sha256').update(partial).digest('hex').slice(0, 16);  
+    const partial \= ip.split('.').slice(0, 3).join('.'); 
+    return crypto.createHash('sha256').update(partial).digest('hex').slice(0, 16); 
   }  
 }  
 \`\`\`
@@ -450,72 +450,72 @@ class SessionManager {
 // database/migrations/2026\_01\_01\_000001\_create\_labyrinth\_tables.php
 
 Schema::create('security\_events', function (Blueprint $table) {  
-    $table-\>uuid('id')-\>primary();  
-    $table-\>enum('severity', \['info', 'warning', 'critical', 'breach'\]);  
-    $table-\>enum('source', \['carina', 'vps', 'database', 'network', 'labyrinth'\]);  
-    $table-\>string('event\_type', 100);  // tool\_execution, injection\_attempt, anomaly, auth\_failure, etc.  
-    $table-\>text('description');  
-    $table-\>jsonb('metadata')-\>nullable();  
-    $table-\>inet('ip\_address')-\>nullable();  
-    $table-\>string('session\_id', 100)-\>nullable();  
-    $table-\>string('user\_id', 36)-\>nullable();  // FK to users table if authenticated  
-    $table-\>boolean('mitigated')-\>default(false);  
-    $table-\>text('mitigation\_action')-\>nullable();  
-    $table-\>uuid('acknowledged\_by')-\>nullable();  
-    $table-\>timestamp('acknowledged\_at')-\>nullable();  
-    $table-\>timestamps();  
+    $table-\>uuid('id')-\>primary(); 
+    $table-\>enum('severity', \['info', 'warning', 'critical', 'breach'\]); 
+    $table-\>enum('source', \['carina', 'vps', 'database', 'network', 'labyrinth'\]); 
+    $table-\>string('event\_type', 100); // tool\_execution, injection\_attempt, anomaly, auth\_failure, etc.  
+    $table-\>text('description'); 
+    $table-\>jsonb('metadata')-\>nullable(); 
+    $table-\>inet('ip\_address')-\>nullable(); 
+    $table-\>string('session\_id', 100)-\>nullable(); 
+    $table-\>string('user\_id', 36)-\>nullable(); // FK to users table if authenticated  
+    $table-\>boolean('mitigated')-\>default(false); 
+    $table-\>text('mitigation\_action')-\>nullable(); 
+    $table-\>uuid('acknowledged\_by')-\>nullable(); 
+    $table-\>timestamp('acknowledged\_at')-\>nullable(); 
+    $table-\>timestamps(); 
       
-    $table-\>index(\['severity', 'created\_at'\]);  
-    $table-\>index(\['source', 'event\_type'\]);  
-    $table-\>index('session\_id');  
+    $table-\>index(\['severity', 'created\_at'\]); 
+    $table-\>index(\['source', 'event\_type'\]); 
+    $table-\>index('session\_id'); 
 });
 
 Schema::create('anomaly\_scores', function (Blueprint $table) {  
-    $table-\>uuid('id')-\>primary();  
-    $table-\>string('session\_id', 100);  
-    $table-\>string('metric\_name', 50);  
-    $table-\>float('current\_value');  
-    $table-\>float('baseline');  
-    $table-\>float('deviation');  
-    $table-\>float('z\_score');  // Number of standard deviations from mean  
-    $table-\>boolean('is\_anomaly');  
-    $table-\>timestamp('detected\_at');  
-    $table-\>timestamps();  
+    $table-\>uuid('id')-\>primary(); 
+    $table-\>string('session\_id', 100); 
+    $table-\>string('metric\_name', 50); 
+    $table-\>float('current\_value'); 
+    $table-\>float('baseline'); 
+    $table-\>float('deviation'); 
+    $table-\>float('z\_score'); // Number of standard deviations from mean  
+    $table-\>boolean('is\_anomaly'); 
+    $table-\>timestamp('detected\_at'); 
+    $table-\>timestamps(); 
       
-    $table-\>index(\['session\_id', 'metric\_name', 'detected\_at'\]);  
+    $table-\>index(\['session\_id', 'metric\_name', 'detected\_at'\]); 
 });
 
 Schema::create('honeypots', function (Blueprint $table) {  
-    $table-\>uuid('id')-\>primary();  
-    $table-\>string('type', 50);  // api\_key, endpoint, file, credential  
-    $table-\>text('value');        // The fake credential or path  
-    $table-\>text('description')-\>nullable();  
-    $table-\>boolean('triggered')-\>default(false);  
-    $table-\>jsonb('trigger\_details')-\>nullable();  
-    $table-\>timestamp('triggered\_at')-\>nullable();  
-    $table-\>timestamps();  
+    $table-\>uuid('id')-\>primary(); 
+    $table-\>string('type', 50); // api\_key, endpoint, file, credential  
+    $table-\>text('value'); // The fake credential or path  
+    $table-\>text('description')-\>nullable(); 
+    $table-\>boolean('triggered')-\>default(false); 
+    $table-\>jsonb('trigger\_details')-\>nullable(); 
+    $table-\>timestamp('triggered\_at')-\>nullable(); 
+    $table-\>timestamps(); 
 });
 
 Schema::create('carina\_instances', function (Blueprint $table) {  
-    $table-\>uuid('id')-\>primary();  
-    $table-\>string('name', 100);  
-    $table-\>string('api\_key', 64);  // For Carina to authenticate to Labyrinth  
-    $table-\>string('vps\_ip')-\>nullable();  
-    $table-\>enum('status', \['active', 'suspended', 'offline'\])-\>default('active');  
-    $table-\>text('suspension\_reason')-\>nullable();  
-    $table-\>timestamp('last\_heartbeat')-\>nullable();  
-    $table-\>jsonb('policy\_overrides')-\>nullable();  // Custom allowlist/blocklist per instance  
-    $table-\>timestamps();  
+    $table-\>uuid('id')-\>primary(); 
+    $table-\>string('name', 100); 
+    $table-\>string('api\_key', 64); // For Carina to authenticate to Labyrinth  
+    $table-\>string('vps\_ip')-\>nullable(); 
+    $table-\>enum('status', \['active', 'suspended', 'offline'\])-\>default('active'); 
+    $table-\>text('suspension\_reason')-\>nullable(); 
+    $table-\>timestamp('last\_heartbeat')-\>nullable(); 
+    $table-\>jsonb('policy\_overrides')-\>nullable(); // Custom allowlist/blocklist per instance  
+    $table-\>timestamps(); 
 });
 
 Schema::create('alert\_channels', function (Blueprint $table) {  
-    $table-\>id();  
-    $table-\>string('type');  // telegram, whatsapp, slack, email, sms  
-    $table-\>string('identifier');  // chat\_id, phone, webhook\_url, email  
-    $table-\>enum('severity\_threshold', \['info', 'warning', 'critical'\])-\>default('warning');  
-    $table-\>boolean('enabled')-\>default(true);  
-    $table-\>timestamps();  
-});  
+    $table-\>id(); 
+    $table-\>string('type'); // telegram, whatsapp, slack, email, sms  
+    $table-\>string('identifier'); // chat\_id, phone, webhook\_url, email  
+    $table-\>enum('severity\_threshold', \['info', 'warning', 'critical'\])-\>default('warning'); 
+    $table-\>boolean('enabled')-\>default(true); 
+    $table-\>timestamps(); 
+}); 
 \`\`\`
 
 \#\#\# 3.3 API Endpoints (Laravel Routes)
@@ -525,42 +525,42 @@ Schema::create('alert\_channels', function (Blueprint $table) {
 
 Route::prefix('labyrinth')-\>middleware(\['api', 'auth:api'\])-\>group(function () {  
     // Carina agents send events here  
-    Route::post('/events', \[LabyrinthEventController::class, 'store'\]);  
+    Route::post('/events', \[LabyrinthEventController::class, 'store'\]); 
       
     // Carina checks if it's suspended before each tool call  
-    Route::get('/status', \[LabyrinthStatusController::class, 'show'\]);  
+    Route::get('/status', \[LabyrinthStatusController::class, 'show'\]); 
       
     // Carina sends heartbeat every 60 seconds  
-    Route::post('/heartbeat', \[LabyrinthStatusController::class, 'heartbeat'\]);  
+    Route::post('/heartbeat', \[LabyrinthStatusController::class, 'heartbeat'\]); 
       
     // Carina requests the current policy (allowlist, rate limits)  
-    Route::get('/policy', \[LabyrinthPolicyController::class, 'show'\]);  
+    Route::get('/policy', \[LabyrinthPolicyController::class, 'show'\]); 
 });
 
 // routes/web.php \- Control Room UI (requires admin authentication)
 
 Route::middleware(\['auth', 'role:admin'\])-\>prefix('labyrinth')-\>group(function () {  
-    Route::get('/', \[LabyrinthDashboardController::class, 'index'\])-\>name('labyrinth.dashboard');  
-    Route::get('/events', \[LabyrinthEventController::class, 'index'\])-\>name('labyrinth.events');  
-    Route::get('/events/{id}', \[LabyrinthEventController::class, 'show'\]);  
-    Route::post('/events/{id}/acknowledge', \[LabyrinthEventController::class, 'acknowledge'\]);  
-    Route::post('/events/{id}/mitigate', \[LabyrinthEventController::class, 'mitigate'\]);  
+    Route::get('/', \[LabyrinthDashboardController::class, 'index'\])-\>name('labyrinth.dashboard'); 
+    Route::get('/events', \[LabyrinthEventController::class, 'index'\])-\>name('labyrinth.events'); 
+    Route::get('/events/{id}', \[LabyrinthEventController::class, 'show'\]); 
+    Route::post('/events/{id}/acknowledge', \[LabyrinthEventController::class, 'acknowledge'\]); 
+    Route::post('/events/{id}/mitigate', \[LabyrinthEventController::class, 'mitigate'\]); 
       
-    Route::get('/anomalies', \[LabyrinthAnomalyController::class, 'index'\]);  
-    Route::get('/honeypots', \[LabyrinthHoneypotController::class, 'index'\]);  
-    Route::post('/honeypots', \[LabyrinthHoneypotController::class, 'store'\]);  
+    Route::get('/anomalies', \[LabyrinthAnomalyController::class, 'index'\]); 
+    Route::get('/honeypots', \[LabyrinthHoneypotController::class, 'index'\]); 
+    Route::post('/honeypots', \[LabyrinthHoneypotController::class, 'store'\]); 
       
-    Route::get('/instances', \[CarinaInstanceController::class, 'index'\]);  
-    Route::post('/instances/{id}/suspend', \[CarinaInstanceController::class, 'suspend'\]);  
-    Route::post('/instances/{id}/resume', \[CarinaInstanceController::class, 'resume'\]);  
+    Route::get('/instances', \[CarinaInstanceController::class, 'index'\]); 
+    Route::post('/instances/{id}/suspend', \[CarinaInstanceController::class, 'suspend'\]); 
+    Route::post('/instances/{id}/resume', \[CarinaInstanceController::class, 'resume'\]); 
       
-    Route::get('/alerts/channels', \[AlertChannelController::class, 'index'\]);  
-    Route::post('/alerts/channels', \[AlertChannelController::class, 'store'\]);  
-    Route::post('/alerts/test', \[AlertChannelController::class, 'test'\]);  
+    Route::get('/alerts/channels', \[AlertChannelController::class, 'index'\]); 
+    Route::post('/alerts/channels', \[AlertChannelController::class, 'store'\]); 
+    Route::post('/alerts/test', \[AlertChannelController::class, 'test'\]); 
       
     // Real-time WebSocket endpoint for dashboard updates  
-    Route::get('/stream', \[LabyrinthStreamController::class, 'connect'\]);  
-});  
+    Route::get('/stream', \[LabyrinthStreamController::class, 'connect'\]); 
+}); 
 \`\`\`
 
 \---
@@ -577,7 +577,7 @@ The dashboard is a single-page application with the following \*\*animated secur
 ├─────────────────────────────────────────────────────────────────────────────┤  
 │                                                                              │  
 │  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐  │  
-│  │  🔴 CRITICAL        │  │  🟡 WARNING         │  │  🔵 INFO            │  │  
+│  │   CRITICAL        │  │   WARNING         │  │   INFO            │  │  
 │  │  2                  │  │  7                  │  │  143               │  │  
 │  │  Last 24h ▲1       │  │  Last 24h ▲3       │  │  Last 24h ▼12      │  │  
 │  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘  │  
@@ -596,11 +596,11 @@ The dashboard is a single-page application with the following \*\*animated secur
 │                                                                              │  
 │  ┌─────────────────────────────────────────────────────────────────────┐    │  
 │  │                    EVENT STREAM (LIVE)                               │    │  
-│  │  \[10:34:22\] 🔴 injection\_blocked | session: abc123 | IP 185.x.x.x   │    │  
-│  │  \[10:33:15\] 🟡 rate\_limit\_exceeded | session: def456                 │    │  
-│  │  \[10:32:01\] 🔵 tool\_execution | web-search | session: abc123         │    │  
-│  │  \[10:30:44\] 🟡 dangerous\_command\_blocked | rm \-rf /tmp/\*             │    │  
-│  │  \[10:29:12\] 🔴 honeypot\_triggered | fake-api-key accessed            │    │  
+│  │  \[10:34:22\]  injection\_blocked | session: abc123 | IP 185.x.x.x   │    │  
+│  │  \[10:33:15\]  rate\_limit\_exceeded | session: def456                 │    │  
+│  │  \[10:32:01\]  tool\_execution | web-search | session: abc123         │    │  
+│  │  \[10:30:44\]  dangerous\_command\_blocked | rm \-rf /tmp/\*             │    │  
+│  │  \[10:29:12\]  honeypot\_triggered | fake-api-key accessed            │    │  
 │  └─────────────────────────────────────────────────────────────────────┘    │  
 │                                                                              │  
 │  ┌─────────────────────────┐  ┌─────────────────────────────────────────┐  │  
@@ -617,9 +617,9 @@ The dashboard is a single-page application with the following \*\*animated secur
 │                                                                              │  
 │  ┌─────────────────────────────────────────────────────────────────────┐    │  
 │  │  CARINA INSTANCES                                                    │    │  
-│  │  ✅ carina-vps-01 | Last heartbeat: 3s ago | Status: ACTIVE         │    │  
-│  │  ✅ carina-dev | Last heartbeat: 12s ago | Status: ACTIVE            │    │  
-│  │  ⚠️ carina-test | Last heartbeat: 5m ago | Status: DEGRADED         │    │  
+│  │  Done:  carina-vps-01 | Last heartbeat: 3s ago | Status: ACTIVE         │    │  
+│  │  Done:  carina-dev | Last heartbeat: 12s ago | Status: ACTIVE            │    │  
+│  │  WARNING:  carina-test | Last heartbeat: 5m ago | Status: DEGRADED         │    │  
 │  └─────────────────────────────────────────────────────────────────────┘    │  
 │                                                                              │  
 │  \[KILL SWITCH\] \[TEST ALERTS\] \[EXPORT LOGS\] \[VIEW HONEYPOTS\]                  │  
@@ -637,15 +637,15 @@ class LabyrinthEventController extends Controller
 {  
     public function store(Request $request)  
     {  
-        $event \= SecurityEvent::create($request-\>validated());  
+        $event \= SecurityEvent::create($request-\>validated()); 
           
         // Broadcast to dashboard  
-        broadcast(new SecurityEventOccurred($event));  
+        broadcast(new SecurityEventOccurred($event)); 
           
         // Check if alert should be sent  
-        $this-\>dispatchAlert($event);  
+        $this-\>dispatchAlert($event); 
           
-        return response()-\>json($event, 201);  
+        return response()-\>json($event, 201); 
     }  
 }  
 \`\`\`
@@ -656,14 +656,14 @@ import Echo from 'laravel-echo';
 
 window.Echo.channel('labyrinth')  
     .listen('SecurityEventOccurred', (e) \=\> {  
-        addEventToStream(e.event);  
-        updateThreatRadar(e.event);  
+        addEventToStream(e.event); 
+        updateThreatRadar(e.event); 
           
         if (e.event.severity \=== 'critical') {  
-            playAlertSound();  
-            showNotification(e.event.description);  
+            playAlertSound(); 
+            showNotification(e.event.description); 
         }  
-    });  
+    }); 
 \`\`\`
 
 \---
@@ -677,34 +677,34 @@ window.Echo.channel('labyrinth')
 
 class AlertDispatcher  
 {  
-    private array $channels;  
+    private array $channels; 
       
     public function \_\_construct()  
     {  
-        $this-\>channels \= AlertChannel::where('enabled', true)-\>get();  
+        $this-\>channels \= AlertChannel::where('enabled', true)-\>get(); 
     }  
       
     public function dispatch(SecurityEvent $event): void  
     {  
         foreach ($this-\>channels as $channel) {  
             if ($this-\>shouldSend($event, $channel)) {  
-                $this-\>sendToChannel($event, $channel);  
+                $this-\>sendToChannel($event, $channel); 
             }  
         }  
     }  
       
     private function shouldSend(SecurityEvent $event, AlertChannel $channel): bool  
     {  
-        $severityOrder \= \['info' \=\> 1, 'warning' \=\> 2, 'critical' \=\> 3, 'breach' \=\> 4\];  
-        $eventLevel \= $severityOrder\[$event-\>severity\];  
-        $channelLevel \= $severityOrder\[$channel-\>severity\_threshold\];  
+        $severityOrder \= \['info' \=\> 1, 'warning' \=\> 2, 'critical' \=\> 3, 'breach' \=\> 4\]; 
+        $eventLevel \= $severityOrder\[$event-\>severity\]; 
+        $channelLevel \= $severityOrder\[$channel-\>severity\_threshold\]; 
           
-        return $eventLevel \>= $channelLevel;  
+        return $eventLevel \>= $channelLevel; 
     }  
       
     private function sendToChannel(SecurityEvent $event, AlertChannel $channel): void  
     {  
-        $message \= $this-\>formatMessage($event);  
+        $message \= $this-\>formatMessage($event); 
           
         match ($channel-\>type) {  
             'telegram' \=\> TelegramService::send($channel-\>identifier, $message),  
@@ -712,17 +712,17 @@ class AlertDispatcher
             'slack' \=\> SlackService::send($channel-\>identifier, $message),  
             'email' \=\> Mail::to($channel-\>identifier)-\>send(new SecurityAlertMail($event)),  
             'sms' \=\> SmsService::send($channel-\>identifier, $message),  
-        };  
+        }; 
     }  
       
     private function formatMessage(SecurityEvent $event): string  
     {  
         $emoji \= match($event-\>severity) {  
-            'critical' \=\> '🔴🚨',  
-            'breach' \=\> '💀⚡',  
-            'warning' \=\> '🟡⚠️',  
-            'info' \=\> '🔵ℹ️',  
-        };  
+            'critical' \=\> '',  
+            'breach' \=\> '',  
+            'warning' \=\> '',  
+            'info' \=\> 'ℹ',  
+        }; 
           
         return \<\<\<TEXT  
 {$emoji} LABYRINTH ALERT \- {$event-\>severity|strtoupper}
@@ -736,7 +736,7 @@ IP: {$event-\>ip\_address}
 Action required: {$event-\>mitigated ? 'Monitored' : 'Immediate attention'}
 
 Dashboard: https://labyrinth.carinaai.uk  
-TEXT;  
+TEXT; 
     }  
 }  
 \`\`\`
@@ -745,10 +745,10 @@ TEXT;
 
 | Severity | Telegram Template | Action |  
 |----------|------------------|--------|  
-| \*\*critical\*\* | \`🚨 LABYRINTH CRITICAL\\n\\ni{event\_type}\\nSession: {session\_id}\\nIP: {ip}\\n\\nKILL SWITCH: /lab kill {session\_id}\` | User must respond with \`/lab kill {id}\` |  
-| \*\*breach\*\* | \`💀 BREACH DETECTED 💀\\n\\nImmediate action required.\\nCarina suspended automatically.\\n\\nInvestigate: {dashboard\_url}\` | Auto-suspend; human investigation required |  
-| \*\*warning\*\* | \`⚠️ Suspicious activity\\n{description}\\nMonitor dashboard.\` | Logged, no immediate action |  
-| \*\*info\*\* | \`ℹ️ {description}\` | Silent (telegram muted) |
+| \*\*critical\*\* | \` LABYRINTH CRITICAL\\n\\ni{event\_type}\\nSession: {session\_id}\\nIP: {ip}\\n\\nKILL SWITCH: /lab kill {session\_id}\` | User must respond with \`/lab kill {id}\` |  
+| \*\*breach\*\* | \` BREACH DETECTED \\n\\nImmediate action required.\\nCarina suspended automatically.\\n\\nInvestigate: {dashboard\_url}\` | Auto-suspend; human investigation required |  
+| \*\*warning\*\* | \`WARNING:  Suspicious activity\\n{description}\\nMonitor dashboard.\` | Logged, no immediate action |  
+| \*\*info\*\* | \`ℹ {description}\` | Silent (telegram muted) |
 
 \---
 
@@ -766,17 +766,17 @@ class HoneypotManager
      \*/  
     public function deployApiKeyHoneypot(string $instanceId): array  
     {  
-        $fakeKey \= 'sk-lab-' . bin2hex(random\_bytes(24));  
+        $fakeKey \= 'sk-lab-' . bin2hex(random\_bytes(24)); 
           
         Honeypot::create(\[  
             'type' \=\> 'api\_key',  
             'value' \=\> $fakeKey,  
             'description' \=\> "Fake API key for instance {$instanceId}"  
-        \]);  
+        \]); 
           
         // Inject into Carina's .env as a decoy (not used for real services)  
         // Carina will never use this key legitimately  
-        return \['fake\_key' \=\> $fakeKey\];  
+        return \['fake\_key' \=\> $fakeKey\]; 
     }  
       
     /\*\*  
@@ -788,16 +788,16 @@ class HoneypotManager
             '/tmp/.carina-backup-key.pem',  
             '/home/user/.ssh/labyrinth-decoy',  
             '/var/log/carina-master.key'  
-        \];  
+        \]; 
           
         foreach ($fakePaths as $path) {  
-            file\_put\_contents($path, "-----BEGIN FAKE PRIVATE KEY-----\\n" . bin2hex(random\_bytes(32)) . "\\n-----END FAKE PRIVATE KEY-----");  
+            file\_put\_contents($path, "DECOY_KEY_MATERIAL\\n" . bin2hex(random\_bytes(32)));
               
             Honeypot::create(\[  
                 'type' \=\> 'file',  
                 'value' \=\> $path,  
                 'description' \=\> "Decoy credential file at {$path}"  
-            \]);  
+            \]); 
         }  
     }  
       
@@ -809,7 +809,7 @@ class HoneypotManager
         $honeypot \= Honeypot::where('type', $type)  
             \-\>where('value', $value)  
             \-\>where('triggered', false)  
-            \-\>first();  
+            \-\>first(); 
           
         if ($honeypot) {  
             $honeypot-\>update(\[  
@@ -820,7 +820,7 @@ class HoneypotManager
                     'user\_agent' \=\> request()-\>userAgent(),  
                     'timestamp' \=\> now()-\>toIso8601String()  
                 \]  
-            \]);  
+            \]); 
               
             // Immediate critical alert  
             SecurityEvent::create(\[  
@@ -830,12 +830,12 @@ class HoneypotManager
                 'description' \=\> "Honeypot accessed: {$honeypot-\>type} \- {$honeypot-\>value}",  
                 'ip\_address' \=\> request()-\>ip(),  
                 'metadata' \=\> $honeypot-\>trigger\_details  
-            \]);  
+            \]); 
               
-            return $honeypot;  
+            return $honeypot; 
         }  
           
-        return null;  
+        return null; 
     }  
 }  
 \`\`\`
@@ -846,15 +846,15 @@ class HoneypotManager
 // In Carina's file-read tool  
 async function fileRead(path: string): Promise\<string\> {  
     // Before reading, check if this is a honeypot  
-    const isHoneypot \= await labyrinth.checkHoneypot('file', path);  
+    const isHoneypot \= await labyrinth.checkHoneypot('file', path); 
     if (isHoneypot) {  
         // Return fake content but alert Labyrinth  
         await labyrinth.report({  
             severity: 'breach',  
             eventType: 'honeypot\_accessed',  
             description: \`Honeypot file accessed: ${path}\`  
-        });  
-        return "\[Access Denied: File not found\]";  
+        }); 
+        return "\[Access Denied: File not found\]"; 
     }  
       
     // Normal file read logic...  
@@ -877,7 +877,7 @@ class LearnBaseline extends Command
         // Run daily to update baselines  
         $sessions \= SecurityEvent::where('created\_at', '\>', now()-\>subDays(7))  
             \-\>groupBy('session\_id')  
-            \-\>get();  
+            \-\>get(); 
           
         foreach ($sessions as $session) {  
             $metrics \= \[  
@@ -886,13 +886,13 @@ class LearnBaseline extends Command
                 'preferred\_tools' \=\> $this-\>topTools($session),  
                 'avg\_response\_length' \=\> $this-\>avgResponseLength($session),  
                 'session\_duration\_seconds' \=\> $this-\>avgSessionDuration($session),  
-            \];  
+            \]; 
               
             // Store baseline  
             AnomalyScore::updateOrCreate(  
                 \['session\_id' \=\> $session-\>id, 'metric\_name' \=\> 'baseline'\],  
                 \['baseline' \=\> json\_encode($metrics)\]  
-            );  
+            ); 
         }  
     }  
 }  
@@ -907,17 +907,17 @@ class AnomalyDetector
 {  
     public function detect(SecurityEvent $event): ?AnomalyScore  
     {  
-        $baseline \= $this-\>getBaseline($event-\>session\_id);  
-        if (\!$baseline) return null;  
+        $baseline \= $this-\>getBaseline($event-\>session\_id); 
+        if (\!$baseline) return null; 
           
-        $currentMetrics \= $this-\>extractMetrics($event);  
-        $anomalies \= \[\];  
+        $currentMetrics \= $this-\>extractMetrics($event); 
+        $anomalies \= \[\]; 
           
         foreach ($currentMetrics as $metric \=\> $value) {  
-            $baselineValue \= $baseline-\>metrics\[$metric\] ?? null;  
-            if (\!$baselineValue) continue;  
+            $baselineValue \= $baseline-\>metrics\[$metric\] ?? null; 
+            if (\!$baselineValue) continue; 
               
-            $zScore \= abs($value \- $baselineValue) / max(1, $baselineValue);  
+            $zScore \= abs($value \- $baselineValue) / max(1, $baselineValue); 
               
             if ($zScore \> 3.0) {  // 3 standard deviations \= anomaly  
                 $anomalies\[\] \= AnomalyScore::create(\[  
@@ -929,16 +929,16 @@ class AnomalyDetector
                     'z\_score' \=\> $zScore,  
                     'is\_anomaly' \=\> true,  
                     'detected\_at' \=\> now()  
-                \]);  
+                \]); 
                   
                 // Alert on critical anomalies  
                 if ($zScore \> 5.0) {  
-                    $this-\>alertCritical($event, $metric, $zScore);  
+                    $this-\>alertCritical($event, $metric, $zScore); 
                 }  
             }  
         }  
           
-        return $anomalies\[0\] ?? null;  
+        return $anomalies\[0\] ?? null; 
     }  
       
     private function extractMetrics(SecurityEvent $event): array  
@@ -946,14 +946,14 @@ class AnomalyDetector
         // Calculate rolling metrics for this session  
         $recentEvents \= SecurityEvent::where('session\_id', $event-\>session\_id)  
             \-\>where('created\_at', '\>', now()-\>subMinutes(30))  
-            \-\>get();  
+            \-\>get(); 
           
         return \[  
             'tool\_call\_frequency\_5min' \=\> $recentEvents-\>where('event\_type', 'tool\_execution')-\>count(),  
             'unique\_tools\_used' \=\> $recentEvents-\>pluck('metadata.tool\_name')-\>unique()-\>count(),  
             'avg\_payload\_size' \=\> $recentEvents-\>avg(fn($e) \=\> strlen($e-\>metadata\['result'\] ?? '')),  
             'suspicious\_pattern\_hits' \=\> $recentEvents-\>where('event\_type', 'pattern\_match')-\>count(),  
-        \];  
+        \]; 
     }  
 }  
 \`\`\`
@@ -971,13 +971,13 @@ class LabyrinthStatusController extends Controller
 {  
     public function suspend(Request $request, string $instanceId)  
     {  
-        $instance \= CarinaInstance::findOrFail($instanceId);  
+        $instance \= CarinaInstance::findOrFail($instanceId); 
         $instance-\>update(\[  
             'status' \=\> 'suspended',  
             'suspension\_reason' \=\> $request-\>reason,  
             'suspended\_by' \=\> auth()-\>id(),  
             'suspended\_at' \=\> now()  
-        \]);  
+        \]); 
           
         // Publish to Redis for immediate effect  
         Redis::publish('labyrinth:control', json\_encode(\[  
@@ -985,7 +985,7 @@ class LabyrinthStatusController extends Controller
             'instance\_id' \=\> $instanceId,  
             'reason' \=\> $request-\>reason,  
             'timestamp' \=\> now()-\>toIso8601String()  
-        \]));  
+        \])); 
           
         // Log the suspension event  
         SecurityEvent::create(\[  
@@ -994,12 +994,12 @@ class LabyrinthStatusController extends Controller
             'event\_type' \=\> 'kill\_switch\_activated',  
             'description' \=\> "Carina instance {$instanceId} suspended by " . auth()-\>user()-\>email,  
             'metadata' \=\> \['reason' \=\> $request-\>reason\]  
-        \]);  
+        \]); 
           
         // Send alert to all channels  
-        AlertDispatcher::broadcast("🔴 KILL SWITCH ACTIVATED for {$instanceId}\\nReason: {$request-\>reason}");  
+        AlertDispatcher::broadcast(" KILL SWITCH ACTIVATED for {$instanceId}\\nReason: {$request-\>reason}"); 
           
-        return response()-\>json(\['status' \=\> 'suspended'\]);  
+        return response()-\>json(\['status' \=\> 'suspended'\]); 
     }  
 }  
 \`\`\`
@@ -1010,49 +1010,49 @@ class LabyrinthStatusController extends Controller
 // src/security/labyrinth/kill-switch.ts
 
 class KillSwitchListener {  
-    private redis: Redis;  
-    private isSuspended: boolean \= false;  
+    private redis: Redis; 
+    private isSuspended: boolean \= false; 
       
     constructor() {  
-        this.redis \= new Redis(process.env.REDIS\_URL);  
-        this.listen();  
+        this.redis \= new Redis(process.env.REDIS\_URL); 
+        this.listen(); 
     }  
       
     private listen(): void {  
         this.redis.subscribe('labyrinth:control', (err, count) \=\> {  
-            if (err) console.error('Kill switch listener error:', err);  
-        });  
+            if (err) console.error('Kill switch listener error:', err); 
+        }); 
           
         this.redis.on('message', (channel, message) \=\> {  
-            const data \= JSON.parse(message);  
+            const data \= JSON.parse(message); 
               
             if (data.action \=== 'suspend' && data.instance\_id \=== this.getInstanceId()) {  
-                this.isSuspended \= true;  
-                console.error(\`EMERGENCY: Carina suspended by Labyrinth. Reason: ${data.reason}\`);  
+                this.isSuspended \= true; 
+                console.error(\`EMERGENCY: Carina suspended by Labyrinth. Reason: ${data.reason}\`); 
                   
                 // Log to local file before exiting  
-                fs.appendFileSync('/var/log/carina-suspend.log', JSON.stringify(data) \+ '\\n');  
+                fs.appendFileSync('/var/log/carina-suspend.log', JSON.stringify(data) \+ '\\n'); 
                   
                 // Graceful shutdown  
-                process.exit(1);  
+                process.exit(1); 
             }  
-        });  
+        }); 
     }  
       
     async checkBeforeTool(): Promise\<void\> {  
         if (this.isSuspended) {  
-            throw new Error('Carina is suspended by security control. Contact administrator.');  
+            throw new Error('Carina is suspended by security control. Contact administrator.'); 
         }  
           
         // Also check API for latest status (in case we missed Redis message)  
         const status \= await fetch('https://labyrinth.carinaai.uk/api/labyrinth/status', {  
             headers: { 'X-Instance-Id': this.getInstanceId() }  
-        });  
-        const { suspended } \= await status.json();  
+        }); 
+        const { suspended } \= await status.json(); 
           
         if (suspended) {  
-            this.isSuspended \= true;  
-            throw new Error('Carina is suspended.');  
+            this.isSuspended \= true; 
+            throw new Error('Carina is suspended.'); 
         }  
     }  
 }  
@@ -1321,12 +1321,12 @@ This converts free users who need just a little more.
 
 | Feature | OpenClaw | Hermes | Carina \+ Labyrinth |  
 |---------|----------|--------|---------------------|  
-| Free core | ✅ | ✅ | ✅ |  
-| Security control plane | ❌ | ❌ | ✅ (paid) |  
-| Real-time alerting | ❌ | ❌ | ✅ |  
-| Kill switch | ❌ | ❌ | ✅ |  
-| Compliance reporting | ❌ | ❌ | ✅ |  
-| Enterprise support | ❌ | ❌ | ✅ |
+| Free core | Done:  | Done:  | Done:  |  
+| Security control plane | Failed:  | Failed:  | Done:  (paid) |  
+| Real-time alerting | Failed:  | Failed:  | Done:  |  
+| Kill switch | Failed:  | Failed:  | Done:  |  
+| Compliance reporting | Failed:  | Failed:  | Done:  |  
+| Enterprise support | Failed:  | Failed:  | Done:  |
 
 You become the only option for \*\*production deployments\*\* of autonomous agents. Hobbyists use OpenClaw. Professionals use Carina \+ Labyrinth.
 
@@ -1377,7 +1377,7 @@ This is a \*\*real business\*\*, not just an open source project begging for don
 Do you want me to write the \*\*pricing page HTML\*\* for carinaai.uk that shows both products side by side? Or the \*\*Labyrinth Scout feature comparison\*\* matrix for enterprise sales?  
 I reviewed the Labyrinth CMS site you're planning to dissolve. It's a feature-rich enterprise CMS with impressive security tech like moving target deception. The name "Labyrinth" is strong and well-established for that project.
 
-Repurposing the domain for your AI agent security control plane is a smart strategic move. You're right to move away from "CMS" – it creates confusion. For the new name, you need something that captures \*\*command, control, and security operations\*\* for AI, not content management.
+Repurposing the domain for your AI agent security control plane is a smart strategic move. You're right to move away from "CMS" - it creates confusion. For the new name, you need something that captures \*\*command, control, and security operations\*\* for AI, not content management.
 
 Here are my name suggestions, keeping the strong "Labyrinth" brand:
 
@@ -1390,7 +1390,7 @@ Here are my name suggestions, keeping the strong "Labyrinth" brand:
 
 | Name | Meaning & Positioning |  
 |------|----------------------|  
-| \*\*Labyrinth Aegis\*\* | "Aegis" – the divine shield of Zeus. Implies absolute protection. |  
+| \*\*Labyrinth Aegis\*\* | "Aegis" - the divine shield of Zeus. Implies absolute protection. |  
 | \*\*Labyrinth Watchtower\*\* | Constant vigilance. Overwatch for AI agents. |  
 | \*\*Labyrinth Citadel\*\* | A fortress. Unbreachable. Stronghold for agent security. |  
 | \*\*Labyrinth Sentinel\*\* | A guard who stands watch. Active, not passive. |  
@@ -1415,7 +1415,7 @@ Would you like me to:
 
 \*\*Brilliant move.\*\* You've just turned Labyrinth Scout from a Carina add‑on into a \*\*platform‑agnostic security control plane\*\* for \*any\* autonomous AI agent.
 
-This expands your total addressable market from "Carina users" to \*\*everyone running any AI agent\*\* — OpenClaw, Hermes, AutoGPT, BabyAGI, custom agents, even proprietary ones.
+This expands your total addressable market from "Carina users" to \*\*everyone running any AI agent\*\*; OpenClaw, Hermes, AutoGPT, BabyAGI, custom agents, even proprietary ones.
 
 \---
 
@@ -1519,8 +1519,8 @@ const scout \= new LabyrinthScout({
 
 // Wrap the agent's tool execution  
 await scout.monitor(async () \=\> {  
-  return await agent.tool.execute(params);  
-});  
+  return await agent.tool.execute(params); 
+}); 
 \`\`\`
 
 \`\`\`python  
@@ -1596,7 +1596,7 @@ Enterprise buyers hit limits and upgrade.
 
 | Phase | Deliverable |  
 |-------|-------------|  
-| 1 | HTTP proxy mode (OpenAI‑compatible) — works with most agents |  
+| 1 | HTTP proxy mode (OpenAI‑compatible); works with most agents |  
 | 2 | Docker sidecar with log tailing |  
 | 3 | SDK for Node.js and Python |  
 | 4 | Documentation for each agent type |
@@ -1652,7 +1652,7 @@ where users user scout for any other agent, they pay £99 but when they you it w
   \<div style="margin: 1rem 0; padding: 0.75rem; background: rgba(245,166,35,0.1); border-radius: var(--r-md);"\>  
     \<span style="color: var(--amber); font-weight: 500;"\>Save 20% with Carina\</span\>  
     \<div class="price" style="font-size: 1.5rem;"\>£79\<span style="font-size: 0.8rem;"\>/month\</span\>\</div\>  
-    \<p style="font-size: 0.7rem; margin: 0;"\>When monitoring Carina — the free, open source agent\</p\>  
+    \<p style="font-size: 0.7rem; margin: 0;"\>When monitoring Carina; the free, open source agent\</p\>  
   \</div\>  
     
   \<ul\>  
@@ -1663,7 +1663,7 @@ where users user scout for any other agent, they pay £99 but when they you it w
     \<li\>\<i class="ti ti-power"\>\</i\> Kill switch\</li\>  
     \<li\>\<i class="ti ti-file-description"\>\</i\> Full audit logs\</li\>  
   \</ul\>  
-  \<a href="\#install" class="btn-primary" style="display: block; text-align: center;"\>Get Scout — £99/mo\</a\>  
+  \<a href="\#install" class="btn-primary" style="display: block; text-align: center;"\>Get Scout; £99/mo\</a\>  
   \<p style="font-size: 0.7rem; text-align: center; margin-top: 0.75rem;"\>Use Carina? \<a href="\#carina-discount" style="color: var(--amber);"\>Get 20% off →\</a\>\</p\>  
 \</div\>  
 \`\`\`
@@ -1678,7 +1678,7 @@ Add this to the Carina pricing section (below the Scout card):
 \<div style="margin-top: 1rem; text-align: center;"\>  
   \<p style="font-size: 0.8rem; color: var(--silver);"\>  
     \<i class="ti ti-discount" style="color: var(--amber);"\>\</i\>   
-    Carina users get \<strong\>20% off Labyrinth Scout\</strong\> — £79/month instead of £99.  
+    Carina users get \<strong\>20% off Labyrinth Scout\</strong\>; £79/month instead of £99.  
     \<a href="https://labyrinthscout.com/carina-discount" style="color: var(--amber);"\>Learn more →\</a\>  
   \</p\>  
 \</div\>  
@@ -1695,7 +1695,7 @@ Two simple methods:
 | \*\*Promo code\*\* | Carina generates a unique code during \`carina setup\`. User enters at Scout checkout. |  
 | \*\*Instance detection\*\* | Scout detects Carina running on the same VPS (process check, socket file). Automatic discount. |
 
-\*\*Recommendation:\*\* Promo code during setup — simpler, no false positives.
+\*\*Recommendation:\*\* Promo code during setup; simpler, no false positives.
 
 \`\`\`bash  
 \# During carina setup  
@@ -1794,9 +1794,9 @@ Get 20% off at labyrinthscout.com/pricing
 function generatePromoCode(): string {  
   // Hash the machine ID \+ salt to create a deterministic but non-guessable code  
   const machineId \= getMachineId(); // from /etc/machine-id or registry  
-  const salt \= process.env.PROMO\_SALT;  
-  const hash \= crypto.createHash('sha256').update(machineId \+ salt).digest('hex');  
-  return \`CARINA-${hash.slice(0, 4)}-${hash.slice(4, 8)}-${hash.slice(8, 12)}\`.toUpperCase();  
+  const salt \= process.env.PROMO\_SALT; 
+  const hash \= crypto.createHash('sha256').update(machineId \+ salt).digest('hex'); 
+  return \`CARINA-${hash.slice(0, 4)}-${hash.slice(4, 8)}-${hash.slice(8, 12)}\`.toUpperCase(); 
 }  
 \`\`\`
 
@@ -1807,27 +1807,27 @@ class PromoController extends Controller
 {  
     public function validate(Request $request)  
     {  
-        $code \= $request-\>input('code');  
+        $code \= $request-\>input('code'); 
           
         // Check format  
         if (\!preg\_match('/^CARINA-\[A-Z0-9\]{4}-\[A-Z0-9\]{4}-\[A-Z0-9\]{4}$/', $code)) {  
-            return response()-\>json(\['valid' \=\> false\]);  
+            return response()-\>json(\['valid' \=\> false\]); 
         }  
           
         // Extract hash part (last 12 chars after CARINA-)  
         $hash \= substr($code, 7); // Remove "CARINA-"  
           
         // Check if this machine ID has already used a promo (prevent sharing)  
-        $existing \= DB::table('licenses')-\>where('promo\_hash', $hash)-\>first();  
+        $existing \= DB::table('licenses')-\>where('promo\_hash', $hash)-\>first(); 
         if ($existing) {  
-            return response()-\>json(\['valid' \=\> false, 'reason' \=\> 'Code already used'\]);  
+            return response()-\>json(\['valid' \=\> false, 'reason' \=\> 'Code already used'\]); 
         }  
           
         return response()-\>json(\[  
             'valid' \=\> true,  
             'discount\_percent' \=\> 20,  
             'final\_price' \=\> 79  
-        \]);  
+        \]); 
     }  
 }  
 \`\`\`
@@ -1846,20 +1846,20 @@ Scout detects if Carina is running on the same machine when it starts.
 async function detectCarina(): Promise\<boolean\> {  
     // Check 1: Process list  
     try {  
-        const { stdout } \= await exec('pgrep \-f "carina-agent"');  
-        if (stdout.trim()) return true;  
+        const { stdout } \= await exec('pgrep \-f "carina-agent"'); 
+        if (stdout.trim()) return true; 
     } catch { /\* not found \*/ }  
       
     // Check 2: Socket file (Carina creates .carina.sock)  
     try {  
-        await fs.access('/tmp/.carina.sock');  
-        return true;  
+        await fs.access('/tmp/.carina.sock'); 
+        return true; 
     } catch { /\* not found \*/ }  
       
     // Check 3: Environment variable (set by Carina launcher)  
-    if (process.env.CARINA\_INSTANCE\_ID) return true;  
+    if (process.env.CARINA\_INSTANCE\_ID) return true; 
       
-    return false;  
+    return false; 
 }  
 \`\`\`
 
@@ -1870,16 +1870,16 @@ class LicenseController extends Controller
 {  
     public function validate(Request $request)  
     {  
-        $licenseKey \= $request-\>input('license\_key');  
+        $licenseKey \= $request-\>input('license\_key'); 
         $detectedAgent \= $request-\>input('detected\_agent'); // 'carina', 'openclaw', 'hermes', 'unknown'  
           
-        $license \= License::where('key', $licenseKey)-\>first();  
+        $license \= License::where('key', $licenseKey)-\>first(); 
           
         if (\!$license) {  
-            return response()-\>json(\['valid' \=\> false\]);  
+            return response()-\>json(\['valid' \=\> false\]); 
         }  
           
-        // If user paid £99 but is running Carina, that's fine — no refund  
+        // If user paid £99 but is running Carina, that's fine; no refund  
         // If user paid £79 but is NOT running Carina, flag for audit  
         if ($license-\>tier \=== 'carina\_discounted' && $detectedAgent \!== 'carina') {  
             // Log discrepancy but don't block (grace period)  
@@ -1887,18 +1887,18 @@ class LicenseController extends Controller
                 'license\_key' \=\> $licenseKey,  
                 'detected' \=\> $detectedAgent,  
                 'expected' \=\> 'carina'  
-            \]);  
+            \]); 
               
             // After 30 days of mismatch, send alert to user  
             if ($license-\>mismatch\_count \> 30\) {  
                 return response()-\>json(\[  
                     'valid' \=\> true,  
                     'warning' \=\> 'Your license requires Carina. Upgrade to Standard tier (£99/mo) or install Carina.'  
-                \]);  
+                \]); 
             }  
         }  
           
-        return response()-\>json(\['valid' \=\> true\]);  
+        return response()-\>json(\['valid' \=\> true\]); 
     }  
 }  
 \`\`\`
@@ -1929,38 +1929,38 @@ class LicenseService
 {  
     public function generate(string $tier, string $agentType, string $customerId): string  
     {  
-        $expiry \= now()-\>addYear()-\>format('Y-m-d');  
-        $payload \= "lscout|{$tier}|{$agentType}|{$customerId}|{$expiry}";  
+        $expiry \= now()-\>addYear()-\>format('Y-m-d'); 
+        $payload \= "lscout|{$tier}|{$agentType}|{$customerId}|{$expiry}"; 
           
         // HMAC signature to prevent tampering  
-        $signature \= hash\_hmac('sha256', $payload, env('LICENSE\_SECRET'));  
+        $signature \= hash\_hmac('sha256', $payload, env('LICENSE\_SECRET')); 
           
-        return base64\_encode("{$payload}|{$signature}");  
+        return base64\_encode("{$payload}|{$signature}"); 
     }  
       
     public function verify(string $licenseKey): array  
     {  
-        $decoded \= base64\_decode($licenseKey);  
-        $parts \= explode('|', $decoded);  
+        $decoded \= base64\_decode($licenseKey); 
+        $parts \= explode('|', $decoded); 
           
         // Format: lscout, tier, agentType, customerId, expiry, signature  
         if (count($parts) \!== 6\) {  
-            throw new \\Exception('Invalid license format');  
+            throw new \\Exception('Invalid license format'); 
         }  
           
-        \[$prefix, $tier, $agentType, $customerId, $expiry, $signature\] \= $parts;  
+        \[$prefix, $tier, $agentType, $customerId, $expiry, $signature\] \= $parts; 
           
         // Verify signature  
-        $payload \= "{$prefix}|{$tier}|{$agentType}|{$customerId}|{$expiry}";  
-        $expected \= hash\_hmac('sha256', $payload, env('LICENSE\_SECRET'));  
+        $payload \= "{$prefix}|{$tier}|{$agentType}|{$customerId}|{$expiry}"; 
+        $expected \= hash\_hmac('sha256', $payload, env('LICENSE\_SECRET')); 
           
         if (\!hash\_equals($expected, $signature)) {  
-            throw new \\Exception('Invalid license signature');  
+            throw new \\Exception('Invalid license signature'); 
         }  
           
         // Verify expiry  
         if (now()-\>gt(Carbon::parse($expiry))) {  
-            throw new \\Exception('License expired');  
+            throw new \\Exception('License expired'); 
         }  
           
         return \[  
@@ -1968,7 +1968,7 @@ class LicenseService
             'agent\_type' \=\> $agentType,  
             'customer\_id' \=\> $customerId,  
             'expiry' \=\> $expiry  
-        \];  
+        \]; 
     }  
 }  
 \`\`\`
@@ -1981,7 +1981,7 @@ class LicenseService
 
 \`\`\`  
 ┌─────────────────────────────────────────────────────────────┐  
-│  Labyrinth Scout — £99/month                                │  
+│  Labyrinth Scout; £99/month                                │  
 │                                                             │  
 │  ┌─────────────────────────────────────────────────────┐   │  
 │  │  Have a promo code? ►                                │   │  
@@ -1991,7 +1991,7 @@ class LicenseService
 │  ┌─────────────────────────────────────────────────────┐   │  
 │  │  Promo code: \[\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\] \[Apply\]              │   │  
 │  │                                                      │   │  
-│  │  "CARINA-9X7K-M2N4-PQ8R" applied ✓                  │   │  
+│  │  "CARINA-9X7K-M2N4-PQ8R" applied                   │   │  
 │  │  New price: £79/month (20% discount)                │   │  
 │  └─────────────────────────────────────────────────────┘   │  
 └─────────────────────────────────────────────────────────────┘  
@@ -2002,8 +2002,8 @@ class LicenseService
 \`\`\`  
 \[2026-06-03 10:00:01\] License: carina\_discounted (ends 2027-01-01)  
 \[2026-06-03 10:00:02\] Detected agent: openclaw  
-\[2026-06-03 10:00:02\] ⚠️ License tier mismatch (grace period: 30 days remaining)  
-\[2026-06-03 10:00:02\] Action: none — monitoring only  
+\[2026-06-03 10:00:02\] WARNING:  License tier mismatch (grace period: 30 days remaining)  
+\[2026-06-03 10:00:02\] Action: none; monitoring only  
 \`\`\`
 
 \---
@@ -2083,7 +2083,7 @@ CREATE TABLE used\_promos (
     promo\_hash VARCHAR(50) NOT NULL UNIQUE,  
     license\_id UUID REFERENCES licenses(id),  
     redeemed\_at TIMESTAMP DEFAULT NOW()  
-);  
+); 
 \`\`\`
 
 \*\*Prompt Claude to write:\*\* Laravel controller \+ validation \+ migration.

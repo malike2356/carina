@@ -132,7 +132,7 @@ describe('handleDataAccessRequest (SAR)', () => {
       email: 'user@example.com',
     });
 
-    // Should still complete — audit_events is empty due to failure
+    // Should still complete; audit_events is empty due to failure
     expect(result.data.audit_events).toEqual([]);
     expect(result.request_id).toBe('req-003');
   });

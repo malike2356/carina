@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Memory — Carina</title>
+<title>Memory; Carina</title>
 <style>
   :root {
     --bg: #0f1117; --surface: #1a1d27; --border: #2a2d3a;
@@ -84,9 +84,9 @@
     <input type="text" id="editCategory" placeholder="general">
     <label>Priority</label>
     <select id="editPriority">
-      <option value="0">0 — Low</option>
-      <option value="1" selected>1 — Normal</option>
-      <option value="2">2 — High</option>
+      <option value="0">0; Low</option>
+      <option value="1" selected>1; Normal</option>
+      <option value="2">2; High</option>
     </select>
     <label>Content</label>
     <textarea id="editContent" placeholder="What should Carina remember?"></textarea>
@@ -125,8 +125,8 @@ function renderEntries(entries) {
       </div>
       <div class="content">${esc(e.content)}</div>
       <div class="actions">
-        <button onclick="editEntry('${e.id}','${esc(e.category)}','${e.priority}','${esc(e.content).replace(/'/g,"\\'")}')">✎</button>
-        <button class="danger" onclick="deleteEntry('${e.id}')">✕</button>
+        <button onclick="editEntry('${e.id}','${esc(e.category)}','${e.priority}','${esc(e.content).replace(/'/g,"\\'")}')"></button>
+        <button class="danger" onclick="deleteEntry('${e.id}')"></button>
       </div>
     </div>
   `).join('');

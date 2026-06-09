@@ -86,7 +86,7 @@ GET /api/public/trust
     "erc8004_status": "registering",
     "erc8004_label": "Registering on Base Sepolia",
     "erc8126_status": "enterprise",
-    "erc8126_label": "Enterprise tier — Q3 2026"
+    "erc8126_label": "Enterprise tier; Q3 2026"
   },
   "source": "labyrinth-scout"
 }
@@ -104,11 +104,11 @@ GET /api/public/trust
 
 | Score | Tier | Meaning |
 |---|---|---|
-| 0–20 | Low | Minimal concerns |
-| 21–40 | Moderate | Review recommended |
-| 41–60 | Elevated | Caution advised |
-| 61–80 | High | Significant concerns |
-| 81–100 | Critical | Avoid interaction |
+| 0-20 | Low | Minimal concerns |
+| 21-40 | Moderate | Review recommended |
+| 41-60 | Elevated | Caution advised |
+| 61-80 | High | Significant concerns |
+| 81-100 | Critical | Avoid interaction |
 
 The score is computed from Scout DB aggregates: runtime incidents, injection blocks, breaches, warnings, and agent suspension state. See `src/trust/compute-trust-metrics.ts`.
 

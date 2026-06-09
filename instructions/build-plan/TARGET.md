@@ -1,4 +1,4 @@
-# TARGET.md — What We Are Building
+# TARGET.md; What We Are Building
 
 ## The goal
 
@@ -6,9 +6,9 @@ Carina must be the only agent platform that is simultaneously:
 
 1. General-purpose (70+ skills, any industry)
 2. Domain-deep (property-uk vertical, user-extensible packs)
-3. Secure from day one (Scout — prompt injection shield, kill switch, audit, DLP)
+3. Secure from day one (Scout; prompt injection shield, kill switch, audit, DLP)
 4. Offline-capable (local models for routine, cloud for complex)
-5. Open source (MIT — anyone can fork, audit, contribute)
+5. Open source (MIT; anyone can fork, audit, contribute)
 6. Self-improving (writes its own skills, learns from experience)
 7. Channel-agnostic (Telegram, Discord, Slack, SMS, web, API)
 8. Production-ready (cron scheduling, webhooks, background processes, parallel subagents)
@@ -86,6 +86,6 @@ smart-home, social-media, software-development
 
 Above every open-source agent (Hermes, OpenClaw, CrewAI, AutoGPT).
 Above every commercial agent (ChatGPT, Claude, Copilot, Devin).
-Competing with enterprise platforms at $50k+/year — but open source and $79/mo.
+Competing with enterprise platforms at $50k+/year; but open source and $79/mo.
 
 The combination of general-purpose tools + domain depth + security + offline + open source + self-improving does not exist today. Carina creates the category.

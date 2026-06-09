@@ -1,4 +1,4 @@
-# Phase 2.12 — Full Audit Log & Compliance
+# Phase 2.12; Full Audit Log & Compliance
 
 ## Goal
 Build Scout's immutable audit log. Every tool call, model request, security event, and admin action is recorded with full context. Searchable, exportable, and GDPR-compliant. This fulfills "Full Audit Log & Compliance" on both websites.
@@ -7,36 +7,36 @@ Build Scout's immutable audit log. Every tool call, model request, security even
 ```
 packages/scout/src/
   audit/
-    audit-logger.ts             — Audit event writer
-    audit-store.ts              — PostgreSQL audit table with immutability
-    audit-search.ts             — Search API with filters
-    audit-export.ts             — CSV/PDF export
-    audit-retention.ts          — Configurable retention policies
-    audit-schemas.ts            — Event type definitions
+    audit-logger.ts; Audit event writer
+    audit-store.ts; PostgreSQL audit table with immutability
+    audit-search.ts; Search API with filters
+    audit-export.ts; CSV/PDF export
+    audit-retention.ts; Configurable retention policies
+    audit-schemas.ts; Event type definitions
     compliance/
-      gdpr-report.ts            — GDPR compliance report generator
-      data-access-request.ts    — SAR (Subject Access Request) handler
-      data-deletion.ts          — Right to erasure handler
-      retention-policy.ts       — Auto-deletion schedules
+      gdpr-report.ts; GDPR compliance report generator
+      data-access-request.ts; SAR (Subject Access Request) handler
+      data-deletion.ts; Right to erasure handler
+      retention-policy.ts; Auto-deletion schedules
 ```
 
 ## Audit event schema
 ```typescript
 interface AuditEvent {
-  id: string;                    // UUID
-  timestamp: Date;               // When the event occurred
-  tenant_id: string;             // Which tenant
-  user_id?: string;              // Which user (if interactive)
-  event_type: AuditEventType;    // Category
-  action: string;                // What happened
-  resource: string;              // What was affected
-  detail: Record<string, any>;   // Full context
+  id: string; // UUID
+  timestamp: Date; // When the event occurred
+  tenant_id: string; // Which tenant
+  user_id?: string; // Which user (if interactive)
+  event_type: AuditEventType; // Category
+  action: string; // What happened
+  resource: string; // What was affected
+  detail: Record<string, any>; // Full context
   result: 'success' | 'failure' | 'blocked';
   severity: 'info' | 'warning' | 'critical';
-  session_id?: string;           // Link to conversation
-  request_id?: string;           // Link to API request
-  ip_address?: string;           // Source IP
-  user_agent?: string;           // Client info
+  session_id?: string; // Link to conversation
+  request_id?: string; // Link to API request
+  ip_address?: string; // Source IP
+  user_agent?: string; // Client info
 }
 ```
 

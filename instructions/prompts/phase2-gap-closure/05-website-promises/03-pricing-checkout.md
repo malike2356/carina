@@ -1,4 +1,4 @@
-# Phase 2.17 — Pricing + Checkout Flow
+# Phase 2.17; Pricing + Checkout Flow
 
 ## Goal
 Build the checkout flow that makes the pricing on carinaai.uk and labyrinthscout.com functional. Users can select a plan, enter payment details via Stripe, and activate their subscription immediately. This turns pricing pages from marketing into revenue.
@@ -7,25 +7,25 @@ Build the checkout flow that makes the pricing on carinaai.uk and labyrinthscout
 ```
 packages/cloud/web/
   pricing/
-    index.html                  — Pricing page (matches carinaai.uk design)
-    checkout.html               — Stripe Checkout integration
-    success.html                — Post-payment confirmation
+    index.html; Pricing page (matches carinaai.uk design)
+    checkout.html; Stripe Checkout integration
+    success.html; Post-payment confirmation
     css/pricing.css
     
 packages/cloud/src/
   billing/
-    stripe-service.ts           — Stripe API integration
-    subscription-manager.ts     — Plan lifecycle management
-    usage-meter.ts              — Token usage tracking for billing
-    invoice-generator.ts        — Invoice generation
-    billing-api.ts              — REST API for billing operations
+    stripe-service.ts; Stripe API integration
+    subscription-manager.ts; Plan lifecycle management
+    usage-meter.ts; Token usage tracking for billing
+    invoice-generator.ts; Invoice generation
+    billing-api.ts; REST API for billing operations
     webhooks/
-      stripe-webhook.ts         — Stripe webhook handler
+      stripe-webhook.ts; Stripe webhook handler
       
 packages/cloud/src/
   api/
     routes/
-      billing.routes.ts         — Billing API routes
+      billing.routes.ts; Billing API routes
 ```
 
 ## Plans (matching carinaai.uk)
@@ -55,8 +55,8 @@ packages/cloud/src/
 ### Step 1: Select plan
 ```
 User clicks "Get Scout" → redirects to checkout with plan pre-selected
-Plan: Labyrinth Scout Standard — £99/mo
-[ ] Carina Bundle — £79/mo (save 20% when used with Carina)
+Plan: Labyrinth Scout Standard; £99/mo
+[ ] Carina Bundle; £79/mo (save 20% when used with Carina)
 ```
 
 ### Step 2: Create account
@@ -79,7 +79,7 @@ Expiry: [12/28]  CVC: [123]
 ### Step 4: Confirmation
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ ✓ SUBSCRIPTION ACTIVE                                        │
+│  SUBSCRIPTION ACTIVE                                        │
 │                                                               │
 │ Plan: Labyrinth Scout Standard                               │
 │ Price: £99.00/month                                          │
@@ -115,14 +115,14 @@ class StripeService {
 
 ## Billing API
 ```
-GET    /api/billing/subscription       — Current subscription details
-GET    /api/billing/invoices            — Invoice history
-GET    /api/billing/invoices/{id}       — Invoice PDF download
-GET    /api/billing/usage               — Current token usage
-POST   /api/billing/cancel              — Cancel subscription
-POST   /api/billing/reactivate          — Reactivate cancelled subscription
-POST   /api/billing/upgrade             — Upgrade plan
-GET    /api/billing/portal              — Stripe Customer Portal URL
+GET    /api/billing/subscription; Current subscription details
+GET    /api/billing/invoices; Invoice history
+GET    /api/billing/invoices/{id}; Invoice PDF download
+GET    /api/billing/usage; Current token usage
+POST   /api/billing/cancel; Cancel subscription
+POST   /api/billing/reactivate; Reactivate cancelled subscription
+POST   /api/billing/upgrade; Upgrade plan
+GET    /api/billing/portal; Stripe Customer Portal URL
 ```
 
 ## Usage metering

@@ -28,10 +28,10 @@ Full implementation. No stubs.
 
 ```typescript
 export interface ToolPolicy {
-  allowlist: string[];            // tools that run without any gate
-  requireConfirmList: string[];   // tools needing user confirmation before first run
-  blocklist: string[];            // tools never allowed under any circumstance
-  dangerousCommands: RegExp[];    // patterns matched against shell command strings
+  allowlist: string[]; // tools that run without any gate
+  requireConfirmList: string[]; // tools needing user confirmation before first run
+  blocklist: string[]; // tools never allowed under any circumstance
+  dangerousCommands: RegExp[]; // patterns matched against shell command strings
   rateLimit: {
     callsPerMinute: number;
     callsPerHour: number;
@@ -39,8 +39,8 @@ export interface ToolPolicy {
 }
 
 export interface EnforceParams {
-  command?: string;       // for shell-exec tool
-  _confirmed?: boolean;   // true if user has already confirmed this call
+  command?: string; // for shell-exec tool
+  _confirmed?: boolean; // true if user has already confirmed this call
   [key: string]: unknown;
 }
 ```
@@ -201,7 +201,7 @@ export class ToolPolicyEnforcer {
     // Use a pipeline so both INCR+EXPIRE operations are atomic per key.
     const pipeline = this.redis.pipeline();
     pipeline.incr(minuteKey);
-    pipeline.expire(minuteKey, 60, 'NX');   // set TTL only if key is new
+    pipeline.expire(minuteKey, 60, 'NX'); // set TTL only if key is new
     pipeline.incr(hourKey);
     pipeline.expire(hourKey, 3600, 'NX');
     const results = await pipeline.exec();
@@ -268,7 +268,7 @@ Import the enforcer. Construct one instance at module level (singleton pattern, 
 ```typescript
 import Redis from 'ioredis';
 import { ToolPolicyEnforcer, ToolBlockedError, DangerousCommandError, RateLimitError, ConfirmationRequiredError } from '../../labyrinthscout/src/security/tool-policy.js';
-import { scoutReportFn } from '../security/scout-reporter.js';  // from prompt 03
+import { scoutReportFn } from '../security/scout-reporter.js'; // from prompt 03
 
 const enforcer = process.env.LABYRINTH_ENABLED === 'true'
   ? new ToolPolicyEnforcer(sharedRedis, scoutReportFn)
@@ -294,7 +294,7 @@ if (enforcer) {
       // Return as a tool result so the LLM can relay it to the user.
       return { error: err.message, code: err.code };
     }
-    throw err;  // unexpected error, re-throw
+    throw err; // unexpected error, re-throw
   }
 }
 // Proceed with normal tool execution.

@@ -1,4 +1,4 @@
-# ROADMAP.md — Carina Build Plan
+# ROADMAP.md; Carina Build Plan
 
 5 phases. Each ships something working. Build incrementally.
 
@@ -92,33 +92,33 @@ A property investor can:
 
 Implement these tools (use TOOLS.md for full specs):
 
-- terminal — Full shell execution (foreground, background, PTY modes)
-- process — Background process orchestration
-- read_file — Line-numbered file reading with pagination
-- write_file — File writing with auto-syntax-check
-- patch — Targeted find-and-replace with fuzzy matching
-- search_files — Ripgrep-backed content and file search
-- execute_code — Python scripts that can call other tools
+- terminal; Full shell execution (foreground, background, PTY modes)
+- process; Background process orchestration
+- read_file; Line-numbered file reading with pagination
+- write_file; File writing with auto-syntax-check
+- patch; Targeted find-and-replace with fuzzy matching
+- search_files; Ripgrep-backed content and file search
+- execute_code; Python scripts that can call other tools
 
 ### Week 8-9: Browser automation
 
-- browser_navigate — Load any URL
-- browser_click — Click elements by ref ID
-- browser_type — Type into form fields
-- browser_press — Keyboard shortcuts
-- browser_scroll — Page scrolling
-- browser_snapshot — Accessibility tree snapshot
-- browser_console — JavaScript execution and error reading
-- browser_back — Navigation history
-- browser_get_images — Extract all page images
+- browser_navigate; Load any URL
+- browser_click; Click elements by ref ID
+- browser_type; Type into form fields
+- browser_press; Keyboard shortcuts
+- browser_scroll; Page scrolling
+- browser_snapshot; Accessibility tree snapshot
+- browser_console; JavaScript execution and error reading
+- browser_back; Navigation history
+- browser_get_images; Extract all page images
 
 ### Week 10: Subagents + cron
 
-- delegate_task — Spawn up to 3 parallel subagents
+- delegate_task; Spawn up to 3 parallel subagents
   - Isolated contexts, separate terminal sessions
   - Configurable toolsets per subagent
   - Status reporting and result collection
-- cronjob — Scheduled task system
+- cronjob; Scheduled task system
   - Cron syntax scheduling
   - Background scripts (Python + bash)
   - Multi-channel delivery (Telegram, Discord, email)
@@ -126,11 +126,11 @@ Implement these tools (use TOOLS.md for full specs):
 
 ### Week 11: Memory upgrade
 
-- session_search — Full-text search across all past sessions
+- session_search; Full-text search across all past sessions
   - FTS5 SQLite backend
   - Deduplication by session lineage
   - Scroll and discovery modes
-- memory_consolidation — Auto-compress old memory entries
+- memory_consolidation; Auto-compress old memory entries
   - Remove stale data
   - Merge related entries
   - Keep within size limits
@@ -228,20 +228,20 @@ Port OpenClaw workspace features:
 - AGENTS.md auto-loading from current working directory
   - Carina checks for AGENTS.md in cwd on session start
   - Loads it as system context before first prompt
-- SOUL.md — Agent personality definition
+- SOUL.md; Agent personality definition
   - Loaded at session start
   - Defines tone, style, constraints
-- IDENTITY.md — Agent identity and role
-- USER.md — User preferences and profile
-- TOOLS.md — Tool-specific configuration and notes
-- BOOTSTRAP.md — First-run self-configuration
+- IDENTITY.md; Agent identity and role
+- USER.md; User preferences and profile
+- TOOLS.md; Tool-specific configuration and notes
+- BOOTSTRAP.md; First-run self-configuration
   - Carina reads this on first run in a new workspace
   - Self-configures based on instructions
   - Deletes BOOTSTRAP.md after successful bootstrap
 - Daily memory files (memory/YYYY-MM-DD.md)
   - Raw logs of what happened each day
   - Created automatically at end of session
-- MEMORY.md — Curated long-term memory
+- MEMORY.md; Curated long-term memory
   - Agent reviews daily files and updates MEMORY.md
   - Contains distilled learnings, not raw logs
 
@@ -379,6 +379,6 @@ Total: 28 weeks. Ship every 4-6 weeks.
 
 ## What can run in parallel
 
-- Phase 2 (tools) + Phase 3 (skills) can overlap — different code areas
+- Phase 2 (tools) + Phase 3 (skills) can overlap; different code areas
 - Phase 4 (workspace) can start during Phase 3
 - Scout improvements can run alongside any phase

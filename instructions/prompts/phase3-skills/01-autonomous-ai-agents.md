@@ -1,4 +1,4 @@
-# Phase 3.1 — Autonomous AI Agents Skills
+# Phase 3.1; Autonomous AI Agents Skills
 
 ## Task
 Port the autonomous AI agent delegation skills. These enable Carina to delegate coding tasks to external AI coding agents (Claude Code, OpenAI Codex, OpenCode) and manage multi-agent workflows.

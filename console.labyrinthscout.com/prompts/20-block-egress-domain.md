@@ -332,7 +332,7 @@ Add a "BLOCKLIST" button to the instances bar alongside the existing kill/resume
 ```javascript
 // Inside renderInstances(), for each instance chip:
 const egressBtn = document.createElement('button');
-egressBtn.className = 'btn-quarantine-toggle';  // reuse purple style
+egressBtn.className = 'btn-quarantine-toggle'; // reuse purple style
 egressBtn.textContent = 'EGRESS';
 egressBtn.title = 'View and manage egress domain blocklist';
 egressBtn.onclick = () => void openEgressModal(inst.id);

@@ -14,7 +14,7 @@ Signature:   carina:verify
 Description: Verify all Carina services, DB tables, Redis, pgvector, and AI providers
 
 handle():
-  Run each check below in sequence. Output ✅ or ❌ per check.
+  Run each check below in sequence. Output Done:  or Failed:  per check.
   Exit code 0 if all pass. Exit code 1 if any fail.
 
 CHECKS (implement each as a private method):
@@ -24,13 +24,13 @@ CHECKS (implement each as a private method):
      carina_system_prompts, carina_rate_limits,
      rag_documents, rag_chunks, rag_sources
    - Verify required columns exist on each table
-   - Output: ✅ Database tables: all 7 present | ❌ Database tables: missing [name]
+   - Output: Done:  Database tables: all 7 present | Failed:  Database tables: missing [name]
 
 2. checkPgVector(): bool
    - Run: SELECT * FROM pg_extension WHERE extname = 'vector'
-   - If extension missing: ❌ pgvector: extension not installed
+   - If extension missing: Failed:  pgvector: extension not installed
    - Verify rag_chunks.embedding column exists and is type vector(1536)
-   - Output: ✅ pgvector: extension loaded, vector(1536) confirmed
+   - Output: Done:  pgvector: extension loaded, vector(1536) confirmed
    - Note: dimension is 1536 for OpenAI text-embedding-3-small.
      If provider changes, update migration and re-run this check.
 
@@ -39,12 +39,12 @@ CHECKS (implement each as a private method):
    - Attempt Cache::store('redis')->get('carina_verify_test')
    - Verify tag-based cache: Cache::tags(['carina-test'])->put('tag_test', 'ok', 10)
    - Clean up test keys after check
-   - Output: ✅ Redis: connection OK, tag cache working | ❌ Redis: [error message]
+   - Output: Done:  Redis: connection OK, tag cache working | Failed:  Redis: [error message]
 
 4. checkAiProviders(): bool
    - Load all configured providers from BYOK / provider registry
    - For each active provider: send minimal test request (e.g. 1-token completion)
-   - Output per provider: ✅ OpenAI: responding (200) | ❌ DeepSeek: timeout
+   - Output per provider: Done:  OpenAI: responding (200) | Failed:  DeepSeek: timeout
    - Do not throw on failure; collect and report all
 
 5. checkRagPipeline(): bool
@@ -53,32 +53,32 @@ CHECKS (implement each as a private method):
    - Insert test chunk into rag_chunks with a known test document_id
    - Run similarity search and verify the test chunk is returned
    - Delete test chunk after verification
-   - Output: ✅ RAG pipeline: embed + search working | ❌ RAG pipeline: [error]
+   - Output: Done:  RAG pipeline: embed + search working | Failed:  RAG pipeline: [error]
 
 6. checkMasterbrainFolders(): bool
    - Verify all required folders exist under brain/masterbrain/:
      accounting, algorithms, Carina_RAG, contacts, deals,
      document_vault, genius, genius/brains, investor, leads,
      legal, marketing, process_and_workflow, sales, verification
-   - Output: ✅ Masterbrain: all 15 folders present | ❌ Masterbrain: missing [folder]
+   - Output: Done:  Masterbrain: all 15 folders present | Failed:  Masterbrain: missing [folder]
 
 7. checkEthicsLog(): bool
    - Verify brain/masterbrain/legal/ethics-flags.log exists
    - Verify file is writable (attempt test append, then remove test line)
-   - Output: ✅ Ethics log: exists and writable | ❌ Ethics log: [error]
+   - Output: Done:  Ethics log: exists and writable | Failed:  Ethics log: [error]
 
 8. checkIncognitoFlag(): bool
    - Set session(['carina.incognito' => true])
    - Assert session('carina.incognito', false) === true
    - Set session(['carina.incognito' => false])
    - Assert session('carina.incognito', false) === false
-   - Output: ✅ Incognito flag: session toggle working | ❌ Incognito flag: [error]
+   - Output: Done:  Incognito flag: session toggle working | Failed:  Incognito flag: [error]
 
 9. checkDefaultSystemPrompt(): bool
    - Query carina_system_prompts where is_default = true
    - Verify at least one record exists
    - Verify content is not empty
-   - Output: ✅ System prompt: default prompt seeded | ❌ System prompt: no default found
+   - Output: Done:  System prompt: default prompt seeded | Failed:  System prompt: no default found
 
 10. checkBrainModifiers(): bool
     - Verify all 14 brain modifier files exist in brain/masterbrain/genius/brains/:
@@ -87,30 +87,30 @@ CHECKS (implement each as a private method):
       legal-brain.md, sales-brain.md, accountant-brain.md,
       marketing-brain.md, image-brain.md, document-store-brain.md,
       coaching-brain.md, web-search-brain.md
-    - Output: ✅ Brain modifiers: all 14 present | ❌ Brain modifiers: missing [filename]
+    - Output: Done:  Brain modifiers: all 14 present | Failed:  Brain modifiers: missing [filename]
 
 FINAL SUMMARY OUTPUT:
   ─────────────────────────────────────
   CARINA VERIFY - RESULTS
   ─────────────────────────────────────
-  ✅ Database tables
-  ✅ pgvector
-  ✅ Redis + tag cache
-  ✅ AI providers (2/2)
-  ✅ RAG pipeline
-  ✅ Masterbrain folders
-  ✅ Ethics log
-  ✅ Incognito flag
-  ✅ Default system prompt
-  ✅ Brain modifier files
+  Done:  Database tables
+  Done:  pgvector
+  Done:  Redis + tag cache
+  Done:  AI providers (2/2)
+  Done:  RAG pipeline
+  Done:  Masterbrain folders
+  Done:  Ethics log
+  Done:  Incognito flag
+  Done:  Default system prompt
+  Done:  Brain modifier files
   ─────────────────────────────────────
   Result: ALL CHECKS PASSED - Carina 2.0 is operational
   ─────────────────────────────────────
 
   OR on failure:
 
-  ❌ pgvector
-  ❌ RAG pipeline
+  Failed:  pgvector
+  Failed:  RAG pipeline
   ─────────────────────────────────────
   Result: 2 CHECKS FAILED - see errors above
   Exit code: 1
@@ -413,7 +413,7 @@ CONDITION: [estimated condition, refurb requirement, risk flag]
 LEGAL: [title, planning, tenure, licensing; flags only]
 EXIT STRATEGY: [primary and fallback exit with realistic timelines]
 DOWNSIDE: [worst case scenario and its probability]
-VERDICT: YEET ✅ / NEE ❌
+VERDICT: YEET Done:  / NEE Failed: 
 REASON: [One sentence; the deciding factor]
 
 ## RESTRICTIONS

@@ -1,4 +1,4 @@
-# Phase 5.4 — Domain Knowledge + Caching + Event-Driven Alerting + Tool Marketplace
+# Phase 5.4; Domain Knowledge + Caching + Event-Driven Alerting + Tool Marketplace
 
 ## Domain Knowledge Injection
 
@@ -136,12 +136,12 @@ POST /api/v1/tools/install  - Install tool to workspace
 +--------------------------------------------------+
 | Popular | New | Property | Security | Development |
 +--------------------------------------------------+
-| rightmove-scraper          v1.2.0    ★★★★☆ (47)  |
+| rightmove-scraper          v1.2.0     (47)  |
 | Scrape Rightmove listings matching criteria.      |
 | By @laud | Property | Installed 234 times          |
 | [Install]                                         |
 +--------------------------------------------------+
-| hmo-compliance-checker     v2.0.1    ★★★★★ (89)  |
+| hmo-compliance-checker     v2.0.1     (89)  |
 | Check HMO compliance by postcode and room sizes.   |
 | By @laud | Property | Installed 567 times          |
 | [Install]                                         |

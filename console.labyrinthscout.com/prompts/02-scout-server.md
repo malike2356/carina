@@ -340,7 +340,7 @@ export function initRedis(): Promise<void> {
       .catch(() => {
         console.warn('[scout:redis] Redis unavailable; kill switch and SSE fan-out degraded');
         r.disconnect();
-        resolve();   // resolve (not reject) so server still starts
+        resolve(); // resolve (not reject) so server still starts
       });
   });
 }
@@ -654,7 +654,7 @@ app.use('/api/events', requireApiKey, eventsRouter);
 app.use('/api/heartbeat', requireApiKey, heartbeatRouter);
 app.use('/api/status', requireApiKey, statusRouter);
 app.use('/api/kill', requireApiKey, killRouter);
-app.use('/api/stream', sseRouter);  // no auth - local network
+app.use('/api/stream', sseRouter); // no auth - local network
 
 // Global error handler (must be last middleware)
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

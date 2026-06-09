@@ -1,4 +1,4 @@
-# Phase 3.6 — Domain Pack System + Tool Registration
+# Phase 3.6; Domain Pack System + Tool Registration
 
 ## Task
 Build the domain pack architecture and tool registration API. This is what makes Carina extensible by users without code changes to Carina Core.

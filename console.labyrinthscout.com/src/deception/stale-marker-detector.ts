@@ -19,7 +19,7 @@ export function checkIncomingMessage(
   const current = mt.getCurrentMarker().value;
   const previous = mt.getPreviousMarkers();
 
-  // Current marker in user input is not an attack — it may appear in agent output
+  // Current marker in user input is not an attack; it may appear in agent output
   if (message.includes(current)) {
     return { detected: false };
   }

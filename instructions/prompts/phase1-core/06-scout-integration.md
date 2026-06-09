@@ -1,4 +1,4 @@
-# Phase 1.6 — Scout Security Integration
+# Phase 1.6; Scout Security Integration
 
 ## Task
 Integrate Labyrinth Scout security layer into the Carina agentic loop. Scout provides enterprise-grade security: prompt injection protection, kill switch, audit logging, and real-time monitoring.

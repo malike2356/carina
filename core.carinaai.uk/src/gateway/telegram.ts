@@ -127,7 +127,7 @@ export async function startTelegram(): Promise<void> {
     await bot.sendChatAction(chatId, speakRequested ? 'record_voice' : 'typing');
     if (isGroup && adapter.parseInbound(msg)?.isMention) {
       await bot.setMessageReaction(chatId, msg.message_id, {
-        reaction: [{ type: 'emoji', emoji: '👀' }],
+        reaction: [{ type: 'emoji', emoji: '' }],
       }).catch(() => undefined);
     }
 

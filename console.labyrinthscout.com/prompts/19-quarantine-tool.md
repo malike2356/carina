@@ -409,7 +409,7 @@ async function quarantineTool(tool, instanceId, btn) {
 }
 
 async function refreshQuarantinePanel(instanceId) {
-  const redis = getRedis();  // This runs in the dashboard JS context.
+  const redis = getRedis(); // This runs in the dashboard JS context.
   // Poll the GET endpoint.
   try {
     const r = await fetch(

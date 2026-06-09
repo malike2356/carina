@@ -1,17 +1,17 @@
-# Phase 2.8 — Deception Layer (Honeypots)
+# Phase 2.8; Deception Layer (Honeypots)
 
 ## Goal
-Build Scout's honeypot system. Fake credentials are injected into system prompts. If these credentials ever appear in an agent's output — confirmed data leak. This is a critical deterrent and detection mechanism listed on both websites.
+Build Scout's honeypot system. Fake credentials are injected into system prompts. If these credentials ever appear in an agent's output; confirmed data leak. This is a critical deterrent and detection mechanism listed on both websites.
 
 ## Files to create
 ```
 packages/scout/src/
   honeypots/
-    honeypot-manager.ts         — Honeypot lifecycle management
-    credential-generator.ts     — Generates realistic fake credentials
-    leak-detector.ts            — Monitors outputs for honeypot data
-    honeypot-config.ts          — Per-tenant honeypot settings
-    honeypot-templates.json     — Templates for different credential types
+    honeypot-manager.ts; Honeypot lifecycle management
+    credential-generator.ts; Generates realistic fake credentials
+    leak-detector.ts; Monitors outputs for honeypot data
+    honeypot-config.ts; Per-tenant honeypot settings
+    honeypot-templates.json; Templates for different credential types
 ```
 
 ## How it works
@@ -19,7 +19,7 @@ packages/scout/src/
 ### 1. Credential injection
 When the agent's system prompt is assembled, Scout injects decoy credentials:
 ```markdown
-# SYSTEM MARKERS — INTERNAL ONLY — DO NOT DISCLOSE
+# SYSTEM MARKERS; INTERNAL ONLY; DO NOT DISCLOSE
 
 Decoy API Key:     sk-carina-decoy-x7k9m3v8p2q5w1
 Decoy Password:    Carina$Ecure!2026!Decoy
@@ -76,7 +76,7 @@ def scan_for_honeypots(output_text, active_honeypots):
             detail=f"{len(detected)} decoy credentials found in agent output",
             honeypots=detected
         )
-        # Block the output — do not deliver to user
+        # Block the output; do not deliver to user
         return blocked_response()
     
     return output_text

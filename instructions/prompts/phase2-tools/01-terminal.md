@@ -1,4 +1,4 @@
-# Phase 2.1 — Terminal Tool
+# Phase 2.1; Terminal Tool
 
 ## Task
 Implement the `terminal` tool. This tool gives Carina the ability to execute shell commands on the host system with foreground, background, and interactive PTY modes.

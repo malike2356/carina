@@ -1,4 +1,4 @@
-# Phase 1.5 — Floor Plan Analysis Verification
+# Phase 1.5; Floor Plan Analysis Verification
 
 ## Task
 Verify and fix the floor plan analysis feature. Adam uploads a floor plan image. Carina reads dimensions via vision AI, generates a Bill of Quantities, and flags HMO compliance issues.

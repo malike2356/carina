@@ -17,7 +17,7 @@
     | Support | GitHub issues, docs             | Email, chat, dedicated support          |
     | Revenue | $0                              | Monthly subscriptions                   |
     
-    The CLI is your open-source funnel. The SaaS is your business. Same agent, same tools, same skills — different packaging. This is exactly what GitHub did with Git (open source CLI) vs GitHub.com (SaaS platform). The CLI drives adoption. The SaaS drives revenue.
+    The CLI is your open-source funnel. The SaaS is your business. Same agent, same tools, same skills; different packaging. This is exactly what GitHub did with Git (open source CLI) vs GitHub.com (SaaS platform). The CLI drives adoption. The SaaS drives revenue.
     
     The architecture for both:
     
@@ -40,34 +40,34 @@
     └──────────────────────┴──────────────────────┘
     
     
-    The multi-tenancy conversion — phased approach:
+    The multi-tenancy conversion; phased approach:
     
-    Phase 1 — Database (week 1-2):
+    Phase 1; Database (week 1-2):
     - Add tenant_id to every table. Postgres Row-Level Security.
     - Every query gets WHERE tenant_id = current_setting('app.tenant_id')
     - Migrate existing single-tenant data into a default tenant
     
-    Phase 2 — Auth + Billing (week 3-4):
+    Phase 2; Auth + Billing (week 3-4):
     - Registration, login, email verification, password reset
     - Stripe Billing: usage-based (tokens consumed) + tiered plans
     - Free tier: 10,000 tokens/month, 1 workspace, community support
     - Pro tier: 500,000 tokens/month, 5 workspaces, email support, Scout Basic
     - Enterprise: custom, dedicated instance, Scout Advanced, SLA
     
-    Phase 3 — Session externalization (week 5-6):
+    Phase 3; Session externalization (week 5-6):
     - This is Claude's "riskiest piece" and he's right
     - Move agent state from in-memory Map to Redis
     - Any server instance can pick up any user's session
     - This is what lets you scale horizontally
     
-    Phase 4 — Web UI (week 7-10):
+    Phase 4; Web UI (week 7-10):
     - Chat interface like ChatGPT/Claude
     - Workspace switcher
     - Tool execution viewer
     - Billing dashboard
     - Admin panel
     
-    Phase 5 — CLI compatibility (ongoing):
+    Phase 5; CLI compatibility (ongoing):
     - The CLI is just an API client with local execution mode
     - carina chat → hits the cloud API if logged in, runs locally if not
     - carina serve → runs the full stack locally for self-hosted users
@@ -78,13 +78,13 @@
     Steal from everyone who does this well:
     
     
-    Free:    £0/mo    — 10K tokens, 1 workspace, community support
-    Pro:     £29/mo   — 500K tokens, 5 workspaces, email support, Scout Basic
-    Teams:   £99/mo   — 2M tokens, 20 workspaces, priority support, Scout Pro
-    Enterprise: custom — dedicated, SLA, Scout Enterprise, custom models
+    Free:    £0/mo; 10K tokens, 1 workspace, community support
+    Pro:     £29/mo; 500K tokens, 5 workspaces, email support, Scout Basic
+    Teams:   £99/mo; 2M tokens, 20 workspaces, priority support, Scout Pro
+    Enterprise: custom; dedicated, SLA, Scout Enterprise, custom models
     
     
-    Plus usage overage at cost + 30% margin. Scout is a separate upsell. The Scout comparison table on your website already prices it at £79-99/mo — that's on top of the agent subscription.
+    Plus usage overage at cost + 30% margin. Scout is a separate upsell. The Scout comparison table on your website already prices it at £79-99/mo; that's on top of the agent subscription.
     
     Honest competitive positioning:
     
@@ -97,7 +97,7 @@
     | Multi-channel     | Telegram, Discord, Slack, SMS | Web, app | Web, app | Editor only |
     | Brand recognition | None                          | Dominant | Strong   | Strong      |
     
-    Your advantage isn't features — it's three things nobody else offers: open-source CLI, domain packs, and Scout security. Lean into those. Don't compete on "we're another AI chat." Compete on "we're the AI agent you can run anywhere, customize for your industry, and secure like enterprise software."
+    Your advantage isn't features; it's three things nobody else offers: open-source CLI, domain packs, and Scout security. Lean into those. Don't compete on "we're another AI chat." Compete on "we're the AI agent you can run anywhere, customize for your industry, and secure like enterprise software."
     
     What to build first:
     
@@ -105,7 +105,7 @@
     
     1. Carina CLI that works identically to Carina Cloud. Ship this first. Prove the engine. Open-source community grows around the CLI. SaaS users come from the CLI funnel.
     
-    2. Scout security integrated into the cloud product. This is what enterprises will pay for. Not another chatbot — a secure agent platform.
+    2. Scout security integrated into the cloud product. This is what enterprises will pay for. Not another chatbot; a secure agent platform.
     
     3. Domain pack marketplace. Property-UK ships as the proof. Let others build packs for law, medicine, education. Take 20% of marketplace revenue.
     

@@ -1,7 +1,7 @@
-# Phase 2.2 — Process Tool
+# Phase 2.2; Process Tool
 
 ## Task
-Implement the `process` tool. This tool manages background processes started by the terminal tool — polling status, viewing logs, sending stdin, killing processes.
+Implement the `process` tool. This tool manages background processes started by the terminal tool; polling status, viewing logs, sending stdin, killing processes.
 
 ## Specification
 

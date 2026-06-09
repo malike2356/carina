@@ -264,7 +264,7 @@ import { Router } from 'express';
 import { getRedis } from '../redis.js';
 
 const router = Router();
-const clients = new Set<Response>();  // track active SSE connections
+const clients = new Set<Response>(); // track active SSE connections
 
 // Subscribe to Redis 'scout:events' channel and fan out to all SSE clients.
 // On startup, subscribe once and keep the subscription alive.
@@ -273,7 +273,7 @@ router.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');  // disable nginx buffering
+  res.setHeader('X-Accel-Buffering', 'no'); // disable nginx buffering
   res.flushHeaders();
 
   clients.add(res);

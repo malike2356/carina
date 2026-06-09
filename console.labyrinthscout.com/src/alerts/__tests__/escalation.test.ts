@@ -46,7 +46,7 @@ describe('Alert Escalation', () => {
 
     expect(mockDispatch).toHaveBeenCalledTimes(1);
     const dispatched = mockDispatch.mock.calls[0]![0];
-    expect(dispatched.description).toContain('UNACKNOWLEDGED — ESCALATING');
+    expect(dispatched.description).toContain('UNACKNOWLEDGED; ESCALATING');
   });
 
   it('does not fire escalation if acknowledged', async () => {

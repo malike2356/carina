@@ -1,4 +1,4 @@
-# Action Prompts — Write Cursor-Ready Build Prompts Here
+# Action Prompts; Write Cursor-Ready Build Prompts Here
 
 ## Your job
 
@@ -50,7 +50,7 @@ Every action prompt must contain:
 - Reference CARINA_BUILD.md and AGENTS.md from the parent directory for project conventions.
 - PHP files must have `declare(strict_types=1)`. Laravel 12. PHP 8.2+.
 - Every file must pass `php -l` before being considered done.
-- Write each prompt as if Cursor will execute it independently — no context from other prompts.
+- Write each prompt as if Cursor will execute it independently; no context from other prompts.
 
 ## Process
 

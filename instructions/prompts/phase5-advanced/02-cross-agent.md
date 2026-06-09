@@ -1,4 +1,4 @@
-# Phase 5.2 — Cross-Agent Collaboration
+# Phase 5.2; Cross-Agent Collaboration
 
 ## Task
 Implement cross-agent collaboration. Carina, Hermes, and OpenClaw share knowledge, hand off tasks, and operate as a team rather than isolated agents.

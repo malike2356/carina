@@ -2,7 +2,7 @@
 
 **Working directory:** `/opt/lampp/htdocs/VERLOX/Carina-ai/ops.carinaai.uk/`
 **Depends on:** Labyrinth Scout server running at `SCOUT_URL` (default `http://localhost:4444`)
-**Purpose:** Add a Security tab to the VERLOX platform admin that proxies Labyrinth Scout's live event stream, stat cards, instance status, and kill switch — all inside the existing admin layout behind the existing single admin password. You never visit `localhost:4444` directly.
+**Purpose:** Add a Security tab to the VERLOX platform admin that proxies Labyrinth Scout's live event stream, stat cards, instance status, and kill switch; all inside the existing admin layout behind the existing single admin password. You never visit `localhost:4444` directly.
 
 ---
 
@@ -128,7 +128,7 @@ Security tab view. Renders inside the existing `layout.ejs` shell (no standalone
 Row 1 - Stat cards (3 columns):
 ```
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│ 🔴 CRITICAL     │  │ 🟡 WARNING      │  │ 🔵 INFO         │
+│  CRITICAL     │  │  WARNING      │  │  INFO         │
 │     2           │  │     7           │  │    143          │
 │  Last 24h       │  │  Last 24h       │  │  Last 24h       │
 └─────────────────┘  └─────────────────┘  └─────────────────┘

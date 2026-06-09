@@ -1,4 +1,4 @@
-# Phase 2.1 — Carina CLI Packaging (npm install)
+# Phase 2.1; Carina CLI Packaging (npm install)
 
 ## Goal
 Build the standalone Carina CLI that installs via `npm install -g carina`. The CLI wraps the agent engine and provides `carina chat`, `carina serve`, and `carina config` commands. This is the foundation for every "runs locally" and "npm install" claim on carinaai.uk.
@@ -6,29 +6,29 @@ Build the standalone Carina CLI that installs via `npm install -g carina`. The C
 ## Files to create
 ```
 packages/cli/
-  package.json              — npm package manifest (name: "carina", bin: { carina: "./dist/index.js" })
+  package.json; npm package manifest (name: "carina", bin: { carina: "./dist/index.js" })
   src/
-    index.ts                — CLI entry point, command routing
+    index.ts; CLI entry point, command routing
     commands/
-      chat.ts               — carina chat (start interactive agent session)
-      serve.ts              — carina serve (start local API server)
-      config.ts             — carina config (set/get config values)
-      setup.ts              — carina setup (guided first-time setup wizard)
-      version.ts            — carina --version
+      chat.ts; carina chat (start interactive agent session)
+      serve.ts; carina serve (start local API server)
+      config.ts; carina config (set/get config values)
+      setup.ts; carina setup (guided first-time setup wizard)
+      version.ts; carina --version
     config/
-      loader.ts             — Reads carina.yaml from ~/.carina/config.yaml
-      defaults.ts           — Default configuration values
-      env.ts                — .env file loader for API keys
+      loader.ts; Reads carina.yaml from ~/.carina/config.yaml
+      defaults.ts; Default configuration values
+      env.ts; .env file loader for API keys
     local/
-      db.ts                 — SQLite database (same schema as Postgres, different driver)
-      session.ts            — Local session manager (file-based, no Redis needed)
+      db.ts; SQLite database (same schema as Postgres, different driver)
+      session.ts; Local session manager (file-based, no Redis needed)
     output/
-      formatter.ts          — Terminal output formatting (colors, tables, progress)
-      streaming.ts          — Streaming response display
+      formatter.ts; Terminal output formatting (colors, tables, progress)
+      streaming.ts; Streaming response display
   templates/
-    config.default.yaml     — Default config shipped with the package
-    .env.example            — Example environment file
-  README.md                 — Installation and usage docs
+    config.default.yaml; Default config shipped with the package
+    .env.example; Example environment file
+  README.md; Installation and usage docs
 ```
 
 ## What each command does
@@ -96,7 +96,7 @@ Setup complete! Run 'carina chat' to start.
 {
   "name": "carina",
   "version": "1.0.0",
-  "description": "Autonomous AI agent — runs locally, remembers everything, gets smarter every session",
+  "description": "Autonomous AI agent; runs locally, remembers everything, gets smarter every session",
   "bin": {
     "carina": "./dist/index.js"
   },
@@ -114,7 +114,7 @@ Setup complete! Run 'carina chat' to start.
 - The CLI is a thin wrapper over `@carina/engine`
 - It imports the engine, injects local config, and starts the agent
 - SQLite for single-user mode (same schema as Postgres for cloud)
-- No npm registry publish yet — local `npm link` for development
+- No npm registry publish yet; local `npm link` for development
 - README must include: install, setup, chat, serve, config commands with examples
 
 ## Verification

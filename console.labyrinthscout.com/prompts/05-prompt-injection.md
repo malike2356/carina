@@ -48,17 +48,17 @@ This is the primary deliverable. Full implementation below.
 ```typescript
 export interface InjectionResult {
   isMalicious: boolean;
-  confidence: number;   // 0-100. 0 = clean, 100 = certain attack
+  confidence: number; // 0-100. 0 = clean, 100 = certain attack
   layer: 1 | 2 | 3;
-  patterns: string[];   // human-readable description of what matched
-  sanitized?: string;   // cleaned text if isMalicious, else undefined
+  patterns: string[]; // human-readable description of what matched
+  sanitized?: string; // cleaned text if isMalicious, else undefined
 }
 
 export interface PromptGuardConfig {
-  llmRouterUrl: string;   // e.g. 'http://localhost:3000' - Carina's internal LLM router
-  llmModel: string;       // e.g. 'deepseek/deepseek-chat' - cheapest available
-  llmTimeoutMs: number;   // default 3000
-  reportFn: (event: SecurityEvent) => Promise<void>;  // calls Scout's /api/events
+  llmRouterUrl: string; // e.g. 'http://localhost:3000' - Carina's internal LLM router
+  llmModel: string; // e.g. 'deepseek/deepseek-chat' - cheapest available
+  llmTimeoutMs: number; // default 3000
+  reportFn: (event: SecurityEvent) => Promise<void>; // calls Scout's /api/events
 }
 
 export interface SecurityEvent {
@@ -101,7 +101,7 @@ const TOOL_RESULT_PATTERNS: Array<{ re: RegExp; label: string }> = [
   // All Layer 1 patterns apply here too. Plus:
   { re: /<!--.*?(ignore|override|system|instructions|prompt).*?-->/is,
     label: 'hidden-html-comment-injection' },
-  { re: /[​-‍﻿⁠­]/,
+  { re: /[​-﻿⁠­]/,
     label: 'zero-width-character' },
   { re: /https?:\/\/[^\s"']+\s*->\s*https?:\/\//i,
     label: 'url-redirect-chain' },
@@ -312,7 +312,7 @@ function getGuard(): PromptGuard | null {
 
 export async function scanUserInput(text: string): Promise<string> {
   const g = getGuard();
-  if (!g) return text;  // LABYRINTH_ENABLED=false, no-op
+  if (!g) return text; // LABYRINTH_ENABLED=false, no-op
   const result = await g.scanInput(text);
   return result.isMalicious ? (result.sanitized ?? text) : text;
 }

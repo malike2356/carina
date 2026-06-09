@@ -1,4 +1,4 @@
-# WORKFLOW.md — How Claude, Cursor, and Hermes Work Together
+# WORKFLOW.md; How Claude, Cursor, and Hermes Work Together
 
 ## The workflow
 
@@ -12,7 +12,7 @@ You (Laud) are the conductor. You move work between them. The repo is the handof
 
 ## Roles
 
-### Claude — Architect + Reviewer
+### Claude; Architect + Reviewer
 
 What Claude does:
 - Reads ROADMAP.md and TARGET.md to understand the plan
@@ -34,7 +34,7 @@ What Claude does NOT do:
 - Run terminal commands (that's Hermes's job)
 - Deploy or test (that's Hermes's job)
 
-### Cursor — Builder
+### Cursor; Builder
 
 What Cursor does:
 - Takes Claude's prompts and writes the code
@@ -47,7 +47,7 @@ What Cursor does NOT do:
 - Test against real servers (that's Hermes's job)
 - Make decisions about what to build next (ROADMAP.md decides)
 
-### Hermes — Tester + Deployer
+### Hermes; Tester + Deployer
 
 What Hermes does:
 - Pulls Cursor's commits
@@ -101,7 +101,7 @@ Deployed to staging. Ready for production."
 OR:
 ```
 "Test failed: HandleRentStatement.php line 47.
-Error: Property model not found — missing import.
+Error: Property model not found; missing import.
 Stack trace: [attached].
 Claude, fix the prompt. Cursor needs to add 'use App\Models\Tenant\Property;'"
 ```

@@ -58,9 +58,9 @@ memoryControlRouter.post('/clear-session', async (req: Request, res: Response): 
   const instanceId = typeof body.instance_id === 'string' ? body.instance_id.trim() : '';
   const reason     = typeof body.reason === 'string' ? body.reason.trim() : '';
 
-  if (!sessionId)  { res.status(400).json({ error: 'session_id is required' });  return; }
+  if (!sessionId)  { res.status(400).json({ error: 'session_id is required' }); return; }
   if (!instanceId) { res.status(400).json({ error: 'instance_id is required' }); return; }
-  if (!reason)     { res.status(400).json({ error: 'reason is required' });       return; }
+  if (!reason)     { res.status(400).json({ error: 'reason is required' }); return; }
 
   try {
     // 1. Delete directly from the shared DB (immediate effect even if Redis is slow)

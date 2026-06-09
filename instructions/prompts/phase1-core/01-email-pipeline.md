@@ -1,4 +1,4 @@
-# Phase 1.1 — Email Ingestion Pipeline Verification
+# Phase 1.1; Email Ingestion Pipeline Verification
 
 ## Task
 Verify and fix the email ingestion pipeline in the Propreneur-v2 Carina service. This pipeline fetches emails via IMAP, classifies them using AI, extracts structured data, and dispatches handler jobs.

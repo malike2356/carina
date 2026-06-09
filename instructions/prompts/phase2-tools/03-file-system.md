@@ -1,7 +1,7 @@
-# Phase 2.3 — File System Tools (read_file, write_file, patch, search_files)
+# Phase 2.3; File System Tools (read_file, write_file, patch, search_files)
 
 ## Task
-Implement the four file system tools: read_file, write_file, patch, search_files. These are the foundation tools — used by nearly every other tool and skill.
+Implement the four file system tools: read_file, write_file, patch, search_files. These are the foundation tools; used by nearly every other tool and skill.
 
 ## read_file
 
@@ -19,7 +19,7 @@ Returns:
 Features:
 - Output format: "LINE_NUM|CONTENT" per line
 - Suggests similar filenames if not found (Levenshtein distance)
-- Reads exceeding ~100K characters are rejected — use offset and limit
+- Reads exceeding ~100K characters are rejected; use offset and limit
 - Cannot read images or binary files
 
 Implementation: Use fs.readFileSync with UTF-8 encoding.

@@ -202,11 +202,11 @@ A **Compliance Dispatch Module**:
 
 | Priority | Feature | Effort | Impact |
 |---|---|---|---|
-| 🔴 High | Development deal calculator | Medium | Unlocks developer segment (larger deals, bigger fees) |
-| 🔴 High | Contractor management module | Large | Differentiator -- no competitor does this well |
-| 🟡 Medium | Valuation evidence hub | Small | Quick win -- just a document store per property |
-| 🟡 Medium | Cross-collateral warning on SPV | Small | Policy/UI change, not much code |
-| 🟡 Medium | Compliance dispatch (S21 email) | Medium | Directly addresses a landlord pain point |
-| 🟢 Low | Neighbour engagement tracker | Small | Niche, but good for planning-heavy users |
-| 🟢 Low | Multi-project dev dashboard | Medium | UI enhancement on existing pipeline |
-| 🟢 Low | Workload health check (Carina) | Small | Quality-of-life differentiator |
+|  High | Development deal calculator | Medium | Unlocks developer segment (larger deals, bigger fees) |
+|  High | Contractor management module | Large | Differentiator -- no competitor does this well |
+|  Medium | Valuation evidence hub | Small | Quick win -- just a document store per property |
+|  Medium | Cross-collateral warning on SPV | Small | Policy/UI change, not much code |
+|  Medium | Compliance dispatch (S21 email) | Medium | Directly addresses a landlord pain point |
+|  Low | Neighbour engagement tracker | Small | Niche, but good for planning-heavy users |
+|  Low | Multi-project dev dashboard | Medium | UI enhancement on existing pipeline |
+|  Low | Workload health check (Carina) | Small | Quality-of-life differentiator |

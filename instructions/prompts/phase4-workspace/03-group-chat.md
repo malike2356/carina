@@ -1,4 +1,4 @@
-# Phase 4.3 — Group Chat Intelligence + Multi-platform Formatting
+# Phase 4.3; Group Chat Intelligence + Multi-platform Formatting
 
 ## Task
 Implement group chat awareness. Carina knows when to speak vs stay silent in group conversations, adapts formatting per platform, and uses emoji reactions appropriately.
@@ -26,9 +26,9 @@ One thoughtful response beats three fragments.
 ## Platform formatting
 
 ### Discord / WhatsApp
-- No markdown tables — use bullet lists
+- No markdown tables; use bullet lists
 - Discord links: wrap in <> to suppress embeds
-- WhatsApp: no headers — use bold or CAPS for emphasis
+- WhatsApp: no headers; use bold or CAPS for emphasis
 
 ### General
 - Adapt message length to platform norms

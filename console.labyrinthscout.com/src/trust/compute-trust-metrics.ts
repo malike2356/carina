@@ -120,7 +120,7 @@ const CHAIN_LABELS: Record<ChainStatus, string> = {
   live: 'Live on Base',
   registering: 'Registering on Base Sepolia',
   planned: 'Planned',
-  enterprise: 'Enterprise tier — Q3 2026',
+  enterprise: 'Enterprise tier; Q3 2026',
 };
 
 export function computeRiskScore(input: TrustMetricsInput): number {

@@ -78,14 +78,14 @@ Forget a single CSS grid for the whole dashboard. Use a 3-column flex row with e
 }
 
 .radar-panel {
-  flex: 3;          /* 60% of column */
+  flex: 3; /* 60% of column */
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
 .stream-panel {
-  flex: 2;          /* 40% of column */
+  flex: 2; /* 40% of column */
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -116,12 +116,12 @@ Forget a single CSS grid for the whole dashboard. Use a 3-column flex row with e
 }
 
 .anomaly-panel {
-  flex: 2;          /* ~40% of remaining middle height */
+  flex: 2; /* ~40% of remaining middle height */
   min-height: 0;
 }
 
 .heatmap-panel {
-  flex: 3;          /* ~60% of remaining middle height - heatmap needs space */
+  flex: 3; /* ~60% of remaining middle height - heatmap needs space */
   min-height: 0;
 }
 
@@ -321,10 +321,10 @@ Each card: content centred both axes. Number large, label small below.
   height: 2px;
 }
 
-.stat-card.critical::after { background: var(--red);   box-shadow: 0 0 8px var(--red); }
+.stat-card.critical::after { background: var(--red); box-shadow: 0 0 8px var(--red); }
 .stat-card.warning::after  { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
-.stat-card.info::after     { background: var(--cyan);  box-shadow: 0 0 8px var(--cyan); }
-.stat-card.breach::after   { background: var(--red);   animation: breachFlash 1s infinite; }
+.stat-card.info::after     { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.stat-card.breach::after   { background: var(--red); animation: breachFlash 1s infinite; }
 
 @keyframes breachFlash { 50% { opacity: 0; } }
 
@@ -780,8 +780,8 @@ Scroll must work. Key CSS:
 ```css
 .stream-body {
   flex: 1;
-  overflow-y: scroll;     /* scroll, not auto - always show track */
-  min-height: 0;          /* WITHOUT THIS flex child ignores overflow */
+  overflow-y: scroll; /* scroll, not auto - always show track */
+  min-height: 0; /* WITHOUT THIS flex child ignores overflow */
   scrollbar-color: rgba(0,200,150,0.3) transparent;
   scrollbar-width: thin;
 }
@@ -957,7 +957,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     sizeAllCanvases();
     drawAll();
-    startRadar();          // begins rAF loop
+    startRadar(); // begins rAF loop
   }));
 
   // 3. Connect live SSE

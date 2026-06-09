@@ -1,7 +1,7 @@
-# Phase 5.3 — Scout Dashboard 2.0 + Advanced Security
+# Phase 5.3; Scout Dashboard 2.0 + Advanced Security
 
 ## Task
-Build Scout Dashboard 2.0 — real-time monitoring for all Carina agents, threat analytics, compliance reporting, and advanced security features.
+Build Scout Dashboard 2.0; real-time monitoring for all Carina agents, threat analytics, compliance reporting, and advanced security features.
 
 ## Specification
 

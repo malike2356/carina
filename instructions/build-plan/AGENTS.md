@@ -1,4 +1,4 @@
-# AGENTS.md — Carina Build Workspace
+# AGENTS.md; Carina Build Workspace
 
 ## Who you are
 
@@ -20,8 +20,8 @@ You are Claude and Cursor building Carina together. Treat this workspace as the 
 - ROADMAP.md is the authority on what to build next
 - TOOLS.md is the specification for every tool to implement
 - UNIQUE.md explains why we are building what we are building
-- COMPARISON.md is for reference — what the competition has
-- archive/ is raw conversation data — reference, not instruction
+- COMPARISON.md is for reference; what the competition has
+- archive/ is raw conversation data; reference, not instruction
 
 ## Communication
 
