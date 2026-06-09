@@ -16,7 +16,7 @@ export interface SubscriptionSnapshot {
 }
 
 function asPlan(value: unknown): BillingPlanId {
-  return value === 'scout_standard' || value === 'carina_bundle' || value === 'enterprise' ? value : 'free';
+  return value === 'scout_standard' || value === 'enterprise' ? value : 'free';
 }
 
 function dateFromUnix(value: number | null | undefined): Date | null {

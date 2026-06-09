@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS hosted_users (
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id UUID PRIMARY KEY,
-  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'carina_bundle', 'enterprise')),
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'enterprise')),
   status TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT UNIQUE,

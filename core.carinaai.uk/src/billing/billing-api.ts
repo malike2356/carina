@@ -9,7 +9,7 @@ import { InvoiceGenerator } from './invoice-generator.js';
 type BillingRequest = Request & { tenant?: { id: string; email: string } };
 
 function asPlan(value: unknown): BillingPlanId {
-  return value === 'scout_standard' || value === 'carina_bundle' || value === 'enterprise' ? value : 'scout_standard';
+  return value === 'scout_standard' || value === 'enterprise' ? value : 'scout_standard';
 }
 
 export class BillingApi {

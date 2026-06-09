@@ -23,6 +23,6 @@ features:
     details: Node and Python clients for custom agents. Same API Carina uses natively.
   - title: OpenAI proxy
     details: Drop-in proxy for OpenClaw, Hermes, and other OpenAI-compatible stacks.
-  - title: Carina bundle
-    details: 20% off hosted Scout when paired with the open-source Carina agent.
+  - title: Carina setup support
+    details: Need Scout pre-configured with Carina? Contact us for setup support.
 ---

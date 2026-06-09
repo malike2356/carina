@@ -1,4 +1,4 @@
-export type BillingPlanId = 'free' | 'scout_standard' | 'carina_bundle' | 'enterprise';
+export type BillingPlanId = 'free' | 'scout_standard' | 'enterprise';
 
 export interface BillingPlan {
   id: BillingPlanId;
@@ -25,7 +25,7 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
   scout_standard: {
     id: 'scout_standard',
     name: 'Labyrinth Scout',
-    monthlyPriceGbp: 99,
+    monthlyPriceGbp: 79,
     tokenLimit: 500_000,
     stripePriceEnv: 'STRIPE_PRICE_SCOUT_STANDARD',
     features: [
@@ -36,14 +36,6 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
       'Kill switch',
       'Full audit logs',
     ],
-  },
-  carina_bundle: {
-    id: 'carina_bundle',
-    name: 'Carina Bundle',
-    monthlyPriceGbp: 79,
-    tokenLimit: 500_000,
-    stripePriceEnv: 'STRIPE_PRICE_CARINA_BUNDLE',
-    features: ['Everything in Scout Standard', '20% Carina discount', 'Saves 240 GBP per year'],
   },
   enterprise: {
     id: 'enterprise',

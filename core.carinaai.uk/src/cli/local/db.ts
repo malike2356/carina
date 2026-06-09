@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS skill_documents (
 CREATE TABLE IF NOT EXISTS rag_chunks (
   id TEXT PRIMARY KEY,
   source TEXT NOT NULL,
-  pack TEXT NOT NULL DEFAULT 'property-uk',
+  pack TEXT NOT NULL DEFAULT 'general',
   content TEXT NOT NULL,
   embedding TEXT,
   metadata TEXT DEFAULT '{}',

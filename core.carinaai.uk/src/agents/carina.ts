@@ -128,7 +128,7 @@ export class CarinaAgent {
       if (rag.length > 0) {
         meta.ragChunks = rag.length;
         const lines = rag.map((c) => `[${c.source}] ${c.content}`);
-        contextParts.push(`Property knowledge (RAG):\n${lines.join('\n\n')}`);
+        contextParts.push(`Domain knowledge (RAG):\n${lines.join('\n\n')}`);
       }
 
       const keywords = extractKeywords(userMessage);

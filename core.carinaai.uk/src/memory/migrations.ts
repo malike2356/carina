@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS skill_documents (
 CREATE TABLE IF NOT EXISTS rag_chunks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   source TEXT NOT NULL,
-  pack TEXT NOT NULL DEFAULT 'property-uk',
+  pack TEXT NOT NULL DEFAULT 'general',
   content TEXT NOT NULL,
   embedding VECTOR(768),
   metadata JSONB DEFAULT '{}',
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS inbound_emails (
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id UUID PRIMARY KEY,
-  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'carina_bundle', 'enterprise')),
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'enterprise')),
   status TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT UNIQUE,

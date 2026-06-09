@@ -1,8 +1,8 @@
 import fs from 'fs/promises';
 import os from 'os';
-import path from 'path';
 import { input, select, confirm } from '@inquirer/prompts';
 import { CARINA_DATA_DIR, CARINA_ENV_PATH, CARINA_HOME } from '../config/paths.js';
+import { installCustomDomainPack } from './custom-domain-pack.js';
 
 type ProviderChoice = 'deepseek' | 'anthropic' | 'openai' | 'later';
 
@@ -32,13 +32,20 @@ export async function runSetupWizard(): Promise<void> {
     if (key.trim()) lines.push('OPENAI_API_KEY=' + key.trim());
   }
 
-  const installProperty = await confirm({
-    message: 'Install the UK Property skill pack? (Recommended if you work in UK property)',
-    default: true,
+  const customPackSource = await input({
+    message: 'Install a custom domain pack? [skip / enter URL or path]',
+    default: 'skip',
   });
 
-  if (installProperty) {
-    lines.push('ACTIVE_SKILL_PACK=property-uk');
+  let activePack: string | null = null;
+  if (customPackSource.trim() && customPackSource.trim().toLowerCase() !== 'skip') {
+    try {
+      activePack = await installCustomDomainPack(customPackSource);
+      if (activePack) lines.push('ACTIVE_SKILL_PACK=' + activePack);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('Custom domain pack install skipped:', msg);
+    }
   }
 
   const connectScout = await confirm({
@@ -69,17 +76,7 @@ export async function runSetupWizard(): Promise<void> {
   await fs.writeFile(CARINA_ENV_PATH, lines.join('\n') + '\n', { mode: 0o600 });
 
   console.log('\nSetup complete. Run "carina" to start.\n');
-
-  if (installProperty) {
-    const { installPack } = await import('./install-pack.js');
-    try {
-      await installPack('property-uk');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn('Property pack install skipped:', msg);
-      console.warn('Run: carina install-pack property-uk');
-    }
-  }
+  if (!activePack) console.log('Carina is configured as a general-purpose agent with no domain pack.\n');
 }
 
 export async function ensureCarinaHome(): Promise<void> {

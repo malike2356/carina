@@ -15,7 +15,7 @@ docker run -d \
 
 You operate Postgres, Redis, TLS, and backups.
 
-## Standard - £99/month
+## Scout - £79/month
 
 Hosted by VERLOX on managed infrastructure.
 
@@ -24,11 +24,7 @@ Hosted by VERLOX on managed infrastructure.
 - Telegram, Slack, and email alerts included
 - Dashboard at `console.labyrinthscout.com`
 
-## Carina Bundle - £79/month (20% off)
-
-Use Scout alongside [Carina](https://carinaai.uk) (free, open-source agent) and save £240/year versus Standard alone.
-
-Promo codes are generated during `carina setup` when linking a hosted Scout subscription. Apply at checkout on the VERLOX billing portal.
+Need Scout pre-configured with Carina? Contact us for setup support.
 
 ## Enterprise - Custom
 
@@ -41,7 +37,7 @@ Contact: sales@labyrinthscout.com
 
 ## Feature matrix
 
-| Feature | Self-hosted | Standard | Enterprise |
+| Feature | Self-hosted | Scout | Enterprise |
 |---|---|---|---|
 | Prompt Guard | Yes | Yes | Yes |
 | Kill switch | Yes | Yes | Yes |

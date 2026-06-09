@@ -1,7 +1,3 @@
-import { config } from '../config/index.js';
-import { propertyDataTool } from '../skills/packs/property-uk/tools/property-data.js';
-import { landRegistryTool } from '../skills/packs/property-uk/tools/land-registry.js';
-import '../skills/packs/property-uk/domain-data.js';
 import { registry } from './registry.js';
 import { domainLookupTool } from './domain-lookup.js';
 import { webSearchTool } from './web-search.js';
@@ -20,13 +16,5 @@ registry.register(httpTool);
 registry.register(emailSendTool);
 registry.register(emailListTool);
 registry.register(codeExecTool);
-
-if (config.propertyData.apiKey) {
-  registry.register(propertyDataTool);
-}
-
-if (config.landRegistry.apiKey) {
-  registry.register(landRegistryTool);
-}
 
 export { registry };

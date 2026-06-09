@@ -4,8 +4,7 @@ import { BILLING_PLANS, resolveStripePriceId } from '../plans.js';
 describe('billing plans', () => {
   it('matches the public pricing tiers', () => {
     expect(BILLING_PLANS.free.monthlyPriceGbp).toBe(0);
-    expect(BILLING_PLANS.scout_standard.monthlyPriceGbp).toBe(99);
-    expect(BILLING_PLANS.carina_bundle.monthlyPriceGbp).toBe(79);
+    expect(BILLING_PLANS.scout_standard.monthlyPriceGbp).toBe(79);
     expect(BILLING_PLANS.enterprise.monthlyPriceGbp).toBeNull();
   });
 

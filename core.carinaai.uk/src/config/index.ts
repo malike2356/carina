@@ -62,7 +62,7 @@ export const config = {
   },
   carina: {
     defaultProvider: (process.env.DEFAULT_PROVIDER ?? 'deepseek') as 'anthropic' | 'openai' | 'deepseek',
-    activePack: process.env.ACTIVE_SKILL_PACK ?? 'property-uk',
+    activePack: process.env.ACTIVE_SKILL_PACK ?? '',
     sessionTimeout: 60 * 60 * 1000,
     maxMemoryContext: 20,
     skillAutoWrite: process.env.SKILL_AUTO_WRITE !== 'false',
@@ -118,7 +118,6 @@ export const config = {
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
     stripePrices: {
       scoutStandard: process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
-      carinaBundle: process.env.STRIPE_PRICE_CARINA_BUNDLE ?? '',
       enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',
     },
     freeDailyMessages: 100,

@@ -8,6 +8,7 @@ import { DEFAULT_CLI_CONFIG, type ProviderName } from '../config/defaults.js';
 import { envKeyForProvider } from '../config/env.js';
 import { writeConfig, type CarinaCliConfig } from '../config/loader.js';
 import { format } from '../output/formatter.js';
+import { installCustomDomainPack } from '../../setup/custom-domain-pack.js';
 
 const MODELS: Record<ProviderName, string> = {
   deepseek: 'deepseek-chat',
@@ -65,6 +66,21 @@ export async function runCliSetup(): Promise<void> {
   console.log(format.muted('\nTesting provider connection...'));
   await testProviderConnection(provider, apiKey, model || defaultModel);
 
+  const customPackSource = await input({
+    message: 'Install a custom domain pack? [skip / enter URL or path]',
+    default: 'skip',
+  });
+
+  let activePack: string | null = null;
+  if (customPackSource.trim() && customPackSource.trim().toLowerCase() !== 'skip') {
+    try {
+      activePack = await installCustomDomainPack(customPackSource);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(format.muted(`Custom domain pack install skipped: ${msg}`));
+    }
+  }
+
   const config: CarinaCliConfig = {
     ...DEFAULT_CLI_CONFIG,
     provider,
@@ -82,10 +98,16 @@ export async function runCliSetup(): Promise<void> {
   await writeConfig(config);
   await fs.writeFile(
     CARINA_ENV_PATH,
-    [`DEFAULT_PROVIDER=${provider}`, `${envKeyForProvider(provider)}=${apiKey}`, `DEFAULT_MODEL=${model || defaultModel}`].join('\n') + '\n',
+    [
+      `DEFAULT_PROVIDER=${provider}`,
+      `${envKeyForProvider(provider)}=${apiKey}`,
+      `DEFAULT_MODEL=${model || defaultModel}`,
+      ...(activePack ? [`ACTIVE_SKILL_PACK=${activePack}`] : []),
+    ].join('\n') + '\n',
     { mode: 0o600 },
   );
 
   console.log(format.success(`\nConfig written to ${path.join(CARINA_HOME, 'config.yaml')}`));
   console.log(format.success('Local environment written to ~/.carina/.env'));
+  if (!activePack) console.log(format.muted('Carina is configured as a general-purpose agent with no domain pack.'));
 }
