@@ -4,6 +4,7 @@ const docsBase = process.env.VP_BASE || '/';
 
 export default defineConfig({
   base: docsBase,
+  cleanUrls: true,
   title: 'Carina',
   description: 'Autonomous AI agent with skill packs. Free. Open source.',
   themeConfig: {
@@ -14,6 +15,8 @@ export default defineConfig({
       { text: 'Tools', link: '/tools/overview' },
       { text: 'Skill Packs', link: '/skill-packs/overview' },
       { text: 'Gateways', link: '/gateways/cli' },
+      { text: 'Security', link: '/security/defence-in-depth' },
+      { text: 'Pricing', link: '/open-source-pricing' },
       { text: 'GitHub', link: 'https://github.com/verlox/carina' },
     ],
     sidebar: [
@@ -59,7 +62,14 @@ export default defineConfig({
       {
         text: 'Security',
         items: [
+          { text: 'Defence in depth', link: '/security/defence-in-depth' },
           { text: 'Labyrinth Scout', link: '/security/labyrinth-scout' },
+        ],
+      },
+      {
+        text: 'Pricing',
+        items: [
+          { text: 'Open source vs Scout', link: '/open-source-pricing' },
         ],
       },
     ],

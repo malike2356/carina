@@ -11,7 +11,7 @@ This page is the full reference for tenants. VERLOX operators should also read [
 | URL | Who | Purpose |
 |---|---|---|
 | [app.carinaai.uk](https://app.carinaai.uk) | Every cloud tenant | Chat, settings, billing, Scout security |
-| [carinaai.uk](https://carinaai.uk) | Prospects | Marketing, install docs, trust page |
+| [carinaai.uk](https://carinaai.uk) | Prospects | Marketing, [full docs](https://carinaai.uk/docs/), trust page |
 | [console.labyrinthscout.com](https://console.labyrinthscout.com) | Scout subscribers | Standalone Scout console (optional; cloud Pro includes Scout in-app) |
 | [core.carinaai.uk](https://core.carinaai.uk) | VERLOX only | Private operator Carina instance (not tenant admin) |
 | ops.carinaai.uk (port 4000) | VERLOX only | Internal platform admin; never shipped to customers |

@@ -4,6 +4,7 @@ const docsBase = process.env.VP_BASE || '/';
 
 export default defineConfig({
   base: docsBase,
+  cleanUrls: true,
   title: 'Labyrinth Scout',
   description: 'Security control plane for AI agents. Self-hosted or hosted by VERLOX.',
   themeConfig: {

@@ -17,6 +17,27 @@ check_ssh() {
     die "Cannot SSH to ${VPS_USER}@${VPS_HOST}. Check SSH key."
 }
 
+mirror_docs_clean_urls() {
+  local docs_dir="$1"
+  log "Mirroring ${docs_dir} pages for extensionless URLs..."
+
+  while IFS= read -r -d '' page; do
+    local rel="${page#${docs_dir}/}"
+    local base
+    base="$(basename "${rel}" .html)"
+    local parent
+    parent="$(dirname "${rel}")"
+
+    if [[ "${base}" == "index" || "${base}" == "404" ]]; then
+      continue
+    fi
+
+    local target_dir="${docs_dir}/${parent}/${base}"
+    mkdir -p "${target_dir}"
+    cp "${page}" "${target_dir}/index.html"
+  done < <(find "${docs_dir}" -type f -name '*.html' ! -name '404.html' -print0)
+}
+
 build_carina_docs() {
   log "Building Carina docs (base /docs/)..."
   (
@@ -24,6 +45,7 @@ build_carina_docs() {
     VP_BASE=/docs/ pnpm docs:build
     rm -rf "${REPO_ROOT}/carinaai.uk/docs"
     cp -a docs/.vitepress/dist "${REPO_ROOT}/carinaai.uk/docs"
+    mirror_docs_clean_urls "${REPO_ROOT}/carinaai.uk/docs"
   )
 }
 
@@ -34,6 +56,7 @@ build_scout_docs() {
     VP_BASE=/docs/ pnpm docs:build
     rm -rf "${REPO_ROOT}/labyrinthscout.com/docs"
     cp -a docs/.vitepress/dist "${REPO_ROOT}/labyrinthscout.com/docs"
+    mirror_docs_clean_urls "${REPO_ROOT}/labyrinthscout.com/docs"
   )
 }
 

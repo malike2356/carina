@@ -57,4 +57,4 @@ Use `docker-compose.verlox.yml` overlay in `core.carinaai.uk` to run Carina and 
 
 ## Carina docs
 
-Agent setup and tools: [docs.carinaai.uk](https://docs.carinaai.uk/security/labyrinth-scout).
+Agent setup and tools: [carinaai.uk/docs](https://carinaai.uk/docs/security/labyrinth-scout).

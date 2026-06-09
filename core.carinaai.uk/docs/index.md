@@ -12,6 +12,9 @@ hero:
       text: Get Started
       link: /getting-started
     - theme: alt
+      text: Carina Cloud
+      link: /carina-cloud
+    - theme: alt
       text: GitHub
       link: https://github.com/verlox/carina
 
