@@ -2,11 +2,24 @@
 
 Internal reference for VERLOX. Explains what each piece in this monorepo is, who it is for, and exactly how they talk to each other. Read this before changing any cross-project wiring (env vars, API routes, Redis channels).
 
+## Product map (2026-06)
+
+| Host | Product | Audience |
+|---|---|---|
+| app.carinaai.uk | Carina Cloud (hosted SaaS) | Paying and free tenants |
+| core.carinaai.uk | Private operator Carina | VERLOX only |
+| console.labyrinthscout.com | Labyrinth Scout server | Tenants (Pro) + VERLOX operators |
+| ops.carinaai.uk:4000 | Platform admin | VERLOX only |
+| carinaai.uk / labyrinthscout.com | Marketing | Public |
+
+Full tenant documentation: `core.carinaai.uk/docs/carina-cloud.md` (published at docs.carinaai.uk).
+
 ## The five pieces
 
 | Piece | Directory | Port (local) | Audience | Shipped to customers? |
 |---|---|---|---|---|
 | Carina agent | `core.carinaai.uk/` | 3333 | End users (property professionals) | Yes - npm package + Docker image |
+| Carina IDE extensions | `extensions/carina-ide/` | n/a | VS Code and Cursor users | Yes - VSIX via `carina ide install` |
 | Carina marketing site | `carinaai.uk/` | static | Prospects | Yes - static files to carinaai.uk |
 | Platform admin (ops) | `ops.carinaai.uk/` | 4000 | VERLOX only | No - never shipped |
 | Labyrinth Scout console | `console.labyrinthscout.com/` | 4444 | Carina operators who buy security monitoring | Yes - Docker image `verlox/scout` |
@@ -93,12 +106,84 @@ Settings tab responsibilities (`routes/settings.ts` + `views/settings.ejs`):
 - Pair this Carina instance with a Scout account (`POST /settings/scout-pairing`, described above)
 - Read-only environment summary (masks secrets)
 
-### 6. The marketing sites
+### 6. Carina IDE extensions (VS Code and Cursor)
 
-Both `carinaai.uk/` and `labyrinthscout.com/` are static HTML/CSS/vanilla-JS sites with no backend of their own:
+```
+VS Code / Cursor  ->  extensions/carina-ide  ->  POST {CARINA_URL}/acp/ide/chat
+                                              ->  GET  {CARINA_URL}/acp/ide/capabilities
+                                              ->  GET  {CARINA_URL}/acp/tools
+```
+
+- Official extensions live in `extensions/carina-ide/`. They connect to a running Carina gateway (`carina web` or `carina serve`, default port 3000).
+- Sidebar chat panel with SSE streaming, ask-about-selection, tool listing, and connection health check.
+- Build and install: `carina ide build` or `carina ide install [vscode|cursor|all]`.
+- Packages: `carina-vscode-0.1.0.vsix` and `carina-cursor-0.1.0.vsix`.
+
+### 7. The marketing sites
+
+Both `carinaai.uk/` and `labyrinthscout.com/` are static HTML/CSS/vanilla-JS sites with no backend of their own. Use extensionless URLs in links and marketing copy (`/trust`, not `/trust.html`). Each site ships `nginx.clean-urls.conf` and `.htaccess` for clean URL rewrites on production nginx and local Apache.
 - They share a single subscribe endpoint: `POST https://carinaai.uk/api/subscribe` (handled by `core.carinaai.uk`'s `subscribeRouter`) for waitlist signups, with a `localStorage` fallback so a lead is never lost if the API is briefly down.
 - `labyrinthscout.com` is purely a funnel into `console.labyrinthscout.com/account/register`.
 - Deployed independently of the Node apps: plain `rsync` of static files to `/www/wwwroot/{domain}/` on the Contabo VPS (no build step, no supervisor process - nginx serves the files directly).
+
+## 8. Carina Cloud (hosted SaaS)
+
+Enabled with `HOSTED_MODE=true` on `core.carinaai.uk`. Serves **app.carinaai.uk** (set `CARINA_HOSTED_APP_HOST`).
+
+### Host-aware auth
+
+- **Operator hosts** (`CARINA_OPERATOR_HOSTS`, e.g. `core.carinaai.uk`): single shared password (`CARINA_WEB_PASSWORD`), same as pre-hosted web UI.
+- **Hosted app host** (`app.carinaai.uk`): per-tenant session (`hostedAccountId`), register/login at `/hosted-register` and `/hosted-login`.
+
+### Tenant data model (Postgres `carina_central`)
+
+| Table | Purpose |
+|---|---|
+| `hosted_users` | Account, tier, daily quota, `api_key`, `schema_name` |
+| `subscriptions` | Stripe plan, `scout_api_key`, status |
+| `usage_records` | Monthly tokens/cost per tenant |
+| `tenant_provider_keys` | Encrypted BYOK credentials |
+| `invoices`, `stripe_events` | Billing audit |
+
+Each user gets an isolated Postgres schema for memories/skills.
+
+### Tenant-facing routes (app.carinaai.uk)
+
+| Route | Purpose |
+|---|---|
+| `/` | Hosted chat UI |
+| `/settings` | BYOK provider keys |
+| `/billing` | Stripe Checkout / Portal |
+| `/security` | Scout hub (Pro): key, instances, events |
+| `/dashboard` | Tenant-scoped Scout dashboard (Pro) |
+| `/app/auth/scout/status` | JSON status for security page |
+| `/app/auth/scout/key` | Full `scout_live_*` key (Pro, session auth) |
+
+### Scout provisioning on payment
+
+Stripe webhook → `subscription-manager.syncFromCheckoutSession()` → issues `scout_live_*` → `provisionScoutTenant()` POSTs to Scout:
+
+```
+POST {LABYRINTH_URL}/api/internal/provision-tenant
+X-Scout-Provision-Secret: {SCOUT_PROVISION_SECRET}
+{ email, carinaTenantId, licenseKey }
+```
+
+Scout creates/links `accounts` row (`carina_tenant_id`) and registers the license in `account_api_keys`. Tenant keys authenticate like `lsk_*` keys but are scoped to one account; dashboard and event APIs filter by `account_id`.
+
+### Per-tenant Scout reporting (cloud chat)
+
+Pro hosted chat wraps requests in `scoutContext` (`src/security/scout-context.ts`): events and heartbeats use the tenant's `scout_live_*` key and instance `hosted:{userId}`. Does not require global `LABYRINTH_ENABLED` on the platform if `LABYRINTH_URL` is set.
+
+### Ops tenant admin (VERLOX only)
+
+`ops.carinaai.uk/tenants` queries the same `CARINA_DB_URL` database:
+
+- List tenants with tier, daily messages, BYOK count, monthly tokens
+- Detail: subscription, masked API key, Scout providers, usage records
+- Actions: set tier, reset daily quota
+
+Not shipped to customers. Distinct from tenant self-service at app.carinaai.uk.
 
 ## Deployment summary
 
