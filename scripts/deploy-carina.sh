@@ -44,7 +44,7 @@ deploy_app() {
     --exclude='node_modules' \
     --exclude='.git' \
     --exclude='dist' \
-    --exclude='data' \
+    --exclude='/data/' \
     "$local_dir/" "${VPS_USER}@${VPS_HOST}:${remote_dir}/"
 
   log "[$label] Building on VPS..."

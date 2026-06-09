@@ -31,7 +31,7 @@ main() {
     --exclude='node_modules' \
     --exclude='.git' \
     --exclude='dist' \
-    --exclude='data' \
+    --exclude='/data/' \
     --exclude='sdk/node/node_modules' \
     --exclude='sdk/python/__pycache__' \
     "$LOCAL_DIR/" "${VPS_USER}@${VPS_HOST}:${REMOTE_DIR}/"
