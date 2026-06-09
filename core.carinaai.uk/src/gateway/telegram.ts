@@ -125,11 +125,6 @@ export async function startTelegram(): Promise<void> {
     if (handleTelegramCommand(bot, chatId, text)) return;
 
     await bot.sendChatAction(chatId, speakRequested ? 'record_voice' : 'typing');
-    if (isGroup && adapter.parseInbound(msg)?.isMention) {
-      await bot.setMessageReaction(chatId, msg.message_id, {
-        reaction: [{ type: 'emoji', emoji: '' }],
-      }).catch(() => undefined);
-    }
 
     try {
       const inboundMsg = speakRequested ? { ...msg, text: text || 'Give me a brief spoken summary.' } : msg;
