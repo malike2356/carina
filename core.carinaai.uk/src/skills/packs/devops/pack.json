@@ -1,0 +1,9 @@
+{
+  "name": "devops",
+  "version": "1.0.0",
+  "description": "Kanban sprints, CI debugging, Docker Compose, Kubernetes troubleshooting, and deploy checklists",
+  "author": "VERLOX Ltd",
+  "category": "devops",
+  "optional": true,
+  "skillCount": 6
+}

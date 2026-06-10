@@ -3,6 +3,13 @@ import path from 'path';
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
+import {
+  deleteCustomResource,
+  listCustomResources,
+  loadAllUserResources,
+  saveCustomResource,
+  type CustomResourceKind,
+} from '../skills/user-resources.js';
 
 export const packsApiRouter: ExpressRouter = Router();
 
@@ -117,6 +124,62 @@ packsApiRouter.get('/installed', async (req: PackRequest, res) => {
   }
 
   res.json({ installed: installedFromConfig(bundled) });
+});
+
+packsApiRouter.get('/custom', async (_req, res) => {
+  try {
+    const files = await listCustomResources();
+    res.json({ files });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+packsApiRouter.post('/custom/upload', async (req, res) => {
+  const kind = String(req.body?.kind ?? '') as CustomResourceKind;
+  const filename = String(req.body?.filename ?? '');
+  const content = String(req.body?.content ?? '');
+  if (kind !== 'skill' && kind !== 'knowledge') {
+    res.status(400).json({ error: 'kind must be skill or knowledge' });
+    return;
+  }
+  if (!filename.trim() || !content.trim()) {
+    res.status(400).json({ error: 'filename and content are required' });
+    return;
+  }
+  try {
+    const file = await saveCustomResource(kind, filename, content);
+    res.json({ ok: true, file });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(400).json({ error: msg });
+  }
+});
+
+packsApiRouter.post('/custom/reload', async (_req, res) => {
+  try {
+    const result = await loadAllUserResources();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+packsApiRouter.delete('/custom/:kind/:filename', async (req, res) => {
+  const kind = req.params.kind as CustomResourceKind;
+  if (kind !== 'skill' && kind !== 'knowledge') {
+    res.status(400).json({ error: 'Invalid kind' });
+    return;
+  }
+  try {
+    await deleteCustomResource(kind, req.params.filename);
+    res.json({ deleted: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(400).json({ error: msg });
+  }
 });
 
 packsApiRouter.get('/:name', async (req, res) => {

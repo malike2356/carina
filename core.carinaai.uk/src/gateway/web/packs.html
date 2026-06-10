@@ -65,6 +65,22 @@
   .modal label { display:block; font-size:0.8rem; color:var(--muted); margin:0.5rem 0 0.25rem; }
   .modal textarea { width:100%; min-height:80px; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:0.5rem; resize:vertical; }
   .modal .btn-row { display:flex; gap:0.5rem; margin-top:1rem; justify-content:flex-end; }
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 2rem;
+    text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 1rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .dropzone.dragover { border-color: var(--accent); background: rgba(108,140,255,0.08); color: var(--text); }
+  .file-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .file-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.6rem 0.85rem; font-size: 0.8rem;
+  }
+  .file-row .meta { color: var(--muted); font-size: 0.7rem; }
+  .file-row .actions { display: flex; gap: 0.35rem; }
+  .hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 1rem; line-height: 1.5; }
+  .hint code { background: var(--surface); padding: 0.1rem 0.35rem; border-radius: 4px; }
 </style>
 </head>
 <body>
@@ -77,10 +93,28 @@
   Active packs are controlled by <code>ACTIVE_SKILL_PACKS</code> in server config. Restart Carina after changing them.
 </div>
 <div class="tabs">
-  <div class="tab active" onclick="switchTab('available')">Available</div>
-  <div class="tab" onclick="switchTab('installed')">Installed</div>
+  <div class="tab active" data-tab="available" onclick="switchTab('available')">Available</div>
+  <div class="tab" data-tab="installed" onclick="switchTab('installed')">Installed</div>
+  <div class="tab" data-tab="custom" onclick="switchTab('custom')">Custom Data</div>
 </div>
-<div class="grid" id="packGrid"></div>
+<div id="packPanel">
+  <div class="grid" id="packGrid"></div>
+</div>
+<div id="customPanel" hidden>
+  <p class="hint">
+    Upload custom skills (<code>.json</code>) and knowledge (<code>.md</code> / <code>.txt</code>).
+    Files are saved to <code>~/.carina/resources/</code> and ingested on reload.
+    Skill JSON format: single skill object, array of skills, or <code>{ "skills": [...] }</code>.
+  </p>
+  <div class="dropzone" id="dropzone">
+    Drag and drop files here, or <label style="color:var(--accent);cursor:pointer"><input type="file" id="fileInput" multiple accept=".json,.md,.txt" hidden>choose files</label>
+  </div>
+  <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+    <button class="primary" onclick="reloadCustom()">Reload into Carina</button>
+    <span id="reloadStatus" style="font-size:0.8rem;color:var(--muted);align-self:center"></span>
+  </div>
+  <div class="file-list" id="customFileList"></div>
+</div>
 
 <div class="modal-overlay" id="configModal">
   <div class="modal">
@@ -231,8 +265,13 @@ async function saveConfig() {
 
 function switchTab(tab) {
   activeTab = tab;
-  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'available' ? 0 : 1)));
-  renderCurrent();
+  document.querySelectorAll('.tab').forEach((t) => {
+    t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+  });
+  document.getElementById('packPanel').hidden = tab === 'custom';
+  document.getElementById('customPanel').hidden = tab !== 'custom';
+  if (tab === 'custom') loadCustomFiles();
+  else renderCurrent();
 }
 
 function renderCurrent() {
@@ -241,6 +280,95 @@ function renderCurrent() {
 }
 
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let customFiles = [];
+
+async function loadCustomFiles() {
+  try {
+    const res = await fetch(`${API}/custom`);
+    if (!res.ok) throw new Error('failed');
+    const data = await res.json();
+    customFiles = data.files || [];
+  } catch { customFiles = []; }
+  renderCustomFiles();
+}
+
+function renderCustomFiles() {
+  const el = document.getElementById('customFileList');
+  if (!customFiles.length) {
+    el.innerHTML = '<div class="empty">No custom files yet. Drop a skill JSON or knowledge markdown file above.</div>';
+    return;
+  }
+  el.innerHTML = customFiles.map((f) => `
+    <div class="file-row">
+      <div>
+        <strong>${esc(f.name)}</strong>
+        <div class="meta">${esc(f.kind)} · ${(f.size / 1024).toFixed(1)} KB · ${new Date(f.updatedAt).toLocaleString()}</div>
+      </div>
+      <div class="actions">
+        <button class="warning" onclick='deleteCustom(${JSON.stringify(f.kind)}, ${JSON.stringify(f.name)})'>Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function kindForFile(name) {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.json')) return 'skill';
+  if (lower.endsWith('.md') || lower.endsWith('.txt')) return 'knowledge';
+  return null;
+}
+
+async function uploadFile(file) {
+  const kind = kindForFile(file.name);
+  if (!kind) { alert(`Unsupported file type: ${file.name}`); return; }
+  const content = await file.text();
+  const res = await fetch(`${API}/custom/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, filename: file.name, content }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { alert(data.error || `Upload failed: ${file.name}`); return; }
+}
+
+async function handleFiles(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+  for (const file of files) await uploadFile(file);
+  await loadCustomFiles();
+  document.getElementById('reloadStatus').textContent = 'Uploaded. Click Reload to ingest.';
+}
+
+async function reloadCustom() {
+  const status = document.getElementById('reloadStatus');
+  status.textContent = 'Reloading...';
+  const res = await fetch(`${API}/custom/reload`, { method: 'POST' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    status.textContent = data.error || 'Reload failed';
+    return;
+  }
+  status.textContent = `Loaded ${data.skillsLoaded || 0} skill(s), ${data.chunksIngested || 0} knowledge chunk(s).`;
+}
+
+async function deleteCustom(kind, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  const res = await fetch(`${API}/custom/${encodeURIComponent(kind)}/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (res.ok) await loadCustomFiles();
+  else alert('Delete failed');
+}
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value = ''; });
 
 document.getElementById('configModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeConfig(); });
 

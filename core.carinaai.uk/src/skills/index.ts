@@ -20,6 +20,8 @@ import { emailExtendedSkills } from './packs/email-extended/skills.js';
 import { smartHomeSkills } from './packs/smart-home/skills.js';
 import { socialExtendedSkills } from './packs/social-extended/skills.js';
 import { devopsSkills } from './packs/devops/skills.js';
+import { legalUkSkills } from './packs/legal-uk/skills.js';
+import { salesCrmSkills } from './packs/sales-crm/skills.js';
 import { loadSkillMdDocuments, findSkillMdByKeywords, skillMdToSkill } from './skill-md-loader.js';
 import { loadPluginsFromDisk } from '../plugins/registry.js';
 import { BUILTIN_PACKS_DIR, readPackManifest, type PackManifest } from './pack-loader.js';
@@ -215,6 +217,32 @@ const PACK_REGISTRY: Record<string, PackDefinition> = {
       category: 'devops',
     },
     skills: devopsSkills,
+    systemSuffix: '',
+  },
+  'legal-uk': {
+    manifest: {
+      name: 'legal-uk',
+      version: '1.0.0',
+      description: 'GDPR readiness, AST drafts, Companies House filings, contract review',
+      author: 'VERLOX Ltd',
+      skillCount: 4,
+      optional: true,
+      category: 'legal',
+    },
+    skills: legalUkSkills,
+    systemSuffix: '',
+  },
+  'sales-crm': {
+    manifest: {
+      name: 'sales-crm',
+      version: '1.0.0',
+      description: 'Deal staging, email sequences, proposals, pipeline reviews',
+      author: 'VERLOX Ltd',
+      skillCount: 4,
+      optional: true,
+      category: 'sales',
+    },
+    skills: salesCrmSkills,
     systemSuffix: '',
   },
 };

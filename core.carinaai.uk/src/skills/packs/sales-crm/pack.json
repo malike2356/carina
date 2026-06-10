@@ -1,0 +1,9 @@
+{
+  "name": "sales-crm",
+  "version": "1.0.0",
+  "description": "Pipeline management, outreach sequences, proposals, and CRM pipeline reviews",
+  "author": "VERLOX Ltd",
+  "category": "sales",
+  "optional": true,
+  "skillCount": 4
+}

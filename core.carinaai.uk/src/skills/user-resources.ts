@@ -78,3 +78,97 @@ export async function loadAllUserResources(baseDir = getResourcesDir()): Promise
   const chunksIngested = await ingestUserKnowledge(baseDir);
   return { skillsLoaded, chunksIngested };
 }
+
+export type CustomResourceKind = 'skill' | 'knowledge';
+
+export interface CustomResourceFile {
+  kind: CustomResourceKind;
+  name: string;
+  size: number;
+  updatedAt: string;
+}
+
+function safeBasename(filename: string): string {
+  const base = path.basename(filename).replace(/[^\w.\-]+/g, '-');
+  if (!base || base === '.' || base === '..') {
+    throw new Error('Invalid filename');
+  }
+  return base;
+}
+
+function targetDir(kind: CustomResourceKind, baseDir = getResourcesDir()): string {
+  return path.join(baseDir, kind === 'skill' ? 'skills' : 'knowledge');
+}
+
+export async function listCustomResources(baseDir = getResourcesDir()): Promise<CustomResourceFile[]> {
+  await ensureResourcesLayout(baseDir);
+  const files: CustomResourceFile[] = [];
+
+  for (const kind of ['skill', 'knowledge'] as const) {
+    const dir = targetDir(kind, baseDir);
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+      const ext = path.extname(entry.name).toLowerCase();
+      if (kind === 'skill' && ext !== '.json') continue;
+      if (kind === 'knowledge' && ext !== '.md' && ext !== '.txt') continue;
+      const stat = await fs.stat(path.join(dir, entry.name));
+      files.push({
+        kind,
+        name: entry.name,
+        size: stat.size,
+        updatedAt: stat.mtime.toISOString(),
+      });
+    }
+  }
+
+  return files.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function saveCustomResource(
+  kind: CustomResourceKind,
+  filename: string,
+  content: string,
+  baseDir = getResourcesDir(),
+): Promise<CustomResourceFile> {
+  await ensureResourcesLayout(baseDir);
+  const safeName = safeBasename(filename);
+  const ext = path.extname(safeName).toLowerCase();
+  if (kind === 'skill' && ext !== '.json') {
+    throw new Error('Skill files must be .json');
+  }
+  if (kind === 'knowledge' && ext !== '.md' && ext !== '.txt') {
+    throw new Error('Knowledge files must be .md or .txt');
+  }
+  if (kind === 'skill') {
+    const parsed = JSON.parse(content) as PackSkillInput | PackSkillInput[] | { skills: PackSkillInput[] };
+    const skills = Array.isArray(parsed)
+      ? parsed
+      : 'skills' in parsed && Array.isArray(parsed.skills)
+        ? parsed.skills
+        : [parsed as PackSkillInput];
+    if (!skills.length || !skills[0]?.name) {
+      throw new Error('Skill JSON must include at least one skill with a name');
+    }
+  }
+
+  const dest = path.join(targetDir(kind, baseDir), safeName);
+  await fs.writeFile(dest, content, 'utf8');
+  const stat = await fs.stat(dest);
+  return {
+    kind,
+    name: safeName,
+    size: stat.size,
+    updatedAt: stat.mtime.toISOString(),
+  };
+}
+
+export async function deleteCustomResource(
+  kind: CustomResourceKind,
+  filename: string,
+  baseDir = getResourcesDir(),
+): Promise<void> {
+  const safeName = safeBasename(filename);
+  const dest = path.join(targetDir(kind, baseDir), safeName);
+  await fs.unlink(dest);
+}
