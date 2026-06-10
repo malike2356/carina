@@ -3,16 +3,16 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { CARINA_ENV_PATH } from './paths.js';
 
-function loadFile(envPath: string): void {
+function loadFile(envPath: string, override = false): void {
   if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath, override: false });
+    dotenv.config({ path: envPath, override });
   }
 }
 
 export function loadCarinaEnv(): void {
   const localEnv = path.resolve(process.cwd(), '.env');
   loadFile(CARINA_ENV_PATH);
-  loadFile(localEnv);
+  loadFile(localEnv, true);
 }
 
 export function envExists(): boolean {
