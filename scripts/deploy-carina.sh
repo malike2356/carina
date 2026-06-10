@@ -59,6 +59,7 @@ deploy_app() {
     npm run build 2>&1 | tail -5
 
     echo "  Build complete."
+    chmod +x start.sh 2>/dev/null || true
 REMOTE
 
   log "[$label] Setting up supervisor..."

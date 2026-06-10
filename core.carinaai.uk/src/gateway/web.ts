@@ -55,7 +55,7 @@ const chatLimiter = rateLimit({
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_STATIC = path.join(__dirname, 'web');
 const PRICING_STATIC = path.join(__dirname, '..', 'web', 'pricing');
-const DASHBOARD_STATIC = path.join(__dirname, '..', '..', 'public', 'dashboard');
+const DASHBOARD_STATIC = path.join(process.cwd(), 'public', 'dashboard');
 const activeServers: Server[] = [];
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {
@@ -269,7 +269,8 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
 
   if (!localMode) {
     app.use('/pricing', express.static(PRICING_STATIC));
-    app.use('/dashboard', express.static(DASHBOARD_STATIC, { index: false }));
+    app.use('/dashboard/css', express.static(path.join(DASHBOARD_STATIC, 'css')));
+    app.use('/dashboard/js', express.static(path.join(DASHBOARD_STATIC, 'js')));
 
     const pricingHtml = await fs.readFile(path.join(PRICING_STATIC, 'index.html'), 'utf-8').catch(() => null);
     const checkoutHtml = await fs.readFile(path.join(PRICING_STATIC, 'checkout.html'), 'utf-8').catch(() => null);
@@ -372,7 +373,7 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     }
 
     if (dashboardIndexHtml) {
-      app.get('/dashboard', async (req, res) => {
+      const serveDashboard = async (req: Request, res: Response): Promise<void> => {
         const scoutBase = scoutServiceUrl();
         if (isHostedRequest(req.hostname)) {
           if (req.hostedUser?.tier !== 'pro') {
@@ -403,13 +404,14 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
           return;
         }
         res.redirect('/');
-      });
+      };
+      app.get(['/dashboard', '/dashboard/'], serveDashboard);
     }
 
     const scoutBase = scoutServiceUrl();
     if (scoutBase) {
       const http = await import('node:http');
-      app.use(['/api/dashboard', '/api/events', '/api/sse'], async (req, res) => {
+      app.use(['/api/dashboard', '/api/events', '/api/sse', '/api/stream'], async (req, res) => {
         let apiKey = config.labyrinth.apiKey;
         if (isHostedRequest(req.hostname)) {
           if (req.hostedUser?.tier !== 'pro') {
@@ -427,7 +429,10 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
           res.status(503).json({ error: 'Scout is not configured' });
           return;
         }
-        const scoutUrl = new URL(req.originalUrl, scoutBase);
+        const upstreamPath = req.originalUrl.startsWith('/api/sse')
+          ? req.originalUrl.replace('/api/sse', '/api/stream')
+          : req.originalUrl;
+        const scoutUrl = new URL(upstreamPath, scoutBase);
         const proxyReq = http.request(scoutUrl, {
           method: req.method,
           headers: { ...req.headers, host: scoutUrl.host, 'x-scout-key': apiKey },

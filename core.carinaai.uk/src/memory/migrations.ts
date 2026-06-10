@@ -229,6 +229,20 @@ const INDEXES = [
      ON tenant_provider_keys (tenant_id)`,
 ];
 
+const MEMORY_ADMIN_MIGRATION = `
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0;
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+DO $$
+BEGIN
+  ALTER TABLE episodic_memories DROP CONSTRAINT IF EXISTS episodic_memories_role_check;
+  ALTER TABLE episodic_memories ADD CONSTRAINT episodic_memories_role_check
+    CHECK (role IN ('user', 'assistant', 'system'));
+EXCEPTION WHEN others THEN
+  NULL;
+END $$;
+`;
+
 const FTS_MIGRATION = `
 DO $$
 BEGIN
@@ -283,6 +297,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     } catch {
       // ivfflat requires at least one row; safe to skip and retry after ingest
     }
+  }
+  try {
+    await client.query(MEMORY_ADMIN_MIGRATION);
+  } catch {
+    // columns may already exist
   }
   try {
     await client.query(FTS_MIGRATION);

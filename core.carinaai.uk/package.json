@@ -22,7 +22,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/src/index.js",
-    "build": "node_modules/.bin/tsc && cp -r src/gateway/web dist/src/gateway/ && mkdir -p dist/src/security dist/src/web && cp src/security/injection-patterns.json dist/src/security/ && cp -r src/web/pricing dist/src/web/",
+    "build": "node_modules/.bin/tsc && cp -r src/gateway/web dist/src/gateway/ && mkdir -p dist/src/security dist/src/web && cp src/security/injection-patterns.json dist/src/security/ && cp -r src/web/pricing dist/src/web/ && mkdir -p dist/public && cp -r public/dashboard dist/public/",
     "cli": "tsx src/index.ts",
     "carina": "tsx bin/carina.ts",
     "hub": "tsx src/skills/hub/server.ts",

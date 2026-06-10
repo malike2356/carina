@@ -102,16 +102,29 @@ const API = '/api/memory';
 let currentPage = 1;
 
 async function loadEntries(page = 1) {
-  currentPage = page;
+  const safePage = Math.max(1, Number(page) || 1);
+  currentPage = safePage;
   const q = document.getElementById('search').value;
   const cat = document.getElementById('categoryFilter').value;
-  const params = new URLSearchParams({ page: String(page) });
+  const params = new URLSearchParams({ page: String(safePage) });
   if (q) params.set('q', q);
   if (cat) params.set('category', cat);
-  const res = await fetch(`${API}?${params}`);
-  const data = await res.json();
-  renderEntries(data.entries || []);
-  renderPagination(data.page, data.total_pages);
+  const el = document.getElementById('entries');
+  try {
+    const res = await fetch(`${API}?${params}`);
+    if (!res.ok) {
+      const msg = res.status === 401 ? 'Please log in to view memories.' : 'Failed to load memories.';
+      el.innerHTML = `<div class="empty">${msg}</div>`;
+      renderPagination(1, 1);
+      return;
+    }
+    const data = await res.json();
+    renderEntries(data.entries || []);
+    renderPagination(Number(data.page) || safePage, Number(data.total_pages) || 1);
+  } catch {
+    el.innerHTML = '<div class="empty">Failed to load memories.</div>';
+    renderPagination(1, 1);
+  }
 }
 
 function renderEntries(entries) {
@@ -125,8 +138,8 @@ function renderEntries(entries) {
       </div>
       <div class="content">${esc(e.content)}</div>
       <div class="actions">
-        <button onclick="editEntry('${e.id}','${esc(e.category)}','${e.priority}','${esc(e.content).replace(/'/g,"\\'")}')"></button>
-        <button class="danger" onclick="deleteEntry('${e.id}')"></button>
+        <button onclick="editEntry('${e.id}','${esc(e.category)}','${e.priority}','${esc(e.content).replace(/'/g,"\\'")}')">Edit</button>
+        <button class="danger" onclick="deleteEntry('${e.id}')">Delete</button>
       </div>
     </div>
   `).join('');
@@ -134,17 +147,24 @@ function renderEntries(entries) {
 
 function renderPagination(page, total) {
   const el = document.getElementById('pagination');
-  if (total <= 1) { el.innerHTML = ''; return; }
+  const p = Math.max(1, Number(page) || 1);
+  const t = Math.max(1, Number(total) || 1);
+  if (t <= 1) { el.innerHTML = ''; return; }
   el.innerHTML = `
-    <button ${page <= 1 ? 'disabled' : ''} onclick="loadEntries(${page - 1})">←</button>
-    <span style="color:var(--muted);padding:0.5rem">${page} / ${total}</span>
-    <button ${page >= total ? 'disabled' : ''} onclick="loadEntries(${page + 1})">→</button>`;
+    <button ${p <= 1 ? 'disabled' : ''} onclick="loadEntries(${p - 1})">←</button>
+    <span style="color:var(--muted);padding:0.5rem">${p} / ${t}</span>
+    <button ${p >= t ? 'disabled' : ''} onclick="loadEntries(${p + 1})">→</button>`;
 }
 
 async function loadStats() {
-  const res = await fetch(`${API}/stats`);
-  const data = await res.json();
   const el = document.getElementById('stats');
+  try {
+    const res = await fetch(`${API}/stats`);
+    if (!res.ok) {
+      el.innerHTML = '<div class="stat-card"><div class="label">Status</div><div class="value">Unavailable</div></div>';
+      return;
+    }
+    const data = await res.json();
   const cats = data.categories || [];
   const total = cats.reduce((s, c) => s + Number(c.count), 0);
   const chars = cats.reduce((s, c) => s + Number(c.chars), 0);
@@ -157,6 +177,9 @@ async function loadStats() {
   const current = sel.value;
   sel.innerHTML = '<option value="">All categories</option>' + cats.map(c => `<option value="${esc(c.category)}">${esc(c.category)} (${c.count})</option>`).join('');
   sel.value = current;
+  } catch {
+    el.innerHTML = '<div class="stat-card"><div class="label">Status</div><div class="value">Unavailable</div></div>';
+  }
 }
 
 function openModal(id, cat, pri, content) {

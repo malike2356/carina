@@ -1,4 +1,4 @@
-import { Router, type Router as ExpressRouter } from 'express';
+import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { pool } from '../memory/db.js';
 
 export const memoryApiRouter: ExpressRouter = Router();
@@ -14,17 +14,42 @@ interface MemoryRow {
   updated_at: Date;
 }
 
-// ── List memories (scoped to tenant via session_id prefix) ──
-memoryApiRouter.get('/', async (req, res) => {
-  const tenantId = (req as any).tenantId ?? 'default';
+type MemoryRequest = Request & { tenantId?: string };
+
+function memoryAuth(req: MemoryRequest, res: Response, next: NextFunction): void {
+  if (req.session?.webAuthed) {
+    req.tenantId = '__operator__';
+    next();
+    return;
+  }
+  if (req.session?.hostedAccountId) {
+    req.tenantId = req.session.hostedAccountId;
+    next();
+    return;
+  }
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+function scopeClause(tenantId: string): { sql: string; params: unknown[] } {
+  if (tenantId === '__operator__' || tenantId === 'default') {
+    return { sql: 'TRUE', params: [] };
+  }
+  return { sql: 'session_id LIKE $1', params: [`${tenantId}:%`] };
+}
+
+memoryApiRouter.use(memoryAuth);
+
+memoryApiRouter.get('/', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
   const category = String(req.query.category ?? '').trim();
   const search = String(req.query.q ?? '').trim();
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = 20;
 
-  const conditions: string[] = ['session_id LIKE $1'];
-  const params: unknown[] = [`${tenantId}:%`];
-  let idx = 2;
+  const scope = scopeClause(tenantId);
+  const conditions: string[] = [scope.sql];
+  const params: unknown[] = [...scope.params];
+  let idx = params.length + 1;
 
   if (category) {
     conditions.push(`category = $${idx++}`);
@@ -67,51 +92,56 @@ memoryApiRouter.get('/', async (req, res) => {
       total,
     });
   } catch (err) {
+    console.error('[memory-api] list failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to load memories' });
   }
 });
 
-// ── Stats ──
-memoryApiRouter.get('/stats', async (req, res) => {
-  const tenantId = (req as any).tenantId ?? 'default';
+memoryApiRouter.get('/stats', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
+  const scope = scopeClause(tenantId);
   try {
     const result = await pool.query<{ category: string; count: string; chars: string }>(
-      `SELECT category, COUNT(*)::text AS count, COALESCE(SUM(LENGTH(content)), 0)::text AS chars
+      `SELECT COALESCE(category, 'general') AS category, COUNT(*)::text AS count,
+              COALESCE(SUM(LENGTH(content)), 0)::text AS chars
        FROM episodic_memories
-       WHERE session_id LIKE $1
+       WHERE ${scope.sql}
        GROUP BY category
        ORDER BY chars DESC`,
-      [`${tenantId}:%`],
+      scope.params,
     );
 
     res.json({ categories: result.rows });
-  } catch {
+  } catch (err) {
+    console.error('[memory-api] stats failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to load stats' });
   }
 });
 
-// ── Create ──
-memoryApiRouter.post('/', async (req, res) => {
-  const tenantId = (req as any).tenantId ?? 'default';
+memoryApiRouter.post('/', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
   const { category, content, priority } = req.body ?? {};
   if (!content) return res.status(400).json({ error: 'Content is required' });
+
+  const sessionKey = tenantId === '__operator__' ? 'operator:memory' : `${tenantId}:memory`;
 
   try {
     const result = await pool.query<MemoryRow>(
       `INSERT INTO episodic_memories (session_id, role, content, priority, category, created_at, updated_at)
        VALUES ($1, 'system', $2, $3, $4, NOW(), NOW()) RETURNING *`,
-      [`${tenantId}:memory`, content, priority ?? 0, category ?? 'general'],
+      [sessionKey, content, priority ?? 0, category ?? 'general'],
     );
     res.status(201).json(result.rows[0]);
-  } catch {
+  } catch (err) {
+    console.error('[memory-api] create failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to create memory' });
   }
 });
 
-// ── Update ──
-memoryApiRouter.put('/:id', async (req, res) => {
-  const tenantId = (req as any).tenantId ?? 'default';
+memoryApiRouter.put('/:id', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
   const { content, category, priority } = req.body ?? {};
+  const scope = scopeClause(tenantId);
 
   try {
     const result = await pool.query<MemoryRow>(
@@ -120,49 +150,52 @@ memoryApiRouter.put('/:id', async (req, res) => {
            category = COALESCE($2, category),
            priority = COALESCE($3, priority),
            updated_at = NOW()
-       WHERE id = $4 AND session_id LIKE $5
+       WHERE id = $4 AND ${scope.sql}
        RETURNING *`,
-      [content ?? null, category ?? null, priority ?? null, req.params.id, `${tenantId}:%`],
+      [content ?? null, category ?? null, priority ?? null, req.params.id, ...scope.params],
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Not found' });
     res.json(result.rows[0]);
-  } catch {
+  } catch (err) {
+    console.error('[memory-api] update failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to update memory' });
   }
 });
 
-// ── Delete ──
-memoryApiRouter.delete('/:id', async (req, res) => {
-  const tenantId = (req as any).tenantId ?? 'default';
+memoryApiRouter.delete('/:id', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
+  const scope = scopeClause(tenantId);
   try {
     const result = await pool.query(
-      `DELETE FROM episodic_memories WHERE id = $1 AND session_id LIKE $2`,
-      [req.params.id, `${tenantId}:%`],
+      `DELETE FROM episodic_memories WHERE id = $1 AND ${scope.sql}`,
+      [req.params.id, ...scope.params],
     );
     if ((result.rowCount ?? 0) === 0) return res.status(404).json({ error: 'Not found' });
     res.json({ deleted: true });
-  } catch {
+  } catch (err) {
+    console.error('[memory-api] delete failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to delete memory' });
   }
 });
 
-// ── Search ──
-memoryApiRouter.get('/search', async (req, res) => {
-  const tenantId = (req as any).tenantId ?? 'default';
+memoryApiRouter.get('/search', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
   const q = String(req.query.q ?? '').trim();
   if (!q) return res.json({ results: [] });
+  const scope = scopeClause(tenantId);
 
   try {
     const result = await pool.query<MemoryRow>(
       `SELECT id, category, content, priority, created_at
        FROM episodic_memories
-       WHERE session_id LIKE $1 AND content ILIKE $2
+       WHERE ${scope.sql} AND content ILIKE $${scope.params.length + 1}
        ORDER BY priority DESC
        LIMIT 50`,
-      [`${tenantId}:%`, `%${q}%`],
+      [...scope.params, `%${q}%`],
     );
     res.json({ results: result.rows });
-  } catch {
+  } catch (err) {
+    console.error('[memory-api] search failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Search failed' });
   }
 });
