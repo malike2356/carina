@@ -5,6 +5,7 @@
   <!-- __SCOUT_KEY_INJECTION__ -->
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Labyrinth Scout</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
 :root{
@@ -189,10 +190,14 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .egress-item{display:flex;align-items:center;gap:.5rem;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--bright)}
 .btn-unblock{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.25);color:var(--green);font-size:.52rem;padding:.04rem .3rem;border-radius:2px;cursor:pointer;font-family:'JetBrains Mono',monospace}
 .egress-empty{color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.7rem;text-align:center;padding:.75rem 0}
-.inst-chip{position:relative}
-.quarantine-panel{display:none;position:absolute;top:38px;left:0;right:0;background:var(--navy);border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;padding:.4rem .65rem;z-index:500;gap:.3rem;flex-wrap:wrap;align-items:center}
-.quarantine-panel.open{display:flex}
 .btn-quarantine-toggle{background:transparent;border:1px solid rgba(155,89,255,.3);color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:.52rem;padding:.06rem .35rem;border-radius:2px;cursor:pointer;letter-spacing:.06em}
+.tools-overlay{position:fixed;inset:0;z-index:1000;background:rgba(2,4,9,.85);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.tools-overlay[hidden]{display:none}
+.tools-box{background:var(--navy);border:1px solid var(--purple);box-shadow:0 0 40px rgba(155,89,255,.15);border-radius:6px;padding:1.5rem;width:min(520px,92vw);max-height:70vh;display:flex;flex-direction:column;gap:.75rem}
+.tools-title{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;color:var(--purple);letter-spacing:.15em}
+.tools-instance{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text)}
+.tools-desc{font-size:.65rem;color:var(--text);line-height:1.5;margin:0}
+.tools-list{display:flex;flex-wrap:wrap;gap:.45rem;overflow-y:auto;max-height:50vh;padding:.25rem 0}
 .btn-tool-quarantine{background:rgba(155,89,255,.1);border:1px solid rgba(155,89,255,.3);color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:.55rem;padding:.08rem .4rem;border-radius:2px;cursor:pointer}
 .btn-tool-quarantine.active{background:rgba(155,89,255,.3);border-color:var(--purple)}
 .quarantine-lbl{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);margin-right:.3rem}
@@ -279,7 +284,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 <body>
 <div class="app">
   <header class="hdr">
-    <a href="https://labyrinthscout.com" target="_blank" rel="noopener" class="hdr-brand" style="text-decoration:none;color:inherit;">LABYRINTH SCOUT</a>
+    <a href="/" class="hdr-brand" style="text-decoration:none;color:inherit;" title="Console home">LABYRINTH SCOUT</a>
     <div class="hdr-live">
       <div class="live-dot" id="live-dot"></div>
       <span id="live-label">CONNECTING</span>
@@ -289,6 +294,8 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <span class="hdr-admin">updated: <span id="last-updated">-</span></span>
     <button class="global-kill" id="global-kill-button">KILL SWITCH</button>
     <span class="kill-status" id="kill-status"></span>
+    <a href="https://app.carinaai.uk/security" class="hdr-trust" title="Carina Cloud Security (customers)">YOUR SECURITY</a>
+    <a href="/account/login" class="hdr-trust" title="Scout account portal">SCOUT ACCOUNT</a>
     <a href="https://carinaai.uk/trust" target="_blank" rel="noopener" class="hdr-trust" title="Public trust dashboard">PUBLIC TRUST</a>
     <span class="hdr-clock" id="hdr-clock"></span>
   </header>
@@ -447,6 +454,22 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <div class="egress-list" id="egress-list">
       <div class="egress-empty">Loading...</div>
     </div>
+  </div>
+</div>
+
+<div class="tools-overlay" id="tools-overlay" hidden>
+  <div class="tools-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem">
+      <div style="display:flex;flex-direction:column;gap:.2rem">
+        <span class="tools-title">TOOL QUARANTINE</span>
+        <span class="tools-instance" id="tools-instance-name"></span>
+      </div>
+      <button class="btn-cancel" onclick="closeToolsModal()">CLOSE</button>
+    </div>
+    <p class="tools-desc">
+      Click a tool to quarantine it for 60 minutes on this instance. Highlighted tools are active quarantines; click again to lift.
+    </p>
+    <div class="tools-list" id="tools-modal-body"></div>
   </div>
 </div>
 
@@ -1545,15 +1568,10 @@ function extractDomainFromDescription(desc) {
 }
 
 
-function buildQuarantinePanel(instanceId) {
-  const panel = document.createElement('div');
-  panel.className = 'quarantine-panel';
-  panel.id = `qpanel-${instanceId}`;
-
-  const lbl = document.createElement('span');
-  lbl.className = 'quarantine-lbl';
-  lbl.textContent = 'QUARANTINE:';
-  panel.appendChild(lbl);
+function renderToolsModalContent(instanceId) {
+  const body = document.getElementById('tools-modal-body');
+  if (!body) return;
+  body.innerHTML = '';
 
   for (const tool of TOOL_NAMES) {
     const btn = document.createElement('button');
@@ -1562,9 +1580,8 @@ function buildQuarantinePanel(instanceId) {
     btn.textContent = tool;
     btn.title = `Quarantine ${tool} for 60 minutes`;
     btn.onclick = () => void quarantineTool(tool, instanceId, btn);
-    panel.appendChild(btn);
+    body.appendChild(btn);
   }
-  return panel;
 }
 
 async function quarantineTool(tool, instanceId, btn) {
@@ -1676,11 +1693,8 @@ function updateInstances() {
     const toggleBtn = document.createElement('button');
     toggleBtn.className = 'btn-quarantine-toggle';
     toggleBtn.textContent = 'TOOLS';
-    toggleBtn.title = 'Toggle tool quarantine panel';
-    toggleBtn.onclick = () => {
-      const panel = document.getElementById(`qpanel-${inst.id}`);
-      if (panel) panel.classList.toggle('open');
-    };
+    toggleBtn.title = 'Open tool quarantine controls';
+    toggleBtn.onclick = () => void openToolsModal(inst.id, inst.name || inst.id);
     chip.appendChild(toggleBtn);
 
     const egressBtn = document.createElement('button');
@@ -1689,9 +1703,6 @@ function updateInstances() {
     egressBtn.title = 'View and manage egress domain blocklist';
     egressBtn.onclick = () => void openEgressModal(inst.id);
     chip.appendChild(egressBtn);
-
-    chip.appendChild(buildQuarantinePanel(inst.id));
-    void refreshQuarantinePanel(inst.id);
 
     bar.appendChild(chip);
 
@@ -1736,6 +1747,21 @@ function updateInstances() {
 
 
 let egressModalInstanceId = null;
+let toolsModalInstanceId = null;
+
+async function openToolsModal(instanceId, instanceName) {
+  toolsModalInstanceId = instanceId;
+  const nameEl = document.getElementById('tools-instance-name');
+  if (nameEl) nameEl.textContent = instanceName || instanceId;
+  renderToolsModalContent(instanceId);
+  document.getElementById('tools-overlay').removeAttribute('hidden');
+  await refreshQuarantinePanel(instanceId);
+}
+
+function closeToolsModal() {
+  document.getElementById('tools-overlay').setAttribute('hidden', '');
+  toolsModalInstanceId = null;
+}
 
 async function openEgressModal(instanceId) {
   egressModalInstanceId = instanceId;
@@ -1854,8 +1880,15 @@ async function loadSessionMemory() {
       body.innerHTML = `<span style="color:#e06c75;font-size:.62rem">Unexpected response: ${JSON.stringify(d).slice(0,80)}</span>`;
       return;
     }
+    if (d.unavailable) {
+      body.innerHTML = `<span style="color:rgba(139,175,192,.55);font-size:.62rem;line-height:1.5">${d.message || 'Session memory is not available from this Scout database.'}</span>`;
+      return;
+    }
     if (d.sessions.length === 0) {
-      body.innerHTML = '<span style="color:rgba(139,175,192,.4);font-size:.62rem">No sessions with stored memory</span>';
+      const hint = d.source === 'carina'
+        ? 'No sessions with stored memory (loaded from Carina API)'
+        : 'No sessions with stored memory';
+      body.innerHTML = `<span style="color:rgba(139,175,192,.4);font-size:.62rem">${hint}</span>`;
       return;
     }
     renderSessionList(d.sessions, 'carina-local');
@@ -2003,36 +2036,45 @@ function closeExportModal() {
   document.getElementById('export-overlay').setAttribute('hidden', '');
 }
 
-async function exportLog(format) {
-  closeExportModal();
-
-  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
-  const url =
-    `/api/export/events?format=${encodeURIComponent(format)}` +
-    `&since=${encodeURIComponent(since)}&limit=10000`;
-
-  toast(`Preparing ${format.toUpperCase()} export...`, 'ok');
-
+async function downloadScoutExport(url, fallbackName, okMessage) {
+  if (!KEY) {
+    toast('Scout API key not configured', 'critical');
+    return;
+  }
   try {
     const r = await fetch(url, { headers: H() });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
-      toast('Export failed: ' + (d.error ?? r.status), 'critical');
+      toast('Download failed: ' + (d.error ?? r.status), 'critical');
       return;
     }
     const blob = await r.blob();
-    const dateStr = new Date().toISOString().slice(0, 10);
+    const cd = r.headers.get('Content-Disposition') || '';
+    const match = cd.match(/filename="([^"]+)"/);
+    const filename = match?.[1] ?? fallbackName;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `scout-audit-${dateStr}.${format}`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-    toast(`${format.toUpperCase()} audit log downloaded`, 'ok');
+    if (okMessage) toast(okMessage, 'ok');
   } catch {
-    toast('Export request failed', 'critical');
+    toast('Download request failed', 'critical');
   }
+}
+window.downloadScoutExport = downloadScoutExport;
+
+async function exportLog(format) {
+  closeExportModal();
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const url =
+    `/api/export/events?format=${encodeURIComponent(format)}` +
+    `&since=${encodeURIComponent(since)}&limit=10000`;
+  const dateStr = new Date().toISOString().slice(0, 10);
+  toast(`Preparing ${format.toUpperCase()} export...`, 'ok');
+  await downloadScoutExport(url, `scout-audit-${dateStr}.${format}`, `${format.toUpperCase()} audit log downloaded`);
 }
 
 async function triggerAlertTest() {

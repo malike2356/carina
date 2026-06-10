@@ -29,7 +29,15 @@
     if (input) input.addEventListener('input', () => void searchAuditLog(input.value));
     const exportBtn = document.getElementById('audit-export');
     if (exportBtn) exportBtn.addEventListener('click', () => {
-      window.location.href = '/api/export/events?format=csv';
+      const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const url =
+        '/api/export/events?format=csv' +
+        '&since=' + encodeURIComponent(since) +
+        '&limit=10000';
+      if (window.downloadScoutExport) {
+        void window.downloadScoutExport(url, 'scout-audit-' + dateStr + '.csv', 'CSV audit log downloaded');
+      }
     });
     void searchAuditLog();
   });
