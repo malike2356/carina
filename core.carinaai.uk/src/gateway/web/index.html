@@ -25,14 +25,14 @@
     }
     html, body { height: 100%; }
     body {
-      font-family: "Söhne", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       background: var(--bg); color: var(--text);
       height: 100vh; display: flex; overflow: hidden; font-size: 16px;
       -webkit-font-smoothing: antialiased;
     }
     button { font-family: inherit; }
-    [data-density="compact"] .thread-row { padding: 12px 0; }
-    [data-density="compact"] .thread-content { font-size: 0.9rem; line-height: 1.55; }
+    [data-density="compact"] .thread-row { padding: 10px 0; }
+    [data-density="compact"] .thread-content { font-size: 0.9rem; line-height: 1.45; }
 
     /* ---------- icon buttons ---------- */
     .icon-btn {
@@ -182,7 +182,7 @@
     #chat-scroll { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
     #messages { display: flex; flex-direction: column; }
     .thread-row {
-      width: 100%; padding: 24px 0; border-bottom: 1px solid transparent;
+      width: 100%; padding: 14px 0; border-bottom: 1px solid transparent;
     }
     .thread-row.user { background: var(--user-row); }
     .thread-inner {
@@ -203,9 +203,10 @@
       font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text);
     }
     .thread-content {
-      line-height: 1.7; font-size: 1rem; word-break: break-word; color: var(--text);
+      line-height: 1.42; font-size: 0.96rem; word-break: break-word; color: var(--text);
     }
-    .thread-content p { margin: 0.5em 0; }
+    .thread-content.plain-text { white-space: pre-wrap; }
+    .thread-content p { margin: 0.25em 0; }
     .thread-content p:first-child { margin-top: 0; }
     .thread-content p:last-child { margin-bottom: 0; }
     .thread-content pre {
@@ -219,12 +220,12 @@
     .thread-content :not(pre) > code {
       background: var(--surface-2); padding: 2px 6px; border-radius: 4px; font-size: 0.88em;
     }
-    .thread-content ul, .thread-content ol { margin: 0.5em 0; padding-left: 1.5em; }
+    .thread-content ul, .thread-content ol { margin: 0.25em 0; padding-left: 1.35em; }
     .thread-content h1, .thread-content h2, .thread-content h3 {
-      margin: 1em 0 0.4em; font-weight: 600; line-height: 1.3;
+      margin: 0.7em 0 0.25em; font-weight: 600; line-height: 1.22;
     }
     .thread-content blockquote {
-      border-left: 3px solid var(--border); padding-left: 14px; margin: 0.5em 0;
+      border-left: 3px solid var(--border); padding-left: 14px; margin: 0.25em 0;
       color: var(--muted);
     }
     .thread-actions {
@@ -259,7 +260,7 @@
       color: #fff; font-weight: 700; font-size: 24px; margin-bottom: 20px;
     }
     .empty-state h2 {
-      color: var(--text); font-size: 1.75rem; font-weight: 600;
+      color: var(--text); font-size: 1.55rem; font-weight: 600;
       letter-spacing: -0.02em; margin-bottom: 8px;
     }
     .empty-state p { font-size: 0.95rem; color: var(--muted); max-width: 36ch; line-height: 1.5; }
@@ -412,7 +413,7 @@
       #sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 50; margin-left: -260px; }
       #sidebar.open { margin-left: 0; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); }
       #sidebar.collapsed { margin-left: -260px; }
-      .thread-inner { padding: 0 16px; }
+      .thread-inner { padding: 0 14px; }
       footer { padding: 8px 12px 16px; }
       .empty-state h2 { font-size: 1.4rem; }
       .suggestions { flex-direction: column; align-items: stretch; }
@@ -714,6 +715,8 @@
     const scrollBottomBtn = document.getElementById('scroll-bottom');
 
     let activeEventSource = null;
+    let activeTurnSessionId = null;
+    let activeTurnId = null;
     let isStreaming = false;
 
     const PALETTE_COMMANDS = [
@@ -1029,6 +1032,7 @@
       sessionListEl.querySelectorAll('.session-item').forEach((el) => {
         el.addEventListener('click', (e) => {
           if (e.target.closest('.session-delete')) return;
+          stopGeneration();
           localStorage.setItem(SESSION_KEY, el.dataset.id);
           loadSessionMessages(el.dataset.id);
           renderSessionList();
@@ -1044,6 +1048,7 @@
     }
 
     function deleteSession(id) {
+      stopGeneration();
       const sessions = getSessions().filter((s) => s.id !== id);
       localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
       const store = getMessagesStore();
@@ -1149,6 +1154,16 @@
       return name.charAt(0).toUpperCase() + name.slice(1);
     }
 
+    function isPlainAssistantText(text) {
+      const value = (text || '').trim();
+      if (!value) return true;
+      if (value.length > 180) return false;
+      if (/[`*_#>\[\]\(\)]/.test(value)) return false;
+      if (/^\s*[-*+]\s/m.test(value)) return false;
+      if (/^\s*\d+\.\s/m.test(value)) return false;
+      return true;
+    }
+
     function renderModelDropdown(providers, active) {
       if (!providers.length) return;
       modelDropdown.innerHTML = providers.map((p) =>
@@ -1176,6 +1191,9 @@
     }
 
     function renderMd(text) {
+      if (isPlainAssistantText(text)) {
+        return escapeHtml(text).replace(/\n/g, '<br>');
+      }
       const html = marked.parse(text);
       const wrap = document.createElement('div');
       wrap.innerHTML = html;
@@ -1228,8 +1246,8 @@
       return getMessagesStore()[sessionId] || [];
     }
 
-    function persistMessage(role, content, provider) {
-      const sid = getSessionId();
+    function persistMessage(role, content, provider, sessionId) {
+      const sid = sessionId || getSessionId();
       const msgs = getMessagesForSession(sid);
       msgs.push({ role, content, provider: provider || null, at: Date.now() });
       saveMessagesForSession(sid, msgs);
@@ -1249,7 +1267,10 @@
       const avatarClass = isUser ? 'thread-avatar' : 'thread-avatar carina';
       const label = isUser ? (profile.name || 'You') : 'Carina';
       const isStreaming = opts && opts.streaming;
-      const contentClass = 'thread-content' + (isStreaming ? ' streaming-cursor' : '');
+      const plainText = !isUser && content && content !== '...' && !isStreaming && isPlainAssistantText(content);
+      const contentClass = 'thread-content'
+        + (isStreaming ? ' streaming-cursor' : '')
+        + (plainText ? ' plain-text' : '');
 
       let contentHtml;
       if (!isUser && content && content !== '...' && !isStreaming) {
@@ -1356,7 +1377,10 @@
         activeEventSource.close();
         activeEventSource = null;
       }
-      const el = document.getElementById('streaming');
+      const turnId = activeTurnId;
+      activeTurnSessionId = null;
+      activeTurnId = null;
+      const el = turnId ? document.getElementById(turnId) : null;
       if (el) {
         el.classList.remove('streaming-cursor');
         const row = el.closest('.thread-row');
@@ -1371,7 +1395,7 @@
               navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
             });
             el.parentElement.appendChild(actions);
-            persistMessage('carina', text, null);
+            persistMessage('carina', text, null, getSessionId());
           } else {
             row.remove();
           }
@@ -1384,17 +1408,20 @@
       if (!text.trim() || isStreaming) return;
       if (await handleLocalCommand(text.trim())) return;
 
-      appendMessage('user', text, null);
-      persistMessage('user', text, null);
-      saveSessionEntry(getSessionId(), text);
-      inputEl.value = '';
-      autoGrow();
-      setStreamingState(true);
-
       const sessionId = document.body.dataset.hosted === 'true'
         ? 'hosted-session'
         : getSessionId();
-      const carinaEl = appendMessage('carina', '...', null, 'streaming');
+      const turnId = crypto.randomUUID();
+
+      appendMessage('user', text, null);
+      persistMessage('user', text, null, sessionId);
+      saveSessionEntry(sessionId, text);
+      inputEl.value = '';
+      autoGrow();
+      setStreamingState(true);
+      activeTurnSessionId = sessionId;
+      activeTurnId = turnId;
+      const carinaEl = appendMessage('carina', '...', null, turnId);
       let fullText = '';
       let activeProvider = await fetchProvider();
 
@@ -1418,9 +1445,12 @@
       activeEventSource = es;
 
       es.onmessage = (event) => {
+        if (activeTurnSessionId !== sessionId || activeTurnId !== turnId) return;
         if (event.data === '[DONE]') {
           es.close();
           activeEventSource = null;
+          activeTurnSessionId = null;
+          activeTurnId = null;
           carinaEl.classList.remove('streaming-cursor');
           carinaEl.innerHTML = renderMd(fullText);
           const actions = document.createElement('div');
@@ -1430,7 +1460,7 @@
             navigator.clipboard.writeText(fullText).then(() => showToast('Copied to clipboard'));
           });
           carinaEl.parentElement.appendChild(actions);
-          persistMessage('carina', fullText, activeProvider);
+          persistMessage('carina', fullText, activeProvider, sessionId);
           setStreamingState(false);
           fetchProvider();
           return;
@@ -1452,16 +1482,20 @@
       };
 
       es.onerror = () => {
+        if (activeTurnSessionId !== sessionId || activeTurnId !== turnId) return;
         es.close();
         activeEventSource = null;
+        activeTurnSessionId = null;
+        activeTurnId = null;
         carinaEl.classList.remove('streaming-cursor');
         if (!fullText) carinaEl.textContent = 'Connection error.';
-        else persistMessage('carina', fullText, activeProvider);
+        else persistMessage('carina', fullText, activeProvider, sessionId);
         setStreamingState(false);
       };
     }
 
     function startNewSession() {
+      stopGeneration();
       newSessionId();
       messagesEl.innerHTML = '';
       renderEmptyState();

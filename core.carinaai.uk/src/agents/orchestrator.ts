@@ -1,4 +1,5 @@
 import { llm } from '../brain/llm.js';
+import { classifyComplexity } from '../brain/task-classifier.js';
 import { saveMemory } from '../memory/store.js';
 import { evaluateAndWriteSkill } from '../skills/auto-writer.js';
 import { CarinaAgent, type TurnEvent } from './carina.js';
@@ -77,6 +78,18 @@ export class CarinaOrchestrator {
     return this.agent.getProviderOverride() ?? this.providerOverride;
   }
 
+  private quickReply(userMessage: string): string | null {
+    const text = userMessage.trim().toLowerCase();
+    if (!text) return null;
+    if (/^(hi|hello|hey|yo|good (morning|afternoon|evening))\b/.test(text)) {
+      return 'Carina.';
+    }
+    if (/\bwhat can you do\b|\bhelp\b|\bcapabilit(y|ies)\b/.test(text)) {
+      return 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.';
+    }
+    return null;
+  }
+
   async decompose(task: string): Promise<TaskPlan> {
     const messages: Message[] = [
       {
@@ -98,9 +111,22 @@ export class CarinaOrchestrator {
   }
 
   async *turn(userMessage: string): AsyncGenerator<OrchestratorEvent> {
-    const plan = await this.decompose(userMessage);
+    const quick = this.quickReply(userMessage);
+    if (quick) {
+      yield { type: 'text', content: quick };
+      return;
+    }
 
-    if (plan.singleAgent || plan.steps.length === 0) {
+    const complexity = classifyComplexity([{ role: 'user', content: userMessage, timestamp: new Date() }]);
+    const useFastMode = complexity === 'simple';
+    this.agent.setFastMode(useFastMode);
+
+    const plan = useFastMode
+      ? { singleAgent: true, steps: [] }
+      : await this.decompose(userMessage);
+
+    try {
+      if (plan.singleAgent || plan.steps.length === 0) {
       const toolsUsed: string[] = [];
       const toolCallLog: string[] = [];
 
@@ -128,60 +154,63 @@ export class CarinaOrchestrator {
       return;
     }
 
-    const stepOutputs = new Map<number, string>();
-    const pending = new Set(plan.steps.map((_, i) => i));
+      const stepOutputs = new Map<number, string>();
+      const pending = new Set(plan.steps.map((_, i) => i));
 
-    while (pending.size > 0) {
-      const ready = [...pending].filter((idx) =>
-        plan.steps[idx].dependsOn.every((dep) => stepOutputs.has(dep)),
-      );
+      while (pending.size > 0) {
+        const ready = [...pending].filter((idx) =>
+          plan.steps[idx].dependsOn.every((dep) => stepOutputs.has(dep)),
+        );
 
-      if (ready.length === 0) {
-        throw new Error('Task plan has circular or unsatisfiable dependencies.');
-      }
+        if (ready.length === 0) {
+          throw new Error('Task plan has circular or unsatisfiable dependencies.');
+        }
 
-      for (const idx of ready) {
-        pending.delete(idx);
-        const step = plan.steps[idx];
-        yield {
-          type: 'status',
-          content: `[${step.agentType} agent working...]\n`,
-        };
-      }
-
-      await Promise.all(
-        ready.map(async (idx) => {
+        for (const idx of ready) {
+          pending.delete(idx);
           const step = plan.steps[idx];
-          const context = buildStepContext(step, stepOutputs);
-          const result = await this.runStep(step, userMessage, context);
-          stepOutputs.set(idx, result);
-        }),
-      );
-    }
+          yield {
+            type: 'status',
+            content: `[${step.agentType} agent working...]\n`,
+          };
+        }
 
-    yield { type: 'status', content: '[synthesising...]\n' };
+        await Promise.all(
+          ready.map(async (idx) => {
+            const step = plan.steps[idx];
+            const context = buildStepContext(step, stepOutputs);
+            const result = await this.runStep(step, userMessage, context);
+            stepOutputs.set(idx, result);
+          }),
+        );
+      }
 
-    const synthesisPrompt = buildSynthesisPrompt(userMessage, stepOutputs);
-    let finalText = '';
+      yield { type: 'status', content: '[synthesising...]\n' };
 
-    for await (const event of this.agent.turn(synthesisPrompt)) {
-      yield event;
-      if (event.type === 'text') finalText += event.content;
-    }
+      const synthesisPrompt = buildSynthesisPrompt(userMessage, stepOutputs);
+      let finalText = '';
 
-    const last = this.agent.getLastTurn();
-    finalText = last.text || finalText;
+      for await (const event of this.agent.turn(synthesisPrompt)) {
+        yield event;
+        if (event.type === 'text') finalText += event.content;
+      }
 
-    if (this.memoryReady) {
-      await saveMemory(this.sessionId, 'user', userMessage);
-      await saveMemory(this.sessionId, 'assistant', finalText);
-      await evaluateAndWriteSkill({
-        userMessage,
-        response: finalText,
-        toolsUsed: last.toolsUsed,
-        toolCallLog: last.toolCallLog,
-        multiStep: true,
-      });
+      const last = this.agent.getLastTurn();
+      finalText = last.text || finalText;
+
+      if (this.memoryReady) {
+        await saveMemory(this.sessionId, 'user', userMessage);
+        await saveMemory(this.sessionId, 'assistant', finalText);
+        await evaluateAndWriteSkill({
+          userMessage,
+          response: finalText,
+          toolsUsed: last.toolsUsed,
+          toolCallLog: last.toolCallLog,
+          multiStep: true,
+        });
+      }
+    } finally {
+      this.agent.setFastMode(false);
     }
   }
 

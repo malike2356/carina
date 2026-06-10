@@ -89,3 +89,112 @@ describe('CarinaOrchestrator.decompose', () => {
     expect(plan).toHaveProperty('steps');
   });
 });
+
+describe('CarinaOrchestrator fast lane', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.resetModules();
+  });
+
+  it('answers greetings without calling the planner', async () => {
+    const chatCheap = vi.fn();
+    vi.doMock('../brain/llm.js', () => ({
+      llm: {
+        chatCheap,
+        stream: async function* () { yield 'done'; },
+        list: () => ['deepseek'],
+        current: () => ({ name: 'deepseek' }),
+      },
+    }));
+    vi.doMock('../memory/store.js', () => ({
+      getSessionHistory: vi.fn().mockResolvedValue([]),
+      searchMemory: vi.fn().mockResolvedValue([]),
+      searchRag: vi.fn().mockResolvedValue([]),
+      saveMemory: vi.fn().mockResolvedValue(undefined),
+      clearSession: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('../skills/store.js', () => ({
+      findRelevantSkills: vi.fn().mockResolvedValue([]),
+      incrementSkillUsage: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('../skills/index.js', () => ({
+      getActivePackSuffixes: vi.fn().mockReturnValue(''),
+    }));
+    vi.doMock('../skills/auto-writer.js', () => ({
+      evaluateAndWriteSkill: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('../memory/persistent-memory.js', () => ({
+      getAllPersistentContext: vi.fn().mockResolvedValue(''),
+    }));
+    vi.doMock('../tools/index.js', () => ({
+      registry: { list: () => [], get: () => undefined },
+      registerSessionTools: vi.fn(),
+    }));
+
+    const { CarinaOrchestrator } = await import('./orchestrator.js');
+    const orc = new CarinaOrchestrator('test-session', false);
+    const events: Array<{ type: string; content?: string }> = [];
+    for await (const event of orc.turn('Hi Carina')) {
+      events.push(event);
+    }
+
+    expect(chatCheap).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      {
+        type: 'text',
+        content: 'Carina.',
+      },
+    ]);
+  });
+
+  it('answers capability questions in one compact line', async () => {
+    const chatCheap = vi.fn();
+    vi.doMock('../brain/llm.js', () => ({
+      llm: {
+        chatCheap,
+        stream: async function* () { yield 'done'; },
+        list: () => ['deepseek'],
+        current: () => ({ name: 'deepseek' }),
+      },
+    }));
+    vi.doMock('../memory/store.js', () => ({
+      getSessionHistory: vi.fn().mockResolvedValue([]),
+      searchMemory: vi.fn().mockResolvedValue([]),
+      searchRag: vi.fn().mockResolvedValue([]),
+      saveMemory: vi.fn().mockResolvedValue(undefined),
+      clearSession: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('../skills/store.js', () => ({
+      findRelevantSkills: vi.fn().mockResolvedValue([]),
+      incrementSkillUsage: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('../skills/index.js', () => ({
+      getActivePackSuffixes: vi.fn().mockReturnValue(''),
+    }));
+    vi.doMock('../skills/auto-writer.js', () => ({
+      evaluateAndWriteSkill: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('../memory/persistent-memory.js', () => ({
+      getAllPersistentContext: vi.fn().mockResolvedValue(''),
+    }));
+    vi.doMock('../tools/index.js', () => ({
+      registry: { list: () => [], get: () => undefined },
+      registerSessionTools: vi.fn(),
+    }));
+
+    const { CarinaOrchestrator } = await import('./orchestrator.js');
+    const orc = new CarinaOrchestrator('test-session', false);
+    const events: Array<{ type: string; content?: string }> = [];
+    for await (const event of orc.turn('what can you do?')) {
+      events.push(event);
+    }
+
+    expect(chatCheap).not.toHaveBeenCalled();
+    expect(events).toEqual([
+      {
+        type: 'text',
+        content: 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.',
+      },
+    ]);
+  });
+});

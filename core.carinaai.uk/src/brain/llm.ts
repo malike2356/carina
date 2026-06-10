@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import { config } from '../config/index.js';
+import { withCredentialRotation } from '../credentials/credential-retry.js';
 import { resolveApiKey } from './credential-pool.js';
 import {
   anthropicTools,
@@ -11,6 +12,7 @@ import {
 } from './messages.js';
 import { classifyComplexity, type TaskComplexity } from './task-classifier.js';
 import { OpenAICompatibleProvider } from './openai-compatible-provider.js';
+import { isAbortLikeError, llmRequestSignal, llmRequestTimeoutMs } from './request-timeout.js';
 import { getTenantProvider } from './tenant-provider-keys.js';
 import type { TenantProviderOverride } from './tenant-provider-keys.js';
 import {
@@ -43,11 +45,14 @@ export const SYSTEM_PROMPT = `You are Carina, an autonomous AI agent built by VE
 You are not a chatbot. You are an agent. You take actions, execute tasks, remember context, and improve over time.
 
 Your principles:
-- Complete tasks fully, do not explain what you would do, do it
-- Use tools when you need to interact with the world
-- Be direct and concise in responses
+- Complete tasks fully. Do not narrate the process unless the user asks.
+- Use tools when they are needed
+- Be direct, concise, and plain-spoken
+- Keep answers short by default. Expand only when necessary
 - If you cannot complete a task, say exactly why and what is needed
 - You remember past conversations and build on them
+- Avoid generic assistant phrasing such as "of course", "certainly", "how can I help", or "as an AI"
+- Avoid chatty framing. Answer like a tool, not a support agent.
 - Never use emojis, emoticons, or Unicode symbols in any response. Use plain text only.
 - Never use em dashes. Use commas, colons, or full stops instead.
 - Only answer what is asked. Do not volunteer unrequested analysis.
@@ -79,69 +84,102 @@ function effectiveSystemPrompt(messages: Message[]): { prompt: string; cacheKey:
 export class ClaudeProvider implements LLMProvider {
   name = 'anthropic';
   private client: Anthropic;
+  private readonly fixedKey?: string;
 
   constructor(apiKeyOverride?: string) {
     const def = PROVIDER_MAP.anthropic;
-    this.client = new Anthropic({
-      apiKey: apiKeyOverride
-        ?? resolveApiKey(providerApiKey(def), process.env[def.apiKeysPoolEnv]),
-    });
+    this.fixedKey = apiKeyOverride;
+    const apiKey = apiKeyOverride
+      ?? resolveApiKey(providerApiKey(def), process.env[def.apiKeysPoolEnv], def.name);
+    this.client = new Anthropic({ apiKey });
   }
 
   async chat(messages: Message[], tools?: Tool[], model?: string): Promise<CarinaResponse> {
+    const def = PROVIDER_MAP.anthropic;
     const { prompt, cacheKey } = effectiveSystemPrompt(messages);
     const toolDefs = anthropicTools(tools);
-    const response = await this.client.messages.create({
-      model: model ?? providerModel(PROVIDER_MAP.anthropic),
-      max_tokens: 8192,
-      system: anthropicCacheControlBlocks(prompt),
-      messages: toAnthropicMessages(messages),
-      ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-    });
 
-    recordProviderCacheHit(this.name, cacheKey);
-
-    const content = response.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b.type === 'text' ? b.text : ''))
-      .join('');
-
-    const toolCalls = response.content
-      .filter((b) => b.type === 'tool_use')
-      .map((b) => (b.type === 'tool_use'
-        ? {
-            type: 'tool_call' as const,
-            toolName: b.name,
-            toolCallId: b.id,
-            params: b.input as Record<string, unknown>,
-          }
-        : undefined))
-      .filter((call): call is ToolCall => call !== undefined);
-
-    return {
-      content,
-      toolsUsed: toolCalls.map((t) => t.toolName),
-      tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
-      provider: 'anthropic',
-      toolCalls,
+    const run = async (client: Anthropic) => {
+      let response;
+      try {
+        response = await client.messages.create({
+          model: model ?? providerModel(def),
+          max_tokens: 8192,
+          system: anthropicCacheControlBlocks(prompt),
+          messages: toAnthropicMessages(messages),
+          ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
+        }, { signal: llmRequestSignal() });
+      } catch (err) {
+        if (isAbortLikeError(err)) {
+          throw new Error(`LLM request timed out after ${Math.round(llmRequestTimeoutMs() / 1000)}s`);
+        }
+        throw err;
+      }
+      recordProviderCacheHit(this.name, cacheKey);
+      const content = response.content
+        .filter((b) => b.type === 'text')
+        .map((b) => (b.type === 'text' ? b.text : ''))
+        .join('');
+      const toolCalls = response.content
+        .filter((b) => b.type === 'tool_use')
+        .map((b) => (b.type === 'tool_use'
+          ? {
+              type: 'tool_call' as const,
+              toolName: b.name,
+              toolCallId: b.id,
+              params: b.input as Record<string, unknown>,
+            }
+          : undefined))
+        .filter((call): call is ToolCall => call !== undefined);
+      return {
+        content,
+        toolsUsed: toolCalls.map((t) => t.toolName),
+        tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+        provider: 'anthropic' as const,
+        toolCalls,
+      };
     };
+
+    if (this.fixedKey) return run(this.client);
+
+    return withCredentialRotation(
+      def.name,
+      providerApiKey(def),
+      process.env[def.apiKeysPoolEnv],
+      async (apiKey) => run(new Anthropic({ apiKey })),
+    );
   }
 
   async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
     const { prompt } = effectiveSystemPrompt(messages);
     const toolDefs = anthropicTools(tools);
-    const stream = this.client.messages.stream({
-      model: model ?? providerModel(PROVIDER_MAP.anthropic),
-      max_tokens: 8192,
-      system: anthropicCacheControlBlocks(prompt),
-      messages: toAnthropicMessages(messages),
-      ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-    });
-
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        yield chunk.delta.text;
+    let stream;
+    try {
+      stream = this.client.messages.stream({
+        model: model ?? providerModel(PROVIDER_MAP.anthropic),
+        max_tokens: 8192,
+        system: anthropicCacheControlBlocks(prompt),
+        messages: toAnthropicMessages(messages),
+        ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
+      }, { signal: llmRequestSignal() });
+    } catch (err) {
+      if (isAbortLikeError(err)) {
+        throw new Error(`LLM request timed out after ${Math.round(llmRequestTimeoutMs() / 1000)}s`);
       }
+      throw err;
+    }
+
+    try {
+      for await (const chunk of stream) {
+        if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+          yield chunk.delta.text;
+        }
+      }
+    } catch (err) {
+      if (isAbortLikeError(err)) {
+        throw new Error(`LLM request timed out after ${Math.round(llmRequestTimeoutMs() / 1000)}s`);
+      }
+      throw err;
     }
 
     const final = await stream.finalMessage();
@@ -161,34 +199,48 @@ export class ClaudeProvider implements LLMProvider {
 export class GeminiProvider implements LLMProvider {
   name = 'gemini';
   private client: GoogleGenerativeAI;
+  private readonly fixedKey?: string;
 
   constructor(apiKeyOverride?: string) {
     const def = PROVIDER_MAP.gemini;
-    this.client = new GoogleGenerativeAI(
-      apiKeyOverride
-        ?? resolveApiKey(providerApiKey(def), process.env[def.apiKeysPoolEnv]),
-    );
+    this.fixedKey = apiKeyOverride;
+    const apiKey = apiKeyOverride
+      ?? resolveApiKey(providerApiKey(def), process.env[def.apiKeysPoolEnv], def.name);
+    this.client = new GoogleGenerativeAI(apiKey);
   }
 
   async chat(messages: Message[], _tools?: Tool[], model?: string): Promise<CarinaResponse> {
+    const def = PROVIDER_MAP.gemini;
     const { prompt } = effectiveSystemPrompt(messages);
-    const genModel = this.client.getGenerativeModel({ model: model ?? providerModel(PROVIDER_MAP.gemini) });
-    const history = messages.slice(0, -1).map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
-    const last = messages.at(-1)?.content ?? '';
-    const chat = genModel.startChat({
-      history,
-      systemInstruction: prompt,
-    });
-    const result = await chat.sendMessage(last);
-    return {
-      content: result.response.text(),
-      toolsUsed: [],
-      tokensUsed: 0,
-      provider: 'gemini',
+
+    const run = async (client: GoogleGenerativeAI) => {
+      const genModel = client.getGenerativeModel({ model: model ?? providerModel(def) });
+      const history = messages.slice(0, -1).map((m) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }));
+      const last = messages.at(-1)?.content ?? '';
+      const chat = genModel.startChat({
+        history,
+        systemInstruction: prompt,
+      });
+      const result = await chat.sendMessage(last, { signal: llmRequestSignal() });
+      return {
+        content: result.response.text(),
+        toolsUsed: [],
+        tokensUsed: 0,
+        provider: 'gemini' as const,
+      };
     };
+
+    if (this.fixedKey) return run(this.client);
+
+    return withCredentialRotation(
+      def.name,
+      providerApiKey(def),
+      process.env[def.apiKeysPoolEnv],
+      async (apiKey) => run(new GoogleGenerativeAI(apiKey)),
+    );
   }
 
   async *stream(messages: Message[], tools?: Tool[], model?: string): AsyncGenerator<string | ToolCall> {
