@@ -22,7 +22,7 @@ export interface SecurityEvent {
 
 export interface AlertChannel {
   id: string;
-  channel_type: 'telegram' | 'email' | 'slack' | 'sms' | 'discord';
+  channel_type: 'telegram' | 'email' | 'slack' | 'sms' | 'discord' | 'whatsapp';
   severity_threshold: AlertSeverity;
   enabled: boolean;
   config: Record<string, string>;

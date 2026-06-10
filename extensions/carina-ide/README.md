@@ -31,6 +31,16 @@ Or from the repo root:
 carina ide install vscode
 ```
 
+## JetBrains (IntelliJ, WebStorm, PyCharm)
+
+```bash
+carina ide build jetbrains
+# Install: Settings > Plugins > Install Plugin from Disk
+# Select extensions/carina-jetbrains/build/distributions/carina-jetbrains-0.1.0.zip
+```
+
+See `extensions/carina-jetbrains/README.md` for details.
+
 ## Install (Cursor)
 
 ```bash

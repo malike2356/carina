@@ -16,13 +16,14 @@ import { buildSystemPromptParts } from './system-prompt.js';
 import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
 import { loadCrossAgentContext } from '../sync/agent-sync.js';
 import { loadAllContacts, contactsContextBlock } from '../profiles/contacts.js';
+import { learnFromSessionTurn } from '../skills/session-learner.js';
 import { registry, registerSessionTools } from '../tools/index.js';
 import { getAllPersistentContext } from '../memory/persistent-memory.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
 import type { ConfirmFn } from './tool-runner.js';
 import { executeToolCall } from './tool-runner.js';
-import { scanUserInput } from '../security/prompt-guard-middleware.js';
-import { isSessionBlocked } from '../security/index.js';
+import { scanUserInput, scanAgentOutput } from '../security/prompt-guard-middleware.js';
+import { isSessionBlocked, isSuspended, getDeceptionAugmentation } from '../security/index.js';
 import type { ProviderOverride } from '../brain/llm.js';
 import type { AgentOptions, Message, Tool, ToolCall } from '../types/index.js';
 
@@ -117,6 +118,12 @@ export class CarinaAgent {
     const contextParts: string[] = [];
 
     contextParts.push(...buildSystemPromptParts());
+    if (process.env.LABYRINTH_ENABLED === 'true') {
+      const deceptionBlock = await getDeceptionAugmentation(config.labyrinth.instanceId);
+      if (deceptionBlock) {
+        contextParts.push(deceptionBlock);
+      }
+    }
     if (this.systemPromptSuffix) {
       contextParts.push(this.systemPromptSuffix);
     }
@@ -206,6 +213,14 @@ export class CarinaAgent {
   }
 
   async *turn(userMessage: string, priorContext?: string): AsyncGenerator<TurnEvent> {
+    if (process.env.LABYRINTH_ENABLED === 'true' && isSuspended()) {
+      yield {
+        type: 'text' as const,
+        content: '[Carina is suspended by Labyrinth Scout. Contact your administrator.]',
+      };
+      return;
+    }
+
     if (process.env.LABYRINTH_ENABLED === 'true' && isSessionBlocked(this.sessionId)) {
       yield {
         type: 'text' as const,
@@ -284,8 +299,11 @@ export class CarinaAgent {
       const textBuffer = response.content;
       const toolCalls: ToolCall[] = response.toolCalls ?? [];
       if (textBuffer) {
-        turnText += textBuffer;
-        yield { type: 'text', content: textBuffer };
+        const safeText = await scanAgentOutput(textBuffer, {
+          session_id: this.sessionId,
+        });
+        turnText += safeText;
+        yield { type: 'text', content: safeText };
       }
 
       if (toolCalls.length === 0) {
@@ -356,6 +374,13 @@ export class CarinaAgent {
       toolsUsed,
       toolCallLog,
     };
+
+    void learnFromSessionTurn({
+      userMessage: safeUserMessage,
+      assistantText: turnText,
+      toolsUsed,
+      toolCallLog,
+    });
   }
 
   getLastTurn(): TurnResult {

@@ -158,6 +158,43 @@ honeypotsRouter.post('/check/key', async (req: Request, res: Response): Promise<
   }
 });
 
+honeypotsRouter.post('/scan/leak', async (req: Request, res: Response): Promise<void> => {
+  const body = req.body as Record<string, unknown>;
+  const text = typeof body.text === 'string' ? body.text : '';
+  const instanceId =
+    typeof body.instance_id === 'string' ? body.instance_id.trim() :
+    typeof body.instanceId === 'string' ? body.instanceId.trim() : '';
+
+  if (!text) {
+    res.status(400).json({ error: 'text is required' });
+    return;
+  }
+  if (!instanceId) {
+    res.status(400).json({ error: 'instance_id is required' });
+    return;
+  }
+
+  const meta =
+    body.meta && typeof body.meta === 'object' && !Array.isArray(body.meta)
+      ? (body.meta as Record<string, unknown>)
+      : {};
+  if (typeof body.session_id === 'string' && body.session_id) {
+    meta.session_id = body.session_id;
+  }
+
+  try {
+    const matches = await honeypotManager.scanForLeak(text, instanceId, meta);
+    res.json({
+      leaked: matches.length > 0,
+      match_count: matches.length,
+      honeypot_ids: matches.map((h) => h.id),
+    });
+  } catch (err) {
+    console.error('[Honeypots] scan/leak error:', err);
+    res.status(500).json({ error: 'Honeypot leak scan failed' });
+  }
+});
+
 honeypotsRouter.post('/check/path', async (req: Request, res: Response): Promise<void> => {
   const filePath = typeof req.body?.path === 'string' ? req.body.path : '';
   if (!filePath) {

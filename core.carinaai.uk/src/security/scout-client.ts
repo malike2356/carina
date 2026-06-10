@@ -35,7 +35,9 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 let scoutUnreachableWarned = false;
 
 const METRICS_TTL_SECONDS = 360;
-const DETECT_INTERVAL_MS = 60_000;
+const DETECT_INTERVAL_MS = 10_000;
+const METRICS_DEBOUNCE_MS = 2_000;
+const metricsDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const sessionTimers = new Map<string, ReturnType<typeof setInterval>>();
 
 function scoutBaseUrl(): string {
@@ -161,7 +163,21 @@ export async function reportToolCall(call: ToolCallReport): Promise<void> {
   eventQueue.push(event);
   scheduleFlush();
 
-  void recordToolCall(call.sessionId ?? 'default-session', call.toolName, call.resultSummary.length);
+  const sessionId = call.sessionId ?? 'default-session';
+  void recordToolCall(sessionId, call.toolName, call.resultSummary.length);
+  scheduleMetricsFlush(sessionId);
+}
+
+function scheduleMetricsFlush(sessionId: string): void {
+  const existing = metricsDebounceTimers.get(sessionId);
+  if (existing) clearTimeout(existing);
+  metricsDebounceTimers.set(
+    sessionId,
+    setTimeout(() => {
+      metricsDebounceTimers.delete(sessionId);
+      void flushMetricsToScout(resolveInstanceId(), sessionId);
+    }, METRICS_DEBOUNCE_MS),
+  );
 }
 
 export async function recordToolCall(
@@ -220,6 +236,10 @@ export function _resetMetricsTimers(): void {
     clearInterval(timer);
   }
   sessionTimers.clear();
+  for (const timer of metricsDebounceTimers.values()) {
+    clearTimeout(timer);
+  }
+  metricsDebounceTimers.clear();
 }
 
 export async function flushMetricsToScout(

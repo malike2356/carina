@@ -27,6 +27,25 @@ async function resolveStripeCustomerId(accountId: string): Promise<string | null
   return user.rows[0]?.stripe_customer_id ? String(user.rows[0].stripe_customer_id) : null;
 }
 
+async function getInstalledPacks(accountId: string): Promise<Array<{ pack_name: string; version: string; status: string }>> {
+  try {
+    const result = await pool.query(
+      `SELECT pack_name, version, status
+       FROM installed_packs
+       WHERE tenant_id = $1
+       ORDER BY installed_at DESC`,
+      [accountId],
+    );
+    return result.rows.map((row) => ({
+      pack_name: String(row.pack_name),
+      version: String(row.version),
+      status: String(row.status),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export function mountHostedWebRoutes(app: Express): void {
   if (!config.hosted.enabled) return;
 
@@ -163,8 +182,10 @@ export function mountHostedContextRoute(app: Express): void {
     const scout = await import('../billing/tenant-scout.js').then((m) =>
       m.getTenantScoutCredentials(req.hostedUser!.id, req.hostedUser!.email),
     );
+    const installedPacks = await getInstalledPacks(req.hostedUser.id);
     res.json({
       hosted: true,
+      installedPacks,
       user: {
         id: req.hostedUser.id,
         email: req.hostedUser.email,

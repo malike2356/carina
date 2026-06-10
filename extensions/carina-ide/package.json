@@ -114,7 +114,8 @@
     "build": "tsc -p tsconfig.json",
     "watch": "tsc -p tsconfig.json --watch",
     "package": "pnpm build && vsce package --no-dependencies",
-    "package:cursor": "node scripts/package-cursor.mjs"
+    "package:cursor": "node scripts/package-cursor.mjs",
+    "package:zed": "node scripts/package-zed.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

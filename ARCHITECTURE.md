@@ -19,7 +19,7 @@ Full tenant documentation: `core.carinaai.uk/docs/carina-cloud.md` (published at
 | Piece | Directory | Port (local) | Audience | Shipped to customers? |
 |---|---|---|---|---|
 | Carina agent | `core.carinaai.uk/` | 3333 | End users (property professionals) | Yes - npm package + Docker image |
-| Carina IDE extensions | `extensions/carina-ide/` | n/a | VS Code and Cursor users | Yes - VSIX via `carina ide install` |
+| Carina IDE extensions | `extensions/carina-ide/`, `extensions/carina-jetbrains/` | n/a | VS Code, Cursor, Zed, JetBrains users | Yes - VSIX/ZIP via `carina ide install` |
 | Carina marketing site | `carinaai.uk/` | static | Prospects | Yes - static files to carinaai.uk |
 | Platform admin (ops) | `ops.carinaai.uk/` | 4000 | VERLOX only | No - never shipped |
 | Labyrinth Scout console | `console.labyrinthscout.com/` | 4444 | Carina operators who buy security monitoring | Yes - Docker image `verlox/scout` |
@@ -106,18 +106,20 @@ Settings tab responsibilities (`routes/settings.ts` + `views/settings.ejs`):
 - Pair this Carina instance with a Scout account (`POST /settings/scout-pairing`, described above)
 - Read-only environment summary (masks secrets)
 
-### 6. Carina IDE extensions (VS Code and Cursor)
+### 6. Carina IDE extensions (VS Code, Cursor, Zed, JetBrains)
 
 ```
-VS Code / Cursor  ->  extensions/carina-ide  ->  POST {CARINA_URL}/acp/ide/chat
-                                              ->  GET  {CARINA_URL}/acp/ide/capabilities
-                                              ->  GET  {CARINA_URL}/acp/tools
+IDE client  ->  extensions/carina-ide | carina-jetbrains  ->  POST {CARINA_URL}/acp/ide/chat
+                                                         ->  GET  {CARINA_URL}/acp/ide/capabilities
+                                                         ->  GET  {CARINA_URL}/acp/tools
 ```
 
-- Official extensions live in `extensions/carina-ide/`. They connect to a running Carina gateway (`carina web` or `carina serve`, default port 3000).
-- Sidebar chat panel with SSE streaming, ask-about-selection, tool listing, and connection health check.
-- Build and install: `carina ide build` or `carina ide install [vscode|cursor|all]`.
-- Packages: `carina-vscode-0.1.0.vsix` and `carina-cursor-0.1.0.vsix`.
+- VS Code / Cursor / Zed: `extensions/carina-ide/` (TypeScript, VSIX packages).
+- JetBrains (IDEA, WebStorm, PyCharm, etc.): `extensions/carina-jetbrains/` (Java, Gradle plugin ZIP).
+- All connect to a running Carina gateway (`carina web` or `carina serve`, default port 3000).
+- Chat tool window with SSE streaming, ask-about-selection, tool listing, connection health check.
+- Build: `carina ide build` or `carina ide install [vscode|cursor|zed|jetbrains|all]`.
+- JetBrains install: Settings > Plugins > Install Plugin from Disk > `carina-jetbrains-0.1.0.zip`.
 
 ### 7. The marketing sites
 

@@ -25,6 +25,7 @@ const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
 const viewsPath = path.join(__opsDir, 'views');
 
+app.set('trust proxy', 1);
 app.set('view engine', 'ejs');
 app.set('views', viewsPath);
 

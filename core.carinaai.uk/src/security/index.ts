@@ -17,7 +17,8 @@ export {
   isToolQuarantined,
   isOperatorBlocked,
 } from './kill-switch-listener.js';
-export { scanUserInput, scanToolOutput } from './prompt-guard-middleware.js';
+export { scanUserInput, scanToolOutput, scanAgentOutput } from './prompt-guard-middleware.js';
+export { getDeceptionAugmentation } from './deception-client.js';
 export { enforceToolPolicy, _resetToolPolicyEnforcer } from './tool-policy-middleware.js';
 export {
   ToolBlockedError,

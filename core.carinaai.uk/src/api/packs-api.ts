@@ -9,7 +9,12 @@ const PACK_CONFIG_TABLE = 'pack_config';
 
 type TenantRequest = Request & {
   tenantId?: string;
+  hostedUser?: { id: string };
 };
+
+function resolveTenantId(req: TenantRequest): string {
+  return req.tenantId ?? req.hostedUser?.id ?? 'default';
+}
 
 // ── List available packs ──
 packsApiRouter.get('/available', async (_req, res) => {
@@ -26,7 +31,7 @@ packsApiRouter.get('/available', async (_req, res) => {
 
 // ── List installed packs ──
 packsApiRouter.get('/installed', async (req: TenantRequest, res) => {
-  const tenantId = req.tenantId ?? 'default';
+  const tenantId = resolveTenantId(req);
   try {
     const result = await pool.query(
       `SELECT pack_name, version, installed_at, status
@@ -58,7 +63,7 @@ packsApiRouter.get('/:name', async (req, res) => {
 
 // ── Install ──
 packsApiRouter.post('/:name/install', async (req: TenantRequest, res) => {
-  const tenantId = req.tenantId ?? 'default';
+  const tenantId = resolveTenantId(req);
   const packName = req.params.name;
   try {
     // Check pack exists
@@ -84,7 +89,7 @@ packsApiRouter.post('/:name/install', async (req: TenantRequest, res) => {
 
 // ── Uninstall ──
 packsApiRouter.post('/:name/uninstall', async (req: TenantRequest, res) => {
-  const tenantId = req.tenantId ?? 'default';
+  const tenantId = resolveTenantId(req);
   try {
     await pool.query(
       `DELETE FROM ${INSTALLED_TABLE} WHERE tenant_id = $1 AND pack_name = $2`,
@@ -102,7 +107,7 @@ packsApiRouter.post('/:name/uninstall', async (req: TenantRequest, res) => {
 
 // ── Get config ──
 packsApiRouter.get('/:name/config', async (req: TenantRequest, res) => {
-  const tenantId = req.tenantId ?? 'default';
+  const tenantId = resolveTenantId(req);
   try {
     const result = await pool.query(
       `SELECT config FROM ${PACK_CONFIG_TABLE}
@@ -117,7 +122,7 @@ packsApiRouter.get('/:name/config', async (req: TenantRequest, res) => {
 
 // ── Set config ──
 packsApiRouter.put('/:name/config', async (req: TenantRequest, res) => {
-  const tenantId = req.tenantId ?? 'default';
+  const tenantId = resolveTenantId(req);
   const config = req.body ?? {};
   try {
     await pool.query(

@@ -1,0 +1,50 @@
+<idea-plugin>
+  <id>uk.verlox.carina</id>
+  <name>Carina</name>
+  <vendor email="support@carinaai.uk" url="https://carinaai.uk">VERLOX Ltd</vendor>
+  <description><![CDATA[
+    Chat with your local <a href="https://carinaai.uk">Carina</a> autonomous agent from IntelliJ IDEA,
+    WebStorm, PyCharm, and other JetBrains IDEs. Streaming replies, tool listing, and selection-based prompts.
+    <br/><br/>
+    Requires a running Carina gateway: <code>carina web</code> or <code>carina serve</code> (default http://localhost:3000).
+  ]]></description>
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <applicationService serviceImplementation="uk.verlox.carina.CarinaSettings"/>
+    <projectService serviceImplementation="uk.verlox.carina.CarinaChatService"/>
+    <toolWindow id="Carina"
+                anchor="right"
+                factoryClass="uk.verlox.carina.CarinaToolWindowFactory"
+                icon="/icons/carina.svg"/>
+    <applicationConfigurable parentId="tools"
+                           instance="uk.verlox.carina.CarinaConfigurable"
+                           id="uk.verlox.carina.settings"
+                           displayName="Carina"/>
+  </extensions>
+
+  <actions>
+    <group id="Carina.EditorGroup" text="Carina" popup="true">
+      <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+      <action id="Carina.AskSelection"
+              class="uk.verlox.carina.AskSelectionAction"
+              text="Ask Carina About Selection"
+              description="Send the selected code to Carina"/>
+    </group>
+    <group id="Carina.MainMenu" text="Carina" popup="true">
+      <add-to-group group-id="MainMenu" anchor="before" relative-to-action="HelpMenu"/>
+      <action id="Carina.OpenChat"
+              class="uk.verlox.carina.OpenChatAction"
+              text="Open Chat"
+              description="Open the Carina chat tool window"/>
+      <action id="Carina.CheckConnection"
+              class="uk.verlox.carina.CheckConnectionAction"
+              text="Check Connection"
+              description="Verify Carina gateway is reachable"/>
+      <action id="Carina.ListTools"
+              class="uk.verlox.carina.ListToolsAction"
+              text="List Tools"
+              description="List tools registered on the Carina agent"/>
+    </group>
+  </actions>
+</idea-plugin>

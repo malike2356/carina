@@ -1,10 +1,17 @@
 import type { AlertSeverity } from './types.js';
 
-export type AlertChannelName = 'telegram' | 'email' | 'sms' | 'dashboard' | 'slack' | 'discord';
+export type AlertChannelName =
+  | 'telegram'
+  | 'email'
+  | 'sms'
+  | 'whatsapp'
+  | 'dashboard'
+  | 'slack'
+  | 'discord';
 
 export const SEVERITY_ROUTING: Record<AlertSeverity, AlertChannelName[]> = {
-  breach: ['telegram', 'email', 'sms', 'dashboard'],
-  critical: ['telegram', 'email', 'sms', 'dashboard'],
+  breach: ['telegram', 'whatsapp', 'email', 'sms', 'dashboard'],
+  critical: ['telegram', 'whatsapp', 'email', 'sms', 'dashboard'],
   warning: ['telegram', 'email', 'dashboard'],
   info: ['dashboard'],
 };

@@ -48,6 +48,35 @@ export async function runSetupWizard(): Promise<void> {
     }
   }
 
+  const installMode = await select<'full' | 'local'>({
+    message: 'Install mode?',
+    choices: [
+      { name: 'Full (Postgres + Redis, all features)', value: 'full' },
+      { name: 'Local lightweight (SQLite memory, no Postgres required)', value: 'local' },
+    ],
+    default: 'full',
+  });
+
+  if (installMode === 'local') {
+    lines.push('CARINA_LOCAL_MODE=true');
+    lines.push('CARINA_SKIP_POSTGRES=true');
+    lines.push('CARINA_MEMORY_BACKEND=sqlite');
+    lines.push('CARINA_AUTO_SKILL_LEARN=true');
+  } else {
+    lines.push('DATABASE_URL=postgresql://localhost:5432/carina');
+    lines.push('REDIS_URL=redis://localhost:6379');
+  }
+
+  const enableWhatsApp = await confirm({
+    message: 'Enable WhatsApp live bridge (Baileys)? Run "carina whatsapp setup" after install to scan QR.',
+    default: false,
+  });
+  if (enableWhatsApp) {
+    lines.push('BAILEYS_WHATSAPP_ENABLED=true');
+    lines.push('BAILEYS_QR_TERMINAL=true');
+    lines.push('CARINA_WHATSAPP_AUTO_TRANSCRIBE=true');
+  }
+
   const connectScout = await confirm({
     message: 'Connect to Labyrinth Scout for AI agent security monitoring? (https://labyrinthscout.com)',
     default: false,
@@ -70,9 +99,6 @@ export async function runSetupWizard(): Promise<void> {
       'Least-privilege defaults: keep shell-exec and email-send disabled until needed. See Scout docs/trust/least-privilege-defaults.md',
     );
   }
-
-  lines.push('DATABASE_URL=postgresql://localhost:5432/carina');
-  lines.push('REDIS_URL=redis://localhost:6379');
 
   await fs.mkdir(CARINA_HOME, { recursive: true });
   await fs.mkdir(CARINA_DATA_DIR, { recursive: true });

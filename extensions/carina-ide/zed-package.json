@@ -1,0 +1,13 @@
+{
+  "name": "carina-zed",
+  "displayName": "Carina for Zed",
+  "description": "Chat with your local Carina agent from Zed editor.",
+  "version": "0.1.0",
+  "publisher": "verlox",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["AI", "Chat"],
+  "keywords": ["carina", "zed", "ai", "agent"]
+}

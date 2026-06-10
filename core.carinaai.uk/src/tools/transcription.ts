@@ -1,8 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-import OpenAI from 'openai';
 import type { Tool } from '../types/index.js';
-import { config } from '../config/index.js';
+import { transcribeAudioFile } from '../utils/transcribe-audio.js';
 import { expandPath, isSafePath, resolveResourcePath } from './path-utils.js';
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
@@ -31,10 +30,6 @@ export const transcriptionTool: Tool = {
       return { error: `unsupported audio type: ${ext}` };
     }
 
-    if (!config.openai.apiKey) {
-      return { error: 'OPENAI_API_KEY required for transcription' };
-    }
-
     let stat;
     try {
       stat = await fs.stat(filePath);
@@ -46,24 +41,13 @@ export const transcriptionTool: Tool = {
       return { error: `audio exceeds ${MAX_AUDIO_BYTES} byte limit` };
     }
 
-    try {
-      const client = new OpenAI({ apiKey: config.openai.apiKey });
-      const file = await fs.readFile(filePath);
-      const blob = new File([file], path.basename(filePath));
-      const response = await client.audio.transcriptions.create({
-        model: 'whisper-1',
-        file: blob,
-        ...(language ? { language } : {}),
-      });
-      return {
-        text: response.text,
-        path: filePath,
-        provider: 'openai',
-        model: 'whisper-1',
-      };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { error: `transcription failed: ${msg}` };
-    }
+    const result = await transcribeAudioFile(filePath, language);
+    if ('error' in result) return result;
+    return {
+      text: result.text,
+      path: filePath,
+      provider: 'openai',
+      model: 'whisper-1',
+    };
   },
 };

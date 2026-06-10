@@ -446,6 +446,18 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Personalise
         </button>
+        <a href="/memory" id="operator-memory-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          Memories
+        </a>
+        <a href="/packs" id="operator-packs-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Skill packs
+        </a>
+        <a href="/dashboard" id="operator-scout-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Security (Scout)
+        </a>
         <a href="/settings" id="hosted-settings-link" role="menuitem" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
           API keys (BYOK)
@@ -601,6 +613,15 @@
           <label>Voice input</label>
           <p class="field-hint" id="voice-support-note">Checking browser support...</p>
         </div>
+        <div class="field" id="operator-server-note" hidden>
+          <label>Server configuration</label>
+          <p class="field-hint">LLM API keys and integrations are configured on the server (<code>~/.carina/.env</code> or Docker). Use the CLI: <code>carina config set providers.deepseek.api_key ...</code></p>
+          <p class="field-hint" style="margin-top:8px">
+            <a href="/memory" style="color:var(--accent)">Memories</a>
+            &middot; <a href="/packs" style="color:var(--accent)">Skill packs</a>
+            <span id="settings-scout-link-wrap" hidden> &middot; <a href="/dashboard" style="color:var(--accent)">Scout dashboard</a></span>
+          </p>
+        </div>
         <div class="field">
           <label>Local chat history</label>
           <p class="field-hint">Chat sessions are stored only in this browser. Clearing them cannot be undone.</p>
@@ -688,12 +709,28 @@
       { cmd: '/memories', desc: 'List stored memories' },
     ];
 
-    const SUGGESTIONS = [
-      'What is gross yield on a buy-to-let?',
-      'Explain Section 21 notices in England',
-      'Compare freehold vs leasehold',
-      'What stamp duty applies on a £350k property?',
-    ];
+    const DOMAIN_PROMPTS = {
+      default: {
+        intro: 'Your Carina workspace. Ask for research, planning, writing, analysis, automation, or help with your configured tools.',
+        suggestions: [
+          'Research this market and summarise the risks',
+          'Draft a client follow-up email',
+          'Turn these notes into an action plan',
+          'Compare these options and recommend next steps',
+        ],
+      },
+      'property-uk': {
+        intro: 'Your UK property agent. Ask anything about yields, tenancy, conveyancing, or stamp duty.',
+        suggestions: [
+          'What is gross yield on a buy-to-let?',
+          'Explain Section 21 notices in England',
+          'Compare freehold vs leasehold',
+          'What stamp duty applies on a £350k property?',
+        ],
+      },
+    };
+
+    let activeDomain = 'default';
 
     marked.setOptions({ breaks: true, gfm: true });
 
@@ -717,27 +754,57 @@
       avatars.forEach((el) => { el.textContent = initial; el.style.background = profile.color || '#1f6feb'; });
     }
 
-    async function loadHostedContext() {
-      try {
-        const res = await fetch('/api/hosted/context');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data.hosted || !data.user) return;
+    function formatPackLabel(pack) {
+      if (!pack) return 'general-purpose agent';
+      return pack.replace(/-/g, ' ') + ' pack';
+    }
+
+    function applyWebContext(ctx) {
+      if (ctx.mode === 'hosted') {
         document.body.dataset.hosted = 'true';
-        const email = data.user.email || '';
-        const tier = data.user.tier || 'free';
-        const name = email.split('@')[0] || 'User';
-        document.getElementById('user-display-name').textContent = name;
-        document.querySelector('.user-sub').textContent = tier + ' tier · BYOK';
-        document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
-        document.getElementById('tier-badge').textContent = tier;
-        document.getElementById('tier-badge').hidden = false;
-        document.getElementById('hosted-settings-link').hidden = false;
-        document.getElementById('hosted-billing-link').hidden = false;
-        if (tier === 'pro') document.getElementById('hosted-security-link').hidden = false;
-        document.getElementById('operator-settings-btn').hidden = true;
-        const empty = document.querySelector('.empty-state p');
-        if (empty) empty.textContent = 'Add your LLM API keys in Settings, then ask anything. You pay your provider directly.';
+        document.getElementById('operator-memory-link').hidden = true;
+        document.getElementById('operator-packs-link').hidden = true;
+        document.getElementById('operator-scout-link').hidden = true;
+        document.getElementById('operator-server-note').hidden = true;
+        if (ctx.hosted && ctx.hosted.user) {
+          const email = ctx.hosted.user.email || '';
+          const tier = ctx.hosted.user.tier || 'free';
+          const name = email.split('@')[0] || 'User';
+          document.getElementById('user-display-name').textContent = name;
+          document.querySelector('.user-sub').textContent = tier + ' tier · BYOK';
+          document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+          document.getElementById('tier-badge').textContent = tier;
+          document.getElementById('tier-badge').hidden = false;
+          document.getElementById('hosted-settings-link').hidden = false;
+          document.getElementById('hosted-billing-link').hidden = false;
+          if (tier === 'pro') document.getElementById('hosted-security-link').hidden = false;
+          document.getElementById('operator-settings-btn').hidden = true;
+          activeDomain = resolveDomain(ctx.activeSkillPacks || []);
+          refreshEmptyState();
+        }
+        return;
+      }
+
+      document.body.dataset.hosted = 'false';
+      document.querySelector('.user-sub').textContent = formatPackLabel(ctx.activeSkillPack);
+      document.getElementById('operator-memory-link').hidden = false;
+      document.getElementById('operator-packs-link').hidden = false;
+      document.getElementById('operator-server-note').hidden = false;
+      if (ctx.scoutAvailable) {
+        document.getElementById('operator-scout-link').hidden = false;
+        document.getElementById('settings-scout-link-wrap').hidden = false;
+      }
+      activeDomain = resolveDomain(
+        ctx.activeSkillPacks || (ctx.activeSkillPack ? [ctx.activeSkillPack] : []),
+      );
+      refreshEmptyState();
+    }
+
+    async function loadWebContext() {
+      try {
+        const res = await fetch('/api/web/context');
+        if (!res.ok) return;
+        applyWebContext(await res.json());
       } catch {}
     }
 
@@ -976,6 +1043,51 @@
       return div.innerHTML;
     }
 
+    function resolveDomain(installedPacks) {
+      const names = (installedPacks || []).map((pack) => {
+        if (typeof pack === 'string') return pack;
+        return pack.pack_name || pack.name || '';
+      }).filter(Boolean);
+      if (names.includes('property-uk')) return 'property-uk';
+      return 'default';
+    }
+
+    function domainCopy() {
+      return DOMAIN_PROMPTS[activeDomain] || DOMAIN_PROMPTS.default;
+    }
+
+    function bindSuggestionChips(root) {
+      root.querySelectorAll('.suggestion-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+          inputEl.value = chip.dataset.prompt;
+          autoGrow();
+          inputEl.focus();
+        });
+      });
+    }
+
+    function suggestionChipsHtml(suggestions) {
+      return suggestions.map((s) =>
+        '<button type="button" class="suggestion-chip" data-prompt="' + escapeHtml(s) + '">' + escapeHtml(s) + '</button>'
+      ).join('');
+    }
+
+    function refreshEmptyState() {
+      const empty = document.getElementById('empty-state');
+      if (!empty) return;
+      const copy = domainCopy();
+      const intro = document.body.dataset.hosted === 'true'
+        ? copy.intro + ' Add your LLM API keys in Settings when using BYOK.'
+        : copy.intro;
+      const text = empty.querySelector('p');
+      if (text) text.textContent = intro;
+      const suggestions = empty.querySelector('.suggestions');
+      if (suggestions) {
+        suggestions.innerHTML = suggestionChipsHtml(copy.suggestions);
+        bindSuggestionChips(suggestions);
+      }
+    }
+
     function getSessionId() {
       let id = localStorage.getItem(SESSION_KEY);
       if (!id) { id = crypto.randomUUID(); localStorage.setItem(SESSION_KEY, id); }
@@ -1060,20 +1172,13 @@
       const wrap = document.createElement('div');
       wrap.className = 'empty-state';
       wrap.id = 'empty-state';
-      let chips = SUGGESTIONS.map((s) =>
-        '<button type="button" class="suggestion-chip" data-prompt="' + escapeHtml(s) + '">' + escapeHtml(s) + '</button>'
-      ).join('');
+      const copy = domainCopy();
+      let chips = suggestionChipsHtml(copy.suggestions);
       wrap.innerHTML = '<div class="logo-lg">C</div><h2>' + greeting() + '</h2>' +
-        '<p>Your UK property agent. Ask anything about yields, tenancy, conveyancing, or stamp duty.</p>' +
+        '<p>' + escapeHtml(copy.intro) + '</p>' +
         '<div class="suggestions">' + chips + '</div>';
       messagesEl.appendChild(wrap);
-      wrap.querySelectorAll('.suggestion-chip').forEach((chip) => {
-        chip.addEventListener('click', () => {
-          inputEl.value = chip.dataset.prompt;
-          autoGrow();
-          inputEl.focus();
-        });
-      });
+      bindSuggestionChips(wrap);
     }
 
     function clearEmptyState() {
@@ -1540,7 +1645,7 @@
     renderSessionList();
     loadSessionMessages(getSessionId());
     fetchProvider();
-    loadHostedContext();
+    loadWebContext();
   </script>
 </body>
 </html>

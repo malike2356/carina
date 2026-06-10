@@ -6,6 +6,7 @@ import { EmailAdapter } from './email.js';
 import { SlackAdapter } from './slack.js';
 import { SmsAdapter } from './sms.js';
 import { DiscordAdapter } from './discord.js';
+import { WhatsAppAdapter } from './whatsapp.js';
 import { SEVERITY_RANK } from './types.js';
 import type { AlertAdapter, AlertChannel, AlertSeverity, SecurityEvent } from './types.js';
 import { getChannelsForSeverity } from './routing.js';
@@ -18,6 +19,7 @@ const ADAPTERS: Record<string, AlertAdapter> = {
   slack: new SlackAdapter(),
   sms: new SmsAdapter(),
   discord: new DiscordAdapter(),
+  whatsapp: new WhatsAppAdapter(),
 };
 
 const DEDUP_WINDOW_SECONDS = 300;

@@ -4,6 +4,8 @@ import { baselineLearner } from './security/anomaly-detector.js';
 import { runRetention } from './audit/audit-retention.js';
 import { runWeeklyAttestation } from './trust/run-weekly-attestation.js';
 import { runWeeklyVerification } from './trust/erc8126/run-weekly-verification.js';
+import { startRotationScheduler } from './deception/rotation-scheduler.js';
+import { movingTarget } from './deception/moving-target.js';
 
 const BASELINE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const RETENTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
@@ -11,6 +13,12 @@ const ATTESTATION_INTERVAL_MS = config.trust.attestationIntervalDays * 24 * 60 *
 const STARTUP_DELAY_MS = 30_000;
 
 export function startScheduler(): void {
+  void movingTarget.loadHistory().catch((err) => {
+    console.warn('[Scheduler] Moving-target history load failed:', err);
+  });
+  startRotationScheduler();
+  console.log('[Scheduler] Moving-target deception rotation started');
+
   setTimeout(() => {
     void runBaselines();
     setInterval(() => void runBaselines(), BASELINE_INTERVAL_MS);

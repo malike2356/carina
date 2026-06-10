@@ -4,7 +4,7 @@ Last updated: 2026-06-09. Living comparison and gap tracker for standalone Carin
 
 **Product stance:** Standalone Carina is a **general-purpose** autonomous agent. Domain knowledge (property, healthcare, finance, etc.) is optional via `ACTIVE_SKILL_PACKS`; no vertical pack is active by default.
 
-**Quick status:** Hermes + OpenClaw gap closure **COMPLETE** (wave 6, 2026-06-09). Added: cross-agent sync (`agent-sync`, `SHARED_MEMORY.md`), OpenClaw contacts + Baileys WhatsApp bridge, OpenClaw workspace/media import, Hermes skill curator (tool + `CARINA_SKILL_CURATOR_ENABLED` scheduler), cron chaining + multi-delivery, pluggable memory backends (`CARINA_MEMORY_BACKEND=postgres|sqlite|honcho|mem0`), ACP-IDE routes, 22 LLM providers, prompt caching, LSP, TUI. **5179 tests**, build clean.
+**Quick status:** Gap closure wave 7 (2026-06-10). WhatsApp polish (QR setup, reconnect, voice transcribe, groups), CLI breadth (`channels`, `cron`, `doctor`, `logs`, `skills`, `whatsapp`), auto skill learning (`CARINA_AUTO_SKILL_LEARN`), contact-first `send-message`, local SQLite mode in setup wizard, Zed IDE extension. Prior waves: 77 tools, 15 channels, 96 skills, VS Code/Cursor/Zed extensions, Scout security. **5259 tests**, build clean.
 
 See also: `prompts/do_this_next.md` for prompt completion matrix.
 

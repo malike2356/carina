@@ -57,13 +57,23 @@ async function main(): Promise<void> {
   startProcessCleanup();
   let memoryReady = false;
 
+  const localOnly = process.env.CARINA_SKIP_POSTGRES === 'true'
+    || (process.env.CARINA_LOCAL_MODE === 'true' && process.env.CARINA_MEMORY_BACKEND === 'sqlite');
+
   try {
-    await initDb();
-    initMemoryBackend();
-    memoryReady = true;
-    const jobCount = await loadAndRegisterAllJobs();
-    await initSkills();
-    startSkillCuratorSchedule();
+    if (localOnly) {
+      initMemoryBackend();
+      memoryReady = true;
+      console.log(chalk.gray('Local mode: SQLite memory (Postgres skipped)'));
+    } else {
+      await initDb();
+      initMemoryBackend();
+      memoryReady = true;
+      const jobCount = await loadAndRegisterAllJobs();
+      await initSkills();
+      startSkillCuratorSchedule();
+      console.log(chalk.gray(`Memory store ready (${jobCount} scheduled jobs loaded)`));
+    }
     if (process.env.CARINA_IMPORT_WORKSPACE === 'true') {
       const { imported } = await importWorkspaceFiles();
       if (imported.length > 0) {
@@ -76,7 +86,6 @@ async function main(): Promise<void> {
         console.log(chalk.gray(`Inbound media import: ${imported.length} new, ${skipped} skipped`));
       }
     }
-    console.log(chalk.gray(`Memory store ready (${jobCount} scheduled jobs loaded)`));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(chalk.yellow(`Memory store unavailable: ${msg}`));

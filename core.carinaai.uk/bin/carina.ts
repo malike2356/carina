@@ -186,16 +186,51 @@ async function main(): Promise<void> {
     case 'list-packs':
       await listPacks();
       break;
+    case 'channels': {
+      loadLocalEnv();
+      const { runChannelsCommand } = await import('../src/cli/commands/channels.js');
+      await runChannelsCommand(args[1] ?? 'list', args[2]);
+      break;
+    }
+    case 'cron': {
+      loadLocalEnv();
+      const { runCronCommand } = await import('../src/cli/commands/cron.js');
+      await runCronCommand(args[1] ?? 'list', args[2]);
+      break;
+    }
+    case 'doctor': {
+      loadLocalEnv();
+      const { runDoctor } = await import('../src/cli/commands/doctor.js');
+      await runDoctor();
+      break;
+    }
+    case 'logs': {
+      const { runLogsCommand } = await import('../src/cli/commands/logs.js');
+      await runLogsCommand(args[1] ?? 'tail', args[2]);
+      break;
+    }
+    case 'skills': {
+      loadLocalEnv();
+      const { runSkillsCommand } = await import('../src/cli/commands/skills-cli.js');
+      await runSkillsCommand(args[1] ?? 'list');
+      break;
+    }
+    case 'whatsapp': {
+      loadLocalEnv();
+      const { runWhatsAppCommand } = await import('../src/cli/commands/whatsapp.js');
+      await runWhatsAppCommand(args[1] ?? 'setup');
+      break;
+    }
     case 'ide': {
       const action = args[1] ?? 'install';
-      const target = (args[2] ?? 'all') as 'vscode' | 'cursor' | 'all';
+      const target = (args[2] ?? 'all') as 'vscode' | 'cursor' | 'zed' | 'jetbrains' | 'all';
       const { buildIdeExtensions, installIdeExtension } = await import('../src/cli/commands/ide.js');
       if (action === 'build') {
         await buildIdeExtensions();
       } else if (action === 'install') {
         await installIdeExtension(target);
       } else {
-        console.error('Usage: carina ide <install|build> [vscode|cursor|all]');
+        console.error('Usage: carina ide <install|build> [vscode|cursor|zed|jetbrains|all]');
         process.exit(1);
       }
       break;
@@ -230,9 +265,18 @@ Usage:
   carina profile use <n>    Switch active profile
   carina install-pack <n> Install skill pack from Skills Hub
   carina list-packs       List installed skill packs
-  carina ide install      Build and install VS Code + Cursor extensions
-  carina ide install vscode|cursor
-  carina ide build        Build VSIX packages only
+  carina channels list    Show active/inactive messaging channels
+  carina channels setup <name>  Sidecar setup guide for a channel
+  carina cron list        List scheduled jobs
+  carina cron pause|resume|remove <id>
+  carina doctor           Health check (Node, DB, Redis, gateway)
+  carina logs [list|tail] [file]  View agent logs
+  carina skills list      List curated skills
+  carina whatsapp setup   Pair WhatsApp via QR code
+  carina whatsapp status  Check WhatsApp auth state
+  carina ide install      Build all IDE extensions (VS Code, Cursor, Zed, JetBrains)
+  carina ide install vscode|cursor|zed|jetbrains
+  carina ide build        Build VSIX + JetBrains zip packages
   carina web              Start web UI only
   carina --version        Print version
 `);

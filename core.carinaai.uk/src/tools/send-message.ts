@@ -1,6 +1,7 @@
 import type { Tool } from '../types/index.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
 import { channelRegistry } from '../gateway/channels/channel-registry.js';
+import { findContact } from '../profiles/contacts.js';
 
 const OUTBOUND_CHANNELS: ChannelName[] = [
   'telegram', 'discord', 'slack', 'sms', 'whatsapp',
@@ -10,7 +11,7 @@ const OUTBOUND_CHANNELS: ChannelName[] = [
 export const sendMessageTool: Tool = {
   name: 'send-message',
   description:
-    'Send a text message to a user on an enabled messaging channel. Supports telegram, discord, slack, sms, whatsapp, signal, matrix, mattermost, dingtalk, feishu, wechat, imessage, and email.',
+    'Send a text message on an enabled channel. Use contact_name to resolve whatsapp/telegram/email automatically, or pass channel + conversation_id directly.',
   parameters: {
     type: 'object',
     properties: {
@@ -19,24 +20,49 @@ export const sendMessageTool: Tool = {
         enum: OUTBOUND_CHANNELS,
         description: 'Target messaging platform',
       },
+      contact_name: {
+        type: 'string',
+        description: 'Contact name to resolve (searches Carina contacts.json and profiles)',
+      },
       conversation_id: {
         type: 'string',
-        description: 'Channel-specific conversation or chat ID',
+        description: 'Channel-specific conversation or chat ID (optional if contact_name set)',
       },
       text: { type: 'string', description: 'Message text to send' },
       thread_id: { type: 'string', description: 'Optional thread ID (Discord, Slack)' },
     },
-    required: ['channel', 'conversation_id', 'text'],
+    required: ['text'],
   },
   requiresConfirmation: true,
   execute: async (params) => {
-    const channel = String(params.channel ?? '').toLowerCase() as ChannelName;
-    const conversationId = String(params.conversation_id ?? '').trim();
+    let channel = String(params.channel ?? '').toLowerCase() as ChannelName;
+    let conversationId = String(params.conversation_id ?? '').trim();
     const text = String(params.text ?? '').trim();
     const threadId = params.thread_id ? String(params.thread_id) : undefined;
+    const contactName = String(params.contact_name ?? '').trim();
 
     if (!text) return { error: 'text is required' };
-    if (!conversationId) return { error: 'conversation_id is required' };
+
+    if (contactName) {
+      const matches = await findContact(contactName);
+      if (matches.length === 0) return { error: `contact not found: ${contactName}` };
+      const c = matches[0];
+      if (!channel) {
+        if (c.whatsapp) channel = 'whatsapp';
+        else if (c.telegram) channel = 'telegram';
+        else if (c.email) channel = 'email';
+        else return { error: `contact ${c.name} has no messaging channel configured` };
+      }
+      if (!conversationId) {
+        if (channel === 'whatsapp' && c.whatsapp) conversationId = `${c.whatsapp.replace(/\D/g, '')}@s.whatsapp.net`;
+        else if (channel === 'telegram' && c.telegram) conversationId = c.telegram;
+        else if (channel === 'email' && c.email) conversationId = c.email;
+        else return { error: `contact ${c.name} has no ${channel} address` };
+      }
+    }
+
+    if (!channel) return { error: 'channel or contact_name is required' };
+    if (!conversationId) return { error: 'conversation_id is required (or use contact_name)' };
     if (!OUTBOUND_CHANNELS.includes(channel)) {
       return { error: `unsupported channel: ${channel}` };
     }

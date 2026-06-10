@@ -36,6 +36,7 @@ import { setupAcpIdeRoutes } from './acp-ide.js';
 import { mountExtraChannelWebhooks, registerExtraChannelAdapters } from './extra-channels.js';
 import { tenantKeysRouter } from '../api/tenant-keys.js';
 import { getUserByApiKey, verifyJwt } from '../api/hosted-auth.js';
+import { mountWebContextRoute } from './web-context.js';
 
 export type StartWebOptions = {
   localMode?: boolean;
@@ -98,6 +99,8 @@ function setupChatRoutes(app: Express): void {
   app.get('/api/providers', (_req: Request, res: Response) => {
     res.json({ providers: llm.list(), active: llm.current().name });
   });
+
+  mountWebContextRoute(app);
 
   const handleChatSend = async (req: Request, res: Response): Promise<void> => {
     const message = String(req.body?.message ?? '').trim();

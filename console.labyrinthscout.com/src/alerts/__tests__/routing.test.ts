@@ -5,13 +5,13 @@ import type { AlertSeverity } from '../types.js';
 describe('Alert Routing', () => {
   it('routes breach to all channels', () => {
     expect(getChannelsForSeverity('breach')).toEqual([
-      'telegram', 'email', 'sms', 'dashboard',
+      'telegram', 'whatsapp', 'email', 'sms', 'dashboard',
     ]);
   });
 
-  it('routes critical to telegram, email, sms, dashboard', () => {
+  it('routes critical to telegram, whatsapp, email, sms, dashboard', () => {
     expect(getChannelsForSeverity('critical')).toEqual([
-      'telegram', 'email', 'sms', 'dashboard',
+      'telegram', 'whatsapp', 'email', 'sms', 'dashboard',
     ]);
   });
 
