@@ -1,4 +1,5 @@
-import { query } from './db.js';
+import { pool, query } from './db.js';
+import { runHostedMigrations } from './hosted-migrations.js';
 
 export interface TenantSummary {
   total: number;
@@ -53,6 +54,15 @@ async function tableExists(name: string): Promise<boolean> {
 
 export async function hostedTablesReady(): Promise<boolean> {
   return tableExists('hosted_users');
+}
+
+export async function ensureHostedSchema(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await runHostedMigrations(client);
+  } finally {
+    client.release();
+  }
 }
 
 export async function fetchTenantSummary(): Promise<TenantSummary | null> {

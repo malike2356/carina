@@ -15,6 +15,7 @@ import { projectsRouter } from './routes/projects.js';
 import { securityRouter } from './routes/security.js';
 import { settingsRouter } from './routes/settings.js';
 import { tenantsRouter } from './routes/tenants.js';
+import { ensureHostedSchema } from './lib/tenants.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 // tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
@@ -30,6 +31,11 @@ app.set('view engine', 'ejs');
 app.set('views', viewsPath);
 
 app.use(express.static(path.join(__opsDir, 'public')));
+
+app.get('/favicon.ico', (_req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile(path.join(__opsDir, 'public', 'favicon.svg'));
+});
 
 app.use((req, res, next) => {
   const original = res.render.bind(res) as (
@@ -104,4 +110,10 @@ app.use((_req, res) => {
 app.listen(PORT, () => {
   console.log(chalk.green(`Carina Platform Admin at http://localhost:${PORT}`));
   console.log(chalk.gray('  Password: ops.carinaai.uk/.env ADMIN_PASSWORD'));
+  void ensureHostedSchema()
+    .then(() => console.log(chalk.gray('  Hosted schema: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  Hosted schema: skipped (${msg})`));
+    });
 });

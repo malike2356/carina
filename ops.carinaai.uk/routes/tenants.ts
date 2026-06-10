@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  ensureHostedSchema,
   fetchTenantById,
   fetchTenants,
   fetchTenantSummary,
@@ -13,9 +14,20 @@ export const tenantsRouter = Router();
 function flashMessage(query: Record<string, unknown>): { text: string | null; isError: boolean } {
   if (query.ok === 'tier') return { text: 'Tier updated.', isError: false };
   if (query.ok === 'quota') return { text: 'Daily message quota reset.', isError: false };
+  if (query.ok === 'schema') return { text: 'Hosted database schema initialized.', isError: false };
   if (typeof query.err === 'string') return { text: query.err, isError: true };
   return { text: null, isError: false };
 }
+
+tenantsRouter.post('/init-schema', async (_req, res) => {
+  try {
+    await ensureHostedSchema();
+    res.redirect('/tenants?ok=schema');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.redirect(`/tenants?err=${encodeURIComponent(message)}`);
+  }
+});
 
 tenantsRouter.get('/', async (req, res) => {
   try {

@@ -67,6 +67,11 @@ async function main(): Promise<void> {
       console.log(chalk.gray('Local mode: SQLite memory (Postgres skipped)'));
     } else {
       await initDb();
+      if (config.hosted.enabled) {
+        const { initHostedDb } = await import('./api/hosted-auth.js');
+        await initHostedDb();
+        console.log(chalk.gray('Hosted SaaS schema ready'));
+      }
       initMemoryBackend();
       memoryReady = true;
       const jobCount = await loadAndRegisterAllJobs();
