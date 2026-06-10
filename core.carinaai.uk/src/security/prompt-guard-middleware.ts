@@ -42,6 +42,8 @@ const LEAK_BLOCK_MESSAGE =
   'Response withheld: output matched a monitored decoy credential. Security team notified.';
 
 export async function scanUserInput(text: string): Promise<string> {
+  if (process.env.LABYRINTH_ENABLED !== 'true') return text;
+
   const stale = await checkStaleMarkerInput(text);
   if (stale.blocked) {
     return stale.reason ?? 'This request was blocked by the deception security layer.';

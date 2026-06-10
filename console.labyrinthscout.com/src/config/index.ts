@@ -61,16 +61,31 @@ export const config = {
   },
   alerts: {
     telegram: {
-      botToken: optional('TELEGRAM_BOT_TOKEN'),
-      chatId: optional('TELEGRAM_CHAT_ID'),
+      botToken: optional('SCOUT_TELEGRAM_BOT_TOKEN') || optional('TELEGRAM_BOT_TOKEN'),
+      chatId: optional('SCOUT_TELEGRAM_CHAT_ID') || optional('TELEGRAM_CHAT_ID'),
     },
     email: {
-      resendApiKey: optional('RESEND_API_KEY'),
-      from: optional('ALERT_EMAIL_FROM', 'scout@verlox.co.uk'),
-      to: optional('ALERT_EMAIL_TO'),
+      resendApiKey: optional('SCOUT_RESEND_API_KEY') || optional('RESEND_API_KEY'),
+      from: optional('SCOUT_ALERT_FROM_EMAIL') || optional('ALERT_EMAIL_FROM', 'scout@verlox.co.uk'),
+      to: optional('SCOUT_ALERT_TO_EMAIL') || optional('ALERT_EMAIL_TO'),
     },
     slack: {
-      webhookUrl: optional('SLACK_WEBHOOK_URL'),
+      webhookUrl: optional('SCOUT_SLACK_WEBHOOK_URL') || optional('SLACK_WEBHOOK_URL'),
+    },
+    discord: {
+      webhookUrl: optional('SCOUT_DISCORD_WEBHOOK_URL') || optional('DISCORD_WEBHOOK_URL'),
+    },
+    sms: {
+      accountSid: optional('SCOUT_TWILIO_ACCOUNT_SID') || optional('TWILIO_ACCOUNT_SID'),
+      authToken: optional('SCOUT_TWILIO_AUTH_TOKEN') || optional('TWILIO_AUTH_TOKEN'),
+      from: optional('SCOUT_TWILIO_SMS_FROM') || optional('TWILIO_FROM_NUMBER'),
+      to: optional('SCOUT_ALERT_SMS_TO') || optional('ALERT_SMS_TO'),
+    },
+    whatsapp: {
+      accountSid: optional('SCOUT_TWILIO_ACCOUNT_SID') || optional('TWILIO_ACCOUNT_SID'),
+      authToken: optional('SCOUT_TWILIO_AUTH_TOKEN') || optional('TWILIO_AUTH_TOKEN'),
+      from: optional('SCOUT_TWILIO_WHATSAPP_FROM') || optional('TWILIO_WHATSAPP_FROM'),
+      to: optional('SCOUT_ALERT_WHATSAPP_TO') || optional('ALERT_WHATSAPP_TO'),
     },
   },
 } as const;

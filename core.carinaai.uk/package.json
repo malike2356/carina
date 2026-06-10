@@ -2,6 +2,10 @@
   "name": "carina-agent",
   "version": "0.1.0",
   "description": "Autonomous AI agent platform with skill packs",
+  "homepage": "https://carinaai.uk",
+  "bugs": {
+    "url": "https://carinaai.uk/docs/"
+  },
   "main": "dist/src/index.js",
   "bin": {
     "carina": "./dist/bin/carina.js"
@@ -44,13 +48,10 @@
   ],
   "author": "VERLOX Ltd",
   "license": "MIT",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "^11.5.1",
-      "onFail": "download"
-    }
+  "publishConfig": {
+    "access": "public"
   },
+  "packageManager": "pnpm@11.5.1",
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

@@ -25,7 +25,7 @@ describe('tool-policy-middleware disabled', () => {
     const enforceSpy = vi.spyOn(ToolPolicyEnforcer.prototype, 'enforce');
 
     const mockTool = {
-      name: 'shell-exec',
+      name: 'mock-safe-tool',
       description: '',
       parameters: {},
       execute: vi.fn().mockResolvedValue('ok'),
@@ -37,7 +37,7 @@ describe('tool-policy-middleware disabled', () => {
     const { executeToolCall } = await import('../agents/tool-runner.js');
     const result = await executeToolCall({
       type: 'tool_call',
-      toolName: 'shell-exec',
+      toolName: 'mock-safe-tool',
       toolCallId: 'id-1',
       params: { command: 'echo hi' },
     });

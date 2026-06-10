@@ -28,6 +28,7 @@ cd console.labyrinthscout.com
 cp .env.example .env
 # Set SCOUT_API_KEY and SCOUT_DATABASE_URL
 pnpm install
+pnpm doctor
 pnpm dev
 ```
 

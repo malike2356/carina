@@ -21,10 +21,17 @@ Copy `.env.example` to `.env` in `console.labyrinthscout.com/`.
 | `SCOUT_TELEGRAM_CHAT_ID` | Target chat id |
 | `SCOUT_RESEND_API_KEY` | Resend API for email alerts |
 | `SCOUT_ALERT_FROM_EMAIL` | From address (default `hello@carinaai.uk`) |
-| `ALERT_EMAIL_TO` | Recipient |
+| `SCOUT_ALERT_TO_EMAIL` | Email recipient |
 | `SCOUT_SLACK_WEBHOOK_URL` | Slack incoming webhook |
+| `SCOUT_DISCORD_WEBHOOK_URL` | Discord incoming webhook |
+| `SCOUT_TWILIO_ACCOUNT_SID` | Twilio account SID for SMS/WhatsApp |
+| `SCOUT_TWILIO_AUTH_TOKEN` | Twilio auth token |
+| `SCOUT_TWILIO_SMS_FROM` | Approved Twilio SMS sender |
+| `SCOUT_TWILIO_WHATSAPP_FROM` | Approved Twilio WhatsApp sender |
+| `SCOUT_ALERT_SMS_TO` | SMS alert recipient |
+| `SCOUT_ALERT_WHATSAPP_TO` | WhatsApp alert recipient |
 
-Legacy aliases `TELEGRAM_BOT_TOKEN`, `RESEND_API_KEY`, `SLACK_WEBHOOK_URL` still work.
+Legacy aliases `TELEGRAM_BOT_TOKEN`, `RESEND_API_KEY`, `ALERT_EMAIL_TO`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL`, and `TWILIO_*` still work.
 
 ## Tool policy (client-side on agents)
 

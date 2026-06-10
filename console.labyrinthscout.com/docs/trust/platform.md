@@ -78,6 +78,7 @@ Scout computes ERC-8126 verification scores and posts them to the ERC-8004 Valid
 ```bash
 cd console.labyrinthscout.com
 # TRUST_ATTESTER_PRIVATE_KEY + registered ERC-8004 agent required
+pnpm doctor
 pnpm trust:verify
 ```
 

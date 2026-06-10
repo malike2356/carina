@@ -12,6 +12,7 @@
     "build": "tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "doctor": "tsx scripts/doctor.ts",
     "trust:register": "tsx scripts/register-trust-identity.ts",
     "trust:register:mainnet": "tsx scripts/register-trust-identity-mainnet.ts",
     "trust:attest": "tsx scripts/submit-trust-attestation.ts",
