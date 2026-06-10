@@ -123,7 +123,9 @@ describe('AlertDispatcher', () => {
   });
 
   it('runs silently when no channels are configured', async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
+    queryMock
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
     const fetchMock = vi.mocked(fetch);
 
     const { alertDispatcher } = await import('../dispatcher.js');

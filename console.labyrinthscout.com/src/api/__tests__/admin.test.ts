@@ -74,7 +74,24 @@ describe('POST /api/admin/alert-test', () => {
   it('fires test alert and returns channel count', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [mockInsertRow('critical')] } as never)
-      .mockResolvedValueOnce({ rows: [{ count: '2' }] } as never);
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'ch-1',
+            channel_type: 'telegram',
+            severity_threshold: 'warning',
+            enabled: true,
+            config: {},
+          },
+          {
+            id: 'ch-2',
+            channel_type: 'slack',
+            severity_threshold: 'warning',
+            enabled: true,
+            config: {},
+          },
+        ],
+      } as never);
 
     const res = await request(makeApp())
       .post('/api/admin/alert-test')
@@ -93,7 +110,7 @@ describe('POST /api/admin/alert-test', () => {
   it('defaults invalid severity to critical', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [mockInsertRow('critical')] } as never)
-      .mockResolvedValueOnce({ rows: [{ count: '0' }] } as never);
+      .mockResolvedValueOnce({ rows: [] } as never);
 
     const res = await request(makeApp())
       .post('/api/admin/alert-test')
@@ -108,9 +125,29 @@ describe('POST /api/admin/alert-test', () => {
   it('allows successive tests by clearing dedup key each time', async () => {
     queryMock
       .mockResolvedValueOnce({ rows: [mockInsertRow('warning')] } as never)
-      .mockResolvedValueOnce({ rows: [{ count: '1' }] } as never)
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'ch-1',
+            channel_type: 'email',
+            severity_threshold: 'warning',
+            enabled: true,
+            config: {},
+          },
+        ],
+      } as never)
       .mockResolvedValueOnce({ rows: [mockInsertRow('warning')] } as never)
-      .mockResolvedValueOnce({ rows: [{ count: '1' }] } as never);
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'ch-1',
+            channel_type: 'email',
+            severity_threshold: 'warning',
+            enabled: true,
+            config: {},
+          },
+        ],
+      } as never);
 
     const app = makeApp();
     const first = await request(app).post('/api/admin/alert-test').send({ severity: 'warning' });

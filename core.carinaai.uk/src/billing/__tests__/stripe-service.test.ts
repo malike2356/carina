@@ -11,7 +11,7 @@ const stripe = {
 describe('StripeService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.STRIPE_PRICE_SCOUT_STANDARD = 'price_scout';
+    process.env.STRIPE_PRICE_SCOUT_PRO = 'price_scout';
   });
 
   it('creates subscription checkout sessions with plan metadata', async () => {
@@ -20,7 +20,7 @@ describe('StripeService', () => {
     const session = await service.createCheckoutSession({
       tenantId: 'tenant-1',
       email: 'user@example.com',
-      plan: 'scout_standard',
+      plan: 'scout_pro',
       successUrl: 'https://ok',
       cancelUrl: 'https://cancel',
     });
@@ -29,7 +29,7 @@ describe('StripeService', () => {
     expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
       mode: 'subscription',
       customer_email: 'user@example.com',
-      metadata: { tenantId: 'tenant-1', plan: 'scout_standard' },
+      metadata: { tenantId: 'tenant-1', plan: 'scout_pro' },
     }));
   });
 

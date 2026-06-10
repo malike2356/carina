@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS inbound_emails (
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id UUID PRIMARY KEY,
-  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'enterprise')),
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise')),
   status TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT UNIQUE,
@@ -178,6 +178,9 @@ ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS last_used_at TIMESTAMPTZ;
 
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS chain_after TEXT[] DEFAULT '{}';
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS deliver_channels TEXT[] DEFAULT '{}';
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS origin_channel TEXT;
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS origin_conversation_id TEXT;
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS origin_thread_id TEXT;
 
 CREATE TABLE IF NOT EXISTS webhook_subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -251,6 +254,23 @@ const MEMORY_ADMIN_MIGRATION = `
 ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0;
 ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
 ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS memory_tier TEXT DEFAULT 'short_term';
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS access_count INTEGER DEFAULT 0;
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS last_accessed_at TIMESTAMPTZ;
+ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS promotion_score NUMERIC(6,3) DEFAULT 0;
+CREATE TABLE IF NOT EXISTS memory_promotion_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  episode_id UUID NOT NULL REFERENCES episodic_memories(id) ON DELETE CASCADE,
+  proposed_content TEXT NOT NULL,
+  proposed_target TEXT NOT NULL DEFAULT 'memory',
+  score NUMERIC(6,3) NOT NULL,
+  rationale TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS memory_promotion_queue_status_idx ON memory_promotion_queue(status);
+CREATE INDEX IF NOT EXISTS episodic_memories_tier_idx ON episodic_memories(memory_tier, created_at DESC);
 DO $$
 BEGIN
   ALTER TABLE episodic_memories DROP CONSTRAINT IF EXISTS episodic_memories_role_check;
@@ -306,8 +326,19 @@ async function migrateDimensions(client: pg.PoolClient): Promise<void> {
   console.log('Vector column migration complete. Re-run pnpm ingest to rebuild the RAG index.');
 }
 
+const BILLING_PLAN_MIGRATION = `
+ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_plan_check;
+ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_plan_check
+  CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise'));
+`;
+
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(TABLES);
+  try {
+    await client.query(BILLING_PLAN_MIGRATION);
+  } catch {
+    // constraint may already match
+  }
   await migrateDimensions(client);
   for (const sql of INDEXES) {
     try {

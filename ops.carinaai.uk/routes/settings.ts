@@ -3,7 +3,8 @@ import { execFileSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Router } from 'express';
-import { scoutGet } from '../lib/scout.js';
+import { scoutGet, scoutGetDetailed, scoutPut, scoutPost } from '../lib/scout.js';
+import { carinaGet, carinaOpsTokenSet } from '../lib/carina.js';
 
 export const settingsRouter = Router();
 
@@ -37,25 +38,41 @@ settingsRouter.get('/', (req, res) => {
     scoutPaired: Boolean(process.env.SCOUT_API_KEY),
     scoutPairOk: req.query['scout_pair_ok'] === '1',
     scoutPairErr: typeof req.query['scout_pair_err'] === 'string' ? req.query['scout_pair_err'] : '',
+    carinaPaired: carinaOpsTokenSet(),
+    carinaPairOk: req.query['carina_pair_ok'] === '1',
+    carinaPairErr: typeof req.query['carina_pair_err'] === 'string' ? req.query['carina_pair_err'] : '',
   });
 });
 
 settingsRouter.post('/test-carina', async (_req, res) => {
-  const carinaUrl = process.env.CARINA_API_URL ?? 'http://localhost:3333';
+  if (!carinaOpsTokenSet()) {
+    res.json({
+      ok: false,
+      error: 'CARINA_OPS_TOKEN not set (paste the ops token from core.carinaai.uk .env)',
+    });
+    return;
+  }
   try {
-    const r = await fetch(`${carinaUrl}/api/providers`, { signal: AbortSignal.timeout(5000) });
+    const r = await carinaGet('/api/ops/health');
+    const body = await r.text();
     if (!r.ok) {
-      res.json({ ok: false, error: `HTTP ${r.status}` });
+      let detail = body.slice(0, 120);
+      try {
+        const parsed = JSON.parse(body) as { error?: string };
+        if (parsed.error) detail = parsed.error;
+      } catch {
+        // keep raw snippet
+      }
+      const hint = r.status === 401
+        ? ' (check CARINA_OPS_TOKEN matches core.carinaai.uk/.env; URL must be https://core.carinaai.uk)'
+        : '';
+      res.json({ ok: false, error: `HTTP ${r.status}${hint}: ${detail}` });
       return;
     }
-    const data = (await r.json()) as {
-      providers?: string[];
-      active?: string;
-    };
+    const data = JSON.parse(body) as { ok?: boolean; service?: string };
     res.json({
       ok: true,
-      providers: data.providers ?? [],
-      active: data.active ?? null,
+      service: data.service ?? 'carina-gateway',
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -95,6 +112,82 @@ settingsRouter.post('/scout-password', async (req, res) => {
     const msg = err instanceof Error ? err.message : String(err);
     res.redirect('/settings?scout_err=' + encodeURIComponent('Failed: ' + msg));
   }
+});
+
+settingsRouter.post('/carina-pairing', (req, res) => {
+  const { carinaOpsToken } = req.body as { carinaOpsToken?: string };
+  const token = (carinaOpsToken ?? '').trim();
+
+  if (!token) {
+    res.redirect('/settings?carina_pair_err=' + encodeURIComponent('Paste your Carina ops token'));
+    return;
+  }
+
+  try {
+    setEnvVar(ENV_PATH, 'CARINA_OPS_TOKEN', token);
+    res.redirect('/settings?carina_pair_ok=1');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.redirect('/settings?carina_pair_err=' + encodeURIComponent('Failed: ' + msg));
+  }
+});
+
+settingsRouter.get('/alert-channels', async (_req, res) => {
+  if (!process.env.SCOUT_API_KEY) {
+    res.status(400).json({ ok: false, error: 'SCOUT_API_KEY not set. Pair with Scout first.' });
+    return;
+  }
+  const result = await scoutGetDetailed('/api/admin/alert-channels');
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Scout unreachable' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.put('/alert-channels/:type', async (req, res) => {
+  const type = String(req.params.type ?? '');
+  if (!['telegram', 'email', 'slack'].includes(type)) {
+    res.status(400).json({ ok: false, error: 'Invalid channel type' });
+    return;
+  }
+  if (!process.env.SCOUT_API_KEY) {
+    res.status(400).json({ ok: false, error: 'SCOUT_API_KEY not set' });
+    return;
+  }
+  const result = await scoutPut(`/api/admin/alert-channels/${type}`, req.body ?? {});
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Save failed' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.put('/alert-channels-platform', async (req, res) => {
+  if (!process.env.SCOUT_API_KEY) {
+    res.status(400).json({ ok: false, error: 'SCOUT_API_KEY not set' });
+    return;
+  }
+  const result = await scoutPut('/api/admin/alert-channels/platform', req.body ?? {});
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Save failed' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.post('/alert-test', async (req, res) => {
+  if (!process.env.SCOUT_API_KEY) {
+    res.json({ ok: false, error: 'SCOUT_API_KEY not set' });
+    return;
+  }
+  const severity = typeof req.body?.severity === 'string' ? req.body.severity : 'critical';
+  const data = await scoutPost('/api/admin/alert-test', { severity });
+  if (!data) {
+    res.json({ ok: false, error: 'Alert test failed or Scout unreachable' });
+    return;
+  }
+  res.json({ ok: true, ...(data as Record<string, unknown>) });
 });
 
 settingsRouter.post('/scout-pairing', (req, res) => {

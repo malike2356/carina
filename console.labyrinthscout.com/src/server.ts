@@ -8,6 +8,7 @@ import { config } from './config/index.js';
 import { initDb, pool } from './db.js';
 import { initRedis, getRedis } from './redis.js';
 import { requireApiKey } from './middleware/auth.js';
+import { requireScoutPro } from './middleware/plan-gate.js';
 import { accountRouter } from './api/account.js';
 import { provisionRouter } from './api/provision.js';
 import { requireProvisionSecret } from './middleware/provision-auth.js';
@@ -20,6 +21,7 @@ import { resumeRouter } from './api/resume.js';
 import { policyRouter } from './api/policy.js';
 import { statsRouter } from './api/stats.js';
 import { adminRouter } from './api/admin.js';
+import { getPlatformDashboardUrl } from './lib/alert-channels.js';
 import { anomaliesRouter } from './api/anomalies.js';
 import { honeypotsRouter } from './api/honeypots.js';
 import { rateControlRouter } from './api/rate-control.js';
@@ -58,7 +60,8 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.SCOUT_COOKIE_SECURE === 'true'
+        || (process.env.NODE_ENV === 'production' && process.env.SCOUT_COOKIE_SECURE !== 'false'),
       maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }),
@@ -102,7 +105,12 @@ function servePublicPage(file: string) {
   };
 }
 
-app.get('/', serveDashboard);
+app.get('/favicon.ico', (_req, res) => {
+  res.type('image/svg+xml');
+  res.sendFile(path.join(PUBLIC, 'favicon.svg'));
+});
+
+app.get('/', servePublicPage('index.html'));
 app.get('/dashboard', serveDashboard);
 app.get('/dashboard.html', redirectHtml('/dashboard'));
 app.get('/pricing', servePublicPage('pricing.html'));
@@ -116,27 +124,27 @@ app.use('/api/public/trust', publicTrustRouter);
 app.use('/api/events', requireApiKey, eventsRouter);
 app.use('/api/heartbeat', requireApiKey, heartbeatRouter);
 app.use('/api/status', requireApiKey, statusRouter);
-app.use('/api/kill', requireApiKey, killRouter);
-app.use('/api/resume', requireApiKey, resumeRouter);
+app.use('/api/kill', requireApiKey, requireScoutPro, killRouter);
+app.use('/api/resume', requireApiKey, requireScoutPro, resumeRouter);
 app.use('/api/policy', requireApiKey, policyRouter);
 app.use('/api/stats', requireApiKey, statsRouter);
 app.use('/api/admin', requireApiKey, adminRouter);
 app.use('/api/anomalies', requireApiKey, anomaliesRouter);
-app.use('/api/honeypots', requireApiKey, honeypotsRouter);
-app.use('/api/deception', requireApiKey, deceptionRouter);
+app.use('/api/honeypots', requireApiKey, requireScoutPro, honeypotsRouter);
+app.use('/api/deception', requireApiKey, requireScoutPro, deceptionRouter);
 app.use('/api/rate-limit', requireApiKey, rateControlRouter);
 app.use('/api/memory', requireApiKey, memoryControlRouter);
 app.use('/api/instances', requireApiKey, instancesRouter);
-app.use('/api/export', requireApiKey, exportRouter);
+app.use('/api/export', requireApiKey, requireScoutPro, exportRouter);
 app.use('/api/dashboard', requireApiKey, dashboardRouter);
 app.use('/api/admin/scout', requireApiKey, markersRouter);
-app.use('/api/sessions', requireApiKey, blockSessionRouter);
-app.use('/api/quarantine', requireApiKey, quarantineRouter);
-app.use('/api/egress', requireApiKey, egressControlRouter);
-app.use('/api/killswitch', requireApiKey, killswitchRouter);
+app.use('/api/sessions', requireApiKey, requireScoutPro, blockSessionRouter);
+app.use('/api/quarantine', requireApiKey, requireScoutPro, quarantineRouter);
+app.use('/api/egress', requireApiKey, requireScoutPro, egressControlRouter);
+app.use('/api/killswitch', requireApiKey, requireScoutPro, killswitchRouter);
 app.use('/api/audit', requireApiKey, auditSearchRouter);
-app.use('/api/compliance', requireApiKey, complianceRouter);
-app.use('/api/trust', requireApiKey, trustEnterpriseRouter);
+app.use('/api/compliance', requireApiKey, requireScoutPro, complianceRouter);
+app.use('/api/trust', requireApiKey, requireScoutPro, trustEnterpriseRouter);
 app.use('/api/stream', sseRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -159,6 +167,12 @@ async function main(): Promise<void> {
   console.log(chalk.bold.hex('#d4af37')('LABYRINTH SCOUT') + chalk.gray(' - starting up'));
 
   await initDb();
+  try {
+    process.env.SCOUT_DASHBOARD_URL = await getPlatformDashboardUrl();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(chalk.yellow(`[scout] Platform dashboard URL not loaded: ${msg}`));
+  }
   await initRedis();
   await initSseSubscriber();
   startScheduler();

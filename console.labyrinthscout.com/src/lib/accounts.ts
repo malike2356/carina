@@ -1,6 +1,11 @@
 import { randomBytes, createHash } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../db.js';
+import {
+  normalizeScoutPlan,
+  setAccountSubscriptionPlan,
+  type ScoutSubscriptionPlan,
+} from './subscription-plan.js';
 
 export interface Account {
   id: string;
@@ -18,10 +23,58 @@ export interface ApiKeySummary {
 }
 
 const KEY_PREFIX = 'lsk_';
+const SETUP_TOKEN_PREFIX = 'ast_';
 const LICENSE_RE = /^scout_(live|test)_/;
+const SETUP_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function hashKey(plaintext: string): string {
   return createHash('sha256').update(plaintext).digest('hex');
+}
+
+export async function createAccountSetupToken(accountId: string): Promise<string> {
+  const plaintext = SETUP_TOKEN_PREFIX + randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + SETUP_TOKEN_TTL_MS);
+  await pool.query(
+    `INSERT INTO account_setup_tokens (account_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [accountId, hashKey(plaintext), expiresAt.toISOString()],
+  );
+  return plaintext;
+}
+
+export async function activateAccountWithSetupToken(
+  token: string,
+  password: string,
+): Promise<{ ok: true; account: Account } | { ok: false; reason: 'invalid' | 'expired' | 'used' }> {
+  if (!token.startsWith(SETUP_TOKEN_PREFIX) || password.length < 8) {
+    return { ok: false, reason: 'invalid' };
+  }
+  const result = await pool.query<{
+    id: string;
+    account_id: string;
+    expires_at: string;
+    used_at: string | null;
+    email: string;
+    created_at: string;
+  }>(
+    `SELECT t.id, t.account_id, t.expires_at, t.used_at, a.email, a.created_at
+     FROM account_setup_tokens t
+     JOIN accounts a ON a.id = t.account_id
+     WHERE t.token_hash = $1`,
+    [hashKey(token)],
+  );
+  const row = result.rows[0];
+  if (!row) return { ok: false, reason: 'invalid' };
+  if (row.used_at) return { ok: false, reason: 'used' };
+  if (new Date(row.expires_at).getTime() < Date.now()) return { ok: false, reason: 'expired' };
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  await pool.query(`UPDATE accounts SET password_hash = $2 WHERE id = $1`, [row.account_id, passwordHash]);
+  await pool.query(`UPDATE account_setup_tokens SET used_at = NOW() WHERE id = $1`, [row.id]);
+  return {
+    ok: true,
+    account: toAccount({ id: row.account_id, email: row.email, created_at: row.created_at }),
+  };
 }
 
 function toAccount(row: { id: string; email: string; created_at: string }): Account {
@@ -38,6 +91,29 @@ export async function createAccount(email: string, password: string): Promise<Ac
   const row = result.rows[0];
   if (!row) throw new Error('Account insert returned no row');
   return toAccount(row);
+}
+
+export async function updateAccountPassword(
+  accountId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'wrong_password' }> {
+  const result = await pool.query<{ password_hash: string }>(
+    `SELECT password_hash FROM accounts WHERE id = $1`,
+    [accountId],
+  );
+  const row = result.rows[0];
+  if (!row) return { ok: false, reason: 'not_found' };
+
+  const matches = await bcrypt.compare(currentPassword, row.password_hash);
+  if (!matches) return { ok: false, reason: 'wrong_password' };
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await pool.query(`UPDATE accounts SET password_hash = $2 WHERE id = $1`, [
+    accountId,
+    passwordHash,
+  ]);
+  return { ok: true };
 }
 
 export async function verifyLogin(email: string, password: string): Promise<Account | null> {
@@ -157,7 +233,8 @@ export async function provisionCarinaTenant(opts: {
   email: string;
   carinaTenantId: string;
   licenseKey: string;
-}): Promise<{ accountId: string; created: boolean }> {
+  plan?: ScoutSubscriptionPlan;
+}): Promise<{ accountId: string; created: boolean; setupToken: string }> {
   const email = opts.email.toLowerCase().trim();
   let account = await findAccountByCarinaTenantId(opts.carinaTenantId);
   let created = false;
@@ -196,7 +273,9 @@ export async function provisionCarinaTenant(opts: {
   }
 
   await registerLicenseKey(account.id, opts.licenseKey);
-  return { accountId: account.id, created };
+  await setAccountSubscriptionPlan(account.id, normalizeScoutPlan(opts.plan));
+  const setupToken = await createAccountSetupToken(account.id);
+  return { accountId: account.id, created, setupToken };
 }
 
 export async function findAccountByApiKey(plaintext: string): Promise<Account | null> {

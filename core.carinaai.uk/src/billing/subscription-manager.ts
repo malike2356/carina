@@ -1,9 +1,10 @@
 import crypto from 'crypto';
 import type Stripe from 'stripe';
 import { pool } from '../memory/db.js';
-import { BILLING_PLANS, type BillingPlanId } from './plans.js';
+import { BILLING_PLANS, normalizePlanId, type BillingPlanId } from './plans.js';
 import { StripeService } from './stripe-service.js';
-import { provisionScoutTenant } from './scout-provisioning.js';
+import { provisionScoutTenant, syncScoutTenantPlan } from './scout-provisioning.js';
+import { sendScoutWelcomeEmail } from './scout-welcome-email.js';
 
 export interface SubscriptionSnapshot {
   tenant_id: string;
@@ -17,7 +18,8 @@ export interface SubscriptionSnapshot {
 }
 
 function asPlan(value: unknown): BillingPlanId {
-  return value === 'scout_standard' || value === 'enterprise' ? value : 'free';
+  const plan = normalizePlanId(value);
+  return plan === 'free' ? 'scout_pro' : plan;
 }
 
 function dateFromUnix(value: number | null | undefined): Date | null {
@@ -92,6 +94,20 @@ export class SubscriptionManager {
         email,
         tenantId,
         licenseKey: snapshot.scout_api_key,
+        plan,
+      }).then((provisioned) => {
+        if (!provisioned?.setupToken) return;
+        const scoutConsoleUrl =
+          (process.env.SCOUT_CONSOLE_PUBLIC_URL || process.env.LABYRINTH_URL || 'https://console.labyrinthscout.com')
+            .replace(/\/+$/, '');
+        return sendScoutWelcomeEmail({
+          email,
+          setupToken: provisioned.setupToken,
+          scoutConsoleUrl,
+        });
+      }).catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[carina:scout-welcome] failed:', msg);
       });
     }
     return snapshot;
@@ -117,6 +133,7 @@ export class SubscriptionManager {
         tenantId,
       ],
     );
+    void syncScoutTenantPlan({ tenantId, plan }).catch(() => undefined);
   }
 
   async cancel(tenantId: string): Promise<SubscriptionSnapshot | null> {

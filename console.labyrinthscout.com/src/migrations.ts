@@ -240,6 +240,17 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   `);
 
   await client.query(`
+    ALTER TABLE accounts
+      ADD COLUMN IF NOT EXISTS subscription_plan TEXT NOT NULL DEFAULT 'scout_pro'
+  `);
+
+  await client.query(`
+    UPDATE accounts
+    SET subscription_plan = 'scout_pro'
+    WHERE subscription_plan IS NULL OR subscription_plan = ''
+  `);
+
+  await client.query(`
     CREATE TABLE IF NOT EXISTS account_api_keys (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
@@ -255,6 +266,30 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(`
     CREATE INDEX IF NOT EXISTS idx_account_api_keys_account
       ON account_api_keys (account_id)
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS account_setup_tokens (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_account_setup_tokens_account
+      ON account_setup_tokens (account_id, created_at DESC)
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS scout_platform_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
   `);
 
   await client.query(`

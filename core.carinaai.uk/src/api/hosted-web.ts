@@ -137,9 +137,9 @@ export function mountHostedWebRoutes(app: Express): void {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/billing?success=true`,
       cancel_url: `${origin}/billing?canceled=true`,
-      metadata: { tenantId: accountId, plan: 'scout_standard' },
+      metadata: { tenantId: accountId, plan: 'scout_pro' },
       subscription_data: {
-        metadata: { tenantId: accountId, plan: 'scout_standard' },
+        metadata: { tenantId: accountId, plan: 'scout_pro' },
       },
     });
     res.json({ url: session.url });

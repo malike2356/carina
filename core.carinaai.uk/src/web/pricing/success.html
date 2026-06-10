@@ -9,13 +9,18 @@
   <body>
     <main class="shell">
       <p class="eyebrow">Payment complete</p>
-      <h1>Labyrinth Scout is ready.</h1>
-      <p class="lead">Your subscription is activated by Stripe webhook. Your Scout API key appears in your account once the webhook has completed.</p>
-      <h2>Quick start</h2>
-      <pre class="code">scout deploy --license-key ***
-carina config set scout.url http://localhost:3001</pre>
-      <p class="notice">Dashboard: <a href="http://localhost:3001/dashboard">http://localhost:3001/dashboard</a></p>
-      <p class="notice">Need Scout pre-configured with Carina? Contact us for setup support.</p>
+      <h1>Labyrinth Scout is activating.</h1>
+      <p class="lead">We are provisioning your account now. Carina Cloud pairs Scout automatically; you do not need to edit a .env file.</p>
+      <h2>Next steps</h2>
+      <ol class="notice" style="text-align:left; max-width: 640px; line-height: 1.7;">
+        <li>Check your email for <strong>Labyrinth Scout is ready</strong> (setup link for the Scout console).</li>
+        <li>Sign in to Carina Cloud with the same email and password you used at checkout.</li>
+        <li>Open <a href="https://app.carinaai.uk/security?activated=1">Security</a> to confirm monitoring is live.</li>
+      </ol>
+      <p style="margin-top: 1.5rem;">
+        <a class="btn" href="https://app.carinaai.uk/hosted-login">Sign in to Carina Cloud</a>
+      </p>
+      <p class="notice">Provisioning usually completes within a minute. If email does not arrive, check spam or contact contact@verlox.uk.</p>
     </main>
   </body>
 </html>

@@ -3,11 +3,18 @@ import type { AlertAdapter, AlertChannel, SecurityEvent } from './types.js';
 export class EmailAdapter implements AlertAdapter {
   async send(event: SecurityEvent, channel: AlertChannel): Promise<void> {
     const apiKey =
+      channel.config.resend_api_key ??
+      channel.config.api_key ??
       process.env.SCOUT_RESEND_API_KEY ??
       process.env.RESEND_API_KEY ??
-      channel.config.api_key;
-    const toAddress = channel.config.to_address ?? process.env.ALERT_EMAIL_TO ?? '';
+      '';
+    const toAddress =
+      channel.config.to_address ??
+      process.env.SCOUT_ALERT_TO_EMAIL ??
+      process.env.ALERT_EMAIL_TO ??
+      '';
     const fromAddress =
+      channel.config.from_address ??
       process.env.SCOUT_ALERT_FROM_EMAIL ??
       process.env.ALERT_EMAIL_FROM ??
       'hello@carinaai.uk';

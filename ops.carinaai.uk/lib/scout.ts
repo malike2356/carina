@@ -28,24 +28,55 @@ export async function scoutGet(path: string): Promise<unknown> {
   }
 }
 
-export async function scoutPost(path: string, body: unknown): Promise<unknown> {
+export interface ScoutResponse {
+  ok: boolean;
+  status: number;
+  data?: unknown;
+  error?: string;
+}
+
+async function scoutRequest(method: string, path: string, body?: unknown): Promise<ScoutResponse> {
   try {
     const r = await fetch(`${SCOUT_URL}${path}`, {
-      method: 'POST',
+      method,
       headers: scoutHeaders(),
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(5000),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(10000),
     });
-    if (!r.ok) {
-      console.warn(`[scout] POST ${path} returned ${r.status}`);
-      return null;
+    const text = await r.text();
+    let data: unknown;
+    try {
+      data = text ? JSON.parse(text) : undefined;
+    } catch {
+      data = text;
     }
-    return r.json();
+    if (!r.ok) {
+      const detail =
+        typeof data === 'object' && data !== null && 'error' in data
+          ? String((data as { error: unknown }).error)
+          : text.slice(0, 200);
+      console.warn(`[scout] ${method} ${path} returned ${r.status}: ${detail}`);
+      return { ok: false, status: r.status, error: detail || `HTTP ${r.status}` };
+    }
+    return { ok: true, status: r.status, data };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn('[scout] offline:', msg);
-    return null;
+    return { ok: false, status: 0, error: msg };
   }
+}
+
+export async function scoutPost(path: string, body: unknown): Promise<unknown> {
+  const result = await scoutRequest('POST', path, body);
+  return result.ok ? result.data : null;
+}
+
+export async function scoutPut(path: string, body: unknown): Promise<ScoutResponse> {
+  return scoutRequest('PUT', path, body);
+}
+
+export async function scoutGetDetailed(path: string): Promise<ScoutResponse> {
+  return scoutRequest('GET', path);
 }
 
 export function scoutStreamUrl(path: string): string {

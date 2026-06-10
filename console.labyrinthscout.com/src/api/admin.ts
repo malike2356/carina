@@ -5,10 +5,15 @@ import { pool } from '../db.js';
 import { getRedis } from '../redis.js';
 import { baselineLearner } from '../security/anomaly-detector.js';
 import { alertDispatcher, toSecurityEvent } from '../alerts/dispatcher.js';
+import { alertChannelsRouter } from './alert-channels.js';
+import { requireScoutPro } from '../middleware/plan-gate.js';
+import { loadDispatchChannels } from '../lib/alert-channels.js';
 import { broadcastEvent } from './sse.js';
 import type { SecurityEventRow, Severity } from '../types.js';
 
 export const adminRouter: IRouter = Router();
+
+adminRouter.use('/alert-channels', alertChannelsRouter);
 
 const VALID_SEVERITIES: Severity[] = ['info', 'warning', 'critical', 'breach'];
 
@@ -31,7 +36,7 @@ adminRouter.post('/recompute-baselines', async (_req: Request, res: Response): P
   }
 });
 
-adminRouter.post('/alert-test', async (req: Request, res: Response): Promise<void> => {
+adminRouter.post('/alert-test', requireScoutPro, async (req: Request, res: Response): Promise<void> => {
   const rawSeverity = req.body?.severity;
   const severity: Severity = VALID_SEVERITIES.includes(rawSeverity) ? rawSeverity : 'critical';
 
@@ -93,10 +98,8 @@ adminRouter.post('/alert-test', async (req: Request, res: Response): Promise<voi
 
   let channelsNotified = 0;
   try {
-    const chResult = await pool.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM alert_channels WHERE enabled = true`,
-    );
-    channelsNotified = parseInt(chResult.rows[0]?.count ?? '0', 10);
+    const routed = await loadDispatchChannels(severity);
+    channelsNotified = routed.length;
   } catch {
     /* non-fatal */
   }

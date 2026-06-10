@@ -178,9 +178,13 @@ eventsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
     }
 
     if (inserted.event_type !== 'session_metrics') {
-      void alertDispatcher.dispatch(toSecurityEvent(inserted)).catch((err) => {
-        console.error('[events] Alert dispatch error:', err);
-      });
+      const accountId =
+        req.scoutAuth?.kind === 'account' ? req.scoutAuth.accountId : undefined;
+      void alertDispatcher
+        .dispatch(toSecurityEvent(inserted), { accountId })
+        .catch((err) => {
+          console.error('[events] Alert dispatch error:', err);
+        });
     }
 
     if (inserted.event_type === 'session_metrics') {

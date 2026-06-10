@@ -1,6 +1,6 @@
 import express, { type Request, type Response, type NextFunction, type IRouter } from 'express';
 import { loginUser, registerUser, verifyJwt, getUserProfile } from '../api/hosted-auth.js';
-import { BILLING_PLANS, type BillingPlanId } from './plans.js';
+import { BILLING_PLANS, normalizePlanId, type BillingPlanId } from './plans.js';
 import { StripeService } from './stripe-service.js';
 import { SubscriptionManager } from './subscription-manager.js';
 import { UsageMeter } from './usage-meter.js';
@@ -9,7 +9,8 @@ import { InvoiceGenerator } from './invoice-generator.js';
 type BillingRequest = Request & { tenant?: { id: string; email: string } };
 
 function asPlan(value: unknown): BillingPlanId {
-  return value === 'scout_standard' || value === 'enterprise' ? value : 'scout_standard';
+  const plan = normalizePlanId(value);
+  return plan === 'free' ? 'scout_pro' : plan;
 }
 
 export class BillingApi {
@@ -95,7 +96,7 @@ export class BillingApi {
     if (!tenant) return;
     const profile = await getUserProfile(tenant.id);
     const sub = await this.subscriptions.getSubscription(tenant.id);
-    const plan = sub?.plan ?? (profile?.tier === 'pro' ? 'scout_standard' : 'free');
+    const plan = sub?.plan ?? (profile?.tier === 'pro' ? 'scout_pro' : 'free');
     res.json(await this.usage.status(tenant.id, plan));
   }
 

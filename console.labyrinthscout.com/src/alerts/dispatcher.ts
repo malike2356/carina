@@ -10,6 +10,8 @@ import { WhatsAppAdapter } from './whatsapp.js';
 import { SEVERITY_RANK } from './types.js';
 import type { AlertAdapter, AlertChannel, AlertSeverity, SecurityEvent } from './types.js';
 import { getChannelsForSeverity } from './routing.js';
+import { loadDispatchChannels } from '../lib/alert-channels.js';
+import { getAccountSubscriptionPlan, isScoutProPlan } from '../lib/subscription-plan.js';
 import { shouldSuppress } from './throttle.js';
 import { scheduleEscalation } from './escalation.js';
 
@@ -71,7 +73,14 @@ function parseChannel(row: AlertChannelRow): AlertChannel | null {
 }
 
 export const alertDispatcher = {
-  async dispatch(event: SecurityEvent): Promise<void> {
+  async dispatch(event: SecurityEvent, opts?: { accountId?: string }): Promise<void> {
+    if (opts?.accountId) {
+      const plan = await getAccountSubscriptionPlan(opts.accountId);
+      if (!isScoutProPlan(plan)) {
+        return;
+      }
+    }
+
     const routedChannels = await loadChannelsForSeverity(event.severity);
 
     // Throttle check: suppress duplicates within 5 minutes per tenant+severity+type
@@ -111,28 +120,44 @@ export const alertDispatcher = {
 
 async function loadChannelsForSeverity(severity: AlertSeverity): Promise<AlertChannel[]> {
   try {
+    const fromDb = await loadDispatchChannels(severity);
+    if (fromDb.length > 0) {
+      return fromDb
+        .filter((row) => isAdapterChannel(row.channel_type))
+        .map((row) => ({
+          id: row.id,
+          channel_type: row.channel_type,
+          severity_threshold: row.severity_threshold,
+          enabled: row.enabled,
+          config: row.config,
+        }));
+    }
+
     const result = await pool.query<AlertChannelRow>(
       `SELECT id, channel_type, severity_threshold, enabled, config
        FROM alert_channels
        WHERE enabled = TRUE`,
     );
-    return result.rows
+    const legacy = result.rows
       .map(parseChannel)
       .filter((channel): channel is AlertChannel => channel !== null)
       .filter((channel) => SEVERITY_RANK[severity] >= SEVERITY_RANK[channel.severity_threshold]);
+    if (legacy.length > 0) return legacy;
+    return [];
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn('[AlertDispatcher] Channel lookup failed; using default routing:', msg);
-    return getChannelsForSeverity(severity)
-      .filter(isAdapterChannel)
-      .map((channel_type) => ({
-        id: `default-${channel_type}`,
-        channel_type,
-        severity_threshold: severity,
-        enabled: true,
-        config: {},
-      }));
+    console.warn('[AlertDispatcher] Channel lookup failed; using env fallback:', msg);
   }
+
+  return getChannelsForSeverity(severity)
+    .filter(isAdapterChannel)
+    .map((channel_type) => ({
+      id: `default-${channel_type}`,
+      channel_type,
+      severity_threshold: severity,
+      enabled: true,
+      config: {},
+    }));
 }
 
 async function dispatchToChannel(event: SecurityEvent, channel: AlertChannel): Promise<void> {

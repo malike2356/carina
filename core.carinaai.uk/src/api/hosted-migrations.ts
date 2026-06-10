@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS hosted_users (
 
 CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id UUID PRIMARY KEY,
-  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_standard', 'enterprise')),
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise')),
   status TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT UNIQUE,
@@ -53,6 +53,24 @@ CREATE TABLE IF NOT EXISTS stripe_events (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS mobile_push_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID NOT NULL,
+  expo_push_token TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android')),
+  task_alerts BOOLEAN NOT NULL DEFAULT true,
+  scout_alerts BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (tenant_id, expo_push_token)
+);
+
+CREATE TABLE IF NOT EXISTS scout_alert_watermarks (
+  tenant_id UUID PRIMARY KEY,
+  last_event_id TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 `;
 

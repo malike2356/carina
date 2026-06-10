@@ -137,6 +137,8 @@ export const config = {
       .map((h) => h.trim().toLowerCase())
       .filter(Boolean),
     stripePrices: {
+      scoutMonitor: process.env.STRIPE_PRICE_SCOUT_MONITOR ?? '',
+      scoutPro: process.env.STRIPE_PRICE_SCOUT_PRO ?? process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
       scoutStandard: process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
       enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',
     },

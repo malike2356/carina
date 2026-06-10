@@ -29,9 +29,23 @@
   </div>
 <% } %>
 
+<% if (carinaPairOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Carina ops token saved. Test connection again to verify.
+  </div>
+<% } %>
+<% if (carinaPairErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+    <%= carinaPairErr %>
+  </div>
+<% } %>
+
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
   <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Carina agent</h2>
+    <p class="text-xs text-gray-500 mb-2">
+      Status: <span class="<%= carinaPaired ? 'text-green-400' : 'text-amber-400' %>"><%= carinaPaired ? 'Token set' : 'Not paired' %></span>
+    </p>
     <dl class="text-sm space-y-2 text-gray-400">
       <div><dt class="inline text-gray-500">API URL:</dt> <dd class="inline text-[#06b6d4]"><%= carinaApiUrl %></dd></div>
     </dl>
@@ -54,6 +68,27 @@
 </div>
 
 <section class="mt-8 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <h2 class="text-lg font-semibold text-white mb-1">Connect to Carina agent</h2>
+  <p class="text-xs text-gray-500 mb-4">
+    Production Carina requires an ops token. Copy <code class="text-gray-300">CARINA_OPS_TOKEN</code> from
+    <code class="text-gray-300">core.carinaai.uk/.env</code> on the server (falls back to
+    <code class="text-gray-300">CARINA_WEB_PASSWORD</code> if unset).
+  </p>
+  <form method="post" action="/settings/carina-pairing" class="flex flex-col gap-3 max-w-md">
+    <div>
+      <label class="block text-xs text-gray-400 mb-1" for="carinaOpsToken">Carina ops token</label>
+      <input id="carinaOpsToken" name="carinaOpsToken" type="password" required
+        placeholder="paste CARINA_OPS_TOKEN"
+        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+    </div>
+    <button type="submit"
+      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+      Save Carina token
+    </button>
+  </form>
+</section>
+
+<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
   <h2 class="text-lg font-semibold text-white mb-1">Connect to Labyrinth Scout</h2>
   <p class="text-xs text-gray-500 mb-1">
     Status: <span class="<%= scoutPaired ? 'text-green-400' : 'text-amber-400' %>"><%= scoutPaired ? 'Paired' : 'Not paired' %></span>
@@ -76,6 +111,124 @@
       Pair with Scout
     </button>
   </form>
+</section>
+
+<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4" id="alert-channels-section">
+  <h2 class="text-lg font-semibold text-white mb-1">Alert channels</h2>
+  <p class="text-xs text-gray-500 mb-4">
+    Configure Telegram, email, and Slack alerts in Scout. Secrets are stored encrypted in the database;
+    you do not need to edit Scout <code class="text-gray-300">.env</code> for outbound alerts.
+    Requires Scout pairing (<code class="text-gray-300">SCOUT_API_KEY</code>).
+  </p>
+  <p id="alert-channels-status" class="text-xs text-gray-500 mb-4">Loading channels...</p>
+
+  <div class="mb-4 max-w-lg">
+    <label class="block text-xs text-gray-400 mb-1" for="alert-dashboard-url">Dashboard link in alerts</label>
+    <div class="flex gap-2">
+      <input id="alert-dashboard-url" type="url"
+        placeholder="https://console.labyrinthscout.com/dashboard"
+        class="flex-1 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+      <button type="button" id="save-dashboard-url"
+        class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded whitespace-nowrap">
+        Save URL
+      </button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="telegram">
+      <h3 class="text-sm font-semibold text-white mb-2">Telegram</h3>
+      <label class="block text-xs text-gray-400 mb-1">Bot token</label>
+      <input data-field="bot_token" type="password" placeholder="Leave blank to keep existing"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+      <label class="block text-xs text-gray-400 mb-1">Chat ID</label>
+      <input data-field="chat_id" type="text"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+      <label class="block text-xs text-gray-400 mb-1">Min severity</label>
+      <select data-field="severity_threshold"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+        <option value="info">info</option>
+        <option value="warning" selected>warning</option>
+        <option value="critical">critical</option>
+        <option value="breach">breach</option>
+      </select>
+      <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+        <input data-field="enabled" type="checkbox" checked class="rounded" />
+        Enabled
+      </label>
+      <button type="button" data-save-channel="telegram"
+        class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
+        Save Telegram
+      </button>
+    </div>
+
+    <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="email">
+      <h3 class="text-sm font-semibold text-white mb-2">Email (Resend)</h3>
+      <label class="block text-xs text-gray-400 mb-1">Resend API key</label>
+      <input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+      <label class="block text-xs text-gray-400 mb-1">To address</label>
+      <input data-field="to_address" type="email"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+      <label class="block text-xs text-gray-400 mb-1">From address</label>
+      <input data-field="from_address" type="email" placeholder="hello@carinaai.uk"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+      <label class="block text-xs text-gray-400 mb-1">Min severity</label>
+      <select data-field="severity_threshold"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+        <option value="info">info</option>
+        <option value="warning" selected>warning</option>
+        <option value="critical">critical</option>
+        <option value="breach">breach</option>
+      </select>
+      <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+        <input data-field="enabled" type="checkbox" checked class="rounded" />
+        Enabled
+      </label>
+      <button type="button" data-save-channel="email"
+        class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
+        Save email
+      </button>
+    </div>
+
+    <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="slack">
+      <h3 class="text-sm font-semibold text-white mb-2">Slack</h3>
+      <label class="block text-xs text-gray-400 mb-1">Webhook URL</label>
+      <input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+      <label class="block text-xs text-gray-400 mb-1">Min severity</label>
+      <select data-field="severity_threshold"
+        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+        <option value="info">info</option>
+        <option value="warning" selected>warning</option>
+        <option value="critical">critical</option>
+        <option value="breach">breach</option>
+      </select>
+      <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+        <input data-field="enabled" type="checkbox" checked class="rounded" />
+        Enabled
+      </label>
+      <button type="button" data-save-channel="slack"
+        class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
+        Save Slack
+      </button>
+    </div>
+  </div>
+
+  <div class="mt-4 flex flex-wrap items-center gap-3">
+    <label class="text-xs text-gray-400">Test severity</label>
+    <select id="alert-test-severity"
+      class="rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+      <option value="warning">warning</option>
+      <option value="critical" selected>critical</option>
+      <option value="breach">breach</option>
+    </select>
+    <button type="button" id="send-test-alert"
+      class="text-sm bg-[#d4af37] hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded">
+      Send test alert
+    </button>
+    <span id="alert-test-result" class="text-xs text-gray-500"></span>
+  </div>
 </section>
 
 <section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
@@ -108,6 +261,7 @@
     <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
     <li>SESSION_SECRET = (hidden)</li>
     <li>CARINA_DB_URL = (hidden)</li>
+    <li>CARINA_OPS_TOKEN = <%= carinaPaired ? '(set)' : '(not set)' %></li>
     <li>SCOUT_API_KEY = (hidden)</li>
     <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
   </ul>
@@ -122,8 +276,7 @@
       const r = await fetch('/settings/test-carina', { method: 'POST' });
       const d = await r.json();
       if (d.ok) {
-        el.textContent = 'Connected. Active provider: ' + (d.active || 'unknown') +
-          '. Providers: ' + (d.providers || []).join(', ');
+        el.textContent = 'Connected. Service: ' + (d.service || 'carina-gateway');
         el.className = 'text-xs mt-3 text-green-400';
       } else {
         el.textContent = 'Offline: ' + (d.error || 'unknown error');
@@ -134,6 +287,146 @@
       el.className = 'text-xs mt-3 text-red-400';
     }
   });
+
+  const alertStatus = document.getElementById('alert-channels-status');
+  const channelByType = {};
+
+  function setAlertStatus(msg, ok) {
+    if (!alertStatus) return;
+    alertStatus.textContent = msg;
+    alertStatus.className = 'text-xs mb-4 ' + (ok === true ? 'text-green-400' : ok === false ? 'text-red-400' : 'text-gray-500');
+  }
+
+  function fillChannelForm(type, channel) {
+    const panel = document.querySelector('[data-channel="' + type + '"]');
+    if (!panel) return;
+    const cfg = (channel && channel.config) || {};
+    panel.querySelectorAll('[data-field]').forEach((el) => {
+      const field = el.getAttribute('data-field');
+      if (field === 'enabled') {
+        el.checked = channel ? channel.enabled !== false : false;
+      } else if (field === 'severity_threshold') {
+        el.value = (channel && channel.severity_threshold) || 'warning';
+      } else if (el.type === 'password') {
+        el.value = '';
+        el.placeholder = cfg[field] ? cfg[field] + ' (saved)' : 'Leave blank to keep existing';
+      } else {
+        el.value = cfg[field] || '';
+      }
+    });
+  }
+
+  async function loadAlertChannels() {
+    setAlertStatus('Loading channels...', null);
+    try {
+      const r = await fetch('/settings/alert-channels');
+      const d = await r.json();
+      if (!d.ok) {
+        setAlertStatus(d.error || 'Failed to load alert channels', false);
+        return;
+      }
+      const channels = d.channels || [];
+      const dash = document.getElementById('alert-dashboard-url');
+      if (dash && d.dashboard_url) dash.value = d.dashboard_url;
+      ['telegram', 'email', 'slack'].forEach((type) => {
+        const ch = channels.find((c) => c.channel_type === type);
+        channelByType[type] = ch || null;
+        fillChannelForm(type, ch);
+      });
+      const enabled = channels.filter((c) => c.enabled).length;
+      setAlertStatus(enabled + ' channel(s) enabled. Secrets show as masked placeholders.', true);
+    } catch {
+      setAlertStatus('Could not load alert channels', false);
+    }
+  }
+
+  document.querySelectorAll('[data-save-channel]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const type = btn.getAttribute('data-save-channel');
+      const panel = document.querySelector('[data-channel="' + type + '"]');
+      if (!panel) return;
+      const body = { enabled: true };
+      panel.querySelectorAll('[data-field]').forEach((el) => {
+        const field = el.getAttribute('data-field');
+        if (field === 'enabled') body.enabled = el.checked;
+        else if (field === 'severity_threshold') body.severity_threshold = el.value;
+        else if (el.value.trim()) body[field] = el.value.trim();
+      });
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const r = await fetch('/settings/alert-channels/' + type, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          fillChannelForm(type, d.channel);
+          setAlertStatus(type + ' saved.', true);
+        } else {
+          setAlertStatus(d.error || 'Save failed', false);
+        }
+      } catch {
+        setAlertStatus('Save request failed', false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save ' + type.charAt(0).toUpperCase() + type.slice(1);
+      }
+    });
+  });
+
+  document.getElementById('save-dashboard-url')?.addEventListener('click', async () => {
+    const url = document.getElementById('alert-dashboard-url')?.value?.trim() || '';
+    if (!url.startsWith('http')) {
+      setAlertStatus('Dashboard URL must start with http', false);
+      return;
+    }
+    try {
+      const r = await fetch('/settings/alert-channels-platform', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dashboard_url: url }),
+      });
+      const d = await r.json();
+      setAlertStatus(d.ok ? 'Dashboard URL saved.' : (d.error || 'Save failed'), d.ok);
+    } catch {
+      setAlertStatus('Dashboard URL save failed', false);
+    }
+  });
+
+  document.getElementById('send-test-alert')?.addEventListener('click', async () => {
+    const resultEl = document.getElementById('alert-test-result');
+    const severity = document.getElementById('alert-test-severity')?.value || 'critical';
+    if (resultEl) resultEl.textContent = 'Sending...';
+    try {
+      const r = await fetch('/settings/alert-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ severity }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        const n = d.channels_notified ?? 0;
+        if (resultEl) {
+          resultEl.textContent = 'Test sent. Event ' + (d.event_id || '') + '. Channels: ' + n + '.';
+          resultEl.className = 'text-xs text-green-400';
+        }
+      } else {
+        if (resultEl) {
+          resultEl.textContent = d.error || 'Test failed';
+          resultEl.className = 'text-xs text-red-400';
+        }
+      }
+    } catch {
+      if (resultEl) {
+        resultEl.textContent = 'Request failed';
+        resultEl.className = 'text-xs text-red-400';
+      }
+    }
+  });
+
+  loadAlertChannels();
 
   document.getElementById('test-scout')?.addEventListener('click', async () => {
     const el = document.getElementById('scout-status-msg');

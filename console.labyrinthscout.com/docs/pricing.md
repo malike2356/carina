@@ -17,23 +17,28 @@ You operate Postgres, Redis, TLS, and backups.
 
 ## Scout - £79/month
 
-Hosted by VERLOX on managed infrastructure.
+Hosted by VERLOX on managed infrastructure. [Subscribe](https://core.carinaai.uk/checkout?plan=scout_standard).
 
 - Unlimited registered instances
 - 99.9% uptime target
 - Telegram, Slack, and email alert adapters included; delivery requires channel credentials
-- Dashboard at `console.labyrinthscout.com`
+- Private hosted dashboard (console URL and API key emailed at provisioning; not linked from public marketing pages)
+- ERC-8004/8126 on Base
 
 Need Scout pre-configured with Carina? Contact us for setup support.
 
 ## Enterprise - Custom
 
-- SOC 2 Type II report
-- Contractual SLA
-- Dedicated Slack support channel
+- Everything in Scout
+- On-chain ERC-8126 attestations on Base
+- ERC-8004 agent identity on Base
+- Compliance PDF exports (SOC2 / ISO27001 / EU AI Act)
+- Configurable daily attestation frequency
+- 99.9% uptime SLA
+- Dedicated Slack support
 - On-premise or VPC deployment option
 
-Contact: sales@labyrinthscout.com
+Contact: contact@verlox.uk
 
 ## Feature matrix
 

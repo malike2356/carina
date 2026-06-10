@@ -9,7 +9,10 @@ import {
   generateApiKey,
   listApiKeys,
   revokeApiKey,
+  updateAccountPassword,
+  activateAccountWithSetupToken,
 } from '../lib/accounts.js';
+import { config } from '../config/index.js';
 import { pool } from '../db.js';
 import { requireAccount, redirectIfAccountAuthed } from '../middleware/account-session.js';
 import type { InstanceStatus } from '../types.js';
@@ -45,13 +48,33 @@ function validateCredentials(body: unknown): { ok: true; email: string; password
   return { ok: true, email: b.email.trim(), password: b.password };
 }
 
+const CHECKOUT_URL = 'https://core.carinaai.uk/checkout?plan=scout_pro';
+
+function rejectPublicRegister(res: Response): void {
+  res.status(403).json({
+    error: 'Accounts are created automatically after Scout checkout. Subscribe first, then use the setup link from your welcome email.',
+    checkoutUrl: CHECKOUT_URL,
+  });
+}
+
 // --- Pages ---
-accountRouter.get('/register', redirectIfAccountAuthed, servePage('register.html'));
+accountRouter.get('/register', redirectIfAccountAuthed, (req, res) => {
+  if (!config.auth.allowPublicRegister) {
+    res.redirect(CHECKOUT_URL);
+    return;
+  }
+  servePage('register.html')(req, res);
+});
+accountRouter.get('/activate', redirectIfAccountAuthed, servePage('activate.html'));
 accountRouter.get('/login', redirectIfAccountAuthed, servePage('login.html'));
 accountRouter.get('/', requireAccount, servePage('dashboard.html'));
 
 // --- Auth actions ---
 accountRouter.post('/register', async (req: Request, res: Response): Promise<void> => {
+  if (!config.auth.allowPublicRegister) {
+    rejectPublicRegister(res);
+    return;
+  }
   const validated = validateCredentials(req.body);
   if (!validated.ok) {
     res.status(400).json({ error: validated.error });
@@ -61,7 +84,14 @@ accountRouter.post('/register', async (req: Request, res: Response): Promise<voi
     const account = await createAccount(validated.email, validated.password);
     req.session.accountId = account.id;
     req.session.lastSeenAt = Date.now();
-    res.json({ ok: true, account: { email: account.email } });
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('[scout:account] session save failed:', saveErr);
+        res.status(500).json({ error: 'Could not create session' });
+        return;
+      }
+      res.json({ ok: true, account: { email: account.email } });
+    });
   } catch (err) {
     const pgErr = err as { code?: string };
     if (pgErr.code === '23505') {
@@ -88,7 +118,14 @@ accountRouter.post('/login', async (req: Request, res: Response): Promise<void> 
     }
     req.session.accountId = account.id;
     req.session.lastSeenAt = Date.now();
-    res.json({ ok: true, account: { email: account.email } });
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('[scout:account] session save failed:', saveErr);
+        res.status(500).json({ error: 'Could not create session' });
+        return;
+      }
+      res.json({ ok: true, account: { email: account.email } });
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[scout:account] login failed:', msg);
@@ -102,7 +139,72 @@ accountRouter.post('/logout', (req: Request, res: Response): void => {
   });
 });
 
+accountRouter.post('/activate', async (req: Request, res: Response): Promise<void> => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const token = typeof body.token === 'string' ? body.token.trim() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+  if (!token || password.length < 8) {
+    res.status(400).json({ error: 'A valid setup token and password (8+ chars) are required' });
+    return;
+  }
+  const result = await activateAccountWithSetupToken(token, password);
+  if (!result.ok) {
+    const messages: Record<typeof result.reason, string> = {
+      invalid: 'This setup link is invalid. Check your welcome email or contact support.',
+      expired: 'This setup link has expired. Contact support for a new link.',
+      used: 'This setup link was already used. Sign in with your password instead.',
+    };
+    res.status(400).json({ error: messages[result.reason] });
+    return;
+  }
+  req.session.accountId = result.account.id;
+  req.session.lastSeenAt = Date.now();
+  req.session.save((saveErr) => {
+    if (saveErr) {
+      console.error('[scout:account] session save failed:', saveErr);
+      res.status(500).json({ error: 'Could not create session' });
+      return;
+    }
+    res.json({ ok: true, account: { email: result.account.email } });
+  });
+});
+
 // --- Account data (JSON, session-gated) ---
+accountRouter.post('/api/password', requireAccount, async (req: Request, res: Response): Promise<void> => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const currentPassword = typeof body.current_password === 'string' ? body.current_password : '';
+  const newPassword = typeof body.new_password === 'string' ? body.new_password : '';
+
+  if (!currentPassword) {
+    res.status(400).json({ error: 'Current password is required' });
+    return;
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ error: 'New password must be at least 8 characters' });
+    return;
+  }
+  if (currentPassword === newPassword) {
+    res.status(400).json({ error: 'New password must be different from the current password' });
+    return;
+  }
+
+  const result = await updateAccountPassword(
+    req.session.accountId as string,
+    currentPassword,
+    newPassword,
+  );
+  if (!result.ok) {
+    if (result.reason === 'wrong_password') {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+    res.status(404).json({ error: 'Account not found' });
+    return;
+  }
+
+  res.json({ ok: true });
+});
+
 accountRouter.get('/api/me', requireAccount, async (req: Request, res: Response): Promise<void> => {
   const account = await findAccountById(req.session.accountId as string);
   if (!account) {

@@ -17,7 +17,7 @@ describe('scout-provisioning', () => {
   it('posts tenant details to Scout internal provision endpoint', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ accountId: 'acc-1', created: true }),
+      json: async () => ({ accountId: 'acc-1', created: true, setupToken: 'ast_testtoken' }),
     });
     const { provisionScoutTenant } = await import('../scout-provisioning.js');
     const result = await provisionScoutTenant({
@@ -25,7 +25,7 @@ describe('scout-provisioning', () => {
       tenantId: '11111111-1111-1111-1111-111111111111',
       licenseKey: 'scout_live_abcdef0123456789abcdef012345678',
     });
-    expect(result).toEqual({ accountId: 'acc-1', created: true });
+    expect(result).toEqual({ accountId: 'acc-1', created: true, setupToken: 'ast_testtoken' });
     expect(fetchMock).toHaveBeenCalledWith(
       'http://localhost:4444/api/internal/provision-tenant',
       expect.objectContaining({
