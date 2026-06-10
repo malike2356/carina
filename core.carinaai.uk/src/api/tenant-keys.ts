@@ -5,8 +5,11 @@ import {
   removeTenantProviderKey,
   setTenantProviderKey,
 } from '../brain/tenant-provider-keys.js';
+import { isOperatorHost } from '../gateway/hosted-domain.js';
 
 type TenantRequest = Request & { tenantId?: string; hostedUser?: { id: string } };
+
+const OPERATOR_TENANT_ID = '__operator__';
 
 async function tenantAuthMiddleware(
   req: TenantRequest,
@@ -20,6 +23,11 @@ async function tenantAuthMiddleware(
   }
   if (req.session?.hostedAccountId) {
     req.tenantId = req.session.hostedAccountId;
+    next();
+    return;
+  }
+  if (req.session?.webAuthed && isOperatorHost(req.hostname)) {
+    req.tenantId = OPERATOR_TENANT_ID;
     next();
     return;
   }

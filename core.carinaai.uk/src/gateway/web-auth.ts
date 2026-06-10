@@ -51,6 +51,18 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
     next();
     return;
   }
+  if (req.session?.hostedAccountId) {
+    const profile = await getUserProfile(req.session.hostedAccountId);
+    if (profile) {
+      req.hostedUser = {
+        id: req.session.hostedAccountId,
+        email: profile.email,
+        tier: profile.tier,
+      };
+      next();
+      return;
+    }
+  }
   if (req.path.startsWith('/api/')) {
     res.status(401).json({ error: 'Unauthorized' });
     return;

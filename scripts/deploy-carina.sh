@@ -141,7 +141,7 @@ main() {
 
   deploy_app "core.carinaai.uk" "$CORE_LOCAL" "$CORE_REMOTE" \
     "dist/src/index.js" "carina-core" \
-    ",WEB_ENABLED=\"true\",SKIP_CLI=\"true\",HOSTED_MODE=\"true\""
+    ",WEB_ENABLED=\"true\",SKIP_CLI=\"true\",HOSTED_MODE=\"false\",CARINA_OPERATOR_HOSTS=\"core.carinaai.uk\""
 
   deploy_app "ops.carinaai.uk" "$OPS_LOCAL" "$OPS_REMOTE" \
     "dist/server.js" "carina-ops" ""
