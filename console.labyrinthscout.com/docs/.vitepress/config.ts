@@ -75,9 +75,6 @@ export default defineConfig({
         ],
       },
     ],
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/verlox/carina' },
-    ],
     footer: {
       message: 'MIT Licensed. Built by VERLOX Ltd.',
       copyright: 'Copyright 2026 VERLOX Ltd',

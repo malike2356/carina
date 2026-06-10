@@ -6,7 +6,7 @@ Carina is a general-purpose local-first agent. The **property-uk** skill pack sh
 
 ## Install
 
-**npm (recommended):**
+**npm (after package publish):**
 
 ```bash
 npm install -g carina-agent
@@ -14,7 +14,9 @@ carina setup
 carina
 ```
 
-**curl:**
+The package metadata is ready for the `carina-agent` npm name. Publish the package before presenting this as a live public install path.
+
+**curl (after install host is configured):**
 
 ```bash
 curl -fsSL https://install.carinaai.uk | sh
@@ -27,8 +29,8 @@ Requires **Node.js 22+**.
 ## Quick start
 
 ```bash
-git clone https://github.com/verlox/carina.git
-cd carina
+git clone <public-repo-url-after-source-release>
+cd carina/core.carinaai.uk
 pnpm install
 pnpm build
 pnpm dev
@@ -66,7 +68,7 @@ Config lives in `~/.carina/.env` for global installs, or `.env` in the project d
 - **Memory transparency**: `/memories` and `/memories delete <id>`
 - **Provider hot-swap**: `/provider deepseek` in CLI, Telegram, and Web
 - **MCP-compatible** tool schemas for community extensions
-- **Multi-gateway**: CLI, Web, Telegram, WhatsApp
+- **Multi-gateway**: CLI and Web by default; Telegram and WhatsApp when their channel credentials are configured
 - **Hosted option**: [app.carinaai.uk](https://app.carinaai.uk) for non-technical users
 
 ## Documentation

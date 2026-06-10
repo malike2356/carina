@@ -3,7 +3,7 @@
 Install Carina globally after publishing or from a local checkout:
 
 ```sh
-npm install -g carina
+npm install -g carina-agent
 ```
 
 For local development:

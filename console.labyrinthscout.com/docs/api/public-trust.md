@@ -38,8 +38,8 @@ GET /api/public/trust
   },
   "attestations": [
     {
-      "type": "On-chain",
-      "title": "30-day clean runtime (on-chain)",
+      "type": "Runtime",
+      "title": "30-day clean runtime",
       "summary": "Scout attested 720h without critical incidents. Security score 90/100.",
       "hash_preview": "0xdead...beef",
       "at": "2026-06-10T12:00:00.000Z",

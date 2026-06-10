@@ -6,7 +6,7 @@ export default defineConfig({
   base: docsBase,
   cleanUrls: true,
   title: 'Carina',
-  description: 'Autonomous AI agent with skill packs. Free. Open source.',
+  description: 'Autonomous AI agent with skill packs. Free. MIT licensed.',
   themeConfig: {
     logo: '/logo.svg',
     nav: [
@@ -17,7 +17,6 @@ export default defineConfig({
       { text: 'Gateways', link: '/gateways/cli' },
       { text: 'Security', link: '/security/defence-in-depth' },
       { text: 'Pricing', link: '/open-source-pricing' },
-      { text: 'GitHub', link: 'https://github.com/verlox/carina' },
     ],
     sidebar: [
       {
@@ -69,12 +68,9 @@ export default defineConfig({
       {
         text: 'Pricing',
         items: [
-          { text: 'Open source vs Scout', link: '/open-source-pricing' },
+          { text: 'Source release vs Scout', link: '/open-source-pricing' },
         ],
       },
-    ],
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com/verlox/carina' },
     ],
     footer: {
       message: 'MIT Licensed. Built by VERLOX Ltd.',

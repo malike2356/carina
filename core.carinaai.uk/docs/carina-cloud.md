@@ -2,7 +2,7 @@
 
 Carina Cloud is the hosted SaaS at **app.carinaai.uk**. You get a private Carina workspace in the browser: chat, memory, skills, and BYOK inference. Pro adds **Labyrinth Scout** security monitoring for your cloud session and any self-hosted Carina you pair with the same account.
 
-This page is the full reference for tenants. VERLOX operators should also read [ARCHITECTURE.md](https://github.com/verlox/carina/blob/main/ARCHITECTURE.md) in the monorepo for internal wiring.
+This page is the full reference for tenants. VERLOX operators should also read `ARCHITECTURE.md` in the private monorepo for internal wiring.
 
 ---
 
@@ -188,7 +188,7 @@ When the free quota is exceeded, chat returns HTTP 429 with `upgradeUrl: /billin
 
 Public security posture (risk score, attestation previews) lives on [carinaai.uk/trust](https://carinaai.uk/trust), fed by Scout `GET /api/public/trust`. That is platform-level transparency, not your private dashboard.
 
-On-chain attestations (ERC-8004 / ERC-8126) are planned; see the [trust build checklist](https://github.com/verlox/carina/blob/main/instructions/TRUST_BUILD_CHECKLIST.md).
+On-chain attestations (ERC-8004 / ERC-8126) are planned for hosted tenants and require operator wallet configuration.
 
 ---
 
@@ -196,7 +196,7 @@ On-chain attestations (ERC-8004 / ERC-8126) are planned; see the [trust build ch
 
 | | Carina Cloud | Self-hosted |
 |---|---|---|
-| Install | None (browser) | `npm i -g carina-agent`, Docker, or bare metal |
+| Install | None (browser) | `npm i -g carina-agent` after npm publish, Docker, or bare metal |
 | Inference keys | BYOK in Settings | Your `.env` |
 | Scout | Included on Pro; `/security` + `/dashboard` | Pair via wizard or `.env`; optional [Labyrinth Scout](/security/labyrinth-scout) subscription |
 | Data location | VERLOX Postgres (tenant schema) | Your infrastructure |

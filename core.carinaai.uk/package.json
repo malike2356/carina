@@ -1,5 +1,5 @@
 {
-  "name": "carina",
+  "name": "carina-agent",
   "version": "0.1.0",
   "description": "Autonomous AI agent platform with skill packs",
   "main": "dist/src/index.js",

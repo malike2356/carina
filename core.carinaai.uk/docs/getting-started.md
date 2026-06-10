@@ -20,6 +20,8 @@ Never commit `.env` or `~/.carina/.env`. API keys in git are a common breach vec
 
 ## Install (global)
 
+The global package is prepared as `carina-agent`. Use this path after the npm package has been published.
+
 ```bash
 npm install -g carina-agent
 carina
@@ -30,7 +32,7 @@ On first run, Carina creates `~/.carina/` and runs the setup wizard if no env fi
 ## Install from source
 
 ```bash
-git clone https://github.com/verlox/carina.git
+git clone <public-repo-url-after-source-release>
 cd carina/core.carinaai.uk
 pnpm install
 pnpm cli

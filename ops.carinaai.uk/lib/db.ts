@@ -4,7 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+const appRoot = path.basename(path.dirname(__dirname)) === 'dist'
+  ? path.join(__dirname, '..', '..')
+  : path.join(__dirname, '..');
+dotenv.config({ path: path.join(appRoot, '.env') });
 
 const connectionString =
   process.env.CARINA_DB_URL ??

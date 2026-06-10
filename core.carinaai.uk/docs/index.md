@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Carina
   text: The autonomous AI agent that gets smarter every session.
-  tagline: Free. Open source. UK property knowledge built in. Add Labyrinth Scout for enterprise security.
+  tagline: Free. MIT licensed. UK property knowledge built in. Add Labyrinth Scout for enterprise security.
   image:
     src: /hero-terminal.svg
     alt: Carina terminal
@@ -15,8 +15,8 @@ hero:
       text: Carina Cloud
       link: /carina-cloud
     - theme: alt
-      text: GitHub
-      link: https://github.com/verlox/carina
+      text: Source release
+      link: /open-source-pricing
 
 features:
   - title: Persistent Memory

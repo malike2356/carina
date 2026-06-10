@@ -21,7 +21,7 @@ Hosted by VERLOX on managed infrastructure.
 
 - Unlimited registered instances
 - 99.9% uptime target
-- Telegram, Slack, and email alerts included
+- Telegram, Slack, and email alert adapters included; delivery requires channel credentials
 - Dashboard at `console.labyrinthscout.com`
 
 Need Scout pre-configured with Carina? Contact us for setup support.
