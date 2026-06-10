@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import { config } from '../config/index.js';
 import { llm } from '../brain/llm.js';
+import { getUserProfile } from '../api/hosted-auth.js';
 import { scoutServiceUrl } from '../billing/tenant-scout.js';
 import { isHostedRequest } from './hosted-domain.js';
 
@@ -64,8 +65,20 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
   return body;
 }
 
+async function hydrateHostedUser(req: Request): Promise<void> {
+  if (!isHostedRequest(req.hostname) || req.hostedUser || !req.session?.hostedAccountId) return;
+  const profile = await getUserProfile(req.session.hostedAccountId);
+  if (!profile) return;
+  req.hostedUser = {
+    id: req.session.hostedAccountId,
+    email: profile.email,
+    tier: profile.tier,
+  };
+}
+
 export function mountWebContextRoute(app: Express): void {
   app.get('/api/web/context', async (req: Request, res: Response) => {
+    await hydrateHostedUser(req);
     res.json(await buildWebContext(req));
   });
 }

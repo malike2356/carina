@@ -133,6 +133,7 @@
       border-radius: 8px; border: none; background: transparent; color: var(--text);
       font-size: 0.84rem; cursor: pointer; text-decoration: none; text-align: left;
     }
+    .user-menu [hidden] { display: none !important; }
     .user-menu button:hover, .user-menu a:hover { background: var(--surface-2); }
     .user-menu svg { width: 16px; height: 16px; color: var(--muted); flex-shrink: 0; }
     .user-menu .menu-sep { height: 1px; background: var(--border); margin: 6px 4px; }
@@ -654,6 +655,19 @@
           <div class="kbd-row"><span class="label">/model [provider]</span><span>Switch the active LLM</span></div>
           <div class="kbd-row"><span class="label">/clear</span><span>Start a fresh session</span></div>
         </div>
+        <div class="help-section" id="help-operator-links" hidden>
+          <h4>Workspace pages</h4>
+          <div class="kbd-row"><span class="label"><a href="/memory" style="color:var(--accent)">Memories</a></span><span>View and edit stored memories</span></div>
+          <div class="kbd-row"><span class="label"><a href="/packs" style="color:var(--accent)">Skill packs</a></span><span>Browse bundled domain packs</span></div>
+          <div class="kbd-row" data-scout-only hidden><span class="label"><a href="/dashboard" style="color:var(--accent)">Scout dashboard</a></span><span>Security monitoring</span></div>
+          <div class="kbd-row"><span class="label"><a href="https://docs.carinaai.uk" target="_blank" rel="noopener" style="color:var(--accent)">Documentation</a></span><span>Guides and reference</span></div>
+        </div>
+        <div class="help-section" id="help-hosted-links" hidden>
+          <h4>Account</h4>
+          <div class="kbd-row"><span class="label"><a href="/settings" style="color:var(--accent)">API keys</a></span><span>BYOK provider keys</span></div>
+          <div class="kbd-row"><span class="label"><a href="/billing" style="color:var(--accent)">Billing</a></span><span>Plan and subscription</span></div>
+          <div class="kbd-row"><span class="label"><a href="/security" style="color:var(--accent)">Scout</a></span><span>Security pairing and status</span></div>
+        </div>
         <div class="help-section">
           <h4>About</h4>
           <p class="field-hint">Carina Agent runs locally and connects to your chosen LLM provider. Security monitoring, when paired, is provided by Labyrinth Scout.</p>
@@ -759,13 +773,29 @@
       return pack.replace(/-/g, ' ') + ' pack';
     }
 
+    function setMenuLink(id, visible) {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !visible;
+    }
+
     function applyWebContext(ctx) {
-      if (ctx.mode === 'hosted') {
-        document.body.dataset.hosted = 'true';
-        document.getElementById('operator-memory-link').hidden = true;
-        document.getElementById('operator-packs-link').hidden = true;
-        document.getElementById('operator-scout-link').hidden = true;
-        document.getElementById('operator-server-note').hidden = true;
+      const hosted = ctx.mode === 'hosted';
+      document.body.dataset.hosted = hosted ? 'true' : 'false';
+      document.body.dataset.scout = ctx.scoutAvailable ? 'true' : 'false';
+
+      setMenuLink('operator-memory-link', !hosted);
+      setMenuLink('operator-packs-link', !hosted);
+      setMenuLink('operator-scout-link', !hosted && ctx.scoutAvailable);
+      setMenuLink('operator-settings-btn', !hosted);
+      setMenuLink('operator-server-note', !hosted);
+      setMenuLink('settings-scout-link-wrap', !hosted && ctx.scoutAvailable);
+      setMenuLink('hosted-settings-link', false);
+      setMenuLink('hosted-billing-link', false);
+      setMenuLink('hosted-security-link', false);
+      setMenuLink('help-operator-links', !hosted);
+      setMenuLink('help-hosted-links', false);
+
+      if (hosted) {
         if (ctx.hosted && ctx.hosted.user) {
           const email = ctx.hosted.user.email || '';
           const tier = ctx.hosted.user.tier || 'free';
@@ -775,29 +805,25 @@
           document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
           document.getElementById('tier-badge').textContent = tier;
           document.getElementById('tier-badge').hidden = false;
-          document.getElementById('hosted-settings-link').hidden = false;
-          document.getElementById('hosted-billing-link').hidden = false;
-          if (tier === 'pro') document.getElementById('hosted-security-link').hidden = false;
-          document.getElementById('operator-settings-btn').hidden = true;
+          setMenuLink('hosted-settings-link', true);
+          setMenuLink('hosted-billing-link', true);
+          setMenuLink('hosted-security-link', tier === 'pro');
+          setMenuLink('help-hosted-links', true);
           activeDomain = resolveDomain(ctx.activeSkillPacks || []);
           refreshEmptyState();
         }
         return;
       }
 
-      document.body.dataset.hosted = 'false';
+      document.getElementById('tier-badge').hidden = true;
       document.querySelector('.user-sub').textContent = formatPackLabel(ctx.activeSkillPack);
-      document.getElementById('operator-memory-link').hidden = false;
-      document.getElementById('operator-packs-link').hidden = false;
-      document.getElementById('operator-server-note').hidden = false;
-      if (ctx.scoutAvailable) {
-        document.getElementById('operator-scout-link').hidden = false;
-        document.getElementById('settings-scout-link-wrap').hidden = false;
-      }
       activeDomain = resolveDomain(
         ctx.activeSkillPacks || (ctx.activeSkillPack ? [ctx.activeSkillPack] : []),
       );
       refreshEmptyState();
+      document.querySelectorAll('[data-scout-only]').forEach((el) => {
+        el.hidden = document.body.dataset.scout !== 'true';
+      });
     }
 
     async function loadWebContext() {
@@ -1059,9 +1085,10 @@
     function bindSuggestionChips(root) {
       root.querySelectorAll('.suggestion-chip').forEach((chip) => {
         chip.addEventListener('click', () => {
-          inputEl.value = chip.dataset.prompt;
-          autoGrow();
-          inputEl.focus();
+          const prompt = chip.dataset.prompt || '';
+          if (!prompt || isStreaming) return;
+          clearEmptyState();
+          void sendMessage(prompt);
         });
       });
     }

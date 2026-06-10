@@ -229,6 +229,24 @@ const INDEXES = [
      ON tenant_provider_keys (tenant_id)`,
 ];
 
+const PACKS_MIGRATION = `
+CREATE TABLE IF NOT EXISTS installed_packs (
+  tenant_id TEXT NOT NULL,
+  pack_name TEXT NOT NULL,
+  version TEXT NOT NULL DEFAULT '1.0.0',
+  status TEXT NOT NULL DEFAULT 'installed',
+  installed_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (tenant_id, pack_name)
+);
+CREATE TABLE IF NOT EXISTS pack_config (
+  tenant_id TEXT NOT NULL,
+  pack_name TEXT NOT NULL,
+  config JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (tenant_id, pack_name)
+);
+`;
+
 const MEMORY_ADMIN_MIGRATION = `
 ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS priority INTEGER DEFAULT 0;
 ALTER TABLE episodic_memories ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
@@ -297,6 +315,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     } catch {
       // ivfflat requires at least one row; safe to skip and retry after ingest
     }
+  }
+  try {
+    await client.query(PACKS_MIGRATION);
+  } catch {
+    // tables may already exist
   }
   try {
     await client.query(MEMORY_ADMIN_MIGRATION);

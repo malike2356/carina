@@ -48,6 +48,16 @@
   .badge.installed { background: var(--success); color: #0f1117; }
   .badge.available { background: var(--accent); color: #fff; }
   .empty { text-align: center; color: var(--muted); padding: 3rem; }
+  .notice {
+    background: rgba(108,140,255,0.1); border: 1px solid var(--accent);
+    border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.8rem; margin-bottom: 1.25rem;
+  }
+  .top-nav {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;
+    padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+  }
+  .top-nav a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
+  .top-nav a:hover { text-decoration: underline; }
   .modal-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.6); z-index:10; justify-content:center; align-items:center; }
   .modal-overlay.open { display:flex; }
   .modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.5rem; width:100%; max-width:500px; }
@@ -58,8 +68,14 @@
 </style>
 </head>
 <body>
+<nav class="top-nav">
+  <a href="/">← Back to chat</a>
+</nav>
 <h1>Skill Packs</h1>
-<p class="subtitle">Browse, install, and configure vertical skill packs for Carina</p>
+<p class="subtitle">Browse bundled domain packs shipped with this Carina instance</p>
+<div class="notice" id="operator-note" hidden>
+  Active packs are controlled by <code>ACTIVE_SKILL_PACKS</code> in server config. Restart Carina after changing them.
+</div>
 <div class="tabs">
   <div class="tab active" onclick="switchTab('available')">Available</div>
   <div class="tab" onclick="switchTab('installed')">Installed</div>
@@ -88,6 +104,7 @@ let configPackName = '';
 async function loadAvailable() {
   try {
     const res = await fetch(`${API}/available`);
+    if (!res.ok) throw new Error('unavailable');
     const data = await res.json();
     availablePacks = data.packs || [];
   } catch { availablePacks = []; }
@@ -96,9 +113,19 @@ async function loadAvailable() {
 async function loadInstalled() {
   try {
     const res = await fetch(`${API}/installed`);
+    if (!res.ok) throw new Error('unavailable');
     const data = await res.json();
     installedPacks = data.installed || [];
   } catch { installedPacks = []; }
+}
+
+async function loadContext() {
+  try {
+    const res = await fetch('/api/web/context');
+    if (!res.ok) return;
+    const ctx = await res.json();
+    if (ctx.mode !== 'hosted') document.getElementById('operator-note').hidden = false;
+  } catch {}
 }
 
 function isInstalled(name) {
@@ -155,9 +182,10 @@ async function installPack(name) {
   if (res.ok) {
     await loadInstalled();
     renderCurrent();
-  } else {
-    alert('Install failed');
+    return;
   }
+  const data = await res.json().catch(() => ({}));
+  alert(data.error || 'Install failed');
 }
 
 async function uninstallPack(name) {
@@ -217,7 +245,7 @@ function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 document.getElementById('configModal').addEventListener('click', (e) => { if (e.target === e.currentTarget) closeConfig(); });
 
 (async () => {
-  await Promise.all([loadAvailable(), loadInstalled()]);
+  await Promise.all([loadContext(), loadAvailable(), loadInstalled()]);
   renderCurrent();
 })();
 </script>

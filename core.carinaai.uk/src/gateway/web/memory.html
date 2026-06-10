@@ -63,9 +63,18 @@
   .modal textarea { min-height: 100px; resize: vertical; }
   .modal .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
   .empty { text-align: center; color: var(--muted); padding: 2rem; }
+  .top-nav {
+    display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);
+  }
+  .top-nav a { color: var(--accent); text-decoration: none; font-size: 0.875rem; }
+  .top-nav a:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
+<nav class="top-nav">
+  <a href="/">← Back to chat</a>
+</nav>
 <h1>Memory</h1>
 <div class="stats" id="stats"></div>
 <div class="controls">

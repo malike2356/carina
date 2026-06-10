@@ -1,37 +1,105 @@
-import { Router, type Request, type Router as ExpressRouter } from 'express';
+import fs from 'fs/promises';
+import path from 'path';
+import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
+import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
 
 export const packsApiRouter: ExpressRouter = Router();
 
-const PACKS_TABLE = 'skill_packs';
+const PACKS_DIR = path.join(process.cwd(), 'src', 'skills', 'packs');
 const INSTALLED_TABLE = 'installed_packs';
 const PACK_CONFIG_TABLE = 'pack_config';
 
-type TenantRequest = Request & {
-  tenantId?: string;
-  hostedUser?: { id: string };
-};
-
-function resolveTenantId(req: TenantRequest): string {
-  return req.tenantId ?? req.hostedUser?.id ?? 'default';
+interface PackMeta {
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  skill_count: number;
+  download_count: number;
 }
 
-// ── List available packs ──
-packsApiRouter.get('/available', async (_req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT name, version, description, author, skill_count, download_count, created_at
-       FROM ${PACKS_TABLE} ORDER BY name`,
-    );
-    res.json({ packs: result.rows });
-  } catch {
-    res.json({ packs: [] });
+type PackRequest = Request & { tenantId?: string };
+
+function packAuth(req: PackRequest, res: Response, next: NextFunction): void {
+  if (req.session?.webAuthed) {
+    req.tenantId = '__operator__';
+    next();
+    return;
   }
+  if (req.session?.hostedAccountId) {
+    req.tenantId = req.session.hostedAccountId;
+    next();
+    return;
+  }
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+function resolveTenantId(req: PackRequest): string {
+  return req.tenantId ?? 'default';
+}
+
+async function loadBundledPacks(): Promise<PackMeta[]> {
+  const packs: PackMeta[] = [];
+  let entries: Array<{ name: string; isDirectory: () => boolean }>;
+  try {
+    entries = await fs.readdir(PACKS_DIR, { withFileTypes: true });
+  } catch {
+    return packs;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    try {
+      const raw = await fs.readFile(path.join(PACKS_DIR, entry.name, 'pack.json'), 'utf-8');
+      const meta = JSON.parse(raw) as Record<string, unknown>;
+      packs.push({
+        name: String(meta.name ?? entry.name),
+        version: String(meta.version ?? '1.0.0'),
+        description: String(meta.description ?? ''),
+        author: String(meta.author ?? 'Carina'),
+        skill_count: Number(meta.skillCount ?? meta.skill_count ?? 0),
+        download_count: 0,
+      });
+    } catch {
+      // skip invalid pack folders
+    }
+  }
+
+  return packs.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function installedFromConfig(bundled: PackMeta[]): Array<{
+  pack_name: string;
+  version: string;
+  installed_at: string;
+  status: string;
+}> {
+  const byName = new Map(bundled.map((p) => [p.name, p]));
+  return config.carina.activePacks.map((name) => ({
+    pack_name: name,
+    version: byName.get(name)?.version ?? '1.0.0',
+    installed_at: new Date().toISOString(),
+    status: 'installed',
+  }));
+}
+
+packsApiRouter.use(packAuth);
+
+packsApiRouter.get('/available', async (_req, res) => {
+  const packs = await loadBundledPacks();
+  res.json({ packs });
 });
 
-// ── List installed packs ──
-packsApiRouter.get('/installed', async (req: TenantRequest, res) => {
+packsApiRouter.get('/installed', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
+  const bundled = await loadBundledPacks();
+
+  if (tenantId === '__operator__') {
+    res.json({ installed: installedFromConfig(bundled) });
+    return;
+  }
+
   try {
     const result = await pool.query(
       `SELECT pack_name, version, installed_at, status
@@ -40,56 +108,62 @@ packsApiRouter.get('/installed', async (req: TenantRequest, res) => {
        ORDER BY installed_at DESC`,
       [tenantId],
     );
-    res.json({ installed: result.rows });
+    if ((result.rowCount ?? 0) > 0) {
+      res.json({ installed: result.rows });
+      return;
+    }
   } catch {
-    res.json({ installed: [] });
+    // fall through to config-backed list
   }
+
+  res.json({ installed: installedFromConfig(bundled) });
 });
 
-// ── Pack detail ──
 packsApiRouter.get('/:name', async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT name, version, description, author, skill_count, download_count
-       FROM ${PACKS_TABLE} WHERE name = $1`,
-      [req.params.name],
-    );
-    if ((result.rowCount ?? 0) === 0) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch {
-    res.status(500).json({ error: 'Failed to load pack' });
-  }
+  const packs = await loadBundledPacks();
+  const pack = packs.find((p) => p.name === req.params.name);
+  if (!pack) return res.status(404).json({ error: 'Not found' });
+  res.json(pack);
 });
 
-// ── Install ──
-packsApiRouter.post('/:name/install', async (req: TenantRequest, res) => {
+packsApiRouter.post('/:name/install', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
   const packName = req.params.name;
+  const bundled = await loadBundledPacks();
+  const pack = bundled.find((p) => p.name === packName);
+  if (!pack) return res.status(404).json({ error: 'Pack not found' });
+
+  if (tenantId === '__operator__') {
+    res.status(400).json({
+      error: 'Operator instances enable packs via ACTIVE_SKILL_PACKS in server config, then restart Carina.',
+    });
+    return;
+  }
+
   try {
-    // Check pack exists
-    const pkg = await pool.query(`SELECT name, version FROM ${PACKS_TABLE} WHERE name = $1`, [packName]);
-    if ((pkg.rowCount ?? 0) === 0) return res.status(404).json({ error: 'Pack not found' });
-
-    const version = pkg.rows[0].version;
-
-    // Upsert installed record
     await pool.query(
       `INSERT INTO ${INSTALLED_TABLE} (tenant_id, pack_name, version, status, installed_at)
        VALUES ($1, $2, $3, 'installed', NOW())
        ON CONFLICT (tenant_id, pack_name)
        DO UPDATE SET version = $3, status = 'installed', installed_at = NOW()`,
-      [tenantId, packName, version],
+      [tenantId, packName, pack.version],
     );
-
-    res.json({ installed: true, pack: packName, version });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Install failed' });
+    res.json({ installed: true, pack: packName, version: pack.version });
+  } catch (err) {
+    console.error('[packs-api] install failed:', err instanceof Error ? err.message : err);
+    res.status(500).json({ error: 'Install failed' });
   }
 });
 
-// ── Uninstall ──
-packsApiRouter.post('/:name/uninstall', async (req: TenantRequest, res) => {
+packsApiRouter.post('/:name/uninstall', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
+  if (tenantId === '__operator__') {
+    res.status(400).json({
+      error: 'Operator instances disable packs via ACTIVE_SKILL_PACKS in server config, then restart Carina.',
+    });
+    return;
+  }
+
   try {
     await pool.query(
       `DELETE FROM ${INSTALLED_TABLE} WHERE tenant_id = $1 AND pack_name = $2`,
@@ -100,13 +174,13 @@ packsApiRouter.post('/:name/uninstall', async (req: TenantRequest, res) => {
       [tenantId, req.params.name],
     );
     res.json({ uninstalled: true });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Uninstall failed' });
+  } catch (err) {
+    console.error('[packs-api] uninstall failed:', err instanceof Error ? err.message : err);
+    res.status(500).json({ error: 'Uninstall failed' });
   }
 });
 
-// ── Get config ──
-packsApiRouter.get('/:name/config', async (req: TenantRequest, res) => {
+packsApiRouter.get('/:name/config', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
   try {
     const result = await pool.query(
@@ -120,20 +194,20 @@ packsApiRouter.get('/:name/config', async (req: TenantRequest, res) => {
   }
 });
 
-// ── Set config ──
-packsApiRouter.put('/:name/config', async (req: TenantRequest, res) => {
+packsApiRouter.put('/:name/config', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
-  const config = req.body ?? {};
+  const packConfig = req.body ?? {};
   try {
     await pool.query(
       `INSERT INTO ${PACK_CONFIG_TABLE} (tenant_id, pack_name, config, updated_at)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (tenant_id, pack_name)
        DO UPDATE SET config = $3, updated_at = NOW()`,
-      [tenantId, req.params.name, JSON.stringify(config)],
+      [tenantId, req.params.name, JSON.stringify(packConfig)],
     );
     res.json({ saved: true });
-  } catch {
+  } catch (err) {
+    console.error('[packs-api] config save failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Config save failed' });
   }
 });

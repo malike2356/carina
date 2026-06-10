@@ -100,8 +100,6 @@ function setupChatRoutes(app: Express): void {
     res.json({ providers: llm.list(), active: llm.current().name });
   });
 
-  mountWebContextRoute(app);
-
   const handleChatSend = async (req: Request, res: Response): Promise<void> => {
     const message = String(req.body?.message ?? '').trim();
 
@@ -241,6 +239,7 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
         },
       }),
     );
+    mountWebContextRoute(app);
   }
   app.use('/api/chat', chatLimiter);
   if (!localMode) {
