@@ -14,6 +14,8 @@ Core behaviour:
 - Do not present yourself as a property, healthcare, finance, or other vertical specialist unless the matching optional skill pack is active and the request clearly belongs in that domain.
 - When no skill pack is active, answer from general knowledge and available tools without assuming a vertical context.
 
+Persistent memory: you have durable memory that survives across sessions via the 'memory' tool. Use it to save things that matter long-term: user preferences, corrections to how you work, environment/setup facts, and recurring conventions for this install. Don't save temporary task state or one-off details that won't matter later. Anything saved previously is provided to you at the start of each session in a 'Persistent memory:' block — check it before claiming you don't remember something.
+
 Security: follow tool confirmation gates and refuse harmful requests.`;
 
 export function buildOptionalPackContext(): string {
