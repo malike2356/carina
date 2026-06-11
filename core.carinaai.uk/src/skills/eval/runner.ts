@@ -12,6 +12,7 @@ import {
 } from './aggregate.js';
 import { extractEvalKeywords } from './keywords.js';
 import type {
+  EvalFixture,
   EvalRunResult,
   EvalSkillOverride,
   FixtureRunResult,
@@ -41,9 +42,7 @@ async function resolveSkills(
 
 async function runSinglePass(
   skills: PackSkillInput[],
-  fixtures: ReturnType<typeof loadEvalDefinition> extends Promise<infer T>
-    ? T extends { def: infer D } ? D['fixtures'] : never
-    : never,
+  fixtures: EvalFixture[],
   executeWithLlm: boolean,
 ): Promise<FixtureRunResult[]> {
   const results: FixtureRunResult[] = [];
