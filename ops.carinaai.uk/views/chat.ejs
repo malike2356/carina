@@ -121,16 +121,9 @@
       providerBadge.textContent = 'Provider: ' + (d.active || 'unknown');
       return d.active;
     } catch {
-      try {
-        const r = await fetch(API + '/api/providers');
-        const d = await r.json();
-        providerBadge.textContent = 'Provider: ' + (d.active || 'unknown');
-        return d.active;
-      } catch {
-        providerBadge.textContent = 'Provider: offline';
-        showOffline();
-        return null;
-      }
+      providerBadge.textContent = 'Provider: offline';
+      showOffline();
+      return null;
     }
   }
 
@@ -144,7 +137,7 @@
     const msgDiv = appendMessage('assistant', '');
     let full = '';
 
-    const url = new URL(API + '/api/chat/stream');
+    const url = new URL('/chat/stream', window.location.origin);
     url.searchParams.set('message', text);
     url.searchParams.set('sessionId', SESSION_ID);
 

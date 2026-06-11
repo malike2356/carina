@@ -82,6 +82,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-create',
+      dangerous: true,
       description: 'Create a new Kanban card.',
       parameters: {
         type: 'object',
@@ -110,6 +111,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-complete',
+      dangerous: true,
       description: 'Mark a Kanban card as done.',
       parameters: { type: 'object', properties: { card_id: base.card_id }, required: ['card_id'] },
       execute: async (params) => {
@@ -119,6 +121,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-block',
+      dangerous: true,
       description: 'Block a Kanban card with a reason.',
       parameters: {
         type: 'object',
@@ -132,6 +135,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-unblock',
+      dangerous: true,
       description: 'Unblock a Kanban card.',
       parameters: { type: 'object', properties: { card_id: base.card_id }, required: ['card_id'] },
       execute: async (params) => {
@@ -141,6 +145,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-link',
+      dangerous: true,
       description: 'Link two Kanban cards together.',
       parameters: {
         type: 'object',
@@ -154,6 +159,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-comment',
+      dangerous: true,
       description: 'Add a comment to a Kanban card.',
       parameters: {
         type: 'object',
@@ -175,6 +181,7 @@ export function createKanbanGranularTools(sessionId: string): Tool[] {
     },
     {
       name: 'kanban-heartbeat',
+      dangerous: true,
       description: 'Board health check: counts, blocked cards, stale in-progress items.',
       parameters: { type: 'object', properties: { board_id: base.board_id } },
       execute: async (params) => {

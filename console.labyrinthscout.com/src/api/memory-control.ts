@@ -2,14 +2,9 @@ import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { pool } from '../db.js';
 import { getRedis } from '../redis.js';
+import { episodicTableExists, isMissingEpisodicTable, listEpisodicSessions } from '../lib/episodic-memory.js';
 
 export const memoryControlRouter: IRouter = Router();
-
-interface SessionRow {
-  session_id: string;
-  turn_count: string;
-  last_active: string;
-}
 
 memoryControlRouter.post('/clear-session', async (req: Request, res: Response): Promise<void> => {
   const body = req.body as Record<string, unknown>;
@@ -31,6 +26,14 @@ memoryControlRouter.post('/clear-session', async (req: Request, res: Response): 
   }
 
   try {
+    if (!(await episodicTableExists())) {
+      res.status(503).json({
+        error:
+          'episodic_memories is not available in this Scout database. Point SCOUT_DATABASE_URL at the Carina DB or clear memory from core.carinaai.uk.',
+      });
+      return;
+    }
+
     const del = await pool.query('DELETE FROM episodic_memories WHERE session_id = $1', [sessionId]);
     const rowsDeleted = del.rowCount ?? 0;
 
@@ -61,6 +64,13 @@ memoryControlRouter.post('/clear-session', async (req: Request, res: Response): 
 
     res.json({ ok: true, session_id: sessionId, rows_deleted: rowsDeleted });
   } catch (err) {
+    if (isMissingEpisodicTable(err)) {
+      res.status(503).json({
+        error:
+          'episodic_memories table missing. Share Carina Postgres with Scout before clearing session memory.',
+      });
+      return;
+    }
     console.error('[memory-control] clear-session error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -68,23 +78,13 @@ memoryControlRouter.post('/clear-session', async (req: Request, res: Response): 
 
 memoryControlRouter.get('/sessions', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const result = await pool.query<SessionRow>(
-      `SELECT session_id,
-              COUNT(*)::text         AS turn_count,
-              MAX(created_at)::text  AS last_active
-       FROM episodic_memories
-       GROUP BY session_id
-       ORDER BY MAX(created_at) DESC
-       LIMIT 50`,
-    );
-
-    const sessions = result.rows.map((r) => ({
-      session_id: r.session_id,
-      turn_count: parseInt(r.turn_count, 10),
-      last_active: r.last_active,
-    }));
-
-    res.json({ sessions });
+    const result = await listEpisodicSessions();
+    res.json({
+      sessions: result.sessions,
+      source: result.source,
+      unavailable: result.source === 'unavailable',
+      message: result.message,
+    });
   } catch (err) {
     console.error('[memory-control] sessions error:', err);
     res.status(500).json({ error: 'Internal server error' });

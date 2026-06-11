@@ -87,7 +87,10 @@ export const shellExecTool: Tool = {
       return { error: 'command is required' };
     }
 
-    const workdir = resolveWorkdir(params.workdir !== undefined ? String(params.workdir) : undefined);
+    const workdirRaw = params.workdir !== undefined
+      ? String(params.workdir)
+      : (process.env.CARINA_JOB_WORKDIR ?? '');
+    const workdir = resolveWorkdir(workdirRaw || undefined);
 
     if (pty) {
       if (!isPtyEnabled()) {

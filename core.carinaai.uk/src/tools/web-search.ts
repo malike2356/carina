@@ -1,16 +1,10 @@
-import { config } from '../config/index.js';
 import type { Tool } from '../types/index.js';
-
-interface BraveResult {
-  title?: string;
-  url?: string;
-  description?: string;
-}
+import { runWebSearch, searchProviderLabel, resolveSearchProvider } from './web-search-provider.js';
 
 export const webSearchTool: Tool = {
   name: 'web-search',
   description:
-    'Search the web using Brave Search. Use when you need current information not in your training data.',
+    'Live web search via Tavily (default). Call with a search query when the user needs current facts, news, or URLs. Do not use for local file lookup.',
   parameters: {
     type: 'object',
     properties: {
@@ -20,35 +14,14 @@ export const webSearchTool: Tool = {
     required: ['query'],
   },
   execute: async (params) => {
-    const query = String(params.query ?? '');
-    const count = Math.min(10, Math.max(1, Number(params.count ?? 5)));
-
-    if (!config.brave.apiKey) {
-      throw new Error('BRAVE_SEARCH_API_KEY not set in .env');
+    const query = String(params.query ?? '').trim();
+    if (!query) {
+      throw new Error('web-search requires a non-empty query');
     }
-
-    const url = new URL('https://api.search.brave.com/res/v1/web/search');
-    url.searchParams.set('q', query);
-    url.searchParams.set('count', String(count));
-
-    const res = await fetch(url, {
-      headers: {
-        Accept: 'application/json',
-        'X-Subscription-Token': config.brave.apiKey,
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Brave Search failed: ${res.status} ${res.statusText}`);
-    }
-
-    const data = (await res.json()) as { web?: { results?: BraveResult[] } };
-    const results = (data.web?.results ?? []).slice(0, 5);
-
-    return results.map((r) => ({
-      title: r.title ?? '',
-      url: r.url ?? '',
-      description: r.description ?? '',
-    }));
+    const count = Math.max(1, Math.min(10, Number(params['count'] ?? 5)));
+    resolveSearchProvider();
+    return runWebSearch(query, count);
   },
 };
+
+export { resolveSearchProvider, searchProviderLabel, runWebSearch };

@@ -104,6 +104,12 @@ export interface PublicTrustPayload {
     erc8004_label: string;
     erc8126_status: ChainStatus;
     erc8126_label: string;
+    wallet_configured: boolean;
+  };
+  data_freshness: {
+    stale: boolean;
+    stale_reason: string | null;
+    max_age_minutes: number;
   };
   source: 'labyrinth-scout';
 }
@@ -229,9 +235,46 @@ export function buildAttestations(
   return attestations.slice(0, 5);
 }
 
+const DEFAULT_FRESHNESS_MAX_MINUTES = 10;
+
+export function evaluateDataFreshness(
+  input: TrustMetricsInput,
+  now = new Date(),
+  maxAgeMinutes = DEFAULT_FRESHNESS_MAX_MINUTES,
+): PublicTrustPayload['data_freshness'] {
+  const maxAgeMs = maxAgeMinutes * 60 * 1000;
+  const lastSignal = pickLatestIso(input.lastEventAt, input.lastHeartbeatAt);
+  if (!lastSignal) {
+    return {
+      stale: true,
+      stale_reason: 'No recent Scout heartbeat or security events',
+      max_age_minutes: maxAgeMinutes,
+    };
+  }
+
+  const heartbeatAgeMs = input.lastHeartbeatAt ? now.getTime() - new Date(input.lastHeartbeatAt).getTime() : Number.POSITIVE_INFINITY;
+  const eventAgeMs = input.lastEventAt ? now.getTime() - new Date(input.lastEventAt).getTime() : Number.POSITIVE_INFINITY;
+  const freshHeartbeat = heartbeatAgeMs <= maxAgeMs;
+  const freshEvent = eventAgeMs <= maxAgeMs;
+
+  if (freshHeartbeat || freshEvent) {
+    return { stale: false, stale_reason: null, max_age_minutes: maxAgeMinutes };
+  }
+
+  const ageMs = now.getTime() - new Date(lastSignal).getTime();
+  if (ageMs > maxAgeMs) {
+    return {
+      stale: true,
+      stale_reason: `Last telemetry is older than ${maxAgeMinutes} minutes`,
+      max_age_minutes: maxAgeMinutes,
+    };
+  }
+  return { stale: false, stale_reason: null, max_age_minutes: maxAgeMinutes };
+}
+
 export function buildPublicTrustPayload(
   input: TrustMetricsInput,
-  chain: { erc8004: ChainStatus; erc8126: ChainStatus },
+  chain: { erc8004: ChainStatus; erc8126: ChainStatus; walletConfigured?: boolean },
   identity: PublicTrustIdentity | null = null,
   now = new Date(),
 ): PublicTrustPayload {
@@ -273,7 +316,9 @@ export function buildPublicTrustPayload(
       erc8004_label: CHAIN_LABELS[chain.erc8004],
       erc8126_status: chain.erc8126,
       erc8126_label: CHAIN_LABELS[chain.erc8126],
+      wallet_configured: chain.walletConfigured ?? false,
     },
+    data_freshness: evaluateDataFreshness(input, now),
     source: 'labyrinth-scout',
   };
 }

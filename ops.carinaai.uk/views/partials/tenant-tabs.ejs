@@ -1,0 +1,17 @@
+<% const tabs = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'subscription', label: 'Subscription' },
+  { id: 'payments', label: 'Payments' },
+  { id: 'usage', label: 'Usage' },
+  { id: 'packs', label: 'Skill packs' },
+  { id: 'access', label: 'Access' },
+  { id: 'audit', label: 'Audit log' },
+]; %>
+<nav class="flex flex-wrap gap-1 mb-6 border-b border-[#2a2a2a] pb-2 text-sm">
+  <% for (const t of tabs) { %>
+    <a href="/tenants/<%= tenant.id %>?tab=<%= t.id %>"
+       class="px-3 py-1.5 rounded-t <%= tab === t.id ? 'bg-[#2a2a2a] text-[#22c55e] font-medium' : 'text-gray-400 hover:text-white' %>">
+      <%= t.label %>
+    </a>
+  <% } %>
+</nav>

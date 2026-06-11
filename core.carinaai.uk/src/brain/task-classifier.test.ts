@@ -28,4 +28,15 @@ describe('classifyComplexity', () => {
   it('biases ambiguous multi-part requests toward complex', () => {
     expect(classifyComplexity(user('What changed? Why did it happen? What should I do next?'))).toBe('complex');
   });
+
+  it('treats "plan" and "model" as simple when used conversationally', () => {
+    expect(classifyComplexity(user("What's the plan?"))).toBe('simple');
+    expect(classifyComplexity(user('What model are you using?'))).toBe('simple');
+    expect(classifyComplexity(user('Show me the document'))).toBe('simple');
+  });
+
+  it('keeps short unlisted prompts on the fast lane up to 25 words', () => {
+    const twentyFiveWords = 'please just quickly tell me exactly what time the meeting starts tomorrow morning so I can prepare';
+    expect(classifyComplexity(user(twentyFiveWords))).toBe('simple');
+  });
 });

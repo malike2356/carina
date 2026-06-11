@@ -1,100 +1,120 @@
 # COMPARISON.md; Carina vs Hermes vs OpenClaw
 
+Last verified: **2026-06-11** against `core.carinaai.uk` (repo metrics) and production trust API (`GET https://console.labyrinthscout.com/api/public/trust`).
+
+## Verified Carina metrics (repo source of truth)
+
+| Metric | Count | Notes |
+|---|---:|---|
+| Vitest tests | 5,369 | 125 test files |
+| LLM providers | 23 | `PROVIDER_DEFINITIONS` (includes Ollama, LM Studio) |
+| Channel adapters | 18 | Registered; enablement depends on env/credentials |
+| Shipped skill packs | 16 | Under `src/skills/packs/` |
+| Curated pack skills | 96 | Sum of skills in pack `skills.ts` files |
+| Tool surface | 71 | Unique tools in `TOOLSET_MAP` |
+| CLI commands | 49 | `buildCommandList()` |
+
+Hermes and OpenClaw figures below marked * are from their public documentation and are **not audited in this repository**.
+
 ## Architecture
 
-| | Hermes | OpenClaw | Carina (target) |
+| | Hermes * | OpenClaw * | Carina (shipped) |
 |---|---|---|---|
 | Type | Full autonomous agent | Workspace-scoped agent | Full autonomous agent |
-| Scope | System-wide | Single workspace folder | System-wide |
-| Config | config.yaml | Markdown workspace files | config.yaml + workspace files |
-| License | MIT | MIT | MIT |
-| Install | CLI binary | Git clone + markdown | npm install + config |
+| Scope | System-wide | Per workspace folder | System-wide + named agent workspaces |
+| Config | config.yaml | Markdown workspace files | `.env` + `agents.json` + workspace files |
+| License | MIT | MIT | MIT (`carina-agent` on npm) |
+| Install | CLI binary | Git clone + markdown | `npm install -g carina-agent` + Docker |
 
-## Tools
+## Tools and channels
 
-| | Hermes | OpenClaw | Carina (target) |
+| | Hermes * | OpenClaw * | Carina (shipped) |
 |---|---|---|---|
-| Terminal | Full shell (fg, bg, PTY) | Basic | Full shell |
-| Browser | Full automation | None | Full automation |
-| Subagents | 3 parallel, isolated | None | 3 parallel, isolated |
-| Cron | Scheduled + chaining | None | Scheduled + chaining |
-| File ops | read, write, patch, search | Basic read/write | read, write, patch, search |
-| Python | execute_code scripts | None | execute_code scripts |
-| Messaging | Telegram, Discord, Slack, Signal, Matrix, SMS | None | All Hermes channels |
-| Audio | TTS with native delivery | None | TTS with native delivery |
+| Tools | 99+ | Limited | 71 registered tool surface |
+| Terminal | Full shell (fg, bg, PTY) | Basic | Full shell + process tool |
+| Browser | Full automation | None | Playwright (9 tools) + computer-use |
+| Subagents | 3 parallel | None | delegate-task + orchestrator (depth 1) |
+| Cron | Scheduled + chaining | Heartbeat | cronjob tool + scheduler + commitments delivery |
+| Messaging | 15+ platforms * | Several * | 18 channel adapters (config-dependent) |
 
 ## Memory
 
-| | Hermes | OpenClaw | Carina (target) |
+| | Hermes * | OpenClaw * | Carina (shipped) |
 |---|---|---|---|
-| Persistent | SQLite DB, injected every turn | Markdown files in workspace | Both SQLite + markdown |
-| Search | session_search FTS5 | Agent re-reads daily files | session_search FTS5 |
-| Daily logs | Not native | memory/YYYY-MM-DD.md | memory/YYYY-MM-DD.md |
-| Long-term | memory tool | MEMORY.md curated | Both memory tool + MEMORY.md |
-| Human-readable | No (opaque SQLite) | Yes (plain markdown) | Yes (both formats) |
+| Persistent | SQLite FTS5 | Markdown in workspace | Postgres, SQLite, builtin, Mem0 + markdown |
+| RAG | Varies | Workspace re-read | pgvector RAG when Postgres configured |
+| REM / promotion | No | REM file-based * | REM + `DREAMS.md` promotion queue |
+| Long-term | memory tool | MEMORY.md | memory tool + MEMORY.md + persistent profiles |
+| Human-readable | Partial | Yes | Yes (markdown + CLI/API) |
 
-## Learning
+## Learning and proactivity
 
-| | Hermes | OpenClaw | Carina (target) |
+| | Hermes * | OpenClaw * | Carina (shipped) |
 |---|---|---|---|
-| Skills | 70+ pre-built, self-writing | None | 70+ pre-built, self-writing |
-| Domain packs | None | None | User-extensible system |
-| Self-improvement | Creates skills from workflows | Updates markdown files | Creates skills + updates workspace |
+| Skills | 115+ * | ClawHub | 16 packs / 96 curated skills + hub + auto-writer |
+| Domain packs | No | No | 16 optional vertical packs |
+| Self-improvement | skill_manage | Workspace edits | Auto skill writer + curator |
+| Scheduled | cronjob | Heartbeat | cronjob + proactive check-in (opt-in) |
+| Inferred follow-ups | No | Commitments * | Commitments (opt-in, `CARINA_COMMITMENTS_ENABLED`) |
+| Background processes | Yes | No | shell background + process notifications |
 
-## Proactivity
+## Security (Carina + Scout)
 
-| | Hermes | OpenClaw | Carina (target) |
+| | Hermes * | OpenClaw * | Carina (shipped) |
 |---|---|---|---|
-| Scheduled | cronjob with exact timing | Heartbeat ~every 30 min | cronjob + heartbeat both |
-| Background | process with notifications | None | process with notifications |
-| Event-driven | Webhook subscriptions | None | DB triggers + webhooks |
-| Alerting | Via cron | Via heartbeat | Native alerting from DB state |
+| Prompt injection | Partial (Tirith) | Limited | Scout 3-layer shield |
+| Kill switch | No | No | Scout kill switch |
+| Audit logging | Basic | Partial | Scout full audit + ops audit CLI |
+| Egress filtering | No | No | Scout DLP |
+| Honeypots | No | No | Scout deception layer |
+| Multi-tenant isolation | No | No | Native (hosted SaaS) |
+| Stripe billing | No | No | Built (hosted) |
 
-## Security
+## Trust / verification (Carina + Scout)
 
-| | Hermes | OpenClaw | Carina (target) |
-|---|---|---|---|
-| Prompt injection | Partial | None | Scout 3-layer shield |
-| Kill switch | None | None | Scout kill switch |
-| Audit logging | None | None | Scout full audit |
-| Egress filtering | None | None | Scout DLP |
-| Honeypots | None | None | Scout deception layer |
-| Rate limiting | None | None | Scout per-tool/user |
+Production snapshot (2026-06-11, Base Sepolia): `risk_score` 20 (low), `identity.status` live (agent `6981`, slug `carina-reference`), ERC-8126 verification txs on-chain, `chain.erc8004_status` and `chain.erc8126_status` both `live`, `data_freshness.stale` false. Dashboard: [carinaai.uk/trust](https://carinaai.uk/trust).
 
-## Unique features (Carina only)
+| Capability | Status |
+|---|---|
+| Public trust API (`carinaai.uk/trust`) | **Live** (polls Scout; WAV/WV + unified risk score) |
+| ERC-8004 agent identity | **Live** on Base Sepolia (registry + register tx in API `identity` block) |
+| ERC-8126 verification (WAV + WV) | **Live** on Base Sepolia (`verification.on_chain` explorer links) |
+| Weekly `labyrinth-scout.v1` security attestation | Scheduled; first on-chain post pending scheduled job |
+| Base mainnet registration | Operator step (`pnpm trust:register:mainnet`); testnet is live today |
 
-| | Hermes | OpenClaw | Carina (target) |
-|---|---|---|---|
-| Domain knowledge (framework level) | No | No | Yes |
-| Local model routing | No | No | Yes |
-| Tool result caching (TTL) | No | No | Yes |
-| Event-driven alerting | No | No | Yes |
-| Model cost optimization | No | No | Yes |
-| Group chat awareness | No | Yes | Yes |
-| Workspace files | No | Yes | Yes |
-| npm install | No | No | Yes |
+### vs Hermes *
 
-## Pricing
+| | Hermes * | Carina (production) |
+|---|---|---|
+| Verifiable security posture | No public trust layer | Scout + public trust API |
+| On-chain agent identity (ERC-8004) | No | Live on Base Sepolia |
+| On-chain verification (ERC-8126) | No | Live on Base Sepolia |
+| Battle-tested agent usage | Strong | Early (0 paying pilots) |
 
-| | Hermes | OpenClaw | Carina |
-|---|---|---|---|
-| Core agent | Free (MIT) | Free (MIT) | Free (MIT) |
-| Security | N/A | N/A | Scout: £79-99/mo |
-| API costs | $0.50-2/session | Varies | 70-80% less (local models) |
+Trust is Carina's clearest product differentiator. Hermes wins on procedural skills and production scars; Carina wins on auditable security proof.
+
+## Carina-only (shipped or opt-in)
+
+| Feature | Status |
+|---|---|
+| Agent workspaces + routing | Shipped |
+| Host service + device pairing | Shipped |
+| Control dashboard (`/control`) | Shipped |
+| Ops layer (`carina ops`) | Shipped (sandbox, DNS, proxy, backup, secrets, audit) |
+| Local model routing | Optional (Ollama/LM Studio + task classifier) |
+| Tool result caching (TTL) | Shipped |
+| npm package (`carina-agent`) | v0.1.0 live on [npm](https://www.npmjs.com/package/carina-agent) |
 
 ## When to use which
 
-- Hermes: heavy automation, DevOps, complex multi-step tasks, remote server work
-- OpenClaw: personal workspace, journaling, lightweight assistant
-- Carina: production deployment with security, domain-specific work, cost-sensitive operations
+- **Hermes**: maximum channel breadth and mature Python ecosystem today *
+- **OpenClaw**: personal workspace assistant with markdown-native memory *
+- **Carina**: production SaaS, Scout security, optional vertical packs, billing, trust layer
 
-## The Carina comparison table on carinaai.uk
+## Marketing accuracy rules
 
-The website comparison table is mostly accurate except:
-
-1. "Self-writing skills: Hermes; No" → FALSE. Hermes has skill_manage with create/patch/edit/delete.
-2. "Memory transparency: Hermes; No" → FALSE. Memory is injected every turn, fully viewable and editable.
-3. "Switch LLM mid-session: Hermes; No" → DEBATABLE. Multiple providers supported, profile switching possible.
-4. "npm install: Hermes; No" → IRRELEVANT. Different packaging, not a capability metric.
-
-The Scout security features are accurately represented. Hermes has partial injection protection; Carina + Scout has full 3-layer protection.
+1. Do not quote Carina counts lower than the verified table above.
+2. Use `npm install -g carina-agent` in public install copy. State ERC-8004 identity and ERC-8126 verification as **live on Base Sepolia** (link [carinaai.uk/trust](https://carinaai.uk/trust)). Say **Base mainnet** only after `pnpm trust:register:mainnet` completes. Do not claim on-chain trust prevents runtime compromise.
+3. Do not claim Hermes lacks self-writing skills or memory transparency; both are incorrect (*).
+4. Competitor numbers require a footnote that they are not audited in this repo.
+5. Distinguish **skills war stories** (Hermes procedural skills) from **domain packs** (Carina vertical packs); do not compare raw skill counts without that caveat.

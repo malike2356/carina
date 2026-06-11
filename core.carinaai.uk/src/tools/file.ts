@@ -136,6 +136,8 @@ export const fileReadTool: Tool = {
 
 export const fileWriteTool: Tool = {
   name: 'file-write',
+  dangerous: true,
+  requiresConfirmation: true,
   description: 'Write content to a file. Creates parent directories if needed. Runs syntax checks on .json, .yaml, .py files.',
   parameters: {
     type: 'object',

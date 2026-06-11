@@ -10,14 +10,18 @@ import {
 } from '../memory/store.js';
 import { incrementSkillUsage } from '../skills/store.js';
 import { findSkillsIncludingSkillMd } from '../skills/index.js';
-import { compressTrajectory, isStaleToolCall } from './trajectory.js';
+import { compressTrajectoryWithStats, isStaleToolCall } from './trajectory.js';
+import { maybeRunRemCycle } from '../memory/rem/rem-promotion.js';
 import { isRagPackAllowed, isSkillAllowedForActivePacks } from '../skills/index.js';
-import { buildSystemPromptParts } from './system-prompt.js';
+import { buildSurfaceContext, buildSystemPromptParts } from './system-prompt.js';
 import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
 import { loadCrossAgentContext } from '../sync/agent-sync.js';
 import { loadAllContacts, contactsContextBlock } from '../profiles/contacts.js';
 import { learnFromSessionTurn } from '../skills/session-learner.js';
+import { maybeInferCommitments } from '../commitments/inference.js';
+import { getSessionDelivery } from './cron-delivery-registry.js';
 import { registry, registerSessionTools } from '../tools/index.js';
+import { resolveActiveToolNames } from '../tools/toolset-config.js';
 import { getAllPersistentContext } from '../memory/persistent-memory.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
 import type { ConfirmFn } from './tool-runner.js';
@@ -57,9 +61,11 @@ export class CarinaAgent {
   private memoryReady = false;
   private confirmTool?: ConfirmFn;
   private allowedTools?: string[];
+  private platform?: string;
   private systemPromptSuffix = '';
   private maxTurns = 20;
   private persistMemory = true;
+  private fastMode = false;
   private forceConfirm = false;
   private providerOverride?: ProviderOverride;
   private pendingProviderOverride?: ProviderOverride;
@@ -77,9 +83,11 @@ export class CarinaAgent {
     this.memoryReady = memoryReady && (options.persistMemory !== false);
     this.confirmTool = options.confirmTool ?? confirmTool;
     this.allowedTools = options.allowedTools;
+    this.platform = options.platform;
     this.systemPromptSuffix = options.systemPromptSuffix ?? '';
     this.maxTurns = options.maxTurns ?? 20;
     this.persistMemory = options.persistMemory !== false;
+    this.fastMode = options.fastMode === true;
     this.forceConfirm = options.forceConfirm ?? false;
     this.providerOverride = options.providerOverride;
     this.tenantId = options.tenantId;
@@ -103,14 +111,22 @@ export class CarinaAgent {
     this.systemPromptSuffix = suffix;
   }
 
+  setFastMode(fastMode: boolean): void {
+    this.fastMode = fastMode;
+  }
+
   getProviderOverride(): ProviderOverride | undefined {
     return this.pendingProviderOverride ?? this.providerOverride;
   }
 
   getTools(): Tool[] {
     const all = registry.list();
-    if (!this.allowedTools) return all;
-    return all.filter((t) => this.allowedTools!.includes(t.name));
+    const resolved = resolveActiveToolNames({
+      platform: this.platform,
+      explicitAllowed: this.allowedTools,
+    });
+    const allowed = new Set(resolved);
+    return all.filter((t) => allowed.has(t.name));
   }
 
   async buildContext(userMessage: string): Promise<{ messages: Message[]; meta: TurnMeta }> {
@@ -118,6 +134,10 @@ export class CarinaAgent {
     const contextParts: string[] = [];
 
     contextParts.push(...buildSystemPromptParts());
+    const surfaceContext = buildSurfaceContext(this.platform);
+    if (surfaceContext) {
+      contextParts.push(surfaceContext);
+    }
     if (process.env.LABYRINTH_ENABLED === 'true') {
       const deceptionBlock = await getDeceptionAugmentation(config.labyrinth.instanceId);
       if (deceptionBlock) {
@@ -128,40 +148,44 @@ export class CarinaAgent {
       contextParts.push(this.systemPromptSuffix);
     }
 
-    const personality = await loadProfilePersonality();
+    const [personality, crossAgent, contacts] = await Promise.all([
+      loadProfilePersonality(),
+      loadCrossAgentContext(),
+      loadAllContacts(),
+    ]);
+
     const personalitySuffix = personalityToSystemSuffix(personality);
     if (personalitySuffix) {
       contextParts.push(personalitySuffix);
     }
-
-    const crossAgent = await loadCrossAgentContext();
     if (crossAgent.length > 0) {
       contextParts.push(crossAgent.join('\n\n---\n\n'));
     }
-
-    const contacts = await loadAllContacts();
     const contactBlock = contactsContextBlock(contacts.slice(0, 15));
     if (contactBlock) {
       contextParts.push(contactBlock);
     }
 
-    if (this.memoryReady) {
-      const persistent = await getAllPersistentContext();
+    if (this.memoryReady && !this.fastMode) {
+      const keywords = extractKeywords(userMessage);
+      const [persistent, history, similar, rawRag, rawSkills] = await Promise.all([
+        getAllPersistentContext(),
+        getSessionHistory(this.sessionId, config.carina.maxMemoryContext),
+        searchMemory(userMessage, 5),
+        searchRag(userMessage, 3),
+        findSkillsIncludingSkillMd(keywords),
+      ]);
+
       if (persistent) {
         contextParts.push(`Persistent memory:\n${persistent}`);
       }
 
-      const history = await getSessionHistory(
-        this.sessionId,
-        config.carina.maxMemoryContext,
-      );
       if (history.length > 0) {
         meta.memoryTurns = history.length;
         const lines = history.map((m) => `${m.role}: ${m.content}`);
         contextParts.push(`Recent session history:\n${lines.join('\n')}`);
       }
 
-      const similar = await searchMemory(userMessage, 5);
       const otherSession = similar.filter((m) => m.sessionId !== this.sessionId);
       if (otherSession.length > 0) {
         meta.memoryTurns += otherSession.length;
@@ -169,17 +193,14 @@ export class CarinaAgent {
         contextParts.push(`Relevant past memories:\n${lines.join('\n')}`);
       }
 
-      const rag = (await searchRag(userMessage, 3)).filter((chunk) => isRagPackAllowed(chunk.pack));
+      const rag = rawRag.filter((chunk) => isRagPackAllowed(chunk.pack));
       if (rag.length > 0) {
         meta.ragChunks = rag.length;
         const lines = rag.map((c) => `[${c.pack}/${c.source}] ${c.content}`);
         contextParts.push(`Reference knowledge from installed packs (use only when relevant):\n${lines.join('\n\n')}`);
       }
 
-      const keywords = extractKeywords(userMessage);
-      const skills = (await findSkillsIncludingSkillMd(keywords)).filter((skill) =>
-        isSkillAllowedForActivePacks(skill.name),
-      );
+      const skills = rawSkills.filter((skill) => isSkillAllowedForActivePacks(skill.name));
       if (skills.length > 0) {
         meta.skills = skills.length;
         for (const skill of skills) {
@@ -281,8 +302,12 @@ export class CarinaAgent {
         yield { type: 'text', content: `[${budget.message}]\n\n` };
       }
 
-      const compressed = compressTrajectory(messages);
-      if (compressed !== messages) {
+      const { messages: compressed, stats } = compressTrajectoryWithStats(messages);
+      if (
+        stats.compressedToolResults > 0
+        || stats.truncatedToolResults > 0
+        || stats.afterChars < stats.beforeChars
+      ) {
         messages.length = 0;
         messages.push(...compressed);
       }
@@ -310,6 +335,7 @@ export class CarinaAgent {
         if (this.memoryReady && this.persistMemory) {
           await saveMemory(this.sessionId, 'user', safeUserMessage);
           await saveMemory(this.sessionId, 'assistant', turnText);
+          maybeRunRemCycle();
         }
         break;
       }
@@ -380,6 +406,18 @@ export class CarinaAgent {
       assistantText: turnText,
       toolsUsed,
       toolCallLog,
+    });
+
+    const delivery = getSessionDelivery(this.sessionId);
+    void maybeInferCommitments({
+      sessionId: this.sessionId,
+      agentId: process.env.CARINA_ACTIVE_AGENT ?? 'default',
+      platform: this.platform,
+      userMessage: safeUserMessage,
+      assistantText: turnText,
+      channel: delivery?.channel ?? this.platform ?? null,
+      conversationId: delivery?.conversationId ?? null,
+      threadId: delivery?.threadId ?? null,
     });
   }
 

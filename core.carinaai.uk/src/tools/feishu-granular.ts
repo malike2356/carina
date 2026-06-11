@@ -16,6 +16,7 @@ async function feishuToken(): Promise<string | null> {
 
 export const feishuChatSendTool: Tool = {
   name: 'feishu-chat-send',
+  dangerous: true,
   description: 'Send a text message to a Feishu/Lark chat.',
   parameters: {
     type: 'object',

@@ -5,6 +5,8 @@ import type { Tool } from '../types/index.js';
 
 export const emailSendTool: Tool = {
   name: 'email-send',
+  dangerous: true,
+  requiresConfirmation: true,
   description: 'Send a plain-text email via Resend.',
   parameters: {
     type: 'object',

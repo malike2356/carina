@@ -7,9 +7,9 @@ import { loadLocalEnv } from '../config/env.js';
 
 type Check = { name: string; ok: boolean; detail: string };
 
-async function checkHttp(url: string): Promise<boolean> {
+async function checkHttp(url: string, headers?: Record<string, string>): Promise<boolean> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(3000) });
     return res.ok;
   } catch {
     return false;
@@ -76,6 +76,69 @@ export async function runDoctor(): Promise<void> {
     }
   }
 
+  try {
+    const { hasToolsetsConfig, describePlatformToolsets } = await import('../../tools/toolset-config.js');
+    if (hasToolsetsConfig()) {
+      const web = describePlatformToolsets('web');
+      const telegram = describePlatformToolsets('telegram');
+      checks.push({
+        name: 'Toolsets',
+        ok: true,
+        detail: `web=${web.toolCount} tools, telegram=${telegram.toolCount} tools`,
+      });
+    } else {
+      const preset = describePlatformToolsets('default');
+      checks.push({
+        name: 'Toolsets',
+        ok: true,
+        detail: `least-privilege preset (${preset.toolCount} tools; run: carina tools menu)`,
+      });
+    }
+  } catch (err) {
+    checks.push({
+      name: 'Toolsets',
+      ok: false,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    const { getCredentialPoolManager } = await import('../../credentials/pool-manager.js');
+    const { PROVIDER_DEFINITIONS } = await import('../../brain/provider-registry.js');
+    const mgr = getCredentialPoolManager();
+    const pooled = PROVIDER_DEFINITIONS.filter((d) => mgr.poolSize(d.name, process.env[d.apiKeyEnv] ?? '', process.env[d.apiKeysPoolEnv]) > 1);
+    checks.push({
+      name: 'Credential pools',
+      ok: true,
+      detail: pooled.length > 0
+        ? `${pooled.length} provider(s) with multi-key pools`
+        : 'single-key mode (use *_API_KEYS for pools)',
+    });
+  } catch (err) {
+    checks.push({
+      name: 'Credential pools',
+      ok: false,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  try {
+    const { initMemoryBackend, getMemoryBackend } = await import('../../memory/backends/index.js');
+    initMemoryBackend();
+    const mem = getMemoryBackend();
+    checks.push({
+      name: 'Memory backend',
+      ok: mem.isConfigured(),
+      detail: `${mem.displayName} (${mem.name})`,
+    });
+  } catch (err) {
+    checks.push({
+      name: 'Memory backend',
+      ok: false,
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   const redisUrl = process.env.REDIS_URL ?? '';
   if (redisUrl) {
     let redisOk = false;
@@ -96,6 +159,35 @@ export async function runDoctor(): Promise<void> {
     if (redisOk) checks.push({ name: 'Redis', ok: true, detail: 'connected' });
   } else {
     checks.push({ name: 'Redis', ok: true, detail: 'optional (not set)' });
+  }
+
+  const labyrinthEnabled = process.env.LABYRINTH_ENABLED === 'true';
+  if (labyrinthEnabled) {
+    const url = (process.env.LABYRINTH_URL ?? '').trim();
+    const apiKey = (process.env.LABYRINTH_API_KEY ?? '').trim();
+    if (!url || !apiKey) {
+      checks.push({
+        name: 'Scout integration',
+        ok: false,
+        detail: 'LABYRINTH_ENABLED=true but LABYRINTH_URL or LABYRINTH_API_KEY missing',
+      });
+    } else {
+      const scoutOk = await checkHttp(
+        `${url.replace(/\/$/, '')}/api/status`,
+        { 'X-Scout-Key': apiKey },
+      );
+      checks.push({
+        name: 'Scout integration',
+        ok: scoutOk,
+        detail: scoutOk ? `reachable (${url})` : `enabled but unreachable (${url})`,
+      });
+    }
+  } else {
+    checks.push({
+      name: 'Scout integration',
+      ok: true,
+      detail: 'disabled (recommended until Scout is configured)',
+    });
   }
 
   const webPort = process.env.WEB_PORT ?? '3000';

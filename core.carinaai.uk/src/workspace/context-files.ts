@@ -31,6 +31,11 @@ const CONTEXT_FILES = [
     label: 'Curated Workspace Memory',
   },
   {
+    name: 'DREAMS.md',
+    label: 'REM Promotion Review Queue',
+    note: 'Pending short-term to long-term memory promotions. Approve with carina memory promote approve <id>.',
+  },
+  {
     name: 'SHARED_MEMORY.md',
     label: 'Cross-Agent Shared Memory',
     note: 'Cross-session facts synced via the agent-sync tool.',

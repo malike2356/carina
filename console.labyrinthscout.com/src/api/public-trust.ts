@@ -6,6 +6,14 @@ import { trustVerifyRouter } from './trust-verify.js';
 
 export const publicTrustRouter: IRouter = Router();
 
+publicTrustRouter.use((req, res, next) => {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+  res.status(405).json({ error: 'Public trust API is read-only' });
+});
+
 publicTrustRouter.use('/verify', trustVerifyRouter);
 
 publicTrustRouter.get('/', async (_req: Request, res: Response): Promise<void> => {

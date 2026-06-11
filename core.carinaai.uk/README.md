@@ -1,12 +1,18 @@
 # Carina Agent
 
+[![npm version](https://img.shields.io/npm/v/carina-agent.svg)](https://www.npmjs.com/package/carina-agent)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![docs](https://img.shields.io/badge/docs-carinaai.uk-0a0a0f)](https://carinaai.uk/docs/)
+
 Autonomous AI agent platform with vertical skill packs. Built by [VERLOX Ltd](https://carinaai.uk).
 
-Carina is a general-purpose local-first agent. The **property-uk** skill pack ships by default for UK property entrepreneurs.
+**MIT licensed.** Fork it, extend it, ship skill packs. [Contributing](CONTRIBUTING.md) | [Discussions](https://github.com/malike2356/carina-agent/discussions) | [Report a bug](https://github.com/malike2356/carina-agent/issues/new/choose)
+
+Carina is a general-purpose local-first agent. Skill packs are optional: enable them at `/packs` on the web UI, with `carina packs install <name>`, or via `ACTIVE_SKILL_PACKS` in `.env`.
 
 ## Install
 
-**npm (after package publish):**
+**npm (live):**
 
 ```bash
 npm install -g carina-agent
@@ -14,7 +20,7 @@ carina setup
 carina
 ```
 
-The package metadata is ready for the `carina-agent` npm name. Publish the package before presenting this as a live public install path.
+Package: [carina-agent@0.1.1](https://www.npmjs.com/package/carina-agent) on npm. Requires **Node.js 22+**.
 
 **curl (after install host is configured):**
 
@@ -29,12 +35,14 @@ Requires **Node.js 22+**.
 ## Quick start
 
 ```bash
-git clone <public-repo-url-after-source-release>
-cd carina/core.carinaai.uk
+git clone https://github.com/malike2356/carina-agent.git
+cd carina-agent
 pnpm install
 pnpm build
 pnpm dev
 ```
+
+Full documentation: [carinaai.uk/docs](https://carinaai.uk/docs/).
 
 Open `http://localhost:3000` for the web UI.
 
@@ -55,12 +63,14 @@ Config lives in `~/.carina/.env` for global installs, or `.env` in the project d
 
 | Variable | Description |
 |----------|-------------|
-| `DEFAULT_PROVIDER` | `deepseek`, `anthropic`, or `openai` |
-| `DEEPSEEK_API_KEY` | DeepSeek API key |
-| `ANTHROPIC_API_KEY` | Anthropic API key |
-| `DATABASE_URL` | PostgreSQL with pgvector |
+| `DEFAULT_PROVIDER` | Any of 23 registered providers (see `carina providers list`) |
+| `DEEPSEEK_API_KEY` | DeepSeek API key (example) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (example) |
+| `CARINA_MEMORY_BACKEND` | `builtin`, `postgres`, `sqlite`, or `mem0` |
+| `DATABASE_URL` | PostgreSQL with pgvector (when using postgres backend) |
 | `REDIS_URL` | Redis for sessions |
-| `ACTIVE_SKILL_PACK` | Default skill pack (e.g. `property-uk`) |
+| `ACTIVE_SKILL_PACKS` | Comma-separated skill packs (empty = general-purpose) |
+| `ACTIVE_SKILL_PACK` | Legacy single-pack alias |
 
 ## Features
 
@@ -68,7 +78,8 @@ Config lives in `~/.carina/.env` for global installs, or `.env` in the project d
 - **Memory transparency**: `/memories` and `/memories delete <id>`
 - **Provider hot-swap**: `/provider deepseek` in CLI, Telegram, and Web
 - **MCP-compatible** tool schemas for community extensions
-- **Multi-gateway**: CLI and Web by default; Telegram and WhatsApp when their channel credentials are configured
+- **Multi-gateway**: 18 channel adapters (CLI, Web, Telegram, Discord, Slack, WhatsApp, SMS, Signal, Matrix, Email, and more); each needs credentials or env flags where applicable
+- **Scale**: 71 tools, 23 LLM providers, 16 skill packs, 5,369 Vitest tests (as of 2026-06-10)
 - **Hosted option**: [app.carinaai.uk](https://app.carinaai.uk) for non-technical users
 
 ## Documentation
@@ -83,8 +94,19 @@ pnpm install
 pnpm build
 pnpm test
 pnpm hub          # Skills Hub on :3001
-pnpm docs:dev     # Documentation site
 ```
+
+Documentation source: [carinaai.uk/docs](https://carinaai.uk/docs/) (built from the private VERLOX docs repo).
+
+## Contributing
+
+Carina grows through **skill packs**, tools, gateways, and docs. The fastest path for new contributors is a [skill pack](https://carinaai.uk/docs/user/skill-packs/creating-packs).
+
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+2. Pick a [`good first issue`](https://github.com/malike2356/carina-agent/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or propose a pack via the issue template
+3. Open a PR or start a [Discussion](https://github.com/malike2356/carina-agent/discussions)
+
+Community hub: [carinaai.uk/community](https://carinaai.uk/community)
 
 ## License
 

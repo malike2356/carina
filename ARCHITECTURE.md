@@ -12,7 +12,7 @@ Internal reference for VERLOX. Explains what each piece in this monorepo is, who
 | ops.carinaai.uk:4000 | Platform admin | VERLOX only |
 | carinaai.uk / labyrinthscout.com | Marketing | Public |
 
-Full tenant documentation: `core.carinaai.uk/docs/carina-cloud.md` (published at docs.carinaai.uk).
+Full tenant documentation: `docs.carinaai.uk/docs/user/carina-cloud.md` (published at carinaai.uk/docs).
 
 ## The five pieces
 
@@ -68,7 +68,7 @@ Five env vars on the Carina side drive the whole integration (set in `core.carin
 
 ```
 LABYRINTH_ENABLED=true
-LABYRINTH_URL=https://console.labyrinthscout.com
+LABYRINTH_URL=<tenant Scout console URL from provisioning email>
 LABYRINTH_API_KEY=lscout_...
 LABYRINTH_INSTANCE_ID=carina-{hostname}
 LABYRINTH_INSTANCE_NAME=Carina ({hostname})
@@ -76,10 +76,10 @@ LABYRINTH_INSTANCE_NAME=Carina ({hostname})
 
 There are now **two ways to populate them**, both landed 2026-06-07:
 
-1. **First-run setup wizard** (`core.carinaai.uk/src/setup/wizard.ts`): after choosing an LLM provider and the property-uk pack, the wizard asks "Connect to Labyrinth Scout for AI agent security monitoring?" If yes, it prompts for an API key (registered at `console.labyrinthscout.com/account/register`), derives `LABYRINTH_INSTANCE_ID`/`LABYRINTH_INSTANCE_NAME` from `os.hostname()`, and writes all five vars into the new `.env`.
+1. **First-run setup wizard** (`core.carinaai.uk/src/setup/wizard.ts`): after choosing an LLM provider and optional packs, the wizard asks "Connect to Labyrinth Scout?" If yes, it prompts for the **console URL and API key from the provisioning email**, derives `LABYRINTH_INSTANCE_ID`/`LABYRINTH_INSTANCE_NAME` from `os.hostname()`, and writes all five vars into the new `.env`.
 2. **Ops settings panel** (`ops.carinaai.uk/routes/settings.ts`, route `POST /settings/scout-pairing`): lets VERLOX paste a Scout API key into a running ops instance after the fact. It writes `SCOUT_API_KEY` into `ops.carinaai.uk/.env` in place via the `setEnvVar()` helper (regex replace-or-append, keeps `process.env` in sync so it takes effect immediately, no restart). The settings page shows live "Paired" / "Not paired" status based on whether `SCOUT_API_KEY` is set.
 
-To get a key in the first place, an operator registers an account at `console.labyrinthscout.com/account/register` (the new account system - see below) and generates an API key from their dashboard.
+**Customer onboarding (2026-06):** Public marketing sites do not link the hosted console hostname. Customers subscribe via Stripe checkout (`core.carinaai.uk/checkout?plan=scout_standard`) or Carina Cloud Pro; VERLOX provisions the account and emails the private console URL + API key. Self-serve `/account/register` on the console host remains for operators who already know the URL.
 
 ### 4. The Scout account system (new, 2026-06-07)
 
@@ -125,7 +125,7 @@ IDE client  ->  extensions/carina-ide | carina-jetbrains  ->  POST {CARINA_URL}/
 
 Both `carinaai.uk/` and `labyrinthscout.com/` are static HTML/CSS/vanilla-JS sites with no backend of their own. Use extensionless URLs in links and marketing copy (`/trust`, not `/trust.html`). Each site ships `nginx.clean-urls.conf` and `.htaccess` for clean URL rewrites on production nginx and local Apache.
 - They share a single subscribe endpoint: `POST https://carinaai.uk/api/subscribe` (handled by `core.carinaai.uk`'s `subscribeRouter`) for waitlist signups, with a `localStorage` fallback so a lead is never lost if the API is briefly down.
-- `labyrinthscout.com` is purely a funnel into `console.labyrinthscout.com/account/register`.
+- `labyrinthscout.com` funnels to Stripe checkout and docs; the hosted console URL is emailed at provisioning (not linked publicly).
 - Deployed independently of the Node apps: plain `rsync` of static files to `/www/wwwroot/{domain}/` on the Contabo VPS (no build step, no supervisor process - nginx serves the files directly).
 
 ## 8. Carina Cloud (hosted SaaS)

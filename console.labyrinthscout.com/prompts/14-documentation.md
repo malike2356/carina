@@ -249,7 +249,7 @@ API endpoints (for integrations):
 
 ### `docs/tools/overview.md`
 
-6 tools. All MCP-compatible schemas. Each requires confirmation for destructive operations.
+71 tools across Carina toolsets (core tools listed below). All MCP-compatible schemas. Destructive tools require confirmation where configured.
 
 | Tool | Key | Sandboxed | Needs Confirmation |
 |---|---|---|---|

@@ -1,56 +1,147 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import express from 'express';
+import express, { type Express, type Request, type Response } from 'express';
 import { config } from '../../config/index.js';
-import { hubPool, initHubDb } from './migrations.js';
+import { initHubDb } from './migrations.js';
+import {
+  getHubPack,
+  getHubSkill,
+  getPackArchivePath,
+  getRegistrySummary,
+  listHubPacks,
+  listHubSkills,
+  recordPackDownload,
+} from './registry.js';
+import { seedHubRegistry } from './seed.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PACKS_STORAGE = path.resolve(__dirname, '../../../data/hub-packs');
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
-export async function startSkillsHub(): Promise<void> {
-  await fs.mkdir(PACKS_STORAGE, { recursive: true });
-  await initHubDb();
-  await seedPropertyUkIfEmpty();
+function parseBool(value: unknown): boolean {
+  return value === true || value === 'true' || value === '1';
+}
 
+export function createSkillsHubApp(): Express {
   const app = express();
   app.use(express.json({ limit: '2mb' }));
+  app.use(express.static(PUBLIC_DIR));
 
-  app.get('/packs', async (_req, res) => {
-    const result = await hubPool.query(
-      `SELECT name, version, description, author, skill_count, download_count, created_at
-       FROM skill_packs ORDER BY name`,
-    );
-    res.json({ packs: result.rows });
+  app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, service: 'carina-skills-hub' });
   });
 
-  app.get('/packs/:name', async (req, res) => {
-    const result = await hubPool.query(
-      `SELECT name, version, description, author, skill_count, download_count, created_at
-       FROM skill_packs WHERE name = $1`,
-      [req.params.name],
-    );
-    if (result.rowCount === 0) {
-      res.status(404).json({ error: 'Pack not found' });
-      return;
+  app.get('/api/registry', async (_req, res, next) => {
+    try {
+      res.json(await getRegistrySummary());
+    } catch (err) {
+      next(err);
     }
-    res.json(result.rows[0]);
   });
 
-  app.get('/packs/:name/download', async (req, res) => {
-    const result = await hubPool.query(
-      'SELECT archive_path FROM skill_packs WHERE name = $1',
-      [req.params.name],
-    );
-    if (result.rowCount === 0) {
-      res.status(404).json({ error: 'Pack not found' });
-      return;
+  app.get('/api/packs', async (req, res, next) => {
+    try {
+      const packs = await listHubPacks({
+        q: String(req.query.q ?? ''),
+        category: req.query.category ? String(req.query.category) : undefined,
+        featured: parseBool(req.query.featured),
+      });
+      res.json({ packs });
+    } catch (err) {
+      next(err);
     }
-    const archivePath = String(result.rows[0].archive_path);
-    await hubPool.query(
-      'UPDATE skill_packs SET download_count = download_count + 1 WHERE name = $1',
-      [req.params.name],
-    );
-    res.download(archivePath);
+  });
+
+  app.get('/api/packs/:name', async (req, res, next) => {
+    try {
+      const pack = await getHubPack(req.params.name);
+      if (!pack) {
+        res.status(404).json({ error: 'Pack not found' });
+        return;
+      }
+      const skills = await listHubSkills({ pack: pack.name, limit: 500 });
+      res.json({ ...pack, skills });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/packs/:name/download', async (req, res, next) => {
+    try {
+      await handlePackDownload(req.params.name, res);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/skills', async (req, res, next) => {
+    try {
+      const skills = await listHubSkills({
+        q: String(req.query.q ?? ''),
+        pack: req.query.pack ? String(req.query.pack) : undefined,
+        category: req.query.category ? String(req.query.category) : undefined,
+        limit: req.query.limit ? Number(req.query.limit) : undefined,
+        offset: req.query.offset ? Number(req.query.offset) : undefined,
+      });
+      res.json({ skills });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/skills/:pack/:name', async (req, res, next) => {
+    try {
+      const skill = await getHubSkill(req.params.pack, req.params.name);
+      if (!skill) {
+        res.status(404).json({ error: 'Skill not found' });
+        return;
+      }
+      const pack = await getHubPack(req.params.pack);
+      res.json({ ...skill, pack });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/categories', async (_req, res, next) => {
+    try {
+      const summary = await getRegistrySummary();
+      res.json({ categories: summary.categories });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // Legacy API paths (docs + install-pack)
+  app.get('/packs', async (req, res, next) => {
+    try {
+      const packs = await listHubPacks({ q: String(req.query.q ?? '') });
+      res.json({ packs });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/packs/:name', async (req, res, next) => {
+    try {
+      const pack = await getHubPack(req.params.name);
+      if (!pack) {
+        res.status(404).json({ error: 'Pack not found' });
+        return;
+      }
+      res.json(pack);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/packs/:name/download', async (req, res, next) => {
+    try {
+      await handlePackDownload(req.params.name, res);
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.post('/packs', async (req, res) => {
@@ -61,38 +152,42 @@ export async function startSkillsHub(): Promise<void> {
       return;
     }
     res.status(501).json({
-      error: 'Upload via POST /packs requires multipart; use CLI publish script for now',
+      error: 'Use carina hub publish <pack-dir> to submit community packs',
     });
   });
 
+  app.use((err: unknown, _req: Request, res: Response, _next: () => void) => {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  });
+
+  return app;
+}
+
+async function handlePackDownload(name: string, res: Response): Promise<void> {
+  const archivePath = await getPackArchivePath(name);
+  if (!archivePath) {
+    res.status(404).json({ error: 'Pack not found' });
+    return;
+  }
+  await recordPackDownload(name);
+  res.download(archivePath);
+}
+
+export async function startSkillsHub(): Promise<void> {
+  await fs.mkdir(PACKS_STORAGE, { recursive: true });
+  await initHubDb();
+  const seeded = await seedHubRegistry(PACKS_STORAGE);
+  console.log(`Skills Hub registry: ${seeded.packs} packs, ${seeded.skills} skills indexed`);
+
+  const app = createSkillsHubApp();
   await new Promise<void>((resolve) => {
     app.listen(config.hub.port, () => {
       console.log(`Skills Hub ready at http://localhost:${config.hub.port}`);
+      console.log(`Browse community skills at http://localhost:${config.hub.port}/`);
       resolve();
     });
   });
-}
-
-async function seedPropertyUkIfEmpty(): Promise<void> {
-  const existing = await hubPool.query('SELECT 1 FROM skill_packs WHERE name = $1', [
-    'property-uk',
-  ]);
-  if ((existing.rowCount ?? 0) > 0) return;
-
-  const { buildPropertyUkArchive } = await import('./build-pack.js');
-  const archivePath = await buildPropertyUkArchive(PACKS_STORAGE);
-  await hubPool.query(
-    `INSERT INTO skill_packs (name, version, description, author, skill_count, archive_path)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [
-      'property-uk',
-      '1.0.0',
-      'UK property entrepreneurship knowledge pack',
-      'VERLOX Ltd',
-      6,
-      archivePath,
-    ],
-  );
 }
 
 const isMain = process.argv[1]?.includes('hub/server');

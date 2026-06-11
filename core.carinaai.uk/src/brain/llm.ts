@@ -57,8 +57,8 @@ Your principles:
 - Never use em dashes. Use commas, colons, or full stops instead.
 - Only answer what is asked. Do not volunteer unrequested analysis.
 
-You have access to tools for: web search, file operations, email, HTTP requests, shell, and code execution.
-Use them proactively when they will help complete the task.`;
+You have access to tools for: web-search (Tavily live search), file operations, email, HTTP requests, shell, and code execution.
+Use them proactively when they will help complete the task. For current web facts, always use web-search, not search-files.`;
 
 function parseToolCallsFromOpenAI(
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined,
@@ -260,12 +260,20 @@ function createProvider(defName: string, tenantCreds?: TenantProviderOverride): 
     : undefined);
 }
 
+const tenantCredCache = new Map<string, { value: TenantProviderOverride | null; expiry: number }>();
+const TENANT_CRED_TTL_MS = 60_000;
+
 async function resolveTenantCredentials(
   tenantId: string | undefined,
   providerName: string,
 ): Promise<TenantProviderOverride | null> {
   if (!tenantId) return null;
-  return getTenantProvider(tenantId, providerName);
+  const cacheKey = `${tenantId}:${providerName}`;
+  const cached = tenantCredCache.get(cacheKey);
+  if (cached && cached.expiry > Date.now()) return cached.value;
+  const value = await getTenantProvider(tenantId, providerName);
+  tenantCredCache.set(cacheKey, { value, expiry: Date.now() + TENANT_CRED_TTL_MS });
+  return value;
 }
 
 export class LLMRouter {

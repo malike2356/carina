@@ -8,6 +8,8 @@ import fs from 'fs/promises';
 import { isSafePath, expandPath } from '../tools/path-utils.js';
 import { v4 as uuidv4 } from 'uuid';
 import { dispatchWebhook } from '../webhooks/dispatcher.js';
+import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
+import { resolveJobWorkdir } from './cron-workdir.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +33,15 @@ export interface ScheduledJob {
   enabledToolsets: string[];
   workdir: string | null;
   originSessionId: string | null;
+  originChannel: ChannelName | null;
+  originConversationId: string | null;
+  originThreadId: string | null;
+  deliverChannels: string[];
   createdAt: Date;
+}
+
+export interface ExecuteJobOptions {
+  chainedFrom?: { jobId: string; name: string | null; output: string };
 }
 
 interface JobRuntime {
@@ -95,6 +105,10 @@ function rowToJob(row: Record<string, unknown>): ScheduledJob {
     enabledToolsets: (row.enabled_toolsets as string[]) ?? [],
     workdir: row.workdir ? String(row.workdir) : null,
     originSessionId: row.origin_session_id ? String(row.origin_session_id) : null,
+    originChannel: row.origin_channel ? String(row.origin_channel) as ChannelName : null,
+    originConversationId: row.origin_conversation_id ? String(row.origin_conversation_id) : null,
+    originThreadId: row.origin_thread_id ? String(row.origin_thread_id) : null,
+    deliverChannels: (row.deliver_channels as string[]) ?? [],
     createdAt: new Date(String(row.created_at)),
   };
 }
@@ -109,8 +123,9 @@ export async function createJob(
     `INSERT INTO scheduled_tasks
        (id, name, schedule, prompt, script_path, no_agent, deliver,
         repeat_count, runs_remaining, status, context_from, chain_after, enabled_toolsets,
-        workdir, origin_session_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        workdir, origin_session_id, origin_channel, origin_conversation_id, origin_thread_id,
+        deliver_channels)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
      RETURNING *`,
     [
       id,
@@ -128,6 +143,10 @@ export async function createJob(
       input.enabledToolsets,
       input.workdir,
       input.originSessionId,
+      input.originChannel ?? null,
+      input.originConversationId ?? null,
+      input.originThreadId ?? null,
+      input.deliverChannels ?? [],
     ],
   );
   const job = rowToJob(result.rows[0]);
@@ -162,8 +181,13 @@ export async function updateJob(id: string, patch: Partial<ScheduledJob>): Promi
     runs_remaining: patch.runsRemaining,
     status: patch.status,
     context_from: patch.contextFrom,
+    chain_after: patch.chainAfter,
     enabled_toolsets: patch.enabledToolsets,
     workdir: patch.workdir,
+    deliver_channels: patch.deliverChannels,
+    origin_channel: patch.originChannel,
+    origin_conversation_id: patch.originConversationId,
+    origin_thread_id: patch.originThreadId,
   };
 
   for (const [col, val] of Object.entries(map)) {
@@ -229,7 +253,10 @@ export async function loadAndRegisterAllJobs(): Promise<number> {
   return jobs.length;
 }
 
-async function runScript(scriptPath: string): Promise<{ stdout: string; exitCode: number }> {
+async function runScript(
+  scriptPath: string,
+  workdir?: string,
+): Promise<{ stdout: string; exitCode: number }> {
   const resolved = expandPath(scriptPath);
   if (!isSafePath(resolved)) {
     throw new Error('Script path is not allowed.');
@@ -241,33 +268,67 @@ async function runScript(scriptPath: string): Promise<{ stdout: string; exitCode
 
   const ext = path.extname(resolved).toLowerCase();
   const cmd = ext === '.sh' || ext === '.bash' ? 'bash' : 'python3';
-  const result = await execFileAsync(cmd, [resolved], { timeout: 60_000 });
-  return { stdout: result.stdout, exitCode: 0 };
+  try {
+    const result = await execFileAsync(cmd, [resolved], {
+      timeout: 60_000,
+      cwd: workdir,
+      maxBuffer: 512 * 1024,
+    });
+    return { stdout: result.stdout, exitCode: 0 };
+  } catch (err) {
+    const execErr = err as { code?: number | string; stdout?: string; stderr?: string };
+    const code = execErr.code ?? 'unknown';
+    const stderr = String(execErr.stderr ?? '').trim();
+    const stdout = String(execErr.stdout ?? '').trim();
+    const detail = stderr || stdout || String(err);
+    throw new Error(`Script exited with code ${code}: ${detail}`);
+  }
 }
 
-async function buildJobContext(job: ScheduledJob): Promise<string> {
+async function buildJobContext(
+  job: ScheduledJob,
+  chainedFrom?: ExecuteJobOptions['chainedFrom'],
+): Promise<string> {
   const parts: string[] = [];
+
+  if (chainedFrom?.output) {
+    const label = chainedFrom.name ?? chainedFrom.jobId;
+    parts.push(`[Chained from ${label}]\n${chainedFrom.output}`);
+  }
+
   for (const depId of job.contextFrom) {
+    const depJob = await getJob(depId);
     const depResult = await pool.query(
       `SELECT output FROM scheduled_task_runs WHERE job_id = $1 ORDER BY completed_at DESC LIMIT 1`,
       [depId],
     );
     const output = depResult.rows[0]?.output;
-    if (output) parts.push(`[Job ${depId} output]\n${output}`);
+    if (output) {
+      const label = depJob?.name ?? depId;
+      parts.push(`[Job ${label} output]\n${output}`);
+    }
   }
   return parts.join('\n\n');
 }
 
-export async function executeJob(jobId: string): Promise<string> {
+export async function executeJob(jobId: string, opts: ExecuteJobOptions = {}): Promise<string> {
   const job = await getJob(jobId);
   if (!job || job.status === 'removed') {
     throw new Error(`Job ${jobId} not found.`);
   }
 
+  let jobWorkdir: string | undefined;
+  try {
+    jobWorkdir = resolveJobWorkdir(job);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`[Job failed] ${job.name ?? jobId}: ${msg}`);
+  }
+
   let scriptOutput = '';
   if (job.scriptPath) {
     try {
-      const result = await runScript(job.scriptPath);
+      const result = await runScript(job.scriptPath, jobWorkdir);
       scriptOutput = result.stdout;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -284,22 +345,30 @@ export async function executeJob(jobId: string): Promise<string> {
   let output = scriptOutput;
 
   if (!job.noAgent && job.prompt) {
-    const context = await buildJobContext(job);
+    const context = await buildJobContext(job, opts.chainedFrom);
     const sessionId = `cron:${jobId}:${Date.now()}`;
-    const agent = new CarinaAgent(sessionId, false, undefined, {
-      allowedTools: job.enabledToolsets.length > 0 ? job.enabledToolsets : undefined,
-      persistMemory: false,
-      maxTurns: 10,
-    });
-    const prompt = context
-      ? `${context}\n\n---\n\n${job.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`
-      : `${job.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`;
-    const result = await agent.runTurn(prompt);
-    output = result.text;
-  } else if (job.noAgent) {
-    if (!scriptOutput.trim()) {
-      output = '';
+    const workdirNote = jobWorkdir ? `\nWorking directory (isolated): ${jobWorkdir}` : '';
+    const previousWorkdir = process.env.CARINA_JOB_WORKDIR;
+    if (jobWorkdir) process.env.CARINA_JOB_WORKDIR = jobWorkdir;
+    try {
+      const agent = new CarinaAgent(sessionId, false, undefined, {
+        platform: 'cron',
+        allowedTools: job.enabledToolsets.length > 0 ? job.enabledToolsets : undefined,
+        persistMemory: false,
+        maxTurns: 10,
+        systemPromptSuffix: workdirNote,
+      });
+      const prompt = context
+        ? `${context}\n\n---\n\n${job.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`
+        : `${job.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`;
+      const result = await agent.runTurn(prompt);
+      output = result.text;
+    } finally {
+      if (previousWorkdir === undefined) delete process.env.CARINA_JOB_WORKDIR;
+      else process.env.CARINA_JOB_WORKDIR = previousWorkdir;
     }
+  } else if (job.noAgent) {
+    output = scriptOutput.trim() ? scriptOutput : '';
   }
 
   await pool.query(
@@ -334,7 +403,9 @@ export async function executeJob(jobId: string): Promise<string> {
 
   for (const nextId of job.chainAfter) {
     try {
-      await executeJob(nextId);
+      await executeJob(nextId, {
+        chainedFrom: { jobId, name: job.name, output },
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[cron] chain job ${nextId} failed after ${jobId}: ${msg}`);

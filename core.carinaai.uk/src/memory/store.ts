@@ -5,8 +5,10 @@ import type { Memory, Role } from '../types/index.js';
 import {
   backendClearSession,
   backendGetSessionHistory,
+  backendListRecentMemories,
   backendSaveMemory,
   backendSearchMemory,
+  getMemoryBackend,
 } from './backends/index.js';
 import * as postgresEpisodic from './episodic-postgres.js';
 
@@ -34,11 +36,14 @@ export async function clearSession(sessionId: string): Promise<void> {
 }
 
 export async function listRecentMemories(limit: number): Promise<Memory[]> {
-  return postgresEpisodic.listRecentMemories(limit);
+  return backendListRecentMemories(limit);
 }
 
 export async function deleteMemory(id: string): Promise<boolean> {
-  return postgresEpisodic.deleteMemory(id);
+  if (getMemoryBackend().name === 'postgres') {
+    return postgresEpisodic.deleteMemory(id);
+  }
+  return false;
 }
 
 export interface RagChunk {

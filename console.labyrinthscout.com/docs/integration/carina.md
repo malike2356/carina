@@ -1,6 +1,6 @@
 # Carina Integration
 
-Carina ships native Scout support; no SDK required.
+Install Carina from npm (`npm install -g carina-agent`; [package page](https://www.npmjs.com/package/carina-agent), Node.js 22+). Carina ships native Scout support; no SDK required.
 
 ## Environment
 
@@ -8,13 +8,19 @@ Add to Carina `.env` (or `~/.carina/.env`):
 
 ```bash
 LABYRINTH_ENABLED=true
-LABYRINTH_URL=http://localhost:4444
+LABYRINTH_URL=<your Scout console URL>
 LABYRINTH_API_KEY=your_scout_key
 LABYRINTH_INSTANCE_ID=carina-prod
 LABYRINTH_INSTANCE_NAME=Carina Production
 ```
 
-`LABYRINTH_API_KEY` must equal Scout `SCOUT_API_KEY`.
+| Deployment | `LABYRINTH_URL` |
+|---|---|
+| Hosted Scout (VERLOX) | URL from your provisioning email |
+| Self-hosted Scout | `http://localhost:4444` or your VPS hostname |
+| Carina Cloud Pro | Use **Security** in app.carinaai.uk or the same emailed credentials for self-hosted Carina |
+
+`LABYRINTH_API_KEY` must match the key issued for your Scout account.
 
 ## Automatic behaviour
 
@@ -57,4 +63,4 @@ Use `docker-compose.verlox.yml` overlay in `core.carinaai.uk` to run Carina and 
 
 ## Carina docs
 
-Agent setup and tools: [carinaai.uk/docs](https://carinaai.uk/docs/security/labyrinth-scout).
+Agent setup and tools: [carinaai.uk/docs/user/security/labyrinth-scout](https://carinaai.uk/docs/user/security/labyrinth-scout).

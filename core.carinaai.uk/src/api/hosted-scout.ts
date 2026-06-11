@@ -83,6 +83,76 @@ export function mountHostedScoutRoutes(app: Express): void {
     });
   });
 
+  router.get('/killswitch/status', async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const profile = await import('./hosted-auth.js').then((m) => m.getUserProfile(accountId));
+    if (!profile) {
+      res.status(401).json({ error: 'Account not found' });
+      return;
+    }
+    const creds = await getTenantScoutCredentials(accountId, profile.email);
+    if (!creds) {
+      res.status(404).json({ error: 'Scout is not provisioned for this account' });
+      return;
+    }
+    try {
+      const upstream = await scoutFetch('/api/killswitch/status', creds.apiKey);
+      const body = await upstream.text();
+      res.status(upstream.status).type('json').send(body);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: `Scout kill switch status failed: ${msg}` });
+    }
+  });
+
+  router.post('/killswitch/trigger', express.json(), async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const profile = await import('./hosted-auth.js').then((m) => m.getUserProfile(accountId));
+    if (!profile) {
+      res.status(401).json({ error: 'Account not found' });
+      return;
+    }
+    const creds = await getTenantScoutCredentials(accountId, profile.email);
+    if (!creds) {
+      res.status(404).json({ error: 'Scout is not provisioned for this account' });
+      return;
+    }
+    const reason = String(req.body?.reason ?? '').trim();
+    if (!reason) {
+      res.status(400).json({ error: 'reason is required' });
+      return;
+    }
+    if (reason.length > 500) {
+      res.status(400).json({ error: 'reason must be 500 characters or fewer' });
+      return;
+    }
+    try {
+      const base = scoutServiceUrl();
+      const upstream = await fetch(`${base}/api/killswitch/trigger`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Scout-Key': creds.apiKey,
+        },
+        body: JSON.stringify({ password: profile.email, reason }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const body = await upstream.text();
+      res.status(upstream.status).type('json').send(body);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(502).json({ error: `Scout kill switch trigger failed: ${msg}` });
+    }
+  });
+
   router.get('/key', async (req: Request, res: Response) => {
     const accountId = req.session?.hostedAccountId;
     if (!accountId) {

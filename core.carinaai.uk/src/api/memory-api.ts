@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { pool } from '../memory/db.js';
+import { isControlAuthorized } from '../infrastructure/control-auth.js';
 
 export const memoryApiRouter: ExpressRouter = Router();
 
@@ -17,6 +18,11 @@ interface MemoryRow {
 type MemoryRequest = Request & { tenantId?: string };
 
 function memoryAuth(req: MemoryRequest, res: Response, next: NextFunction): void {
+  if (isControlAuthorized(req)) {
+    req.tenantId = '__operator__';
+    next();
+    return;
+  }
   if (req.session?.webAuthed) {
     req.tenantId = '__operator__';
     next();
@@ -73,7 +79,7 @@ memoryApiRouter.get('/', async (req: MemoryRequest, res: Response) => {
     const rows = await pool.query<MemoryRow>(
       `SELECT id, session_id, role, content, priority, category, created_at, updated_at
        FROM episodic_memories WHERE ${where}
-       ORDER BY priority DESC, updated_at DESC
+       ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, priority DESC, id DESC
        LIMIT $${idx++} OFFSET $${idx}`,
       [...params, pageSize, offset],
     );
@@ -94,6 +100,35 @@ memoryApiRouter.get('/', async (req: MemoryRequest, res: Response) => {
   } catch (err) {
     console.error('[memory-api] list failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to load memories' });
+  }
+});
+
+memoryApiRouter.get('/sessions', async (_req: MemoryRequest, res: Response) => {
+  try {
+    const result = await pool.query<{
+      session_id: string;
+      turn_count: string;
+      last_active: string;
+    }>(
+      `SELECT session_id,
+              COUNT(*)::text         AS turn_count,
+              MAX(created_at)::text  AS last_active
+       FROM episodic_memories
+       GROUP BY session_id
+       ORDER BY MAX(created_at) DESC
+       LIMIT 50`,
+    );
+
+    res.json({
+      sessions: result.rows.map((r) => ({
+        session_id: r.session_id,
+        turn_count: parseInt(r.turn_count, 10),
+        last_active: r.last_active,
+      })),
+    });
+  } catch (err) {
+    console.error('[memory-api] sessions failed:', err instanceof Error ? err.message : err);
+    res.status(500).json({ error: 'Failed to load sessions' });
   }
 });
 
@@ -189,7 +224,7 @@ memoryApiRouter.get('/search', async (req: MemoryRequest, res: Response) => {
       `SELECT id, category, content, priority, created_at
        FROM episodic_memories
        WHERE ${scope.sql} AND content ILIKE $${scope.params.length + 1}
-       ORDER BY priority DESC
+       ORDER BY COALESCE(updated_at, created_at) DESC NULLS LAST, priority DESC, id DESC
        LIMIT 50`,
       [...scope.params, `%${q}%`],
     );

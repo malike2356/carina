@@ -1,6 +1,15 @@
 # Getting Started
 
-## Prerequisites
+## Hosted Scout (VERLOX managed)
+
+Subscribe at [labyrinthscout.com](https://labyrinthscout.com) (£79/mo). After payment, VERLOX provisions your account and emails:
+
+- Your **private console URL** (not published on public marketing sites)
+- Your **API key** (`scout_live_...` or equivalent)
+
+Use those credentials in Carina `.env` or `carina setup`. Carina Cloud Pro subscribers get the same pairing flow automatically.
+
+## Self-hosted prerequisites
 
 | Requirement | Version |
 |---|---|

@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { query } from '../lib/db.js';
+import { ORDER_BY_CREATED_RECENT } from '../lib/list-sort.js';
 
 export const ragRouter = Router();
 
@@ -48,11 +49,12 @@ ragRouter.get('/', async (req, res) => {
       source: string;
       content: string;
       embedding: unknown;
+      created_at: Date;
     }>(
-      `SELECT id, pack, source, content, embedding
+      `SELECT id, pack, source, content, embedding, created_at
        FROM rag_chunks
        ${where}
-       ORDER BY pack, source
+       ORDER BY ${ORDER_BY_CREATED_RECENT}
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       listParams,
     );

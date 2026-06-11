@@ -1,9 +1,10 @@
 <% title = 'Settings' %>
+<div class="w-full max-w-7xl">
 <h1 class="text-2xl font-bold text-white mb-6">Settings</h1>
 
 <% if (!adminPasswordSet) { %>
   <div class="mb-6 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
-    WARNING: Admin password is still the default <code>changeme</code>. Set <code>ADMIN_PASSWORD</code> in <code>ops.carinaai.uk/.env</code> before exposing this panel.
+    WARNING: Admin password is still the default <code>changeme</code>. Update it under <strong>Ops admin password</strong> below.
   </div>
 <% } %>
 
@@ -13,41 +14,60 @@
   </div>
 <% } %>
 <% if (scoutErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-    <%= scoutErr %>
-  </div>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= scoutErr %></div>
 <% } %>
-
 <% if (scoutPairOk) { %>
   <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
     Connected to Labyrinth Scout. Carina will start reporting security events on next restart.
   </div>
 <% } %>
 <% if (scoutPairErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-    <%= scoutPairErr %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= scoutPairErr %></div>
+<% } %>
+<% if (carinaAutoPairOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Carina connected automatically from the local core install.
   </div>
 <% } %>
-
+<% if (carinaAutoPairErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaAutoPairErr %></div>
+<% } %>
 <% if (carinaPairOk) { %>
   <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
     Carina ops token saved. Test connection again to verify.
   </div>
 <% } %>
 <% if (carinaPairErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
-    <%= carinaPairErr %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaPairErr %></div>
+<% } %>
+<% if (coreWebPasswordOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Core web login password updated. Sign in at core.carinaai.uk with the new password.
   </div>
 <% } %>
+<% if (coreWebPasswordErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= coreWebPasswordErr %></div>
+<% } %>
+<% if (opsAdminPasswordOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Ops admin password updated. Use it on the next login here.
+  </div>
+<% } %>
+<% if (opsAdminPasswordErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= opsAdminPasswordErr %></div>
+<% } %>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
   <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Carina agent</h2>
     <p class="text-xs text-gray-500 mb-2">
-      Status: <span class="<%= carinaPaired ? 'text-green-400' : 'text-amber-400' %>"><%= carinaPaired ? 'Token set' : 'Not paired' %></span>
+      Status:
+      <span class="<%= carinaConnected ? 'text-green-400' : (carinaPaired ? 'text-amber-400' : 'text-amber-400') %>">
+        <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved, not connected' : 'Not paired') %>
+      </span>
     </p>
     <dl class="text-sm space-y-2 text-gray-400">
-      <div><dt class="inline text-gray-500">API URL:</dt> <dd class="inline text-[#06b6d4]"><%= carinaApiUrl %></dd></div>
+      <div><dt class="inline text-gray-500">API URL:</dt> <dd class="inline text-[#06b6d4] break-all"><%= carinaApiUrl %></dd></div>
     </dl>
     <p id="carina-status" class="text-xs mt-3 text-gray-500">Not tested yet</p>
     <button type="button" id="test-carina" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
@@ -58,7 +78,7 @@
   <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Labyrinth Scout</h2>
     <dl class="text-sm space-y-2 text-gray-400">
-      <div><dt class="inline text-gray-500">Scout URL:</dt> <dd class="inline text-[#06b6d4]"><%= scoutUrl %></dd></div>
+      <div><dt class="inline text-gray-500">Scout URL:</dt> <dd class="inline text-[#06b6d4] break-all"><%= scoutUrl %></dd></div>
     </dl>
     <p id="scout-status-msg" class="text-xs mt-3 text-gray-500">Not tested yet</p>
     <button type="button" id="test-scout" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
@@ -67,205 +87,271 @@
   </section>
 </div>
 
-<section class="mt-8 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-  <h2 class="text-lg font-semibold text-white mb-1">Connect to Carina agent</h2>
-  <p class="text-xs text-gray-500 mb-4">
-    Production Carina requires an ops token. Copy <code class="text-gray-300">CARINA_OPS_TOKEN</code> from
-    <code class="text-gray-300">core.carinaai.uk/.env</code> on the server (falls back to
-    <code class="text-gray-300">CARINA_WEB_PASSWORD</code> if unset).
-  </p>
-  <form method="post" action="/settings/carina-pairing" class="flex flex-col gap-3 max-w-md">
-    <div>
-      <label class="block text-xs text-gray-400 mb-1" for="carinaOpsToken">Carina ops token</label>
-      <input id="carinaOpsToken" name="carinaOpsToken" type="password" required
-        placeholder="paste CARINA_OPS_TOKEN"
-        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-    </div>
-    <button type="submit"
-      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-      Save Carina token
-    </button>
-  </form>
-</section>
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+  <div class="space-y-6 min-w-0">
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-1">Connect to Carina agent</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        On this server, ops can read the existing core token automatically. No SSH or manual copy/paste needed.
+      </p>
+      <% if (coreEnvReadable) { %>
+        <form method="post" action="/settings/carina-auto-pair" class="mb-5">
+          <button type="submit"
+            class="bg-[#06b6d4] hover:bg-cyan-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+            Connect automatically
+          </button>
+          <p class="text-xs text-gray-500 mt-2 break-all">
+            Uses token from <code class="text-gray-300"><%= coreEnvPath %></code>
+          </p>
+        </form>
+      <% } else { %>
+        <p class="text-xs text-amber-300 mb-4">
+          Auto-connect unavailable (core .env not readable from ops). Use manual pairing below.
+        </p>
+      <% } %>
+      <p class="text-xs text-gray-500 mb-4">
+        Manual fallback: paste <code class="text-gray-300">CARINA_OPS_TOKEN</code> if auto-connect is unavailable.
+      </p>
+      <form method="post" action="/settings/carina-pairing" class="flex flex-col gap-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="carinaOpsToken">Carina ops token</label>
+          <input id="carinaOpsToken" name="carinaOpsToken" type="password"
+            placeholder="paste CARINA_OPS_TOKEN"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <button type="submit"
+          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+          Save Carina token
+        </button>
+      </form>
+    </section>
 
-<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-  <h2 class="text-lg font-semibold text-white mb-1">Connect to Labyrinth Scout</h2>
-  <p class="text-xs text-gray-500 mb-1">
-    Status: <span class="<%= scoutPaired ? 'text-green-400' : 'text-amber-400' %>"><%= scoutPaired ? 'Paired' : 'Not paired' %></span>
-  </p>
-  <p class="text-xs text-gray-500 mb-4">
-    Paste your Scout API key to connect this Carina instance to your Labyrinth Scout account.
-    Don't have one? Register at
-    <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">console.labyrinthscout.com/account/register</a>
-    and generate a key from your account dashboard.
-  </p>
-  <form method="post" action="/settings/scout-pairing" class="flex flex-col gap-3 max-w-md">
-    <div>
-      <label class="block text-xs text-gray-400 mb-1" for="scoutApiKey">Connect to Labyrinth Scout? Paste your key</label>
-      <input id="scoutApiKey" name="scoutApiKey" type="password" required
-        placeholder="lscout_..."
-        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-    </div>
-    <button type="submit"
-      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-      Pair with Scout
-    </button>
-  </form>
-</section>
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-1">Connect to Labyrinth Scout</h2>
+      <p class="text-xs text-gray-500 mb-1">
+        Status: <span class="<%= scoutPaired ? 'text-green-400' : 'text-amber-400' %>"><%= scoutPaired ? 'Paired' : 'Not paired' %></span>
+      </p>
+      <p class="text-xs text-gray-500 mb-4">
+        Paste your Scout API key from
+        <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">console.labyrinthscout.com</a>.
+      </p>
+      <form method="post" action="/settings/scout-pairing" class="flex flex-col gap-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="scoutApiKey">Scout API key</label>
+          <input id="scoutApiKey" name="scoutApiKey" type="password" required
+            placeholder="lscout_..."
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <button type="submit"
+          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+          Pair with Scout
+        </button>
+      </form>
+    </section>
 
-<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4" id="alert-channels-section">
-  <h2 class="text-lg font-semibold text-white mb-1">Alert channels</h2>
-  <p class="text-xs text-gray-500 mb-4">
-    Configure Telegram, email, and Slack alerts in Scout. Secrets are stored encrypted in the database;
-    you do not need to edit Scout <code class="text-gray-300">.env</code> for outbound alerts.
-    Requires Scout pairing (<code class="text-gray-300">SCOUT_API_KEY</code>).
-  </p>
-  <p id="alert-channels-status" class="text-xs text-gray-500 mb-4">Loading channels...</p>
-
-  <div class="mb-4 max-w-lg">
-    <label class="block text-xs text-gray-400 mb-1" for="alert-dashboard-url">Dashboard link in alerts</label>
-    <div class="flex gap-2">
-      <input id="alert-dashboard-url" type="url"
-        placeholder="https://console.labyrinthscout.com/dashboard"
-        class="flex-1 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-      <button type="button" id="save-dashboard-url"
-        class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded whitespace-nowrap">
-        Save URL
-      </button>
-    </div>
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4" id="alert-channels-section">
+      <h2 class="text-lg font-semibold text-white mb-1">Alert channels</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        Configure Telegram, email, and Slack alerts in Scout. Requires Scout pairing.
+      </p>
+      <p id="alert-channels-status" class="text-xs text-gray-500 mb-4">Loading channels...</p>
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1" for="alert-dashboard-url">Dashboard link in alerts</label>
+        <div class="flex gap-2 flex-wrap">
+          <input id="alert-dashboard-url" type="url"
+            placeholder="https://console.labyrinthscout.com/dashboard"
+            class="flex-1 min-w-[200px] rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+          <button type="button" id="save-dashboard-url"
+            class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded whitespace-nowrap">
+            Save URL
+          </button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="telegram">
+          <h3 class="text-sm font-semibold text-white mb-2">Telegram</h3>
+          <label class="block text-xs text-gray-400 mb-1">Bot token</label>
+          <input data-field="bot_token" type="password" placeholder="Leave blank to keep existing"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+          <label class="block text-xs text-gray-400 mb-1">Chat ID</label>
+          <input data-field="chat_id" type="text"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+          <label class="block text-xs text-gray-400 mb-1">Min severity</label>
+          <select data-field="severity_threshold"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+            <option value="info">info</option>
+            <option value="warning" selected>warning</option>
+            <option value="critical">critical</option>
+            <option value="breach">breach</option>
+          </select>
+          <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+            <input data-field="enabled" type="checkbox" checked class="rounded" />
+            Enabled
+          </label>
+          <button type="button" data-save-channel="telegram"
+            class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
+            Save Telegram
+          </button>
+        </div>
+        <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="email">
+          <h3 class="text-sm font-semibold text-white mb-2">Email (Resend)</h3>
+          <label class="block text-xs text-gray-400 mb-1">Resend API key</label>
+          <input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+          <label class="block text-xs text-gray-400 mb-1">To address</label>
+          <input data-field="to_address" type="email"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+          <label class="block text-xs text-gray-400 mb-1">From address</label>
+          <input data-field="from_address" type="email" placeholder="hello@carinaai.uk"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+          <label class="block text-xs text-gray-400 mb-1">Min severity</label>
+          <select data-field="severity_threshold"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+            <option value="info">info</option>
+            <option value="warning" selected>warning</option>
+            <option value="critical">critical</option>
+            <option value="breach">breach</option>
+          </select>
+          <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+            <input data-field="enabled" type="checkbox" checked class="rounded" />
+            Enabled
+          </label>
+          <button type="button" data-save-channel="email"
+            class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
+            Save email
+          </button>
+        </div>
+        <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="slack">
+          <h3 class="text-sm font-semibold text-white mb-2">Slack</h3>
+          <label class="block text-xs text-gray-400 mb-1">Webhook URL</label>
+          <input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
+          <label class="block text-xs text-gray-400 mb-1">Min severity</label>
+          <select data-field="severity_threshold"
+            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+            <option value="info">info</option>
+            <option value="warning" selected>warning</option>
+            <option value="critical">critical</option>
+            <option value="breach">breach</option>
+          </select>
+          <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+            <input data-field="enabled" type="checkbox" checked class="rounded" />
+            Enabled
+          </label>
+          <button type="button" data-save-channel="slack"
+            class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
+            Save Slack
+          </button>
+        </div>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <label class="text-xs text-gray-400">Test severity</label>
+        <select id="alert-test-severity"
+          class="rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+          <option value="warning">warning</option>
+          <option value="critical" selected>critical</option>
+          <option value="breach">breach</option>
+        </select>
+        <button type="button" id="send-test-alert"
+          class="text-sm bg-[#d4af37] hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded">
+          Send test alert
+        </button>
+        <span id="alert-test-result" class="text-xs text-gray-500"></span>
+      </div>
+    </section>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="telegram">
-      <h3 class="text-sm font-semibold text-white mb-2">Telegram</h3>
-      <label class="block text-xs text-gray-400 mb-1">Bot token</label>
-      <input data-field="bot_token" type="password" placeholder="Leave blank to keep existing"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-      <label class="block text-xs text-gray-400 mb-1">Chat ID</label>
-      <input data-field="chat_id" type="text"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-      <label class="block text-xs text-gray-400 mb-1">Min severity</label>
-      <select data-field="severity_threshold"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-        <option value="info">info</option>
-        <option value="warning" selected>warning</option>
-        <option value="critical">critical</option>
-        <option value="breach">breach</option>
-      </select>
-      <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
-        <input data-field="enabled" type="checkbox" checked class="rounded" />
-        Enabled
-      </label>
-      <button type="button" data-save-channel="telegram"
-        class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
-        Save Telegram
-      </button>
-    </div>
+  <div class="space-y-6 min-w-0">
+    <section class="bg-[#1a1a1a] border border-[#22c55e]/40 rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-1">Core web login password</h2>
+      <p class="text-xs text-gray-500 mb-1">
+        Status:
+        <span class="<%= coreWebPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+          <%= coreWebPasswordSet ? 'Password set' : 'Not set (core.carinaai.uk login blocked)' %>
+        </span>
+      </p>
+      <p class="text-xs text-gray-500 mb-4">
+        Sets the password for
+        <a href="<%= carinaApiUrl %>/login" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">core.carinaai.uk/login</a>.
+        Takes effect immediately. Requires Carina connection (Test connection above).
+      </p>
+      <form method="post" action="/settings/carina-web-password" class="flex flex-col gap-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="coreNewPassword">New password (min 8 chars)</label>
+          <input id="coreNewPassword" name="newPassword" type="password" required minlength="8"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="coreConfirmPassword">Confirm password</label>
+          <input id="coreConfirmPassword" name="confirmPassword" type="password" required minlength="8"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <button type="submit"
+          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+          Update core login password
+        </button>
+      </form>
+    </section>
 
-    <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="email">
-      <h3 class="text-sm font-semibold text-white mb-2">Email (Resend)</h3>
-      <label class="block text-xs text-gray-400 mb-1">Resend API key</label>
-      <input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-      <label class="block text-xs text-gray-400 mb-1">To address</label>
-      <input data-field="to_address" type="email"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-      <label class="block text-xs text-gray-400 mb-1">From address</label>
-      <input data-field="from_address" type="email" placeholder="hello@carinaai.uk"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-      <label class="block text-xs text-gray-400 mb-1">Min severity</label>
-      <select data-field="severity_threshold"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-        <option value="info">info</option>
-        <option value="warning" selected>warning</option>
-        <option value="critical">critical</option>
-        <option value="breach">breach</option>
-      </select>
-      <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
-        <input data-field="enabled" type="checkbox" checked class="rounded" />
-        Enabled
-      </label>
-      <button type="button" data-save-channel="email"
-        class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
-        Save email
-      </button>
-    </div>
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-1">Ops admin password</h2>
+      <p class="text-xs text-gray-500 mb-4">
+        Password for <a href="/login" class="text-[#06b6d4] hover:underline">ops.carinaai.uk</a> login.
+      </p>
+      <form method="post" action="/settings/ops-admin-password" class="flex flex-col gap-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="opsNewPassword">New password (min 8 chars)</label>
+          <input id="opsNewPassword" name="newPassword" type="password" required minlength="8"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="opsConfirmPassword">Confirm password</label>
+          <input id="opsConfirmPassword" name="confirmPassword" type="password" required minlength="8"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <button type="submit"
+          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+          Update ops login password
+        </button>
+      </form>
+    </section>
 
-    <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="slack">
-      <h3 class="text-sm font-semibold text-white mb-2">Slack</h3>
-      <label class="block text-xs text-gray-400 mb-1">Webhook URL</label>
-      <input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-      <label class="block text-xs text-gray-400 mb-1">Min severity</label>
-      <select data-field="severity_threshold"
-        class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-        <option value="info">info</option>
-        <option value="warning" selected>warning</option>
-        <option value="critical">critical</option>
-        <option value="breach">breach</option>
-      </select>
-      <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
-        <input data-field="enabled" type="checkbox" checked class="rounded" />
-        Enabled
-      </label>
-      <button type="button" data-save-channel="slack"
-        class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
-        Save Slack
-      </button>
-    </div>
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-1">Scout console password</h2>
+      <p class="text-xs text-gray-500 mb-4">Login password for console.labyrinthscout.com.</p>
+      <form method="post" action="/settings/scout-password" class="flex flex-col gap-3">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="newPassword">New password (min 8 chars)</label>
+          <input id="newPassword" name="newPassword" type="password" required minlength="8"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="confirmPassword">Confirm password</label>
+          <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+        </div>
+        <button type="submit"
+          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+          Update Scout console password
+        </button>
+      </form>
+    </section>
+
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <h2 class="text-lg font-semibold text-white mb-3">Environment (read-only)</h2>
+      <ul class="text-sm text-gray-400 space-y-1 font-mono break-all">
+        <li>PORT = <%= port %></li>
+        <li>CARINA_API_URL = <%= carinaApiUrl %></li>
+        <li>SCOUT_URL = <%= scoutUrl %></li>
+        <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
+        <li>CARINA_OPS_TOKEN = <%= carinaPaired ? '(set)' : '(not set)' %></li>
+        <li>SCOUT_API_KEY = <%= scoutPaired ? '(set)' : '(not set)' %></li>
+        <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
+      </ul>
+    </section>
   </div>
-
-  <div class="mt-4 flex flex-wrap items-center gap-3">
-    <label class="text-xs text-gray-400">Test severity</label>
-    <select id="alert-test-severity"
-      class="rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-      <option value="warning">warning</option>
-      <option value="critical" selected>critical</option>
-      <option value="breach">breach</option>
-    </select>
-    <button type="button" id="send-test-alert"
-      class="text-sm bg-[#d4af37] hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded">
-      Send test alert
-    </button>
-    <span id="alert-test-result" class="text-xs text-gray-500"></span>
-  </div>
-</section>
-
-<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-  <h2 class="text-lg font-semibold text-white mb-1">Scout console password</h2>
-  <p class="text-xs text-gray-500 mb-4">Changes the login password for console.labyrinthscout.com. Takes effect immediately - no restart needed.</p>
-  <form method="post" action="/settings/scout-password" class="flex flex-col gap-3 max-w-sm">
-    <div>
-      <label class="block text-xs text-gray-400 mb-1" for="newPassword">New password (min 8 chars)</label>
-      <input id="newPassword" name="newPassword" type="password" required minlength="8"
-        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-    </div>
-    <div>
-      <label class="block text-xs text-gray-400 mb-1" for="confirmPassword">Confirm password</label>
-      <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8"
-        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-    </div>
-    <button type="submit"
-      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-      Update password
-    </button>
-  </form>
-</section>
-
-<section class="mt-6 max-w-4xl bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-  <h2 class="text-lg font-semibold text-white mb-3">Environment (read-only)</h2>
-  <ul class="text-sm text-gray-400 space-y-1 font-mono">
-    <li>PORT = <%= port %></li>
-    <li>CARINA_API_URL = <%= carinaApiUrl %></li>
-    <li>SCOUT_URL = <%= scoutUrl %></li>
-    <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
-    <li>SESSION_SECRET = (hidden)</li>
-    <li>CARINA_DB_URL = (hidden)</li>
-    <li>CARINA_OPS_TOKEN = <%= carinaPaired ? '(set)' : '(not set)' %></li>
-    <li>SCOUT_API_KEY = (hidden)</li>
-    <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
-  </ul>
-</section>
+</div>
+</div>
 
 <script>
   document.getElementById('test-carina')?.addEventListener('click', async () => {

@@ -6,20 +6,24 @@ Never use em dashes (U+2014) or en dashes (U+2013). Use `;`, `:`, `,`, `-`, pare
 
 ## Project Structure & Module Organization
 
-This is the VERLOX Carina monorepo. Product code lives in `core.carinaai.uk/`, a Node.js/TypeScript agent with CLI entry points in `bin/`, source in `src/`, docs in `docs/`, and product data in `brain/`. The private operations panel is `ops.carinaai.uk/`, with Express routes in `routes/`, helpers in `lib/`, EJS templates in `views/`, and CSS generated to `public/styles.css`. Labyrinth Scout lives in `console.labyrinthscout.com/`, with server code in `src/` and dashboard/static assets in `public/`. Root `src/` contains shared CLI support. Deployment scripts are in `scripts/`.
+This is the VERLOX Carina monorepo. Product code lives in `core.carinaai.uk/`, a Node.js/TypeScript agent with CLI entry points in `bin/`, source in `src/`, and product data in `brain/`. Public documentation is `docs.carinaai.uk/` (Docusaurus; user + developer guides). Legacy VitePress sources remain in `core.carinaai.uk/docs/` (deprecated; edit `docs.carinaai.uk/` instead). The private operations panel is `ops.carinaai.uk/`, with Express routes in `routes/`, helpers in `lib/`, EJS templates in `views/`, and CSS generated to `public/styles.css`. Labyrinth Scout lives in `console.labyrinthscout.com/`, with server code in `src/` and dashboard/static assets in `public/`. The Carina mobile companion is `carinaMobile/` (Expo Router; general-purpose default). Deployment scripts are in `scripts/`. Agent runtime knowledge is in `core.carinaai.uk/src/platform/platform-knowledge.md`.
 
 ## Build, Test, and Development Commands
 
 Use package-local commands from the relevant directory.
 
+- `cd docs.carinaai.uk && pnpm start`: Docusaurus docs site (user + developer).
+- `cd core.carinaai.uk && pnpm docs:dev`: alias to Docusaurus dev server.
 - `cd core.carinaai.uk && pnpm dev`: run the Carina agent in watch mode.
 - `cd core.carinaai.uk && pnpm carina`: run the CLI entry point.
 - `cd core.carinaai.uk && pnpm build`: compile TypeScript and copy gateway web assets.
-- `cd core.carinaai.uk && pnpm test`: run Vitest tests.
+- `cd core.carinaai.uk && pnpm test`: run Vitest tests (5,369 as of 2026-06-10).
 - `cd console.labyrinthscout.com && pnpm dev`: run Scout in watch mode.
 - `cd console.labyrinthscout.com && pnpm typecheck && pnpm test`: validate Scout before changes ship.
 - `cd ops.carinaai.uk && pnpm dev`: run the VERLOX ops panel on port 4000.
 - `cd ops.carinaai.uk && pnpm css`: rebuild Tailwind output for EJS views.
+- `cd carinaMobile && pnpm start`: Expo dev server for the Carina mobile app.
+- `cd carinaMobile && pnpm test`: Vitest for mobile config and API helpers.
 
 ## Coding Style & Naming Conventions
 

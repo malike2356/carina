@@ -6,10 +6,12 @@ import { findContact } from '../profiles/contacts.js';
 const OUTBOUND_CHANNELS: ChannelName[] = [
   'telegram', 'discord', 'slack', 'sms', 'whatsapp',
   'signal', 'matrix', 'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
+  'homeassistant', 'api', 'webhooks',
 ];
 
 export const sendMessageTool: Tool = {
   name: 'send-message',
+  dangerous: true,
   description:
     'Send a text message on an enabled channel. Use contact_name to resolve whatsapp/telegram/email automatically, or pass channel + conversation_id directly.',
   parameters: {

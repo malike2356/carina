@@ -3,9 +3,19 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { BUILTIN_PACKS_DIR } from '../pack-loader.js';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export async function buildPackArchive(packName: string, outputDir: string): Promise<string> {
+  const packRoot = path.join(BUILTIN_PACKS_DIR, packName);
+  await fs.access(packRoot);
+  const archivePath = path.join(outputDir, `${packName}.tar.gz`);
+  await fs.mkdir(outputDir, { recursive: true });
+  await execAsync(`tar -czf "${archivePath}" -C "${packRoot}" .`);
+  return archivePath;
+}
 
 export async function buildPropertyUkArchive(outputDir: string): Promise<string> {
   const brainRoot = path.resolve(
@@ -18,6 +28,9 @@ export async function buildPropertyUkArchive(outputDir: string): Promise<string>
   await fs.mkdir(knowledgeDir, { recursive: true });
 
   await copyMdTree(brainRoot, knowledgeDir);
+  const packRoot = path.join(BUILTIN_PACKS_DIR, 'property-uk');
+  await copyPackFilesExceptKnowledge(packRoot, tmpDir);
+
   await fs.writeFile(
     path.join(tmpDir, 'pack.json'),
     JSON.stringify(
@@ -27,6 +40,7 @@ export async function buildPropertyUkArchive(outputDir: string): Promise<string>
         description: 'UK property entrepreneurship knowledge pack',
         author: 'VERLOX Ltd',
         skillCount: 6,
+        category: 'property',
       },
       null,
       2,
@@ -37,6 +51,20 @@ export async function buildPropertyUkArchive(outputDir: string): Promise<string>
   await execAsync(`tar -czf "${archivePath}" -C "${tmpDir}" .`);
   await fs.rm(tmpDir, { recursive: true, force: true });
   return archivePath;
+}
+
+async function copyPackFilesExceptKnowledge(packRoot: string, dest: string): Promise<void> {
+  const entries = await fs.readdir(packRoot, { withFileTypes: true });
+  for (const e of entries) {
+    if (e.name === 'knowledge') continue;
+    const src = path.join(packRoot, e.name);
+    const out = path.join(dest, e.name);
+    if (e.isDirectory()) {
+      await execAsync(`cp -r "${src}" "${out}"`);
+    } else {
+      await fs.copyFile(src, out);
+    }
+  }
 }
 
 async function copyMdTree(src: string, destRoot: string): Promise<void> {

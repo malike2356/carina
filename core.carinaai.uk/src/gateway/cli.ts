@@ -1,18 +1,18 @@
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { llm } from '../brain/llm.js';
 import { getRouter } from './router.js';
 import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
 import { listSkills } from '../skills/store.js';
 import { registry } from '../tools/index.js';
-import { CARINA_HOME } from '../config/paths.js';
-import { loadWorkspaceContext } from '../workspace/context-files.js';
+import { buildEntranceSnapshot, printEntrance, printFreshStart } from '../cli/entrance.js';
+import { resolveAgentWorkspace } from '../workspaces/paths.js';
 import { runBootstrapIfPresent } from '../workspace/bootstrap.js';
 import type { ConfirmFn } from '../agents/tool-runner.js';
 import type { CarinaMessage } from '../types/index.js';
 
 let memoryReady = false;
 let sessionId = '';
+let activeAgentId = 'main';
 let workspaceContextCount = 0;
 let bootstrapRan = false;
 
@@ -76,7 +76,11 @@ function prompt(): void {
 
     if (trimmed === '/clear') {
       await getRouter().clearSession(sessionId);
-      console.log(chalk.yellow('\n  Session memory cleared.\n'));
+      printFreshStart(buildEntranceSnapshot({
+        surface: 'cli',
+        memoryReady,
+        toolCount: registry.list().length,
+      }));
       prompt();
       return;
     }
@@ -90,6 +94,13 @@ function prompt(): void {
     if (cmd.handled) {
       if (cmd.action === 'clear') {
         await getRouter().clearSession(sessionId);
+        printFreshStart(buildEntranceSnapshot({
+          surface: 'cli',
+          memoryReady,
+          toolCount: registry.list().length,
+        }));
+        prompt();
+        return;
       }
       console.log(chalk.yellow(`\n  ${cmd.reply}\n`));
       if (cmd.action === 'exit') {
@@ -106,6 +117,7 @@ function prompt(): void {
       const carinaMsg: CarinaMessage = {
         id: String(Date.now()),
         sessionId,
+        agentId: activeAgentId,
         content: trimmed,
         source: 'cli',
         timestamp: new Date(),
@@ -132,12 +144,11 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
   memoryReady = opts.memoryReady;
 
   const router = getRouter();
-  sessionId = await router.getSession('cli', 'local');
-  const workspaceContext = await loadWorkspaceContext(CARINA_HOME);
-  workspaceContextCount = workspaceContext.length;
-  if (workspaceContext.length > 0) {
-    router.setSessionSystemPromptSuffix(sessionId, workspaceContext.join('\n\n---\n\n'));
-  }
+  const cliSession = await router.startCliSession('local');
+  sessionId = cliSession.sessionId;
+  activeAgentId = cliSession.agent.id;
+  workspaceContextCount = cliSession.workspaceContextCount;
+  const workspaceDir = resolveAgentWorkspace(cliSession.agent);
 
   const confirmTool: ConfirmFn = (toolName, params, reason) =>
     new Promise((resolve) => {
@@ -150,7 +161,7 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
     });
 
   router.setConfirmHandler(confirmTool);
-  bootstrapRan = await runBootstrapIfPresent(CARINA_HOME, async (instructions) => {
+  bootstrapRan = await runBootstrapIfPresent(workspaceDir, async (instructions) => {
     for await (const _ of router.handle({
       id: `bootstrap-${Date.now()}`,
       sessionId,
@@ -162,22 +173,24 @@ export async function startCLI(opts: { memoryReady: boolean }): Promise<void> {
     }
   });
 
-  console.log(chalk.bold.white('\n  Carina'));
-  console.log(chalk.gray('  General-purpose autonomous agent · VERLOX Ltd · carinaai.uk'));
-  console.log(chalk.gray(`  Session: ${sessionId}`));
-  console.log(chalk.gray(`  Provider: ${llm.list()[0]} (default)`));
-  console.log(chalk.gray(`  Tools: ${registry.list().map((t) => t.name).join(', ')}`));
-  console.log(chalk.gray(`  Workspace context: ${workspaceContextCount} file${workspaceContextCount === 1 ? '' : 's'} loaded from ${CARINA_HOME}`));
+  printEntrance(buildEntranceSnapshot({
+    surface: 'cli',
+    memoryReady,
+    toolCount: registry.list().length,
+  }));
+
+  const detailLines: string[] = [
+    `session: ${sessionId}`,
+    `agent: ${cliSession.agent.id}`,
+    `workspace: ${workspaceDir}`,
+  ];
+  if (workspaceContextCount > 0) {
+    detailLines.push(`context: ${workspaceContextCount} block${workspaceContextCount === 1 ? '' : 's'}`);
+  }
   if (bootstrapRan) {
-    console.log(chalk.gray('  Bootstrap: BOOTSTRAP.md completed and removed'));
+    detailLines.push('bootstrap: complete');
   }
-  if (memoryReady) {
-    console.log(chalk.gray('  Memory: PostgreSQL + pgvector active'));
-  } else {
-    console.log(chalk.gray('  Memory: unavailable (chat only)'));
-  }
-  console.log(chalk.gray('  Type /help for commands, /exit to quit\n'));
-  console.log(chalk.green('CLI gateway ready'));
+  console.log(chalk.gray(`  ${detailLines.join(' · ')}\n`));
 
   prompt();
 }

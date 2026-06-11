@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="scout-api-key" content="">
+  <meta name="theme-color" content="#0a141c">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Carina Security Dashboard</title>
   <link rel="stylesheet" href="./css/dashboard.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js" defer></script>
@@ -12,19 +16,54 @@
 <body>
   <header class="topbar">
     <div>
-      <p class="eyebrow">Labyrinth Scout</p>
-      <h1>Security Dashboard</h1>
+      <p class="eyebrow" id="top-eyebrow">Labyrinth Scout</p>
+      <h1 id="top-title">Security Dashboard</h1>
     </div>
     <div class="topbar-meta">
-      <span id="connection-state" class="status-pill offline">Offline</span>
+      <a id="nav-control" class="ghost-link" href="/control">Host</a>
+      <a id="nav-security" class="ghost-link" href="/dashboard">Security</a>
+      <span id="host-state" class="status-pill offline">Host offline</span>
+      <span id="connection-state" class="status-pill offline">Scout offline</span>
       <span>Admin <strong id="admin-name">operator</strong></span>
       <span>Updated <strong id="last-updated">never</strong></span>
+      <button id="pairing-code" class="ghost-button" type="button">Pair device</button>
+      <button id="reload-secrets" class="ghost-button" type="button">Reload secrets</button>
       <button id="kill-switch" class="danger-button" type="button">Kill Switch</button>
     </div>
   </header>
 
   <main class="dashboard-shell">
-    <section class="metric-grid" aria-label="Security summary">
+    <section id="host-panel" class="host-panel" aria-label="Carina host status">
+      <div class="panel-head">
+        <h2>Carina Host</h2>
+        <span id="host-version" class="host-meta">v0.1.0</span>
+      </div>
+      <div class="metric-grid host-grid">
+        <article class="metric-card">
+          <span>Gateway</span>
+          <strong id="host-gateway">offline</strong>
+          <small id="host-uptime">uptime unknown</small>
+        </article>
+        <article class="metric-card">
+          <span>Agent workspaces</span>
+          <strong id="host-agents">0</strong>
+          <small id="host-memory">memory backend</small>
+        </article>
+        <article class="metric-card">
+          <span>Paired devices</span>
+          <strong id="host-devices">0</strong>
+          <small id="host-devices-detail">mobile and remote clients</small>
+        </article>
+        <article class="metric-card">
+          <span>Cron jobs</span>
+          <strong id="host-cron">0</strong>
+          <small id="host-channels">channels</small>
+        </article>
+      </div>
+      <div id="device-list" class="device-list"></div>
+    </section>
+
+    <section class="metric-grid scout-grid" aria-label="Security summary">
       <article class="metric-card">
         <span>Agents</span>
         <strong id="metric-agents">0</strong>

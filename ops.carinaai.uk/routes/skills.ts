@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../lib/db.js';
 import { TOOL_NAMES } from '../lib/constants.js';
+import { ORDER_BY_RECENT_ACTIVITY } from '../lib/list-sort.js';
 
 export const skillsRouter = Router();
 
@@ -31,10 +32,11 @@ skillsRouter.get('/', async (_req, res) => {
       trigger_keywords: string[];
       usage_count: number;
       created_at: Date;
+      updated_at: Date;
     }>(
-      `SELECT id, name, description, trigger_keywords, usage_count, created_at
+      `SELECT id, name, description, trigger_keywords, usage_count, created_at, updated_at
        FROM skill_documents
-       ORDER BY created_at DESC`,
+       ORDER BY ${ORDER_BY_RECENT_ACTIVITY}`,
     );
     res.render('skills/index', { skills: rows.rows });
   } catch (err) {

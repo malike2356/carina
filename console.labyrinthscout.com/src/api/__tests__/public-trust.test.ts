@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import { publicTrustRouter } from '../public-trust.js';
+import { evaluateDataFreshness } from '../../trust/compute-trust-metrics.js';
 
 vi.mock('../../trust/build-public-trust.js', () => ({
   buildPublicTrustFromDb: vi.fn(),
@@ -59,11 +60,43 @@ describe('GET /api/public/trust', () => {
     expect(res.body.source).toBe('labyrinth-scout');
   });
 
+  it('rejects mutating methods on the public trust API', async () => {
+    const res = await request(makeApp()).post('/api/public/trust');
+    expect(res.status).toBe(405);
+    expect(res.body.error).toContain('read-only');
+  });
+
   it('returns 500 when metrics cannot be built', async () => {
     vi.mocked(buildPublicTrustFromDb).mockRejectedValue(new Error('db down'));
 
     const res = await request(makeApp()).get('/api/public/trust');
     expect(res.status).toBe(500);
     expect(res.body.error).toBe('Trust metrics unavailable');
+  });
+});
+
+describe('evaluateDataFreshness', () => {
+  it('treats a recent heartbeat as fresh even when no recent event exists', () => {
+    const now = new Date('2026-06-10T22:40:00.000Z');
+    const freshness = evaluateDataFreshness(
+      {
+        agentsTotal: 1,
+        agentsActive: 1,
+        agentsSuspended: 0,
+        runtimeIncidents30d: 0,
+        warning24h: 0,
+        breach30d: 0,
+        eventsToday: 0,
+        injectionBlocks24h: 0,
+        blocked24h: 0,
+        threats24h: 0,
+        lastEventAt: null,
+        lastHeartbeatAt: '2026-06-10T22:35:00.000Z',
+      },
+      now,
+    );
+
+    expect(freshness.stale).toBe(false);
+    expect(freshness.stale_reason).toBeNull();
   });
 });

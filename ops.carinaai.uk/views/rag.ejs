@@ -24,6 +24,7 @@
   <table class="w-full text-sm">
     <thead class="bg-[#1a1a1a] text-gray-400 text-left">
       <tr>
+        <th class="p-3">Time</th>
         <th class="p-3">Pack</th>
         <th class="p-3">Source</th>
         <th class="p-3">Preview</th>
@@ -33,6 +34,7 @@
     <tbody>
       <% for (const c of chunks) { %>
         <tr class="border-t border-[#2a2a2a]">
+          <td class="p-3 text-gray-500 whitespace-nowrap"><%= new Date(c.created_at).toLocaleString() %></td>
           <td class="p-3"><span class="text-[#22c55e]"><%= c.pack %></span></td>
           <td class="p-3 font-mono text-xs text-gray-400 max-w-[200px] truncate"><%= c.source %></td>
           <td class="p-3 max-w-lg truncate text-gray-300"><%= c.content.slice(0, 150) %></td>

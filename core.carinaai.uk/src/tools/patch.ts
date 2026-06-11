@@ -78,6 +78,8 @@ function buildDiff(before: string, after: string): string {
 
 export const patchTool: Tool = {
   name: 'patch',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Apply a find-and-replace edit to a file. Uses exact match first, then fuzzy matching for whitespace and indentation differences. Returns a diff of changes.',
   parameters: {

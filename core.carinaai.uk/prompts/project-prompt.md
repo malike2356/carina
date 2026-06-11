@@ -3,86 +3,79 @@
 Carina is a **general-purpose autonomous AI agent platform** built by VERLOX Ltd. The model is a horizontal core runtime with optional vertical skill packs installed on top. No domain pack is enabled by default; property-uk is one optional pack among several.
 
 **Runtime:** Node.js 22 LTS + TypeScript 5
-**Repo root:** `/opt/lampp/htdocs/VERLOX/Carina-ai/`
-**Domain:** `carinaai.uk` (live on Cloudflare, Contabo VPS 80.190.81.208)
+**Repo root:** `carina/` (mono-repo)
+**Domain:** `carinaai.uk`
+**Package:** `carina-agent` v0.1.0 live on npm (`npm install -g carina-agent`; https://www.npmjs.com/package/carina-agent)
 **Package manager:** pnpm
+
+## Verified metrics (2026-06-10)
+
+| Metric | Value |
+|---|---:|
+| Vitest tests | 5,369 |
+| LLM providers | 23 |
+| Channel adapters | 18 |
+| Tool surface | 71 |
+| Skill packs | 16 |
+| Curated pack skills | 96 |
+| CLI commands | 49 |
+
+Source: `pnpm test`, `provider-registry.ts`, `completion-metadata.ts`, `TOOLSET_MAP`.
 
 ## Architecture
 
 ```
-CARINA
-├── src/                   Core agent runtime (all 5 phases built)
-├── ops.carinaai.uk/        VERLOX operator admin panel (to build)
-├── public_website/        Marketing site at carinaai.uk (to build)
-├── docs/                  VitePress documentation (built, needs deploy)
-├── archive/               Old property-SaaS spec; property pack RAG source
-└── docker-compose.yml     Dev stack; docker-compose.prod.yml for VPS
+carina/
+├── core.carinaai.uk/     Core agent (npm package carina-agent)
+├── ops.carinaai.uk/      VERLOX operator admin (built)
+├── console.labyrinthscout.com/  Scout server (built)
+├── carinaai.uk/          Marketing site (built)
+├── docs.carinaai.uk/     Documentation site
+└── mobile/               Expo companion app
 ```
 
-## Core Runtime - ALL PHASES COMPLETE
-
-The `src/` directory is fully implemented and TypeScript-clean:
+## Core runtime status
 
 | Layer | Status |
 |---|---|
-| CLI + Web + Telegram + WhatsApp gateways | Complete |
-| LLMRouter (DeepSeek/Claude/OpenAI, hot-swap) | Complete |
-| Memory: episodic PostgreSQL + pgvector RAG + Redis session | Complete |
-| 6 tools: web-search, file, shell, http, email, code-exec | Complete |
-| Docker sandbox for shell and code execution | Complete |
-| CarinaOrchestrator + 4 sub-agents | Complete |
-| Skill auto-generation with Jaccard deduplication | Complete |
-| Optional skill packs (property-uk, engineering, etc.; none active by default) | Complete |
-| Hosted mode with Stripe (hosted-auth, migrations) | Complete |
-| Skills Hub server | Complete |
-| bin/carina.ts + setup wizard + install-pack | Complete |
-| 62 passing tests (Vitest) | Complete |
+| CLI + 18 channel adapters + web UI | Shipped |
+| LLMRouter (23 providers, hot-swap, local optional) | Shipped |
+| Memory: postgres/sqlite/builtin/mem0 + REM + pgvector RAG | Shipped |
+| 71 tools across toolsets | Shipped |
+| CarinaOrchestrator + sub-agents | Shipped |
+| Agent workspaces + routing | Shipped |
+| Inferred commitments (opt-in) | Shipped |
+| Ops layer (sandbox, DNS, proxy, backup, secrets, audit) | Shipped |
+| Host service + device pairing + /control dashboard | Shipped |
+| Scout integration + trust API | Shipped (on-chain when wallet configured) |
+| Hosted mode + Stripe billing | Shipped |
+| Skills Hub | Shipped |
 
-## What Still Needs Building
+## Activation still required
 
-| Item | Prompt | Priority |
-|---|---|---|
-| Platform admin backend | `prompts/platform-admin.md` | High |
-| Public marketing website | `prompts/public-website.md` | High |
-| Deploy to VPS (docker-compose.prod.yml + Nginx) | `prompts/phase-5-release.md` | Medium |
-| GitHub repo + CI + npm publish | `prompts/phase-5-release.md` | Medium |
+See `CONFIGURATION_READINESS.md`: public GitHub, attester wallet for on-chain ERC-8004/8126, install.carinaai.uk host.
 
-## Key Architecture Decisions (Do Not Change)
+## Key architecture decisions (do not change)
 
-- Runtime: Node.js + TypeScript. Not PHP, not Python for the core.
-- DeepSeek is default provider (cost). Claude is hot-swap for complex work.
+- Runtime: Node.js + TypeScript for the core agent.
+- DeepSeek is default provider (cost). Fallback chain includes 22 other providers.
 - Tool registry schemas are MCP-compatible.
-- Memory: working (Redis) + episodic (PostgreSQL) + semantic (pgvector) + skill docs.
-- Skill packs: RAG + skill docs + pre-configured tools. No model training.
-- Distribution: `npm install -g carina-agent`. Local-first, hosted cloud later.
-- Open source: MIT.
-
-## Environment
-
-Root `.env` file. See `.env.example` for all variables. Resend email fully configured for `carinaai.uk` (DKIM, SPF, DMARC live).
+- Memory: pluggable backends + workspace markdown + REM.
+- Scout never blocks Carina when unreachable.
+- Core agent license: MIT.
 
 ## Commands
 
 ```bash
+cd core.carinaai.uk
 pnpm cli           # run Carina in CLI mode
-pnpm dev           # tsx watch (auto-restart on save)
-pnpm ingest        # ingest property-uk RAG from archive/
-pnpm hub           # run Skills Hub server
-pnpm docs:dev      # VitePress dev server
-pnpm build         # compile TypeScript to dist/
-pnpm test          # Vitest (62 tests)
-pnpm admin         # platform admin (once ops.carinaai.uk/ is built)
+pnpm dev           # tsx watch
+pnpm test          # Vitest (5,369 tests)
+pnpm build         # compile to dist/
+pnpm hub           # Skills Hub server
+pnpm admin         # ops.carinaai.uk on :4000
 ```
 
-## Prompt Files
+## Marketing accuracy
 
-| File | What it covers |
-|---|---|
-| `prompts/project-prompt.md` | This file - master context |
-| `prompts/phase-1-memory-skills.md` | Status doc (complete) |
-| `prompts/phase-2-tools-execution.md` | Status doc (complete) |
-| `prompts/phase-3-gateways.md` | Status doc (complete) |
-| `prompts/phase-4-multi-agent.md` | Status doc (complete, 1 gap: session GC - fixed) |
-| `prompts/phase-5-release.md` | Remaining: tests done; docs, deploy, GitHub outstanding |
-| `prompts/platform-admin.md` | Full spec for the VERLOX admin panel |
-| `prompts/public-website.md` | Full spec for carinaai.uk marketing site |
+Use `instructions/build-plan/COMPARISON.md` for Hermes/OpenClaw comparisons. Competitor figures are not audited in this repo. Do not understate Carina counts or overstate on-chain live status.

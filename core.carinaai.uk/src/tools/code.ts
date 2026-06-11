@@ -11,6 +11,7 @@ function detectLanguage(code: string): 'javascript' | 'python' {
 
 export const codeExecTool: Tool = {
   name: 'code-exec',
+  dangerous: true,
   description:
     'Execute JavaScript or Python in a Docker sandbox (no network). Falls back to VM for JS if Docker unavailable.',
   parameters: {

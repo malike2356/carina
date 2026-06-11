@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Skill Packs; Carina</title>
 <style>
   :root {
@@ -14,7 +17,9 @@
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     background: var(--bg); color: var(--text); line-height: 1.5;
-    max-width: 720px; margin: 0 auto; padding: 1.75rem 1.25rem 3rem;
+    max-width: 720px; margin: 0 auto;
+    padding: max(1.75rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right))
+             max(3rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left));
   }
   .top-nav { margin-bottom: 1.5rem; }
   .top-nav a {
@@ -114,7 +119,7 @@
 <h1>Skill Packs</h1>
 <p class="subtitle">Domain skill bundles for this Carina instance</p>
 <p class="footnote" id="operator-note" hidden>
-  Operator: set <code>ACTIVE_SKILL_PACKS</code> in server config, then restart Carina.
+  Changes here apply immediately. No .env edit or restart required.
 </p>
 
 <div class="toolbar">
@@ -161,6 +166,7 @@ let availablePacks = [];
 let installedPacks = [];
 let configPackName = '';
 let filterQuery = '';
+let operatorHint = '';
 
 async function loadAvailable() {
   try {
@@ -174,7 +180,9 @@ async function loadInstalled() {
   try {
     const res = await fetch(`${API}/installed`);
     if (!res.ok) throw new Error('unavailable');
-    installedPacks = (await res.json()).installed || [];
+    const data = await res.json();
+    installedPacks = data.installed || [];
+    operatorHint = data.operatorHint || '';
   } catch { installedPacks = []; }
 }
 
@@ -183,7 +191,9 @@ async function loadContext() {
     const res = await fetch('/api/web/context');
     if (!res.ok) return;
     const ctx = await res.json();
-    if (ctx.mode !== 'hosted') document.getElementById('operator-note').hidden = false;
+    if (ctx.mode !== 'hosted') {
+      document.getElementById('operator-note').hidden = false;
+    }
   } catch {}
 }
 

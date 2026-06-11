@@ -10,12 +10,31 @@ import {
   saveCustomResource,
   type CustomResourceKind,
 } from '../skills/user-resources.js';
+import {
+  guiInstalledPayload,
+  installedRowsFromActivePacks,
+} from './packs-api.helpers.js';
+import {
+  getLastOperatorPackAudit,
+  getOperatorActivePacks,
+  installOperatorPack,
+  listOperatorInstalledPacks,
+  OPERATOR_TENANT_ID,
+  syncOperatorActivePacks,
+  uninstallOperatorPack,
+} from '../skills/operator-pack-store.js';
+import { enablePackRuntime, listAvailablePacks } from '../skills/index.js';
 
 export const packsApiRouter: ExpressRouter = Router();
 
 const PACKS_DIR = path.join(process.cwd(), 'src', 'skills', 'packs');
 const INSTALLED_TABLE = 'installed_packs';
 const PACK_CONFIG_TABLE = 'pack_config';
+
+function routeParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) return value[0] ?? '';
+  return value ?? '';
+}
 
 interface PackMeta {
   name: string;
@@ -30,7 +49,7 @@ type PackRequest = Request & { tenantId?: string };
 
 function packAuth(req: PackRequest, res: Response, next: NextFunction): void {
   if (req.session?.webAuthed) {
-    req.tenantId = '__operator__';
+    req.tenantId = OPERATOR_TENANT_ID;
     next();
     return;
   }
@@ -44,6 +63,16 @@ function packAuth(req: PackRequest, res: Response, next: NextFunction): void {
 
 function resolveTenantId(req: PackRequest): string {
   return req.tenantId ?? 'default';
+}
+
+function resolvePackActor(req: PackRequest): string {
+  if (req.session?.hostedAccountId) return `hosted:${req.session.hostedAccountId}`;
+  if (req.session?.webAuthed) return 'web-operator';
+  return 'operator';
+}
+
+function resolvePackSource(req: PackRequest): string {
+  return resolveTenantId(req) === OPERATOR_TENANT_ID ? 'packs-ui' : 'hosted-packs-ui';
 }
 
 async function loadBundledPacks(): Promise<PackMeta[]> {
@@ -76,21 +105,6 @@ async function loadBundledPacks(): Promise<PackMeta[]> {
   return packs.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function installedFromConfig(bundled: PackMeta[]): Array<{
-  pack_name: string;
-  version: string;
-  installed_at: string;
-  status: string;
-}> {
-  const byName = new Map(bundled.map((p) => [p.name, p]));
-  return config.carina.activePacks.map((name) => ({
-    pack_name: name,
-    version: byName.get(name)?.version ?? '1.0.0',
-    installed_at: new Date().toISOString(),
-    status: 'installed',
-  }));
-}
-
 packsApiRouter.use(packAuth);
 
 packsApiRouter.get('/available', async (_req, res) => {
@@ -98,12 +112,127 @@ packsApiRouter.get('/available', async (_req, res) => {
   res.json({ packs });
 });
 
+packsApiRouter.get('/active', async (req: PackRequest, res) => {
+  const tenantId = resolveTenantId(req);
+  if (tenantId === OPERATOR_TENANT_ID) {
+    const installed = await listOperatorInstalledPacks();
+    const active = getOperatorActivePacks();
+    const lastChange = await getLastOperatorPackAudit();
+    res.json({
+      active,
+      installed,
+      management: 'gui',
+      lastChange,
+      source: 'persisted',
+    });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT pack_name FROM ${INSTALLED_TABLE}
+       WHERE tenant_id = $1 AND status = 'installed'
+       ORDER BY installed_at DESC`,
+      [tenantId],
+    );
+    if ((result.rowCount ?? 0) > 0) {
+      res.json({
+        active: result.rows.map((row) => String(row.pack_name)),
+        installed: result.rows,
+        management: 'gui',
+        source: 'tenant',
+      });
+      return;
+    }
+  } catch {
+    // fall through
+  }
+
+  const bundled = await loadBundledPacks();
+  const active = config.carina.activePacks;
+  res.json({
+    active,
+    installed: installedRowsFromActivePacks(bundled, active),
+    management: 'gui',
+    source: 'env-fallback',
+  });
+});
+
+packsApiRouter.put('/active', async (req: PackRequest, res) => {
+  const tenantId = resolveTenantId(req);
+  const raw = req.body?.packs;
+  const packs = Array.isArray(raw)
+    ? raw.map(String)
+    : typeof raw === 'string'
+      ? raw.split(',')
+      : [];
+
+  if (tenantId === OPERATOR_TENANT_ID) {
+    const known = new Set(listAvailablePacks().map((pack) => pack.name));
+    const versions = Object.fromEntries(listAvailablePacks().map((pack) => [pack.name, pack.version]));
+    const invalid = packs.map((name) => name.trim()).filter(Boolean).filter((name) => !known.has(name));
+    if (invalid.length > 0) {
+      res.status(400).json({
+        error: 'Unknown or incompatible skill packs',
+        invalid,
+        available: [...known].sort(),
+      });
+      return;
+    }
+    try {
+      const result = await syncOperatorActivePacks(packs, {
+        actor: resolvePackActor(req),
+        source: resolvePackSource(req),
+        versions,
+      });
+      res.json({
+        ok: true,
+        active: result.active,
+        added: result.added,
+        removed: result.removed,
+        lastChange: await getLastOperatorPackAudit(),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg || 'Failed to save skill packs' });
+    }
+    return;
+  }
+
+  const bundled = await loadBundledPacks();
+  const known = new Set(bundled.map((pack) => pack.name));
+  const normalized = [...new Set(packs.map((name) => name.trim()).filter(Boolean))];
+  const invalid = normalized.filter((name) => !known.has(name));
+  if (invalid.length > 0) {
+    res.status(400).json({ error: 'Unknown skill packs', invalid });
+    return;
+  }
+
+  try {
+    await pool.query(`DELETE FROM ${INSTALLED_TABLE} WHERE tenant_id = $1`, [tenantId]);
+    for (const name of normalized) {
+      const pack = bundled.find((p) => p.name === name);
+      await pool.query(
+        `INSERT INTO ${INSTALLED_TABLE} (tenant_id, pack_name, version, status, installed_at, updated_at, updated_by)
+         VALUES ($1, $2, $3, 'installed', NOW(), NOW(), $4)`,
+        [tenantId, name, pack?.version ?? '1.0.0', resolvePackActor(req)],
+      );
+      await enablePackRuntime(name);
+    }
+    res.json({ ok: true, active: normalized, management: 'gui' });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg || 'Failed to save tenant skill packs' });
+  }
+});
+
 packsApiRouter.get('/installed', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
   const bundled = await loadBundledPacks();
 
-  if (tenantId === '__operator__') {
-    res.json({ installed: installedFromConfig(bundled) });
+  if (tenantId === OPERATOR_TENANT_ID) {
+    const installed = await listOperatorInstalledPacks();
+    res.json(guiInstalledPayload(installed));
     return;
   }
 
@@ -116,14 +245,14 @@ packsApiRouter.get('/installed', async (req: PackRequest, res) => {
       [tenantId],
     );
     if ((result.rowCount ?? 0) > 0) {
-      res.json({ installed: result.rows });
+      res.json({ installed: result.rows, management: 'gui' });
       return;
     }
   } catch {
     // fall through to config-backed list
   }
 
-  res.json({ installed: installedFromConfig(bundled) });
+  res.json(guiInstalledPayload(installedRowsFromActivePacks(bundled, config.carina.activePacks)));
 });
 
 packsApiRouter.get('/custom', async (_req, res) => {
@@ -191,55 +320,58 @@ packsApiRouter.get('/:name', async (req, res) => {
 
 packsApiRouter.post('/:name/install', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
-  const packName = req.params.name;
+  const packName = routeParam(req.params.name);
   const bundled = await loadBundledPacks();
   const pack = bundled.find((p) => p.name === packName);
   if (!pack) return res.status(404).json({ error: 'Pack not found' });
 
-  if (tenantId === '__operator__') {
-    res.status(400).json({
-      error: 'Operator instances enable packs via ACTIVE_SKILL_PACKS in server config, then restart Carina.',
-    });
-    return;
-  }
+  const meta = { actor: resolvePackActor(req), source: resolvePackSource(req) };
 
   try {
-    await pool.query(
-      `INSERT INTO ${INSTALLED_TABLE} (tenant_id, pack_name, version, status, installed_at)
-       VALUES ($1, $2, $3, 'installed', NOW())
-       ON CONFLICT (tenant_id, pack_name)
-       DO UPDATE SET version = $3, status = 'installed', installed_at = NOW()`,
-      [tenantId, packName, pack.version],
-    );
+    if (tenantId === OPERATOR_TENANT_ID) {
+      await installOperatorPack(packName, pack.version, meta);
+    } else {
+      await pool.query(
+        `INSERT INTO ${INSTALLED_TABLE} (tenant_id, pack_name, version, status, installed_at)
+         VALUES ($1, $2, $3, 'installed', NOW())
+         ON CONFLICT (tenant_id, pack_name)
+         DO UPDATE SET version = $3, status = 'installed', installed_at = NOW()`,
+        [tenantId, packName, pack.version],
+      );
+    }
+    await enablePackRuntime(packName);
     res.json({ installed: true, pack: packName, version: pack.version });
   } catch (err) {
-    console.error('[packs-api] install failed:', err instanceof Error ? err.message : err);
-    res.status(500).json({ error: 'Install failed' });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[packs-api] install failed:', msg);
+    res.status(500).json({ error: msg || 'Install failed' });
   }
 });
 
 packsApiRouter.post('/:name/uninstall', async (req: PackRequest, res) => {
   const tenantId = resolveTenantId(req);
-  if (tenantId === '__operator__') {
-    res.status(400).json({
-      error: 'Operator instances disable packs via ACTIVE_SKILL_PACKS in server config, then restart Carina.',
-    });
-    return;
-  }
+  const packName = routeParam(req.params.name);
+
+  const meta = { actor: resolvePackActor(req), source: resolvePackSource(req) };
 
   try {
-    await pool.query(
-      `DELETE FROM ${INSTALLED_TABLE} WHERE tenant_id = $1 AND pack_name = $2`,
-      [tenantId, req.params.name],
-    );
-    await pool.query(
-      `DELETE FROM ${PACK_CONFIG_TABLE} WHERE tenant_id = $1 AND pack_name = $2`,
-      [tenantId, req.params.name],
-    );
+    if (tenantId === OPERATOR_TENANT_ID) {
+      await uninstallOperatorPack(packName, meta);
+    } else {
+      await pool.query(
+        `DELETE FROM ${INSTALLED_TABLE} WHERE tenant_id = $1 AND pack_name = $2`,
+        [tenantId, packName],
+      );
+      await pool.query(
+        `DELETE FROM ${PACK_CONFIG_TABLE} WHERE tenant_id = $1 AND pack_name = $2`,
+        [tenantId, packName],
+      );
+    }
     res.json({ uninstalled: true });
   } catch (err) {
-    console.error('[packs-api] uninstall failed:', err instanceof Error ? err.message : err);
-    res.status(500).json({ error: 'Uninstall failed' });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[packs-api] uninstall failed:', msg);
+    res.status(500).json({ error: msg || 'Uninstall failed' });
   }
 });
 

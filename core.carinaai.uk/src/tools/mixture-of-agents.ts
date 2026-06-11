@@ -4,6 +4,8 @@ import type { Message } from '../types/index.js';
 
 export const mixtureOfAgentsTool: Tool = {
   name: 'mixture-of-agents',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Query multiple LLM providers in parallel and synthesize a single answer. Useful for high-stakes decisions or cross-checking reasoning.',
   parameters: {

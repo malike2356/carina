@@ -14,7 +14,7 @@ export const LEAF_EXCLUDED_TOOLS = [
   'computer-use',
 ] as const;
 
-const TOOLSET_MAP: Record<string, string[]> = {
+export const TOOLSET_MAP: Record<string, string[]> = {
   terminal: ['shell-exec', 'process'],
   file: ['file-read', 'file-write', 'patch', 'search-files'],
   web: ['http-request', 'web-search'],
@@ -84,6 +84,24 @@ const TOOLSET_MAP: Record<string, string[]> = {
   ],
   ensemble: ['mixture-of-agents'],
 };
+
+export const TOOLSET_NAMES = [
+  'terminal',
+  'file',
+  'web',
+  'browser',
+  'search',
+  'skills',
+  'sync',
+  'messaging',
+  'media',
+  'mcp',
+  'orchestration',
+  'debug',
+  'checkpoint',
+  'integrations',
+  'ensemble',
+] as const;
 
 export function resolveToolset(toolsets: string[]): string[] {
   const names = new Set<string>();

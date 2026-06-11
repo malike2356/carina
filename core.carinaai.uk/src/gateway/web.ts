@@ -24,19 +24,32 @@ import {
 import { enforceHostedQuota, resolveExternalId } from './hosted-chat.js';
 import { isHostedRequest } from './hosted-domain.js';
 import { mountHostedContextRoute, mountHostedWebRoutes } from '../api/hosted-web.js';
+import { mountHostedBillingRoutes } from '../api/hosted-billing.js';
+import { mountHostedPushRoutes } from '../api/hosted-push.js';
 import { mountHostedScoutRoutes } from '../api/hosted-scout.js';
+import { notifyTaskPush } from '../notifications/mobile-push.js';
+import { startScoutPushPoller } from '../notifications/scout-push-poller.js';
 import { getTenantScoutCredentials, scoutServiceUrl } from '../billing/tenant-scout.js';
 import { ensureHostedScoutHeartbeat, runWithHostedScout } from './hosted-scout.js';
 import { createWhatsAppRouter, isWhatsAppConfigured, logWhatsAppStatus } from './whatsapp.js';
-import { createSmsRouter, isSmsConfigured, logSmsStatus } from './sms.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { WebAdapter } from './channels/adapters/web-adapter.js';
 import { setupAcpRoutes } from './acp.js';
 import { setupAcpIdeRoutes } from './acp-ide.js';
-import { mountExtraChannelWebhooks, registerExtraChannelAdapters } from './extra-channels.js';
+import {
+  mountAllChannelWebhooks,
+  registerAllChannelAdapters,
+  startChannelListeners,
+  logChannelStatus,
+} from './channel-bootstrap.js';
 import { tenantKeysRouter } from '../api/tenant-keys.js';
 import { getUserByApiKey, verifyJwt } from '../api/hosted-auth.js';
 import { mountWebContextRoute } from './web-context.js';
+import { mountOpsRoutes } from '../api/ops-routes.js';
+import { mountControlRoutes } from '../api/control-routes.js';
+import { mountPairingRoutes } from '../api/pairing-routes.js';
+import { writeHostPidFile, clearHostPidFile } from '../infrastructure/host-service.js';
+import { pairedDeviceFromRequest } from '../infrastructure/control-auth.js';
 
 export type StartWebOptions = {
   localMode?: boolean;
@@ -55,7 +68,7 @@ const chatLimiter = rateLimit({
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WEB_STATIC = path.join(__dirname, 'web');
 const PRICING_STATIC = path.join(__dirname, '..', 'web', 'pricing');
-const DASHBOARD_STATIC = path.join(process.cwd(), 'public', 'dashboard');
+const DASHBOARD_STATIC = path.join(__dirname, '../..', 'public', 'dashboard');
 const activeServers: Server[] = [];
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {
@@ -78,8 +91,14 @@ async function resolveTenantId(req: Request): Promise<string | undefined> {
 }
 
 function setupChatRoutes(app: Express): void {
-  app.get('/api/health', (_req: Request, res: Response) => {
-    res.json({ ok: true, mode: process.env.CARINA_LOCAL_MODE === 'true' ? 'local' : 'server' });
+  app.get('/api/health', async (_req: Request, res: Response) => {
+    const device = pairedDeviceFromRequest(_req);
+    res.json({
+      ok: true,
+      mode: process.env.CARINA_LOCAL_MODE === 'true' ? 'local' : 'server',
+      service: 'carina-gateway',
+      pairedDevice: device ? { id: device.id, name: device.name } : undefined,
+    });
   });
 
   app.get('/api/config', (_req: Request, res: Response) => {
@@ -96,8 +115,53 @@ function setupChatRoutes(app: Express): void {
     });
   });
 
-  app.get('/api/providers', (_req: Request, res: Response) => {
-    res.json({ providers: llm.list(), active: llm.current().name });
+  app.get('/api/providers', async (req: Request, res: Response) => {
+    try {
+      const externalId = resolveExternalId(req);
+      const router = getRouter();
+      const webSession = await router.startWebSession(externalId);
+      res.json({
+        providers: llm.list(),
+        known: llm.listKnown(),
+        active: router.getSessionActiveProvider(webSession.sessionId),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.post('/api/providers/switch', express.json(), async (req: Request, res: Response) => {
+    const provider = String(req.body?.provider ?? '').trim().toLowerCase();
+    if (!provider) {
+      res.status(400).json({ error: 'provider is required' });
+      return;
+    }
+
+    try {
+      await runWithHostedScout(req, async () => {
+        const router = getRouter();
+        const externalId = resolveExternalId(req);
+        const webSession = await router.startWebSession(externalId);
+        const reply = await collectResponse(router.handle({
+          id: String(Date.now()),
+          sessionId: webSession.sessionId,
+          agentId: webSession.agentId,
+          content: `/model ${provider}`,
+          source: 'web',
+          timestamp: new Date(),
+        }));
+        res.json({
+          ok: true,
+          reply,
+          active: router.getSessionActiveProvider(webSession.sessionId),
+          providers: llm.list(),
+        });
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
   });
 
   const handleChatSend = async (req: Request, res: Response): Promise<void> => {
@@ -119,17 +183,23 @@ function setupChatRoutes(app: Express): void {
         await ensureHostedScoutHeartbeat(req);
         const router = getRouter();
         const externalId = resolveExternalId(req);
-        const sessionId = await router.getSession('web', externalId);
+        const webSession = await router.startWebSession(externalId);
         const tenantId = await resolveTenantId(req);
         const reply = await collectResponse(router.handle({
           id: String(Date.now()),
-          sessionId,
+          sessionId: webSession.sessionId,
+          agentId: webSession.agentId,
           tenantId,
           content: message,
           source: 'web',
           timestamp: new Date(),
         }));
-        res.json({ reply, sessionId, provider: llm.current().name });
+        res.json({
+          reply,
+          sessionId: webSession.sessionId,
+          agentId: webSession.agentId,
+          provider: llm.current().name,
+        });
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -143,13 +213,16 @@ function setupChatRoutes(app: Express): void {
   app.post('/api/clear', express.json(), async (req: Request, res: Response) => {
     const externalId = resolveExternalId(req);
     const router = getRouter();
-    const sessionId = await router.getSession('web', externalId);
-    await router.clearSession(sessionId);
+    const webSession = await router.startWebSession(externalId);
+    await router.clearSession(webSession.sessionId);
     res.json({ ok: true });
   });
 
   app.get('/api/chat/stream', async (req: Request, res: Response) => {
     const message = String(req.query.message ?? '').trim();
+    const pushNotify = req.query.notify === '1';
+    const promptPreview = String(req.query.prompt ?? message).trim().slice(0, 240);
+    const hostedAccountId = req.hostedUser?.id;
 
     if (!message) {
       res.status(400).json({ error: 'message is required' });
@@ -167,16 +240,18 @@ function setupChatRoutes(app: Express): void {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    let streamFailed = false;
     try {
       await runWithHostedScout(req, async () => {
         await ensureHostedScoutHeartbeat(req);
         const router = getRouter();
         const externalId = resolveExternalId(req);
-        const sessionId = await router.getSession('web', externalId);
+        const webSession = await router.startWebSession(externalId);
         const tenantId = await resolveTenantId(req);
         const stream = router.handle({
           id: String(Date.now()),
-          sessionId,
+          sessionId: webSession.sessionId,
+          agentId: webSession.agentId,
           tenantId,
           content: message,
           source: 'web',
@@ -188,11 +263,20 @@ function setupChatRoutes(app: Express): void {
         res.write('data: [DONE]\n\n');
       });
     } catch (err) {
+      streamFailed = true;
       const msg = err instanceof Error ? err.message : String(err);
       res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
       res.write('data: [DONE]\n\n');
     }
     res.end();
+
+    if (pushNotify && hostedAccountId) {
+      void notifyTaskPush(
+        hostedAccountId,
+        promptPreview,
+        streamFailed ? 'failed' : 'completed',
+      );
+    }
   });
 }
 
@@ -221,10 +305,16 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
   });
 
   if (!localMode) {
-    mountBillingWebhook(app);
+    const billingConfigured = Boolean(config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY);
+    if (billingConfigured) {
+      mountBillingWebhook(app);
+    } else {
+      console.warn(chalk.yellow('Billing webhook skipped: STRIPE_SECRET_KEY not configured'));
+    }
   }
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+  mountOpsRoutes(app);
   if (!localMode) {
     app.use(
       session({
@@ -240,15 +330,26 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
       }),
     );
     mountWebContextRoute(app);
+    mountControlRoutes(app);
+    mountPairingRoutes(app);
   }
   app.use('/api/chat', chatLimiter);
   if (!localMode) {
     app.use('/api/subscribe', subscribeRouter);
-    mountBillingRoutes(app);
+    if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
+      mountBillingRoutes(app);
+    } else {
+      console.warn(chalk.yellow('Billing routes skipped: STRIPE_SECRET_KEY not configured'));
+    }
     app.use('/api/memory', memoryApiRouter);
     app.use('/api/packs', packsApiRouter);
     mountHostedRoutes(app);
-    mountHostedWebRoutes(app);
+    if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
+      mountHostedWebRoutes(app);
+      mountHostedBillingRoutes(app);
+    } else {
+      console.warn(chalk.yellow('Hosted billing routes skipped: STRIPE_SECRET_KEY not configured'));
+    }
     app.use('/webhooks/email', emailWebhookRouter);
 
     if (isWhatsAppConfigured()) {
@@ -258,12 +359,6 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
       logWhatsAppStatus();
     }
 
-    if (isSmsConfigured()) {
-      app.use('/webhooks', createSmsRouter());
-      logSmsStatus();
-    } else {
-      logSmsStatus();
-    }
   }
 
   if (!localMode) {
@@ -286,6 +381,12 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
       .catch(() => null);
     const hostedRegisterHtml = await fs
       .readFile(path.join(WEB_STATIC, 'hosted-register.html'), 'utf-8')
+      .catch(() => null);
+    const hostedForgotHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'hosted-forgot.html'), 'utf-8')
+      .catch(() => null);
+    const hostedResetHtml = await fs
+      .readFile(path.join(WEB_STATIC, 'hosted-reset.html'), 'utf-8')
       .catch(() => null);
     const billingHtml = await fs
       .readFile(path.join(WEB_STATIC, 'billing.html'), 'utf-8')
@@ -331,6 +432,16 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     if (hostedRegisterHtml) {
       app.get('/hosted-register', redirectIfHostedAuthed, (_req, res) => {
         res.type('html').send(hostedRegisterHtml);
+      });
+    }
+    if (hostedForgotHtml) {
+      app.get('/hosted-forgot', (_req, res) => {
+        res.type('html').send(hostedForgotHtml);
+      });
+    }
+    if (hostedResetHtml) {
+      app.get('/hosted-reset', (_req, res) => {
+        res.type('html').send(hostedResetHtml);
       });
     }
 
@@ -405,6 +516,35 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
         res.redirect('/');
       };
       app.get(['/dashboard', '/dashboard/'], serveDashboard);
+
+      const serveControl = async (req: Request, res: Response): Promise<void> => {
+        if (!dashboardIndexHtml) {
+          res.redirect('/');
+          return;
+        }
+        let html = dashboardIndexHtml.replace(
+          '<title>Carina Security Dashboard</title>',
+          '<title>Carina Control Center</title>',
+        );
+        html = html.replace(
+          '<p class="eyebrow" id="top-eyebrow">Labyrinth Scout</p>',
+          '<p class="eyebrow" id="top-eyebrow">Carina Host</p>',
+        );
+        html = html.replace(
+          '<h1 id="top-title">Security Dashboard</h1>',
+          '<h1 id="top-title">Control Center</h1>',
+        );
+        html = html.replace('<body>', '<body data-control-center="true">');
+        if (config.labyrinth.apiKey && scoutServiceUrl() && !isHostedRequest(req.hostname)) {
+          const escapedKey = config.labyrinth.apiKey.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+          html = html.replace(
+            '<meta name="scout-api-key" content="">',
+            `<meta name="scout-api-key" content="${escapedKey}">`,
+          );
+        }
+        res.type('html').send(html);
+      };
+      app.get(['/control', '/control/'], serveControl);
     }
 
     const scoutBase = scoutServiceUrl();
@@ -445,8 +585,13 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     }
 
     mountHostedContextRoute(app);
+    if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
+      mountHostedBillingRoutes(app);
+    }
+    mountHostedPushRoutes(app);
     mountHostedScoutRoutes(app);
-    app.use(tenantKeysRouter());
+    startScoutPushPoller();
+    app.use('/api/tenant', tenantKeysRouter());
   }
 
   try {
@@ -459,6 +604,10 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     app.get('/service-worker.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
       res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'service-worker.js'));
+    });
+    app.get('/chat-turn-lifecycle.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'chat-turn-lifecycle.js'));
     });
     app.get('/icon.svg', (_req, res) => {
       res.type('image/svg+xml').sendFile(path.join(WEB_STATIC, 'icon.svg'));
@@ -481,10 +630,12 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
   }
 
   setupChatRoutes(app);
-  registerExtraChannelAdapters();
+  registerAllChannelAdapters();
   setupAcpRoutes(app);
   setupAcpIdeRoutes(app);
-  mountExtraChannelWebhooks(app);
+  mountAllChannelWebhooks(app);
+  void startChannelListeners();
+  logChannelStatus();
 
   // Catch-all error handler - must be last
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -507,12 +658,16 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
       }
       console.log(chalk.green(`Web gateway ready at http://localhost:${port}`));
       console.log(chalk.gray('  GET  /'));
+      console.log(chalk.gray('  GET  /control'));
+      console.log(chalk.gray('  GET  /dashboard'));
       console.log(chalk.gray('  POST /api/chat'));
       console.log(chalk.gray('  GET  /api/chat/stream'));
       console.log(chalk.gray('  POST /webhooks/email/inbound'));
+      writeHostPidFile();
       resolve();
     };
     const server = host ? app.listen(port, host, onListen) : app.listen(port, onListen);
+    server.on('close', () => clearHostPidFile());
     activeServers.push(server);
   });
 }

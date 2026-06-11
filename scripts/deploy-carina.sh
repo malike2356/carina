@@ -149,6 +149,12 @@ main() {
 
   log "All apps deployed."
 
+  if [[ -x "${SCRIPT_DIR}/post-deploy-security-check.sh" ]]; then
+    log "Running post-deploy security checks..."
+    bash "${SCRIPT_DIR}/post-deploy-security-check.sh" vps || \
+      log "WARN: post-deploy security checks failed; see scripts/verify-security-config.sh"
+  fi
+
   echo ""
   echo "=== POST-DEPLOY CHECKLIST ==="
   echo ""

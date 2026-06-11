@@ -12,11 +12,14 @@ describe('buildUsageAnalytics', () => {
     expect(summary.used).toBe(600);
     expect(summary.limit).toBe(1000);
     expect(summary.percentage).toBe(60);
+    expect(summary.estimated).toBe(true);
+    expect(summary.label).toContain('not billing-grade');
   });
 
   it('caps percentage at 100', () => {
     const summary = buildUsageAnalytics([{ metadata: { tokens_used: 2000 } }], 1000);
 
     expect(summary.percentage).toBe(100);
+    expect(summary.estimated).toBe(true);
   });
 });

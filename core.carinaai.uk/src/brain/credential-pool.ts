@@ -1,3 +1,5 @@
+import { getCredentialPoolManager } from '../credentials/pool-manager.js';
+
 export class CredentialPool {
   private index = 0;
 
@@ -31,7 +33,11 @@ export function parseKeyPool(envValue: string | undefined): CredentialPool {
 export function resolveApiKey(
   singleKey: string,
   poolEnv?: string,
+  provider?: string,
 ): string {
+  if (provider) {
+    return getCredentialPoolManager().nextKey(provider, singleKey, poolEnv);
+  }
   const pool = parseKeyPool(poolEnv);
   if (pool.size > 0) return pool.next();
   return singleKey;

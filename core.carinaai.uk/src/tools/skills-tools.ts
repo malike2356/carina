@@ -64,6 +64,8 @@ export const skillViewTool: Tool = {
 
 export const skillManageTool: Tool = {
   name: 'skill-manage',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Create, update, or delete skills. Actions: create (new skill), update (patch fields), delete (remove by name).',
   parameters: {

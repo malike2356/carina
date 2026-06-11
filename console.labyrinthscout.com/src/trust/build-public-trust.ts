@@ -105,9 +105,13 @@ export async function buildPublicTrustFromDb(now = new Date()) {
   };
 
   const identity = await loadReferenceTrustIdentity();
-  const erc8004Status = identity?.registered
+  const walletConfigured = Boolean(config.trust.attesterPrivateKey?.trim());
+  let erc8004Status = identity?.registered
     ? 'live'
     : parseChainStatus(config.trust.erc8004Status, 'registering');
+  if (!walletConfigured && !identity?.registered) {
+    erc8004Status = 'planned';
+  }
 
   const slug = identity?.slug ?? 'carina-reference';
   const [onChainRows, verificationRow] = await Promise.all([
@@ -116,13 +120,17 @@ export async function buildPublicTrustFromDb(now = new Date()) {
   ]);
   const onChainAttestations = onChainRows.map(mapAttestationRowToPublic);
 
-  const erc8126Status = verificationRow
+  let erc8126Status = verificationRow
     ? 'live'
-    : parseChainStatus(config.trust.erc8126Status, 'enterprise');
+    : parseChainStatus(config.trust.erc8126Status, 'planned');
+  if (!walletConfigured && !verificationRow) {
+    erc8126Status = 'planned';
+  }
 
   const payload = buildPublicTrustPayload(metrics, {
     erc8004: erc8004Status,
     erc8126: erc8126Status,
+    walletConfigured,
   }, identity, now);
 
   if (verificationRow) {

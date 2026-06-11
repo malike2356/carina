@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Carina Cloud - Reset password</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100svh; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+               max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    }
+    .card {
+      width: 100%; max-width: 400px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 32px;
+    }
+    @media (max-width: 480px) { .card { padding: 24px 20px; border-radius: 8px; } }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 16px;
+      margin-bottom: 16px; outline: none; -webkit-appearance: none; appearance: none;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      width: 100%; background: var(--send); color: #fff; border: none;
+      border-radius: 6px; padding: 12px; font-size: 15px; font-weight: 600;
+      cursor: pointer; min-height: 44px;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .error { color: #f85149; font-size: 13px; margin-bottom: 16px; }
+    .info { color: var(--muted); font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+    .foot { margin-top: 20px; font-size: 13px; color: var(--muted); text-align: center; }
+    .foot a { color: var(--accent); text-decoration: none; }
+    .operator-note {
+      background: #161b22; border: 1px solid #30363d; border-radius: 6px;
+      padding: 14px; font-size: 13px; color: var(--muted); line-height: 1.6;
+    }
+    .operator-note code {
+      background: #0d1117; padding: 2px 6px; border-radius: 4px;
+      font-family: ui-monospace, monospace; font-size: 12px; color: var(--text);
+    }
+    #done { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Reset your password</h1>
+
+    <div id="email-form-section">
+      <p class="sub">Enter your email and we will send a reset link (valid for 1 hour).</p>
+      <div id="error" class="error" hidden></div>
+      <form id="form">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autofocus>
+        <button type="submit" id="submit">Send reset link</button>
+      </form>
+    </div>
+
+    <div id="no-email-section" hidden>
+      <p class="sub">Email is not configured on this server.</p>
+      <div class="operator-note">
+        <strong>Operator recovery:</strong> ask your server administrator to run:<br><br>
+        <code>carina hosted reset-password YOUR_EMAIL NEW_PASSWORD</code><br><br>
+        This sets or creates your account directly without needing email.
+      </div>
+    </div>
+
+    <div id="done" style="display:none">
+      <p class="info">If an account exists for that email, a reset link has been sent. Check your inbox (and spam folder).</p>
+    </div>
+
+    <p class="foot"><a href="/hosted-login">Back to sign in</a></p>
+  </div>
+  <script>
+    const form = document.getElementById('form');
+    const errorEl = document.getElementById('error');
+    const submitBtn = document.getElementById('submit');
+    const doneEl = document.getElementById('done');
+    const emailFormSection = document.getElementById('email-form-section');
+    const noEmailSection = document.getElementById('no-email-section');
+
+    (async () => {
+      try {
+        const res = await fetch('/api/hosted/context');
+        if (res.ok) {
+          const ctx = await res.json();
+          if (ctx.emailDisabled) {
+            emailFormSection.hidden = true;
+            noEmailSection.hidden = false;
+          }
+        }
+      } catch (_) {}
+    })();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/app/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: document.getElementById('email').value.trim() }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (data.emailDisabled) {
+            emailFormSection.hidden = true;
+            noEmailSection.hidden = false;
+            return;
+          }
+          throw new Error(data.error || 'Request failed');
+        }
+        emailFormSection.style.display = 'none';
+        doneEl.style.display = 'block';
+      } catch (err) {
+        errorEl.textContent = err.message || 'Request failed';
+        errorEl.hidden = false;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

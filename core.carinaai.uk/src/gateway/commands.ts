@@ -72,7 +72,8 @@ export function handleGatewayCommand(input: string, modelContext: ModelCommandCo
     return {
       handled: true,
       reply: [
-        'Commands:',
+        'CARINA commands',
+        '/help - show this message',
         '/model [provider] [model] - switch LLM provider',
         '/model list - list configured providers',
         '/provider [provider] [model] - alias for /model',
@@ -80,9 +81,8 @@ export function handleGatewayCommand(input: string, modelContext: ModelCommandCo
         '/memories delete <id> - delete a memory',
         '/usage --month - show model token usage and estimated cost',
         '/clear-cache [tool] - clear cached tool results',
-        '/clear - reset session memory',
-        '/exit - quit the CLI',
-        '/help - show this message',
+        '/clear - fresh start (compact identity screen)',
+        '/exit - quit',
       ].join('\n'),
     };
   }

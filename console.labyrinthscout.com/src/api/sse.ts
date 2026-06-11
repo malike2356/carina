@@ -9,6 +9,10 @@ export const sseRouter: IRouter = Router();
 
 const clients = new Set<Response>();
 
+export function getSseSubscriberCount(): number {
+  return clients.size;
+}
+
 function writeSse(res: Response, eventName: string, data: unknown): void {
   res.write(`event: ${eventName}\n`);
   res.write('data: ' + JSON.stringify(data) + '\n\n');

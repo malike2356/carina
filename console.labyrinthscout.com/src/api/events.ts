@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { pool } from '../db.js';
 import { getRedis } from '../redis.js';
 import { alertDispatcher, toSecurityEvent } from '../alerts/dispatcher.js';
+import { emitTrustAlert } from '../trust/trust-alerts.js';
 import { anomalyDetector } from '../security/anomaly-detector.js';
 import type { SessionMetrics } from '../security/anomaly-detector.js';
 import type { IncomingEventPayload, SecurityEventRow, Severity } from '../types.js';
@@ -10,6 +11,35 @@ import type { IncomingEventPayload, SecurityEventRow, Severity } from '../types.
 export const eventsRouter: IRouter = Router();
 
 const SEVERITIES: Severity[] = ['info', 'warning', 'critical', 'breach'];
+const INJECTION_REPEAT_WINDOW_MINUTES = 15;
+const INJECTION_REPEAT_THRESHOLD = 3;
+
+async function maybeAlertRepeatedInjection(
+  event: SecurityEventRow,
+): Promise<void> {
+  if (!/injection/.test(event.event_type)) return;
+  try {
+    const result = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM security_events
+       WHERE created_at > NOW() - ($2::text || ' minutes')::interval
+         AND event_type ~ 'injection'
+         AND COALESCE(instance_id, '') = COALESCE($1::text, '')`,
+      [event.instance_id ?? '', String(INJECTION_REPEAT_WINDOW_MINUTES)],
+    );
+    const count = parseInt(result.rows[0]?.count ?? '0', 10);
+    if (count === INJECTION_REPEAT_THRESHOLD) {
+      await emitTrustAlert(
+        'repeated_injection_blocks',
+        'warning',
+        `${count} injection block(s) in ${INJECTION_REPEAT_WINDOW_MINUTES} minutes for instance ${event.instance_id ?? 'unknown'}`,
+        { count, instance_id: event.instance_id, window_minutes: INJECTION_REPEAT_WINDOW_MINUTES },
+      );
+    }
+  } catch (err) {
+    console.error('[events] Repeated injection check failed:', err);
+  }
+}
 
 function parseMetadata(raw: unknown): Record<string, unknown> {
   if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
@@ -185,6 +215,7 @@ eventsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
         .catch((err) => {
           console.error('[events] Alert dispatch error:', err);
         });
+      void maybeAlertRepeatedInjection(inserted);
     }
 
     if (inserted.event_type === 'session_metrics') {

@@ -8,7 +8,8 @@ export class ChannelRegistry {
   private adapters = new Map<ChannelName, IChannelAdapter>();
   private readonly order: ChannelName[] = [
     'telegram', 'whatsapp', 'web', 'discord', 'slack', 'sms',
-    'signal', 'matrix', 'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email', 'cli',
+    'signal', 'matrix', 'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
+    'homeassistant', 'api', 'webhooks', 'cli',
   ];
 
   register(adapter: IChannelAdapter): void {

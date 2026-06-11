@@ -1,18 +1,34 @@
 # Web Search
 
-Runs a Brave Search API query and returns ranked results for the model to cite.
+Runs a web search and returns ranked results for the model to cite. **Tavily** is the default provider (free tier).
 
 ## Requirements
 
 ```
+TAVILY_API_KEY=tvly-...
+```
+
+Get a key at [tavily.com](https://tavily.com). New accounts get about **1,000 free API credits per month** (no card required).
+
+Optional:
+
+```
+TAVILY_SEARCH_DEPTH=basic  # basic | advanced (advanced uses more credits)
+SEARCH_PROVIDER=tavily  # default; use brave only if you pay for Brave Search
+```
+
+## Paid fallback (optional)
+
+Brave Search is **not free** (~$5 per 1,000 queries at [brave.com/search/api](https://brave.com/search/api)). Only use it if you already have a subscription:
+
+```
+SEARCH_PROVIDER=brave
 BRAVE_SEARCH_API_KEY=...
 ```
 
-Without a key, the tool is not registered and Carina cannot search the web.
-
 ## Security
 
-- Queries go to Brave over HTTPS only.
+- Queries go to Tavily (or Brave if configured) over HTTPS only.
 - No local shell or file access.
 - Scout logs each call when enabled.
 

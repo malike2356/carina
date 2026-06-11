@@ -147,3 +147,103 @@ export async function setConfigValue(keyPath: string, value: string, configPath 
   setPathValue(raw, keyPath, parseConfigSetValue(keyPath, value));
   await writeConfig(parseConfig(raw), configPath);
 }
+
+const SECRET_KEY_PATTERN = /(_API_KEY|_TOKEN|_SECRET|PASSWORD|_AUTH)$/i;
+
+export function isSecretConfigKey(keyPath: string): boolean {
+  const leaf = keyPath.split('.').pop() ?? keyPath;
+  return SECRET_KEY_PATTERN.test(leaf) || leaf === 'api_key';
+}
+
+export async function appendEnvValue(key: string, value: string, envPath = path.join(CARINA_HOME, '.env')): Promise<void> {
+  await fs.mkdir(path.dirname(envPath), { recursive: true });
+  let contents = '';
+  try {
+    contents = await fs.readFile(envPath, 'utf-8');
+  } catch {
+    contents = '';
+  }
+  const lines = contents.split('\n').filter((line) => !line.startsWith(`${key}=`));
+  lines.push(`${key}=${value}`);
+  await fs.writeFile(envPath, `${lines.filter(Boolean).join('\n')}\n`, { mode: 0o600 });
+}
+
+export async function setConfigOrSecret(
+  keyPath: string,
+  value: string,
+  configPath = CLI_CONFIG_PATH,
+  envPath = path.join(CARINA_HOME, '.env'),
+): Promise<'env' | 'yaml'> {
+  if (isSecretConfigKey(keyPath) || /^[A-Z][A-Z0-9_]+$/.test(keyPath)) {
+    const envKey = keyPath.includes('.') ? keyPath.split('.').pop()!.toUpperCase() : keyPath;
+    await appendEnvValue(envKey, value, envPath);
+    return 'env';
+  }
+  await setConfigValue(keyPath, value, configPath);
+  return 'yaml';
+}
+
+export type ConfigCheckResult = { key: string; ok: boolean; detail: string };
+
+export async function checkConfig(configPath = CLI_CONFIG_PATH): Promise<ConfigCheckResult[]> {
+  const config = await loadFromYaml(configPath);
+  const results: ConfigCheckResult[] = [];
+
+  results.push({
+    key: 'config.yaml',
+    ok: fsSync.existsSync(configPath),
+    detail: configPath,
+  });
+
+  const hasProviderKey = Object.values(config.providers).some((p) => Boolean(p.api_key));
+  const hasEnvKey = Boolean(
+    process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY,
+  );
+  results.push({
+    key: 'llm.api_key',
+    ok: hasProviderKey || hasEnvKey,
+    detail: hasProviderKey || hasEnvKey ? 'configured' : 'missing API key',
+  });
+
+  results.push({
+    key: 'model',
+    ok: Boolean(config.model),
+    detail: config.model || 'not set',
+  });
+
+  results.push({
+    key: 'dataDir',
+    ok: Boolean(config.dataDir),
+    detail: expandHome(config.dataDir),
+  });
+
+  return results;
+}
+
+export async function migrateConfig(configPath = CLI_CONFIG_PATH): Promise<string[]> {
+  const added: string[] = [];
+  const config = await loadFromYaml(configPath);
+  const raw = config as unknown as PlainRecord;
+
+  for (const [key, value] of Object.entries(DEFAULT_CLI_CONFIG)) {
+    if (getPathValue(raw, key) === undefined) {
+      setPathValue(raw, key, value);
+      added.push(key);
+    }
+  }
+
+  if (added.length > 0) {
+    await writeConfig(parseConfig(raw), configPath);
+  }
+  return added;
+}
+
+export async function openConfigInEditor(configPath = CLI_CONFIG_PATH): Promise<void> {
+  const editor = process.env.EDITOR ?? process.env.VISUAL ?? 'nano';
+  const { spawn } = await import('child_process');
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(editor, [configPath], { stdio: 'inherit' });
+    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`editor exited ${code}`))));
+    child.on('error', reject);
+  });
+}

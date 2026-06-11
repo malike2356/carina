@@ -16,7 +16,10 @@ vi.mock('../../redis.js', () => ({
 }));
 
 vi.mock('../../config/index.js', () => ({
-  config: { auth: { apiKey: 'test-scout-key' } },
+  config: {
+    auth: { apiKey: 'test-scout-key' },
+    carina: { apiUrl: '', opsToken: '' },
+  },
 }));
 
 const VALID_KEY = 'test-scout-key';
@@ -43,6 +46,7 @@ describe('memory-control API', () => {
 
   it('POST clear-session deletes rows, publishes control message, logs event', async () => {
     queryMock
+      .mockResolvedValueOnce({ rows: [{ exists: true }] })
       .mockResolvedValueOnce({ rowCount: 3 })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -56,7 +60,7 @@ describe('memory-control API', () => {
     expect(res.body).toEqual({ ok: true, session_id: SESSION, rows_deleted: 3 });
 
     expect(queryMock).toHaveBeenNthCalledWith(
-      1,
+      2,
       'DELETE FROM episodic_memories WHERE session_id = $1',
       [SESSION],
     );
@@ -72,7 +76,7 @@ describe('memory-control API', () => {
     );
 
     expect(queryMock).toHaveBeenNthCalledWith(
-      2,
+      3,
       expect.stringContaining('session_memory_cleared'),
       expect.arrayContaining([INSTANCE, expect.any(String), expect.any(String), SESSION]),
     );
@@ -80,6 +84,7 @@ describe('memory-control API', () => {
 
   it('POST clear-session is idempotent when no rows exist', async () => {
     queryMock
+      .mockResolvedValueOnce({ rows: [{ exists: true }] })
       .mockResolvedValueOnce({ rowCount: 0 })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -105,20 +110,22 @@ describe('memory-control API', () => {
   });
 
   it('GET sessions returns grouped session list', async () => {
-    queryMock.mockResolvedValueOnce({
-      rows: [
-        {
-          session_id: 'sess-a',
-          turn_count: '5',
-          last_active: '2026-06-04T10:00:00.000Z',
-        },
-        {
-          session_id: 'sess-b',
-          turn_count: '2',
-          last_active: '2026-06-04T09:00:00.000Z',
-        },
-      ],
-    });
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ exists: true }] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            session_id: 'sess-a',
+            turn_count: '5',
+            last_active: '2026-06-04T10:00:00.000Z',
+          },
+          {
+            session_id: 'sess-b',
+            turn_count: '2',
+            last_active: '2026-06-04T09:00:00.000Z',
+          },
+        ],
+      });
 
     const app = await makeApp();
     const res = await request(app)
@@ -132,13 +139,17 @@ describe('memory-control API', () => {
         { session_id: 'sess-a', turn_count: 5, last_active: '2026-06-04T10:00:00.000Z' },
         { session_id: 'sess-b', turn_count: 2, last_active: '2026-06-04T09:00:00.000Z' },
       ],
+      source: 'local',
+      unavailable: false,
     });
 
     expect(queryMock).toHaveBeenCalledWith(expect.stringContaining('FROM episodic_memories'));
   });
 
   it('GET sessions returns empty array when no memory rows', async () => {
-    queryMock.mockResolvedValueOnce({ rows: [] });
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ exists: true }] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const app = await makeApp();
     const res = await request(app)
@@ -147,6 +158,20 @@ describe('memory-control API', () => {
       .set('X-Scout-Key', VALID_KEY);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ sessions: [] });
+    expect(res.body).toMatchObject({ sessions: [], source: 'local', unavailable: false });
+  });
+
+  it('GET sessions returns unavailable when episodic_memories table is missing', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ exists: false }] });
+
+    const app = await makeApp();
+    const res = await request(app)
+      .get('/api/memory/sessions')
+      .set('X-Scout-Key', VALID_KEY);
+
+    expect(res.status).toBe(200);
+    expect(res.body.unavailable).toBe(true);
+    expect(res.body.sessions).toEqual([]);
+    expect(res.body.message).toMatch(/episodic_memories/i);
   });
 });

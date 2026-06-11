@@ -35,6 +35,10 @@ export const config = {
       .map((ip) => ip.trim())
       .filter(Boolean),
     sessionTimeoutMs: parseInt(optional('SCOUT_SESSION_TIMEOUT_MS', String(30 * 60 * 1000)), 10),
+    allowPublicRegister: optional('SCOUT_ALLOW_PUBLIC_REGISTER', 'false') === 'true',
+  },
+  console: {
+    publicUrl: optional('SCOUT_CONSOLE_PUBLIC_URL', 'https://console.labyrinthscout.com').replace(/\/+$/, ''),
   },
   trust: {
     publicEnabled: optional('TRUST_PUBLIC_ENABLED', 'true') !== 'false',
@@ -58,6 +62,14 @@ export const config = {
       .map((url) => url.trim())
       .filter(Boolean),
     erc8126ValidationRegistry: optional('TRUST_ERC8126_VALIDATION_REGISTRY'),
+  },
+  security: {
+    egressFilterEnabled: optional('SCOUT_EGRESS_FILTER_ENABLED', 'false') === 'true',
+    sandboxEnabled: optional('SCOUT_SANDBOX_ENABLED', 'false') === 'true',
+  },
+  carina: {
+    apiUrl: optional('CARINA_API_URL'),
+    opsToken: optional('CARINA_OPS_TOKEN'),
   },
   alerts: {
     telegram: {

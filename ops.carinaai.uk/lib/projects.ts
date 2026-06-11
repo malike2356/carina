@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import type { PROJECT_STATUSES, PROJECT_TYPES } from './constants.js';
+import { sortByIsoRecent } from './list-sort.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, '..', 'data', 'projects.json');
@@ -34,7 +35,8 @@ async function ensureFile(): Promise<void> {
 export async function loadProjects(): Promise<VerloxProject[]> {
   await ensureFile();
   const raw = await fs.readFile(DATA_FILE, 'utf-8');
-  return JSON.parse(raw) as VerloxProject[];
+  const projects = JSON.parse(raw) as VerloxProject[];
+  return sortByIsoRecent(projects, (p) => p.updatedAt || p.createdAt);
 }
 
 export async function saveProjects(projects: VerloxProject[]): Promise<void> {

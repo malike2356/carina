@@ -9,6 +9,19 @@ import { hasImageAttachment } from './model-command.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import type { ChannelMessage, ChannelName } from './channels/channel-adapter.interface.js';
 import { recordGroupResponse, shouldRespondInGroup } from './group-chat.js';
+import { bindSessionDelivery } from '../agents/cron-delivery-registry.js';
+import {
+  applyAgentRuntimeEnv,
+  buildAgentRuntimeContext,
+  clearAgentRuntimeEnv,
+  getActiveAgentDefinition,
+  getAgentDefinition,
+  getDefaultAgentDefinition,
+  resolveAgentRoute,
+  type AgentRuntimeContext,
+} from '../workspaces/index.js';
+import type { AgentDefinition, RoutingContext } from '../workspaces/types.js';
+import type { ProviderOverride } from './model-command.js';
 
 const memoryFallback = new Map<string, string>();
 
@@ -19,6 +32,10 @@ export class GatewayRouter {
   private lastSeen = new Map<string, number>();
   private sessionsWithRecentImages = new Set<string>();
   private sessionSystemPromptSuffixes = new Map<string, string>();
+  private sessionRuntime = new Map<string, AgentRuntimeContext>();
+  private sessionAgentIds = new Map<string, string>();
+  /** Per-session /model choice; survives bindAgentToSession (agent YAML default must not reset this). */
+  private sessionProviderOverrides = new Map<string, ProviderOverride>();
   private memoryReady: boolean;
   private confirmTool?: ConfirmFn;
   private gcTimer: ReturnType<typeof setInterval>;
@@ -36,8 +53,22 @@ export class GatewayRouter {
         this.agents.delete(id);
         this.lastSeen.delete(id);
         this.sessionsWithRecentImages.delete(id);
+        this.sessionRuntime.delete(id);
+        this.sessionAgentIds.delete(id);
+        this.sessionProviderOverrides.delete(id);
       }
     }
+  }
+
+  private resolveSessionProviderOverride(sessionId: string): ProviderOverride | undefined {
+    return this.sessionProviderOverrides.get(sessionId)
+      ?? this.sessionRuntime.get(sessionId)?.providerOverride;
+  }
+
+  private applySessionProviderOverride(sessionId: string, override: ProviderOverride): void {
+    this.sessionProviderOverrides.set(sessionId, override);
+    const agent = this.agents.get(sessionId);
+    if (agent) agent.setProviderOverride(override);
   }
 
   destroy(): void {
@@ -54,8 +85,22 @@ export class GatewayRouter {
     if (agent) agent.setSystemPromptSuffix(suffix);
   }
 
-  async getSession(source: string, externalUserId: string): Promise<string> {
-    const mapKey = `carina:gateway:${source}:${externalUserId}`;
+  async bindAgentToSession(sessionId: string, agentDef: AgentDefinition): Promise<AgentRuntimeContext> {
+    const runtime = await buildAgentRuntimeContext(agentDef);
+    this.sessionRuntime.set(sessionId, runtime);
+    this.sessionAgentIds.set(sessionId, agentDef.id);
+    this.sessionSystemPromptSuffixes.set(sessionId, runtime.workspaceContext);
+    const existing = this.agents.get(sessionId);
+    if (existing) {
+      existing.setSystemPromptSuffix(runtime.workspaceContext);
+      const provider = this.resolveSessionProviderOverride(sessionId);
+      if (provider) existing.setProviderOverride(provider);
+    }
+    return runtime;
+  }
+
+  async getSession(agentId: string, source: string, externalUserId: string): Promise<string> {
+    const mapKey = `carina:agent:${agentId}:gateway:${source}:${externalUserId}`;
     const redis = getRedis();
 
     if (redis) {
@@ -77,12 +122,15 @@ export class GatewayRouter {
   private getAgent(sessionId: string, source: CarinaMessage['source']): CarinaOrchestrator {
     this.lastSeen.set(sessionId, Date.now());
     let agent = this.agents.get(sessionId);
+    const runtime = this.sessionRuntime.get(sessionId);
     if (!agent) {
       const confirm = source === 'cli' ? this.confirmTool : undefined;
       agent = new CarinaOrchestrator(sessionId, this.memoryReady, confirm, {
-        systemPromptSuffix: source === 'cli'
-          ? this.sessionSystemPromptSuffixes.get(sessionId)
-          : undefined,
+        platform: source,
+        agentId: runtime?.agent.id,
+        workspaceDir: runtime?.workspaceDir,
+        systemPromptSuffix: this.sessionSystemPromptSuffixes.get(sessionId),
+        providerOverride: this.resolveSessionProviderOverride(sessionId),
       });
       this.agents.set(sessionId, agent);
     }
@@ -101,9 +149,31 @@ export class GatewayRouter {
       await agent.clear();
     }
     this.sessionsWithRecentImages.delete(sessionId);
+    this.sessionProviderOverrides.delete(sessionId);
+  }
+
+  /** Active LLM for a web/cli session (honours per-session /model override). */
+  getSessionActiveProvider(sessionId: string): string {
+    const override = this.sessionProviderOverrides.get(sessionId)
+      ?? this.agents.get(sessionId)?.getProviderOverride();
+    if (override?.name) return override.name;
+    try {
+      return llm.current().name;
+    } catch {
+      return llm.list()[0] ?? 'deepseek';
+    }
   }
 
   async *handle(message: CarinaMessage): AsyncGenerator<string> {
+    if (message.agentId && !this.sessionAgentIds.has(message.sessionId)) {
+      const agentDef = getAgentDefinition(message.agentId) ?? getDefaultAgentDefinition();
+      await this.bindAgentToSession(message.sessionId, agentDef);
+    }
+
+    const runtime = this.sessionRuntime.get(message.sessionId);
+    if (runtime) applyAgentRuntimeEnv(runtime);
+    else clearAgentRuntimeEnv();
+
     if (message.content.trim() === '/clear') {
       await this.clearSession(message.sessionId);
       yield 'Session memory cleared.';
@@ -122,8 +192,9 @@ export class GatewayRouter {
       ? await handleGatewayCommandAsync(message.content)
       : handleGatewayCommand(message.content, commandAgent
         ? {
-            currentOverride: commandAgent.getProviderOverride(),
-            applyProviderOverride: (override) => commandAgent.setProviderOverride(override),
+            currentOverride: this.sessionProviderOverrides.get(message.sessionId)
+              ?? commandAgent.getProviderOverride(),
+            applyProviderOverride: (override) => this.applySessionProviderOverride(message.sessionId, override),
             hasRecentImage: this.sessionsWithRecentImages.has(message.sessionId),
           }
         : {});
@@ -176,15 +247,34 @@ export class GatewayRouter {
     const inbound = await channelRegistry.getForInbound(channel, raw);
     if (!inbound) return;
 
+    const routingCtx: RoutingContext = {
+      channel: inbound.channel,
+      accountId: inbound.accountId,
+      peerKind: inbound.isDirect ? 'direct' : 'group',
+      peerId: inbound.conversationId,
+      guildId: inbound.guildId,
+      teamId: inbound.teamId,
+    };
+    const route = resolveAgentRoute(routingCtx);
+    const agentId = route.agent.id;
+
     const externalKey = inbound.conversationId === inbound.externalUserId
       ? inbound.externalUserId
       : `${inbound.conversationId}:${inbound.externalUserId}`;
-    const sessionId = await this.getSession(inbound.channel, externalKey);
+    const sessionId = await this.getSession(agentId, inbound.channel, externalKey);
+    await this.bindAgentToSession(sessionId, route.agent);
+
+    bindSessionDelivery(sessionId, {
+      channel: inbound.channel,
+      conversationId: inbound.conversationId,
+      threadId: inbound.threadId,
+    });
 
     const text = buildInboundText(inbound);
     const carinaMsg: CarinaMessage = {
       id: inbound.id,
       sessionId,
+      agentId,
       content: text,
       source: inbound.channel,
       timestamp: inbound.timestamp,
@@ -198,6 +288,37 @@ export class GatewayRouter {
     };
 
     yield* this.handle(carinaMsg);
+  }
+
+  async startCliSession(externalUserId = 'local'): Promise<{
+    sessionId: string;
+    agent: AgentDefinition;
+    workspaceContextCount: number;
+  }> {
+    const agentDef = getActiveAgentDefinition();
+    const sessionId = await this.getSession(agentDef.id, 'cli', externalUserId);
+    const runtime = await this.bindAgentToSession(sessionId, agentDef);
+    applyAgentRuntimeEnv(runtime);
+    return {
+      sessionId,
+      agent: agentDef,
+      workspaceContextCount: runtime.workspaceContext.split('---').length,
+    };
+  }
+
+  async startWebSession(
+    externalUserId: string,
+    accountId = 'default',
+  ): Promise<{ sessionId: string; agentId: string }> {
+    const route = resolveAgentRoute({
+      channel: 'web',
+      accountId,
+      peerKind: 'direct',
+      peerId: externalUserId,
+    });
+    const sessionId = await this.getSession(route.agent.id, 'web', externalUserId);
+    await this.bindAgentToSession(sessionId, route.agent);
+    return { sessionId, agentId: route.agent.id };
   }
 }
 

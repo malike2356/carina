@@ -8,6 +8,8 @@ const OUTPUT_DIR = 'data/generated-images';
 
 export const imageGenerationTool: Tool = {
   name: 'image-generation',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Generate an image from a text prompt using OpenAI DALL-E. Returns a local file path to the generated image.',
   parameters: {

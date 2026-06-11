@@ -1,10 +1,23 @@
 import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { pool } from '../db.js';
+import { searchAuditLog } from '../audit/audit-search.js';
+import { config } from '../config/index.js';
+import { getRedis } from '../redis.js';
+import { getSseSubscriberCount } from './sse.js';
 import { buildAgentStatus } from '../dashboard/widgets/agent-status.js';
 import { buildThreatMetrics } from '../dashboard/widgets/threat-metrics.js';
 import { buildUsageAnalytics } from '../dashboard/widgets/usage-analytics.js';
+import { buildIncidentOps } from '../dashboard/widgets/incident-ops.js';
+import {
+  buildPostureSummary,
+  type ControlPlaneHealth,
+  type TrustHealthSummary,
+} from '../dashboard/widgets/posture-summary.js';
+import { buildPublicTrustFromDb } from '../trust/build-public-trust.js';
+import { globalKillSwitch } from '../killswitch/global-kill-switch.js';
 import { scopedAccountId } from '../lib/scope.js';
+import { loadPlatformSecuritySettings } from '../lib/platform-settings.js';
 
 export const dashboardRouter: IRouter = Router();
 
@@ -42,18 +55,19 @@ dashboardRouter.get('/threat-metrics', async (req: Request, res: Response): Prom
       severity: 'info' | 'warning' | 'critical' | 'breach';
       event_type: string;
       ip_address: string | null;
+      instance_id: string | null;
       metadata: Record<string, unknown> | string | null;
       created_at: Date;
     }>(
       accountId
-        ? `SELECT e.severity, e.event_type, e.ip_address, e.metadata, e.created_at
+        ? `SELECT e.severity, e.event_type, e.ip_address, e.instance_id, e.metadata, e.created_at
            FROM security_events e
            JOIN carina_instances i ON i.id = e.instance_id
            WHERE i.account_id = $1
              AND e.created_at > NOW() - INTERVAL '24 hours'
            ORDER BY e.created_at DESC
            LIMIT 5000`
-        : `SELECT severity, event_type, ip_address, metadata, created_at
+        : `SELECT severity, event_type, ip_address, instance_id, metadata, created_at
            FROM security_events
            WHERE created_at > NOW() - INTERVAL '24 hours'
            ORDER BY created_at DESC
@@ -101,51 +115,267 @@ dashboardRouter.get('/usage-analytics', async (req: Request, res: Response): Pro
 });
 
 dashboardRouter.get('/audit-log', async (req: Request, res: Response): Promise<void> => {
-  const accountId = scopedAccountId(req);
   const query = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 120) : '';
   const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
-  const params: unknown[] = accountId ? [accountId, limit] : [limit];
-  let where = accountId ? 'WHERE i.account_id = $1' : '';
 
-  if (query) {
-    const queryParam = `%${query}%`;
-    params.push(queryParam);
-    const queryIndex = params.length;
-    const searchClause = `(
-      e.event_type ILIKE $${queryIndex}
-      OR e.description ILIKE $${queryIndex}
-      OR e.source ILIKE $${queryIndex}
-      OR e.instance_id ILIKE $${queryIndex}
-      OR e.session_id ILIKE $${queryIndex}
-      OR e.metadata::text ILIKE $${queryIndex}
-    )`;
-    where = where ? `${where} AND ${searchClause}` : `WHERE ${searchClause}`;
-  }
-
-  const limitIndex = accountId ? 2 : 1;
   try {
-    const result = await pool.query(
-      accountId
-        ? `SELECT e.id, e.severity, e.source, e.event_type, e.description, e.metadata,
-                  e.ip_address, e.session_id, e.instance_id, e.mitigated, e.created_at,
-                  e.acknowledged, e.acknowledged_at, e.acknowledged_note
-           FROM security_events e
-           JOIN carina_instances i ON i.id = e.instance_id
-           ${where}
-           ORDER BY e.created_at DESC
-           LIMIT $${limitIndex}`
-        : `SELECT id, severity, source, event_type, description, metadata,
-                  ip_address, session_id, instance_id, mitigated, created_at,
-                  acknowledged, acknowledged_at, acknowledged_note
-           FROM security_events
-           ${where}
-           ORDER BY created_at DESC
-           LIMIT $${limitIndex}`,
-      params,
-    );
-    res.json({ events: result.rows, count: result.rows.length });
+    const result = await searchAuditLog({
+      query: query || undefined,
+      per_page: limit,
+      page: 1,
+    });
+
+    res.json({
+      source: 'audit_log',
+      label: 'Immutable admin and operator audit log',
+      events: result.events.map((event) => ({
+        id: event.id,
+        tenant_id: event.tenant_id,
+        event_type: event.event_type,
+        action: event.action,
+        detail: event.detail,
+        severity: event.severity,
+        session_id: event.session_id,
+        ip_address: event.ip_address,
+        admin_email: event.admin_email,
+        created_at: event.timestamp,
+      })),
+      count: result.events.length,
+      total: result.total,
+    });
   } catch (err) {
     console.error('[dashboard] audit-log failed:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });
+
+dashboardRouter.get('/posture', async (req: Request, res: Response): Promise<void> => {
+  const accountId = scopedAccountId(req);
+  try {
+    const [trust, agentRows, threatRows, incidentRows, rateRows, honeypotCount] = await Promise.all([
+      buildPublicTrustFromDb(),
+      pool.query<{
+        id: string;
+        name: string;
+        status: string;
+        suspension_reason: string | null;
+        last_heartbeat: Date | null;
+      }>(
+        accountId
+          ? `SELECT id, name, status, suspension_reason, last_heartbeat
+             FROM carina_instances WHERE account_id = $1 ORDER BY created_at ASC`
+          : `SELECT id, name, status, suspension_reason, last_heartbeat
+             FROM carina_instances ORDER BY created_at ASC`,
+        accountId ? [accountId] : [],
+      ),
+      pool.query<{
+        severity: 'info' | 'warning' | 'critical' | 'breach';
+        event_type: string;
+        ip_address: string | null;
+        instance_id: string | null;
+        metadata: Record<string, unknown> | string | null;
+        created_at: Date;
+      }>(
+        accountId
+          ? `SELECT e.severity, e.event_type, e.ip_address, e.instance_id, e.metadata, e.created_at
+             FROM security_events e
+             JOIN carina_instances i ON i.id = e.instance_id
+             WHERE i.account_id = $1 AND e.created_at > NOW() - INTERVAL '24 hours'
+             ORDER BY e.created_at DESC LIMIT 5000`
+          : `SELECT severity, event_type, ip_address, instance_id, metadata, created_at
+             FROM security_events
+             WHERE created_at > NOW() - INTERVAL '24 hours'
+             ORDER BY created_at DESC LIMIT 5000`,
+        accountId ? [accountId] : [],
+      ),
+      pool.query<{
+        id: string;
+        severity: string;
+        event_type: string;
+        acknowledged: boolean;
+        acknowledged_at: Date | null;
+        mitigated: boolean;
+        created_at: Date;
+      }>(
+        accountId
+          ? `SELECT e.id, e.severity, e.event_type, e.acknowledged, e.acknowledged_at, e.mitigated, e.created_at
+             FROM security_events e
+             JOIN carina_instances i ON i.id = e.instance_id
+             WHERE i.account_id = $1
+               AND e.created_at > NOW() - INTERVAL '24 hours'
+               AND e.severity IN ('warning', 'critical', 'breach')`
+          : `SELECT id, severity, event_type, acknowledged, acknowledged_at, mitigated, created_at
+             FROM security_events
+             WHERE created_at > NOW() - INTERVAL '24 hours'
+               AND severity IN ('warning', 'critical', 'breach')`,
+        accountId ? [accountId] : [],
+      ),
+      pool.query<{ recent: string; previous: string }>(
+        accountId
+          ? `SELECT
+               COUNT(*) FILTER (WHERE e.created_at > NOW() - INTERVAL '24 hours')::text AS recent,
+               COUNT(*) FILTER (
+                 WHERE e.created_at <= NOW() - INTERVAL '24 hours'
+                   AND e.created_at > NOW() - INTERVAL '48 hours'
+               )::text AS previous
+             FROM security_events e
+             JOIN carina_instances i ON i.id = e.instance_id
+             WHERE i.account_id = $1
+               AND e.severity IN ('warning', 'critical', 'breach')`
+          : `SELECT
+               COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours')::text AS recent,
+               COUNT(*) FILTER (
+                 WHERE created_at <= NOW() - INTERVAL '24 hours'
+                   AND created_at > NOW() - INTERVAL '48 hours'
+               )::text AS previous
+             FROM security_events
+             WHERE severity IN ('warning', 'critical', 'breach')`,
+        accountId ? [accountId] : [],
+      ),
+      pool.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM honeypots WHERE retired_at IS NULL`,
+      ),
+    ]);
+
+    const agents = buildAgentStatus(agentRows.rows);
+    const threats = buildThreatMetrics(threatRows.rows);
+    const recent = parseInt(rateRows.rows[0]?.recent ?? '0', 10);
+    const previous = parseInt(rateRows.rows[0]?.previous ?? '0', 10);
+    const incidentRateChange = previous > 0
+      ? Math.round(((recent - previous) / previous) * 100)
+      : null;
+
+    const incidents = buildIncidentOps(incidentRows.rows, {
+      blocked_actions_24h: trust.metrics.blocked_24h,
+      injection_blocks_24h: trust.metrics.injection_blocks_24h,
+      incident_rate_change_pct: incidentRateChange,
+    });
+
+    const controlPlane = await buildControlPlaneHealth(honeypotCount.rows[0]?.count ?? '0');
+    const trustHealth = await buildTrustHealthSummary(trust);
+
+    const metricsInput = {
+      agentsTotal: trust.monitoring.agents_protected,
+      agentsActive: trust.monitoring.agents_active,
+      agentsSuspended: trust.monitoring.agents_suspended,
+      runtimeIncidents30d: trust.metrics.runtime_incidents_30d,
+      warning24h: 0,
+      breach30d: 0,
+      eventsToday: trust.metrics.events_today,
+      injectionBlocks24h: trust.metrics.injection_blocks_24h,
+      blocked24h: trust.metrics.blocked_24h,
+      threats24h: trust.metrics.threats_24h,
+      lastEventAt: trust.monitoring.last_scan_at,
+      lastHeartbeatAt: trust.monitoring.last_heartbeat_at,
+    };
+
+    res.json(buildPostureSummary({
+      metrics: metricsInput,
+      trust,
+      agents,
+      incidents,
+      threats,
+      controlPlane,
+      trustHealth,
+    }));
+  } catch (err) {
+    console.error('[dashboard] posture failed:', err);
+    res.status(500).json({ error: 'Posture summary unavailable' });
+  }
+});
+
+async function buildControlPlaneHealth(activeHoneypots: string): Promise<ControlPlaneHealth> {
+  let databaseConnected = false;
+  try {
+    await pool.query('SELECT 1');
+    databaseConnected = true;
+  } catch {
+    databaseConnected = false;
+  }
+
+  const redis = getRedis();
+  let redisConnected = false;
+  if (redis) {
+    try {
+      await redis.ping();
+      redisConnected = true;
+    } catch {
+      redisConnected = false;
+    }
+  }
+
+  const alertChannelCount = [
+    config.alerts.telegram.botToken && config.alerts.telegram.chatId,
+    config.alerts.email.resendApiKey && config.alerts.email.to,
+    config.alerts.slack.webhookUrl,
+    config.alerts.discord.webhookUrl,
+  ].filter(Boolean).length;
+
+  const killStatus = globalKillSwitch.getStatus();
+  const securitySettings = await loadPlatformSecuritySettings();
+
+  return {
+    alert_channels_configured: alertChannelCount > 0,
+    alert_channel_count: alertChannelCount,
+    deception_enabled: parseInt(activeHoneypots, 10) > 0,
+    egress_filter_enabled: securitySettings.egress_filter_enabled,
+    egress_filter_source: securitySettings.egress_filter_source,
+    sandbox_enabled: securitySettings.sandbox_enabled,
+    sandbox_source: securitySettings.sandbox_source,
+    redis_connected: redisConnected,
+    database_connected: databaseConnected,
+    sse_subscribers: getSseSubscriberCount(),
+    kill_switch_armed: killStatus.armed,
+    kill_switch_triggered: killStatus.triggered,
+  };
+}
+
+async function buildTrustHealthSummary(trust: Awaited<ReturnType<typeof buildPublicTrustFromDb>>): Promise<TrustHealthSummary> {
+  const [attestationRow, verificationRow] = await Promise.all([
+    pool.query<{ submitted_at: Date }>(
+      `SELECT submitted_at FROM trust_attestations
+       WHERE status = 'submitted'
+       ORDER BY submitted_at DESC LIMIT 1`,
+    ),
+    pool.query<{ submitted_at: Date; request_tx_hash: string | null; response_tx_hash: string | null }>(
+      `SELECT submitted_at, request_tx_hash, response_tx_hash FROM trust_verifications
+       WHERE status = 'submitted'
+       ORDER BY submitted_at DESC LIMIT 1`,
+    ),
+  ]);
+
+  const lastAttestation = attestationRow.rows[0]?.submitted_at
+    ? new Date(attestationRow.rows[0].submitted_at).toISOString()
+    : null;
+  const lastVerification = verificationRow.rows[0]?.submitted_at
+    ? new Date(verificationRow.rows[0].submitted_at).toISOString()
+    : null;
+
+  return {
+    last_attestation_at: lastAttestation,
+    last_attestation_age: lastAttestation
+      ? formatAgeLabel(lastAttestation)
+      : null,
+    last_verification_at: lastVerification,
+    last_verification_age: lastVerification
+      ? formatAgeLabel(lastVerification)
+      : null,
+    erc8004_status: trust.chain.erc8004_status,
+    erc8004_label: trust.chain.erc8004_label,
+    erc8126_status: trust.chain.erc8126_status,
+    erc8126_label: trust.chain.erc8126_label,
+    wallet_configured: trust.chain.wallet_configured,
+    on_chain_request_tx: verificationRow.rows[0]?.request_tx_hash ?? null,
+    on_chain_response_tx: verificationRow.rows[0]?.response_tx_hash ?? null,
+  };
+}
+
+function formatAgeLabel(iso: string): string {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}

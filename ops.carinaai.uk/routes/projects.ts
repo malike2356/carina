@@ -21,6 +21,11 @@ projectsRouter.get('/', async (_req, res) => {
   for (const p of projects) {
     grouped[p.status].push(p);
   }
+  for (const status of PROJECT_STATUSES) {
+    grouped[status].sort((a, b) =>
+      (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt),
+    );
+  }
   res.render('projects', {
     grouped,
     types: PROJECT_TYPES,

@@ -1,5 +1,7 @@
 import { Router, type Request, type Response, type IRouter } from 'express';
 import { pool } from '../memory/db.js';
+import { config } from '../config/index.js';
+import { parseSvixHeaders, verifyResendWebhook } from '../lib/resend-webhook.js';
 
 export const emailEvents = {
   listeners: [] as Array<(payload: InboundEmailPayload) => void>,
@@ -34,10 +36,34 @@ function parsePayload(body: Record<string, unknown>): InboundEmailPayload {
   };
 }
 
+function verifyInboundRequest(req: Request): { ok: true } | { ok: false; status: number; error: string } {
+  const secret = config.resend.webhookSecret;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      return { ok: false, status: 503, error: 'RESEND_WEBHOOK_SECRET not configured' };
+    }
+    return { ok: true };
+  }
+
+  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody?.toString('utf-8')
+    ?? JSON.stringify(req.body ?? {});
+  const svix = parseSvixHeaders(req.headers as Record<string, string | string[] | undefined>);
+  if (!svix || !verifyResendWebhook(rawBody, svix, secret)) {
+    return { ok: false, status: 401, error: 'Invalid webhook signature' };
+  }
+  return { ok: true };
+}
+
 export const emailWebhookRouter: IRouter = Router();
 
 emailWebhookRouter.post('/inbound', async (req: Request, res: Response) => {
   try {
+    const auth = verifyInboundRequest(req);
+    if (!auth.ok) {
+      res.status(auth.status).json({ error: auth.error });
+      return;
+    }
+
     const payload = parsePayload(req.body as Record<string, unknown>);
 
     await pool.query(

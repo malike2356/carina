@@ -6,7 +6,7 @@ Carina registers tools with MCP-compatible JSON schemas. The LLM chooses tools; 
 
 | Tool | Env key | Sandboxed | Confirmation |
 |---|---|---|---|
-| `web-search` | `BRAVE_SEARCH_API_KEY` | N/A (external API) | Never |
+| `web-search` | `TAVILY_API_KEY` | N/A (external API) | Never |
 | `file-read` | None | Path safety only | Never |
 | `file-write` | None | System paths blocked | If target file exists |
 | `shell-exec` | Docker required | Docker, no network | Always |

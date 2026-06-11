@@ -3,12 +3,15 @@ import { Resend } from 'resend';
 import Stripe from 'stripe';
 import { config } from '../config/index.js';
 import {
+  confirmPasswordReset,
+  checkHostedAccess,
   getUserByApiKey,
   getUserProfile,
   incrementMessageCount,
   initHostedDb,
   loginUser,
   registerUser,
+  requestPasswordReset,
   setUserTier,
   verifyJwt,
 } from './hosted-auth.js';
@@ -91,12 +94,42 @@ export function mountHostedRoutes(app: Express): void {
   router.post('/login', async (req, res) => {
     const email = String(req.body?.email ?? '').trim().toLowerCase();
     const password = String(req.body?.password ?? '');
+    await initHostedDb();
     const result = await loginUser(email, password);
     if (!result) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
     res.json(result);
+  });
+
+  router.post('/forgot-password', async (req, res) => {
+    await initHostedDb();
+    const email = String(req.body?.email ?? '').trim().toLowerCase();
+    if (!email) {
+      res.status(400).json({ error: 'email required' });
+      return;
+    }
+    const protocol = req.protocol;
+    const host = req.get('host') ?? config.hosted.appHost;
+    await requestPasswordReset(email, `${protocol}://${host}`);
+    res.json({ ok: true }); // always 200 to avoid email enumeration
+  });
+
+  router.post('/reset-password', async (req, res) => {
+    await initHostedDb();
+    const token = String(req.body?.token ?? '').trim();
+    const password = String(req.body?.password ?? '');
+    if (!token || password.length < 8) {
+      res.status(400).json({ error: 'token and password (8+ chars) required' });
+      return;
+    }
+    const ok = await confirmPasswordReset(token, password);
+    if (!ok) {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+      return;
+    }
+    res.json({ ok: true });
   });
 
   router.get('/me', authMiddleware, async (req, res) => {
@@ -146,6 +179,8 @@ export function mountStripeWebhook(app: Express): void {
 }
 
 export async function checkHostedQuota(userId: string, tier: string): Promise<string | null> {
+  const blocked = await checkHostedAccess(userId);
+  if (blocked) return blocked;
   if (tier === 'pro') return null;
   const ok = await incrementMessageCount(userId);
   if (!ok) return 'Free tier limit: 100 messages/day. Upgrade to Pro for unlimited.';

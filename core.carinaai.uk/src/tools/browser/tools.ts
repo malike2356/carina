@@ -25,6 +25,8 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
   return [
     {
       name: 'browser-navigate',
+      dangerous: true,
+      requiresConfirmation: true,
       description:
         'Navigate to a URL. Initializes session and returns compact snapshot with interactive element ref IDs. Must be called before other browser tools. For plain-text endpoints (.md, .txt, .json), prefer http-request or shell-exec.',
       parameters: {
@@ -36,6 +38,7 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-click',
+      dangerous: true,
       description: 'Click an element by ref ID from snapshot (e.g. @e5).',
       parameters: {
         type: 'object',
@@ -46,6 +49,7 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-type',
+      dangerous: true,
       description: 'Type text into an input field by ref. Clears first, then types.',
       parameters: {
         type: 'object',
@@ -60,6 +64,7 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-press',
+      dangerous: true,
       description: 'Press a keyboard key (Enter, Tab, Escape, ArrowDown).',
       parameters: {
         type: 'object',
@@ -70,6 +75,7 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-scroll',
+      dangerous: true,
       description: 'Scroll the page up or down.',
       parameters: {
         type: 'object',
@@ -120,6 +126,7 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-vision',
+      dangerous: true,
       description: 'Capture a screenshot of the current page and analyze it with a vision LLM.',
       parameters: {
         type: 'object',
@@ -133,6 +140,8 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-cdp',
+      dangerous: true,
+      requiresConfirmation: true,
       description: 'Send a Chrome DevTools Protocol command to the active browser page.',
       parameters: {
         type: 'object',
@@ -151,6 +160,7 @@ export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
     },
     {
       name: 'browser-dialog',
+      dangerous: true,
       description: 'Accept or dismiss the next JavaScript dialog (alert, confirm, prompt).',
       parameters: {
         type: 'object',

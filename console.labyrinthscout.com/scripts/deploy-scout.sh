@@ -92,6 +92,12 @@ REMOTE
 
   log "Deploy complete."
 
+  if [[ -x "${LOCAL_DIR}/../scripts/post-deploy-security-check.sh" ]]; then
+    log "Running post-deploy security checks..."
+    bash "${LOCAL_DIR}/../scripts/post-deploy-security-check.sh" vps || \
+      log "WARN: post-deploy security checks failed; see scripts/verify-security-config.sh"
+  fi
+
   echo ""
   echo "=== POST-DEPLOY CHECKLIST ==="
   echo ""
@@ -104,21 +110,14 @@ REMOTE
   echo "   The scout uses the same carina_central DB as core.carinaai.uk"
   echo "   Ensure SCOUT_DATABASE_URL in .env points to: postgresql://carina:PWD@127.0.0.1:5432/carina_central"
   echo ""
-  echo "3. aaPanel nginx for console.labyrinthscout.com:"
-  echo "   Reverse proxy target: http://127.0.0.1:4444"
+  echo "3. Nginx vhost (public hub + protected operator dashboard):"
+  echo "   bash scripts/apply-nginx-console.sh"
+  echo "   See nginx.console.conf: / and /account public; /dashboard uses Basic Auth"
   echo ""
-  echo "   Nginx proxy block:"
-  echo "   location / {"
-  echo "       proxy_pass         http://127.0.0.1:4444;"
-  echo "       proxy_http_version 1.1;"
-  echo "       proxy_set_header   Upgrade \$http_upgrade;"
-  echo "       proxy_set_header   Connection 'upgrade';"
-  echo "       proxy_set_header   Host \$host;"
-  echo "       proxy_set_header   X-Real-IP \$remote_addr;"
-  echo "       proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;"
-  echo "       proxy_set_header   X-Forwarded-Proto \$scheme;"
-  echo "       proxy_cache_bypass \$http_upgrade;"
-  echo "   }"
+  echo "4. Complete security configuration:"
+  echo "   bash ../scripts/verify-security-config.sh vps"
+  echo "   SCOUT_ALERT_TO_EMAIL=ops@yourdomain.com bash ../scripts/complete-production-security.sh vps"
+  echo "   See instructions/SECURITY_CONFIGURATION_GUIDE.md"
 }
 
 main "$@"

@@ -104,6 +104,7 @@ describe('CarinaOrchestrator fast lane', () => {
         stream: async function* () { yield 'done'; },
         list: () => ['deepseek'],
         current: () => ({ name: 'deepseek' }),
+        currentModel: () => 'deepseek-chat',
       },
     }));
     vi.doMock('../memory/store.js', () => ({
@@ -142,7 +143,7 @@ describe('CarinaOrchestrator fast lane', () => {
     expect(events).toEqual([
       {
         type: 'text',
-        content: 'Carina.',
+        content: 'Hi.',
       },
     ]);
   });
@@ -155,6 +156,7 @@ describe('CarinaOrchestrator fast lane', () => {
         stream: async function* () { yield 'done'; },
         list: () => ['deepseek'],
         current: () => ({ name: 'deepseek' }),
+        currentModel: () => 'deepseek-chat',
       },
     }));
     vi.doMock('../memory/store.js', () => ({

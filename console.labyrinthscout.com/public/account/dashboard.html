@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My account - Labyrinth Scout</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <link rel="stylesheet" href="/hub.css?v=2">
@@ -156,19 +156,27 @@
         <div class="card-head">
           <div>
             <div class="card-title"><span class="card-icon"><i class="ti ti-activity"></i></span> Recent security events</div>
-            <p class="sub">Latest events from instances linked to your account.</p>
+            <p class="sub">Tool calls, alerts, and tests. Session telemetry is hidden (used for anomaly detection).</p>
           </div>
         </div>
         <table class="keys-table">
           <thead><tr><th>Severity</th><th>Source</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
           <tbody id="events-body"></tbody>
         </table>
+        <div id="events-pagination" class="table-pagination" hidden>
+          <button type="button" class="btn-ghost btn" id="events-prev" disabled>Previous</button>
+          <span id="events-page-label" class="page-label">Page 1 of 1</span>
+          <button type="button" class="btn-ghost-sm" id="events-next" disabled>Next</button>
+        </div>
       </section>
     </main>
   </div>
 
-  <script src="/account/account.js?v=3"></script>
+  <script src="/account/account.js?v=4"></script>
   <script>
+    let eventsPage = 1;
+    const eventsLimit = 15;
+
     async function loadMe() {
       const { res, data } = await apiFetch('/account/api/me');
       if (!res.ok) { window.location.href = '/account/login'; return; }
@@ -229,26 +237,52 @@
       }
     }
 
-    async function loadEvents() {
-      const { res, data } = await apiFetch('/account/api/events');
+    async function loadEvents(page) {
+      if (typeof page === 'number') eventsPage = page;
+      const { res, data } = await apiFetch(
+        '/account/api/events?page=' + eventsPage + '&limit=' + eventsLimit,
+      );
       if (!res.ok) return;
       const body = document.getElementById('events-body');
       body.innerHTML = '';
-      document.getElementById('stat-events').textContent = String((data.events || []).length);
+      const pagination = data.pagination || {};
+      document.getElementById('stat-events').textContent = String(pagination.total ?? (data.events || []).length);
       for (const ev of data.events || []) {
         const tr = document.createElement('tr');
         tr.innerHTML =
           '<td><span class="status status-' + ev.severity + '">' + ev.severity + '</span></td>' +
           '<td>' + escapeHtml(ev.source) + '</td>' +
-          '<td>' + escapeHtml(ev.event_type) + '</td>' +
-          '<td>' + escapeHtml(ev.description) + '</td>' +
+          '<td>' + escapeHtml(ev.eventTypeLabel || ev.event_type) + '</td>' +
+          '<td class="event-desc">' + escapeHtml(ev.description) + '</td>' +
           '<td>' + timeAgo(ev.created_at) + '</td>';
         body.appendChild(tr);
       }
       if (!data.events || data.events.length === 0) {
         body.innerHTML = '<tr><td colspan="5" class="muted">No events yet</td></tr>';
       }
+
+      const pager = document.getElementById('events-pagination');
+      const prevBtn = document.getElementById('events-prev');
+      const nextBtn = document.getElementById('events-next');
+      const label = document.getElementById('events-page-label');
+      const totalPages = pagination.totalPages ?? 0;
+      if (totalPages > 1) {
+        pager.hidden = false;
+        label.textContent = 'Page ' + (pagination.page ?? eventsPage) + ' of ' + totalPages;
+        prevBtn.disabled = !pagination.hasPrev;
+        nextBtn.disabled = !pagination.hasNext;
+        eventsPage = pagination.page ?? eventsPage;
+      } else {
+        pager.hidden = true;
+      }
     }
+
+    document.getElementById('events-prev').addEventListener('click', function () {
+      if (eventsPage > 1) loadEvents(eventsPage - 1);
+    });
+    document.getElementById('events-next').addEventListener('click', function () {
+      loadEvents(eventsPage + 1);
+    });
 
     async function loadOnboarding() {
       const { res, data } = await apiFetch('/account/api/onboarding');

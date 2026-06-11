@@ -36,7 +36,9 @@ export class EmailChannelAdapter implements IChannelAdapter {
   }
 
   validateWebhook(input: { headers: Record<string, string | string[] | undefined> }): boolean {
-    if (!this.inboundSecret) return true;
+    if (!this.inboundSecret) {
+      return process.env.NODE_ENV !== 'production';
+    }
     const sig = String(input.headers['x-email-channel-secret'] ?? '');
     return sig === this.inboundSecret;
   }

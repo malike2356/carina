@@ -7,10 +7,12 @@
 
   function renderUsageAnalytics(data) {
     const pct = data.percentage || 0;
-    setText('tile-token-value', `${pct}%`);
-    setText('tile-token-detail', `${format(data.used || 0)} / ${format(data.limit || 0)} tokens`);
+    setText('tile-token-value', pct + '%');
+    setText('tile-token-detail', format(data.used || 0) + ' / ' + format(data.limit || 0) + ' tokens (estimated)');
+    const label = document.getElementById('usage-estimate-label');
+    if (label) label.textContent = data.label || 'Estimated from event metadata; not billing-grade usage';
     const bar = document.getElementById('token-usage-bar');
-    if (bar) bar.style.width = `${Math.min(100, pct)}%`;
+    if (bar) bar.style.width = Math.min(100, pct) + '%';
   }
 
   function format(value) {
@@ -23,5 +25,5 @@
   }
 
   window.DashboardUsageAnalytics = { load: loadUsageAnalytics, render: renderUsageAnalytics };
-  window.addEventListener('load', () => void loadUsageAnalytics());
+  window.addEventListener('load', function () { void loadUsageAnalytics(); });
 })();

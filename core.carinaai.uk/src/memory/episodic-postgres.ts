@@ -2,6 +2,7 @@ import pgvector from 'pgvector/pg';
 import { pool } from './db.js';
 import { embed } from './embeddings.js';
 import type { Memory, Role } from '../types/index.js';
+import { recordMemoryAccess } from './rem/rem-promotion.js';
 
 function rowToMemory(row: Record<string, unknown>): Memory {
   return {
@@ -22,8 +23,8 @@ export async function saveMemory(
   const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
 
   await pool.query(
-    `INSERT INTO episodic_memories (session_id, role, content, embedding)
-     VALUES ($1, $2, $3, $4)`,
+    `INSERT INTO episodic_memories (session_id, role, content, embedding, memory_tier)
+     VALUES ($1, $2, $3, $4, 'short_term')`,
     [sessionId, role, content, vectorSql],
   );
 }
@@ -37,11 +38,15 @@ export async function searchMemory(query: string, limit: number): Promise<Memory
       `SELECT id, session_id, role, content, created_at
        FROM episodic_memories
        WHERE embedding IS NOT NULL
-       ORDER BY embedding <=> $1
+       ORDER BY
+         CASE memory_tier WHEN 'long_term' THEN 0 ELSE 1 END,
+         embedding <=> $1
        LIMIT $2`,
       [vectorSql, limit],
     );
-    return result.rows.map(rowToMemory);
+    const memories = result.rows.map(rowToMemory);
+    void recordMemoryAccess(memories.map((m) => m.id));
+    return memories;
   }
 
   const fallback = await pool.query(

@@ -16,6 +16,7 @@ const VALID_EVENTS: WebhookEvent[] = [
 
 export const webhookTool: Tool = {
   name: 'webhook',
+  dangerous: true,
   description:
     'Subscribe to outbound event webhooks. Carina POSTs JSON payloads when events fire. Actions: subscribe, list, unsubscribe, test.',
   parameters: {

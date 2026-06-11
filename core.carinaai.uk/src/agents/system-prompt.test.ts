@@ -1,39 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { buildSurfaceContext } from './system-prompt.js';
 
-describe('system-prompt', () => {
-  const originalPacks = process.env.ACTIVE_SKILL_PACKS;
-
-  beforeEach(() => {
-    vi.resetModules();
+describe('buildSurfaceContext', () => {
+  it('gives web UI guidance for configuration questions', () => {
+    const ctx = buildSurfaceContext('web');
+    expect(ctx).toContain('Current surface: web UI.');
+    expect(ctx).toContain('For skill packs, open /packs in the web UI');
+    expect(ctx).toContain('Only mention CLI commands');
   });
 
-  afterEach(() => {
-    if (originalPacks === undefined) {
-      delete process.env.ACTIVE_SKILL_PACKS;
-    } else {
-      process.env.ACTIVE_SKILL_PACKS = originalPacks;
-    }
-  });
-
-  it('always describes Carina as general-purpose', async () => {
-    delete process.env.ACTIVE_SKILL_PACKS;
-    const { CARINA_BASE_SYSTEM_PROMPT } = await import('./system-prompt.js');
-    expect(CARINA_BASE_SYSTEM_PROMPT).toContain('general-purpose');
-    expect(CARINA_BASE_SYSTEM_PROMPT).toContain('horizontal agent platform');
-  });
-
-  it('adds optional pack context only when packs are enabled', async () => {
-    process.env.ACTIVE_SKILL_PACKS = 'property-uk';
-    const { buildSystemPromptParts } = await import('./system-prompt.js');
-    const parts = buildSystemPromptParts();
-    expect(parts[0]).toContain('general-purpose');
-    expect(parts.join('\n')).toContain('Optional skill packs enabled');
-    expect(parts.join('\n')).toContain('property-uk');
-  });
-
-  it('omits pack context with no active packs', async () => {
-    delete process.env.ACTIVE_SKILL_PACKS;
-    const { buildOptionalPackContext } = await import('./system-prompt.js');
-    expect(buildOptionalPackContext()).toBe('');
+  it('gives CLI guidance for command-line questions', () => {
+    const ctx = buildSurfaceContext('cli');
+    expect(ctx).toContain('Current surface: CLI.');
+    expect(ctx).toContain('prefer command-line steps');
   });
 });

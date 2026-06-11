@@ -1,0 +1,127 @@
+<% title = 'Skill Packs' %>
+<div class="max-w-4xl">
+  <div class="flex justify-between items-start gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Skill Packs</h1>
+      <p class="text-gray-400 text-sm mt-1">
+        Enable or disable Carina skill packs for core. Saved to the persistent operator store; no .env edit required.
+      </p>
+    </div>
+    <a href="<%= carinaApiUrl %>/packs" target="_blank" rel="noopener"
+       class="text-sm text-[#22c55e] hover:underline shrink-0">Open core /packs</a>
+  </div>
+
+  <% if (error) { %>
+    <div class="mb-4 rounded-lg border border-red-800 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+      <%= error %>
+      <% if (!paired) { %>
+        <div class="mt-2"><a href="/settings" class="text-[#22c55e] hover:underline">Go to Settings</a></div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (saved) { %>
+    <div class="mb-4 rounded-lg border border-green-800 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+      Skill pack selection saved. Core picked up the change immediately.
+    </div>
+  <% } %>
+
+  <% if (lastChange) { %>
+    <div class="mb-4 text-xs text-gray-500">
+      Last update: <%= new Date(lastChange.created_at).toLocaleString() %>
+      by <%= lastChange.actor %> via <%= lastChange.source %>
+    </div>
+  <% } %>
+
+  <% if (paired && available.length) { %>
+    <form method="post" action="/packs" class="space-y-4">
+      <div class="border border-[#2a2a2a] rounded-lg overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-[#1a1a1a] text-gray-400 text-left">
+            <tr>
+              <th class="p-3 w-16">On</th>
+              <th class="p-3">Pack</th>
+              <th class="p-3">Description</th>
+              <th class="p-3">Skills</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const pack of available) { %>
+              <tr class="border-t border-[#2a2a2a] hover:bg-[#1a1a1a]">
+                <td class="p-3 align-top">
+                  <input type="checkbox" name="packs" value="<%= pack.name %>"
+                         <%= active.has(pack.name) ? 'checked' : '' %>
+                         class="rounded border-[#2a2a2a] bg-[#0f0f0f]">
+                </td>
+                <td class="p-3 align-top">
+                  <div class="font-medium text-white"><%= pack.name %></div>
+                  <div class="text-xs text-gray-500"><%= pack.category || 'general' %> · v<%= pack.version %></div>
+                </td>
+                <td class="p-3 align-top text-gray-400"><%= pack.description %></td>
+                <td class="p-3 align-top text-gray-500"><%= pack.skillCount ?? 0 %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center gap-3">
+        <button type="submit"
+                class="bg-[#22c55e] text-black px-4 py-2 rounded font-medium text-sm hover:opacity-90">
+          Save active packs
+        </button>
+        <span class="text-xs text-gray-500">Uncheck all for general-purpose mode (no optional packs).</span>
+      </div>
+    </form>
+  <% } else if (paired && !available.length) { %>
+    <p class="text-gray-500">No bundled skill packs reported by core.</p>
+  <% } %>
+
+  <% if (audit.length) { %>
+    <div class="mt-8">
+      <h2 class="text-sm font-semibold text-gray-300 mb-2">Recent changes</h2>
+      <div class="border border-[#2a2a2a] rounded-lg divide-y divide-[#2a2a2a] text-xs">
+        <% for (const entry of audit) { %>
+          <div class="p-3 text-gray-400">
+            <div class="text-gray-300">
+              <%= new Date(entry.created_at).toLocaleString() %>
+              · <%= entry.actor %> · <%= entry.source %>
+            </div>
+            <div class="mt-1">
+              <% if (entry.packs_before.length) { %>
+                <span class="text-gray-500">Before:</span> <%= entry.packs_before.join(', ') %>
+              <% } else { %>
+                <span class="text-gray-500">Before:</span> (none)
+              <% } %>
+            </div>
+            <div>
+              <% if (entry.packs_after.length) { %>
+                <span class="text-gray-500">After:</span> <%= entry.packs_after.join(', ') %>
+              <% } else { %>
+                <span class="text-gray-500">After:</span> (none)
+              <% } %>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+
+  <% if (paired && evalReports && evalReports.length) { %>
+    <div class="mt-8">
+      <h2 class="text-sm font-semibold text-gray-300 mb-2">Recent skill eval runs</h2>
+      <p class="text-xs text-gray-500 mb-2">Offline harness only; does not affect chat latency.</p>
+      <div class="border border-[#2a2a2a] rounded-lg divide-y divide-[#2a2a2a] text-xs">
+        <% for (const report of evalReports) { %>
+          <div class="p-3 text-gray-400 flex justify-between gap-4">
+            <div>
+              <span class="text-gray-300"><%= report.pack %></span>
+              · <%= (report.passRate * 100).toFixed(0) %>% pass
+              · <span class="text-gray-500"><%= new Date(report.generatedAt).toLocaleString() %></span>
+            </div>
+            <code class="text-gray-500 shrink-0"><%= report.runId.slice(0, 8) %></code>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+</div>

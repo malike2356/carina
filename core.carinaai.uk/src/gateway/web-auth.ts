@@ -1,7 +1,21 @@
 import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { getUserProfile } from '../api/hosted-auth.js';
+import { isControlAuthorized } from '../infrastructure/control-auth.js';
 import { isHostedRequest } from './hosted-domain.js';
+
+const OPS_API_PATHS = new Set([
+  '/api/health',
+  '/api/providers',
+  '/api/config',
+  '/api/ops/health',
+]);
+
+export function isOpsMachineApiPath(path: string, method: string): boolean {
+  if (OPS_API_PATHS.has(path)) return true;
+  if (path.startsWith('/api/ops/')) return true;
+  return path === '/api/chat/stream' && method === 'GET';
+}
 
 const PUBLIC_HOSTED_PATHS = new Set([
   '/hosted-login',
@@ -17,6 +31,12 @@ export function isPublicHostedPath(path: string): boolean {
 }
 
 export async function requireWebAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  // Ops bearer must work on any host (127.0.0.1, docker internal, etc.) when HOSTED_MODE is on.
+  if (isOpsMachineApiPath(req.path, req.method) && isControlAuthorized(req)) {
+    next();
+    return;
+  }
+
   if (isHostedRequest(req.hostname)) {
     if (isPublicHostedPath(req.path)) {
       next();

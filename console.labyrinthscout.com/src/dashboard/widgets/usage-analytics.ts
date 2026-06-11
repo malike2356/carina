@@ -8,6 +8,9 @@ export interface UsageAnalyticsSummary {
   limit: number;
   percentage: number;
   window: '24h';
+  /** Not billing-grade; derived from event metadata heuristics. */
+  estimated: true;
+  label: string;
 }
 
 export function buildUsageAnalytics(
@@ -21,6 +24,8 @@ export function buildUsageAnalytics(
     limit: safeLimit,
     percentage: Math.min(100, Math.round((used / safeLimit) * 100)),
     window: '24h',
+    estimated: true,
+    label: 'Estimated from event metadata; not billing-grade usage',
   };
 }
 

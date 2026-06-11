@@ -28,6 +28,8 @@ async function discordApi(
 
 export const discordAdminTool: Tool = {
   name: 'discord-admin',
+  dangerous: true,
+  requiresConfirmation: true,
   description: 'Discord server administration: list channels, members, roles, pin messages, manage threads.',
   parameters: {
     type: 'object',

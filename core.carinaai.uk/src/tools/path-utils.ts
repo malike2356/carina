@@ -4,12 +4,20 @@ import { CARINA_RESOURCES_DIR } from '../config/paths.js';
 
 const BLOCKED_PREFIXES = ['/etc', '/usr', '/bin', '/sys', '/proc'];
 
+export function resolveWorkspacePath(raw: string): string {
+  const expanded = expandPath(raw);
+  if (path.isAbsolute(expanded)) return expanded;
+  const root = process.env.CARINA_AGENT_WORKSPACE;
+  if (root) return path.join(root, expanded);
+  return path.resolve(expanded);
+}
+
 export function resolveResourcePath(raw: string): string {
   if (raw.startsWith('@resources/') || raw.startsWith('resources://')) {
     const rel = raw.replace(/^@resources\//, '').replace(/^resources:\/\//, '');
     return path.join(CARINA_RESOURCES_DIR, rel);
   }
-  return expandPath(raw);
+  return resolveWorkspacePath(raw);
 }
 
 export function expandPath(raw: string): string {

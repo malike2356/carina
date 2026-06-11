@@ -17,7 +17,7 @@ function parseTarget(value: unknown): MemoryTarget {
 export const memoryTool: Tool = {
   name: 'memory',
   description:
-    'Save durable information across sessions. Actions: add, replace, remove. Targets: user (profile, 1375 chars max), memory (agent notes, 2200 chars max). Injected into every future turn.',
+    'Save durable long-term information across sessions. Actions: add, replace, remove. Targets: user (profile, 1375 chars max), memory (agent notes, 2200 chars max). High-value short-term episodes may also be proposed via REM (see DREAMS.md).',
   parameters: {
     type: 'object',
     properties: {

@@ -4,6 +4,7 @@ import { llm } from '../brain/llm.js';
 import { getUserProfile } from '../api/hosted-auth.js';
 import { scoutServiceUrl } from '../billing/tenant-scout.js';
 import { isHostedRequest } from './hosted-domain.js';
+import { getActivePackNames } from '../skills/index.js';
 
 export type WebContextResponse = {
   mode: 'operator' | 'hosted';
@@ -30,7 +31,7 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
     activeProvider = '';
   }
 
-  const packs = config.carina.activePacks;
+  const packs = getActivePackNames();
   const activeSkillPack = config.carina.activePack || packs[0] || null;
   const scoutAvailable = Boolean(config.labyrinth.apiKey && scoutServiceUrl());
   const mode: WebContextResponse['mode'] = isHostedRequest(req.hostname) ? 'hosted' : 'operator';

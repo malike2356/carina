@@ -74,6 +74,7 @@ export const homeassistantTool: Tool = {
 
 export const xPostTool: Tool = {
   name: 'x-post',
+  dangerous: true,
   description: 'Post a tweet to X/Twitter. Requires X_BEARER_TOKEN and X_API_KEY/X_API_SECRET or OAuth user context.',
   parameters: {
     type: 'object',

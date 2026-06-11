@@ -7,6 +7,8 @@ const OUTPUT_DIR = 'data/generated-videos';
 
 export const videoGenerationTool: Tool = {
   name: 'video-generation',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Generate video content. When no video API is configured, produces a storyboard image sequence plan and a keyframe image via DALL-E.',
   parameters: {

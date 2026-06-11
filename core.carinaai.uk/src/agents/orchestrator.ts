@@ -2,6 +2,13 @@ import { llm } from '../brain/llm.js';
 import { classifyComplexity } from '../brain/task-classifier.js';
 import { saveMemory } from '../memory/store.js';
 import { evaluateAndWriteSkill } from '../skills/auto-writer.js';
+import { getActiveProfileName } from '../profiles/manager.js';
+import {
+  classifyTurnBucket,
+  hashUserMessage,
+  recordTurn,
+  type TurnLogEntry,
+} from '../telemetry/turn-log.js';
 import { CarinaAgent, type TurnEvent } from './carina.js';
 import { CodingAgent } from './coding-agent.js';
 import { CommunicationAgent } from './communication-agent.js';
@@ -48,6 +55,7 @@ export class CarinaOrchestrator {
   private memoryReady: boolean;
   private confirmTool?: ConfirmFn;
   private providerOverride?: ProviderOverride;
+  private platform: string;
 
   constructor(
     sessionId: string,
@@ -58,6 +66,7 @@ export class CarinaOrchestrator {
     this.sessionId = sessionId;
     this.memoryReady = memoryReady;
     this.confirmTool = confirmTool;
+    this.platform = options.platform ?? 'cli';
     this.agent = new CarinaAgent(sessionId, memoryReady, confirmTool, options);
   }
 
@@ -82,10 +91,13 @@ export class CarinaOrchestrator {
     const text = userMessage.trim().toLowerCase();
     if (!text) return null;
     if (/^(hi|hello|hey|yo|good (morning|afternoon|evening))\b/.test(text)) {
-      return 'Carina.';
+      return 'Hi.';
     }
     if (/\bwhat can you do\b|\bhelp\b|\bcapabilit(y|ies)\b/.test(text)) {
       return 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.';
+    }
+    if (/\bwhich provider\b|\bwhat model\b|\bcurrent provider\b/.test(text)) {
+      return `Provider: ${llm.current().name} (${llm.currentModel()}).`;
     }
     return null;
   }
@@ -111,55 +123,84 @@ export class CarinaOrchestrator {
   }
 
   async *turn(userMessage: string): AsyncGenerator<OrchestratorEvent> {
-    const quick = this.quickReply(userMessage);
-    if (quick) {
-      yield { type: 'text', content: quick };
-      return;
-    }
-
-    const complexity = classifyComplexity([{ role: 'user', content: userMessage, timestamp: new Date() }]);
-    const useFastMode = complexity === 'simple';
-    this.agent.setFastMode(useFastMode);
-
-    const plan = useFastMode
-      ? { singleAgent: true, steps: [] }
-      : await this.decompose(userMessage);
+    const started = Date.now();
+    const logState: {
+      path: TurnLogEntry['path'];
+      complexity: TurnLogEntry['complexity'];
+      fastMode: boolean;
+      responseText: string;
+      toolsUsed: string[];
+      toolCallLog: string[];
+      error?: string;
+    } = {
+      path: 'single',
+      complexity: 'simple',
+      fastMode: false,
+      responseText: '',
+      toolsUsed: [],
+      toolCallLog: [],
+    };
 
     try {
+      const quick = this.quickReply(userMessage);
+      if (quick) {
+        logState.path = 'quick';
+        logState.fastMode = true;
+        logState.responseText = quick;
+        yield { type: 'text', content: quick };
+        return;
+      }
+
+      const complexity = classifyComplexity([
+        { role: 'user', content: userMessage, timestamp: new Date() },
+      ]);
+      logState.complexity = complexity;
+      const useFastMode = complexity === 'simple';
+      logState.fastMode = useFastMode;
+      this.agent.setFastMode(useFastMode);
+
+      const plan = useFastMode
+        ? { singleAgent: true, steps: [] }
+        : await this.decompose(userMessage);
+
       if (plan.singleAgent || plan.steps.length === 0) {
-      const toolsUsed: string[] = [];
-      const toolCallLog: string[] = [];
+        const toolsUsed: string[] = [];
+        const toolCallLog: string[] = [];
 
-      for await (const event of this.agent.turn(userMessage)) {
-        yield event;
-        if (event.type === 'tool') {
-          const match = event.content.match(/\[using ([\w-]+)\.\.\.\]/);
-          if (match) toolsUsed.push(match[1]);
+        for await (const event of this.agent.turn(userMessage)) {
+          yield event;
+          if (event.type === 'tool') {
+            const match = event.content.match(/\[using ([\w-]+)\.\.\.\]/);
+            if (match) toolsUsed.push(match[1]!);
+          }
         }
+
+        const last = this.agent.getLastTurn();
+        toolsUsed.push(...last.toolsUsed);
+        toolCallLog.push(...last.toolCallLog);
+        logState.responseText = last.text;
+        logState.toolsUsed = [...new Set(toolsUsed)];
+        logState.toolCallLog = toolCallLog;
+
+        if (this.memoryReady) {
+          await evaluateAndWriteSkill({
+            userMessage,
+            response: last.text,
+            toolsUsed: logState.toolsUsed,
+            toolCallLog,
+            multiStep: false,
+          });
+        }
+        return;
       }
 
-      const last = this.agent.getLastTurn();
-      toolsUsed.push(...last.toolsUsed);
-      toolCallLog.push(...last.toolCallLog);
-
-      if (this.memoryReady) {
-        await evaluateAndWriteSkill({
-          userMessage,
-          response: last.text,
-          toolsUsed: [...new Set(toolsUsed)],
-          toolCallLog,
-          multiStep: false,
-        });
-      }
-      return;
-    }
-
+      logState.path = 'multi';
       const stepOutputs = new Map<number, string>();
       const pending = new Set(plan.steps.map((_, i) => i));
 
       while (pending.size > 0) {
         const ready = [...pending].filter((idx) =>
-          plan.steps[idx].dependsOn.every((dep) => stepOutputs.has(dep)),
+          plan.steps[idx]!.dependsOn.every((dep) => stepOutputs.has(dep)),
         );
 
         if (ready.length === 0) {
@@ -168,7 +209,7 @@ export class CarinaOrchestrator {
 
         for (const idx of ready) {
           pending.delete(idx);
-          const step = plan.steps[idx];
+          const step = plan.steps[idx]!;
           yield {
             type: 'status',
             content: `[${step.agentType} agent working...]\n`,
@@ -177,7 +218,7 @@ export class CarinaOrchestrator {
 
         await Promise.all(
           ready.map(async (idx) => {
-            const step = plan.steps[idx];
+            const step = plan.steps[idx]!;
             const context = buildStepContext(step, stepOutputs);
             const result = await this.runStep(step, userMessage, context);
             stepOutputs.set(idx, result);
@@ -197,6 +238,9 @@ export class CarinaOrchestrator {
 
       const last = this.agent.getLastTurn();
       finalText = last.text || finalText;
+      logState.responseText = finalText;
+      logState.toolsUsed = last.toolsUsed;
+      logState.toolCallLog = last.toolCallLog;
 
       if (this.memoryReady) {
         await saveMemory(this.sessionId, 'user', userMessage);
@@ -209,8 +253,42 @@ export class CarinaOrchestrator {
           multiStep: true,
         });
       }
+    } catch (err) {
+      logState.error = err instanceof Error ? err.message : String(err);
+      throw err;
     } finally {
       this.agent.setFastMode(false);
+      try {
+        const latencyMs = Date.now() - started;
+        const toolErrors = countToolErrors(logState.toolCallLog);
+        const provider = llm.current().name;
+        const model = typeof llm.currentModel === 'function' ? llm.currentModel() : '';
+        void recordTurn({
+          sessionId: this.sessionId,
+          profile: process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default',
+          platform: this.platform,
+          provider,
+          model,
+          latencyMs,
+          fastMode: logState.fastMode,
+          complexity: logState.complexity,
+          path: logState.path,
+          toolsUsed: logState.toolsUsed,
+          toolErrors,
+          userMessageHash: hashUserMessage(userMessage),
+          messageLength: userMessage.length,
+          responseLength: logState.responseText.length,
+          bucket: classifyTurnBucket({
+            latencyMs,
+            toolErrors,
+            responseText: logState.responseText,
+            responseLength: logState.responseText.length,
+          }),
+          error: logState.error,
+        });
+      } catch {
+        // Telemetry must never affect chat turns.
+      }
     }
   }
 
@@ -276,6 +354,10 @@ Completed sub-task outputs:
 ${lines.join('\n\n---\n\n')}
 
 Provide the final answer. Do not mention internal agent delegation.`;
+}
+
+function countToolErrors(toolCallLog: string[]): number {
+  return toolCallLog.filter((line) => /"error"|error:/i.test(line)).length;
 }
 
 function parsePlanJson(text: string): TaskPlan | null {

@@ -55,8 +55,21 @@ export const config = {
   brave: {
     apiKey: process.env.BRAVE_SEARCH_API_KEY ?? '',
   },
+  tavily: {
+    apiKey: process.env.TAVILY_API_KEY ?? '',
+    searchDepth:
+      process.env.TAVILY_SEARCH_DEPTH === 'advanced' ? ('advanced' as const) : ('basic' as const),
+  },
+  search: {
+    provider: (() => {
+      const raw = (process.env.SEARCH_PROVIDER ?? 'tavily').trim().toLowerCase();
+      if (raw === 'brave' || raw === 'tavily') return raw;
+      return 'auto' as const;
+    })(),
+  },
   resend: {
     apiKey: process.env.RESEND_API_KEY ?? '',
+    webhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? '',
     from: 'Carina <hello@carinaai.uk>',
   },
   propertyData: {
@@ -143,6 +156,8 @@ export const config = {
       enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',
     },
     freeDailyMessages: 100,
+    bootstrapEmail: process.env.HOSTED_BOOTSTRAP_EMAIL ?? '',
+    bootstrapPassword: process.env.HOSTED_BOOTSTRAP_PASSWORD ?? '',
   },
   hub: {
     url: process.env.SKILLS_HUB_URL ?? 'https://skills.carinaai.uk',

@@ -1,0 +1,24 @@
+# Paths excluded when exporting core.carinaai.uk to the public carina-agent repo.
+# One pattern per line (rsync --exclude). Lines starting with # are ignored.
+
+.git/
+.agents/
+.codex/
+node_modules/
+dist/
+data/
+prompts/
+docs/
+CLAUDE.md
+deploy.sh
+docker-compose.verlox.yml
+.env
+.env.*
+!.env.example
+!.env.production.example
+.npmrc
+.npmrc.publish
+HESTIACP_CREDENTIALS.txt
+*.pem
+*.key
+pnpm-workspace.yaml

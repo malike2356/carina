@@ -1,5 +1,6 @@
 const DEFAULT_ALLOWED_DOMAINS = [
   'api.search.brave.com',
+  'api.tavily.com',
   'api.openai.com',
   'api.anthropic.com',
   'api.deepseek.com',

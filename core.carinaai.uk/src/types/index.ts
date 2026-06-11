@@ -13,6 +13,7 @@ export interface Message {
 export interface CarinaMessage {
   id: string;
   sessionId: string;
+  agentId?: string;
   tenantId?: string;
   content: string;
   source:
@@ -30,7 +31,10 @@ export interface CarinaMessage {
     | 'feishu'
     | 'wechat'
     | 'imessage'
-    | 'email';
+    | 'email'
+    | 'homeassistant'
+    | 'api'
+    | 'webhooks';
   timestamp: Date;
   chatType?: 'private' | 'group';
   mentioned?: boolean;
@@ -111,10 +115,15 @@ export interface TaskPlan {
 }
 
 export interface AgentOptions {
+  agentId?: string;
+  workspaceDir?: string;
   allowedTools?: string[];
+  /** Gateway channel or runtime surface (cli, telegram, web, ...). */
+  platform?: string;
   systemPromptSuffix?: string;
   maxTurns?: number;
   persistMemory?: boolean;
+  fastMode?: boolean;
   tenantId?: string;
   providerOverride?: {
     name: string;

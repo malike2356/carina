@@ -9,6 +9,8 @@ import type { McpServerConfig } from '../mcp/types.js';
 
 export const mcpTool: Tool = {
   name: 'mcp',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Connect to MCP (Model Context Protocol) servers and call their tools. Actions: connect, list, call, disconnect.',
   parameters: {

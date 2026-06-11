@@ -133,6 +133,34 @@ describe('AlertDispatcher', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('never throttles honeypot_triggered alerts', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [telegramChannel('info')] });
+    incrMock.mockResolvedValue(5);
+    const fetchMock = vi.mocked(fetch);
+
+    const { alertDispatcher } = await import('../dispatcher.js');
+    await alertDispatcher.dispatch(makeEvent({
+      severity: 'breach',
+      event_type: 'honeypot_triggered',
+    }));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it('never throttles stale_marker_detected alerts', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [telegramChannel('info')] });
+    incrMock.mockResolvedValue(9);
+    const fetchMock = vi.mocked(fetch);
+
+    const { alertDispatcher } = await import('../dispatcher.js');
+    await alertDispatcher.dispatch(makeEvent({
+      severity: 'critical',
+      event_type: 'stale_marker_detected',
+    }));
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it('dispatches breach events to channels with info threshold', async () => {
     queryMock.mockResolvedValueOnce({ rows: [telegramChannel('info')] });
     const fetchMock = vi.mocked(fetch);

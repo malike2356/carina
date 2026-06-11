@@ -1,6 +1,7 @@
 import type { IChannelAdapter, SendOptions, WebhookValidationInput } from '../channel-adapter.interface.js';
 import { parseGenericWebhook, restSend } from './rest-channel-helpers.js';
 import { formatForChannel } from '../channel-formatter.js';
+import { getRouter } from '../../router.js';
 
 export class SignalAdapter implements IChannelAdapter {
   readonly name = 'signal' as const;
@@ -49,4 +50,50 @@ export class SignalAdapter implements IChannelAdapter {
     const key = String(input.headers['x-api-key'] ?? input.headers['authorization'] ?? '');
     return key === this.apiKey || key === `Bearer ${this.apiKey}`;
   }
+
+  async start(): Promise<{ stop: () => void } | void> {
+    if (!this.enabled || !this.apiUrl || !this.number) return;
+    if (process.env.SIGNAL_POLL_ENABLED === 'false') return;
+
+    let running = true;
+    const poll = async (): Promise<void> => {
+      while (running) {
+        try {
+          const url = `${this.apiUrl.replace(/\/$/, '')}/v1/receive/${encodeURIComponent(this.number)}`;
+          const res = await fetch(url, {
+            headers: this.apiKey ? { 'X-Api-Key': this.apiKey } : {},
+            signal: AbortSignal.timeout(60_000),
+          });
+          if (!res.ok) {
+            await sleep(5000);
+            continue;
+          }
+          const payload = await res.json() as unknown;
+          const items = Array.isArray(payload) ? payload : [payload];
+          const gateway = getRouter();
+          for (const item of items) {
+            const inbound = this.parseInbound(item);
+            if (!inbound) continue;
+            const chunks: string[] = [];
+            for await (const chunk of gateway.handleInbound('signal', item)) {
+              chunks.push(chunk);
+            }
+            const reply = chunks.join('');
+            if (reply) {
+              await this.sendMessage(inbound.conversationId, reply);
+            }
+          }
+        } catch {
+          await sleep(5000);
+        }
+      }
+    };
+
+    void poll();
+    return { stop: () => { running = false; } };
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -20,11 +20,11 @@ Never commit `.env` or `~/.carina/.env`. API keys in git are a common breach vec
 
 ## Install (global)
 
-The global package is prepared as `carina-agent`. Use this path after the npm package has been published.
+Install from npm ([carina-agent@0.1.0](https://www.npmjs.com/package/carina-agent); Node.js 22+):
 
 ```bash
 npm install -g carina-agent
-carina
+carina setup
 ```
 
 On first run, Carina creates `~/.carina/` and runs the setup wizard if no env file exists.

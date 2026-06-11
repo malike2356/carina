@@ -27,19 +27,49 @@ export function classifyIncident(
   const type = eventType.toLowerCase();
   const text = `${type} ${description}`.toLowerCase();
 
-  if (/sandbox|escape|namespace|runtime/.test(text)) {
+  if (/sandbox|escape|namespace|runtime_violation|runtime_escape/.test(text)) {
     return 'type1';
   }
-  if (/injection|anomaly|reasoning|prompt|rag|poison|jailbreak|honeypot/.test(text)) {
+  if (/injection|prompt_injection|reasoning|rag_poison|jailbreak|honeypot_triggered/.test(text)) {
     return 'type3';
   }
-  if (/quarantine|egress|privilege|kill_switch|tool_block|blocked|suspend/.test(text)) {
+  if (/quarantine|egress_block|egress_blocked|privilege|kill_switch|tool_block|session_block|suspend/.test(text)) {
     return 'type2';
   }
-  if (severity === 'breach' || severity === 'critical') {
+  if (/anomaly|z_score/.test(text)) {
+    return 'type3';
+  }
+  if (severity === 'breach') {
+    return 'type3';
+  }
+  if (severity === 'critical' && /injection|egress|honeypot|danger/.test(text)) {
     return 'type3';
   }
   return 'other';
+}
+
+/** SQL filter mirroring classifyIncident priority for incident timeline queries. */
+export function incidentTypeSqlCondition(type: IncidentType, alias = 'e'): string | null {
+  if (type === 'other') return null;
+
+  const text = `LOWER(COALESCE(${alias}.event_type, '') || ' ' || COALESCE(${alias}.description, ''))`;
+  const severity = `${alias}.severity`;
+
+  if (type === 'type1') {
+    return `(${text} ~ 'sandbox|escape|namespace|runtime_violation|runtime_escape')`;
+  }
+  if (type === 'type2') {
+    return `(${text} ~ 'quarantine|egress_block|egress_blocked|privilege|kill_switch|tool_block|session_block|suspend')`;
+  }
+  if (type === 'type3') {
+    return `(
+      ${text} ~ 'injection|prompt_injection|reasoning|rag_poison|jailbreak|honeypot_triggered|anomaly|z_score'
+      OR ${severity} = 'breach'
+      OR (${severity} = 'critical' AND ${text} ~ 'injection|egress|honeypot|danger')
+    ) AND NOT (${text} ~ 'sandbox|escape|namespace|runtime_violation|runtime_escape')
+    AND NOT (${text} ~ 'quarantine|egress_block|egress_blocked|privilege|kill_switch|tool_block|session_block|suspend')`;
+  }
+  return null;
 }
 
 export function incidentLabel(type: IncidentType): string {

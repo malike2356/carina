@@ -358,7 +358,7 @@ Implementation notes:
 - An instance is "offline" if `secondsAgo > 90` regardless of stored status.
 - Stats query: count severity from `security_events WHERE created_at > NOW() - INTERVAL '24 hours'`.
 - Tool calls query: count from `security_events WHERE created_at > NOW() - INTERVAL '1 hour'`
-  and `event_type = 'tool_call'` and `metadata->>'tool_name' IN (the 6 tools)`. Returns 0 if
+  and `event_type = 'tool_call'`. Aggregate by `metadata->>'tool_name'` dynamically (Carina exposes 71+ tools; do not hardcode a fixed tool list). Returns 0 if
   no records for a tool.
 - Auth: requires `X-Scout-Key` header (handled by middleware in server.ts; no auth logic here).
 - Error: return 500 with `{ "error": "Database unavailable" }` if query fails.

@@ -13,7 +13,8 @@ Carina reads environment variables from `~/.carina/.env` (global CLI) or a proje
 | `GEMINI_API_KEY` | Recommended | - | Embeddings (`text-embedding-004`, 768 dims). From [aistudio.google.com](https://aistudio.google.com) |
 | `DATABASE_URL` | Yes (for memory) | `postgresql://localhost:5432/carina` | PostgreSQL with pgvector |
 | `REDIS_URL` | No | `redis://localhost:6379` | Session persistence; Scout kill-switch pub/sub |
-| `ACTIVE_SKILL_PACK` | No | `property-uk` | Skill pack loaded at startup |
+| `ACTIVE_SKILL_PACKS` | Comma-separated packs (e.g. `finance,legal-uk`). Leave empty for general-purpose mode. |
+| `ACTIVE_SKILL_PACK` | Legacy alias for a single pack name |
 | `SKILL_AUTO_WRITE` | No | enabled | Set to `false` to disable auto skill documents after complex tasks |
 | `CARINA_HOME` | No | `~/.carina` | Config and data directory |
 
@@ -21,7 +22,10 @@ Carina reads environment variables from `~/.carina/.env` (global CLI) or a proje
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `BRAVE_SEARCH_API_KEY` | For web-search | - | From [brave.com/search/api](https://brave.com/search/api) |
+| `TAVILY_API_KEY` | For web-search | - | Free tier at [tavily.com](https://tavily.com) (~1,000 credits/month) |
+| `SEARCH_PROVIDER` | No | `tavily` | `tavily`, `auto`, or `brave` (Brave is paid-only) |
+| `TAVILY_SEARCH_DEPTH` | No | `basic` | `basic` or `advanced` |
+| `BRAVE_SEARCH_API_KEY` | Optional paid fallback | - | Paid: [brave.com/search/api](https://brave.com/search/api) |
 | `RESEND_API_KEY` | For email tools | - | From [resend.com](https://resend.com) |
 | `PROPERTY_DATA_API_KEY` | For property-uk pack | - | PropertyData API (prices, yields, comparables) |
 | `LAND_REGISTRY_API_KEY` | For property-uk pack | - | Land Registry lookup tool |

@@ -38,7 +38,9 @@ import { killswitchRouter } from './api/killswitch-status.js';
 import { auditSearchRouter } from './api/audit-search.js';
 import { complianceRouter } from './api/compliance.js';
 import { publicTrustRouter } from './api/public-trust.js';
+import { readinessRouter } from './api/readiness.js';
 import { trustEnterpriseRouter } from './api/trust-enterprise.js';
+import { resolveScoutCorsOrigin } from './lib/cors.js';
 import { startScheduler } from './scheduler.js';
 import { startProxyServer } from './proxy/openai-proxy.js';
 
@@ -67,8 +69,16 @@ app.use(
   }),
 );
 
+const scoutCorsOrigin = process.env.SCOUT_CORS_ORIGIN
+  ?? (process.env.NODE_ENV === 'production' ? '' : '*');
+
 app.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = _req.headers.origin;
+  const allowedOrigin = resolveScoutCorsOrigin(scoutCorsOrigin, origin);
+  if (allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Scout-Key');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   if (_req.method === 'OPTIONS') {
@@ -120,6 +130,7 @@ app.use(express.static(PUBLIC));
 app.use('/account', accountRouter);
 app.use('/api/internal', requireProvisionSecret, provisionRouter);
 app.use('/api/public/trust', publicTrustRouter);
+app.use('/api/readiness', readinessRouter);
 
 app.use('/api/events', requireApiKey, eventsRouter);
 app.use('/api/heartbeat', requireApiKey, heartbeatRouter);

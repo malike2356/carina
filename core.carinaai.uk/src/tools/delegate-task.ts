@@ -107,6 +107,8 @@ async function runWithConcurrency<T>(
 export function createDelegateTaskTool(sessionId: string): Tool {
   return {
     name: 'delegate-task',
+    dangerous: true,
+    requiresConfirmation: true,
     description:
       'Spawn up to 3 parallel subagents with isolated contexts. Parent receives only final summaries. Modes: single (goal + context + toolsets) or batch (tasks array). Subagents cannot delegate further, ask questions, or use memory/email/cron.',
     parameters: {

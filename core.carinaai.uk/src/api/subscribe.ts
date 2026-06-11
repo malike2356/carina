@@ -28,7 +28,7 @@ subscribeRouter.post('/', async (req: Request, res: Response) => {
     } else {
       await resend.emails.send({
         from: config.resend.from,
-        to: 'hello@carinaai.uk',
+        to: 'contact@verlox.uk',
         subject: 'Skills Hub signup',
         text: `New Skills Hub notification signup: ${email}`,
       });

@@ -1,6 +1,7 @@
 import { pool } from '../db.js';
 import type { AlertSeverity } from '../alerts/types.js';
 import { decryptSecret, encryptSecret, maskSecret } from './secret-crypto.js';
+import { getPlatformSetting, setPlatformSetting } from './platform-settings.js';
 
 export type AlertChannelType = 'telegram' | 'email' | 'slack';
 
@@ -189,20 +190,15 @@ export async function loadDispatchChannels(severity: AlertSeverity): Promise<
 const PLATFORM_DASHBOARD_KEY = 'alert_dashboard_url';
 
 export async function getPlatformDashboardUrl(): Promise<string> {
-  const result = await pool.query<{ value: string }>(
-    `SELECT value FROM scout_platform_settings WHERE key = $1`,
-    [PLATFORM_DASHBOARD_KEY],
+  return (
+    (await getPlatformSetting(PLATFORM_DASHBOARD_KEY)) ||
+    process.env.SCOUT_DASHBOARD_URL ||
+    'https://console.labyrinthscout.com/dashboard'
   );
-  return result.rows[0]?.value || process.env.SCOUT_DASHBOARD_URL || 'https://console.labyrinthscout.com/dashboard';
 }
 
 export async function setPlatformDashboardUrl(url: string): Promise<void> {
   const trimmed = url.trim().replace(/\/+$/, '');
-  await pool.query(
-    `INSERT INTO scout_platform_settings (key, value, updated_at)
-     VALUES ($1, $2, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-    [PLATFORM_DASHBOARD_KEY, trimmed],
-  );
+  await setPlatformSetting(PLATFORM_DASHBOARD_KEY, trimmed);
   process.env.SCOUT_DASHBOARD_URL = trimmed;
 }

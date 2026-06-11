@@ -37,6 +37,14 @@ function rowToMemory(row: Record<string, unknown>): Memory {
 
 export const sqliteBackend: MemoryBackend = {
   name: 'sqlite',
+  displayName: 'SQLite',
+  description: 'Local file-backed episodic memory (no Postgres required)',
+  isConfigured() {
+    return true;
+  },
+  requiredEnv() {
+    return [];
+  },
   async saveMemory(sessionId, role, content) {
     getDb().prepare(
       'INSERT INTO episodic_memories (id, session_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -56,5 +64,11 @@ export const sqliteBackend: MemoryBackend = {
   },
   async clearSession(sessionId) {
     getDb().prepare('DELETE FROM episodic_memories WHERE session_id = ?').run(sessionId);
+  },
+  async listRecentMemories(limit) {
+    const rows = getDb().prepare(
+      'SELECT * FROM episodic_memories ORDER BY created_at DESC LIMIT ?',
+    ).all(limit) as Record<string, unknown>[];
+    return rows.map(rowToMemory);
   },
 };

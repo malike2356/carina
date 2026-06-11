@@ -6,6 +6,7 @@ import {
   setTenantProviderKey,
 } from '../brain/tenant-provider-keys.js';
 import { isOperatorHost } from '../gateway/hosted-domain.js';
+import { isControlAuthorized } from '../infrastructure/control-auth.js';
 
 type TenantRequest = Request & { tenantId?: string; hostedUser?: { id: string } };
 
@@ -27,6 +28,11 @@ async function tenantAuthMiddleware(
     return;
   }
   if (req.session?.webAuthed && isOperatorHost(req.hostname)) {
+    req.tenantId = OPERATOR_TENANT_ID;
+    next();
+    return;
+  }
+  if (isControlAuthorized(req)) {
     req.tenantId = OPERATOR_TENANT_ID;
     next();
     return;
@@ -60,7 +66,7 @@ export function tenantKeysRouter(): Router {
   const router = express.Router();
   router.use(tenantAuthMiddleware);
 
-  router.get('/api/tenant/providers', async (req: TenantRequest, res: Response) => {
+  router.get('/providers', async (req: TenantRequest, res: Response) => {
     const tenantId = req.tenantId;
     if (!tenantId) {
       res.status(401).json({ error: 'No tenant context' });
@@ -74,7 +80,7 @@ export function tenantKeysRouter(): Router {
     }
   });
 
-  router.post('/api/tenant/providers', express.json(), async (req: TenantRequest, res: Response) => {
+  router.post('/providers', express.json(), async (req: TenantRequest, res: Response) => {
     const tenantId = req.tenantId;
     if (!tenantId) {
       res.status(401).json({ error: 'No tenant context' });
@@ -98,7 +104,7 @@ export function tenantKeysRouter(): Router {
     }
   });
 
-  router.delete('/api/tenant/providers/:provider', async (req: TenantRequest, res: Response) => {
+  router.delete('/providers/:provider', async (req: TenantRequest, res: Response) => {
     const tenantId = req.tenantId;
     if (!tenantId) {
       res.status(401).json({ error: 'No tenant context' });

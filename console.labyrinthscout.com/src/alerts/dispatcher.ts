@@ -27,6 +27,16 @@ const ADAPTERS: Record<string, AlertAdapter> = {
 const DEDUP_WINDOW_SECONDS = 300;
 const DEDUP_MAX_ALERTS = 3;
 
+/** Security events that must always notify operators (never throttled). */
+export const NEVER_THROTTLE_EVENT_TYPES = new Set([
+  'honeypot_triggered',
+  'stale_marker_detected',
+  'repeated_injection_blocks',
+  'risk_score_spike',
+  'trust_attestation_failed',
+  'trust_verification_failed',
+]);
+
 interface AlertChannelRow {
   id: string;
   channel_type: string;
@@ -83,18 +93,19 @@ export const alertDispatcher = {
 
     const routedChannels = await loadChannelsForSeverity(event.severity);
 
-    // Throttle check: suppress duplicates within 5 minutes per tenant+severity+type
-    const throttleResult = await shouldSuppress(
-      event.instance_id,
-      event.severity,
-      event.event_type,
-    );
-
-    if (throttleResult.suppress) {
-      console.info(
-        `[AlertDispatcher] Throttled: ${event.event_type} on ${event.instance_id} (count=${throttleResult.aggregatedCount})`,
+    if (!NEVER_THROTTLE_EVENT_TYPES.has(event.event_type)) {
+      const throttleResult = await shouldSuppress(
+        event.instance_id,
+        event.severity,
+        event.event_type,
       );
-      return;
+
+      if (throttleResult.suppress) {
+        console.info(
+          `[AlertDispatcher] Throttled: ${event.event_type} on ${event.instance_id} (count=${throttleResult.aggregatedCount})`,
+        );
+        return;
+      }
     }
 
     // Schedule escalation for critical/breach alerts
@@ -162,7 +173,7 @@ async function loadChannelsForSeverity(severity: AlertSeverity): Promise<AlertCh
 
 async function dispatchToChannel(event: SecurityEvent, channel: AlertChannel): Promise<void> {
   const redis = getRedis();
-  if (redis) {
+  if (redis && !NEVER_THROTTLE_EVENT_TYPES.has(event.event_type)) {
     const key = `scout:alert-dedup:${event.instance_id}:${event.event_type}`;
     const count = await redis.incr(key);
     if (count === 1) {

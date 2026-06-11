@@ -23,10 +23,12 @@
       <% const links = [
         { href: '/', label: 'Dashboard', match: (p) => p === '/' },
         { href: '/tenants', label: 'Tenants', match: (p) => p.startsWith('/tenants') },
+        { href: '/subscriptions', label: 'Subscriptions', match: (p) => p.startsWith('/subscriptions') },
         { href: '/security', label: 'Security', match: (p) => p.startsWith('/security') },
         { href: '/chat', label: 'Chat', match: (p) => p.startsWith('/chat') },
         { href: '/memories', label: 'Memories', match: (p) => p.startsWith('/memories') },
         { href: '/skills', label: 'Skills', match: (p) => p.startsWith('/skills') },
+        { href: '/packs', label: 'Skill Packs', match: (p) => p.startsWith('/packs') },
         { href: '/rag', label: 'RAG Corpus', match: (p) => p.startsWith('/rag') },
         { href: '/projects', label: 'Projects', match: (p) => p.startsWith('/projects') },
         { href: '/settings', label: 'Settings', match: (p) => p.startsWith('/settings') },

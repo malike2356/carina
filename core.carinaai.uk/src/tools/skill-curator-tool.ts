@@ -6,11 +6,14 @@ import {
   pruneStaleSkills,
   restoreSkill,
 } from '../skills/curator.js';
+import { buildCuratorReviewReport } from '../skills/curator-report.js';
 
 export const skillCuratorTool: Tool = {
   name: 'skill-curator',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
-    'Skill curator lifecycle. Actions: list, archive, restore, prune, curate.',
+    'Skill curator lifecycle. Actions: list, archive, restore, prune, curate, report.',
   parameters: {
     type: 'object',
     properties: {
@@ -56,6 +59,13 @@ export const skillCuratorTool: Tool = {
         dryRun: Boolean(params.dry_run),
         minUsage: params.min_usage != null ? Number(params.min_usage) : undefined,
         maxAgeDays: params.max_age_days != null ? Number(params.max_age_days) : undefined,
+      });
+    }
+
+    if (action === 'report') {
+      return buildCuratorReviewReport({
+        maxAgeDays: params.max_age_days != null ? Number(params.max_age_days) : undefined,
+        minUsage: params.min_usage != null ? Number(params.min_usage) : undefined,
       });
     }
 

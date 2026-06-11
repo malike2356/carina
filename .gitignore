@@ -11,9 +11,11 @@ dist/
 
 # Environment — never commit
 .env
+.env.bak-*
 laravel/.env
 laravel/.env.*.local
 *.env.local
+instructions/operator-trust-log.md
 
 # Runtime data
 data/memories/
@@ -21,6 +23,8 @@ data/logs/
 data/hub-packs/
 
 # Secrets and certs
+.npmrc.publish
+**/.npmrc.publish
 docker/nginx/ssl/
 /etc/carina/
 *.pem

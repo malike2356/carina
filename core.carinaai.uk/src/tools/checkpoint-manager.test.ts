@@ -4,21 +4,22 @@ import os from 'os';
 import path from 'path';
 import { checkpointManagerTool } from './checkpoint-manager.js';
 
-let tmpDir: string;
+let tmpHome: string;
 
-async function setup(): Promise<string> {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'carina-checkpoint-test-'));
-  return tmpDir;
+async function setup(): Promise<void> {
+  tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), 'carina-checkpoint-test-'));
+  process.env.CARINA_HOME = tmpHome;
 }
 
 afterEach(async () => {
-  if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true });
+  delete process.env.CARINA_HOME;
+  if (tmpHome) await fs.rm(tmpHome, { recursive: true, force: true });
 });
 
 describe('checkpoint-manager', () => {
   it('creates and lists a checkpoint', async () => {
     await setup();
-    const file = path.join(tmpDir, 'sample.txt');
+    const file = path.join(tmpHome, 'sample.txt');
     await fs.writeFile(file, 'checkpoint me');
 
     const created = await checkpointManagerTool.execute({
@@ -36,7 +37,7 @@ describe('checkpoint-manager', () => {
 
   it('restores a checkpoint', async () => {
     await setup();
-    const file = path.join(tmpDir, 'restore.txt');
+    const file = path.join(tmpHome, 'restore.txt');
     await fs.writeFile(file, 'original');
 
     const created = await checkpointManagerTool.execute({

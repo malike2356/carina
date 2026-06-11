@@ -1,5 +1,14 @@
 import { Router } from 'express';
 import { query } from '../lib/db.js';
+import {
+  buildMemoriesQuery,
+  memoriesOrderBy,
+  memorySortArrow,
+  nextSortDir,
+  parseMemorySort,
+  parseSortDir,
+  type MemorySortColumn,
+} from '../lib/list-sort.js';
 
 export const memoriesRouter = Router();
 
@@ -10,6 +19,8 @@ memoriesRouter.get('/', async (req, res) => {
   const search = String(req.query.q ?? '').trim();
   const role = String(req.query.role ?? 'all');
   const sessionFilter = String(req.query.session ?? '').trim();
+  const sortBy = parseMemorySort(req.query.sort);
+  const sortDir = parseSortDir(req.query.dir);
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -45,11 +56,12 @@ memoriesRouter.get('/', async (req, res) => {
       role: string;
       content: string;
       created_at: Date;
+      updated_at: Date | null;
     }>(
-      `SELECT id, session_id, role, content, created_at
+      `SELECT id, session_id, role, content, created_at, updated_at
        FROM episodic_memories
        ${where}
-       ORDER BY created_at DESC
+       ORDER BY ${memoriesOrderBy(sortBy, sortDir)}
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       listParams,
     );
@@ -62,6 +74,27 @@ memoriesRouter.get('/', async (req, res) => {
       search,
       role,
       sessionFilter,
+      sortBy,
+      sortDir,
+      sortArrow: memorySortArrow,
+      sortLink: (column: MemorySortColumn) =>
+        buildMemoriesQuery({
+          page: 1,
+          q: search,
+          role,
+          session: sessionFilter,
+          sort: column,
+          dir: nextSortDir(sortBy, sortDir, column),
+        }),
+      pageLink: (targetPage: number) =>
+        buildMemoriesQuery({
+          page: targetPage,
+          q: search,
+          role,
+          session: sessionFilter,
+          sort: sortBy,
+          dir: sortDir,
+        }),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

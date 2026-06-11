@@ -12,7 +12,7 @@ This page is the full reference for tenants. VERLOX operators should also read `
 |---|---|---|
 | [app.carinaai.uk](https://app.carinaai.uk) | Every cloud tenant | Chat, settings, billing, Scout security |
 | [carinaai.uk](https://carinaai.uk) | Prospects | Marketing, [full docs](https://carinaai.uk/docs/), trust page |
-| [console.labyrinthscout.com](https://console.labyrinthscout.com) | Scout subscribers | Standalone Scout console (optional; cloud Pro includes Scout in-app) |
+| Scout console (private URL) | Scout subscribers | Standalone Scout console; URL emailed at provisioning (cloud Pro includes Scout in-app) |
 | [core.carinaai.uk](https://core.carinaai.uk) | VERLOX only | Private operator Carina instance (not tenant admin) |
 | ops.carinaai.uk (port 4000) | VERLOX only | Internal platform admin; never shipped to customers |
 
@@ -108,7 +108,7 @@ Use the same key to connect a **self-hosted** Carina install to the same Scout a
 
 ```env
 LABYRINTH_ENABLED=true
-LABYRINTH_URL=https://console.labyrinthscout.com
+LABYRINTH_URL=<your Scout console URL from provisioning email>
 LABYRINTH_API_KEY=scout_live_...
 LABYRINTH_INSTANCE_ID=my-laptop-carina
 LABYRINTH_INSTANCE_NAME=Carina (my-laptop)
@@ -196,7 +196,7 @@ On-chain attestations (ERC-8004 / ERC-8126) are planned for hosted tenants and r
 
 | | Carina Cloud | Self-hosted |
 |---|---|---|
-| Install | None (browser) | `npm i -g carina-agent` after npm publish, Docker, or bare metal |
+| Install | None (browser) | `npm install -g carina-agent`, Docker, or bare metal |
 | Inference keys | BYOK in Settings | Your `.env` |
 | Scout | Included on Pro; `/security` + `/dashboard` | Pair via wizard or `.env`; optional [Labyrinth Scout](/security/labyrinth-scout) subscription |
 | Data location | VERLOX Postgres (tenant schema) | Your infrastructure |
@@ -220,7 +220,7 @@ CARINA_OPERATOR_HOSTS=core.carinaai.uk
 STRIPE_SECRET_KEY=sk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PRO_PRICE_ID=price_...
-LABYRINTH_URL=https://console.labyrinthscout.com
+LABYRINTH_URL=<your Scout console URL from provisioning email>
 SCOUT_PROVISION_SECRET=<shared with Scout>
 ```
 

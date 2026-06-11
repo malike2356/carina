@@ -248,6 +248,21 @@ CREATE TABLE IF NOT EXISTS pack_config (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (tenant_id, pack_name)
 );
+CREATE TABLE IF NOT EXISTS operator_pack_audit (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor TEXT NOT NULL DEFAULT 'unknown',
+  source TEXT NOT NULL DEFAULT 'ops',
+  packs_before TEXT[] NOT NULL DEFAULT '{}',
+  packs_after TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS operator_pack_audit_created_idx
+  ON operator_pack_audit (created_at DESC);
+`;
+
+const PACKS_META_MIGRATION = `
+ALTER TABLE installed_packs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE installed_packs ADD COLUMN IF NOT EXISTS updated_by TEXT DEFAULT 'system';
 `;
 
 const MEMORY_ADMIN_MIGRATION = `
@@ -351,6 +366,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(PACKS_MIGRATION);
   } catch {
     // tables may already exist
+  }
+  try {
+    await client.query(PACKS_META_MIGRATION);
+  } catch {
+    // columns may already exist
   }
   try {
     await client.query(MEMORY_ADMIN_MIGRATION);

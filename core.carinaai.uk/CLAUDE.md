@@ -9,13 +9,17 @@ Carina-ai/
 │
 ├── src/                    CARINA AGENT - Node.js/TypeScript autonomous AI agent
 │   ├── agents/             CarinaAgent, CarinaOrchestrator, sub-agents
-│   ├── brain/              LLMRouter (DeepSeek, Claude, OpenAI), message formatters
+│   ├── brain/              LLMRouter (23 providers), credential pools, task classifier
 │   ├── config/             Central config, env loading, path constants
-│   ├── gateway/            CLI, Web (SSE), Telegram, WhatsApp gateways
-│   ├── memory/             PostgreSQL pool, migrations, episodic store, pgvector RAG
-│   ├── security/           Scout client (Labyrinth integration), kill switch listener
-│   ├── skills/             Skill store, auto-writer, ingestion, property pack
-│   ├── tools/              6 tools: web-search, file, shell, http, email, code-exec
+│   ├── gateway/            18 channel adapters, web UI, router, ACP/IDE hooks
+│   ├── memory/             Pluggable backends, episodic store, REM, pgvector RAG
+│   ├── security/           Scout client, prompt guard, kill switch listener
+│   ├── skills/             16 packs, hub, auto-writer, curator
+│   ├── tools/              71 tools across toolsets (registry + browser, MCP, etc.)
+│   ├── commitments/        Inferred follow-up memories (opt-in)
+│   ├── workspaces/         Named agent workspaces and routing
+│   ├── ops/                Sandbox, DNS, proxy, backup, secrets, audit
+│   ├── infrastructure/     Host service, device pairing, control auth
 │   ├── api/                Hosted mode auth, email webhook, subscribe, Skills Hub
 │   ├── setup/              First-run wizard, pack installer
 │   └── types/              Shared TypeScript interfaces
@@ -31,12 +35,10 @@ Carina-ai/
 │   ├── lib/                DB helpers, Scout proxy helper, project store
 │   └── prompts/            01-security-tab.md, 02-chat-tab-fix.md
 │
-├── console.labyrinthscout.com/         LABYRINTH SCOUT SERVER - to be built by Cursor
-│   ├── src/                (built by Cursor using prompts below)
-│   ├── public/             dashboard.html goes here
-│   └── prompts/            12 Cursor build prompts (01-dashboard.md ... 12-sdk.md)
-│                           + LABYRINTH SCOUT .md (full spec)
-│                           + PLAN_ADDENDUM.md (corrections)
+├── console.labyrinthscout.com/         LABYRINTH SCOUT SERVER - built and shipped
+│   ├── src/                    Server code, trust API, account system
+│   ├── public/                 Dashboard HTML
+│   └── prompts/                Build prompts (01-dashboard.md through 12-sdk.md)
 │
 ├── labyrinthscout.com/     SCOUT MARKETING SITE
 │   └── index.html          labyrinthscout.com landing page (+ style.css, app.js)
@@ -44,7 +46,7 @@ Carina-ai/
 ├── carinaai.uk/            CARINA MARKETING SITE - carinaai.uk landing page
 │   └── index.html, style.css, app.js
 │
-├── docs/                   VITEPRESS DOCS - docs.carinaai.uk
+├── docs/                   LEGACY VITEPRESS (see docs.carinaai.uk/)
 ├── prompts/                CARINA BUILD PROMPTS ONLY
 │   ├── project-prompt.md   Master context for Carina
 │   └── phase-*.md          Build phase specs (all 5 phases complete)
@@ -76,7 +78,7 @@ Carina-ai/
 |---|---|---|---|
 | Carina agent | `src/` | 3333 (local), 3000 (prod) | Built - all 5 phases complete |
 | Platform admin | `ops.carinaai.uk/` | 4000 | VERLOX private - needs Security + Chat tabs |
-| Labyrinth Scout | `console.labyrinthscout.com/` | 4444 | Scaffold - build with ../console.labyrinthscout.com/prompts/ |
+| Labyrinth Scout | `console.labyrinthscout.com/` | 4444 | Built - trust API, dashboard, accounts |
 
 ## How Carina and Scout Communicate
 
@@ -92,12 +94,12 @@ Scout is optional. `LABYRINTH_ENABLED=false` means zero Scout integration - Cari
 | Layer | Technology |
 |---|---|
 | Carina runtime | Node.js 22 LTS + TypeScript 5 |
-| LLM primary | DeepSeek (cost) with Claude + OpenAI fallback |
+| LLM | 23 providers; DeepSeek default with fallback chain; Ollama/LM Studio optional |
 | Embeddings | Gemini text-embedding-004 (768 dims) with OpenAI fallback |
 | Memory DB | PostgreSQL 16 + pgvector |
 | Cache / sessions | Redis 7 |
 | Package manager | pnpm |
-| Testing | Vitest (62 tests passing) |
+| Testing | Vitest (5,369 tests, 125 files) |
 | Email outbound | Resend (hello@carinaai.uk verified) |
 | Domain | carinaai.uk on Cloudflare, wildcard DNS to Contabo VPS 80.190.81.208 |
 
@@ -107,7 +109,7 @@ Scout is optional. `LABYRINTH_ENABLED=false` means zero Scout integration - Cari
 # Carina agent
 pnpm cli              # Run CLI (port 3333 - other projects own 3000)
 pnpm dev              # tsx watch
-pnpm test             # Vitest (62 tests)
+pnpm test             # Vitest (5,369 tests)
 pnpm build            # Compile to dist/
 pnpm ingest           # Ingest property-uk RAG from archive/property-saas-spec/
 pnpm hub              # Skills Hub server
@@ -115,11 +117,11 @@ pnpm hub              # Skills Hub server
 # Admin panel
 pnpm admin            # ops.carinaai.uk on http://localhost:4000
 
-# Scout (once built)
-cd labyrinthscout && pnpm dev    # Scout on http://localhost:4444
+# Scout (console.labyrinthscout.com)
+cd ../console.labyrinthscout.com && pnpm dev    # Scout on http://localhost:4444
 
-# Docs
-pnpm docs:dev         # VitePress dev server
+# Docs (canonical)
+cd ../docs.carinaai.uk && pnpm start       # Docusaurus at docs.carinaai.uk
 
 # Deployment
 bash deploy.sh        # Deploy to VPS
@@ -148,6 +150,8 @@ bash deploy.sh        # Deploy to VPS
 - `.env.production.example` - Full production template with all vars documented
 - `ops.carinaai.uk/.env` - Admin panel config (password: changeme, port 4000)
 
-## Building Labyrinth Scout
+## Verified product metrics (2026-06-10)
 
-Prompts are at `labyrinthscout.com/prompts/`. Start with `01-dashboard.md`, paste into Cursor, return code for review, then proceed to `02-scout-server.md`. Build in order - each prompt builds on the previous.
+Run from `core.carinaai.uk`: `pnpm test` (5,369), `provider-registry.ts` (23 providers), `completion-metadata.ts` CHANNEL_NAMES (18 adapters), `TOOLSET_MAP` (71 tools), 16 packs / 96 curated skills in `src/skills/packs/`, 49 CLI commands.
+
+See `instructions/build-plan/COMPARISON.md` and `CONFIGURATION_READINESS.md` for marketing accuracy rules.

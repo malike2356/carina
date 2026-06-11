@@ -4,6 +4,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { fileURLToPath } from 'url';
 import { config } from '../config/index.js';
+import { getOperatorActivePacks } from './operator-pack-store.js';
 import { findRelevantSkills, listSkills, saveSkill, skillExistsByName } from './store.js';
 import { propertyUkSkills } from './packs/property-uk/skills.js';
 import { propertyUkSystemSuffix } from './packs/property-uk/prompts/system.js';
@@ -36,7 +37,7 @@ export interface PackDefinition {
   systemSuffix: string;
 }
 
-const PACK_REGISTRY: Record<string, PackDefinition> = {
+export const PACK_REGISTRY: Record<string, PackDefinition> = {
   'property-uk': {
     manifest: {
       name: 'property-uk',
@@ -252,7 +253,14 @@ export function listAvailablePacks(): PackManifest[] {
 }
 
 export function getActivePackNames(): string[] {
-  return config.carina.activePacks.length > 0 ? config.carina.activePacks : [];
+  return getOperatorActivePacks();
+}
+
+export async function enablePackRuntime(packName: string): Promise<number> {
+  const loaded = await loadPackSkills(packName);
+  await loadPackExtensions(packName);
+  await registerActivePackTools();
+  return loaded;
 }
 
 export async function loadSkillsForTask(task: string): Promise<string> {

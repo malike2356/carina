@@ -39,12 +39,12 @@ mirror_docs_clean_urls() {
 }
 
 build_carina_docs() {
-  log "Building Carina docs (base /docs/)..."
+  log "Building Carina docs for carinaai.uk/docs (Docusaurus)..."
   (
-    cd "${REPO_ROOT}/core.carinaai.uk"
-    VP_BASE=/docs/ pnpm docs:build
+    cd "${REPO_ROOT}/docs.carinaai.uk"
+    CARINA_DOCS_MARKETING=1 pnpm build
     rm -rf "${REPO_ROOT}/carinaai.uk/docs"
-    cp -a docs/.vitepress/dist "${REPO_ROOT}/carinaai.uk/docs"
+    cp -a build "${REPO_ROOT}/carinaai.uk/docs"
     mirror_docs_clean_urls "${REPO_ROOT}/carinaai.uk/docs"
   )
 }

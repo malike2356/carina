@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Carina Cloud - Set new password</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100svh; min-height: 100dvh;
+      display: flex; align-items: center; justify-content: center;
+      padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right))
+               max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    }
+    .card {
+      width: 100%; max-width: 400px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 32px;
+    }
+    @media (max-width: 480px) { .card { padding: 24px 20px; border-radius: 8px; } }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 16px;
+      margin-bottom: 16px; outline: none; -webkit-appearance: none; appearance: none;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      width: 100%; background: var(--send); color: #fff; border: none;
+      border-radius: 6px; padding: 12px; font-size: 15px; font-weight: 600;
+      cursor: pointer; min-height: 44px;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: wait; }
+    .error { color: #f85149; font-size: 13px; margin-bottom: 16px; }
+    .foot { margin-top: 20px; font-size: 13px; color: var(--muted); text-align: center; }
+    .foot a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Set new password</h1>
+    <p class="sub">Choose a password that is at least 8 characters.</p>
+    <div id="error" class="error" hidden></div>
+    <div id="invalid" hidden>
+      <p style="color:#f85149;font-size:13px">This reset link is invalid or has expired.</p>
+      <p class="foot" style="margin-top:16px"><a href="/hosted-forgot">Request a new link</a></p>
+    </div>
+    <form id="form">
+      <label for="password">New password</label>
+      <input type="password" id="password" name="password" required minlength="8" autofocus>
+      <label for="confirm">Confirm password</label>
+      <input type="password" id="confirm" name="confirm" required minlength="8">
+      <button type="submit" id="submit">Set password</button>
+    </form>
+    <p class="foot"><a href="/hosted-login">Back to sign in</a></p>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token') || '';
+    if (!token) {
+      document.getElementById('form').hidden = true;
+      document.getElementById('invalid').hidden = false;
+    }
+
+    const form = document.getElementById('form');
+    const errorEl = document.getElementById('error');
+    const submitBtn = document.getElementById('submit');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirm').value;
+      if (password !== confirm) {
+        errorEl.textContent = 'Passwords do not match';
+        errorEl.hidden = false;
+        return;
+      }
+      errorEl.hidden = true;
+      submitBtn.disabled = true;
+      try {
+        const res = await fetch('/app/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Reset failed');
+        location.href = '/hosted-login?reset=1';
+      } catch (err) {
+        errorEl.textContent = err.message || 'Reset failed';
+        errorEl.hidden = false;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -14,8 +14,12 @@ import { chatRouter } from './routes/chat.js';
 import { projectsRouter } from './routes/projects.js';
 import { securityRouter } from './routes/security.js';
 import { settingsRouter } from './routes/settings.js';
+import { operatorRouter } from './routes/operator.js';
 import { tenantsRouter } from './routes/tenants.js';
+import { subscriptionsRouter } from './routes/subscriptions.js';
+import { packsRouter } from './routes/packs.js';
 import { ensureHostedSchema } from './lib/tenants.js';
+import { autoPairCarinaFromLocalCore } from './lib/carina-pairing.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 // tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
@@ -23,7 +27,7 @@ const __opsDir = path.basename(__moduleDir) === 'dist' ? path.dirname(__moduleDi
 dotenv.config({ path: path.join(__opsDir, '.env') });
 
 const app = express();
-const PORT = Number(process.env.PORT ?? 4000);
+const PORT = Number(process.env.OPS_BACKEND_PORT ?? process.env.PORT ?? 4000);
 const viewsPath = path.join(__opsDir, 'views');
 
 app.set('trust proxy', 1);
@@ -97,17 +101,21 @@ app.use('/', dashboardRouter);
 app.use('/security', securityRouter);
 app.use('/memories', memoriesRouter);
 app.use('/skills', skillsRouter);
+app.use('/packs', packsRouter);
 app.use('/rag', ragRouter);
 app.use('/chat', chatRouter);
 app.use('/projects', projectsRouter);
 app.use('/tenants', tenantsRouter);
+app.use('/subscriptions', subscriptionsRouter);
 app.use('/settings', settingsRouter);
+app.use('/operator', operatorRouter);
 
 app.use((_req, res) => {
   res.status(404).render('error', { message: 'Page not found' });
 });
 
-app.listen(PORT, () => {
+const listenHost = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+app.listen(PORT, listenHost, () => {
   console.log(chalk.green(`Carina Platform Admin at http://localhost:${PORT}`));
   console.log(chalk.gray('  Password: ops.carinaai.uk/.env ADMIN_PASSWORD'));
   void ensureHostedSchema()
@@ -116,4 +124,13 @@ app.listen(PORT, () => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`  Hosted schema: skipped (${msg})`));
     });
+  void autoPairCarinaFromLocalCore()
+    .then((result) => {
+      if (result.ok && result.auto) {
+        console.log(chalk.gray('  Carina auto-pair: connected from local core .env'));
+      } else if (result.ok && result.alreadyPaired) {
+        console.log(chalk.gray('  Carina auto-pair: already connected'));
+      }
+    })
+    .catch(() => undefined);
 });

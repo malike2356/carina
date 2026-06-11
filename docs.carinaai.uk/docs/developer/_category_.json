@@ -1,0 +1,9 @@
+{
+  "label": "Developer Guide",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Carina Developer Guide",
+    "description": "Architecture, APIs, and extension guides for contributors and integrators."
+  }
+}

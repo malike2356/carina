@@ -60,7 +60,7 @@ export async function runSetupWizard(): Promise<void> {
   if (installMode === 'local') {
     lines.push('CARINA_LOCAL_MODE=true');
     lines.push('CARINA_SKIP_POSTGRES=true');
-    lines.push('CARINA_MEMORY_BACKEND=sqlite');
+    lines.push('CARINA_MEMORY_BACKEND=builtin');
     lines.push('CARINA_AUTO_SKILL_LEARN=true');
   } else {
     lines.push('DATABASE_URL=postgresql://localhost:5432/carina');
@@ -83,17 +83,20 @@ export async function runSetupWizard(): Promise<void> {
   });
 
   if (connectScout) {
-    const scoutKey = await input({
-      message: 'Paste your Labyrinth Scout API key (register at https://console.labyrinthscout.com/account/register):',
+    const scoutUrl = await input({
+      message: 'Paste your Scout console URL (from your provisioning email):',
     });
-    if (scoutKey.trim()) {
+    const scoutKey = await input({
+      message: 'Paste your Labyrinth Scout API key (from the same email):',
+    });
+    if (scoutUrl.trim() && scoutKey.trim()) {
       lines.push('LABYRINTH_ENABLED=true');
-      lines.push('LABYRINTH_URL=https://console.labyrinthscout.com');
+      lines.push('LABYRINTH_URL=' + scoutUrl.trim());
       lines.push('LABYRINTH_API_KEY=' + scoutKey.trim());
       lines.push('LABYRINTH_INSTANCE_ID=carina-' + os.hostname());
       lines.push('LABYRINTH_INSTANCE_NAME=Carina (' + os.hostname() + ')');
     } else {
-      console.log('No key entered - skipping Scout pairing. Run "carina setup" again anytime to connect.');
+      console.log('Scout URL or API key missing - skipping Scout pairing. Run "carina setup" again anytime to connect.');
     }
     console.log(
       'Least-privilege defaults: keep shell-exec and email-send disabled until needed. See Scout docs/trust/least-privilege-defaults.md',
@@ -103,6 +106,9 @@ export async function runSetupWizard(): Promise<void> {
   await fs.mkdir(CARINA_HOME, { recursive: true });
   await fs.mkdir(CARINA_DATA_DIR, { recursive: true });
   await fs.writeFile(CARINA_ENV_PATH, lines.join('\n') + '\n', { mode: 0o600 });
+
+  const { defaultEnabledToolsets, saveToolsetsConfig, setDefaultToolsets } = await import('../tools/toolset-config.js');
+  await saveToolsetsConfig(setDefaultToolsets(defaultEnabledToolsets('default'), {}));
 
   console.log('\nSetup complete. Run "carina" to start.\n');
   if (!activePack) console.log('Carina is configured as a general-purpose agent with no domain pack.\n');

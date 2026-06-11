@@ -41,9 +41,65 @@
 
   function setConnection(online) {
     const el = $('connection-state');
-    el.textContent = online ? 'Live' : 'Offline';
+    el.textContent = online ? 'Scout live' : 'Scout offline';
     el.classList.toggle('online', online);
     el.classList.toggle('offline', !online);
+  }
+
+  function setHostConnection(online) {
+    const el = $('host-state');
+    if (!el) return;
+    el.textContent = online ? 'Host live' : 'Host offline';
+    el.classList.toggle('online', online);
+    el.classList.toggle('offline', !online);
+  }
+
+  function formatUptime(seconds) {
+    if (!seconds && seconds !== 0) return 'uptime unknown';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m uptime` : `${m}m uptime`;
+  }
+
+  function renderHost(data) {
+    const host = data.host || data;
+    setHostConnection(Boolean(host.running));
+    $('host-gateway').textContent = host.running ? 'online' : 'offline';
+    $('host-uptime').textContent = formatUptime(host.uptimeSeconds);
+    $('host-agents').textContent = String(host.agents ?? 0);
+    $('host-memory').textContent = `memory: ${host.memoryBackend || 'unknown'}`;
+    $('host-devices').textContent = String(host.pairedDevices ?? 0);
+    $('host-cron').textContent = host.cronJobs === null ? 'n/a' : String(host.cronJobs ?? 0);
+    const enabled = (host.channels || []).filter((c) => c.enabled).map((c) => c.name);
+    $('host-channels').textContent = enabled.length ? `channels: ${enabled.join(', ')}` : 'no channels enabled';
+    if ($('host-version')) $('host-version').textContent = `v${host.version || '0.1.0'} @ ${host.hostname || 'host'}`;
+  }
+
+  function renderDevices(devices) {
+    const el = $('device-list');
+    if (!el) return;
+    const rows = devices || [];
+    el.innerHTML = rows.length ? rows.map((d) => `
+      <div class="device-row">
+        <span><strong>${escapeHtml(d.name)}</strong> (${escapeHtml(d.platform)})</span>
+        <span class="agent-meta">${escapeHtml(d.id.slice(0, 8))} · last seen ${escapeHtml(timeLabel(d.lastSeenAt))}</span>
+      </div>
+    `).join('') : '<div class="device-row"><span class="agent-meta">No paired devices</span></div>';
+  }
+
+  async function loadHost() {
+    try {
+      const data = await fetchJson('/api/control/status');
+      renderHost(data);
+    } catch {
+      setHostConnection(false);
+    }
+    try {
+      const data = await fetchJson('/api/control/devices');
+      renderDevices(data.devices || []);
+    } catch {
+      renderDevices([]);
+    }
   }
 
   function normalizeEvent(raw) {
@@ -237,11 +293,41 @@
   }
 
   async function refreshAll() {
-    await Promise.allSettled([loadAgents(), loadThreats(), loadUsage(), loadFeed(), loadAudit($('audit-query').value.trim())]);
+    await Promise.allSettled([
+      loadHost(),
+      loadAgents(),
+      loadThreats(),
+      loadUsage(),
+      loadFeed(),
+      loadAudit($('audit-query').value.trim()),
+    ]);
     setUpdated();
   }
 
+  async function createPairingCode() {
+    try {
+      const data = await fetchJson('/api/pairing/code', { method: 'POST' });
+      window.alert(`Pairing code: ${data.code}\nExpires: ${data.expiresAt}`);
+    } catch (err) {
+      window.alert(err.message || 'Failed to create pairing code');
+    }
+  }
+
+  async function reloadSecrets() {
+    try {
+      const data = await fetchJson('/api/control/reload-secrets', { method: 'POST' });
+      window.alert(`Reloaded ${data.reloaded} env key(s)`);
+    } catch (err) {
+      window.alert(err.message || 'Reload failed');
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    const isControl = document.body.dataset.controlCenter === 'true';
+    if (isControl && $('top-eyebrow')) {
+      $('top-eyebrow').textContent = 'Carina Host';
+      $('top-title').textContent = 'Control Center';
+    }
     if (document.body.dataset.tenantScout === 'true') {
       const killBtn = $('kill-switch');
       if (killBtn) killBtn.hidden = true;
@@ -249,6 +335,10 @@
       if (adminName) adminName.textContent = 'tenant';
     }
     $('refresh-feed').addEventListener('click', () => void loadFeed());
+    const pairBtn = $('pairing-code');
+    if (pairBtn) pairBtn.addEventListener('click', () => void createPairingCode());
+    const reloadBtn = $('reload-secrets');
+    if (reloadBtn) reloadBtn.addEventListener('click', () => void reloadSecrets());
     $('audit-search').addEventListener('submit', (event) => {
       event.preventDefault();
       const query = $('audit-query').value.trim();

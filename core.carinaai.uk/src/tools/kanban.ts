@@ -29,6 +29,8 @@ function parseColumn(value: unknown): KanbanColumn {
 export function createKanbanTool(sessionId: string): Tool {
   return {
     name: 'kanban',
+    dangerous: true,
+    requiresConfirmation: true,
     description:
       'Multi-agent work queue board. Columns: backlog, in_progress, review, done. Actions: add, board, move, assign, remove.',
     parameters: {

@@ -4,6 +4,8 @@
 </div>
 
 <form method="get" class="flex flex-wrap gap-3 mb-4 text-sm">
+  <input type="hidden" name="sort" value="<%= sortBy %>">
+  <input type="hidden" name="dir" value="<%= sortDir %>">
   <input type="search" name="q" value="<%= search %>" placeholder="Search content..."
          class="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2 text-white min-w-[200px]">
   <select name="role" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2 text-white">
@@ -20,9 +22,21 @@
   <table class="w-full text-sm">
     <thead class="bg-[#1a1a1a] text-gray-400 text-left">
       <tr>
-        <th class="p-3">Time</th>
-        <th class="p-3">Session</th>
-        <th class="p-3">Role</th>
+        <th class="p-3">
+          <a href="/memories<%= sortLink('time') %>" class="text-gray-400 hover:text-white font-semibold inline-flex items-center gap-1">
+            Time<%- sortArrow(sortBy, sortDir, 'time') %>
+          </a>
+        </th>
+        <th class="p-3">
+          <a href="/memories<%= sortLink('session') %>" class="text-gray-400 hover:text-white font-semibold inline-flex items-center gap-1">
+            Session<%- sortArrow(sortBy, sortDir, 'session') %>
+          </a>
+        </th>
+        <th class="p-3">
+          <a href="/memories<%= sortLink('role') %>" class="text-gray-400 hover:text-white font-semibold inline-flex items-center gap-1">
+            Role<%- sortArrow(sortBy, sortDir, 'role') %>
+          </a>
+        </th>
         <th class="p-3">Preview</th>
         <th class="p-3"></th>
       </tr>
@@ -30,7 +44,7 @@
     <tbody>
       <% for (const m of memories) { %>
         <tr class="border-t border-[#2a2a2a] hover:bg-[#1a1a1a]">
-          <td class="p-3 text-gray-500 whitespace-nowrap"><%= new Date(m.created_at).toLocaleString() %></td>
+          <td class="p-3 text-gray-500 whitespace-nowrap"><%= new Date(m.updated_at || m.created_at).toLocaleString() %></td>
           <td class="p-3">
             <a href="/memories/session/<%= m.session_id %>" class="text-[#06b6d4] hover:underline font-mono text-xs">
               <%= m.session_id.slice(0, 8) %>...
@@ -61,12 +75,10 @@
 
 <div class="flex gap-2 mt-4 text-sm">
   <% if (page > 1) { %>
-    <a href="?page=<%= page - 1 %>&q=<%= encodeURIComponent(search) %>&role=<%= role %>&session=<%= encodeURIComponent(sessionFilter) %>"
-       class="text-[#22c55e] hover:underline">Previous</a>
+    <a href="/memories<%= pageLink(page - 1) %>" class="text-[#22c55e] hover:underline">Previous</a>
   <% } %>
   <span class="text-gray-500">Page <%= page %> of <%= totalPages %> (<%= total %> total)</span>
   <% if (page < totalPages) { %>
-    <a href="?page=<%= page + 1 %>&q=<%= encodeURIComponent(search) %>&role=<%= role %>&session=<%= encodeURIComponent(sessionFilter) %>"
-       class="text-[#22c55e] hover:underline">Next</a>
+    <a href="/memories<%= pageLink(page + 1) %>" class="text-[#22c55e] hover:underline">Next</a>
   <% } %>
 </div>

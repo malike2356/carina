@@ -26,6 +26,8 @@ async function getEgressFilter() {
 
 export const httpTool: Tool = {
   name: 'http-request',
+  dangerous: true,
+  requiresConfirmation: true,
   description: 'Make an HTTPS request to an external API.',
   parameters: {
     type: 'object',

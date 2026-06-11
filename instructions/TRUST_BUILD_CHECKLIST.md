@@ -2,9 +2,11 @@
 
 Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat described in `blockChaninTrust.md`.
 
-**Last updated:** 2026-06-10  
-**Current phase:** All codable engineering complete; operator wallet, pilots, and revenue remain  
+**Last updated:** 2026-06-11  
+**Current phase:** Trust **live on Base Sepolia** (ERC-8004 identity + ERC-8126 verification). Next: first weekly `labyrinth-scout.v1` attestation post, Base mainnet registration, enterprise pilot.  
 **Strategy:** Adopt Agent Trust on Base; Labyrinth Scout as security attestation oracle; do not build a custom trust platform.
+
+**Production verify:** `curl -s https://console.labyrinthscout.com/api/public/trust | jq '{risk_score, identity: .identity.status, chain}'`
 
 ---
 
@@ -25,8 +27,8 @@ Living tracker for the Carina + Labyrinth Scout + Blockchain trust moat describe
 | Phase | Focus | Done | Total | % |
 |---|---|---:|---:|---:|
 | A | Foundation (Carina + Scout integration) | 18 | 18 | 100% |
-| B | Release 1; MVP + off-chain trust dashboard | 15 | 16 | 94% (pilot/LOI deferred) |
-| C | Release 2; On-chain attestations (ERC-8004/8126) | 22 | 25 | 88% (live chain posts deferred) |
+| B | Release 1; MVP + off-chain trust dashboard | 16 | 17 | 94% (pilot/LOI deferred) |
+| C | Release 2; On-chain attestations (ERC-8004/8126) | 27 | 29 | 93% (weekly attestation + mainnet deferred) |
 | D | Release 3; Enterprise trust layer + revenue | 8 | 10 | 80% (MRR deferred) |
 | E | Marketing & positioning (deployed) | 12 | 12 | 100% |
 | F | Prompt injection defence-in-depth | 10 | 10 | 100% |
@@ -85,13 +87,13 @@ Goal: One demonstrable "verifiable security" story. ERC-8004 testnet registratio
 - [x] 2026-06-09 Deploy trust API to production Scout console (rsync + build; API live)
 - [x] 2026-06-09 Deploy `carinaai.uk/trust` to production VPS (`/www/wwwroot/carinaai.uk/trust/`)
 - [x] 2026-06-09 Verify live trust API returns real Scout metrics (risk_score 10, 1 agent active)
-- [x] 2026-06-09 Add "monitoring live / on-chain attestation planned" honesty banner until Phase C ships
+- [x] 2026-06-09 Add honesty banner for pre-chain state (superseded: on-chain live on Sepolia as of 2026-06-10)
 - [x] 2026-06-09 Scout console widget: PUBLIC TRUST link in operator dashboard header
 - [x] 2026-06-09 Document trust API in Scout docs (`docs/api/public-trust.md` + VitePress sidebar)
 
 ### Release 1 exit criteria
 
-- [~] 2026-06-10 Register reference Carina agent on ERC-8004 (scaffold + `pnpm trust:register`; needs `TRUST_ATTESTER_PRIVATE_KEY`)
+- [x] 2026-06-10 Register reference Carina agent on ERC-8004 (agent `6981`, slug `carina-reference`, Base Sepolia)
 - [ ] One paying enterprise pilot OR signed LOI for Carina + Scout bundle
 - [x] 2026-06-10 End-to-end demo: trust pipeline test + `scripts/trust-e2e-demo.sh` + live API verified
 
@@ -105,9 +107,9 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 
 - [x] 2026-06-10 Choose and document trust platform: Agent Trust on Base (`docs/trust/platform.md`)
 - [x] 2026-06-10 Add chain dependencies (viem) to `console.labyrinthscout.com`
-- [ ] Create Scout attestation wallet; store key in env (never commit); operator action
+- [x] 2026-06-10 Create Scout attestation wallet; store key in env (`TRUST_ATTESTER_PRIVATE_KEY` on VPS; wallet funded)
 - [x] 2026-06-10 Document env vars: `TRUST_CHAIN_RPC`, `TRUST_ATTESTER_PRIVATE_KEY`, `TRUST_ERC8004_REGISTRY`
-- [~] 2026-06-10 Register reference Carina agent on ERC-8004 (`pnpm trust:register`; blocked without wallet key)
+- [x] 2026-06-10 Register reference Carina agent on ERC-8004 (`pnpm trust:register`; live in public API `identity` block)
 - [x] 2026-06-10 Store `agentId` + tx hash in Scout DB (`trust_identities` table + migration)
 - [x] 2026-06-10 Expose ERC-8004 agent ID + explorer link on public trust API (`identity` block)
 - [x] 2026-06-10 Flip `TRUST_ERC8004_STATUS=live` when DB identity registered (auto in public trust API)
@@ -123,7 +125,7 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 - [x] 2026-06-10 Store attestation UID + tx hash in Scout DB (`trust_attestations`)
 - [x] 2026-06-10 Expose attestation explorer links on public trust API (`on_chain` block + trust dashboard)
 - [x] 2026-06-10 Tests with mocked SDK (never hit mainnet in CI)
-- [ ] First live attestation on Base Sepolia (`pnpm trust:attest`; blocked without wallet key)
+- [~] 2026-06-11 First live `labyrinth-scout.v1` security attestation on Base Sepolia (`pnpm trust:attest`; wallet funded; awaits clean 30d window or manual run)
 
 ### C.3; ERC-8126 verification (WAV + WV)
 
@@ -133,13 +135,13 @@ Goal: Labyrinth Scout posts real security attestations on-chain. Risk score back
 - [x] 2026-06-10 Unified risk score (mean of applicable verification scores) on trust API
 - [x] 2026-06-10 Flip `TRUST_ERC8126_STATUS=live` after first successful on-chain verification (auto when DB row exists)
 - [x] 2026-06-10 Link to `erc8126.ai` reference implementation docs from trust page
-- [ ] First live ERC-8126 verification on Base Sepolia (blocked without wallet key)
+- [x] 2026-06-10 First live ERC-8126 verification on Base Sepolia (request/response txs in `verification.on_chain`; `chain.erc8126_status=live`)
 
 ### C.4; Release 2 exit criteria
 
-- [~] 2026-06-10 Trust page shows Base explorer links when on-chain data exists (UI ready; needs wallet + live posts)
-- [ ] Pilot customer uses production agent with on-chain attestation visible; operator/deferred
-- [ ] Marketing claim "on-chain attestations" is factually true in production; operator/deferred
+- [x] 2026-06-10 Trust page shows Base Sepolia explorer links (identity register tx + ERC-8126 verification txs)
+- [ ] Pilot customer uses production agent with on-chain attestation visible; business/deferred
+- [x] 2026-06-11 Marketing claim "on-chain attestations" is factually true in production (state **Base Sepolia** until mainnet)
 
 ---
 
@@ -271,19 +273,21 @@ Solo founder constraints: Propreneur funds; Carina+Scout+trust gets growth hours
 | `instructions/blockChaninTrust.md` | Strategy conversation and rationale |
 | `instructions/TRUST_BUILD_CHECKLIST.md` | This file; living build tracker |
 | `ARCHITECTURE.md` | Internal wiring (Carina ↔ Scout ↔ ops) |
-| `core.carinaai.uk/docs/carina-cloud.md` | Full Carina Cloud + Scout tenant guide (VitePress / docs.carinaai.uk) |
+| `docs.carinaai.uk/docs/user/carina-cloud.md` | Full Carina Cloud + Scout tenant guide (canonical Docusaurus) |
 | `instructions/BUILD_NEXT_CHECKLIST.md` | Hermes parity / general Carina features (separate track) |
 
 ## Remaining non-code items only
 
 | Item | Type |
 |---|---|
-| Create attestation wallet + `TRUST_ATTESTER_PRIVATE_KEY` | Operator |
-| First live `pnpm trust:register` / `attest` / `verify` on Base Sepolia | Operator |
-| Deploy updated Scout + marketing pages to VPS | Operator |
+| First weekly `labyrinth-scout.v1` attestation post (`pnpm trust:attest` or scheduled job) | Operator |
+| Base mainnet ERC-8004 registration (`pnpm trust:register:mainnet`) | Operator |
+| Re-run `bash scripts/setup-trust.sh vps` after wallet rotation | Operator |
 | Enterprise pilot / LOI / MRR targets | Business |
 | `pip install agent-guard-plugins` on production Carina host | Optional operator |
 
-**Next operator step:** Set `TRUST_ATTESTER_PRIVATE_KEY`, run trust CLIs, deploy, then first enterprise pilot.
+**Done (2026-06-10):** Wallet funded; `trust:register` + `trust:verify` live on Base Sepolia; public API + [carinaai.uk/trust](https://carinaai.uk/trust) verified.
+
+**Next operator step:** First enterprise pilot; optional `trust:attest` when 30d clean window met; mainnet when ready.
 
 **Local validation:** `cd console.labyrinthscout.com && pnpm typecheck && pnpm test && bash ../scripts/trust-e2e-demo.sh`

@@ -22,6 +22,7 @@ import {
   type AccountTrustSettings,
 } from '../lib/trust-settings.js';
 import { loadRecentTrustAttestations } from '../trust/load-trust-attestations.js';
+import { formatEventDescription, formatEventTypeLabel } from '../lib/format-event-display.js';
 
 export const accountRouter: IRouter = Router();
 
@@ -335,19 +336,65 @@ accountRouter.get('/api/onboarding', requireAccount, async (req: Request, res: R
 
 accountRouter.get('/api/events', requireAccount, async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await pool.query(
+    const page = Math.max(Number.parseInt(String(req.query.page ?? '1'), 10) || 1, 1);
+    const limit = Math.max(Math.max(Number.parseInt(String(req.query.limit ?? '15'), 10) || 15, 1), 50);
+    const accountId = req.session.accountId as string;
+
+    const countResult = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+       FROM security_events e
+       JOIN carina_instances i ON i.id = e.instance_id
+       WHERE i.account_id = $1
+         AND e.event_type <> 'session_metrics'`,
+      [accountId],
+    );
+    const total = Number.parseInt(countResult.rows[0]?.count ?? '0', 10);
+    const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+    const safePage = totalPages > 0 ? Math.max(1, Math.min(page, totalPages)) : 1;
+    const offset = (safePage - 1) * limit;
+
+    const result = await pool.query<{
+      id: string;
+      severity: string;
+      source: string;
+      event_type: string;
+      description: string;
+      instance_id: string | null;
+      created_at: Date;
+    }>(
       `SELECT e.id, e.severity, e.source, e.event_type, e.description, e.instance_id, e.created_at
        FROM security_events e
        JOIN carina_instances i ON i.id = e.instance_id
        WHERE i.account_id = $1
-       ORDER BY e.created_at DESC
-       LIMIT 50`,
-      [req.session.accountId],
+         AND e.event_type <> 'session_metrics'
+       ORDER By e.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [accountId, limit, offset],
     );
-    res.json({ events: result.rows });
+    const events = result.rows.map((row) => ({
+      id: row.id,
+      severity: row.severity,
+      source: row.source,
+      event_type: row.event_type,
+      eventTypeLabel: formatEventTypeLabel(row.event_type),
+      description: formatEventDescription(row.event_type, row.description, row.instance_id),
+      instance_id: row.instance_id,
+      created_at: new Date(row.created_at).toISOString(),
+    }));
+    res.json({
+      events,
+      pagination: {
+        page: safePage,
+        limit,
+        total,
+        totalPages,
+        hasPrev: safePage > 1 && totalPages > 0,
+        hasNext: safePage < totalPages,
+      },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[scout:account] events query failed:', msg);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'database error' });
   }
 });

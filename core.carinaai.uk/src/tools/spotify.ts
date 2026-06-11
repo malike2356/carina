@@ -70,6 +70,7 @@ export const spotifyNowPlayingTool: Tool = {
 
 export const spotifyPlayTool: Tool = {
   name: 'spotify-play',
+  dangerous: true,
   description: 'Start or resume Spotify playback. Optionally play a track URI or context URI.',
   parameters: {
     type: 'object',

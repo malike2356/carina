@@ -14,6 +14,8 @@ import { startProcessCleanup, stopProcessCleanup } from './tools/process-registr
 import { initKillSwitchListener, reportHeartbeat } from './security/index.js';
 import { TaskScheduler } from './agents/scheduled-tasks.js';
 import { createProactiveCheckInTask } from './agents/check-in.js';
+import { createCommitmentDeliveryTask } from './commitments/delivery.js';
+import { commitmentsEnabled } from './commitments/inference.js';
 import { loadAndRegisterAllJobs, setJobDeliverCallback } from './agents/cron-scheduler.js';
 import { deliverJobOutput } from './agents/cron-delivery.js';
 import { initMemoryBackend } from './memory/backends/index.js';
@@ -23,7 +25,9 @@ import { startSkillCuratorSchedule } from './skills/curator-scheduler.js';
 import { initSkills } from './skills/index.js';
 import { applyActiveProfileFromDisk } from './profiles/manager.js';
 import { channelRegistry } from './gateway/channels/channel-registry.js';
+import { stopChannelListeners } from './gateway/channel-bootstrap.js';
 import { registerProcessCompletionHandler } from './tools/process-notifications.js';
+import { preloadPlatformKnowledge } from './platform/knowledge.js';
 import './tools/index.js';
 
 registerProcessCompletionHandler(async (event) => {
@@ -42,6 +46,7 @@ async function shutdown(signal: string): Promise<void> {
   if (heartbeatInterval) clearInterval(heartbeatInterval);
   taskScheduler?.stop();
   cleanupKillSwitch?.();
+  stopChannelListeners();
   await pool.end().catch(() => undefined);
   const redis = getRedis();
   if (redis) redis.disconnect();
@@ -53,25 +58,33 @@ process.on('SIGINT', () => void shutdown('SIGINT'));
 
 async function main(): Promise<void> {
   applyActiveProfileFromDisk();
+  await preloadPlatformKnowledge();
   await initSandbox();
   startProcessCleanup();
   let memoryReady = false;
 
   const localOnly = process.env.CARINA_SKIP_POSTGRES === 'true'
-    || (process.env.CARINA_LOCAL_MODE === 'true' && process.env.CARINA_MEMORY_BACKEND === 'sqlite');
+    || (process.env.CARINA_LOCAL_MODE === 'true'
+      && ['sqlite', 'builtin'].includes((process.env.CARINA_MEMORY_BACKEND ?? 'builtin').toLowerCase()));
 
   try {
     if (localOnly) {
       initMemoryBackend();
       memoryReady = true;
+      const { initOperatorPackStore } = await import('./skills/operator-pack-store.js');
+      await initOperatorPackStore({ fileOnly: true });
+      await initSkills();
       console.log(chalk.gray('Local mode: SQLite memory (Postgres skipped)'));
     } else {
       await initDb();
       if (config.hosted.enabled) {
-        const { initHostedDb } = await import('./api/hosted-auth.js');
+        const { initHostedDb, maybeBootstrapHostedAccount } = await import('./api/hosted-auth.js');
         await initHostedDb();
+        await maybeBootstrapHostedAccount();
         console.log(chalk.gray('Hosted SaaS schema ready'));
       }
+      const { initOperatorPackStore } = await import('./skills/operator-pack-store.js');
+      await initOperatorPackStore();
       initMemoryBackend();
       memoryReady = true;
       const jobCount = await loadAndRegisterAllJobs();
@@ -113,11 +126,17 @@ async function main(): Promise<void> {
     }
   });
 
-  if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
+  if (process.env.CARINA_CHECK_IN_ENABLED === 'true' || commitmentsEnabled()) {
     taskScheduler = new TaskScheduler();
-    taskScheduler.register(createProactiveCheckInTask('cli'));
+    if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
+      taskScheduler.register(createProactiveCheckInTask('cli'));
+      console.log(chalk.gray('Proactive check-in cycle enabled'));
+    }
+    if (commitmentsEnabled()) {
+      taskScheduler.register(createCommitmentDeliveryTask());
+      console.log(chalk.gray('Inferred commitment delivery enabled'));
+    }
     taskScheduler.start();
-    console.log(chalk.gray('Proactive check-in cycle enabled'));
   }
 
   const gateways: Promise<void>[] = [];

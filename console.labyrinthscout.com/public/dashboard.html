@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <!-- __SCOUT_KEY_INJECTION__ -->
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Labyrinth Scout</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -44,8 +44,9 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .hdr-clock{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--bright)}
 
 /* ── COLUMNS ── */
-.cols{order:1;height:min(760px,calc(100vh - 120px));min-height:640px;flex:0 0 auto;display:flex;gap:.65rem}
-.col-left{width:25%;flex-shrink:0;display:flex;flex-direction:column;gap:.35rem}
+.cols{order:3;height:min(760px,calc(100vh - 120px));min-height:640px;flex:0 0 auto;display:flex;gap:.65rem}
+.instances-bar{order:4;min-height:44px;flex-shrink:0;background:var(--navy);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;padding:.4rem .75rem;gap:1.25rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.86rem}
+.inst-lbl{color:var(--text);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-right:.25rem}
 .radar-panel{flex:3}
 .stream-panel{flex:2;display:flex;flex-direction:column;overflow:hidden}
 .col-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:.35rem}
@@ -53,11 +54,10 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .freq-panel{height:96px;flex-shrink:0}
 .anomaly-panel{flex:3;min-height:0}
 .heatmap-panel{flex:4;min-height:0}
-.col-right{width:21%;flex-shrink:0;display:flex;flex-direction:column;gap:.35rem}
-.donut-panel{flex:2;min-height:0}
-.gauge-panel{flex:4;min-height:0}
-.scatter-panel{flex:3;min-height:0}
-.topevents-panel{flex:3;min-height:0}
+.col-right{width:24%;flex-shrink:0;display:flex;flex-direction:column;gap:.35rem}
+.donut-panel{flex:3;min-height:0}
+.gauge-panel{flex:5;min-height:0}
+.topevents-panel{flex:5;min-height:0}
 
 /* ── PANEL BASE ── */
 .panel{background:var(--navy);border:1px solid var(--border);border-radius:4px;display:flex;flex-direction:column;overflow:hidden;min-height:0;position:relative}
@@ -69,31 +69,6 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .panel-lbl{font-family:'JetBrains Mono',monospace;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);padding:.5rem .75rem;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:.5rem;white-space:nowrap;min-height:38px}
 .col-right .panel-lbl{padding-left:1.05rem}
 .panel-lbl .blink{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;animation:blink 1s step-end infinite}
-/* Tooltip system */
-/* Tooltips; appear BELOW element so overflow:hidden on .panel does not clip them */
-[data-tip]{position:relative;cursor:default}
-[data-tip]:hover::after{
-  content:attr(data-tip);
-  position:fixed;
-  top:auto;
-  background:#050c1a;
-  border:1px solid rgba(0,200,150,.4);
-  color:#cce8f4;
-  font-family:'JetBrains Mono',monospace;
-  font-size:.68rem;
-  padding:.35rem .7rem;
-  border-radius:3px;
-  white-space:nowrap;
-  z-index:9998;
-  pointer-events:none;
-  letter-spacing:.04em;
-  box-shadow:0 4px 20px rgba(0,0,0,.6);
-  /* JS updates position via custom property set on hover */
-  left:var(--tip-x,50%);
-  top:var(--tip-y,2rem);
-  transform:none;
-}
-[data-tip]:hover::before{display:none}
 .panel-body{flex:1;min-height:0;position:relative;overflow:hidden}
 /* All canvases fill their panel-body */
 .panel-body canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -104,13 +79,13 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .stat-card.critical::after{background:var(--red);box-shadow:0 0 8px var(--red)}
 .stat-card.warning::after{background:var(--amber);box-shadow:0 0 8px var(--amber)}
 .stat-card.info::after{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
-.stat-card.breach::after{background:var(--red);animation:blink .8s infinite}
+.stat-card.breach::after{background:var(--purple);box-shadow:0 0 10px var(--purple);animation:blink .8s infinite}
 .stat-num{font-family:'JetBrains Mono',monospace;font-size:clamp(2rem,3vw,3.6rem);font-weight:700;line-height:1;text-align:center;text-shadow:0 0 16px currentColor;transition:color .3s}
 .stat-lbl{font-family:'JetBrains Mono',monospace;font-size:.82rem;letter-spacing:.12em;color:var(--text);text-align:center}
-.stat-card.critical .stat-num{color:var(--red)}
+.stat-card.critical .stat-num{color:#ff4460}
 .stat-card.warning  .stat-num{color:var(--amber)}
 .stat-card.info     .stat-num{color:var(--cyan)}
-.stat-card.breach   .stat-num{color:var(--red)}
+.stat-card.breach   .stat-num{color:var(--purple)}
 
 /* ── EVENT STREAM ── */
 .stream-body{flex:1;min-height:0;overflow-y:scroll;scrollbar-color:rgba(0,200,150,.25) transparent;scrollbar-width:thin}
@@ -129,8 +104,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .ev-inst{color:rgba(0,200,150,.55);font-size:.76rem}
 
 /* ── INSTANCES BAR ── */
-.instances-bar{order:2;min-height:44px;flex-shrink:0;background:var(--navy);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;padding:.4rem .75rem;gap:1.25rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.86rem}
-.inst-lbl{color:var(--text);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-right:.25rem}
+.col-left{width:25%;flex-shrink:0;display:flex;flex-direction:column;gap:.35rem}
 .inst-chip{display:flex;align-items:center;gap:.35rem;white-space:nowrap}
 .inst-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .inst-dot.active{background:var(--green);animation:pulse 2s infinite}
@@ -219,16 +193,62 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .btn-confirm:not(:disabled):hover{background:rgba(255,34,68,.3)}
 .btn-confirm:disabled{opacity:.35;cursor:not-allowed}
 
-/* ── SPEC DASHBOARD WIDGETS ── */
-.spec-overview{order:3;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;padding:.65rem .75rem 0}
-.spec-tile{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:.7rem;min-height:82px}
-.spec-tile .label{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);letter-spacing:.12em}
+/* ── OPERATOR CONSOLE ── */
+.operator-console{order:1;display:flex;flex-direction:column;gap:.65rem;padding:0 .75rem}
+.op-section{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.75rem .85rem}
+.op-section-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.14em;color:var(--amber);margin:0 0 .55rem;text-transform:uppercase}
+.op-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.55rem}
+.op-metric{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.55rem .6rem;min-height:68px;position:relative}
+.op-panel,.op-section,.stat-card,.panel{position:relative}
+.metric-info-btn{
+  position:absolute;top:4px;right:4px;z-index:3;
+  width:16px;height:16px;padding:0;border-radius:50%;
+  border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.08);
+  color:var(--cyan);font-family:'JetBrains Mono',monospace;font-size:.58rem;font-weight:700;
+  line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  opacity:.55;transition:opacity .15s,border-color .15s,background .15s
+}
+.metric-info-btn:hover,.metric-info-btn:focus{opacity:1;border-color:var(--cyan);background:rgba(0,212,255,.18);outline:none}
+.op-section>.metric-info-btn{top:8px;right:8px}
+.panel>.metric-info-btn,.stat-card>.metric-info-btn{top:6px;right:6px}
+.help-overlay{position:fixed;inset:0;z-index:3000;background:rgba(2,4,9,.88);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem}
+.help-overlay[hidden]{display:none}
+.help-box{background:var(--navy);border:1px solid rgba(0,212,255,.35);box-shadow:0 0 32px rgba(0,212,255,.12);border-radius:6px;padding:1.25rem 1.5rem;width:min(480px,94vw);max-height:80vh;overflow-y:auto;font-family:'JetBrains Mono',monospace}
+.help-box h3{margin:0 0 .85rem;font-size:.85rem;color:var(--amber);letter-spacing:.12em;text-transform:uppercase}
+.help-section{margin-bottom:.75rem}
+.help-section h4{margin:0 0 .3rem;font-size:.62rem;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase}
+.help-section p{margin:0;font-size:.72rem;color:var(--text);line-height:1.55}
+.help-box .btn-cancel{margin-top:.5rem;width:100%}
+.op-metric .label{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);letter-spacing:.1em;text-transform:uppercase;padding-right:14px}
+.op-metric .value{font-family:'JetBrains Mono',monospace;font-size:1.35rem;color:var(--bright);margin:.15rem 0 .05rem;line-height:1.1}
+.op-metric .detail{font-size:.62rem;color:rgba(139,175,192,.68);line-height:1.35}
+.op-metric .delta{font-family:'JetBrains Mono',monospace;font-size:.62rem;margin-top:.15rem}
+.op-metric .delta.up{color:var(--red)}.op-metric .delta.down{color:var(--green)}.op-metric .delta.flat{color:var(--text)}
+.op-metric.stale{border-color:rgba(255,34,68,.45);box-shadow:0 0 12px rgba(255,34,68,.12)}
+.op-metric.fresh{border-color:rgba(0,200,150,.35)}
+.op-row-3{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:.65rem}
+.op-panel{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.65rem;min-height:120px;max-height:220px;overflow:auto}
+.op-panel h3{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:var(--text);margin:0 0 .45rem}
+.op-queue-row{display:flex;align-items:flex-start;gap:.45rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--bright);padding:.22rem 0;border-bottom:1px solid rgba(139,175,192,.08)}
+.op-queue-row b{font-size:.58rem;letter-spacing:.08em;flex-shrink:0}
+.op-queue-row.critical b{color:var(--red)}.op-queue-row.warning b{color:var(--amber)}.op-queue-row.info b{color:var(--cyan)}
+.op-secondary{order:2;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;padding:0 .75rem}
+.op-admin-tier{order:5;display:grid;grid-template-columns:1fr;gap:.65rem;padding:.65rem .75rem 0;border-top:1px solid rgba(139,175,192,.08);margin-top:.25rem}
+.op-admin-tier summary{cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text);letter-spacing:.1em;padding:.35rem 0;list-style:none}
+.op-admin-tier summary::-webkit-details-marker{display:none}
+.op-admin-tier[open] summary{color:var(--amber)}
+.op-admin-inner{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;padding-top:.55rem}
+@media(max-width:1100px){.op-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.op-row-3,.op-secondary,.op-admin-inner{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.op-grid,.op-row-3,.op-secondary,.op-admin-inner{grid-template-columns:1fr}}
+
+/* ── SPEC DASHBOARD WIDGETS (legacy panels) ── */
+.spec-overview{order:3;display:none}
+.spec-dashboard{order:4;display:none}
+.spec-panel{background:var(--panel);border:1px solid var(--border);border-radius:4px;min-height:154px;max-height:260px;padding:.65rem;overflow:auto}
 .spec-tile .value{font-family:'JetBrains Mono',monospace;font-size:1.45rem;color:var(--bright);margin:.2rem 0}
 .spec-tile .detail{font-size:.62rem;color:rgba(139,175,192,.68);line-height:1.35}
 .spec-progress{height:5px;background:rgba(139,175,192,.12);border-radius:99px;overflow:hidden;margin-top:.45rem}
 .spec-progress i{display:block;height:100%;width:0;background:var(--green)}
-.spec-dashboard{order:4;display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:.65rem;padding:.65rem .75rem 0}
-.spec-panel{background:var(--panel);border:1px solid var(--border);border-radius:4px;min-height:154px;max-height:260px;padding:.65rem;overflow:auto}
 .spec-panel h3{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:var(--text);margin:0 0 .55rem}
 .spec-row{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.64rem;color:var(--bright);padding:.22rem 0;border-bottom:1px solid rgba(139,175,192,.08)}
 .spec-row b.active{color:var(--green)}.spec-row b.offline{color:var(--amber)}.spec-row b.suspended{color:var(--red)}
@@ -268,7 +288,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
   .cols{min-height:auto;flex-direction:column}
   .col-left,.col-right{width:100%}
   .col-left,.col-right,.col-mid{min-height:auto}
-  .radar-panel,.gauge-panel,.donut-panel,.scatter-panel,.topevents-panel,.anomaly-panel,.heatmap-panel{min-height:260px}
+  .radar-panel,.gauge-panel,.donut-panel,.topevents-panel,.anomaly-panel,.heatmap-panel{min-height:260px}
   .panel-body{min-height:200px}
 }
 
@@ -300,33 +320,119 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <span class="hdr-clock" id="hdr-clock"></span>
   </header>
 
-  <section class="spec-overview" aria-label="Security summary">
-    <div class="spec-tile"><div class="label">AGENTS</div><div class="value" id="tile-agents-value">0</div><div class="detail" id="tile-agents-detail">Loading agent status</div></div>
-    <div class="spec-tile"><div class="label">THREATS</div><div class="value" id="tile-threats-value">0</div><div class="detail" id="tile-threats-detail">24h threat count</div></div>
-    <div class="spec-tile"><div class="label">BLOCKED</div><div class="value" id="tile-blocked-value">0</div><div class="detail" id="tile-blocked-detail">Blocked events, 24h</div></div>
-    <div class="spec-tile"><div class="label">TOKEN USAGE</div><div class="value" id="tile-token-value">0%</div><div class="detail" id="tile-token-detail">0 / 0 tokens</div><div class="spec-progress"><i id="token-usage-bar"></i></div></div>
+  <section class="operator-console" aria-label="Operator console">
+    <div class="op-section" aria-label="Live posture" data-help="section-live-posture">
+      <h2 class="op-section-title">Live Posture</h2>
+      <div class="op-grid">
+        <div class="op-metric" id="posture-risk-card" data-help="posture-risk-score"><div class="label">Risk Score</div><div class="value" id="posture-risk-value">-</div><div class="delta flat" id="posture-risk-delta">awaiting data</div></div>
+        <div class="op-metric" data-help="posture-agents-active"><div class="label">Agents Active</div><div class="value" id="posture-agents-active">-</div><div class="detail" id="posture-agents-detail">protected / total</div></div>
+        <div class="op-metric" id="posture-heartbeat-card" data-help="posture-heartbeat"><div class="label">Last Heartbeat</div><div class="value" id="posture-heartbeat-age">-</div><div class="detail">agent telemetry</div></div>
+        <div class="op-metric" id="posture-event-card" data-help="posture-last-event"><div class="label">Last Event</div><div class="value" id="posture-event-age">-</div><div class="detail">security stream</div></div>
+        <div class="op-metric" id="posture-freshness-card" data-help="posture-freshness"><div class="label">Data Freshness</div><div class="value" id="posture-freshness-state">-</div><div class="detail" id="posture-freshness-detail">SSE subscribers: -</div></div>
+        <div class="op-metric" data-help="posture-kill-switch"><div class="label">Kill Switch</div><div class="value" id="posture-kill-state">-</div><div class="detail" id="posture-kill-detail">control plane</div></div>
+      </div>
+    </div>
+
+    <div class="op-row-3">
+      <div class="op-section" aria-label="Incident triage" data-help="section-incident-triage">
+        <h2 class="op-section-title">Incident Triage</h2>
+        <div class="op-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+          <div class="op-metric" data-help="incident-open-critical"><div class="label">Open Critical</div><div class="value" id="incident-open-critical">-</div><div class="detail" id="incident-unresolved-detail">unresolved</div></div>
+          <div class="op-metric" data-help="incident-blocked"><div class="label">Blocked (24h)</div><div class="value" id="incident-blocked">-</div><div class="detail">defensive actions</div></div>
+          <div class="op-metric" data-help="incident-injection"><div class="label">Injection Blocks</div><div class="value" id="incident-injection">-</div><div class="detail">24h shield</div></div>
+          <div class="op-metric" data-help="incident-acknowledged"><div class="label">Acknowledged</div><div class="value" id="incident-acknowledged">-</div><div class="detail" id="incident-tta">time to ack: -</div></div>
+          <div class="op-metric" data-help="incident-runtime"><div class="label">Runtime Unresolved</div><div class="value" id="incident-runtime">-</div><div class="detail">needs triage</div></div>
+          <div class="op-metric" data-help="incident-rate"><div class="label">Incident Rate</div><div class="value" id="incident-rate-change">-</div><div class="detail">vs prior 24h</div></div>
+        </div>
+      </div>
+
+      <div class="op-section" aria-label="Trust and compliance" data-help="section-trust">
+        <h2 class="op-section-title">Trust / Compliance</h2>
+        <div class="op-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+          <div class="op-metric" data-help="trust-attestation"><div class="label">Last Attestation</div><div class="value" id="trust-attestation-age">-</div><div class="detail" id="trust-erc8004">ERC-8004: -</div></div>
+          <div class="op-metric" data-help="trust-verification"><div class="label">Last Verification</div><div class="value" id="trust-verification-age">-</div><div class="detail" id="trust-erc8126">ERC-8126: -</div></div>
+          <div class="op-metric" data-help="trust-wallet"><div class="label">Wallet</div><div class="value" id="trust-wallet-state">-</div><div class="detail" id="trust-chain-tx">on-chain state</div></div>
+          <div class="op-metric" data-help="trust-risk-tier"><div class="label">Risk Tier</div><div class="value" id="trust-risk-tier">-</div><div class="detail" id="trust-risk-tier-label">unified score</div></div>
+        </div>
+      </div>
+
+      <div class="op-section" aria-label="Action queue" data-help="section-action-queue">
+        <h2 class="op-section-title">Action Queue</h2>
+        <div id="action-queue-list"><div class="spec-empty">Loading operator queue</div></div>
+      </div>
+    </div>
   </section>
 
-  <section class="spec-dashboard" aria-label="Security operations">
-    <div class="spec-panel"><h3>AGENT STATUS</h3><div id="agent-status-list"><div class="spec-empty">Loading agents</div></div></div>
-    <div class="spec-panel"><h3>ATTACKS (24H)</h3><div id="attacks-24h"></div><h3 style="margin-top:.75rem">TOP ATTACK SOURCES</h3><div id="attack-sources"></div></div>
-    <div class="spec-panel audit"><h3>AUDIT LOG</h3><div class="audit-tools"><input id="audit-search" placeholder="Search audit log, e.g. INJ-001"><button id="audit-export">EXPORT</button></div><div id="audit-log-results"><div class="spec-empty">Loading audit log</div></div></div>
+  <section class="op-secondary" aria-label="Attack detail and control plane">
+    <div class="op-panel" data-help="panel-top-tools"><h3>TOP TOOLS (BLOCKED)</h3><div id="attack-top-tools"><div class="spec-empty">Loading</div></div></div>
+    <div class="op-panel" data-help="panel-top-destinations"><h3>TOP BLOCKED DESTINATIONS</h3><div id="attack-top-destinations"><div class="spec-empty">Loading</div></div></div>
+    <div class="op-panel" data-help="panel-control-plane"><h3>CONTROL PLANE</h3><div id="control-plane-status"><div class="spec-empty">Loading</div></div><div data-help="panel-attacks-by-type" style="position:relative;margin-top:.65rem"><h3 style="margin:0 0 .45rem;padding-right:18px">ATTACKS BY TYPE</h3><div id="attack-by-type"><div class="spec-empty">Loading</div></div></div></div>
   </section>
 
-  <section class="spec-dashboard" aria-label="Enterprise trust layer">
-    <div class="spec-panel audit"><h3>ATTESTATION HISTORY</h3><div id="trust-history-results"><div class="spec-empty">Loading on-chain history</div></div></div>
-    <div class="spec-panel audit"><h3>INCIDENT TIMELINE</h3><div class="audit-tools"><select id="incident-type-filter"><option value="">All types</option><option value="type1">Type 1 runtime</option><option value="type2">Type 2 privilege</option><option value="type3">Type 3 reasoning</option></select></div><div id="incident-timeline-results"><div class="spec-empty">Loading incidents</div></div></div>
-    <div class="spec-panel audit"><h3>COMPLIANCE REPORT</h3><div class="audit-tools"><button id="compliance-export-json">EXPORT JSON</button><button id="compliance-export-pdf">EXPORT PDF</button></div><p class="spec-empty" style="padding:.75rem">SOC2, ISO27001, and EU AI Act readiness pack from live Scout telemetry.</p></div>
+  <details class="op-admin-tier" aria-label="Usage and compliance admin">
+    <summary>Usage, audit log, and compliance exports (admin tier)</summary>
+    <div class="op-admin-inner">
+      <div class="spec-panel" data-help="admin-token-usage">
+        <h3>ESTIMATED TOKEN USAGE</h3>
+        <div class="spec-tile" style="background:transparent;border:none;padding:.25rem 0">
+          <div class="value" id="tile-token-value">0%</div>
+          <div class="detail" id="tile-token-detail">0 / 0 tokens (estimated)</div>
+          <div class="spec-progress"><i id="token-usage-bar"></i></div>
+          <p class="spec-empty" id="usage-estimate-label" style="padding-top:.35rem">Not billing-grade usage</p>
+        </div>
+      </div>
+      <div class="spec-panel audit" data-help="admin-audit-log">
+        <h3>IMMUTABLE AUDIT LOG</h3>
+        <div class="audit-tools"><input id="audit-search" placeholder="Search admin audit log"><button id="audit-export">EXPORT</button></div>
+        <div id="audit-log-results"><div class="spec-empty">Loading audit log</div></div>
+      </div>
+      <div class="spec-panel audit" data-help="admin-compliance">
+        <h3>COMPLIANCE REPORT</h3>
+        <div class="audit-tools"><button id="compliance-export-json">EXPORT JSON</button><button id="compliance-export-pdf">EXPORT PDF</button></div>
+        <h3 style="margin-top:.75rem">ATTESTATION HISTORY</h3>
+        <div id="trust-history-results"><div class="spec-empty">Loading on-chain history</div></div>
+        <h3 style="margin-top:.75rem">INCIDENT TIMELINE</h3>
+        <div class="audit-tools"><select id="incident-type-filter"><option value="">All types</option><option value="type1">Type 1 runtime</option><option value="type2">Type 2 privilege</option><option value="type3">Type 3 reasoning</option></select></div>
+        <div id="incident-timeline-results"><div class="spec-empty">Loading incidents</div></div>
+      </div>
+      <div class="spec-panel" data-help="admin-control-plane-settings">
+        <h3>CONTROL PLANE SETTINGS</h3>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <label style="display:flex;align-items:center;gap:.5rem">
+            <input type="checkbox" id="platform-egress-filter-enabled">
+            <span>Egress filter</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem">
+            <input type="checkbox" id="platform-sandbox-enabled">
+            <span>Sandbox</span>
+          </label>
+          <div class="spec-empty" id="platform-settings-source">Loading platform settings</div>
+          <div class="audit-tools" style="margin-top:.25rem">
+            <button id="platform-settings-save">SAVE SETTINGS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- legacy tile hooks kept for widget compatibility -->
+  <section class="spec-overview" aria-hidden="true" hidden>
+    <div class="spec-tile"><div class="value" id="tile-agents-value">0</div><div class="detail" id="tile-agents-detail"></div></div>
+    <div class="spec-tile"><div class="value" id="tile-threats-value">0</div><div class="detail" id="tile-threats-detail"></div></div>
+    <div class="spec-tile"><div class="value" id="tile-blocked-value">0</div><div class="detail" id="tile-blocked-detail"></div></div>
+  </section>
+  <section class="spec-dashboard" aria-hidden="true" hidden>
+    <div id="agent-status-list"></div><div id="attacks-24h"></div><div id="attack-sources"></div>
   </section>
 
   <div class="cols">
     <!-- LEFT -->
     <div class="col-left">
-      <div class="panel radar-panel" id="radar-panel">
-        <div class="panel-lbl" data-tip="Rotating scan; dots show event locations by severity ring">THREAT RADAR</div>
+      <div class="panel radar-panel" id="radar-panel" data-help="panel-threat-radar">
+        <div class="panel-lbl">THREAT RADAR</div>
         <div class="panel-body"><canvas id="radar-canvas"></canvas></div>
       </div>
-      <div class="panel stream-panel">
+      <div class="panel stream-panel" data-help="panel-live-stream">
         <div class="panel-lbl">
           LIVE EVENT STREAM
           <label class="ack-filter-label">
@@ -345,20 +451,20 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <!-- MIDDLE -->
     <div class="col-mid">
       <div class="row-stats">
-        <div class="stat-card critical" data-tip="Critical events - 24h count"><span class="stat-num" id="s-critical">0</span><span class="stat-lbl">CRITICAL</span></div>
-        <div class="stat-card warning" data-tip="Warning events - 24h count"><span class="stat-num" id="s-warning">0</span><span class="stat-lbl">WARNING</span></div>
-        <div class="stat-card info" data-tip="Info events - 24h count"><span class="stat-num" id="s-info">0</span><span class="stat-lbl">INFO</span></div>
-        <div class="stat-card breach" data-tip="BREACH events - immediate action required"><span class="stat-num" id="s-breach">0</span><span class="stat-lbl">BREACH</span></div>
+        <div class="stat-card critical" data-help="stat-critical"><span class="stat-num" id="s-critical">0</span><span class="stat-lbl">CRITICAL</span></div>
+        <div class="stat-card warning" data-help="stat-warning"><span class="stat-num" id="s-warning">0</span><span class="stat-lbl">WARNING</span></div>
+        <div class="stat-card info" data-help="stat-info"><span class="stat-num" id="s-info">0</span><span class="stat-lbl">INFO</span></div>
+        <div class="stat-card breach" data-help="stat-breach"><span class="stat-num" id="s-breach">0</span><span class="stat-lbl">BREACH</span></div>
       </div>
-      <div class="panel freq-panel">
-        <div class="panel-lbl" data-tip="60-minute rolling window, 1 bar per minute">EVENT FREQUENCY <span style="opacity:.4;font-size:.5rem">(60m)</span></div>
+      <div class="panel freq-panel" data-help="panel-event-frequency">
+        <div class="panel-lbl">EVENT FREQUENCY <span style="opacity:.4;font-size:.5rem">(60m)</span></div>
         <div class="panel-body"><canvas id="freq-canvas"></canvas></div>
       </div>
-      <div class="panel anomaly-panel">
+      <div class="panel anomaly-panel" data-help="panel-anomaly">
         <div class="panel-lbl">ANOMALY Z-SCORE <span style="opacity:.4;font-size:.5rem">(10m)</span></div>
         <div class="panel-body"><canvas id="anomaly-canvas"></canvas></div>
       </div>
-      <div class="panel heatmap-panel">
+      <div class="panel heatmap-panel" data-help="panel-tool-heatmap">
         <div class="panel-lbl">TOOL HEATMAP <span style="opacity:.4;font-size:.5rem">(24h)</span></div>
         <div class="panel-body"><canvas id="heatmap-canvas"></canvas></div>
       </div>
@@ -366,20 +472,16 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 
     <!-- RIGHT -->
     <div class="col-right">
-      <div class="panel donut-panel">
-        <div class="panel-lbl" data-tip="Proportion of event types in last 24h">SEVERITY MIX</div>
+      <div class="panel donut-panel" data-help="panel-severity-mix">
+        <div class="panel-lbl">SEVERITY MIX</div>
         <div class="panel-body"><canvas id="donut-canvas"></canvas></div>
       </div>
-      <div class="panel gauge-panel">
-        <div class="panel-lbl" data-tip="Score: breach×20 + critical×4 + warning×2 (max 100)">THREAT LEVEL</div>
+      <div class="panel gauge-panel" data-help="panel-threat-level">
+        <div class="panel-lbl">THREAT LEVEL</div>
         <div class="panel-body"><canvas id="gauge-canvas"></canvas></div>
       </div>
-      <div class="panel scatter-panel">
-        <div class="panel-lbl" data-tip="X=events per session  Y=max anomaly Z-score  size=duration">SESSION SCATTER</div>
-        <div class="panel-body"><canvas id="scatter-canvas"></canvas></div>
-      </div>
-      <div class="panel topevents-panel">
-        <div class="panel-lbl" data-tip="Red=attack/blocked  Amber=anomaly  Green=normal ops">TOP EVENT TYPES</div>
+      <div class="panel topevents-panel" data-help="panel-top-events">
+        <div class="panel-lbl">TOP EVENT TYPES</div>
         <div class="panel-body"><canvas id="top-canvas"></canvas></div>
       </div>
     </div>
@@ -388,6 +490,26 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
   <div class="instances-bar" id="instances-bar">
     <span class="inst-lbl">INSTANCES</span>
     <span style="color:rgba(139,175,192,.35);font-size:.58rem">Loading...</span>
+  </div>
+</div>
+
+<!-- Metric help modal -->
+<div class="help-overlay" id="help-overlay" hidden>
+  <div class="help-box" role="dialog" aria-labelledby="help-title">
+    <h3 id="help-title">Metric help</h3>
+    <div class="help-section">
+      <h4>What this means</h4>
+      <p id="help-means"></p>
+    </div>
+    <div class="help-section">
+      <h4>When it triggers</h4>
+      <p id="help-detected"></p>
+    </div>
+    <div class="help-section">
+      <h4>Action to take</h4>
+      <p id="help-action"></p>
+    </div>
+    <button type="button" class="btn-cancel" onclick="closeHelp()">Close</button>
   </div>
 </div>
 
@@ -578,10 +700,6 @@ let injMinTs = Date.now();
 const TOOLS = ['web-search','file-read','file-write','http-request','email-send','code-exec','shell-exec'];
 const heatmap = {};
 TOOLS.forEach(t => { heatmap[t] = new Array(24).fill(0); });
-
-// Session scatter
-const sessions = new Map(); // id → { events, maxZ, maxSev, start }
-const SEV_RANK = { info:1, warning:2, critical:3, breach:4 };
 
 // Top event types
 const typeCounts = new Map();
@@ -1166,78 +1284,6 @@ function drawGauge() {
   gaugeRaf = requestAnimationFrame(drawGauge);
 }
 
-// ── SESSION SCATTER ───────────────────────────────────────────────────────────
-function drawScatter() {
-  const c = document.getElementById('scatter-canvas');
-  if (!sizeCanvas(c)) return;
-  const { ctx, W, H } = ctx2d(c);
-  ctx.clearRect(0, 0, W, H);
-
-  ctx.fillStyle = '#030810';
-  ctx.fillRect(0, 0, W, H);
-
-  const PAD = { top: 8, right: 8, bottom: 26, left: 28 };
-  const pw = W - PAD.left - PAD.right;
-  const ph = H - PAD.top - PAD.bottom;
-
-  // Grid
-  ctx.strokeStyle = 'rgba(0,200,150,0.07)';
-  ctx.lineWidth = 0.5;
-  [0.25, 0.5, 0.75].forEach(f => {
-    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top + ph * (1-f)); ctx.lineTo(PAD.left + pw, PAD.top + ph * (1-f)); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(PAD.left + pw * f, PAD.top); ctx.lineTo(PAD.left + pw * f, PAD.top + ph); ctx.stroke();
-  });
-
-  // Axes
-  ctx.strokeStyle = 'rgba(0,200,150,0.25)';
-  ctx.lineWidth = 0.75;
-  ctx.beginPath();
-  ctx.moveTo(PAD.left, PAD.top);
-  ctx.lineTo(PAD.left, PAD.top + ph);
-  ctx.lineTo(PAD.left + pw, PAD.top + ph);
-  ctx.stroke();
-
-  // Axis labels
-  ctx.fillStyle = 'rgba(139,175,192,0.5)';
-  ctx.font = '7px JetBrains Mono';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText('events/session', PAD.left + pw / 2, H - 12);
-  ctx.save();
-  ctx.translate(9, PAD.top + ph / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText('max Z', 0, 0);
-  ctx.restore();
-
-  const entries = [...sessions.values()];
-  if (!entries.length) {
-    ctx.fillStyle = 'rgba(139,175,192,0.22)';
-    ctx.font = '8px JetBrains Mono';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('awaiting sessions', PAD.left + pw / 2, PAD.top + ph / 2);
-    return;
-  }
-
-  const maxEv = Math.max(...entries.map(s => s.events), 1);
-  const maxZ  = Math.max(...entries.map(s => s.maxZ), 5);
-  const COLS  = { info:'#00d4ff', warning:'#d4af37', critical:'#ff4460', breach:'#ff2244' };
-
-  entries.slice(-50).forEach(s => {
-    const x = PAD.left + (s.events / maxEv) * pw;
-    const y = PAD.top + ph - Math.min(s.maxZ / maxZ, 1) * ph;
-    const r = Math.max(3, Math.min(10, Math.log(s.events + 1) * 2.5));
-    const col = COLS[s.maxSev] || '#00c896';
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle = col + '88';
-    ctx.fill();
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  });
-}
-
 // ── TOP EVENT TYPES ───────────────────────────────────────────────────────────
 function drawTopEvents() {
   const c = document.getElementById('top-canvas');
@@ -1321,13 +1367,12 @@ function drawAll() {
   drawHeatmap();
   drawDonut();
   if (!gaugeRaf) gaugeRaf = requestAnimationFrame(drawGauge);
-  drawScatter();
   drawTopEvents();
   drawEgress();
 }
 
 function sizeAllAndDraw() {
-  const canvases = ['freq-canvas','anomaly-canvas','heatmap-canvas','donut-canvas','gauge-canvas','scatter-canvas','top-canvas'];
+  const canvases = ['freq-canvas','anomaly-canvas','heatmap-canvas','donut-canvas','gauge-canvas','top-canvas'];
   canvases.forEach(id => {
     const c = document.getElementById(id);
     if (c) sizeCanvas(c);
@@ -1382,14 +1427,6 @@ async function loadEvents() {
     if (tool && TOOLS.includes(tool)) {
       if (!heatmap[tool]) heatmap[tool] = new Array(24).fill(0);
       heatmap[tool][hr]++;
-    }
-    // Sessions
-    const sid = ev.session_id;
-    if (sid) {
-      const s = sessions.get(sid) || { events:0, maxZ:0, maxSev:'info', start: Date.now() };
-      s.events++;
-      if ((SEV_RANK[ev.severity]||0) > (SEV_RANK[s.maxSev]||0)) s.maxSev = ev.severity;
-      sessions.set(sid, s);
     }
     // Egress
     if (ev.event_type === 'egress_blocked') { egressTotal++; }
@@ -2107,6 +2144,62 @@ async function triggerAlertTest() {
   }
 }
 
+async function loadPlatformSettings() {
+  const status = document.getElementById('platform-settings-source');
+  const egress = document.getElementById('platform-egress-filter-enabled');
+  const sandbox = document.getElementById('platform-sandbox-enabled');
+  if (!status || !egress || !sandbox) return;
+  try {
+    const r = await fetch('/api/admin/platform-settings', { headers: H() });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Unable to load platform settings');
+    const settings = d.settings || {};
+    egress.checked = !!settings.egress_filter_enabled;
+    sandbox.checked = !!settings.sandbox_enabled;
+    const egressSource = settings.egress_filter_source || 'env';
+    const sandboxSource = settings.sandbox_source || 'env';
+    status.textContent = `Egress filter: ${egress.checked ? 'enabled' : 'disabled'} (${egressSource}) · Sandbox: ${sandbox.checked ? 'enabled' : 'disabled'} (${sandboxSource})`;
+  } catch (err) {
+    status.textContent = 'Could not load platform settings';
+  }
+}
+
+async function savePlatformSettings() {
+  const egress = document.getElementById('platform-egress-filter-enabled');
+  const sandbox = document.getElementById('platform-sandbox-enabled');
+  const status = document.getElementById('platform-settings-source');
+  const btn = document.getElementById('platform-settings-save');
+  if (!egress || !sandbox || !status) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch('/api/admin/platform-settings', {
+      method: 'PUT',
+      headers: H(),
+      body: JSON.stringify({
+        egress_filter_enabled: !!egress.checked,
+        sandbox_enabled: !!sandbox.checked,
+      }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Unable to save platform settings');
+    const settings = d.settings || {};
+    const egressSource = settings.egress_filter_source || 'gui';
+    const sandboxSource = settings.sandbox_source || 'gui';
+    status.textContent = `Saved. Egress filter: ${settings.egress_filter_enabled ? 'enabled' : 'disabled'} (${egressSource}) · Sandbox: ${settings.sandbox_enabled ? 'enabled' : 'disabled'} (${sandboxSource})`;
+    toast('Control plane settings saved', 'ok');
+  } catch (err) {
+    status.textContent = 'Could not save platform settings';
+    toast('Platform settings save failed', 'critical');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+document.getElementById('platform-settings-save')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  void savePlatformSettings();
+});
+
 // ── KILL SWITCH ───────────────────────────────────────────────────────────────
 let killTargetName = '';
 function openKill(id, name) {
@@ -2252,14 +2345,6 @@ function onLiveEvent(ev) {
   // Freq bucket
   freqBuckets[freqPtr][ev.severity] = (freqBuckets[freqPtr][ev.severity]||0)+1;
   drawFreq();
-  // Session tracking
-  if (ev.session_id) {
-    const s = sessions.get(ev.session_id) || { events:0, maxZ:0, maxSev:'info', start:Date.now() };
-    s.events++;
-    if ((SEV_RANK[ev.severity]||0) > (SEV_RANK[s.maxSev]||0)) s.maxSev = ev.severity;
-    sessions.set(ev.session_id, s);
-    drawScatter();
-  }
   // Top events
   typeCounts.set(ev.event_type, (typeCounts.get(ev.event_type)||0)+1);
   drawTopEvents();
@@ -2323,6 +2408,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadEvents(),
     loadAnomalies(),
     loadHoneypotSummary(),
+    loadPlatformSettings(),
   ]);
 
   // Size and draw canvases after two animation frames (layout must be complete)
@@ -2348,37 +2434,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 window.addEventListener('resize', () => {
   requestAnimationFrame(sizeAllAndDraw);
 });
-
-// ── TOOLTIP ENGINE ────────────────────────────────────────────────────────────
-// CSS-only tooltips fail inside overflow:hidden panels. Use a floating div instead.
-const tipEl = document.createElement('div');
-tipEl.style.cssText = `
-  position:fixed;display:none;background:#050c1a;border:1px solid rgba(0,200,150,.4);
-  color:#cce8f4;font-family:'JetBrains Mono',monospace;font-size:.68rem;
-  padding:.3rem .65rem;border-radius:3px;white-space:nowrap;z-index:9998;
-  pointer-events:none;letter-spacing:.04em;box-shadow:0 4px 20px rgba(0,0,0,.6);
-`;
-document.body.appendChild(tipEl);
-
-document.addEventListener('mouseover', e => {
-  const el = e.target.closest('[data-tip]');
-  if (!el) { tipEl.style.display = 'none'; return; }
-  tipEl.textContent = el.dataset.tip;
-  tipEl.style.display = 'block';
-});
-document.addEventListener('mousemove', e => {
-  if (tipEl.style.display === 'none') return;
-  const x = Math.min(e.clientX + 12, window.innerWidth - tipEl.offsetWidth - 8);
-  const y = Math.min(e.clientY + 16, window.innerHeight - tipEl.offsetHeight - 8);
-  tipEl.style.left = x + 'px';
-  tipEl.style.top  = y + 'px';
-});
-document.addEventListener('mouseout', e => {
-  if (!e.relatedTarget || !e.relatedTarget.closest('[data-tip]')) {
-    tipEl.style.display = 'none';
-  }
-});
 </script>
+<script src="/dashboard/js/widgets/dashboard-help.js"></script>
+<script src="/dashboard/js/widgets/posture-summary.js"></script>
+<script src="/dashboard/js/widgets/action-queue.js"></script>
+<script src="/dashboard/js/widgets/attack-detail.js"></script>
 <script src="/dashboard/js/widgets/agent-status.js"></script>
 <script src="/dashboard/js/widgets/threat-metrics.js"></script>
 <script src="/dashboard/js/widgets/usage-analytics.js"></script>

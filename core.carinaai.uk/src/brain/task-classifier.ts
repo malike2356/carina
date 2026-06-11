@@ -7,7 +7,6 @@ const COMPLEX_PATTERNS = [
   /\bcompare\b/i,
   /\bstrategy\b/i,
   /\bstrategies\b/i,
-  /\bplan\b/i,
   /\bdebug\b/i,
   /\brefactor\b/i,
   /\bimplement\b/i,
@@ -16,13 +15,11 @@ const COMPLEX_PATTERNS = [
   /\binvestigate\b/i,
   /\baudit\b/i,
   /\bforecast\b/i,
-  /\bmodel\b/i,
   /\boptimise\b/i,
   /\boptimize\b/i,
   /\btrade[- ]?offs?\b/i,
   /\bexit strateg/i,
   /\bdeal pack\b/i,
-  /\bdocument\b/i,
   /\bspreadsheet\b/i,
   /\battachment\b/i,
   /\bimage\b/i,
@@ -70,7 +67,7 @@ export function classifyComplexity(messages: Message[]): TaskComplexity {
     return 'simple';
   }
 
-  if (wordCount <= 18 && !/[;:]/.test(userText)) return 'simple';
+  if (wordCount <= 25 && !/[;:]/.test(userText)) return 'simple';
 
   return 'complex';
 }

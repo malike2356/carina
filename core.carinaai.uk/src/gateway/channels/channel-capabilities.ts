@@ -130,4 +130,28 @@ export const CHANNEL_CAPABILITIES: Record<ChannelName, ChannelCapabilities> = {
     supportsBlockKit: false,
     plainTextOnly: false,
   },
+  homeassistant: {
+    maxMessageLength: 4000,
+    supportsEmbeds: false,
+    supportsReactions: false,
+    supportsThreading: false,
+    supportsBlockKit: false,
+    plainTextOnly: true,
+  },
+  api: {
+    maxMessageLength: 100_000,
+    supportsEmbeds: false,
+    supportsReactions: false,
+    supportsThreading: false,
+    supportsBlockKit: false,
+    plainTextOnly: false,
+  },
+  webhooks: {
+    maxMessageLength: 100_000,
+    supportsEmbeds: false,
+    supportsReactions: false,
+    supportsThreading: false,
+    supportsBlockKit: false,
+    plainTextOnly: false,
+  },
 };

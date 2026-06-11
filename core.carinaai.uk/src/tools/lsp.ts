@@ -16,6 +16,8 @@ function sessionKey(params: Record<string, unknown>): string {
 
 export const lspTool: Tool = {
   name: 'lsp',
+  dangerous: true,
+  requiresConfirmation: true,
   description:
     'Language Server Protocol integration. Actions: start, definition, references, hover, diagnostics, stop.',
   parameters: {

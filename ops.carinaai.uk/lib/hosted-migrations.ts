@@ -87,12 +87,43 @@ CREATE TABLE IF NOT EXISTS pack_config (
   PRIMARY KEY (tenant_id, pack_name)
 );
 
+CREATE TABLE IF NOT EXISTS ops_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id UUID,
+  action TEXT NOT NULL,
+  actor TEXT NOT NULL DEFAULT 'ops-admin',
+  details JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE INDEX IF NOT EXISTS idx_usage_records_tenant_date
   ON usage_records (tenant_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_tenant_provider_keys_tenant
   ON tenant_provider_keys (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_ops_audit_log_tenant
+  ON ops_audit_log (tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant
+  ON invoices (tenant_id, created_at DESC);
 `;
+
+const OPS_ADMIN_PATCHES = [
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS display_name TEXT`,
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS company_name TEXT`,
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS provisioning_type TEXT NOT NULL DEFAULT 'saas'`,
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS access_status TEXT NOT NULL DEFAULT 'active'`,
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS notes TEXT`,
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()`,
+  `ALTER TABLE hosted_users ADD COLUMN IF NOT EXISTS daily_message_limit INTEGER`,
+  `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS provisioning_source TEXT NOT NULL DEFAULT 'saas'`,
+  `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ`,
+  `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,
+  `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS failure_reason TEXT`,
+  `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'gbp'`,
+];
 
 export async function runHostedMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(HOSTED_SCHEMA);
+  for (const patch of OPS_ADMIN_PATCHES) {
+    await client.query(patch);
+  }
 }

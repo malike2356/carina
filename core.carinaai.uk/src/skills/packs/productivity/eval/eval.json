@@ -1,0 +1,74 @@
+{
+  "version": "1",
+  "pack": "productivity",
+  "description": "Skill trigger and routing evals for productivity pack",
+  "thresholds": {
+    "minPassRate": 0.9,
+    "maxMeanLatencyMs": 50,
+    "maxRegressionDelta": 0.05
+  },
+  "fixtures": [
+    {
+      "id": "trigger-notion",
+      "description": "Notion page update should match notion-workspace",
+      "input": {
+        "query": "update my notion page with the meeting notes"
+      },
+      "assertions": [
+        { "type": "skill_match", "skill": "notion-workspace" },
+        { "type": "tools_include", "skill": "notion-workspace", "tools": ["http-request"] }
+      ]
+    },
+    {
+      "id": "trigger-gmail",
+      "description": "Gmail scheduling should match google-workspace",
+      "input": {
+        "query": "schedule a gmail meeting for tomorrow"
+      },
+      "assertions": [
+        { "type": "skill_match", "skill": "google-workspace" }
+      ]
+    },
+    {
+      "id": "trigger-airtable",
+      "description": "Airtable CRM record update",
+      "input": {
+        "query": "update the airtable crm record for this lead"
+      },
+      "assertions": [
+        { "type": "skill_match", "skill": "airtable-records" },
+        { "type": "skill_rank", "skill": "airtable-records", "rank": 1 }
+      ]
+    },
+    {
+      "id": "trigger-ocr",
+      "description": "Tenancy agreement OCR",
+      "input": {
+        "query": "extract text from this tenancy agreement scan"
+      },
+      "assertions": [
+        { "type": "skill_match", "skill": "ocr-and-documents" }
+      ]
+    },
+    {
+      "id": "trigger-postcode",
+      "description": "UK postcode lookup",
+      "input": {
+        "query": "what local authority is postcode SW1A 1AA in"
+      },
+      "assertions": [
+        { "type": "skill_match", "skill": "uk-postcode-lookup" }
+      ]
+    },
+    {
+      "id": "latency-budget",
+      "description": "Matching should stay fast (no LLM)",
+      "input": {
+        "query": "send email via gmail"
+      },
+      "assertions": [
+        { "type": "max_latency_ms", "value": "100" }
+      ]
+    }
+  ]
+}

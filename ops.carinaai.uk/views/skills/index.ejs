@@ -12,7 +12,7 @@
         <th class="p-3">Description</th>
         <th class="p-3">Triggers</th>
         <th class="p-3">Usage</th>
-        <th class="p-3">Created</th>
+        <th class="p-3">Updated</th>
         <th class="p-3"></th>
       </tr>
     </thead>
@@ -29,7 +29,7 @@
             </div>
           </td>
           <td class="p-3"><%= s.usage_count %></td>
-          <td class="p-3 text-gray-500"><%= new Date(s.created_at).toLocaleDateString() %></td>
+          <td class="p-3 text-gray-500"><%= new Date(s.updated_at || s.created_at).toLocaleString() %></td>
           <td class="p-3">
             <a href="/skills/<%= s.id %>" class="text-xs text-gray-400 hover:text-white">Edit</a>
           </td>

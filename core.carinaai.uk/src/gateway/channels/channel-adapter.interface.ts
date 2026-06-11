@@ -15,7 +15,10 @@ export type ChannelName =
   | 'feishu'
   | 'wechat'
   | 'imessage'
-  | 'email';
+  | 'email'
+  | 'homeassistant'
+  | 'api'
+  | 'webhooks';
 
 export interface Attachment {
   id?: string;
@@ -29,8 +32,11 @@ export interface Attachment {
 export interface ChannelMessage {
   id: string;
   channel: ChannelName;
+  accountId?: string;
   externalUserId: string;
   conversationId: string;
+  guildId?: string;
+  teamId?: string;
   text: string;
   timestamp: Date;
   isDirect: boolean;
@@ -70,7 +76,7 @@ export interface IChannelAdapter {
   formatForChannel(text: string, options?: SendOptions): string[];
   validateWebhook?(input: WebhookValidationInput): boolean | Promise<boolean>;
   createRouter?(): Router;
-  start?(): Promise<void>;
+  start?(): Promise<{ stop: () => void } | void>;
 }
 
 export type WebhookHandler = (req: Request, res: Response) => Promise<void>;

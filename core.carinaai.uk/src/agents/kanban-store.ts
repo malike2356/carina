@@ -212,6 +212,55 @@ export async function listComments(cardId: string): Promise<KanbanComment[]> {
   }));
 }
 
+export function isCardClaimable(card: KanbanCard): boolean {
+  if (card.blocked) return false;
+  if (card.column === 'done') return false;
+  return card.column === 'backlog' || card.column === 'review' || !card.assignee;
+}
+
+export async function claimCard(
+  cardId: string,
+  assignee: string,
+): Promise<{ card: KanbanCard | null; error?: string }> {
+  const existing = await getCard(cardId);
+  if (!existing) return { card: null, error: 'card not found' };
+  if (!isCardClaimable(existing)) {
+    return { card: null, error: `card not claimable (column=${existing.column}, assignee=${existing.assignee ?? 'none'})` };
+  }
+  if (existing.assignee && existing.assignee !== assignee) {
+    return { card: null, error: `already assigned to ${existing.assignee}` };
+  }
+  const card = await moveCard(cardId, 'in_progress', assignee);
+  return { card };
+}
+
+export async function releaseCard(cardId: string, assignee: string): Promise<{ card: KanbanCard | null; error?: string }> {
+  const existing = await getCard(cardId);
+  if (!existing) return { card: null, error: 'card not found' };
+  if (existing.assignee && existing.assignee !== assignee) {
+    return { card: null, error: `assigned to ${existing.assignee}, not ${assignee}` };
+  }
+  const result = await pool.query(
+    `UPDATE kanban_cards
+     SET assignee = NULL, column_name = 'backlog', updated_at = NOW()
+     WHERE id = $1
+     RETURNING *`,
+    [cardId],
+  );
+  if (!result.rows[0]) return { card: null, error: 'update failed' };
+  const card = rowToCard(result.rows[0]);
+  emitMove(card, { action: 'release' });
+  return { card };
+}
+
+export async function listClaimableCards(
+  sessionId: string,
+  boardId = 'default',
+): Promise<KanbanCard[]> {
+  const cards = await listCards(sessionId, boardId);
+  return cards.filter(isCardClaimable);
+}
+
 export async function heartbeatBoard(sessionId: string, boardId = 'default'): Promise<{
   board_id: string;
   total: number;

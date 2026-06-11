@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import os from 'os';
 import path from 'path';
-import { expandPath, isSafePath, isBlockedSystemWrite } from './path-utils.js';
+import { expandPath, isSafePath, isBlockedSystemWrite, resolveWorkspacePath } from './path-utils.js';
 
 describe('expandPath', () => {
   it('expands ~/ to home directory', () => {
@@ -16,6 +16,16 @@ describe('expandPath', () => {
 
   it('leaves relative paths unchanged', () => {
     expect(expandPath('relative/path.txt')).toBe('relative/path.txt');
+  });
+});
+
+describe('resolveWorkspacePath', () => {
+  it('resolves relative paths against agent workspace when set', () => {
+    const prev = process.env.CARINA_AGENT_WORKSPACE;
+    process.env.CARINA_AGENT_WORKSPACE = '/tmp/agent-ws';
+    expect(resolveWorkspacePath('notes.md')).toBe('/tmp/agent-ws/notes.md');
+    if (prev === undefined) delete process.env.CARINA_AGENT_WORKSPACE;
+    else process.env.CARINA_AGENT_WORKSPACE = prev;
   });
 });
 

@@ -6,9 +6,12 @@ import { redirectIfHostedAuthed } from '../gateway/web-auth.js';
 import { pool } from '../memory/db.js';
 import { StripeService } from '../billing/stripe-service.js';
 import {
+  confirmPasswordReset,
   getUserProfile,
+  initHostedDb,
   loginUser,
   registerUser,
+  requestPasswordReset,
   verifyJwt,
 } from './hosted-auth.js';
 
@@ -88,6 +91,37 @@ export function mountHostedWebRoutes(app: Express): void {
 
   router.post('/logout', (req: Request, res: Response) => {
     req.session.destroy(() => res.json({ ok: true }));
+  });
+
+  router.post('/forgot-password', async (req: Request, res: Response) => {
+    await initHostedDb();
+    const email = String(req.body?.email ?? '').trim().toLowerCase();
+    if (!email) {
+      res.status(400).json({ error: 'email required' });
+      return;
+    }
+    if (!config.resend.apiKey) {
+      res.json({ ok: false, emailDisabled: true });
+      return;
+    }
+    await requestPasswordReset(email, hostedAppOrigin(req));
+    res.json({ ok: true }); // always 200 to avoid email enumeration
+  });
+
+  router.post('/reset-password', async (req: Request, res: Response) => {
+    await initHostedDb();
+    const token = String(req.body?.token ?? '').trim();
+    const password = String(req.body?.password ?? '');
+    if (!token || password.length < 8) {
+      res.status(400).json({ error: 'token and password (8+ chars) required' });
+      return;
+    }
+    const ok = await confirmPasswordReset(token, password);
+    if (!ok) {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+      return;
+    }
+    res.json({ ok: true });
   });
 
   router.get('/me', async (req: Request, res: Response) => {
@@ -175,8 +209,9 @@ export function mountHostedWebRoutes(app: Express): void {
 export function mountHostedContextRoute(app: Express): void {
   if (!config.hosted.enabled) return;
   app.get('/api/hosted/context', async (req: Request, res: Response) => {
+    const emailDisabled = !config.resend.apiKey;
     if (!req.hostedUser) {
-      res.json({ hosted: true, user: null });
+      res.json({ hosted: true, user: null, emailDisabled });
       return;
     }
     const scout = await import('../billing/tenant-scout.js').then((m) =>
@@ -185,6 +220,7 @@ export function mountHostedContextRoute(app: Express): void {
     const installedPacks = await getInstalledPacks(req.hostedUser.id);
     res.json({
       hosted: true,
+      emailDisabled,
       installedPacks,
       user: {
         id: req.hostedUser.id,

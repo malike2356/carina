@@ -6,10 +6,13 @@ import { runWeeklyAttestation } from './trust/run-weekly-attestation.js';
 import { runWeeklyVerification } from './trust/erc8126/run-weekly-verification.js';
 import { startRotationScheduler } from './deception/rotation-scheduler.js';
 import { movingTarget } from './deception/moving-target.js';
+import { emitTrustAlert } from './trust/trust-alerts.js';
+import { checkRiskScoreSpike } from './trust/risk-spike-monitor.js';
 
 const BASELINE_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const RETENTION_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
 const ATTESTATION_INTERVAL_MS = config.trust.attestationIntervalDays * 24 * 60 * 60 * 1000;
+const RISK_SPIKE_INTERVAL_MS = 5 * 60 * 1000;
 const STARTUP_DELAY_MS = 30_000;
 
 export function startScheduler(): void {
@@ -45,6 +48,11 @@ export function startScheduler(): void {
       setInterval(() => void runTrustVerification(), verificationIntervalMs);
     }, STARTUP_DELAY_MS + 15_000);
   }
+
+  setTimeout(() => {
+    void checkRiskScoreSpike();
+    setInterval(() => void checkRiskScoreSpike(), RISK_SPIKE_INTERVAL_MS);
+  }, STARTUP_DELAY_MS + 20_000);
 }
 
 async function runBaselines(): Promise<void> {
@@ -73,6 +81,12 @@ async function runTrustVerification(): Promise<void> {
     }
     if (!result.skipped) {
       console.error('[Scheduler] ERC-8126 verification failed:', result.reason);
+      await emitTrustAlert(
+        'trust_verification_failed',
+        'critical',
+        `ERC-8126 verification failed: ${result.reason ?? 'unknown'}`,
+        { reason: result.reason },
+      );
       return;
     }
     console.log('[Scheduler] ERC-8126 verification skipped:', result.reason);
@@ -90,6 +104,12 @@ async function runTrustAttestation(): Promise<void> {
     }
     if (!result.skipped) {
       console.error('[Scheduler] Trust attestation failed:', result.reason);
+      await emitTrustAlert(
+        'trust_attestation_failed',
+        'critical',
+        `Trust attestation failed: ${result.reason ?? 'unknown'}`,
+        { reason: result.reason },
+      );
       return;
     }
     console.log('[Scheduler] Trust attestation skipped:', result.reason);

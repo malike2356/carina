@@ -55,6 +55,7 @@ export const haListServicesTool: Tool = {
 
 export const haCallServiceTool: Tool = {
   name: 'ha-call-service',
+  dangerous: true,
   description: 'Call a Home Assistant service (e.g. light.turn_on).',
   parameters: {
     type: 'object',

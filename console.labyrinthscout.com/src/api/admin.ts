@@ -10,10 +10,12 @@ import { requireScoutPro } from '../middleware/plan-gate.js';
 import { loadDispatchChannels } from '../lib/alert-channels.js';
 import { broadcastEvent } from './sse.js';
 import type { SecurityEventRow, Severity } from '../types.js';
+import { platformSettingsRouter } from './platform-settings.js';
 
 export const adminRouter: IRouter = Router();
 
 adminRouter.use('/alert-channels', alertChannelsRouter);
+adminRouter.use('/platform-settings', platformSettingsRouter);
 
 const VALID_SEVERITIES: Severity[] = ['info', 'warning', 'critical', 'breach'];
 

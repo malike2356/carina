@@ -1,6 +1,8 @@
 # Carina CLI
 
-Install Carina globally after publishing or from a local checkout:
+Install Carina globally from npm or from a local checkout:
+
+Package: [carina-agent](https://www.npmjs.com/package/carina-agent) (Node.js 22+).
 
 ```sh
 npm install -g carina-agent

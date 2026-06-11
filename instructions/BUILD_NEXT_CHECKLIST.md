@@ -1,10 +1,10 @@
 # Build Next Checklist
 
-Last updated: 2026-06-09. Living comparison and gap tracker for standalone Carina vs Hermes vs Carina-in-Propreneur.
+Last updated: 2026-06-10. Living comparison and gap tracker for standalone Carina vs Hermes vs Carina-in-Propreneur.
 
 **Product stance:** Standalone Carina is a **general-purpose** autonomous agent. Domain knowledge (property, healthcare, finance, etc.) is optional via `ACTIVE_SKILL_PACKS`; no vertical pack is active by default.
 
-**Quick status:** Gap closure wave 7 (2026-06-10). WhatsApp polish (QR setup, reconnect, voice transcribe, groups), CLI breadth (`channels`, `cron`, `doctor`, `logs`, `skills`, `whatsapp`), auto skill learning (`CARINA_AUTO_SKILL_LEARN`), contact-first `send-message`, local SQLite mode in setup wizard, Zed IDE extension. Prior waves: 77 tools, 15 channels, 96 skills, VS Code/Cursor/Zed extensions, Scout security. **5259 tests**, build clean.
+**Quick status:** Wave 8 (2026-06-10). REM/DREAMS, ops layer, agent workspaces, host/control dashboard, device pairing, inferred commitments. Verified metrics: **71 tools**, **18 channel adapters**, **23 LLM providers**, **16 skill packs**, **96 curated pack skills**, **49 CLI commands**, **5,369 tests** (125 files), build clean.
 
 See also: `prompts/do_this_next.md` for prompt completion matrix.
 
@@ -29,9 +29,9 @@ See also: `prompts/do_this_next.md` for prompt completion matrix.
 |---|---|---|---|
 | Sub-agents | Yes: `delegate-task` (batch, depth=1, cancel on parent end) | Yes: `delegate_task`, 3 parallel, leaf/orchestrator | No |
 | Multi-agent | Orchestrator + delegate-task + kanban | Kanban, delegate_task, tmux spawning | No |
-| Tool system | Registry-based, 50+ tools (see inventory below) | 99+ tools, auto-discovery | ~80 domain tools |
+| Tool system | Registry-based, 71 tools (see inventory below) | 99+ tools, auto-discovery | ~80 domain tools |
 | Tool dispatch | `tool-runner.ts` | `model_tools.py` | `CarinaModuleToolDispatcher` |
-| LLM providers | 5 (DeepSeek, Anthropic, OpenAI, Groq, Gemini) + pools | 20+ (swap mid-workflow) | 1 (DeepSeek) |
+| LLM providers | 23 (cloud + Ollama/LM Studio) + credential pools | 20+ (swap mid-workflow) | 1 (DeepSeek) |
 
 ### Security (Carina differentiator)
 
@@ -49,9 +49,9 @@ See also: `prompts/do_this_next.md` for prompt completion matrix.
 
 | | Standalone Carina | Hermes | Carina-in-Propreneur |
 |---|---|---|---|
-| Persistent memory | Postgres + Redis + pgvector | SQLite FTS5, multiple backends | Session only |
+| Persistent memory | Postgres/SQLite/builtin/Mem0 + Redis + pgvector + REM | SQLite FTS5, multiple backends | Session only |
 | Session search | Postgres FTS (`session-search`) | FTS5 full-text search | No |
-| Skills system | Yes: auto-writer, hub, optional packs, user resources | Yes: 115 skills, curator lifecycle | No |
+| Skills system | Yes: auto-writer, hub, 16 packs (96 skills), user resources | Yes: 115 skills, curator lifecycle | No |
 | Domain packs | Yes: optional packs (property, healthcare, finance, etc.) | No equivalent | 25+ context services (hardcoded) |
 | Self-improvement | Skill auto-writer | Creates skills from workflows | No |
 
@@ -59,7 +59,7 @@ See also: `prompts/do_this_next.md` for prompt completion matrix.
 
 | | Standalone Carina | Hermes | Carina-in-Propreneur |
 |---|---|---|---|
-| Messaging platforms | 6+ (Telegram, Discord, Slack, SMS, WhatsApp, Web CLI) | 15+ (Signal, Matrix, Email, iMessage, etc.) | 6 (Telegram, Slack, Email, WhatsApp, Webhook) |
+| Messaging platforms | 18 adapters (Telegram, Discord, Slack, SMS, WhatsApp, Web, CLI, Signal, Matrix, Email, iMessage, WeChat, Feishu, DingTalk, Home Assistant, API, Webhooks; config-dependent) | 15+ (Signal, Matrix, Email, iMessage, etc.) | 6 (Telegram, Slack, Email, WhatsApp, Webhook) |
 | Text-to-speech | Yes (`text-to-speech`, Telegram `/speak`, Edge default) | Yes (5 engines) | Yes |
 | Speech-to-text | Yes (`transcription` via Whisper) | Yes (faster-whisper, Groq, OpenAI) | Yes |
 | Multi-platform delivery | Yes (`send-message` + `discord` tool) | Yes (per-platform config) | Basic |
@@ -88,7 +88,7 @@ See also: `prompts/do_this_next.md` for prompt completion matrix.
 | Profiles | Yes (`carina profile create/use`) | Yes (isolated instances) | Tenant isolation |
 | Credential pools | Yes (`*_API_KEYS` comma pools) | Yes | No |
 | Billing | Stripe built-in | No | No |
-| Tests | Vitest (267 tests) | ~3000 pytest tests | ~60 PHPUnit classes |
+| Tests | Vitest (5,369 tests) | ~3000 pytest tests | ~60 PHPUnit classes |
 | npm package | Yes (`carina`) | No (bash install) | No |
 
 ### The real verdict
@@ -101,11 +101,10 @@ Standalone Carina is building toward Hermes parity. Phase 2 target was "full Her
 - SaaS-ready: npm package, Stripe billing, hosted API
 - Ops panel + Scout SOC dashboard
 
-**Where Hermes is still ahead**
-- Breadth: 115 skills vs 49 pack skills, 15+ messaging platforms (Signal, Matrix, iMessage)
-- Provider count: 20+ providers vs Carina's 5
-- Maturity: ~3000 tests vs 267, longer production history
-- Intelligence: skill curator lifecycle (auto-curate from workflows)
+**Where Hermes may still be ahead** (Hermes figures not audited here)
+- Curated skill count in default install (115+ vs Carina's 96 pack skills + hub)
+- Longer production history in the wild
+- Some channel integrations may be more battle-tested per platform
 
 **Where Carina-in-Propreneur is ahead of both**
 - Domain depth: 80 property tools, 25 context services, accountability coach
@@ -148,7 +147,7 @@ Standalone Carina is building toward Hermes parity. Phase 2 target was "full Her
 **When `property-uk` pack active (+1):**
 `domain_lookup`
 
-**Total:** ~50 tools with browser enabled.
+**Total:** 71 tools in `TOOLSET_MAP` (includes browser, kanban, integrations, MCP, etc.).
 
 ---
 
@@ -307,7 +306,7 @@ Ordered by impact for general-purpose parity (non-gaming).
 
 ```bash
 cd core.carinaai.uk
-pnpm test          # 267 tests
+pnpm test          # 5,369 tests
 pnpm build
 ACTIVE_SKILL_PACKS=core-engineering pnpm cli
 ```

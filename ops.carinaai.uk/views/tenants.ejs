@@ -2,10 +2,18 @@
 <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
   <div>
     <h1 class="text-2xl font-bold text-white">Hosted tenants</h1>
-    <p class="text-sm text-gray-400 mt-1">Carina Cloud accounts on app.carinaai.uk (BYOK, quotas, billing).</p>
+    <p class="text-sm text-gray-400 mt-1">Provision Carina users, manage plans, billing, usage, and skill packs.</p>
   </div>
-  <a href="<%= hostedAppUrl %>" target="_blank" rel="noopener"
-     class="text-sm text-[#06b6d4] hover:underline">Open <%= hostedAppUrl %></a>
+  <div class="flex gap-3">
+    <% if (ready) { %>
+      <a href="/tenants/new"
+         class="px-4 py-2 rounded bg-[#22c55e] hover:bg-green-400 text-black text-sm font-medium">
+        Create tenant
+      </a>
+    <% } %>
+    <a href="<%= hostedAppUrl %>" target="_blank" rel="noopener"
+       class="text-sm text-[#06b6d4] hover:underline self-center">Open <%= hostedAppUrl %></a>
+  </div>
 </div>
 
 <% if (message) { %>
@@ -18,7 +26,7 @@
   <div class="rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-4 text-sm text-amber-200">
     <p class="font-medium text-amber-100 mb-2">Hosted mode not initialized</p>
     <p>The <code>hosted_users</code> table was not found in <code>CARINA_DB_URL</code>.</p>
-    <p class="mt-2 text-amber-200/80">Set <code>HOSTED_MODE=true</code> on Carina core, then initialize the schema here or register the first user at app.carinaai.uk.</p>
+    <p class="mt-2 text-amber-200/80">Initialize the schema here to enable direct provisioning from this panel.</p>
     <form method="post" action="/tenants/init-schema" class="mt-4">
       <button type="submit" class="px-4 py-2 rounded bg-amber-700/80 hover:bg-amber-600 text-amber-50 text-sm font-medium">
         Initialize hosted schema
@@ -28,76 +36,100 @@
 <% } else { %>
 
   <% if (summary) { %>
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <p class="text-gray-400 text-sm">Total tenants</p>
-      <p class="text-2xl font-bold text-white mt-1"><%= summary.total %></p>
+      <p class="text-gray-400 text-xs">Total</p>
+      <p class="text-xl font-bold text-white mt-1"><%= summary.total %></p>
     </div>
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <p class="text-gray-400 text-sm">Free</p>
-      <p class="text-2xl font-bold text-white mt-1"><%= summary.freeCount %></p>
+      <p class="text-gray-400 text-xs">Manual/direct</p>
+      <p class="text-xl font-bold text-[#06b6d4] mt-1"><%= summary.manualCount %></p>
     </div>
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <p class="text-gray-400 text-sm">Pro</p>
-      <p class="text-2xl font-bold text-[#22c55e] mt-1"><%= summary.proCount %></p>
+      <p class="text-gray-400 text-xs">SaaS</p>
+      <p class="text-xl font-bold text-white mt-1"><%= summary.saasCount %></p>
     </div>
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <p class="text-gray-400 text-sm">Msgs today (all)</p>
-      <p class="text-2xl font-bold text-white mt-1"><%= summary.messagesToday %></p>
+      <p class="text-gray-400 text-xs">Suspended</p>
+      <p class="text-xl font-bold text-red-400 mt-1"><%= summary.suspendedCount %></p>
     </div>
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <p class="text-gray-400 text-sm">Tokens this month</p>
-      <p class="text-2xl font-bold text-white mt-1"><%= summary.monthlyTokens.toLocaleString() %></p>
+      <p class="text-gray-400 text-xs">Free tier</p>
+      <p class="text-xl font-bold text-white mt-1"><%= summary.freeCount %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-xs">Pro tier</p>
+      <p class="text-xl font-bold text-[#22c55e] mt-1"><%= summary.proCount %></p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-gray-400 text-xs">Tokens (month)</p>
+      <p class="text-xl font-bold text-white mt-1"><%= summary.monthlyTokens.toLocaleString() %></p>
     </div>
   </div>
   <% } %>
 
-  <div class="flex gap-2 mb-4 text-sm">
-    <a href="/tenants" class="px-3 py-1 rounded <%= !tierFilter ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">All</a>
+  <div class="flex flex-wrap gap-2 mb-4 text-sm">
+    <a href="/tenants" class="px-3 py-1 rounded <%= !tierFilter && !provisioningFilter && !accessFilter ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">All</a>
+    <a href="/tenants?provisioning=manual" class="px-3 py-1 rounded <%= provisioningFilter === 'manual' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Manual/direct</a>
+    <a href="/tenants?provisioning=saas" class="px-3 py-1 rounded <%= provisioningFilter === 'saas' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">SaaS</a>
+    <a href="/tenants?access=suspended" class="px-3 py-1 rounded <%= accessFilter === 'suspended' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Suspended</a>
     <a href="/tenants?tier=free" class="px-3 py-1 rounded <%= tierFilter === 'free' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Free</a>
     <a href="/tenants?tier=pro" class="px-3 py-1 rounded <%= tierFilter === 'pro' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Pro</a>
   </div>
 
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
     <% if (!tenants.length) { %>
-      <p class="p-6 text-gray-500 text-sm">No tenants yet.</p>
+      <div class="p-8 text-center">
+        <p class="text-gray-500 text-sm mb-4">No tenants yet.</p>
+        <a href="/tenants/new" class="text-[#06b6d4] hover:underline text-sm">Create your first tenant</a>
+      </div>
     <% } else { %>
       <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
           <thead class="text-gray-400 border-b border-[#2a2a2a] bg-[#141414]">
             <tr>
-              <th class="px-4 py-3 font-medium">Email</th>
-              <th class="px-4 py-3 font-medium">Tier</th>
-              <th class="px-4 py-3 font-medium">Today</th>
-              <th class="px-4 py-3 font-medium">BYOK keys</th>
-              <th class="px-4 py-3 font-medium">Tokens (month)</th>
-              <th class="px-4 py-3 font-medium">Subscription</th>
-              <th class="px-4 py-3 font-medium">Joined</th>
+              <th class="px-4 py-3 font-medium">Name / email</th>
+              <th class="px-4 py-3 font-medium">Status</th>
+              <th class="px-4 py-3 font-medium">Provisioning</th>
+              <th class="px-4 py-3 font-medium">Plan</th>
+              <th class="px-4 py-3 font-medium">Usage</th>
+              <th class="px-4 py-3 font-medium">Packs</th>
+              <th class="px-4 py-3 font-medium">Updated</th>
               <th class="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-[#2a2a2a]">
             <% for (const t of tenants) { %>
               <tr class="hover:bg-[#222]">
-                <td class="px-4 py-3 text-white"><%= t.email %></td>
                 <td class="px-4 py-3">
-                  <span class="px-2 py-0.5 rounded text-xs font-medium <%= t.tier === 'pro' ? 'bg-green-900/50 text-green-300' : 'bg-gray-800 text-gray-300' %>">
-                    <%= t.tier %>
-                  </span>
+                  <div class="text-white font-medium"><%= tenantDisplayName(t) %></div>
+                  <div class="text-gray-500 text-xs"><%= t.email %></div>
                 </td>
-                <td class="px-4 py-3 text-gray-300"><%= t.messagesToday %></td>
-                <td class="px-4 py-3 text-gray-300"><%= t.providerCount %></td>
-                <td class="px-4 py-3 text-gray-300"><%= t.monthlyTokens.toLocaleString() %></td>
-                <td class="px-4 py-3 text-gray-400">
-                  <% if (t.subscriptionPlan) { %>
-                    <%= t.subscriptionPlan %> <span class="text-gray-500">(<%= t.subscriptionStatus || 'n/a' %>)</span>
-                  <% } else { %>
-                    <span class="text-gray-600">none</span>
+                <td class="px-4 py-3">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium <%= t.accessStatus === 'active' ? 'bg-green-900/50 text-green-300' : t.accessStatus === 'suspended' ? 'bg-red-900/50 text-red-300' : 'bg-amber-900/50 text-amber-300' %>">
+                    <%= t.accessStatus %>
+                  </span>
+                  <span class="ml-1 px-2 py-0.5 rounded text-xs bg-gray-800 text-gray-300"><%= t.tier %></span>
+                </td>
+                <td class="px-4 py-3 text-gray-300 text-xs">
+                  <%= provisioningLabel(t.provisioningType, t.provisioningSource) %>
+                </td>
+                <td class="px-4 py-3 text-gray-300">
+                  <%= t.subscriptionPlan || 'free' %>
+                  <% if (t.subscriptionStatus) { %>
+                    <span class="text-gray-600 text-xs">(<%= t.subscriptionStatus %>)</span>
                   <% } %>
                 </td>
-                <td class="px-4 py-3 text-gray-500"><%= new Date(t.createdAt).toLocaleDateString() %></td>
+                <td class="px-4 py-3 text-gray-300">
+                  <div><%= t.messagesToday %> msgs today</div>
+                  <div class="text-xs text-gray-500"><%= t.monthlyTokens.toLocaleString() %> tokens/mo</div>
+                </td>
+                <td class="px-4 py-3 text-gray-300"><%= t.packCount %></td>
+                <td class="px-4 py-3 text-gray-500 text-xs">
+                  <%= t.updatedAt ? new Date(t.updatedAt).toLocaleDateString() : new Date(t.createdAt).toLocaleDateString() %>
+                </td>
                 <td class="px-4 py-3">
-                  <a href="/tenants/<%= t.id %>" class="text-[#06b6d4] hover:underline">View</a>
+                  <a href="/tenants/<%= t.id %>" class="text-[#06b6d4] hover:underline">Manage</a>
                 </td>
               </tr>
             <% } %>
