@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#212121" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Carina">
   <title>Carina Agent</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon.svg">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-theme">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
@@ -30,6 +36,7 @@
       height: 100vh; display: flex; overflow: hidden; font-size: 16px;
       -webkit-font-smoothing: antialiased;
     }
+    body.sidebar-open { overflow: hidden; }
     button { font-family: inherit; }
     [data-density="compact"] .thread-row { padding: 10px 0; }
     [data-density="compact"] .thread-content { font-size: 0.9rem; line-height: 1.45; }
@@ -51,6 +58,11 @@
       background: var(--surface); display: flex; flex-direction: column;
       transition: margin-left .2s ease, transform .2s ease;
     }
+    #sidebar-backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 40; border: none; padding: 0; cursor: pointer;
+    }
+    #sidebar-backdrop.open { display: block; }
     #sidebar.collapsed { margin-left: -260px; }
     .sidebar-head { padding: 10px 8px; display: flex; flex-direction: column; gap: 6px; }
     .brand { display: flex; align-items: center; gap: 10px; padding: 8px 10px 4px; }
@@ -61,6 +73,7 @@
       color: #fff; font-weight: 700; font-size: 14px;
     }
     .brand .name { font-weight: 600; font-size: 0.95rem; letter-spacing: -0.01em; }
+    .mobile-sidebar-close { display: none; margin-left: auto; }
     .new-chat-btn {
       display: flex; align-items: center; gap: 10px; width: 100%;
       padding: 10px 12px; border-radius: 10px; border: none;
@@ -141,7 +154,7 @@
     .user-menu .danger svg { color: var(--danger); }
 
     /* ---------- main ---------- */
-    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
     header {
       padding: 10px 16px; display: flex; justify-content: space-between;
       align-items: center; gap: 8px; position: sticky; top: 0; z-index: 10;
@@ -179,7 +192,7 @@
     }
     .header-actions { display: flex; gap: 2px; align-items: center; }
 
-    #chat-scroll { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+    #chat-scroll { flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; }
     #messages { display: flex; flex-direction: column; }
     .thread-row {
       width: 100%; padding: 14px 0; border-bottom: 1px solid transparent;
@@ -278,7 +291,7 @@
     /* ---------- composer ---------- */
     footer {
       padding: 12px 16px 20px; position: sticky; bottom: 0;
-      background: linear-gradient(transparent, var(--bg) 20%);
+      background: linear-gradient(transparent, var(--bg) 20%); flex-shrink: 0;
     }
     .composer-wrap { max-width: 48rem; margin: 0 auto; }
     .composer {
@@ -410,9 +423,14 @@
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     @media (max-width: 768px) {
-      #sidebar { position: fixed; left: 0; top: 0; height: 100%; z-index: 50; margin-left: -260px; }
-      #sidebar.open { margin-left: 0; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5); }
+      body { height: var(--visual-viewport-height, 100dvh); min-height: 100svh; }
+      #main { height: var(--visual-viewport-height, 100dvh); }
+      #sidebar { position: fixed; left: 0; top: 0; height: var(--visual-viewport-height, 100dvh); max-height: 100svh; z-index: 50; margin-left: -260px; box-shadow: 0 18px 44px rgba(0,0,0,0.35); }
+      #sidebar.open { margin-left: 0; }
       #sidebar.collapsed { margin-left: -260px; }
+      #sidebar-backdrop.open { display: block; }
+      .brand { padding-right: 2px; }
+      .mobile-sidebar-close { display: inline-flex; }
       .thread-inner { padding: 0 14px; }
       footer { padding: 8px 12px 16px; }
       .empty-state h2 { font-size: 1.4rem; }
@@ -421,9 +439,16 @@
   </style>
 </head>
 <body>
+  <button id="sidebar-backdrop" type="button" aria-label="Close sidebar" aria-hidden="true"></button>
   <aside id="sidebar">
     <div class="sidebar-head">
-      <div class="brand"><span class="logo">C</span><span class="name">Carina</span></div>
+      <div class="brand">
+        <span class="logo">C</span>
+        <span class="name">Carina</span>
+        <button class="icon-btn mobile-sidebar-close" id="close-sidebar" type="button" title="Close sidebar" aria-label="Close sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <button class="new-chat-btn" id="new-session">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         New chat
@@ -711,6 +736,8 @@
     const paletteInput = document.getElementById('palette-input');
     const paletteList = document.getElementById('palette-list');
     const sidebar = document.getElementById('sidebar');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    const toggleSidebarBtn = document.getElementById('toggle-sidebar');
     const toastEl = document.getElementById('toast');
     const scrollBottomBtn = document.getElementById('scroll-bottom');
 
@@ -1036,6 +1063,7 @@
           localStorage.setItem(SESSION_KEY, el.dataset.id);
           loadSessionMessages(el.dataset.id);
           renderSessionList();
+          closeSidebarOnMobile();
         });
       });
 
@@ -1500,6 +1528,7 @@
       messagesEl.innerHTML = '';
       renderEmptyState();
       renderSessionList();
+      closeSidebarOnMobile();
       inputEl.focus();
     }
 
@@ -1513,33 +1542,55 @@
     });
 
     function isSidebarOpen() {
-      return window.matchMedia('(max-width: 768px)').matches
+      return isMobileLayout()
         ? sidebar.classList.contains('open')
         : !sidebar.classList.contains('collapsed');
     }
 
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 768px)').matches;
+    }
+
     function setSidebarOpen(open) {
-      if (window.matchMedia('(max-width: 768px)').matches) {
+      if (isMobileLayout()) {
         sidebar.classList.toggle('open', open);
         sidebar.classList.remove('collapsed');
+        sidebarBackdrop.classList.toggle('open', open);
+        sidebarBackdrop.setAttribute('aria-hidden', String(!open));
+        document.body.classList.toggle('sidebar-open', open);
       } else {
         sidebar.classList.toggle('collapsed', !open);
         sidebar.classList.remove('open');
+        sidebarBackdrop.classList.remove('open');
+        sidebarBackdrop.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('sidebar-open');
       }
+      toggleSidebarBtn.setAttribute('aria-expanded', String(open));
     }
 
     function toggleSidebar() {
       setSidebarOpen(!isSidebarOpen());
     }
 
-    document.getElementById('toggle-sidebar').addEventListener('click', toggleSidebar);
+    function closeSidebarOnMobile() {
+      if (isMobileLayout()) setSidebarOpen(false);
+    }
+
+    toggleSidebarBtn.addEventListener('click', toggleSidebar);
+    document.getElementById('close-sidebar').addEventListener('click', () => setSidebarOpen(false));
+    sidebarBackdrop.addEventListener('click', () => setSidebarOpen(false));
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         toggleSidebar();
       }
+      if (e.key === 'Escape' && isMobileLayout() && isSidebarOpen()) {
+        setSidebarOpen(false);
+      }
     });
+
+    window.addEventListener('resize', () => setSidebarOpen(isSidebarOpen()));
 
     sessionSearchEl.addEventListener('input', renderSessionList);
 
@@ -1639,6 +1690,19 @@
     });
     scrollBottomBtn.addEventListener('click', scrollToBottom);
 
+    function syncVisualViewportHeight() {
+      const visualHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      const height = Math.min(visualHeight, window.innerHeight);
+      document.documentElement.style.setProperty('--visual-viewport-height', height + 'px');
+    }
+
+    syncVisualViewportHeight();
+    window.addEventListener('resize', syncVisualViewportHeight);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', syncVisualViewportHeight);
+      window.visualViewport.addEventListener('scroll', syncVisualViewportHeight);
+    }
+
     /* ---------------- voice input (Web Speech API) ---------------- */
 
     const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1703,10 +1767,17 @@
     applyTheme(prefs.theme);
     applyDensity(prefs.density);
     applyProfile();
+    setSidebarOpen(isSidebarOpen());
     renderSessionList();
     loadSessionMessages(getSessionId());
     fetchProvider();
     loadWebContext();
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>

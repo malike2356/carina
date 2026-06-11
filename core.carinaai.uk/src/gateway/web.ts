@@ -453,6 +453,16 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     const html = await fs.readFile(path.join(WEB_STATIC, 'index.html'), 'utf-8');
     const memoryHtml = await fs.readFile(path.join(WEB_STATIC, 'memory.html'), 'utf-8').catch(() => null);
     const packsHtml = await fs.readFile(path.join(WEB_STATIC, 'packs.html'), 'utf-8').catch(() => null);
+    app.get('/manifest.json', (_req, res) => {
+      res.type('application/manifest+json').sendFile(path.join(WEB_STATIC, 'manifest.json'));
+    });
+    app.get('/service-worker.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'service-worker.js'));
+    });
+    app.get('/icon.svg', (_req, res) => {
+      res.type('image/svg+xml').sendFile(path.join(WEB_STATIC, 'icon.svg'));
+    });
     app.get('/', (_req, res) => {
       res.type('html').send(html);
     });
