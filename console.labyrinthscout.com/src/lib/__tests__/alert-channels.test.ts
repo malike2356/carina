@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { decryptConfig } from '../alert-channels.js';
+import { decryptConfig, getConfiguredAlertChannelSeeds } from '../alert-channels.js';
 import { encryptSecret } from '../secret-crypto.js';
 
 describe('alert-channels decryptConfig', () => {
@@ -31,5 +31,33 @@ describe('alert-channels decryptConfig', () => {
     });
     expect(config.resend_api_key).toBe(key);
     expect(config.to_address).toBe('ops@example.com');
+  });
+
+  it('builds telegram alert channel seeds when env is configured', () => {
+    const seeds = getConfiguredAlertChannelSeeds({
+      telegram: { botToken: 'bot-token', chatId: '12345' },
+      email: { resendApiKey: '', from: '', to: '' },
+      slack: { webhookUrl: '' },
+    });
+    expect(seeds).toEqual([
+      {
+        channel_type: 'telegram',
+        severity_threshold: 'warning',
+        enabled: true,
+        config: {
+          bot_token: 'bot-token',
+          chat_id: '12345',
+        },
+      },
+    ]);
+  });
+
+  it('does not build seeds when telegram config is incomplete', () => {
+    const seeds = getConfiguredAlertChannelSeeds({
+      telegram: { botToken: 'bot-token', chatId: '' },
+      email: { resendApiKey: '', from: '', to: '' },
+      slack: { webhookUrl: '' },
+    });
+    expect(seeds).toEqual([]);
   });
 });

@@ -29,12 +29,99 @@ export interface AlertChannelPublic {
   secrets_set: Record<string, boolean>;
 }
 
+export interface AlertChannelSeed {
+  channel_type: AlertChannelType;
+  severity_threshold: AlertSeverity;
+  enabled: boolean;
+  config: Record<string, string>;
+}
+
+export interface AlertChannelEnvSource {
+  telegram: { botToken?: string; chatId?: string };
+  email: { resendApiKey?: string; from?: string; to?: string };
+  slack: { webhookUrl?: string };
+}
+
 function isChannelType(value: string): value is AlertChannelType {
   return value === 'telegram' || value === 'email' || value === 'slack';
 }
 
 function isMaskedSecret(value: string): boolean {
   return value === '********' || /^\S{1,4}\.\.\.\S{1,4}$/.test(value);
+}
+
+export function readAlertChannelEnv(): AlertChannelEnvSource {
+  return {
+    telegram: {
+      botToken: process.env.SCOUT_TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN,
+      chatId: process.env.SCOUT_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID,
+    },
+    email: {
+      resendApiKey: process.env.SCOUT_RESEND_API_KEY || process.env.RESEND_API_KEY,
+      from: process.env.SCOUT_ALERT_FROM_EMAIL || process.env.ALERT_EMAIL_FROM,
+      to: process.env.SCOUT_ALERT_TO_EMAIL || process.env.ALERT_EMAIL_TO,
+    },
+    slack: {
+      webhookUrl: process.env.SCOUT_SLACK_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL,
+    },
+  };
+}
+
+export function getConfiguredAlertChannelSeeds(source: AlertChannelEnvSource = readAlertChannelEnv()): AlertChannelSeed[] {
+  const seeds: AlertChannelSeed[] = [];
+
+  if (source.telegram.botToken && source.telegram.chatId) {
+    seeds.push({
+      channel_type: 'telegram',
+      severity_threshold: 'warning',
+      enabled: true,
+      config: {
+        bot_token: source.telegram.botToken,
+        chat_id: source.telegram.chatId,
+      },
+    });
+  }
+
+  if (source.email.resendApiKey && source.email.to) {
+    seeds.push({
+      channel_type: 'email',
+      severity_threshold: 'warning',
+      enabled: true,
+      config: {
+        resend_api_key: source.email.resendApiKey,
+        from_address: source.email.from ?? '',
+        to_address: source.email.to,
+      },
+    });
+  }
+
+  if (source.slack.webhookUrl) {
+    seeds.push({
+      channel_type: 'slack',
+      severity_threshold: 'warning',
+      enabled: true,
+      config: {
+        webhook_url: source.slack.webhookUrl,
+      },
+    });
+  }
+
+  return seeds;
+}
+
+export async function syncConfiguredAlertChannels(
+  source: AlertChannelEnvSource = readAlertChannelEnv(),
+): Promise<AlertChannelType[]> {
+  const synced: AlertChannelType[] = [];
+  for (const seed of getConfiguredAlertChannelSeeds(source)) {
+    await upsertAlertChannel(seed.channel_type, {
+      severity_threshold: seed.severity_threshold,
+      enabled: seed.enabled,
+      config: seed.config,
+    });
+    synced.push(seed.channel_type);
+  }
+  return synced;
 }
 
 function encryptConfig(type: AlertChannelType, config: Record<string, string>): Record<string, string> {

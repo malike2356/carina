@@ -61,4 +61,35 @@ describe('taskflows engine', () => {
     });
     expect(triggerTaskFlowsForCronJob('other-job')).toHaveLength(0);
   });
+
+  it('webhook trigger deduplicates within the same hour bucket', async () => {
+    const { upsertTaskFlow, listTaskFlowRuns } = await import('./store.js');
+    const { triggerTaskFlowsForEvent } = await import('./engine.js');
+    upsertTaskFlow({
+      name: 'webhook-idem',
+      steps: [{ type: 'delay', ms: 1 }],
+      chainOnSuccess: [],
+      triggers: [{ type: 'webhook', event: 'test.event' }],
+      status: 'active',
+    });
+    triggerTaskFlowsForEvent('test.event');
+    triggerTaskFlowsForEvent('test.event');
+    const runs = listTaskFlowRuns(10).filter((r) => r.flowName === 'webhook-idem');
+    expect(runs.length).toBe(1);
+  });
+
+  it('webhook trigger records idempotency key on run', async () => {
+    const { upsertTaskFlow, listTaskFlowRuns } = await import('./store.js');
+    const { triggerTaskFlowsForEvent } = await import('./engine.js');
+    upsertTaskFlow({
+      name: 'webhook-key-check',
+      steps: [{ type: 'delay', ms: 1 }],
+      chainOnSuccess: [],
+      triggers: [{ type: 'webhook', event: 'key.check' }],
+      status: 'active',
+    });
+    triggerTaskFlowsForEvent('key.check');
+    const run = listTaskFlowRuns(5).find((r) => r.flowName === 'webhook-key-check');
+    expect(run?.idempotencyKey).toMatch(/^webhook:key\.check:/);
+  });
 });

@@ -91,7 +91,14 @@ Setup: [Configuration](/docs/user/configuration) and `carina providers info <nam
 | Web UI | [Web gateway](/docs/user/gateways/web) |
 | Telegram | [Telegram](/docs/user/gateways/telegram) |
 | WhatsApp | [WhatsApp](/docs/user/gateways/whatsapp) |
-| Discord, Slack, SMS, Signal, Matrix, Email, API, webhooks, and others | Enable via env; see [Configuration](/docs/user/configuration) |
+| Slack | [Slack](/docs/user/gateways/slack) |
+| Discord | [Discord](/docs/user/gateways/discord) |
+| Signal | [Signal](/docs/user/gateways/signal) |
+| iMessage / BlueBubbles | [iMessage](/docs/user/gateways/imessage) |
+| Matrix | [Matrix](/docs/user/gateways/matrix) |
+| Mattermost | [Mattermost](/docs/user/gateways/mattermost) |
+| IRC | [IRC](/docs/user/gateways/irc) (stub; requires sidecar) |
+| SMS, Email, API, webhooks, and others | Enable via env; see [Configuration](/docs/user/configuration) |
 
 Check status: `carina channels status`.
 
@@ -173,5 +180,6 @@ Use these for how-to detail. Return here for **what exists** and **what status i
 - [Toolsets](/docs/user/toolsets)
 - [Skill packs](/docs/user/skill-packs/overview)
 - [Gateways](/docs/user/gateways/cli)
+- [Migrating from Hermes](/docs/user/migration-from-hermes)
 - [Carina Cloud](/docs/user/carina-cloud)
 - [Developer overview](/docs/developer/intro)

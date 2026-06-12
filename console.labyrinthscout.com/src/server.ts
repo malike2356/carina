@@ -19,9 +19,17 @@ import { statusRouter } from './api/status.js';
 import { killRouter } from './api/kill.js';
 import { resumeRouter } from './api/resume.js';
 import { policyRouter } from './api/policy.js';
+import { policyEvaluateRouter } from './api/policy-evaluate.js';
+import { jitPrivilegesRouter } from './api/jit-privileges.js';
+import { attackSurfaceRouter } from './api/attack-surface.js';
+import { responseTerminalRouter } from './api/response-terminal.js';
+import { simulationRouter } from './api/simulation.js';
+import { autoRemediationRouter } from './api/auto-remediation.js';
+import { policyPacksRouter } from './api/policy-packs.js';
+import { tripwiresRouter } from './api/tripwires.js';
 import { statsRouter } from './api/stats.js';
 import { adminRouter } from './api/admin.js';
-import { getPlatformDashboardUrl } from './lib/alert-channels.js';
+import { getPlatformDashboardUrl, syncConfiguredAlertChannels } from './lib/alert-channels.js';
 import { anomaliesRouter } from './api/anomalies.js';
 import { honeypotsRouter } from './api/honeypots.js';
 import { rateControlRouter } from './api/rate-control.js';
@@ -40,6 +48,7 @@ import { complianceRouter } from './api/compliance.js';
 import { publicTrustRouter } from './api/public-trust.js';
 import { readinessRouter } from './api/readiness.js';
 import { trustEnterpriseRouter } from './api/trust-enterprise.js';
+import { incidentsRouter } from './api/incidents.js';
 import { resolveScoutCorsOrigin } from './lib/cors.js';
 import { startScheduler } from './scheduler.js';
 import { startProxyServer } from './proxy/openai-proxy.js';
@@ -138,6 +147,14 @@ app.use('/api/status', requireApiKey, statusRouter);
 app.use('/api/kill', requireApiKey, requireScoutPro, killRouter);
 app.use('/api/resume', requireApiKey, requireScoutPro, resumeRouter);
 app.use('/api/policy', requireApiKey, policyRouter);
+app.use('/api/policy', requireApiKey, policyEvaluateRouter);
+app.use('/api/jit', requireApiKey, requireScoutPro, jitPrivilegesRouter);
+app.use('/api/surface', requireApiKey, requireScoutPro, attackSurfaceRouter);
+app.use('/api/response-terminal', requireApiKey, requireScoutPro, responseTerminalRouter);
+app.use('/api/simulation', requireApiKey, requireScoutPro, simulationRouter);
+app.use('/api/auto-remediation', requireApiKey, requireScoutPro, autoRemediationRouter);
+app.use('/api/policy-packs', requireApiKey, requireScoutPro, policyPacksRouter);
+app.use('/api/tripwires', requireApiKey, requireScoutPro, tripwiresRouter);
 app.use('/api/stats', requireApiKey, statsRouter);
 app.use('/api/admin', requireApiKey, adminRouter);
 app.use('/api/anomalies', requireApiKey, anomaliesRouter);
@@ -156,6 +173,7 @@ app.use('/api/killswitch', requireApiKey, requireScoutPro, killswitchRouter);
 app.use('/api/audit', requireApiKey, auditSearchRouter);
 app.use('/api/compliance', requireApiKey, requireScoutPro, complianceRouter);
 app.use('/api/trust', requireApiKey, requireScoutPro, trustEnterpriseRouter);
+app.use('/api/incidents', requireApiKey, requireScoutPro, incidentsRouter);
 app.use('/api/stream', sseRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -178,6 +196,15 @@ async function main(): Promise<void> {
   console.log(chalk.bold.hex('#d4af37')('LABYRINTH SCOUT') + chalk.gray(' - starting up'));
 
   await initDb();
+  try {
+    const syncedChannels = await syncConfiguredAlertChannels();
+    if (syncedChannels.length > 0) {
+      console.log(chalk.gray(`[scout] Synced alert channels: ${syncedChannels.join(', ')}`));
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(chalk.yellow(`[scout] Alert channel sync skipped: ${msg}`));
+  }
   try {
     process.env.SCOUT_DASHBOARD_URL = await getPlatformDashboardUrl();
   } catch (err) {

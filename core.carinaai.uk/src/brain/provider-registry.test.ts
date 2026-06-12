@@ -99,4 +99,32 @@ describe('provider-registry', () => {
       expect(typeof providerApiKey(def)).toBe('string');
     }
   });
+
+  it('reasoning capability is true for anthropic', () => {
+    expect(PROVIDER_MAP.anthropic?.capabilities.reasoning).toBe(true);
+  });
+
+  it('reasoning capability is true for deepseek', () => {
+    expect(PROVIDER_MAP.deepseek?.capabilities.reasoning).toBe(true);
+  });
+
+  it('reasoning capability is true for openai', () => {
+    expect(PROVIDER_MAP.openai?.capabilities.reasoning).toBe(true);
+  });
+
+  it('providers with reasoning set have boolean type', () => {
+    for (const def of PROVIDER_DEFINITIONS) {
+      if (def.capabilities.reasoning !== undefined) {
+        expect(typeof def.capabilities.reasoning).toBe('boolean');
+      }
+    }
+  });
+
+  it('no provider has reasoning=true without also having chat=true', () => {
+    for (const def of PROVIDER_DEFINITIONS) {
+      if (def.capabilities.reasoning === true) {
+        expect(def.capabilities.chat).toBe(true);
+      }
+    }
+  });
 });

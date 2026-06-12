@@ -40,6 +40,7 @@ export type TaskFlowRun = {
   stepIndex: number;
   retryCount?: number;
   retriedFromRunId?: string;
+  idempotencyKey?: string;
   queuedAt: string;
   startedAt?: string;
   finishedAt?: string;

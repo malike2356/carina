@@ -523,5 +523,27 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
       ON forensic_snapshots (instance_id, created_at DESC)
   `);
 
+  await client.query(`
+    ALTER TABLE security_events
+      ADD COLUMN IF NOT EXISTS parent_session_id TEXT
+  `);
+
+  await client.query(`
+    ALTER TABLE security_events
+      ADD COLUMN IF NOT EXISTS root_session_id TEXT
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_security_events_parent_session
+      ON security_events (parent_session_id)
+      WHERE parent_session_id IS NOT NULL
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_security_events_root_session
+      ON security_events (root_session_id)
+      WHERE root_session_id IS NOT NULL
+  `);
+
   console.log('[scout:migrations] Schema ready');
 }

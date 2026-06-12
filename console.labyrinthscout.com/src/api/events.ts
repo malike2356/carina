@@ -7,6 +7,7 @@ import { emitTrustAlert } from '../trust/trust-alerts.js';
 import { anomalyDetector } from '../security/anomaly-detector.js';
 import type { SessionMetrics } from '../security/anomaly-detector.js';
 import type { IncomingEventPayload, SecurityEventRow, Severity } from '../types.js';
+import { buildLineage } from '../lib/session-lineage.js';
 
 export const eventsRouter: IRouter = Router();
 
@@ -63,6 +64,8 @@ function serializeRow(row: SecurityEventRow): SecurityEventRow {
     ...row,
     metadata: parseMetadata(row.metadata),
     created_at: new Date(row.created_at).toISOString(),
+    parent_session_id: row.parent_session_id ?? null,
+    root_session_id: row.root_session_id ?? null,
     acknowledged: row.acknowledged ?? false,
     acknowledged_at: row.acknowledged_at ? new Date(row.acknowledged_at).toISOString() : null,
     acknowledged_note: row.acknowledged_note ?? null,
@@ -100,6 +103,16 @@ function validatePayload(body: unknown): { ok: true; data: IncomingEventPayload 
       return { ok: false, error: 'instance_id must match /^[a-z0-9_\\-]+$/ and be max 64 chars' };
     }
   }
+  if (b.parent_session_id !== undefined) {
+    if (typeof b.parent_session_id !== 'string' || b.parent_session_id.length > 200) {
+      return { ok: false, error: 'parent_session_id must be a string up to 200 chars' };
+    }
+  }
+  if (b.root_session_id !== undefined) {
+    if (typeof b.root_session_id !== 'string' || b.root_session_id.length > 200) {
+      return { ok: false, error: 'root_session_id must be a string up to 200 chars' };
+    }
+  }
 
   return {
     ok: true,
@@ -111,6 +124,8 @@ function validatePayload(body: unknown): { ok: true; data: IncomingEventPayload 
       metadata: (b.metadata as Record<string, unknown> | undefined) ?? {},
       ip_address: typeof b.ip_address === 'string' ? b.ip_address : undefined,
       session_id: typeof b.session_id === 'string' ? b.session_id : undefined,
+      parent_session_id: typeof b.parent_session_id === 'string' ? b.parent_session_id : undefined,
+      root_session_id: typeof b.root_session_id === 'string' ? b.root_session_id : undefined,
       instance_id: typeof b.instance_id === 'string' ? b.instance_id : undefined,
     },
   };
@@ -138,7 +153,8 @@ eventsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
     const result = await pool.query<SecurityEventRow>(
       accountId
         ? `SELECT e.id, e.severity, e.source, e.event_type, e.description, e.metadata,
-                  e.ip_address, e.session_id, e.instance_id, e.mitigated, e.created_at,
+                  e.ip_address, e.session_id, e.parent_session_id, e.root_session_id,
+                  e.instance_id, e.mitigated, e.created_at,
                   e.acknowledged, e.acknowledged_at, e.acknowledged_note
            FROM security_events e
            JOIN carina_instances i ON i.id = e.instance_id
@@ -146,7 +162,8 @@ eventsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
            ORDER BY e.created_at DESC
            LIMIT $2`
         : `SELECT id, severity, source, event_type, description, metadata,
-                  ip_address, session_id, instance_id, mitigated, created_at,
+                  ip_address, session_id, parent_session_id, root_session_id,
+                  instance_id, mitigated, created_at,
                   acknowledged, acknowledged_at, acknowledged_note
            FROM security_events
            ORDER BY created_at DESC
@@ -171,20 +188,51 @@ eventsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
   const payload = validated.data;
   const ip = req.ip ?? null;
 
+  let sessionId = payload.session_id ?? null;
+  let parentSessionId = payload.parent_session_id ?? null;
+  let rootSessionId = payload.root_session_id ?? null;
+  let metadata = { ...(payload.metadata ?? {}) };
+
+  if (payload.session_id) {
+    const lineage = buildLineage({
+      sessionId: payload.session_id,
+      parentSessionId: payload.parent_session_id,
+      rootSessionId: payload.root_session_id,
+      attemptNumber: typeof payload.metadata?.attempt_number === 'number'
+        ? payload.metadata.attempt_number
+        : undefined,
+      triggerType: typeof payload.metadata?.trigger_type === 'string'
+        ? payload.metadata.trigger_type as 'webhook' | 'taskflow' | 'chat' | 'retry' | 'branch' | 'unknown'
+        : undefined,
+    });
+    sessionId = lineage.sessionId;
+    parentSessionId = lineage.parentSessionId;
+    rootSessionId = lineage.rootSessionId;
+    metadata = {
+      ...metadata,
+      attempt_number: lineage.attemptNumber,
+      trigger_type: lineage.triggerType,
+      lineage_created_at: lineage.createdAt,
+    };
+  }
+
   try {
     const result = await pool.query<SecurityEventRow>(
       `INSERT INTO security_events
-        (severity, source, event_type, description, metadata, ip_address, session_id, instance_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (severity, source, event_type, description, metadata, ip_address,
+         session_id, parent_session_id, root_session_id, instance_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         payload.severity,
         payload.source,
         payload.event_type,
         payload.description,
-        JSON.stringify(payload.metadata ?? {}),
+        JSON.stringify(metadata),
         ip,
-        payload.session_id ?? null,
+        sessionId,
+        parentSessionId,
+        rootSessionId,
         payload.instance_id ?? null,
       ],
     );
@@ -241,7 +289,8 @@ eventsRouter.get('/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await pool.query<SecurityEventRow>(
       `SELECT id, severity, source, event_type, description, metadata,
-              ip_address, session_id, instance_id, mitigated, created_at,
+              ip_address, session_id, parent_session_id, root_session_id,
+              instance_id, mitigated, created_at,
               acknowledged, acknowledged_at, acknowledged_note
        FROM security_events
        WHERE id = $1`,

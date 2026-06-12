@@ -1,0 +1,8 @@
+{
+  "checkpoint_id": "90f652a1-23e1-4cdf-a652-77f701781716",
+  "label": "test snapshot",
+  "paths": [
+    "/tmp/carina-checkpoint-test-8DKHex/sample.txt"
+  ],
+  "created_at": "2026-06-11T21:01:33.101Z"
+}

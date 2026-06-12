@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { scoutWrap } from '../scout-wrap.js';
-import { resetScoutPipelineDeps, setScoutPipelineDeps } from '../security-pipeline.js';
+import { resetScoutPipelineDeps } from '../security-pipeline.js';
+import { resetContextFirewallDeps, setContextFirewallDeps } from '../../security/context-firewall.js';
+import { resetPolicyGatewayDeps, setPolicyGatewayDeps } from '../../security/policy-gateway.js';
 
 describe('scoutWrap', () => {
-  afterEach(() => resetScoutPipelineDeps());
+  afterEach(() => {
+    resetScoutPipelineDeps();
+    resetContextFirewallDeps();
+    resetPolicyGatewayDeps();
+  });
 
   it('intercepts nested SDK methods and calls through when allowed', async () => {
     const create = vi.fn().mockResolvedValue({ ok: true });
@@ -14,7 +20,19 @@ describe('scoutWrap', () => {
   });
 
   it('throws before provider call when Scout blocks', async () => {
-    setScoutPipelineDeps({ scanUserMessage: async () => ({ blocked: true, reason: 'blocked' }) });
+    setContextFirewallDeps({
+      scanInput: async () => ({
+        isMalicious: true,
+        confidence: 95,
+        layer: 1,
+        patterns: ['blocked'],
+      }),
+    });
+    setPolicyGatewayDeps({
+      logDecision: async () => {},
+      isSessionBlocked: async () => false,
+      isToolQuarantined: async () => false,
+    });
     const create = vi.fn();
     const wrapped = scoutWrap({ chat: { completions: { create } } }, { provider: 'openai' });
 

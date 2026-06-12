@@ -88,16 +88,31 @@ export function upsertTaskFlow(input: Omit<TaskFlow, 'id' | 'createdAt' | 'updat
   return flow;
 }
 
-export function enqueueTaskFlowRun(flowId: string): TaskFlowRun | null {
+export function enqueueTaskFlowRun(
+  flowId: string,
+  options?: { idempotencyKey?: string },
+): TaskFlowRun | null {
   const store = loadStore();
   const flow = store.flows.find((f) => f.id === flowId);
   if (!flow || flow.status !== 'active') return null;
+
+  if (options?.idempotencyKey) {
+    const existing = store.runs.find(
+      (r) =>
+        r.flowId === flowId &&
+        r.idempotencyKey === options.idempotencyKey &&
+        (r.status === 'queued' || r.status === 'running' || r.status === 'succeeded'),
+    );
+    if (existing) return existing;
+  }
+
   const run: TaskFlowRun = {
     id: crypto.randomUUID(),
     flowId: flow.id,
     flowName: flow.name,
     status: 'queued',
     stepIndex: 0,
+    idempotencyKey: options?.idempotencyKey,
     queuedAt: new Date().toISOString(),
   };
   store.runs.push(run);

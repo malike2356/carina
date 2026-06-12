@@ -11,6 +11,8 @@ export interface SecurityEventRow {
   metadata: Record<string, unknown>;
   ip_address: string | null;
   session_id: string | null;
+  parent_session_id: string | null;
+  root_session_id: string | null;
   instance_id: string | null;
   mitigated: boolean;
   created_at: string;
@@ -46,6 +48,8 @@ export interface IncomingEventPayload {
   metadata?: Record<string, unknown>;
   ip_address?: string;
   session_id?: string;
+  parent_session_id?: string;
+  root_session_id?: string;
   instance_id?: string;
 }
 

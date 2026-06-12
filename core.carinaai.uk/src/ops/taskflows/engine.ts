@@ -139,6 +139,7 @@ export function triggerTaskFlow(flowId: string): TaskFlowRun | null {
 
 export function triggerTaskFlowsForEvent(event: string, payload?: Record<string, unknown>): TaskFlowRun[] {
   if (!taskFlowsEnabled()) return [];
+  const hourBucket = new Date().toISOString().slice(0, 13);
   const triggered: TaskFlowRun[] = [];
   for (const flow of listTaskFlows()) {
     if (flow.status !== 'active') continue;
@@ -146,12 +147,15 @@ export function triggerTaskFlowsForEvent(event: string, payload?: Record<string,
       (t) => t.type === 'webhook' && t.event === event,
     );
     if (!matches) continue;
-    const run = enqueueTaskFlowRun(flow.id);
-    if (run) {
+    const idempotencyKey = `webhook:${event}:${flow.id}:${hourBucket}`;
+    const run = enqueueTaskFlowRun(flow.id, { idempotencyKey });
+    if (run && run.status === 'queued' && !run.startedAt) {
       updateTaskFlowRun(run.id, {
         output: payload ? JSON.stringify(payload).slice(0, 500) : undefined,
       });
       void executeTaskFlowRun(run.id);
+      triggered.push(run);
+    } else if (run) {
       triggered.push(run);
     }
   }
@@ -163,6 +167,7 @@ export function triggerTaskFlowsForCronJob(
   payload?: Record<string, unknown>,
 ): TaskFlowRun[] {
   if (!taskFlowsEnabled()) return [];
+  const hourBucket = new Date().toISOString().slice(0, 13);
   const triggered: TaskFlowRun[] = [];
   for (const flow of listTaskFlows()) {
     if (flow.status !== 'active') continue;
@@ -170,12 +175,15 @@ export function triggerTaskFlowsForCronJob(
       (t) => t.type === 'cron' && t.jobId === jobId,
     );
     if (!matches) continue;
-    const run = enqueueTaskFlowRun(flow.id);
-    if (run) {
+    const idempotencyKey = `cron:${jobId}:${flow.id}:${hourBucket}`;
+    const run = enqueueTaskFlowRun(flow.id, { idempotencyKey });
+    if (run && run.status === 'queued' && !run.startedAt) {
       updateTaskFlowRun(run.id, {
         output: payload ? JSON.stringify(payload).slice(0, 500) : undefined,
       });
       void executeTaskFlowRun(run.id);
+      triggered.push(run);
+    } else if (run) {
       triggered.push(run);
     }
   }

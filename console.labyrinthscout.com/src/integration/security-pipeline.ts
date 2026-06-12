@@ -4,7 +4,30 @@ import { PromptGuard } from '../security/prompt-guard.js';
 import { egressFilter } from '../security/egress-filter.js';
 import { honeypotManager } from '../security/honeypot-manager.js';
 import { anomalyDetector } from '../security/anomaly-detector.js';
+import {
+  evaluatePolicy,
+  evaluateContext,
+  evaluateOutputProtection,
+} from '../security/policy-gateway.js';
+import { resolveActionTypeFromTool } from '../security/risk-registry.js';
+import type {
+  PolicyDecision,
+  PolicyDecisionKind,
+} from '../security/policy-decisions.js';
+import {
+  decisionToErrorCode,
+  isBlockingDecision,
+} from '../security/policy-decisions.js';
 import type { NormalizedRequest } from './agent-adapter.interface.js';
+
+export interface ScoutPipelineResult {
+  blocked: boolean;
+  reason?: string;
+  decision?: PolicyDecisionKind;
+  policyDecision?: PolicyDecision;
+  filteredContent?: string;
+  code?: string;
+}
 
 export interface ScoutPipelineDeps {
   scanUserMessage: (text: string) => Promise<{ blocked: boolean; reason?: string }>;
@@ -81,19 +104,65 @@ export function getScoutPipelineDeps(): ScoutPipelineDeps {
   return deps;
 }
 
+function toPipelineResult(decision: PolicyDecision): ScoutPipelineResult {
+  const blocked = isBlockingDecision(decision.decision)
+    || decision.decision === 'require_approval';
+  return {
+    blocked,
+    reason: decision.reason,
+    decision: decision.decision,
+    policyDecision: decision,
+    filteredContent: decision.filteredContent,
+    code: decisionToErrorCode(decision.decision),
+  };
+}
+
 export async function inspectRequest(
   request: NormalizedRequest,
   req?: Request,
-): Promise<{ blocked: boolean; reason?: string }> {
+): Promise<ScoutPipelineResult> {
+  const sessionId = request.sessionId ?? 'anonymous';
+  const instanceId = typeof req?.headers['x-scout-instance-id'] === 'string'
+    ? req.headers['x-scout-instance-id']
+    : undefined;
+
   if (request.prompt) {
-    const guard = await deps.scanUserMessage(request.prompt);
-    if (guard.blocked) {
-      await deps.logEvent(req, 'injection_blocked', 'critical', {
+    const contextDecision = await evaluateContext(
+      request.prompt,
+      'user_prompt',
+      sessionId,
+      req,
+    );
+    if (contextDecision.decision === 'block' || contextDecision.decision === 'quarantine_session') {
+      await deps.logEvent(req, 'context_firewall_blocked', 'critical', {
         agentType: request.agentType,
-        sessionId: request.sessionId,
-        reason: guard.reason,
+        sessionId,
+        reason: contextDecision.reason,
+        action: contextDecision.metadata?.firewallAction,
       });
-      return { blocked: true, reason: guard.reason };
+      return toPipelineResult(contextDecision);
+    }
+  }
+
+  for (const toolCall of request.toolCalls) {
+    const actionType = resolveActionTypeFromTool(toolCall.name);
+    const toolDecision = await evaluatePolicy({
+      actionType,
+      sessionId,
+      instanceId,
+      toolName: toolCall.name,
+      params: toolCall.arguments,
+    }, req);
+
+    if (toolDecision.decision !== 'allow') {
+      await deps.logEvent(req, 'policy_decision', toolDecision.decision === 'block' ? 'critical' : 'warning', {
+        agentType: request.agentType,
+        sessionId,
+        tool: toolCall.name,
+        decision: toolDecision.decision,
+        reason: toolDecision.reason,
+      });
+      return toPipelineResult(toolDecision);
     }
   }
 
@@ -106,6 +175,34 @@ export async function inspectRequest(
     injection_attempt_count: 0,
     egress_blocked_count: 0,
   };
-  void anomalyDetector.detect(request.agentType, request.sessionId ?? 'proxy', metrics).catch(() => undefined);
+  void anomalyDetector.detect(request.agentType, sessionId, metrics).catch(() => undefined);
+  return { blocked: false };
+}
+
+export async function inspectResponse(
+  content: string,
+  sessionId: string,
+  req?: Request,
+  toolName?: string,
+): Promise<ScoutPipelineResult> {
+  const outputDecision = await evaluateOutputProtection(content, sessionId, req, toolName);
+  if (outputDecision.decision === 'block') {
+    await deps.logEvent(req, 'output_protection_blocked', 'critical', {
+      sessionId,
+      toolName,
+      reason: outputDecision.reason,
+    });
+    return toPipelineResult(outputDecision);
+  }
+
+  if (outputDecision.filteredContent && outputDecision.filteredContent !== content) {
+    return {
+      blocked: false,
+      filteredContent: outputDecision.filteredContent,
+      policyDecision: outputDecision,
+      decision: outputDecision.decision,
+    };
+  }
+
   return { blocked: false };
 }

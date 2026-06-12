@@ -40,9 +40,12 @@ export async function captureForensicSnapshot(
       description: string;
       metadata: Record<string, unknown> | string | null;
       session_id: string | null;
+      parent_session_id: string | null;
+      root_session_id: string | null;
       created_at: Date;
     }>(
-      `SELECT id, severity, event_type, description, metadata, session_id, created_at
+      `SELECT id, severity, event_type, description, metadata,
+              session_id, parent_session_id, root_session_id, created_at
        FROM security_events
        WHERE instance_id = $1
          AND created_at > NOW() - ($2::text || ' minutes')::interval
@@ -78,6 +81,13 @@ export async function captureForensicSnapshot(
         : null,
       captured_at: new Date().toISOString(),
       reason,
+      session_lineage: [
+        ...new Map(
+          rows
+            .filter((r) => r.session_id)
+            .map((r) => [r.session_id, { session_id: r.session_id, parent_session_id: r.parent_session_id, root_session_id: r.root_session_id }]),
+        ).values(),
+      ],
     },
     downstream_agents: rows
       .filter((row) => hasMetaKey(row.metadata, 'downstream') || /delegate|subagent/.test(row.event_type))
@@ -123,6 +133,8 @@ function eventArtifact(row: {
   description: string;
   metadata: Record<string, unknown>;
   session_id: string | null;
+  parent_session_id: string | null;
+  root_session_id: string | null;
   created_at: Date;
 }): Record<string, unknown> {
   return {
@@ -131,6 +143,8 @@ function eventArtifact(row: {
     event_type: row.event_type,
     description: row.description,
     session_id: row.session_id,
+    parent_session_id: row.parent_session_id,
+    root_session_id: row.root_session_id,
     metadata: row.metadata,
     at: new Date(row.created_at).toISOString(),
   };

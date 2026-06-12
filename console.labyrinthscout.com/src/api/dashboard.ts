@@ -18,8 +18,100 @@ import { buildPublicTrustFromDb } from '../trust/build-public-trust.js';
 import { globalKillSwitch } from '../killswitch/global-kill-switch.js';
 import { scopedAccountId } from '../lib/scope.js';
 import { loadPlatformSecuritySettings } from '../lib/platform-settings.js';
+import { buildDefenseConsole } from '../dashboard/widgets/defense-console.js';
+import { buildResponseTerminal } from '../dashboard/widgets/response-terminal.js';
+import { getShieldMode } from '../security/session-shield.js';
+import { getAppliedPolicyPack, listPolicyPacks } from '../security/policy-packs.js';
+import { listSessionGrants } from '../security/jit-privileges.js';
+import { listSurfaceRestrictions } from '../security/attack-surface.js';
+import { getRemediationRules } from '../security/auto-remediation.js';
+import { getTripwireConfig, listRecentTripwireHits } from '../security/tripwire-registry.js';
 
 export const dashboardRouter: IRouter = Router();
+
+dashboardRouter.get('/defense', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const sessionId = typeof req.query.session_id === 'string' ? req.query.session_id : null;
+    const instanceId = typeof req.query.instance_id === 'string' ? req.query.instance_id : 'default';
+
+    const eventsResult = await pool.query<{
+      id: string;
+      event_type: string;
+      description: string;
+      severity: 'info' | 'warning' | 'critical' | 'breach';
+      session_id: string | null;
+      metadata: Record<string, unknown> | string | null;
+      created_at: Date;
+    }>(
+      `SELECT id, event_type, description, severity, session_id, metadata, created_at
+       FROM security_events
+       WHERE created_at > NOW() - INTERVAL '24 hours'
+       ORDER BY created_at DESC
+       LIMIT 200`,
+    );
+
+    const rows = eventsResult.rows;
+    const blockedCount = rows.filter((r) =>
+      /blocked|quarantine|policy_decision|injection/.test(r.event_type),
+    ).length;
+    const toolCounts = new Map<string, number>();
+    for (const row of rows) {
+      const meta = typeof row.metadata === 'object' && row.metadata !== null
+        ? row.metadata as Record<string, unknown>
+        : {};
+      const tool = typeof meta.tool === 'string' ? meta.tool : null;
+      if (tool && (row.severity === 'critical' || row.severity === 'warning')) {
+        toolCounts.set(tool, (toolCounts.get(tool) ?? 0) + 1);
+      }
+    }
+    const suspiciousTools = [...toolCounts.entries()]
+      .filter(([, count]) => count >= 2)
+      .map(([tool]) => tool);
+    const lastUnsafe = rows.find((r) => r.severity === 'critical' || r.severity === 'breach') ?? null;
+
+    const shield = sessionId ? await getShieldMode(sessionId) : null;
+    const restrictions = await listSurfaceRestrictions(instanceId, sessionId ?? undefined);
+    const grants = sessionId ? await listSessionGrants(sessionId) : [];
+    const riskScore = Math.min(100, blockedCount * 5 + suspiciousTools.length * 10
+      + (shield?.mode === 'quarantine' ? 30 : shield?.mode === 'restrict' ? 20 : 0));
+
+    const terminal = buildResponseTerminal({
+      riskScore,
+      shieldMode: shield?.mode ?? null,
+      sessionId,
+      blockedActions24h: blockedCount,
+      suspiciousTools,
+      restrictions,
+      grants,
+      lastUnsafeEvent: lastUnsafe
+        ? {
+          id: lastUnsafe.id,
+          event_type: lastUnsafe.event_type,
+          description: lastUnsafe.description,
+          created_at: new Date(lastUnsafe.created_at).toISOString(),
+          session_id: lastUnsafe.session_id,
+        }
+        : null,
+    });
+
+    const payload = buildDefenseConsole({
+      shield,
+      activePack: getAppliedPolicyPack(sessionId ?? undefined, instanceId),
+      packs: listPolicyPacks(),
+      grants,
+      restrictions,
+      remediationRules: getRemediationRules(),
+      tripwireConfig: getTripwireConfig(),
+      tripwireHits: await listRecentTripwireHits(20),
+      terminal,
+    });
+
+    res.json(payload);
+  } catch (err) {
+    console.error('[dashboard] defense failed:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 dashboardRouter.get('/agent-status', async (req: Request, res: Response): Promise<void> => {
   const accountId = scopedAccountId(req);

@@ -48,6 +48,7 @@ export default defineConfig({
       {
         text: 'Security',
         items: [
+          { text: 'Threat Model', link: '/security/threat-model' },
           { text: 'Prompt Guard', link: '/security/prompt-guard' },
           { text: 'Tool Policy', link: '/security/tool-policy' },
           { text: 'Egress Filter', link: '/security/egress-filter' },

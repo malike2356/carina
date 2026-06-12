@@ -36,6 +36,10 @@ export interface AdapterContext {
 export interface ScoutDecision {
   blocked: boolean;
   reason?: string;
+  decision?: import('../security/policy-decisions.js').PolicyDecisionKind;
+  policyDecision?: import('../security/policy-decisions.js').PolicyDecision;
+  filteredContent?: string;
+  code?: string;
   request: NormalizedRequest;
 }
 

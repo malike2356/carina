@@ -118,3 +118,4 @@ If memory is unavailable, Carina continues in chat-only mode and logs a warning 
 - [Skill packs overview](/docs/user/skill-packs/overview) - all 16 domain packs
 - [property-uk pack](/docs/user/skill-packs/property-uk) - optional UK property vertical
 - [Labyrinth Scout](/docs/user/security/labyrinth-scout) - optional security control plane
+- [Migrating from Hermes](/docs/user/migration-from-hermes) - import config, keys, and skills from Hermes, OpenClaw, or Claude Code

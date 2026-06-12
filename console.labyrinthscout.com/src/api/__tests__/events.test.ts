@@ -30,6 +30,8 @@ function baseRow(overrides: Record<string, unknown> = {}) {
     metadata: {},
     ip_address: null,
     session_id: null,
+    parent_session_id: null,
+    root_session_id: null,
     instance_id: 'carina-local',
     mitigated: false,
     created_at: new Date('2026-06-04T12:00:00Z'),
@@ -161,5 +163,37 @@ describe('POST /api/events/:id/acknowledge', () => {
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Invalid event id');
+  });
+});
+
+describe('GET /api/events lineage fields', () => {
+  beforeEach(() => {
+    vi.mocked(pool.query).mockReset();
+  });
+
+  it('serializes parent_session_id and root_session_id on events', async () => {
+    vi.mocked(pool.query).mockResolvedValue({
+      rows: [baseRow({
+        session_id: 'child-sess',
+        parent_session_id: 'parent-sess',
+        root_session_id: 'root-sess',
+      })],
+    } as never);
+
+    const res = await request(makeApp()).get('/api/events?limit=1');
+    expect(res.status).toBe(200);
+    expect(res.body.events[0].parent_session_id).toBe('parent-sess');
+    expect(res.body.events[0].root_session_id).toBe('root-sess');
+  });
+
+  it('sets lineage fields to null when absent', async () => {
+    vi.mocked(pool.query).mockResolvedValue({
+      rows: [baseRow()],
+    } as never);
+
+    const res = await request(makeApp()).get('/api/events?limit=1');
+    expect(res.status).toBe(200);
+    expect(res.body.events[0].parent_session_id).toBeNull();
+    expect(res.body.events[0].root_session_id).toBeNull();
   });
 });

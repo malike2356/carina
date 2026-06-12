@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { resolveAdapter } from './adapter-registry.js';
 import { inspectRequest } from './security-pipeline.js';
+import { decisionToHttpStatus, decisionToErrorCode } from '../security/policy-decisions.js';
 
 export interface ScoutMiddlewareOptions {
   agentType: string;
@@ -16,13 +17,18 @@ export function scoutMiddleware(options: ScoutMiddlewareOptions) {
       method: req.method,
       headers: req.headers,
     });
-    const decision = await inspectRequest(parsed, req);
-    if (decision.blocked) {
-      res.status(400).json({
+    const result = await inspectRequest(parsed, req);
+    if (result.blocked) {
+      const decision = result.decision ?? 'block';
+      const status = decisionToHttpStatus(decision);
+      res.status(status).json({
         error: {
-          message: `Request blocked by Labyrinth Scout: ${decision.reason ?? 'prompt injection detected'}`,
+          message: `Request blocked by Labyrinth Scout: ${result.reason ?? 'policy violation'}`,
           type: 'invalid_request_error',
-          code: 'prompt_injection_detected',
+          code: result.code ?? decisionToErrorCode(decision),
+          decision,
+          riskScore: result.policyDecision?.riskScore,
+          shieldMode: result.policyDecision?.shieldMode,
         },
       });
       return;
