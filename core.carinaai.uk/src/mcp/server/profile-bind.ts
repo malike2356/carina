@@ -1,12 +1,11 @@
-import fs from 'fs';
 import path from 'path';
-import dotenv from 'dotenv';
 import {
   activateProfile,
   applyActiveProfileFromDisk,
   describeProfile,
   type CarinaProfile,
 } from '../../profiles/manager.js';
+import { bindProfileEnvironment } from '../../profiles/scope.js';
 import { loadCarinaEnv } from '../../config/load-env.js';
 
 export interface McpProfileContext {
@@ -26,17 +25,11 @@ export function bindMcpProfile(profileName?: string): McpProfileContext {
   }
 
   if (profile) {
-    if (fs.existsSync(profile.envPath)) {
-      dotenv.config({ path: profile.envPath, override: true });
-    }
-    process.env.CARINA_PROFILE = profile.name;
-    process.env.CARINA_HOME = profile.dir;
-    process.env.CARINA_RESOURCES_DIR = path.join(profile.dir, 'resources');
-    process.env.CARINA_TOOLSETS_FILE = path.join(profile.dir, 'toolsets.yaml');
+    bindProfileEnvironment(profile);
     return {
       profileName: profile.name,
       profile,
-      toolsetsPath: process.env.CARINA_TOOLSETS_FILE,
+      toolsetsPath: process.env.CARINA_TOOLSETS_FILE!,
     };
   }
 

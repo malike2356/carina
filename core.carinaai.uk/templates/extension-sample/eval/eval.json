@@ -1,0 +1,16 @@
+{
+  "pack": "sample-hello",
+  "version": 1,
+  "thresholds": {
+    "minPassRate": 0.5
+  },
+  "fixtures": [
+    {
+      "id": "hello-1",
+      "input": { "query": "say hello" },
+      "assertions": [
+        { "type": "skill_match", "skill": "sample-hello-greet" }
+      ]
+    }
+  ]
+}

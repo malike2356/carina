@@ -1,7 +1,12 @@
 import { initRouter } from '../../gateway/router.js';
 import { initSandbox } from '../../tools/sandbox.js';
 
-export async function runServe(): Promise<void> {
+export async function runServe(args: string[] = []): Promise<void> {
+  if (args[0]?.toLowerCase() === 'mcp') {
+    const { runMcpCommand } = await import('./mcp-server-cli.js');
+    await runMcpCommand(['server', ...args.slice(1)]);
+    return;
+  }
   process.env.WEB_ENABLED = 'true';
   process.env.WEB_PORT = process.env.WEB_PORT ?? '3000';
   process.env.PORT = process.env.PORT ?? process.env.WEB_PORT;

@@ -34,9 +34,10 @@
     "docs:dev": "pnpm --dir ../docs.carinaai.uk start",
     "docs:build": "pnpm --dir ../docs.carinaai.uk build",
     "test": "vitest run",
+    "test:smoke": "bash scripts/smoke-install.sh",
     "test:watch": "vitest",
     "admin": "tsx ../ops.carinaai.uk/server.ts",
-    "prepublishOnly": "pnpm build && pnpm test"
+    "prepublishOnly": "pnpm build && pnpm test && pnpm test:smoke"
   },
   "keywords": [
     "ai",

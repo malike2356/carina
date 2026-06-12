@@ -1,0 +1,10 @@
+{
+  "name": "sample-hello-greet",
+  "description": "Respond with a short friendly greeting when asked to say hello.",
+  "trigger": ["hello", "greet", "say hello"],
+  "steps": [
+    "Acknowledge the greeting request.",
+    "Reply in one sentence."
+  ],
+  "tools": []
+}

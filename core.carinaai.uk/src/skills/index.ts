@@ -407,10 +407,32 @@ export async function initSkills(): Promise<void> {
   }
   await registerActivePackTools();
   const user = await loadAllUserResources();
-  if (packsLoaded > 0 || skillMdLoaded > 0 || user.skillsLoaded > 0) {
-    console.log(
-      `Skills ready: ${packsLoaded} from packs, ${skillMdLoaded} SKILL.md, ${user.skillsLoaded} user skills, ${user.chunksIngested} knowledge chunks, ${pluginsLoaded} plugins`,
-    );
+
+  let extensionSkills = 0;
+  let extensionChunks = 0;
+  let extensionsActive = 0;
+  if (process.env.CARINA_EXTENSIONS_ENABLED === 'true') {
+    const { loadEnabledExtensionContributions, ingestStagedExtensionResources } = await import('../extensions/contributions.js');
+    const staged = await loadEnabledExtensionContributions();
+    extensionsActive = staged.extensions;
+    const ingested = await ingestStagedExtensionResources();
+    extensionSkills = ingested.skillsLoaded;
+    extensionChunks = ingested.chunksIngested;
+  }
+
+  if (packsLoaded > 0 || skillMdLoaded > 0 || user.skillsLoaded > 0 || extensionSkills > 0) {
+    const parts = [
+      `${packsLoaded} from packs`,
+      `${skillMdLoaded} SKILL.md`,
+      `${user.skillsLoaded} user skills`,
+      `${user.chunksIngested} knowledge chunks`,
+      `${pluginsLoaded} plugins`,
+    ];
+    if (extensionsActive > 0) {
+      parts.push(`${extensionSkills} extension skills (${extensionsActive} bundles)`);
+      if (extensionChunks > 0) parts.push(`${extensionChunks} extension knowledge chunks`);
+    }
+    console.log(`Skills ready: ${parts.join(', ')}`);
   } else if (getActivePackNames().length === 0) {
     console.log('General-purpose mode: no optional skill packs active');
   }

@@ -1,112 +1,123 @@
 # Getting Started
 
-## Carina Cloud (no install)
+Pick the path that matches how you want to use Carina.
 
-Use the hosted app at **[app.carinaai.uk](https://app.carinaai.uk)** if you prefer a browser workspace with BYOK keys and optional Pro security (Labyrinth Scout). Full guide: [Carina Cloud](/carina-cloud).
+## Hosted use (no install)
 
-## Prerequisites (self-hosted)
+Use **[app.carinaai.uk](https://app.carinaai.uk)** for a browser workspace with BYOK API keys and optional Pro security (Labyrinth Scout).
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Node.js | 22+ | Required for runtime and CLI |
-| pnpm | 9+ | Used for development from source |
-| PostgreSQL | 16 | With [pgvector](https://github.com/pgvector/pgvector) extension for episodic memory and RAG |
-| Redis | 7+ | Session persistence and Scout kill-switch channel |
-| Docker | Latest (optional) | Required for `shell-exec` and full `code-exec` sandboxing |
+- No Node.js or Postgres on your machine
+- Sign up, add a provider key in settings, start chatting
+- Full guide: [Carina Cloud](/carina-cloud)
 
-:::warning
-Never commit `.env` or `~/.carina/.env`. API keys in git are a common breach vector.
-:::
+## Self-hosted use (npm install)
 
-## Install (global)
-
-Install from npm ([carina-agent@0.1.0](https://www.npmjs.com/package/carina-agent); Node.js 22+):
+Install the published package globally. Requires **Node.js 22+**.
 
 ```bash
 npm install -g carina-agent
-carina setup
+carina
 ```
 
-On first run, Carina creates `~/.carina/` and runs the setup wizard if no env file exists.
-
-## Install from source
+One-shot without a global install:
 
 ```bash
-git clone <public-repo-url-after-source-release>
-cd carina/core.carinaai.uk
-pnpm install
-pnpm cli
+npx carina-agent
 ```
 
-`pnpm cli` starts the full gateway stack (CLI + web + Telegram when configured). Use `SKIP_CLI=true pnpm dev` to run without an interactive terminal.
+Package: [carina-agent@0.1.1](https://www.npmjs.com/package/carina-agent)
 
-## First run wizard
+### First run
 
-When `~/.carina/.env` does not exist, `carina` prompts for:
+On first `carina` or `carina tui`, Carina shows a short identity banner and guides you through minimum setup:
 
-1. **Provider** - DeepSeek (recommended), Anthropic, OpenAI, or configure later
-2. **API key** - For the provider you chose
-3. **UK Property pack** - Optional; sets `ACTIVE_SKILL_PACK=property-uk` and runs pack install
+1. **Configure now** - pick a provider (DeepSeek, Anthropic, or OpenAI), enter an API key, optional connection test
+2. **Configure later** - writes `~/.carina/.env` in local mode so you can add keys when ready
 
-The wizard writes `~/.carina/.env` with mode `0600` and default database URLs for local Postgres and Redis.
-
-## Your first conversation
-
-After setup, ask a property question if you installed the UK pack:
-
-```
-You: A flat in Portsmouth costs £185,000 and rents for £950 pcm. What is the gross yield?
-
-Carina: [using yield-calculator...]
-Gross yield = (950 × 12) / 185,000 × 100 = 6.16%
-```
-
-Carina selects relevant skills and RAG chunks automatically from keywords in your message.
-
-## Environment variables
-
-See [Configuration](/configuration) for the full reference. Minimum to chat without memory:
-
-| Variable | Required | Purpose |
-|---|---|---|
-| `DEEPSEEK_API_KEY` (or other provider key) | Yes | LLM inference |
-| `DATABASE_URL` | For memory/RAG | PostgreSQL with pgvector |
-| `GEMINI_API_KEY` | For embeddings | `text-embedding-004` (768 dims) for ingest and memory |
-
-## Database setup
-
-Start Postgres and Redis with the included compose file (maps Postgres to host port **5433**):
+Non-interactive environments (CI, pipes) get a minimal `~/.carina/.env` automatically; add an API key before chatting.
 
 ```bash
-cd core.carinaai.uk
+carina setup          # run or re-run the wizard
+carina doctor         # check install health
+```
+
+Config lives in `~/.carina/.env` and `~/.carina/config.yaml` (mode `0600`). Never commit these files.
+
+### Your first conversation
+
+After adding an API key:
+
+```bash
+carina
+```
+
+Ask anything. Skill packs are optional; install `property-uk` at `/packs` or with `carina packs install property-uk`.
+
+### Optional: memory and RAG
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | PostgreSQL with pgvector for episodic memory and RAG |
+| `GEMINI_API_KEY` | Embeddings for ingest and memory (`text-embedding-004`) |
+| `REDIS_URL` | Session persistence (optional for single-user CLI) |
+
+Without `DATABASE_URL`, Carina runs in chat-only mode and logs a warning at startup.
+
+Local databases via Docker (Postgres on host port **5433**):
+
+```bash
 docker compose up -d postgres redis
 ```
 
-Then point Carina at the database:
+Then add to `~/.carina/.env`:
 
-```bash
+```
 DATABASE_URL=postgresql://carina:secret@localhost:5433/carina
 ```
 
-Run migrations on first connect (handled automatically at startup). Ingest property knowledge:
+## Operator / admin setup
+
+These paths are for people running Carina as a service, not end users installing the CLI.
+
+| Role | Where |
+|---|---|
+| Docker production stack | [Self-Hosting](/self-hosting) |
+| Hosted bootstrap accounts | `carina hosted bootstrap` (env: `HOSTED_BOOTSTRAP_EMAIL`, `HOSTED_BOOTSTRAP_PASSWORD`) |
+| VERLOX internal ops panel | `ops.carinaai.uk` (not shipped to customers) |
+| Release publishing | `RELEASE_CHECKLIST.md` in the package repo |
+
+## Optional: Labyrinth Scout trust setup
+
+Scout is optional security hardening for internet-facing deployments.
+
+1. Deploy [Labyrinth Scout](https://labyrinthscout.com)
+2. Set `LABYRINTH_ENABLED=true` and matching `SCOUT_API_KEY` in Carina `.env`
+3. See [Labyrinth Scout](/security/labyrinth-scout)
+
+Standalone CLI installs work without Scout.
+
+## Install from source (contributors)
 
 ```bash
-pnpm ingest
+git clone https://github.com/malike2356/carina-agent.git
+cd carina-agent
+pnpm install
+pnpm build
+pnpm cli
 ```
 
-Requires `GEMINI_API_KEY` (or configure OpenAI embeddings in your deployment).
+`pnpm cli` starts the full gateway stack. Use `SKIP_CLI=true pnpm dev` to run without an interactive terminal.
 
-## Verify memory is working
+## Verify memory
 
 1. Start Carina with a valid `DATABASE_URL`. Startup should log `Memory store ready`.
 2. Have a short conversation, then type `/recall` in the CLI.
-3. You should see recent user and assistant turns for the current session.
-
-If memory is unavailable, Carina continues in chat-only mode and logs a warning at startup.
+3. You should see recent turns for the current session.
 
 ## Next steps
 
 - [Configuration](/configuration) - all env vars
 - [CLI gateway](/gateways/cli) - commands and streaming
-- [property-uk pack](/skill-packs/property-uk) - built-in UK property skills
+- [Self-Hosting](/self-hosting) - Docker and bare metal
+- [property-uk pack](/skill-packs/property-uk) - optional UK property skills
 - [Labyrinth Scout](/security/labyrinth-scout) - optional security control plane

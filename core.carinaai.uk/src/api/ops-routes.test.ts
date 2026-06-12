@@ -97,6 +97,21 @@ describe('ops-routes', () => {
     expect(res.status).toBe(401);
   });
 
+  it('returns read-only extension bundle listing for ops', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/extensions`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      extensions: unknown[];
+      runtimeEnabled: boolean;
+      source: string;
+    };
+    expect(body.source).toBe('read-only');
+    expect(Array.isArray(body.extensions)).toBe(true);
+    expect(typeof body.runtimeEnabled).toBe('boolean');
+  });
+
   it('updates core web password for ops', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/ops/web-password`, {
       method: 'PUT',

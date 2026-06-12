@@ -97,7 +97,14 @@ export class CarinaOrchestrator {
       return 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.';
     }
     if (/\bwhich provider\b|\bwhat model\b|\bcurrent provider\b/.test(text)) {
-      return `Provider: ${llm.current().name} (${llm.currentModel()}).`;
+      const preset = llm.getPreset();
+      const presetNote = preset ? ` preset=${preset}` : '';
+      return `Provider: ${llm.current().name} (${llm.currentModel()}).${presetNote}`;
+    }
+    if (/\bfree copilot\b|\bcopilot mode\b/.test(text)) {
+      const selection = llm.copilotSelection();
+      if (selection.order.length === 0) return selection.note;
+      return `Free Copilot chain: ${selection.order.join(' -> ')}. ${selection.note}`;
     }
     return null;
   }

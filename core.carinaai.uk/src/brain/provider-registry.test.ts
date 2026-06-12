@@ -11,8 +11,14 @@ import {
 } from './provider-registry.js';
 
 describe('provider-registry', () => {
-  it('registers at least 23 providers', () => {
-    expect(KNOWN_LLM_PROVIDERS.length).toBeGreaterThanOrEqual(23);
+  it('registers at least 24 providers', () => {
+    expect(KNOWN_LLM_PROVIDERS.length).toBeGreaterThanOrEqual(24);
+  });
+
+  it('includes vllm local provider', () => {
+    expect(PROVIDER_MAP.vllm).toBeDefined();
+    expect(PROVIDER_MAP.vllm.local).toBe(true);
+    expect(PROVIDER_MAP.vllm.tags.cost).toBe('local');
   });
 
   it('includes nvidia NIM provider', () => {
@@ -44,6 +50,12 @@ describe('provider-registry', () => {
         expect(def.capabilities.chat).toBe(true);
       });
 
+      it('has routing tags', () => {
+        expect(def.tags.cost).toBeTruthy();
+        expect(def.tags.speed).toBeTruthy();
+        expect(def.tags.chat).toBe(true);
+      });
+
       it('resolves model from default', () => {
         const prev = process.env[def.modelEnv];
         delete process.env[def.modelEnv];
@@ -55,7 +67,7 @@ describe('provider-registry', () => {
         expect(typeof isProviderConfigured(def)).toBe('boolean');
       });
 
-      if (def.kind === 'openai' && !def.local && def.name !== 'azure') {
+      if (def.kind === 'openai' && !def.local && def.name !== 'azure' && def.name !== 'custom') {
         it('has base URL', () => {
           expect(providerBaseUrl(def).startsWith('http')).toBe(true);
         });

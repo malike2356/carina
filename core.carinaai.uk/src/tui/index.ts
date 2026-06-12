@@ -13,7 +13,8 @@ import {
 } from '../profiles/scope.js';
 import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
 import { getPromptCacheStats } from '../brain/prompt-cache.js';
-import { KNOWN_LLM_PROVIDERS } from '../brain/provider-registry.js';
+import { PROVIDER_DEFINITIONS, ROUTABLE_PROVIDER_NAMES, isProviderConfigured } from '../brain/provider-registry.js';
+import { describeProviderTags } from '../brain/provider-tags.js';
 import { listCheckpoints, latestCheckpoint, restoreCheckpoint } from '../tools/checkpoint-store.js';
 import { registry } from '../tools/index.js';
 import { buildEntranceSnapshot, printEntrance, printFreshStart } from '../cli/entrance.js';
@@ -29,6 +30,7 @@ const HELP_LINES = [
   '/profile       show or switch profile',
   '/provider      switch LLM provider',
   '/skills        show active skill packs',
+  '/copilot       show Free Copilot provider chain',
   '/checkpoints   list recent checkpoints',
   '/restore       restore latest checkpoint',
   '/cache         prompt cache stats',
@@ -52,6 +54,9 @@ async function reloadPersonality(agent: CarinaOrchestrator): Promise<string> {
 }
 
 export async function runTui(options: TuiOptions = {}): Promise<void> {
+  const { ensureFirstRunReady } = await import('../cli/first-run.js');
+  await ensureFirstRunReady();
+
   const sessionId = options.sessionId ?? `tui:${Date.now()}`;
   const agent = new CarinaOrchestrator(sessionId, options.memoryReady ?? false, undefined, {
     platform: 'cli',
@@ -80,13 +85,23 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
 
     if (trimmed === '/provider') {
       const configured = llm.list();
+      const routableDefs = PROVIDER_DEFINITIONS.filter((d) =>
+        ROUTABLE_PROVIDER_NAMES.includes(d.name as never),
+      );
       const choice = await select({
         message: 'Select provider',
-        choices: KNOWN_LLM_PROVIDERS.map((name) => ({
-          name: configured.includes(name) ? `${name} (configured)` : `${name} (not configured)`,
-          value: name,
-          disabled: configured.includes(name) ? false : 'not configured',
-        })),
+        choices: routableDefs.map((def) => {
+          const ok = configured.includes(def.name);
+          const tags = describeProviderTags(def);
+          const label = ok
+            ? `${def.name}  ${def.displayName}  [${tags}]`
+            : `${def.name}  ${def.displayName}  [${tags}]  (missing key)`;
+          return {
+            name: label,
+            value: def.name,
+            disabled: ok ? false : 'missing key',
+          };
+        }),
       });
       llm.use(String(choice));
       console.log(chalk.yellow(`Switched to ${choice}`));
@@ -137,6 +152,21 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
     if (trimmed === '/skills') {
       const packs = process.env.ACTIVE_SKILL_PACKS ?? process.env.ACTIVE_SKILL_PACK ?? '';
       console.log(chalk.yellow(packs ? `Active packs: ${packs}` : 'No active skill packs configured'));
+      continue;
+    }
+
+    if (trimmed === '/copilot') {
+      const selection = llm.copilotSelection();
+      const preset = llm.getPreset();
+      console.log(chalk.yellow(preset ? `Preset: ${preset}` : 'Preset: none (use carina providers preset free-copilot)'));
+      console.log(chalk.gray(selection.note));
+      if (selection.order.length === 0) {
+        console.log(chalk.yellow('No Free Copilot providers configured.'));
+      } else {
+        for (const [i, name] of selection.order.entries()) {
+          console.log(i === 0 ? chalk.yellow(`  * ${name}`) : `    ${name}`);
+        }
+      }
       continue;
     }
 

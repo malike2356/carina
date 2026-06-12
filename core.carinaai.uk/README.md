@@ -12,25 +12,31 @@ Carina is a general-purpose local-first agent. Skill packs are optional: enable 
 
 ## Install
 
-**npm (live):**
+**npm (recommended):**
 
 ```bash
 npm install -g carina-agent
-carina setup
 carina
+```
+
+First run shows a short guide and runs `carina setup` if `~/.carina/.env` is missing. Choose **configure now** (API key) or **configure later** (local mode).
+
+**One-shot:**
+
+```bash
+npx carina-agent
 ```
 
 Package: [carina-agent@0.1.1](https://www.npmjs.com/package/carina-agent) on npm. Requires **Node.js 22+**.
 
-**curl (after install host is configured):**
+**curl (when install host is live):**
 
 ```bash
 curl -fsSL https://install.carinaai.uk | sh
-carina setup
 carina
 ```
 
-Requires **Node.js 22+**.
+**Hosted (no install):** [app.carinaai.uk](https://app.carinaai.uk)
 
 ## Quick start
 

@@ -44,6 +44,15 @@ vi.mock('../../memory/db.js', () => {
       return { rows: [], rowCount: 1 };
     }
 
+    if (/SELECT access_status FROM hosted_users WHERE id/.test(s)) {
+      const id = params?.[0] as string;
+      const found = users.filter((u) => u.id === id);
+      return {
+        rows: found.map((u) => ({ access_status: (u.access_status as string | undefined) ?? 'active' })),
+        rowCount: found.length,
+      };
+    }
+
     if (/INSERT INTO password_reset_tokens/.test(s)) return { rows: [], rowCount: 0 };
 
     return { rows: [], rowCount: 0 };

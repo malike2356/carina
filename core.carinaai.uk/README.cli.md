@@ -1,11 +1,18 @@
 # Carina CLI
 
-Install Carina globally from npm or from a local checkout:
+Install Carina globally from npm or from a local checkout.
 
 Package: [carina-agent](https://www.npmjs.com/package/carina-agent) (Node.js 22+).
 
 ```sh
 npm install -g carina-agent
+carina --version
+```
+
+One-shot without a global install:
+
+```sh
+npx carina-agent --version
 ```
 
 For local development:
@@ -16,15 +23,24 @@ npm link
 carina --version
 ```
 
-## Setup
+## First run
 
-Run the guided setup wizard:
+`carina` and `carina tui` detect a missing `~/.carina/.env`, print a short identity banner, and offer setup.
 
 ```sh
 carina setup
 ```
 
-The wizard writes `~/.carina/config.yaml` and `~/.carina/.env`, stores API keys locally, and tests the selected provider before completing.
+Options:
+
+- **Set up an API provider now** - provider, model, API key, optional connection test
+- **Configure later** - writes local-mode config; add `DEEPSEEK_API_KEY` (or other provider key) when ready
+
+The wizard writes `~/.carina/config.yaml` and `~/.carina/.env` (mode `0600`).
+
+```sh
+carina doctor    # install health check
+```
 
 ## Chat
 

@@ -46,10 +46,10 @@ export function buildCommands(): CliCommand[] {
       await runCliSetup();
     }),
 
-    cmd('serve', 'Local web/API server on localhost:3000', async () => {
+    cmd('serve', 'Local web/API server on localhost:3000 (or: carina serve mcp)', async (args) => {
       const { runServe } = await import('./commands/serve.js');
-      await runServe();
-    }, { loadEnv: true }),
+      await runServe(args);
+    }, { loadEnv: true, usage: 'carina serve [mcp] [--stdio|--http] [options]' }),
 
     cmd('mcp', 'MCP server mode (expose Carina tools to external clients)', async (args) => {
       const { runMcpCommand } = await import('./commands/mcp-server-cli.js');
@@ -163,6 +163,13 @@ export function buildCommands(): CliCommand[] {
       const { runPacksCommand } = await import('./commands/packs-cli.js');
       await runPacksCommand(args);
     }, { usage: 'carina packs <list|install|remove> [--bypass-eval]' }),
+
+    cmd('extensions', 'Extension bundle install/enable (operator, opt-in)', async (args) => {
+      const { runExtensionsCommand } = await import('./commands/extensions-cli.js');
+      await runExtensionsCommand(args);
+    }, {
+      usage: 'carina extensions <list|install|enable|disable|remove|rollback|validate|status> [args]',
+    }),
 
     cmd('eval', 'Offline skill pack evaluation harness', async (args) => {
       const { runEvalCommand } = await import('./commands/eval-cli.js');

@@ -1,0 +1,22 @@
+{
+  "manifestVersion": 1,
+  "id": "sample-hello",
+  "version": "0.1.0",
+  "name": "Sample Hello Extension",
+  "author": "VERLOX Ltd",
+  "description": "Minimal extension bundle for smoke tests and docs.",
+  "capabilities": ["skills", "prompts"],
+  "entryPoints": {
+    "skills": "skills",
+    "prompts": "prompts"
+  },
+  "dependencies": {
+    "packs": [],
+    "extensions": []
+  },
+  "eval": {
+    "required": false,
+    "path": "eval/eval.json"
+  },
+  "risk": "low"
+}

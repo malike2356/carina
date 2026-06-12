@@ -23,13 +23,20 @@ export function commandHintsFor(surface: EntranceSurface): readonly string[] {
   return surface === 'tui' ? TUI_COMMAND_HINTS : CLI_COMMAND_HINTS;
 }
 
+function readActiveProvider(): { provider: string; model: string } {
+  try {
+    return { provider: llm.current().name, model: llm.currentModel() };
+  } catch {
+    return { provider: 'not configured', model: 'carina setup' };
+  }
+}
+
 export function buildEntranceSnapshot(opts: {
   surface: EntranceSurface;
   memoryReady?: boolean;
   toolCount?: number;
 }): EntranceSnapshot {
-  const provider = llm.current().name;
-  const model = llm.currentModel();
+  const { provider, model } = readActiveProvider();
   return {
     profile: getActiveProfileName() ?? 'default',
     provider,

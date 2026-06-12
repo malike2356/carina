@@ -97,6 +97,20 @@ export function mountOpsRoutes(app: Express): void {
     res.json(getWebPasswordStatus());
   });
 
+  app.get('/api/ops/extensions', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { listExtensions } = await import('../extensions/manager.js');
+    const extensions = await listExtensions();
+    res.json({
+      extensions,
+      runtimeEnabled: process.env.CARINA_EXTENSIONS_ENABLED === 'true',
+      source: 'read-only',
+    });
+  });
+
   app.get('/api/ops/eval-reports', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });

@@ -23,6 +23,7 @@ echo "Publishing as: $(npm whoami)"
 echo "Building and testing carina-agent..."
 pnpm build
 pnpm test
+pnpm test:smoke
 
 echo "Publishing carina-agent@$(node -p "require('./package.json').version")..."
 npm publish --access public

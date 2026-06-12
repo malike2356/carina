@@ -4,7 +4,7 @@ import { PLATFORM_NAMES, TOOLSET_NAMES } from '../tools/toolset-config.js';
 export const TOP_LEVEL_COMMANDS = [
   'chat', 'tui', 'setup', 'serve', 'mcp', 'web', 'config', 'model', 'tools', 'profile',
   'personality', 'agents', 'host', 'gateway', 'channels', 'whatsapp', 'pairing', 'cron', 'doctor',
-  'logs', 'skills', 'packs', 'install-pack', 'list-packs', 'memory', 'sessions',
+  'logs', 'skills', 'packs', 'extensions', 'install-pack', 'list-packs', 'memory', 'sessions',
   'checkpoint', 'rag', 'backup', 'commitments', 'ops', 'providers', 'scout', 'security', 'tenant',
   'billing', 'plugins', 'hooks', 'migrate', 'update', 'ingest', 'hub', 'contacts',
   'secrets', 'credentials', 'curator', 'kanban', 'env', 'completion', 'ide', 'help', 'version',
@@ -20,7 +20,7 @@ export { TOOLSET_NAMES };
 
 export const SUBCOMMANDS: Record<string, readonly string[]> = {
   config: ['list', 'show', 'get', 'set', 'unset', 'edit', 'check', 'migrate'],
-  model: ['menu', 'list', 'set', 'pick', 'current', 'test'],
+  model: ['menu', 'list', 'set', 'pick', 'current', 'preset', 'test'],
   tools: ['menu', 'list', 'toolsets', 'platform', 'enable', 'disable', 'show'],
   profile: ['list', 'create', 'use', 'show', 'scope', 'clone', 'export', 'import', 'delete'],
   agents: ['list', 'add', 'use', 'show', 'remove', 'bind', 'route'],
@@ -35,13 +35,14 @@ export const SUBCOMMANDS: Record<string, readonly string[]> = {
   logs: ['list', 'tail'],
   skills: ['list'],
   packs: ['list', 'install', 'remove'],
+  extensions: ['list', 'install', 'enable', 'disable', 'remove', 'rollback', 'validate', 'status'],
   memory: ['list', 'search', 'facts', 'dreams', 'promote', 'reindex', 'clear', 'backends', 'use', 'status', 'test'],
   sessions: ['list', 'show', 'delete'],
   checkpoint: ['list', 'create', 'restore', 'restore-latest', 'delete'],
   rag: ['search', 'status', 'ingest'],
   backup: ['list', 'create', 'restore', 'verify'],
   ops: ['sandbox', 'dns', 'proxy', 'backup', 'secrets', 'audit', 'turns'],
-  providers: ['list', 'test'],
+  providers: ['list', 'copilot', 'preset', 'health', 'test'],
   scout: ['status', 'test', 'pair'],
   security: ['audit', 'status'],
   tenant: ['status'],

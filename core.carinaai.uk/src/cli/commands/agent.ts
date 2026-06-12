@@ -1,10 +1,7 @@
-import { envExists } from '../../config/load-env.js';
-import { runCliSetup } from './setup.js';
+import { ensureFirstRunReady } from '../first-run.js';
 
 export async function runAgent(cliOnly: boolean): Promise<void> {
-  if (!envExists()) {
-    await runCliSetup();
-  }
+  await ensureFirstRunReady();
   if (cliOnly) {
     process.env.WEB_ENABLED = 'false';
     process.env.TELEGRAM_BOT_TOKEN = '';

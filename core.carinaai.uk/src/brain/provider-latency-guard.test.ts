@@ -1,0 +1,27 @@
+import { readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { describe, expect, it } from 'vitest';
+
+const srcRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+
+describe('provider copilot latency guard', () => {
+  it('does not import health probes into the live agent turn path', () => {
+    const files = [
+      path.join(srcRoot, 'agents', 'carina.ts'),
+      path.join(srcRoot, 'agents', 'orchestrator.ts'),
+    ];
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      expect(source.includes('probeProviderHealth')).toBe(false);
+      expect(source.includes('probeConfiguredLocalProviders')).toBe(false);
+      expect(source.includes('maybeProbeProvidersOnStartup')).toBe(false);
+    }
+  });
+
+  it('uses sync health cache only in llm router fallback', () => {
+    const source = readFileSync(path.join(srcRoot, 'brain', 'llm.ts'), 'utf8');
+    expect(source.includes('isProviderAvailable')).toBe(true);
+    expect(source.includes('probeProviderHealth')).toBe(false);
+  });
+});

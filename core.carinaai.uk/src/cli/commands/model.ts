@@ -80,6 +80,12 @@ export async function runModelCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'preset') {
+    const { runProvidersCommand } = await import('./providers-cli.js');
+    await runProvidersCommand(['preset', ...args.slice(1)]);
+    return;
+  }
+
   if (action === 'test') {
     const provider = args[1] ?? (await loadFromYaml()).provider;
     const def = PROVIDER_MAP[provider];
@@ -99,6 +105,6 @@ export async function runModelCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina model <menu|list|set|pick|current|test> [provider] [model]');
+  console.error('Usage: carina model <menu|list|set|pick|current|preset|test> [provider] [model]');
   process.exit(1);
 }

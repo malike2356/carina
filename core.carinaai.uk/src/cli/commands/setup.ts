@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { input, password, select } from '@inquirer/prompts';
+import { confirm, input, password, select } from '@inquirer/prompts';
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import { CARINA_ENV_PATH, CARINA_HOME } from '../../config/paths.js';
@@ -9,6 +9,7 @@ import { envKeyForProvider } from '../config/env.js';
 import { writeConfig, type CarinaCliConfig } from '../config/loader.js';
 import { format } from '../output/formatter.js';
 import { installCustomDomainPack } from '../../setup/custom-domain-pack.js';
+import { isInteractiveTerminal, writeMinimalBootstrap } from '../first-run.js';
 
 const MODELS: Record<ProviderName, string> = {
   deepseek: 'deepseek-chat',
@@ -43,6 +44,30 @@ async function testProviderConnection(provider: ProviderName, apiKey: string, mo
 export async function runCliSetup(): Promise<void> {
   console.log(format.title('\nCarina setup\n'));
 
+  if (!isInteractiveTerminal()) {
+    await writeMinimalBootstrap();
+    console.log(format.success(`\nConfig written to ${path.join(CARINA_HOME, 'config.yaml')}`));
+    console.log(format.success(`Local environment written to ${CARINA_ENV_PATH}`));
+    console.log(format.muted('Non-interactive mode: add an API key to ~/.carina/.env, then run carina again.'));
+    return;
+  }
+
+  const setupMode = await select<'now' | 'later'>({
+    message: 'How do you want to configure?',
+    choices: [
+      { name: 'Set up an API provider now', value: 'now' },
+      { name: 'Configure later (start in local mode)', value: 'later' },
+    ],
+  });
+
+  if (setupMode === 'later') {
+    await writeMinimalBootstrap();
+    console.log(format.success(`\nConfig written to ${path.join(CARINA_HOME, 'config.yaml')}`));
+    console.log(format.success(`Local environment written to ${CARINA_ENV_PATH}`));
+    console.log(format.muted('Add an API key when ready, then run carina again or: carina setup'));
+    return;
+  }
+
   const provider = await select<ProviderName>({
     message: 'Default provider',
     choices: [
@@ -61,10 +86,31 @@ export async function runCliSetup(): Promise<void> {
   const apiKey = await password({
     message: `${provider} API key`,
     mask: '*',
+    validate: (value) => (value.trim().length > 0 ? true : 'API key is required for setup now'),
   });
 
-  console.log(format.muted('\nTesting provider connection...'));
-  await testProviderConnection(provider, apiKey, model || defaultModel);
+  const runTest = await confirm({
+    message: 'Test provider connection before saving?',
+    default: true,
+  });
+
+  if (runTest) {
+    console.log(format.muted('\nTesting provider connection...'));
+    try {
+      await testProviderConnection(provider, apiKey, model || defaultModel);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(format.error(`\nConnection test failed: ${msg}`));
+      const saveAnyway = await confirm({
+        message: 'Save config anyway?',
+        default: false,
+      });
+      if (!saveAnyway) {
+        console.log(format.muted('Setup cancelled. Run carina setup to try again.'));
+        return;
+      }
+    }
+  }
 
   const customPackSource = await input({
     message: 'Install a custom domain pack? [skip / enter URL or path]',

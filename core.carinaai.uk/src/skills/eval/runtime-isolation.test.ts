@@ -21,6 +21,8 @@ describe('runtime path isolation', () => {
         expect(source).not.toMatch(/skills\/eval/);
         expect(source).not.toMatch(/eval-cli/);
         expect(source).not.toMatch(/runPackEvalGate/);
+        expect(source).not.toMatch(/extensions\/manager/);
+        expect(source).not.toMatch(/extensions\/installer/);
       } catch {
         // file may not exist in all layouts; skip
       }

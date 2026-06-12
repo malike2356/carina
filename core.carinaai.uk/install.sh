@@ -17,4 +17,10 @@ fi
 npm install -g carina-agent
 
 echo ""
-echo "Carina installed. Run: carina"
+echo "Carina installed."
+echo ""
+echo "  carina          start chat (first-run setup if needed)"
+echo "  carina setup    configure API keys"
+echo "  carina doctor   check install health"
+echo ""
+echo "Hosted option (no install): https://app.carinaai.uk"
