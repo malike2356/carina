@@ -7,9 +7,9 @@ import {
   pruneExpiredGrants,
   removeApprovalRule,
   revokeApprovalGrant,
-} from '../security/approval-store.js';
-import { toolRiskTier } from '../security/tool-risk.js';
-import { registry } from '../tools/index.js';
+} from '../../security/approval-store.js';
+import { toolRiskTier } from '../../security/tool-risk.js';
+import { registry } from '../../tools/index.js';
 
 function parseTtlMs(raw: string | undefined, fallbackMs: number): number {
   if (!raw) return fallbackMs;

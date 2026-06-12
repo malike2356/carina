@@ -25,14 +25,19 @@ async function runStep(step: TaskFlowStep, runId: string): Promise<string> {
 
   if (step.type === 'cron') {
     const { executeJob } = await import('../../agents/cron-scheduler.js');
-    const output = await executeJob(step.jobId, { source: 'taskflow' });
+    const output = await executeJob(step.jobId);
     return output.slice(0, 4000);
   }
 
   if (step.type === 'tool') {
     const { executeToolCall } = await import('../../agents/tool-runner.js');
     const result = await executeToolCall(
-      { toolName: step.name, parameters: step.args ?? {} },
+      {
+        type: 'tool_call',
+        toolName: step.name,
+        toolCallId: `taskflow-${runId}`,
+        params: step.args ?? {},
+      },
       undefined,
       false,
       `taskflow:${runId}`,

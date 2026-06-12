@@ -1,6 +1,7 @@
 import { getActivePackNames, getActivePackSuffixes } from '../skills/index.js';
 import { getExtensionPromptSuffix } from '../extensions/prompts.js';
 import { buildPlatformKnowledgeContext, preloadPlatformKnowledge } from '../platform/knowledge.js';
+import { buildSearchProviderContext } from '../tools/web-search-provider.js';
 
 void preloadPlatformKnowledge();
 

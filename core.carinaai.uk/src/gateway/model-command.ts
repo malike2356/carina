@@ -102,7 +102,7 @@ export function handleModelCommand(
   if (!isProviderConfigured(router, requestedProvider!)) {
     return {
       handled: true,
-      reply: `${providerDisplayName(requestedProvider)} API key not configured. Run 'carina config set providers.${requestedProvider}.api_key YOUR_KEY'`,
+      reply: `${providerDisplayName(requestedProvider!)} API key not configured. Run 'carina config set providers.${requestedProvider}.api_key YOUR_KEY'`,
     };
   }
 

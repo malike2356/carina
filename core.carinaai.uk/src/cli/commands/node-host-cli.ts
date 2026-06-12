@@ -147,7 +147,7 @@ export async function runNodeHostCommand(args: string[]): Promise<void> {
         await new Promise((r) => setTimeout(r, 2000));
         continue;
       }
-      if (data.ok && data.token && data.nodeId) {
+      if (data.token && data.nodeId) {
         saveLocalNodeConfig({
           gatewayUrl: base,
           nodeId: data.nodeId,

@@ -8,7 +8,7 @@ export async function runTasksCommand(args: string[]): Promise<void> {
 
   const background = listProcesses().map((p) => ({
     kind: 'background-process',
-    id: p.sessionId,
+    id: p.session_id,
     status: p.status,
     command: p.command,
     pid: p.pid,

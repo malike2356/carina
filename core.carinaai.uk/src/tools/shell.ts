@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Tool } from '../types/index.js';
 import { runInSandbox } from './sandbox.js';
-import { execInSessionSandbox, sessionSandboxEnabled } from '../infrastructure/sandbox-session.js';
+import { execInSessionSandbox, sessionSandboxEnabled, type SandboxSessionState } from '../infrastructure/sandbox-session.js';
 import { expandPath, isBlockedSystemWrite, isSafePath } from './path-utils.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
 import { spawnBackgroundProcess, startProcessCleanup, type CompletionNotify } from './process-registry.js';
@@ -166,10 +166,11 @@ export const shellExecTool: Tool = {
       exitCode: result.exitCode,
     };
     if ('sandbox' in result && result.sandbox) {
+      const sandbox = result.sandbox as SandboxSessionState;
       payload.sandbox = {
-        label: result.sandbox.label,
-        status: result.sandbox.status,
-        profile: result.sandbox.profile,
+        label: sandbox.label,
+        status: sandbox.status,
+        profile: sandbox.profile,
       };
     }
     return payload;

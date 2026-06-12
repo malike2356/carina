@@ -34,7 +34,8 @@ export interface CarinaMessage {
     | 'email'
     | 'homeassistant'
     | 'api'
-    | 'webhooks';
+    | 'webhooks'
+    | 'irc';
   timestamp: Date;
   chatType?: 'private' | 'group';
   mentioned?: boolean;
