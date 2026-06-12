@@ -108,7 +108,12 @@ export class GatewayRouter {
   }
 
   async getSession(agentId: string, source: string, externalUserId: string): Promise<string> {
-    const mapKey = `carina:agent:${agentId}:gateway:${source}:${externalUserId}`;
+    // When CARINA_OPERATOR_SESSION=true, all surfaces (Telegram, web, CLI)
+    // share one session — Carina remembers across platforms.
+    const unifiedSession = process.env.CARINA_OPERATOR_SESSION === 'true';
+    const mapKey = unifiedSession
+      ? `carina:agent:${agentId}:gateway:operator`
+      : `carina:agent:${agentId}:gateway:${source}:${externalUserId}`;
     const redis = getRedis();
 
     if (redis) {
