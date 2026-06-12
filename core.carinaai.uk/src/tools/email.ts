@@ -48,7 +48,7 @@ export const emailSmtpSendTool: Tool = {
   dangerous: true,
   requiresConfirmation: true,
   description:
-    'Send a plain-text email via SMTP. Uses SMTP_* env vars for credentials. Works with Gmail app passwords.',
+    'Send an email using SMTP (Gmail, Outlook, or any mail server). Uses SMTP_* env vars. REQUIRED when the user asks to send email — use this instead of email-send which requires a Resend API key. Works with Gmail app passwords.',
   parameters: {
     type: 'object',
     properties: {

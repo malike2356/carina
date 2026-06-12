@@ -17,7 +17,7 @@ export async function runServe(args: string[] = []): Promise<void> {
   initRouter(false);
 
   const { startWeb } = await import('../../gateway/web.js');
-  await startWeb({ localMode: true, host: 'localhost', port: 3000 });
+  await startWeb({ localMode: true, host: '127.0.0.1', port: parseInt(process.env.WEB_PORT ?? '3000', 10) });
   await new Promise<never>(() => {
     setInterval(() => undefined, 2 ** 30);
   });
