@@ -35,7 +35,7 @@ export const TOOLSET_MAP: Record<string, string[]> = {
   search: ['web-search', 'session-search'],
   skills: ['skills-list', 'skill-view', 'skill-manage', 'skill-curator'],
   sync: ['agent-sync', 'contacts'],
-  messaging: ['send-message', 'webhook', 'email-send', 'email-smtp-send', 'email-list'],
+  messaging: ['send-message', 'webhook', 'email-send', 'email-smtp-send', 'email-list', 'generate-pdf'],
   media: [
     'vision-analyze',
     'video-analyze',

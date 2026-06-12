@@ -56,6 +56,7 @@ import {
   yuanbaoTool,
   xPostTool,
 } from './integrations.js';
+import { generatePdfTool } from './pdf.js';
 
 registry.register(webSearchTool);
 registry.register(fileReadTool);
@@ -110,6 +111,7 @@ registry.register(lspTool);
 registry.register(agentSyncTool);
 registry.register(contactsTool);
 registry.register(skillCuratorTool);
+registry.register(generatePdfTool);
 registerPlatformTools((tool) => registry.register(tool));
 
 for (const tool of createKanbanGranularTools('default-session')) {
