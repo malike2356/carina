@@ -47,6 +47,9 @@ export class GatewayRouter {
 
   constructor(memoryReady: boolean) {
     this.memoryReady = memoryReady;
+    // Auto-confirm default: on gateway surfaces (web/Telegram), the user's
+    // message IS the intent. CLI overrides this with an interactive prompt.
+    this.confirmTool = async (_toolName, _params, _reason) => true;
     this.gcTimer = setInterval(() => this.evictStaleSessions(), 10 * 60 * 1000);
     this.gcTimer.unref(); // do not keep process alive for GC alone
   }
@@ -129,7 +132,7 @@ export class GatewayRouter {
     let agent = this.agents.get(sessionId);
     const runtime = this.sessionRuntime.get(sessionId);
     if (!agent) {
-      const confirm = source === 'cli' ? this.confirmTool : undefined;
+      const confirm = this.confirmTool;
       agent = new CarinaOrchestrator(sessionId, this.memoryReady, confirm, {
         platform: source,
         agentId: runtime?.agent.id,
