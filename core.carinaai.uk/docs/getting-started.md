@@ -116,6 +116,7 @@ pnpm cli
 
 ## Next steps
 
+- [Capabilities](/capabilities) - full tools, features, providers, channels, and optional surfaces
 - [Configuration](/configuration) - all env vars
 - [CLI gateway](/gateways/cli) - commands and streaming
 - [Self-Hosting](/self-hosting) - Docker and bare metal

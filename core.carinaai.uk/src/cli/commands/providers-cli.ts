@@ -1,14 +1,22 @@
 import chalk from 'chalk';
 import {
   PROVIDER_DEFINITIONS,
+  disableProvider,
+  enableProvider,
   isProviderConfigured,
+  listDisabledProviders,
+  providerApiKey,
+  providerBaseUrl,
   providerModel,
-  type ProviderDefinition,
-  type ProviderStatus,
+  providerTransportType,
 } from '../../brain/provider-registry.js';
+import {
+  buildCatalogRows,
+  formatCompactCatalogLine,
+  formatProviderCatalogHeader,
+} from '../../brain/provider-catalog.js';
 import { describeProviderTags } from '../../brain/provider-tags.js';
 import {
-  getProviderHealth,
   listProviderHealth,
   probeConfiguredLocalProviders,
   probeProviderHealth,
@@ -19,72 +27,21 @@ import { llm } from '../../brain/llm.js';
 import { loadLocalEnv } from '../config/env.js';
 import { appendEnvValue } from '../config/loader.js';
 
-const STATUS_ORDER: ProviderStatus[] = [
-  'active', 'experimental', 'external-cli', 'oauth', 'alias', 'unsupported',
-];
-
-function statusBadge(def: ProviderDefinition): string {
-  switch (def.status) {
-    case 'active': return '';
-    case 'experimental': return chalk.yellow('experimental');
-    case 'external-cli': return chalk.cyan('external-cli');
-    case 'oauth': return chalk.blue('oauth');
-    case 'alias': return chalk.gray(`alias -> ${def.aliasFor}`);
-    case 'unsupported': return chalk.red('unsupported');
-    default: return '';
-  }
-}
-
-function configuredLabel(def: ProviderDefinition): string {
-  if (def.status === 'alias') return chalk.gray('use target provider');
-  if (def.status === 'external-cli') return chalk.cyan('external-cli: install required');
-  if (def.status === 'oauth') return chalk.blue('oauth: run setup flow');
-  return isProviderConfigured(def)
-    ? chalk.green('configured')
-    : chalk.gray('missing key');
-}
-
-function printGroup(title: string, defs: ProviderDefinition[]): void {
-  if (defs.length === 0) return;
-  console.log(chalk.bold(`\n  ${title}`));
-  for (const def of defs) {
-    const health = getProviderHealth(def.name);
-    const tags = def.status === 'active' || def.status === 'experimental'
-      ? chalk.gray(`  [${describeProviderTags(def)}]`)
-      : '';
-    const model = def.status === 'active' || def.status === 'experimental'
-      ? `  model=${providerModel(def)}`
-      : '';
-    const healthSuffix = health !== 'unknown' ? chalk.gray(`  health=${health}`) : '';
-    const badge = statusBadge(def);
-    const badgeSuffix = badge ? `  ${badge}` : '';
-    const note = def.setupNote
-      ? chalk.gray(`\n    Note: ${def.setupNote}`)
-      : '';
-
-    console.log(
-      `    ${def.name.padEnd(20)} ${configuredLabel(def).padEnd(24)} ${def.displayName}${model}${tags}${healthSuffix}${badgeSuffix}${note}`,
-    );
-  }
-}
-
 export async function runProvidersCommand(args: string[]): Promise<void> {
   loadLocalEnv();
   const action = args[0] ?? 'list';
 
   if (action === 'list') {
-    const grouped = new Map<ProviderStatus, ProviderDefinition[]>();
-    for (const s of STATUS_ORDER) grouped.set(s, []);
-    for (const def of PROVIDER_DEFINITIONS) {
-      grouped.get(def.status)?.push(def);
-    }
-
     console.log(chalk.bold('\nCarina provider catalog\n'));
-    printGroup('Active (routable now)', grouped.get('active') ?? []);
-    printGroup('Experimental (routable, not production-hardened)', grouped.get('experimental') ?? []);
-    printGroup('External CLI (install required, not routable via Carina)', grouped.get('external-cli') ?? []);
-    printGroup('OAuth (requires setup flow, not routable via Carina)', grouped.get('oauth') ?? []);
-    printGroup('Aliases (catalog labels, use the target provider)', grouped.get('alias') ?? []);
+    console.log(chalk.gray(formatProviderCatalogHeader()));
+    for (const row of buildCatalogRows({ includeCatalogOnly: true })) {
+      const line = formatCompactCatalogLine(row);
+      const styled = row.status === 'active' || row.status === 'experimental'
+        ? line
+        : chalk.gray(line);
+      const note = PROVIDER_DEFINITIONS.find((d) => d.name === row.id)?.setupNote;
+      console.log(`  ${styled}${note ? chalk.gray(`\n      ${note}`) : ''}`);
+    }
 
     const preset = llm.getPreset();
     if (preset) {
@@ -109,14 +66,22 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
     console.log(`  name:       ${def.name}`);
     console.log(`  status:     ${def.status}`);
     console.log(`  auth:       ${def.authType}`);
+    console.log(`  transport:  ${providerTransportType(def)}`);
+    console.log(`  cost:       ${def.tags.cost}`);
     if (def.status === 'active' || def.status === 'experimental') {
       console.log(`  configured: ${isProviderConfigured(def)}`);
       console.log(`  model:      ${providerModel(def)}`);
       console.log(`  tags:       ${describeProviderTags(def)}`);
       console.log(`  key env:    ${def.apiKeyEnv}`);
+      if (def.baseUrlEnv) console.log(`  base env:   ${def.baseUrlEnv}`);
     }
     if (def.aliasFor) console.log(`  alias for:  ${def.aliasFor}`);
     if (def.setupNote) console.log(`  setup:      ${def.setupNote}`);
+    const caps = def.capabilities;
+    console.log(`  streaming:  ${caps.streaming ? 'yes' : 'no'}`);
+    console.log(`  tools:      ${caps.tools ? 'yes' : 'no'}`);
+    console.log(`  vision:     ${caps.vision ? 'yes' : 'no'}`);
+    console.log(`  reasoning:  ${caps.reasoning ? 'yes' : 'no'}`);
     console.log('');
     return;
   }
@@ -205,7 +170,141 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina providers <list|info|copilot|preset|health|test> [args]');
+  if (action === 'disable') {
+    const name = args[1];
+    if (!name) {
+      console.error('Usage: carina providers disable <name>');
+      process.exit(1);
+    }
+    const def = PROVIDER_DEFINITIONS.find((d) => d.name === name);
+    if (!def) {
+      console.error(`Unknown provider: ${name}`);
+      process.exit(1);
+    }
+    disableProvider(name);
+    console.log(`Provider "${name}" disabled for this session.`);
+    return;
+  }
+
+  if (action === 'enable') {
+    const name = args[1];
+    if (!name) {
+      const disabled = listDisabledProviders();
+      if (disabled.length === 0) {
+        console.log('No providers are currently disabled.');
+      } else {
+        console.log('Disabled providers:', disabled.join(', '));
+      }
+      return;
+    }
+    enableProvider(name);
+    console.log(`Provider "${name}" re-enabled.`);
+    return;
+  }
+
+  if (action === 'plugins') {
+    const { listProviderPluginFiles, getLoadedProviderPluginFiles, hasProviderFactory } = await import('../../plugins/loader.js');
+    const files = listProviderPluginFiles();
+    const loaded = getLoadedProviderPluginFiles();
+    console.log(chalk.bold('\nProvider plugins (plugins/providers/)\n'));
+    if (files.length === 0) {
+      console.log('  No provider plugin files found.');
+      console.log(chalk.gray('  Add .ts modules under plugins/providers/ (see plugins/providers/github-copilot.ts).'));
+      return;
+    }
+    for (const file of files) {
+      const active = loaded.includes(file);
+      console.log(`  ${active ? chalk.green('loaded') : chalk.gray('pending')}  ${file}`);
+    }
+    const withFactory = PROVIDER_DEFINITIONS
+      .filter((d) => hasProviderFactory(d.name))
+      .map((d) => d.name);
+    if (withFactory.length > 0) {
+      console.log(chalk.gray(`\n  Custom factories: ${withFactory.join(', ')}`));
+    }
+    console.log('');
+    return;
+  }
+
+  if (action === 'scan') {
+    const targetName = args[1];
+    const toScan = PROVIDER_DEFINITIONS.filter((d) => {
+      if (targetName) return d.name === targetName;
+      return isProviderConfigured(d) && (d.kind === 'openai' || d.local === true);
+    });
+    if (toScan.length === 0) {
+      console.log(targetName
+        ? `Provider "${targetName}" not found or not configured.`
+        : 'No configured OpenAI-compatible providers to scan.');
+      return;
+    }
+    console.log(chalk.bold('\nScanning providers for available models...\n'));
+    for (const def of toScan) {
+      const base = providerBaseUrl(def);
+      if (!base) {
+        console.log(`  ${chalk.bold(def.name)}: no base URL`);
+        continue;
+      }
+      const url = `${base.replace(/\/$/, '')}/models`;
+      const apiKey = providerApiKey(def);
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!res.ok) {
+          console.log(`  ${chalk.bold(def.name)}: HTTP ${res.status}`);
+          continue;
+        }
+        const data = await res.json() as Record<string, unknown>;
+        let models: string[] = [];
+        const raw = data['data'] ?? data['models'] ?? data;
+        if (Array.isArray(raw)) {
+          models = (raw as Array<Record<string, string>>)
+            .map((m) => m['id'] ?? m['name'] ?? '')
+            .filter(Boolean);
+        }
+        console.log(`  ${chalk.bold(def.name)} - ${models.length} model(s)`);
+        for (const m of models.slice(0, 12)) {
+          console.log(`    ${m}`);
+        }
+        if (models.length > 12) {
+          console.log(`    ... and ${models.length - 12} more`);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(`  ${chalk.bold(def.name)}: ${chalk.red(msg)}`);
+      }
+    }
+    console.log('');
+    return;
+  }
+
+  if (action === 'matrix') {
+    const allFlag = args.includes('--all');
+    const defs = allFlag
+      ? PROVIDER_DEFINITIONS
+      : PROVIDER_DEFINITIONS.filter((d) => d.status === 'active' || d.status === 'experimental');
+    const yn = (v: boolean | undefined) => (v ? chalk.green('yes') : chalk.gray('no '));
+    console.log(chalk.bold('\nStreaming compatibility matrix\n'));
+    const hdr = `  ${'Provider'.padEnd(18)} ${'Transport'.padEnd(22)} stream  tools   vision  reason  status`;
+    console.log(chalk.gray(hdr));
+    for (const def of defs) {
+      const c = def.capabilities;
+      const transport = providerTransportType(def).padEnd(22);
+      const row = `  ${def.name.padEnd(18)} ${transport} ${yn(c.streaming)}    ${yn(c.tools)}    ${yn(c.vision)}    ${yn(c.reasoning)}    ${def.status}`;
+      const styled = def.status === 'active' ? row : chalk.gray(row);
+      console.log(styled);
+    }
+    if (!allFlag) console.log(chalk.gray('\n  Pass --all to include alias/oauth/external-cli entries'));
+    console.log('');
+    return;
+  }
+
+  console.error('Usage: carina providers <list|info|plugins|copilot|preset|health|test|disable|enable|scan|matrix> [args]');
   process.exit(1);
 }
 

@@ -12,10 +12,12 @@ function readVersion(): string {
 
 export async function runUpdateCommand(args: string[]): Promise<void> {
   const action = args[0] ?? 'check';
+  const json = args.includes('--json');
   const current = readVersion();
 
   if (action === 'check') {
     let latest = current;
+    let registryReachable = true;
     try {
       const res = await fetch('https://registry.npmjs.org/carina-agent/latest', {
         signal: AbortSignal.timeout(5000),
@@ -23,10 +25,24 @@ export async function runUpdateCommand(args: string[]): Promise<void> {
       if (res.ok) {
         const data = await res.json() as { version: string };
         latest = data.version;
+      } else {
+        registryReachable = false;
       }
     } catch {
-      console.log(chalk.yellow('Could not reach npm registry.'));
+      registryReachable = false;
     }
+    const payload = {
+      current,
+      latest,
+      updateAvailable: latest !== current,
+      registryReachable,
+      installHint: 'npm install -g carina-agent@latest',
+    };
+    if (json) {
+      console.log(JSON.stringify(payload, null, 2));
+      return;
+    }
+    if (!registryReachable) console.log(chalk.yellow('Could not reach npm registry.'));
     console.log(`Installed: ${current}`);
     console.log(`Latest:    ${latest}`);
     if (latest !== current) {

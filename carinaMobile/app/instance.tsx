@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -62,29 +63,54 @@ export default function InstanceScreen() {
     setTesting(false);
   }
 
+  async function persistGateway() {
+    const url = normalizeGatewayUrl(baseUrl);
+    if (!isValidGatewayUrl(url)) {
+      throw new Error('Enter a valid http or https gateway URL');
+    }
+
+    if (mode === 'self-hosted' && apiKey.trim()) {
+      await saveApiKey(url, apiKey.trim());
+    }
+
+    await setInstanceMode(mode, url);
+    await refresh();
+
+    if (mode === 'cloud') {
+      router.replace('/(auth)/login');
+      return;
+    }
+
+    setTestMessage('Saved. Gateway connection updated.');
+    await loadKey();
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
-      const url = normalizeGatewayUrl(baseUrl);
-      if (!isValidGatewayUrl(url)) {
-        throw new Error('Enter a valid http or https gateway URL');
-      }
-
-      if (mode === 'self-hosted' && apiKey.trim()) {
-        await saveApiKey(url, apiKey.trim());
-      }
-
-      await setInstanceMode(mode, url);
-      await refresh();
-
-      if (mode === 'cloud') {
-        router.replace('/(auth)/login');
+      const modeChanged = instance && (instance.mode !== mode || instance.baseUrl !== normalizeGatewayUrl(baseUrl));
+      if (modeChanged) {
+        Alert.alert(
+          'Reset active chat session?',
+          'Changing gateway mode or URL starts a new server session ID. Local chat history for the previous session remains on this device.',
+          [
+            { text: 'Cancel', style: 'cancel', onPress: () => setSaving(false) },
+            {
+              text: 'Save',
+              style: 'default',
+              onPress: () => {
+                void persistGateway()
+                  .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+                  .finally(() => setSaving(false));
+              },
+            },
+          ],
+        );
         return;
       }
 
-      setTestMessage('Saved. Gateway connection updated.');
-      await loadKey();
+      await persistGateway();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

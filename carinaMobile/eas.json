@@ -20,13 +20,15 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_CARINA_CLOUD_URL": "https://app.carinaai.uk"
+        "EXPO_PUBLIC_CARINA_CLOUD_URL": "https://app.carinaai.uk",
+        "EXPO_PUBLIC_SCOUT_TRUST_URL": "https://console.labyrinthscout.com/api/public/trust"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_CARINA_CLOUD_URL": "https://app.carinaai.uk"
+        "EXPO_PUBLIC_CARINA_CLOUD_URL": "https://app.carinaai.uk",
+        "EXPO_PUBLIC_SCOUT_TRUST_URL": "https://console.labyrinthscout.com/api/public/trust"
       }
     }
   },

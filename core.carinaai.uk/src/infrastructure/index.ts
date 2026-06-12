@@ -14,6 +14,7 @@ export {
   listPairedDevices,
   redactDevicesForApi,
   revokePairedDevice,
+  rotateDeviceToken,
   validateDeviceToken,
   type ClaimPairingInput,
   type ClaimPairingResult,

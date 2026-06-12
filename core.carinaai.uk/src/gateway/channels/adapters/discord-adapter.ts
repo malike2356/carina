@@ -54,6 +54,7 @@ export class DiscordAdapter implements IChannelAdapter {
       channel: 'discord',
       externalUserId: userId,
       conversationId: channelId,
+      guildId: String(payload.guildId ?? payload.guild_id ?? '') || undefined,
       text: cleanDiscordText(text),
       timestamp: payload.createdTimestamp
         ? new Date(Number(payload.createdTimestamp))

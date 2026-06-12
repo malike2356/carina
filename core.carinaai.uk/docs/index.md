@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Carina
   text: The autonomous AI agent that keeps memory, skills, and provider choice under your control.
-  tagline: Free. MIT licensed. UK property knowledge built in. Add Labyrinth Scout for enterprise security.
+  tagline: Free. MIT licensed. UK property knowledge built in. Add Labyrinth Scout for production monitoring.
   image:
     src: /hero-terminal.svg
     alt: Carina terminal
@@ -29,6 +29,8 @@ features:
     details: Switch between configured providers mid-session. Use /provider to change the active model without restarting.
   - title: Vertical Skill Packs
     details: UK property knowledge is included as one built-in pack. Other packs are optional and installed separately.
-  - title: Labyrinth Scout Security
-    details: Optional enterprise security control plane. Prompt injection detection, kill switch, and real-time monitoring when configured.
+  - title: Production monitoring
+    details: Optional monitoring and response layer for deployments that need oversight and reporting.
+  - title: Extensibility and Ops
+    details: TaskFlows, ACP bridge support, provider debug proxy, plugin bundles, backup/doctor tools, and operator-only workflows.
 ---

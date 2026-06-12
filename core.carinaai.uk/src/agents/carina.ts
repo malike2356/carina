@@ -23,6 +23,7 @@ import { getSessionDelivery } from './cron-delivery-registry.js';
 import { registry, registerSessionTools } from '../tools/index.js';
 import { resolveActiveToolNames } from '../tools/toolset-config.js';
 import { getAllPersistentContext } from '../memory/persistent-memory.js';
+import { memoryInjectionEnabled, memoryInjectionIncludesSemantic } from '../memory/memory-injection.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
 import type { ConfirmFn } from './tool-runner.js';
 import { executeToolCall } from './tool-runner.js';
@@ -166,14 +167,15 @@ export class CarinaAgent {
       contextParts.push(contactBlock);
     }
 
-    if (this.memoryReady && !this.fastMode) {
+    if (this.memoryReady && !this.fastMode && memoryInjectionEnabled()) {
       const keywords = extractKeywords(userMessage);
+      const semantic = memoryInjectionIncludesSemantic();
       const [persistent, history, similar, rawRag, rawSkills] = await Promise.all([
         getAllPersistentContext(),
         getSessionHistory(this.sessionId, config.carina.maxMemoryContext),
-        searchMemory(userMessage, 5),
-        searchRag(userMessage, 3),
-        findSkillsIncludingSkillMd(keywords),
+        semantic ? searchMemory(userMessage, 5) : Promise.resolve([]),
+        semantic ? searchRag(userMessage, 3) : Promise.resolve([]),
+        semantic ? findSkillsIncludingSkillMd(keywords) : Promise.resolve([]),
       ]);
 
       if (persistent) {

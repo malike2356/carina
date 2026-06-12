@@ -110,6 +110,22 @@ export async function listCuratedSkills(status: SkillStatus = 'active'): Promise
   return result.rows.map(rowToSkill);
 }
 
+export async function findDuplicateSkillCandidates(
+  threshold = 0.75,
+): Promise<Array<{ a: string; b: string; overlap: number }>> {
+  const active = await listCuratedSkills('active');
+  const out: Array<{ a: string; b: string; overlap: number }> = [];
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const overlap = jaccard(active[i]!.trigger, active[j]!.trigger);
+      if (overlap >= threshold) {
+        out.push({ a: active[i]!.name, b: active[j]!.name, overlap: Math.round(overlap * 100) / 100 });
+      }
+    }
+  }
+  return out.sort((x, y) => y.overlap - x.overlap);
+}
+
 function jaccard(a: string[], b: string[]): number {
   const setA = new Set(a.map((k) => k.toLowerCase()));
   const setB = new Set(b.map((k) => k.toLowerCase()));

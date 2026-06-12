@@ -19,9 +19,9 @@ describe('CLI registry', () => {
     const names = new Set(buildCommandList().map((c) => c.name));
     for (const required of [
       'setup', 'config', 'model', 'tools', 'gateway', 'channels', 'cron',
-      'doctor', 'skills', 'memory', 'sessions', 'checkpoint', 'plugins',
+      'doctor', 'status', 'reset', 'onboard', 'uninstall', 'skills', 'memory', 'sessions', 'checkpoint', 'plugins',
       'hooks', 'migrate', 'update', 'backup', 'pairing', 'commitments', 'host', 'completion',
-      'scout', 'security', 'providers', 'personality', 'agents', 'rag', 'secrets', 'ops',
+      'scout', 'security', 'providers', 'personality', 'agents', 'rag', 'secrets', 'ops', 'approvals',
     ] as const) {
       expect(names.has(required), `missing ${required}`).toBe(true);
     }

@@ -1,5 +1,9 @@
 # Configuration
 
+:::tip Canonical inventory
+Provider and channel catalog sizes: [Capability inventory](/docs/capabilities).
+:::
+
 Carina reads environment variables from `~/.carina/.env` (global CLI) or a project `.env` when running from source. Copy `core.carinaai.uk/.env.example` as a template.
 
 ## Core

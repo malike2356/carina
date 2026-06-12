@@ -1,147 +1,148 @@
-import fs from 'fs/promises';
-import fsSync from 'fs';
-import path from 'path';
-import os from 'os';
-import YAML from 'yaml';
+import chalk from 'chalk';
+import { confirm } from '@inquirer/prompts';
 import { CARINA_HOME } from '../../config/paths.js';
-import { writeConfig } from '../config/loader.js';
-import { DEFAULT_CLI_CONFIG } from '../config/defaults.js';
+import {
+  bundleImportReport,
+  exportCarinaBundle,
+  formatMigrationReport,
+  importCarinaBundle,
+  runMigration,
+  saveMigrationReport,
+  scanMigrationSources,
+  type MigrationSource,
+} from '../../ops/migration/index.js';
 
-type MigrateSource = 'hermes' | 'openclaw';
+const SOURCES: MigrationSource[] = ['hermes', 'openclaw', 'claude'];
 
-const SOURCE_DIRS: Record<MigrateSource, string> = {
-  hermes: path.join(os.homedir(), '.hermes'),
-  openclaw: path.join(os.homedir(), '.openclaw'),
-};
-
-async function migrateOpenClawAgents(srcDir: string): Promise<void> {
-  const configPath = path.join(srcDir, 'openclaw.json');
-  if (!fsSync.existsSync(configPath)) return;
-
-  const { ensureAgentsConfig, saveAgentsConfig, createAgentDefinition } = await import('../../workspaces/index.js');
-  const { expandHome } = await import('../config/defaults.js');
-
-  let raw: Record<string, unknown>;
-  try {
-    raw = JSON.parse(await fs.readFile(configPath, 'utf-8')) as Record<string, unknown>;
-  } catch {
-    return;
-  }
-
-  const agentsBlock = raw.agents as { list?: Array<Record<string, unknown>> } | undefined;
-  const list = agentsBlock?.list ?? [];
-  if (list.length === 0) return;
-
-  const config = await ensureAgentsConfig(CARINA_HOME);
-  config.agents = [];
-  config.bindings = [];
-
-  for (const entry of list) {
-    const id = String(entry.id ?? 'main');
-    await createAgentDefinition({
-      id,
-      name: String(entry.name ?? id),
-      default: Boolean(entry.default),
-      workspace: expandHome(String(entry.workspace ?? path.join(CARINA_HOME, 'workspaces', id))),
-      agentDir: entry.agentDir ? expandHome(String(entry.agentDir)) : undefined,
-      provider: entry.model ? String(entry.model).split('/')[0] : undefined,
-      model: entry.model ? String(entry.model).split('/').slice(1).join('/') : undefined,
-    }, CARINA_HOME);
-    const ws = expandHome(String(entry.workspace ?? path.join(CARINA_HOME, 'workspaces', id)));
-    await copyIfExists(ws, ws);
-  }
-
-  const bindings = (raw.bindings ?? []) as Array<Record<string, unknown>>;
-  for (const binding of bindings) {
-    const match = binding.match as Record<string, unknown> | undefined;
-    if (!match) continue;
-    config.bindings.push({
-      agentId: String(binding.agentId ?? 'main'),
-      match: {
-        channel: match.channel as never,
-        accountId: match.accountId ? String(match.accountId) : undefined,
-        peer: match.peer as never,
-        guildId: match.guildId ? String(match.guildId) : undefined,
-        teamId: match.teamId ? String(match.teamId) : undefined,
-      },
-    });
-  }
-  await saveAgentsConfig(config, CARINA_HOME);
-  console.log(`  Imported ${list.length} OpenClaw agent workspace(s)`);
+function parseFlag(args: string[], name: string): string | undefined {
+  const eq = args.find((a) => a.startsWith(`${name}=`));
+  if (eq) return eq.split('=').slice(1).join('=');
+  const idx = args.indexOf(name);
+  if (idx >= 0) return args[idx + 1];
+  return undefined;
 }
 
-async function copyIfExists(src: string, dest: string): Promise<boolean> {
-  if (!fsSync.existsSync(src)) return false;
-  const stat = await fs.stat(src);
-  if (stat.isDirectory()) {
-    await fs.mkdir(dest, { recursive: true });
-    const entries = await fs.readdir(src, { withFileTypes: true });
-    for (const e of entries) {
-      await copyIfExists(path.join(src, e.name), path.join(dest, e.name));
+function positionalArgs(args: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]!;
+    if (a.startsWith('--')) {
+      if (a === '--from') i++;
+      continue;
     }
-  } else {
-    await fs.mkdir(path.dirname(dest), { recursive: true });
-    await fs.copyFile(src, dest);
+    out.push(a);
   }
-  return true;
+  return out;
 }
 
 export async function runMigrateCommand(args: string[]): Promise<void> {
-  const source = (args[0] ?? 'status') as string;
+  const json = args.includes('--json');
+  const dryRun = args.includes('--dry-run');
+  const force = args.includes('--force');
+  const skipBackup = args.includes('--no-backup');
+  const from = parseFlag(args, '--from');
+  const action = positionalArgs(args)[0] ?? 'status';
 
-  if (source === 'status') {
-    for (const [name, dir] of Object.entries(SOURCE_DIRS)) {
-      const exists = fsSync.existsSync(dir);
-      console.log(`  ${name.padEnd(10)} ${exists ? 'found' : 'not found'}  ${dir}`);
+  if (action === 'status') {
+    const scans = await scanMigrationSources();
+    if (json) {
+      console.log(JSON.stringify(scans, null, 2));
+      return;
     }
+    console.log(chalk.bold('\nMigration sources\n'));
+    for (const scan of scans) {
+      const tag = scan.found ? chalk.green('found') : chalk.gray('not found');
+      const hints = scan.hints.length > 0 ? ` (${scan.hints.join(', ')})` : '';
+      console.log(`  ${scan.source.padEnd(14)} ${tag}  ${scan.dir}${hints}`);
+    }
+    console.log('\nRun: carina migrate hermes|claude|openclaw [--dry-run] [--force]\n');
     return;
   }
 
-  if (source !== 'hermes' && source !== 'openclaw') {
-    console.error('Usage: carina migrate <status|hermes|openclaw>');
+  if (action === 'export') {
+    const label = positionalArgs(args)[1];
+    const result = await exportCarinaBundle({ label, dryRun });
+    if (json) {
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+    if (dryRun) {
+      console.log(chalk.cyan(`Would export ${result.manifest.items.length} item(s) to ${result.path}`));
+      return;
+    }
+    console.log(chalk.green(`Export bundle: ${result.path}`));
+    console.log(chalk.gray(`  ${result.manifest.items.length} items in interop-manifest.json`));
+    return;
+  }
+
+  if (action === 'import') {
+    const bundlePath = from ?? positionalArgs(args)[1];
+    if (!bundlePath) {
+      console.error('Usage: carina migrate import <bundle-path> [--force] [--dry-run]');
+      process.exit(1);
+    }
+    if (!dryRun && !force) {
+      console.error('Import requires --force (preview with --dry-run first)');
+      process.exit(1);
+    }
+    if (!dryRun && force) {
+      const ok = await confirm({
+        message: `Import Carina bundle into ${CARINA_HOME}?`,
+        default: false,
+      });
+      if (!ok) {
+        console.log('Import cancelled.');
+        return;
+      }
+    }
+    const result = await importCarinaBundle(bundlePath, { force, dryRun });
+    const report = bundleImportReport(bundlePath, CARINA_HOME, result, dryRun);
+    if (!dryRun) report.reportFile = await saveMigrationReport(report);
+    if (json) console.log(JSON.stringify(report, null, 2));
+    else console.log(formatMigrationReport(report));
+    return;
+  }
+
+  if (!SOURCES.includes(action as MigrationSource)) {
+    console.error('Usage: carina migrate <status|hermes|openclaw|claude|export|import> [--from PATH] [--dry-run] [--force] [--no-backup]');
     process.exit(1);
   }
 
-  const srcDir = SOURCE_DIRS[source];
-  if (!fsSync.existsSync(srcDir)) {
-    console.error(`Source not found: ${srcDir}`);
-    process.exit(1);
+  if (!dryRun && !force) {
+    console.log(chalk.yellow('Preview mode: showing plan only. Re-run with --force to apply (creates backup first).'));
+    console.log(chalk.gray('  Or use --dry-run explicitly.\n'));
   }
 
-  await fs.mkdir(CARINA_HOME, { recursive: true });
-
-  const srcConfig = path.join(srcDir, 'config.yaml');
-  if (fsSync.existsSync(srcConfig)) {
-    const parsed = YAML.parse(await fs.readFile(srcConfig, 'utf-8')) as Record<string, unknown>;
-    const modelSection = parsed.model;
-    const provider = typeof modelSection === 'object' && modelSection && 'provider' in modelSection
-      ? String((modelSection as Record<string, unknown>).provider)
-      : DEFAULT_CLI_CONFIG.provider;
-    const model = typeof modelSection === 'object' && modelSection && 'default' in modelSection
-      ? String((modelSection as Record<string, unknown>).default)
-      : (typeof parsed.model === 'string' ? parsed.model : DEFAULT_CLI_CONFIG.model);
-
-    await writeConfig({
-      ...DEFAULT_CLI_CONFIG,
-      provider: provider as typeof DEFAULT_CLI_CONFIG.provider,
-      model,
-      dataDir: CARINA_HOME,
+  if (!dryRun && force) {
+    const ok = await confirm({
+      message: `Migrate ${action} into ${CARINA_HOME}? A backup will be created unless --no-backup is set.`,
+      default: false,
     });
+    if (!ok) {
+      console.log('Migration cancelled.');
+      return;
+    }
   }
 
-  const srcEnv = path.join(srcDir, '.env');
-  if (fsSync.existsSync(srcEnv)) {
-    await fs.copyFile(srcEnv, path.join(CARINA_HOME, '.env'));
+  const report = await runMigration(action as MigrationSource, {
+    sourceDir: from,
+    dryRun: dryRun || !force,
+    force,
+    skipBackup,
+  });
+
+  if (json) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(formatMigrationReport(report));
   }
 
-  for (const sub of ['skills', 'memories', 'cron', 'sessions']) {
-    await copyIfExists(path.join(srcDir, sub), path.join(CARINA_HOME, sub));
-  }
+  const failed = report.items.filter((i) => i.status === 'failed').length;
+  if (failed > 0) process.exit(1);
 
-  if (source === 'openclaw') {
-    await migrateOpenClawAgents(srcDir);
+  if (!report.dryRun) {
+    console.log('\nNext: carina doctor --repair && carina secrets audit');
+  } else {
+    console.log(chalk.cyan('\nDry run complete. Re-run with --force to apply.'));
   }
-
-  console.log(`Migrated from ${source} -> ${CARINA_HOME}`);
-  console.log('Run: carina doctor && carina config check');
 }

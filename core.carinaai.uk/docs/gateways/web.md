@@ -18,6 +18,8 @@ Open `/` for the chat UI. Static assets ship from `src/gateway/web/`.
 
 Episodic memory persists in Postgres across refreshes. The on-screen chat log clears on refresh; use `/recall` in CLI to inspect stored turns.
 
+For the full tools-and-features inventory, see [Capabilities](/capabilities).
+
 ## API endpoints
 
 For custom integrations:

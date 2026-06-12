@@ -7,6 +7,7 @@ import { getCachedSystemPrompt, openaiPromptCacheKey, recordProviderCacheHit } f
 import type { ProviderDefinition } from './provider-registry.js';
 import { providerApiKey, providerBaseUrl, providerModel } from './provider-registry.js';
 import type { CarinaResponse, LLMProvider, Message, Tool, ToolCall } from '../types/index.js';
+import { maybeDebugProxyBaseUrl } from './provider-proxy-routing.js';
 
 function parseToolCalls(
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined,
@@ -53,9 +54,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
   }
 
   private buildClient(apiKey: string, baseUrl?: string): OpenAI {
+    const routed = maybeDebugProxyBaseUrl(this.def.name, baseUrl);
     return new OpenAI({
       apiKey,
-      baseURL: baseUrl || undefined,
+      baseURL: routed || undefined,
     });
   }
 

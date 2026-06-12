@@ -28,3 +28,4 @@ When `SKILL_AUTO_WRITE` is not `false`, Carina evaluates completed tasks and may
 
 - [property-uk](/skill-packs/property-uk) - built-in UK property pack
 - [Creating packs](/skill-packs/creating-packs) - author and publish your own
+- [Capabilities](/capabilities) - full tools, providers, channels, and platform inventory

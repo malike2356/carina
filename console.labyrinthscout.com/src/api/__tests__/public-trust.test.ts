@@ -99,4 +99,28 @@ describe('evaluateDataFreshness', () => {
     expect(freshness.stale).toBe(false);
     expect(freshness.stale_reason).toBeNull();
   });
+
+  it('marks telemetry stale when heartbeat and events are both old', () => {
+    const now = new Date('2026-06-10T22:40:00.000Z');
+    const freshness = evaluateDataFreshness(
+      {
+        agentsTotal: 1,
+        agentsActive: 1,
+        agentsSuspended: 0,
+        runtimeIncidents30d: 0,
+        warning24h: 0,
+        breach30d: 0,
+        eventsToday: 0,
+        injectionBlocks24h: 0,
+        blocked24h: 0,
+        threats24h: 0,
+        lastEventAt: '2026-06-10T20:00:00.000Z',
+        lastHeartbeatAt: '2026-06-10T20:00:00.000Z',
+      },
+      now,
+    );
+
+    expect(freshness.stale).toBe(true);
+    expect(freshness.stale_reason).toBeTruthy();
+  });
 });

@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { CarinaClient } from '@/api/carina-client';
 import type { HostedUser, InstanceConfig } from '@/api/types';
 import { authFromInstance, type GatewayAuthOptions } from '@/lib/gateway-auth';
+import { isApiAuthError } from '@/lib/cloud-features';
 import { loadApiKey } from './api-key-store';
 import { loadInstanceConfig } from './instance-store';
 
@@ -12,6 +13,7 @@ interface AuthState {
   client: CarinaClient | null;
   apiKey: string | null;
   gatewayAuth: GatewayAuthOptions | null;
+  cloudSessionExpired: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -30,6 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     client: null,
     apiKey: null,
     gatewayAuth: null,
+    cloudSessionExpired: false,
   });
 
   const buildClientState = useCallback(async (instance: InstanceConfig) => {
@@ -49,16 +52,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { apiKey, gatewayAuth, client } = await buildClientState(instance);
 
     let user: HostedUser | null = null;
+    let cloudSessionExpired = false;
     if (instance.mode === 'cloud') {
       try {
         const ctx = await client.hostedContext();
         user = ctx.user;
-      } catch {
+      } catch (err) {
         user = null;
+        const msg = err instanceof Error ? err.message : String(err);
+        cloudSessionExpired = isApiAuthError(msg);
       }
     }
 
-    setState({ ready: true, instance, user, client, apiKey, gatewayAuth });
+    setState({ ready: true, instance, user, client, apiKey, gatewayAuth, cloudSessionExpired });
   }, [buildClientState]);
 
   const setInstance = useCallback(

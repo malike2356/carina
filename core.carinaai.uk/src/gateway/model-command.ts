@@ -3,6 +3,10 @@ import {
   PROVIDER_CAPABILITIES,
   providerDisplayName,
 } from '../agents/provider-capabilities.js';
+import {
+  formatProviderCatalogReply,
+  resolveProviderAlias,
+} from '../brain/provider-catalog.js';
 
 export interface ProviderOverride {
   name: string;
@@ -48,53 +52,67 @@ export function handleModelCommand(
     return { handled: true, reply: '' };
   }
 
-  const requestedProvider = parts[1]?.toLowerCase();
+  const requestedProviderRaw = parts[1]?.toLowerCase();
+  const requestedProvider = requestedProviderRaw
+    ? resolveProviderAlias(requestedProviderRaw)
+    : undefined;
   const requestedModel = parts[2];
   const activeProvider = context.currentOverride?.name ?? safeCurrentProvider(router);
   const activeModel = context.currentOverride?.model ?? modelFor(router, activeProvider);
 
-  if (!requestedProvider && command === '/provider') {
+  if (!requestedProviderRaw && command === '/provider') {
     return {
       handled: true,
-      reply: `Available providers: ${router.list().join(', ')}\nUsage: /provider deepseek`,
+      reply: formatProviderCatalogReply({
+        currentProvider: activeProvider,
+        currentModel: activeModel,
+        configuredNames: router.list(),
+        preset: 'getPreset' in router && typeof router.getPreset === 'function'
+          ? (router as { getPreset: () => string | undefined }).getPreset()
+          : undefined,
+      }),
     };
   }
 
-  if (!requestedProvider) {
+  if (!requestedProviderRaw) {
     return {
       handled: true,
       reply: `Current provider: ${providerDisplayName(activeProvider)}. Using ${activeModel}.\nAvailable providers: ${router.list().join(', ')}\nUsage: /model deepseek`,
     };
   }
 
-  if (requestedProvider === 'list') {
+  if (requestedProviderRaw === 'list') {
     return {
       handled: true,
-      reply: `Available providers: ${router.list().join(', ')}\nUsage: ${command} deepseek`,
+      reply: formatProviderCatalogReply({
+        currentProvider: activeProvider,
+        currentModel: activeModel,
+        configuredNames: router.list(),
+      }),
     };
   }
 
-  if (!isKnownProvider(router, requestedProvider)) {
+  if (!isKnownProvider(router, requestedProvider!)) {
     return {
       handled: true,
-      reply: `Unknown provider: ${requestedProvider}. Available providers: ${router.list().join(', ')}`,
+      reply: `Unknown provider: ${requestedProviderRaw}. Available providers: ${router.list().join(', ')}`,
     };
   }
 
-  if (!isProviderConfigured(router, requestedProvider)) {
+  if (!isProviderConfigured(router, requestedProvider!)) {
     return {
       handled: true,
       reply: `${providerDisplayName(requestedProvider)} API key not configured. Run 'carina config set providers.${requestedProvider}.api_key YOUR_KEY'`,
     };
   }
 
-  const model = requestedModel ?? modelFor(router, requestedProvider);
-  switchProvider(router, requestedProvider, model, context);
+  const model = requestedModel ?? modelFor(router, requestedProvider!);
+  switchProvider(router, requestedProvider!, model, context);
 
-  const replies = [`Switched to ${providerDisplayName(requestedProvider)}. Using ${model}.`];
-  const capabilities = PROVIDER_CAPABILITIES[requestedProvider];
+  const replies = [`Switched to ${providerDisplayName(requestedProvider!)}. Using ${model}.`];
+  const capabilities = PROVIDER_CAPABILITIES[requestedProvider!];
   if (context.hasRecentImage && capabilities && !capabilities.vision) {
-    replies.push(`Note: ${providerDisplayName(requestedProvider)} does not support image analysis. Vision features will be unavailable.`);
+    replies.push(`Note: ${providerDisplayName(requestedProvider!)} does not support image analysis. Vision features will be unavailable.`);
   }
 
   return { handled: true, reply: replies.join('\n') };

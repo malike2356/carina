@@ -8,6 +8,8 @@ import { CARINA_HOME } from '../config/paths.js';
 const execAsync = promisify(exec);
 const BACKUP_VERSION = 1;
 
+export const SENSITIVE_BACKUP_ITEMS = ['.env', 'credentials.json'] as const;
+
 export const DEFAULT_BACKUP_ITEMS = [
   'config.yaml',
   '.env',
@@ -15,6 +17,7 @@ export const DEFAULT_BACKUP_ITEMS = [
   'sessions',
   'packs',
   'plugins',
+  'extensions',
   'toolsets.yaml',
   'credentials.json',
   'DREAMS.md',
@@ -24,6 +27,8 @@ export const DEFAULT_BACKUP_ITEMS = [
   'workspaces',
   'agents',
   'devices.json',
+  'nodes.json',
+  'approvals.json',
   'commitments.json',
   'run',
 ] as const;
@@ -36,6 +41,8 @@ export type BackupManifest = {
   items: string[];
   files: Array<{ path: string; sha256: string; bytes: number }>;
   postgresDump?: string;
+  sensitiveItems?: string[];
+  secretsSummaryPath?: string;
 };
 
 export function backupRoot(homeDir = CARINA_HOME): string {
@@ -83,6 +90,32 @@ async function collectFileHashes(root: string, rel = ''): Promise<BackupManifest
     }
   }
   return out;
+}
+
+async function writeSecretsSummary(dest: string, homeDir: string): Promise<string | undefined> {
+  const keys: string[] = [];
+  const envPath = path.join(homeDir, '.env');
+  try {
+    const raw = await fs.readFile(envPath, 'utf-8');
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const idx = trimmed.indexOf('=');
+      if (idx > 0) keys.push(trimmed.slice(0, idx));
+    }
+  } catch {
+    // no .env
+  }
+  if (keys.length === 0) return undefined;
+  const rel = 'secrets-summary.json';
+  await fs.writeFile(
+    path.join(dest, rel),
+    JSON.stringify({
+      note: 'Key names only; secret values are never written to this file.',
+      keys: keys.sort(),
+    }, null, 2),
+  );
+  return rel;
 }
 
 export async function listBackups(homeDir = CARINA_HOME): Promise<string[]> {
@@ -154,7 +187,14 @@ export async function createBackup(options: CreateBackupOptions = {}): Promise<{
     items: copied,
     files: await collectFileHashes(dest),
     postgresDump,
+    sensitiveItems: copied.filter((i) =>
+      (SENSITIVE_BACKUP_ITEMS as readonly string[]).includes(i)),
   };
+  const secretsSummaryPath = await writeSecretsSummary(dest, homeDir);
+  if (secretsSummaryPath) {
+    manifest.secretsSummaryPath = secretsSummaryPath;
+    manifest.files = await collectFileHashes(dest);
+  }
   await fs.writeFile(path.join(dest, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
   return { label, path: dest, manifest };
@@ -207,6 +247,92 @@ export async function restoreBackup(
   }
 
   return { label, restored };
+}
+
+export type RestorePlan = {
+  label: string;
+  backupPath: string;
+  items: string[];
+  willOverwrite: string[];
+  warnings: string[];
+};
+
+export async function planRestore(
+  label: string,
+  homeDir = CARINA_HOME,
+): Promise<RestorePlan> {
+  const src = path.join(backupRoot(homeDir), label);
+  const manifestPath = path.join(src, 'manifest.json');
+  let manifest: BackupManifest | null = null;
+  try {
+    manifest = JSON.parse(await fs.readFile(manifestPath, 'utf-8')) as BackupManifest;
+  } catch {
+    manifest = null;
+  }
+
+  const items = (manifest?.items ?? []).filter((i) => i !== 'manifest.json' && i !== 'postgres.sql');
+  const willOverwrite: string[] = [];
+  const warnings: string[] = [
+    'Restore overwrites files in CARINA_HOME for each listed item.',
+    'Stop carina web and active sessions before restoring.',
+  ];
+
+  if (manifest?.postgresDump) {
+    warnings.push('Postgres dump will be applied if DATABASE_URL is set.');
+  }
+
+  for (const item of items) {
+    const target = path.join(homeDir, item);
+    try {
+      await fs.access(target);
+      willOverwrite.push(item);
+    } catch {
+      // new path
+    }
+  }
+
+  if (willOverwrite.includes('.env') || willOverwrite.includes('credentials.json')) {
+    warnings.push('Secrets (.env / credentials.json) will be replaced; reload with: carina secrets reload');
+  }
+
+  return { label, backupPath: src, items, willOverwrite, warnings };
+}
+
+export async function exportBackupArchive(
+  label: string,
+  homeDir = CARINA_HOME,
+): Promise<{ archivePath: string }> {
+  const root = path.join(backupRoot(homeDir), label);
+  await fs.access(path.join(root, 'manifest.json'));
+  const archivePath = `${root}.tar.gz`;
+  await execAsync(`tar -czf "${archivePath.replace(/"/g, '\\"')}" -C "${path.dirname(root).replace(/"/g, '\\"')}" "${path.basename(root).replace(/"/g, '\\"')}"`, {
+    timeout: 300000,
+  });
+  return { archivePath };
+}
+
+export type RestoreOptions = {
+  force?: boolean;
+  dryRun?: boolean;
+  homeDir?: string;
+};
+
+export async function restoreBackupWithOptions(
+  label: string,
+  options: RestoreOptions = {},
+): Promise<{ label: string; restored: string[]; dryRun: boolean; plan: RestorePlan }> {
+  const homeDir = options.homeDir ?? CARINA_HOME;
+  const plan = await planRestore(label, homeDir);
+  if (options.dryRun) {
+    return { label, restored: [], dryRun: true, plan };
+  }
+  if (!options.force && plan.willOverwrite.length > 0) {
+    throw new Error(
+      `Restore would overwrite ${plan.willOverwrite.length} path(s). Re-run with --force or use: carina backup plan ${label}`,
+    );
+  }
+  const result = await restoreBackup(label, homeDir);
+  return { ...result, dryRun: false, plan };
 }
 
 export async function verifyBackup(

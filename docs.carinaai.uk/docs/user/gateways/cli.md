@@ -1,5 +1,9 @@
 # CLI Gateway
 
+:::tip Canonical inventory
+Full platform inventory: [Capability inventory](/docs/capabilities).
+:::
+
 The CLI is the default interactive gateway when stdin is a TTY.
 
 ## Starting

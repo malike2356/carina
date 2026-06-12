@@ -1,5 +1,5 @@
 import { getActivePackNames, getActivePackSuffixes } from '../skills/index.js';
-import { buildSearchProviderContext } from '../tools/web-search-provider.js';
+import { getExtensionPromptSuffix } from '../extensions/prompts.js';
 import { buildPlatformKnowledgeContext, preloadPlatformKnowledge } from '../platform/knowledge.js';
 
 void preloadPlatformKnowledge();
@@ -76,5 +76,9 @@ export function buildSystemPromptParts(): string[] {
   if (searchContext) parts.push(searchContext);
   const packContext = buildOptionalPackContext();
   if (packContext) parts.push(packContext);
+  const extensionContext = getExtensionPromptSuffix();
+  if (extensionContext) {
+    parts.push(`Enabled extension prompt fragments:\n${extensionContext}`);
+  }
   return parts;
 }

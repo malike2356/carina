@@ -7,3 +7,5 @@ Public documentation moved to **`docs.carinaai.uk/`** (Docusaurus).
 - These VitePress-era files are kept for reference only and may be removed later.
 
 Canonical site: [carinaai.uk/docs](https://carinaai.uk/docs/)
+
+Use [Capabilities](/capabilities) as the single page inventory of tools, providers, channels, packs, security, and hosted features.

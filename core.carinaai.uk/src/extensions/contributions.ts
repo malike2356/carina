@@ -143,3 +143,45 @@ export async function ingestStagedExtensionResources(): Promise<{
 
   return { skillsLoaded, chunksIngested };
 }
+
+/** Reload one enabled extension into the live runtime (no-op when extensions flag is off). */
+export async function reloadExtensionRuntimeContributions(id: string): Promise<{
+  skillsLoaded: number;
+  toolsRegistered: number;
+  promptSections: number;
+  chunksIngested: number;
+}> {
+  if (!extensionsRuntimeEnabled()) {
+    return { skillsLoaded: 0, toolsRegistered: 0, promptSections: 0, chunksIngested: 0 };
+  }
+
+  await stageExtensionContributions(id);
+  const { loadUserSkillsFromDir, ingestUserKnowledge } = await import('../skills/user-resources.js');
+  const base = path.join(CARINA_EXTENSION_RESOURCES_DIR, id);
+  const skillsLoaded = await loadUserSkillsFromDir(base);
+  let chunksIngested = 0;
+  try {
+    await fs.access(path.join(base, 'knowledge'));
+    chunksIngested = await ingestUserKnowledge(base);
+  } catch {
+    // no rag staged
+  }
+
+  const { unregisterExtensionTools, registerExtensionToolsFromBundle } = await import('./tools.js');
+  unregisterExtensionTools(id);
+  const toolsRegistered = await registerExtensionToolsFromBundle(id);
+  const { loadExtensionPromptSuffixes } = await import('./prompts.js');
+  const promptSections = await loadExtensionPromptSuffixes();
+
+  return { skillsLoaded, toolsRegistered, promptSections, chunksIngested };
+}
+
+/** Tear down one extension from the live runtime (no-op when extensions flag is off). */
+export async function unloadExtensionRuntimeContributions(id: string): Promise<void> {
+  if (!extensionsRuntimeEnabled()) return;
+  const { unregisterExtensionTools } = await import('./tools.js');
+  unregisterExtensionTools(id);
+  await clearStagedExtensionContributions(id);
+  const { loadExtensionPromptSuffixes } = await import('./prompts.js');
+  await loadExtensionPromptSuffixes();
+}

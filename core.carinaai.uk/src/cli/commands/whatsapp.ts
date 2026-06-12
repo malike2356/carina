@@ -32,11 +32,20 @@ export async function runWhatsAppCommand(action = 'setup'): Promise<void> {
 
   if (action === 'status') {
     const authDir = path.join(process.env.CARINA_HOME ?? path.join(os.homedir(), '.carina'), 'baileys-auth');
+    const { whatsappBridgeMode, whatsappSelfBridgeEnabled } = await import('../../gateway/channels/channel-status.js');
+    const mode = whatsappBridgeMode();
+    console.log(chalk.bold('\nWhatsApp bridge status\n'));
+    console.log(`  transport: ${mode}`);
+    console.log(`  self-bridge: ${whatsappSelfBridgeEnabled() ? 'ON (operator opt-in)' : 'off'}`);
     try {
       await fs.access(authDir);
-      console.log(chalk.green(`WhatsApp auth present: ${authDir}`));
+      console.log(chalk.green(`  auth: present (${authDir})`));
     } catch {
-      console.log(chalk.yellow('WhatsApp not paired. Run: carina whatsapp setup'));
+      console.log(chalk.yellow('  auth: not paired'));
+    }
+    if (mode === 'none') {
+      console.log(chalk.gray('\nEnable: BAILEYS_WHATSAPP_ENABLED=true  or configure Twilio vars'));
+      console.log('Run: carina whatsapp setup\n');
     }
     return;
   }

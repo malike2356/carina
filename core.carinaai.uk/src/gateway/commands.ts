@@ -82,6 +82,7 @@ export function handleGatewayCommand(input: string, modelContext: ModelCommandCo
         '/usage --month - show model token usage and estimated cost',
         '/clear-cache [tool] - clear cached tool results',
         '/clear - fresh start (compact identity screen)',
+        'Docs - full capabilities: https://carinaai.uk/docs/capabilities',
         '/exit - quit',
       ].join('\n'),
     };

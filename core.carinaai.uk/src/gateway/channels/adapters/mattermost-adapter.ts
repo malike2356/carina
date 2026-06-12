@@ -18,16 +18,21 @@ export class MattermostAdapter implements IChannelAdapter {
       conversationId: String(p.channel_id ?? ''),
       messageId: String(p.id ?? p.post_id ?? ''),
       isDirect: String(p.channel_type ?? '') === 'D',
+      threadId: String(p.root_id ?? p.id ?? 'root'),
     }));
   }
 
-  async sendMessage(conversationId: string, text: string): Promise<void> {
+  async sendMessage(conversationId: string, text: string, options?: import('../channel-adapter.interface.js').SendOptions): Promise<void> {
     if (!this.serverUrl || !this.token) return;
     for (const chunk of formatForChannel('web', text)) {
       await fetch(`${this.serverUrl.replace(/\/$/, '')}/api/v4/posts`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${this.token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel_id: conversationId, message: chunk }),
+        body: JSON.stringify({
+          channel_id: conversationId,
+          message: chunk,
+          ...(options?.threadId ? { root_id: options.threadId } : {}),
+        }),
       });
     }
   }

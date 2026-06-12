@@ -37,6 +37,7 @@ import {
   providerModel,
   type ProviderName,
 } from './provider-registry.js';
+import { getProviderFactory } from '../plugins/loader.js';
 import {
   anthropicCacheControlBlocks,
   getCachedSystemPrompt,
@@ -265,6 +266,14 @@ function createProvider(defName: string, tenantCreds?: TenantProviderOverride): 
   const def = PROVIDER_MAP[defName];
   if (!def) return null;
   if (!tenantCreds?.apiKey && !isProviderConfigured(def)) return null;
+
+  // Plugin factory takes priority for non-standard adapters
+  const factory = getProviderFactory(defName);
+  if (factory) {
+    const provider = factory(def);
+    if (provider) return provider;
+  }
+
   if (def.kind === 'anthropic') return new ClaudeProvider(tenantCreds?.apiKey);
   if (def.kind === 'gemini') return new GeminiProvider(tenantCreds?.apiKey);
   return new OpenAICompatibleProvider(def, SYSTEM_PROMPT, tenantCreds
@@ -316,6 +325,15 @@ export class LLMRouter {
         ?? 'deepseek';
     } else {
       this.active = this.providers.has(preferred) ? preferred : (this.providers.keys().next().value ?? 'deepseek');
+    }
+  }
+
+  refreshPlugins(): void {
+    for (const def of PROVIDER_DEFINITIONS) {
+      if (!this.providers.has(def.name)) {
+        const provider = createProvider(def.name);
+        if (provider) this.providers.set(def.name, provider);
+      }
     }
   }
 

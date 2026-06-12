@@ -401,6 +401,18 @@ export async function executeJob(jobId: string, opts: ExecuteJobOptions = {}): P
     success: true,
   });
 
+  if (process.env.CARINA_TASKFLOWS_ENABLED === 'true') {
+    void import('../ops/taskflows/hooks.js').then(({ onCronJobComplete }) => {
+      onCronJobComplete(jobId, {
+        job_id: jobId,
+        name: job.name,
+        schedule: job.schedule,
+        output: output.slice(0, 2000),
+        success: true,
+      });
+    });
+  }
+
   for (const nextId of job.chainAfter) {
     try {
       await executeJob(nextId, {

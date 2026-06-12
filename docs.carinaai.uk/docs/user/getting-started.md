@@ -1,5 +1,9 @@
 # Getting Started
 
+:::tip Canonical inventory
+See [Capability inventory](/docs/capabilities) for the full list of tools, providers, channels, and optional surfaces.
+:::
+
 ## Carina Cloud (no install)
 
 Use the hosted app at **[app.carinaai.uk](https://app.carinaai.uk)** if you prefer a browser workspace with BYOK keys and optional Pro security (Labyrinth Scout). Full guide: [Carina Cloud](/docs/user/carina-cloud).
@@ -25,7 +29,7 @@ npm install -g carina-agent
 carina setup
 ```
 
-Package: [`carina-agent` v0.1.0](https://www.npmjs.com/package/carina-agent) on npm (Node.js 22+). On first run, Carina creates `~/.carina/` and runs the setup wizard if no env file exists.
+Package: [`carina-agent` v0.1.1](https://www.npmjs.com/package/carina-agent) on npm (Node.js 22+). On first run, Carina creates `~/.carina/` and runs the setup wizard if no env file exists.
 
 ## Install from source
 

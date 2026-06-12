@@ -31,6 +31,8 @@ Type these at the `You:` prompt:
 
 `/memories` and `/provider` also work on Telegram and Web. `/recall` and `/skills` are CLI-only.
 
+For the full tools-and-features inventory, see [Capabilities](/capabilities).
+
 ## Streaming
 
 Carina streams token-by-token to stdout. Tool use appears inline as status text during the response (for example `[using web-search...]`).

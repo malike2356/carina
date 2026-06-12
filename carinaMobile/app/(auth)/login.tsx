@@ -3,13 +3,12 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CarinaClient } from '@/api/carina-client';
 import { ScreenShell } from '@/components/ScreenShell';
-import { DEFAULT_CLOUD_URL } from '@/config/defaults';
 import { useAuth } from '@/store/auth-store';
 import { colors, radii, spacing } from '@/theme/tokens';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { refresh } = useAuth();
+  const { refresh, instance } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +18,12 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
+      const baseUrl = instance?.baseUrl;
+      if (!baseUrl) {
+        throw new Error('Carina Cloud gateway is not configured');
+      }
       const client = new CarinaClient({
-        baseUrl: DEFAULT_CLOUD_URL,
+        baseUrl,
         credentials: 'include',
       });
       await client.login(email.trim(), password);

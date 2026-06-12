@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from '@/api/chat-stream';
 import type { ChatMessage } from '@/api/types';
 import { isSlashCommand } from '@/config/commands';
+import { isApiAuthError } from '@/lib/cloud-features';
 import { clearChatMessages, loadChatMessages, saveChatMessages } from '@/lib/chat-session';
 import { deriveSessionMeta, removeSessionMeta, upsertSessionMeta } from '@/lib/session-registry';
 import { extractToolNames, stripToolMarkers } from '@/lib/stream-parser';
@@ -31,7 +32,7 @@ function createMessage(
 }
 
 export function useChatSession() {
-  const { instance, setInstance, client, gatewayAuth } = useAuth();
+  const { instance, setInstance, client, gatewayAuth, refresh } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
@@ -214,21 +215,21 @@ export function useChatSession() {
       let providerName = '';
       let activeSessionId = instance.sessionId;
 
+      if (!activeSessionId) {
+        const next = await ensureSessionId();
+        setInstance(next);
+        activeSessionId = next.sessionId;
+      }
+
       await upsertTask({
         id: taskId,
-        sessionId: activeSessionId || 'pending',
+        sessionId: activeSessionId,
         prompt: text,
         status: 'running',
         startedAt: new Date().toISOString(),
       });
 
       try {
-        if (!activeSessionId) {
-          const next = await ensureSessionId();
-          setInstance(next);
-          activeSessionId = next.sessionId;
-        }
-
         try {
           const providers = await client?.providers();
           providerName = providers?.active ?? '';
@@ -297,6 +298,12 @@ export function useChatSession() {
         }
 
         const msg = err instanceof Error ? err.message : String(err);
+        if (instance.mode === 'cloud' && isApiAuthError(msg)) {
+          setStreamError('Session expired. Sign in again from More or Gateway settings.');
+          void refresh();
+          setMessages((prev) => prev.filter((item) => item.id !== assistantId));
+          return;
+        }
         if (isLikelyNetworkError(msg)) {
           if (!options?.fromQueue) {
             await enqueueOfflineMessage(text);
@@ -336,7 +343,7 @@ export function useChatSession() {
         abortRef.current = null;
       }
     },
-    [cancel, client, gatewayAuth, instance, persist, runCommand, sessionId, setInstance, streaming],
+    [cancel, client, gatewayAuth, instance, persist, refresh, runCommand, sessionId, setInstance, streaming],
   );
 
   return {

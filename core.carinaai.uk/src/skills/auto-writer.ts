@@ -5,6 +5,7 @@ import {
   incrementSkillUsage,
   saveSkill,
 } from './store.js';
+import { enqueueWorkshopDraft, workshopReviewEnabled } from './workshop-store.js';
 import type { Message } from '../types/index.js';
 
 const EVAL_PROMPT = `You are evaluating whether a completed agentic task produced a reusable procedure.
@@ -70,6 +71,19 @@ export async function evaluateAndWriteSkill(input: SkillWriteInput): Promise<voi
     if (existing) {
       await incrementSkillUsage(existing.id);
       console.log(`Skill usage incremented: ${existing.name}`);
+      return;
+    }
+
+    if (workshopReviewEnabled()) {
+      enqueueWorkshopDraft({
+        source: 'auto-writer',
+        name: parsed.name ?? 'unnamed-skill',
+        description: parsed.description ?? '',
+        trigger: keywords,
+        steps: parsed.steps ?? '',
+        toolsUsed: parsed.tools_used ?? input.toolsUsed,
+      });
+      console.log(`Skill queued for workshop review: ${parsed.name}`);
       return;
     }
 

@@ -1,5 +1,9 @@
 # Web UI Gateway
 
+:::tip Canonical inventory
+[Capability inventory](/docs/capabilities)
+:::
+
 The web UI is served from the same Express app as the HTTP API.
 
 ## URL and port

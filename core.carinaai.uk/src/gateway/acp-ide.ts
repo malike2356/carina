@@ -2,8 +2,10 @@ import express, { type Express, type Request, type Response } from 'express';
 import { registry } from '../tools/registry.js';
 import { getRouter } from './router.js';
 import { llm } from '../brain/llm.js';
+import { acpBridgeEnabled } from '../infrastructure/acp-bridge/store.js';
 
 export function setupAcpIdeRoutes(app: Express): void {
+  if (!acpBridgeEnabled()) return;
   app.get('/acp/ide/health', (_req: Request, res: Response) => {
     res.json({ ok: true, protocol: 'acp-ide-v1', agent: 'carina' });
   });

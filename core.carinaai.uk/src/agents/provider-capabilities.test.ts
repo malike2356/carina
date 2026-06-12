@@ -7,8 +7,12 @@ describe('PROVIDER_CAPABILITIES', () => {
     expect(Object.keys(PROVIDER_CAPABILITIES).sort()).toEqual([...KNOWN_LLM_PROVIDERS].sort());
   });
 
-  it('marks every provider as chat capable', () => {
-    for (const capabilities of Object.values(PROVIDER_CAPABILITIES)) {
+  it('marks routable providers as chat capable', () => {
+    for (const [name, capabilities] of Object.entries(PROVIDER_CAPABILITIES)) {
+      if (name === 'voyage') {
+        expect(capabilities.chat).toBe(false);
+        continue;
+      }
       expect(capabilities.chat).toBe(true);
     }
   });

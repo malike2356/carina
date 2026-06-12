@@ -58,23 +58,30 @@ async function installFromGit(url: string, dest: string): Promise<void> {
 }
 
 async function resolveBundleRoot(stagingDir: string): Promise<string> {
-  const manifestHere = path.join(stagingDir, 'extension.json');
-  try {
-    await fs.access(manifestHere);
-    return stagingDir;
-  } catch {
-    // single top-level folder in archive
+  for (const manifestName of ['extension.json', 'plugin.json']) {
+    try {
+      await fs.access(path.join(stagingDir, manifestName));
+      return stagingDir;
+    } catch {
+      // try nested
+    }
   }
 
   const entries = await fs.readdir(stagingDir, { withFileTypes: true });
   const dirs = entries.filter((e) => e.isDirectory());
   if (dirs.length === 1) {
     const nested = path.join(stagingDir, dirs[0].name);
-    await fs.access(path.join(nested, 'extension.json'));
-    return nested;
+    for (const manifestName of ['extension.json', 'plugin.json']) {
+      try {
+        await fs.access(path.join(nested, manifestName));
+        return nested;
+      } catch {
+        // continue
+      }
+    }
   }
 
-  throw new Error('Could not find extension.json in bundle');
+  throw new Error('Could not find extension.json or plugin.json in bundle');
 }
 
 export type InstallExtensionOptions = {

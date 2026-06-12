@@ -18,5 +18,11 @@
     "required": false,
     "path": "eval/eval.json"
   },
-  "risk": "low"
+  "risk": "low",
+  "safety": {
+    "network": false,
+    "shell": false,
+    "filesystem": false,
+    "requiresConfirmation": false
+  }
 }

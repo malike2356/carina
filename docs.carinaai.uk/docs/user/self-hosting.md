@@ -1,5 +1,9 @@
 # Self-Hosting
 
+:::tip Canonical inventory
+What ships in the npm package vs what you must configure: [Capability inventory](/docs/capabilities).
+:::
+
 Run Carina on your own infrastructure with Docker or bare Node.js.
 
 ## Docker (production stack)

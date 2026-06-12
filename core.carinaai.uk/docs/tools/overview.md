@@ -2,6 +2,8 @@
 
 Carina registers tools with MCP-compatible JSON schemas. The LLM chooses tools; the runtime enforces policy, confirmation, and Scout reporting.
 
+For the full platform inventory, including providers, channels, skill packs, security, and hosted features, see [Capabilities](/capabilities).
+
 ## Built-in tools
 
 | Tool | Env key | Sandboxed | Confirmation |

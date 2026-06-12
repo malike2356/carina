@@ -139,3 +139,23 @@ export async function pruneSandboxContainers(): Promise<number> {
   }
   return removed;
 }
+
+export function explainSandbox(label: string): {
+  name: string;
+  label: string;
+  image: string;
+  memoryMb: number;
+  network: string;
+  readOnly: boolean;
+  cpus: string;
+} {
+  return {
+    label,
+    name: containerName(label),
+    image: sandboxImage(),
+    memoryMb: sandboxMemoryMb(),
+    network: 'none',
+    readOnly: true,
+    cpus: '0.5',
+  };
+}

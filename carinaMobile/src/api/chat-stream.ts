@@ -12,7 +12,7 @@ export interface StreamChatOptions {
   signal?: AbortSignal;
 }
 
-function buildStreamUrl(
+export function buildStreamUrl(
   baseUrl: string,
   message: string,
   sessionId?: string,

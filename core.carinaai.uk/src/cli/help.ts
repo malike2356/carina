@@ -45,7 +45,10 @@ export function buildHelpText(commands: CliCommand[], pkg: { name: string; versi
       .flatMap((c) => formatCommandHelp(c)),
     '',
     'Ops:',
-    ...commands.filter((c) => ['host', 'commitments', 'ops', 'cron', 'doctor', 'logs', 'providers', 'contacts', 'migrate', 'update', 'ide', 'completion'].includes(c.name))
+    ...commands.filter((c) => [
+      'host', 'commitments', 'ops', 'cron', 'doctor', 'status', 'reset', 'onboard', 'uninstall',
+      'logs', 'providers', 'contacts', 'migrate', 'update', 'approvals', 'ide', 'completion',
+    ].includes(c.name))
       .flatMap((c) => formatCommandHelp(c)),
     '',
     '  carina --version                    Print version',

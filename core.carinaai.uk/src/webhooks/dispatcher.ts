@@ -14,6 +14,10 @@ export async function dispatchWebhook(
   event: WebhookEvent,
   data: Record<string, unknown>,
 ): Promise<{ delivered: number; failed: number }> {
+  if (process.env.CARINA_TASKFLOWS_WEBHOOK_HOOK === 'true') {
+    void import('../ops/taskflows/hooks.js').then((m) => m.onWebhookEvent(event, data));
+  }
+
   const subs = await getSubscriptionsForEvent(event);
   if (subs.length === 0) return { delivered: 0, failed: 0 };
 

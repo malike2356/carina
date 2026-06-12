@@ -11,6 +11,7 @@ export default defineConfig({
     logo: '/logo.svg',
     nav: [
       { text: 'Guide', link: '/getting-started' },
+      { text: 'Capabilities', link: '/capabilities' },
       { text: 'Carina Cloud', link: '/carina-cloud' },
       { text: 'Tools', link: '/tools/overview' },
       { text: 'Skill Packs', link: '/skill-packs/overview' },
@@ -23,6 +24,7 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'What is Carina?', link: '/index' },
+          { text: 'Capabilities', link: '/capabilities' },
           { text: 'Install', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Self-hosting', link: '/self-hosting' },

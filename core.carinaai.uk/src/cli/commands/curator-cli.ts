@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { initDb } from '../../memory/db.js';
 import {
   archiveSkill,
+  findDuplicateSkillCandidates,
   listCuratedSkills,
   pruneStaleSkills,
   restoreSkill,
@@ -107,6 +108,16 @@ export async function runCuratorCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'duplicates') {
+    const dups = await findDuplicateSkillCandidates(0.7);
+    console.log(chalk.bold(`\nDuplicate skill candidates (${dups.length})\n`));
+    for (const row of dups.slice(0, 30)) {
+      console.log(`  ${row.a}  ~  ${row.b}  overlap=${row.overlap}`);
+    }
+    console.log('');
+    return;
+  }
+
   if (action === 'run') {
     const report = await buildCuratorReviewReport();
     await writeCuratorReviewReport(ctx.reportsDir, report);
@@ -115,6 +126,6 @@ export async function runCuratorCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error(`Usage: carina curator <report|list|prune|archive|restore|run> [--profile NAME]`);
+  console.error(`Usage: carina curator <report|list|duplicates|prune|archive|restore|run> [--profile NAME]`);
   process.exit(1);
 }

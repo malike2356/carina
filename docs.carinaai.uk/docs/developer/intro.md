@@ -7,6 +7,8 @@ title: Developer overview
 
 This section is for engineers extending Carina: new tools, gateways, skill packs, memory backends, and Scout integrations.
 
+**Start with the canonical inventory:** [Capability inventory](/docs/capabilities) (shipped vs configured vs optional).
+
 ## Repository layout
 
 The Carina mono-repo is organized by product domain:

@@ -11,6 +11,12 @@ import {
   grantJitCredentialsAfterConfirm,
 } from '../security/jit-credentials-middleware.js';
 import { getJitCredentialStore, requiresJitGrant } from '../security/jit-credentials.js';
+import {
+  evaluateApprovalPolicy,
+  rememberApprovalAfterConfirm,
+} from '../security/approval-policy.js';
+import { toolRiskTier } from '../security/tool-risk.js';
+import { getActiveProfileName } from '../profiles/manager.js';
 
 export type ConfirmFn = (
   toolName: string,
@@ -60,25 +66,42 @@ export async function executeToolCall(
     console.warn(`[dangerous tool] ${call.toolName}`);
   }
 
+  const profile = process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default';
+  const approvalContext = { sessionId, profile };
+  const riskTier = toolRiskTier(call.toolName, tool);
+  const skipPolicy = riskTier === 'low' && !tool.dangerous && !tool.requiresConfirmation;
+  const policy = skipPolicy
+    ? null
+    : evaluateApprovalPolicy(call.toolName, call.params, approvalContext, tool);
+
+  if (policy?.decision === 'block') {
+    return { error: policy.reason, code: policy.code };
+  }
+
   const needsJitApproval = requiresJitGrant(call.toolName)
     && !getJitCredentialStore().hasValidGrant(sessionId, call.toolName, call.params)
     && call.params._jit_granted !== true;
 
+  const policyAllows = policy?.decision === 'allow';
   const mustConfirm =
-    alwaysConfirm || needsJitApproval || (await needsUserConfirmation(tool, call.params));
+    !policyAllows
+    && (alwaysConfirm || needsJitApproval || (await needsUserConfirmation(tool, call.params)));
   if (mustConfirm) {
     if (!confirm) {
       return { error: 'Tool requires confirmation but no confirm handler is configured.' };
     }
-    const reason = tool.dangerous
-      ? 'This tool is marked dangerous.'
-      : 'Confirmation required before running.';
+    const reason = policy?.decision === 'needs_confirm'
+      ? policy.reason
+      : tool.dangerous
+        ? 'This tool is marked dangerous.'
+        : 'Confirmation required before running.';
     const ok = await confirm(call.toolName, call.params, reason);
     if (!ok) {
       return { error: 'User declined tool execution.' };
     }
     call.params = { ...call.params, _confirmed: true };
     grantJitCredentialsAfterConfirm(sessionId, call.toolName, call.params);
+    rememberApprovalAfterConfirm(call.toolName, call.params, approvalContext);
   }
 
   const sequenceError = await enforceToolSequence(sessionId, call.toolName, call.params);

@@ -21,7 +21,9 @@ export class MatrixAdapter implements IChannelAdapter {
         userId: String(p.sender ?? ''),
         conversationId: String(p.room_id ?? ''),
         messageId: String(p.event_id ?? ''),
-        isDirect: String(p.room_id ?? '').includes('!'),
+        isDirect: p.is_direct === true || String(p.room_type ?? '') === 'dm',
+        threadId: String(p.m_thread ?? p.thread_id ?? p.event_id ?? 'root'),
+        senderName: String(p.sender_display_name ?? p.sender ?? ''),
       };
     });
   }

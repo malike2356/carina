@@ -332,6 +332,10 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     mountWebContextRoute(app);
     mountControlRoutes(app);
     mountPairingRoutes(app);
+    if (process.env.CARINA_NODE_HOST_ENABLED === 'true') {
+      const { mountNodeHostRoutes } = await import('../infrastructure/node-host/routes.js');
+      mountNodeHostRoutes(app);
+    }
   }
   app.use('/api/chat', chatLimiter);
   if (!localMode) {

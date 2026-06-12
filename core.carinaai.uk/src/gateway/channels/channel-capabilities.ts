@@ -154,4 +154,12 @@ export const CHANNEL_CAPABILITIES: Record<ChannelName, ChannelCapabilities> = {
     supportsBlockKit: false,
     plainTextOnly: false,
   },
+  irc: {
+    maxMessageLength: 512,
+    supportsEmbeds: false,
+    supportsReactions: false,
+    supportsThreading: false,
+    supportsBlockKit: false,
+    plainTextOnly: true,
+  },
 };

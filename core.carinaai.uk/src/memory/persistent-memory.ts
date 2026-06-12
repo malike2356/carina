@@ -138,6 +138,77 @@ export async function getAllPersistentContext(): Promise<string> {
   return parts.join('\n\n');
 }
 
+export type MemoryBudgetStatus = {
+  target: MemoryTarget;
+  used: number;
+  max: number;
+  percent: number;
+  headroom: number;
+};
+
+export async function getMemoryBudgetStatus(target: MemoryTarget): Promise<MemoryBudgetStatus> {
+  const used = await getPersistentFactsTotal(target);
+  const max = MEMORY_BUDGETS[target];
+  return {
+    target,
+    used,
+    max,
+    percent: max > 0 ? Math.round((used / max) * 100) : 0,
+    headroom: Math.max(0, max - used),
+  };
+}
+
+/** Remove oldest facts until usage is at or below target percent of budget. */
+export async function trimPersistentFactsToBudget(
+  target: MemoryTarget,
+  targetPercent = 85,
+): Promise<{ removed: number; removedIds: string[] }> {
+  const budget = MEMORY_BUDGETS[target];
+  const goal = Math.floor((budget * targetPercent) / 100);
+  let used = await getPersistentFactsTotal(target);
+  const facts = await listPersistentFacts(target);
+  const removedIds: string[] = [];
+
+  for (const fact of facts) {
+    if (used <= goal) break;
+    await pool.query('DELETE FROM persistent_facts WHERE id = $1', [fact.id]);
+    used -= fact.content.length;
+    removedIds.push(fact.id);
+  }
+
+  return { removed: removedIds.length, removedIds };
+}
+
+export async function findNearDuplicateFacts(target: MemoryTarget): Promise<string[][]> {
+  const facts = await listPersistentFacts(target);
+  const groups: string[][] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < facts.length; i++) {
+    for (let j = i + 1; j < facts.length; j++) {
+      const a = facts[i]!;
+      const b = facts[j]!;
+      const overlap = wordOverlap(a.content, b.content);
+      if (overlap >= 0.65) {
+        const key = [a.id, b.id].sort().join(':');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        groups.push([a.content.slice(0, 80), b.content.slice(0, 80)]);
+      }
+    }
+  }
+  return groups;
+}
+
+function wordOverlap(a: string, b: string): number {
+  const wordsA = new Set(a.toLowerCase().split(/\s+/).filter((w) => w.length >= 4));
+  const wordsB = new Set(b.toLowerCase().split(/\s+/).filter((w) => w.length >= 4));
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let hit = 0;
+  for (const w of wordsA) if (wordsB.has(w)) hit++;
+  return hit / new Set([...wordsA, ...wordsB]).size;
+}
+
 function rowToFact(row: Record<string, unknown>): PersistentFact {
   return {
     id: String(row.id),

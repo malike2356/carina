@@ -6,6 +6,8 @@ import {
   type ExtensionRisk,
 } from './manifest.js';
 
+const CATALOG_ONLY_CAPABILITIES = new Set(['mcp', 'hooks']);
+
 const SENSITIVE = [
   /sk-[a-zA-Z0-9]{20,}/,
   /api[_-]?key\s*[:=]\s*['"]?[a-zA-Z0-9_-]{16,}/i,
@@ -29,7 +31,14 @@ export type ExtensionValidationResult = {
 };
 
 export async function readExtensionManifest(bundleDir: string): Promise<ExtensionManifest> {
-  const manifestPath = path.join(bundleDir, 'extension.json');
+  const primary = path.join(bundleDir, 'extension.json');
+  const legacy = path.join(bundleDir, 'plugin.json');
+  let manifestPath = primary;
+  try {
+    await fs.access(primary);
+  } catch {
+    manifestPath = legacy;
+  }
   const raw = JSON.parse(await fs.readFile(manifestPath, 'utf-8')) as unknown;
   return validateExtensionManifest(raw, path.basename(bundleDir));
 }
@@ -136,11 +145,33 @@ export async function validateExtensionBundle(
   errors.push(...await validateEntryPaths(bundleDir, manifest));
   errors.push(...await scanSensitive(bundleDir));
 
+  for (const cap of manifest.capabilities) {
+    if (CATALOG_ONLY_CAPABILITIES.has(cap)) {
+      warnings.push(
+        `Capability "${cap}" is declared but has no runtime loader yet; entry will not be loaded until supported`,
+      );
+    }
+  }
+
+  if (manifest.minCarinaVersion) {
+    const { carinaRuntimeVersion, satisfiesMinVersion } = await import('./version-compat.js');
+    const running = carinaRuntimeVersion();
+    if (!satisfiesMinVersion(running, manifest.minCarinaVersion)) {
+      errors.push(
+        `Requires Carina >= ${manifest.minCarinaVersion} (running ${running})`,
+      );
+    }
+  }
+
   const toolRisk = await assessToolRisk(bundleDir, manifest);
   warnings.push(...toolRisk.warnings);
-  const risk = toolRisk.risk;
+  let effectiveRisk = toolRisk.risk;
+  if (manifest.safety?.shell && effectiveRisk !== 'high') {
+    warnings.push('Safety metadata declares shell access; risk elevated to high');
+    effectiveRisk = 'high';
+  }
 
-  if (risk === 'high' && !options.allowHighRisk) {
+  if (effectiveRisk === 'high' && !options.allowHighRisk) {
     errors.push('High-risk extension requires --allow-dangerous to enable');
   }
 
@@ -149,6 +180,6 @@ export async function validateExtensionBundle(
     manifest,
     warnings,
     errors,
-    risk,
+    risk: effectiveRisk,
   };
 }

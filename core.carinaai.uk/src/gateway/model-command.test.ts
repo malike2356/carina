@@ -41,14 +41,28 @@ describe('handleModelCommand', () => {
     expect(result.reply).toContain('Current provider: OpenAI. Using gpt-4o.');
   });
 
-  it('/model list returns the same list as the existing /provider command', () => {
+  it('/model list returns the compact provider catalog', () => {
     const { router } = makeRouter();
 
     const modelList = handleModelCommand('/model list', {}, router);
     const providerList = handleModelCommand('/provider', {}, router);
 
-    expect(modelList.reply.split('\n')[0]).toBe(providerList.reply.split('\n')[0]);
-    expect(modelList.reply).toContain('deepseek, openai');
+    expect(modelList.reply).toContain('Provider catalog');
+    expect(providerList.reply).toContain('Provider catalog');
+    expect(modelList.reply).toContain('deepseek');
+    expect(providerList.reply).toContain('transport');
+  });
+
+  it('/provider kimi resolves alias to moonshot when switching', () => {
+    const { router } = makeRouter({
+      providers: ['deepseek', 'moonshot'],
+      known: ['deepseek', 'moonshot', 'kimi'],
+    });
+
+    const result = handleModelCommand('/provider kimi', {}, router);
+
+    expect(router.use).toHaveBeenCalledWith('moonshot', expect.any(String));
+    expect(result.reply).toContain('Moonshot');
   });
 
   it('/model openai switches and returns the confirmation string', () => {

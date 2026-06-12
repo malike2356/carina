@@ -4,6 +4,12 @@ import path from 'path';
 import { URL } from 'url';
 import { CARINA_HOME } from '../config/paths.js';
 import { debugProxyPort } from './ops-config.js';
+import {
+  debugCaptureEnabled,
+  inferProviderFromUrl,
+  recordDebugCapture,
+  redactBodyPreview,
+} from './debug-proxy-capture.js';
 
 const PID_FILE = path.join(CARINA_HOME, 'debug-proxy.pid');
 const LOG_FILE = path.join(CARINA_HOME, 'logs', 'debug-proxy.log');
@@ -23,6 +29,19 @@ export type DebugProxyState = {
 };
 
 let activeServer: http.Server | null = null;
+
+/** Resolve upstream URL; supports passthrough paths like /https://api.openai.com/v1/... */
+export function resolveDebugProxyUpstream(requestPath: string, defaultTarget: URL): URL {
+  const raw = requestPath.startsWith('/') ? requestPath.slice(1) : requestPath;
+  if (/^https?:\/\//i.test(raw)) {
+    const pathStart = raw.indexOf('/', raw.indexOf('://') + 3);
+    if (pathStart >= 0) {
+      return new URL(raw.slice(pathStart), raw.slice(0, pathStart));
+    }
+    return new URL('/', raw);
+  }
+  return new URL(requestPath, defaultTarget.origin);
+}
 
 function appendLog(logFile: string, line: string): void {
   fs.mkdirSync(path.dirname(logFile), { recursive: true });
@@ -79,23 +98,62 @@ export async function startDebugProxy(options: DebugProxyOptions): Promise<Debug
 
   const server = http.createServer((clientReq, clientRes) => {
     const upstreamPath = clientReq.url ?? '/';
-    const upstreamUrl = new URL(upstreamPath, target.origin);
+    const upstreamUrl = resolveDebugProxyUpstream(upstreamPath, target);
     const headers: Record<string, string | string[] | undefined> = {
       ...clientReq.headers,
       host: target.host,
     };
     delete headers['proxy-connection'];
 
+    const reqChunks: Buffer[] = [];
+    clientReq.on('data', (chunk: Buffer) => {
+      if (debugCaptureEnabled()) reqChunks.push(chunk);
+    });
+
     appendLog(
       logFile,
       `REQ ${clientReq.method} ${upstreamUrl.href} from=${clientReq.socket.remoteAddress ?? '?'}`,
     );
+
+    if (debugCaptureEnabled()) {
+      clientReq.on('end', () => {
+        const body = Buffer.concat(reqChunks).toString('utf-8');
+        recordDebugCapture({
+          direction: 'request',
+          method: clientReq.method ?? 'GET',
+          url: upstreamUrl.href,
+          provider: inferProviderFromUrl(upstreamUrl.href),
+          bodyPreview: redactBodyPreview(body),
+          bytes: body.length,
+        });
+      });
+    }
 
     const proxyReq = http.request(
       upstreamUrl,
       { method: clientReq.method, headers },
       (upstreamRes) => {
         appendLog(logFile, `RES ${upstreamRes.statusCode} ${upstreamUrl.href}`);
+
+        const resChunks: Buffer[] = [];
+        upstreamRes.on('data', (chunk: Buffer) => {
+          if (debugCaptureEnabled()) resChunks.push(chunk);
+        });
+        upstreamRes.on('end', () => {
+          if (debugCaptureEnabled()) {
+            const body = Buffer.concat(resChunks).toString('utf-8');
+            recordDebugCapture({
+              direction: 'response',
+              method: clientReq.method ?? 'GET',
+              url: upstreamUrl.href,
+              statusCode: upstreamRes.statusCode,
+              provider: inferProviderFromUrl(upstreamUrl.href),
+              bodyPreview: redactBodyPreview(body),
+              bytes: body.length,
+            });
+          }
+        });
+
         clientRes.writeHead(upstreamRes.statusCode ?? 502, upstreamRes.headers);
         upstreamRes.pipe(clientRes);
       },

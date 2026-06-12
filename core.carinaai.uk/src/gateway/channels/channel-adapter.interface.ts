@@ -18,7 +18,8 @@ export type ChannelName =
   | 'email'
   | 'homeassistant'
   | 'api'
-  | 'webhooks';
+  | 'webhooks'
+  | 'irc';
 
 export interface Attachment {
   id?: string;

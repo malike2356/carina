@@ -11,13 +11,14 @@ import {
   View,
 } from 'react-native';
 import type { EpisodicMemory } from '@/api/types';
+import { CloudFeatureGate } from '@/components/CloudFeatureGate';
 import { MemoryCard } from '@/components/MemoryCard';
 import { MemoryEditModal } from '@/components/MemoryEditModal';
 import { ScreenShell } from '@/components/ScreenShell';
 import { useMemories } from '@/hooks/useMemories';
 import { colors, radii, spacing } from '@/theme/tokens';
 
-export default function MemoryScreen() {
+function MemoryScreenBody() {
   const { entries, loading, saving, error, page, totalPages, query, refresh, remove, search, update } =
     useMemories();
   const [searchText, setSearchText] = useState('');
@@ -35,12 +36,7 @@ export default function MemoryScreen() {
   }
 
   return (
-    <ScreenShell
-      title="Memory"
-      subtitle="Episodic memories Carina recalls across sessions."
-      scroll={false}
-      showBack
-    >
+    <>
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
@@ -66,7 +62,14 @@ export default function MemoryScreen() {
           />
         }
       >
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <View style={styles.errorBlock}>
+            <Text style={styles.error}>{error}</Text>
+            <Pressable style={styles.retryBtn} onPress={() => void refresh(page, query)}>
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : null}
         {loading && entries.length === 0 ? (
           <ActivityIndicator color={colors.tealLight} />
         ) : entries.length === 0 ? (
@@ -112,6 +115,21 @@ export default function MemoryScreen() {
         onClose={() => setEditing(null)}
         onSave={(id, content) => void handleSave(id, content)}
       />
+    </>
+  );
+}
+
+export default function MemoryScreen() {
+  return (
+    <ScreenShell
+      title="Memory"
+      subtitle="Episodic memories Carina recalls across sessions."
+      scroll={false}
+      showBack
+    >
+      <CloudFeatureGate feature="memory">
+        <MemoryScreenBody />
+      </CloudFeatureGate>
     </ScreenShell>
   );
 }
@@ -145,7 +163,17 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   content: { gap: spacing.sm, paddingBottom: spacing.xl },
+  errorBlock: { gap: spacing.sm },
   error: { color: colors.danger, fontSize: 13 },
+  retryBtn: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  retryText: { color: colors.tealLight, fontWeight: '600', fontSize: 13 },
   empty: { color: colors.silver, fontSize: 14, lineHeight: 20 },
   pager: {
     flexDirection: 'row',

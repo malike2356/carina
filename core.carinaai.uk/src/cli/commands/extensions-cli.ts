@@ -33,14 +33,19 @@ export async function runExtensionsCommand(args: string[]): Promise<void> {
       return;
     }
     console.log(chalk.bold('\nExtension bundles\n'));
+    const runtimeOn = process.env.CARINA_EXTENSIONS_ENABLED === 'true';
+    console.log(chalk.gray(`Runtime: ${runtimeOn ? 'on (contributions loaded when enabled)' : 'off (set CARINA_EXTENSIONS_ENABLED=true)'}\n`));
     for (const row of rows) {
       const health = row.health === 'ok'
         ? chalk.green('ok')
         : row.health === 'warn'
           ? chalk.yellow('warn')
           : chalk.red('fail');
+      const caps = row.capabilities?.length ? row.capabilities.join(',') : '-';
+      const risk = row.risk ?? 'low';
+      const live = runtimeOn && row.status === 'enabled' ? chalk.cyan(' live') : '';
       console.log(
-        `  ${row.id.padEnd(20)} ${row.version.padEnd(8)} ${row.status.padEnd(10)} ${health}  ${row.name}`,
+        `  ${row.id.padEnd(20)} ${row.version.padEnd(8)} ${row.status.padEnd(10)} ${health}  risk=${risk}  caps=[${caps}]${live}  ${row.name}`,
       );
       if (row.health_message) {
         console.log(chalk.gray(`    ${row.health_message}`));

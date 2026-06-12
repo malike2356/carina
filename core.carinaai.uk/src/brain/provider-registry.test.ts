@@ -39,6 +39,7 @@ describe('provider-registry', () => {
       });
 
       it('has api key env ending with _API_KEY', () => {
+        if (def.apiKeyEnv === 'GITHUB_TOKEN') return;
         expect(def.apiKeyEnv).toMatch(/_API_KEY$/);
       });
 
@@ -47,12 +48,20 @@ describe('provider-registry', () => {
       });
 
       it('has capabilities', () => {
+        if (def.status === 'unsupported' && !def.capabilities.chat) {
+          expect(def.capabilities.chat).toBe(false);
+          return;
+        }
         expect(def.capabilities.chat).toBe(true);
       });
 
       it('has routing tags', () => {
         expect(def.tags.cost).toBeTruthy();
         expect(def.tags.speed).toBeTruthy();
+        if (def.status === 'unsupported' && !def.capabilities.chat) {
+          expect(def.tags.chat).toBe(false);
+          return;
+        }
         expect(def.tags.chat).toBe(true);
       });
 
@@ -67,7 +76,7 @@ describe('provider-registry', () => {
         expect(typeof isProviderConfigured(def)).toBe('boolean');
       });
 
-      if (def.kind === 'openai' && !def.local && def.name !== 'azure' && def.name !== 'custom') {
+      if (def.kind === 'openai' && !def.local && def.name !== 'azure' && def.name !== 'bedrock' && def.name !== 'bedrock-mantle' && def.name !== 'vertex' && def.name !== 'cloudflare-ai-gateway' && def.name !== 'custom') {
         it('has base URL', () => {
           expect(providerBaseUrl(def).startsWith('http')).toBe(true);
         });

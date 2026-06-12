@@ -61,6 +61,16 @@ describe('device-pairing', () => {
     expect(mod.listPairedDevices()).toHaveLength(0);
   });
 
+  it('rotates device bearer tokens', async () => {
+    const mod = await pairing();
+    const pending = mod.createPairingCode();
+    const { token, deviceId } = mod.claimPairing({ code: pending.code, name: 'Pad', platform: 'android' });
+    const rotated = mod.rotateDeviceToken(deviceId);
+    expect(rotated?.token).toMatch(/^cdv_/);
+    expect(mod.validateDeviceToken(token)).toBeNull();
+    expect(mod.validateDeviceToken(rotated!.token)?.name).toBe('Pad');
+  });
+
   it('redacts token hashes for API responses', async () => {
     const mod = await pairing();
     const pending = mod.createPairingCode();

@@ -13,6 +13,10 @@ import {
   revokeOAuthToken,
   runDeviceFlowInteractive,
 } from '../../credentials/index.js';
+import {
+  isRoutableProvider,
+  providerTransportType,
+} from '../../brain/provider-registry.js';
 import { appendEnvValue } from '../config/loader.js';
 import { loadLocalEnv } from '../config/env.js';
 import { bindOperatorProfile } from '../../ops/operator-profile.js';
@@ -225,7 +229,30 @@ export async function runCredentialsCommand(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  console.error('Usage: carina credentials <status|pools|add|remove|retire|rotate|test|oauth> [--profile NAME] ...');
+  if (action === 'profiles') {
+    const mgr = getCredentialPoolManager();
+    const oauthRows = describeOAuthSessions();
+    const routable = PROVIDER_DEFINITIONS.filter(isRoutableProvider);
+    console.log(chalk.bold(`\nProvider credential profiles (profile: ${opCtx.profileName})\n`));
+    const hdr = `  ${'Provider'.padEnd(18)} ${'Auth'.padEnd(10)} ${'Transport'.padEnd(22)} ${'Keys'.padEnd(6)} Configured`;
+    console.log(chalk.gray(hdr));
+    for (const def of routable) {
+      const pool = mgr.describePool(def.name);
+      const configured = isProviderConfigured(def);
+      const oauthRow = oauthRows.find((r) => r.name === def.name);
+      const authLabel = oauthRow?.loggedIn
+        ? chalk.green('oauth-ok')
+        : (def.authType ?? 'api-key').padEnd(8);
+      const transport = providerTransportType(def).padEnd(22);
+      const keys = String(pool.size).padEnd(6);
+      const status = configured ? chalk.green('yes') : chalk.gray('no ');
+      console.log(`  ${def.name.padEnd(18)} ${authLabel.padEnd(10)} ${transport} ${keys} ${status}`);
+    }
+    console.log('');
+    return;
+  }
+
+  console.error('Usage: carina credentials <status|profiles|pools|add|remove|retire|rotate|test|oauth> [--profile NAME] ...');
   process.exit(1);
 }
 

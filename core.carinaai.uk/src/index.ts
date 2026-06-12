@@ -139,6 +139,14 @@ async function main(): Promise<void> {
     taskScheduler.start();
   }
 
+  if (process.env.CARINA_TASKFLOWS_ENABLED === 'true') {
+    const { startTaskFlowWorkerLoop } = await import('./ops/taskflows/worker.js');
+    startTaskFlowWorkerLoop();
+    if (process.env.CARINA_TASKFLOWS_WORKER_INTERVAL_MS) {
+      console.log(chalk.gray('TaskFlow background worker enabled'));
+    }
+  }
+
   const gateways: Promise<void>[] = [];
 
   if (config.telegram.botToken) {

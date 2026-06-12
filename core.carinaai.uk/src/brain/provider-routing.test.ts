@@ -52,4 +52,12 @@ describe('provider-routing', () => {
     expect(PROVIDER_MAP.vllm?.local).toBe(true);
     expect(PROVIDER_MAP.vllm?.tags.cost).toBe('local');
   });
+
+  it('includes expanded catalog providers from Phase 1', () => {
+    for (const name of ['litellm', 'sglang', 'vertex', 'cloudflare-ai-gateway', 'byteplus', 'tencent', 'volcengine', 'bedrock-mantle']) {
+      expect(PROVIDER_MAP[name]).toBeDefined();
+    }
+    expect(PROVIDER_MAP.voyage?.status).toBe('unsupported');
+    expect(PROVIDER_MAP['github-copilot']?.status).toBe('external-cli');
+  });
 });

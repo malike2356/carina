@@ -13,8 +13,8 @@ import {
 } from '../profiles/scope.js';
 import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
 import { getPromptCacheStats } from '../brain/prompt-cache.js';
-import { PROVIDER_DEFINITIONS, ROUTABLE_PROVIDER_NAMES, isProviderConfigured } from '../brain/provider-registry.js';
-import { describeProviderTags } from '../brain/provider-tags.js';
+import { PROVIDER_DEFINITIONS, ROUTABLE_PROVIDER_NAMES, isProviderConfigured, providerTransportType } from '../brain/provider-registry.js';
+import { describeProviderTags, providerCostLabel } from '../brain/provider-tags.js';
 import { listCheckpoints, latestCheckpoint, restoreCheckpoint } from '../tools/checkpoint-store.js';
 import { registry } from '../tools/index.js';
 import { buildEntranceSnapshot, printEntrance, printFreshStart } from '../cli/entrance.js';
@@ -29,7 +29,7 @@ const HELP_LINES = [
   '/help          show commands',
   '/profile       show or switch profile',
   '/provider      switch LLM provider',
-  '/skills        show active skill packs',
+  '/plugins       list installed extension bundles',
   '/copilot       show Free Copilot provider chain',
   '/checkpoints   list recent checkpoints',
   '/restore       restore latest checkpoint',
@@ -92,10 +92,16 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
         message: 'Select provider',
         choices: routableDefs.map((def) => {
           const ok = configured.includes(def.name);
+          const meta = [
+            providerCostLabel(def.tags.cost),
+            def.authType,
+            def.status,
+            providerTransportType(def),
+          ].join(' · ');
           const tags = describeProviderTags(def);
           const label = ok
-            ? `${def.name}  ${def.displayName}  [${tags}]`
-            : `${def.name}  ${def.displayName}  [${tags}]  (missing key)`;
+            ? `${def.name}  ${def.displayName}  [${meta}]  ${tags}`
+            : `${def.name}  ${def.displayName}  [${meta}]  ${tags}  (missing key)`;
           return {
             name: label,
             value: def.name,
@@ -145,6 +151,25 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
         console.log(chalk.gray(`  Personality: ${personalityName}`));
       } catch (err) {
         console.log(chalk.red(err instanceof Error ? err.message : String(err)));
+      }
+      continue;
+    }
+
+    if (trimmed === '/plugins') {
+      const { listExtensions } = await import('../extensions/manager.js');
+      const rows = await listExtensions();
+      if (rows.length === 0) {
+        console.log(chalk.yellow('No extension bundles installed.'));
+        console.log(chalk.gray('Install: carina extensions install <path>'));
+        continue;
+      }
+      const runtime = process.env.CARINA_EXTENSIONS_ENABLED === 'true'
+        ? chalk.green('runtime on')
+        : chalk.gray('runtime off (set CARINA_EXTENSIONS_ENABLED=true)');
+      console.log(chalk.yellow(`Extensions (${runtime})`));
+      for (const row of rows) {
+        const status = row.status === 'enabled' ? chalk.green(row.status) : chalk.gray(row.status);
+        console.log(`  ${row.id.padEnd(18)} ${row.version.padEnd(8)} ${status}  ${row.name}`);
       }
       continue;
     }

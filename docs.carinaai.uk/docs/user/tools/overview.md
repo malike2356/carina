@@ -1,8 +1,10 @@
 # Tools Overview
 
-Carina registers **71 tools** across toolsets with MCP-compatible JSON schemas (see [Toolsets](/docs/developer/tools/toolsets)). The LLM chooses tools; the runtime enforces policy, confirmation, and Scout reporting.
+:::info Canonical inventory
+Tool counts and platform-wide status labels live on the [capability inventory](/docs/capabilities). This page covers core tool behavior and confirmation rules only.
+:::
 
-This page lists the core tools most installs use first. Additional tools (browser, MCP, kanban, cron, integrations, and more) activate via toolset presets in `~/.carina/toolsets.yaml`.
+Carina registers **66+ tools** in the base registry (varies with toolsets and session tools). The LLM chooses tools; the runtime enforces policy, confirmation, and Scout reporting.
 
 ## Core tools
 

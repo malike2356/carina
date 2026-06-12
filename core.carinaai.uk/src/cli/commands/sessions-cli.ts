@@ -7,6 +7,7 @@ import { browseRecentSessions } from '../../memory/session-index.js';
 
 export async function runSessionsCommand(args: string[]): Promise<void> {
   const action = args[0] ?? 'list';
+  const json = args.includes('--json');
 
   if (action === 'list') {
     const localDir = path.join(CARINA_HOME, 'sessions');
@@ -31,6 +32,13 @@ export async function runSessionsCommand(args: string[]): Promise<void> {
     }
 
     console.log(chalk.bold('\nSessions\n'));
+    if (json) {
+      console.log(JSON.stringify({
+        local: local.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+        db: dbSessions,
+      }, null, 2));
+      return;
+    }
     for (const s of local.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 15)) {
       console.log(`  ${s.id.slice(0, 8)}  local  ${s.source}  ${s.updatedAt}`);
     }

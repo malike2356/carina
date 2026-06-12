@@ -410,14 +410,21 @@ export async function initSkills(): Promise<void> {
 
   let extensionSkills = 0;
   let extensionChunks = 0;
+  let extensionTools = 0;
+  let extensionPrompts = 0;
   let extensionsActive = 0;
   if (process.env.CARINA_EXTENSIONS_ENABLED === 'true') {
     const { loadEnabledExtensionContributions, ingestStagedExtensionResources } = await import('../extensions/contributions.js');
+    const { registerEnabledExtensionTools } = await import('../extensions/tools.js');
+    const { loadExtensionPromptSuffixes } = await import('../extensions/prompts.js');
     const staged = await loadEnabledExtensionContributions();
     extensionsActive = staged.extensions;
+    extensionPrompts = staged.promptsStaged;
     const ingested = await ingestStagedExtensionResources();
     extensionSkills = ingested.skillsLoaded;
     extensionChunks = ingested.chunksIngested;
+    extensionTools = await registerEnabledExtensionTools();
+    await loadExtensionPromptSuffixes();
   }
 
   if (packsLoaded > 0 || skillMdLoaded > 0 || user.skillsLoaded > 0 || extensionSkills > 0) {
@@ -426,15 +433,26 @@ export async function initSkills(): Promise<void> {
       `${skillMdLoaded} SKILL.md`,
       `${user.skillsLoaded} user skills`,
       `${user.chunksIngested} knowledge chunks`,
-      `${pluginsLoaded} plugins`,
     ];
     if (extensionsActive > 0) {
       parts.push(`${extensionSkills} extension skills (${extensionsActive} bundles)`);
+      if (extensionTools > 0) parts.push(`${extensionTools} extension tools`);
+      if (extensionPrompts > 0) parts.push(`${extensionPrompts} extension prompt files`);
       if (extensionChunks > 0) parts.push(`${extensionChunks} extension knowledge chunks`);
+    } else if (pluginsLoaded > 0) {
+      parts.push(`${pluginsLoaded} legacy plugin dirs (migrate to carina extensions install)`);
     }
     console.log(`Skills ready: ${parts.join(', ')}`);
   } else if (getActivePackNames().length === 0) {
     console.log('General-purpose mode: no optional skill packs active');
+  }
+
+  if (process.env.CARINA_PROVIDER_PLUGINS === 'true') {
+    const { initProviderPluginsIfEnabled } = await import('../ops/provider-plugins-init.js');
+    const loaded = await initProviderPluginsIfEnabled();
+    if (loaded.length > 0) {
+      console.log(`Provider plugins loaded: ${loaded.join(', ')}`);
+    }
   }
 }
 

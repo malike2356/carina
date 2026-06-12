@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { ScreenShell } from '@/components/ScreenShell';
 import { useAppLock } from '@/hooks/useAppLock';
+import { useCloudFeatureAccess } from '@/hooks/useCloudFeatureAccess';
+import { useNativeCapabilities } from '@/hooks/useNativeCapabilities';
 import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { useAuth } from '@/store/auth-store';
 import { colors, radii, spacing } from '@/theme/tokens';
@@ -20,18 +22,41 @@ export default function MoreScreen() {
     useAppLock();
 
   const cloudUser = instance?.mode === 'cloud' && user;
+  const memoryAccess = useCloudFeatureAccess('memory');
+  const packsAccess = useCloudFeatureAccess('packs');
+  const native = useNativeCapabilities();
 
   return (
     <ScreenShell title="More" subtitle="Settings, memory, packs, and security.">
       <View style={styles.card}>
         <Text style={styles.label}>Workspace</Text>
-        <Pressable style={styles.linkRow} onPress={() => router.push('/memory')}>
-          <Text style={styles.linkText}>Memory browser</Text>
-          <Text style={styles.linkMeta}>View, edit, and delete episodic memories</Text>
+        <Pressable
+          style={[styles.linkRow, !memoryAccess.available && styles.linkRowDisabled]}
+          onPress={() => memoryAccess.available && router.push('/memory')}
+          disabled={!memoryAccess.available}
+        >
+          <Text style={[styles.linkText, !memoryAccess.available && styles.linkTextDisabled]}>
+            Memory browser
+          </Text>
+          <Text style={styles.linkMeta}>
+            {memoryAccess.available
+              ? 'View, edit, and delete episodic memories'
+              : memoryAccess.reason}
+          </Text>
         </Pressable>
-        <Pressable style={styles.linkRow} onPress={() => router.push('/packs')}>
-          <Text style={styles.linkText}>Skill packs</Text>
-          <Text style={styles.linkMeta}>Install optional packs (not property-uk)</Text>
+        <Pressable
+          style={[styles.linkRow, !packsAccess.available && styles.linkRowDisabled]}
+          onPress={() => packsAccess.available && router.push('/packs')}
+          disabled={!packsAccess.available}
+        >
+          <Text style={[styles.linkText, !packsAccess.available && styles.linkTextDisabled]}>
+            Skill packs
+          </Text>
+          <Text style={styles.linkMeta}>
+            {packsAccess.available
+              ? 'Install optional packs (not property-uk)'
+              : packsAccess.reason}
+          </Text>
         </Pressable>
       </View>
 
@@ -54,12 +79,15 @@ export default function MoreScreen() {
             <View style={styles.rowText}>
               <Text style={styles.value}>Remote push (tasks)</Text>
               <Text style={styles.meta}>
-                Carina Cloud sends APNs/FCM when a stream finishes and the app was killed.
+                {native.remotePush.available
+                  ? 'Carina Cloud sends APNs/FCM when a stream finishes and the app was killed.'
+                  : native.remotePush.reason}
               </Text>
             </View>
             <Switch
               value={remoteEnabled}
               onValueChange={(next) => void toggleRemote(next)}
+              disabled={!native.remotePush.available}
               trackColor={{ false: colors.inkLift, true: colors.teal }}
               thumbColor={colors.white}
             />
@@ -79,6 +107,21 @@ export default function MoreScreen() {
             thumbColor={colors.white}
           />
         </View>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>Device features</Text>
+        <Text style={styles.meta}>
+          {native.expoGo
+            ? 'Running in Expo Go. Voice, remote push, and the Android widget need an EAS development or store build.'
+            : 'Native features are enabled for this build profile.'}
+        </Text>
+        {!native.voice.available ? (
+          <Text style={styles.meta}>Voice: {native.voice.reason}</Text>
+        ) : null}
+        {!native.widget.available && native.widget.reason ? (
+          <Text style={styles.meta}>Widget: {native.widget.reason}</Text>
+        ) : null}
       </View>
 
       <View style={styles.card}>
@@ -162,6 +205,12 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: spacing.xs,
+  },
+  linkRowDisabled: {
+    opacity: 0.55,
+  },
+  linkTextDisabled: {
+    color: colors.silverMid,
   },
   linkRow: {
     paddingVertical: spacing.sm,

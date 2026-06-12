@@ -10,6 +10,7 @@ import {
   isRoutableProvider,
   providerModel,
   resolveAliasTarget,
+  providerTransportType,
 } from './provider-registry.js';
 import { describeProviderTags } from './provider-tags.js';
 import {
@@ -22,8 +23,8 @@ import {
 /* ── catalog loading ── */
 
 describe('provider catalog - loading', () => {
-  it('contains at least 38 providers total (24 original + 14 new)', () => {
-    expect(KNOWN_LLM_PROVIDERS.length).toBeGreaterThanOrEqual(38);
+  it('contains at least 39 providers total', () => {
+    expect(KNOWN_LLM_PROVIDERS.length).toBeGreaterThanOrEqual(39);
   });
 
   it('has unique provider names', () => {
@@ -79,6 +80,18 @@ describe('provider catalog - loading', () => {
     expect(def.local).toBe(true);
     expect(def.status).toBe('active');
     expect(def.tags.cost).toBe('local');
+  });
+
+  it('includes Amazon Bedrock experimental route', () => {
+    expect(PROVIDER_MAP.bedrock).toBeDefined();
+    expect(PROVIDER_MAP.bedrock.status).toBe('experimental');
+    expect(providerTransportType(PROVIDER_MAP.bedrock)).toBe('openai-compatible');
+  });
+
+  it('every entry has a derivable transport type', () => {
+    for (const def of PROVIDER_DEFINITIONS) {
+      expect(providerTransportType(def)).toBeTruthy();
+    }
   });
 
   it('includes custom endpoint as active', () => {
@@ -193,6 +206,11 @@ describe('provider catalog - configured state', () => {
   it('llama-cpp configured when CARINA_LOCAL_LLM_ENABLED=true', () => {
     process.env['CARINA_LOCAL_LLM_ENABLED'] = 'true';
     expect(isProviderConfigured(PROVIDER_MAP['llama-cpp'])).toBe(true);
+  });
+
+  it('tencent configured when HUNYUAN_API_KEY is set', () => {
+    process.env['HUNYUAN_API_KEY'] = 'hk-test';
+    expect(isProviderConfigured(PROVIDER_MAP['tencent'])).toBe(true);
   });
 });
 

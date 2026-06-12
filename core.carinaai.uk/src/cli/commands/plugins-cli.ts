@@ -1,41 +1,29 @@
-import chalk from 'chalk';
-import fs from 'fs/promises';
-import path from 'path';
-import { loadPluginsFromDisk, listPlugins } from '../../plugins/registry.js';
-import { CARINA_HOME } from '../../config/paths.js';
+/**
+ * Plugin commands are an alias for the extension bundle system.
+ * Use `carina extensions` for the full command surface.
+ */
+import { runExtensionsCommand } from './extensions-cli.js';
 
-const PLUGINS_DIR = process.env.CARINA_PLUGINS_DIR ?? path.join(CARINA_HOME, 'plugins');
+const ACTION_MAP: Record<string, string> = {
+  list: 'list',
+  install: 'install',
+  enable: 'enable',
+  disable: 'disable',
+  remove: 'remove',
+  rollback: 'rollback',
+  validate: 'validate',
+  status: 'status',
+};
 
 export async function runPluginsCommand(args: string[]): Promise<void> {
   const action = args[0] ?? 'list';
-  await loadPluginsFromDisk();
-
-  if (action === 'list') {
-    const plugins = listPlugins();
-    console.log(chalk.bold(`\nPlugins (${plugins.length})\n`));
-    for (const p of plugins) {
-      const status = p.enabled ? chalk.green('on') : chalk.gray('off');
-      console.log(`  ${status}  ${p.name.padEnd(20)} v${p.version}  ${p.description.slice(0, 40)}`);
-    }
-    console.log(`\nDir: ${PLUGINS_DIR}\n`);
-    return;
+  const mapped = ACTION_MAP[action];
+  if (!mapped) {
+    console.error(
+      'Usage: carina plugins <list|install|enable|disable|remove|rollback|validate|status> [args]',
+    );
+    console.error('Plugins are extension bundles. See: carina extensions help');
+    process.exit(1);
   }
-
-  if (action === 'enable' || action === 'disable') {
-    const name = args[1];
-    if (!name) {
-      console.error(`Usage: carina plugins ${action} <name>`);
-      process.exit(1);
-    }
-    const manifestPath = path.join(PLUGINS_DIR, name, 'plugin.json');
-    const raw = await fs.readFile(manifestPath, 'utf-8');
-    const manifest = JSON.parse(raw) as Record<string, unknown>;
-    manifest.enabled = action === 'enable';
-    await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-    console.log(`Plugin ${name} ${action}d`);
-    return;
-  }
-
-  console.error('Usage: carina plugins <list|enable|disable> [name]');
-  process.exit(1);
+  await runExtensionsCommand([mapped, ...args.slice(1)]);
 }

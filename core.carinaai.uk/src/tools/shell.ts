@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Tool } from '../types/index.js';
 import { runInSandbox } from './sandbox.js';
+import { execInSessionSandbox, sessionSandboxEnabled } from '../infrastructure/sandbox-session.js';
 import { expandPath, isBlockedSystemWrite, isSafePath } from './path-utils.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
 import { spawnBackgroundProcess, startProcessCleanup, type CompletionNotify } from './process-registry.js';
@@ -146,18 +147,31 @@ export const shellExecTool: Tool = {
       params.timeout !== undefined ? Number(params.timeout) * 1000 : undefined,
     );
 
-    const result = await runInSandbox(command, SANDBOX_IMAGE, {
-      timeout: timeoutMs,
-      memoryMb: 128,
-      networkDisabled: true,
-      workdir,
-    });
+    const sessionId = typeof params._sessionId === 'string' ? params._sessionId : 'default-session';
+    const useSessionSandbox = sessionSandboxEnabled() || params.sandbox_session === true;
+
+    const result = useSessionSandbox
+      ? await execInSessionSandbox(sessionId, command, undefined, timeoutMs)
+      : await runInSandbox(command, SANDBOX_IMAGE, {
+          timeout: timeoutMs,
+          memoryMb: 128,
+          networkDisabled: true,
+          workdir,
+        });
 
     await logShell(command, result.exitCode);
-    return {
+    const payload: Record<string, unknown> = {
       stdout: truncateShellOutput(result.stdout),
       stderr: truncateShellOutput(result.stderr),
       exitCode: result.exitCode,
     };
+    if ('sandbox' in result && result.sandbox) {
+      payload.sandbox = {
+        label: result.sandbox.label,
+        status: result.sandbox.status,
+        profile: result.sandbox.profile,
+      };
+    }
+    return payload;
   },
 };

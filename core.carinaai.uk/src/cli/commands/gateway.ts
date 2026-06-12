@@ -11,7 +11,7 @@ export async function runGatewayCommand(args: string[]): Promise<void> {
   }
 
   if (action === 'channels') {
-    await runChannelsCommand(args[1] ?? 'list', args[2]);
+    await runChannelsCommand(args[1] ?? 'list', ...args.slice(2));
     return;
   }
 

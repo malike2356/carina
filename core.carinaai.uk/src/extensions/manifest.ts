@@ -29,6 +29,13 @@ export interface ExtensionEvalConfig {
   path?: string;
 }
 
+export interface ExtensionSafety {
+  network?: boolean;
+  shell?: boolean;
+  filesystem?: boolean;
+  requiresConfirmation?: boolean;
+}
+
 export interface ExtensionManifest {
   manifestVersion: number;
   id: string;
@@ -41,6 +48,9 @@ export interface ExtensionManifest {
   dependencies?: ExtensionDependencies;
   eval?: ExtensionEvalConfig;
   risk?: ExtensionRisk;
+  safety?: ExtensionSafety;
+  /** Minimum Carina agent version required (semver). */
+  minCarinaVersion?: string;
 }
 
 export function validateExtensionManifest(raw: unknown, context = 'extension.json'): ExtensionManifest {
@@ -134,6 +144,27 @@ export function validateExtensionManifest(raw: unknown, context = 'extension.jso
     throw new Error(`Invalid ${context}: risk must be low, medium, or high`);
   }
 
+  let safety: ExtensionSafety | undefined;
+  if (m.safety !== undefined) {
+    if (!m.safety || typeof m.safety !== 'object') {
+      throw new Error(`Invalid ${context}: safety must be an object`);
+    }
+    const s = m.safety as Record<string, unknown>;
+    safety = {
+      network: s.network === true,
+      shell: s.shell === true,
+      filesystem: s.filesystem === true,
+      requiresConfirmation: s.requiresConfirmation === true,
+    };
+  }
+
+  const minCarinaVersion = m.minCarinaVersion
+    ? String(m.minCarinaVersion).trim()
+    : undefined;
+  if (minCarinaVersion && !/^\d+\.\d+\.\d+/.test(minCarinaVersion)) {
+    throw new Error(`Invalid ${context}: minCarinaVersion must be semver (e.g. 0.1.0)`);
+  }
+
   return {
     manifestVersion,
     id,
@@ -146,5 +177,7 @@ export function validateExtensionManifest(raw: unknown, context = 'extension.jso
     dependencies,
     eval: evalConfig,
     risk,
+    safety,
+    minCarinaVersion,
   };
 }

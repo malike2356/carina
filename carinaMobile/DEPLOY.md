@@ -7,7 +7,7 @@ Production builds use [EAS Build](https://docs.expo.dev/build/introduction/). Pu
 ### 1. EAS project
 
 ```bash
-cd mobile
+cd carinaMobile
 pnpm add -D eas-cli
 npx eas login
 npx eas init

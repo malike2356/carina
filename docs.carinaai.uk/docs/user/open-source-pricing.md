@@ -1,5 +1,9 @@
 # Source release + Scout pricing model
 
+:::info Canonical inventory
+Product boundaries and attestation honesty: [Capability inventory](/docs/capabilities).
+:::
+
 ## What is MIT licensed
 
 Carina core (`core.carinaai.uk`) is MIT licensed. Public repository release is a distribution step; review private operational files and secrets before switching repository visibility.

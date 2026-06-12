@@ -51,6 +51,12 @@ const config: Config = {
       },
       items: [
         {
+          type: 'doc',
+          docId: 'user/capability-inventory',
+          position: 'left',
+          label: 'Capabilities',
+        },
+        {
           type: 'docSidebar',
           sidebarId: 'userSidebar',
           position: 'left',
@@ -85,6 +91,7 @@ const config: Config = {
         {
           title: 'User',
           items: [
+            {label: 'Capability inventory', to: docPath('capabilities')},
             {label: 'Getting started', to: docPath('user/getting-started')},
             {label: 'Skill packs', to: docPath('user/skill-packs/overview')},
             {label: 'Carina Cloud', to: docPath('user/carina-cloud')},

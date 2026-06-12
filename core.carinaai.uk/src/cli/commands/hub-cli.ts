@@ -93,6 +93,29 @@ export async function runHubCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina hub <start|browse|status|packs|skills|install> [args]');
+  if (action === 'publish') {
+    const packDir = args[1];
+    if (!packDir) {
+      console.error('Usage: carina hub publish <pack-dir> [--featured]');
+      process.exit(1);
+    }
+    const { initHubDb } = await import('../../skills/hub/migrations.js');
+    const { publishPackDirectory } = await import('../../skills/hub/publish-pack.js');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
+    const storageDir = path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../../../data/hub-packs',
+    );
+    await initHubDb();
+    const result = await publishPackDirectory(packDir, storageDir, {
+      featured: args.includes('--featured'),
+    });
+    console.log(chalk.green(`Published ${result.name}@${result.version} (${result.skillCount} skills)`));
+    console.log(chalk.gray(`  archive: ${result.archivePath}`));
+    return;
+  }
+
+  console.error('Usage: carina hub <start|browse|status|packs|skills|install|publish> [args]');
   process.exit(1);
 }

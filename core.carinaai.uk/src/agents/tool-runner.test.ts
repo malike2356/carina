@@ -5,6 +5,7 @@ import type { ToolCall } from '../types/index.js';
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
+  vi.stubEnv('CARINA_APPROVAL_POLICY', 'off');
 });
 
 function makeCall(toolName: string, params: Record<string, unknown> = {}): ToolCall {

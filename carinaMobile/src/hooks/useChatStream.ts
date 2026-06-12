@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { streamChat } from '@/api/chat-stream';
+import { generateSessionId } from '@/lib/id';
 import { useAuth } from '@/store/auth-store';
-import { setSessionId } from '@/store/instance-store';
+import { ensureSessionId, setSessionId } from '@/store/instance-store';
 
 interface UseChatStreamResult {
   streaming: boolean;
@@ -11,8 +12,9 @@ interface UseChatStreamResult {
   cancel: () => void;
 }
 
+/** Lightweight stream hook for tests and future screens. Prefer useChatSession for chat UI. */
 export function useChatStream(): UseChatStreamResult {
-  const { client, instance } = useAuth();
+  const { client, instance, gatewayAuth } = useAuth();
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [partial, setPartial] = useState('');
@@ -38,12 +40,17 @@ export function useChatStream(): UseChatStreamResult {
       setError(null);
       setPartial('');
 
+      const sessionConfig = instance.sessionId
+        ? instance
+        : await ensureSessionId();
+
       try {
         const full = await streamChat({
           baseUrl: instance.baseUrl,
           message,
-          sessionId: instance.sessionId || undefined,
-          credentials: instance.mode === 'cloud' ? 'include' : 'omit',
+          sessionId: sessionConfig.sessionId || generateSessionId(),
+          credentials: gatewayAuth?.credentials ?? 'omit',
+          apiKey: gatewayAuth?.apiKey ?? undefined,
           signal: controller.signal,
           onChunk: (chunk) => {
             if (chunk.content) {
@@ -52,8 +59,8 @@ export function useChatStream(): UseChatStreamResult {
           },
         });
 
-        if (!instance.sessionId) {
-          await setSessionId(`mobile-${Date.now()}`);
+        if (!instance.sessionId && sessionConfig.sessionId) {
+          await setSessionId(sessionConfig.sessionId);
         }
 
         return full;
@@ -66,7 +73,7 @@ export function useChatStream(): UseChatStreamResult {
         abortRef.current = null;
       }
     },
-    [cancel, client, instance],
+    [cancel, client, gatewayAuth, instance],
   );
 
   return { streaming, error, partial, send, cancel };

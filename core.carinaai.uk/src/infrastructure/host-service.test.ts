@@ -10,10 +10,12 @@ describe('host-service', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'carina-host-'));
     vi.resetModules();
     process.env.CARINA_HOME = tmp;
+    process.env.CARINA_SKIP_POSTGRES = 'true';
   });
 
   afterEach(() => {
     delete process.env.CARINA_HOME;
+    delete process.env.CARINA_SKIP_POSTGRES;
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 

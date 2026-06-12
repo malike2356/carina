@@ -40,6 +40,7 @@ import { lspTool } from './lsp.js';
 import { agentSyncTool } from './agent-sync-tool.js';
 import { contactsTool } from './contacts-tool.js';
 import { skillCuratorTool } from './skill-curator-tool.js';
+import { registerPlatformTools } from '../integration/platform/tool.js';
 import { imageGenerationTool } from './image-generation.js';
 import { checkpointManagerTool } from './checkpoint-manager.js';
 import { debugHelpersTool } from './debug-helpers.js';
@@ -108,6 +109,7 @@ registry.register(lspTool);
 registry.register(agentSyncTool);
 registry.register(contactsTool);
 registry.register(skillCuratorTool);
+registerPlatformTools((tool) => registry.register(tool));
 
 for (const tool of createKanbanGranularTools('default-session')) {
   registry.register(tool);

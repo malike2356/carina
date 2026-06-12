@@ -1,5 +1,9 @@
 # Defence-in-depth
 
+:::tip Canonical inventory
+Security surfaces and Scout requirements: [Capability inventory](/docs/capabilities).
+:::
+
 Carina layers multiple containment controls when Labyrinth Scout is enabled.
 
 ## Layers

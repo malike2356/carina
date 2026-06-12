@@ -5,23 +5,87 @@ function hasBypassEval(args: string[]): boolean {
   return args.includes('--bypass-eval') || process.env.CARINA_EVAL_GATE === 'bypass';
 }
 
+function listInstalledPackNames(): string[] {
+  if (!fs.existsSync(CARINA_PACKS_DIR)) return [];
+  return fs.readdirSync(CARINA_PACKS_DIR, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+}
+
 export async function runPacksCommand(args: string[]): Promise<void> {
   const action = args[0] ?? 'list';
   const name = args[1];
 
   if (action === 'list') {
-    if (!fs.existsSync(CARINA_PACKS_DIR)) {
-      console.log('No skill packs installed.');
-      return;
-    }
-    const entries = fs.readdirSync(CARINA_PACKS_DIR, { withFileTypes: true });
-    const packs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
-    if (packs.length === 0) {
+    const installed = listInstalledPackNames();
+    const { getOperatorActivePacks } = await import('../../skills/operator-pack-store.js');
+    const active = new Set(getOperatorActivePacks());
+    if (installed.length === 0) {
       console.log('No skill packs installed.');
       return;
     }
     console.log('Installed packs:');
-    for (const p of packs) console.log(`  - ${p}`);
+    for (const p of installed) {
+      const mark = active.has(p) ? ' [active]' : '';
+      console.log(`  - ${p}${mark}`);
+    }
+    return;
+  }
+
+  if (action === 'status') {
+    const { initOperatorPackStore, getOperatorActivePacks, listOperatorInstalledPacks } =
+      await import('../../skills/operator-pack-store.js');
+    await initOperatorPackStore();
+    const installed = listInstalledPackNames();
+    const active = getOperatorActivePacks();
+    const records = await listOperatorInstalledPacks();
+    console.log(`Active packs (${active.length}): ${active.join(', ') || '(none)'}`);
+    console.log(`Installed on disk (${installed.length}): ${installed.join(', ') || '(none)'}`);
+    if (records.length > 0) {
+      console.log('Registry:');
+      for (const row of records) {
+        console.log(`  ${row.pack_name}@${row.version}  ${row.status}`);
+      }
+    }
+    return;
+  }
+
+  if (action === 'enable') {
+    if (!name) {
+      console.error('Usage: carina packs enable <pack-name>');
+      process.exit(1);
+    }
+    const { initOperatorPackStore, getOperatorActivePacks, syncOperatorActivePacks } =
+      await import('../../skills/operator-pack-store.js');
+    await initOperatorPackStore();
+    const current = getOperatorActivePacks();
+    if (current.includes(name)) {
+      console.log(`Pack already active: ${name}`);
+      return;
+    }
+    const result = await syncOperatorActivePacks([...current, name], { source: 'packs-cli' });
+    console.log(`Enabled pack: ${name} (active: ${result.active.join(', ')})`);
+    return;
+  }
+
+  if (action === 'disable') {
+    if (!name) {
+      console.error('Usage: carina packs disable <pack-name>');
+      process.exit(1);
+    }
+    const { initOperatorPackStore, getOperatorActivePacks, syncOperatorActivePacks } =
+      await import('../../skills/operator-pack-store.js');
+    await initOperatorPackStore();
+    const current = getOperatorActivePacks();
+    if (!current.includes(name)) {
+      console.log(`Pack not active: ${name}`);
+      return;
+    }
+    const result = await syncOperatorActivePacks(
+      current.filter((p) => p !== name),
+      { source: 'packs-cli' },
+    );
+    console.log(`Disabled pack: ${name} (active: ${result.active.join(', ') || '(none)'})`);
     return;
   }
 
@@ -49,6 +113,16 @@ export async function runPacksCommand(args: string[]): Promise<void> {
       console.error('Usage: carina packs remove <pack-name>');
       process.exit(1);
     }
+    const { initOperatorPackStore, getOperatorActivePacks, syncOperatorActivePacks } =
+      await import('../../skills/operator-pack-store.js');
+    await initOperatorPackStore();
+    const current = getOperatorActivePacks();
+    if (current.includes(name)) {
+      await syncOperatorActivePacks(
+        current.filter((p) => p !== name),
+        { source: 'packs-cli' },
+      );
+    }
     const target = `${CARINA_PACKS_DIR}/${name}`;
     if (!fs.existsSync(target)) {
       console.error(`Pack not found: ${name}`);
@@ -59,6 +133,6 @@ export async function runPacksCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina packs <list|install|remove> [name]');
+  console.error('Usage: carina packs <list|status|enable|disable|install|remove> [name]');
   process.exit(1);
 }

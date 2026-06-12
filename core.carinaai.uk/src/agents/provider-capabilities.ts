@@ -8,6 +8,7 @@ export interface ProviderCapabilities {
   vision: boolean;
   streaming: boolean;
   tools: boolean;
+  reasoning?: boolean;
 }
 
 export const PROVIDER_CAPABILITIES = buildProviderCapabilitiesMap();

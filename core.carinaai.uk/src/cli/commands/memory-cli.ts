@@ -10,6 +10,18 @@ import {
 import { listRecentMemories, searchMemory, clearSession } from '../../memory/store.js';
 import { getAllPersistentContext, listPersistentFacts } from '../../memory/persistent-memory.js';
 import {
+  findNearDuplicateFacts,
+  getMemoryBudgetStatus,
+  trimPersistentFactsToBudget,
+} from '../../memory/persistent-memory.js';
+import { memoryInjectionMode } from '../../memory/memory-injection.js';
+import { browseRecentSessions, searchSessions } from '../../memory/session-index.js';
+import {
+  getSessionChain,
+  getSessionChildren,
+  recordSessionContinuation,
+} from '../../memory/session-lineage.js';
+import {
   approvePromotion,
   isRemAvailable,
   listPromotionQueue,
@@ -76,6 +88,7 @@ export async function runMemoryCommand(args: string[]): Promise<void> {
     const backend = getMemoryBackend();
     console.log(`backend: ${backend.name} (${backend.displayName})`);
     console.log(`configured: ${backend.isConfigured() ? 'yes' : 'no'}`);
+    console.log(`injection: ${memoryInjectionMode()}`);
     return;
   }
 
@@ -122,6 +135,95 @@ export async function runMemoryCommand(args: string[]): Promise<void> {
     for (const m of hits) {
       console.log(`  ${m.id.slice(0, 8)}  ${m.content.slice(0, 80)}`);
     }
+    return;
+  }
+
+  if (action === 'sessions') {
+    const sub = args[1] ?? 'browse';
+    if (sub === 'browse') {
+      const hits = await browseRecentSessions(Number(args[2] ?? 10));
+      for (const h of hits) {
+        console.log(`  ${h.sessionId.slice(0, 12)}  ${h.title.slice(0, 50)}  ${h.timestamp.toISOString()}`);
+      }
+      return;
+    }
+    if (sub === 'search') {
+      const query = args.slice(2).join(' ');
+      if (!query) {
+        console.error('Usage: carina memory sessions search <query>');
+        process.exit(1);
+      }
+      const hits = await searchSessions(query, { limit: 15 });
+      for (const h of hits) {
+        console.log(`  ${h.sessionId.slice(0, 12)}  ${h.title.slice(0, 40)}`);
+        console.log(chalk.gray(`    ${h.snippet}`));
+      }
+      return;
+    }
+    if (sub === 'lineage') {
+      const id = args[2];
+      if (!id) {
+        console.error('Usage: carina memory sessions lineage <session-id>');
+        process.exit(1);
+      }
+      const chain = getSessionChain(id);
+      const children = getSessionChildren(id);
+      console.log(chalk.bold(`\nSession lineage for ${id.slice(0, 12)}\n`));
+      console.log(chalk.gray('Ancestry (oldest first):'));
+      for (let i = chain.length - 1; i >= 0; i--) {
+        const entry = chain[i]!;
+        const marker = entry.sessionId === id ? chalk.green('*') : ' ';
+        const ts = entry.timestamp ? `  ${new Date(entry.timestamp).toISOString()}` : '';
+        console.log(`  ${marker} ${entry.sessionId.slice(0, 12)}${ts}`);
+      }
+      if (children.length > 0) {
+        console.log(chalk.gray('\nContinued by:'));
+        for (const child of children) {
+          console.log(`    ${child.slice(0, 12)}`);
+        }
+      }
+      console.log('');
+      return;
+    }
+    if (sub === 'link') {
+      const childId = args[2];
+      const parentId = args[3];
+      if (!childId || !parentId) {
+        console.error('Usage: carina memory sessions link <child-session-id> <parent-session-id>');
+        process.exit(1);
+      }
+      recordSessionContinuation(childId, parentId);
+      console.log(`Recorded: ${childId.slice(0, 12)} continues from ${parentId.slice(0, 12)}`);
+      return;
+    }
+    console.error('Usage: carina memory sessions <browse|search|lineage|link> [args]');
+    process.exit(1);
+    return;
+  }
+
+  if (action === 'budget') {
+    for (const target of ['user', 'memory'] as const) {
+      const status = await getMemoryBudgetStatus(target);
+      console.log(
+        `${target}: ${status.used}/${status.max} chars (${status.percent}%) headroom=${status.headroom}`,
+      );
+    }
+    return;
+  }
+
+  if (action === 'consolidate') {
+    const target = (args[1] === 'memory' ? 'memory' : 'user') as 'user' | 'memory';
+    const dups = await findNearDuplicateFacts(target);
+    if (dups.length > 0) {
+      console.log(chalk.yellow(`Near-duplicate groups (${dups.length}):`));
+      for (const group of dups.slice(0, 10)) {
+        console.log(`  - ${group[0]} ... / ${group[1]} ...`);
+      }
+    }
+    const trimmed = await trimPersistentFactsToBudget(target, 85);
+    console.log(chalk.green(`Trimmed ${trimmed.removed} oldest fact(s) on target "${target}"`));
+    const after = await getMemoryBudgetStatus(target);
+    console.log(`Now: ${after.used}/${after.max} chars (${after.percent}%)`);
     return;
   }
 
@@ -218,6 +320,6 @@ export async function runMemoryCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina memory <list|search|facts|clear|dreams|promote|reindex|backends|use|status|test> [args]');
+  console.error('Usage: carina memory <list|search|sessions|budget|consolidate|facts|clear|dreams|promote|reindex|backends|use|status|test> [args]');
   process.exit(1);
 }

@@ -27,6 +27,12 @@ describe('extension runtime isolation', () => {
     expect(skillsIndex).toMatch(/await import\('\.\.\/extensions\/contributions\.js'\)/);
   });
 
+  it('system prompt reads cached extension suffix without importing manager', async () => {
+    const source = await fs.readFile(path.join(srcRoot, 'agents', 'system-prompt.ts'), 'utf8');
+    expect(source).toMatch(/getExtensionPromptSuffix/);
+    expect(source).not.toMatch(/extensions\/manager/);
+  });
+
   it('contributions module does not import orchestrator', async () => {
     const source = await fs.readFile(path.join(__dirname, 'contributions.ts'), 'utf8');
     expect(source).not.toMatch(/orchestrator/);

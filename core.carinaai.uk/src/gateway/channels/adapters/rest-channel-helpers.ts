@@ -7,6 +7,13 @@ export interface RestInbound {
   conversationId: string;
   messageId?: string;
   isDirect?: boolean;
+  threadId?: string;
+  guildId?: string;
+  teamId?: string;
+  chatType?: 'private' | 'group';
+  chatTitle?: string;
+  senderName?: string;
+  replyTo?: string;
 }
 
 export function parseGenericWebhook(
@@ -28,6 +35,13 @@ export function parseGenericWebhook(
     isDirect: parsed.isDirect ?? true,
     isMention: true,
     isCommand: parsed.text.trim().startsWith('/'),
+    threadId: parsed.threadId,
+    guildId: parsed.guildId,
+    teamId: parsed.teamId,
+    chatType: parsed.chatType ?? (parsed.isDirect ? 'private' : 'group'),
+    chatTitle: parsed.chatTitle,
+    senderName: parsed.senderName,
+    replyTo: parsed.replyTo,
     raw,
   };
 }

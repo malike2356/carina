@@ -15,6 +15,7 @@ import {
   clearStagedExtensionContributions,
   stageExtensionContributions,
 } from './contributions.js';
+import { validateExtensionDependencies } from './dependencies.js';
 import { listExtensionHealth } from './health.js';
 
 export type EnableExtensionOptions = {
@@ -50,6 +51,11 @@ export async function enableExtension(
     throw new Error(validation.errors.join('; '));
   }
 
+  const depErrors = await validateExtensionDependencies(validation.manifest);
+  if (depErrors.length > 0) {
+    throw new Error(depErrors.join('; '));
+  }
+
   if (!options.bypassEval) {
     const gate = await runExtensionEvalGate(validation.manifest);
     if (gate.blocked) {
@@ -71,12 +77,24 @@ export async function enableExtension(
     health_message: 'Enabled',
   });
 
+  let runtimeNote = '';
+  const { extensionsRuntimeEnabled, reloadExtensionRuntimeContributions } = await import('./contributions.js');
+  if (extensionsRuntimeEnabled()) {
+    const reloaded = await reloadExtensionRuntimeContributions(id);
+    runtimeNote = ` Runtime loaded ${reloaded.toolsRegistered} tool(s), ${reloaded.skillsLoaded} skill(s).`;
+  }
+
+  const baseMessage = options.bypassEval
+    ? 'Enabled (eval bypassed).'
+    : 'Enabled.';
+  const flagHint = extensionsRuntimeEnabled()
+    ? ''
+    : ' Set CARINA_EXTENSIONS_ENABLED=true and restart to load contributions.';
+
   return {
     id,
     status: 'enabled',
-    message: options.bypassEval
-      ? 'Enabled (eval bypassed). Set CARINA_EXTENSIONS_ENABLED=true and restart to load contributions.'
-      : 'Enabled. Set CARINA_EXTENSIONS_ENABLED=true and restart to load contributions.',
+    message: `${baseMessage}${runtimeNote}${flagHint}`,
   };
 }
 
@@ -87,7 +105,15 @@ export async function disableExtension(id: string): Promise<void> {
   const bundleDir = extensionDir(id);
   const manifest = await validateExtensionBundle(bundleDir, { allowHighRisk: true });
 
-  await clearStagedExtensionContributions(id);
+  const { extensionsRuntimeEnabled, unloadExtensionRuntimeContributions } = await import('./contributions.js');
+  if (extensionsRuntimeEnabled()) {
+    await unloadExtensionRuntimeContributions(id);
+  } else {
+    await clearStagedExtensionContributions(id);
+    const { unregisterExtensionTools } = await import('./tools.js');
+    unregisterExtensionTools(id);
+  }
+
   await upsertExtensionRecord(manifest.manifest, {
     status: 'disabled',
     disabled_at: new Date().toISOString(),

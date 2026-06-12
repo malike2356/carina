@@ -4,20 +4,36 @@ import {
   isRecognitionAvailable,
 } from 'expo-speech-recognition';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { evaluateNativeCapabilities } from '@/lib/native-capabilities';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
 
 export function useVoiceInput(onTranscript: (text: string) => void) {
   const [available, setAvailable] = useState(false);
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bufferRef = useRef('');
   const subsRef = useRef<Array<{ remove: () => void }>>([]);
 
   useEffect(() => {
-    try {
-      setAvailable(isRecognitionAvailable());
-    } catch {
-      setAvailable(false);
-    }
+    const native = evaluateNativeCapabilities({
+      appOwnership: Constants.appOwnership ?? null,
+      isDevice: Device.isDevice,
+      easProjectId:
+        Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId,
+      platform: Platform.OS,
+      speechRecognitionAvailable: (() => {
+        try {
+          return isRecognitionAvailable();
+        } catch {
+          return false;
+        }
+      })(),
+    });
+    setAvailable(native.voice.available);
+    setBlockedReason(native.voice.reason);
   }, []);
 
   const clearListeners = useCallback(() => {
@@ -75,13 +91,13 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
       return;
     }
     if (!available) {
-      setError('Voice input requires a development build');
+      setError(blockedReason ?? 'Voice input requires a development build');
       return;
     }
     await start();
-  }, [available, listening, start, stop]);
+  }, [available, blockedReason, listening, start, stop]);
 
   useEffect(() => () => clearListeners(), [clearListeners]);
 
-  return { available, listening, error, toggle, stop };
+  return { available, blockedReason, listening, error, toggle, stop };
 }

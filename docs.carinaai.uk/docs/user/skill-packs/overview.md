@@ -1,5 +1,9 @@
 # Skill Packs
 
+:::info Canonical inventory
+Pack count and optional status: [Capability inventory](/docs/capabilities). Per-pack tables below are domain detail only.
+:::
+
 Skill packs bundle domain knowledge (RAG corpus), pre-built skills (structured playbooks), optional tools, and a system prompt suffix.
 
 ## What a pack contains

@@ -54,7 +54,7 @@ Inference cost is yours. Carina Cloud stores encrypted provider keys per tenant;
 
 ### Supported providers
 
-OpenAI, Anthropic, DeepSeek, Gemini, Groq, OpenRouter, NVIDIA, and others in the [provider registry](/configuration). Add keys in **Settings** at app.carinaai.uk.
+OpenAI, Anthropic, DeepSeek, Gemini, Groq, OpenRouter, NVIDIA, and the rest of the configured catalog listed on [Capabilities](/capabilities). Add keys in **Settings** at app.carinaai.uk.
 
 ### How it works
 

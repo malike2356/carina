@@ -1,5 +1,9 @@
 # Carina Cloud
 
+:::info Canonical inventory
+Hosted vs self-hosted surfaces and billing boundaries: [Capability inventory](/docs/capabilities).
+:::
+
 Carina Cloud is the hosted SaaS at **app.carinaai.uk**. You get a private Carina workspace in the browser: chat, memory, skills, and BYOK inference. Pro adds **Labyrinth Scout** security monitoring for your cloud session and any self-hosted Carina you pair with the same account.
 
 This page is the full reference for tenants. VERLOX operators should also read `ARCHITECTURE.md` in the private monorepo for internal wiring.

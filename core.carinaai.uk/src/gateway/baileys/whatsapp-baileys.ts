@@ -51,17 +51,23 @@ export class BaileysWhatsAppAdapter implements IChannelAdapter {
     const text = String(p.text ?? p.body ?? '').trim();
     const from = String(p.from ?? p.remoteJid ?? '');
     if (!text || !from) return null;
-    const isGroup = from.endsWith('@g.us');
+    const isGroup = Boolean(p.isGroup ?? from.endsWith('@g.us'));
+    const participant = String(p.participant ?? p.sender ?? from);
+    const externalUserId = isGroup ? participant : from;
     return {
       id: String(p.id ?? Date.now()),
       channel: 'whatsapp',
-      externalUserId: from,
+      externalUserId,
       conversationId: from,
       text,
       timestamp: new Date(),
       isDirect: !isGroup,
       isMention: Boolean(p.isMention ?? !isGroup),
       isCommand: text.startsWith('/'),
+      chatType: isGroup ? 'group' : 'private',
+      chatTitle: isGroup ? from : undefined,
+      senderName: String(p.senderName ?? ''),
+      threadId: String(p.quotedId ?? p.threadId ?? (isGroup ? 'root' : 'dm')),
       raw,
     };
   }
@@ -85,6 +91,10 @@ export function isBaileysConfigured(): boolean {
 
 function groupsEnabled(): boolean {
   return process.env.CARINA_WHATSAPP_GROUPS === 'true';
+}
+
+function selfBridgeEnabled(): boolean {
+  return process.env.CARINA_WHATSAPP_SELF_BRIDGE === 'true';
 }
 
 function extractText(content: Record<string, unknown> | undefined): string {
@@ -112,6 +122,10 @@ async function resolveSenderName(jid: string): Promise<string> {
   return matches[0]?.name ?? phone;
 }
 
+function normalizeWaJid(jid: string): string {
+  return (jid.split(':')[0] ?? jid).trim();
+}
+
 async function handleInboundMessage(
   adapter: BaileysWhatsAppAdapter,
   msg: Record<string, unknown>,
@@ -119,9 +133,13 @@ async function handleInboundMessage(
   myJid: string,
 ): Promise<void> {
   const key = msg.key as Record<string, unknown> | undefined;
-  if (key?.fromMe) return;
-
   const from = String(key?.remoteJid ?? '');
+  const fromMe = Boolean(key?.fromMe);
+  if (fromMe) {
+    if (!selfBridgeEnabled()) return;
+    if (normalizeWaJid(from) !== normalizeWaJid(myJid)) return;
+  }
+
   const content = msg.message as Record<string, unknown> | undefined;
   const isGroup = from.endsWith('@g.us');
 
@@ -168,10 +186,12 @@ async function handleInboundMessage(
     text: prompt,
     from,
     remoteJid: from,
+    participant: String((key?.participant as string | undefined) ?? from),
     id: key?.id,
     senderName,
-    __mediaPaths: mediaPaths,
     isGroup,
+    quotedId: ((content?.extendedTextMessage as Record<string, unknown> | undefined)?.contextInfo as Record<string, unknown> | undefined)?.stanzaId,
+    isMention: isGroup ? isMentioned(content, myJid) : true,
   })) {
     chunks.push(chunk);
   }

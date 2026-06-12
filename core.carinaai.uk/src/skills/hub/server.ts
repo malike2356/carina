@@ -144,16 +144,30 @@ export function createSkillsHubApp(): Express {
     }
   });
 
-  app.post('/packs', async (req, res) => {
-    const apiKey = req.headers['x-api-key'] ?? req.headers.authorization;
-    const token = String(apiKey ?? '').replace(/^Bearer\s+/i, '');
-    if (!config.hub.publishApiKey || token !== config.hub.publishApiKey) {
-      res.status(401).json({ error: 'Invalid publish API key' });
-      return;
+  app.post('/packs', async (req, res, next) => {
+    try {
+      const apiKey = req.headers['x-api-key'] ?? req.headers.authorization;
+      const token = String(apiKey ?? '').replace(/^Bearer\s+/i, '');
+      if (!config.hub.publishApiKey || token !== config.hub.publishApiKey) {
+        res.status(401).json({ error: 'Invalid publish API key' });
+        return;
+      }
+
+      const body = req.body as { packDir?: string; featured?: boolean };
+      const packDir = body?.packDir?.trim();
+      if (!packDir) {
+        res.status(400).json({ error: 'packDir is required in JSON body' });
+        return;
+      }
+
+      const { publishPackDirectory } = await import('./publish-pack.js');
+      const result = await publishPackDirectory(packDir, PACKS_STORAGE, {
+        featured: body.featured === true,
+      });
+      res.status(201).json(result);
+    } catch (err) {
+      next(err);
     }
-    res.status(501).json({
-      error: 'Use carina hub publish <pack-dir> to submit community packs',
-    });
   });
 
   app.use((err: unknown, _req: Request, res: Response, _next: () => void) => {

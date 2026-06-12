@@ -20,7 +20,12 @@ import {
   resolveAgentRoute,
   type AgentRuntimeContext,
 } from '../workspaces/index.js';
-import type { AgentDefinition, RoutingContext } from '../workspaces/types.js';
+import { guardInboundMessage } from './channels/inbound-guards.js';
+import {
+  buildRoutingContext,
+  buildSessionExternalKey,
+} from './channels/channel-routing.js';
+import type { AgentDefinition } from '../workspaces/types.js';
 import type { ProviderOverride } from './model-command.js';
 
 const memoryFallback = new Map<string, string>();
@@ -247,20 +252,16 @@ export class GatewayRouter {
     const inbound = await channelRegistry.getForInbound(channel, raw);
     if (!inbound) return;
 
-    const routingCtx: RoutingContext = {
-      channel: inbound.channel,
-      accountId: inbound.accountId,
-      peerKind: inbound.isDirect ? 'direct' : 'group',
-      peerId: inbound.conversationId,
-      guildId: inbound.guildId,
-      teamId: inbound.teamId,
-    };
+    const routingCtx = buildRoutingContext(inbound);
     const route = resolveAgentRoute(routingCtx);
     const agentId = route.agent.id;
 
-    const externalKey = inbound.conversationId === inbound.externalUserId
-      ? inbound.externalUserId
-      : `${inbound.conversationId}:${inbound.externalUserId}`;
+    const guard = guardInboundMessage(inbound, agentId);
+    if (!guard.allow) {
+      return;
+    }
+
+    const externalKey = buildSessionExternalKey(inbound);
     const sessionId = await this.getSession(agentId, inbound.channel, externalKey);
     await this.bindAgentToSession(sessionId, route.agent);
 

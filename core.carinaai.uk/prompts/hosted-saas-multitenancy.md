@@ -1,6 +1,6 @@
 # Hosted multi-tenant SaaS - build plan (app.carinaai.uk)
 
-**Status: NOT STARTED. Track 1 (locking down core.carinaai.uk) is done - see below.**
+**Status: WIRED (2026-06-12). Track 1 (operator gate) and Track 2 (hosted auth, quota, billing routes) are live behind `HOSTED_MODE=true`. See `src/api/hosted.ts`, `hosted-auth.ts`, `hosted-billing.ts`, and `src/gateway/hosted-chat.ts`.**
 
 ## Why this document exists
 
@@ -18,9 +18,7 @@ or subscription that stops them burning the operator's API budget.
 
 **The good news:** ~80% of that already exists and is unused. `src/api/hosted-auth.ts` and
 `src/api/hosted.ts` (310 lines) already implement register/login/JWT/API-keys/tiers/quota/Stripe.
-It is gated behind `HOSTED_MODE=true` and is currently mounted but never wired to the actual
-chat routes (`checkHostedQuota` is exported and never called; `authMiddleware` never runs in
-front of `/api/chat`). Do not rebuild this layer. Wire it up.
+It is gated behind `HOSTED_MODE=true` and is mounted on hosted chat routes (`checkHostedQuota` runs in `src/gateway/hosted-chat.ts` before agent turns).
 
 ## Key architectural decision: one process, two domains, Host-aware gate
 

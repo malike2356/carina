@@ -20,6 +20,9 @@ export {
 export { scanUserInput, scanToolOutput, scanAgentOutput } from './prompt-guard-middleware.js';
 export { getDeceptionAugmentation } from './deception-client.js';
 export { enforceToolPolicy, _resetToolPolicyEnforcer } from './tool-policy-middleware.js';
+export { evaluateApprovalPolicy, rememberApprovalAfterConfirm, approvalPolicyEnabled } from './approval-policy.js';
+export { evaluateNodeShellCommand, nodeShellPolicyEnabled } from './node-command-policy.js';
+export { toolRiskTier, type ToolRiskTier } from './tool-risk.js';
 export {
   ToolBlockedError,
   DangerousCommandError,

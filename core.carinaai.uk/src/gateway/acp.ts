@@ -1,16 +1,60 @@
 import express, { type Express, type Request, type Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { getRouter } from './router.js';
 import { registry } from '../tools/registry.js';
+import {
+  acpBridgeEnabled,
+  acpProvenanceMode,
+  createAcpSession,
+  deleteAcpSession,
+  getAcpSession,
+  listAcpSessions,
+  setAcpSessionLabel,
+  touchAcpSession,
+  type AcpProvenance,
+} from '../infrastructure/acp-bridge/store.js';
+import {
+  acpAuthRequired,
+  acpBridgeMode,
+  requireAcpAuth,
+} from '../infrastructure/acp-bridge/auth.js';
 
-const acpSessions = new Map<string, { createdAt: Date; lastUsed: Date }>();
+function resolveProvenance(req: Request): AcpProvenance {
+  const raw = String(req.body?.provenance ?? req.headers['x-acp-provenance'] ?? 'acp-client');
+  if (raw === 'acp-ide' || raw === 'bridge' || raw === 'acp-client') return raw;
+  return 'unknown';
+}
+
+function resolveSession(req: Request, sessionId: string): boolean {
+  if (acpProvenanceMode() !== 'strict') return true;
+  return Boolean(getAcpSession(sessionId));
+}
 
 export function setupAcpRoutes(app: Express): void {
-  app.get('/acp/health', (_req: Request, res: Response) => {
-    res.json({ ok: true, protocol: 'acp-v1', agent: 'carina', sessions: acpSessions.size });
+  if (!acpBridgeEnabled()) return;
+
+  const acpRouter = express.Router();
+
+  acpRouter.get('/health', (_req: Request, res: Response) => {
+    res.json({
+      ok: true,
+      protocol: 'acp-v1',
+      agent: 'carina',
+      mode: acpBridgeMode(),
+      sessions: listAcpSessions().length,
+      provenanceMode: acpProvenanceMode(),
+      authRequired: acpAuthRequired(),
+    });
   });
 
-  app.get('/acp/tools', (_req: Request, res: Response) => {
+  if (acpAuthRequired()) {
+    acpRouter.use(requireAcpAuth);
+  }
+
+  acpRouter.get('/sessions', (_req: Request, res: Response) => {
+    res.json({ sessions: listAcpSessions() });
+  });
+
+  acpRouter.get('/tools', (_req: Request, res: Response) => {
     const tools = registry.list().map((t) => ({
       name: t.name,
       description: t.description,
@@ -19,31 +63,56 @@ export function setupAcpRoutes(app: Express): void {
     res.json({ tools });
   });
 
-  app.post('/acp/sessions', express.json(), (_req: Request, res: Response) => {
-    const sessionId = `acp:${uuidv4()}`;
-    acpSessions.set(sessionId, { createdAt: new Date(), lastUsed: new Date() });
-    res.json({ sessionId, protocol: 'acp-v1' });
+  acpRouter.post('/sessions', express.json(), (req: Request, res: Response) => {
+    const session = createAcpSession({
+      label: req.body?.label ? String(req.body.label) : undefined,
+      provenance: resolveProvenance(req),
+    });
+    res.json({ sessionId: session.sessionId, label: session.label, protocol: 'acp-v1' });
   });
 
-  app.delete('/acp/sessions/:sessionId', (req: Request, res: Response) => {
-    const deleted = acpSessions.delete(String(req.params.sessionId));
+  acpRouter.patch('/sessions/:sessionId', express.json(), (req: Request, res: Response) => {
+    const sessionId = String(req.params.sessionId);
+    const label = req.body?.label ? String(req.body.label) : undefined;
+    if (!label) {
+      res.status(400).json({ error: 'label is required' });
+      return;
+    }
+    const updated = setAcpSessionLabel(sessionId, label);
+    if (!updated) {
+      res.status(404).json({ error: 'session not found' });
+      return;
+    }
+    res.json(updated);
+  });
+
+  acpRouter.delete('/sessions/:sessionId', (req: Request, res: Response) => {
+    const deleted = deleteAcpSession(String(req.params.sessionId));
     res.json({ deleted });
   });
 
-  app.post('/acp/prompt', express.json(), async (req: Request, res: Response) => {
+  acpRouter.post('/prompt', express.json(), async (req: Request, res: Response) => {
     const prompt = String(req.body?.prompt ?? req.body?.message ?? '').trim();
-    const sessionId = String(req.body?.sessionId ?? `acp:${uuidv4()}`);
+    let sessionId = String(req.body?.sessionId ?? '');
     const stream = req.body?.stream === true || req.query.stream === 'true';
+    const provenance = resolveProvenance(req);
 
     if (!prompt) {
       res.status(400).json({ error: 'prompt is required' });
       return;
     }
 
-    if (!acpSessions.has(sessionId)) {
-      acpSessions.set(sessionId, { createdAt: new Date(), lastUsed: new Date() });
+    if (!sessionId) {
+      const created = createAcpSession({
+        label: req.body?.label ? String(req.body.label) : undefined,
+        provenance,
+      });
+      sessionId = created.sessionId;
+    } else if (!resolveSession(req, sessionId)) {
+      res.status(403).json({ error: 'unknown session in strict provenance mode' });
+      return;
     } else {
-      acpSessions.get(sessionId)!.lastUsed = new Date();
+      touchAcpSession(sessionId);
     }
 
     try {
@@ -60,7 +129,7 @@ export function setupAcpRoutes(app: Express): void {
         })) {
           res.write(`data: ${JSON.stringify({ type: 'text', content: chunk })}\n\n`);
         }
-        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done', sessionId, provenance })}\n\n`);
         res.end();
         return;
       }
@@ -76,6 +145,7 @@ export function setupAcpRoutes(app: Express): void {
       res.json({
         protocol: 'acp-v1',
         sessionId,
+        provenance,
         reply: chunks.join(''),
       });
     } catch (err) {
@@ -84,7 +154,7 @@ export function setupAcpRoutes(app: Express): void {
     }
   });
 
-  app.post('/acp/sessions/:sessionId/prompt', express.json(), async (req: Request, res: Response) => {
+  acpRouter.post('/sessions/:sessionId/prompt', express.json(), async (req: Request, res: Response) => {
     req.body = { ...(req.body ?? {}), sessionId: req.params.sessionId };
     const prompt = String(req.body?.prompt ?? req.body?.message ?? '').trim();
     const sessionId = String(req.params.sessionId);
@@ -95,7 +165,11 @@ export function setupAcpRoutes(app: Express): void {
       return;
     }
 
-    acpSessions.set(sessionId, { createdAt: new Date(), lastUsed: new Date() });
+    if (!resolveSession(req, sessionId)) {
+      res.status(403).json({ error: 'unknown session in strict provenance mode' });
+      return;
+    }
+    touchAcpSession(sessionId);
 
     try {
       const router = getRouter();
@@ -127,4 +201,6 @@ export function setupAcpRoutes(app: Express): void {
       res.status(500).json({ error: msg });
     }
   });
+
+  app.use('/acp', acpRouter);
 }

@@ -13,8 +13,10 @@ import { EmailChannelAdapter } from './channels/adapters/email-channel-adapter.j
 import { HomeAssistantChannelAdapter } from './channels/adapters/homeassistant-channel-adapter.js';
 import { ApiServerAdapter } from './channels/adapters/api-server-adapter.js';
 import { WebhookChannelAdapter } from './channels/adapters/webhook-channel-adapter.js';
+import { IrcAdapter } from './channels/adapters/irc-adapter.js';
 import { SmsAdapter } from './channels/adapters/sms-adapter.js';
 import { getRouter } from './router.js';
+import { getChannelStatusReports } from './channels/channel-status.js';
 import { isSmsConfigured } from './sms.js';
 
 type AdapterFactory = {
@@ -91,6 +93,11 @@ export function registerAllChannelAdapters(): ChannelName[] {
     channelRegistry.register(new SmsAdapter(true));
     active.push('sms');
     console.log(chalk.green('sms gateway adapter registered'));
+  }
+
+  if (process.env.IRC_ENABLED === 'true') {
+    channelRegistry.register(new IrcAdapter(true));
+    console.log(chalk.yellow('irc gateway adapter registered (stub only)'));
   }
 
   for (const entry of REST_ADAPTERS) {
@@ -217,6 +224,20 @@ export function mountAllChannelWebhooks(app: Express): void {
     });
   }
 
+  if (process.env.IRC_ENABLED === 'true') {
+    const irc = channelRegistry.getByName('irc');
+    if (irc?.enabled) {
+      router.post('/irc', express.json(), async (req: Request, res: Response) => {
+        try {
+          await handleInboundWebhook('irc', irc, req.body, res);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          res.status(500).json({ error: msg });
+        }
+      });
+    }
+  }
+
   app.use('/webhooks', router);
 }
 
@@ -237,16 +258,14 @@ export function stopChannelListeners(): void {
 }
 
 export function logChannelStatus(): void {
+  const reports = getChannelStatusReports().filter((r) => r.active || r.state === 'connected' || r.state === 'partial');
   const active = channelRegistry.listActive();
   console.log(chalk.gray(`Gateway channels active (${active.length}): ${active.join(', ') || 'none'}`));
-  if (isSmsConfigured()) {
-    console.log(chalk.gray('  POST /webhooks/sms (Twilio)'));
+  for (const r of reports) {
+    if (r.webhook) console.log(chalk.gray(`  POST ${r.webhook} (${r.channel}: ${r.state})`));
   }
-  for (const name of active) {
-    if (name === 'api') {
-      console.log(chalk.gray('  POST /webhooks/api/message (API key)'));
-    } else if (name !== 'sms') {
-      console.log(chalk.gray(`  POST /webhooks/${name}`));
-    }
+  const partial = getChannelStatusReports().filter((r) => r.state === 'partial' || r.state === 'disabled');
+  if (partial.length) {
+    console.log(chalk.gray(`  Run: carina channels status (${partial.length} configured or pending)`));
   }
 }

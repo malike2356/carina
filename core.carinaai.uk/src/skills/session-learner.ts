@@ -1,4 +1,5 @@
 import { curateFromWorkflow } from './curator.js';
+import { enqueueWorkshopDraft, workshopReviewEnabled } from './workshop-store.js';
 
 export interface SessionTurnSummary {
   userMessage: string;
@@ -35,6 +36,21 @@ export async function learnFromSessionTurn(turn: SessionTurnSummary): Promise<vo
     .slice(0, 6);
 
   try {
+    if (workshopReviewEnabled()) {
+      enqueueWorkshopDraft({
+        source: 'session-learner',
+        name,
+        description: `Auto-learned from session (${uniqueTools.join(', ')})`,
+        trigger,
+        steps,
+        toolsUsed: uniqueTools,
+      });
+      if (process.env.CARINA_AUTO_SKILL_LEARN_VERBOSE === 'true') {
+        console.log(`[skill-learn] queued for workshop: ${name}`);
+      }
+      return;
+    }
+
     const result = await curateFromWorkflow({
       name,
       description: `Auto-learned from session (${uniqueTools.join(', ')})`,

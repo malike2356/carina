@@ -47,6 +47,7 @@ export class SlackAdapter implements IChannelAdapter {
       channel: 'slack',
       externalUserId: user,
       conversationId: channel,
+      teamId: String(payload.team_id ?? event.team ?? '') || undefined,
       text: cleanSlackText(text),
       timestamp: event.ts ? new Date(Number(event.ts) * 1000) : new Date(),
       isDirect,

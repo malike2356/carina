@@ -160,6 +160,17 @@ export function revokePairedDevice(deviceId: string): boolean {
   return true;
 }
 
+export function rotateDeviceToken(deviceId: string): { device: PairedDevice; token: string } | null {
+  const store = loadStore();
+  const device = store.devices.find((d) => d.id === deviceId);
+  if (!device) return null;
+  const token = generateToken();
+  device.tokenHash = hashToken(token);
+  device.lastSeenAt = new Date().toISOString();
+  saveStore(store);
+  return { device, token };
+}
+
 export function validateDeviceToken(token: string): PairedDevice | null {
   if (!token.startsWith('cdv_')) return null;
   const store = loadStore();

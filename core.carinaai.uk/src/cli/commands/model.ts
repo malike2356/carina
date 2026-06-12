@@ -2,10 +2,14 @@ import { input, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import {
   KNOWN_LLM_PROVIDERS,
-  PROVIDER_DEFINITIONS,
   PROVIDER_MAP,
   isProviderConfigured,
 } from '../../brain/provider-registry.js';
+import {
+  buildCatalogRows,
+  formatCompactCatalogLine,
+  formatProviderCatalogHeader,
+} from '../../brain/provider-catalog.js';
 import { loadFromYaml, setConfigValue } from '../config/loader.js';
 
 function isInteractiveDefault(args: string[]): boolean {
@@ -24,10 +28,9 @@ export async function runModelCommand(args: string[]): Promise<void> {
 
   if (action === 'list') {
     console.log(chalk.bold('\nProviders\n'));
-    for (const def of PROVIDER_DEFINITIONS) {
-      const configured = isProviderConfigured(def);
-      const status = configured ? chalk.green('ready') : chalk.gray('not configured');
-      console.log(`  ${def.name.padEnd(14)} ${status}  ${def.displayName}  default=${def.defaultModel}`);
+    console.log(chalk.gray(formatProviderCatalogHeader()));
+    for (const row of buildCatalogRows({ includeCatalogOnly: true })) {
+      console.log(`  ${formatCompactCatalogLine(row)}`);
     }
     const config = await loadFromYaml();
     console.log(`\nActive: ${config.provider} / ${config.model}\n`);
@@ -86,6 +89,12 @@ export async function runModelCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'scan') {
+    const { runProvidersCommand } = await import('./providers-cli.js');
+    await runProvidersCommand(['scan', ...args.slice(1)]);
+    return;
+  }
+
   if (action === 'test') {
     const provider = args[1] ?? (await loadFromYaml()).provider;
     const def = PROVIDER_MAP[provider];
@@ -105,6 +114,6 @@ export async function runModelCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina model <menu|list|set|pick|current|preset|test> [provider] [model]');
+  console.error('Usage: carina model <menu|list|set|pick|current|preset|scan|test> [provider] [model]');
   process.exit(1);
 }

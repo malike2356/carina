@@ -1,4 +1,5 @@
 import express, { type Express, type Request, type Response } from 'express';
+import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
 import { getUserProfile } from './hosted-auth.js';
 import { BILLING_PLANS, normalizePlanId, type BillingPlanId } from '../billing/plans.js';
@@ -55,7 +56,7 @@ export function mountHostedBillingRoutes(app: Express): void {
       tokenLimit: planMeta.tokenLimit,
       monthlyPriceGbp: planMeta.monthlyPriceGbp,
       messagesToday,
-      freeDailyLimit: plan === 'free' ? 50 : null,
+      freeDailyLimit: plan === 'free' ? config.hosted.freeDailyMessages : null,
     });
   });
 

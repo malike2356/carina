@@ -77,7 +77,7 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     stripePriceEnv: 'STRIPE_PRICE_ENTERPRISE',
     features: [
       'Everything in Scout Pro',
-      'SOC2 Type II attestation',
+      'SOC2 readiness export (operator-provided; not a third-party audit)',
       '99.9% uptime SLA',
       'Dedicated Slack support',
       'On-premise deployment option',

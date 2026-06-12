@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'user/intro',
+        'user/capability-inventory',
         'user/getting-started',
         'user/configuration',
         'user/self-hosting',
