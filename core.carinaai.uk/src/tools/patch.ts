@@ -81,7 +81,7 @@ export const patchTool: Tool = {
   dangerous: true,
   requiresConfirmation: true,
   description:
-    'Apply a find-and-replace edit to a file. Uses exact match first, then fuzzy matching for whitespace and indentation differences. Returns a diff of changes.',
+    'Apply a find-and-replace edit to a file. old_string must match exactly one location - if it matches multiple, use replace_all=true or make old_string longer and more unique. Tries exact match first, then fuzzy variants (CRLF normalisation, tab-to-spaces, whitespace trim). Returns a diff and flags any new syntax errors introduced. Cannot create new files - use file-write for that.',
   parameters: {
     type: 'object',
     properties: {

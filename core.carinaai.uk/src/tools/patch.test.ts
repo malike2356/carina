@@ -95,4 +95,38 @@ describe('patch', () => {
 
     expect(result.syntax_errors).toBeDefined();
   });
+
+  it('returns error when file does not exist', async () => {
+    const result = await patchTool.execute({
+      path: '/tmp/__carina_no_such_file_xyz__.txt',
+      old_string: 'anything',
+      new_string: 'replacement',
+    }) as Record<string, unknown>;
+
+    expect(result.error).toContain('not found');
+  });
+
+  it('returns error when old_string not found in file', async () => {
+    await setup();
+    const file = path.join(tmpDir, 'target.txt');
+    await fs.writeFile(file, 'hello world');
+
+    const result = await patchTool.execute({
+      path: file,
+      old_string: 'this text does not exist',
+      new_string: 'anything',
+    }) as Record<string, unknown>;
+
+    expect(result.error).toContain('not found');
+  });
+
+  it('blocks patch to blocked system paths', async () => {
+    const result = await patchTool.execute({
+      path: '/etc/hosts',
+      old_string: 'localhost',
+      new_string: 'hacked',
+    }) as Record<string, unknown>;
+
+    expect(result.error).toContain('cannot patch');
+  });
 });

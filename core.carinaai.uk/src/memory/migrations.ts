@@ -306,9 +306,10 @@ BEGIN
     ALTER TABLE episodic_memories
       ADD COLUMN content_tsv tsvector
       GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
-    CREATE INDEX episodic_memories_tsv_idx ON episodic_memories USING GIN (content_tsv);
   END IF;
 END $$;
+CREATE INDEX IF NOT EXISTS episodic_memories_tsv_idx
+  ON episodic_memories USING GIN (content_tsv);
 `;
 
 // Migrate existing 1536-dim columns to 768 (DeepSeek native dimension).

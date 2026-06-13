@@ -13,7 +13,7 @@ export const codeExecTool: Tool = {
   name: 'code-exec',
   dangerous: true,
   description:
-    'Execute JavaScript or Python in a Docker sandbox (no network). Falls back to VM for JS if Docker unavailable.',
+    'Execute JavaScript or Python code and return the output. Docker required for Python (python:3.12-alpine) and for JS isolation (node:22-alpine); falls back to Node.js vm sandbox for JS when Docker is unavailable (no console.log in vm mode - use return value instead). Timeout: 5 seconds. No network access. Code using import, require, or process triggers a confirmation prompt. Language is auto-detected: Python if the code starts lines with def, import, from, or print(; JavaScript otherwise.',
   parameters: {
     type: 'object',
     properties: {

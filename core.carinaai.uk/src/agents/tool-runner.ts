@@ -1,5 +1,5 @@
 import type { Tool, ToolCall } from '../types/index.js';
-import { registry } from '../tools/index.js';
+import { registry, getSessionTool } from '../tools/index.js';
 import { getToolCacheTtlSeconds, withCache } from '../tools/cache.js';
 import { checkNotSuspended, reportToolCall, isToolQuarantined } from '../security/index.js';
 import { scanToolOutput } from '../security/prompt-guard-middleware.js';
@@ -57,7 +57,7 @@ export async function executeToolCall(
   }
   const startTime = Date.now();
 
-  const tool = registry.get(call.toolName);
+  const tool = getSessionTool(sessionId, call.toolName) ?? registry.get(call.toolName);
   if (!tool) {
     return { error: `Unknown tool: ${call.toolName}` };
   }

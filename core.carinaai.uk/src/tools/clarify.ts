@@ -21,7 +21,7 @@ export function createClarifyTool(sessionId: string): Tool {
   return {
     name: 'clarify',
     description:
-      'Ask the user a question during a workflow. Provide question and optional choices (max 4). Returns awaiting_clarification status; user answers in next message.',
+      'Use this tool when you cannot complete the task without more information from the user: missing parameters, ambiguous intent, or a genuine choice between approaches. Call it with a clear question and up to 4 choices. The user will answer in their next message; you will then resume the original task. Do not use it for rhetorical questions or when you can make a reasonable assumption yourself.',
     parameters: {
       type: 'object',
       properties: {

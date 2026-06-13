@@ -36,7 +36,7 @@ export function createCronjobTool(sessionId: string): Tool {
     dangerous: true,
     requiresConfirmation: true,
     description:
-      'Schedule recurring tasks. Actions: create, list, update, pause, resume, remove, run. Supports cron syntax, 30m, every 2h, ISO timestamps, multi-channel delivery, context_from chaining, script-only mode, and workdir isolation.',
+      'Schedule recurring tasks. Jobs persist in PostgreSQL and survive restarts. Actions: create - new job (schedule required); list - all active jobs; update - change schedule, prompt, or delivery; pause/resume - toggle without deleting; remove - soft-delete; run - execute immediately and return output. Schedule formats: 30m, every 2h, 0 9 * * * (cron), or ISO timestamp for one-shot. Modes: prompt only (agent runs the task), script only (no_agent=true, script path under data/scripts/, stdout delivered verbatim), or both (script runs first, agent gets stdout as context). deliver: origin = reply to the session that created the job, local = use deliver_channels only, all = both. context_from: inject previous job outputs as context. chain_after: run listed job IDs sequentially when this job finishes.',
     parameters: {
       type: 'object',
       properties: {
@@ -86,93 +86,121 @@ export function createCronjobTool(sessionId: string): Tool {
         const deliverChannels = resolveDeliverChannels(params);
         const deliver = resolveDeliverMode(params);
 
-        const job = await createJob({
-          name: params.name ? String(params.name) : null,
-          schedule,
-          prompt,
-          scriptPath: script,
-          noAgent,
-          deliver,
-          deliverChannels,
-          repeatCount: params.repeat != null ? Number(params.repeat) : null,
-          runsRemaining: params.repeat != null ? Number(params.repeat) : null,
-          contextFrom: (params.context_from as string[]) ?? [],
-          chainAfter: (params.chain_after as string[]) ?? [],
-          enabledToolsets: (params.enabled_toolsets as string[]) ?? [],
-          workdir: params.workdir ? String(params.workdir) : null,
-          originSessionId: sessionId,
-          originChannel: sessionDelivery?.channel ?? null,
-          originConversationId: sessionDelivery?.conversationId ?? null,
-          originThreadId: sessionDelivery?.threadId ?? null,
-        });
-        return { job_id: job.id, status: job.status, schedule: job.schedule };
+        try {
+          const job = await createJob({
+            name: params.name ? String(params.name) : null,
+            schedule,
+            prompt,
+            scriptPath: script,
+            noAgent,
+            deliver,
+            deliverChannels,
+            repeatCount: params.repeat != null ? Number(params.repeat) : null,
+            runsRemaining: params.repeat != null ? Number(params.repeat) : null,
+            contextFrom: (params.context_from as string[]) ?? [],
+            chainAfter: (params.chain_after as string[]) ?? [],
+            enabledToolsets: (params.enabled_toolsets as string[]) ?? [],
+            workdir: params.workdir ? String(params.workdir) : null,
+            originSessionId: sessionId,
+            originChannel: sessionDelivery?.channel ?? null,
+            originConversationId: sessionDelivery?.conversationId ?? null,
+            originThreadId: sessionDelivery?.threadId ?? null,
+          });
+          return { job_id: job.id, status: job.status, schedule: job.schedule };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       if (action === 'list') {
-        const jobs = await listJobs();
-        return {
-          jobs: jobs.map((j) => ({
-            job_id: j.id,
-            name: j.name,
-            schedule: j.schedule,
-            status: j.status,
-            last_run: j.lastRun,
-            next_run: j.nextRun,
-            deliver: j.deliver,
-            deliver_channels: j.deliverChannels,
-            no_agent: j.noAgent,
-            context_from: j.contextFrom,
-            chain_after: j.chainAfter,
-            workdir: j.workdir,
-          })),
-        };
+        try {
+          const jobs = await listJobs();
+          return {
+            jobs: jobs.map((j) => ({
+              job_id: j.id,
+              name: j.name,
+              schedule: j.schedule,
+              status: j.status,
+              last_run: j.lastRun,
+              next_run: j.nextRun,
+              deliver: j.deliver,
+              deliver_channels: j.deliverChannels,
+              no_agent: j.noAgent,
+              context_from: j.contextFrom,
+              chain_after: j.chainAfter,
+              workdir: j.workdir,
+            })),
+          };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       const jobId = String(params.job_id ?? '');
       if (!jobId && action !== 'list') return { error: 'job_id is required.' };
 
       if (action === 'update') {
-        const deliverChannels = Array.isArray(params.deliver_channels)
-          ? (params.deliver_channels as string[]).map((v) => String(v))
-          : undefined;
-        const updated = await updateJob(jobId, {
-          schedule: params.schedule ? String(params.schedule) : undefined,
-          prompt: params.prompt !== undefined ? String(params.prompt) : undefined,
-          name: params.name ? String(params.name) : undefined,
-          deliver: params.deliver ? String(params.deliver) : undefined,
-          deliverChannels,
-          scriptPath: params.script ? String(params.script) : undefined,
-          noAgent: params.no_agent !== undefined ? Boolean(params.no_agent) : undefined,
-          contextFrom: Array.isArray(params.context_from) ? (params.context_from as string[]) : undefined,
-          chainAfter: Array.isArray(params.chain_after) ? (params.chain_after as string[]) : undefined,
-          workdir: params.workdir !== undefined ? String(params.workdir) : undefined,
-          enabledToolsets: Array.isArray(params.enabled_toolsets)
-            ? (params.enabled_toolsets as string[])
-            : undefined,
-        });
-        return updated ? { job_id: updated.id, status: updated.status } : { error: 'Job not found.' };
+        try {
+          const deliverChannels = Array.isArray(params.deliver_channels)
+            ? (params.deliver_channels as string[]).map((v) => String(v))
+            : undefined;
+          const updated = await updateJob(jobId, {
+            schedule: params.schedule ? String(params.schedule) : undefined,
+            prompt: params.prompt !== undefined ? String(params.prompt) : undefined,
+            name: params.name ? String(params.name) : undefined,
+            deliver: params.deliver ? String(params.deliver) : undefined,
+            deliverChannels,
+            scriptPath: params.script ? String(params.script) : undefined,
+            noAgent: params.no_agent !== undefined ? Boolean(params.no_agent) : undefined,
+            contextFrom: Array.isArray(params.context_from) ? (params.context_from as string[]) : undefined,
+            chainAfter: Array.isArray(params.chain_after) ? (params.chain_after as string[]) : undefined,
+            workdir: params.workdir !== undefined ? String(params.workdir) : undefined,
+            enabledToolsets: Array.isArray(params.enabled_toolsets)
+              ? (params.enabled_toolsets as string[])
+              : undefined,
+          });
+          return updated ? { job_id: updated.id, status: updated.status } : { error: 'Job not found.' };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       if (action === 'pause') {
-        const updated = await updateJob(jobId, { status: 'paused' });
-        return updated ? { job_id: updated.id, status: 'paused' } : { error: 'Job not found.' };
+        try {
+          const updated = await updateJob(jobId, { status: 'paused' });
+          return updated ? { job_id: updated.id, status: 'paused' } : { error: 'Job not found.' };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       if (action === 'resume') {
-        const updated = await updateJob(jobId, { status: 'active' });
-        return updated ? { job_id: updated.id, status: 'active' } : { error: 'Job not found.' };
+        try {
+          const updated = await updateJob(jobId, { status: 'active' });
+          return updated ? { job_id: updated.id, status: 'active' } : { error: 'Job not found.' };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       if (action === 'remove') {
-        const ok = await removeJob(jobId);
-        return ok ? { job_id: jobId, status: 'removed' } : { error: 'Job not found.' };
+        try {
+          const ok = await removeJob(jobId);
+          return ok ? { job_id: jobId, status: 'removed' } : { error: 'Job not found.' };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       if (action === 'run') {
         const job = await getJob(jobId);
         if (!job) return { error: 'Job not found.' };
-        const output = await executeJob(jobId);
-        return { job_id: jobId, output };
+        try {
+          const output = await executeJob(jobId);
+          return { job_id: jobId, output };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
       }
 
       return { error: `Unknown action: ${action}` };

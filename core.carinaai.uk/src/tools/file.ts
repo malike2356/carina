@@ -52,7 +52,7 @@ function formatLines(lines: string[], offset: number): string {
 export const fileReadTool: Tool = {
   name: 'file-read',
   description:
-    'Read file contents with line numbers. Supports offset/limit pagination. Large files are paginated; use offset and limit to read in chunks.',
+    'Read file contents with line numbers. Returns { content, total_lines, offset, limit, truncated }. When truncated is true, call again with offset set to the next unread line to continue. Supports offset/limit pagination - use offset (1-based) and limit to read specific ranges of large files. Blocks /etc, /proc, /sys, and path traversal.',
   parameters: {
     type: 'object',
     properties: {

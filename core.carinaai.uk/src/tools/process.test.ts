@@ -147,4 +147,96 @@ describe('process tool', () => {
     expect(processTool.needsConfirmation?.({ action: 'kill' })).toBe(true);
     expect(processTool.needsConfirmation?.({ action: 'write' })).toBe(true);
   });
+
+  it('poll returns error object for unknown session_id', async () => {
+    vi.doMock('./process-registry.js', () => ({
+      startProcessCleanup: vi.fn(),
+      listProcesses: vi.fn(),
+      pollProcess: vi.fn(() => { throw new Error('Unknown session_id: xyz'); }),
+      getProcessLog: vi.fn(),
+      waitForProcess: vi.fn(),
+      killProcess: vi.fn(),
+      writeToProcess: vi.fn(),
+      closeProcessStdin: vi.fn(),
+      spawnBackgroundProcess: vi.fn(),
+    }));
+    const { processTool } = await import('./process.js');
+    const result = await processTool.execute({ action: 'poll', session_id: 'xyz' }) as { error?: string };
+    expect(result.error).toContain('Unknown session_id');
+  });
+
+  it('kill returns error object for unknown session_id', async () => {
+    vi.doMock('./process-registry.js', () => ({
+      startProcessCleanup: vi.fn(),
+      listProcesses: vi.fn(),
+      pollProcess: vi.fn(),
+      getProcessLog: vi.fn(),
+      waitForProcess: vi.fn(),
+      killProcess: vi.fn(() => { throw new Error('Unknown session_id: xyz'); }),
+      writeToProcess: vi.fn(),
+      closeProcessStdin: vi.fn(),
+      spawnBackgroundProcess: vi.fn(),
+    }));
+    const { processTool } = await import('./process.js');
+    const result = await processTool.execute({ action: 'kill', session_id: 'xyz' }) as { error?: string };
+    expect(result.error).toContain('Unknown session_id');
+  });
+
+  it('write returns error when process is not accepting stdin', async () => {
+    vi.doMock('./process-registry.js', () => ({
+      startProcessCleanup: vi.fn(),
+      listProcesses: vi.fn(),
+      pollProcess: vi.fn(),
+      getProcessLog: vi.fn(),
+      waitForProcess: vi.fn(),
+      killProcess: vi.fn(),
+      writeToProcess: vi.fn(() => { throw new Error('Process xyz is not accepting stdin (status: exited).'); }),
+      closeProcessStdin: vi.fn(),
+      spawnBackgroundProcess: vi.fn(),
+    }));
+    const { processTool } = await import('./process.js');
+    const result = await processTool.execute({ action: 'write', session_id: 'xyz', data: 'hello' }) as { error?: string };
+    expect(result.error).toContain('not accepting stdin');
+  });
+
+  it('unknown action returns error', async () => {
+    vi.doMock('./process-registry.js', () => ({
+      startProcessCleanup: vi.fn(),
+      listProcesses: vi.fn(),
+      pollProcess: vi.fn(),
+      getProcessLog: vi.fn(),
+      waitForProcess: vi.fn(),
+      killProcess: vi.fn(),
+      writeToProcess: vi.fn(),
+      closeProcessStdin: vi.fn(),
+      spawnBackgroundProcess: vi.fn(),
+    }));
+    const { processTool } = await import('./process.js');
+    const result = await processTool.execute({ action: 'launch_missiles' }) as { error?: string };
+    expect(result.error).toContain('Unknown action');
+  });
+
+  it('log action passes offset and limit to getProcessLog', async () => {
+    const getProcessLog = vi.fn(() => ({
+      session_id: 'abc',
+      lines: ['line1', 'line2'],
+      total: 2,
+      offset: 0,
+      limit: 10,
+    }));
+    vi.doMock('./process-registry.js', () => ({
+      startProcessCleanup: vi.fn(),
+      listProcesses: vi.fn(),
+      pollProcess: vi.fn(),
+      getProcessLog,
+      waitForProcess: vi.fn(),
+      killProcess: vi.fn(),
+      writeToProcess: vi.fn(),
+      closeProcessStdin: vi.fn(),
+      spawnBackgroundProcess: vi.fn(),
+    }));
+    const { processTool } = await import('./process.js');
+    await processTool.execute({ action: 'log', session_id: 'abc', offset: 0, limit: 10 });
+    expect(getProcessLog).toHaveBeenCalledWith('abc', 0, 10);
+  });
 });

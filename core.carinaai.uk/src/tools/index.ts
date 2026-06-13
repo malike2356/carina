@@ -1,4 +1,6 @@
 import { registry } from './registry.js';
+import { registerSessionTool, getSessionTool, listSessionTools, clearSessionTools } from './session-tool-store.js';
+export { registerSessionTool, getSessionTool, listSessionTools, clearSessionTools };
 import { webSearchTool } from './web-search.js';
 import { fileReadTool, fileWriteTool } from './file.js';
 import { shellExecTool } from './shell.js';
@@ -138,16 +140,17 @@ export async function registerBrowserToolsIfAvailable(): Promise<boolean> {
 }
 
 export function registerSessionTools(sessionId: string): void {
-  registry.register(createTodoTool(sessionId));
-  registry.register(createClarifyTool(sessionId));
-  registry.register(createDelegateTaskTool(sessionId));
-  registry.register(createCronjobTool(sessionId));
-  registry.register(createKanbanTool(sessionId));
-  for (const tool of createKanbanGranularTools(sessionId)) {
-    registry.register(tool);
-  }
-  for (const tool of createBrowserTools(sessionId)) {
-    registry.register(tool);
+  const sessionTools = [
+    createTodoTool(sessionId),
+    createClarifyTool(sessionId),
+    createDelegateTaskTool(sessionId),
+    createCronjobTool(sessionId),
+    createKanbanTool(sessionId),
+    ...createKanbanGranularTools(sessionId),
+    ...createBrowserTools(sessionId),
+  ];
+  for (const tool of sessionTools) {
+    registerSessionTool(sessionId, tool);
   }
 }
 

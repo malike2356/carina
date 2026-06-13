@@ -18,17 +18,14 @@ function sessionFromParams(params: Record<string, unknown>): string {
   return String(params._sessionId ?? 'default-browser');
 }
 
-export function createBrowserTools(sessionId = 'default-browser'): Tool[] {
-  const sid = sessionId;
-  const inject = (params: Record<string, unknown>) => ({ ...params, _sessionId: sid });
-
+export function createBrowserTools(_sessionId = 'default-browser'): Tool[] {
   return [
     {
       name: 'browser-navigate',
       dangerous: true,
       requiresConfirmation: true,
       description:
-        'Navigate to a URL. Initializes session and returns compact snapshot with interactive element ref IDs. Must be called before other browser tools. For plain-text endpoints (.md, .txt, .json), prefer http-request or shell-exec.',
+        'Navigate to a URL. Initializes a Playwright Chromium session (requires Playwright installed: pnpm add playwright && npx playwright install chromium). Returns a compact snapshot with interactive element ref IDs. Must be called before any other browser tool. For plain-text endpoints (.md, .txt, .json), prefer http-request or shell-exec instead.',
       parameters: {
         type: 'object',
         properties: { url: { type: 'string' } },

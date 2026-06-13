@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Tool } from '../types/index.js';
-import { runInSandbox } from './sandbox.js';
+import { runDirectShell, runInSandbox } from './sandbox.js';
 import { execInSessionSandbox, sessionSandboxEnabled, type SandboxSessionState } from '../infrastructure/sandbox-session.js';
 import { expandPath, isBlockedSystemWrite, isSafePath } from './path-utils.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
@@ -45,7 +45,7 @@ function resolveWorkdir(raw?: string): string | undefined {
 export const shellExecTool: Tool = {
   name: 'shell-exec',
   description:
-    'Execute a shell command and return stdout, stderr, and exit code. Use background=true for long-running processes. Use pty=true for interactive TTY apps (requires CARINA_PTY_ENABLED=true).',
+    'Execute a shell command and return stdout, stderr, and exit code. Supports foreground (default), background (background=true), and PTY mode (pty=true, requires CARINA_PTY_ENABLED=true). Set CARINA_DIRECT_SHELL=true in .env to run commands directly on the host (required for npm, git, pip, and file writes). Without it, commands run in a restricted Docker sandbox (alpine:latest, no network, read-only fs). workdir sets the working directory. Use background=true for long-running servers or builds.',
   parameters: {
     type: 'object',
     properties: {
@@ -149,15 +149,18 @@ export const shellExecTool: Tool = {
 
     const sessionId = typeof params._sessionId === 'string' ? params._sessionId : 'default-session';
     const useSessionSandbox = sessionSandboxEnabled() || params.sandbox_session === true;
+    const useDirectShell = process.env.CARINA_DIRECT_SHELL === 'true';
 
-    const result = useSessionSandbox
-      ? await execInSessionSandbox(sessionId, command, undefined, timeoutMs)
-      : await runInSandbox(command, SANDBOX_IMAGE, {
-          timeout: timeoutMs,
-          memoryMb: 128,
-          networkDisabled: true,
-          workdir,
-        });
+    const result = useDirectShell
+      ? await runDirectShell(command, { timeout: timeoutMs, workdir })
+      : useSessionSandbox
+        ? await execInSessionSandbox(sessionId, command, undefined, timeoutMs)
+        : await runInSandbox(command, SANDBOX_IMAGE, {
+            timeout: timeoutMs,
+            memoryMb: 128,
+            networkDisabled: true,
+            workdir,
+          });
 
     await logShell(command, result.exitCode);
     const payload: Record<string, unknown> = {

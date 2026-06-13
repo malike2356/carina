@@ -579,7 +579,7 @@ export function registerPluginProviders(defs: ProviderDefinition[]): string[] {
 
 /**
  * Disable a provider at runtime (prevents it from being used).
- * Does not remove from the catalog — just marks it suspended.
+ * Does not remove from the catalog; just marks it suspended.
  */
 const _disabledProviders = new Set<string>();
 

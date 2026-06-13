@@ -93,7 +93,7 @@ export class CarinaOrchestrator {
     if (/^(hi|hello|hey|yo|good (morning|afternoon|evening))\b/.test(text)) {
       return 'Hi.';
     }
-    if (/\bwhat can you do\b|\bhelp\b|\bcapabilit(y|ies)\b/.test(text)) {
+    if (/\bwhat can you do\b|\bcapabilit(y|ies)\b/.test(text) || /^help[?!.\s]*$/.test(text)) {
       return 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.';
     }
     if (/\bwhich provider\b|\bwhat model\b|\bcurrent provider\b/.test(text)) {

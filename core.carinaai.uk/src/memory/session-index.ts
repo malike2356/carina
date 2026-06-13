@@ -32,21 +32,33 @@ export async function searchSessions(
   const params: unknown[] = [tsQuery, limit];
   if (options.roleFilter) params.push(options.roleFilter);
 
-  const result = await pool.query(
-    `SELECT DISTINCT ON (session_id)
-       session_id,
-       id AS message_id,
-       role,
-       content,
-       created_at,
-       ts_headline('english', content, websearch_to_tsquery('english', $1)) AS snippet,
-       ts_rank(content_tsv, websearch_to_tsquery('english', $1)) AS rank
-     FROM episodic_memories
-     WHERE content_tsv @@ websearch_to_tsquery('english', $1)
-     ${roleClause}
-     ORDER BY session_id, rank DESC`,
-    params,
-  );
+  let result;
+  try {
+    result = await pool.query(
+      `SELECT sub.session_id, sub.message_id, sub.role, sub.content, sub.created_at,
+              sub.snippet, sub.rank
+       FROM (
+         SELECT DISTINCT ON (session_id)
+           session_id,
+           id AS message_id,
+           role,
+           content,
+           created_at,
+           ts_headline('english', content, websearch_to_tsquery('english', $1)) AS snippet,
+           ts_rank(content_tsv, websearch_to_tsquery('english', $1)) AS rank
+         FROM episodic_memories
+         WHERE content_tsv @@ websearch_to_tsquery('english', $1)
+         ${roleClause}
+         ORDER BY session_id, rank DESC
+       ) sub
+       ORDER BY sub.rank DESC
+       LIMIT $2`,
+      params,
+    );
+  } catch (err) {
+    console.error('searchSessions query failed:', err);
+    return [];
+  }
 
   const hits: SessionSearchHit[] = [];
   for (const row of result.rows) {
@@ -77,25 +89,30 @@ export async function getSessionWindow(
   aroundMessageId: string,
   window = 5,
 ): Promise<SessionMessage[]> {
-  const anchor = await pool.query(
-    `SELECT created_at FROM episodic_memories WHERE id = $1 AND session_id = $2`,
-    [aroundMessageId, sessionId],
-  );
-  if (anchor.rows.length === 0) {
-    throw new Error(`Message ${aroundMessageId} not found in session ${sessionId}.`);
-  }
-  const anchorTime = anchor.rows[0].created_at;
+  try {
+    const anchor = await pool.query(
+      `SELECT created_at FROM episodic_memories WHERE id = $1 AND session_id = $2`,
+      [aroundMessageId, sessionId],
+    );
+    if (anchor.rows.length === 0) {
+      return [];
+    }
+    const anchorTime = anchor.rows[0].created_at;
 
-  const result = await pool.query(
-    `SELECT id, session_id, role, content, created_at
-     FROM episodic_memories
-     WHERE session_id = $1
-       AND created_at BETWEEN ($2::timestamptz - interval '1 second' * $3)
-                          AND ($2::timestamptz + interval '1 second' * $3)
-     ORDER BY created_at ASC`,
-    [sessionId, anchorTime, window * 60],
-  );
-  return result.rows.map(rowToMessage);
+    const result = await pool.query(
+      `SELECT id, session_id, role, content, created_at
+       FROM episodic_memories
+       WHERE session_id = $1
+         AND created_at BETWEEN ($2::timestamptz - interval '1 second' * $3)
+                            AND ($2::timestamptz + interval '1 second' * $3)
+       ORDER BY created_at ASC`,
+      [sessionId, anchorTime, window * 60],
+    );
+    return result.rows.map(rowToMessage);
+  } catch (err) {
+    console.error('getSessionWindow query failed:', err);
+    return [];
+  }
 }
 
 export async function browseRecentSessions(limit = 10): Promise<SessionSearchHit[]> {

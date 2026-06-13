@@ -63,7 +63,7 @@ export async function runInSandbox(
 
   const netFlag = options.networkDisabled ? '--network=none' : '';
   const workdirMount = options.workdir
-    ? `-v '${shellEscape(options.workdir)}:/workdir:ro -w /workdir`
+    ? `-v '${shellEscape(options.workdir)}:/workdir' -w /workdir`
     : '';
   const wrappedCommand = options.workdir
     ? `cd /workdir && ${command}`
@@ -106,6 +106,14 @@ export async function runCodeInSandbox(
 ): Promise<SandboxResult> {
   const useDocker = await checkDocker();
   if (!useDocker) {
+    if (language === 'python') {
+      return {
+        stdout: '',
+        stderr:
+          'Python execution requires Docker. Install Docker or use shell-exec with CARINA_DIRECT_SHELL=true to run python3 directly.',
+        exitCode: 1,
+      };
+    }
     return runJsVmFallback(code, options.timeout);
   }
 
@@ -117,6 +125,28 @@ export async function runCodeInSandbox(
       : `node -e '${escaped}'`;
 
   return runInSandbox(command, image, options);
+}
+
+export async function runDirectShell(
+  command: string,
+  options: { timeout: number; workdir?: string },
+): Promise<SandboxResult> {
+  try {
+    const { stdout, stderr } = await execAsync(command, {
+      timeout: options.timeout,
+      maxBuffer: 10 * 1024 * 1024,
+      cwd: options.workdir,
+      shell: '/bin/bash',
+    });
+    return { stdout, stderr, exitCode: 0 };
+  } catch (err: unknown) {
+    const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
+    return {
+      stdout: e.stdout ?? '',
+      stderr: e.stderr ?? e.message ?? String(err),
+      exitCode: typeof e.code === 'number' ? e.code : 1,
+    };
+  }
 }
 
 function runJsVmFallback(code: string, timeoutMs: number): SandboxResult {

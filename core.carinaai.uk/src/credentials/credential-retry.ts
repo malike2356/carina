@@ -12,6 +12,15 @@ export function classifyApiError(err: unknown): KeyFailureReason | null {
   if (message.includes('rate limit') || message.includes('quota') || message.includes('too many requests')) {
     return 'rate_limit';
   }
+  if (
+    message.includes('insufficient')
+    || message.includes('credit')
+    || message.includes('balance')
+    || message.includes('billing')
+    || message.includes('exceeded')
+  ) {
+    return 'rate_limit';
+  }
   if (message.includes('invalid api key') || message.includes('authentication') || message.includes('unauthorized')) {
     return 'auth';
   }

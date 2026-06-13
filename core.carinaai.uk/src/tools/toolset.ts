@@ -4,6 +4,7 @@ export const LEAF_EXCLUDED_TOOLS = [
   'clarify',
   'memory',
   'session-search',
+  'todo',
   'email-send',
   'code-exec',
   'cronjob',
@@ -13,6 +14,12 @@ export const LEAF_EXCLUDED_TOOLS = [
   'mixture-of-agents',
   'computer-use',
 ] as const;
+
+/**
+ * Tools always given to the main agent regardless of toolset config.
+ * These are excluded from subagents via LEAF_EXCLUDED_TOOLS + filterLeafTools.
+ */
+export const ALWAYS_ON_TOOLS = ['memory', 'todo', 'clarify', 'session-search'] as const;
 
 export const TOOLSET_MAP: Record<string, string[]> = {
   terminal: ['shell-exec', 'process'],

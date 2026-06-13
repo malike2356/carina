@@ -92,7 +92,11 @@ async function runWithConcurrency<T>(
   async function worker(): Promise<void> {
     while (nextIndex < items.length) {
       const idx = nextIndex++;
-      results[idx] = await fn(items[idx], idx);
+      try {
+        results[idx] = await fn(items[idx], idx);
+      } catch (err) {
+        results[idx] = `Error: ${err instanceof Error ? err.message : String(err)}`;
+      }
     }
   }
 
@@ -110,7 +114,7 @@ export function createDelegateTaskTool(sessionId: string): Tool {
     dangerous: true,
     requiresConfirmation: true,
     description:
-      'Spawn up to 3 parallel subagents with isolated contexts. Parent receives only final summaries. Modes: single (goal + context + toolsets) or batch (tasks array). Subagents cannot delegate further, ask questions, or use memory/email/cron.',
+      'Spawn isolated subagents to run tasks in parallel. Use when a task has genuinely independent sub-parts that can run concurrently. Single mode: provide goal + optional context and toolsets. Batch mode: provide a tasks array (up to 3 run concurrently, queue beyond that). The parent receives only the final summary from each subagent - intermediate tool calls are invisible. Subagents cannot use delegate-task, memory, clarify, todo, email, or cron. Pick toolsets from: terminal, file, web, browser, search, media. Default toolsets when omitted: terminal, file, web. Do not delegate when a single-turn answer suffices.',
     parameters: {
       type: 'object',
       properties: {

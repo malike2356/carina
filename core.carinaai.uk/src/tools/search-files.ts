@@ -86,7 +86,18 @@ async function searchWithRipgrep(
     args.push(pattern, root);
   }
 
-  const { stdout } = await execFileAsync('rg', args, { maxBuffer: 2 * 1024 * 1024 });
+  let stdout = '';
+  try {
+    const out = await execFileAsync('rg', args, { maxBuffer: 2 * 1024 * 1024 });
+    stdout = out.stdout;
+  } catch (err: unknown) {
+    const e = err as { code?: number; stdout?: string };
+    if (e.code === 1) {
+      stdout = e.stdout ?? '';
+    } else {
+      throw err;
+    }
+  }
   const lines = stdout.split('\n').filter(Boolean).slice(0, limit);
   return { engine: 'ripgrep', lines };
 }
@@ -101,7 +112,18 @@ async function searchWithGrep(
   if (outputMode === 'files_only') args.splice(1, 0, '-l');
   if (outputMode === 'count') args.splice(1, 0, '-c');
 
-  const { stdout } = await execFileAsync('grep', args, { maxBuffer: 2 * 1024 * 1024 });
+  let stdout = '';
+  try {
+    const out = await execFileAsync('grep', args, { maxBuffer: 2 * 1024 * 1024 });
+    stdout = out.stdout;
+  } catch (err: unknown) {
+    const e = err as { code?: number; stdout?: string };
+    if (e.code === 1) {
+      stdout = e.stdout ?? '';
+    } else {
+      throw err;
+    }
+  }
   const lines = stdout.split('\n').filter(Boolean).slice(0, limit);
   return { engine: 'grep', lines };
 }
@@ -152,7 +174,7 @@ async function searchContentNode(
 export const searchFilesTool: Tool = {
   name: 'search-files',
   description:
-    'Search file contents or filenames using ripgrep (rg). Falls back to grep or a Node.js walk when rg is unavailable.',
+    'Search file contents or filenames. pattern is a regex. target=content (default) searches inside files; target=files lists paths that match file_glob. output_mode: content returns matching lines with line numbers, files_only returns paths only, count returns a per-file count. Uses ripgrep if installed, falls back to grep, then a Node.js walk. Returns { results, count, engine }. Zero matches returns count=0, not an error.',
   parameters: {
     type: 'object',
     properties: {

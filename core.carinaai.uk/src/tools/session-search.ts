@@ -8,7 +8,7 @@ import {
 export const sessionSearchTool: Tool = {
   name: 'session-search',
   description:
-    'Full-text search across past conversations. Discovery: session-search(query="..."). Scroll: session-search(session_id="...", around_message_id="..."). Browse: session-search() with no query.',
+    'Search past conversation history. Use this BEFORE claiming you do not remember something - search first. Also use it when the user references prior work ("last time", "previously", "do you remember"). Modes: query (find sessions by content), scroll (read context around a message), browse (list recent sessions with no query).',
   parameters: {
     type: 'object',
     properties: {
@@ -26,28 +26,43 @@ export const sessionSearchTool: Tool = {
     const limit = params.limit ? Number(params.limit) : 5;
 
     if (sessionId && aroundId) {
-      const window = await getSessionWindow(sessionId, aroundId, 5);
-      return {
-        mode: 'scroll',
-        sessionId,
-        messages: window.map((m) => ({
-          id: m.id,
-          role: m.role,
-          content: m.content,
-          createdAt: m.createdAt,
-        })),
-      };
+      try {
+        const window = await getSessionWindow(sessionId, aroundId, 5);
+        return {
+          mode: 'scroll',
+          sessionId,
+          messages: window.map((m) => ({
+            id: m.id,
+            role: m.role,
+            content: m.content,
+            createdAt: m.createdAt,
+          })),
+        };
+      } catch (err) {
+        console.error('session-search scroll failed:', err);
+        return { error: 'Session scroll failed.' };
+      }
     }
 
     if (query) {
-      const hits = await searchSessions(query, {
-        limit,
-        roleFilter: params.role_filter ? String(params.role_filter) : undefined,
-      });
-      return { mode: 'discovery', query, results: hits };
+      try {
+        const hits = await searchSessions(query, {
+          limit,
+          roleFilter: params.role_filter ? String(params.role_filter) : undefined,
+        });
+        return { mode: 'discovery', query, results: hits };
+      } catch (err) {
+        console.error('session-search discovery failed:', err);
+        return { error: 'Session search failed.' };
+      }
     }
 
-    const recent = await browseRecentSessions(limit);
-    return { mode: 'browse', results: recent };
+    try {
+      const recent = await browseRecentSessions(limit);
+      return { mode: 'browse', results: recent };
+    } catch (err) {
+      console.error('session-search browse failed:', err);
+      return { error: 'Session browse failed.' };
+    }
   },
 };

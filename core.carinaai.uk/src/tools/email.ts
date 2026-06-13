@@ -48,7 +48,7 @@ export const emailSmtpSendTool: Tool = {
   dangerous: true,
   requiresConfirmation: true,
   description:
-    'Send an email using SMTP (Gmail, Outlook, or any mail server). Uses SMTP_* env vars. REQUIRED when the user asks to send email — use this instead of email-send which requires a Resend API key. Works with Gmail app passwords.',
+    'Send an email using SMTP (Gmail, Outlook, or any mail server). Uses SMTP_* env vars. REQUIRED when the user asks to send email; use this instead of email-send which requires a Resend API key. Works with Gmail app passwords.',
   parameters: {
     type: 'object',
     properties: {
@@ -81,7 +81,7 @@ export const emailSmtpSendTool: Tool = {
     }
     if (!from) {
       throw new Error(
-        'No sender address — set SMTP_FROM or pass the "from" parameter.',
+        'No sender address; set SMTP_FROM or pass the "from" parameter.',
       );
     }
 

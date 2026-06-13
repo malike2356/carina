@@ -138,48 +138,72 @@ async function refreshSnapshot(session: BrowserSession): Promise<SnapshotResult>
 }
 
 export async function browserNavigate(sessionId: string, url: string): Promise<object> {
-  await assertNavigationAllowed(url);
-  const session = await getOrCreateSession(sessionId);
-  await withTimeout(() => session.page.goto(url, { waitUntil: 'domcontentloaded' }));
-  const snap = await refreshSnapshot(session);
-  return { url: session.page.url(), snapshot: snap.compact };
+  try {
+    await assertNavigationAllowed(url);
+    const session = await getOrCreateSession(sessionId);
+    await withTimeout(() => session.page.goto(url, { waitUntil: 'domcontentloaded' }));
+    const snap = await refreshSnapshot(session);
+    return { url: session.page.url(), snapshot: snap.compact };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserClick(sessionId: string, ref: string): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const selector = session.snapshot.refSelectors.get(ref);
-  if (!selector) return { error: `Unknown ref: ${ref}. Take a snapshot first.` };
-  await withTimeout(() => session.page.locator(selector).click());
-  const snap = await refreshSnapshot(session);
-  return { clicked: ref, snapshot: snap.compact };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    const selector = session.snapshot.refSelectors.get(ref);
+    if (!selector) return { error: `Unknown ref: ${ref}. Take a snapshot first.` };
+    await withTimeout(() => session.page.locator(selector).click());
+    const snap = await refreshSnapshot(session);
+    return { clicked: ref, snapshot: snap.compact };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserType(sessionId: string, ref: string, text: string): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const selector = session.snapshot.refSelectors.get(ref);
-  if (!selector) return { error: `Unknown ref: ${ref}. Take a snapshot first.` };
-  await withTimeout(() => session.page.locator(selector).fill(text));
-  return { typed: text, ref };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    const selector = session.snapshot.refSelectors.get(ref);
+    if (!selector) return { error: `Unknown ref: ${ref}. Take a snapshot first.` };
+    await withTimeout(() => session.page.locator(selector).fill(text));
+    return { typed: text, ref };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserPress(sessionId: string, key: string): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  await withTimeout(() => session.page.keyboard.press(key));
-  const snap = await refreshSnapshot(session);
-  return { pressed: key, snapshot: snap.compact };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    await withTimeout(() => session.page.keyboard.press(key));
+    const snap = await refreshSnapshot(session);
+    return { pressed: key, snapshot: snap.compact };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserScroll(sessionId: string, direction: 'up' | 'down'): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const delta = direction === 'down' ? 400 : -400;
-  await withTimeout(() => session.page.mouse.wheel(0, delta));
-  return { scrolled: direction };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    const delta = direction === 'down' ? 400 : -400;
+    await withTimeout(() => session.page.mouse.wheel(0, delta));
+    return { scrolled: direction };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserSnapshot(sessionId: string, full = false): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const snap = await refreshSnapshot(session);
-  return { snapshot: full ? snap.full : snap.compact, elementCount: snap.elements.length };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    const snap = await refreshSnapshot(session);
+    return { snapshot: full ? snap.full : snap.compact, elementCount: snap.elements.length };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserConsole(
@@ -187,40 +211,52 @@ export async function browserConsole(
   clear = false,
   expression?: string,
 ): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  if (expression) {
-    try {
-      const result = await withTimeout(() => session.page.evaluate(expression));
-      return { evaluated: result };
-    } catch (err) {
-      return { error: err instanceof Error ? err.message : String(err) };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    if (expression) {
+      try {
+        const result = await withTimeout(() => session.page.evaluate(expression));
+        return { evaluated: result };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
     }
+    const log = [...session.consoleLog];
+    if (clear) session.consoleLog.length = 0;
+    return { console: log };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
   }
-  const log = [...session.consoleLog];
-  if (clear) session.consoleLog.length = 0;
-  return { console: log };
 }
 
 export async function browserBack(sessionId: string): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  await withTimeout(() => session.page.goBack());
-  const url = session.page.url();
-  await assertNavigationAllowed(url);
-  const snap = await refreshSnapshot(session);
-  return { url, snapshot: snap.compact };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    await withTimeout(() => session.page.goBack());
+    const url = session.page.url();
+    await assertNavigationAllowed(url);
+    const snap = await refreshSnapshot(session);
+    return { url, snapshot: snap.compact };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export async function browserGetImages(sessionId: string): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const images = await withTimeout(() =>
-    session.page.$$eval('img', (els) =>
-      els.map((el) => ({
-        url: (el as HTMLImageElement).src,
-        alt: (el as HTMLImageElement).alt,
-      })),
-    ),
-  );
-  return { images };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    const images = await withTimeout(() =>
+      session.page.$$eval('img', (els) =>
+        els.map((el) => ({
+          url: (el as HTMLImageElement).src,
+          alt: (el as HTMLImageElement).alt,
+        })),
+      ),
+    );
+    return { images };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 export function clearBrowserSession(sessionId: string): void {
@@ -236,17 +272,21 @@ export async function browserVision(
   sessionId: string,
   prompt = 'Describe what is visible on this page.',
 ): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const screenshot = await withTimeout(() => session.page.screenshot({ type: 'png' }));
-  const { visionAnalyzeTool } = await import('../vision-analyze.js');
-  const tmpPath = `/tmp/carina-browser-${sessionId.replace(/[^a-z0-9-]/gi, '-')}.png`;
-  const fs = await import('fs/promises');
-  await fs.writeFile(tmpPath, screenshot);
   try {
-    const result = await visionAnalyzeTool.execute({ path: tmpPath, prompt });
-    return { url: session.page.url(), analysis: result };
-  } finally {
-    await fs.unlink(tmpPath).catch(() => undefined);
+    const session = await getOrCreateSession(sessionId);
+    const screenshot = await withTimeout(() => session.page.screenshot({ type: 'png' }));
+    const { visionAnalyzeTool } = await import('../vision-analyze.js');
+    const tmpPath = `/tmp/carina-browser-${sessionId.replace(/[^a-z0-9-]/gi, '-')}.png`;
+    const fs = await import('fs/promises');
+    await fs.writeFile(tmpPath, screenshot);
+    try {
+      const result = await visionAnalyzeTool.execute({ path: tmpPath, prompt });
+      return { url: session.page.url(), analysis: result };
+    } finally {
+      await fs.unlink(tmpPath).catch(() => undefined);
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -255,15 +295,19 @@ export async function browserCdp(
   method: string,
   params: Record<string, unknown> = {},
 ): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  const client = await session.page.context().newCDPSession(session.page);
   try {
-    const result = await withTimeout(() =>
-      client.send(method as Parameters<typeof client.send>[0], params as never),
-    );
-    return { method, result };
+    const session = await getOrCreateSession(sessionId);
+    const client = await session.page.context().newCDPSession(session.page);
+    try {
+      const result = await withTimeout(() =>
+        client.send(method as Parameters<typeof client.send>[0], params as never),
+      );
+      return { method, result };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err), method };
+    }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err), method };
+    return { error: err instanceof Error ? err.message : String(err) };
   }
 }
 
@@ -272,16 +316,20 @@ export async function browserDialog(
   action: 'accept' | 'dismiss',
   promptText?: string,
 ): Promise<object> {
-  const session = await getOrCreateSession(sessionId);
-  let handled = false;
-  session.page.once('dialog', async (dialog) => {
-    handled = true;
-    if (action === 'accept') {
-      await dialog.accept(promptText);
-    } else {
-      await dialog.dismiss();
-    }
-  });
-  await withTimeout(() => session.page.keyboard.press('Enter').catch(() => undefined));
-  return { action, handled, message: handled ? 'dialog handled' : 'no dialog appeared' };
+  try {
+    const session = await getOrCreateSession(sessionId);
+    let handled = false;
+    session.page.once('dialog', async (dialog) => {
+      handled = true;
+      if (action === 'accept') {
+        await dialog.accept(promptText);
+      } else {
+        await dialog.dismiss();
+      }
+    });
+    await withTimeout(() => session.page.keyboard.press('Enter').catch(() => undefined));
+    return { action, handled, message: handled ? 'dialog handled' : 'no dialog appeared' };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
 }

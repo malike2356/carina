@@ -159,7 +159,7 @@ class CopilotProvider implements LLMProvider {
 
     const acc = new Map<number, { id: string; name: string; args: string }>();
     try {
-      for await (const chunk of stream) {
+      for await (const chunk of stream as unknown as AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>) {
         const delta = chunk.choices[0]?.delta;
         if (delta?.content) yield delta.content;
         if (delta?.tool_calls) {
@@ -208,7 +208,7 @@ const COPILOT_DEF: ProviderDefinition = {
   baseUrlEnv: 'GITHUB_COPILOT_BASE_URL',
   capabilities: { chat: true, vision: true, streaming: true, tools: true },
   usdPerToken: 0,
-  fallbackPriority: 0,
+  fallbackPriority: 95,
   status: 'active',
   authType: 'api-key',
   setupNote: 'Run "gh auth token" and set GITHUB_TOKEN. Requires GitHub Copilot access (free for individual devs).',
@@ -216,7 +216,7 @@ const COPILOT_DEF: ProviderDefinition = {
     {
       name: 'github-copilot',
       local: false,
-      fallbackPriority: 0,
+      fallbackPriority: 95,
       capabilities: { chat: true, vision: true, streaming: true, tools: true },
       usdPerToken: 0,
     },

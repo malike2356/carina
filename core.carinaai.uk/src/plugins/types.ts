@@ -4,7 +4,7 @@ import type { LLMProvider } from '../types/index.js';
 /**
  * A provider plugin exports these from its module.
  * - `providerDefinitions`: one or more provider catalog entries
- * - `providerFactory`: optional — if the provider needs a non-standard
+ * - `providerFactory`: optional; if the provider needs a non-standard
  *   adapter (i.e. not OpenAICompatibleProvider, not Claude, not Gemini),
  *   provide a factory that returns an LLMProvider instance.
  */

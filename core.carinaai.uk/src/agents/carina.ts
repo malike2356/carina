@@ -20,10 +20,13 @@ import { loadAllContacts, contactsContextBlock } from '../profiles/contacts.js';
 import { learnFromSessionTurn } from '../skills/session-learner.js';
 import { maybeInferCommitments } from '../commitments/inference.js';
 import { getSessionDelivery } from './cron-delivery-registry.js';
-import { registry, registerSessionTools } from '../tools/index.js';
+import { registry, registerSessionTools, listSessionTools, getSessionTool } from '../tools/index.js';
 import { resolveActiveToolNames } from '../tools/toolset-config.js';
+import { ALWAYS_ON_TOOLS } from '../tools/toolset.js';
 import { getAllPersistentContext } from '../memory/persistent-memory.js';
 import { memoryInjectionEnabled, memoryInjectionIncludesSemantic } from '../memory/memory-injection.js';
+import { memoryTool } from '../tools/memory.js';
+import { getPendingClarification, clearPendingClarification } from '../tools/clarify.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
 import type { ConfirmFn } from './tool-runner.js';
 import { executeToolCall } from './tool-runner.js';
@@ -121,13 +124,17 @@ export class CarinaAgent {
   }
 
   getTools(): Tool[] {
-    const all = registry.list();
     const resolved = resolveActiveToolNames({
       platform: this.platform,
       explicitAllowed: this.allowedTools,
     });
-    const allowed = new Set(resolved);
-    return all.filter((t) => allowed.has(t.name));
+    const allowed = new Set([...resolved, ...ALWAYS_ON_TOOLS]);
+    // Merge global tools with session-specific tools (session overrides global for same name)
+    const globalTools = registry.list().filter((t) => allowed.has(t.name));
+    const sessionTools = listSessionTools(this.sessionId).filter((t) => allowed.has(t.name));
+    const byName = new Map(globalTools.map((t) => [t.name, t]));
+    for (const t of sessionTools) byName.set(t.name, t);
+    return [...byName.values()];
   }
 
   async buildContext(userMessage: string): Promise<{ messages: Message[]; meta: TurnMeta }> {
@@ -165,6 +172,20 @@ export class CarinaAgent {
     const contactBlock = contactsContextBlock(contacts.slice(0, 15));
     if (contactBlock) {
       contextParts.push(contactBlock);
+    }
+
+    const pendingClarification = getPendingClarification(this.sessionId);
+    if (pendingClarification) {
+      const choicesText = pendingClarification.choices?.length
+        ? pendingClarification.choices.join(', ')
+        : 'open-ended';
+      contextParts.push(
+        `Clarification context: on the previous turn you asked the user the following question `
+        + `and are now receiving their answer. Question: "${pendingClarification.question}". `
+        + `Choices offered: ${choicesText}. Resume your original task using their `
+        + `answer. Do not ask the same question again.`,
+      );
+      clearPendingClarification(this.sessionId);
     }
 
     if (this.memoryReady && !this.fastMode && memoryInjectionEnabled()) {
@@ -274,6 +295,71 @@ export class CarinaAgent {
     const messages = [...initial];
     yield { type: 'meta', meta };
 
+    // Deterministic memory interceptor: save explicit directives before the LLM call
+    // so the model always sees a completed tool call regardless of instruction-following ability.
+    if (this.memoryReady) {
+      const memContent = extractMemoryDirective(safeUserMessage);
+      if (memContent) {
+        const toolCallId = `auto-mem-${Date.now()}`;
+        yield { type: 'tool', content: '\n[using memory...]\n' };
+        const memResult = await memoryTool.execute({
+          action: 'add',
+          target: 'memory',
+          content: memContent,
+        });
+        messages.push({
+          role: 'assistant',
+          content: '',
+          toolCalls: [{
+            type: 'tool_call',
+            toolName: 'memory',
+            toolCallId,
+            params: { action: 'add', target: 'memory', content: memContent },
+          }],
+          timestamp: new Date(),
+        });
+        messages.push({
+          role: 'tool_result',
+          content: '',
+          toolCallId,
+          toolName: 'memory',
+          result: memResult,
+          timestamp: new Date(),
+        });
+      }
+    }
+
+    // Deterministic clarify interceptor: when user explicitly says "ask me X before starting",
+    // pre-call clarify so the model always asks regardless of instruction-following ability.
+    const clarifyQuestion = extractClarifyDirective(safeUserMessage);
+    if (clarifyQuestion) {
+      const clarifyTool = getSessionTool(this.sessionId, 'clarify');
+      if (clarifyTool) {
+        const toolCallId = `auto-clarify-${Date.now()}`;
+        yield { type: 'tool', content: '\n[using clarify...]\n' };
+        const clarifyResult = await clarifyTool.execute({ question: clarifyQuestion });
+        messages.push({
+          role: 'assistant',
+          content: '',
+          toolCalls: [{
+            type: 'tool_call',
+            toolName: 'clarify',
+            toolCallId,
+            params: { question: clarifyQuestion },
+          }],
+          timestamp: new Date(),
+        });
+        messages.push({
+          role: 'tool_result',
+          content: '',
+          toolCallId,
+          toolName: 'clarify',
+          result: clarifyResult,
+          timestamp: new Date(),
+        });
+      }
+    }
+
     const tools = this.getTools();
     let turnText = '';
     const toolsUsed: string[] = [];
@@ -281,6 +367,7 @@ export class CarinaAgent {
     const recentToolCalls: ToolCall[] = [];
     let turns = 0;
     let budgetWarned = false;
+    let awaitingClarification = false;
 
     while (turns < this.maxTurns) {
       if (this.abortSignal?.aborted) {
@@ -387,6 +474,14 @@ export class CarinaAgent {
             result,
             timestamp: new Date(),
           });
+          if (
+            result !== null
+            && typeof result === 'object'
+            && 'status' in result
+            && (result as { status: string }).status === 'awaiting_clarification'
+          ) {
+            awaitingClarification = true;
+          }
         } finally {
           this.toolCallInFlight = false;
           if (this.pendingProviderOverride) {
@@ -394,7 +489,9 @@ export class CarinaAgent {
             this.pendingProviderOverride = undefined;
           }
         }
+        if (awaitingClarification) break;
       }
+      if (awaitingClarification) break;
     }
 
     (this as CarinaAgent & { lastTurn?: TurnResult }).lastTurn = {
@@ -449,6 +546,59 @@ export class CarinaAgent {
       await clearSession(this.sessionId);
     }
   }
+}
+
+function formatClarifyQuestion(topic: string): string {
+  const t = topic
+    .replace(/\bI\s+want\b/i, 'do you want')
+    .replace(/\bI\s+need\b/i, 'do you need')
+    .replace(/\bI\s+prefer\b/i, 'do you prefer')
+    .replace(/\bI'?d\s+like\b/i, 'would you like')
+    .replace(/\bI\s+would\s+like\b/i, 'would you like')
+    .trim();
+  const sentence = t.charAt(0).toUpperCase() + t.slice(1);
+  return sentence.endsWith('?') ? sentence : `${sentence}?`;
+}
+
+/**
+ * Detects explicit "ask me X" / "clarify X before starting" directives.
+ * Returns a well-formed question string, or null if no directive found.
+ */
+function extractClarifyDirective(msg: string): string | null {
+  const s = msg.trim();
+  const stop = '(?:\\s+before\\s+(?:starting|proceeding|beginning|continuing|you start|I start)|[.!]|$)';
+  const patterns = [
+    new RegExp(`I need you to ask me (.+?)${stop}`, 'i'),
+    new RegExp(`(?:please\\s+)?ask me (.+?)${stop}`, 'i'),
+    new RegExp(`(?:please\\s+)?clarify (.+?)${stop}`, 'i'),
+    new RegExp(`(?:please\\s+)?first ask me (.+?)(?:[.!]|$)`, 'i'),
+    new RegExp(`(?:please\\s+)?you should ask me (.+?)${stop}`, 'i'),
+  ];
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m?.[1]) return formatClarifyQuestion(m[1].trim());
+  }
+  return null;
+}
+
+/**
+ * Detects explicit memory directive phrases. Returns the content to save, or null.
+ * Examples: "Remember that X", "Note that X", "Keep in mind X", "Don't forget X"
+ */
+function extractMemoryDirective(msg: string): string | null {
+  const s = msg.trim();
+  const patterns = [
+    /^(?:please\s+)?remember\s+(?:that\s+)?(.+)/i,
+    /^(?:please\s+)?note\s+that\s+(.+)/i,
+    /^(?:please\s+)?keep\s+in\s+mind\s+(?:that\s+)?(.+)/i,
+    /^(?:please\s+)?don'?t\s+forget\s+(?:that\s+)?(.+)/i,
+    /^(?:please\s+)?make\s+a\s+note\s+(?:that\s+)?(.+)/i,
+  ];
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m) return m[1].trim();
+  }
+  return null;
 }
 
 function extractKeywords(text: string): string[] {

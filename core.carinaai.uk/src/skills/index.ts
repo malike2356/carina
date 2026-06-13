@@ -447,9 +447,11 @@ export async function initSkills(): Promise<void> {
     console.log('General-purpose mode: no optional skill packs active');
   }
 
-  if (process.env.CARINA_PROVIDER_PLUGINS === 'true') {
-    const { initProviderPluginsIfEnabled } = await import('../ops/provider-plugins-init.js');
+  const { initProviderPluginsIfEnabled, providerPluginsEnabled } = await import('../ops/provider-plugins-init.js');
+  if (providerPluginsEnabled()) {
     const loaded = await initProviderPluginsIfEnabled();
+    const { llm } = await import('../brain/llm.js');
+    llm.refreshPlugins();
     if (loaded.length > 0) {
       console.log(`Provider plugins loaded: ${loaded.join(', ')}`);
     }

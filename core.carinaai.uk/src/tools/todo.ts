@@ -28,10 +28,15 @@ export function createTodoTool(sessionId: string): Tool {
   return {
     name: 'todo',
     description:
-      'In-session task list. Pass todos array with id, content, status. Use merge=true to update existing, merge=false to replace all.',
+      'In-session task list for multi-step work. Use it whenever a task has more than two steps: create all steps upfront with status="pending", then update each to "in_progress" when you start it and "completed" when done. Actions: read (returns current list, no todos needed), write (pass todos array). merge=true updates existing by id, merge=false replaces all.',
     parameters: {
       type: 'object',
       properties: {
+        action: {
+          type: 'string',
+          enum: ['read', 'write'],
+          description: 'read = return current list; write = update list (default)',
+        },
         todos: {
           type: 'array',
           items: {
@@ -47,11 +52,17 @@ export function createTodoTool(sessionId: string): Tool {
             required: ['id', 'content', 'status'],
           },
         },
-        merge: { type: 'boolean', description: 'true = update existing, false = replace all' },
+        merge: { type: 'boolean', description: 'true = update existing by id, false = replace all' },
       },
-      required: ['todos'],
     },
     execute: async (params) => {
+      const action = String(params.action ?? 'write');
+
+      if (action === 'read') {
+        const current = getSessionTodos(sessionId);
+        return { todos: current, count: current.length };
+      }
+
       const incoming = (params.todos ?? []) as Array<{
         id: string;
         content: string;

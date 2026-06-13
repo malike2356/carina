@@ -15,7 +15,8 @@ vi.mock('../agents/generic-sub-agent.js', () => ({
 
 beforeEach(() => {
   resetDelegationState();
-  runMock.mockClear();
+  runMock.mockReset();
+  runMock.mockResolvedValue('subagent summary');
 });
 
 describe('delegate-task tool', () => {
@@ -70,5 +71,68 @@ describe('delegate-task tool', () => {
   it('excludes delegate-task from resolved toolsets', () => {
     const tools = resolveToolset(['terminal', 'delegate-task']);
     expect(tools).not.toContain('delegate-task');
+  });
+
+  it('returns error when goal and tasks are both absent', async () => {
+    const tool = createDelegateTaskTool(sessionId);
+    const result = await tool.execute({ _sessionId: sessionId }) as { error?: string };
+    expect(result.error).toContain('goal or tasks is required');
+  });
+
+  it('isolates failures - one bad batch task does not kill others', async () => {
+    let callCount = 0;
+    runMock.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 2) throw new Error('subagent exploded');
+      return 'ok';
+    });
+
+    const tool = createDelegateTaskTool(sessionId);
+    const result = await tool.execute({
+      tasks: [
+        { goal: 'task A', toolsets: ['terminal'] },
+        { goal: 'task B', toolsets: ['terminal'] },
+        { goal: 'task C', toolsets: ['terminal'] },
+      ],
+      _sessionId: sessionId,
+    }) as { results: string[] };
+
+    expect(result.results).toHaveLength(3);
+    const errorTask = result.results.find((r) => r.startsWith('Error:'));
+    expect(errorTask).toBeDefined();
+    const successTasks = result.results.filter((r) => r === 'ok');
+    expect(successTasks).toHaveLength(2);
+  });
+
+  it('rejects leaf tool in a batch task and returns error in results', async () => {
+    const tool = createDelegateTaskTool(sessionId);
+    const result = await tool.execute({
+      tasks: [
+        { goal: 'task A', toolsets: ['terminal'] },
+        { goal: 'task B', toolsets: ['clarify'] },
+      ],
+      _sessionId: sessionId,
+    }) as { results: string[] };
+
+    expect(result.results[0]).toBe('subagent summary');
+    expect(result.results[1]).toContain('Error');
+  });
+
+  it('runs at most MAX_CONCURRENT_SUBAGENTS tasks simultaneously', async () => {
+    const tool = createDelegateTaskTool(sessionId);
+    const result = await tool.execute({
+      tasks: [
+        { goal: 'task 1', toolsets: ['terminal'] },
+        { goal: 'task 2', toolsets: ['terminal'] },
+        { goal: 'task 3', toolsets: ['terminal'] },
+        { goal: 'task 4', toolsets: ['terminal'] },
+        { goal: 'task 5', toolsets: ['terminal'] },
+      ],
+      _sessionId: sessionId,
+    }) as { taskCount: number; concurrency: number; results: string[] };
+
+    expect(result.taskCount).toBe(5);
+    expect(result.concurrency).toBe(3);
+    expect(result.results).toHaveLength(5);
   });
 });

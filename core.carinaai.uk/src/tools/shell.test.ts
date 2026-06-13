@@ -61,6 +61,51 @@ describe('shell-exec tool', () => {
     expect(Buffer.byteLength(truncated, 'utf8')).toBeLessThanOrEqual(50 * 1024 + 128);
   });
 
+  it('uses runDirectShell when CARINA_DIRECT_SHELL is true', async () => {
+    process.env.CARINA_DIRECT_SHELL = 'true';
+    const runDirectShell = vi.fn().mockResolvedValue({ stdout: 'hello', stderr: '', exitCode: 0 });
+    vi.doMock('./sandbox.js', () => ({ runDirectShell, runInSandbox: vi.fn(), isDockerAvailable: vi.fn() }));
+    vi.doMock('../infrastructure/sandbox-session.js', () => ({
+      execInSessionSandbox: vi.fn(),
+      sessionSandboxEnabled: vi.fn().mockReturnValue(false),
+    }));
+    const { shellExecTool } = await import('./shell.js');
+    const result = await shellExecTool.execute({ command: 'echo hello' }) as { stdout: string };
+    expect(runDirectShell).toHaveBeenCalledWith('echo hello', expect.objectContaining({ timeout: 30_000 }));
+    expect(result.stdout).toBe('hello');
+    delete process.env.CARINA_DIRECT_SHELL;
+  });
+
+  it('forms correct Docker -v flag with closing quote', async () => {
+    const runInSandbox = vi.fn().mockResolvedValue({ stdout: '', stderr: '', exitCode: 0 });
+    vi.doMock('./sandbox.js', () => ({
+      runInSandbox,
+      checkDocker: vi.fn().mockResolvedValue(true),
+      isDockerAvailable: vi.fn().mockReturnValue(true),
+    }));
+    const { shellExecTool } = await import('./shell.js');
+    await shellExecTool.execute({ command: 'ls', workdir: '/tmp' });
+    expect(runInSandbox).toHaveBeenCalledWith(
+      'ls',
+      'alpine:latest',
+      expect.objectContaining({ workdir: '/tmp' }),
+    );
+  });
+
+  it('direct shell returns non-zero exitCode on failure', async () => {
+    process.env.CARINA_DIRECT_SHELL = 'true';
+    const runDirectShell = vi.fn().mockResolvedValue({ stdout: '', stderr: 'not found', exitCode: 127 });
+    vi.doMock('./sandbox.js', () => ({ runDirectShell, runInSandbox: vi.fn(), isDockerAvailable: vi.fn() }));
+    vi.doMock('../infrastructure/sandbox-session.js', () => ({
+      execInSessionSandbox: vi.fn(),
+      sessionSandboxEnabled: vi.fn().mockReturnValue(false),
+    }));
+    const { shellExecTool } = await import('./shell.js');
+    const result = await shellExecTool.execute({ command: 'bogus-command' }) as { exitCode: number };
+    expect(result.exitCode).toBe(127);
+    delete process.env.CARINA_DIRECT_SHELL;
+  });
+
   it('starts background processes via the process registry', async () => {
     vi.doMock('./process-registry.js', () => ({
       spawnBackgroundProcess: vi.fn(() => ({

@@ -1,5 +1,6 @@
 import type { CliCommand, PackageInfo } from './types.js';
 import { loadLocalEnv } from './config/env.js';
+import { loadCarinaEnv } from '../config/load-env.js';
 
 function cmd(
   name: string,
@@ -422,6 +423,9 @@ export function resolveCommand(name: string): CliCommand | undefined {
 
 export async function runCli(argv: string[], pkg?: PackageInfo): Promise<void> {
   if (pkg) setPackageInfo(pkg);
+
+  // Load .env before provider plugins so API keys (e.g. GITHUB_TOKEN) are available.
+  loadCarinaEnv();
 
   // Load provider plugins before any command handler runs so plugin factories
   // are registered before the LLMRouter singleton is first imported.
