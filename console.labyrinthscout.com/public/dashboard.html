@@ -205,12 +205,39 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .btn-confirm:disabled{opacity:.35;cursor:not-allowed}
 
 /* ── OPERATOR CONSOLE ── */
-.operator-console{order:1;display:flex;flex-direction:column;gap:.65rem;padding:0 .75rem}
+.operator-console{order:1;display:flex;flex-direction:column;gap:.45rem;padding:0 .75rem}
+.op-mosaic{display:flex;flex-direction:column;gap:.5rem}
 .op-section{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.75rem .85rem}
 .op-section-title{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.14em;color:var(--amber);margin:0 0 .55rem;text-transform:uppercase}
+.op-group-label{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.14em;color:var(--amber);margin:0 0 .35rem;text-transform:uppercase;position:relative;padding-right:20px}
+.op-metric-group{position:relative}
+.op-metric-row{display:grid;gap:.35rem}
+.op-metric-row.cols-7{grid-template-columns:repeat(7,minmax(0,1fr))}
+.op-metric-row.cols-6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.op-metric-row.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.op-metric-row.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.op-metric-row.cols-7 .op-metric{padding:.4rem .45rem;min-height:52px}
+.op-metric-row.cols-7 .op-metric .value{font-size:1.05rem}
+.op-metric-row.cols-7 .op-metric .label{font-size:.54rem;padding-right:12px}
+.op-metric-row.cols-7 .op-metric .detail,
+.op-metric-row.cols-7 .op-metric .delta{font-size:.54rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-split-2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;align-items:start}
+.op-ops-panel{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.5rem .6rem;min-height:72px;max-height:200px;overflow:auto;position:relative}
+.op-ops-panel .op-group-label{margin-bottom:.35rem}
+.approval-badge{display:inline-block;background:var(--red);color:#fff;font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:.1rem .35rem;border-radius:10px;margin-left:.4rem;vertical-align:middle}
+.approval-badge.hidden{display:none}
+.approvals-section-hidden{display:none!important}
+.hidden{display:none!important}
+.approvals-empty{color:rgba(139,175,192,.55);font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:.15rem 0}
+.approvals-table{width:100%;border-collapse:collapse;font-size:.75rem}
+.approvals-table.hidden{display:none}
+.approvals-table th{color:var(--text);font-weight:500;padding:.3rem .5rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.approvals-table td{padding:.35rem .5rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--bright)}
+.btn-approve{background:rgba(61,186,124,.15);border:1px solid rgba(61,186,124,.4);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:.55rem;padding:.1rem .4rem;border-radius:2px;cursor:pointer;margin-right:.25rem}
+.btn-reject{background:rgba(255,34,68,.12);border:1px solid rgba(255,34,68,.35);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:.55rem;padding:.1rem .4rem;border-radius:2px;cursor:pointer}
 .op-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.55rem}
-.op-metric{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.55rem .6rem;min-height:68px;position:relative}
-.op-panel,.op-section,.stat-card,.panel{position:relative}
+.op-metric{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.45rem .55rem;min-height:56px;position:relative}
+.op-panel,.op-section,.op-metric-group,.op-ops-panel,.stat-card,.panel{position:relative}
 .metric-info-btn{
   position:absolute;top:4px;right:4px;z-index:3;
   width:16px;height:16px;padding:0;border-radius:50%;
@@ -220,7 +247,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
   opacity:.55;transition:opacity .15s,border-color .15s,background .15s
 }
 .metric-info-btn:hover,.metric-info-btn:focus{opacity:1;border-color:var(--cyan);background:rgba(0,212,255,.18);outline:none}
-.op-section>.metric-info-btn{top:8px;right:8px}
+.op-section>.metric-info-btn,.op-metric-group>.metric-info-btn,.op-ops-panel>.metric-info-btn{top:0;right:0}
 .panel>.metric-info-btn,.stat-card>.metric-info-btn{top:6px;right:6px}
 .help-overlay{position:fixed;inset:0;z-index:3000;background:rgba(2,4,9,.88);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:1rem}
 .help-overlay[hidden]{display:none}
@@ -237,20 +264,28 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .op-metric .delta.up{color:var(--red)}.op-metric .delta.down{color:var(--green)}.op-metric .delta.flat{color:var(--text)}
 .op-metric.stale{border-color:rgba(255,34,68,.45);box-shadow:0 0 12px rgba(255,34,68,.12)}
 .op-metric.fresh{border-color:rgba(0,200,150,.35)}
-.op-row-3{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:.65rem}
-.op-panel{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.65rem;min-height:120px;max-height:220px;overflow:auto}
-.op-panel h3{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:var(--text);margin:0 0 .45rem}
-.op-queue-row{display:flex;align-items:flex-start;gap:.45rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--bright);padding:.22rem 0;border-bottom:1px solid rgba(139,175,192,.08)}
+.op-panel{background:var(--lift);border:1px solid rgba(139,175,192,.1);border-radius:4px;padding:.55rem .6rem;min-height:88px;max-height:200px;overflow:auto}
+.op-panel h3{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:var(--text);margin:0 0 .4rem}
+.op-queue-row{display:flex;align-items:flex-start;gap:.45rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--bright);padding:.18rem 0;border-bottom:1px solid rgba(139,175,192,.08)}
 .op-queue-row b{font-size:.58rem;letter-spacing:.08em;flex-shrink:0}
 .op-queue-row.critical b{color:var(--red)}.op-queue-row.warning b{color:var(--amber)}.op-queue-row.info b{color:var(--cyan)}
-.op-secondary{order:2;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;padding:0 .75rem}
+.op-secondary{order:2;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;padding:0 .75rem}
 .op-admin-tier{order:5;display:grid;grid-template-columns:1fr;gap:.65rem;padding:.65rem .75rem 0;border-top:1px solid rgba(139,175,192,.08);margin-top:.25rem}
 .op-admin-tier summary{cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text);letter-spacing:.1em;padding:.35rem 0;list-style:none}
 .op-admin-tier summary::-webkit-details-marker{display:none}
 .op-admin-tier[open] summary{color:var(--amber)}
 .op-admin-inner{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.65rem;padding-top:.55rem}
-@media(max-width:1100px){.op-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.op-row-3,.op-secondary,.op-admin-inner{grid-template-columns:1fr 1fr}}
-@media(max-width:700px){.op-grid,.op-row-3,.op-secondary,.op-admin-inner{grid-template-columns:1fr}}
+@media(max-width:1100px){
+  .op-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .op-metric-row.cols-7{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .op-metric-row.cols-6{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .op-split-2,.op-secondary,.op-admin-inner{grid-template-columns:1fr 1fr}
+}
+@media(max-width:700px){
+  .op-grid,.op-secondary,.op-admin-inner{grid-template-columns:1fr}
+  .op-split-2{grid-template-columns:1fr}
+  .op-metric-row.cols-7,.op-metric-row.cols-6,.op-metric-row.cols-3,.op-metric-row.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 
 /* ── SPEC DASHBOARD WIDGETS (legacy panels) ── */
 .spec-overview{order:3;display:none}
@@ -324,6 +359,55 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 #view-overview[hidden]{display:none !important}
 #view-defense.dash-view{display:flex;flex-direction:column;gap:.65rem;flex:1;min-height:0}
 #view-defense[hidden]{display:none !important}
+#view-governance.dash-view{display:flex;flex-direction:column;gap:.5rem;flex:1;min-height:0;padding:0 .75rem;overflow-y:auto}
+#view-governance[hidden]{display:none !important}
+
+/* ── GOVERNANCE TAB ── */
+.gov-tab-console{display:flex;flex-direction:column;gap:.5rem;order:1}
+.gov-tab-score-banner{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.75rem 1rem;display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
+.gov-tab-score-banner .score-num{font-family:'JetBrains Mono',monospace;font-size:2.4rem;font-weight:700;line-height:1;color:var(--bright)}
+.gov-tab-score-banner .score-label{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.14em;color:var(--text);text-transform:uppercase}
+.gov-tab-score-banner .score-sub{font-size:.78rem;color:var(--text);margin-top:.25rem}
+.gov-tab-score-banner .score-badge{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.1em;padding:.2rem .5rem;border-radius:3px;border:1px solid}
+.gov-tab-score-banner.score-compliant .score-badge,.gov-tab-score-banner.score-compliant .score-num{color:var(--green);border-color:rgba(0,200,150,.4);background:rgba(0,200,150,.1)}
+.gov-tab-score-banner.score-at-risk .score-badge,.gov-tab-score-banner.score-at-risk .score-num{color:var(--amber);border-color:rgba(212,175,55,.4);background:rgba(212,175,55,.1)}
+.gov-tab-score-banner.score-non-compliant .score-badge,.gov-tab-score-banner.score-non-compliant .score-num{color:var(--red);border-color:rgba(255,34,68,.4);background:rgba(255,34,68,.1)}
+.gov-tab-split-2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;align-items:start}
+.gov-tab-card{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.65rem .75rem}
+.gov-tab-card-wide{grid-column:1/-1}
+.gov-tab-card h2{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.14em;color:var(--amber);text-transform:uppercase;margin:0 0 .45rem}
+.gov-tab-card .value{font-family:'JetBrains Mono',monospace;font-size:1.15rem;margin-bottom:.35rem}
+.gov-tab-card .body{font-size:.74rem;color:var(--text);line-height:1.45}
+.gov-tab-card .body ul{margin:.25rem 0 0 1rem}
+.gov-tab-card .footer{font-family:'JetBrains Mono',monospace;font-size:.54rem;color:rgba(139,175,192,.55);margin-top:.35rem}
+.gov-tab-card.tier-minimal .value{color:var(--green)}
+.gov-tab-card.tier-limited .value{color:var(--amber)}
+.gov-tab-card.tier-high .value,.gov-tab-card.tier-unacceptable .value{color:var(--red)}
+.gov-tab-framework-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem}
+.gov-tab-fw-card{display:flex;gap:.55rem;align-items:flex-start;padding:.55rem}
+.progress-ring{--pct:0;width:52px;height:52px;border-radius:50%;flex-shrink:0;background:conic-gradient(var(--green) calc(var(--pct) * 1%), var(--lift) 0);position:relative}
+.progress-ring::after{content:attr(data-label);position:absolute;inset:7px;border-radius:50%;background:var(--navy);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:.5rem;color:var(--bright)}
+.fw-meta{flex:1;min-width:0}
+.fw-meta .fw-name{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--amber);letter-spacing:.08em;text-transform:uppercase}
+.fw-meta .fw-status{font-size:.72rem;color:var(--text);margin:.15rem 0}
+.fw-meta .fw-gap{font-size:.66rem;color:rgba(139,175,192,.7)}
+.gov-tab-table{width:100%;border-collapse:collapse;font-size:.68rem;font-family:'JetBrains Mono',monospace;margin-top:.35rem}
+.gov-tab-table th{color:var(--text);font-weight:500;text-align:left;padding:.25rem .35rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.gov-tab-table td{padding:.28rem .35rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--bright)}
+.action-list{list-style:none;display:flex;flex-direction:column;gap:.35rem;margin:0;padding:0}
+.action-item{display:flex;gap:.4rem;align-items:flex-start;font-size:.72rem;line-height:1.35}
+.badge{font-family:'JetBrains Mono',monospace;font-size:.48rem;letter-spacing:.06em;padding:.08rem .28rem;border-radius:2px;flex-shrink:0}
+.badge-critical{background:rgba(255,34,68,.15);color:var(--red);border:1px solid rgba(255,34,68,.35)}
+.badge-high{background:rgba(212,175,55,.12);color:var(--amber);border:1px solid rgba(212,175,55,.35)}
+.badge-medium{background:rgba(0,212,255,.1);color:var(--cyan);border:1px solid rgba(0,212,255,.25)}
+.action-complete{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.25);color:var(--green);padding:.55rem;border-radius:4px;font-size:.74rem}
+.attest-row{font-family:'JetBrains Mono',monospace;font-size:.66rem;padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.04);display:flex;gap:.45rem;flex-wrap:wrap}
+.attest-row a{color:var(--cyan)}
+.gov-tab-more{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);margin-top:.35rem}
+.gov-tab-footer{display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;padding:.25rem 0 .5rem}
+.gov-tab-footer a.defense-btn{text-decoration:none;display:inline-block}
+@media(max-width:1100px){.gov-tab-split-2,.gov-tab-framework-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.gov-tab-split-2,.gov-tab-framework-grid{grid-template-columns:1fr}}
 
 /* ── DEFENSE TAB ── */
 .defense-console{order:1;display:flex;flex-direction:column;gap:.65rem;padding:0 .75rem}
@@ -354,6 +438,56 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .defense-sim-preview.allowed{color:var(--green)}
 .defense-loading{opacity:.65;pointer-events:none}
 @media(max-width:900px){.defense-grid{grid-template-columns:1fr}}
+.governance-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .65rem 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  margin-bottom: .75rem;
+  font-family: 'JetBrains Mono', monospace;
+  transition: border-color .3s, background .3s;
+}
+.governance-banner.state-safe {
+  border-color: rgba(34,197,94,.5);
+  background: rgba(34,197,94,.07);
+}
+.governance-banner.state-risk {
+  border-color: rgba(212,175,55,.5);
+  background: rgba(212,175,55,.07);
+}
+.governance-banner.state-breach {
+  border-color: rgba(255,34,68,.5);
+  background: rgba(255,34,68,.1);
+}
+.gov-banner-state {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+#gov-banner-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+.state-safe #gov-banner-label  { color: #22c55e; }
+.state-risk #gov-banner-label  { color: var(--amber); }
+.state-breach #gov-banner-label { color: var(--red); }
+.gov-banner-detail {
+  display: flex;
+  gap: .85rem;
+  font-size: .72rem;
+  color: var(--text-muted, #6b7a8d);
+}
+.gov-banner-detail strong { color: var(--bright, #e2e8f0); }
+#posture-kill-metric.kill-armed    { border-left: 3px solid rgba(34,197,94,.6); }
+#posture-kill-metric.kill-triggered { border-left: 3px solid var(--red); background: rgba(255,34,68,.08); }
+#posture-regulatory-card.tier-minimal .value { color: var(--green); }
+#posture-regulatory-card.tier-limited .value { color: var(--amber); }
+#posture-regulatory-card.tier-high .value { color: var(--red); }
+#posture-regulatory-card.tier-unacceptable .value { color: var(--red); animation: blink 1s step-end infinite; }
   </style>
 </head>
 <body>
@@ -372,59 +506,94 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <a href="https://app.carinaai.uk/security" class="hdr-trust" title="Carina Cloud Security (customers)">YOUR SECURITY</a>
     <a href="/account/login" class="hdr-trust" title="Scout account portal">SCOUT ACCOUNT</a>
     <a href="https://carinaai.uk/trust" target="_blank" rel="noopener" class="hdr-trust" title="Public trust dashboard">PUBLIC TRUST</a>
+    <a href="/governance" class="hdr-trust nav-link" title="Governance compliance dashboard">GOVERNANCE</a>
     <span class="hdr-clock" id="hdr-clock"></span>
   </header>
 
   <nav class="dash-tabs" aria-label="Dashboard views">
     <button type="button" class="dash-tab dash-tab-active" data-view="overview" aria-selected="true">Overview</button>
     <button type="button" class="dash-tab" data-view="defense" aria-selected="false">Defense</button>
+    <button type="button" class="dash-tab" data-view="governance" aria-selected="false">Governance</button>
   </nav>
 
   <div id="view-overview" class="dash-view">
   <section class="operator-console" aria-label="Operator console">
-    <div class="op-section" aria-label="Live posture" data-help="section-live-posture">
-      <h2 class="op-section-title">Live Posture</h2>
-      <div class="op-grid">
-        <div class="op-metric" id="posture-risk-card" data-help="posture-risk-score"><div class="label">Risk Score</div><div class="value" id="posture-risk-value">-</div><div class="delta flat" id="posture-risk-delta">awaiting data</div></div>
-        <div class="op-metric" data-help="posture-agents-active"><div class="label">Agents Active</div><div class="value" id="posture-agents-active">-</div><div class="detail" id="posture-agents-detail">protected / total</div></div>
-        <div class="op-metric" id="posture-heartbeat-card" data-help="posture-heartbeat"><div class="label">Last Heartbeat</div><div class="value" id="posture-heartbeat-age">-</div><div class="detail">agent telemetry</div></div>
-        <div class="op-metric" id="posture-event-card" data-help="posture-last-event"><div class="label">Last Event</div><div class="value" id="posture-event-age">-</div><div class="detail">security stream</div></div>
-        <div class="op-metric" id="posture-freshness-card" data-help="posture-freshness"><div class="label">Data Freshness</div><div class="value" id="posture-freshness-state">-</div><div class="detail" id="posture-freshness-detail">SSE subscribers: -</div></div>
-        <div class="op-metric" data-help="posture-kill-switch"><div class="label">Kill Switch</div><div class="value" id="posture-kill-state">-</div><div class="detail" id="posture-kill-detail">control plane</div></div>
+    <div id="governance-posture-banner" class="governance-banner" aria-live="polite">
+      <div class="gov-banner-state">
+        <span id="gov-banner-label">CHECKING</span>
+      </div>
+      <div class="gov-banner-detail">
+        <span>Risk Score: <strong id="gov-banner-risk">-</strong></span>
+        <span id="gov-banner-sep" aria-hidden="true">·</span>
+        <span id="gov-banner-agents">- agents governed</span>
+        <span aria-hidden="true">·</span>
+        <span id="gov-banner-verified">Last verified: -</span>
       </div>
     </div>
-
-    <div class="op-row-3">
-      <div class="op-section" aria-label="Incident triage" data-help="section-incident-triage">
-        <h2 class="op-section-title">Incident Triage</h2>
-        <div class="op-grid" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-          <div class="op-metric" data-help="incident-open-critical"><div class="label">Open Critical</div><div class="value" id="incident-open-critical">-</div><div class="detail" id="incident-unresolved-detail">unresolved</div></div>
-          <div class="op-metric" data-help="incident-blocked"><div class="label">Blocked (24h)</div><div class="value" id="incident-blocked">-</div><div class="detail">defensive actions</div></div>
-          <div class="op-metric" data-help="incident-injection"><div class="label">Injection Blocks</div><div class="value" id="incident-injection">-</div><div class="detail">24h shield</div></div>
-          <div class="op-metric" data-help="incident-acknowledged"><div class="label">Acknowledged</div><div class="value" id="incident-acknowledged">-</div><div class="detail" id="incident-tta">time to ack: -</div></div>
-          <div class="op-metric" data-help="incident-runtime"><div class="label">Runtime Unresolved</div><div class="value" id="incident-runtime">-</div><div class="detail">needs triage</div></div>
-          <div class="op-metric" data-help="incident-rate"><div class="label">Incident Rate</div><div class="value" id="incident-rate-change">-</div><div class="detail">vs prior 24h</div></div>
+    <div class="op-mosaic">
+      <div class="op-metric-group" aria-label="Live posture" data-help="section-live-posture">
+        <h2 class="op-group-label">Live Posture</h2>
+        <div class="op-metric-row cols-7">
+          <div class="op-metric" id="posture-risk-card" data-help="posture-risk-score"><div class="label">Risk Score</div><div class="value" id="posture-risk-value">-</div><div class="delta flat" id="posture-risk-delta">awaiting data</div></div>
+          <div class="op-metric" data-help="posture-agents-active"><div class="label">Agents Active</div><div class="value" id="posture-agents-active">-</div><div class="detail" id="posture-agents-detail">protected / total</div></div>
+          <div class="op-metric" id="posture-heartbeat-card" data-help="posture-heartbeat"><div class="label">Last Heartbeat</div><div class="value" id="posture-heartbeat-age">-</div><div class="detail">agent telemetry</div></div>
+          <div class="op-metric" id="posture-event-card" data-help="posture-last-event"><div class="label">Last Event</div><div class="value" id="posture-event-age">-</div><div class="detail">security stream</div></div>
+          <div class="op-metric" id="posture-freshness-card" data-help="posture-freshness"><div class="label">Data Freshness</div><div class="value" id="posture-freshness-state">-</div><div class="detail" id="posture-freshness-detail">SSE subscribers: -</div></div>
+          <div class="op-metric" id="posture-kill-metric" data-help="posture-kill-switch"><div class="label">Kill Switch</div><div class="value" id="posture-kill-state">-</div><div class="detail" id="posture-kill-detail">control plane</div></div>
+          <div class="op-metric" id="posture-regulatory-card" data-help="posture-regulatory-tier"><div class="label">EU AI Act</div><div class="value" id="posture-regulatory-tier">-</div><div class="delta flat" id="posture-regulatory-gaps">assessing...</div></div>
         </div>
       </div>
 
-      <div class="op-section" aria-label="Trust and compliance" data-help="section-trust">
-        <h2 class="op-section-title">Trust / Compliance</h2>
-        <div class="op-grid" style="grid-template-columns:repeat(2,minmax(0,1fr))">
-          <div class="op-metric" data-help="trust-attestation"><div class="label">Last Attestation</div><div class="value" id="trust-attestation-age">-</div><div class="detail" id="trust-erc8004">ERC-8004: -</div></div>
-          <div class="op-metric" data-help="trust-verification"><div class="label">Last Verification</div><div class="value" id="trust-verification-age">-</div><div class="detail" id="trust-erc8126">ERC-8126: -</div></div>
-          <div class="op-metric" data-help="trust-wallet"><div class="label">Wallet</div><div class="value" id="trust-wallet-state">-</div><div class="detail" id="trust-chain-tx">on-chain state</div></div>
-          <div class="op-metric" data-help="trust-risk-tier"><div class="label">Risk Tier</div><div class="value" id="trust-risk-tier">-</div><div class="detail" id="trust-risk-tier-label">unified score</div></div>
+      <div id="approvals-section" class="approvals-section-hidden" aria-label="Pending approvals">
+        <h2 class="op-group-label">
+          Pending Approvals
+          <span id="approvals-badge" class="approval-badge hidden">0</span>
+        </h2>
+        <div id="approvals-empty" class="approvals-empty hidden">No pending approvals</div>
+        <table id="approvals-table" class="approvals-table hidden">
+          <thead>
+            <tr>
+              <th>Agent</th><th>Tool</th><th>Risk</th><th>Category</th><th>Expires</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="approvals-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="op-split-2">
+        <div class="op-metric-group" aria-label="Incident triage" data-help="section-incident-triage">
+          <h2 class="op-group-label">Incident Triage</h2>
+          <div class="op-metric-row cols-3">
+            <div class="op-metric" data-help="incident-open-critical"><div class="label">Open Critical</div><div class="value" id="incident-open-critical">-</div><div class="detail" id="incident-unresolved-detail">unresolved</div></div>
+            <div class="op-metric" data-help="incident-blocked"><div class="label">Blocked (24h)</div><div class="value" id="incident-blocked">-</div><div class="detail">defensive actions</div></div>
+            <div class="op-metric" data-help="incident-injection"><div class="label">Injection Blocks</div><div class="value" id="incident-injection">-</div><div class="detail">24h shield</div></div>
+            <div class="op-metric" data-help="incident-acknowledged"><div class="label">Acknowledged</div><div class="value" id="incident-acknowledged">-</div><div class="detail" id="incident-tta">time to ack: -</div></div>
+            <div class="op-metric" data-help="incident-runtime"><div class="label">Runtime Unresolved</div><div class="value" id="incident-runtime">-</div><div class="detail">needs triage</div></div>
+            <div class="op-metric" data-help="incident-rate"><div class="label">Incident Rate</div><div class="value" id="incident-rate-change">-</div><div class="detail">vs prior 24h</div></div>
+          </div>
+        </div>
+
+        <div class="op-metric-group" aria-label="Trust and compliance" data-help="section-trust">
+          <h2 class="op-group-label">Trust / Compliance</h2>
+          <div class="op-metric-row cols-2">
+            <div class="op-metric" data-help="trust-attestation"><div class="label">Last Attestation</div><div class="value" id="trust-attestation-age">-</div><div class="detail" id="trust-erc8004">ERC-8004: -</div></div>
+            <div class="op-metric" data-help="trust-verification"><div class="label">Last Verification</div><div class="value" id="trust-verification-age">-</div><div class="detail" id="trust-erc8126">ERC-8126: -</div></div>
+            <div class="op-metric" data-help="trust-wallet"><div class="label">Wallet</div><div class="value" id="trust-wallet-state">-</div><div class="detail" id="trust-chain-tx">on-chain state</div></div>
+            <div class="op-metric" data-help="trust-risk-tier"><div class="label">Risk Tier</div><div class="value" id="trust-risk-tier">-</div><div class="detail" id="trust-risk-tier-label">unified score</div></div>
+          </div>
         </div>
       </div>
 
-      <div class="op-section" aria-label="Response terminal" data-help="section-response-terminal">
-        <h2 class="op-section-title">Response Terminal</h2>
-        <div id="response-terminal-panel"><div class="spec-empty">Loading response terminal</div></div>
-      </div>
+      <div class="op-split-2">
+        <div class="op-ops-panel" aria-label="Response terminal" data-help="section-response-terminal">
+          <h2 class="op-group-label">Response Terminal</h2>
+          <div id="response-terminal-panel"><div class="spec-empty">Loading response terminal</div></div>
+        </div>
 
-      <div class="op-section" aria-label="Action queue" data-help="section-action-queue">
-        <h2 class="op-section-title">Action Queue</h2>
-        <div id="action-queue-list"><div class="spec-empty">Loading operator queue</div></div>
+        <div class="op-ops-panel" aria-label="Action queue" data-help="section-action-queue">
+          <h2 class="op-group-label">Action Queue</h2>
+          <div id="action-queue-list"><div class="spec-empty">Loading operator queue</div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -586,6 +755,80 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
         <div class="defense-card"><h3>Tripwires</h3><div id="defense-tripwire-panel"><div class="spec-empty">Loading</div></div></div>
         <div class="defense-card defense-card-wide"><h3>Surface Restrictions</h3><div id="defense-restrictions-panel"><div class="spec-empty">Loading</div></div></div>
         <div class="defense-card defense-card-wide"><h3>Operator Action Log</h3><div id="defense-action-log"><div class="spec-empty">No actions yet</div></div></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="view-governance" class="dash-view" hidden>
+    <section class="gov-tab-console" aria-label="Governance posture">
+      <div id="gov-tab-loading" class="spec-empty">Loading governance posture...</div>
+      <div id="gov-tab-content" hidden>
+        <section id="gov-tab-score-banner" class="gov-tab-score-banner score-at-risk" aria-label="Governance score">
+          <div>
+            <div class="score-num" id="gov-tab-score">-</div>
+            <div class="score-label">Governance Score</div>
+          </div>
+          <div>
+            <div class="score-badge" id="gov-tab-label">AT RISK</div>
+            <div class="score-sub" id="gov-tab-subline">Assessing...</div>
+          </div>
+        </section>
+
+        <div class="gov-tab-split-2" aria-label="Regulatory classification">
+          <div class="gov-tab-card tier-limited" id="gov-tab-eu-card">
+            <h2>EU AI Act Classification</h2>
+            <div class="value" id="gov-tab-eu-tier">-</div>
+            <div class="body"><ul id="gov-tab-eu-reasoning"></ul></div>
+            <div class="footer" id="gov-tab-eu-articles"></div>
+          </div>
+          <div class="gov-tab-card" id="gov-tab-uk-card">
+            <h2>UK DSIT Alignment</h2>
+            <div class="value" id="gov-tab-uk-alignment">-</div>
+            <div class="body" id="gov-tab-uk-met"></div>
+            <div class="body" id="gov-tab-uk-partial" style="color:rgba(139,175,192,.55)"></div>
+          </div>
+        </div>
+
+        <div class="gov-tab-split-2">
+          <div class="gov-tab-card">
+            <h2>Governed Agents</h2>
+            <div class="body" id="gov-tab-agents-summary">-</div>
+            <table class="gov-tab-table">
+              <thead><tr><th>Agent ID</th><th>Status</th><th>Identified</th><th>Incidents</th></tr></thead>
+              <tbody id="gov-tab-agents-tbody"></tbody>
+            </table>
+          </div>
+          <div class="gov-tab-card">
+            <h2>Human Oversight</h2>
+            <div class="body" id="gov-tab-oversight-body">-</div>
+          </div>
+        </div>
+
+        <div class="gov-tab-split-2">
+          <div class="gov-tab-card">
+            <h2>Action Items</h2>
+            <div id="gov-tab-action-items"></div>
+          </div>
+          <div class="gov-tab-card">
+            <h2>Attestation Timeline</h2>
+            <div id="gov-tab-attest-list"></div>
+          </div>
+        </div>
+
+        <div class="gov-tab-card gov-tab-card-wide">
+          <h2>Framework Readiness</h2>
+          <div id="gov-tab-framework-grid" class="gov-tab-framework-grid"></div>
+        </div>
+
+        <div class="gov-tab-card gov-tab-card-wide">
+          <h2>Governance Template</h2>
+          <div id="gov-tab-template-body" class="body">Loading template...</div>
+        </div>
+
+        <div class="gov-tab-footer">
+          <a href="/governance" class="defense-btn">Open full governance page</a>
+          <button type="button" id="gov-tab-refresh" class="defense-btn defense-btn-muted">Refresh</button>
+        </div>
       </div>
     </section>
   </div>
@@ -2475,7 +2718,7 @@ function toast(msg, type='info') {
 let evtSource = null;
 function connectSSE() {
   if (evtSource) { try { evtSource.close(); } catch {} }
-  evtSource = new EventSource('/api/stream');
+  evtSource = new EventSource('/api/stream?key=' + encodeURIComponent(KEY));
 
   evtSource.onopen = () => {
     document.getElementById('live-dot').classList.add('on');
@@ -2504,7 +2747,7 @@ function connectSSE() {
     setTimeout(connectSSE, 5000);
   };
 
-  ['live_event','threat_update','agent_update','kill_switch_status','audit_results','token_update'].forEach((name) => {
+  ['live_event','threat_update','agent_update','kill_switch_status','audit_results','token_update','approval_request','approval_decision'].forEach((name) => {
     evtSource.addEventListener(name, (event) => {
       if (window.DashboardLiveFeed) window.DashboardLiveFeed.handleNamedEvent(event);
       if (name === 'kill_switch_status' && window.DashboardKillSwitch) {
@@ -2512,6 +2755,23 @@ function connectSSE() {
           const msg = JSON.parse(event.data);
           window.DashboardKillSwitch.renderKillStatus(msg.data || msg);
         } catch {}
+      }
+      if (name === 'approval_request') {
+        try {
+          const msg = JSON.parse(event.data);
+          const data = msg.data || msg;
+          refreshApprovals();
+          if (Notification.permission === 'granted') {
+            const tool = data.tool_name || data.action_type || 'action';
+            const risk = data.risk_score ?? '-';
+            new Notification('Approval required', {
+              body: `Agent '${tool}' requires approval. Risk: ${risk}.`,
+            });
+          }
+        } catch {}
+      }
+      if (name === 'approval_decision') {
+        refreshApprovals();
       }
     });
   });
@@ -2560,6 +2820,88 @@ function updateClock() {
     `${now.getUTCFullYear()}-${pad(now.getUTCMonth()+1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`;
 }
 
+// ── APPROVALS ─────────────────────────────────────────────────────────────────
+function formatApprovalExpiry(secs) {
+  if (secs <= 0) return 'expired';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+async function refreshApprovals() {
+  const section = document.getElementById('approvals-section');
+  const empty = document.getElementById('approvals-empty');
+  const table = document.getElementById('approvals-table');
+  const tbody = document.getElementById('approvals-tbody');
+  const badge = document.getElementById('approvals-badge');
+  if (!section || !empty || !table || !tbody || !badge) return;
+
+  const rows = await API('/api/approvals/pending');
+  if (!Array.isArray(rows)) return;
+
+  badge.textContent = String(rows.length);
+  badge.classList.toggle('hidden', rows.length === 0);
+  section.classList.toggle('approvals-section-hidden', rows.length === 0);
+  empty.classList.toggle('hidden', rows.length > 0);
+  table.classList.toggle('hidden', rows.length === 0);
+
+  tbody.innerHTML = rows.map((row) => (
+    `<tr data-approval-id="${row.id}">` +
+    `<td>${row.instance_id}</td>` +
+    `<td>${row.tool_name || row.action_type || '-'}</td>` +
+    `<td>${row.risk_score}</td>` +
+    `<td>${row.regulatory_category || '-'}</td>` +
+    `<td>${formatApprovalExpiry(row.expires_in_secs)}</td>` +
+    `<td>` +
+    `<button class="btn-approve" onclick="approveRequest('${row.id}')">Approve</button>` +
+    `<button class="btn-reject" onclick="rejectRequest('${row.id}')">Reject</button>` +
+    `</td>` +
+    `</tr>`
+  )).join('');
+}
+
+async function approveRequest(id) {
+  try {
+    const r = await fetch(`/api/approvals/${encodeURIComponent(id)}/approve`, {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify({ decided_by: 'operator' }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('Approval granted', 'ok');
+    } else {
+      toast('Approve failed: ' + (d.error || 'unknown'), 'critical');
+    }
+  } catch {
+    toast('Approve request failed', 'critical');
+  }
+  await refreshApprovals();
+}
+
+async function rejectRequest(id) {
+  const reason = prompt('Reason for rejection (optional):') ?? '';
+  try {
+    const r = await fetch(`/api/approvals/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify({ reason, decided_by: 'operator' }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('Approval rejected', 'warning');
+    } else {
+      toast('Reject failed: ' + (d.error || 'unknown'), 'critical');
+    }
+  } catch {
+    toast('Reject request failed', 'critical');
+  }
+  await refreshApprovals();
+}
+
+window.approveRequest = approveRequest;
+window.rejectRequest = rejectRequest;
+
 // ── ROLLING TIMERS ────────────────────────────────────────────────────────────
 // Roll freq bucket every 60 seconds (1 bucket = 1 minute over a 60-minute window)
 setInterval(() => {
@@ -2589,6 +2931,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadAnomalies(),
     loadHoneypotSummary(),
     loadPlatformSettings(),
+    refreshApprovals(),
   ]);
 
   // Size and draw canvases after two animation frames (layout must be complete)
@@ -2604,6 +2947,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(loadStatus, 30000);
   setInterval(loadAnomalies, 15000);
   setInterval(loadHoneypotSummary, 60_000);
+  setInterval(refreshApprovals, 15000);
   setInterval(() => {
     for (const instanceId of activeInstanceIds) {
       void refreshQuarantinePanel(instanceId);
@@ -2617,7 +2961,63 @@ window.addEventListener('resize', () => {
 </script>
 <script src="/dashboard/js/widgets/dashboard-help.js"></script>
 <script src="/dashboard/js/widgets/posture-summary.js"></script>
+<script>
+(function () {
+  function updateGovernanceBanner() {
+    const riskVal = document.getElementById('posture-risk-value');
+    const killVal = document.getElementById('posture-kill-state');
+    const agentsVal = document.getElementById('posture-agents-active');
+    const banner = document.getElementById('governance-posture-banner');
+    const label = document.getElementById('gov-banner-label');
+    const riskOut = document.getElementById('gov-banner-risk');
+    const agentsOut = document.getElementById('gov-banner-agents');
+    const verifiedOut = document.getElementById('gov-banner-verified');
+
+    if (!banner || !riskVal) return;
+
+    const risk = parseInt(riskVal.textContent, 10) || 0;
+    const killTriggered = (killVal?.textContent || '').toLowerCase().includes('triggered');
+    const agents = parseInt(agentsVal?.textContent, 10) || 0;
+
+    let state, labelText;
+    if (killTriggered || risk >= 70) {
+      state = 'breach';
+      labelText = 'BREACH DETECTED';
+    } else if (risk >= 31) {
+      state = 'risk';
+      labelText = 'AT RISK';
+    } else if (riskVal.textContent === '-') {
+      state = '';
+      labelText = 'CHECKING';
+    } else {
+      state = 'safe';
+      labelText = 'SAFE';
+    }
+
+    banner.className = 'governance-banner' + (state ? ' state-' + state : '');
+    label.textContent = labelText;
+    riskOut.textContent = risk || '-';
+    agentsOut.textContent = agents + ' agent' + (agents === 1 ? '' : 's') + ' governed';
+    verifiedOut.textContent = 'Last verified: ' + new Date().toLocaleTimeString();
+  }
+
+  setTimeout(updateGovernanceBanner, 2000);
+
+  const riskEl = document.getElementById('posture-risk-value');
+  const killEl = document.getElementById('posture-kill-state');
+  const agentsEl = document.getElementById('posture-agents-active');
+  if (window.MutationObserver) {
+    const observer = new MutationObserver(updateGovernanceBanner);
+    const opts = { childList: true, subtree: true, characterData: true };
+    if (riskEl) observer.observe(riskEl, opts);
+    if (killEl) observer.observe(killEl, opts);
+    if (agentsEl) observer.observe(agentsEl, opts);
+  }
+})();
+</script>
 <script src="/dashboard/js/widgets/response-terminal.js"></script>
+<script src="/dashboard/js/widgets/governance-render.js"></script>
+<script src="/dashboard/js/widgets/governance-tab.js"></script>
 <script src="/dashboard/js/widgets/defense-tab.js"></script>
 <script src="/dashboard/js/widgets/action-queue.js"></script>
 <script src="/dashboard/js/widgets/attack-detail.js"></script>
