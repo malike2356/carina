@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Billing</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div id="checkout-notice" hidden></div>
+    <div id="trial-banner" class="banner-trial" hidden></div>
+    <div class="card">
+      <h2>Current plan</h2>
+      <div class="stat" id="plan-name" style="font-size:18px;margin-bottom:8px;">Loading...</div>
+      <p class="placeholder" id="plan-status"></p>
+      <ul id="plan-features" style="margin:12px 0 16px 18px;color:var(--muted);font-size:14px;"></ul>
+      <div id="upgrade-actions" hidden>
+        <button class="btn" id="upgrade-starter" type="button">Upgrade to Starter (£19/mo)</button>
+        <button class="btn secondary" id="upgrade-team" type="button" style="margin-left:8px;">Upgrade to Team (£49/mo)</button>
+      </div>
+      <button class="btn secondary" id="portal-btn" type="button" style="margin-top:12px;" hidden>Manage payment method</button>
+    </div>
+    <div class="card">
+      <h2>Invoices</h2>
+      <table class="ops-table">
+        <thead><tr><th>Date</th><th>Amount</th><th>Status</th><th>PDF</th></tr></thead>
+        <tbody id="invoice-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    function showCheckoutNotice() {
+      const params = new URLSearchParams(location.search);
+      const el = document.getElementById('checkout-notice');
+      if (params.get('checkout') === 'success') {
+        el.className = 'banner-ok';
+        el.textContent = 'Checkout complete. Your plan will update shortly after Stripe confirms payment.';
+        el.hidden = false;
+      } else if (params.get('checkout') === 'cancel') {
+        el.className = 'banner-warn';
+        el.textContent = 'Checkout canceled. You can upgrade any time from this page.';
+        el.hidden = false;
+      }
+    }
+
+    async function startCheckout(plan) {
+      const res = await fetch('/app/auth/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'Checkout failed');
+        return;
+      }
+      if (data.url) location.href = data.url;
+    }
+
+    async function openPortal() {
+      const res = await fetch('/app/auth/billing/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnPath: '/ops/billing' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data.error || 'Portal unavailable');
+        return;
+      }
+      if (data.url) location.href = data.url;
+    }
+
+    CarinaOpsLayout.initPage('billing', {
+      onReady: async (me) => {
+        showCheckoutNotice();
+        const res = await fetch('/api/carina-ops/billing/summary');
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('plan-name').textContent =
+          String(data.effectivePlan || data.plan || 'free').replace(/_/g, ' ');
+        document.getElementById('plan-status').textContent =
+          `Status: ${data.status || 'active'}${data.currentPeriodEnd ? ` · Renews ${new Date(data.currentPeriodEnd).toLocaleDateString()}` : ''}`;
+        const features = document.getElementById('plan-features');
+        features.innerHTML = (data.features || []).map((item) => `<li>${CarinaOpsLayout.escapeHtml(item)}</li>`).join('');
+        if (data.trialDaysLeft != null && data.trialDaysLeft > 0) {
+          const trial = document.getElementById('trial-banner');
+          trial.textContent = `Team trial: ${data.trialDaysLeft} day(s) left. Add billing to keep access.`;
+          trial.hidden = false;
+        }
+        if (data.canUpgrade) {
+          document.getElementById('upgrade-actions').hidden = false;
+          document.getElementById('upgrade-starter').addEventListener('click', () => startCheckout('carina_ops_starter'));
+          document.getElementById('upgrade-team').addEventListener('click', () => startCheckout('carina_ops_team'));
+        }
+        if (data.plan !== 'free' || me.org?.plan !== 'free') {
+          document.getElementById('portal-btn').hidden = false;
+          document.getElementById('portal-btn').addEventListener('click', openPortal);
+        }
+        const invoices = data.invoices || [];
+        const body = document.getElementById('invoice-body');
+        if (!invoices.length) {
+          body.innerHTML = '<tr><td colspan="4" class="placeholder">No invoices yet.</td></tr>';
+        } else {
+          body.innerHTML = invoices.map((inv) => {
+            const when = new Date(inv.createdAt).toLocaleDateString();
+            const amount = (Number(inv.amount) / 100).toFixed(2);
+            const pdf = inv.pdfUrl ? `<a href="${CarinaOpsLayout.escapeHtml(inv.pdfUrl)}" target="_blank" rel="noopener">PDF</a>` : '-';
+            return `<tr><td>${when}</td><td>£${amount}</td><td>${CarinaOpsLayout.escapeHtml(inv.status)}</td><td>${pdf}</td></tr>`;
+          }).join('');
+        }
+      },
+    });
+  </script>
+</body>
+</html>

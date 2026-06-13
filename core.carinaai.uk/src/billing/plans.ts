@@ -1,5 +1,7 @@
 export type BillingPlanId =
   | 'free'
+  | 'carina_ops_starter'
+  | 'carina_ops_team'
   | 'scout_monitor'
   | 'scout_pro'
   | 'scout_standard'
@@ -26,6 +28,33 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
       'Memory and self-writing skills',
       'CLI, Telegram, WhatsApp, Web',
       'MIT open source',
+    ],
+  },
+  carina_ops_starter: {
+    id: 'carina_ops_starter',
+    name: 'Carina Ops Starter',
+    monthlyPriceGbp: 19,
+    tokenLimit: 500_000,
+    stripePriceEnv: 'STRIPE_PRICE_CARINA_OPS_STARTER',
+    features: [
+      'BYOK (3 providers)',
+      'Workbench',
+      '14-day audit log',
+      'Ops console',
+    ],
+  },
+  carina_ops_team: {
+    id: 'carina_ops_team',
+    name: 'Carina Ops Team',
+    monthlyPriceGbp: 49,
+    tokenLimit: 2_000_000,
+    stripePriceEnv: 'STRIPE_PRICE_CARINA_OPS_TEAM',
+    features: [
+      'Everything in Starter',
+      'Multi-user (50 members)',
+      'Deployments and environments',
+      '90-day audit log',
+      'Exports',
     ],
   },
   scout_monitor: {
@@ -85,16 +114,42 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
   },
 };
 
-export const CHECKOUT_PLANS: BillingPlanId[] = ['scout_monitor', 'scout_pro', 'enterprise'];
+export const CARINA_OPS_CHECKOUT_PLANS: BillingPlanId[] = [
+  'carina_ops_starter',
+  'carina_ops_team',
+];
+
+export const CHECKOUT_PLANS: BillingPlanId[] = [
+  'scout_monitor',
+  'scout_pro',
+  'enterprise',
+  ...CARINA_OPS_CHECKOUT_PLANS,
+];
 
 export function normalizePlanId(value: unknown): BillingPlanId {
+  if (value === 'carina_ops_starter' || value === 'carina_ops_team') return value;
   if (value === 'scout_monitor' || value === 'scout_pro' || value === 'enterprise') return value;
   if (value === 'scout_standard') return 'scout_pro';
   return 'free';
 }
 
+export function isCarinaOpsPlan(plan: BillingPlanId): boolean {
+  return plan === 'carina_ops_starter' || plan === 'carina_ops_team';
+}
+
+export function isScoutPlan(plan: BillingPlanId): boolean {
+  return plan === 'scout_monitor'
+    || plan === 'scout_pro'
+    || plan === 'scout_standard'
+    || plan === 'enterprise';
+}
+
 export function isScoutProPlan(plan: BillingPlanId): boolean {
   return plan === 'scout_pro' || plan === 'scout_standard' || plan === 'enterprise';
+}
+
+export function planTier(plan: BillingPlanId): 'free' | 'pro' {
+  return plan === 'free' ? 'free' : 'pro';
 }
 
 export function resolveStripePriceId(plan: BillingPlanId): string {
@@ -109,4 +164,15 @@ export function resolveStripePriceId(plan: BillingPlanId): string {
     throw new Error(`Missing required env var: ${envKey}`);
   }
   return priceId;
+}
+
+export function planFromStripePriceId(priceId: string): BillingPlanId | null {
+  for (const plan of Object.values(BILLING_PLANS)) {
+    if (!plan.stripePriceEnv) continue;
+    const configured = process.env[plan.stripePriceEnv] ?? '';
+    if (configured && configured === priceId) return plan.id;
+  }
+  if (process.env.STRIPE_PRO_PRICE_ID === priceId) return 'scout_pro';
+  if (process.env.STRIPE_PRICE_SCOUT_STANDARD === priceId) return 'scout_pro';
+  return null;
 }
