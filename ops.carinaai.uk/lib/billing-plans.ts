@@ -1,5 +1,7 @@
 export type BillingPlanId =
   | 'free'
+  | 'carina_ops_starter'
+  | 'carina_ops_team'
   | 'scout_monitor'
   | 'scout_pro'
   | 'scout_standard'
@@ -20,6 +22,20 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     monthlyPriceGbp: 0,
     tokenLimit: 100_000,
     features: ['Full autonomous agent', '100K tokens/month', 'Daily message cap on free tier'],
+  },
+  carina_ops_starter: {
+    id: 'carina_ops_starter',
+    name: 'Carina Ops Starter',
+    monthlyPriceGbp: 19,
+    tokenLimit: 500_000,
+    features: ['BYOK (3 providers)', 'Workbench', 'Basic audit', 'Ops console'],
+  },
+  carina_ops_team: {
+    id: 'carina_ops_team',
+    name: 'Carina Ops Team',
+    monthlyPriceGbp: 49,
+    tokenLimit: 2_000_000,
+    features: ['Multi-user', 'Deployments', 'Environments', 'Exports'],
   },
   scout_monitor: {
     id: 'scout_monitor',
@@ -53,12 +69,15 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
 
 export const ASSIGNABLE_PLANS: BillingPlanId[] = [
   'free',
+  'carina_ops_starter',
+  'carina_ops_team',
   'scout_monitor',
   'scout_pro',
   'enterprise',
 ];
 
 export function normalizePlanId(value: unknown): BillingPlanId {
+  if (value === 'carina_ops_starter' || value === 'carina_ops_team') return value;
   if (value === 'scout_monitor' || value === 'scout_pro' || value === 'enterprise') return value;
   if (value === 'scout_standard') return 'scout_pro';
   return 'free';
@@ -80,6 +99,8 @@ export function stripeConfigured(): boolean {
     process.env.STRIPE_SECRET_KEY
     || process.env.STRIPE_PRICE_SCOUT_MONITOR
     || process.env.STRIPE_PRICE_SCOUT_PRO
-    || process.env.STRIPE_PRO_PRICE_ID,
+    || process.env.STRIPE_PRO_PRICE_ID
+    || process.env.STRIPE_PRICE_CARINA_OPS_STARTER
+    || process.env.STRIPE_PRICE_CARINA_OPS_TEAM,
   );
 }
