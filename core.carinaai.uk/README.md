@@ -4,11 +4,11 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![docs](https://img.shields.io/badge/docs-carinaai.uk-0a0a0f)](https://carinaai.uk/docs/)
 
-Autonomous AI agent platform with vertical skill packs. Built by [VERLOX Ltd](https://carinaai.uk).
+An agent that gets work done on your stack, with vertical skill packs. Built by [VERLOX Ltd](https://carinaai.uk).
 
 **MIT licensed.** Fork it, extend it, ship skill packs. [Contributing](CONTRIBUTING.md) | [Discussions](https://github.com/malike2356/carina-agent/discussions) | [Report a bug](https://github.com/malike2356/carina-agent/issues/new/choose)
 
-Carina is a general-purpose local-first agent. Skill packs are optional: enable them at `/packs` on the web UI, with `carina packs install <name>`, or via `ACTIVE_SKILL_PACKS` in `.env`.
+Carina is a general-purpose local-first agent. It gets work done across your stack. Skill packs are optional: enable them at `/packs` on the web UI, with `carina packs install <name>`, or via `ACTIVE_SKILL_PACKS` in `.env`.
 
 ## Install
 

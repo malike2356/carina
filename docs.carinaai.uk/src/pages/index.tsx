@@ -41,7 +41,7 @@ export default function Home(): JSX.Element {
             Carina documentation
           </Heading>
           <p className={styles.heroSubtitle}>
-            The autonomous AI agent that gets smarter every session. Free and MIT licensed.
+            An agent that gets work done on your stack. Free and MIT licensed.
           </p>
           <div className={styles.buttons}>
             <Link className="button button--primary button--lg" to="/docs/user/getting-started">

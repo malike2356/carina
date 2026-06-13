@@ -2,7 +2,7 @@
 layout: home
 hero:
   name: Carina
-  text: The autonomous AI agent that keeps memory, skills, and provider choice under your control.
+  text: An agent that gets work done on your stack, with memory, skills, and provider choice under your control.
   tagline: Free. MIT licensed. UK property knowledge built in. Add Labyrinth Scout for production monitoring.
   image:
     src: /hero-terminal.svg

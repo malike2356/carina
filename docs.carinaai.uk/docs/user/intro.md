@@ -6,7 +6,7 @@ title: What is Carina?
 
 # What is Carina?
 
-Carina is an autonomous AI agent platform built by VERLOX Ltd. She executes tasks with real tools, remembers context across sessions, and improves via self-written skills when enabled.
+Carina is an autonomous AI agent platform built by VERLOX Ltd. She gets work done on your stack with real tools, remembers context across sessions, and improves via self-written skills when enabled.
 
 For the full product inventory (shipped vs configured vs optional), see the **[capability inventory](/docs/capabilities)**.
 

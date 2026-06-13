@@ -1,6 +1,6 @@
 # Self-Hosting
 
-Run Carina on your own infrastructure with Docker or bare Node.js.
+Run Carina on your own infrastructure with Docker or bare Node.js, so the agent works on your stack.
 
 ## Docker (production stack)
 

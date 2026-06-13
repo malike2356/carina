@@ -1,7 +1,7 @@
 {
   "name": "carina-agent",
   "version": "0.1.1",
-  "description": "Autonomous AI agent platform with skill packs",
+  "description": "An agent that gets work done on your stack with skill packs",
   "homepage": "https://carinaai.uk",
   "bugs": {
     "url": "https://carinaai.uk/docs/"

@@ -8,7 +8,7 @@ const docPath = (slug: string) => (marketingEmbed ? `/${slug}` : `/docs/${slug}`
 
 const config: Config = {
   title: 'Carina Docs',
-  tagline: 'Autonomous AI agent platform. User guides and developer reference.',
+  tagline: 'An agent that gets work done on your stack. User guides and developer reference.',
   favicon: 'img/favicon.ico',
 
   url: marketingEmbed ? 'https://carinaai.uk' : 'https://docs.carinaai.uk',

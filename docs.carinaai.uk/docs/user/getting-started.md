@@ -6,7 +6,7 @@ See [Capability inventory](/docs/capabilities) for the full list of tools, provi
 
 ## Carina Cloud (no install)
 
-Use the hosted app at **[app.carinaai.uk](https://app.carinaai.uk)** if you prefer a browser workspace with BYOK keys and optional Pro security (Labyrinth Scout). Full guide: [Carina Cloud](/docs/user/carina-cloud).
+Use the hosted app at **[app.carinaai.uk](https://app.carinaai.uk)** if you want a browser workspace with BYOK keys and optional Pro security (Labyrinth Scout). Full guide: [Carina Cloud](/docs/user/carina-cloud).
 
 ## Prerequisites (self-hosted)
 

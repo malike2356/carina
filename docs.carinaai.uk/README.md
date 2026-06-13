@@ -1,6 +1,6 @@
 # docs.carinaai.uk
 
-Docusaurus documentation site for Carina: user guides and developer reference.
+Docusaurus documentation site for Carina: guides for the agent that gets work done on your stack, plus developer reference.
 
 ## Commands
 
