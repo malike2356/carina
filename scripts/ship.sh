@@ -27,8 +27,8 @@ DEPLOY_FLAGS=()
 BUILD_MOBILE=0
 for arg in "$@"; do
   case "$arg" in
-    --build-mobile) BUILD_MOBILE=1;
-    *) DEPLOY_FLAGS+=("$arg");
+    --build-mobile) BUILD_MOBILE=1 ;;
+    *) DEPLOY_FLAGS+=("$arg") ;;
   esac
 done
 

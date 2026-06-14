@@ -75,19 +75,19 @@ usage() {
 
 for arg in "$@"; do
   case "$arg" in
-    --dry-run) DRY_RUN=1;
-    --skip-git-pull) SKIP_GIT_PULL=1;
-    --skip-git-check) SKIP_GIT_CHECK=1;
-    --allow-dirty) ALLOW_DIRTY=1;
-    --skip-composer) SKIP_COMPOSER=1;
-    --skip-migrate) SKIP_MIGRATE=1;
-    --skip-npm) SKIP_NPM=1;
-    --with-rag) SKIP_RAG=0;
-    --build-assets) BUILD_ASSETS_LOCAL=1;
-    --optimize) OPTIMIZE=1;
-    --no-restart) RESTART_SUPERVISOR=0;
-    --rsync-delete) RSYNC_DELETE=1;
-    -h|--help) usage;
+    --dry-run) DRY_RUN=1 ;;
+    --skip-git-pull) SKIP_GIT_PULL=1 ;;
+    --skip-git-check) SKIP_GIT_CHECK=1 ;;
+    --allow-dirty) ALLOW_DIRTY=1 ;;
+    --skip-composer) SKIP_COMPOSER=1 ;;
+    --skip-migrate) SKIP_MIGRATE=1 ;;
+    --skip-npm) SKIP_NPM=1 ;;
+    --with-rag) SKIP_RAG=0 ;;
+    --build-assets) BUILD_ASSETS_LOCAL=1 ;;
+    --optimize) OPTIMIZE=1 ;;
+    --no-restart) RESTART_SUPERVISOR=0 ;;
+    --rsync-delete) RSYNC_DELETE=1 ;;
+    -h|--help) usage ;;
     *)
       echo "Unknown option: $arg (use --help)" >&2
       exit 1
