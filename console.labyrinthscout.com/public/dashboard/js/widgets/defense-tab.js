@@ -566,10 +566,18 @@
       });
   }
 
+  var activeView = 'overview';
+
   function switchView(view) {
+    if (window.DashboardFleetTab && activeView === 'fleet') {
+      window.DashboardFleetTab.onDeactivate();
+    }
+
+    activeView = view;
     var overview = document.getElementById('view-overview');
     var defense = document.getElementById('view-defense');
     var governance = document.getElementById('view-governance');
+    var fleet = document.getElementById('view-fleet');
     document.querySelectorAll('.dash-tab').forEach(function (tab) {
       var active = tab.getAttribute('data-view') === view;
       tab.classList.toggle('dash-tab-active', active);
@@ -578,8 +586,10 @@
     if (overview) overview.hidden = view !== 'overview';
     if (defense) defense.hidden = view !== 'defense';
     if (governance) governance.hidden = view !== 'governance';
+    if (fleet) fleet.hidden = view !== 'fleet';
     if (view === 'defense') void loadDefense();
     if (view === 'governance' && window.DashboardGovernanceTab) void window.DashboardGovernanceTab.load();
+    if (view === 'fleet' && window.DashboardFleetTab) window.DashboardFleetTab.onActivate();
   }
 
   function initTabs() {
@@ -609,6 +619,7 @@
     load: loadDefense,
     switchView: switchView,
     init: initTabs,
+    getActiveView: function () { return activeView; },
     getActionLog: function () { return actionLog.slice(); },
   };
 

@@ -193,9 +193,9 @@ export function createCronjobTool(sessionId: string): Tool {
       }
 
       if (action === 'run') {
-        const job = await getJob(jobId);
-        if (!job) return { error: 'Job not found.' };
         try {
+          const job = await getJob(jobId);
+          if (!job) return { error: 'Job not found.' };
           const output = await executeJob(jobId);
           return { job_id: jobId, output };
         } catch (err) {

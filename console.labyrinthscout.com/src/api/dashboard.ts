@@ -6,6 +6,7 @@ import { config } from '../config/index.js';
 import { getRedis } from '../redis.js';
 import { getSseSubscriberCount } from './sse.js';
 import { buildAgentStatus } from '../dashboard/widgets/agent-status.js';
+import { buildFleetSummary } from '../dashboard/widgets/fleet-summary.js';
 import { buildThreatMetrics } from '../dashboard/widgets/threat-metrics.js';
 import { buildUsageAnalytics } from '../dashboard/widgets/usage-analytics.js';
 import { buildIncidentOps } from '../dashboard/widgets/incident-ops.js';
@@ -109,6 +110,46 @@ dashboardRouter.get('/defense', async (req: Request, res: Response): Promise<voi
     res.json(payload);
   } catch (err) {
     console.error('[dashboard] defense failed:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+dashboardRouter.get('/fleet', async (req: Request, res: Response): Promise<void> => {
+  const accountId = scopedAccountId(req);
+  try {
+    const [agentRows, eventRows] = await Promise.all([
+      pool.query<{
+        id: string;
+        name: string;
+        status: string;
+        suspension_reason: string | null;
+        last_heartbeat: Date | null;
+      }>(
+        accountId
+          ? `SELECT id, name, status, suspension_reason, last_heartbeat
+             FROM carina_instances WHERE account_id = $1 ORDER BY created_at ASC`
+          : `SELECT id, name, status, suspension_reason, last_heartbeat
+             FROM carina_instances ORDER BY created_at ASC`,
+        accountId ? [accountId] : [],
+      ),
+      pool.query<{ instance_id: string; severity: string; count: string }>(
+        accountId
+          ? `SELECT e.instance_id, e.severity, COUNT(*)::text AS count
+             FROM security_events e
+             JOIN carina_instances i ON i.id = e.instance_id
+             WHERE i.account_id = $1 AND e.created_at > NOW() - INTERVAL '24 hours'
+             GROUP BY e.instance_id, e.severity`
+          : `SELECT instance_id, severity, COUNT(*)::text AS count
+             FROM security_events
+             WHERE created_at > NOW() - INTERVAL '24 hours'
+             GROUP BY instance_id, severity`,
+        accountId ? [accountId] : [],
+      ),
+    ]);
+
+    res.json(buildFleetSummary(agentRows.rows, eventRows.rows));
+  } catch (err) {
+    console.error('[dashboard] fleet failed:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });

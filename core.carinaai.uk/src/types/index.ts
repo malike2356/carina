@@ -49,6 +49,9 @@ export interface CarinaMessage {
 export interface CarinaResponse {
   content: string;
   toolsUsed: string[];
+  tokensIn: number;
+  tokensOut: number;
+  tokensCached: number;
   tokensUsed: number;
   provider: string;
   toolCalls?: ToolCall[];
@@ -126,6 +129,7 @@ export interface AgentOptions {
   persistMemory?: boolean;
   fastMode?: boolean;
   tenantId?: string;
+  orgId?: string;
   providerOverride?: {
     name: string;
     model?: string;

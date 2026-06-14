@@ -113,10 +113,15 @@ class CopilotProvider implements LLMProvider {
       const msg = response.choices[0]?.message;
       const toolCalls = parseToolCalls(msg?.tool_calls);
       const usage = response.usage;
+      const tokensIn = usage?.prompt_tokens ?? 0;
+      const tokensOut = usage?.completion_tokens ?? 0;
       return {
         content: msg?.content ?? '',
         toolsUsed: toolCalls.map((t) => t.toolName),
-        tokensUsed: (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0),
+        tokensIn,
+        tokensOut,
+        tokensCached: 0,
+        tokensUsed: tokensIn + tokensOut,
         provider: this.name,
         toolCalls,
       };

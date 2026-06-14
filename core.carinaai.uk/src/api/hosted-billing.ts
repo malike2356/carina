@@ -10,6 +10,7 @@ import {
 } from '../billing/plans.js';
 import { SubscriptionManager } from '../billing/subscription-manager.js';
 import { UsageMeter } from '../billing/usage-meter.js';
+import { getMonthlyBalance } from '../billing/credit-ledger.js';
 import { getOrgPlan } from '../hosted/plan-gates.js';
 import { PLAN_FEATURES, type PlanTier } from '../hosted/plan-features.js';
 import { orgOrTenantWhere, queryForOrg, resolveOrgIdFromUser } from '../hosted/scoped-query.js';
@@ -46,6 +47,25 @@ export async function checkOrgUsageQuota(
   plan?: PlanTier,
 ): Promise<OrgUsageQuota> {
   const effectivePlan = plan ?? await getOrgPlan(orgId);
+  const billingPlanId: BillingPlanId = effectivePlan === 'free'
+    ? 'free'
+    : effectivePlan;
+  const planMeta = BILLING_PLANS[billingPlanId];
+
+  if (planMeta.includedCredits !== null) {
+    const balance = await getMonthlyBalance(orgId, billingPlanId);
+    const effectiveLimit = planMeta.includedCredits + balance.topups;
+    const used = balance.used;
+    const hardCap = planMeta.includedCredits + (planMeta.maxTopupCredits ?? 0);
+    const warning = effectiveLimit > 0 && used >= effectiveLimit * 0.8 && used < effectiveLimit;
+    return {
+      allowed: used < effectiveLimit && used < hardCap,
+      warning,
+      used,
+      limit: effectiveLimit,
+    };
+  }
+
   const limit = PLAN_FEATURES[effectivePlan].monthlyTokenLimit;
   const used = await getOrgMonthlyTokenUsage(orgId, tenantId);
   const warning = limit > 0 && used >= limit * 0.8 && used < limit;

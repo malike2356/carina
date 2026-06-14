@@ -176,6 +176,7 @@ describe('tool-runner approval integration', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('../agents/tool-runner.js');
     const confirm = vi.fn();
@@ -205,6 +206,7 @@ describe('tool-runner approval integration', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('../agents/tool-runner.js');
     const result = await exec(

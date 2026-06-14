@@ -144,10 +144,17 @@ export class ClaudeProvider implements LLMProvider {
             }
           : undefined))
         .filter((call): call is ToolCall => call !== undefined);
+      const tokensIn = response.usage.input_tokens;
+      const tokensOut = response.usage.output_tokens;
+      const usageMeta = response.usage as { cache_read_input_tokens?: number };
+      const tokensCached = usageMeta.cache_read_input_tokens ?? 0;
       return {
         content,
         toolsUsed: toolCalls.map((t) => t.toolName),
-        tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+        tokensIn,
+        tokensOut,
+        tokensCached,
+        tokensUsed: tokensIn + tokensOut,
         provider: 'anthropic' as const,
         toolCalls,
       };
@@ -241,6 +248,9 @@ export class GeminiProvider implements LLMProvider {
       return {
         content: result.response.text(),
         toolsUsed: [],
+        tokensIn: 0,
+        tokensOut: 0,
+        tokensCached: 0,
         tokensUsed: 0,
         provider: 'gemini' as const,
       };

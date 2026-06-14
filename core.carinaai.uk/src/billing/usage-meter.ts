@@ -1,5 +1,6 @@
 import { pool } from '../memory/db.js';
 import { BILLING_PLANS, type BillingPlanId } from './plans.js';
+import { getMonthlyBalance } from './credit-ledger.js';
 import { orgOrTenantWhere, queryForOrg } from '../hosted/scoped-query.js';
 
 export interface UsageRecord {
@@ -75,6 +76,28 @@ export class UsageMeter {
   }
 
   async statusForOrg(orgId: string, tenantId: string, plan: BillingPlanId): Promise<UsageStatus> {
+    const planMeta = BILLING_PLANS[plan];
+    if (planMeta.includedCredits !== null) {
+      const balance = await getMonthlyBalance(orgId, plan);
+      const limit = planMeta.includedCredits + balance.topups;
+      const tokensUsed = balance.used;
+      if (limit > 0 && tokensUsed >= limit) {
+        return {
+          tokensUsed,
+          limit,
+          blocked: `You've used ${formatTokens(limit)} of ${formatTokens(limit)} credits this month. Upgrade or top up to continue.`,
+        };
+      }
+      if (limit > 0 && tokensUsed >= limit * 0.8) {
+        return {
+          tokensUsed,
+          limit,
+          warning: `You've used ${formatTokens(tokensUsed)} of ${formatTokens(limit)} credits this month`,
+        };
+      }
+      return { tokensUsed, limit };
+    }
+
     const tokensUsed = await this.getMonthlyUsageForOrg(orgId, tenantId);
     const limit = BILLING_PLANS[plan].tokenLimit;
     if (!limit) return { tokensUsed, limit };

@@ -32,13 +32,14 @@ describe('shell-exec tool', () => {
   });
 
   it('rejects unsafe workdir', async () => {
+    const runInSandbox = vi.fn();
     vi.doMock('./sandbox.js', () => ({
-      runInSandbox: vi.fn(),
+      runInSandbox,
     }));
     const { shellExecTool } = await import('./shell.js');
-    await expect(
-      shellExecTool.execute({ command: 'ls', workdir: '/etc/passwd' }),
-    ).rejects.toThrow('workdir is not allowed');
+    const result = await shellExecTool.execute({ command: 'ls', workdir: '/etc/passwd' });
+    expect(result).toEqual({ error: 'workdir is outside allowed paths.' });
+    expect(runInSandbox).not.toHaveBeenCalled();
   });
 
   it('clamps timeout to the 600 second maximum', async () => {

@@ -12,6 +12,8 @@ export interface BillingPlan {
   name: string;
   monthlyPriceGbp: number | null;
   tokenLimit: number | null;
+  includedCredits: number | null;
+  maxTopupCredits: number | null;
   stripePriceEnv?: string;
   features: string[];
   highlight?: string;
@@ -23,6 +25,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Carina Core',
     monthlyPriceGbp: 0,
     tokenLimit: 100_000,
+    includedCredits: 50_000,
+    maxTopupCredits: 0,
     features: [
       'Full autonomous agent',
       'Memory and self-writing skills',
@@ -35,6 +39,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Carina Ops Starter',
     monthlyPriceGbp: 19,
     tokenLimit: 500_000,
+    includedCredits: 500_000,
+    maxTopupCredits: 1_000_000,
     stripePriceEnv: 'STRIPE_PRICE_CARINA_OPS_STARTER',
     features: [
       'BYOK (3 providers)',
@@ -48,6 +54,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Carina Ops Team',
     monthlyPriceGbp: 49,
     tokenLimit: 2_000_000,
+    includedCredits: 2_000_000,
+    maxTopupCredits: 5_000_000,
     stripePriceEnv: 'STRIPE_PRICE_CARINA_OPS_TEAM',
     features: [
       'Everything in Starter',
@@ -62,6 +70,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Scout Monitor',
     monthlyPriceGbp: 79,
     tokenLimit: 250_000,
+    includedCredits: null,
+    maxTopupCredits: null,
     stripePriceEnv: 'STRIPE_PRICE_SCOUT_MONITOR',
     highlight: 'Visibility',
     features: [
@@ -77,6 +87,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Scout Pro',
     monthlyPriceGbp: 99,
     tokenLimit: 500_000,
+    includedCredits: null,
+    maxTopupCredits: null,
     stripePriceEnv: 'STRIPE_PRICE_SCOUT_PRO',
     highlight: 'Control',
     features: [
@@ -93,6 +105,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Scout Pro (legacy)',
     monthlyPriceGbp: 99,
     tokenLimit: 500_000,
+    includedCredits: null,
+    maxTopupCredits: null,
     stripePriceEnv: 'STRIPE_PRICE_SCOUT_PRO',
     features: [
       'Legacy plan id; maps to Scout Pro',
@@ -103,6 +117,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Enterprise',
     monthlyPriceGbp: null,
     tokenLimit: null,
+    includedCredits: null,
+    maxTopupCredits: null,
     stripePriceEnv: 'STRIPE_PRICE_ENTERPRISE',
     features: [
       'Everything in Scout Pro',
@@ -175,4 +191,18 @@ export function planFromStripePriceId(priceId: string): BillingPlanId | null {
   if (process.env.STRIPE_PRO_PRICE_ID === priceId) return 'scout_pro';
   if (process.env.STRIPE_PRICE_SCOUT_STANDARD === priceId) return 'scout_pro';
   return null;
+}
+
+export const CREDIT_TOPUP_PACKS = {
+  small: { credits: 500_000, priceGbp: 8, stripePriceEnv: 'STRIPE_PRICE_TOPUP_SMALL' },
+  large: { credits: 2_000_000, priceGbp: 25, stripePriceEnv: 'STRIPE_PRICE_TOPUP_LARGE' },
+} as const;
+
+export type CreditTopupPackId = keyof typeof CREDIT_TOPUP_PACKS;
+
+export function resolveTopupStripePriceId(packId: CreditTopupPackId): string {
+  const envKey = CREDIT_TOPUP_PACKS[packId].stripePriceEnv;
+  const priceId = process.env[envKey] ?? '';
+  if (!priceId) throw new Error(`Missing required env var: ${envKey}`);
+  return priceId;
 }

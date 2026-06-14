@@ -45,6 +45,16 @@ import {
   listEnvironmentsForOrg,
 } from '../hosted/deployments-service.js';
 import { UsageMeter } from '../billing/usage-meter.js';
+import { StripeService } from '../billing/stripe-service.js';
+import {
+  CREDIT_TOPUP_PACKS,
+  type BillingPlanId,
+  type CreditTopupPackId,
+} from '../billing/plans.js';
+import {
+  getOpsCreditUsageSummary,
+  getOpsModelMetering,
+} from '../billing/ops-metering-service.js';
 import { redactSecrets } from '../hosted/redact.js';
 
 async function overviewHandler(req: Request, res: Response): Promise<void> {
@@ -126,8 +136,10 @@ export function mountCarinaOpsRoutes(app: Express): void {
 
   router.get('/models', requireOrgMember('usage.read'), async (req, res) => {
     const ctx = orgContext(req);
+    const plan = await getOrgPlan(ctx.orgId) as BillingPlanId;
     const models = await listModelsForOrg(ctx.orgId);
-    res.json({ models });
+    const metering = await getOpsModelMetering(ctx.orgId, plan);
+    res.json({ models, ...metering });
   });
 
   router.get('/vault', requireOrgMember('vault.read'), async (req, res) => {
@@ -209,7 +221,9 @@ export function mountCarinaOpsRoutes(app: Express): void {
     const days = Number(req.query.days ?? 30);
     const summary = await getUsageSummary(ctx.orgId, ctx.userId, days);
     const byModel = await getUsageByModel(ctx.orgId, ctx.userId, days);
-    res.json({ summary, byModel });
+    const plan = await getOrgPlan(ctx.orgId) as BillingPlanId;
+    const credits = await getOpsCreditUsageSummary(ctx.orgId, plan);
+    res.json({ summary, byModel, credits });
   });
 
   router.get(
@@ -241,6 +255,43 @@ export function mountCarinaOpsRoutes(app: Express): void {
       res.send(csv);
     },
   );
+
+  router.post('/topup', requireOrgMember('billing.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const packId = String(req.body?.packId ?? '') as CreditTopupPackId;
+    if (!(packId in CREDIT_TOPUP_PACKS)) {
+      res.status(400).json({ error: 'packId must be small or large' });
+      return;
+    }
+    if (!config.hosted.stripeSecretKey) {
+      res.status(503).json({ error: 'Billing is not configured' });
+      return;
+    }
+    const origin = `${req.protocol}://${req.get('host') ?? 'localhost'}`;
+    try {
+      const stripeService = new StripeService();
+      const session = await stripeService.createTopupCheckoutSession({
+        tenantId: ctx.userId,
+        orgId: ctx.orgId,
+        email: ctx.email,
+        packId,
+        successUrl: `${origin}/ops/billing?topup=success`,
+        cancelUrl: `${origin}/ops/billing?topup=cancel`,
+      });
+      await writeProductAudit({
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: 'billing.topup_checkout_started',
+        resourceType: 'credit_topup',
+        details: { packId },
+        req,
+      });
+      res.json({ url: session.url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
 
   router.get('/credits', requireOrgMember('usage.read'), async (req, res) => {
     const ctx = orgContext(req);

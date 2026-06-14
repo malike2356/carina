@@ -52,6 +52,27 @@ describe('file-read', () => {
     expect(String(result.content)).toContain('10|line9');
   });
 
+  it('returns empty content when offset is past EOF', async () => {
+    await setup();
+    const file = path.join(tmpDir, 'small.txt');
+    await fs.writeFile(file, 'one\ntwo\nthree');
+    const result = await fileReadTool.execute({ path: file, offset: 10, limit: 5 }) as Record<string, unknown>;
+    expect(result.content).toBe('');
+    expect(result.total_lines).toBe(3);
+    expect(result.offset).toBe(10);
+    expect(result.truncated).toBe(false);
+  });
+
+  it('returns all lines when limit exceeds file length', async () => {
+    await setup();
+    const file = path.join(tmpDir, 'short.txt');
+    await fs.writeFile(file, 'alpha\nbeta\ngamma');
+    const result = await fileReadTool.execute({ path: file, offset: 2, limit: 500 }) as Record<string, unknown>;
+    expect(result.content).toBe('2|beta\n3|gamma');
+    expect(result.total_lines).toBe(3);
+    expect(result.truncated).toBe(false);
+  });
+
   it('suggests similar filenames on typo', async () => {
     await setup();
     const file = path.join(tmpDir, 'readme.md');

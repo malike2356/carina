@@ -1,12 +1,26 @@
 import Stripe from 'stripe';
 import { config } from '../config/index.js';
-import { resolveStripePriceId, type BillingPlanId } from './plans.js';
+import {
+  resolveStripePriceId,
+  resolveTopupStripePriceId,
+  type BillingPlanId,
+  type CreditTopupPackId,
+} from './plans.js';
 
 export interface CheckoutInput {
   tenantId: string;
   orgId?: string;
   email: string;
   plan: BillingPlanId;
+  successUrl: string;
+  cancelUrl: string;
+}
+
+export interface TopupCheckoutInput {
+  tenantId: string;
+  orgId: string;
+  email: string;
+  packId: CreditTopupPackId;
   successUrl: string;
   cancelUrl: string;
 }
@@ -40,6 +54,22 @@ export class StripeService {
           orgId: input.orgId ?? '',
           plan: input.plan,
         },
+      },
+    });
+  }
+
+  async createTopupCheckoutSession(input: TopupCheckoutInput): Promise<Stripe.Checkout.Session> {
+    return this.stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: input.email,
+      line_items: [{ price: resolveTopupStripePriceId(input.packId), quantity: 1 }],
+      success_url: input.successUrl,
+      cancel_url: input.cancelUrl,
+      metadata: {
+        tenantId: input.tenantId,
+        orgId: input.orgId,
+        packId: input.packId,
+        checkoutType: 'credit_topup',
       },
     });
   }

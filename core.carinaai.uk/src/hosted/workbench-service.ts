@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import type { Request } from 'express';
 import { checkOrgUsageQuota } from '../api/hosted-billing.js';
+import { maybeNotifyUsageWarning } from './usage-service.js';
 import { LLMRouter } from '../brain/llm.js';
 import { getTenantProvider } from '../brain/tenant-provider-keys.js';
 import { pool } from '../memory/db.js';
@@ -119,6 +120,7 @@ async function recordOrgUsage(input: {
      VALUES ($1, $2, CURRENT_DATE, $3, $4, $5)`,
     [input.tenantId, input.orgId, input.tokensUsed, input.model, input.costEstimate],
   );
+  await maybeNotifyUsageWarning(input.orgId, input.tenantId);
 }
 
 export type WorkbenchLlmRunner = (

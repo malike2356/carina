@@ -116,7 +116,10 @@ export async function executeToolCall(
   }
 
   try {
-    const paramsWithSession = { ...call.params, _sessionId: sessionId };
+    const paramsWithSession: Record<string, unknown> = { ...call.params, _sessionId: sessionId };
+    if (confirm) {
+      paramsWithSession._confirm = confirm;
+    }
     const ttlSeconds = getToolCacheTtlSeconds(call.toolName, call.params);
     const result = await withCache(call.toolName, call.params, ttlSeconds, () =>
       tool.execute(paramsWithSession),

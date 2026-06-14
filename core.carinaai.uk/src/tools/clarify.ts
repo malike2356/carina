@@ -35,28 +35,36 @@ export function createClarifyTool(sessionId: string): Tool {
       required: ['question'],
     },
     execute: async (params) => {
-      const question = String(params.question ?? '').trim();
-      if (!question) return { error: 'Question is required.' };
+      try {
+        if (!sessionId || typeof sessionId !== 'string') {
+          return { error: 'sessionId is required.' };
+        }
 
-      const rawChoices = (params.choices ?? []) as string[];
-      const choices = rawChoices.slice(0, 4).map(String);
+        const question = String(params.question ?? '').trim();
+        if (!question) return { error: 'Question is required.' };
 
-      const request: ClarifyRequest = {
-        question,
-        choices: choices.length > 0 ? choices : undefined,
-        sessionId,
-        askedAt: new Date(),
-      };
-      pendingClarifications.set(sessionId, request);
+        const rawChoices = Array.isArray(params.choices) ? (params.choices as unknown[]) : [];
+        const choices = rawChoices.slice(0, 4).map(String);
 
-      return {
-        status: 'awaiting_clarification',
-        question,
-        choices: request.choices,
-        message: choices.length > 0
-          ? `Please choose: ${choices.map((c, i) => `${i + 1}. ${c}`).join(' | ')}`
-          : 'Please provide your answer in your next message.',
-      };
+        const request: ClarifyRequest = {
+          question,
+          choices: choices.length > 0 ? choices : undefined,
+          sessionId,
+          askedAt: new Date(),
+        };
+        pendingClarifications.set(sessionId, request);
+
+        return {
+          status: 'awaiting_clarification',
+          question,
+          choices: request.choices,
+          message: choices.length > 0
+            ? `Please choose: ${choices.map((c, i) => `${i + 1}. ${c}`).join(' | ')}`
+            : 'Please provide your answer in your next message.',
+        };
+      } catch (err) {
+        return { error: err instanceof Error ? err.message : String(err) };
+      }
     },
   };
 }

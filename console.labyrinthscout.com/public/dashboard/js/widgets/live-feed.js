@@ -13,6 +13,9 @@
       if (msg.type === 'agent_update' && window.DashboardAgentStatus) {
         void window.DashboardAgentStatus.load();
       }
+      if ((msg.type === 'agent_update' || msg.type === 'heartbeat') && window.DashboardFleetTab) {
+        window.DashboardFleetTab.handleAgentUpdateEvent(msg.data || msg);
+      }
       if (msg.type === 'token_update' && window.DashboardUsageAnalytics) {
         void window.DashboardUsageAnalytics.load();
       }

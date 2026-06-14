@@ -361,6 +361,90 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 #view-defense[hidden]{display:none !important}
 #view-governance.dash-view{display:flex;flex-direction:column;gap:.5rem;flex:1;min-height:0;padding:0 .75rem;overflow-y:auto}
 #view-governance[hidden]{display:none !important}
+#view-fleet.dash-view{display:flex;flex-direction:column;gap:.5rem;flex:1;min-height:0;padding:0 .75rem;overflow-y:auto}
+#view-fleet[hidden]{display:none !important}
+
+/* ── FLEET TAB ── */
+.fleet-summary-bar {
+  display: flex;
+  gap: .6rem;
+  margin-bottom: .75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .76rem;
+}
+.fleet-summary-pill {
+  padding: .2rem .55rem;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.fleet-summary-pill.active  { border-color: var(--green); color: var(--green); }
+.fleet-summary-pill.suspended { border-color: var(--amber); color: var(--amber); }
+.fleet-summary-pill.offline { border-color: var(--border); color: var(--text); opacity: .6; }
+
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: .6rem;
+}
+.fleet-card {
+  background: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: .75rem .85rem;
+  display: flex;
+  flex-direction: column;
+  gap: .45rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .76rem;
+}
+.fleet-card.status-active    { border-left: 3px solid var(--green); }
+.fleet-card.status-suspended { border-left: 3px solid var(--amber); }
+.fleet-card.status-offline   { border-left: 3px solid var(--border); opacity: .7; }
+
+.fleet-card-name {
+  font-size: .82rem;
+  color: var(--bright);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fleet-card-id   { font-size: .65rem; color: var(--text); }
+.fleet-card-hb   { font-size: .68rem; color: var(--text); }
+.fleet-card-events {
+  display: flex;
+  gap: .4rem;
+  font-size: .65rem;
+}
+.fleet-ev-breach   { color: var(--red); }
+.fleet-ev-critical { color: var(--red); opacity: .8; }
+.fleet-ev-warning  { color: var(--amber); }
+.fleet-ev-info     { color: var(--text); }
+
+.fleet-card-actions { display: flex; gap: .4rem; margin-top: .2rem; }
+.fleet-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .65rem;
+  padding: .2rem .45rem;
+  border-radius: 2px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  letter-spacing: .05em;
+}
+.fleet-btn-kill   { border-color: var(--red);   color: var(--red); }
+.fleet-btn-resume { border-color: var(--green); color: var(--green); }
+.fleet-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+.fleet-empty {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .76rem;
+  padding: 1.5rem;
+  text-align: center;
+}
 
 /* ── GOVERNANCE TAB ── */
 .gov-tab-console{display:flex;flex-direction:column;gap:.5rem;order:1}
@@ -514,6 +598,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <button type="button" class="dash-tab dash-tab-active" data-view="overview" aria-selected="true">Overview</button>
     <button type="button" class="dash-tab" data-view="defense" aria-selected="false">Defense</button>
     <button type="button" class="dash-tab" data-view="governance" aria-selected="false">Governance</button>
+    <button type="button" class="dash-tab" data-view="fleet" aria-selected="false">Fleet</button>
   </nav>
 
   <div id="view-overview" class="dash-view">
@@ -830,6 +915,13 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
           <button type="button" id="gov-tab-refresh" class="defense-btn defense-btn-muted">Refresh</button>
         </div>
       </div>
+    </section>
+  </div>
+
+  <div id="view-fleet" class="dash-view" hidden>
+    <section class="fleet-console" aria-label="Agent fleet">
+      <div class="fleet-summary-bar" id="fleet-summary-bar"></div>
+      <div class="fleet-grid" id="fleet-grid"></div>
     </section>
   </div>
 </div>
@@ -3019,6 +3111,7 @@ window.addEventListener('resize', () => {
 <script src="/dashboard/js/widgets/governance-render.js"></script>
 <script src="/dashboard/js/widgets/governance-tab.js"></script>
 <script src="/dashboard/js/widgets/defense-tab.js"></script>
+<script src="/dashboard/js/widgets/fleet.js"></script>
 <script src="/dashboard/js/widgets/action-queue.js"></script>
 <script src="/dashboard/js/widgets/attack-detail.js"></script>
 <script src="/dashboard/js/widgets/agent-status.js"></script>

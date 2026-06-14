@@ -3,17 +3,37 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
+  vi.stubEnv('CARINA_APPROVAL_POLICY', 'off');
 });
+
+function stubExecuteCodeModule(overrides: Record<string, unknown> = {}): void {
+  vi.doMock('./execute-code.js', () => ({
+    detectLanguage: (code: string) =>
+      (/^\s*(def |import |print\(|from )/m.test(code) ? 'python' : 'javascript'),
+    runCodeWithBridge: vi.fn(),
+    truncateCodeOutput: (text: string) => text,
+    BRIDGE_TIMEOUT_MS: 300_000,
+    ...overrides,
+  }));
+}
+
+function mockSandboxLegacy(runCodeInSandbox: ReturnType<typeof vi.fn>): void {
+  stubExecuteCodeModule();
+  vi.doMock('./sandbox.js', () => ({
+    checkDocker: vi.fn().mockResolvedValue(false),
+    runCodeInSandbox,
+  }));
+}
 
 describe('code-exec tool', () => {
   it('executes javascript and returns stdout on success', async () => {
-    vi.doMock('./sandbox.js', () => ({
-      runCodeInSandbox: vi.fn().mockResolvedValue({
+    mockSandboxLegacy(
+      vi.fn().mockResolvedValue({
         stdout: '42',
         stderr: '',
         exitCode: 0,
       }),
-    }));
+    );
     const { codeExecTool } = await import('./code.js');
     const result = (await codeExecTool.execute({ code: '6 * 7', language: 'javascript' })) as {
       output: string;
@@ -26,13 +46,13 @@ describe('code-exec tool', () => {
   });
 
   it('returns error field and null output on non-zero exit', async () => {
-    vi.doMock('./sandbox.js', () => ({
-      runCodeInSandbox: vi.fn().mockResolvedValue({
+    mockSandboxLegacy(
+      vi.fn().mockResolvedValue({
         stdout: '',
         stderr: 'NameError: name x is not defined',
         exitCode: 1,
       }),
-    }));
+    );
     const { codeExecTool } = await import('./code.js');
     const result = (await codeExecTool.execute({ code: 'print(x)', language: 'python' })) as {
       output: null;
@@ -46,7 +66,7 @@ describe('code-exec tool', () => {
 
   it('auto-detects python from print( keyword', async () => {
     const runCodeInSandbox = vi.fn().mockResolvedValue({ stdout: 'hi', stderr: '', exitCode: 0 });
-    vi.doMock('./sandbox.js', () => ({ runCodeInSandbox }));
+    mockSandboxLegacy(runCodeInSandbox);
     const { codeExecTool } = await import('./code.js');
     await codeExecTool.execute({ code: 'print("hi")' });
     expect(runCodeInSandbox).toHaveBeenCalledWith(
@@ -58,7 +78,7 @@ describe('code-exec tool', () => {
 
   it('auto-detects javascript when no python keywords found', async () => {
     const runCodeInSandbox = vi.fn().mockResolvedValue({ stdout: '2', stderr: '', exitCode: 0 });
-    vi.doMock('./sandbox.js', () => ({ runCodeInSandbox }));
+    mockSandboxLegacy(runCodeInSandbox);
     const { codeExecTool } = await import('./code.js');
     await codeExecTool.execute({ code: '1 + 1' });
     expect(runCodeInSandbox).toHaveBeenCalledWith(
@@ -84,13 +104,36 @@ describe('code-exec tool', () => {
   });
 
   it('includes executionTime in the result', async () => {
-    vi.doMock('./sandbox.js', () => ({
-      runCodeInSandbox: vi.fn().mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 }),
-    }));
+    mockSandboxLegacy(
+      vi.fn().mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 }),
+    );
     const { codeExecTool } = await import('./code.js');
     const result = (await codeExecTool.execute({ code: '"ok"' })) as { executionTime: number };
     expect(typeof result.executionTime).toBe('number');
     expect(result.executionTime).toBeGreaterThanOrEqual(0);
+  });
+
+  it('uses bridge path when Docker is available', async () => {
+    const runCodeWithBridge = vi.fn().mockResolvedValue({
+      stdout: 'bridged',
+      stderr: '',
+      exitCode: 0,
+    });
+    stubExecuteCodeModule({ runCodeWithBridge });
+    vi.doMock('./sandbox.js', () => ({
+      checkDocker: vi.fn().mockResolvedValue(true),
+      runCodeInSandbox: vi.fn(),
+    }));
+    const { codeExecTool } = await import('./code.js');
+    const result = await codeExecTool.execute({ code: 'print("bridged")', _sessionId: 'sess-1' });
+    expect(runCodeWithBridge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: 'print("bridged")',
+        language: 'python',
+        sessionId: 'sess-1',
+      }),
+    );
+    expect(result).toMatchObject({ output: 'bridged', bridge: true });
   });
 });
 

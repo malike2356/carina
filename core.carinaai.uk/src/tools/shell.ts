@@ -32,12 +32,12 @@ function clampTimeout(timeoutMs?: number): number {
   return Math.max(1_000, Math.min(requested, MAX_TIMEOUT_MS));
 }
 
-function resolveWorkdir(raw?: string): string | undefined {
+function resolveWorkdir(raw?: string): string | { error: string } | undefined {
   const value = String(raw ?? '').trim();
   if (!value) return undefined;
   const resolved = path.resolve(expandPath(value));
   if (!isSafePath(resolved) || isBlockedSystemWrite(resolved)) {
-    throw new Error(`workdir is not allowed: ${value}`);
+    return { error: 'workdir is outside allowed paths.' };
   }
   return resolved;
 }
@@ -91,7 +91,11 @@ export const shellExecTool: Tool = {
     const workdirRaw = params.workdir !== undefined
       ? String(params.workdir)
       : (process.env.CARINA_JOB_WORKDIR ?? '');
-    const workdir = resolveWorkdir(workdirRaw || undefined);
+    const workdirResult = resolveWorkdir(workdirRaw || undefined);
+    if (workdirResult && typeof workdirResult === 'object' && 'error' in workdirResult) {
+      return workdirResult;
+    }
+    const workdir = workdirResult;
 
     if (pty) {
       if (!isPtyEnabled()) {

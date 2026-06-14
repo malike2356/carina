@@ -1,9 +1,42 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+vi.mock('../billing/credit-ledger.js', () => ({
+  getMonthlyBalance: vi.fn(async (orgId: string) => ({
+    used: orgId === 'org-a' ? 400_000 : 50,
+    remaining: orgId === 'org-a' ? 100_000 : 1_950_000,
+    percentUsed: orgId === 'org-a' ? 80 : 2.5,
+    topups: 0,
+    netLedger: orgId === 'org-a' ? -400_000 : -50,
+  })),
+}));
+
+vi.mock('./plan-gates.js', () => ({
+  getOrgPlan: vi.fn(async (orgId: string) =>
+    (orgId === 'org-a' ? 'carina_ops_starter' : 'carina_ops_team')),
+}));
+
+vi.mock('./usage-warning-email.js', () => ({
+  sendUsageWarningEmail: vi.fn(async () => true),
+}));
+
+vi.mock('../memory/db.js', () => ({
+  pool: {
+    query: vi.fn(async (sql: string) => {
+      if (/organizations o/.test(sql)) {
+        return { rows: [{ name: 'Org A', email: 'owner@example.com' }], rowCount: 1 };
+      }
+      return { rows: [], rowCount: 0 };
+    }),
+  },
+}));
+
 vi.mock('../api/hosted-billing.js', () => ({
   checkOrgUsageQuota: vi.fn(async (orgId: string) => {
     if (orgId === 'org-a') {
       return { allowed: true, warning: true, used: 400_000, limit: 500_000 };
+    }
+    if (orgId === 'org-90') {
+      return { allowed: true, warning: true, used: 450_000, limit: 500_000 };
     }
     return { allowed: true, warning: false, used: 50, limit: 2_000_000 };
   }),
@@ -11,7 +44,7 @@ vi.mock('../api/hosted-billing.js', () => ({
 
 vi.mock('./scoped-query.js', () => ({
   orgOrTenantWhere: () => '(org_id = $1 OR (org_id IS NULL AND tenant_id = $2))',
-  queryForOrg: vi.fn(async (orgId: string, sql: string, params?: unknown[]) => {
+  queryForOrg: vi.fn(async (orgId: string, sql: string) => {
     if (/GROUP BY date/.test(sql)) {
       if (orgId === 'org-a') {
         return {
@@ -40,16 +73,21 @@ vi.mock('./scoped-query.js', () => ({
   }),
 }));
 
+import { sendUsageWarningEmail } from './usage-warning-email.js';
 import {
   getCreditsStatus,
   getTodayUsage,
   getUsageByModel,
   getUsageSummary,
+  getUsageWarningThreshold,
+  maybeNotifyUsageWarning,
+  resetUsageWarningEmailState,
 } from './usage-service.js';
 
 describe('usage-service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetUsageWarningEmailState();
   });
 
   it('getUsageSummary aggregates daily rows for org', async () => {
@@ -75,5 +113,32 @@ describe('usage-service', () => {
     const today = await getTodayUsage('org-a', 'user-1');
     expect(today.tokens).toBe(50);
     expect(today.cost).toBe(0.1);
+  });
+
+  it('getUsageWarningThreshold maps usage levels to warning tiers', () => {
+    const limit = 500_000;
+    expect(getUsageWarningThreshold(399_999, limit)).toBeNull();
+    expect(getUsageWarningThreshold(400_000, limit)).toBe(80);
+    expect(getUsageWarningThreshold(449_999, limit)).toBe(80);
+    expect(getUsageWarningThreshold(450_000, limit)).toBe(90);
+    expect(getUsageWarningThreshold(500_000, limit)).toBe(100);
+  });
+
+  it('maybeNotifyUsageWarning triggers email at 80 percent usage', async () => {
+    await maybeNotifyUsageWarning('org-a', 'user-1');
+    expect(sendUsageWarningEmail).toHaveBeenCalledWith(expect.objectContaining({
+      threshold: 80,
+      used: 400_000,
+      limit: 500_000,
+    }));
+  });
+
+  it('maybeNotifyUsageWarning triggers email at 90 percent usage', async () => {
+    await maybeNotifyUsageWarning('org-90', 'user-1');
+    expect(sendUsageWarningEmail).toHaveBeenCalledWith(expect.objectContaining({
+      threshold: 90,
+      used: 450_000,
+      limit: 500_000,
+    }));
   });
 });

@@ -16,6 +16,7 @@ describe('executeToolCall', () => {
   it('returns error for unknown tool', async () => {
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => undefined },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const result = await exec(makeCall('nonexistent'));
@@ -31,6 +32,7 @@ describe('executeToolCall', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const result = await exec(makeCall('test-tool', { x: 1 }));
@@ -48,6 +50,7 @@ describe('executeToolCall', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const confirm = vi.fn().mockResolvedValue(false);
@@ -67,6 +70,7 @@ describe('executeToolCall', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const confirm = vi.fn().mockResolvedValue(true);
@@ -84,6 +88,7 @@ describe('executeToolCall', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const result = await exec(makeCall('no-confirm-tool'));
@@ -99,6 +104,7 @@ describe('executeToolCall', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
     }));
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const result = await exec(makeCall('throwing-tool'));

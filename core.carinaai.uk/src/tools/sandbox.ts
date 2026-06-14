@@ -9,6 +9,7 @@ export interface SandboxOptions {
   memoryMb: number;
   networkDisabled: boolean;
   workdir?: string;
+  bridgeDir?: string;
 }
 
 export interface SandboxResult {
@@ -62,6 +63,9 @@ export async function runInSandbox(
   }
 
   const netFlag = options.networkDisabled ? '--network=none' : '';
+  const bridgeMount = options.bridgeDir
+    ? `-v '${shellEscape(options.bridgeDir)}:/bridge:rw'`
+    : '';
   const workdirMount = options.workdir
     ? `-v '${shellEscape(options.workdir)}:/workdir' -w /workdir`
     : '';
@@ -71,6 +75,7 @@ export async function runInSandbox(
   const dockerCmd = [
     'docker run --rm',
     netFlag,
+    bridgeMount,
     workdirMount,
     `--memory=${options.memoryMb}m`,
     '--cpus=0.5',
@@ -118,6 +123,14 @@ export async function runCodeInSandbox(
   }
 
   const image = language === 'python' ? 'python:3.12-alpine' : 'node:22-alpine';
+  if (options.bridgeDir) {
+    const command =
+      language === 'python'
+        ? 'PYTHONPATH=/bridge python3 /bridge/script.py'
+        : 'node /bridge/script.js';
+    return runInSandbox(command, image, options);
+  }
+
   const escaped = shellEscape(code);
   const command =
     language === 'python'

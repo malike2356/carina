@@ -74,4 +74,32 @@ describe('clarify tool', () => {
     expect(getPendingClarification(SESSION)?.question).toBe('From A?');
     expect(getPendingClarification(SESSION_B)?.question).toBe('From B?');
   });
+
+  it('treats choices as empty when passed as a string', async () => {
+    const tool = createClarifyTool(SESSION);
+    const result = await tool.execute({
+      question: 'Which format?',
+      choices: 'PDF' as unknown as string[],
+    }) as { status: string; choices?: string[] };
+
+    expect(result.status).toBe('awaiting_clarification');
+    expect(result.choices).toBeUndefined();
+  });
+
+  it('does not throw when choices is null', async () => {
+    const tool = createClarifyTool(SESSION);
+    const result = await tool.execute({
+      question: 'Which format?',
+      choices: null as unknown as string[],
+    }) as { status: string; choices?: string[] };
+
+    expect(result.status).toBe('awaiting_clarification');
+    expect(result.choices).toBeUndefined();
+  });
+
+  it('returns error for empty params without throwing', async () => {
+    const tool = createClarifyTool(SESSION);
+    const result = await tool.execute({}) as { error: string };
+    expect(result.error).toBe('Question is required.');
+  });
 });

@@ -4,7 +4,7 @@ import { BILLING_PLANS, normalizePlanId, resolveStripePriceId } from '../plans.j
 describe('billing plans', () => {
   it('getPlan returns Carina Ops Starter pricing', () => {
     const plan = BILLING_PLANS.carina_ops_starter;
-    expect(plan.monthlyPriceGbp).toBe(49);
+    expect(plan.monthlyPriceGbp).toBe(19);
     expect(plan.tokenLimit).toBe(500_000);
   });
 

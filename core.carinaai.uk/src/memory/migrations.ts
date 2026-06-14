@@ -348,6 +348,64 @@ ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_plan_check
   CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise'));
 `;
 
+const OPS_METERING_MIGRATION = `
+CREATE TABLE IF NOT EXISTS ops_model_rate_cards (
+  id          SERIAL PRIMARY KEY,
+  model_class TEXT    NOT NULL,
+  input_weight  NUMERIC(10,6) NOT NULL,
+  output_weight NUMERIC(10,6) NOT NULL,
+  cache_weight  NUMERIC(10,6) NOT NULL,
+  effective_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  effective_to   TIMESTAMPTZ,
+  note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ops_credit_ledger (
+  id           BIGSERIAL PRIMARY KEY,
+  org_id       TEXT NOT NULL,
+  event_type   TEXT NOT NULL,
+  credits      NUMERIC(18,6) NOT NULL,
+  provider_cost_usd NUMERIC(18,9),
+  model        TEXT,
+  model_class  TEXT,
+  session_id   TEXT,
+  rate_card_id INT REFERENCES ops_model_rate_cards(id),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ops_credit_ledger_org_month
+  ON ops_credit_ledger(org_id, created_at);
+
+CREATE TABLE IF NOT EXISTS ops_plan_model_classes (
+  plan_id     TEXT NOT NULL,
+  model_class TEXT NOT NULL,
+  PRIMARY KEY (plan_id, model_class)
+);
+
+INSERT INTO ops_model_rate_cards (model_class, input_weight, output_weight, cache_weight, note)
+SELECT * FROM (VALUES
+  ('mini',      0.000002::NUMERIC, 0.000008::NUMERIC, 0.0000005::NUMERIC, 'initial rate card 2026-06'),
+  ('balanced',  0.000006::NUMERIC, 0.000024::NUMERIC, 0.0000015::NUMERIC, 'initial rate card 2026-06'),
+  ('premium',   0.000020::NUMERIC, 0.000080::NUMERIC, 0.0000050::NUMERIC, 'initial rate card 2026-06'),
+  ('frontier',  0.000050::NUMERIC, 0.000200::NUMERIC, 0.0000125::NUMERIC, 'initial rate card 2026-06')
+) AS seed(model_class, input_weight, output_weight, cache_weight, note)
+WHERE NOT EXISTS (SELECT 1 FROM ops_model_rate_cards LIMIT 1);
+
+INSERT INTO ops_plan_model_classes (plan_id, model_class)
+SELECT * FROM (VALUES
+  ('free',              'mini'),
+  ('carina_ops_starter','mini'),
+  ('carina_ops_starter','balanced'),
+  ('carina_ops_team',   'mini'),
+  ('carina_ops_team',   'balanced'),
+  ('carina_ops_team',   'premium'),
+  ('enterprise',        'mini'),
+  ('enterprise',        'balanced'),
+  ('enterprise',        'premium'),
+  ('enterprise',        'frontier')
+) AS seed(plan_id, model_class)
+WHERE NOT EXISTS (SELECT 1 FROM ops_plan_model_classes LIMIT 1);
+`;
+
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(TABLES);
   try {
@@ -382,5 +440,10 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(FTS_MIGRATION);
   } catch {
     // FTS column may already exist
+  }
+  try {
+    await client.query(OPS_METERING_MIGRATION);
+  } catch {
+    // ops metering tables may already exist
   }
 }

@@ -1,5 +1,17 @@
 import { llm } from '../brain/llm.js';
-import { checkMonthlyBudget, recordUsage } from '../brain/cost-tracker.js';
+import { checkMonthlyBudget, estimateCost, recordUsage } from '../brain/cost-tracker.js';
+import { checkCreditGate, getAllowedModelClasses } from '../billing/credit-gate.js';
+import { debitCredits } from '../billing/credit-ledger.js';
+import {
+  classifyModel,
+  computeBillableCredits,
+  estimateCreditsForCall,
+  getCurrentRateCard,
+  highestAllowedModelClass,
+} from '../billing/rate-card.js';
+import type { BillingPlanId } from '../billing/plans.js';
+import { resolveOrgIdFromUser } from '../hosted/scoped-query.js';
+import { getOrgPlan } from '../hosted/plan-gates.js';
 import { config } from '../config/index.js';
 import {
   getSessionHistory,
@@ -74,6 +86,7 @@ export class CarinaAgent {
   private providerOverride?: ProviderOverride;
   private pendingProviderOverride?: ProviderOverride;
   private tenantId?: string;
+  private orgId?: string;
   private toolCallInFlight = false;
   private abortSignal?: AbortSignal;
 
@@ -95,12 +108,30 @@ export class CarinaAgent {
     this.forceConfirm = options.forceConfirm ?? false;
     this.providerOverride = options.providerOverride;
     this.tenantId = options.tenantId;
+    this.orgId = options.orgId;
     this.abortSignal = options.abortSignal;
     registerSessionTools(sessionId);
   }
 
   setTenantId(tenantId: string | undefined): void {
     this.tenantId = tenantId;
+  }
+
+  setOrgId(orgId: string | undefined): void {
+    this.orgId = orgId;
+  }
+
+  private async resolveOrgId(): Promise<string | undefined> {
+    if (this.orgId) return this.orgId;
+    if (!this.tenantId) return undefined;
+    const resolved = await resolveOrgIdFromUser(this.tenantId);
+    return resolved ?? undefined;
+  }
+
+  private async resolveBillingPlanId(orgId: string): Promise<BillingPlanId> {
+    const orgPlan = await getOrgPlan(orgId);
+    if (orgPlan === 'carina_ops_starter' || orgPlan === 'carina_ops_team') return orgPlan;
+    return 'free';
   }
 
   setProviderOverride(override: ProviderOverride): void {
@@ -401,6 +432,29 @@ export class CarinaAgent {
         messages.push(...compressed);
       }
 
+      const orgId = await this.resolveOrgId();
+      if (orgId) {
+        const planId = await this.resolveBillingPlanId(orgId);
+        const providerName = this.getProviderOverride()?.name ?? llm.current().name;
+        let modelName = llm.modelFor(providerName);
+        let modelClass = classifyModel(modelName);
+        const allowedClasses = await getAllowedModelClasses(planId);
+        if (!allowedClasses.includes(modelClass)) {
+          const downgraded = highestAllowedModelClass(allowedClasses);
+          console.warn(
+            `[credits] model ${modelName} (${modelClass}) not allowed on ${planId}; downgrading to ${downgraded}`,
+          );
+          modelClass = downgraded;
+        }
+        const rateCard = await getCurrentRateCard(modelClass);
+        const estimatedCredits = estimateCreditsForCall(rateCard, 4000, 1000);
+        const gate = await checkCreditGate(orgId, planId, modelClass, estimatedCredits);
+        if (!gate.allowed) {
+          yield { type: 'text', content: `[${gate.reason}]` };
+          break;
+        }
+      }
+
       const response = await llm.chatRouted(
         messages,
         tools,
@@ -409,6 +463,28 @@ export class CarinaAgent {
         this.tenantId,
       );
       await recordUsage(this.sessionId, response.provider, response.tokensUsed, llm.modelFor(response.provider));
+
+      if (orgId) {
+        const modelName = llm.modelFor(response.provider);
+        const modelClass = classifyModel(modelName);
+        const rateCard = await getCurrentRateCard(modelClass);
+        const credits = computeBillableCredits(
+          rateCard,
+          response.tokensIn,
+          response.tokensOut,
+          response.tokensCached,
+        );
+        await debitCredits({
+          orgId,
+          tenantId: this.tenantId,
+          sessionId: this.sessionId,
+          model: modelName,
+          modelClass,
+          rateCardId: rateCard.id,
+          credits,
+          providerCostUsd: estimateCost(response.provider, response.tokensUsed),
+        });
+      }
 
       const textBuffer = response.content;
       const toolCalls: ToolCall[] = response.toolCalls ?? [];

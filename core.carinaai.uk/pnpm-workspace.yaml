@@ -6,3 +6,5 @@ allowBuilds:
   protobufjs: true
   puppeteer: set this to true or false
   sharp: true
+overrides:
+  esbuild: 0.28.1

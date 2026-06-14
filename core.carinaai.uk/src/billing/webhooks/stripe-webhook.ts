@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import type Stripe from 'stripe';
 import { pool } from '../../memory/db.js';
+import { creditTopup } from '../credit-ledger.js';
+import { CREDIT_TOPUP_PACKS, type CreditTopupPackId } from '../plans.js';
 import { InvoiceGenerator } from '../invoice-generator.js';
 import { StripeService } from '../stripe-service.js';
 import { SubscriptionManager } from '../subscription-manager.js';
@@ -18,7 +20,12 @@ export class StripeWebhookHandler {
     await pool.query('INSERT INTO stripe_events (id, type, received_at) VALUES ($1, $2, NOW())', [event.id, event.type]);
 
     if (event.type === 'checkout.session.completed') {
-      await this.subscriptions.syncFromCheckoutSession(event.data.object as Stripe.Checkout.Session);
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.checkoutType === 'credit_topup') {
+        await this.handleCreditTopup(session);
+        return;
+      }
+      await this.subscriptions.syncFromCheckoutSession(session);
       return;
     }
     if (event.type === 'customer.subscription.updated') {
@@ -46,6 +53,13 @@ export class StripeWebhookHandler {
     if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
       await this.invoices.recordStripeInvoice(event.data.object as Stripe.Invoice);
     }
+  }
+
+  async handleCreditTopup(session: Stripe.Checkout.Session): Promise<void> {
+    const orgId = session.metadata?.orgId ?? '';
+    const packId = session.metadata?.packId as CreditTopupPackId | undefined;
+    if (!orgId || !packId || !(packId in CREDIT_TOPUP_PACKS)) return;
+    await creditTopup(orgId, CREDIT_TOPUP_PACKS[packId].credits, `stripe:${session.id}`);
   }
 
   expressHandler() {
