@@ -19,8 +19,11 @@ import {
   checkWebPassword,
   redirectIfHostedAuthed,
   redirectIfWebAuthed,
+  requireHostedSession,
   requireWebAuth,
 } from './web-auth.js';
+import { OPS_PAGE_FILES, requireOpsPlanGate } from '../hosted/plan-gates.js';
+import { mountCarinaOpsRoutes } from '../api/carina-ops-routes.js';
 import { enforceHostedQuota, resolveExternalId } from './hosted-chat.js';
 import { isHostedRequest } from './hosted-domain.js';
 import { mountHostedContextRoute, mountHostedWebRoutes } from '../api/hosted-web.js';
@@ -350,9 +353,12 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     mountHostedRoutes(app);
     if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
       mountHostedWebRoutes(app);
-      mountHostedBillingRoutes(app);
     } else {
       console.warn(chalk.yellow('Hosted billing routes skipped: STRIPE_SECRET_KEY not configured'));
+    }
+    mountCarinaOpsRoutes(app);
+    if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
+      mountHostedBillingRoutes(app);
     }
     app.use('/webhooks/email', emailWebhookRouter);
 
@@ -486,6 +492,41 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
       });
     }
 
+    if (config.carinaOps.productEnabled) {
+      const OPS_STATIC = path.join(WEB_STATIC, 'ops');
+      app.use('/ops/assets', express.static(path.join(OPS_STATIC)));
+
+      app.get('/ops/upgrade', requireHostedSession, (req, res) => {
+        if (!isHostedRequest(req.hostname)) {
+          res.status(404).send('Not found');
+          return;
+        }
+        res.sendFile(path.join(OPS_STATIC, 'upgrade.html'));
+      });
+
+      app.get('/ops', requireHostedSession, requireOpsPlanGate, (req, res) => {
+        if (!isHostedRequest(req.hostname)) {
+          res.status(404).send('Not found');
+          return;
+        }
+        res.sendFile(path.join(OPS_STATIC, 'index.html'));
+      });
+
+      app.get('/ops/:page', requireHostedSession, requireOpsPlanGate, (req, res) => {
+        if (!isHostedRequest(req.hostname)) {
+          res.status(404).send('Not found');
+          return;
+        }
+        const page = String(req.params.page ?? '');
+        const file = OPS_PAGE_FILES[page];
+        if (!file) {
+          res.status(404).send('Not found');
+          return;
+        }
+        res.sendFile(path.join(OPS_STATIC, file));
+      });
+    }
+
     if (dashboardIndexHtml) {
       const serveDashboard = async (req: Request, res: Response): Promise<void> => {
         const scoutBase = scoutServiceUrl();
@@ -539,6 +580,8 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
           '<h1 id="top-title">Control Center</h1>',
         );
         html = html.replace('<body>', '<body data-control-center="true">');
+        html = html.replace('./css/dashboard.css', '/dashboard/css/dashboard.css');
+        html = html.replace('./js/dashboard.js', '/dashboard/js/dashboard.js');
         if (config.labyrinth.apiKey && scoutServiceUrl() && !isHostedRequest(req.hostname)) {
           const escapedKey = config.labyrinth.apiKey.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
           html = html.replace(
