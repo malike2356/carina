@@ -96,6 +96,21 @@ $tools = [
     // Backup & security (2)
     ['run_backup', 'Trigger a workspace or platform backup job.', 'platform_admin', true, ['scope' => 'string'], []],
     ['generate_security_report', 'Summary of security findings (SCOUT).', 'platform_admin', false, ['days' => 'integer'], []],
+    // Memory (2)
+    ['remember', 'Store a durable fact about the investor or portfolio for future sessions.', 'authenticated', false, ['key' => 'string', 'value' => 'string'], ['key', 'value']],
+    ['recall', 'Search stored memories and past conversation snippets.', 'authenticated', false, ['query' => 'string'], ['query']],
+    ['clarify', 'Ask the user a specific question before proceeding with an ambiguous or high-stakes action.', 'authenticated', false, ['question' => 'string', 'options' => 'array', 'context' => 'string'], ['question']],
+    // Scheduled tasks (4)
+    ['create_scheduled_task', 'Create a recurring Carina task with schedule and prompt.', 'authenticated', false, ['name' => 'string', 'schedule' => 'string', 'prompt' => 'string', 'delivery_channel' => 'string', 'model_override' => 'string'], ['name', 'schedule', 'prompt']],
+    ['list_scheduled_tasks', 'List active scheduled Carina tasks for the current user.', 'authenticated', false, [], []],
+    ['delete_scheduled_task', 'Delete a scheduled Carina task permanently.', 'authenticated', true, ['task_id' => 'integer'], ['task_id']],
+    ['pause_scheduled_task', 'Pause or resume a scheduled Carina task.', 'authenticated', false, ['task_id' => 'integer', 'active' => 'boolean'], ['task_id', 'active']],
+    // Transcription (1)
+    ['transcribe_audio', 'Transcribe an audio file (OGG, MP3, WAV, M4A) to text using Whisper.', 'authenticated', false, ['file_url' => 'string', 'language' => 'string'], ['file_url']],
+    // Webhooks (3)
+    ['webhook_subscribe', 'Subscribe to an external event; returns inbound webhook URL.', 'authenticated', false, ['name' => 'string', 'event_type' => 'string', 'trigger_prompt' => 'string', 'delivery_channel' => 'string', 'source_url' => 'string'], ['name', 'event_type', 'trigger_prompt']],
+    ['list_webhooks', 'List active Carina webhook subscriptions for the current user.', 'authenticated', false, [], []],
+    ['delete_webhook', 'Delete a Carina webhook subscription permanently.', 'authenticated', true, ['webhook_id' => 'integer'], ['webhook_id']],
 ];
 
 $typeMap = [

@@ -145,6 +145,8 @@ if [[ "$SKIP_MIGRATE" != "1" ]]; then
   run_artisan migrate --force
   echo "==> artisan tenants:migrate --force"
   run_artisan tenants:migrate --force
+  echo "==> compile Carina SKILL.md manifest"
+  run_artisan carina:compile-skills || echo "WARN: carina:compile-skills failed (non-fatal)" >&2
 fi
 
 echo "==> clear caches"

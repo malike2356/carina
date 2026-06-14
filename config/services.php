@@ -211,6 +211,24 @@ return [
     'tts' => [
         'provider' => env('TTS_PROVIDER', 'edge'),
         'voice' => env('TTS_VOICE', 'en-GB-SoniaNeural'),
+        'openai_model' => env('TTS_OPENAI_MODEL', 'tts-1'),
+        'openai_voice' => env('TTS_OPENAI_VOICE', 'alloy'),
+        'timeout_seconds' => (int) env('TTS_TIMEOUT_SECONDS', 120),
+    ],
+
+    'boe' => [
+        'base_rate_pct' => env('BOE_BASE_RATE_PCT', 5.25),
+        'last_changed' => env('BOE_BASE_RATE_LAST_CHANGED', '2024-08-01'),
+        'trend' => env('BOE_BASE_RATE_TREND', 'holding'),
+        'api_url' => env('BOE_RATE_API_URL', ''),
+    ],
+
+    'brave_search' => [
+        'api_key' => env('BRAVE_SEARCH_API_KEY', ''),
+    ],
+
+    'whisper' => [
+        'api_key' => env('WHISPER_API_KEY', env('OPENAI_API_KEY', '')),
     ],
 
     'accountability_coach' => [

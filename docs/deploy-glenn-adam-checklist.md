@@ -1,7 +1,7 @@
 # Glenn & Adam; Carina Extended Deployment Checklist
 
-Last updated: 5 June 2026
-Status: All code built Done: , this is ops-to-live
+Last updated: 14 June 2026
+Status: All code built. This checklist is ops-to-live only.
 
 ---
 
