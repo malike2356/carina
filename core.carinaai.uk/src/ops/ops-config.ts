@@ -14,5 +14,8 @@ export function debugProxyPort(): number {
 }
 
 export function opsToken(): string {
+  // CARINA_OPS_TOKEN is the dedicated inter-service bearer token.
+  // Falling back to CARINA_WEB_PASSWORD is kept for compatibility only;
+  // new deployments should set CARINA_OPS_TOKEN to a separate random string.
   return process.env.CARINA_OPS_TOKEN ?? process.env.CARINA_WEB_PASSWORD ?? '';
 }

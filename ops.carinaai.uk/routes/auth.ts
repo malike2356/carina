@@ -25,7 +25,10 @@ authRouter.post('/login', redirectIfAuthed, async (req, res) => {
   }
 
   req.session.admin = true;
-  res.redirect('/');
+  req.session.save((err) => {
+    if (err) console.error('[session.save]', err);
+    res.redirect('/');
+  });
 });
 
 authRouter.post('/logout', (req, res) => {

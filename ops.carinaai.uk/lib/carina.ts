@@ -7,6 +7,8 @@ function carinaUrl(): string {
 }
 
 function carinaOpsToken(): string {
+  // CARINA_OPS_TOKEN is the dedicated inter-service bearer token shared with core.
+  // Falling back to CARINA_WEB_PASSWORD is kept for compatibility only.
   return process.env.CARINA_OPS_TOKEN ?? process.env.CARINA_WEB_PASSWORD ?? '';
 }
 
