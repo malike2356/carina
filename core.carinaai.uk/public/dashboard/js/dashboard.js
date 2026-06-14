@@ -1,8 +1,11 @@
 (function () {
+  const FEED_PAGE_SIZE = 7;
+
   const state = {
     apiKey: document.querySelector('meta[name="scout-api-key"]')?.content || window.SCOUT_API_KEY || '',
     agents: [],
     events: [],
+    feedPage: 0,
     threatChart: null,
     activeInstanceId: null,
   };
@@ -181,13 +184,49 @@
   }
 
   function renderLiveFeed() {
-    $('live-feed').innerHTML = state.events.length ? state.events.slice(0, 40).map((event) => `
-      <li class="feed-item">
-        <div class="feed-meta">${escapeHtml(timeLabel(event.created_at))} - <span class="severity-${escapeHtml(event.severity)}">${escapeHtml(event.severity || 'info')}</span> - ${escapeHtml(event.instance_id || 'system')}</div>
-        <strong>${escapeHtml(event.event_type || event.type || 'event')}</strong>
-        <span>${escapeHtml(event.description || '')}</span>
+    const total = state.events.length;
+    const totalPages = Math.max(1, Math.ceil(total / FEED_PAGE_SIZE));
+    if (state.feedPage >= totalPages) state.feedPage = totalPages - 1;
+    const start = state.feedPage * FEED_PAGE_SIZE;
+    const pageEvents = state.events.slice(start, start + FEED_PAGE_SIZE);
+
+    $('live-feed').innerHTML = pageEvents.length ? pageEvents.map((event, i) => `
+      <li class="feed-item" data-idx="${start + i}" title="Click for details">
+        <div class="feed-meta">${escapeHtml(timeLabel(event.created_at))} &middot; <span class="severity-${escapeHtml(event.severity)}">${escapeHtml(event.severity || 'info')}</span> &middot; ${escapeHtml(event.instance_id || 'system')}</div>
+        <strong class="feed-type">${escapeHtml(event.event_type || event.type || 'event')}</strong>
+        <span class="feed-desc">${escapeHtml(event.description || '')}</span>
       </li>
     `).join('') : '<li class="feed-item"><span class="feed-meta">Waiting for live events</span></li>';
+
+    const label = $('feed-page-label');
+    const prev = $('feed-prev');
+    const next = $('feed-next');
+    if (label) label.textContent = `${state.feedPage + 1} / ${totalPages}`;
+    if (prev) prev.disabled = state.feedPage === 0;
+    if (next) next.disabled = state.feedPage >= totalPages - 1;
+  }
+
+  function showEventDetail(idx) {
+    const event = state.events[idx];
+    if (!event) return;
+    const dialog = $('event-detail-dialog');
+    if (!dialog) return;
+    $('detail-type').textContent = event.event_type || event.type || 'Event';
+    $('detail-body').innerHTML = [
+      ['Time', timeLabel(event.created_at)],
+      ['Severity', event.severity],
+      ['Instance', event.instance_id || 'system'],
+      ['Session', event.session_id],
+      ['Code', event.code],
+      ['Description', event.description],
+      ['Raw type', event.type !== event.event_type ? event.type : null],
+    ].filter(([, v]) => v).map(([k, v]) => `
+      <div class="detail-row">
+        <dt>${escapeHtml(String(k))}</dt>
+        <dd class="${k === 'Severity' ? `severity-${escapeHtml(String(v))}` : ''}">${escapeHtml(String(v))}</dd>
+      </div>
+    `).join('');
+    dialog.showModal();
   }
 
   function renderAudit(rows) {
@@ -334,7 +373,17 @@
       const adminName = $('admin-name');
       if (adminName) adminName.textContent = 'tenant';
     }
-    $('refresh-feed').addEventListener('click', () => void loadFeed());
+    $('refresh-feed').addEventListener('click', () => { state.feedPage = 0; void loadFeed(); });
+    $('live-feed').addEventListener('click', (e) => {
+      const item = e.target.closest('.feed-item[data-idx]');
+      if (item) showEventDetail(Number(item.dataset.idx));
+    });
+    const prevBtn = $('feed-prev');
+    const nextBtn = $('feed-next');
+    if (prevBtn) prevBtn.addEventListener('click', () => { state.feedPage = Math.max(0, state.feedPage - 1); renderLiveFeed(); });
+    if (nextBtn) nextBtn.addEventListener('click', () => { state.feedPage = Math.min(Math.ceil(state.events.length / FEED_PAGE_SIZE) - 1, state.feedPage + 1); renderLiveFeed(); });
+    const detailDialog = $('event-detail-dialog');
+    if (detailDialog) detailDialog.addEventListener('click', (e) => { if (e.target === detailDialog) detailDialog.close(); });
     const pairBtn = $('pairing-code');
     if (pairBtn) pairBtn.addEventListener('click', () => void createPairingCode());
     const reloadBtn = $('reload-secrets');

@@ -94,6 +94,11 @@
           <button id="refresh-feed" class="ghost-button" type="button">Refresh</button>
         </div>
         <ol id="live-feed" class="feed-list"></ol>
+        <div class="feed-pagination">
+          <button id="feed-prev" class="ghost-button" type="button" disabled>Prev</button>
+          <span id="feed-page-label">1 / 1</span>
+          <button id="feed-next" class="ghost-button" type="button" disabled>Next</button>
+        </div>
       </article>
 
       <article class="panel">
@@ -139,6 +144,16 @@
       </div>
     </section>
   </main>
+
+  <dialog id="event-detail-dialog" class="event-detail-dialog">
+    <form method="dialog">
+      <div class="dialog-head">
+        <h2 id="detail-type">Event</h2>
+        <button class="ghost-button" type="submit" value="cancel">Close</button>
+      </div>
+      <dl id="detail-body" class="detail-body"></dl>
+    </form>
+  </dialog>
 
   <dialog id="kill-dialog" class="kill-dialog">
     <form method="dialog">
