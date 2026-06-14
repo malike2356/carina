@@ -65,6 +65,18 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Carina Ops',
+      items: [
+        'user/carina-ops/index',
+        'user/carina-ops/getting-started',
+        'user/carina-ops/byok',
+        'user/carina-ops/audit-and-exports',
+        'user/carina-ops/plans',
+        'user/carina-ops/pricing-metering',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Integrations',
       items: ['user/integrations/propreneur-dogfood'],
     },
