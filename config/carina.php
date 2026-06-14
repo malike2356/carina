@@ -46,6 +46,15 @@ return [
 
     'prompt_cache_ttl' => (int) env('CARINA_PROMPT_CACHE_TTL', 3600),
 
+    /** Directory containing Carina SKILL.md source files compiled by carina:compile-skills. */
+    'skills_path' => env('CARINA_SKILLS_PATH', resource_path('carina/skills')),
+
+    /**
+     * When true, completed agent turns may auto-generate new skill files (queued).
+     * Off by default; enable only when operators want session-driven skill curation.
+     */
+    'auto_skill_learn' => filter_var(env('CARINA_AUTO_SKILL_LEARN', false), FILTER_VALIDATE_BOOL),
+
     /**
      * Root directory for operator-curated Carina masterbrain markdown (default: config paths.brain.masterbrain).
      * Override in tests with a temp directory; leave empty for default. BRAIN_MASTERBRAIN_PATH sets the same default root for all code paths; CARINA_MASTERBRAIN_PATH wins in CarinaKnowledgeTrainingService when set.
