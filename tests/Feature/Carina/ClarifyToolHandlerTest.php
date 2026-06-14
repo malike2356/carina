@@ -129,7 +129,7 @@ it('executeTool clarify survives argument validator coercion', function (): void
         1,
     );
 
-    expect($result->success)->toBeTrue("summary={$result->summary} error={$result->error}")
+    expect($result->success)->toBeTrue()
         ->and($result->data['clarification_requested'] ?? null)->toBeTrue();
 
     tenancy()->end();
