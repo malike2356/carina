@@ -31,8 +31,6 @@
     "carina": "tsx bin/carina.ts",
     "hub": "tsx src/skills/hub/server.ts",
     "ingest": "tsx src/skills/ingestion.ts --pack property-uk",
-    "docs:dev": "pnpm --dir ../docs.carinaai.uk start",
-    "docs:build": "pnpm --dir ../docs.carinaai.uk build",
     "test": "vitest run",
     "test:smoke": "bash scripts/smoke-install.sh",
     "test:watch": "vitest",
@@ -75,7 +73,7 @@
     "express-rate-limit": "^8.5.2",
     "express-session": "^1.18.0",
     "ioredis": "^5.11.0",
-    "node-telegram-bot-api": "^0.67.0",
+    "node-telegram-bot-api": "^1.1.0",
     "nodemailer": "^8.0.11",
     "openai": "^6.41.0",
     "pg": "^8.21.0",
@@ -101,10 +99,10 @@
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.20.0",
     "@types/uuid": "^11.0.0",
+    "esbuild": "^0.28.1",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitepress": "^1.6.4",
     "vitest": "^4.1.8"
   }
 }

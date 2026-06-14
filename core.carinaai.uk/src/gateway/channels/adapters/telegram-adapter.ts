@@ -1,4 +1,5 @@
 import type TelegramBot from 'node-telegram-bot-api';
+import type { Message as TelegramMessage } from 'node-telegram-bot-api';
 import { wasMentioned } from '../../group-chat.js';
 import { formatForPlatform } from '../../formatting.js';
 import type {
@@ -7,7 +8,7 @@ import type {
   SendOptions,
 } from '../channel-adapter.interface.js';
 
-type TelegramRawMessage = TelegramBot.Message;
+type TelegramRawMessage = TelegramMessage;
 
 export class TelegramAdapter implements IChannelAdapter {
   readonly name = 'telegram' as const;

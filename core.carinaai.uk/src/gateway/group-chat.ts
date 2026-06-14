@@ -1,4 +1,4 @@
-import type TelegramBot from 'node-telegram-bot-api';
+import type { Message as TelegramMessage } from 'node-telegram-bot-api';
 import type { CarinaMessage } from '../types/index.js';
 
 const responded = new Map<string, number>();
@@ -9,7 +9,7 @@ export interface GroupDecisionContext {
   botUsername?: string;
 }
 
-export function wasMentioned(message: TelegramBot.Message, botUsername: string): boolean {
+export function wasMentioned(message: TelegramMessage, botUsername: string): boolean {
   const username = botUsername.replace(/^@/, '').toLowerCase();
   const text = message.text ?? '';
 

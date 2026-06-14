@@ -100,7 +100,7 @@ export async function startTelegram(): Promise<void> {
   }
 
   const useWebhook = Boolean(config.telegram.webhookUrl);
-  const bot = new TelegramBot(token, { polling: !useWebhook });
+  const bot = new TelegramBot(token, useWebhook ? { polling: false as const } : { polling: true as const });
   const me = await bot.getMe();
   const botUsername = me.username ?? 'carina';
   const adapter = new TelegramAdapter(true, bot, botUsername);
