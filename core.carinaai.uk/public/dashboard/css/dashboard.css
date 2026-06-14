@@ -116,6 +116,11 @@ button, a.ghost-link {
   display: inline-flex;
   align-items: center;
 }
+.ghost-link.nav--active {
+  border-color: rgba(96, 165, 250, .55);
+  color: var(--blue);
+  background: rgba(96, 165, 250, .08);
+}
 
 .dashboard-shell {
   width: min(1520px, 100%);

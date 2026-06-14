@@ -367,6 +367,10 @@
       $('top-eyebrow').textContent = 'Carina Host';
       $('top-title').textContent = 'Control Center';
     }
+    const navControl = $('nav-control');
+    const navSecurity = $('nav-security');
+    if (navControl) navControl.classList.toggle('nav--active', isControl);
+    if (navSecurity) navSecurity.classList.toggle('nav--active', !isControl);
     if (document.body.dataset.tenantScout === 'true') {
       const killBtn = $('kill-switch');
       if (killBtn) killBtn.hidden = true;
