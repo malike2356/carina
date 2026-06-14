@@ -16,9 +16,7 @@
     "trust:register": "tsx scripts/register-trust-identity.ts",
     "trust:register:mainnet": "tsx scripts/register-trust-identity-mainnet.ts",
     "trust:attest": "tsx scripts/submit-trust-attestation.ts",
-    "trust:verify": "tsx scripts/submit-trust-verification.ts",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs"
+    "trust:verify": "tsx scripts/submit-trust-verification.ts"
   },
   "dependencies": {
     "@open-agent-economy/trust-sdk": "^1.2.0",
@@ -29,7 +27,7 @@
     "express-session": "^1.18.0",
     "ioredis": "^5.4.1",
     "pg": "^8.13.0",
-    "uuid": "^10.0.0",
+    "uuid": "^14.0.0",
     "viem": "^2.31.0"
   },
   "devDependencies": {
@@ -41,11 +39,13 @@
     "@types/supertest": "^7.2.0",
     "@types/uuid": "^10.0.0",
     "supertest": "^7.2.2",
-    "tsx": "^4.19.2",
+    "tsx": "^4.22.4",
     "typescript": "^5.7.2",
-    "vite": "^6.4.3",
-    "vitepress": "^1.6.4",
     "vitest": "^4.1.8"
+  },
+  "overrides": {
+    "ws": "8.21.0",
+    "esbuild": "0.28.1"
   },
   "engines": {
     "node": ">=22.0.0",
