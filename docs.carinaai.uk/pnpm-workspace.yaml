@@ -1,0 +1,9 @@
+packages:
+  - '.'
+
+overrides:
+  webpack: 5.107.2
+  webpack-dev-server: 5.2.1
+  joi: 17.13.4
+  serialize-javascript: file:vendor/serialize-javascript
+  uuid: file:vendor/uuid
