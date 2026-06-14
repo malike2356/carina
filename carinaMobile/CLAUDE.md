@@ -34,6 +34,10 @@ Push notifications require an EAS dev/production build; see `DEPLOY.md` for Test
 
 Read `ARCHITECTURE.md` before adding screens or new API modules.
 
+## CRITICAL: Local-first workflow
+
+**Never edit files directly on a device or CI server.** All changes must be made locally, committed to git, and built via EAS or the documented build pipeline. Direct server edits diverge from git and cannot be reviewed.
+
 ## Completion prompts
 
 Sequential build prompts to finish mobile for device QA and store release: `prompts/README.md`

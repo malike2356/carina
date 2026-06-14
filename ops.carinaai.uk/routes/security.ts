@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { scoutGet, scoutPost, SCOUT_BASE } from '../lib/scout.js';
+import { scoutGet, scoutPost, SCOUT_BASE, scoutHeaders } from '../lib/scout.js';
 
 export const securityRouter = Router();
 
@@ -67,7 +67,10 @@ securityRouter.get('/stream', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const scoutUrl = `${SCOUT_BASE}/api/stream`;
+  const scoutKey = scoutHeaders()['X-Scout-Key'] ?? '';
+  const scoutUrl = scoutKey
+    ? `${SCOUT_BASE}/api/stream?key=${encodeURIComponent(scoutKey)}`
+    : `${SCOUT_BASE}/api/stream`;
 
   try {
     const upstream = await fetch(scoutUrl);

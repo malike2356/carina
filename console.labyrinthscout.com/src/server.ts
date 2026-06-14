@@ -7,7 +7,7 @@ import chalk from 'chalk';
 import { config } from './config/index.js';
 import { initDb, pool } from './db.js';
 import { initRedis, getRedis } from './redis.js';
-import { requireApiKey } from './middleware/auth.js';
+import { requireApiKey, requireApiKeySse } from './middleware/auth.js';
 import { requireScoutPro } from './middleware/plan-gate.js';
 import { accountRouter } from './api/account.js';
 import { provisionRouter } from './api/provision.js';
@@ -49,6 +49,10 @@ import { publicTrustRouter } from './api/public-trust.js';
 import { readinessRouter } from './api/readiness.js';
 import { trustEnterpriseRouter } from './api/trust-enterprise.js';
 import { incidentsRouter } from './api/incidents.js';
+import { approvalsRouter } from './api/approvals.js';
+import { governanceRouter } from './api/governance.js';
+import { industryTemplatesRouter } from './api/industry-templates.js';
+import { requireOperatorAuth } from './middleware/operator-auth.js';
 import { resolveScoutCorsOrigin } from './lib/cors.js';
 import { startScheduler } from './scheduler.js';
 import { startProxyServer } from './proxy/openai-proxy.js';
@@ -118,6 +122,21 @@ function redirectHtml(stem: string) {
   };
 }
 
+function serveGovernance(_req: express.Request, res: express.Response): void {
+  try {
+    const htmlPath = path.join(PUBLIC, 'governance.html');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+    const escaped = config.auth.apiKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const injection = `<script>window.__SCOUT_KEY = '${escaped}';</script>`;
+    html = html.replace('<!-- __SCOUT_KEY_INJECTION__ -->', injection);
+    res.type('html').send(html);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[scout] Governance serve failed:', msg);
+    res.status(500).send('Governance dashboard unavailable');
+  }
+}
+
 function servePublicPage(file: string) {
   return (_req: express.Request, res: express.Response): void => {
     res.sendFile(path.join(PUBLIC, file));
@@ -132,6 +151,8 @@ app.get('/favicon.ico', (_req, res) => {
 app.get('/', servePublicPage('index.html'));
 app.get('/dashboard', serveDashboard);
 app.get('/dashboard.html', redirectHtml('/dashboard'));
+app.get('/governance', serveGovernance);
+app.get('/governance.html', redirectHtml('/governance'));
 app.get('/pricing', servePublicPage('pricing.html'));
 app.get('/pricing.html', redirectHtml('/pricing'));
 app.use(express.static(PUBLIC));
@@ -174,7 +195,10 @@ app.use('/api/audit', requireApiKey, auditSearchRouter);
 app.use('/api/compliance', requireApiKey, requireScoutPro, complianceRouter);
 app.use('/api/trust', requireApiKey, requireScoutPro, trustEnterpriseRouter);
 app.use('/api/incidents', requireApiKey, requireScoutPro, incidentsRouter);
-app.use('/api/stream', sseRouter);
+app.use('/api/approvals', approvalsRouter);
+app.use('/api/governance/templates', requireApiKey, industryTemplatesRouter);
+app.use('/api/governance', requireOperatorAuth, governanceRouter);
+app.use('/api/stream', requireApiKeySse, sseRouter);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[scout:error]', err.message);

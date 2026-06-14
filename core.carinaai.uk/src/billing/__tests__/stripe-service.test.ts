@@ -12,6 +12,8 @@ describe('StripeService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.STRIPE_PRICE_SCOUT_PRO = 'price_scout';
+    process.env.STRIPE_PRICE_CARINA_OPS_STARTER = 'price_ops_starter';
+    process.env.STRIPE_PRICE_CARINA_OPS_TEAM = 'price_ops_team';
   });
 
   it('creates subscription checkout sessions with plan metadata', async () => {
@@ -29,7 +31,25 @@ describe('StripeService', () => {
     expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
       mode: 'subscription',
       customer_email: 'user@example.com',
-      metadata: { tenantId: 'tenant-1', plan: 'scout_pro' },
+      metadata: { tenantId: 'tenant-1', orgId: '', plan: 'scout_pro' },
+    }));
+  });
+
+  it('creates Carina Ops checkout with org metadata', async () => {
+    stripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_ops', url: 'https://stripe.test/ops' });
+    const service = new StripeService(stripe as never);
+    await service.createCheckoutSession({
+      tenantId: 'tenant-1',
+      orgId: 'org-1',
+      email: 'owner@test.com',
+      plan: 'carina_ops_starter',
+      successUrl: 'https://app/ops/billing?checkout=success',
+      cancelUrl: 'https://app/ops/billing?checkout=cancel',
+    });
+
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: { tenantId: 'tenant-1', orgId: 'org-1', plan: 'carina_ops_starter' },
+      line_items: [{ price: 'price_ops_starter', quantity: 1 }],
     }));
   });
 

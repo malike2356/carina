@@ -3,8 +3,20 @@ import type { Request, Response } from 'express';
 import { handleDataAccessRequest } from '../audit/compliance/data-access-request.js';
 import { handleDataDeletion } from '../audit/compliance/data-deletion.js';
 import { generateGdprReport } from '../audit/compliance/gdpr-report.js';
+import { loadRegulatoryClassification } from '../governance/load-regulatory-classification.js';
 
 export const complianceRouter: IRouter = Router();
+
+complianceRouter.get('/regulatory-classification', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const classification = await loadRegulatoryClassification();
+    res.json(classification);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[compliance:regulatory-classification] failed:', msg);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 complianceRouter.post('/sar', async (req: Request, res: Response): Promise<void> => {
   try {

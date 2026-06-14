@@ -1,0 +1,123 @@
+<% title = 'AI Platform' %>
+<%- include('../partials/ai-platform-nav') %>
+
+<h1 class="text-2xl font-bold text-white mb-4">AI Platform</h1>
+<p class="text-sm text-gray-400 mb-6">Org controls, model economics, and platform lifecycle for Carina.</p>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Credits</p>
+    <p class="text-xl font-bold text-white">$<%= org.creditBalance.toFixed(2) %></p>
+    <p class="text-xs text-gray-500 mt-1">Limit $<%= org.monthlyLimit.toFixed(0) %> / month</p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Spend this month</p>
+    <p class="text-xl font-bold text-white">$<%= spendMonth.toFixed(4) %></p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Prompt caching</p>
+    <p class="text-lg font-semibold <%= org.promptCachingEnabled ? 'text-[#22c55e]' : 'text-gray-500' %>">
+      <%= org.promptCachingEnabled ? 'Enabled' : 'Not enabled' %>
+    </p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Batch API</p>
+    <p class="text-lg font-semibold <%= org.batchEnabled ? 'text-[#22c55e]' : 'text-gray-500' %>">
+      <%= org.batchEnabled ? 'Enabled' : 'Disabled' %>
+    </p>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+  <% const countItems = [
+    ['Agents', counts.agents, '/ai-platform/agents'],
+    ['Sessions', counts.sessions, '/ai-platform/sessions'],
+    ['Deployments', counts.deployments, '/ai-platform/deployments'],
+    ['Vault items', counts.vaultItems, '/ai-platform/vaults'],
+    ['Memory stores', counts.memoryStores, '/ai-platform/memory'],
+    ['Files', counts.assets, '/ai-platform/files'],
+  ]; %>
+  <% for (const [label, val, href] of countItems) { %>
+    <a href="<%= href %>" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 hover:border-[#22c55e]">
+      <p class="text-gray-400 text-xs"><%= label %></p>
+      <p class="text-lg font-bold text-white"><%= val %></p>
+    </a>
+  <% } %>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Usage (30 days)</h2>
+    <% if (!usage.hasData) { %>
+      <p class="text-gray-500 text-sm">No usage recorded yet. Run a Workbench prompt to start the ledger.</p>
+    <% } else { %>
+      <dl class="grid grid-cols-2 gap-3 text-sm">
+        <div><dt class="text-gray-500">Requests</dt><dd class="text-white font-medium"><%= usage.requests %></dd></div>
+        <div><dt class="text-gray-500">Tokens in</dt><dd class="text-white font-medium"><%= usage.tokensIn.toLocaleString() %></dd></div>
+        <div><dt class="text-gray-500">Tokens out</dt><dd class="text-white font-medium"><%= usage.tokensOut.toLocaleString() %></dd></div>
+        <div><dt class="text-gray-500">Cache hits</dt><dd class="text-white font-medium"><%= usage.cacheHits.toLocaleString() %></dd></div>
+        <div><dt class="text-gray-500">Batch jobs</dt><dd class="text-white font-medium"><%= usage.batchJobs %></dd></div>
+        <div><dt class="text-gray-500">Est. cost</dt><dd class="text-white font-medium">$<%= usage.estimatedCost.toFixed(4) %></dd></div>
+      </dl>
+    <% } %>
+    <a href="/ai-platform/analytics" class="inline-block mt-3 text-sm text-[#06b6d4] hover:underline">Open analytics</a>
+  </section>
+
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Org settings</h2>
+    <dl class="text-sm space-y-2">
+      <div class="flex justify-between"><dt class="text-gray-500">Organization</dt><dd class="text-white"><%= org.name %></dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Auto reload</dt><dd class="text-white"><%= org.autoReloadEnabled ? 'On' : 'Off' %></dd></div>
+    </dl>
+    <a href="/ai-platform/credits" class="inline-block mt-3 text-sm text-[#06b6d4] hover:underline">Edit credits and limits</a>
+  </section>
+</div>
+
+<section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 mb-6">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-semibold text-white">Models</h2>
+    <a href="/ai-platform/workbench" class="text-sm text-[#06b6d4] hover:underline">Open workbench</a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+          <th class="py-2 pr-4">Provider</th>
+          <th class="py-2 pr-4">Model</th>
+          <th class="py-2 pr-4">Tier</th>
+          <th class="py-2 pr-4">Status</th>
+          <th class="py-2 pr-4">Input $/1M</th>
+          <th class="py-2">Output $/1M</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const m of models) { %>
+          <tr class="border-b border-[#2a2a2a]/50">
+            <td class="py-2 pr-4 text-white"><%= m.provider %><% if (m.isDefault) { %> <span class="text-[#22c55e] text-xs">default</span><% } %></td>
+            <td class="py-2 pr-4 text-gray-300 font-mono text-xs"><%= m.model %></td>
+            <td class="py-2 pr-4 text-gray-400"><%= m.tier %></td>
+            <td class="py-2 pr-4"><%= m.status %></td>
+            <td class="py-2 pr-4 text-gray-400"><%= m.inputPrice %></td>
+            <td class="py-2 text-gray-400"><%= m.outputPrice %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <h2 class="text-lg font-semibold text-white mb-3">Recent workbench runs</h2>
+  <% if (!recentRuns.length) { %>
+    <p class="text-gray-500 text-sm">No runs yet. <a href="/ai-platform/workbench" class="text-[#06b6d4] hover:underline">Create one</a>.</p>
+  <% } else { %>
+    <ul class="space-y-2 text-sm">
+      <% for (const run of recentRuns) { %>
+        <li class="flex justify-between gap-2 border-b border-[#2a2a2a] pb-2">
+          <a href="/ai-platform/workbench?run=<%= run.id %>" class="text-[#06b6d4] hover:underline truncate"><%= run.title %></a>
+          <span class="text-gray-500 shrink-0"><%= run.status %> · $<%= run.costEstimate.toFixed(4) %></span>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>

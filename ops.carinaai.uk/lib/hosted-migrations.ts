@@ -16,9 +16,43 @@ CREATE TABLE IF NOT EXISTS hosted_users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS organizations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  owner_user_id UUID NOT NULL REFERENCES hosted_users(id),
+  plan TEXT NOT NULL DEFAULT 'free',
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS org_memberships (
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES hosted_users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('owner','admin','operator','auditor','viewer')),
+  invited_by UUID REFERENCES hosted_users(id),
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY (org_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS org_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin','operator','auditor','viewer')),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  accepted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_org_memberships_user ON org_memberships (user_id);
+CREATE INDEX IF NOT EXISTS idx_org_invites_email ON org_invites (email);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   tenant_id UUID PRIMARY KEY,
-  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise')),
+  plan TEXT NOT NULL CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise', 'carina_ops_starter', 'carina_ops_team')),
   status TEXT NOT NULL,
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT UNIQUE,
@@ -119,6 +153,26 @@ const OPS_ADMIN_PATCHES = [
   `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ`,
   `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS failure_reason TEXT`,
   `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'gbp'`,
+  `ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id)`,
+  `ALTER TABLE usage_records ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id)`,
+  `ALTER TABLE invoices ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id)`,
+  `ALTER TABLE tenant_provider_keys ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id)`,
+  `ALTER TABLE ops_audit_log ADD COLUMN IF NOT EXISTS org_id UUID REFERENCES organizations(id)`,
+  `ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_plan_check`,
+  `ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_plan_check CHECK (plan IN ('free', 'scout_monitor', 'scout_pro', 'scout_standard', 'enterprise', 'carina_ops_starter', 'carina_ops_team'))`,
+  `CREATE TABLE IF NOT EXISTS product_audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    actor_user_id UUID REFERENCES hosted_users(id),
+    action TEXT NOT NULL,
+    resource_type TEXT,
+    resource_id TEXT,
+    details JSONB NOT NULL DEFAULT '{}',
+    ip_hash TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_product_audit_org_created
+     ON product_audit_log (org_id, created_at DESC)`,
 ];
 
 export async function runHostedMigrations(client: pg.PoolClient): Promise<void> {

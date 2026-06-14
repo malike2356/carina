@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Vault</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>BYOK Vault</h2>
+      <p style="margin-bottom:12px;">Store provider API keys encrypted. Keys are never shown after save.</p>
+      <div id="vault-list"><p class="placeholder">Loading...</p></div>
+    </div>
+    <div class="card">
+      <h2>Add key</h2>
+      <div class="form-row">
+        <label for="provider">Provider</label>
+        <select id="provider">
+          <option value="openai">openai</option>
+          <option value="anthropic">anthropic</option>
+          <option value="google">google</option>
+          <option value="deepseek">deepseek</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="api-key">API key</label>
+        <input type="password" id="api-key" autocomplete="off">
+      </div>
+      <button class="btn" id="add-btn" type="button">Save key</button>
+      <p class="error-msg" id="vault-error" hidden></p>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    async function loadVault() {
+      const container = document.getElementById('vault-list');
+      const res = await fetch('/api/carina-ops/vault');
+      if (!res.ok) {
+        container.innerHTML = '<p class="placeholder">Unable to load vault.</p>';
+        return;
+      }
+      const data = await res.json();
+      const entries = data.entries || [];
+      if (!entries.length) {
+        container.innerHTML = '<p class="placeholder">No keys stored yet.</p>';
+        return;
+      }
+      container.innerHTML = entries.map((entry) => {
+        const status = entry.enabled ? 'enabled' : 'disabled';
+        return `<div class="vault-card"><header><strong>${CarinaOpsLayout.escapeHtml(entry.provider)}</strong><span class="placeholder">${status}</span></header><p class="placeholder">Custom base URL: ${entry.hasCustomBaseUrl ? 'yes' : 'no'} &middot; Custom model: ${entry.hasCustomModel ? 'yes' : 'no'}</p><button class="btn secondary" type="button" data-remove="${CarinaOpsLayout.escapeHtml(entry.provider)}">Remove</button></div>`;
+      }).join('');
+      container.querySelectorAll('[data-remove]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const provider = btn.getAttribute('data-remove');
+          await fetch(`/api/carina-ops/vault/${encodeURIComponent(provider)}`, { method: 'DELETE' });
+          await loadVault();
+        });
+      });
+    }
+
+    async function addKey() {
+      const errEl = document.getElementById('vault-error');
+      errEl.hidden = true;
+      const provider = document.getElementById('provider').value;
+      const apiKey = document.getElementById('api-key').value.trim();
+      if (!apiKey) {
+        errEl.textContent = 'API key is required.';
+        errEl.hidden = false;
+        return;
+      }
+      const res = await fetch('/api/carina-ops/vault', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        errEl.textContent = data.message || data.error || 'Save failed';
+        errEl.hidden = false;
+        return;
+      }
+      document.getElementById('api-key').value = '';
+      await loadVault();
+    }
+
+    CarinaOpsLayout.initPage('vault', {
+      onReady: async () => {
+        await loadVault();
+        document.getElementById('add-btn').addEventListener('click', addKey);
+      },
+    });
+  </script>
+</body>
+</html>

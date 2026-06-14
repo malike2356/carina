@@ -1,7 +1,6 @@
 /**
- * Reverse proxy in front of dist/server.js.
- * Production nginx (Hestia) proxies ops.carinaai.uk to 127.0.0.1:4002.
- * The app itself listens on OPS_BACKEND_PORT (default 4001).
+ * Legacy reverse proxy for the old two-process launch path.
+ * Current production runs dist/server.js directly on PORT=4002.
  */
 import http from 'http';
 

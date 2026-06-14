@@ -154,10 +154,15 @@ export const config = {
       scoutPro: process.env.STRIPE_PRICE_SCOUT_PRO ?? process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
       scoutStandard: process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '',
       enterprise: process.env.STRIPE_PRICE_ENTERPRISE ?? '',
+      carinaOpsStarter: process.env.STRIPE_PRICE_CARINA_OPS_STARTER ?? '',
+      carinaOpsTeam: process.env.STRIPE_PRICE_CARINA_OPS_TEAM ?? '',
     },
     freeDailyMessages: 100,
     bootstrapEmail: process.env.HOSTED_BOOTSTRAP_EMAIL ?? '',
     bootstrapPassword: process.env.HOSTED_BOOTSTRAP_PASSWORD ?? '',
+  },
+  carinaOps: {
+    productEnabled: process.env.CARINA_OPS_PRODUCT_ENABLED === 'true',
   },
   hub: {
     url: process.env.SKILLS_HUB_URL ?? 'https://skills.carinaai.uk',

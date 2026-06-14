@@ -1,0 +1,71 @@
+<% title = 'Deployments' %>
+<%- include('../partials/ai-platform-nav') %>
+
+<h1 class="text-2xl font-bold text-white mb-4">Deployments</h1>
+<% if (saved) { %><p class="text-sm text-[#22c55e] mb-4">Saved.</p><% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <form method="post" action="/ai-platform/deployments" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-3 h-fit">
+    <h2 class="text-sm font-semibold text-white">New deployment</h2>
+    <input name="name" required placeholder="Deployment name" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+    <select name="environmentId" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      <option value="">No environment</option>
+      <% for (const e of environments) { %>
+        <option value="<%= e.id %>"><%= e.name %></option>
+      <% } %>
+    </select>
+    <select name="modelId" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      <% for (const m of models) { %>
+        <option value="<%= m.id %>"><%= m.provider %> / <%= m.model %></option>
+      <% } %>
+    </select>
+    <input name="version" value="1.0.0" placeholder="Version" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+    <select name="status" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      <option value="pending">pending</option>
+      <option value="live">live</option>
+      <option value="failed">failed</option>
+    </select>
+    <button type="submit" class="w-full py-2 bg-[#22c55e] text-black rounded text-sm font-medium">Create</button>
+  </form>
+
+  <div class="lg:col-span-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <% if (!deployments.length) { %>
+      <p class="text-gray-500 text-sm">No deployments yet.</p>
+    <% } else { %>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+            <th class="py-2 pr-3">Name</th>
+            <th class="py-2 pr-3">Environment</th>
+            <th class="py-2 pr-3">Model</th>
+            <th class="py-2 pr-3">Status</th>
+            <th class="py-2 pr-3">Version</th>
+            <th class="py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const d of deployments) { %>
+            <% const env = environments.find(e => e.id === d.environmentId); %>
+            <tr class="border-b border-[#2a2a2a]/50">
+              <td class="py-2 pr-3 text-white"><%= d.name %></td>
+              <td class="py-2 pr-3 text-gray-400"><%= env ? env.name : 'None' %></td>
+              <td class="py-2 pr-3 text-xs font-mono text-gray-400"><%= d.provider %>/<%= d.model %></td>
+              <td class="py-2 pr-3"><%= d.status %></td>
+              <td class="py-2 pr-3 text-gray-500"><%= d.version %></td>
+              <td class="py-2">
+                <form method="post" action="/ai-platform/deployments/<%= d.id %>" class="inline">
+                  <select name="status" class="bg-[#0f0f0f] border border-[#2a2a2a] rounded px-1 text-xs text-white">
+                    <option value="pending">pending</option>
+                    <option value="live">live</option>
+                    <option value="failed">failed</option>
+                  </select>
+                  <button type="submit" class="text-xs text-[#06b6d4] ml-1 hover:underline">Update</button>
+                </form>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>

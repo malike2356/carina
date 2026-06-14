@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Resend } from 'resend';
 import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
+import { createOrgForUser, getOrgProfile, getPrimaryOrgForUser } from '../hosted/org-service.js';
 import { runHostedMigrations } from './hosted-migrations.js';
 
 let hostedReady = false;
@@ -43,7 +44,12 @@ function signJwt(payload: Record<string, string>): string {
   return `${header}.${body}.${sig}`;
 }
 
-export function verifyJwt(token: string): { userId: string; email: string } | null {
+export function verifyJwt(token: string): {
+  userId: string;
+  email: string;
+  orgId?: string;
+  role?: string;
+} | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [header, body, sig] = parts;
@@ -56,10 +62,17 @@ export function verifyJwt(token: string): { userId: string; email: string } | nu
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as {
       userId: string;
       email: string;
+      orgId?: string;
+      role?: string;
       exp: number;
     };
     if (payload.exp < Date.now()) return null;
-    return { userId: payload.userId, email: payload.email };
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      orgId: payload.orgId,
+      role: payload.role,
+    };
   } catch {
     return null;
   }
@@ -84,13 +97,14 @@ export async function registerUser(
   const userId = String(result.rows[0].id);
   const safe = schemaName.replace(/[^a-z0-9_]/gi, '');
   await pool.query(`CREATE SCHEMA IF NOT EXISTS "${safe}"`);
+  await createOrgForUser(userId, email);
   return { apiKey, userId };
 }
 
 export async function loginUser(
   email: string,
   password: string,
-): Promise<{ token: string; apiKey: string } | null> {
+): Promise<{ token: string; apiKey: string; orgId?: string; role?: string } | null> {
   await initHostedDb();
   const result = await pool.query(
     'SELECT id, password_hash, api_key FROM hosted_users WHERE email = $1',
@@ -101,8 +115,20 @@ export async function loginUser(
   if (!verifyPassword(password, String(row.password_hash))) return null;
   const blocked = await checkHostedAccess(String(row.id));
   if (blocked) return null;
-  const token = signJwt({ userId: String(row.id), email });
-  return { token, apiKey: String(row.api_key) };
+  const userId = String(row.id);
+  const membership = await getPrimaryOrgForUser(userId);
+  const tokenPayload: Record<string, string> = { userId, email };
+  if (membership) {
+    tokenPayload.orgId = membership.orgId;
+    tokenPayload.role = membership.role;
+  }
+  const token = signJwt(tokenPayload);
+  return {
+    token,
+    apiKey: String(row.api_key),
+    orgId: membership?.orgId,
+    role: membership?.role,
+  };
 }
 
 export async function checkHostedAccess(userId: string): Promise<string | null> {
@@ -145,6 +171,7 @@ export async function getUserProfile(userId: string): Promise<{
   email: string;
   apiKey: string;
   tier: string;
+  org?: { id: string; name: string; plan: string; role: string };
 } | null> {
   const result = await pool.query(
     'SELECT email, api_key, tier FROM hosted_users WHERE id = $1',
@@ -152,7 +179,20 @@ export async function getUserProfile(userId: string): Promise<{
   );
   if (result.rowCount === 0) return null;
   const row = result.rows[0];
-  return { email: String(row.email), apiKey: String(row.api_key), tier: String(row.tier) };
+  const membership = await getPrimaryOrgForUser(userId);
+  let org: { id: string; name: string; plan: string; role: string } | undefined;
+  if (membership) {
+    const profile = await getOrgProfile(membership.orgId);
+    if (profile) {
+      org = { ...profile, role: membership.role };
+    }
+  }
+  return {
+    email: String(row.email),
+    apiKey: String(row.api_key),
+    tier: String(row.tier),
+    org,
+  };
 }
 
 export async function incrementMessageCount(userId: string): Promise<boolean> {
@@ -278,5 +318,6 @@ export async function upsertHostedUser(email: string, password: string): Promise
   const userId = String(result.rows[0].id);
   const safe = schemaName.replace(/[^a-z0-9_]/gi, '');
   await pool.query(`CREATE SCHEMA IF NOT EXISTS "${safe}"`);
+  await createOrgForUser(userId, email);
   return userId;
 }

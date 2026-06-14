@@ -11,5 +11,5 @@
     "declaration": false
   },
   "include": ["./**/*.ts"],
-  "exclude": ["dist", "node_modules", "vendor", "app", "bootstrap", "database", "public", "resources", "routes/web.php", "storage", "tests"]
+  "exclude": ["dist", "node_modules", "vendor", "app", "bootstrap", "database", "public", "resources", "routes/web.php", "storage", "tests", "**/*.test.ts"]
 }

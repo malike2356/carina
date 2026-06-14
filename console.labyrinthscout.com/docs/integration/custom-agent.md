@@ -18,7 +18,7 @@ const scout = new LabyrinthScoutClient({
   agentType: 'custom',
 });
 
-await scout.heartbeat();
+await scout.heartbeat('my-agent-1', 'My Agent');
 
 const stop = scout.startKillSwitchPolling((reason) => {
   console.error('Suspended:', reason);

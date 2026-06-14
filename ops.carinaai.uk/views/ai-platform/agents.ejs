@@ -1,0 +1,56 @@
+<% title = 'Agents' %>
+<%- include('../partials/ai-platform-nav') %>
+
+<h1 class="text-2xl font-bold text-white mb-4">Managed Agents</h1>
+<% if (saved) { %><p class="text-sm text-[#22c55e] mb-4">Saved.</p><% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <form method="post" action="/ai-platform/agents" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-3 h-fit">
+    <h2 class="text-sm font-semibold text-white">Register agent</h2>
+    <input name="name" required placeholder="Agent name" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+    <select name="modelId" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      <% for (const m of models) { %>
+        <option value="<%= m.id %>"><%= m.provider %> / <%= m.model %></option>
+      <% } %>
+    </select>
+    <button type="submit" class="w-full py-2 bg-[#22c55e] text-black rounded text-sm font-medium">Create</button>
+  </form>
+
+  <div class="lg:col-span-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <% if (!agents.length) { %>
+      <p class="text-gray-500 text-sm">No agents registered.</p>
+    <% } else { %>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+            <th class="py-2 pr-3">Name</th>
+            <th class="py-2 pr-3">Model</th>
+            <th class="py-2 pr-3">Status</th>
+            <th class="py-2 pr-3">Last run</th>
+            <th class="py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const a of agents) { %>
+            <tr class="border-b border-[#2a2a2a]/50">
+              <td class="py-2 pr-3 text-white"><%= a.name %></td>
+              <td class="py-2 pr-3 text-gray-400 text-xs font-mono"><%= a.provider %>/<%= a.model %></td>
+              <td class="py-2 pr-3"><%= a.status %></td>
+              <td class="py-2 pr-3 text-gray-500 text-xs"><%= a.lastRunAt ? new Date(a.lastRunAt).toLocaleString() : 'Never' %></td>
+              <td class="py-2">
+                <form method="post" action="/ai-platform/agents/<%= a.id %>/status" class="inline">
+                  <select name="status" class="bg-[#0f0f0f] border border-[#2a2a2a] rounded px-1 text-xs text-white">
+                    <option value="idle">idle</option>
+                    <option value="running">running</option>
+                    <option value="error">error</option>
+                  </select>
+                  <button type="submit" class="text-xs text-[#06b6d4] ml-1 hover:underline">Set</button>
+                </form>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>

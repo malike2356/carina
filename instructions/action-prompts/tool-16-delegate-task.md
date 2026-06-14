@@ -30,7 +30,7 @@ successfully return nothing.
 
 The root cause is in this pattern inside the worker loop:
 ```typescript
-results[idx] = await fn(items[idx], idx);  // throws -> kills whole batch
+results[idx] = await fn(items[idx], idx); // throws -> kills whole batch
 ```
 
 ### Fix: catch per-task errors inside the concurrency worker

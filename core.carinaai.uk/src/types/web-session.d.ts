@@ -1,9 +1,13 @@
 import 'express-session';
+import type { OrgRole } from '../hosted/org-types.js';
+import type { OrgContext } from '../hosted/org-context.js';
 
 declare module 'express-session' {
   interface SessionData {
     webAuthed?: boolean;
     hostedAccountId?: string;
+    hostedOrgId?: string;
+    hostedOrgRole?: OrgRole;
   }
 }
 
@@ -15,6 +19,7 @@ declare global {
         email: string;
         tier: string;
       };
+      orgContext?: OrgContext;
     }
   }
 }

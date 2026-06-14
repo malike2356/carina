@@ -14,6 +14,11 @@ import type {
   ContextSourceType,
 } from '../security/policy-decisions.js';
 import { resolveActionTypeFromTool } from '../security/risk-registry.js';
+import { createPendingApproval } from '../lib/pending-approvals.js';
+import {
+  applyIndustryTemplateToDecision,
+  resolveActiveTemplateId,
+} from '../lib/industry-template-policy.js';
 
 export const policyEvaluateRouter: IRouter = Router();
 
@@ -92,8 +97,44 @@ policyEvaluateRouter.post('/evaluate', async (req: Request, res: Response): Prom
       return;
     }
 
-    const decision = await evaluatePolicy(parsed, req);
-    res.json(decision);
+    let decision = await evaluatePolicy(parsed, req);
+    let regulatory_context = null;
+
+    const templateId = await resolveActiveTemplateId(parsed);
+    if (templateId) {
+      const industryResult = applyIndustryTemplateToDecision(decision, templateId, parsed);
+      decision = industryResult.decision;
+      regulatory_context = industryResult.regulatory_context;
+    }
+
+    const responseBase = regulatory_context != null
+      ? { ...decision, regulatory_context }
+      : decision;
+
+    if (decision.decision === 'require_approval') {
+      const row = await createPendingApproval({
+        instanceId: parsed.instanceId ?? 'unknown',
+        sessionId: parsed.sessionId,
+        toolName: parsed.toolName,
+        actionType: parsed.actionType,
+        content: parsed.content,
+        params: parsed.params,
+        riskScore: decision.riskScore,
+        policyPack: decision.shieldMode,
+        regulatoryCategory: regulatory_context?.regulatory_category,
+        regulation: regulatory_context?.regulation,
+      });
+
+      res.json({
+        ...responseBase,
+        approval_id: row.id,
+        expires_at: row.expires_at.toISOString(),
+        poll_url: `/api/approvals/${row.id}/status`,
+      });
+      return;
+    }
+
+    res.json(responseBase);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[scout:policy-evaluate] Failed:', msg);

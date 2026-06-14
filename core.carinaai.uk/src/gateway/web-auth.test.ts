@@ -19,4 +19,18 @@ describe('web-auth', () => {
     expect(isOpsMachineApiPath('/api/chat/send', 'POST')).toBe(false);
     expect(isOpsMachineApiPath('/', 'GET')).toBe(false);
   });
+
+  it('allows ops health check without session', () => {
+    expect(isPublicHostedPath('/api/carina-ops/health')).toBe(true);
+  });
+
+  it('keeps ops console paths protected', () => {
+    expect(isPublicHostedPath('/ops')).toBe(false);
+    expect(isPublicHostedPath('/ops/workbench')).toBe(false);
+  });
+
+  it('allows ops static assets without listing every file', () => {
+    expect(isPublicHostedPath('/ops/assets/ops.css')).toBe(true);
+    expect(isPublicHostedPath('/ops/assets/layout.js')).toBe(true);
+  });
 });

@@ -8,12 +8,16 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../..')
 describe('Defense tab dashboard markup', () => {
   const html = readFileSync(path.join(ROOT, 'public/dashboard.html'), 'utf8');
   const defenseJs = readFileSync(path.join(ROOT, 'public/dashboard/js/widgets/defense-tab.js'), 'utf8');
+  const governanceJs = readFileSync(path.join(ROOT, 'public/dashboard/js/widgets/governance-tab.js'), 'utf8');
+  const governanceRenderJs = readFileSync(path.join(ROOT, 'public/dashboard/js/widgets/governance-render.js'), 'utf8');
 
-  it('includes Overview and Defense tabs', () => {
+  it('includes Overview, Defense, and Governance tabs', () => {
     expect(html).toContain('data-view="overview"');
     expect(html).toContain('data-view="defense"');
+    expect(html).toContain('data-view="governance"');
     expect(html).toContain('id="view-defense"');
     expect(html).toContain('id="view-overview"');
+    expect(html).toContain('id="view-governance"');
   });
 
   it('groups defense control panels', () => {
@@ -27,6 +31,15 @@ describe('Defense tab dashboard markup', () => {
 
   it('keeps overview response terminal intact', () => {
     expect(html).toContain('id="response-terminal-panel"');
+  });
+
+  it('renders governance tab from shared posture API', () => {
+    expect(html).toContain('id="gov-tab-score"');
+    expect(html).toContain('id="gov-tab-action-items"');
+    expect(html).toContain('href="/governance"');
+    expect(governanceJs).toContain('/api/governance/posture');
+    expect(governanceRenderJs).toContain('DASHBOARD_TAB_IDS');
+    expect(defenseJs).toContain("view !== 'governance'");
   });
 
   it('wires policy pack apply to API', () => {

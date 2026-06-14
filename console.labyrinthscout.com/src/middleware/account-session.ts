@@ -10,7 +10,9 @@ declare module 'express-session' {
 }
 
 function isAccountApiRequest(req: Request): boolean {
-  return req.path.startsWith('/api/') || req.originalUrl.includes('/account/api/');
+  return req.path.startsWith('/api/')
+    || req.originalUrl.startsWith('/api/')
+    || req.originalUrl.includes('/account/api/');
 }
 
 function rejectUnauthenticated(req: Request, res: Response, expired = false): void {

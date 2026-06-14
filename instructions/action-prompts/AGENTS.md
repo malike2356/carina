@@ -4,6 +4,18 @@
 
 You are Claude. Your task is to convert the specification files in `prompt_description/` into actionable implementation prompts for Cursor. Write each one as a file in this directory.
 
+## Carina Ops productization (2026-06)
+
+Self-contained build prompts for the Carina Ops paid control plane live in:
+
+```
+action-prompts/carina-ops/
+  README.md          Index and dependency order
+  00-*.md … 38-*.md  39 prompts (Sprint 0 through Sprint 7)
+```
+
+Source plan: `../strategy/CARINA_OPS_IMPLEMENTATION_PLAN.md`. Run prompts in numeric order.
+
 ## Input
 Read every file in `../prompt_description/` organized by phase:
 

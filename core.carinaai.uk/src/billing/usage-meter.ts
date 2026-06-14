@@ -1,5 +1,6 @@
 import { pool } from '../memory/db.js';
 import { BILLING_PLANS, type BillingPlanId } from './plans.js';
+import { orgOrTenantWhere, queryForOrg } from '../hosted/scoped-query.js';
 
 export interface UsageRecord {
   tenant_id: string;
@@ -40,8 +41,41 @@ export class UsageMeter {
     return Number(result.rows[0]?.total ?? 0);
   }
 
+  async getMonthlyUsageForOrg(orgId: string, tenantId: string): Promise<number> {
+    const result = await queryForOrg<{ total: string }>(
+      orgId,
+      `SELECT COALESCE(SUM(tokens_used), 0)::TEXT AS total
+       FROM usage_records
+       WHERE ${orgOrTenantWhere()}
+         AND date >= date_trunc('month', CURRENT_DATE)::DATE`,
+      [tenantId],
+    );
+    return Number(result.rows[0]?.total ?? 0);
+  }
+
   async status(tenantId: string, plan: BillingPlanId): Promise<UsageStatus> {
     const tokensUsed = await this.getMonthlyUsage(tenantId);
+    const limit = BILLING_PLANS[plan].tokenLimit;
+    if (!limit) return { tokensUsed, limit };
+    if (tokensUsed >= limit) {
+      return {
+        tokensUsed,
+        limit,
+        blocked: `You've used ${formatTokens(limit)} of ${formatTokens(limit)} tokens this month. Upgrade to continue.`,
+      };
+    }
+    if (tokensUsed >= limit * 0.8) {
+      return {
+        tokensUsed,
+        limit,
+        warning: `You've used ${formatTokens(tokensUsed)} of ${formatTokens(limit)} tokens this month`,
+      };
+    }
+    return { tokensUsed, limit };
+  }
+
+  async statusForOrg(orgId: string, tenantId: string, plan: BillingPlanId): Promise<UsageStatus> {
+    const tokensUsed = await this.getMonthlyUsageForOrg(orgId, tenantId);
     const limit = BILLING_PLANS[plan].tokenLimit;
     if (!limit) return { tokensUsed, limit };
     if (tokensUsed >= limit) {

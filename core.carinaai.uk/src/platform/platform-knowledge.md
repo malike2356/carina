@@ -10,7 +10,7 @@ Git root: `carina/` (GitHub: `malike2356/carina-ai`). Workspace path on VERLOX d
 |---|---|---|---|
 | `core.carinaai.uk/` | Carina agent | Yes (npm `carina-agent`, Docker) | Node/TS agent: CLI, web UI, 18 gateways, 71+ tools, 16 skill packs |
 | `console.labyrinthscout.com/` | Labyrinth Scout server | Yes (Docker `verlox/scout`) | Security console: events, heartbeat, kill switch via Redis |
-| `ops.carinaai.uk/` | VERLOX ops panel | No | Port 4000; proxies Carina + Scout for VERLOX staff |
+| `ops.carinaai.uk/` | VERLOX ops panel | No | Port 4002; proxies Carina + Scout for VERLOX staff |
 | `carinaMobile/` | Carina mobile app | Companion | Expo Router app; general-purpose default |
 | `docs.carinaai.uk/` | Public docs | Yes | Docusaurus site published at `carinaai.uk/docs` |
 | `carinaai.uk/` | Marketing | Yes | Static landing + docs mirror |
@@ -59,7 +59,7 @@ Carina reports sanitized events to Scout (`LABYRINTH_ENABLED`, `LABYRINTH_URL`, 
 | Host | Path on VPS |
 |---|---|
 | core.carinaai.uk | `/home/malike/apps/core.carinaai.uk` (`.env` here; not `/opt/carina` unless `npm install` run there) |
-| ops.carinaai.uk | `/home/malike/apps/ops.carinaai.uk` (backend 4001, nginx bridge 4002) |
+| ops.carinaai.uk | `/home/malike/apps/ops.carinaai.uk` (port 4002, nginx upstream) |
 | Scout | `/home/malike/apps/console.labyrinthscout.com` |
 
 Deploy: `bash scripts/deploy-carina.sh` from repo root; docs: `bash scripts/deploy-marketing.sh carina`.

@@ -26,14 +26,16 @@ export class InvoiceGenerator {
         : undefined;
     const tenantId = invoice.metadata?.tenantId ?? customerTenantId;
     if (!tenantId) return;
+    const orgId = invoice.metadata?.orgId ?? (await import('../hosted/scoped-query.js').then((m) => m.resolveOrgIdFromUser(tenantId)));
     await pool.query(
       `INSERT INTO invoices
-        (tenant_id, stripe_invoice_id, amount, status, pdf_url, period_start, period_end, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        (tenant_id, org_id, stripe_invoice_id, amount, status, pdf_url, period_start, period_end, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
        ON CONFLICT (stripe_invoice_id)
-       DO UPDATE SET status = EXCLUDED.status, pdf_url = EXCLUDED.pdf_url`,
+       DO UPDATE SET status = EXCLUDED.status, pdf_url = EXCLUDED.pdf_url, org_id = COALESCE(invoices.org_id, EXCLUDED.org_id)`,
       [
         tenantId,
+        orgId,
         invoice.id,
         invoice.amount_due,
         invoice.status ?? 'unknown',

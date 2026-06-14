@@ -338,3 +338,15 @@ Do these in order - each one assumes the previous is done and tested:
 5. Session GC (Prompt 5) - do this before any real marketing push; fine to ship a small private
    beta without it first if you're impatient, but do not skip it for a public launch.
 6. Production rollout (Prompt 6) - the actual go-live.
+
+---
+
+## Carina Ops tenant isolation (Sprint 2)
+
+Automated:
+
+```bash
+cd core.carinaai.uk && pnpm test src/api/__tests__/hosted-isolation.test.ts
+```
+
+Manual smoke: still recommended before release (two accounts, confirm no cross-org reads on billing, vault, and audit).

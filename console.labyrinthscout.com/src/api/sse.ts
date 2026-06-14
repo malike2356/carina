@@ -63,6 +63,42 @@ export function broadcastStats(stats: {
   }
 }
 
+export interface ApprovalRequestSseData {
+  approval_id: string;
+  instance_id: string;
+  session_id: string;
+  tool_name: string | null;
+  action_type: string;
+  risk_score: number;
+  regulatory_category: string | null;
+  expires_at: string;
+}
+
+export interface ApprovalDecisionSseData {
+  approval_id: string;
+  status: 'approved' | 'rejected' | 'expired';
+  decided_by?: string;
+  decided_at?: string;
+}
+
+function broadcastNamedEvent(eventName: string, data: unknown): void {
+  for (const res of clients) {
+    try {
+      writeSse(res, eventName, data);
+    } catch {
+      clients.delete(res);
+    }
+  }
+}
+
+export function broadcastApprovalRequest(data: ApprovalRequestSseData): void {
+  broadcastNamedEvent('approval_request', { event: 'approval_request', data });
+}
+
+export function broadcastApprovalDecision(data: ApprovalDecisionSseData): void {
+  broadcastNamedEvent('approval_decision', { event: 'approval_decision', data });
+}
+
 export async function refreshAndBroadcastStats(): Promise<void> {
   try {
     const stats = await fetchStats24h();

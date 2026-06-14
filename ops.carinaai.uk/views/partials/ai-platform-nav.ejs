@@ -1,0 +1,10 @@
+<% const path = typeof activePath !== 'undefined' ? activePath : ''; %>
+<nav class="flex flex-wrap gap-1 mb-6 text-xs border-b border-[#2a2a2a] pb-3">
+  <% for (const item of platformNav) { %>
+    <% const active = item.exact ? path === item.href : path.startsWith(item.href) && (item.href !== '/ai-platform' || path === '/ai-platform'); %>
+    <a href="<%= item.href %>"
+       class="px-2 py-1 rounded <%= active ? 'bg-[#2a2a2a] text-[#22c55e]' : 'text-gray-400 hover:text-white hover:bg-[#2a2a2a]' %>">
+      <%= item.label %>
+    </a>
+  <% } %>
+</nav>

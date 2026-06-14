@@ -53,6 +53,15 @@ vi.mock('../../memory/db.js', () => {
       };
     }
 
+    if (/SELECT email, api_key, tier FROM hosted_users WHERE id/.test(s)) {
+      const id = params?.[0] as string;
+      const found = users.filter((u) => u.id === id);
+      return {
+        rows: found.map((u) => ({ email: u.email, api_key: u.api_key, tier: u.tier ?? 'free' })),
+        rowCount: found.length,
+      };
+    }
+
     if (/INSERT INTO password_reset_tokens/.test(s)) return { rows: [], rowCount: 0 };
 
     return { rows: [], rowCount: 0 };
@@ -70,6 +79,16 @@ vi.mock('resend', () => ({
   Resend: vi.fn().mockImplementation(() => ({
     emails: { send: vi.fn().mockResolvedValue({ id: 'x' }) },
   })),
+}));
+
+vi.mock('../../hosted/org-service.js', () => ({
+  createOrgForUser: vi.fn(async () => ({ orgId: 'org-bootstrap', slug: 'bootstrap', role: 'owner' as const })),
+  getPrimaryOrgForUser: vi.fn(async (userId: string) => ({
+    orgId: 'org-bootstrap',
+    userId,
+    role: 'owner' as const,
+  })),
+  getOrgProfile: vi.fn(async () => ({ id: 'org-bootstrap', name: 'Bootstrap', plan: 'free' })),
 }));
 
 describe('maybeBootstrapHostedAccount - no env vars set', () => {

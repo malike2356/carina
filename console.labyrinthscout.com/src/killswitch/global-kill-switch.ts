@@ -3,6 +3,7 @@ import { suspendInstance } from '../lib/instance-control.js';
 import { alertDispatcher } from '../alerts/dispatcher.js';
 import { killSwitchAudit } from './kill-switch-audit.js';
 import { gracefulShutdown } from './graceful-shutdown.js';
+import { invalidateRegulatoryClassificationCache } from '../governance/load-regulatory-classification.js';
 
 export type KillSwitchState = 'ARMED' | 'TRIGGERED';
 
@@ -81,6 +82,7 @@ class GlobalKillSwitch {
 
     const startTime = Date.now();
     await this.persistState('TRIGGERED', adminEmail, reason);
+    await invalidateRegulatoryClassificationCache();
 
     const instances = await pool.query<{ id: string }>(
       `SELECT id FROM carina_instances WHERE status = 'active'`,
@@ -130,6 +132,7 @@ class GlobalKillSwitch {
 
   async disarm(adminEmail: string, reason: string): Promise<void> {
     await this.persistState('ARMED', null, null);
+    await invalidateRegulatoryClassificationCache();
 
     await killSwitchAudit.recordDisarm({
       disarmed_by: adminEmail,

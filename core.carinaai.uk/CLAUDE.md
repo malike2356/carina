@@ -150,6 +150,10 @@ bash deploy.sh        # Deploy to VPS
 - `.env.production.example` - Full production template with all vars documented
 - `ops.carinaai.uk/.env` - Admin panel config (password: changeme, port 4000)
 
+## CRITICAL: Local-first workflow
+
+**Never edit files directly on the VPS.** All changes must be made locally, committed to git, and deployed via `bash deploy.sh` (Contabo VPS, 80.190.81.208). Direct VPS edits diverge from git history and cause merge conflicts on the next deploy. The VPS is a deployment target, not a development environment.
+
 ## Verified product metrics (2026-06-10)
 
 Run from `core.carinaai.uk`: `pnpm test` (5,369), `provider-registry.ts` (23 providers), `completion-metadata.ts` CHANNEL_NAMES (18 adapters), `TOOLSET_MAP` (71 tools), 16 packs / 96 curated skills in `src/skills/packs/`, 49 CLI commands.

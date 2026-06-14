@@ -37,11 +37,11 @@
 In Effect
 
 
-AI Governance — Labyrinth Scout's Positioning
+AI Governance; Labyrinth Scout's Positioning
     
     The Short Version
     
-    Labyrinth Scout is already 85% of the way to being an AI agent governance infrastructure, not just a SIEM. You're sitting on something bigger than you're marketing. The trust checklist (Phase C at 93%) proves it: ERC-8004 identity, ERC-8126 verification, immutable audit logs, kill switches, on-chain attestations. That's governance — not just security.
+    Labyrinth Scout is already 85% of the way to being an AI agent governance infrastructure, not just a SIEM. You're sitting on something bigger than you're marketing. The trust checklist (Phase C at 93%) proves it: ERC-8004 identity, ERC-8126 verification, immutable audit logs, kill switches, on-chain attestations. That's governance; not just security.
     
     The gap isn't technology. It's framing and regulatory packaging.
     
@@ -49,7 +49,7 @@ AI Governance — Labyrinth Scout's Positioning
     
     The Three Pillars of AI Governance (and where Scout lands)
     
-    Every serious governance framework — EU AI Act, NIST AI RMF, ISO 42001 — boils down to three things:
+    Every serious governance framework; EU AI Act, NIST AI RMF, ISO 42001; boils down to three things:
     
     Pillar: Transparency
     What regulators want: Know what the agent did and why
@@ -78,10 +78,10 @@ AI Governance — Labyrinth Scout's Positioning
     High-risk AI systems must have: logging, traceability, human oversight, and the ability to intervene. Article 14 mandates "human-machine interface tools" for oversight. The kill switch IS that tool. The audit log IS the traceability requirement. Companies that deploy AI agents without these face fines of up to €35M or 7% of global turnover.
     
     2. UK's pro-innovation approach
-    The UK isn't legislating yet but the DSIT white paper expects "appropriate transparency and explainability." UK-regulated sectors (property, legal, finance — YOUR target verticals) will adopt these standards voluntarily to avoid future mandated compliance. Scout gives them a head start.
+    The UK isn't legislating yet but the DSIT white paper expects "appropriate transparency and explainability." UK-regulated sectors (property, legal, finance; YOUR target verticals) will adopt these standards voluntarily to avoid future mandated compliance. Scout gives them a head start.
     
     3. Enterprise procurement checklists
-    Before any enterprise deploys an autonomous agent, their security team wants: logs, monitoring, escalation path, who to blame. Scout answers all four. This isn't regulatory — it's buying behavior. And it's happening now.
+    Before any enterprise deploys an autonomous agent, their security team wants: logs, monitoring, escalation path, who to blame. Scout answers all four. This isn't regulatory; it's buying behavior. And it's happening now.
     
     
     
@@ -93,8 +93,8 @@ AI Governance — Labyrinth Scout's Positioning
     |----------------------|----------|----------------|--------------|-------------|--------------------|
     | Labyrinth Scout      | ERC-8004 | Real-time SIEM | On-chain     | Yes         | SOC2/ISO/EU AI Act |
     | Agent Trust          | ERC-8004 | None           | Yes          | No          | No                 |
-    | AURA (Safe Security) | ✗        | Internal only  | No           | No          | Enterprise GRC     |
-    | ClawTrust            | ✗        | None           | No           | No          | No                 |
+    | AURA (Safe Security) |         | Internal only  | No           | No          | Enterprise GRC     |
+    | ClawTrust            |         | None           | No           | No          | No                 |
     | Mnemom               | ZK-based | None           | Yes          | No          | No                 |
     
     Scout is the only one that spans the full stack: runtime monitoring + on-chain proof + intervention capability. That's governance, not just trust scoring.
@@ -103,11 +103,11 @@ AI Governance — Labyrinth Scout's Positioning
     
     The Governance Opportunity: Three Things To Build Next
     
-    These aren't on the checklist yet. They're the layer ABOVE security — governance as a product.
+    These aren't on the checklist yet. They're the layer ABOVE security; governance as a product.
     
     1. Auto-classification by risk tier
     
-    Map Scout's security findings to regulatory tiers automatically. If an agent has 30+ days clean runtime, verified ERC-8004 identity, and zero injection incidents → "EU AI Act: Limited Risk." If it's had 3 anomaly detections → "EU AI Act: High Risk — additional oversight required." This makes Scout sell itself to compliance officers who don't understand agents but understand risk tiers.
+    Map Scout's security findings to regulatory tiers automatically. If an agent has 30+ days clean runtime, verified ERC-8004 identity, and zero injection incidents → "EU AI Act: Limited Risk." If it's had 3 anomaly detections → "EU AI Act: High Risk; additional oversight required." This makes Scout sell itself to compliance officers who don't understand agents but understand risk tiers.
     
     2. Governance dashboard (separate from security dashboard)
     
@@ -120,7 +120,7 @@ AI Governance — Labyrinth Scout's Positioning
     - Legal tech agents (SRA, client confidentiality, privilege logs)
     - Finance (FCA consumer duty, transaction monitoring)
     
-    These aren't code-heavy — they're mostly configuration files that map Scout's generic events to industry-specific regulatory requirements. But they're your moat because no general-purpose trust platform does vertical-specific governance.
+    These aren't code-heavy; they're mostly configuration files that map Scout's generic events to industry-specific regulatory requirements. But they're your moat because no general-purpose trust platform does vertical-specific governance.
     
     
     
@@ -128,19 +128,19 @@ AI Governance — Labyrinth Scout's Positioning
     
     Three governance traps to avoid:
     
-    1. Don't build a custom trust platform. The TRUST_BUILD_CHECKLIST already decided this correctly. Agent Trust + ERC-8004/8126 is the stack. Your value isn't the blockchain — it's the security telemetry that feeds into it.
+    1. Don't build a custom trust platform. The TRUST_BUILD_CHECKLIST already decided this correctly. Agent Trust + ERC-8004/8126 is the stack. Your value isn't the blockchain; it's the security telemetry that feeds into it.
     
-    2. Don't chase enterprise GRC platforms. Vanta and Drata do organizational compliance (SOC2, ISO27001). They don't do agent-level governance. Don't expand sideways — own the agent governance niche and let them own the company-wide certs.
+    2. Don't chase enterprise GRC platforms. Vanta and Drata do organizational compliance (SOC2, ISO27001). They don't do agent-level governance. Don't expand sideways; own the agent governance niche and let them own the company-wide certs.
     
-    3. Don't wait for mainnet. The governance narrative works on Base Sepolia. "On-chain attestations live on testnet, mainnet migration Q3 2026" is a perfectly honest story for early pilots. The technical infrastructure is proven — the business layer is what needs proving now.
+    3. Don't wait for mainnet. The governance narrative works on Base Sepolia. "On-chain attestations live on testnet, mainnet migration Q3 2026" is a perfectly honest story for early pilots. The technical infrastructure is proven; the business layer is what needs proving now.
     
     
     
     Bottom Line
     
-    Labyrinth Scout isn't a SIEM. It's governance infrastructure for autonomous AI. The security monitoring is the input — the governance attestation is the output. By combining real-time threat detection with on-chain verifiable proof, you've built something that answers the question every enterprise board is asking right now: "How do we prove our AI agents are safe?"
+    Labyrinth Scout isn't a SIEM. It's governance infrastructure for autonomous AI. The security monitoring is the input; the governance attestation is the output. By combining real-time threat detection with on-chain verifiable proof, you've built something that answers the question every enterprise board is asking right now: "How do we prove our AI agents are safe?"
     
-    The trust checklist is at 93% of Phase C. The remaining items aren't technical — they're business. Pilot customers, mainnet migration, MRR targets. The governance framing is what gets you those pilots.
+    The trust checklist is at 93% of Phase C. The remaining items aren't technical; they're business. Pilot customers, mainnet migration, MRR targets. The governance framing is what gets you those pilots.
     
     
     

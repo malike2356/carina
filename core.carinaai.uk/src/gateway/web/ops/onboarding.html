@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Get started</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header">
+      <div>
+        <h1>Get started with Carina Ops</h1>
+        <p class="ops-sub"><span id="org-name">Organization</span></p>
+      </div>
+      <span class="plan-badge" id="plan-badge"></span>
+    </div>
+    <div id="global-trial-banner" class="banner-trial" hidden></div>
+    <div class="card">
+      <div class="onboarding-progress">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <p class="progress-label" id="progress-label">Loading...</p>
+      </div>
+      <ul class="onboarding-steps" id="step-list"></ul>
+      <div id="onboarding-complete" hidden>
+        <div class="banner-ok">Setup complete. Your org is ready for day-to-day ops work.</div>
+        <a class="btn" href="/ops/">Go to overview</a>
+      </div>
+      <p style="margin-top:16px;">
+        <button class="btn secondary" id="dismiss-btn" type="button">I will do this later</button>
+      </p>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/onboarding.js"></script>
+</body>
+</html>

@@ -65,6 +65,23 @@ function decodeBase32(input: string): Buffer {
   return Buffer.from(bytes);
 }
 
+async function resolveScoutAuth(key: string): Promise<ScoutAuth | null> {
+  if (keysMatch(key, config.auth.apiKey)) {
+    return { kind: 'operator' };
+  }
+  const account = await findAccountByApiKey(key);
+  if (!account) return null;
+  return { kind: 'account', accountId: account.id };
+}
+
+function extractApiKey(req: Request): string | null {
+  const headerKey = req.headers['x-scout-key'];
+  if (typeof headerKey === 'string' && headerKey) return headerKey;
+  const queryKey = req.query.key;
+  if (typeof queryKey === 'string' && queryKey) return queryKey;
+  return null;
+}
+
 /**
  * Accepts either the operator's global SCOUT_API_KEY (full dashboard access,
  * used by the operator's own Carina instances) or a subscriber account key
@@ -81,28 +98,52 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction): 
     return;
   }
 
-  const key = req.headers['x-scout-key'];
-  if (typeof key !== 'string' || !key) {
+  const key = extractApiKey(req);
+  if (!key) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
-  if (keysMatch(key, config.auth.apiKey)) {
-    req.scoutAuth = { kind: 'operator' };
-    next();
-    return;
-  }
-
-  void findAccountByApiKey(key)
-    .then((account) => {
-      if (!account) {
+  void resolveScoutAuth(key)
+    .then((auth) => {
+      if (!auth) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
       }
-      req.scoutAuth = { kind: 'account', accountId: account.id };
+      req.scoutAuth = auth;
       next();
     })
     .catch(() => {
       res.status(401).json({ error: 'Unauthorized' });
+    });
+}
+
+/**
+ * SSE auth middleware. EventSource cannot send custom headers, so the API key
+ * may be passed as ?key= on GET /api/stream. Header auth is also accepted.
+ */
+export function requireApiKeySse(req: Request, res: Response, next: NextFunction): void {
+  if (!isAllowedIp(req)) {
+    res.status(403).end();
+    return;
+  }
+
+  const key = extractApiKey(req);
+  if (!key) {
+    res.status(401).end();
+    return;
+  }
+
+  void resolveScoutAuth(key)
+    .then((auth) => {
+      if (!auth) {
+        res.status(401).end();
+        return;
+      }
+      req.scoutAuth = auth;
+      next();
+    })
+    .catch(() => {
+      res.status(401).end();
     });
 }

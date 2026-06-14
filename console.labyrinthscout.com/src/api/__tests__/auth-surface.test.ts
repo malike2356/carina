@@ -14,6 +14,7 @@ describe('HTTP auth surface', () => {
     const server = readSource('server.ts');
     expect(server).toContain("app.use('/api/events', requireApiKey");
     expect(server).toContain("app.use('/api/kill', requireApiKey");
+    expect(server).toContain("app.use('/api/stream', requireApiKeySse");
     expect(server).toContain("app.use('/api/public/trust', publicTrustRouter)");
     expect(server).not.toMatch(/app\.use\('\/api\/kill',\s*killRouter\)/);
   });

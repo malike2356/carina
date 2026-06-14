@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Usage</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div id="global-trial-banner" class="banner-trial" hidden></div>
+    <div id="quota-banner" class="banner-warn" hidden></div>
+    <div class="grid">
+      <div class="card"><h2>Tokens (30d)</h2><div class="stat" id="stat-tokens">-</div></div>
+      <div class="card"><h2>Cost (30d)</h2><div class="stat" id="stat-cost">-</div></div>
+      <div class="card"><h2>Credits</h2><div class="stat" id="stat-credits" style="font-size:16px;">-</div><p class="badge-warn" id="credit-warn" hidden>80% or more of monthly limit used</p></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
+        <h2>Daily usage</h2>
+        <button class="btn secondary" id="export-usage" type="button" hidden>Export CSV (Team)</button>
+      </div>
+      <table class="ops-table" id="daily-table">
+        <thead><tr><th>Date</th><th>Tokens</th><th>Cost</th></tr></thead>
+        <tbody id="daily-body"><tr><td colspan="3" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>By model</h2>
+      <table class="ops-table">
+        <thead><tr><th>Model</th><th>Requests</th><th>Tokens</th><th>Cost</th></tr></thead>
+        <tbody id="model-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    CarinaOpsLayout.initPage('usage', {
+      onReady: async (me) => {
+        fetch('/api/carina-ops/onboarding/usage-viewed', { method: 'POST' }).catch(() => null);
+        const billingRes = await fetch('/api/carina-ops/billing/summary').catch(() => null);
+        const billing = billingRes && billingRes.ok ? await billingRes.json() : {};
+        const canExport = (me.org?.plan || '') === 'carina_ops_team' || Number(billing.trialDaysLeft) > 0;
+        if (canExport) {
+          const exportBtn = document.getElementById('export-usage');
+          exportBtn.hidden = false;
+          exportBtn.addEventListener('click', () => {
+            window.location.href = '/api/carina-ops/usage/export?format=csv&days=30';
+          });
+        }
+        const [usageRes, creditsRes] = await Promise.all([
+          fetch('/api/carina-ops/usage?days=30'),
+          fetch('/api/carina-ops/credits'),
+        ]);
+        if (usageRes.ok) {
+          const data = await usageRes.json();
+          document.getElementById('stat-tokens').textContent = String(data.summary?.totalTokens ?? 0);
+          document.getElementById('stat-cost').textContent = Number(data.summary?.totalCost ?? 0).toFixed(4);
+          const daily = data.summary?.daily || [];
+          const dailyBody = document.getElementById('daily-body');
+          if (!daily.length) {
+            dailyBody.innerHTML = '<tr><td colspan="3" class="placeholder">No usage yet.</td></tr>';
+          } else {
+            dailyBody.innerHTML = daily.map((row) =>
+              `<tr><td>${CarinaOpsLayout.escapeHtml(row.date)}</td><td>${row.tokens}</td><td>${Number(row.cost).toFixed(4)}</td></tr>`,
+            ).join('');
+          }
+          const byModel = data.byModel || [];
+          const modelBody = document.getElementById('model-body');
+          if (!byModel.length) {
+            modelBody.innerHTML = '<tr><td colspan="4" class="placeholder">No model breakdown yet.</td></tr>';
+          } else {
+            modelBody.innerHTML = byModel.map((row) =>
+              `<tr><td>${CarinaOpsLayout.escapeHtml(row.provider)}/${CarinaOpsLayout.escapeHtml(row.model)}</td><td>${row.requests}</td><td>${row.tokens}</td><td>${Number(row.cost).toFixed(4)}</td></tr>`,
+            ).join('');
+          }
+        }
+        if (creditsRes.ok) {
+          const credits = await creditsRes.json();
+          document.getElementById('stat-credits').textContent =
+            `${credits.usedThisMonth} / ${credits.monthlyLimit} (${credits.percentUsed}%)`;
+          document.getElementById('credit-warn').hidden = !credits.warning;
+          if (credits.warning) {
+            const banner = document.getElementById('quota-banner');
+            banner.textContent = `Usage warning: ${credits.usedThisMonth} / ${credits.monthlyLimit} tokens this month (${credits.percentUsed}%).`;
+            banner.hidden = false;
+          }
+        }
+      },
+    });
+  </script>
+</body>
+</html>

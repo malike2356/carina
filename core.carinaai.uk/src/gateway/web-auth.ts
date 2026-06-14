@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import { getUserProfile } from '../api/hosted-auth.js';
 import { isControlAuthorized } from '../infrastructure/control-auth.js';
 import { isHostedRequest } from './hosted-domain.js';
+import { canPerform, type RbacAction } from '../hosted/rbac.js';
+import { requireOrgContext, type OrgContext } from '../hosted/org-context.js';
 
 const OPS_API_PATHS = new Set([
   '/api/health',
@@ -24,10 +26,12 @@ const PUBLIC_HOSTED_PATHS = new Set([
   '/app/auth/register',
   '/api/auth/login',
   '/api/auth/register',
+  '/api/carina-ops/health',
 ]);
 
 export function isPublicHostedPath(path: string): boolean {
-  return PUBLIC_HOSTED_PATHS.has(path);
+  if (PUBLIC_HOSTED_PATHS.has(path)) return true;
+  return path.startsWith('/ops/assets/');
 }
 
 export async function requireWebAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -121,4 +125,35 @@ export async function checkWebPassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, expected);
   }
   return password === expected;
+}
+
+export function orgContext(req: Request): OrgContext {
+  if (!req.orgContext) {
+    throw new Error('Org context missing; use requireOrgMember middleware first');
+  }
+  return req.orgContext;
+}
+
+export async function requireHostedSession(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const ctx = await requireOrgContext(req, res);
+  if (!ctx) return;
+  req.orgContext = ctx;
+  next();
+}
+
+export function requireOrgMember(action: RbacAction) {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const ctx = await requireOrgContext(req, res);
+    if (!ctx) return;
+    if (!canPerform(ctx.role, action)) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+    req.orgContext = ctx;
+    next();
+  };
 }

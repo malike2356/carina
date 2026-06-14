@@ -32,7 +32,7 @@ export async function runCodeInSandbox(
 ): Promise<SandboxResult> {
   const useDocker = await checkDocker();
   if (!useDocker) {
-    return runJsVmFallback(code, options.timeout);  // always JS vm, regardless of language
+    return runJsVmFallback(code, options.timeout); // always JS vm, regardless of language
   }
   // ...
 }

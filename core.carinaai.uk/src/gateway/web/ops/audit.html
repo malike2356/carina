@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Audit</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;">
+        <h2>Audit log</h2>
+        <button class="btn secondary" id="export-audit" type="button" hidden>Export CSV (Team)</button>
+      </div>
+      <table class="ops-table">
+        <thead><tr><th>Time</th><th>Action</th><th>Actor</th><th>Details</th></tr></thead>
+        <tbody id="audit-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+      <button class="btn secondary" id="load-more" type="button" hidden style="margin-top:12px;">Load more</button>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    let nextCursor;
+
+    function formatDetails(details) {
+      try {
+        return JSON.stringify(details, null, 2);
+      } catch {
+        return String(details);
+      }
+    }
+
+    async function loadAudit(append) {
+      const url = nextCursor && append
+        ? `/api/carina-ops/audit?limit=50&cursor=${encodeURIComponent(nextCursor)}`
+        : '/api/carina-ops/audit?limit=50';
+      const res = await fetch(url);
+      const body = document.getElementById('audit-body');
+      if (!res.ok) {
+        body.innerHTML = '<tr><td colspan="4" class="placeholder">Unable to load audit log.</td></tr>';
+        return;
+      }
+      const data = await res.json();
+      nextCursor = data.nextCursor;
+      document.getElementById('load-more').hidden = !nextCursor;
+      const events = data.events || [];
+      if (!append) body.innerHTML = '';
+      if (!events.length && !append) {
+        body.innerHTML = '<tr><td colspan="4" class="placeholder">No audit events yet.</td></tr>';
+        return;
+      }
+      const rows = events.map((event) => {
+        const when = new Date(event.createdAt).toLocaleString();
+        const actor = event.actorEmail || 'system';
+        return `<tr><td>${CarinaOpsLayout.escapeHtml(when)}</td><td>${CarinaOpsLayout.escapeHtml(event.action)}</td><td>${CarinaOpsLayout.escapeHtml(actor)}</td><td><pre class="details-pre">${CarinaOpsLayout.escapeHtml(formatDetails(event.details))}</pre></td></tr>`;
+      }).join('');
+      body.insertAdjacentHTML('beforeend', rows);
+    }
+
+    CarinaOpsLayout.initPage('audit', {
+      onReady: async (me) => {
+        const billingRes = await fetch('/api/carina-ops/billing/summary').catch(() => null);
+        const billing = billingRes && billingRes.ok ? await billingRes.json() : {};
+        const canExport = (me.org?.plan || '') === 'carina_ops_team' || Number(billing.trialDaysLeft) > 0;
+        if (canExport) {
+          const exportBtn = document.getElementById('export-audit');
+          exportBtn.hidden = false;
+          exportBtn.addEventListener('click', () => {
+            window.location.href = '/api/carina-ops/audit/export?format=csv';
+          });
+        }
+        await loadAudit(false);
+        document.getElementById('load-more').addEventListener('click', () => loadAudit(true));
+      },
+    });
+  </script>
+</body>
+</html>

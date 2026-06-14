@@ -371,6 +371,8 @@
     const navSecurity = $('nav-security');
     if (navControl) navControl.classList.toggle('nav--active', isControl);
     if (navSecurity) navSecurity.classList.toggle('nav--active', !isControl);
+    const navChat = $('nav-chat');
+    if (navChat) navChat.classList.remove('nav--active');
     if (document.body.dataset.tenantScout === 'true') {
       const killBtn = $('kill-switch');
       if (killBtn) killBtn.hidden = true;

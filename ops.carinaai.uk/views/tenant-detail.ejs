@@ -1,4 +1,15 @@
 <% title = tenantDisplayName(tenant) %>
+<div class="mb-3 rounded-lg border border-amber-700/40 bg-amber-950/30 px-4 py-2 text-sm text-amber-100">
+  Internal support view. Not customer Carina Ops.
+</div>
+<% if (isImpersonating) { %>
+  <div class="mb-3 rounded-lg border border-red-600/60 bg-red-950/40 px-4 py-2 text-sm text-red-100 flex flex-wrap items-center justify-between gap-3">
+    <span>IMPERSONATION MODE: read-only view for tenant <%= tenantDisplayName(tenant) %>. End session.</span>
+    <form method="post" action="/tenants/impersonation/end">
+      <button type="submit" class="text-xs bg-red-900/60 hover:bg-red-900 text-red-100 px-3 py-1 rounded border border-red-700/60">End session</button>
+    </form>
+  </div>
+<% } %>
 <div class="mb-4">
   <a href="/tenants" class="text-sm text-[#06b6d4] hover:underline">&larr; All tenants</a>
   <div class="flex flex-wrap items-start justify-between gap-4 mt-2">
@@ -75,11 +86,28 @@
     </div>
   </div>
 
+  <% if (!isImpersonating) { %>
+  <div class="mt-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-semibold text-white mb-1">Support impersonation</h2>
+      <p class="text-sm text-gray-400">Start a read-only troubleshooting session (15 minutes, fully audited).</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <form method="post" action="/tenants/<%= tenant.id %>/impersonate">
+        <button type="submit" class="text-sm bg-red-900/40 hover:bg-red-900/60 text-red-100 px-3 py-1.5 rounded border border-red-700/50">Start impersonation</button>
+      </form>
+      <a href="<%= hostedAppUrl %>" target="_blank" rel="noopener noreferrer" class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">Open customer app</a>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (!isImpersonating) { %>
   <form method="post" action="/tenants/<%= tenant.id %>/notes" class="mt-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Operator notes</h2>
     <textarea name="notes" rows="4" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white text-sm"><%= tenant.notes || '' %></textarea>
     <button type="submit" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">Save notes</button>
   </form>
+  <% } %>
 
 <% } else if (tab === 'subscription') { %>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -128,6 +156,7 @@
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
       <h2 class="text-lg font-semibold text-white mb-3">Assign manual plan</h2>
       <p class="text-xs text-gray-500 mb-4">Changes apply immediately without Stripe checkout. Logged in audit trail.</p>
+      <% if (!isImpersonating) { %>
       <form method="post" action="/tenants/<%= tenant.id %>/subscription" class="space-y-3">
         <select name="plan" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
           <% for (const plan of plans) { %>
@@ -140,6 +169,9 @@
           Update plan
         </button>
       </form>
+      <% } else { %>
+        <p class="text-sm text-gray-500">Plan changes disabled during impersonation.</p>
+      <% } %>
       <% if (tenant.stripeCustomerId) { %>
         <p class="text-xs text-gray-600 mt-4">Stripe customer: <span class="font-mono"><%= tenant.stripeCustomerId %></span></p>
       <% } %>
@@ -241,16 +273,19 @@
     </div>
   <% } %>
 
+  <% if (!isImpersonating) { %>
   <form method="post" action="/tenants/<%= tenant.id %>/reset-quota" class="mt-6">
     <button type="submit" class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
       Reset daily message quota
     </button>
   </form>
+  <% } %>
 
 <% } else if (tab === 'packs') { %>
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-2">Tenant skill packs</h2>
     <p class="text-xs text-gray-500 mb-4">These are tenant-level entitlements, separate from operator/global packs on the Skill Packs page.</p>
+    <% if (!isImpersonating) { %>
     <form method="post" action="/tenants/<%= tenant.id %>/packs">
       <% if (!availablePacks.length) { %>
         <p class="text-sm text-gray-500">No packs available from Carina.</p>
@@ -272,6 +307,9 @@
         </button>
       <% } %>
     </form>
+    <% } else { %>
+      <p class="text-sm text-gray-500">Pack changes disabled during impersonation.</p>
+    <% } %>
     <% if (tenant.installedPacks.length) { %>
       <p class="text-xs text-gray-600 mt-4">Currently installed: <%= tenant.installedPacks.join(', ') %></p>
     <% } %>
@@ -281,6 +319,7 @@
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
       <h2 class="text-lg font-semibold text-white mb-3">Access status</h2>
+      <% if (!isImpersonating) { %>
       <form method="post" action="/tenants/<%= tenant.id %>/access" class="space-y-3">
         <select name="accessStatus" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
           <option value="active" <%= tenant.accessStatus === 'active' ? 'selected' : '' %>>Active</option>
@@ -291,9 +330,13 @@
           Update access
         </button>
       </form>
+      <% } else { %>
+        <p class="text-sm text-gray-500">Access changes disabled during impersonation.</p>
+      <% } %>
     </div>
     <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
       <h2 class="text-lg font-semibold text-white mb-3">Message tier</h2>
+      <% if (!isImpersonating) { %>
       <form method="post" action="/tenants/<%= tenant.id %>/tier" class="flex gap-2">
         <select name="tier" class="bg-[#0f0f0f] border border-[#2a2a2a] rounded px-2 py-1 text-sm text-white">
           <option value="free" <%= tenant.tier === 'free' ? 'selected' : '' %>>free</option>
@@ -301,25 +344,104 @@
         </select>
         <button type="submit" class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1 rounded">Set tier</button>
       </form>
+      <% } else { %>
+        <p class="text-sm text-gray-500">Tier changes disabled during impersonation.</p>
+      <% } %>
       <p class="text-xs text-gray-600 mt-3">Free tier enforces daily message limits. Pro tier removes the cap.</p>
     </div>
   </div>
 
-  <section class="mt-6 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-    <h2 class="text-lg font-semibold text-white mb-3">BYOK providers</h2>
+<% } else if (tab === 'byok') { %>
+<section class="space-y-6">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+    <div class="px-4 py-3 border-b border-[#2a2a2a] flex items-center justify-between">
+      <h2 class="text-sm font-semibold text-white">Provider keys</h2>
+      <span class="text-xs text-gray-500"><%= tenant.providers.length %> configured</span>
+    </div>
     <% if (!tenant.providers.length) { %>
-      <p class="text-sm text-gray-500">No provider keys configured.</p>
+      <p class="p-6 text-sm text-gray-500">No provider keys configured.</p>
     <% } else { %>
-      <ul class="space-y-2 text-sm">
-        <% for (const p of tenant.providers) { %>
-          <li class="flex justify-between border-b border-[#2a2a2a] pb-2">
-            <span class="text-[#06b6d4] font-mono"><%= p.provider %></span>
-            <span class="<%= p.enabled ? 'text-green-400' : 'text-gray-500' %>"><%= p.enabled ? 'active' : 'disabled' %></span>
-          </li>
-        <% } %>
-      </ul>
+      <table class="w-full text-sm">
+        <thead class="text-gray-500 border-b border-[#2a2a2a] bg-[#141414]">
+          <tr>
+            <th class="text-left px-4 py-2">Provider</th>
+            <th class="text-left px-4 py-2">Status</th>
+            <th class="text-left px-4 py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-[#2a2a2a]">
+          <% for (const p of tenant.providers) { %>
+            <tr class="text-gray-300">
+              <td class="px-4 py-3 font-mono text-[#06b6d4]"><%= p.provider %></td>
+              <td class="px-4 py-3">
+                <span class="<%= p.enabled ? 'text-green-400' : 'text-gray-500' %>">
+                  <%= p.enabled ? 'active' : 'disabled' %>
+                </span>
+              </td>
+              <td class="px-4 py-3 flex gap-2">
+                <% if (!isImpersonating) { %>
+                <form method="post" action="/tenants/<%= tenant.id %>/provider-keys/<%= p.provider %>/toggle">
+                  <input type="hidden" name="enabled" value="<%= p.enabled ? 'false' : 'true' %>">
+                  <button type="submit" class="text-xs px-2 py-1 rounded border border-[#2a2a2a] hover:border-gray-500 text-gray-400">
+                    <%= p.enabled ? 'Disable' : 'Enable' %>
+                  </button>
+                </form>
+                <form method="post" action="/tenants/<%= tenant.id %>/provider-keys/<%= p.provider %>/remove"
+                      onsubmit="return confirm('Remove <%= p.provider %> key for this tenant?')">
+                  <button type="submit" class="text-xs px-2 py-1 rounded border border-red-800 text-red-400 hover:border-red-600">
+                    Remove
+                  </button>
+                </form>
+                <% } else { %>
+                  <span class="text-xs text-gray-500">Read-only</span>
+                <% } %>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
     <% } %>
-  </section>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-sm font-semibold text-white mb-3">Add or overwrite provider key</h2>
+    <% if (!isImpersonating) { %>
+    <form method="post" action="/tenants/<%= tenant.id %>/provider-keys" class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">Provider name</label>
+          <input name="provider" required placeholder="e.g. deepseek, openai, anthropic"
+            class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-gray-600">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">API key</label>
+          <input name="apiKey" type="password" required
+            class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">Custom base URL (optional)</label>
+          <input name="baseUrl" placeholder="https://..."
+            class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-gray-600">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block mb-1">Model override (optional)</label>
+          <input name="model" placeholder="e.g. gpt-4o-mini"
+            class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-gray-600">
+        </div>
+      </div>
+      <button type="submit"
+        class="text-sm bg-[#22c55e] hover:bg-green-400 text-black px-4 py-2 rounded font-medium">
+        Save key
+      </button>
+    </form>
+    <p class="text-xs text-gray-600 mt-3">
+      Keys are AES-256 encrypted at rest. Saving overwrites any existing key for that provider.
+    </p>
+    <% } else { %>
+      <p class="text-sm text-gray-500">BYOK changes disabled during impersonation.</p>
+    <% } %>
+  </div>
+</section>
 
 <% } else if (tab === 'audit') { %>
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">

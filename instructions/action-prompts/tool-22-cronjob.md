@@ -27,7 +27,7 @@ In the `run` branch of `execute`:
 if (action === 'run') {
   const job = await getJob(jobId);
   if (!job) return { error: 'Job not found.' };
-  const output = await executeJob(jobId);   // throws on script error, agent failure, workdir issue
+  const output = await executeJob(jobId); // throws on script error, agent failure, workdir issue
   return { job_id: jobId, output };
 }
 ```

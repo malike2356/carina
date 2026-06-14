@@ -18,7 +18,9 @@ import { operatorRouter } from './routes/operator.js';
 import { tenantsRouter } from './routes/tenants.js';
 import { subscriptionsRouter } from './routes/subscriptions.js';
 import { packsRouter } from './routes/packs.js';
+import { aiPlatformRouter } from './routes/ai-platform.js';
 import { ensureHostedSchema } from './lib/tenants.js';
+import { ensureAiPlatformSchema } from './lib/ai-platform.js';
 import { autoPairCarinaFromLocalCore } from './lib/carina-pairing.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -27,7 +29,8 @@ const __opsDir = path.basename(__moduleDir) === 'dist' ? path.dirname(__moduleDi
 dotenv.config({ path: path.join(__opsDir, '.env') });
 
 const app = express();
-const PORT = Number(process.env.OPS_BACKEND_PORT ?? process.env.PORT ?? 4000);
+const defaultPort = process.env.NODE_ENV === 'production' ? 4002 : 4000;
+const PORT = Number(process.env.PORT ?? process.env.OPS_PORT ?? defaultPort);
 const viewsPath = path.join(__opsDir, 'views');
 
 app.set('trust proxy', 1);
@@ -109,6 +112,7 @@ app.use('/tenants', tenantsRouter);
 app.use('/subscriptions', subscriptionsRouter);
 app.use('/settings', settingsRouter);
 app.use('/operator', operatorRouter);
+app.use('/ai-platform', aiPlatformRouter);
 
 app.use((_req, res) => {
   res.status(404).render('error', { message: 'Page not found' });
@@ -123,6 +127,12 @@ app.listen(PORT, listenHost, () => {
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`  Hosted schema: skipped (${msg})`));
+    });
+  void ensureAiPlatformSchema()
+    .then(() => console.log(chalk.gray('  AI platform schema: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  AI platform schema: skipped (${msg})`));
     });
   void autoPairCarinaFromLocalCore()
     .then((result) => {

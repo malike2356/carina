@@ -569,6 +569,7 @@
   function switchView(view) {
     var overview = document.getElementById('view-overview');
     var defense = document.getElementById('view-defense');
+    var governance = document.getElementById('view-governance');
     document.querySelectorAll('.dash-tab').forEach(function (tab) {
       var active = tab.getAttribute('data-view') === view;
       tab.classList.toggle('dash-tab-active', active);
@@ -576,7 +577,9 @@
     });
     if (overview) overview.hidden = view !== 'overview';
     if (defense) defense.hidden = view !== 'defense';
+    if (governance) governance.hidden = view !== 'governance';
     if (view === 'defense') void loadDefense();
+    if (view === 'governance' && window.DashboardGovernanceTab) void window.DashboardGovernanceTab.load();
   }
 
   function initTabs() {

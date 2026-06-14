@@ -4,8 +4,8 @@
 
 set -euo pipefail
 
-VPS_HOST="80.190.81.208"
-VPS_USER="malike"
+SSH_TARGET="${DEPLOY_SSH_TARGET:-aman}"
+SSH_KEY="${DEPLOY_SSH_KEY:-${HOME}/.ssh/id_ed25519}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
@@ -13,8 +13,8 @@ log() { echo "[$(date +%H:%M:%S)] $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 check_ssh() {
-  ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok &>/dev/null || \
-    die "Cannot SSH to ${VPS_USER}@${VPS_HOST}. Check SSH key."
+  ssh -o IdentitiesOnly=yes -i "${SSH_KEY}" -o ConnectTimeout=8 -o BatchMode=yes "${SSH_TARGET}" echo ok &>/dev/null || \
+    die "Cannot SSH to ${SSH_TARGET}. Check SSH key."
 }
 
 mirror_docs_clean_urls() {
@@ -68,12 +68,13 @@ deploy_site() {
   [[ -d "$local_dir" ]] || die "Missing local directory: $local_dir"
 
   log "Deploying ${label}..."
-  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p ${remote_dir}"
+  ssh -o IdentitiesOnly=yes -i "${SSH_KEY}" "${SSH_TARGET}" "mkdir -p ${remote_dir}"
   rsync -rlptvz --delete --no-owner --no-group --omit-dir-times \
     --exclude='.git' \
     --exclude='prompts_ignore' \
     --exclude='node_modules' \
-    "${local_dir}/" "${VPS_USER}@${VPS_HOST}:${remote_dir}/"
+    -e "ssh -o IdentitiesOnly=yes -i ${SSH_KEY}" \
+    "${local_dir}/" "${SSH_TARGET}:${remote_dir}/"
   log "${label} deployed to ${remote_dir}"
 
   if [[ -f "${local_dir}/nginx.clean-urls.conf" ]]; then

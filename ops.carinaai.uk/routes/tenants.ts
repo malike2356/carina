@@ -6,7 +6,8 @@ import {
   stripeConfigured,
   type BillingPlanId,
 } from '../lib/billing-plans.js';
-import { fetchAuditLog, formatAuditAction } from '../lib/tenant-audit.js';
+import { fetchAuditLog, formatAuditAction, logAudit, writeOpsAudit } from '../lib/tenant-audit.js';
+import { addProviderKey, removeProviderKey, toggleProviderKey } from '../lib/tenant-byok.js';
 import {
   createTenantDirect,
   generateTempPassword,
@@ -29,10 +30,18 @@ import {
   setTenantTier,
   tenantDisplayName,
 } from '../lib/tenants.js';
+import {
+  blockWritesDuringImpersonation,
+  endImpersonation,
+  getActiveImpersonation,
+  startImpersonation,
+} from '../lib/support-impersonation.js';
 
 export const tenantsRouter = Router();
 
-const VALID_TABS = ['overview', 'subscription', 'payments', 'usage', 'packs', 'access', 'audit'] as const;
+tenantsRouter.use(blockWritesDuringImpersonation);
+
+const VALID_TABS = ['overview', 'subscription', 'payments', 'usage', 'packs', 'access', 'byok', 'audit'] as const;
 type TenantTab = typeof VALID_TABS[number];
 
 function flashMessage(query: Record<string, unknown>): { text: string | null; isError: boolean } {
@@ -44,6 +53,11 @@ function flashMessage(query: Record<string, unknown>): { text: string | null; is
   if (query.ok === 'access') return { text: 'Access status updated.', isError: false };
   if (query.ok === 'packs') return { text: 'Skill packs updated.', isError: false };
   if (query.ok === 'notes') return { text: 'Notes saved.', isError: false };
+  if (query.ok === 'key-saved') return { text: 'Provider key saved.', isError: false };
+  if (query.ok === 'key-removed') return { text: 'Provider key removed.', isError: false };
+  if (query.ok === 'toggled') return { text: 'Provider key updated.', isError: false };
+  if (query.ok === 'impersonation') return { text: 'Impersonation session started (read-only, 15 minutes).', isError: false };
+  if (query.ok === 'impersonation-end') return { text: 'Impersonation session ended.', isError: false };
   if (typeof query.err === 'string') return { text: query.err, isError: true };
   return { text: null, isError: false };
 }
@@ -51,6 +65,12 @@ function flashMessage(query: Record<string, unknown>): { text: string | null; is
 function parseTab(value: unknown): TenantTab {
   const tab = String(value ?? 'overview');
   return VALID_TABS.includes(tab as TenantTab) ? tab as TenantTab : 'overview';
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidTenantId(value: string): boolean {
+  return UUID_RE.test(value);
 }
 
 tenantsRouter.post('/init-schema', async (_req, res) => {
@@ -177,17 +197,46 @@ tenantsRouter.get('/', async (req, res) => {
   }
 });
 
+tenantsRouter.post('/impersonation/end', async (req, res) => {
+  try {
+    const active = getActiveImpersonation(req);
+    await endImpersonation(req);
+    if (active) {
+      res.redirect(`/tenants/${active.tenantId}?ok=impersonation-end&tab=overview`);
+      return;
+    }
+    res.redirect('/tenants?ok=impersonation-end');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.redirect(`/tenants?err=${encodeURIComponent(message)}`);
+  }
+});
+
 tenantsRouter.get('/:id', async (req, res) => {
   try {
-    const tenant = await fetchTenantById(req.params.id);
+    const tenantId = String(req.params.id ?? '');
+    if (!isValidTenantId(tenantId)) {
+      res.status(404).render('error', { message: 'Tenant not found' });
+      return;
+    }
+
+    const tenant = await fetchTenantById(tenantId);
     if (!tenant) {
       res.status(404).render('error', { message: 'Tenant not found' });
       return;
     }
 
     const tab = parseTab(req.query.tab);
+    const impersonation = getActiveImpersonation(req);
+    const isImpersonating = Boolean(impersonation && impersonation.tenantId === tenantId);
+    await writeOpsAudit({
+      tenantId,
+      orgId: impersonation?.orgId ?? undefined,
+      action: tab === 'byok' ? 'tenant.byok.view' : 'tenant.view',
+      details: { tab, impersonating: isImpersonating },
+    });
     const flash = flashMessage(req.query as Record<string, unknown>);
-    const auditLog = tab === 'audit' ? await fetchAuditLog(req.params.id) : [];
+    const auditLog = tab === 'audit' ? await fetchAuditLog(tenantId) : [];
     const { packs: availablePacks } = await fetchAvailablePacks();
 
     const tempPassword = typeof req.query.tempPassword === 'string' ? req.query.tempPassword : null;
@@ -209,10 +258,33 @@ tenantsRouter.get('/:id', async (req, res) => {
       tempPassword,
       createdApiKey,
       freeDailyLimit: Number(process.env.HOSTED_FREE_DAILY_MESSAGES ?? 100),
+      impersonation: isImpersonating ? impersonation : null,
+      isImpersonating,
+      hostedAppUrl: process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk',
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).render('error', { message });
+  }
+});
+
+tenantsRouter.post('/:id/impersonate', async (req, res) => {
+  const tenantId = String(req.params.id ?? '');
+  if (!isValidTenantId(tenantId)) {
+    res.status(404).render('error', { message: 'Tenant not found' });
+    return;
+  }
+  try {
+    const tenant = await fetchTenantById(tenantId);
+    if (!tenant) {
+      res.status(404).render('error', { message: 'Tenant not found' });
+      return;
+    }
+    await startImpersonation(req, tenantId);
+    res.redirect(`/tenants/${tenantId}?ok=impersonation&tab=overview`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.redirect(`/tenants/${tenantId}?err=${encodeURIComponent(message)}&tab=overview`);
   }
 });
 
@@ -249,6 +321,10 @@ tenantsRouter.post('/:id/reset-quota', async (req, res) => {
 
 tenantsRouter.post('/:id/subscription', async (req, res) => {
   const id = req.params.id;
+  if (!isValidTenantId(id)) {
+    res.status(404).render('error', { message: 'Tenant not found' });
+    return;
+  }
   try {
     const plan = normalizePlanId(req.body?.plan) as BillingPlanId;
     const ok = await updateTenantSubscription(id, plan, 'manual');
@@ -256,6 +332,11 @@ tenantsRouter.post('/:id/subscription', async (req, res) => {
       res.redirect(`/tenants/${id}?err=Tenant+not+found&tab=subscription`);
       return;
     }
+    await writeOpsAudit({
+      tenantId: id,
+      action: 'tenant.plan_override',
+      details: { plan },
+    });
     res.redirect(`/tenants/${id}?ok=plan&tab=subscription`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -265,6 +346,10 @@ tenantsRouter.post('/:id/subscription', async (req, res) => {
 
 tenantsRouter.post('/:id/access', async (req, res) => {
   const id = req.params.id;
+  if (!isValidTenantId(id)) {
+    res.status(404).render('error', { message: 'Tenant not found' });
+    return;
+  }
   const accessStatus = (['active', 'suspended', 'trial'].includes(String(req.body?.accessStatus))
     ? String(req.body.accessStatus)
     : 'active') as AccessStatus;
@@ -273,6 +358,13 @@ tenantsRouter.post('/:id/access', async (req, res) => {
     if (!ok) {
       res.redirect(`/tenants/${id}?err=Tenant+not+found&tab=access`);
       return;
+    }
+    if (accessStatus === 'suspended') {
+      await writeOpsAudit({
+        tenantId: id,
+        action: 'tenant.suspend',
+        details: { accessStatus },
+      });
     }
     res.redirect(`/tenants/${id}?ok=access&tab=access`);
   } catch (err) {
@@ -306,5 +398,47 @@ tenantsRouter.post('/:id/notes', async (req, res) => {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.redirect(`/tenants/${id}?err=${encodeURIComponent(message)}&tab=overview`);
+  }
+});
+
+tenantsRouter.post('/:id/provider-keys', async (req, res) => {
+  const { provider, apiKey, baseUrl, model } = req.body as {
+    provider?: string; apiKey?: string; baseUrl?: string; model?: string;
+  };
+  if (!provider?.trim() || !apiKey?.trim()) {
+    return res.redirect(`/tenants/${req.params.id}?tab=byok&err=provider+and+API+key+required`);
+  }
+  try {
+    await addProviderKey(
+      req.params.id,
+      provider.trim(),
+      apiKey.trim(),
+      baseUrl?.trim(),
+      model?.trim(),
+    );
+    await logAudit('byok_key_added', { provider: provider.trim() }, req.params.id);
+    res.redirect(`/tenants/${req.params.id}?tab=byok&ok=key-saved`);
+  } catch (err) {
+    res.redirect(`/tenants/${req.params.id}?tab=byok&err=${encodeURIComponent(String(err))}`);
+  }
+});
+
+tenantsRouter.post('/:id/provider-keys/:provider/remove', async (req, res) => {
+  try {
+    await removeProviderKey(req.params.id, req.params.provider);
+    await logAudit('byok_key_removed', { provider: req.params.provider }, req.params.id);
+    res.redirect(`/tenants/${req.params.id}?tab=byok&ok=key-removed`);
+  } catch (err) {
+    res.redirect(`/tenants/${req.params.id}?tab=byok&err=${encodeURIComponent(String(err))}`);
+  }
+});
+
+tenantsRouter.post('/:id/provider-keys/:provider/toggle', async (req, res) => {
+  const enabled = req.body.enabled === 'true';
+  try {
+    await toggleProviderKey(req.params.id, req.params.provider, enabled);
+    res.redirect(`/tenants/${req.params.id}?tab=byok&ok=toggled`);
+  } catch (err) {
+    res.redirect(`/tenants/${req.params.id}?tab=byok&err=${encodeURIComponent(String(err))}`);
   }
 });

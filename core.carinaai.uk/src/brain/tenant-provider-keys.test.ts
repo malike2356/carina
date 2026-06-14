@@ -9,6 +9,14 @@ beforeEach(() => {
 });
 
 async function loadTenantProviderKeys() {
+  vi.doMock('../hosted/scoped-query.js', () => ({
+    resolveOrgIdFromUser: vi.fn(async () => 'org-test'),
+    orgOrTenantWhere: () => '(org_id = $1 OR (org_id IS NULL AND tenant_id = $2))',
+    queryForOrg: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+    rejectMissingOrgId: (orgId: string | undefined) => {
+      if (!orgId) throw new Error('missing org');
+    },
+  }));
   vi.doMock('../memory/db.js', () => ({ pool: mockPool }));
   return import('./tenant-provider-keys.js');
 }
@@ -28,9 +36,11 @@ describe('tenant provider keys', () => {
     mockQuery.mockResolvedValueOnce({ rows: [] });
     await setTenantProviderKey('test-tenant', 'nvidia', 'nvapi-test-key-123');
 
-    const insertCall = mockQuery.mock.calls[0];
-    expect(insertCall[0]).toContain('INSERT INTO tenant_provider_keys');
-    const storedEncrypted = insertCall[1][2] as string;
+    const insertCall = mockQuery.mock.calls.find((c) =>
+      String(c[0]).includes('INSERT INTO tenant_provider_keys'),
+    );
+    expect(insertCall).toBeDefined();
+    const storedEncrypted = insertCall![1][3] as string;
     expect(storedEncrypted).not.toContain('nvapi-test-key-123');
 
     mockQuery.mockResolvedValueOnce({
@@ -92,7 +102,7 @@ describe('tenant provider keys', () => {
       ],
     });
     const { listTenantProviders } = await loadTenantProviderKeys();
-    const providers = await listTenantProviders('test-tenant');
+    const providers = await listTenantProviders('org-test', 'test-tenant');
     expect(providers).toEqual([
       { provider: 'nvidia', enabled: true, hasKey: true },
       { provider: 'deepseek', enabled: false, hasKey: true },

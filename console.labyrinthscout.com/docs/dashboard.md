@@ -2,6 +2,18 @@
 
 The dashboard is served at `/` and `/dashboard.html`. On load, Scout injects your `SCOUT_API_KEY` into the page for authenticated API calls (self-hosted only; do not expose this URL publicly without TLS and access control).
 
+## Dashboard tabs
+
+The operator console at `/dashboard` has three in-page tabs:
+
+| Tab | Purpose |
+|---|---|
+| **Overview** | Live posture, incident triage, trust metrics, action queue, and live ops panels |
+| **Defense** | Shield mode, policy packs, JIT privileges, simulation, and operator response controls |
+| **Governance** | Condensed governance score, EU AI Act / UK DSIT alignment, agents, oversight, action items, and attestation summary |
+
+The full governance surface remains at `/governance` for board exports and template changes. The header link to `/governance` is kept for deep links.
+
 ## Radar scanner
 
 Top-left **threat radar** plots recent security events as polar dots.

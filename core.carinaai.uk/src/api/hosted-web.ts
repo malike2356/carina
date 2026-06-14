@@ -2,9 +2,11 @@ import express, { type Express, type Request, type Response } from 'express';
 import Stripe from 'stripe';
 import { config } from '../config/index.js';
 import { hostedAppOrigin } from '../gateway/hosted-domain.js';
-import { redirectIfHostedAuthed } from '../gateway/web-auth.js';
+import { redirectIfHostedAuthed, requireOrgMember } from '../gateway/web-auth.js';
 import { pool } from '../memory/db.js';
+import { CARINA_OPS_CHECKOUT_PLANS, isCarinaOpsPlan, normalizePlanId, type BillingPlanId } from '../billing/plans.js';
 import { StripeService } from '../billing/stripe-service.js';
+import { writeProductAudit } from '../hosted/product-audit.js';
 import {
   confirmPasswordReset,
   getUserProfile,
@@ -14,6 +16,10 @@ import {
   requestPasswordReset,
   verifyJwt,
 } from './hosted-auth.js';
+import { acceptInvite, createInvite, listPendingInvites, revokeInvite } from '../hosted/org-invites.js';
+import { resolveOrgSession } from '../hosted/org-context.js';
+import { canPerform } from '../hosted/rbac.js';
+import type { OrgRole } from '../hosted/org-types.js';
 
 async function resolveStripeCustomerId(accountId: string): Promise<string | null> {
   const sub = await pool.query(
@@ -49,6 +55,17 @@ async function getInstalledPacks(accountId: string): Promise<Array<{ pack_name: 
   }
 }
 
+async function setHostedSession(
+  req: Request,
+  userId: string,
+  orgId?: string,
+  role?: string,
+): Promise<void> {
+  req.session.hostedAccountId = userId;
+  if (orgId) req.session.hostedOrgId = orgId;
+  if (role) req.session.hostedOrgRole = role as OrgRole;
+}
+
 export function mountHostedWebRoutes(app: Express): void {
   if (!config.hosted.enabled) return;
 
@@ -64,7 +81,8 @@ export function mountHostedWebRoutes(app: Express): void {
     }
     try {
       const { userId } = await registerUser(email, password);
-      req.session.hostedAccountId = userId;
+      const profile = await getUserProfile(userId);
+      await setHostedSession(req, userId, profile?.org?.id, profile?.org?.role);
       res.json({ ok: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -86,6 +104,8 @@ export function mountHostedWebRoutes(app: Express): void {
       return;
     }
     req.session.hostedAccountId = jwtUser.userId;
+    if (result.orgId) req.session.hostedOrgId = result.orgId;
+    if (result.role) req.session.hostedOrgRole = result.role as OrgRole;
     res.json({ ok: true });
   });
 
@@ -144,8 +164,89 @@ export function mountHostedWebRoutes(app: Express): void {
       tier: profile.tier,
       apiKey: profile.apiKey,
       scoutActive: Boolean(scout),
+      org: profile.org ?? null,
     });
   });
+
+  const orgRouter = express.Router();
+  orgRouter.use(express.json());
+
+  orgRouter.post('/invites', requireOrgMember('org.members.invite'), async (req: Request, res: Response) => {
+    const ctx = req.orgContext!;
+    const email = String(req.body?.email ?? '').trim().toLowerCase();
+    const role = String(req.body?.role ?? '') as Exclude<OrgRole, 'owner'>;
+    const allowed: Array<Exclude<OrgRole, 'owner'>> = ['admin', 'operator', 'auditor', 'viewer'];
+    if (!email || !allowed.includes(role)) {
+      res.status(400).json({ error: 'email and valid role required' });
+      return;
+    }
+    try {
+      const invite = await createInvite(ctx.orgId, email, role, ctx.userId);
+      res.json({
+        ok: true,
+        inviteId: invite.inviteId,
+        token: invite.token,
+        emailSent: invite.emailSent,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const status = err instanceof Error && 'statusCode' in err
+        ? Number((err as { statusCode?: number }).statusCode ?? 500)
+        : 500;
+      res.status(status).json({ error: msg });
+    }
+  });
+
+  orgRouter.get('/invites', requireOrgMember('org.settings.read'), async (req: Request, res: Response) => {
+    const ctx = req.orgContext!;
+    const invites = await listPendingInvites(ctx.orgId);
+    res.json({ invites });
+  });
+
+  orgRouter.delete('/invites/:id', requireOrgMember('org.members.invite'), async (req: Request, res: Response) => {
+    const ctx = req.orgContext!;
+    await revokeInvite(ctx.orgId, String(req.params.id));
+    res.json({ ok: true });
+  });
+
+  orgRouter.post('/invites/accept', async (req: Request, res: Response) => {
+    const accountId = req.session?.hostedAccountId;
+    if (!accountId) {
+      res.status(401).json({ error: 'Not signed in' });
+      return;
+    }
+    const token = String(req.body?.token ?? '').trim();
+    if (!token) {
+      res.status(400).json({ error: 'token required' });
+      return;
+    }
+    try {
+      const result = await acceptInvite(token, accountId);
+      req.session.hostedOrgId = result.orgId;
+      req.session.hostedOrgRole = result.role;
+      res.json({ ok: true, orgId: result.orgId, role: result.role });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(400).json({ error: msg });
+    }
+  });
+
+  if (process.env.CARINA_RBAC_PROBE === 'true') {
+    orgRouter.get('/_probe/billing.write', requireOrgMember('billing.write'), (_req, res) => {
+      res.json({ ok: true });
+    });
+    orgRouter.get('/_probe/workbench.run', requireOrgMember('workbench.run'), (_req, res) => {
+      res.json({ ok: true });
+    });
+    orgRouter.get('/_probe/usage.read', requireOrgMember('usage.read'), (_req, res) => {
+      res.json({ ok: true });
+    });
+    orgRouter.post('/_probe/vault.write', requireOrgMember('vault.write'), (_req, res) => {
+      res.json({ ok: true });
+    });
+  }
+
+  router.use('/org', orgRouter);
 
   router.post('/billing/checkout', async (req: Request, res: Response) => {
     const accountId = req.session?.hostedAccountId;
@@ -158,22 +259,70 @@ export function mountHostedWebRoutes(app: Express): void {
       res.status(401).json({ error: 'Account not found' });
       return;
     }
+
+    const requestedPlan = normalizePlanId(req.body?.plan);
+    const origin = hostedAppOrigin(req);
+
+    if (isCarinaOpsPlan(requestedPlan)) {
+      const orgCtx = await resolveOrgSession(req);
+      if (!orgCtx) {
+        res.status(401).json({ error: 'Not signed in' });
+        return;
+      }
+      if (!canPerform(orgCtx.role, 'billing.write')) {
+        res.status(403).json({ error: 'Forbidden' });
+        return;
+      }
+      if (!CARINA_OPS_CHECKOUT_PLANS.includes(requestedPlan)) {
+        res.status(400).json({ error: 'Invalid plan' });
+        return;
+      }
+      if (!config.hosted.stripeSecretKey) {
+        res.status(503).json({ error: 'Billing is not configured' });
+        return;
+      }
+      try {
+        const stripeService = new StripeService();
+        const session = await stripeService.createCheckoutSession({
+          tenantId: accountId,
+          orgId: orgCtx.orgId,
+          email: profile.email,
+          plan: requestedPlan,
+          successUrl: `${origin}/ops/billing?checkout=success`,
+          cancelUrl: `${origin}/ops/billing?checkout=cancel`,
+        });
+        await writeProductAudit({
+          orgId: orgCtx.orgId,
+          actorUserId: orgCtx.userId,
+          action: 'billing.checkout_started',
+          resourceType: 'subscription',
+          details: { plan: requestedPlan },
+          req,
+        });
+        res.json({ url: session.url });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        res.status(500).json({ error: msg });
+      }
+      return;
+    }
+
     const priceId = config.hosted.proPriceId;
     if (!priceId || !config.hosted.stripeSecretKey) {
       res.status(503).json({ error: 'Billing is not configured' });
       return;
     }
-    const origin = hostedAppOrigin(req);
     const stripe = new Stripe(config.hosted.stripeSecretKey);
+    const scoutPlan: BillingPlanId = requestedPlan === 'free' ? 'scout_pro' : requestedPlan;
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer_email: profile.email,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/billing?success=true`,
       cancel_url: `${origin}/billing?canceled=true`,
-      metadata: { tenantId: accountId, plan: 'scout_pro' },
+      metadata: { tenantId: accountId, plan: scoutPlan },
       subscription_data: {
-        metadata: { tenantId: accountId, plan: 'scout_pro' },
+        metadata: { tenantId: accountId, plan: scoutPlan },
       },
     });
     res.json({ url: session.url });
@@ -187,15 +336,16 @@ export function mountHostedWebRoutes(app: Express): void {
     }
     const customerId = await resolveStripeCustomerId(accountId);
     if (!customerId) {
-      res.status(400).json({ error: 'No billing account yet. Upgrade to Pro first.' });
+      res.status(400).json({ error: 'No billing account yet. Upgrade first.' });
       return;
     }
     try {
       const stripeService = new StripeService();
-      const portal = await stripeService.updatePaymentMethod(
-        customerId,
-        `${hostedAppOrigin(req)}/billing`,
-      );
+      const returnPath = String(req.body?.returnPath ?? '').trim();
+      const returnUrl = returnPath.startsWith('/')
+        ? `${hostedAppOrigin(req)}${returnPath}`
+        : `${hostedAppOrigin(req)}/ops/billing`;
+      const portal = await stripeService.updatePaymentMethod(customerId, returnUrl);
       res.json({ url: portal.url });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

@@ -8,6 +8,11 @@ import {
 import type { AgentStatusSummary } from './agent-status.js';
 import type { IncidentOpsSummary } from './incident-ops.js';
 import type { ThreatMetricsSummary } from './threat-metrics.js';
+import {
+  classifyRegulatoryRisk,
+  type EuAiActTier,
+  type UkDsitAlignment,
+} from '../../governance/regulatory-classification.js';
 
 export interface ControlPlaneHealth {
   alert_channels_configured: boolean;
@@ -67,6 +72,13 @@ export interface PostureSummary {
     | 'attacksByIncidentType'
   >;
   action_queue: Array<{ id: string; label: string; severity: 'critical' | 'warning' | 'info' }>;
+  regulatory: {
+    eu_ai_act_tier: EuAiActTier;
+    eu_ai_act_label: string;
+    uk_dsit_alignment: UkDsitAlignment;
+    gaps_count: number;
+    reasoning: string[];
+  } | null;
 }
 
 export function buildPostureSummary(input: {
@@ -78,12 +90,18 @@ export function buildPostureSummary(input: {
   controlPlane: ControlPlaneHealth;
   trustHealth: TrustHealthSummary;
   now?: Date;
+  regulatorySignals?: {
+    audit_events_last_7d?: boolean;
+    telemetry_days?: number;
+    breach_events_24h?: number;
+  };
 }): PostureSummary {
   const now = input.now ?? new Date();
   const freshness = evaluateDataFreshness(input.metrics, now);
   const heartbeatAge = ageSeconds(input.metrics.lastHeartbeatAt, now);
   const eventAge = ageSeconds(input.metrics.lastEventAt, now);
   const queue = buildActionQueue(input);
+  const regulatory = buildRegulatorySummary(input, now);
 
   return {
     generated_at: now.toISOString(),
@@ -119,6 +137,59 @@ export function buildPostureSummary(input: {
       attacksByIncidentType: input.threats.attacksByIncidentType,
     },
     action_queue: queue,
+    regulatory,
+  };
+}
+
+function buildRegulatorySummary(
+  input: {
+    metrics: TrustMetricsInput;
+    trust: PublicTrustPayload;
+    agents: AgentStatusSummary;
+    incidents: IncidentOpsSummary;
+    controlPlane: ControlPlaneHealth;
+    trustHealth: TrustHealthSummary;
+    regulatorySignals?: {
+      audit_events_last_7d?: boolean;
+      telemetry_days?: number;
+      breach_events_24h?: number;
+    };
+  },
+  now: Date,
+): PostureSummary['regulatory'] {
+  const lastEventMs = input.metrics.lastEventAt
+    ? new Date(input.metrics.lastEventAt).getTime()
+    : 0;
+  const audit7d = input.regulatorySignals?.audit_events_last_7d ?? (
+    lastEventMs > 0 && (now.getTime() - lastEventMs) < 7 * 86_400_000
+  );
+  const telemetryDays = input.regulatorySignals?.telemetry_days
+    ?? (input.trust.data_freshness.stale ? 1 : 10);
+  const breach24h = input.regulatorySignals?.breach_events_24h ?? 0;
+
+  const result = classifyRegulatoryRisk({
+    risk_score: input.trust.risk_score,
+    unresolved_critical: input.incidents.unresolved_critical,
+    kill_switch_armed: input.controlPlane.kill_switch_armed,
+    kill_switch_triggered: input.controlPlane.kill_switch_triggered,
+    erc8004_status: input.trustHealth.erc8004_status,
+    agents_total: input.agents.total,
+    last_attestation_at: input.trustHealth.last_attestation_at,
+    alert_channels_configured: input.controlPlane.alert_channels_configured,
+    audit_events_last_7d: audit7d,
+    egress_filter_enabled: input.controlPlane.egress_filter_enabled,
+    breach_events_24h: breach24h,
+    telemetry_days: telemetryDays,
+  }, now);
+
+  if (!result.data_sufficient) return null;
+
+  return {
+    eu_ai_act_tier: result.eu_ai_act.tier,
+    eu_ai_act_label: result.eu_ai_act.tier_label,
+    uk_dsit_alignment: result.uk_dsit.alignment,
+    gaps_count: result.eu_ai_act.gaps.length,
+    reasoning: result.eu_ai_act.reasoning,
   };
 }
 

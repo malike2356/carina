@@ -19,6 +19,7 @@ export type WebContextResponse = {
       email: string;
       tier: string;
       scoutActive: boolean;
+      org?: { id: string; name: string; plan: string; role: string } | null;
     } | null;
   };
 };
@@ -47,6 +48,7 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
 
   if (mode === 'hosted') {
     if (req.hostedUser) {
+      const profile = await getUserProfile(req.hostedUser.id);
       const scout = await import('../billing/tenant-scout.js').then((m) =>
         m.getTenantScoutCredentials(req.hostedUser!.id, req.hostedUser!.email),
       );
@@ -56,6 +58,7 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
           email: req.hostedUser.email,
           tier: req.hostedUser.tier,
           scoutActive: Boolean(scout),
+          org: profile?.org ?? null,
         },
       };
     } else {

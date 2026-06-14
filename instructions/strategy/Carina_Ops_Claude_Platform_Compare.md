@@ -52,10 +52,10 @@ $0.00
 of $500 limit · resets Jul 1
 Prompt caching
 Not enabled
-—
+;
 tokens reused
 Token volume
-—
+;
 No activity in the last 7 days
 Models
 Compare models
@@ -86,7 +86,7 @@ Batch API
 Move async workloads to the Batch API and save 50% on standard API prices.
 
 Prompt caching
-Reuse prompt prefixes across API calls. Most orgs see input costs drop 50–90%.
+Reuse prompt prefixes across API calls. Most orgs see input costs drop 50-90%.
 
 API status(opens in new tab)
 Help and support(opens in new tab)

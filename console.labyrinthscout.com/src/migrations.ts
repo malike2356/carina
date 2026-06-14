@@ -1,4 +1,5 @@
 import type pg from 'pg';
+import { runPendingApprovalsMigration } from './migrations/add-pending-approvals.js';
 
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(`
@@ -544,6 +545,8 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
       ON security_events (root_session_id)
       WHERE root_session_id IS NOT NULL
   `);
+
+  await runPendingApprovalsMigration(client);
 
   console.log('[scout:migrations] Schema ready');
 }

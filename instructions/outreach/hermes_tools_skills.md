@@ -101,19 +101,19 @@
     
     PLATFORM FEATURES (beyond tools/skills)
     
-    - Multi-profile — isolated profiles with own skills, plugins, cron, memories
-    - Multi-model — switch providers/models (DeepSeek, Anthropic, OpenAI, OpenRouter, etc.)
-    - Multi-platform messaging — Telegram, Discord, Slack, Signal, Matrix, Yuanbao
-    - Cron scheduler — recurring autonomous agent runs with TTS delivery
-    - Background processes — long-running servers/builds with completion notifications
-    - Subagent delegation — parallel isolated workers for complex tasks
-    - Persistent memory — cross-session user profile + agent knowledge store
-    - Session search — FTS5 full-text search over all past conversations
-    - Skill system — reusable procedural knowledge with YAML frontmatter
-    - Kanban integration — task board with worker/orchestrator roles
-    - MCP client — native Model Context Protocol for external tool servers
-    - TTS delivery — voice note output via Edge/OpenAI/ElevenLabs
-    - Webhook subscriptions — event-driven agent triggers
-    - Browser automation — headless browsing with JS evaluation
+    - Multi-profile; isolated profiles with own skills, plugins, cron, memories
+    - Multi-model; switch providers/models (DeepSeek, Anthropic, OpenAI, OpenRouter, etc.)
+    - Multi-platform messaging; Telegram, Discord, Slack, Signal, Matrix, Yuanbao
+    - Cron scheduler; recurring autonomous agent runs with TTS delivery
+    - Background processes; long-running servers/builds with completion notifications
+    - Subagent delegation; parallel isolated workers for complex tasks
+    - Persistent memory; cross-session user profile + agent knowledge store
+    - Session search; FTS5 full-text search over all past conversations
+    - Skill system; reusable procedural knowledge with YAML frontmatter
+    - Kanban integration; task board with worker/orchestrator roles
+    - MCP client; native Model Context Protocol for external tool servers
+    - TTS delivery; voice note output via Edge/OpenAI/ElevenLabs
+    - Webhook subscriptions; event-driven agent triggers
+    - Browser automation; headless browsing with JS evaluation
     
 

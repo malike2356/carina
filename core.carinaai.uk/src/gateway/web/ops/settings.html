@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Settings</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Invite teammate</h2>
+      <p class="placeholder" style="margin-bottom:12px;">Send an invite link by email, or copy the link when email is not configured.</p>
+      <div class="form-row">
+        <label for="invite-email">Email</label>
+        <input type="text" id="invite-email" autocomplete="email" placeholder="colleague@company.com">
+      </div>
+      <div class="form-row">
+        <label for="invite-role">Role</label>
+        <select id="invite-role">
+          <option value="operator">Operator</option>
+          <option value="admin">Admin</option>
+          <option value="auditor">Auditor</option>
+          <option value="viewer">Viewer</option>
+        </select>
+      </div>
+      <button class="btn" id="invite-send" type="button">Send invite</button>
+      <p class="error-msg" id="invite-error" hidden></p>
+      <div id="invite-link-box" class="banner-trial" hidden style="margin-top:12px;">
+        <p style="margin-bottom:8px;">Email not sent. Copy this invite link:</p>
+        <input type="text" id="invite-link" readonly>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Pending invites</h2>
+      <table class="ops-table">
+        <thead><tr><th>Email</th><th>Role</th><th>Expires</th><th></th></tr></thead>
+        <tbody id="invite-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    function buildInviteUrl(token) {
+      return `${location.origin}/hosted-register?invite=${encodeURIComponent(token)}`;
+    }
+
+    async function loadInvites() {
+      const res = await fetch('/app/auth/org/invites');
+      const body = document.getElementById('invite-body');
+      if (!res.ok) {
+        body.innerHTML = '<tr><td colspan="4" class="placeholder">Unable to load invites.</td></tr>';
+        return;
+      }
+      const data = await res.json();
+      const invites = data.invites || [];
+      if (!invites.length) {
+        body.innerHTML = '<tr><td colspan="4" class="placeholder">No pending invites.</td></tr>';
+        return;
+      }
+      body.innerHTML = invites.map((invite) => {
+        const expires = new Date(invite.expiresAt).toLocaleDateString();
+        return `<tr><td>${CarinaOpsLayout.escapeHtml(invite.email)}</td><td>${CarinaOpsLayout.escapeHtml(invite.role)}</td><td>${CarinaOpsLayout.escapeHtml(expires)}</td><td><button class="btn secondary revoke-invite" data-id="${CarinaOpsLayout.escapeHtml(invite.id)}" type="button">Revoke</button></td></tr>`;
+      }).join('');
+      body.querySelectorAll('.revoke-invite').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const id = btn.getAttribute('data-id');
+          await fetch(`/app/auth/org/invites/${encodeURIComponent(id)}`, { method: 'DELETE' });
+          await loadInvites();
+        });
+      });
+    }
+
+    CarinaOpsLayout.initPage('settings', {
+      onReady: async () => {
+        await loadInvites();
+        document.getElementById('invite-send').addEventListener('click', async () => {
+          const email = document.getElementById('invite-email').value.trim();
+          const role = document.getElementById('invite-role').value;
+          const errEl = document.getElementById('invite-error');
+          const linkBox = document.getElementById('invite-link-box');
+          errEl.hidden = true;
+          linkBox.hidden = true;
+          const res = await fetch('/app/auth/org/invites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, role }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            errEl.textContent = data.error || 'Invite failed';
+            errEl.hidden = false;
+            return;
+          }
+          document.getElementById('invite-email').value = '';
+          if (!data.emailSent && data.token) {
+            document.getElementById('invite-link').value = buildInviteUrl(data.token);
+            linkBox.hidden = false;
+          }
+          await loadInvites();
+        });
+      },
+    });
+  </script>
+</body>
+</html>

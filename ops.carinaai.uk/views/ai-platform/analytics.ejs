@@ -1,0 +1,92 @@
+<% title = 'Analytics' %>
+<%- include('../partials/ai-platform-nav') %>
+
+<h1 class="text-2xl font-bold text-white mb-4">Analytics</h1>
+
+<form method="get" class="mb-6 flex items-center gap-3 text-sm">
+  <label class="text-gray-400">Period</label>
+  <select name="days" onchange="this.form.submit()" class="bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-1 text-white">
+    <option value="7" <%= days === 7 ? 'selected' : '' %>>7 days</option>
+    <option value="30" <%= days === 30 ? 'selected' : '' %>>30 days</option>
+    <option value="90" <%= days === 90 ? 'selected' : '' %>>90 days</option>
+  </select>
+</form>
+
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+  <% const metrics = [
+    ['Requests', summary.requests],
+    ['Tokens in', summary.tokensIn.toLocaleString()],
+    ['Tokens out', summary.tokensOut.toLocaleString()],
+    ['Cache hits', summary.cacheHits.toLocaleString()],
+    ['Batch jobs', summary.batchJobs],
+    ['Est. cost', '$' + summary.estimatedCost.toFixed(4)],
+  ]; %>
+  <% for (const [label, val] of metrics) { %>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+      <p class="text-gray-400 text-xs"><%= label %></p>
+      <p class="text-lg font-bold text-white"><%= val %></p>
+    </div>
+  <% } %>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-sm font-semibold text-white mb-3">By provider and model</h2>
+    <% if (!byModel.length) { %>
+      <p class="text-gray-500 text-sm">No usage in this period.</p>
+    <% } else { %>
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+            <th class="py-2 pr-2">Provider</th>
+            <th class="py-2 pr-2">Model</th>
+            <th class="py-2 pr-2">Req</th>
+            <th class="py-2 pr-2">Tokens</th>
+            <th class="py-2">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const row of byModel) { %>
+            <tr class="border-b border-[#2a2a2a]/50">
+              <td class="py-2 pr-2 text-white"><%= row.provider %></td>
+              <td class="py-2 pr-2 text-gray-400 font-mono"><%= row.model %></td>
+              <td class="py-2 pr-2"><%= row.requests %></td>
+              <td class="py-2 pr-2 text-gray-400"><%= (row.tokensIn + row.tokensOut).toLocaleString() %></td>
+              <td class="py-2">$<%= row.estimatedCost.toFixed(4) %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-sm font-semibold text-white mb-3">Daily ledger</h2>
+    <% if (!daily.length) { %>
+      <p class="text-gray-500 text-sm">No daily rows yet.</p>
+    <% } else { %>
+      <div class="max-h-96 overflow-y-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-[#2a2a2a] sticky top-0 bg-[#1a1a1a]">
+              <th class="py-2 pr-2">Date</th>
+              <th class="py-2 pr-2">Model</th>
+              <th class="py-2 pr-2">Req</th>
+              <th class="py-2">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const row of daily) { %>
+              <tr class="border-b border-[#2a2a2a]/50">
+                <td class="py-2 pr-2 text-gray-400"><%= row.usageDate %></td>
+                <td class="py-2 pr-2 text-gray-300"><%= row.provider %>/<%= row.model %></td>
+                <td class="py-2 pr-2"><%= row.requests %></td>
+                <td class="py-2">$<%= row.estimatedCost.toFixed(4) %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>

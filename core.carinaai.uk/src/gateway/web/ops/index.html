@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Overview</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header">
+      <div>
+        <h1>Carina Ops</h1>
+        <p class="ops-sub"><span id="org-name">Organization</span></p>
+      </div>
+      <span class="plan-badge" id="plan-badge">free</span>
+    </div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div id="global-trial-banner" class="banner-trial" hidden></div>
+    <div id="quota-banner" class="banner-warn" hidden></div>
+    <div class="grid">
+      <div class="card"><h2>Members</h2><div class="stat" id="stat-members">-</div></div>
+      <div class="card"><h2>Tokens today</h2><div class="stat" id="stat-tokens">-</div></div>
+      <div class="card"><h2>Plan</h2><div class="stat" id="stat-plan" style="font-size:16px;">-</div></div>
+    </div>
+    <div class="card">
+      <h2>Onboarding</h2>
+      <p id="onboarding-status" class="placeholder">Loading...</p>
+    </div>
+    <div class="card">
+      <h2>Quick links</h2>
+      <p style="margin-bottom:12px;">Manage BYOK keys, usage, audit events, and team settings from the nav above.</p>
+      <a class="btn secondary" href="/ops/vault">Open Vault</a>
+      <a class="btn secondary" href="/ops/usage" style="margin-left:8px;">View Usage</a>
+    </div>
+    <div class="card" id="deployments-card" hidden>
+      <h2>Deployments (Team)</h2>
+      <table class="ops-table">
+        <thead><tr><th>Name</th><th>Status</th><th>Environment</th></tr></thead>
+        <tbody id="deployments-body"><tr><td colspan="3" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    async function loadDeployments() {
+      const res = await fetch('/api/carina-ops/deployments');
+      if (res.status === 402) return;
+      if (!res.ok) return;
+      const data = await res.json();
+      document.getElementById('deployments-card').hidden = false;
+      const deployments = data.deployments || [];
+      const body = document.getElementById('deployments-body');
+      if (!deployments.length) {
+        body.innerHTML = '<tr><td colspan="3" class="placeholder">No deployments yet.</td></tr>';
+        return;
+      }
+      body.innerHTML = deployments.map((dep) =>
+        `<tr><td>${CarinaOpsLayout.escapeHtml(dep.name)}</td><td>${CarinaOpsLayout.escapeHtml(dep.status)}</td><td>${CarinaOpsLayout.escapeHtml(dep.environmentId || '-')}</td></tr>`,
+      ).join('');
+    }
+
+    CarinaOpsLayout.initPage('overview', {
+      onReady: async (me) => {
+        const res = await fetch('/api/carina-ops/overview');
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('stat-members').textContent = String(data.members ?? '-');
+        document.getElementById('stat-tokens').textContent = String(data.usage?.tokensToday ?? '-');
+        document.getElementById('stat-plan').textContent = String(data.org?.plan ?? '-').replace(/_/g, ' ');
+        const onboarding = data.onboarding || {};
+        const parts = [];
+        parts.push(onboarding.hasByok ? 'BYOK configured' : 'Add a BYOK key in Vault');
+        parts.push(onboarding.hasWorkbenchRun ? 'Workbench run completed' : 'Run your first workbench prompt');
+        document.getElementById('onboarding-status').textContent = parts.join(' · ');
+        if (data.credits?.warning) {
+          const banner = document.getElementById('quota-banner');
+          banner.textContent = `Usage warning: ${data.credits.usedThisMonth} / ${data.credits.monthlyLimit} tokens this month (${data.credits.percentUsed}%).`;
+          banner.hidden = false;
+        }
+        if ((me.org?.plan || data.org?.plan) === 'carina_ops_team') {
+          await loadDeployments();
+        }
+      },
+    });
+  </script>
+</body>
+</html>

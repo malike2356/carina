@@ -1,0 +1,68 @@
+<% title = 'Credential Vaults' %>
+<%- include('../partials/ai-platform-nav') %>
+
+<h1 class="text-2xl font-bold text-white mb-4">Credential Vaults</h1>
+<% if (saved) { %><p class="text-sm text-[#22c55e] mb-4">Saved.</p><% } %>
+
+<p class="text-sm text-gray-400 mb-4">Secrets are AES-256 encrypted at rest. Values are never shown after save.</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <form method="post" action="/ai-platform/vaults" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-3 h-fit">
+    <h2 class="text-sm font-semibold text-white">Add credential</h2>
+    <input name="name" required placeholder="Label" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+    <select name="provider" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      <option value="anthropic">anthropic</option>
+      <option value="openai">openai</option>
+      <option value="google">google</option>
+      <option value="custom">custom</option>
+    </select>
+    <select name="environmentId" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      <option value="">Global</option>
+      <% for (const e of environments) { %>
+        <option value="<%= e.id %>"><%= e.name %></option>
+      <% } %>
+    </select>
+    <input name="secret" type="password" required placeholder="API key or secret" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+    <button type="submit" class="w-full py-2 bg-[#22c55e] text-black rounded text-sm font-medium">Store</button>
+  </form>
+
+  <div class="lg:col-span-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <% if (!items.length) { %>
+      <p class="text-gray-500 text-sm">No credentials stored.</p>
+    <% } else { %>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+            <th class="py-2 pr-3">Name</th>
+            <th class="py-2 pr-3">Provider</th>
+            <th class="py-2 pr-3">Environment</th>
+            <th class="py-2 pr-3">Active</th>
+            <th class="py-2 pr-3">Updated</th>
+            <th class="py-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const item of items) { %>
+            <% const env = environments.find(e => e.id === item.environmentId); %>
+            <tr class="border-b border-[#2a2a2a]/50">
+              <td class="py-2 pr-3 text-white"><%= item.name %></td>
+              <td class="py-2 pr-3 text-gray-400"><%= item.provider %></td>
+              <td class="py-2 pr-3 text-gray-500"><%= env ? env.name : 'Global' %></td>
+              <td class="py-2 pr-3"><%= item.isActive ? 'Yes' : 'No' %></td>
+              <td class="py-2 pr-3 text-gray-500 text-xs"><%= new Date(item.updatedAt).toLocaleDateString() %></td>
+              <td class="py-2">
+                <form method="post" action="/ai-platform/vaults/<%= item.id %>/toggle" class="inline">
+                  <input type="hidden" name="active" value="<%= item.isActive ? '0' : '1' %>">
+                  <button type="submit" class="text-xs text-[#06b6d4] hover:underline"><%= item.isActive ? 'Disable' : 'Enable' %></button>
+                </form>
+                <form method="post" action="/ai-platform/vaults/<%= item.id %>/delete" class="inline ml-2" onsubmit="return confirm('Delete credential?')">
+                  <button type="submit" class="text-xs text-red-400 hover:underline">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+</div>

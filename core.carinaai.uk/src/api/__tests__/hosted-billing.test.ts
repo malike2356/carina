@@ -16,27 +16,45 @@ vi.mock('../../memory/db.js', () => ({
   },
 }));
 
+vi.mock('../../hosted/scoped-query.js', () => ({
+  resolveOrgIdFromUser: vi.fn(async (userId: string) => {
+    if (userId === 'user-a') return 'org-a';
+    if (userId === 'user-b') return 'org-b';
+    return null;
+  }),
+  orgOrTenantWhere: vi.fn(() => '(org_id = $1 OR (org_id IS NULL AND tenant_id = $2))'),
+  queryForOrg: vi.fn(async (orgId: string, _sql: string, params: unknown[] = []) => ({
+    rows: [{ total: orgId === 'org-a' ? '1000' : '9000' }],
+    rowCount: 1,
+  })),
+}));
+
 vi.mock('../hosted-auth.js', () => ({
-  getUserProfile: vi.fn(async () => ({
-    id: 'user-1',
-    email: 'a@test.com',
+  getUserProfile: vi.fn(async (userId: string) => ({
+    id: userId,
+    email: `${userId}@test.com`,
     tier: 'free',
-    schemaName: 'tenant_a',
+    schemaName: `tenant_${userId}`,
   })),
 }));
 
 vi.mock('../../billing/subscription-manager.js', () => ({
   SubscriptionManager: class {
-    async getSubscription() {
-      return null;
+    async getSubscriptionForOrg(_orgId: string, tenantId: string) {
+      return tenantId === 'user-b'
+        ? { plan: 'scout_pro', status: 'active', current_period_start: null, current_period_end: null }
+        : null;
     }
   },
 }));
 
 vi.mock('../../billing/usage-meter.js', () => ({
   UsageMeter: class {
-    async status() {
-      return { tokensUsed: 0, tokensRemaining: 100_000, periodStart: null, periodEnd: null };
+    async statusForOrg(orgId: string) {
+      return {
+        tokensUsed: orgId === 'org-a' ? 1000 : 9000,
+        limit: 100_000,
+      };
     }
   },
 }));
@@ -61,8 +79,9 @@ describe('hosted billing /usage', () => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
-      (req as express.Request & { session?: { hostedAccountId?: string } }).session = {
+      (req as express.Request & { session?: { hostedAccountId?: string; hostedOrgId?: string } }).session = {
         hostedAccountId: 'user-1',
+        hostedOrgId: 'org-a',
       };
       next();
     });
@@ -90,8 +109,9 @@ describe('hosted billing /usage', () => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
-      (req as express.Request & { session?: { hostedAccountId?: string } }).session = {
+      (req as express.Request & { session?: { hostedAccountId?: string; hostedOrgId?: string } }).session = {
         hostedAccountId: 'user-2',
+        hostedOrgId: 'org-b',
       };
       next();
     });
@@ -102,6 +122,47 @@ describe('hosted billing /usage', () => {
       expect(res.status).toBe(200);
       const body = await res.json() as { freeDailyLimit: number | null };
       expect(body.freeDailyLimit).toBeNull();
+    });
+  });
+
+  it('org A cannot read org B usage via orgId query bypass', async () => {
+    const { mountHostedBillingRoutes } = await import('../hosted-billing.js');
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as express.Request & { session?: { hostedAccountId?: string; hostedOrgId?: string } }).session = {
+        hostedAccountId: 'user-a',
+        hostedOrgId: 'org-a',
+      };
+      next();
+    });
+    mountHostedBillingRoutes(app);
+
+    await withServer(app, async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/app/auth/billing/usage?orgId=org-b`);
+      expect(res.status).toBe(403);
+    });
+  });
+
+  it('returns org-scoped usage totals for signed-in org', async () => {
+    const { mountHostedBillingRoutes } = await import('../hosted-billing.js');
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      (req as express.Request & { session?: { hostedAccountId?: string; hostedOrgId?: string } }).session = {
+        hostedAccountId: 'user-a',
+        hostedOrgId: 'org-a',
+      };
+      next();
+    });
+    mountHostedBillingRoutes(app);
+
+    await withServer(app, async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/app/auth/billing/usage`);
+      expect(res.status).toBe(200);
+      const body = await res.json() as { orgId: string; usage: { tokensUsed: number } };
+      expect(body.orgId).toBe('org-a');
+      expect(body.usage.tokensUsed).toBe(1000);
     });
   });
 });

@@ -580,8 +580,6 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
           '<h1 id="top-title">Control Center</h1>',
         );
         html = html.replace('<body>', '<body data-control-center="true">');
-        html = html.replace(/href="\.\/css\/dashboard\.css[^"]*"/, 'href="/dashboard/css/dashboard.css?v=3"');
-        html = html.replace(/src="\.\/js\/dashboard\.js[^"]*"/, 'src="/dashboard/js/dashboard.js?v=3"');
         if (config.labyrinth.apiKey && scoutServiceUrl() && !isHostedRequest(req.hostname)) {
           const escapedKey = config.labyrinth.apiKey.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
           html = html.replace(

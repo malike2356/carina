@@ -24,5 +24,12 @@ describe('billing-plans', () => {
   it('includes assignable plans for ops forms', () => {
     expect(ASSIGNABLE_PLANS).toContain('free');
     expect(ASSIGNABLE_PLANS).toContain('scout_pro');
+    expect(ASSIGNABLE_PLANS).toContain('carina_ops_starter');
+    expect(ASSIGNABLE_PLANS).toContain('carina_ops_team');
+  });
+
+  it('normalizes carina ops plan ids', () => {
+    expect(normalizePlanId('carina_ops_starter')).toBe('carina_ops_starter');
+    expect(normalizePlanId('carina_ops_team')).toBe('carina_ops_team');
   });
 });

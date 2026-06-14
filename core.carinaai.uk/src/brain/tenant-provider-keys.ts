@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { pool } from '../memory/db.js';
+import { orgOrTenantWhere, resolveOrgIdFromUser } from '../hosted/scoped-query.js';
 
 const ENCRYPTION_KEY = process.env.TENANT_KEY_ENCRYPTION_KEY
   ?? process.env.CARINA_ENCRYPTION_KEY
@@ -62,19 +63,31 @@ export async function setTenantProviderKey(
   model?: string,
 ): Promise<void> {
   const encrypted = encrypt(apiKey);
+  const orgId = await resolveOrgIdFromUser(tenantId);
   await pool.query(
-    `INSERT INTO tenant_provider_keys (tenant_id, provider, encrypted_api_key, custom_base_url, custom_model)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO tenant_provider_keys (tenant_id, org_id, provider, encrypted_api_key, custom_base_url, custom_model)
+     VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (tenant_id, provider)
-     DO UPDATE SET encrypted_api_key = $3, custom_base_url = $4, custom_model = $5, updated_at = NOW()`,
-    [tenantId, provider, encrypted, baseUrl ?? null, model ?? null],
+     DO UPDATE SET encrypted_api_key = $4, custom_base_url = $5, custom_model = $6,
+                   org_id = COALESCE(tenant_provider_keys.org_id, EXCLUDED.org_id),
+                   updated_at = NOW()`,
+    [tenantId, orgId, provider, encrypted, baseUrl ?? null, model ?? null],
   );
 }
 
 export async function removeTenantProviderKey(
   tenantId: string,
   provider: string,
+  orgId?: string,
 ): Promise<void> {
+  if (orgId) {
+    await pool.query(
+      `DELETE FROM tenant_provider_keys
+       WHERE provider = $3 AND (${orgOrTenantWhere()})`,
+      [orgId, tenantId, provider],
+    );
+    return;
+  }
   await pool.query(
     'DELETE FROM tenant_provider_keys WHERE tenant_id = $1 AND provider = $2',
     [tenantId, provider],
@@ -82,12 +95,24 @@ export async function removeTenantProviderKey(
 }
 
 export async function listTenantProviders(
-  tenantId: string,
+  orgId: string,
+  tenantId?: string,
 ): Promise<Array<{ provider: string; enabled: boolean; hasKey: boolean }>> {
-  const result = await pool.query(
-    'SELECT provider, enabled FROM tenant_provider_keys WHERE tenant_id = $1',
-    [tenantId],
-  );
+  const result = tenantId
+    ? await pool.query(
+        `SELECT provider, enabled
+         FROM tenant_provider_keys
+         WHERE ${orgOrTenantWhere()}
+         ORDER BY provider`,
+        [orgId, tenantId],
+      )
+    : await pool.query(
+        `SELECT provider, enabled
+         FROM tenant_provider_keys
+         WHERE org_id = $1
+         ORDER BY provider`,
+        [orgId],
+      );
   return result.rows.map((r) => ({
     provider: r.provider,
     enabled: r.enabled,

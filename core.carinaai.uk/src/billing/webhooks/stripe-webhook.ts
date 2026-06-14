@@ -26,8 +26,7 @@ export class StripeWebhookHandler {
       return;
     }
     if (event.type === 'customer.subscription.deleted') {
-      const subscription = event.data.object as Stripe.Subscription;
-      await pool.query('UPDATE subscriptions SET status = $1, updated_at = NOW() WHERE stripe_subscription_id = $2', ['canceled', subscription.id]);
+      await this.subscriptions.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
       return;
     }
     if (event.type === 'invoice.payment_failed') {
@@ -37,11 +36,14 @@ export class StripeWebhookHandler {
         ? invoice.parent.subscription_details.subscription
         : null;
       if (subscriptionId) {
-        await pool.query('UPDATE subscriptions SET status = $1, updated_at = NOW() WHERE stripe_subscription_id = $2', ['past_due', subscriptionId]);
+        await pool.query(
+          'UPDATE subscriptions SET status = $1, updated_at = NOW() WHERE stripe_subscription_id = $2',
+          ['past_due', subscriptionId],
+        );
       }
       return;
     }
-    if (event.type === 'invoice.payment_succeeded') {
+    if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
       await this.invoices.recordStripeInvoice(event.data.object as Stripe.Invoice);
     }
   }

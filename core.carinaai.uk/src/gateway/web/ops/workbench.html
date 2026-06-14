@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Workbench</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Workbench</h2>
+      <p style="margin-bottom:12px;">Run a prompt with your BYOK keys. Configure keys in Vault first.</p>
+      <div class="form-row">
+        <label for="model-select">Model</label>
+        <select id="model-select"><option value="">Loading models...</option></select>
+      </div>
+      <div class="form-row">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" placeholder="Enter your prompt..."></textarea>
+      </div>
+      <button class="btn" id="run-btn" type="button">Run</button>
+      <p class="error-msg" id="run-error" hidden></p>
+    </div>
+    <div class="card" id="result-card" hidden>
+      <h2>Result</h2>
+      <pre class="details-pre" id="result-text"></pre>
+      <p class="placeholder" id="result-meta"></p>
+    </div>
+    <div class="card">
+      <h2>Recent runs</h2>
+      <div id="runs-list"><p class="placeholder">No runs yet.</p></div>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    let models = [];
+
+    async function loadModels() {
+      const select = document.getElementById('model-select');
+      const res = await fetch('/api/carina-ops/models');
+      if (!res.ok) {
+        select.innerHTML = '<option value="">Failed to load models</option>';
+        return;
+      }
+      const data = await res.json();
+      models = data.models || [];
+      if (!models.length) {
+        select.innerHTML = '<option value="">No models configured</option>';
+        return;
+      }
+      select.innerHTML = models.map((m) => {
+        const value = `${m.provider}|${m.model}`;
+        const label = `${m.provider} / ${m.model}${m.isDefault ? ' (default)' : ''}`;
+        return `<option value="${CarinaOpsLayout.escapeHtml(value)}">${CarinaOpsLayout.escapeHtml(label)}</option>`;
+      }).join('');
+    }
+
+    async function loadRuns() {
+      const res = await fetch('/api/carina-ops/workbench/runs?limit=10');
+      const container = document.getElementById('runs-list');
+      if (!res.ok) {
+        container.innerHTML = '<p class="placeholder">Unable to load runs.</p>';
+        return;
+      }
+      const data = await res.json();
+      const runs = data.runs || [];
+      if (!runs.length) {
+        container.innerHTML = '<p class="placeholder">No runs yet.</p>';
+        return;
+      }
+      container.innerHTML = runs.map((run) => {
+        const when = new Date(run.createdAt).toLocaleString();
+        return `<div class="run-item"><strong>${CarinaOpsLayout.escapeHtml(run.title)}</strong> &middot; ${CarinaOpsLayout.escapeHtml(run.provider)}/${CarinaOpsLayout.escapeHtml(run.model)} &middot; ${CarinaOpsLayout.escapeHtml(run.status)}<br><span class="placeholder">${when} &middot; ${run.tokensIn + run.tokensOut} tokens</span></div>`;
+      }).join('');
+    }
+
+    async function runPrompt() {
+      const errEl = document.getElementById('run-error');
+      errEl.hidden = true;
+      const selected = document.getElementById('model-select').value;
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!selected || !prompt) {
+        errEl.textContent = 'Select a model and enter a prompt.';
+        errEl.hidden = false;
+        return;
+      }
+      const [provider, model] = selected.split('|');
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+      try {
+        const res = await fetch('/api/carina-ops/workbench/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, provider, model }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Run failed';
+          errEl.hidden = false;
+          return;
+        }
+        document.getElementById('result-card').hidden = false;
+        document.getElementById('result-text').textContent = data.responseText || '';
+        document.getElementById('result-meta').textContent =
+          `${data.tokensIn + data.tokensOut} tokens, cost estimate ${Number(data.costEstimate || 0).toFixed(4)}`;
+        await loadRuns();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run';
+      }
+    }
+
+    CarinaOpsLayout.initPage('workbench', {
+      onReady: async () => {
+        await loadModels();
+        await loadRuns();
+        document.getElementById('run-btn').addEventListener('click', runPrompt);
+      },
+    });
+  </script>
+</body>
+</html>

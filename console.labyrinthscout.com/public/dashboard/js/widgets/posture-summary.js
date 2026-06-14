@@ -50,6 +50,39 @@
     const kill = data.control_plane || {};
     setText('posture-kill-state', kill.kill_switch_triggered ? 'TRIGGERED' : (kill.kill_switch_armed ? 'ARMED' : 'OFF'));
     setText('posture-kill-detail', kill.kill_switch_triggered ? 'all agents stopped' : 'ready');
+    const killCard = document.getElementById('posture-kill-metric');
+    if (killCard) {
+      killCard.classList.remove('kill-armed', 'kill-triggered');
+      killCard.classList.add(kill.kill_switch_triggered ? 'kill-triggered' : 'kill-armed');
+    }
+
+    const regulatory = data.regulatory;
+    const regCard = document.getElementById('posture-regulatory-card');
+    const regTierEl = document.getElementById('posture-regulatory-tier');
+    const regGapsEl = document.getElementById('posture-regulatory-gaps');
+    if (regCard && regTierEl && regGapsEl) {
+      regCard.classList.remove('tier-minimal', 'tier-limited', 'tier-high', 'tier-unacceptable');
+      if (!regulatory) {
+        regTierEl.textContent = '-';
+        regGapsEl.textContent = 'assessing...';
+        regTierEl.removeAttribute('title');
+        regGapsEl.className = 'delta flat';
+      } else {
+        const tier = regulatory.eu_ai_act_tier || 'limited_risk';
+        regTierEl.textContent = regulatory.eu_ai_act_label || tier;
+        regCard.classList.add(
+          tier === 'minimal_risk' ? 'tier-minimal'
+            : tier === 'limited_risk' ? 'tier-limited'
+              : tier === 'unacceptable_risk' ? 'tier-unacceptable'
+                : 'tier-high',
+        );
+        const gaps = regulatory.gaps_count ?? 0;
+        regGapsEl.textContent = gaps === 0 ? 'Compliant' : (gaps + ' gap' + (gaps === 1 ? '' : 's') + ' remaining');
+        regGapsEl.className = 'delta ' + (gaps === 0 ? 'down' : 'flat');
+        const reasoning = regulatory.reasoning || [];
+        regTierEl.title = reasoning.slice(0, 2).join('\n');
+      }
+    }
 
     const incidents = data.incidents || {};
     setText('incident-open-critical', incidents.open_critical ?? 0);

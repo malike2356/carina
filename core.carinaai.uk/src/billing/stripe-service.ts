@@ -4,6 +4,7 @@ import { resolveStripePriceId, type BillingPlanId } from './plans.js';
 
 export interface CheckoutInput {
   tenantId: string;
+  orgId?: string;
   email: string;
   plan: BillingPlanId;
   successUrl: string;
@@ -30,11 +31,13 @@ export class StripeService {
       cancel_url: input.cancelUrl,
       metadata: {
         tenantId: input.tenantId,
+        orgId: input.orgId ?? '',
         plan: input.plan,
       },
       subscription_data: {
         metadata: {
           tenantId: input.tenantId,
+          orgId: input.orgId ?? '',
           plan: input.plan,
         },
       },

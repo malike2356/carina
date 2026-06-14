@@ -1,0 +1,381 @@
+import express, { type Express, type Request, type Response } from 'express';
+import { config } from '../config/index.js';
+import { pool } from '../memory/db.js';
+import { requireHostedSession, requireOrgMember } from '../gateway/web-auth.js';
+import { orgContext } from '../hosted/org-context.js';
+import { getOrgPlan, requireFeature, requireOpsPlan } from '../hosted/plan-gates.js';
+import { getOrgProfile } from '../hosted/org-service.js';
+import {
+  dismissOnboardingWizard,
+  getOnboardingChecklist,
+  markUsageViewed,
+} from '../hosted/onboarding-service.js';
+import { listModelsForOrg } from '../hosted/ai-platform-models.js';
+import {
+  addVaultEntry,
+  listVaultEntries,
+  orgHasByokKey,
+  removeVaultEntry,
+  toggleVaultEntry,
+  VaultLimitError,
+  VaultNotFoundError,
+} from '../hosted/vault-service.js';
+import {
+  executeWorkbenchRun,
+  listWorkbenchRuns,
+  orgHasWorkbenchRun,
+  summarizeRun,
+  WorkbenchMissingKeyError,
+  WorkbenchQuotaError,
+  WorkbenchValidationError,
+} from '../hosted/workbench-service.js';
+import {
+  getCreditsStatus,
+  getTodayUsage,
+  getUsageByModel,
+  getUsageSummary,
+  exportUsageCsv,
+} from '../hosted/usage-service.js';
+import { getBillingSummary } from '../hosted/billing-summary.js';
+import { exportProductAuditCsv, listProductAuditForPlan, writeProductAudit } from '../hosted/product-audit.js';
+import {
+  createDeploymentForOrg,
+  createEnvironmentForOrg,
+  listDeploymentsForOrg,
+  listEnvironmentsForOrg,
+} from '../hosted/deployments-service.js';
+import { UsageMeter } from '../billing/usage-meter.js';
+import { redactSecrets } from '../hosted/redact.js';
+
+async function overviewHandler(req: Request, res: Response): Promise<void> {
+  const ctx = req.orgContext!;
+  const org = await getOrgProfile(ctx.orgId);
+  const memberResult = await pool.query<{ count: string }>(
+    'SELECT COUNT(*)::TEXT AS count FROM org_memberships WHERE org_id = $1',
+    [ctx.orgId],
+  );
+  const usageMeter = new UsageMeter();
+  const usage = await usageMeter.getMonthlyUsageForOrg(ctx.orgId, ctx.userId);
+  const today = await getTodayUsage(ctx.orgId, ctx.userId);
+  const hasByok = await orgHasByokKey(ctx.orgId);
+  const hasWorkbenchRun = await orgHasWorkbenchRun(ctx.orgId);
+  const credits = await getCreditsStatus(ctx.orgId, ctx.userId);
+
+  res.json({
+    org: {
+      id: ctx.orgId,
+      name: org?.name ?? 'Organization',
+      plan: org?.plan ?? 'free',
+    },
+    usage: {
+      tokensToday: today.tokens,
+      tokensThisMonth: usage,
+      costEstimateToday: today.cost,
+    },
+    credits,
+    members: Number(memberResult.rows[0]?.count ?? 1),
+    onboarding: {
+      hasByok,
+      hasWorkbenchRun,
+    },
+  });
+}
+
+function safeJsonBody(body: unknown): unknown {
+  return redactSecrets(body);
+}
+
+function handleServiceError(res: Response, err: unknown): void {
+  if (err instanceof WorkbenchValidationError || err instanceof WorkbenchMissingKeyError) {
+    res.status(err.statusCode).json(safeJsonBody({ error: err.message }));
+    return;
+  }
+  if (err instanceof WorkbenchQuotaError) {
+    res.status(429).json(safeJsonBody({
+      error: 'quota_exceeded',
+      used: err.used,
+      limit: err.limit,
+    }));
+    return;
+  }
+  if (err instanceof VaultLimitError) {
+    res.status(402).json(safeJsonBody({ error: 'upgrade_required', message: err.message, upgradeUrl: '/ops/billing' }));
+    return;
+  }
+  if (err instanceof VaultNotFoundError) {
+    res.status(404).json(safeJsonBody({ error: err.message }));
+    return;
+  }
+  throw err;
+}
+
+export function mountCarinaOpsRoutes(app: Express): void {
+  if (!config.carinaOps.productEnabled) return;
+
+  const router = express.Router();
+  router.use(express.json());
+
+  router.get('/health', (_req, res) => {
+    res.json({ ok: true, product: 'carina-ops' });
+  });
+
+  router.use(requireHostedSession);
+  router.use(requireOpsPlan('carina_ops_starter'));
+
+  router.get('/overview', requireOrgMember('usage.read'), overviewHandler);
+
+  router.get('/models', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const models = await listModelsForOrg(ctx.orgId);
+    res.json({ models });
+  });
+
+  router.get('/vault', requireOrgMember('vault.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const entries = await listVaultEntries(ctx.orgId);
+    res.json({ entries });
+  });
+
+  router.post('/vault', requireOrgMember('vault.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      await addVaultEntry(ctx.orgId, ctx.userId, {
+        provider: String(req.body?.provider ?? '').trim(),
+        apiKey: String(req.body?.apiKey ?? ''),
+        baseUrl: req.body?.baseUrl ? String(req.body.baseUrl) : undefined,
+        model: req.body?.model ? String(req.body.model) : undefined,
+      }, ctx.userId);
+      res.status(201).json({ ok: true });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.delete('/vault/:provider', requireOrgMember('vault.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const provider = String(req.params.provider);
+    try {
+      await removeVaultEntry(ctx.orgId, ctx.userId, provider, ctx.userId);
+      res.json({ ok: true });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.patch('/vault/:provider', requireOrgMember('vault.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const provider = String(req.params.provider);
+    try {
+      await toggleVaultEntry(
+        ctx.orgId,
+        provider,
+        Boolean(req.body?.enabled),
+        ctx.userId,
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.post('/workbench/run', requireOrgMember('workbench.run'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const result = await executeWorkbenchRun({
+        orgId: ctx.orgId,
+        tenantId: ctx.userId,
+        actorUserId: ctx.userId,
+        prompt: String(req.body?.prompt ?? ''),
+        provider: String(req.body?.provider ?? ''),
+        model: String(req.body?.model ?? ''),
+        title: req.body?.title ? String(req.body.title) : undefined,
+        req,
+      });
+      res.json(safeJsonBody(result));
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.get('/workbench/runs', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const limit = Number(req.query.limit ?? 20);
+    const runs = await listWorkbenchRuns(ctx.orgId, limit);
+    res.json({ runs: runs.map(summarizeRun) });
+  });
+
+  router.get('/usage', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const days = Number(req.query.days ?? 30);
+    const summary = await getUsageSummary(ctx.orgId, ctx.userId, days);
+    const byModel = await getUsageByModel(ctx.orgId, ctx.userId, days);
+    res.json({ summary, byModel });
+  });
+
+  router.get(
+    '/usage/export',
+    requireOrgMember('usage.read'),
+    requireFeature('exports'),
+    async (req, res) => {
+      const ctx = orgContext(req);
+      const days = Number(req.query.days ?? 30);
+      const format = String(req.query.format ?? 'csv');
+      if (format !== 'csv') {
+        res.status(400).json({ error: 'format must be csv' });
+        return;
+      }
+      const csv = await exportUsageCsv(ctx.orgId, ctx.userId, days);
+      await writeProductAudit({
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: 'exports.usage_downloaded',
+        resourceType: 'usage_export',
+        details: { days },
+        req,
+      });
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="carina-ops-usage-${ctx.orgId}.csv"`,
+      );
+      res.send(csv);
+    },
+  );
+
+  router.get('/credits', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const credits = await getCreditsStatus(ctx.orgId, ctx.userId);
+    res.json(credits);
+  });
+
+  router.get('/billing/summary', requireOrgMember('billing.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const summary = await getBillingSummary(ctx.orgId, ctx.userId);
+    res.json({
+      ...summary,
+      canUpgrade: ctx.role === 'owner',
+    });
+  });
+
+  router.get('/audit', requireOrgMember('audit.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const plan = await getOrgPlan(ctx.orgId);
+    const limit = Number(req.query.limit ?? 50);
+    const cursor = req.query.cursor ? String(req.query.cursor) : undefined;
+    const result = await listProductAuditForPlan(ctx.orgId, plan, { limit, cursor });
+    res.json(result);
+  });
+
+  router.get(
+    '/audit/export',
+    requireOrgMember('audit.read'),
+    requireFeature('exports'),
+    async (req, res) => {
+      const ctx = orgContext(req);
+      const format = String(req.query.format ?? 'csv');
+      if (format !== 'csv') {
+        res.status(400).json({ error: 'format must be csv' });
+        return;
+      }
+      const plan = await getOrgPlan(ctx.orgId);
+      const csv = await exportProductAuditCsv(ctx.orgId, plan);
+      await writeProductAudit({
+        orgId: ctx.orgId,
+        actorUserId: ctx.userId,
+        action: 'exports.audit_downloaded',
+        resourceType: 'audit_export',
+        req,
+      });
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="carina-ops-audit-${ctx.orgId}.csv"`,
+      );
+      res.send(csv);
+    },
+  );
+
+  router.get('/onboarding', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const checklist = await getOnboardingChecklist(ctx.orgId, ctx.userId);
+    res.json(checklist);
+  });
+
+  router.post('/onboarding/dismiss', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    await dismissOnboardingWizard(ctx.orgId, ctx.userId);
+    res.json({ ok: true });
+  });
+
+  router.post('/onboarding/usage-viewed', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    await markUsageViewed(ctx.orgId, ctx.userId);
+    res.json({ ok: true });
+  });
+
+  router.get(
+    '/deployments',
+    requireOrgMember('deployments.read'),
+    requireFeature('deployments'),
+    async (req, res) => {
+      const ctx = orgContext(req);
+      const deployments = await listDeploymentsForOrg(ctx.orgId);
+      res.json({ deployments });
+    },
+  );
+
+  router.post(
+    '/deployments',
+    requireOrgMember('org.settings.write'),
+    requireFeature('deployments'),
+    async (req, res) => {
+      const ctx = orgContext(req);
+      const deployment = await createDeploymentForOrg(
+        ctx.orgId,
+        {
+          name: String(req.body?.name ?? '').trim(),
+          environmentId: req.body?.environmentId ? String(req.body.environmentId) : undefined,
+          model: req.body?.model ? String(req.body.model) : undefined,
+          provider: req.body?.provider ? String(req.body.provider) : undefined,
+          version: req.body?.version ? String(req.body.version) : undefined,
+          notes: req.body?.notes ? String(req.body.notes) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ deployment });
+    },
+  );
+
+  router.get(
+    '/environments',
+    requireOrgMember('deployments.read'),
+    requireFeature('deployments'),
+    async (req, res) => {
+      const ctx = orgContext(req);
+      const environments = await listEnvironmentsForOrg(ctx.orgId);
+      res.json({ environments });
+    },
+  );
+
+  router.post(
+    '/environments',
+    requireOrgMember('org.settings.write'),
+    requireFeature('deployments'),
+    async (req, res) => {
+      const ctx = orgContext(req);
+      const environment = await createEnvironmentForOrg(
+        ctx.orgId,
+        {
+          name: String(req.body?.name ?? '').trim(),
+          slug: req.body?.slug ? String(req.body.slug) : undefined,
+          apiBaseUrl: req.body?.apiBaseUrl ? String(req.body.apiBaseUrl) : undefined,
+          notes: req.body?.notes ? String(req.body.notes) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ environment });
+    },
+  );
+
+  app.use('/api/carina-ops', router);
+}

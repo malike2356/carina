@@ -41,6 +41,8 @@
   <div class="wrap">
     <nav>
       <a href="/">Chat</a>
+      <a href="/ops/" id="nav-ops-link">Carina Ops</a>
+      <a href="/ops/upgrade" id="nav-ops-upgrade-link" hidden>Upgrade to Carina Ops</a>
       <a href="/settings">Settings</a>
       <a href="/billing">Billing</a>
       <a href="/security" id="nav-security" hidden>Security</a>
@@ -93,6 +95,12 @@
         tierDesc.textContent = '100 messages per day. Add your API keys in Settings.';
         upgradeBtn.hidden = false;
       }
+      const opsPlan = user.org?.plan || 'free';
+      const hasOps = opsPlan === 'carina_ops_starter' || opsPlan === 'carina_ops_team';
+      const opsLink = document.getElementById('nav-ops-link');
+      const opsUpgrade = document.getElementById('nav-ops-upgrade-link');
+      if (opsLink) opsLink.hidden = !hasOps;
+      if (opsUpgrade) opsUpgrade.hidden = hasOps;
     }
 
     document.getElementById('upgrade-btn').addEventListener('click', async () => {

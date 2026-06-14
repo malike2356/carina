@@ -145,7 +145,8 @@ main() {
     ",WEB_ENABLED=\"true\",SKIP_CLI=\"true\",HOSTED_MODE=\"false\",CARINA_OPERATOR_HOSTS=\"core.carinaai.uk\""
 
   deploy_app "ops.carinaai.uk" "$OPS_LOCAL" "$OPS_REMOTE" \
-    "dist/server.js" "carina-ops" ""
+    "dist/server.js" "carina-ops" \
+    ",PORT=\"4002\""
 
   log "All apps deployed."
 
@@ -170,7 +171,7 @@ main() {
   echo "   CREATE DATABASE carina_skills_hub OWNER carina;"
   echo ""
   print_nginx_hint "core.carinaai.uk" "3333"
-  print_nginx_hint "ops.carinaai.uk" "4000"
+  print_nginx_hint "ops.carinaai.uk" "4002"
 }
 
 main "$@"

@@ -100,6 +100,24 @@ vi.mock('resend', () => ({
   })),
 }));
 
+vi.mock('../../hosted/org-service.js', () => ({
+  createOrgForUser: vi.fn(async (userId: string) => ({
+    orgId: 'org-test',
+    slug: 'test',
+    role: 'owner' as const,
+  })),
+  getPrimaryOrgForUser: vi.fn(async (userId: string) => ({
+    orgId: 'org-test',
+    userId,
+    role: 'owner' as const,
+  })),
+  getOrgProfile: vi.fn(async () => ({
+    id: 'org-test',
+    name: 'Test Org',
+    plan: 'free',
+  })),
+}));
+
 import {
   confirmPasswordReset,
   initHostedDb,
@@ -174,6 +192,18 @@ describe('hosted-auth password reset flow', () => {
 
     const ok = await confirmPasswordReset('some-fake-token', 'newpass123');
     expect(ok).toBe(false);
+  });
+});
+
+describe('hosted-auth org context', () => {
+  it('loginUser includes orgId and role in JWT when membership exists', async () => {
+    await registerUser('org-jwt@example.com', 'password12');
+    const result = await loginUser('org-jwt@example.com', 'password12');
+    expect(result).not.toBeNull();
+    const { verifyJwt } = await import('../hosted-auth.js');
+    const payload = verifyJwt(result!.token);
+    expect(payload?.orgId).toBe('org-test');
+    expect(payload?.role).toBe('owner');
   });
 });
 
