@@ -37,6 +37,11 @@ deploy_app() {
   local start_cmd="$4"
   local sup_name="$5"
   local extra_env="${6:-}"
+  local runner="/usr/bin/node"
+
+  if [[ "$start_cmd" == *.sh ]]; then
+    runner="/bin/bash"
+  fi
 
   log "[$label] Syncing code..."
   rsync -az --delete \
@@ -60,12 +65,13 @@ deploy_app() {
 
     echo "  Build complete."
     chmod +x start.sh 2>/dev/null || true
+    pkill -f '/usr/bin/node dist/src/index.js' 2>/dev/null || true
 REMOTE
 
   log "[$label] Setting up supervisor..."
   local sup_conf
   sup_conf="[program:${sup_name}]
-command=/usr/bin/node ${remote_dir}/${start_cmd}
+command=${runner} ${remote_dir}/${start_cmd}
 directory=${remote_dir}
 autostart=true
 autorestart=true
@@ -141,7 +147,7 @@ main() {
   ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p /home/malike/apps/core.carinaai.uk /home/malike/apps/ops.carinaai.uk"
 
   deploy_app "core.carinaai.uk" "$CORE_LOCAL" "$CORE_REMOTE" \
-    "dist/src/index.js" "carina-core" \
+    "start.sh" "carina-core" \
     ",WEB_ENABLED=\"true\",SKIP_CLI=\"true\",HOSTED_MODE=\"false\",CARINA_OPERATOR_HOSTS=\"core.carinaai.uk\""
 
   deploy_app "ops.carinaai.uk" "$OPS_LOCAL" "$OPS_REMOTE" \
