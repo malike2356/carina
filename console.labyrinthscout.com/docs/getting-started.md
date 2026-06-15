@@ -2,7 +2,7 @@
 
 ## Hosted Scout (VERLOX managed)
 
-Subscribe at [labyrinthscout.com](https://labyrinthscout.com) (£79/mo). After payment, VERLOX provisions your account and emails:
+See current hosted options on [labyrinthscout.com](https://labyrinthscout.com#pricing). After payment, VERLOX provisions your account and emails:
 
 - Your **private console URL** (not published on public marketing sites)
 - Your **API key** (`scout_live_...` or equivalent)
@@ -88,3 +88,4 @@ Optional: `curl -H "X-Scout-Key: $SCOUT_API_KEY" http://localhost:4444/api/statu
 - [Dashboard](/dashboard) - panel reference
 - [Carina integration](/integration/carina) - native wiring
 - [Events API](/api/events) - custom agents
+- [Hosted options on the marketing site](https://labyrinthscout.com#pricing)

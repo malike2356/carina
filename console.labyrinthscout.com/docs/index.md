@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Labyrinth Scout
   text: Security control plane for autonomous AI agents.
-  tagline: Prompt injection detection, kill switch, honeypots, ERC-8004/8126 on Base, and live monitoring. Self-host free or subscribe for hosted (£79/mo).
+  tagline: Prompt injection detection, kill switch, honeypots, ERC-8004/8126 on Base, and live monitoring. See current hosted options on the marketing site.
   actions:
     - theme: brand
       text: Get Started

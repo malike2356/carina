@@ -7,13 +7,23 @@ export default defineConfig({
   cleanUrls: true,
   title: 'Labyrinth Scout',
   description: 'Security control plane for AI agents. Self-hosted or hosted by VERLOX.',
+  head: [
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+      },
+    ],
+  ],
   themeConfig: {
+    siteTitle: 'Scout',
+    appearance: true,
     nav: [
-      { text: 'Guide', link: '/getting-started' },
-      { text: 'Integrations', link: '/integration/carina' },
-      { text: 'API', link: '/api/events' },
-      { text: 'SDK', link: '/sdk/node' },
-      { text: 'Pricing', link: '/pricing' },
+      { text: 'Guide', link: '/getting-started', activeMatch: '/getting-started|/configuration|/dashboard' },
+      { text: 'Integrations', link: '/integration/carina', activeMatch: '/integration/' },
+      { text: 'API', link: '/api/events', activeMatch: '/api/' },
+      { text: 'SDK', link: '/sdk/node', activeMatch: '/sdk/' },
     ],
     sidebar: [
       {
@@ -25,7 +35,6 @@ export default defineConfig({
           { text: 'Dashboard', link: '/dashboard' },
           { text: 'Public Trust API', link: '/api/public-trust' },
           { text: 'Trust platform', link: '/trust/platform' },
-          { text: 'Pricing', link: '/pricing' },
         ],
       },
       {
@@ -76,7 +85,14 @@ export default defineConfig({
     ],
     footer: {
       message: 'MIT Licensed. Built by VERLOX Ltd.',
-      copyright: 'Copyright 2026 VERLOX Ltd',
+      copyright: `Copyright ${new Date().getFullYear()} VERLOX Ltd`,
+    },
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/verlox/labyrinth-scout' },
+    ],
+    outline: {
+      level: [2, 3],
+      label: 'On this page',
     },
   },
 });
