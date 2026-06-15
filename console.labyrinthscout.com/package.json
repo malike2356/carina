@@ -10,6 +10,7 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
+    "docs:build": "vitepress build docs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "doctor": "tsx scripts/doctor.ts",
@@ -41,6 +42,7 @@
     "supertest": "^7.2.2",
     "tsx": "^4.22.4",
     "typescript": "^5.7.2",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.8"
   },
   "overrides": {
