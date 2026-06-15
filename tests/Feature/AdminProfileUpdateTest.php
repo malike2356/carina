@@ -94,3 +94,42 @@ it('clears remote avatar URL without touching storage', function () {
 
     expect($user->fresh()->avatar)->toBeNull();
 });
+
+it('saves accounts ops digest opt-in from profile form', function (): void {
+    $user = PlatformUser::factory()->superAdmin()->create([
+        'tenant_crm_ops_digest_opt_in' => false,
+    ]);
+
+    $this->actingAs($user, 'platform')
+        ->put(route('admin.profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username ?? '',
+            'avatar_url' => '',
+            'tenant_crm_ops_digest_opt_in' => '1',
+        ])
+        ->assertRedirect();
+
+    expect($user->fresh()->tenant_crm_ops_digest_opt_in)->toBeTrue();
+
+    $this->actingAs($user, 'platform')
+        ->put(route('admin.profile.update'), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username ?? '',
+            'avatar_url' => '',
+            'tenant_crm_ops_digest_opt_in' => '0',
+        ])
+        ->assertRedirect();
+
+    expect($user->fresh()->tenant_crm_ops_digest_opt_in)->toBeFalse();
+});
+
+it('shows accounts ops digest checkbox on profile for accounts operators', function (): void {
+    $user = PlatformUser::factory()->superAdmin()->create();
+
+    $this->actingAs($user, 'platform')
+        ->get(route('admin.profile.edit'))
+        ->assertOk()
+        ->assertSee('Accounts ops digest', false);
+});

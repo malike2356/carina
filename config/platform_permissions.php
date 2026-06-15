@@ -63,6 +63,23 @@ return [
             ],
         ],
         [
+            'key' => 'accounts',
+            'label' => 'Accounts (customer success)',
+            'description' => 'Workspace lifecycle, health, follow-ups, and ops digest in platform admin.',
+            'permissions' => [
+                [
+                    'name' => 'view-platform-accounts',
+                    'label' => 'View accounts',
+                    'description' => 'Open Accounts queue, account detail, timeline, and analytics (read-only).',
+                ],
+                [
+                    'name' => 'manage-platform-accounts',
+                    'label' => 'Manage accounts',
+                    'description' => 'Create follow-ups, notes, contacts, outreach, and lifecycle updates on accounts.',
+                ],
+            ],
+        ],
+        [
             'key' => 'flags',
             'label' => 'Feature flags',
             'description' => 'Rollout controls for product and beta features.',
