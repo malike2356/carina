@@ -57,11 +57,19 @@ deploy_app() {
     set -euo pipefail
     cd "$remote_dir"
 
-    echo "  Installing dependencies..."
-    npm install --include=dev 2>&1 | tail -3
+    if [[ -f pnpm-lock.yaml ]]; then
+      echo "  Installing dependencies with pnpm..."
+      corepack pnpm install --frozen-lockfile 2>&1 | tail -3
 
-    echo "  Building TypeScript..."
-    npm run build 2>&1 | tail -5
+      echo "  Building TypeScript..."
+      corepack pnpm build 2>&1 | tail -5
+    else
+      echo "  Installing dependencies..."
+      npm install --include=dev 2>&1 | tail -3
+
+      echo "  Building TypeScript..."
+      npm run build 2>&1 | tail -5
+    fi
 
     echo "  Build complete."
     chmod +x start.sh 2>/dev/null || true
