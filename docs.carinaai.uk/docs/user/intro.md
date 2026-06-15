@@ -18,6 +18,12 @@ For the full product inventory (shipped vs configured vs optional), see the **[c
 | [Self-hosted install](/docs/user/getting-started) | Full control, npm or Docker on your VPS |
 | [Developer guide](/docs/developer/intro) | Extending tools, gateways, skill packs, and integrations |
 
+## Get help
+
+- [Troubleshooting](/docs/user/troubleshooting): common errors and fixes for install, memory, gateways, and tools.
+- [GitHub Issues](https://github.com/malike2356/carina-agent/issues): bug reports and feature requests.
+- Email: support@carinaai.uk
+
 ## License
 
 Carina Agent is MIT licensed. Labyrinth Scout is a separate commercial security product.

@@ -33,7 +33,7 @@ npm install -g carina-agent
 carina setup
 ```
 
-Package: [`carina-agent` v0.1.1](https://www.npmjs.com/package/carina-agent) on npm (Node.js 22+). On first run, Carina creates `~/.carina/` and runs the setup wizard if no env file exists.
+Package: [`carina-agent` v0.2.0](https://www.npmjs.com/package/carina-agent) on npm (Node.js 22+). On first run, Carina creates `~/.carina/` and runs the setup wizard if no env file exists.
 
 ## Install from source
 
@@ -73,6 +73,27 @@ Done. Standup draft saved; three blockers flagged for follow-up.
 ```
 
 See [skill packs overview](/docs/user/skill-packs/overview) and [carinaai.uk/skill-packs](https://carinaai.uk/skill-packs/) for all 16 packs.
+
+## Running without a database {#running-without-a-database}
+
+PostgreSQL is optional. Without it, Carina runs in stateless mode:
+
+| Feature | Without Postgres | With Postgres + pgvector |
+|---|---|---|
+| Chat (LLM conversation) | Works | Works |
+| Web search (Tavily) | Works | Works |
+| Tool execution | Works | Works |
+| All gateways (Telegram, WhatsApp, etc.) | Works | Works |
+| Skill packs | Works | Works |
+| Episodic memory (`/recall`) | Not available | Available |
+| RAG knowledge search | Not available | Available |
+| Session persistence across restarts | Not available | Available |
+
+To run without Postgres, omit `DATABASE_URL` from your `.env`. Carina logs `Memory store not ready - running in chat-only mode` at startup; this is expected and not an error.
+
+:::tip
+Start without a database, try Carina for a day, then add Postgres when you want memory and RAG.
+:::
 
 ## Environment variables
 

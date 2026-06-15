@@ -10,6 +10,7 @@ const sidebars: SidebarsConfig = {
         'user/intro',
         'user/capability-inventory',
         'user/getting-started',
+        'user/troubleshooting',
         'user/configuration',
         'user/self-hosting',
         'user/carina-cloud',

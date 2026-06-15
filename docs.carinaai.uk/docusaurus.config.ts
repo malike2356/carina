@@ -115,6 +115,14 @@ const config: Config = {
           ],
         },
         {
+          title: 'Support',
+          items: [
+            {label: 'Troubleshooting', to: docPath('user/troubleshooting')},
+            {label: 'GitHub Issues', href: 'https://github.com/malike2356/carina-agent/issues'},
+            {label: 'Email support', href: 'mailto:support@carinaai.uk'},
+          ],
+        },
+        {
           title: 'VERLOX',
           items: [
             {label: 'Carina marketing', href: 'https://carinaai.uk'},
