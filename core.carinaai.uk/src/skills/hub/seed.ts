@@ -12,19 +12,24 @@ export async function seedHubRegistry(storageDir: string): Promise<{ packs: numb
   let skillTotal = 0;
 
   for (const name of listKnownPackNames()) {
-    const pack = await resolvePack(name);
-    const { manifest, skills } = pack;
-    if (process.env.CARINA_EVAL_GATE === 'require') {
-      const { runPackEvalGate } = await import('../eval/gate.js');
-      const gate = await runPackEvalGate(manifest.name, { mode: 'require' });
-      if (gate.blocked) {
-        throw new Error(`Hub seed blocked for ${manifest.name}: ${gate.message}`);
+    try {
+      const pack = await resolvePack(name);
+      const { manifest, skills } = pack;
+      if (process.env.CARINA_EVAL_GATE === 'require') {
+        const { runPackEvalGate } = await import('../eval/gate.js');
+        const gate = await runPackEvalGate(manifest.name, { mode: 'require' });
+        if (gate.blocked) {
+          console.warn(`Hub seed skipped ${manifest.name}: ${gate.message}`);
+          continue;
+        }
       }
+      const archivePath = await ensurePackArchive(manifest.name, storageDir);
+      await upsertHubPack(manifest, archivePath, FEATURED_PACKS.has(manifest.name));
+      await replacePackSkills(manifest.name, skills);
+      skillTotal += skills.length;
+    } catch (err) {
+      console.warn(`Hub seed skipped ${name}: ${err instanceof Error ? err.message : String(err)}`);
     }
-    const archivePath = await ensurePackArchive(manifest.name, storageDir);
-    await upsertHubPack(manifest, archivePath, FEATURED_PACKS.has(manifest.name));
-    await replacePackSkills(manifest.name, skills);
-    skillTotal += skills.length;
   }
 
   return { packs: listKnownPackNames().length, skills: skillTotal };

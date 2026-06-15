@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
@@ -8,6 +9,15 @@ import { resolvePackDirectory } from '../pack-discovery.js';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function resolveBrainRoot(): string {
+  const BRAIN_REL = 'brain/uk_property_knowldge_from_propreneur/masterbrain';
+  for (let ups = 3; ups <= 5; ups++) {
+    const candidate = path.resolve(__dirname, '../'.repeat(ups) + BRAIN_REL);
+    if (fsSync.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`Brain corpus not found (searched from ${__dirname})`);
+}
 
 export async function buildPackArchive(packName: string, outputDir: string): Promise<string> {
   const packRoot = resolvePackDirectory(packName) ?? path.join(BUILTIN_PACKS_DIR, packName);
@@ -19,10 +29,7 @@ export async function buildPackArchive(packName: string, outputDir: string): Pro
 }
 
 export async function buildPropertyUkArchive(outputDir: string): Promise<string> {
-  const brainRoot = path.resolve(
-    __dirname,
-    '../../../brain/uk_property_knowldge_from_propreneur/masterbrain',
-  );
+  const brainRoot = resolveBrainRoot();
   const tmpDir = path.join(outputDir, '.build-property-uk');
   const knowledgeDir = path.join(tmpDir, 'knowledge');
   await fs.rm(tmpDir, { recursive: true, force: true });
