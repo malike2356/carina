@@ -23,9 +23,9 @@ Sign up at [app.carinaai.uk/hosted-register](https://app.carinaai.uk/hosted-regi
 - **Onboarding wizard:** guided setup on first visit
 - **Model routing:** cheap, balanced, and premium classes with plan gates
 
-## Pricing and metering
+## Commercial model
 
-The recommended commercial model is a subscription plus weighted credits, not unlimited token resale. See [pricing, metering, and routing spec](./pricing-metering.md).
+The recommended commercial model is a subscription plus weighted credits, not unlimited token resale. See the [marketing page](https://carinaai.uk/pricing) for current packaging, then read the [metering and routing spec](./pricing-metering.md) for the technical model.
 
 ## Next steps
 
@@ -33,4 +33,4 @@ The recommended commercial model is a subscription plus weighted credits, not un
 - [Connect provider keys (BYOK)](./byok.md)
 - [Audit and exports](./audit-and-exports.md)
 - [Plans comparison](./plans.md)
-- [Pricing, metering, and routing](./pricing-metering.md)
+- [Metering and routing](./pricing-metering.md)

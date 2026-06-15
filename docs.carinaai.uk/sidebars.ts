@@ -16,8 +16,6 @@ const sidebars: SidebarsConfig = {
         'user/memory-backends',
         'user/toolsets',
         'user/credentials',
-        'user/open-source-pricing',
-        'user/pricing',
         'user/enterprise',
         'user/contributing',
       ],

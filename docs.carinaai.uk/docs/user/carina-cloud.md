@@ -26,11 +26,7 @@ When Carina Ops is enabled, new accounts redirect to the onboarding wizard at `/
 
 ## Plans
 
-| Tier | Price | Limits |
-|------|-------|--------|
-| **Free** | &pound;0 | 1 agent workspace, 1 member, core tools, 100 messages/day, no Scout |
-| **Ops Starter** | &pound;19/mo | BYOK vault (3 providers), workbench, 14-day audit, ops console |
-| **Ops Team** | &pound;49/mo | Multi-user, deployments, 90-day audit, CSV exports |
+For current Carina Cloud and Ops packaging, see [carinaai.uk/pricing](https://carinaai.uk/pricing).
 
 New orgs receive a **14-day Team trial** on registration. Full feature matrix: [Carina Ops plans](/docs/user/carina-ops/plans).
 
@@ -166,6 +162,6 @@ Never commit real secrets. See `.env.example` in the repository.
 
 - [Getting started](/docs/user/getting-started)
 - [Self-hosting](/docs/user/self-hosting)
-- [Pricing boundary](/docs/user/pricing)
+- [Commercial boundaries](/docs/user/pricing)
 - [Carina Ops plans](/docs/user/carina-ops/plans)
 - [Labyrinth Scout](/docs/user/security/labyrinth-scout)

@@ -1,10 +1,10 @@
 # Carina Ops plans
 
-Compare Free, Ops Starter, and Ops Team. These are the recommended launch prices for a commercially safe managed-usage model.
+Compare Free, Ops Starter, and Ops Team. For current commercial packaging, use the marketing site: [carinaai.uk/pricing](https://carinaai.uk/pricing).
 
 ## Feature matrix
 
-| Feature | Free | Ops Starter (&pound;19/mo) | Ops Team (&pound;49/mo) |
+| Feature | Free | Ops Starter | Ops Team |
 |---|---|---|---|
 | Ops console | No | Yes | Yes |
 | Members | 1 | 3 | 10 |
@@ -18,7 +18,7 @@ Compare Free, Ops Starter, and Ops Team. These are the recommended launch prices
 
 ## Trial
 
-New orgs receive a **14-day Team trial** on registration. During trial, plan gates behave as Team, including exports and deployments. When the trial ends without a paid plan, the org returns to free and loses ops console access until you subscribe.
+New orgs receive a **14-day Team trial** on registration. During trial, plan gates behave as Team, including exports and deployments. When the trial ends without a paid plan, the org returns to free and loses ops console access until you subscribe on the marketing site.
 
 ## Economic rule
 
@@ -45,5 +45,5 @@ Scout is optional governance; see [Labyrinth Scout](/docs/user/security/labyrint
 
 ## Marketing reference
 
-Public pricing summary: [carinaai.uk#pricing](https://carinaai.uk/#pricing).
-Model pricing and metering spec: [Pricing, metering, and routing](./pricing-metering.md).
+Commercial packaging summary: [carinaai.uk/pricing](https://carinaai.uk/pricing).
+Model metering and routing spec: [Metering and routing](./pricing-metering.md).

@@ -146,7 +146,7 @@ Guide: [Carina Cloud](/docs/user/carina-cloud).
 | Scout Monitor / Pro | Commercial security tiers (separate from Core) |
 | Enterprise | SOC2 **readiness export** (operator-provided); not a third-party SOC2 Type II certification |
 
-Pricing: [Open source + Scout pricing](/docs/user/open-source-pricing) and [labyrinthscout.com](https://labyrinthscout.com#pricing).
+Commercial packaging: [Commercial boundaries](/docs/user/open-source-pricing), [carinaai.uk/pricing](https://carinaai.uk/pricing), and [labyrinthscout.com#pricing](https://labyrinthscout.com#pricing).
 
 ## Operations and migration (shipped)
 

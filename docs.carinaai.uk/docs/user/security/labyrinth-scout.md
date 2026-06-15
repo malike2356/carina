@@ -14,11 +14,9 @@
 
 ## Get Scout access
 
-| Path | How you get credentials |
-|---|---|
-| **Hosted Scout (£79/mo)** | Subscribe at [labyrinthscout.com](https://labyrinthscout.com) or [Carina + Scout checkout](https://core.carinaai.uk/checkout?plan=scout_standard). Your **private console URL** and **API key** are emailed when the account is provisioned. The console URL is not published on marketing sites. |
-| **Carina Cloud Pro** | Upgrade at [app.carinaai.uk](https://app.carinaai.uk). Scout is provisioned automatically; use **Security** in-app or the same emailed credentials for self-hosted Carina. |
-| **Self-hosted Scout** | Run Scout on your VPS (see [Scout docs](https://labyrinthscout.com/docs/getting-started)). Use `http://localhost:4444` or your own host. |
+- Hosted Scout details live on [labyrinthscout.com#pricing](https://labyrinthscout.com#pricing)
+- Carina Cloud Pro subscribers use the same paired workflow inside [app.carinaai.uk](https://app.carinaai.uk)
+- Self-hosted Scout setup lives in the [Scout docs](https://labyrinthscout.com/docs/getting-started)
 
 ## Connect Carina to Scout
 
@@ -52,10 +50,6 @@ If you use [Carina Cloud](/docs/user/carina-cloud) at app.carinaai.uk, Pro inclu
 - The same `scout_live_*` key pairs self-hosted Carina to the same Scout account
 
 No separate Scout signup is required when you upgrade through Carina Cloud billing.
-
-## Bundle pricing
-
-Use Scout with Carina and receive **20% off** hosted Scout Standard. Promo codes are generated during `carina setup` when both products are linked.
 
 ## Public trust metrics
 

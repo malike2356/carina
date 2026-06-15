@@ -82,7 +82,7 @@ VERLOX may revoke partner status if badges are misused or claims are misleading.
 
 ## FAQ
 
-**Is there a fee?** Registered and Featured tiers are free. Strategic tier may include Enterprise pricing.
+**Is there a fee?** Registered and Featured tiers are free. Strategic tier may include Enterprise commercial terms.
 
 **How long does review take?** Typically 5 to 10 business days.
 

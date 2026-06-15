@@ -53,11 +53,11 @@ Products say "powered by Carina" or "built on Carina." They may optionally add S
 
 The security layer: prompt injection shield, audit logging, kill switch, trust verification, and compliance exports. Optional. Carina runs without Scout when `LABYRINTH_ENABLED=false`.
 
-Scout is never bundled with the MIT core. See [Pricing boundary](/docs/user/pricing) and [Labyrinth Scout](/docs/user/security/labyrinth-scout).
+Scout is never bundled with the MIT core. See [Commercial boundaries](/docs/user/pricing) and [Labyrinth Scout](/docs/user/security/labyrinth-scout).
 
 ## Further reading
 
 - [Manifesto](/docs/developer/manifesto)
 - [MANIFESTO.md on GitHub](https://github.com/malike2356/carina-agent/blob/main/MANIFESTO.md)
-- [Pricing boundary](/docs/user/pricing)
+- [Commercial boundaries](/docs/user/pricing)
 - [Creating skill packs](/docs/developer/skills/packs)

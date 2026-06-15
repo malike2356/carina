@@ -1,10 +1,10 @@
-# Carina Ops pricing, metering, and routing spec
+# Carina Ops metering and routing spec
 
 :::info Canonical inventory
 Product boundaries, billing boundaries, and current plan surfaces: [Capability inventory](/docs/capabilities).
 :::
 
-This document defines the commercial model for **Carina Ops** so the platform stays economically viable when model switching is enabled.
+This document defines the metering model for **Carina Ops** so the platform stays economically viable when model switching is enabled. Current packaging is on [carinaai.uk/pricing](https://carinaai.uk/pricing).
 
 The rule is simple:
 
@@ -29,31 +29,9 @@ If a plan cannot absorb the cost of expensive models, the system must either:
 - require a top-up
 - or require BYOK
 
-## Pricing model
-
-Use a subscription plus weighted usage, not unlimited access.
-
-### Recommended launch tiers
-
-| Plan | Price | Members | Included managed usage | Allowed model classes | Audit retention |
-|---|---|---:|---:|---|---:|
-| Free | 0 | 1 | 0 | Personal use only | 0 days |
-| Ops Starter | GBP 19 / month | 3 | 500 credits | Cheap, balanced | 14 days |
-| Ops Team | GBP 49 / month | 10 | 1,500 credits | Cheap, balanced, premium with allowance | 90 days |
-| Enterprise | Custom | Custom | Custom | Custom | Custom |
-
-These numbers are a starting point, not a promise of unlimited managed inference.
-
-### Why the plan includes credits
+## Why the plan includes credits
 
 Provider costs vary too much for a flat token promise to stay safe.
-
-For example, current public API pricing shows:
-
-- OpenAI GPT-5.4 mini at USD 0.75 input and USD 4.50 output per 1M tokens
-- OpenAI GPT-5.5 at USD 5.00 input and USD 30.00 output per 1M tokens
-- Anthropic Claude Sonnet 4.6 at USD 3.00 input and USD 15.00 output per MTok
-- Anthropic Claude Opus 4.7 at USD 5.00 input and USD 25.00 output per MTok
 
 That spread is too wide for a single flat token rate to protect margin. Use credits as the customer-facing unit and keep the internal cost model weighted by model class.
 
