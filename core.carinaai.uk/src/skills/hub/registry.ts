@@ -1,5 +1,5 @@
 import type { PackManifest } from '../pack-loader.js';
-import type { PackSkillInput } from '../packs/property-uk/skills.js';
+import type { PackSkillInput } from '../pack-types.js';
 import { hubPool } from './migrations.js';
 
 export interface HubPackRow {
@@ -11,6 +11,12 @@ export interface HubPackRow {
   skill_count: number;
   download_count: number;
   featured: boolean;
+  pricing_tier: 'free' | 'premium' | 'certified';
+  price_gbp_cents: number | null;
+  author_revenue_share_bps: number;
+  carina_revenue_share_bps: number;
+  platform_fee_bps: number;
+  stripe_price_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -85,7 +91,9 @@ export async function listHubPacks(filters: PackFilters = {}): Promise<HubPackRo
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
   const result = await hubPool.query<HubPackRow>(
     `SELECT name, version, description, author, category, skill_count, download_count,
-            featured, created_at, updated_at
+            featured, pricing_tier, price_gbp_cents, author_revenue_share_bps,
+            carina_revenue_share_bps, platform_fee_bps, stripe_price_id,
+            created_at, updated_at
      FROM skill_packs ${where}
      ORDER BY featured DESC, download_count DESC, name ASC`,
     params,
@@ -96,7 +104,9 @@ export async function listHubPacks(filters: PackFilters = {}): Promise<HubPackRo
 export async function getHubPack(name: string): Promise<HubPackRow | null> {
   const result = await hubPool.query<HubPackRow>(
     `SELECT name, version, description, author, category, skill_count, download_count,
-            featured, created_at, updated_at
+            featured, pricing_tier, price_gbp_cents, author_revenue_share_bps,
+            carina_revenue_share_bps, platform_fee_bps, stripe_price_id,
+            created_at, updated_at
      FROM skill_packs WHERE name = $1`,
     [name],
   );
@@ -196,6 +206,27 @@ export async function upsertHubPack(
       featured,
     ],
   );
+}
+
+export async function listAuthorPacks(authorRef: string): Promise<Array<HubPackRow & { sales_count: number }>> {
+  const result = await hubPool.query<HubPackRow & { sales_count: string }>(
+    `SELECT p.name, p.version, p.description, p.author, p.category, p.skill_count,
+            p.download_count, p.featured, p.pricing_tier, p.price_gbp_cents,
+            p.author_revenue_share_bps, p.carina_revenue_share_bps, p.platform_fee_bps,
+            p.stripe_price_id, p.created_at, p.updated_at,
+            COALESCE(s.cnt, 0)::TEXT AS sales_count
+     FROM skill_packs p
+     LEFT JOIN (
+       SELECT pack_name, COUNT(*) AS cnt FROM pack_sales GROUP BY pack_name
+     ) s ON s.pack_name = p.name
+     WHERE p.author ILIKE $1
+     ORDER BY p.name ASC`,
+    [authorRef.trim()],
+  );
+  return result.rows.map((row) => ({
+    ...row,
+    sales_count: Number(row.sales_count),
+  }));
 }
 
 export async function replacePackSkills(packName: string, skills: PackSkillInput[]): Promise<void> {

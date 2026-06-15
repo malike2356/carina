@@ -3,6 +3,7 @@ import path from 'path';
 import OpenAI from 'openai';
 import type { Tool } from '../types/index.js';
 import { config } from '../config/index.js';
+import { tempDir } from '../lib/platform-paths.js';
 import { expandPath, isSafePath, resolveResourcePath } from './path-utils.js';
 
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
@@ -71,7 +72,7 @@ export const videoAnalyzeTool: Tool = {
       const { execFile } = await import('child_process');
       const { promisify } = await import('util');
       const exec = promisify(execFile);
-      const tmpDir = `/tmp/carina-video-${Date.now()}`;
+      const tmpDir = tempDir(`carina-video-${Date.now()}`);
       await fs.mkdir(tmpDir, { recursive: true });
 
       try {

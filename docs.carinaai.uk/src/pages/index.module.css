@@ -1,18 +1,19 @@
 .hero {
   padding: 4rem 0;
   text-align: center;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
-  color: #f8fafc;
+  background: var(--docs-hero-bg);
+  color: var(--docs-hero-text);
 }
 
 .heroTitle {
-  font-size: 2.75rem;
+  font-size: var(--docs-h1-size);
+  font-weight: var(--docs-heading-weight);
   margin-bottom: 0.5rem;
 }
 
 .heroSubtitle {
   font-size: 1.15rem;
-  opacity: 0.9;
+  opacity: var(--docs-hero-subtitle-opacity);
   max-width: 42rem;
   margin: 0 auto 2rem;
 }

@@ -3,7 +3,7 @@
 Install the Carina kernel globally from npm or from a local checkout.
 
 **Current public package:** [carina-agent](https://www.npmjs.com/package/carina-agent)  
-**Reserved package name:** `@carina/core` is the planned scoped package name, but it is not the live public npm install path yet.
+**Reserved package name:** `@verlox/carina-core` is the planned scoped package name, but it is not the live public npm install path yet.
 
 Node.js 22+ required.
 
@@ -119,6 +119,6 @@ npm install -g carina-agent
 carina serve
 ```
 
-Future scoped packages may split web assets separately, but do not document `@carina/core` or `@carina/web` as the current public install path until those packages are published.
+Future scoped packages may split web assets separately, but do not document `@verlox/carina-core` or `@verlox/carina-web` as the current public install path until those packages are published.
 
 Legacy aliases `carina packs install` and `carina hub publish` remain available.

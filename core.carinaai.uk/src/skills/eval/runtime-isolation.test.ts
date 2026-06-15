@@ -37,7 +37,7 @@ describe('runtime path isolation', () => {
 
   it('runner uses dynamic import for pack registry', async () => {
     const runnerSource = await fs.readFile(path.join(__dirname, 'runner.ts'), 'utf8');
-    expect(runnerSource).toMatch(/await import\('\.\.\/index\.js'\)/);
+    expect(runnerSource).toMatch(/await import\('\.\.\/pack-resolver\.js'\)/);
     expect(runnerSource).toMatch(/executeWithLlm/);
   });
 

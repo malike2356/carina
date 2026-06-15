@@ -6,7 +6,7 @@ sidebar_position: 1
 
 Packs ship as optional npm packages (`@carina/pack-*`) and legacy built-ins under `src/skills/packs/`. Installed packs also live in `~/.carina/packs/`.
 
-**Shipped today:** 16 pack manifests in core (96 curated skills). Extracted npm packs: `@carina/pack-property`, `@carina/pack-health`. See [Publishing a pack](/docs/developer/publishing-a-pack).
+**Shipped today:** 16 pack manifests in core (96 curated skills). Extracted npm packs: `@verlox/pack-property`, `@verlox/pack-health`. See [Publishing a pack](/docs/developer/publishing-a-pack).
 
 ## Pack structure
 

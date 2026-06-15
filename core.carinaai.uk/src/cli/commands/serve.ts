@@ -1,5 +1,6 @@
 import { initRouter } from '../../gateway/router.js';
 import { initSandbox } from '../../tools/sandbox.js';
+import { startWebGateway, webInstallHint } from '../../gateway/load-web-package.js';
 
 export async function runServe(args: string[] = []): Promise<void> {
   if (args[0]?.toLowerCase() === 'mcp') {
@@ -16,8 +17,15 @@ export async function runServe(args: string[] = []): Promise<void> {
   await initSandbox();
   initRouter(false);
 
-  const { startWeb } = await import('../../gateway/web.js');
-  await startWeb({ localMode: true, host: '127.0.0.1', port: parseInt(process.env.WEB_PORT ?? '3000', 10) });
+  const started = await startWebGateway({
+    localMode: true,
+    host: '127.0.0.1',
+    port: parseInt(process.env.WEB_PORT ?? '3000', 10),
+  });
+  if (!started) {
+    console.error(webInstallHint());
+    process.exit(1);
+  }
   await new Promise<never>(() => {
     setInterval(() => undefined, 2 ** 30);
   });

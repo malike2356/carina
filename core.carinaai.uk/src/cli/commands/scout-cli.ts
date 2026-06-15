@@ -40,12 +40,27 @@ export async function runScoutCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'enable') {
+    console.log(chalk.bold('\nEnable Labyrinth Scout\n'));
+    console.log('Scout is a separate commercial security product. It is not bundled with MIT Carina core.');
+    console.log('');
+    console.log('1. Deploy or subscribe to a Scout server: https://labyrinthscout.com');
+    console.log('2. Install the client SDK:  npm install @verlox/carina-scout');
+    console.log('3. Configure Carina:');
+    console.log('     LABYRINTH_ENABLED=true');
+    console.log('     LABYRINTH_URL=<your-scout-server-url>');
+    console.log('     LABYRINTH_API_KEY=<your-api-key>');
+    console.log('');
+    console.log('See docs/kernel/COMMERCIAL_BOUNDARIES.md for product boundaries.');
+    return;
+  }
+
   if (action === 'pair') {
     console.log('Scout pairing: run carina setup or use the ops panel / Carina Cloud security tab.');
     console.log(`Set LABYRINTH_ENABLED=true and LABYRINTH_API_KEY in ${process.env.CARINA_HOME ?? '~/.carina'}/.env`);
     return;
   }
 
-  console.error('Usage: carina scout <status|test|pair>');
+  console.error('Usage: carina scout <status|enable|test|pair>');
   process.exit(1);
 }

@@ -5,6 +5,12 @@ import { describe, expect, it } from 'vitest';
 import { readPackManifest } from './pack-loader.js';
 
 const PACKS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'packs');
+const EXTRACTED_PACKS_DIR = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../packages/packs',
+);
+
+const EXTRACTED_PACKS = ['property-uk', 'healthcare', 'borehole-africa'];
 
 const NEWLY_PUBLISHED = [
   'data-science',
@@ -19,6 +25,20 @@ const NEWLY_PUBLISHED = [
 ];
 
 describe('pack manifests', () => {
+  it('loads pack.json for extracted npm pack directories', async () => {
+    for (const name of EXTRACTED_PACKS) {
+      const manifest = await readPackManifest(path.join(EXTRACTED_PACKS_DIR, name));
+      expect(manifest.name).toBe(name);
+      expect(manifest.skillCount).toBeGreaterThan(0);
+    }
+  });
+
+  it('loads pack.json for template directory when read directly', async () => {
+    const manifest = await readPackManifest(path.join(PACKS_DIR, 'template'));
+    expect(manifest.name).toBe('hello-world-template');
+    expect(manifest.skillCount).toBe(1);
+  });
+
   it('loads pack.json for all newly published packs', async () => {
     for (const name of NEWLY_PUBLISHED) {
       const manifest = await readPackManifest(path.join(PACKS_DIR, name));

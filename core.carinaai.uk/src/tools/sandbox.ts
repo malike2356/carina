@@ -1,8 +1,18 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import vm from 'vm';
+import { ensurePlatformDirs } from '../lib/platform-paths.js';
+import {
+  checkDocker,
+  isDockerAvailable,
+  resetDockerCheck,
+} from '../sandbox/docker-availability.js';
+import { runDockerContainer } from '../sandbox/docker-runner.js';
+import { runInSandbox as runCodeInSandboxFactory } from '../sandbox/sandbox-factory.js';
+import { executeShellCommand } from './platform.js';
 
-const execAsync = promisify(exec);
+export {
+  checkDocker,
+  isDockerAvailable,
+  resetDockerCheck,
+};
 
 export interface SandboxOptions {
   timeout: number;
@@ -18,34 +28,14 @@ export interface SandboxResult {
   exitCode: number;
 }
 
-let dockerAvailable: boolean | null = null;
-
-export async function checkDocker(): Promise<boolean> {
-  if (dockerAvailable !== null) return dockerAvailable;
-  try {
-    await execAsync('docker info', { timeout: 5000 });
-    dockerAvailable = true;
-  } catch {
-    dockerAvailable = false;
-  }
-  return dockerAvailable;
-}
-
-export function isDockerAvailable(): boolean {
-  return dockerAvailable === true;
-}
-
 export async function initSandbox(): Promise<void> {
+  ensurePlatformDirs();
   const ok = await checkDocker();
   if (!ok) {
     console.warn(
-      'Docker not found - using limited sandbox. Install Docker for full tool execution.',
+      'Docker not found - JavaScript code-exec uses worker_threads sandbox. Install Docker for full isolation and Python support.',
     );
   }
-}
-
-function shellEscape(code: string): string {
-  return code.replace(/'/g, `'\\''`);
 }
 
 export async function runInSandbox(
@@ -53,55 +43,7 @@ export async function runInSandbox(
   image: string,
   options: SandboxOptions,
 ): Promise<SandboxResult> {
-  const useDocker = await checkDocker();
-  if (!useDocker) {
-    return {
-      stdout: '',
-      stderr: `Docker unavailable; cannot run shell: ${command.slice(0, 80)}`,
-      exitCode: 1,
-    };
-  }
-
-  const netFlag = options.networkDisabled ? '--network=none' : '';
-  const bridgeMount = options.bridgeDir
-    ? `-v '${shellEscape(options.bridgeDir)}:/bridge:rw'`
-    : '';
-  const workdirMount = options.workdir
-    ? `-v '${shellEscape(options.workdir)}:/workdir' -w /workdir`
-    : '';
-  const wrappedCommand = options.workdir
-    ? `cd /workdir && ${command}`
-    : command;
-  const dockerCmd = [
-    'docker run --rm',
-    netFlag,
-    bridgeMount,
-    workdirMount,
-    `--memory=${options.memoryMb}m`,
-    '--cpus=0.5',
-    '--read-only',
-    '--tmpfs /tmp:size=50m',
-    image,
-    'sh -c',
-    `'${shellEscape(wrappedCommand)}'`,
-  ]
-    .filter(Boolean)
-    .join(' ');
-
-  try {
-    const { stdout, stderr } = await execAsync(dockerCmd, {
-      timeout: options.timeout,
-      maxBuffer: 1024 * 1024,
-    });
-    return { stdout, stderr, exitCode: 0 };
-  } catch (err: unknown) {
-    const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
-    return {
-      stdout: e.stdout ?? '',
-      stderr: e.stderr ?? e.message ?? String(err),
-      exitCode: typeof e.code === 'number' ? e.code : 1,
-    };
-  }
+  return runDockerContainer(command, image, options);
 }
 
 export async function runCodeInSandbox(
@@ -109,73 +51,22 @@ export async function runCodeInSandbox(
   language: 'javascript' | 'python',
   options: SandboxOptions,
 ): Promise<SandboxResult> {
-  const useDocker = await checkDocker();
-  if (!useDocker) {
-    if (language === 'python') {
-      return {
-        stdout: '',
-        stderr:
-          'Python execution requires Docker. Install Docker or use shell-exec with CARINA_DIRECT_SHELL=true to run python3 directly.',
-        exitCode: 1,
-      };
-    }
-    return runJsVmFallback(code, options.timeout);
-  }
-
-  const image = language === 'python' ? 'python:3.12-alpine' : 'node:22-alpine';
-  if (options.bridgeDir) {
-    const command =
-      language === 'python'
-        ? 'PYTHONPATH=/bridge python3 /bridge/script.py'
-        : 'node /bridge/script.js';
-    return runInSandbox(command, image, options);
-  }
-
-  const escaped = shellEscape(code);
-  const command =
-    language === 'python'
-      ? `python3 -c '${escaped}'`
-      : `node -e '${escaped}'`;
-
-  return runInSandbox(command, image, options);
+  const result = await runCodeInSandboxFactory(code, language, options.timeout, {
+    workdir: options.workdir,
+    bridgeDir: options.bridgeDir,
+    memoryMb: options.memoryMb,
+    networkDisabled: options.networkDisabled,
+  });
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode: result.exitCode,
+  };
 }
 
 export async function runDirectShell(
   command: string,
   options: { timeout: number; workdir?: string },
 ): Promise<SandboxResult> {
-  try {
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: options.timeout,
-      maxBuffer: 10 * 1024 * 1024,
-      cwd: options.workdir,
-      shell: '/bin/bash',
-    });
-    return { stdout, stderr, exitCode: 0 };
-  } catch (err: unknown) {
-    const e = err as { stdout?: string; stderr?: string; code?: number; message?: string };
-    return {
-      stdout: e.stdout ?? '',
-      stderr: e.stderr ?? e.message ?? String(err),
-      exitCode: typeof e.code === 'number' ? e.code : 1,
-    };
-  }
-}
-
-function runJsVmFallback(code: string, timeoutMs: number): SandboxResult {
-  try {
-    const sandbox: Record<string, unknown> = {};
-    const context = vm.createContext(sandbox);
-    const script = new vm.Script(code);
-    const output = script.runInContext(context, { timeout: timeoutMs });
-    const text =
-      output === undefined ? String(sandbox.result ?? '') : String(output);
-    return { stdout: text, stderr: '', exitCode: 0 };
-  } catch (err) {
-    return {
-      stdout: '',
-      stderr: err instanceof Error ? err.message : String(err),
-      exitCode: 1,
-    };
-  }
+  return executeShellCommand(command, options.timeout, options.workdir);
 }

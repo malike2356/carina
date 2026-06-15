@@ -1,6 +1,6 @@
 # Stable public API
 
-`@carina/core` is the planned scoped package for the semver-governed extension surface used by pack authors, tool plugins, channel adapters, and provider plugins. The current public npm install path is `carina-agent`; treat the imports below as the v0.2 API contract until the scoped package split is published.
+`@verlox/carina-core` is the planned scoped package for the semver-governed extension surface used by pack authors, tool plugins, channel adapters, and provider plugins. The current public npm install path is `carina-agent`; treat the imports below as the v0.2 API contract until the scoped package split is published.
 
 **Version introduced:** 0.2.0
 
@@ -17,16 +17,16 @@ Full policy: [STABLE_API.md on GitHub](https://github.com/malike2356/carina-agen
 ## Import paths
 
 ```typescript
-import { validatePackManifest } from '@carina/core/pack';
-import { registerTool, type ToolDefinition } from '@carina/core/tool';
-import type { ChannelAdapter } from '@carina/core/channel';
-import type { MemoryBackend } from '@carina/core/memory';
-import { registerProvider, type ProviderDefinition } from '@carina/core/provider';
+import { validatePackManifest } from '@verlox/carina-core/pack';
+import { registerTool, type ToolDefinition } from '@verlox/carina-core/tool';
+import type { ChannelAdapter } from '@verlox/carina-core/channel';
+import type { MemoryBackend } from '@verlox/carina-core/memory';
+import { registerProvider, type ProviderDefinition } from '@verlox/carina-core/provider';
 ```
 
-Do not import from `@carina/core/dist/src/...`; those paths are internal.
+Do not import from `@verlox/carina-core/dist/src/...`; those paths are internal.
 
-## Pack manifest (`@carina/core/pack`)
+## Pack manifest (`@verlox/carina-core/pack`)
 
 Minimal valid `pack.json`:
 
@@ -44,17 +44,17 @@ Minimal valid `pack.json`:
 Validate at install time:
 
 ```typescript
-import { validatePackManifest } from '@carina/core/pack';
+import { validatePackManifest } from '@verlox/carina-core/pack';
 
 const manifest = validatePackManifest(JSON.parse(raw), 'my-pack');
 ```
 
 Required fields: `name`, `version`, `description`, `author`, `skillCount`.
 
-## Tool registration (`@carina/core/tool`)
+## Tool registration (`@verlox/carina-core/tool`)
 
 ```typescript
-import { registerTool, type ToolDefinition } from '@carina/core/tool';
+import { registerTool, type ToolDefinition } from '@verlox/carina-core/tool';
 
 const myTool: ToolDefinition = {
   name: 'my_tool',
@@ -70,12 +70,12 @@ const myTool: ToolDefinition = {
 registerTool(myTool);
 ```
 
-## Channel adapter (`@carina/core/channel`)
+## Channel adapter (`@verlox/carina-core/channel`)
 
 Implement `ChannelAdapter` (alias for `IChannelAdapter`):
 
 ```typescript
-import type { ChannelAdapter, ChannelMessage } from '@carina/core/channel';
+import type { ChannelAdapter, ChannelMessage } from '@verlox/carina-core/channel';
 
 export class MyAdapter implements ChannelAdapter {
   readonly name = 'webhooks' as const;
@@ -98,21 +98,21 @@ export class MyAdapter implements ChannelAdapter {
 
 Reference: [IRC stub adapter](https://github.com/malike2356/carina-agent/blob/main/src/gateway/channels/adapters/irc-adapter.ts) in the repo.
 
-## Memory backend (`@carina/core/memory`)
+## Memory backend (`@verlox/carina-core/memory`)
 
 Read-only stable type for integrators:
 
 ```typescript
-import type { MemoryBackend } from '@carina/core/memory';
-import { listMemoryBackends, describeMemoryBackends } from '@carina/core/memory';
+import type { MemoryBackend } from '@verlox/carina-core/memory';
+import { listMemoryBackends, describeMemoryBackends } from '@verlox/carina-core/memory';
 ```
 
 Custom memory backends via npm are planned; today select built-ins via config.
 
-## Provider registration (`@carina/core/provider`)
+## Provider registration (`@verlox/carina-core/provider`)
 
 ```typescript
-import { registerProvider, type ProviderDefinition } from '@carina/core/provider';
+import { registerProvider, type ProviderDefinition } from '@verlox/carina-core/provider';
 
 registerProvider({
   name: 'my-provider',

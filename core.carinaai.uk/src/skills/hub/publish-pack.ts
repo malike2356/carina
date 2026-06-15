@@ -5,7 +5,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { validatePackDir } from './validate.js';
 import { upsertHubPack, replacePackSkills } from './registry.js';
-import type { PackSkillInput } from '../packs/property-uk/skills.js';
+import type { PackSkillInput } from '../pack-types.js';
 
 const execAsync = promisify(exec);
 
@@ -63,4 +63,23 @@ export async function publishPackDirectory(
     archivePath,
     skillCount: skills.length,
   };
+}
+
+export async function publishPackArchiveBuffer(
+  archiveBuffer: Buffer,
+  storageDir: string,
+  options: { featured?: boolean } = {},
+): Promise<{ name: string; version: string; archivePath: string; skillCount: number }> {
+  const tmpRoot = path.join(storageDir, '.upload-tmp');
+  const extractDir = path.join(tmpRoot, `extract-${Date.now()}`);
+  await fs.mkdir(extractDir, { recursive: true });
+  const archivePath = path.join(tmpRoot, `upload-${Date.now()}.tar.gz`);
+  try {
+    await fs.writeFile(archivePath, archiveBuffer);
+    await execAsync(`tar -xzf "${archivePath}" -C "${extractDir}"`);
+    return await publishPackDirectory(extractDir, storageDir, options);
+  } finally {
+    await fs.rm(extractDir, { recursive: true, force: true }).catch(() => undefined);
+    await fs.unlink(archivePath).catch(() => undefined);
+  }
 }

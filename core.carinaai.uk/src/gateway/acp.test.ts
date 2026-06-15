@@ -13,7 +13,8 @@ describe('ACP gateway isolation', () => {
   });
 
   it('web still imports setupAcpRoutes but routes self-gate', () => {
-    const source = fs.readFileSync(path.join(srcRoot, 'gateway', 'web.ts'), 'utf8');
+    const webServerPath = path.join(srcRoot, '..', 'packages', 'web', 'src', 'web-server.ts');
+    const source = fs.readFileSync(webServerPath, 'utf8');
     expect(source).toMatch(/setupAcpRoutes/);
   });
 });

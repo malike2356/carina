@@ -448,7 +448,11 @@ export class CarinaAgent {
         }
         const rateCard = await getCurrentRateCard(modelClass);
         const estimatedCredits = estimateCreditsForCall(rateCard, 4000, 1000);
-        const gate = await checkCreditGate(orgId, planId, modelClass, estimatedCredits);
+        const estimatedProviderCostUsd = estimateCost(providerName, 5000);
+        const gate = await checkCreditGate(orgId, planId, modelClass, estimatedCredits, {
+          managedInference: true,
+          estimatedProviderCostUsd,
+        });
         if (!gate.allowed) {
           yield { type: 'text', content: `[${gate.reason}]` };
           break;

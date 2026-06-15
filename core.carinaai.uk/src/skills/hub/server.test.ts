@@ -12,6 +12,12 @@ const { mockPacks, mockSkills } = vi.hoisted(() => {
       skill_count: 12,
       download_count: 5,
       featured: true,
+      pricing_tier: 'free',
+      price_gbp_cents: null,
+      author_revenue_share_bps: 7000,
+      carina_revenue_share_bps: 2000,
+      platform_fee_bps: 1000,
+      stripe_price_id: null,
       created_at: '2026-01-01T00:00:00.000Z',
       updated_at: '2026-01-01T00:00:00.000Z',
     },
@@ -47,6 +53,7 @@ vi.mock('./registry.js', () => ({
   ),
   getPackArchivePath: vi.fn().mockResolvedValue(null),
   recordPackDownload: vi.fn().mockResolvedValue(undefined),
+  listAuthorPacks: vi.fn().mockResolvedValue([]),
 }));
 
 import { createSkillsHubApp } from './server.js';
@@ -115,7 +122,31 @@ describe('createSkillsHubApp', () => {
       const res = await fetch(`${baseUrl}/`);
       expect(res.status).toBe(200);
       const html = await res.text();
-      expect(html).toContain('Skills Hub');
+      expect(html).toContain('Carina Hub');
+    });
+  });
+
+  it('sets CORS for carinaai.uk', async () => {
+    await withServer(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/packs`, {
+        headers: { Origin: 'https://carinaai.uk' },
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('access-control-allow-origin')).toBe('https://carinaai.uk');
+    });
+  });
+
+  it('handles CORS preflight', async () => {
+    await withServer(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/packs`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'https://docs.carinaai.uk',
+          'Access-Control-Request-Method': 'GET',
+        },
+      });
+      expect(res.status).toBe(204);
+      expect(res.headers.get('access-control-allow-origin')).toBe('https://docs.carinaai.uk');
     });
   });
 

@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Publishing a domain pack
 
-Major domain packs can ship as scoped npm packages (`@carina/pack-*`) and can also be listed on the [Carina Skills Hub](https://hub.carinaai.uk). The current public kernel package is `carina-agent`; the future scoped `@carina/core` package will ship pack **metadata** only, with pack bodies as opt-in installs.
+Major domain packs can ship as scoped npm packages (`@carina/pack-*`) and can also be listed on the [Carina Skills Hub](https://hub.carinaai.uk). The current public kernel package is `carina-agent`; the future scoped `@verlox/carina-core` package will ship pack **metadata** only, with pack bodies as opt-in installs.
 
 ## Package layout
 
@@ -26,14 +26,14 @@ For the future scoped package split, `package.json` will declare:
 
 ```json
 {
-  "name": "@carina/pack-property",
-  "peerDependencies": { "@carina/core": "^0.2.0" },
-  "imports": { "#core/*": "@carina/core/internal/*" },
+  "name": "@verlox/pack-property",
+  "peerDependencies": { "@verlox/carina-core": "^0.2.0" },
+  "imports": { "#core/*": "@verlox/carina-core/internal/*" },
   "carina": { "pack": "./pack.json", "slug": "property-uk" }
 }
 ```
 
-Pack code imports core helpers via `#core/...` (resolved to `@carina/core/internal/*` at publish time after the scoped package split).
+Pack code imports core helpers via `#core/...` (resolved to `@verlox/carina-core/internal/*` at publish time after the scoped package split).
 
 ## npm publish
 
@@ -43,7 +43,7 @@ Pack code imports core helpers via `#core/...` (resolved to `@carina/core/intern
    ```bash
    cd core.carinaai.uk
    pnpm build
-   pnpm --filter @carina/pack-property build
+   pnpm --filter @verlox/pack-property build
    ```
 
 3. Publish from the pack directory:
@@ -74,7 +74,7 @@ carina pack install property-uk
 Users can install directly from npm:
 
 ```bash
-npm install @carina/pack-property
+npm install @verlox/pack-property
 export ACTIVE_SKILL_PACKS=property-uk
 carina chat
 ```
@@ -89,14 +89,14 @@ Core resolves packs in this order: `~/.carina/packs/`, monorepo `packages/packs/
 
 ## Large corpora
 
-If a pack RAG corpus exceeds npm size limits, split data into a companion package (for example `@carina/pack-property-data`) and document the dependency in the pack README. Keep pack semver independent of the Carina kernel package.
+If a pack RAG corpus exceeds npm size limits, split data into a companion package (for example `@verlox/pack-property-data`) and document the dependency in the pack README. Keep pack semver independent of the Carina kernel package.
 
 ## v1 extracted packs
 
 | Slug | npm package | Status |
 |------|-------------|--------|
-| `property-uk` | `@carina/pack-property` | Published |
-| `healthcare` | `@carina/pack-health` | Published |
-| `borehole-africa` | `@carina/pack-borehole-africa` | Private WIP (ABBIS corpus) |
+| `property-uk` | `@verlox/pack-property` | Published |
+| `healthcare` | `@verlox/pack-health` | Published |
+| `borehole-africa` | `@verlox/pack-borehole-africa` | Private WIP (ABBIS corpus) |
 
 Remaining built-in packs still live under `src/skills/packs/` until extracted in a later phase.

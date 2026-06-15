@@ -1,8 +1,16 @@
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 import path from 'path';
 import { CARINA_RESOURCES_DIR } from '../config/paths.js';
 
-const BLOCKED_PREFIXES = ['/etc', '/usr', '/bin', '/sys', '/proc'];
+function blockedPrefixes(): string[] {
+  if (platform() === 'win32') {
+    const winDir = process.env.WINDIR ?? 'C:\\Windows';
+    return [winDir, path.join(winDir, 'System32')];
+  }
+  return ['/etc', '/usr', '/bin', '/sys', '/proc'];
+}
+
+const BLOCKED_PREFIXES = blockedPrefixes();
 
 export function resolveWorkspacePath(raw: string): string {
   const expanded = expandPath(raw);

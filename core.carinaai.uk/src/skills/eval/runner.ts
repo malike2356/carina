@@ -1,7 +1,7 @@
 import path from 'path';
 import { randomUUID } from 'crypto';
 import { BUILTIN_PACKS_DIR } from '../pack-loader.js';
-import type { PackSkillInput } from '../packs/property-uk/skills.js';
+import type { PackSkillInput } from '../pack-types.js';
 import { loadEvalDefinition } from './fixtures.js';
 import { matchSkillsInMemory } from './match.js';
 import { evaluateFixture } from './assertions.js';
@@ -32,12 +32,13 @@ async function resolveSkills(
       toolsUsed: s.toolsUsed,
     }));
   }
-  const { PACK_REGISTRY } = await import('../index.js');
-  const pack = PACK_REGISTRY[packName];
-  if (!pack) {
-    throw new Error(`Unknown pack: ${packName}. Available: ${Object.keys(PACK_REGISTRY).join(', ')}`);
+  const { resolvePack } = await import('../pack-resolver.js');
+  try {
+    const pack = await resolvePack(packName);
+    return pack.skills;
+  } catch {
+    throw new Error(`Unknown pack: ${packName}`);
   }
-  return pack.skills;
 }
 
 async function runSinglePass(

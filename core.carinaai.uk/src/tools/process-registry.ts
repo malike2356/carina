@@ -2,6 +2,8 @@ import { randomUUID } from 'crypto';
 import { spawn, type ChildProcess } from 'child_process';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
 import { emitProcessComplete } from './process-notifications.js';
+import { getPlatformShell } from './platform.js';
+import { killProcessByPid } from './process-signals.js';
 
 export type ProcessStatus = 'running' | 'exited' | 'killed' | 'error';
 
@@ -105,10 +107,12 @@ export function spawnBackgroundProcess(
   }
 
   const sessionId = randomUUID();
-  const child = spawn('sh', ['-c', command], {
+  const shell = getPlatformShell();
+  const child = spawn(shell.command, shell.args(command), {
     cwd: workdir,
     stdio: ['pipe', 'pipe', 'pipe'],
     detached: false,
+    windowsHide: true,
   });
 
   const state: ProcessState = {
@@ -266,7 +270,10 @@ export async function killProcess(sessionId: string, graceMs = KILL_GRACE_MS): P
   }
 
   try {
-    process.kill(state.pid, 'SIGTERM');
+    if (!killProcessByPid(state.pid, 'SIGTERM')) {
+      markFinished(state, 'error');
+      return { session_id: sessionId, status: state.status, pid: state.pid };
+    }
   } catch {
     markFinished(state, 'error');
     return { session_id: sessionId, status: state.status, pid: state.pid };
@@ -278,7 +285,7 @@ export async function killProcess(sessionId: string, graceMs = KILL_GRACE_MS): P
     const timer = setTimeout(() => {
       if (state.child && !state.endedAt) {
         try {
-          process.kill(state.pid, 'SIGKILL');
+          killProcessByPid(state.pid, 'SIGKILL');
         } catch {
           markFinished(state, 'error');
         }

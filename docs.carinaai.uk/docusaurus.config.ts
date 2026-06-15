@@ -25,6 +25,13 @@ const config: Config = {
     locales: ['en'],
   },
 
+  stylesheets: [
+    {
+      href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
+      type: 'text/css',
+    },
+  ],
+
   presets: [
     [
       'classic',
@@ -49,6 +56,7 @@ const config: Config = {
         alt: 'Carina',
         src: 'img/logo.svg',
       },
+      hideOnScroll: false,
       items: [
         {
           type: 'doc',
@@ -116,6 +124,10 @@ const config: Config = {
         },
       ],
       copyright: `Copyright ${new Date().getFullYear()} VERLOX Ltd. MIT Licensed.`,
+    },
+    colorMode: {
+      defaultMode: 'light',
+      respectPrefersColorScheme: true,
     },
     prism: {
       theme: prismThemes.github,

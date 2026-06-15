@@ -1,7 +1,7 @@
 name: Feature request
 description: Suggest an improvement to Carina core
 title: "[feat]: "
-labels: ["enhancement"]
+labels: ["enhancement", "help wanted"]
 body:
   - type: markdown
     attributes:

@@ -90,7 +90,8 @@ export async function eightSleepStatus(): Promise<unknown> {
 export async function cameraSnapshot(rtspUrl?: string): Promise<{ path?: string; error?: string }> {
   const url = rtspUrl ?? process.env.RTSP_URL ?? process.env.ONVIF_STREAM_URL ?? '';
   if (!url) return { error: 'RTSP_URL or ONVIF_STREAM_URL required' };
-  const out = `/tmp/carina-capture-${Date.now()}.jpg`;
+  const { tempFile } = await import('../../lib/platform-paths.js');
+  const out = tempFile(`carina-capture-${Date.now()}.jpg`);
   try {
     await runCommand('ffmpeg', ['-y', '-rtsp_transport', 'tcp', '-i', url, '-frames:v', '1', out], 30_000);
     return { path: out };

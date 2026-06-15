@@ -1,0 +1,47 @@
+title: "Q&A: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Ask a question about Carina core, domain packs, self-hosting, or contributing.
+
+        For **RFC proposals** (stable API or manifest changes), use the **RFCs** discussion category or run `carina rfc propose "Title"` and open a PR.
+
+        For **security vulnerabilities**, do not post here. See [SECURITY.md](https://github.com/malike2356/carina-agent/blob/main/SECURITY.md).
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Core / CLI
+        - Tools
+        - Channels / gateway
+        - Domain packs
+        - Self-hosting
+        - Scout integration (client SDK)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: Include versions (`carina --version`), OS, and what you already tried.
+      placeholder: |
+        Carina version:
+        OS:
+        Question:
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: docs
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing Discussions and docs at carinaai.uk/docs
+          required: true

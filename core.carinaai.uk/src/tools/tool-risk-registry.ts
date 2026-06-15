@@ -35,9 +35,19 @@ export const TOOL_RISK_REGISTRY: Record<string, ToolRiskSpec> = {
 
   // Write
   'file-write': { riskClass: 'write', sideEffects: ['writes local files'], requiresDangerousFlag: true },
+  'generate-pdf': {
+    riskClass: 'write',
+    sideEffects: ['writes PDF file to disk or memory'],
+    requiresDangerousFlag: false,
+  },
   'patch': { riskClass: 'write', sideEffects: ['mutates local files'], requiresDangerousFlag: true },
   'send-message': { riskClass: 'write', sideEffects: ['sends outbound messages'], requiresDangerousFlag: true },
   'email-send': { riskClass: 'write', sideEffects: ['sends outbound email'], requiresDangerousFlag: true },
+  'email-smtp-send': {
+    riskClass: 'write',
+    sideEffects: ['sends outbound email via SMTP relay'],
+    requiresDangerousFlag: true,
+  },
   'webhook': { riskClass: 'write', sideEffects: ['registers outbound webhooks'], requiresDangerousFlag: true },
   'skill-manage': { riskClass: 'write', sideEffects: ['mutates skill packs'], requiresDangerousFlag: true },
   'skill-curator': { riskClass: 'write', sideEffects: ['mutates skills'], requiresDangerousFlag: true },
@@ -59,7 +69,15 @@ export const TOOL_RISK_REGISTRY: Record<string, ToolRiskSpec> = {
   'cronjob': { riskClass: 'write', sideEffects: ['schedules recurring agent jobs'], requiresDangerousFlag: true },
 
   // Execute
-  'shell-exec': { riskClass: 'execute', sideEffects: ['runs shell commands'], requiresDangerousFlag: true },
+  'shell-exec': {
+    riskClass: 'execute',
+    sideEffects: [
+      'executes arbitrary shell commands',
+      'uses bash on Linux/macOS, PowerShell on Windows',
+      'can modify filesystem, start processes, open network connections',
+    ],
+    requiresDangerousFlag: true,
+  },
   'process': { riskClass: 'execute', sideEffects: ['spawns host processes'], requiresDangerousFlag: true },
   'code-exec': { riskClass: 'execute', sideEffects: ['runs sandboxed code'], requiresDangerousFlag: true },
   'computer-use': { riskClass: 'execute', sideEffects: ['desktop automation'], requiresDangerousFlag: true },

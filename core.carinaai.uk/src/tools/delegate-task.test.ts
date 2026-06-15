@@ -3,20 +3,16 @@ import { createDelegateTaskTool, setDelegationDepth } from './delegate-task.js';
 import { resolveToolset } from './toolset.js';
 import { resetDelegationState } from '../agents/delegation-context.js';
 
-const runMock = vi.fn().mockResolvedValue('subagent summary');
+const runDelegatedTaskMock = vi.fn().mockResolvedValue('subagent summary');
 
-vi.mock('../agents/generic-sub-agent.js', () => ({
-  GenericSubAgent: class {
-    async run() {
-      return runMock();
-    }
-  },
+vi.mock('../agents/subagent-runner.js', () => ({
+  runDelegatedTask: (...args: unknown[]) => runDelegatedTaskMock(...args),
 }));
 
 beforeEach(() => {
   resetDelegationState();
-  runMock.mockReset();
-  runMock.mockResolvedValue('subagent summary');
+  runDelegatedTaskMock.mockReset();
+  runDelegatedTaskMock.mockResolvedValue('subagent summary');
 });
 
 describe('delegate-task tool', () => {
@@ -29,17 +25,18 @@ describe('delegate-task tool', () => {
     expect(result.error).toContain('Delegation depth limit');
   });
 
-  it('runs single task mode', async () => {
+  it('runs single task mode in a worker thread', async () => {
     const tool = createDelegateTaskTool(sessionId);
     const result = await tool.execute({
       goal: 'check disk usage',
       context: 'Project at /tmp',
       toolsets: ['terminal'],
       _sessionId: sessionId,
-    }) as { mode: string; summary: string };
+    }) as { mode: string; summary: string; delegatedTo: string };
     expect(result.mode).toBe('single');
     expect(result.summary).toBe('subagent summary');
-    expect(runMock).toHaveBeenCalledOnce();
+    expect(result.delegatedTo).toBe('worker_thread');
+    expect(runDelegatedTaskMock).toHaveBeenCalledOnce();
   });
 
   it('runs batch mode with multiple tasks', async () => {
@@ -51,11 +48,12 @@ describe('delegate-task tool', () => {
         { goal: 'task C', toolsets: ['web'] },
       ],
       _sessionId: sessionId,
-    }) as { mode: string; taskCount: number; results: string[] };
+    }) as { mode: string; taskCount: number; results: string[]; delegatedTo: string };
     expect(result.mode).toBe('batch');
     expect(result.taskCount).toBe(3);
     expect(result.results).toHaveLength(3);
-    expect(runMock).toHaveBeenCalledTimes(3);
+    expect(result.delegatedTo).toBe('worker_thread');
+    expect(runDelegatedTaskMock).toHaveBeenCalledTimes(3);
   });
 
   it('rejects leaf tools in toolsets', async () => {
@@ -81,7 +79,7 @@ describe('delegate-task tool', () => {
 
   it('isolates failures - one bad batch task does not kill others', async () => {
     let callCount = 0;
-    runMock.mockImplementation(async () => {
+    runDelegatedTaskMock.mockImplementation(async () => {
       callCount++;
       if (callCount === 2) throw new Error('subagent exploded');
       return 'ok';
@@ -134,5 +132,27 @@ describe('delegate-task tool', () => {
     expect(result.taskCount).toBe(5);
     expect(result.concurrency).toBe(3);
     expect(result.results).toHaveLength(5);
+  });
+
+  it('passes timeoutSeconds to the worker runner', async () => {
+    const tool = createDelegateTaskTool(sessionId);
+    await tool.execute({
+      goal: 'quick task',
+      timeoutSeconds: 30,
+      _sessionId: sessionId,
+    });
+
+    expect(runDelegatedTaskMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeoutMs: 30_000,
+      }),
+    );
+  });
+});
+
+describe('runDelegatedTask export', () => {
+  it('re-exports the worker runner helper', async () => {
+    const { runDelegatedTask } = await import('./delegate-task.js');
+    expect(runDelegatedTask).toBeTypeOf('function');
   });
 });

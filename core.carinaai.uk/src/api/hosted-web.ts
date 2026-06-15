@@ -83,7 +83,8 @@ export function mountHostedWebRoutes(app: Express): void {
       const { userId } = await registerUser(email, password);
       const profile = await getUserProfile(userId);
       await setHostedSession(req, userId, profile?.org?.id, profile?.org?.role);
-      res.json({ ok: true });
+      const redirect = config.carinaOps.productEnabled ? '/ops/onboarding' : '/?welcome=1';
+      res.json({ ok: true, redirect });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(409).json({ error: msg });

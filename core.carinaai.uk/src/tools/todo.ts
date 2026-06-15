@@ -1,4 +1,5 @@
 import type { Tool } from '../types/index.js';
+import { syncTodoItems } from '../gateway/notes-sync.js';
 
 export type TodoStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -78,6 +79,7 @@ export function createTodoTool(sessionId: string): Tool {
 
       if (!merge) {
         sessionTodos.set(sessionId, parsed);
+        syncTodoItems(sessionId, parsed);
         return { todos: parsed, mode: 'replaced' };
       }
 
@@ -88,6 +90,7 @@ export function createTodoTool(sessionId: string): Tool {
       }
       const merged = [...byId.values()];
       sessionTodos.set(sessionId, merged);
+      syncTodoItems(sessionId, merged);
       return { todos: merged, mode: 'merged' };
     },
   };

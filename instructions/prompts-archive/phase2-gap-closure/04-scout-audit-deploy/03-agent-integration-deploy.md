@@ -30,7 +30,7 @@ packages/scout/src/
 ### Mode 1: Middleware (for Carina native)
 ```typescript
 // Drop-in middleware for Express/Fastify
-import { scoutMiddleware } from '@carina/scout';
+import { scoutMiddleware } from '@verlox/carina-scout';
 
 app.use(scoutMiddleware({
   agentType: 'carina',
@@ -52,7 +52,7 @@ No code changes to the agent. Scout sits in front and inspects everything.
 ### Mode 3: API wrapping (for cloud agents)
 ```typescript
 // Wrap OpenAI/Anthropic API calls
-import { scoutWrap } from '@carina/scout';
+import { scoutWrap } from '@verlox/carina-scout';
 
 const protectedOpenAI = scoutWrap(openai, {
   provider: 'openai',
@@ -76,7 +76,7 @@ docker run -d \
   carinaaiuk/scout:latest
 
 # Option B: npm
-npm install -g @carina/scout
+npm install -g @verlox/carina-scout
 scout deploy --port 3001
 ```
 

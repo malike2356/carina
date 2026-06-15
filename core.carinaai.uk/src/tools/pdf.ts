@@ -1,6 +1,7 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 import type { Tool } from '../types/index.js';
+import { CARINA_OUTPUT_DIR } from '../lib/platform-paths.js';
 
 // Lazy-load puppeteer (heavy dep, only when tool is called)
 let puppeteerModule: typeof import('puppeteer') | null = null;
@@ -41,7 +42,7 @@ export const generatePdfTool: Tool = {
     const format = (String(params.format ?? 'markdown')).toLowerCase();
 
     const puppeteer = await getPuppeteer();
-    const outputDir = join(process.env.HOME ?? '/tmp', '.carina', 'output');
+    const outputDir = CARINA_OUTPUT_DIR;
     const { mkdirSync } = await import('fs');
     mkdirSync(outputDir, { recursive: true });
 

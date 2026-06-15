@@ -5,9 +5,20 @@ vi.mock('../billing/credit-ledger.js', () => ({
     used: orgId === 'org-a' ? 400_000 : 50,
     remaining: orgId === 'org-a' ? 100_000 : 1_950_000,
     percentUsed: orgId === 'org-a' ? 80 : 2.5,
-    topups: 0,
+    topups: orgId === 'org-a' ? 0 : 100_000,
     netLedger: orgId === 'org-a' ? -400_000 : -50,
   })),
+  getModelMixForMonth: vi.fn(async (orgId: string) => (
+    orgId === 'org-a'
+      ? [{ modelClass: 'balanced', creditsUsed: 350_000, providerCostUsd: 12.5 }]
+      : []
+  )),
+}));
+
+vi.mock('../billing/credit-gate.js', () => ({
+  getAllowedModelClasses: vi.fn(async (planId: string) => (
+    planId === 'carina_ops_starter' ? ['mini', 'balanced'] : ['mini', 'balanced', 'premium']
+  )),
 }));
 
 vi.mock('./plan-gates.js', () => ({
@@ -102,11 +113,16 @@ describe('usage-service', () => {
     expect(rows[0]).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet', requests: 2 });
   });
 
-  it('getCreditsStatus warns at 80 percent', async () => {
+  it('getCreditsStatus warns at 80 percent with credit fields', async () => {
     const credits = await getCreditsStatus('org-a', 'user-1');
+    expect(credits.unit).toBe('credits');
     expect(credits.monthlyLimit).toBe(500_000);
+    expect(credits.creditsIncluded).toBe(500_000);
     expect(credits.percentUsed).toBeGreaterThanOrEqual(80);
     expect(credits.warning).toBe(true);
+    expect(credits.allowedClasses).toEqual(['mini', 'balanced']);
+    expect(credits.highestModelClass).toBe('balanced');
+    expect(credits.modelMix[0]).toMatchObject({ modelClass: 'balanced', creditsUsed: 350_000 });
   });
 
   it('getTodayUsage returns same-day totals', async () => {
@@ -130,15 +146,21 @@ describe('usage-service', () => {
       threshold: 80,
       used: 400_000,
       limit: 500_000,
+      unit: 'credits',
     }));
   });
 
   it('maybeNotifyUsageWarning triggers email at 90 percent usage', async () => {
-    await maybeNotifyUsageWarning('org-90', 'user-1');
+    await maybeNotifyUsageWarning('org-90', 'user-1', {
+      used: 450_000,
+      limit: 500_000,
+      unit: 'credits',
+    });
     expect(sendUsageWarningEmail).toHaveBeenCalledWith(expect.objectContaining({
       threshold: 90,
       used: 450_000,
       limit: 500_000,
+      unit: 'credits',
     }));
   });
 });

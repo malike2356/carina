@@ -206,3 +206,16 @@ export function resolveTopupStripePriceId(packId: CreditTopupPackId): string {
   if (!priceId) throw new Error(`Missing required env var: ${envKey}`);
   return priceId;
 }
+
+/** Default GBP/USD for credit revenue when env is unset (plan price / included credits). */
+export const DEFAULT_CREDIT_GBP_USD = 1.27;
+
+/** Implied USD value of one weighted credit on a plan. Override with CREDIT_USD_RATE env. */
+export function resolveCreditUsdRate(planId: BillingPlanId): number {
+  const envRate = process.env.CREDIT_USD_RATE;
+  if (envRate && Number(envRate) > 0) return Number(envRate);
+  const plan = BILLING_PLANS[planId];
+  if (!plan.includedCredits || plan.monthlyPriceGbp == null) return 0;
+  const gbpUsd = Number(process.env.CREDIT_GBP_USD_RATE ?? DEFAULT_CREDIT_GBP_USD);
+  return (plan.monthlyPriceGbp * gbpUsd) / plan.includedCredits;
+}

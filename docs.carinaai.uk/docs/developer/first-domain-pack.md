@@ -66,7 +66,7 @@ carina pack list
 # confirms install dir: ~/.carina/packs
 ```
 
-Required manifest fields: `name`, `version`, `description`, `author`, `skillCount`. The planned stable API exposes `validatePackManifest` from `@carina/core/pack` once the scoped package split is published.
+Required manifest fields: `name`, `version`, `description`, `author`, `skillCount`. The planned stable API exposes `validatePackManifest` from `@verlox/carina-core/pack` once the scoped package split is published.
 
 ---
 
@@ -140,7 +140,7 @@ Skills can reference existing kernel tools (`file-read`, `web-search`, etc.) via
 A future **custom pack tool** (for example `hello_lookup`) uses the planned stable tool API:
 
 ```typescript
-import { registerTool } from '@carina/core/tool';
+import { registerTool } from '@verlox/carina-core/tool';
 
 registerTool({
   name: 'hello_lookup',

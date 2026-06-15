@@ -3,6 +3,7 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 
 process.env.CARINA_OPS_PRODUCT_ENABLED = 'true';
+process.env.CARINA_OPS_TOKEN = 'test-admin-token';
 
 vi.mock('../config/index.js', () => ({
   config: {
@@ -48,22 +49,81 @@ vi.mock('../hosted/workbench-service.js', () => ({
 vi.mock('../hosted/usage-service.js', () => ({
   getTodayUsage: vi.fn(async () => ({ tokens: 5, cost: 0.01 })),
   getCreditsStatus: vi.fn(async () => ({
+    unit: 'credits',
     monthlyLimit: 500_000,
     usedThisMonth: 1000,
     remaining: 499_000,
     percentUsed: 0,
     warning: false,
+    creditsIncluded: 500_000,
+    topups: 0,
+    modelMix: [],
+    allowedClasses: ['mini', 'balanced'],
+    highestModelClass: 'balanced',
   })),
   getUsageSummary: vi.fn(async () => ({ totalTokens: 0, totalCost: 0, daily: [] })),
   getUsageByModel: vi.fn(async () => []),
   exportUsageCsv: vi.fn(async () => 'date,model,tokens_used,cost_estimate\n2026-01-01,openai/gpt-4o,100,0.01'),
 }));
 
+const estimateWorkbenchUsage = vi.hoisted(() => vi.fn(async () => ({
+  modelClass: 'balanced',
+  allowed: true,
+  estimatedCredits: 42,
+  estimatedProviderCostUsd: 0.0012,
+  remainingCredits: 499_000,
+  percentUsed: 0.2,
+  byok: true,
+})));
+
+const resolveWorkbenchInferenceMode = vi.hoisted(() => vi.fn(async () => 'byok' as const));
+
+vi.mock('../hosted/workbench-inference.js', () => ({
+  resolveWorkbenchInferenceMode,
+}));
+
 vi.mock('../hosted/ai-platform-models.js', () => ({
   listModelsForOrg: vi.fn(async (orgId: string) => {
-    if (orgId === 'org-other') return [{ id: 'm1', provider: 'openai', model: 'gpt-4o', tier: 'balanced', isDefault: true, status: 'active', inputPrice: 1, outputPrice: 2, notes: null }];
-    return [{ id: 'm1', provider: 'anthropic', model: 'claude-sonnet', tier: 'balanced', isDefault: true, status: 'active', inputPrice: 3, outputPrice: 15, notes: null }];
+    if (orgId === 'org-other') return [{ id: 'm1', provider: 'openai', model: 'gpt-4o', tier: 'balanced', modelClass: 'balanced', isDefault: true, status: 'active', inputPrice: 1, outputPrice: 2, notes: null }];
+    return [{ id: 'm1', provider: 'anthropic', model: 'claude-sonnet', tier: 'balanced', modelClass: 'balanced', isDefault: true, status: 'active', inputPrice: 3, outputPrice: 15, notes: null }];
   }),
+}));
+
+vi.mock('../billing/ops-metering-service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../billing/ops-metering-service.js')>();
+  return {
+    ...actual,
+    estimateWorkbenchUsage,
+    getOpsCreditUsageSummary: vi.fn(async () => null),
+    getOpsModelMetering: vi.fn(async () => ({
+      allowedClasses: ['mini', 'balanced'],
+      rateCard: { balanced: { inputWeight: 0.000006, outputWeight: 0.000024, cacheWeight: 0.0000015 } },
+    })),
+  };
+});
+
+vi.mock('../billing/margin-report.js', () => ({
+  getPlatformMarginSummary: vi.fn(async () => ({
+    floor: 0.65,
+    month: '2026-06',
+    orgs: [{
+      orgId: 'org-starter',
+      orgName: 'Test Org',
+      planId: 'carina_ops_starter',
+      creditsBilled: 1000,
+      providerCostUsd: 0.2,
+      creditRevenueUsd: 0.05,
+      grossMargin: 0.75,
+      belowFloor: false,
+      byokCostOnly: false,
+    }],
+    totals: {
+      creditsBilled: 1000,
+      providerCostUsd: 0.2,
+      creditRevenueUsd: 0.05,
+      grossMargin: 0.75,
+    },
+  })),
 }));
 
 vi.mock('../gateway/web-auth.js', () => ({
@@ -252,5 +312,168 @@ describe('carina-ops-routes', () => {
     expect(result.status).toBe(200);
     expect(result.contentType).toContain('text/csv');
     expect(String(result.body)).toContain('id,action');
+  });
+
+  it('workbench estimate returns usage preview', async () => {
+    resolveWorkbenchInferenceMode.mockResolvedValueOnce('byok');
+    estimateWorkbenchUsage.mockResolvedValueOnce({
+      modelClass: 'balanced',
+      allowed: true,
+      estimatedCredits: 42,
+      estimatedProviderCostUsd: 0.0012,
+      remainingCredits: 499_000,
+      percentUsed: 0.2,
+      byok: true,
+    });
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/workbench/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'Hello',
+        provider: 'anthropic',
+        model: 'claude-sonnet',
+      }),
+    });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      modelClass: 'balanced',
+      allowed: true,
+      estimatedCredits: 42,
+      remainingCredits: 499_000,
+      byok: true,
+      inferenceMode: 'byok',
+    });
+    expect(estimateWorkbenchUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ byok: true }),
+    );
+  });
+
+  it('workbench estimate returns 400 when no inference path exists', async () => {
+    resolveWorkbenchInferenceMode.mockResolvedValueOnce(null);
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/workbench/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'Hello',
+        provider: 'anthropic',
+        model: 'claude-sonnet',
+      }),
+    });
+    expect(result.status).toBe(400);
+    expect(result.body).toMatchObject({ inferenceMode: null });
+    expect(estimateWorkbenchUsage).not.toHaveBeenCalled();
+  });
+
+  it('workbench estimate returns blocked class', async () => {
+    resolveWorkbenchInferenceMode.mockResolvedValueOnce('byok');
+    estimateWorkbenchUsage.mockResolvedValueOnce({
+      modelClass: 'frontier',
+      allowed: false,
+      gateReason: 'model class not available on your plan',
+      estimatedCredits: 0,
+      estimatedProviderCostUsd: 0,
+      remainingCredits: 0,
+      percentUsed: null,
+      byok: true,
+    });
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/workbench/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'Hello',
+        provider: 'openai',
+        model: 'gpt-5-preview',
+      }),
+    });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      allowed: false,
+      modelClass: 'frontier',
+      gateReason: expect.stringContaining('not available'),
+    });
+  });
+
+  it('workbench estimate returns over-limit preview for managed path', async () => {
+    resolveWorkbenchInferenceMode.mockResolvedValueOnce('managed');
+    estimateWorkbenchUsage.mockResolvedValueOnce({
+      modelClass: 'mini',
+      allowed: false,
+      gateReason: 'monthly credit allowance exhausted',
+      estimatedCredits: 120,
+      estimatedProviderCostUsd: 0.0005,
+      remainingCredits: 0,
+      percentUsed: 100,
+      byok: false,
+    });
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/workbench/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'Long prompt',
+        provider: 'openai',
+        model: 'gpt-4o-mini',
+      }),
+    });
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      allowed: false,
+      remainingCredits: 0,
+      byok: false,
+      inferenceMode: 'managed',
+    });
+    expect(estimateWorkbenchUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ byok: false }),
+    );
+  });
+
+  it('workbench estimate requires provider and model', async () => {
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/workbench/estimate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: 'Hello' }),
+    });
+    expect(result.status).toBe(400);
+    expect(result.body).toMatchObject({ error: expect.stringContaining('required') });
+  });
+
+  it('admin margins requires ops bearer token', async () => {
+    const app = makeApp();
+    const denied = await request(app, '/api/carina-ops/admin/margins');
+    expect(denied.status).toBe(401);
+    const ok = await request(app, '/api/carina-ops/admin/margins', {
+      headers: { Authorization: 'Bearer test-admin-token' },
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({
+      floor: 0.65,
+      orgs: expect.arrayContaining([
+        expect.objectContaining({ orgName: 'Test Org', belowFloor: false }),
+      ]),
+    });
   });
 });

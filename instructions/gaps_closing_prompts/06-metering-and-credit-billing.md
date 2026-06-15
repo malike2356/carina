@@ -54,8 +54,8 @@ Change the `CarinaResponse` interface (in `src/types/`) to carry:
 ```typescript
 tokensIn: number;
 tokensOut: number;
-tokensCached: number;  // cache_read_input_tokens, 0 if not available
-tokensUsed: number;    // kept for backward compat: tokensIn + tokensOut
+tokensCached: number; // cache_read_input_tokens, 0 if not available
+tokensUsed: number; // kept for backward compat: tokensIn + tokensOut
 ```
 
 Update both provider implementations to populate these fields. The OpenAI-compatible provider should map `prompt_tokens` -> `tokensIn`, `completion_tokens` -> `tokensOut`, and `0` -> `tokensCached` until the provider exposes it.
@@ -129,7 +129,7 @@ INSERT INTO ops_plan_model_classes VALUES
 Add `included_credits` to `plans.ts` alongside the existing `tokenLimit` (keep `tokenLimit` for backward compat but treat it as informational only going forward):
 
 ```typescript
-includedCredits: number | null;  // monthly credit allowance; null = unlimited (BYOK/Enterprise)
+includedCredits: number | null; // monthly credit allowance; null = unlimited (BYOK/Enterprise)
 ```
 
 Starter: `500_000`. Team: `2_000_000`. Free: `50_000`. Enterprise: `null`.

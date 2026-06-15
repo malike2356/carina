@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Carina Skills Hub</title>
-  <meta name="description" content="Public registry of Carina skill packs and community skills." />
+  <title>Carina Hub</title>
+  <meta name="description" content="Discover and install domain packs for the Carina agent kernel. Free browse and install; verified badge for official packs." />
+  <link rel="canonical" href="https://hub.carinaai.uk/" />
   <link rel="stylesheet" href="/hub.css" />
 </head>
 <body>
   <header class="top">
     <div class="wrap top-inner">
       <div>
-        <p class="eyebrow">Carina Community</p>
-        <h1>Skills Hub</h1>
-        <p class="lede">Browse skill packs and individual skills. Install with <code>carina packs install &lt;name&gt;</code>.</p>
+        <p class="eyebrow"><a href="https://carinaai.uk">Carina kernel</a></p>
+        <h1>Carina Hub</h1>
+        <p class="lede">Discover domain packs for the agent kernel. Browse and install free packs; official VERLOX packs show a verified badge.</p>
       </div>
       <div class="stats" id="stats"></div>
     </div>
@@ -21,7 +22,7 @@
 
   <main class="wrap">
     <section class="toolbar">
-      <input id="search" type="search" placeholder="Search packs and skills..." autocomplete="off" />
+      <input id="search" type="search" placeholder="Search packs by name, description, or author..." autocomplete="off" />
       <select id="category">
         <option value="">All categories</option>
       </select>
@@ -34,10 +35,26 @@
     <section id="packs-view" class="grid"></section>
     <section id="skills-view" class="list hidden"></section>
     <section id="detail" class="detail hidden"></section>
+
+    <section class="author-panel">
+      <h2>For pack authors</h2>
+      <p>Publish from your machine with the CLI. Free to publish; verification is manual for official packs.</p>
+      <div class="code-row">
+        <code>carina pack publish ./my-pack</code>
+      </div>
+      <p class="muted">
+        See <a href="https://docs.carinaai.uk/docs/user/hub">Hub user guide</a> and
+        <a href="https://docs.carinaai.uk/docs/developer/stable-api">stable API docs</a>.
+        Premium packs use Stripe Checkout. Prices shown ex VAT.
+        See <a href="https://docs.carinaai.uk/docs/developer/selling-a-pack">Selling a pack</a>.
+      </p>
+    </section>
   </main>
 
   <footer class="wrap foot">
-    <p>MIT licensed agent platform by <a href="https://carinaai.uk">VERLOX Ltd</a>. Docs at <a href="https://docs.carinaai.uk">docs.carinaai.uk</a>.</p>
+    <p>MIT licensed agent kernel by <a href="https://carinaai.uk">VERLOX Ltd</a>.
+      Docs at <a href="https://docs.carinaai.uk">docs.carinaai.uk</a>.
+      Install the kernel: <code>npm install -g @carina/core</code></p>
   </footer>
 
   <script src="/hub.js"></script>

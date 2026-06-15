@@ -200,9 +200,15 @@ export class GatewayRouter {
     }
     const isModelCommand = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
     const commandAgent = isModelCommand ? this.getAgent(message.sessionId, message.source) : undefined;
-    const needsAsyncCommand = message.content.startsWith('/memories') || message.content.startsWith('/usage');
+    const needsAsyncCommand = message.content.startsWith('/memories')
+      || message.content.startsWith('/usage')
+      || message.content.trim().startsWith('/research')
+      || message.content.trim().startsWith('/compare');
     const cmd = needsAsyncCommand
-      ? await handleGatewayCommandAsync(message.content)
+      ? await handleGatewayCommandAsync(message.content, {
+          sessionId: message.sessionId,
+          channel: message.source,
+        })
       : handleGatewayCommand(message.content, commandAgent
         ? {
             currentOverride: this.sessionProviderOverrides.get(message.sessionId)

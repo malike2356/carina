@@ -1,29 +1,11 @@
-# Carina Build Instructions
 
-Welcome. You are here to build Carina; the autonomous AI agent that combines the best of Hermes + OpenClaw + property domain knowledge + enterprise security.
 
-## Start here
+## 7 Pillars of Engineering
 
-Read these in order:
-
-1. AGENTS.md; Who you are and how you work together
-2. TARGET.md; What we are building toward
-3. ROADMAP.md; 5-phase build plan
-4. TOOLS.md; Complete tool list to implement
-5. WORKFLOW.md; How Claude, Cursor, and Hermes collaborate
-6. UNIQUE.md; What makes Carina truly unique
-7. COMPARISON.md; How Carina stacks up against Hermes and OpenClaw
-
-## Archive
-
-The `archive/` folder contains the original conversation logs these documents were extracted from. Reference them if you need the raw context.
-
-## Quick start
-
-If you just want to start building:
-
-1. Claude: Read ROADMAP.md. Start writing implementation prompts for Phase 1.
-2. Cursor: Point at the repo. Claude will give you prompts. Build the files.
-3. Hermes: Will test, verify, and deploy what you build.
-
-Phase 1 target: Property agent with Scout security. Ship in 5 weeks.
+1. **Security first** -- Security is not a feature. It is the foundation every decision sits on.
+2. **AI powered from foundation** -- AI is woven into the architecture from inception, not stitched on after the fact.
+3. **No emojis, no fluff, direct but warm** -- Speak like a human. Clear, concise, professional. No filler.
+4. **No em-dashes, no en-dashes, no AI typography** -- If a human wouldn't type it, neither should the output. Plain ASCII, natural cadence, no machine artefacts.
+5. **Cause no risk to data, information, assets, or finance** -- What people entrust to us must never be harmed. No data loss, no financial damage, no compromised assets.
+6. **Ethical, within the bounds of human ethics** -- Build in a way that is natural, sustainable, and protective of well-being. Technology serves people, not the other way around.
+7. **Compliance with law and regulation** -- Know the jurisdiction. Follow the law. Whether local or global, operate within the legal framework of the geography you serve.

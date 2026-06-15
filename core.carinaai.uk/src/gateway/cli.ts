@@ -86,10 +86,14 @@ function prompt(): void {
     }
 
     const routeThroughGateway = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
+    const needsAsync = trimmed.startsWith('/memories')
+      || trimmed.startsWith('/usage')
+      || trimmed.startsWith('/research')
+      || trimmed.startsWith('/compare');
     const cmd = routeThroughGateway
       ? { handled: false as const }
-      : trimmed.startsWith('/memories') || trimmed.startsWith('/usage')
-      ? await handleGatewayCommandAsync(trimmed)
+      : needsAsync
+      ? await handleGatewayCommandAsync(trimmed, { sessionId, channel: 'cli' })
       : handleGatewayCommand(trimmed);
     if (cmd.handled) {
       if (cmd.action === 'clear') {

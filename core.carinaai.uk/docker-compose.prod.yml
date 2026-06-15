@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.carina
+    # Full stack: @carina/core + @carina/web (see packages/web, Dockerfile.carina)
     environment:
       NODE_ENV: production
       HOSTED_MODE: "true"
@@ -32,7 +33,9 @@ services:
     environment:
       NODE_ENV: production
       SKILLS_HUB_PORT: "3001"
+      SKILLS_HUB_URL: https://hub.carinaai.uk
       SKILLS_HUB_DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina_skills_hub
+      SKILLS_HUB_PUBLISH_KEY: ${SKILLS_HUB_PUBLISH_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,6 +50,7 @@ services:
       - "443:443"
     volumes:
       - ./docker/nginx/carina-prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/hub.carinaai.uk.conf:/etc/nginx/conf.d/hub.carinaai.uk.conf:ro
       - ./docs/.vitepress/dist:/var/www/docs:ro
       - ./public_website:/var/www/public_website:ro
       - /etc/carina/ssl:/etc/nginx/ssl:ro

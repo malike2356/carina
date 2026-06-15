@@ -12,7 +12,7 @@ import {
   type MigrationSource,
 } from '../../ops/migration/index.js';
 
-const SOURCES: MigrationSource[] = ['hermes', 'openclaw', 'claude'];
+const SOURCES: MigrationSource[] = ['claude'];
 
 function parseFlag(args: string[], name: string): string | undefined {
   const eq = args.find((a) => a.startsWith(`${name}=`));
@@ -44,7 +44,7 @@ export async function runMigrateCommand(args: string[]): Promise<void> {
   const action = positionalArgs(args)[0] ?? 'status';
 
   if (action === 'status') {
-    const scans = await scanMigrationSources();
+    const scans = (await scanMigrationSources()).filter((scan) => SOURCES.includes(scan.source) || scan.source === 'carina-bundle');
     if (json) {
       console.log(JSON.stringify(scans, null, 2));
       return;
@@ -55,7 +55,7 @@ export async function runMigrateCommand(args: string[]): Promise<void> {
       const hints = scan.hints.length > 0 ? ` (${scan.hints.join(', ')})` : '';
       console.log(`  ${scan.source.padEnd(14)} ${tag}  ${scan.dir}${hints}`);
     }
-    console.log('\nRun: carina migrate hermes|claude|openclaw [--dry-run] [--force]\n');
+    console.log('\nRun: carina migrate claude [--dry-run] [--force]\n');
     return;
   }
 
@@ -104,7 +104,7 @@ export async function runMigrateCommand(args: string[]): Promise<void> {
   }
 
   if (!SOURCES.includes(action as MigrationSource)) {
-    console.error('Usage: carina migrate <status|hermes|openclaw|claude|export|import> [--from PATH] [--dry-run] [--force] [--no-backup]');
+    console.error('Usage: carina migrate <status|claude|export|import> [--from PATH] [--dry-run] [--force] [--no-backup]');
     process.exit(1);
   }
 

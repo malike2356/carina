@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS inbound_emails (
   body_html TEXT,
   message_id TEXT UNIQUE,
   read BOOLEAN DEFAULT FALSE,
+  urgency TEXT DEFAULT 'normal',
+  triage_status TEXT DEFAULT 'inbox',
   received_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -406,6 +408,11 @@ SELECT * FROM (VALUES
 WHERE NOT EXISTS (SELECT 1 FROM ops_plan_model_classes LIMIT 1);
 `;
 
+const EMAIL_TRIAGE_MIGRATION = `
+ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS urgency TEXT DEFAULT 'normal';
+ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS triage_status TEXT DEFAULT 'inbox';
+`;
+
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(TABLES);
   try {
@@ -445,5 +452,10 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(OPS_METERING_MIGRATION);
   } catch {
     // ops metering tables may already exist
+  }
+  try {
+    await client.query(EMAIL_TRIAGE_MIGRATION);
+  } catch {
+    // triage columns may already exist
   }
 }

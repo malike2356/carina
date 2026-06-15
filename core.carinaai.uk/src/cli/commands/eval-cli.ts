@@ -124,12 +124,8 @@ export async function runEvalCommand(args: string[]): Promise<void> {
       console.error('Usage: carina eval generate <pack>');
       process.exit(1);
     }
-    const { PACK_REGISTRY } = await import('../../skills/index.js');
-    const registry = PACK_REGISTRY[pack];
-    if (!registry) {
-      console.error(`Unknown pack: ${pack}`);
-      process.exit(1);
-    }
+    const { resolvePack } = await import('../../skills/pack-resolver.js');
+    const registry = await resolvePack(pack);
     const def = buildEvalDefinitionFromPack(pack, registry.skills);
     if (parseFlag(args, '--write')) {
       const evalPath = path.join(BUILTIN_PACKS_DIR, pack, 'eval', 'eval.json');

@@ -1,6 +1,7 @@
 # Carina + Scout; Gap Analysis: Planned vs Built
 
 **Generated:** 14 June 2026
+**Last updated:** 15 June 2026 (Odysseus close prompts O1-O5, O7, O8)
 **Source:** Full audit of `/opt/lampp/htdocs/verlox/carina/instructions/` (130+ files) against the actual codebase
 **Method:** Read every instruction file, extracted every feature/endpoint/UI/module, cross-referenced against files on disk
 
@@ -130,17 +131,17 @@ These are the "Prompt 1-10" items from `instructions/gap-analysis/gap100.md`. Th
 
 ### C.3; Node Host, Pairing, Sandbox, Approvals (Prompt 3)
 
-**Entire section: NOT BUILT**; None of these modules exist on disk.
+Status: **PARTIAL.** O7 close prompt (15 June 2026) added daemon supervision and token pairing; legacy `carina pairing` and `src/infrastructure/host-service.ts` remain. Sandbox manager and approval daemon still missing.
 
 | Item | Status | Notes |
 |------|--------|-------|
-| [ ] Node host daemon mode (install/start/stop/restart/status/uninstall) | src/host/ does not exist |
-| [ ] Device pairing (token-based, approve/reject/revoke/rotate) | src/pairing/ does not exist |
-| [ ] QR code pairing for mobile onboarding | Not built |
-| [ ] Gateway-to-node communication (command dispatch, status, file transfer) | Not built |
-| [ ] Sandbox backend (create/list/recreate/explain/teardown) | Docker sandbox exists for code-exec; general sandbox manager does not |
-| [ ] Approval daemon (allow/block/approve-with-expiry, per-agent policy) | src/approvals/ does not exist |
-| [ ] Node/sandbox/approval visibility in CLI/ops | Not applicable (nothing to display) |
+| Node host daemon mode (install/start/stop/restart/status/uninstall) | [x] | `src/host/daemon.ts`, expanded `host-cli` (`install`, `start`, `stop`, `restart`, `status`, `uninstall`, `logs`, `supervise`); 6 tests |
+| Device pairing (token-based, approve/reject/revoke/rotate) | [x] | `src/pairing/pairing.ts`, `carina pair` CLI, `/api/pair/*` routes; legacy `/api/pairing/*` preserved; 7 tests |
+| QR code pairing for mobile onboarding | [x] | Terminal QR block in `pair-cli` |
+| Gateway-to-node communication (command dispatch, status, file transfer) | [~] | `src/infrastructure/host-service.ts`, `node-host/` predate O7; full mesh/file transfer not verified |
+| Sandbox backend (create/list/recreate/explain/teardown) | [~] | Docker sandbox exists for code-exec; general sandbox manager does not |
+| Approval daemon (allow/block/approve-with-expiry, per-agent policy) | [ ] | `src/approvals/` does not exist as standalone daemon |
+| Node/sandbox/approval visibility in CLI/ops | [~] | `carina host status/logs`; ops UI not updated |
 
 ### C.4; Plugin Ecosystem (Prompt 4)
 
@@ -217,8 +218,60 @@ These are the "Prompt 1-10" items from `instructions/gap-analysis/gap100.md`. Th
 |------|--------|-------|
 | [ ] /docs/capabilities as canonical inventory | docs exist but capability page not verified |
 | [ ] Runtime /help points to capabilities | Not verified |
-| [ ] Marketing copy audit (no overclaims) | Partially addressed |
-| [ ] Comparison/pricing pages honest | Not verified |
+| [~] Marketing copy audit (no overclaims) | Partially addressed; carinaai.uk updated with trust dashboard |
+| [~] Comparison/pricing pages honest | `carina about`, `docs/MIT-vs-AGPL.md`, web UI MIT footer added (O8) |
+
+---
+
+## SECTION H: ODYSSEUS PARITY CLOSE PROMPTS (ODYSSEUS_CLOSE_PROMPTS.md)
+
+Tracked separately from gap100.md (Section C). Source: `instructions/gap-analysis/ODYSSEUS_CLOSE_PROMPTS.md`.
+
+| Prompt | Feature | Priority | Status | Implementation notes |
+|--------|---------|----------|--------|---------------------|
+| O1 | `carina cookbook` (model discovery + serve) | P0 | [x] | `src/cookbook/` (hardware, catalog, recommender, serve); `carina cookbook` CLI; 15 tests |
+| O2 | Deep Research (named feature) | P0 | [x] | `src/agents/deep-research.ts`; `carina research` CLI; `/research` gateway command; 6 tests |
+| O3 | Model Compare | P1 | [x] | `src/agents/compare.ts`; `carina compare` CLI; `/compare` gateway command; blind mode; 6 tests |
+| O4 | Document Editor (web UI) | P2 | [x] | `src/gateway/documents-api.ts`, `documents-store.ts`, `/documents` page + `documents.js`; SQLite `carina_documents`; 6 tests |
+| O5 | Notes and Tasks surface | P2 | [x] | `notes-api`, `notes-store`, `reminder-delivery`, `/notes` UI; todo/cronjob sync; 8 tests |
+| O6 | Image Gallery surface | P2 | [x] | `images-api`, `images-store`, `images-provider`, `/images` UI; agent tool sync; 5 tests |
+| O7 | Node host daemon + device pairing | P1 | [x] | `src/host/daemon.ts`, `src/pairing/pairing.ts`, expanded `host-cli` + `pair-cli`; 13 tests |
+| O8 | MIT vs AGPL copy (commercial edge) | P1 | [x] | `carina about`; `carina --version` MIT line; `docs/MIT-vs-AGPL.md`; MIT footer on all web UI pages; "Why Carina" panel on chat index |
+
+### H.1; O1-O3 detail (named Odysseus-flagship features)
+
+| Capability | Odysseus parity | Carina surface | Status |
+|------------|-----------------|----------------|--------|
+| Model cookbook (hardware scan, catalog, serve commands) | First-class | `carina cookbook [list|search|inspect|serve]` | [x] |
+| Deep research (multi-step, cited report) | First-class | `carina research`, `/research` | [x] |
+| Model compare (parallel fan-out, blind mode) | First-class | `carina compare`, `/compare` | [x] |
+
+### H.2; O8 detail (MIT commercial story)
+
+| Surface | Status | Notes |
+|---------|--------|-------|
+| `carina about` | [x] | Version, MIT URL, AGPL contrast, docs/hosted/scout links |
+| `carina --version` | [x] | Includes `MIT License | Build commercial products freely` |
+| Web UI footer (all pages) | [x] | `packages/web/src/license-footer.ts` injected via `web-server.ts` |
+| Chat index "Why Carina" panel | [x] | Injected above `#chat-scroll` on main index |
+| `docs/MIT-vs-AGPL.md` | [x] | Factual AGPL vs MIT comparison for builders |
+
+### H.3; Odysseus workspace gaps (closed) and remaining polish
+
+| Gap | Status | What is still missing |
+|-----|--------|----------------------|
+| Document editor in web UI | [x] | `/documents` editor with auto-save, preview, export, AI assist (O4) |
+| Notes and tasks workspace | [x] | `/notes` with filters, task checkboxes, reminders, AI assist (O5) |
+| Image gallery + edit/inpaint | [x] | `/images` masonry gallery, generate, lightbox, inpaint, remove-bg (O6) |
+| Unified workspace polish | [x] | `/workspace` hub; shared sidebar shell on notes, documents, images, memory, packs; chat sidebar links |
+| Email assistant (Odysseus flagship) | [x] | `/email` triage UI; urgency, archive, spam; `email-api` on `inbound_emails` |
+| Hosted workspace parity | [x] | Workspace sidebar and user menu visible for BYOK hosted users; tenant-scoped notes/docs/images APIs |
+| Workspace themes | [x] | Light/dark toggle on workspace shell; syncs with chat via `carina_web_prefs` |
+| Calendar (reminder view) | [x] | `/calendar` month grid from note reminders (CalDAV deferred) |
+
+**Post-O8 focus:** Complete for operator and hosted UI parity. CalDAV sync remains future work.
+
+**Next recommended close order:** Per-tenant inbound email routing; CalDAV calendar sync; tool hardening (Section D).
 
 ---
 
@@ -308,31 +361,32 @@ Original audit found ~20% fulfillment. Current state:
 ### Priority 1: Code That's Missing (can build now)
 
 1. **pending_approvals DB migration**; Scout approval router exists but references a table with no migration (feature-approval-workflow.md)
-2. **Node host / device pairing**; Entire gap100.md Prompt 3 not started (node daemon, device pairing, sandbox manager, approval daemon)
-3. **TaskFlows / durable automation**; gap100.md Prompt 5 not started (workflow registry, task inspection, chaining)
-4. **ACP bridge**; Not built beyond /acp/prompt endpoint
-5. **Provider debug proxy**; Not built
-6. **Migration tools** (Hermes→Carina, Claude→Carina import); Not built
-7. **Comprehensive doctor/health command**; Scout doctor exists; Carina doctor incomplete
-8. **Secrets audit tool**; Not built
-9. **Channel hardening**; Thread ownership, DM allowlisting, directory lookup not implemented; WhatsApp/Signal/iMessage/Matrix/Mattermost/IRC channels not production-ready
-10. **Tool hardening tests**; 12 tools need try/catch wrapping and additional tests per action prompts
+2. **TaskFlows / durable automation**; gap100.md Prompt 5 not started (workflow registry, task inspection, chaining)
+3. **ACP bridge**; Not built beyond /acp/prompt endpoint
+4. **Provider debug proxy**; Not built
+5. **Migration tools** (Hermes→Carina, Claude→Carina import); Not built
+6. **Comprehensive doctor/health command**; Scout doctor exists; Carina doctor incomplete
+7. **Secrets audit tool**; Not built
+8. **Channel hardening**; Thread ownership, DM allowlisting, directory lookup not implemented; WhatsApp/Signal/iMessage/Matrix/Mattermost/IRC channels not production-ready
+9. **Tool hardening tests**; 12 tools need try/catch wrapping and additional tests per action prompts
+10. **Odysseus workspace surface O6**; Image gallery done: `/images`, API, agent tool sync (see Section H)
+11. **Approval daemon**; gap100.md Prompt 3; `src/approvals/` standalone daemon not built
 
 ### Priority 2: Configuration/Operator Actions (not code)
 
-11. **Live Stripe price IDs** for Carina Ops plans in production .env
-12. **Scout alert channel credentials** (email, Telegram, Slack, Discord) in production .env
-13. **First weekly labyrinth-scout.v1 attestation**; `pnpm trust:attest`
-14. **Base mainnet ERC-8004 registration**; `pnpm trust:register:mainnet`
-15. **Documentation site** (docs.carinaai.uk) with getting-started, capabilities, channel setup guides
+12. **Live Stripe price IDs** for Carina Ops plans in production .env
+13. **Scout alert channel credentials** (email, Telegram, Slack, Discord) in production .env
+14. **First weekly labyrinth-scout.v1 attestation**; `pnpm trust:attest`
+15. **Base mainnet ERC-8004 registration**; `pnpm trust:register:mainnet`
+16. **Documentation site** (docs.carinaai.uk) with getting-started, capabilities, channel setup guides
 
 ### Priority 3: Business/Marketing (not code)
 
-16. Enterprise pilot identification and outreach
-17. Privacy policy / ToS for org data
-18. Beta program launch
-19. Marketing pricing page update
-20. Clean install verification on fresh machine
+17. Enterprise pilot identification and outreach
+18. Privacy policy / ToS for org data
+19. Beta program launch
+20. Marketing pricing page update
+21. Clean install verification on fresh machine
 
 ### Already Built (from original gap list; no longer gaps)
 
@@ -348,6 +402,7 @@ Original audit found ~20% fulfillment. Current state:
 - Scout governance/approval/regulatory routers
 - Plugin manifest system (extensions/)
 - github-copilot in provider registry
+- **Odysseus parity O1-O5, O7, O8** (15 June 2026): cookbook, research, compare, documents, notes/tasks, node host daemon, device pairing, MIT commercial copy (see Section H)
 
 ---
 
@@ -359,6 +414,9 @@ Original audit found ~20% fulfillment. Current state:
 | instructions/action-prompts/feature-*.md | B |
 | instructions/action-prompts/tool-*.md | D |
 | instructions/gap-analysis/gap100.md | C |
+| instructions/gap-analysis/ODYSSEUS_CLOSE_PROMPTS.md | H |
+| instructions/gap-analysis/ODYSSEUS_2026-06-15.md | H |
+| instructions/gap-analysis/ODYSSEUS_ANALYSIS.md | H |
 | instructions/trust/TRUST_BUILD_CHECKLIST.md | F |
 | instructions/strategy/carina_scout_empty_promises_gap.md | G |
 | instructions/strategy/CARINA_OPS_IMPLEMENTATION_PLAN.md | A, E |

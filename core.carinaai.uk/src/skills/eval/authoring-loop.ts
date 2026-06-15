@@ -40,9 +40,11 @@ export async function runAuthoringLoop(
 
   if (options.writeEvalFile !== false) {
     notes.push('Phase 2: generating eval fixtures');
-    const { PACK_REGISTRY } = await import('../index.js');
-    const pack = PACK_REGISTRY[options.packName];
-    if (!pack) {
+    const { resolvePack } = await import('../pack-resolver.js');
+    let pack;
+    try {
+      pack = await resolvePack(options.packName);
+    } catch {
       return {
         phase: 'blocked',
         approved: false,

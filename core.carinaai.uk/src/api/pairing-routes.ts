@@ -5,6 +5,11 @@ import {
   createPairingCode,
   getPendingPairing,
 } from '../infrastructure/device-pairing.js';
+import {
+  acceptPairingToken,
+  listPairDevicesForApi,
+  revokePairDevice,
+} from '../pairing/pairing.js';
 import { isControlAuthorized } from '../infrastructure/control-auth.js';
 
 const claimLimiter = rateLimit({
@@ -62,5 +67,46 @@ export function mountPairingRoutes(app: Express): void {
       return;
     }
     res.json({ pending: { expiresAt: pending.expiresAt } });
+  });
+
+  app.post('/api/pair/accept', claimLimiter, (req: Request, res: Response) => {
+    const token = String(req.body?.token ?? '').trim();
+    const deviceName = String(req.body?.deviceName ?? req.body?.name ?? 'Paired device').trim();
+    if (!token) {
+      res.status(400).json({ error: 'token is required' });
+      return;
+    }
+    try {
+      const result = acceptPairingToken(token, deviceName);
+      res.json({
+        deviceId: result.deviceId,
+        status: result.status,
+        token: result.token,
+      });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/pair/devices', (req: Request, res: Response) => {
+    if (!isControlAuthorized(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    res.json(listPairDevicesForApi());
+  });
+
+  app.delete('/api/pair/devices/:id', (req: Request, res: Response) => {
+    if (!isControlAuthorized(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const id = String(req.params.id ?? '');
+    const ok = revokePairDevice(id);
+    if (!ok) {
+      res.status(404).json({ error: 'Device not found' });
+      return;
+    }
+    res.status(204).send();
   });
 }

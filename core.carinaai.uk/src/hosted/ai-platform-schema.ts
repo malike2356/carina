@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS ai_platform_workbench_runs (
   status TEXT NOT NULL DEFAULT 'draft',
   tokens_in INTEGER NOT NULL DEFAULT 0,
   tokens_out INTEGER NOT NULL DEFAULT 0,
+  tokens_cached INTEGER NOT NULL DEFAULT 0,
+  model_class TEXT,
+  credits_billed NUMERIC(18,6) NOT NULL DEFAULT 0,
   cost_estimate NUMERIC(12,6) NOT NULL DEFAULT 0,
   response_text TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -65,6 +68,10 @@ CREATE INDEX IF NOT EXISTS idx_ai_platform_models_org
   ON ai_platform_models (org_id);
 CREATE INDEX IF NOT EXISTS idx_ai_platform_workbench_runs_org
   ON ai_platform_workbench_runs (org_id, created_at DESC);
+
+ALTER TABLE ai_platform_workbench_runs ADD COLUMN IF NOT EXISTS tokens_cached INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE ai_platform_workbench_runs ADD COLUMN IF NOT EXISTS model_class TEXT;
+ALTER TABLE ai_platform_workbench_runs ADD COLUMN IF NOT EXISTS credits_billed NUMERIC(18,6) NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_ai_platform_environments_org
   ON ai_platform_environments (org_id);
 CREATE INDEX IF NOT EXISTS idx_ai_platform_deployments_org

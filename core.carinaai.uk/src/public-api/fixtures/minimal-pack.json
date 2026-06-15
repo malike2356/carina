@@ -1,0 +1,9 @@
+{
+  "name": "hello-world",
+  "version": "0.1.0",
+  "description": "Minimal fixture pack for stable API compatibility tests",
+  "author": "VERLOX Ltd",
+  "skillCount": 1,
+  "optional": true,
+  "category": "example"
+}

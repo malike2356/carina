@@ -16,6 +16,18 @@ action-prompts/carina-ops/
 
 Source plan: `../strategy/CARINA_OPS_IMPLEMENTATION_PLAN.md`. Run prompts in numeric order.
 
+## Carina kernel platform (2026-06)
+
+Build prompts for the "Carina as Linux kernel" plan live in:
+
+```
+action-prompts/carina-kernel/
+  README.md          Index and dependency order
+  00-*.md … 22-*.md  23 prompts (Phase 1 through Phase 4)
+```
+
+Source strategy: `CARINA_AS_LINUX.md` (repo root). Run prompts in numeric order.
+
 ## Input
 Read every file in `../prompt_description/` organized by phase:
 

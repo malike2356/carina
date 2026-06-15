@@ -28,6 +28,7 @@ npm package `carina-agent` is already live. Point its `repository` field at the 
 - `docker-compose.yml`, `docker-compose.prod.yml` (not `docker-compose.verlox.yml`)
 - `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `install.sh`
 - `README.md`, `README.cli.md`, `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`
+- `docs/kernel/` (STABLE_API, brand rules), `docs/rfc/` (RFC proposals)
 - `.env.example`, `.env.production.example`
 - GitHub Actions CI + npm publish workflows
 
@@ -38,8 +39,11 @@ npm package `carina-agent` is already live. Point its `repository` field at the 
 - `data/`, `dist/`, `node_modules/`, `.env`
 - `deploy.sh` (VPS IP and operator paths)
 - `docker-compose.verlox.yml` (references `ops.carinaai.uk` and Scout)
+- Scout server tree (`console.labyrinthscout.com/`) is never inside `core.carinaai.uk`; boundary check runs before export
 
 Edit `scripts/public-repo/.public-exportignore` to tune the list.
+
+The export includes optional workspace packages under `packages/` (`@verlox/carina-web`, `@verlox/carina-scout`, `@carina/pack-*`). It does **not** include the Scout server or VERLOX ops panel.
 
 ## Export and push (one-time setup)
 

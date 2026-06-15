@@ -1,0 +1,28 @@
+# Optional hello_lookup tool (tutorial advanced)
+
+This file shows a minimal tool definition using the stable `@carina/core/tool` API.
+Pack tools are not auto-registered in v0.2; npm-published packs wire tools in their package entry module.
+
+```typescript
+import { registerTool } from '@carina/core/tool';
+
+export function registerHelloPackTools(): void {
+  registerTool({
+    name: 'hello_lookup',
+    description: 'Return a demo greeting for a name (hello-pack tutorial)',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Name to greet' },
+      },
+      required: ['name'],
+    },
+    async execute(params) {
+      const name = String(params.name ?? 'friend');
+      return { greeting: `Hello, ${name}! (from hello-pack demo tool)` };
+    },
+  });
+}
+```
+
+For this tutorial, the `domain-greeting` skill works without a custom tool.

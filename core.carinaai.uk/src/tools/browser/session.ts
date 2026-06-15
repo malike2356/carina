@@ -1,4 +1,5 @@
 import type { Browser, BrowserContext, ConsoleMessage, Page } from 'playwright';
+import { tempFile } from '../../lib/platform-paths.js';
 import { assertNavigationAllowed } from './nav-guard.js';
 import type { SnapshotResult } from './snapshot.js';
 
@@ -276,7 +277,7 @@ export async function browserVision(
     const session = await getOrCreateSession(sessionId);
     const screenshot = await withTimeout(() => session.page.screenshot({ type: 'png' }));
     const { visionAnalyzeTool } = await import('../vision-analyze.js');
-    const tmpPath = `/tmp/carina-browser-${sessionId.replace(/[^a-z0-9-]/gi, '-')}.png`;
+    const tmpPath = tempFile(`carina-browser-${sessionId.replace(/[^a-z0-9-]/gi, '-')}.png`);
     const fs = await import('fs/promises');
     await fs.writeFile(tmpPath, screenshot);
     try {

@@ -1,4 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
+import fs from 'fs/promises';
+import os from 'os';
+import path from 'path';
 import { createTodoTool, getSessionTodos, clearSessionTodos } from './todo.js';
 
 const SESSION = 'test-session';
@@ -75,5 +78,24 @@ describe('todo tool', () => {
     expect(getSessionTodos(SESSION)[0].id).toBe('1');
     expect(getSessionTodos(SESSION_B)).toHaveLength(1);
     expect(getSessionTodos(SESSION_B)[0].id).toBe('2');
+  });
+
+  it('write syncs tasks into notes store', async () => {
+    const { configureNotesStore, listNotes, resetNotesStore } = await import('../gateway/notes-store.js');
+    const tmp = path.join(os.tmpdir(), `todo-sync-${Date.now()}`);
+    await fs.mkdir(tmp, { recursive: true });
+    resetNotesStore();
+    configureNotesStore({ dbPath: path.join(tmp, 'notes.db') });
+
+    const tool = createTodoTool(SESSION);
+    await tool.execute({
+      todos: [{ id: 'sync-1', content: 'Agent task item', status: 'pending' }],
+      merge: false,
+    });
+
+    const notes = listNotes('__operator__', 'task');
+    expect(notes.some((n) => n.externalId === `todo:${SESSION}:sync-1`)).toBe(true);
+    await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
+    resetNotesStore();
   });
 });

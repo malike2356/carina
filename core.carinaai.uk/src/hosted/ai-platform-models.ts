@@ -1,10 +1,12 @@
 import { queryForOrg } from './scoped-query.js';
+import { classifyModel } from '../billing/rate-card.js';
 
 export interface AiPlatformModel {
   id: string;
   provider: string;
   model: string;
   tier: string;
+  modelClass: string;
   isDefault: boolean;
   status: string;
   inputPrice: number;
@@ -13,11 +15,13 @@ export interface AiPlatformModel {
 }
 
 function mapModel(row: Record<string, unknown>): AiPlatformModel {
+  const model = String(row.model);
   return {
     id: String(row.id),
     provider: String(row.provider),
-    model: String(row.model),
+    model,
     tier: String(row.tier),
+    modelClass: classifyModel(model),
     isDefault: Boolean(row.is_default),
     status: String(row.status),
     inputPrice: Number(row.input_price),

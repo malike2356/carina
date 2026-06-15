@@ -3,6 +3,10 @@ import os from 'os';
 import path from 'path';
 import { expandPath, isSafePath, isBlockedSystemWrite, resolveWorkspacePath } from './path-utils.js';
 
+const tmpDir = os.tmpdir();
+const tmpFile = path.join(tmpDir, 'test.txt');
+const tmpOutput = path.join(tmpDir, 'output.txt');
+
 describe('expandPath', () => {
   it('expands ~/ to home directory', () => {
     expect(expandPath('~/documents/file.txt')).toBe(
@@ -11,7 +15,7 @@ describe('expandPath', () => {
   });
 
   it('leaves absolute paths unchanged', () => {
-    expect(expandPath('/tmp/test.txt')).toBe('/tmp/test.txt');
+    expect(expandPath(tmpFile)).toBe(tmpFile);
   });
 
   it('leaves relative paths unchanged', () => {
@@ -22,8 +26,9 @@ describe('expandPath', () => {
 describe('resolveWorkspacePath', () => {
   it('resolves relative paths against agent workspace when set', () => {
     const prev = process.env.CARINA_AGENT_WORKSPACE;
-    process.env.CARINA_AGENT_WORKSPACE = '/tmp/agent-ws';
-    expect(resolveWorkspacePath('notes.md')).toBe('/tmp/agent-ws/notes.md');
+    const ws = path.join(tmpDir, 'agent-ws');
+    process.env.CARINA_AGENT_WORKSPACE = ws;
+    expect(resolveWorkspacePath('notes.md')).toBe(path.join(ws, 'notes.md'));
     if (prev === undefined) delete process.env.CARINA_AGENT_WORKSPACE;
     else process.env.CARINA_AGENT_WORKSPACE = prev;
   });
@@ -31,7 +36,7 @@ describe('resolveWorkspacePath', () => {
 
 describe('isSafePath', () => {
   it('blocks path traversal with ..', () => {
-    expect(isSafePath('/tmp/../etc/passwd')).toBe(false);
+    expect(isSafePath(path.join(tmpDir, '..', 'etc', 'passwd'))).toBe(false);
     expect(isSafePath('../../etc/passwd')).toBe(false);
   });
 
@@ -48,8 +53,8 @@ describe('isSafePath', () => {
   });
 
   it('allows safe paths', () => {
-    expect(isSafePath('/tmp/test.txt')).toBe(true);
-    expect(isSafePath('/home/user/docs/report.md')).toBe(true);
+    expect(isSafePath(tmpFile)).toBe(true);
+    expect(isSafePath(path.join(os.homedir(), 'docs', 'report.md'))).toBe(true);
     expect(isSafePath('/opt/carina/data/output.txt')).toBe(true);
   });
 
@@ -63,7 +68,7 @@ describe('isBlockedSystemWrite', () => {
     expect(isBlockedSystemWrite('/etc/cron.d/carina')).toBe(true);
   });
 
-  it('allows writes to /tmp', () => {
-    expect(isBlockedSystemWrite('/tmp/output.txt')).toBe(false);
+  it('allows writes to the platform temp directory', () => {
+    expect(isBlockedSystemWrite(tmpOutput)).toBe(false);
   });
 });

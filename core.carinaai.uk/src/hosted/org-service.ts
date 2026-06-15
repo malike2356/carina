@@ -1,5 +1,6 @@
 import { pool } from '../memory/db.js';
 import { seedDefaultModelsForOrg } from './ai-platform-migrate.js';
+import { provisionCloudOrg } from './cloud-provisioner.js';
 import { writeProductAudit } from './product-audit.js';
 import type { OrgMembershipRow } from './org-types.js';
 
@@ -58,6 +59,7 @@ export async function createOrgForUser(
   );
 
   await seedDefaultModelsForOrg(orgId);
+  await provisionCloudOrg(orgId, userId);
 
   await writeProductAudit({
     orgId,

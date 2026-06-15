@@ -23,9 +23,9 @@ This is the **single authoritative page** for what Carina ships, what is optiona
 | **Scout** | Requires Labyrinth Scout (`LABYRINTH_ENABLED=true`) for live security telemetry |
 | **Unsupported** | Listed for compatibility; not wired for chat routing today |
 
-Counts below were verified against the agent runtime on **12 June 2026** and move as the codebase evolves.
-
 ## Current snapshot
+
+Carina ships **51 LLM providers** in its catalog; approximately 39 are chat-routable without extra configuration. Counts below were verified against the agent runtime on 12 June 2026 and move as the codebase evolves.
 
 | Metric | Count | Status |
 |---|---:|---|

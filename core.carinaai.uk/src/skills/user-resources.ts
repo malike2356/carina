@@ -3,7 +3,7 @@ import path from 'path';
 import { CARINA_RESOURCES_DIR } from '../config/paths.js';
 import { saveSkill, skillExistsByName } from './store.js';
 import { ingestPackDirectory } from './ingestion.js';
-import type { PackSkillInput } from './packs/property-uk/skills.js';
+import type { PackSkillInput } from './pack-types.js';
 
 export function getResourcesDir(): string {
   return CARINA_RESOURCES_DIR;

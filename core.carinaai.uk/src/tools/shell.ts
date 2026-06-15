@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { Tool } from '../types/index.js';
 import { runDirectShell, runInSandbox } from './sandbox.js';
+import { getShellDisplayName } from './platform.js';
 import { execInSessionSandbox, sessionSandboxEnabled, type SandboxSessionState } from '../infrastructure/sandbox-session.js';
 import { expandPath, isBlockedSystemWrite, isSafePath } from './path-utils.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
@@ -45,7 +46,7 @@ function resolveWorkdir(raw?: string): string | { error: string } | undefined {
 export const shellExecTool: Tool = {
   name: 'shell-exec',
   description:
-    'Execute a shell command and return stdout, stderr, and exit code. Supports foreground (default), background (background=true), and PTY mode (pty=true, requires CARINA_PTY_ENABLED=true). Set CARINA_DIRECT_SHELL=true in .env to run commands directly on the host (required for npm, git, pip, and file writes). Without it, commands run in a restricted Docker sandbox (alpine:latest, no network, read-only fs). workdir sets the working directory. Use background=true for long-running servers or builds.',
+    'Execute a shell command and return stdout, stderr, and exit code. Uses bash on Linux/macOS and PowerShell on Windows when CARINA_DIRECT_SHELL=true. Commands should use portable syntax where possible; on Windows, PowerShell cmdlets are available. Supports foreground (default), background (background=true), and PTY mode (pty=true, requires CARINA_PTY_ENABLED=true). Set CARINA_DIRECT_SHELL=true in .env to run commands directly on the host (required for npm, git, pip, and file writes). Without it, commands run in a restricted Docker sandbox (alpine:latest, no network, read-only fs). workdir sets the working directory. Use background=true for long-running servers or builds.',
   parameters: {
     type: 'object',
     properties: {
@@ -172,6 +173,9 @@ export const shellExecTool: Tool = {
       stderr: truncateShellOutput(result.stderr),
       exitCode: result.exitCode,
     };
+    if (useDirectShell) {
+      payload.shell = getShellDisplayName();
+    }
     if ('sandbox' in result && result.sandbox) {
       const sandbox = result.sandbox as SandboxSessionState;
       payload.sandbox = {

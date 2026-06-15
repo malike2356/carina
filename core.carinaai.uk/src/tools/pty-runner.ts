@@ -1,5 +1,6 @@
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
+import { getPlatformShell, normaliseLf } from './platform.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -20,6 +21,15 @@ export async function runPtyCommand(
     throw new Error('PTY requires CARINA_PTY_SCOUT_ALLOW=true when Labyrinth Scout is enabled.');
   }
 
+  try {
+    return await runViaNodePty(command, workdir, timeoutMs);
+  } catch (err) {
+    if (process.platform === 'win32') {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`PTY on Windows requires node-pty: ${msg}`);
+    }
+  }
+
   const hasScript = await probeBinary('script', ['--version']);
   if (hasScript) {
     return runViaScript(command, workdir, timeoutMs);
@@ -30,7 +40,49 @@ export async function runPtyCommand(
     return runViaPythonPty(command, workdir, timeoutMs);
   }
 
-  throw new Error('PTY requires `script` or `python3` on the host.');
+  throw new Error('PTY requires node-pty, `script`, or `python3` on the host.');
+}
+
+async function runViaNodePty(
+  command: string,
+  workdir?: string,
+  timeoutMs = 30_000,
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const pty = await import('node-pty');
+  const shell = getPlatformShell();
+
+  return new Promise((resolve, reject) => {
+    let output = '';
+    let settled = false;
+
+    const term = pty.spawn(shell.command, shell.args(command), {
+      name: 'xterm-256color',
+      cols: 80,
+      rows: 24,
+      cwd: workdir ?? process.cwd(),
+      env: { ...process.env, TERM: 'xterm-256color' } as Record<string, string>,
+    });
+
+    const finish = (result: { stdout: string; stderr: string; exitCode: number }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+
+    const timer = setTimeout(() => {
+      term.kill();
+      finish({ stdout: normaliseLf(output), stderr: 'PTY command timed out', exitCode: -1 });
+    }, timeoutMs);
+
+    term.onData((data) => {
+      output += data;
+    });
+
+    term.onExit(({ exitCode }) => {
+      finish({ stdout: normaliseLf(output), stderr: '', exitCode: exitCode ?? 0 });
+    });
+  });
 }
 
 async function probeBinary(cmd: string, args: string[]): Promise<boolean> {

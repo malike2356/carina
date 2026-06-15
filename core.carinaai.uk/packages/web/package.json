@@ -1,0 +1,65 @@
+{
+  "name": "@verlox/carina-web",
+  "version": "0.2.0",
+  "description": "Carina web gateway and dashboard UI (optional add-on for @verlox/carina-core)",
+  "homepage": "https://carinaai.uk",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "assets/",
+    "public/",
+    "README.md",
+    "LICENSE"
+  ],
+  "imports": {
+    "#core/*": "@verlox/carina-core/internal/*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-web-assets.mjs",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@verlox/carina-core": "^0.2.0"
+  },
+  "devDependencies": {
+    "@verlox/carina-core": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/express-session": "^1.18.1",
+    "typescript": "^5.8.2",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.1"
+  },
+  "keywords": [
+    "carina",
+    "web",
+    "gateway",
+    "dashboard"
+  ],
+  "author": "VERLOX Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/malike2356/carina-agent.git",
+    "directory": "packages/web"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

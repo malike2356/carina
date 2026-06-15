@@ -1,6 +1,7 @@
 import type { Tool } from '../types/index.js';
 import type { ConfirmFn } from '../agents/tool-runner.js';
-import { checkDocker, runCodeInSandbox } from './sandbox.js';
+import { checkDocker } from './sandbox.js';
+import { runInSandbox, type SandboxResult as FactorySandboxResult } from '../sandbox/sandbox-factory.js';
 import {
   BRIDGE_TIMEOUT_MS,
   detectLanguage,
@@ -17,7 +18,7 @@ export const codeExecTool: Tool = {
   name: 'code-exec',
   dangerous: true,
   description:
-    'Execute JavaScript or Python code and return the output. Docker required for Python (python:3.12-alpine) and for JS isolation (node:22-alpine); falls back to Node.js vm sandbox for JS when Docker is unavailable (no console.log in vm mode - use return value instead). Timeout: 5 minutes with Docker bridge (carina_tools module available for file-read, file-write, search-files, patch, shell-exec); 5 seconds in vm fallback. No network access. Code using import, require, or process triggers a confirmation prompt. Language is auto-detected: Python if the code starts lines with def, import, from, or print(; JavaScript otherwise.',
+    'Execute JavaScript or Python code in a sandboxed environment. JavaScript runs in a worker_threads sandbox on all platforms when Docker is unavailable (console.log supported; weaker isolation than Docker). Python requires Docker to be installed and running. Docker provides stronger isolation and enables the carina_tools bridge (file-read, file-write, search-files, patch, shell-exec) with a 5 minute timeout; worker_threads fallback uses a 5 second timeout. worker_threads cannot fully restrict filesystem or network access; do not use for untrusted multi-tenant input. Code using import, require, or process triggers a confirmation prompt. Language is auto-detected: Python if the code starts lines with def, import, from, or print(; JavaScript otherwise.',
   parameters: {
     type: 'object',
     properties: {
@@ -47,20 +48,27 @@ export const codeExecTool: Tool = {
 
     const result = useBridge
       ? await runCodeWithBridge({ code, language, sessionId, confirm, workdir })
-      : await runCodeInSandbox(code, language, {
-          timeout: LEGACY_TIMEOUT_MS,
+      : await runInSandbox(code, language, LEGACY_TIMEOUT_MS, {
           memoryMb: 128,
           networkDisabled: true,
           workdir,
         });
 
     const stdout = truncateCodeOutput(result.stdout);
+    const sandboxTier = useBridge
+      ? 'docker' as const
+      : (result as FactorySandboxResult).sandboxTier;
+    const durationMs = useBridge
+      ? Date.now() - start
+      : (result as FactorySandboxResult).durationMs;
     return {
       output: result.exitCode === 0 ? stdout : null,
       error: result.exitCode !== 0 ? result.stderr || stdout : null,
       exitCode: result.exitCode,
       executionTime: Date.now() - start,
       bridge: useBridge,
+      sandboxTier,
+      durationMs,
       timeoutMs: useBridge ? BRIDGE_TIMEOUT_MS : LEGACY_TIMEOUT_MS,
     };
   },

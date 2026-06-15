@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Workbench</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Workbench</h2>
+      <p style="margin-bottom:12px;">Run prompts with your Vault BYOK keys or managed platform inference when enabled.</p>
+      <div class="form-row">
+        <label for="class-select">Model class</label>
+        <select id="class-select">
+          <option value="">All allowed classes</option>
+          <option value="mini">Mini</option>
+          <option value="balanced">Balanced</option>
+          <option value="premium">Premium</option>
+          <option value="frontier">Frontier</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="model-select">Model</label>
+        <select id="model-select"><option value="">Loading models...</option></select>
+      </div>
+      <div class="form-row">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" placeholder="Enter your prompt..."></textarea>
+      </div>
+      <div class="card" id="estimate-panel" style="margin-top:12px;padding:12px;background:var(--surface-2, rgba(255,255,255,0.04));">
+        <h3 style="margin:0 0 8px;font-size:1rem;">Pre-run estimate</h3>
+        <p class="placeholder" id="estimate-status">Select a model and enter a prompt to preview usage.</p>
+        <dl id="estimate-details" hidden style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:0.9rem;">
+          <dt>Model class</dt><dd id="est-class">-</dd>
+          <dt>Inference</dt><dd id="est-inference">-</dd>
+          <dt>Est. credits</dt><dd id="est-credits">-</dd>
+          <dt>Remaining credits</dt><dd id="est-remaining">-</dd>
+          <dt>Plan usage</dt><dd id="est-percent">-</dd>
+          <dt>Provider cost (est.)</dt><dd id="est-cost">-</dd>
+        </dl>
+        <p class="error-msg" id="estimate-blocked" hidden></p>
+      </div>
+      <button class="btn" id="run-btn" type="button" disabled>Run</button>
+      <p class="placeholder" id="byok-note" style="margin-top:8px;">Inference mode is chosen automatically: Vault BYOK when configured, otherwise managed credits when available.</p>
+      <p class="error-msg" id="run-error" hidden></p>
+    </div>
+    <div class="card" id="result-card" hidden>
+      <h2>Result</h2>
+      <pre class="details-pre" id="result-text"></pre>
+      <p class="placeholder" id="result-meta"></p>
+    </div>
+    <div class="card">
+      <h2>Recent runs</h2>
+      <div id="runs-list"><p class="placeholder">No runs yet.</p></div>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    let models = [];
+    let allowedClasses = [];
+    let latestEstimate = null;
+    let estimateTimer = null;
+
+    function parseSelection(value) {
+      if (!value) return null;
+      const [provider, model] = value.split('|');
+      return provider && model ? { provider, model } : null;
+    }
+
+    function modelsForClass(classFilter) {
+      const active = models.filter((m) => m.status === 'active');
+      if (!classFilter) {
+        return active.filter((m) => !m.modelClass || allowedClasses.includes(m.modelClass));
+      }
+      return active.filter((m) => m.modelClass === classFilter && allowedClasses.includes(classFilter));
+    }
+
+    function renderModelOptions() {
+      const select = document.getElementById('model-select');
+      const classFilter = document.getElementById('class-select').value;
+      const filtered = modelsForClass(classFilter);
+      if (!filtered.length) {
+        select.innerHTML = '<option value="">No models in this class</option>';
+        select.value = '';
+        return;
+      }
+      select.innerHTML = filtered.map((m) => {
+        const value = `${m.provider}|${m.model}`;
+        const cls = m.modelClass ? ` [${m.modelClass}]` : '';
+        const label = `${m.provider} / ${m.model}${cls}${m.isDefault ? ' (default)' : ''}`;
+        return `<option value="${CarinaOpsLayout.escapeHtml(value)}">${CarinaOpsLayout.escapeHtml(label)}</option>`;
+      }).join('');
+    }
+
+    function formatCredits(value) {
+      if (value == null) return 'Unlimited';
+      return Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
+    function updateRunButton() {
+      const btn = document.getElementById('run-btn');
+      const selection = parseSelection(document.getElementById('model-select').value);
+      const prompt = document.getElementById('prompt').value.trim();
+      const blocked = latestEstimate && latestEstimate.allowed === false;
+      btn.disabled = !selection || !prompt || blocked;
+    }
+
+    function renderEstimate(data) {
+      latestEstimate = data;
+      const statusEl = document.getElementById('estimate-status');
+      const detailsEl = document.getElementById('estimate-details');
+      const blockedEl = document.getElementById('estimate-blocked');
+      blockedEl.hidden = true;
+      if (!data) {
+        statusEl.textContent = 'Select a model and enter a prompt to preview usage.';
+        detailsEl.hidden = true;
+        updateRunButton();
+        return;
+      }
+      if (data.allowed) {
+        statusEl.textContent = 'This run is allowed on your plan.';
+        detailsEl.hidden = false;
+        document.getElementById('est-class').textContent = data.modelClass;
+        const inferenceLabel = data.inferenceMode === 'managed'
+          ? 'Managed (credits billed)'
+          : data.inferenceMode === 'byok'
+            ? 'BYOK (0 credits billed)'
+            : (data.byok ? 'BYOK (0 credits billed)' : 'Managed (credits billed)');
+        document.getElementById('est-inference').textContent = inferenceLabel;
+        document.getElementById('est-credits').textContent = formatCredits(data.estimatedCredits);
+        document.getElementById('est-remaining').textContent = formatCredits(data.remainingCredits);
+        document.getElementById('est-percent').textContent = data.percentUsed == null ? '-' : `${data.percentUsed}%`;
+        document.getElementById('est-cost').textContent = `$${Number(data.estimatedProviderCostUsd || 0).toFixed(4)}`;
+      } else {
+        statusEl.textContent = 'This run is blocked.';
+        detailsEl.hidden = false;
+        document.getElementById('est-class').textContent = data.modelClass || '-';
+        const blockedInferenceLabel = data.inferenceMode === 'managed'
+          ? 'Managed (credits billed)'
+          : data.inferenceMode === 'byok'
+            ? 'BYOK (0 credits billed)'
+            : (data.byok ? 'BYOK (0 credits billed)' : 'Managed (credits billed)');
+        document.getElementById('est-inference').textContent = blockedInferenceLabel;
+        document.getElementById('est-credits').textContent = formatCredits(data.estimatedCredits);
+        document.getElementById('est-remaining').textContent = formatCredits(data.remainingCredits);
+        document.getElementById('est-percent').textContent = data.percentUsed == null ? '-' : `${data.percentUsed}%`;
+        document.getElementById('est-cost').textContent = `$${Number(data.estimatedProviderCostUsd || 0).toFixed(4)}`;
+        blockedEl.textContent = data.gateReason || 'Run not allowed on your plan.';
+        blockedEl.hidden = false;
+      }
+      updateRunButton();
+    }
+
+    async function fetchEstimate() {
+      const selection = parseSelection(document.getElementById('model-select').value);
+      const prompt = document.getElementById('prompt').value;
+      if (!selection) {
+        renderEstimate(null);
+        return;
+      }
+      document.getElementById('estimate-status').textContent = 'Calculating estimate...';
+      try {
+        const res = await fetch('/api/carina-ops/workbench/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt,
+            provider: selection.provider,
+            model: selection.model,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data) {
+          renderEstimate(null);
+          document.getElementById('estimate-status').textContent = 'Unable to load estimate.';
+          return;
+        }
+        renderEstimate(data);
+      } catch {
+        renderEstimate(null);
+        document.getElementById('estimate-status').textContent = 'Unable to load estimate.';
+      }
+    }
+
+    function scheduleEstimate() {
+      if (estimateTimer) clearTimeout(estimateTimer);
+      estimateTimer = setTimeout(() => { fetchEstimate(); }, 350);
+    }
+
+    async function loadModels() {
+      const select = document.getElementById('model-select');
+      const res = await fetch('/api/carina-ops/models');
+      if (!res.ok) {
+        select.innerHTML = '<option value="">Failed to load models</option>';
+        return;
+      }
+      const data = await res.json();
+      models = data.models || [];
+      allowedClasses = data.allowedClasses || [];
+      if (!models.length) {
+        select.innerHTML = '<option value="">No models configured</option>';
+        return;
+      }
+      renderModelOptions();
+      scheduleEstimate();
+    }
+
+    async function loadRuns() {
+      const res = await fetch('/api/carina-ops/workbench/runs?limit=10');
+      const container = document.getElementById('runs-list');
+      if (!res.ok) {
+        container.innerHTML = '<p class="placeholder">Unable to load runs.</p>';
+        return;
+      }
+      const data = await res.json();
+      const runs = data.runs || [];
+      if (!runs.length) {
+        container.innerHTML = '<p class="placeholder">No runs yet.</p>';
+        return;
+      }
+      container.innerHTML = runs.map((run) => {
+        const when = new Date(run.createdAt).toLocaleString();
+        const cls = run.modelClass ? ` &middot; ${CarinaOpsLayout.escapeHtml(run.modelClass)}` : '';
+        const credits = run.creditsBilled != null ? ` &middot; ${run.creditsBilled} credits billed` : '';
+        return `<div class="run-item"><strong>${CarinaOpsLayout.escapeHtml(run.title)}</strong> &middot; ${CarinaOpsLayout.escapeHtml(run.provider)}/${CarinaOpsLayout.escapeHtml(run.model)}${cls} &middot; ${CarinaOpsLayout.escapeHtml(run.status)}<br><span class="placeholder">${when} &middot; in ${run.tokensIn} / out ${run.tokensOut}${run.tokensCached ? ` / cached ${run.tokensCached}` : ''}${credits}</span></div>`;
+      }).join('');
+    }
+
+    async function runPrompt() {
+      const errEl = document.getElementById('run-error');
+      errEl.hidden = true;
+      const selected = document.getElementById('model-select').value;
+      const prompt = document.getElementById('prompt').value.trim();
+      if (!selected || !prompt) {
+        errEl.textContent = 'Select a model and enter a prompt.';
+        errEl.hidden = false;
+        return;
+      }
+      if (latestEstimate && latestEstimate.allowed === false) {
+        errEl.textContent = latestEstimate.gateReason || 'This run is blocked on your plan.';
+        errEl.hidden = false;
+        return;
+      }
+      const [provider, model] = selected.split('|');
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+      try {
+        const res = await fetch('/api/carina-ops/workbench/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, provider, model }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          errEl.textContent = data.error || data.reason || 'Run failed';
+          errEl.hidden = false;
+          return;
+        }
+        document.getElementById('result-card').hidden = false;
+        document.getElementById('result-text').textContent = data.responseText || '';
+        const parts = [];
+        if (data.modelClass) parts.push(`class ${data.modelClass}`);
+        parts.push(`in ${data.tokensIn ?? 0} / out ${data.tokensOut ?? 0} tokens`);
+        if (data.tokensCached) parts.push(`cached ${data.tokensCached}`);
+        const mode = data.inferenceMode || (Number(data.creditsBilled ?? 0) > 0 ? 'managed' : 'byok');
+        if (mode === 'managed') {
+          parts.push(`${Number(data.creditsBilled ?? 0).toFixed(2)} credits billed`);
+        } else {
+          parts.push('0 credits billed (BYOK)');
+        }
+        if (data.costEstimate != null) parts.push(`provider est. $${Number(data.costEstimate).toFixed(4)}`);
+        document.getElementById('result-meta').textContent = parts.join(' · ');
+        await loadRuns();
+        scheduleEstimate();
+      } finally {
+        btn.textContent = 'Run';
+        updateRunButton();
+      }
+    }
+
+    CarinaOpsLayout.initPage('workbench', {
+      onReady: async () => {
+        await loadModels();
+        await loadRuns();
+        document.getElementById('run-btn').addEventListener('click', runPrompt);
+        document.getElementById('model-select').addEventListener('change', scheduleEstimate);
+        document.getElementById('class-select').addEventListener('change', () => {
+          renderModelOptions();
+          scheduleEstimate();
+        });
+        document.getElementById('prompt').addEventListener('input', scheduleEstimate);
+      },
+    });
+  </script>
+</body>
+</html>

@@ -1,7 +1,12 @@
 import pg from 'pg';
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { config } from '../../config/index.js';
 
 export const hubPool = new pg.Pool({ connectionString: config.hub.databaseUrl });
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const HUB_SCHEMA = `
 CREATE TABLE IF NOT EXISTS skill_packs (
@@ -43,4 +48,9 @@ ALTER TABLE skill_packs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT 
 export async function initHubDb(): Promise<void> {
   await hubPool.query(HUB_SCHEMA);
   await hubPool.query(HUB_ALTER);
+  const premiumSql = await fs.readFile(
+    path.join(__dirname, 'migrations/002-premium-packs.sql'),
+    'utf8',
+  );
+  await hubPool.query(premiumSql);
 }

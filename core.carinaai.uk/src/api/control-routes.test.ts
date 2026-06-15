@@ -79,4 +79,32 @@ describe('control-routes', () => {
     const devicesBody = await devicesRes.json() as { devices: Array<{ id: string }> };
     expect(devicesBody.devices.some((d) => d.id === claimBody.deviceId)).toBe(true);
   });
+
+  it('accepts O7 token pairing via /api/pair/accept', async () => {
+    const { createPairingToken } = await import('../pairing/pairing.js');
+    const session = createPairingToken();
+
+    const acceptRes = await fetch(`http://127.0.0.1:${port}/api/pair/accept`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ token: session.token, deviceName: 'O7 Phone' }),
+    });
+    expect(acceptRes.status).toBe(200);
+    const acceptBody = await acceptRes.json() as { deviceId: string; status: string };
+    expect(acceptBody.status).toBe('paired');
+    expect(acceptBody.deviceId).toBeTruthy();
+
+    const listRes = await fetch(`http://127.0.0.1:${port}/api/pair/devices`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(listRes.status).toBe(200);
+    const listBody = await listRes.json() as Array<{ id: string; name: string }>;
+    expect(listBody.some((d) => d.id === acceptBody.deviceId && d.name === 'O7 Phone')).toBe(true);
+
+    const delRes = await fetch(`http://127.0.0.1:${port}/api/pair/devices/${acceptBody.deviceId}`, {
+      method: 'DELETE',
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(delRes.status).toBe(204);
+  });
 });

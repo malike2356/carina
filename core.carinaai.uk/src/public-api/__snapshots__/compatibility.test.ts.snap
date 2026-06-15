@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`pack manifest compatibility > matches required field snapshot (breaking change needs major bump) 1`] = `
+[
+  "name",
+  "version",
+  "description",
+  "author",
+  "skillCount",
+]
+`;

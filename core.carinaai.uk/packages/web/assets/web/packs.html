@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Skill Packs; Carina</title>
+<style>
+  :root {
+    --bg: #111318; --surface: #181b22; --border: #262a34;
+    --text: #e8eaef; --muted: #7a8296; --accent: #8b9dc3;
+    --accent-soft: rgba(139,157,195,0.12); --success: #6ee7a0;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  .top-nav { margin-bottom: 1.5rem; }
+  .top-nav a {
+    color: var(--muted); text-decoration: none; font-size: 0.82rem;
+  }
+  .top-nav a:hover { color: var(--text); }
+  h1 { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.35rem; }
+  .subtitle { color: var(--muted); font-size: 0.84rem; margin-bottom: 1.25rem; }
+  .footnote {
+    color: var(--muted); font-size: 0.75rem; margin-bottom: 1rem; line-height: 1.45;
+  }
+  .footnote code {
+    font-size: 0.72rem; background: var(--surface); padding: 0.1rem 0.3rem; border-radius: 4px;
+  }
+  .toolbar {
+    display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .search {
+    flex: 1; min-width: 180px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.55rem 0.75rem; color: var(--text); font-size: 0.84rem;
+  }
+  .search::placeholder { color: var(--muted); }
+  .tabs { display: flex; gap: 0.25rem; }
+  .tab {
+    padding: 0.45rem 0.85rem; cursor: pointer; color: var(--muted);
+    border-radius: 8px; font-size: 0.82rem; border: none; background: transparent;
+  }
+  .tab:hover { color: var(--text); background: var(--surface); }
+  .tab.active { color: var(--text); background: var(--surface); border: 1px solid var(--border); }
+  .list { display: flex; flex-direction: column; gap: 0.45rem; }
+  .row {
+    display: grid; grid-template-columns: 1fr auto; gap: 0.75rem 1rem;
+    align-items: center; padding: 0.85rem 1rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .row.installed { border-color: rgba(110,231,160,0.25); }
+  .row-main { min-width: 0; }
+  .row-title {
+    display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
+    font-size: 0.92rem; font-weight: 500; margin-bottom: 0.2rem;
+  }
+  .row-title .slug { color: var(--text); }
+  .row-title .count { color: var(--muted); font-size: 0.75rem; font-weight: 400; }
+  .row-desc {
+    color: var(--muted); font-size: 0.78rem; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .row-actions { display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0; }
+  button, .btn-link {
+    background: transparent; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 7px; padding: 0.35rem 0.65rem; font-size: 0.76rem; cursor: pointer;
+    text-decoration: none; white-space: nowrap;
+  }
+  button:hover, .btn-link:hover { color: var(--text); border-color: #3a4050; }
+  button.primary {
+    color: var(--text); border-color: #3a4050; background: var(--accent-soft);
+  }
+  button.primary:hover { border-color: var(--accent); }
+  button.danger { color: #c97a7a; border-color: transparent; }
+  button.danger:hover { border-color: rgba(201,122,122,0.35); color: #e0a0a0; }
+  .status-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0;
+  }
+  .status-dot.on { background: var(--success); }
+  .empty { text-align: center; color: var(--muted); padding: 2.5rem 1rem; font-size: 0.85rem; }
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 10; justify-content: center; align-items: center; padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.25rem; width: 100%; max-width: 480px;
+  }
+  .modal h2 { font-size: 1rem; margin-bottom: 0.75rem; font-weight: 600; }
+  .modal label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 0.35rem; }
+  .modal textarea {
+    width: 100%; min-height: 120px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; resize: vertical;
+    font-family: ui-monospace, monospace; font-size: 0.8rem;
+  }
+  .modal .btn-row { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+  .custom-panel { margin-top: 0.25rem; }
+  .dropzone {
+    border: 1px dashed var(--border); border-radius: 10px; padding: 1.5rem;
+    text-align: center; color: var(--muted); font-size: 0.8rem; margin-bottom: 0.85rem;
+  }
+  .dropzone.dragover { border-color: var(--accent); background: var(--accent-soft); }
+  .custom-actions { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; }
+  #reloadStatus { font-size: 0.76rem; color: var(--muted); }
+  .hint { font-size: 0.76rem; color: var(--muted); margin-bottom: 0.85rem; line-height: 1.45; }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header"><h1>Skill Packs</h1></header>
+<div class="ws-scroll-page">
+<p class="subtitle">Domain skill bundles for this Carina instance</p>
+<p class="footnote" id="operator-note" hidden>
+  Changes here apply immediately. No .env edit or restart required.
+</p>
+
+<div class="toolbar">
+  <input class="search" id="packSearch" type="search" placeholder="Filter packs..." autocomplete="off">
+  <div class="tabs">
+    <button class="tab active" data-tab="available" type="button" onclick="switchTab('available')">Browse</button>
+    <button class="tab" data-tab="installed" type="button" onclick="switchTab('installed')">Active</button>
+    <button class="tab" data-tab="custom" type="button" onclick="switchTab('custom')">Upload</button>
+  </div>
+</div>
+
+<div id="packPanel">
+  <div class="list" id="packGrid"></div>
+</div>
+
+<div id="customPanel" class="custom-panel" hidden>
+  <p class="hint">Drop skill JSON or knowledge markdown. Saved to <code>~/.carina/resources/</code>, then reload.</p>
+  <div class="dropzone" id="dropzone">
+    Drop files here or <label style="cursor:pointer;color:var(--text)"><input type="file" id="fileInput" multiple accept=".json,.md,.txt" hidden>choose files</label>
+  </div>
+  <div class="custom-actions">
+    <button class="primary" type="button" onclick="reloadCustom()">Reload into Carina</button>
+    <span id="reloadStatus"></span>
+  </div>
+  <div class="list" id="customFileList"></div>
+</div>
+
+<div class="modal-overlay" id="configModal">
+  <div class="modal">
+    <h2 id="configTitle">Configure pack</h2>
+    <label for="configJson">Configuration (JSON)</label>
+    <textarea id="configJson">{}</textarea>
+    <div class="btn-row">
+      <button type="button" onclick="closeConfig()">Cancel</button>
+      <button class="primary" type="button" onclick="saveConfig()">Save</button>
+    </div>
+  </div>
+</div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script>
+const API = '/api/packs';
+let activeTab = 'available';
+let availablePacks = [];
+let installedPacks = [];
+let configPackName = '';
+let filterQuery = '';
+let operatorHint = '';
+
+async function loadAvailable() {
+  try {
+    const res = await fetch(`${API}/available`);
+    if (!res.ok) throw new Error('unavailable');
+    availablePacks = (await res.json()).packs || [];
+  } catch { availablePacks = []; }
+}
+
+async function loadInstalled() {
+  try {
+    const res = await fetch(`${API}/installed`);
+    if (!res.ok) throw new Error('unavailable');
+    const data = await res.json();
+    installedPacks = data.installed || [];
+    operatorHint = data.operatorHint || '';
+  } catch { installedPacks = []; }
+}
+
+async function loadContext() {
+  try {
+    const res = await fetch('/api/web/context');
+    if (!res.ok) return;
+    const ctx = await res.json();
+    if (ctx.mode !== 'hosted') {
+      document.getElementById('operator-note').hidden = false;
+    }
+  } catch {}
+}
+
+function isInstalled(name) {
+  return installedPacks.some((p) => p.pack_name === name && p.status === 'installed');
+}
+
+function matchesFilter(text) {
+  if (!filterQuery) return true;
+  return text.toLowerCase().includes(filterQuery);
+}
+
+function packRow(name, desc, skillCount, installed, actionsHtml) {
+  return `
+    <div class="row${installed ? ' installed' : ''}">
+      <div class="row-main">
+        <div class="row-title">
+          <span class="status-dot${installed ? ' on' : ''}" title="${installed ? 'Active' : 'Not active'}"></span>
+          <span class="slug">${esc(name)}</span>
+          <span class="count">${skillCount} skill${skillCount === 1 ? '' : 's'}</span>
+        </div>
+        ${desc ? `<div class="row-desc">${esc(desc)}</div>` : ''}
+      </div>
+      <div class="row-actions">${actionsHtml}</div>
+    </div>`;
+}
+
+function renderAvailable() {
+  const grid = document.getElementById('packGrid');
+  const filtered = availablePacks.filter((p) =>
+    matchesFilter([p.name, p.description, p.author].join(' ')),
+  );
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">' + (filterQuery ? 'No packs match your filter.' : 'No packs available') + '</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map((p) => {
+    const inst = isInstalled(p.name);
+    const actions = inst
+      ? `<button type="button" onclick='configurePack(${JSON.stringify(p.name)})'>Config</button>
+         <button type="button" class="danger" onclick='uninstallPack(${JSON.stringify(p.name)})'>Remove</button>`
+      : `<button type="button" class="primary" onclick='installPack(${JSON.stringify(p.name)})'>Enable</button>`;
+    return packRow(p.name, p.description, p.skill_count || 0, inst, actions);
+  }).join('');
+}
+
+function renderInstalled() {
+  const grid = document.getElementById('packGrid');
+  const byName = new Map(availablePacks.map((p) => [p.name, p]));
+  const filtered = installedPacks.filter((p) =>
+    matchesFilter([p.pack_name, byName.get(p.pack_name)?.description || ''].join(' ')),
+  );
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">' + (filterQuery ? 'No active packs match your filter.' : 'No packs active yet.') + '</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map((p) => {
+    const meta = byName.get(p.pack_name);
+    const actions = `<button type="button" onclick='configurePack(${JSON.stringify(p.pack_name)})'>Config</button>
+      <button type="button" class="danger" onclick='uninstallPack(${JSON.stringify(p.pack_name)})'>Remove</button>`;
+    return packRow(p.pack_name, meta?.description || '', meta?.skill_count || 0, true, actions);
+  }).join('');
+}
+
+async function installPack(name) {
+  const res = await fetch(`${API}/${encodeURIComponent(name)}/install`, { method: 'POST' });
+  if (res.ok) { await loadInstalled(); renderCurrent(); return; }
+  alert((await res.json().catch(() => ({}))).error || 'Enable failed');
+}
+
+async function uninstallPack(name) {
+  if (!confirm(`Remove "${name}"?`)) return;
+  const res = await fetch(`${API}/${encodeURIComponent(name)}/uninstall`, { method: 'POST' });
+  if (res.ok) { await loadInstalled(); renderCurrent(); }
+  else alert('Remove failed');
+}
+
+async function configurePack(name) {
+  configPackName = name;
+  document.getElementById('configTitle').textContent = `Configure: ${name}`;
+  try {
+    const res = await fetch(`${API}/${encodeURIComponent(name)}/config`);
+    document.getElementById('configJson').value = JSON.stringify((await res.json()).config ?? {}, null, 2);
+  } catch {
+    document.getElementById('configJson').value = '{}';
+  }
+  document.getElementById('configModal').classList.add('open');
+}
+
+function closeConfig() { document.getElementById('configModal').classList.remove('open'); }
+
+async function saveConfig() {
+  try {
+    const config = JSON.parse(document.getElementById('configJson').value);
+    const res = await fetch(`${API}/${encodeURIComponent(configPackName)}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config),
+    });
+    if (res.ok) closeConfig();
+    else alert('Save failed');
+  } catch { alert('Invalid JSON'); }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach((t) => {
+    t.classList.toggle('active', t.getAttribute('data-tab') === tab);
+  });
+  document.getElementById('packPanel').hidden = tab === 'custom';
+  document.getElementById('customPanel').hidden = tab !== 'custom';
+  document.getElementById('packSearch').hidden = tab === 'custom';
+  if (tab === 'custom') loadCustomFiles();
+  else renderCurrent();
+}
+
+function renderCurrent() {
+  if (activeTab === 'available') renderAvailable();
+  else if (activeTab === 'installed') renderInstalled();
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+let customFiles = [];
+
+async function loadCustomFiles() {
+  try {
+    const res = await fetch(`${API}/custom`);
+    customFiles = res.ok ? ((await res.json()).files || []) : [];
+  } catch { customFiles = []; }
+  renderCustomFiles();
+}
+
+function renderCustomFiles() {
+  const el = document.getElementById('customFileList');
+  if (!customFiles.length) {
+    el.innerHTML = '<div class="empty">No uploaded files yet.</div>';
+    return;
+  }
+  el.innerHTML = customFiles.map((f) => packRow(
+    f.name,
+    `${f.kind} · ${(f.size / 1024).toFixed(1)} KB`,
+    0,
+    false,
+    `<button type="button" class="danger" onclick='deleteCustom(${JSON.stringify(f.kind)}, ${JSON.stringify(f.name)})'>Delete</button>`,
+  )).join('');
+}
+
+function kindForFile(name) {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.json')) return 'skill';
+  if (lower.endsWith('.md') || lower.endsWith('.txt')) return 'knowledge';
+  return null;
+}
+
+async function uploadFile(file) {
+  const kind = kindForFile(file.name);
+  if (!kind) { alert(`Unsupported file: ${file.name}`); return; }
+  const res = await fetch(`${API}/custom/upload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, filename: file.name, content: await file.text() }),
+  });
+  if (!res.ok) alert((await res.json().catch(() => ({}))).error || `Upload failed: ${file.name}`);
+}
+
+async function handleFiles(fileList) {
+  for (const file of Array.from(fileList || [])) await uploadFile(file);
+  await loadCustomFiles();
+  document.getElementById('reloadStatus').textContent = 'Uploaded. Reload to ingest.';
+}
+
+async function reloadCustom() {
+  const status = document.getElementById('reloadStatus');
+  status.textContent = 'Reloading...';
+  const res = await fetch(`${API}/custom/reload`, { method: 'POST' });
+  const data = await res.json().catch(() => ({}));
+  status.textContent = res.ok
+    ? `${data.skillsLoaded || 0} skills, ${data.chunksIngested || 0} chunks loaded`
+    : (data.error || 'Reload failed');
+}
+
+async function deleteCustom(kind, name) {
+  if (!confirm(`Delete ${name}?`)) return;
+  const res = await fetch(`${API}/custom/${encodeURIComponent(kind)}/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (res.ok) await loadCustomFiles();
+  else alert('Delete failed');
+}
+
+document.getElementById('packSearch').addEventListener('input', (e) => {
+  filterQuery = e.target.value.trim().toLowerCase();
+  renderCurrent();
+});
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  handleFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => { handleFiles(fileInput.files); fileInput.value = ''; });
+document.getElementById('configModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeConfig();
+});
+
+(async () => {
+  await Promise.all([loadContext(), loadAvailable(), loadInstalled()]);
+  renderCurrent();
+})();
+</script>
+</body>
+</html>

@@ -14,6 +14,10 @@ import { HomeAssistantChannelAdapter } from './channels/adapters/homeassistant-c
 import { ApiServerAdapter } from './channels/adapters/api-server-adapter.js';
 import { WebhookChannelAdapter } from './channels/adapters/webhook-channel-adapter.js';
 import { IrcAdapter } from './channels/adapters/irc-adapter.js';
+import { LineAdapter } from './channels/adapters/line-adapter.js';
+import { ViberAdapter } from './channels/adapters/viber-adapter.js';
+import { GoogleChatAdapter } from './channels/adapters/google-chat-adapter.js';
+import { TeamsAdapter } from './channels/adapters/teams-adapter.js';
 import { SmsAdapter } from './channels/adapters/sms-adapter.js';
 import { getRouter } from './router.js';
 import { getChannelStatusReports } from './channels/channel-status.js';
@@ -77,6 +81,26 @@ const REST_ADAPTERS: AdapterFactory[] = [
   {
     name: 'webhooks',
     factory: () => new WebhookChannelAdapter(process.env.WEBHOOK_CHANNEL_ENABLED === 'true'),
+  },
+  {
+    name: 'line',
+    factory: () => new LineAdapter(Boolean(
+      process.env.LINE_CHANNEL_SECRET && process.env.LINE_CHANNEL_ACCESS_TOKEN,
+    )),
+  },
+  {
+    name: 'viber',
+    factory: () => new ViberAdapter(Boolean(process.env.VIBER_AUTH_TOKEN)),
+  },
+  {
+    name: 'google-chat',
+    factory: () => new GoogleChatAdapter(Boolean(process.env.GOOGLE_CHAT_VERIFICATION_TOKEN)),
+  },
+  {
+    name: 'teams',
+    factory: () => new TeamsAdapter(Boolean(
+      process.env.TEAMS_APP_ID && process.env.TEAMS_APP_PASSWORD,
+    )),
   },
 ];
 

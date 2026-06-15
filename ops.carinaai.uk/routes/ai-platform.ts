@@ -63,6 +63,7 @@ const PLATFORM_PAGES = [
   { href: '/ai-platform/memory', label: 'Memory' },
   { href: '/ai-platform/analytics', label: 'Analytics' },
   { href: '/ai-platform/credits', label: 'Credits' },
+  { href: '/ai-platform/margins', label: 'Margins' },
 ];
 
 async function withSchema<T>(fn: () => Promise<T>): Promise<T> {
@@ -616,6 +617,38 @@ aiPlatformRouter.get('/credits', async (req, res) => {
     spendMonth,
     usage,
     saved,
+  });
+});
+
+aiPlatformRouter.get('/margins', async (_req, res) => {
+  const emptySummary = {
+    floor: 0.65,
+    month: new Date().toISOString().slice(0, 7),
+    orgs: [] as Array<Record<string, unknown>>,
+    totals: {
+      creditsBilled: 0,
+      providerCostUsd: 0,
+      creditRevenueUsd: 0,
+      grossMargin: null as number | null,
+    },
+  };
+  let summary = emptySummary;
+  let loadError = '';
+  if (!carinaOpsTokenSet()) {
+    loadError = 'Pair Carina in Settings (CARINA_OPS_TOKEN) to load margin data from core.';
+  } else {
+    const response = await carinaGet('/api/carina-ops/admin/margins');
+    const parsed = await carinaJson<typeof emptySummary>(response);
+    if (parsed.ok && parsed.data) {
+      summary = parsed.data;
+    } else {
+      loadError = parsed.error ?? 'Could not load margin summary from Carina core';
+    }
+  }
+  renderPage(res, 'margins', {
+    title: 'Margins',
+    summary,
+    loadError,
   });
 });
 

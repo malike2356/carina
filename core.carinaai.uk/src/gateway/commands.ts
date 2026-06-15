@@ -1,14 +1,38 @@
 import { deleteMemory, listRecentMemories } from '../memory/store.js';
 import { formatCostReport, getMonthlyReport } from '../brain/cost-tracker.js';
 import { clearToolCache } from '../tools/cache.js';
+import path from 'node:path';
 import {
   handleModelCommand,
   type ModelCommandContext,
 } from './model-command.js';
 
+import {
+  formatGatewaySummary,
+  runDeepResearch,
+  writeResearchReportFile,
+} from '../agents/deep-research.js';
+import {
+  defaultCompareProviders,
+  formatCompareGateway,
+  runCompare,
+} from '../agents/compare.js';
+
 export type CommandResult =
-  | { handled: true; reply: string; action?: 'exit' | 'clear' }
+  | {
+      handled: true;
+      reply: string;
+      action?: 'exit' | 'clear';
+      attachment?: { path: string; filename: string };
+    }
   | { handled: false };
+
+export interface GatewayCommandContext {
+  sessionId?: string;
+  channel?: string;
+}
+
+const PLAIN_TEXT_CHANNELS = new Set(['telegram', 'sms', 'signal', 'irc']);
 
 async function formatMemoriesList(): Promise<string> {
   const memories = await listRecentMemories(20);
@@ -21,8 +45,56 @@ async function formatMemoriesList(): Promise<string> {
     .join('\n');
 }
 
-export async function handleGatewayCommandAsync(input: string): Promise<CommandResult> {
+export async function handleGatewayCommandAsync(
+  input: string,
+  context: GatewayCommandContext = {},
+): Promise<CommandResult> {
   const trimmed = input.trim();
+
+  const compareMatch = trimmed.match(/^\/compare\s+(.+)$/i);
+  if (compareMatch?.[1]) {
+    try {
+      const providers = defaultCompareProviders();
+      if (providers.length === 0) {
+        return { handled: true, reply: 'No configured providers for compare. Add API keys first.' };
+      }
+      const result = await runCompare({
+        prompt: compareMatch[1].trim(),
+        providers,
+      });
+      const plain = PLAIN_TEXT_CHANNELS.has(context.channel ?? '');
+      const body = formatCompareGateway(result, plain);
+      return {
+        handled: true,
+        reply: `Prompt: ${result.prompt}\n\n${body}`,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { handled: true, reply: `Compare failed: ${msg}` };
+    }
+  }
+
+  const researchMatch = trimmed.match(/^\/research\s+(.+)$/i);
+  if (researchMatch?.[1]) {
+    try {
+      const report = await runDeepResearch({
+        query: researchMatch[1].trim(),
+        sessionId: context.sessionId ?? 'gateway-research',
+        onProgress: () => {},
+      });
+      const plain = PLAIN_TEXT_CHANNELS.has(context.channel ?? '');
+      const reportPath = await writeResearchReportFile(report, 'markdown');
+      const reply = formatGatewaySummary(report, plain);
+      return {
+        handled: true,
+        reply: `${reply}\n\nFull report saved to ${reportPath}`,
+        attachment: { path: reportPath, filename: path.basename(reportPath) },
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { handled: true, reply: `Research failed: ${msg}` };
+    }
+  }
 
   if (trimmed === '/memories') {
     return { handled: true, reply: await formatMemoriesList() };
@@ -80,6 +152,8 @@ export function handleGatewayCommand(input: string, modelContext: ModelCommandCo
         '/memories - list episodic memories',
         '/memories delete <id> - delete a memory',
         '/usage --month - show model token usage and estimated cost',
+        '/research <query> - run deep research and return a summary',
+        '/compare <prompt> - query multiple configured providers in parallel',
         '/clear-cache [tool] - clear cached tool results',
         '/clear - fresh start (compact identity screen)',
         'Docs - full capabilities: https://carinaai.uk/docs/capabilities',

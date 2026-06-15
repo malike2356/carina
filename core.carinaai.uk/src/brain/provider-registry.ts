@@ -295,7 +295,7 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   }),
 
   /* ── EXPANDED CATALOG: active/experimental ── */
-  openaiCompat('nous-portal', 'Nous Research', 'NOUS_API_KEY', 'NOUS_MODEL', 'hermes-3-llama-3.1-70b', 'https://api.nousresearch.com/v1', 'NOUS_BASE_URL', 0.0000008, 25, {
+  openaiCompat('nous-portal', 'Nous Research', 'NOUS_API_KEY', 'NOUS_MODEL', 'default', 'https://api.nousresearch.com/v1', 'NOUS_BASE_URL', 0.0000008, 25, {
     status: 'experimental',
     tags: { speed: 'balanced' },
   }),

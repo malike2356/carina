@@ -30,6 +30,31 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
+function isVerified(pack) {
+  return pack.featured === true || pack.pricing_tier === 'certified';
+}
+
+function isPremium(pack) {
+  return pack.pricing_tier === 'premium' && (pack.price_gbp_cents ?? 0) > 0;
+}
+
+function formatPrice(cents) {
+  return `£${(cents / 100).toFixed(2)} ex VAT`;
+}
+
+function tierBadges(pack) {
+  const parts = [];
+  if (pack.pricing_tier === 'certified') parts.push('<span class="pill certified">Carina-certified</span>');
+  else if (isVerified(pack)) parts.push('<span class="pill verified">verified</span>');
+  if (isPremium(pack)) parts.push(`<span class="pill premium">premium</span><span class="pill price">${formatPrice(pack.price_gbp_cents)}</span>`);
+  else if ((pack.pricing_tier ?? 'free') === 'free') parts.push('<span class="pill">free</span>');
+  return parts.join(' ');
+}
+
+function verifiedBadge(pack) {
+  return tierBadges(pack);
+}
+
 function renderStats(summary) {
   els.stats.innerHTML = `
     <div class="stat"><strong>${summary.packCount}</strong><span>Packs</span></div>
@@ -48,10 +73,13 @@ function renderStats(summary) {
 function renderPacks(packs) {
   els.packsView.innerHTML = packs.map((p) => `
     <article class="card" data-pack="${esc(p.name)}">
-      <h3>${esc(p.name)}</h3>
+      <div class="card-head">
+        <h3>${esc(p.name)}</h3>
+        ${verifiedBadge(p)}
+      </div>
       <p>${esc(p.description)}</p>
       <div class="meta">
-        ${p.featured ? '<span class="pill featured">featured</span>' : ''}
+        <span class="pill">${esc(p.author || 'community')}</span>
         <span class="pill">${esc(p.category || 'general')}</span>
         <span class="pill">${p.skill_count} skills</span>
         <span class="pill">v${esc(p.version)}</span>
@@ -79,23 +107,68 @@ function renderSkills(skills) {
   });
 }
 
+function installCommand(name) {
+  return `carina pack install ${name}`;
+}
+
+async function startPackCheckout(packName, email) {
+  const res = await fetch(`/api/packs/${encodeURIComponent(packName)}/checkout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Checkout failed (${res.status})`);
+  }
+  const data = await res.json();
+  if (data.url) location.href = data.url;
+}
+
+async function fulfillPurchase(packName, sessionId) {
+  const res = await fetch(`/api/packs/${encodeURIComponent(packName)}/license/fulfill`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.license ?? null;
+}
+
 async function showPackDetail(name) {
   const data = await api(`/api/packs/${encodeURIComponent(name)}`);
   const skills = data.skills || [];
+  const premium = isPremium(data);
   els.detail.classList.remove('hidden');
   els.detail.innerHTML = `
     <button type="button" class="btn secondary" id="back-btn">Back</button>
-    <h2>${esc(data.name)}</h2>
+    <div class="card-head">
+      <h2>${esc(data.name)}</h2>
+      ${verifiedBadge(data)}
+    </div>
     <p>${esc(data.description)}</p>
     <div class="meta">
       <span class="pill">${esc(data.author)}</span>
       <span class="pill">${esc(data.category || 'general')}</span>
+      <span class="pill">v${esc(data.version)}</span>
+      <span class="pill">${data.skill_count} skills</span>
       <span class="pill">${data.download_count} downloads</span>
     </div>
     <div class="actions">
-      <a class="btn" href="/api/packs/${encodeURIComponent(name)}/download">Download pack</a>
-      <code>carina packs install ${esc(name)}</code>
+      ${premium ? '' : `<a class="btn" href="/api/packs/${encodeURIComponent(name)}/download">Download tarball</a>`}
+      <code>${esc(installCommand(name))}</code>
     </div>
+    ${premium ? `
+      <div class="notice">
+        <p><strong>Premium pack.</strong> Purchase grants a license for Hub download and CLI install. Source may remain MIT; payment is for maintained Hub distribution.</p>
+        <div class="buy-form">
+          <input type="email" id="buy-email" placeholder="your@email.com" required />
+          <button type="button" class="btn" id="buy-btn">Buy ${formatPrice(data.price_gbp_cents)}</button>
+        </div>
+      </div>
+    ` : ''}
+    <p class="muted">Requires <code>@carina/core</code> installed. See <a href="https://docs.carinaai.uk/docs/user/hub">Hub guide</a>.</p>
     <h3>Skills in this pack</h3>
     <div class="list">
       ${skills.map((s) => `
@@ -108,10 +181,23 @@ async function showPackDetail(name) {
   `;
   document.getElementById('back-btn').addEventListener('click', () => {
     els.detail.classList.add('hidden');
+    history.replaceState(null, '', location.pathname);
   });
+  if (premium) {
+    document.getElementById('buy-btn').addEventListener('click', async () => {
+      const email = document.getElementById('buy-email').value.trim();
+      if (!email) return;
+      try {
+        await startPackCheckout(name, email);
+      } catch (err) {
+        alert(err.message || 'Checkout failed');
+      }
+    });
+  }
   els.detail.querySelectorAll('.skill-row').forEach((row) => {
     row.addEventListener('click', () => showSkillDetail(row.dataset.pack, row.dataset.skill));
   });
+  history.replaceState(null, '', `?pack=${encodeURIComponent(name)}`);
   els.detail.scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -129,7 +215,7 @@ async function showSkillDetail(packName, skillName) {
     </div>
     <div class="actions">
       <button type="button" class="btn secondary" id="pack-btn">View pack</button>
-      <code>carina packs install ${esc(data.pack_name)}</code>
+      <code>${esc(installCommand(data.pack_name))}</code>
     </div>
   `;
   document.getElementById('back-btn').addEventListener('click', () => {
@@ -184,11 +270,33 @@ els.tabs.forEach((tab) => {
 });
 
 async function init() {
+  const params = new URLSearchParams(location.search);
+  const initialQ = params.get('q');
+  if (initialQ) {
+    state.q = initialQ;
+    els.search.value = initialQ;
+  }
+
   const summary = await api('/api/registry');
   renderStats(summary);
   await refresh();
+
+  const packSlug = params.get('pack');
+  if (packSlug) {
+    await showPackDetail(packSlug);
+  }
+
+  const purchase = params.get('purchase');
+  const sessionId = params.get('session_id');
+  const purchasedPack = params.get('pack');
+  if (purchase === 'success' && sessionId && purchasedPack) {
+    const license = await fulfillPurchase(purchasedPack, sessionId);
+    if (license) {
+      alert(`License granted for ${purchasedPack}. Run: carina pack install ${purchasedPack}`);
+    }
+  }
 }
 
 init().catch((err) => {
-  document.body.innerHTML = `<main class="wrap"><h1>Skills Hub unavailable</h1><p>${esc(err.message)}</p></main>`;
+  document.body.innerHTML = `<main class="wrap"><h1>Carina Hub unavailable</h1><p>${esc(err.message)}</p><p>Try again later or run a local hub: <code>pnpm hub</code></p></main>`;
 });

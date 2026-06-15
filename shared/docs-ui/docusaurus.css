@@ -1,0 +1,298 @@
+/**
+ * Docusaurus / Infima mappings for VERLOX docs UI.
+ */
+
+:root {
+  --docs-brand-primary: #2563eb;
+  --docs-brand-primary-hover: #1d4ed8;
+  --docs-brand-primary-soft: #dbeafe;
+  --docs-brand-primary-muted: #93c5fd;
+
+  --ifm-font-family-base: var(--docs-font-sans);
+  --ifm-font-family-monospace: var(--docs-font-mono);
+  --ifm-font-size-base: var(--docs-font-size-base);
+  --ifm-line-height-base: var(--docs-line-height);
+  --ifm-heading-font-weight: var(--docs-heading-weight);
+  --ifm-heading-line-height: var(--docs-line-height-heading);
+
+  --ifm-color-primary: var(--docs-brand-primary);
+  --ifm-color-primary-dark: var(--docs-brand-primary-hover);
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: var(--docs-brand-primary-muted);
+  --ifm-color-primary-lightest: var(--docs-brand-primary-soft);
+
+  --ifm-background-color: var(--docs-surface-base);
+  --ifm-background-surface-color: var(--docs-surface-subtle);
+  --ifm-color-content: var(--docs-text-primary);
+  --ifm-color-content-secondary: var(--docs-text-secondary);
+  --ifm-font-color-base: var(--docs-text-primary);
+  --ifm-font-color-secondary: var(--docs-text-muted);
+  --ifm-hover-overlay: rgb(15 23 42 / 0.04);
+
+  --ifm-navbar-height: var(--docs-nav-height);
+  --ifm-navbar-background-color: var(--docs-surface-base);
+  --ifm-navbar-shadow: 0 1px 0 var(--docs-border-subtle);
+  --ifm-navbar-link-color: var(--docs-text-secondary);
+  --ifm-navbar-link-hover-color: var(--docs-brand-primary);
+
+  --doc-sidebar-width: var(--docs-sidebar-width);
+  --ifm-menu-color: var(--docs-text-secondary);
+  --ifm-menu-color-active: var(--docs-brand-primary);
+  --ifm-menu-color-background-active: var(--docs-brand-primary-soft);
+  --ifm-menu-color-background-hover: var(--docs-surface-muted);
+
+  --ifm-container-width: 72rem;
+  --ifm-code-font-size: 0.9em;
+  --ifm-code-background: var(--docs-code-bg);
+  --ifm-code-border-radius: var(--docs-code-radius);
+  --ifm-pre-background: var(--docs-pre-bg);
+  --ifm-pre-color: var(--docs-pre-text);
+  --ifm-pre-border-radius: var(--docs-radius-md);
+  --ifm-pre-padding: 1rem 1.125rem;
+
+  --ifm-table-head-background: var(--docs-table-head-bg);
+  --ifm-table-border-color: var(--docs-table-border);
+  --ifm-table-stripe-background: var(--docs-table-stripe-bg);
+
+  --ifm-link-color: var(--docs-brand-primary);
+  --ifm-link-hover-color: var(--docs-brand-primary-hover);
+  --ifm-button-border-radius: var(--docs-radius-md);
+  --ifm-global-radius: var(--docs-radius-md);
+  --ifm-global-border-width: 1px;
+
+  --ifm-footer-background-color: var(--docs-footer-bg);
+  --ifm-footer-color: var(--docs-footer-text);
+  --ifm-footer-link-color: var(--docs-footer-link);
+  --ifm-footer-link-hover-color: var(--docs-footer-link-hover);
+  --ifm-footer-title-color: var(--docs-footer-title);
+
+  --docusaurus-highlighted-code-line-bg: rgb(37 99 235 / 0.12);
+}
+
+[data-theme='dark'] {
+  --docs-brand-primary: #60a5fa;
+  --docs-brand-primary-hover: #3b82f6;
+  --docs-brand-primary-soft: rgb(37 99 235 / 0.2);
+  --docs-brand-primary-muted: #93c5fd;
+
+  --ifm-color-primary: var(--docs-brand-primary);
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1d4ed8;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+
+  --ifm-navbar-background-color: var(--docs-surface-subtle);
+  --ifm-menu-color-background-active: rgb(37 99 235 / 0.18);
+  --docusaurus-highlighted-code-line-bg: rgb(96 165 250 / 0.15);
+}
+
+html {
+  font-family: var(--docs-font-sans);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--docs-border-subtle);
+  box-shadow: none;
+}
+
+.navbar__title {
+  font-weight: 600;
+  font-size: var(--docs-font-size-base);
+}
+
+.navbar__link {
+  font-size: var(--docs-font-size-sm);
+  font-weight: 500;
+}
+
+.menu__link {
+  font-size: var(--docs-font-size-sm);
+  border-radius: var(--docs-radius-sm);
+  padding: 0.375rem 0.75rem;
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  font-weight: 600;
+  border-left: 2px solid var(--docs-brand-primary);
+  padding-left: calc(0.75rem - 2px);
+}
+
+.theme-doc-markdown {
+  max-width: var(--docs-content-max-width);
+}
+
+.theme-doc-markdown h1:first-child {
+  font-size: var(--docs-h1-size);
+  margin-bottom: 1rem;
+}
+
+.theme-doc-markdown h2 {
+  font-size: var(--docs-h2-size);
+  margin-top: var(--docs-page-gap);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 1px solid var(--docs-border-subtle);
+}
+
+.theme-doc-markdown h3 {
+  font-size: var(--docs-h3-size);
+  margin-top: 1.5rem;
+}
+
+.theme-doc-markdown h4 {
+  font-size: var(--docs-h4-size);
+}
+
+.theme-doc-markdown p,
+.theme-doc-markdown li {
+  color: var(--docs-text-secondary);
+}
+
+.theme-doc-breadcrumbs {
+  font-size: var(--docs-font-size-xs);
+  margin-bottom: 1rem;
+}
+
+.table-of-contents {
+  font-size: var(--docs-font-size-sm);
+}
+
+.table-of-contents__link--active {
+  color: var(--docs-brand-primary);
+  font-weight: 600;
+}
+
+.theme-admonition {
+  border-radius: var(--docs-callout-radius);
+  border-width: 1px;
+  border-style: solid;
+  padding: var(--docs-callout-padding);
+  font-size: var(--docs-font-size-sm);
+}
+
+.theme-admonition .admonition-heading h5 {
+  font-size: var(--docs-font-size-sm);
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+}
+
+.alert--tip,
+.theme-admonition-tip,
+.alert--success.theme-admonition-tip {
+  background: var(--docs-callout-tip-bg);
+  border-color: var(--docs-callout-tip-border);
+  color: var(--docs-callout-tip-text);
+}
+
+.alert--tip .admonition-heading h5,
+.theme-admonition-tip .admonition-heading h5 {
+  color: var(--docs-callout-tip-title);
+}
+
+.alert--info {
+  background: var(--docs-callout-info-bg);
+  border-color: var(--docs-callout-info-border);
+  color: var(--docs-callout-info-text);
+}
+
+.alert--info .admonition-heading h5 {
+  color: var(--docs-callout-info-title);
+}
+
+.alert--warning,
+.alert--caution {
+  background: var(--docs-callout-warning-bg);
+  border-color: var(--docs-callout-warning-border);
+  color: var(--docs-callout-warning-text);
+}
+
+.alert--warning .admonition-heading h5,
+.alert--caution .admonition-heading h5 {
+  color: var(--docs-callout-warning-title);
+}
+
+.alert--danger {
+  background: var(--docs-callout-danger-bg);
+  border-color: var(--docs-callout-danger-border);
+  color: var(--docs-callout-danger-text);
+}
+
+.alert--danger .admonition-heading h5 {
+  color: var(--docs-callout-danger-title);
+}
+
+.theme-doc-markdown code {
+  background: var(--docs-code-bg);
+  border: 1px solid var(--docs-code-border);
+  color: var(--docs-code-text);
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--docs-code-radius);
+}
+
+.theme-doc-markdown pre {
+  border: 1px solid var(--docs-pre-border);
+}
+
+.theme-doc-markdown table {
+  font-size: var(--docs-font-size-sm);
+  display: table;
+  width: 100%;
+}
+
+.theme-doc-markdown table th,
+.theme-doc-markdown table td {
+  border-color: var(--docs-table-border);
+}
+
+.button--primary {
+  background: var(--docs-brand-primary);
+  border-color: var(--docs-brand-primary);
+}
+
+.button--primary:hover {
+  background: var(--docs-brand-primary-hover);
+  border-color: var(--docs-brand-primary-hover);
+}
+
+.footer {
+  padding-top: 2.5rem;
+  padding-bottom: 2rem;
+}
+
+.footer__title {
+  font-size: var(--docs-font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.footer__link-item {
+  font-size: var(--docs-font-size-sm);
+}
+
+.footer__copyright {
+  font-size: var(--docs-font-size-xs);
+  margin-top: 2rem;
+  opacity: 0.85;
+}
+
+.pagination-nav__link {
+  border-radius: var(--docs-radius-md);
+  border-color: var(--docs-border-default);
+}
+
+.pagination-nav__sublabel {
+  font-size: var(--docs-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 996px) {
+  .navbar-sidebar {
+    background: var(--docs-surface-base);
+  }
+}

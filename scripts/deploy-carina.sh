@@ -172,6 +172,14 @@ main() {
   echo ""
   print_nginx_hint "core.carinaai.uk" "3333"
   print_nginx_hint "ops.carinaai.uk" "4002"
+  echo ""
+  echo "3. Carina Hub (hub.carinaai.uk):"
+  echo "   DNS: A/AAAA hub.carinaai.uk -> VPS (same IP as carinaai.uk)"
+  echo "   TLS: certbot certonly --nginx -d hub.carinaai.uk (or add SAN to carinaai.uk cert)"
+  echo "   Docker prod: docker-compose -f docker-compose.prod.yml up carina-hub nginx"
+  echo "   Nginx: core.carinaai.uk/docker/nginx/hub.carinaai.uk.conf -> carina-hub:3001"
+  echo "   Legacy skills.carinaai.uk redirects to hub.carinaai.uk"
+  print_nginx_hint "hub.carinaai.uk" "3001"
 }
 
 main "$@"

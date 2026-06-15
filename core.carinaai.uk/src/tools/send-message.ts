@@ -6,6 +6,7 @@ import { findContact } from '../profiles/contacts.js';
 const OUTBOUND_CHANNELS: ChannelName[] = [
   'telegram', 'discord', 'slack', 'sms', 'whatsapp',
   'signal', 'matrix', 'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
+  'line', 'viber', 'google-chat', 'teams',
   'homeassistant', 'api', 'webhooks',
 ];
 
@@ -13,7 +14,7 @@ export const sendMessageTool: Tool = {
   name: 'send-message',
   dangerous: true,
   description:
-    'Send a text message on any enabled channel. Supported channels: telegram, discord, slack, sms, whatsapp, signal, matrix, mattermost, dingtalk, feishu, wechat, imessage, email, homeassistant, api, webhooks. Contact resolution: pass contact_name to look up the contact from contacts.json and auto-select whatsapp, telegram, or email. If both contact_name and channel are given, that channel is used for lookup. Direct mode: pass channel + conversation_id explicitly (Telegram: numeric chat ID, WhatsApp: number@s.whatsapp.net, email: address). Returns { sent: true, channel, conversation_id } on success.',
+    'Send a text message on any enabled channel. Supported channels: telegram, discord, slack, sms, whatsapp, signal, matrix, mattermost, dingtalk, feishu, wechat, imessage, email, line, viber, google-chat, teams, homeassistant, api, webhooks. Contact resolution: pass contact_name to look up the contact from contacts.json and auto-select whatsapp, telegram, or email. If both contact_name and channel are given, that channel is used for lookup. Direct mode: pass channel + conversation_id explicitly (Telegram: numeric chat ID, WhatsApp: number@s.whatsapp.net, email: address). Returns { sent: true, channel, conversation_id } on success.',
   parameters: {
     type: 'object',
     properties: {

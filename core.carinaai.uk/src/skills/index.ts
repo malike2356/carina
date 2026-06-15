@@ -2,254 +2,38 @@ import fs from 'fs/promises';
 import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { fileURLToPath } from 'url';
-import { config } from '../config/index.js';
 import { getOperatorActivePacks } from './operator-pack-store.js';
 import { findRelevantSkills, listSkills, saveSkill, skillExistsByName } from './store.js';
-import { propertyUkSkills } from './packs/property-uk/skills.js';
-import { propertyUkSystemSuffix } from './packs/property-uk/prompts/system.js';
-import { coreEngineeringSkills } from './packs/core-engineering/skills.js';
-import { creativeBasicsSkills } from './packs/creative-basics/skills.js';
-import { productivitySkills } from './packs/productivity/skills.js';
-import { healthcareSkills } from './packs/healthcare/skills.js';
-import { financeSkills } from './packs/finance/skills.js';
-import { researchBasicsSkills } from './packs/research-basics/skills.js';
-import { dataScienceSkills } from './packs/data-science/skills.js';
-import { mlopsSkills } from './packs/mlops/skills.js';
-import { mediaExtendedSkills } from './packs/media-extended/skills.js';
-import { emailExtendedSkills } from './packs/email-extended/skills.js';
-import { smartHomeSkills } from './packs/smart-home/skills.js';
-import { socialExtendedSkills } from './packs/social-extended/skills.js';
-import { devopsSkills } from './packs/devops/skills.js';
-import { legalUkSkills } from './packs/legal-uk/skills.js';
-import { salesCrmSkills } from './packs/sales-crm/skills.js';
 import { loadSkillMdDocuments, findSkillMdByKeywords, skillMdToSkill } from './skill-md-loader.js';
 import { loadPluginsFromDisk } from '../plugins/registry.js';
 import { BUILTIN_PACKS_DIR, readPackManifest, type PackManifest } from './pack-loader.js';
 import { loadAllUserResources } from './user-resources.js';
+import { PACK_MANIFESTS, listKnownPackNames } from './pack-manifests.js';
+import {
+  type PackDefinition,
+  resolvePack,
+  warmPackSkillIndex,
+  getBuiltinSkillNames,
+} from './pack-resolver.js';
 
 const execAsync = promisify(exec);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export interface PackDefinition {
-  manifest: PackManifest;
-  skills: typeof propertyUkSkills;
-  systemSuffix: string;
-}
+export {
+  type PackDefinition,
+  resolvePack,
+  warmPackSkillIndex,
+  getBuiltinSkillNames,
+  PackNotInstalledError,
+} from './pack-resolver.js';
+export type { PackSkillInput } from './pack-types.js';
+export { PACK_NPM_PACKAGES, npmPackageForSlug, resolvePackDirectory } from './pack-discovery.js';
+export { PACK_MANIFESTS, listKnownPackNames } from './pack-manifests.js';
 
-export const PACK_REGISTRY: Record<string, PackDefinition> = {
-  'property-uk': {
-    manifest: {
-      name: 'property-uk',
-      version: '1.0.0',
-      description: 'UK property entrepreneurship',
-      author: 'VERLOX Ltd',
-      skillCount: 6,
-      optional: true,
-      category: 'property',
-    },
-    skills: propertyUkSkills,
-    systemSuffix: propertyUkSystemSuffix,
-  },
-  'core-engineering': {
-    manifest: {
-      name: 'core-engineering',
-      version: '1.0.0',
-      description: 'Coding, GitHub, debugging, automation',
-      author: 'VERLOX Ltd',
-      skillCount: 18,
-      optional: true,
-      category: 'engineering',
-    },
-    skills: coreEngineeringSkills,
-    systemSuffix: '',
-  },
-  'creative-basics': {
-    manifest: {
-      name: 'creative-basics',
-      version: '1.0.0',
-      description: 'HTML design, diagrams, mockups, ideation',
-      author: 'VERLOX Ltd',
-      skillCount: 7,
-      optional: true,
-      category: 'creative',
-    },
-    skills: creativeBasicsSkills,
-    systemSuffix: '',
-  },
-  productivity: {
-    manifest: {
-      name: 'productivity',
-      version: '1.0.0',
-      description: 'Google, Notion, Airtable, OCR, weather, news',
-      author: 'VERLOX Ltd',
-      skillCount: 8,
-      optional: true,
-      category: 'productivity',
-    },
-    skills: productivitySkills,
-    systemSuffix: '',
-  },
-  healthcare: {
-    manifest: {
-      name: 'healthcare',
-      version: '1.0.0',
-      description: 'Clinical notes, scheduling, compliance, medications',
-      author: 'VERLOX Ltd',
-      skillCount: 5,
-      optional: true,
-      category: 'healthcare',
-    },
-    skills: healthcareSkills,
-    systemSuffix: '',
-  },
-  finance: {
-    manifest: {
-      name: 'finance',
-      version: '1.0.0',
-      description: 'Cashflow, VAT, invoicing, investment analysis',
-      author: 'VERLOX Ltd',
-      skillCount: 5,
-      optional: true,
-      category: 'finance',
-    },
-    skills: financeSkills,
-    systemSuffix: '',
-  },
-  'research-basics': {
-    manifest: {
-      name: 'research-basics',
-      version: '1.0.0',
-      description: 'arXiv, RSS, investigation methodology',
-      author: 'VERLOX Ltd',
-      skillCount: 5,
-      optional: true,
-      category: 'research',
-    },
-    skills: researchBasicsSkills,
-    systemSuffix: '',
-  },
-  'data-science': {
-    manifest: {
-      name: 'data-science',
-      version: '1.0.0',
-      description: 'Pandas, SQL, stats, geospatial analysis',
-      author: 'VERLOX Ltd',
-      skillCount: 8,
-      optional: true,
-      category: 'data',
-    },
-    skills: dataScienceSkills,
-    systemSuffix: '',
-  },
-  mlops: {
-    manifest: {
-      name: 'mlops',
-      version: '1.0.0',
-      description: 'Training, MLflow, HF hub, model evaluation',
-      author: 'VERLOX Ltd',
-      skillCount: 6,
-      optional: true,
-      category: 'mlops',
-    },
-    skills: mlopsSkills,
-    systemSuffix: '',
-  },
-  'media-extended': {
-    manifest: {
-      name: 'media-extended',
-      version: '1.0.0',
-      description: 'Spotify, video, podcast, image batch, TTS',
-      author: 'VERLOX Ltd',
-      skillCount: 6,
-      optional: true,
-      category: 'media',
-    },
-    skills: mediaExtendedSkills,
-    systemSuffix: '',
-  },
-  'email-extended': {
-    manifest: {
-      name: 'email-extended',
-      version: '1.0.0',
-      description: 'Himalaya CLI, inbox triage, templates, email channel',
-      author: 'VERLOX Ltd',
-      skillCount: 5,
-      optional: true,
-      category: 'email',
-    },
-    skills: emailExtendedSkills,
-    systemSuffix: '',
-  },
-  'smart-home': {
-    manifest: {
-      name: 'smart-home',
-      version: '1.0.0',
-      description: 'Home Assistant, Hue, climate, security routines',
-      author: 'VERLOX Ltd',
-      skillCount: 5,
-      optional: true,
-      category: 'smart-home',
-    },
-    skills: smartHomeSkills,
-    systemSuffix: '',
-  },
-  'social-extended': {
-    manifest: {
-      name: 'social-extended',
-      version: '1.0.0',
-      description: 'X posting, Discord admin, Slack standup, social listening',
-      author: 'VERLOX Ltd',
-      skillCount: 6,
-      optional: true,
-      category: 'social',
-    },
-    skills: socialExtendedSkills,
-    systemSuffix: '',
-  },
-  devops: {
-    manifest: {
-      name: 'devops',
-      version: '1.0.0',
-      description: 'Kanban sprints, CI debug, Docker, K8s, webhooks',
-      author: 'VERLOX Ltd',
-      skillCount: 6,
-      optional: true,
-      category: 'devops',
-    },
-    skills: devopsSkills,
-    systemSuffix: '',
-  },
-  'legal-uk': {
-    manifest: {
-      name: 'legal-uk',
-      version: '1.0.0',
-      description: 'GDPR readiness, AST drafts, Companies House filings, contract review',
-      author: 'VERLOX Ltd',
-      skillCount: 4,
-      optional: true,
-      category: 'legal',
-    },
-    skills: legalUkSkills,
-    systemSuffix: '',
-  },
-  'sales-crm': {
-    manifest: {
-      name: 'sales-crm',
-      version: '1.0.0',
-      description: 'Deal staging, email sequences, proposals, pipeline reviews',
-      author: 'VERLOX Ltd',
-      skillCount: 4,
-      optional: true,
-      category: 'sales',
-    },
-    skills: salesCrmSkills,
-    systemSuffix: '',
-  },
-};
+const suffixCache = new Map<string, string>();
+const activeSkillNamesCache = new Map<string, Set<string>>();
 
 export function listAvailablePacks(): PackManifest[] {
-  return Object.values(PACK_REGISTRY).map((p) => p.manifest);
+  return Object.values(PACK_MANIFESTS);
 }
 
 export function getActivePackNames(): string[] {
@@ -278,11 +62,19 @@ export async function loadSkillsForTask(task: string): Promise<string> {
     .join('\n\n---\n\n');
 }
 
-export async function loadPackSkills(packName: string): Promise<number> {
-  const pack = PACK_REGISTRY[packName];
-  if (!pack) {
-    throw new Error(`Unknown pack: ${packName}. Available: ${Object.keys(PACK_REGISTRY).join(', ')}`);
+export async function primeActivePackSkillCache(): Promise<void> {
+  for (const packName of getActivePackNames()) {
+    if (activeSkillNamesCache.has(packName)) continue;
+    const pack = await resolvePack(packName);
+    activeSkillNamesCache.set(packName, new Set(pack.skills.map((s) => s.name)));
+    suffixCache.set(packName, pack.systemSuffix);
   }
+}
+
+export async function loadPackSkills(packName: string): Promise<number> {
+  const pack = await resolvePack(packName);
+  suffixCache.set(packName, pack.systemSuffix);
+  activeSkillNamesCache.set(packName, new Set(pack.skills.map((s) => s.name)));
 
   let loaded = 0;
   for (const skill of pack.skills) {
@@ -305,7 +97,7 @@ export async function loadActivePacks(): Promise<number> {
 }
 
 export function getPackSystemSuffix(packName: string): string {
-  return PACK_REGISTRY[packName]?.systemSuffix ?? '';
+  return suffixCache.get(packName) ?? '';
 }
 
 export function getActivePackSuffixes(): string {
@@ -318,24 +110,12 @@ export function getActivePackSuffixes(): string {
 
 const USER_RAG_PACK = 'user-resources';
 
-export function getBuiltinSkillNames(): Set<string> {
-  const names = new Set<string>();
-  for (const pack of Object.values(PACK_REGISTRY)) {
-    for (const skill of pack.skills) {
-      names.add(skill.name);
-    }
-  }
-  return names;
-}
-
 export function getActivePackSkillNames(): Set<string> {
   const names = new Set<string>();
   for (const packName of getActivePackNames()) {
-    const pack = PACK_REGISTRY[packName];
-    if (!pack) continue;
-    for (const skill of pack.skills) {
-      names.add(skill.name);
-    }
+    const cached = activeSkillNamesCache.get(packName);
+    if (!cached) continue;
+    for (const skillName of cached) names.add(skillName);
   }
   return names;
 }
@@ -353,10 +133,8 @@ export function isRagPackAllowed(pack: string): boolean {
   return getActivePackNames().includes(pack) || pack === USER_RAG_PACK;
 }
 
-async function loadPackExtensions(packName: string): Promise<void> {
-  if (packName === 'property-uk') {
-    await import('./packs/property-uk/domain-data.js');
-  }
+async function loadPackExtensions(_packName: string): Promise<void> {
+  // Domain-specific side effects (e.g. property-uk domain-data) load with npm pack entry modules.
 }
 
 export async function registerActivePackTools(): Promise<void> {
@@ -399,6 +177,7 @@ export async function findSkillsIncludingSkillMd(keywords: string[]) {
 }
 
 export async function initSkills(): Promise<void> {
+  await warmPackSkillIndex();
   const packsLoaded = await loadActivePacks();
   const skillMdLoaded = await loadSkillMdRuntime();
   const pluginsLoaded = await loadPluginsFromDisk();
@@ -459,9 +238,7 @@ export async function initSkills(): Promise<void> {
 }
 
 export async function exportPack(packName: string, outputPath: string): Promise<void> {
-  const pack = PACK_REGISTRY[packName];
-  if (!pack) throw new Error(`Unknown pack: ${packName}`);
-
+  const pack = await resolvePack(packName);
   const packDir = path.join(BUILTIN_PACKS_DIR, packName);
   const tmpDir = path.join(path.dirname(outputPath), `.carina-export-${Date.now()}`);
   await fs.mkdir(tmpDir, { recursive: true });
@@ -514,10 +291,10 @@ export async function importPack(packPath: string): Promise<void> {
 }
 
 export async function syncPackManifests(): Promise<void> {
-  for (const [name, pack] of Object.entries(PACK_REGISTRY)) {
+  for (const name of listKnownPackNames()) {
     try {
       const manifest = await readPackManifest(path.join(BUILTIN_PACKS_DIR, name));
-      pack.manifest = manifest;
+      PACK_MANIFESTS[name] = manifest;
     } catch {
       // use built-in manifest
     }

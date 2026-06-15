@@ -3,7 +3,10 @@ import { orgOrTenantWhere, queryForOrg } from '../hosted/scoped-query.js';
 import { checkOrgUsageQuota } from '../api/hosted-billing.js';
 import { sendUsageWarningEmail } from './usage-warning-email.js';
 import { BILLING_PLANS, type BillingPlanId } from '../billing/plans.js';
-import { getMonthlyBalance } from '../billing/credit-ledger.js';
+import { getMonthlyBalance, getModelMixForMonth } from '../billing/credit-ledger.js';
+import { getAllowedModelClasses } from '../billing/credit-gate.js';
+import { billingPlanIdFromOrgPlan } from '../billing/ops-metering-service.js';
+import { highestAllowedModelClass, type ModelClass } from '../billing/rate-card.js';
 import { getOrgPlan } from './plan-gates.js';
 
 export type UsageWarningThreshold = 80 | 90 | 95 | 100;
@@ -46,12 +49,28 @@ async function getOrgOwnerContact(orgId: string): Promise<{ orgName: string; own
   return { orgName: String(row.name), ownerEmail: String(row.email) };
 }
 
+async function resolveUsageQuotaForWarnings(
+  orgId: string,
+  tenantId: string,
+): Promise<{ used: number; limit: number; unit: 'credits' | 'tokens' }> {
+  const orgPlan = await getOrgPlan(orgId);
+  const billingPlanId = billingPlanIdFromOrgPlan(orgPlan);
+  const plan = BILLING_PLANS[billingPlanId];
+  if (plan.includedCredits !== null) {
+    const balance = await getMonthlyBalance(orgId, billingPlanId);
+    const limit = plan.includedCredits + balance.topups;
+    return { used: balance.used, limit, unit: 'credits' };
+  }
+  const quota = await checkOrgUsageQuota(orgId, tenantId, orgPlan);
+  return { used: quota.used, limit: quota.limit, unit: 'tokens' };
+}
+
 export async function maybeNotifyUsageWarning(
   orgId: string,
   tenantId: string,
-  quotaOverride?: { used: number; limit: number },
+  quotaOverride?: { used: number; limit: number; unit?: 'credits' | 'tokens' },
 ): Promise<void> {
-  const quota = quotaOverride ?? await checkOrgUsageQuota(orgId, tenantId);
+  const quota = quotaOverride ?? await resolveUsageQuotaForWarnings(orgId, tenantId);
   if (quota.limit <= 0) return;
 
   const threshold = getUsageWarningThreshold(quota.used, quota.limit);
@@ -76,6 +95,7 @@ export async function maybeNotifyUsageWarning(
     threshold,
     used: quota.used,
     limit: quota.limit,
+    unit: quota.unit ?? quotaOverride?.unit ?? 'credits',
   });
   if (sent) {
     state.lastEmailedThreshold = threshold;
@@ -97,11 +117,17 @@ export interface ModelUsage {
 }
 
 export interface CreditsStatus {
+  unit: 'credits' | 'tokens';
   monthlyLimit: number;
   usedThisMonth: number;
   remaining: number;
   percentUsed: number;
   warning: boolean;
+  creditsIncluded: number | null;
+  topups: number;
+  modelMix: Array<{ modelClass: string; creditsUsed: number; providerCostUsd: number }>;
+  allowedClasses: string[];
+  highestModelClass: string | null;
 }
 
 function daysAgo(days: number): Date {
@@ -174,34 +200,51 @@ export async function getUsageByModel(
 
 export async function getCreditsStatus(orgId: string, tenantId: string): Promise<CreditsStatus> {
   const orgPlan = await getOrgPlan(orgId);
-  const billingPlanId: BillingPlanId = orgPlan === 'free'
-    ? 'free'
-    : orgPlan;
+  const billingPlanId: BillingPlanId = billingPlanIdFromOrgPlan(orgPlan);
   const plan = BILLING_PLANS[billingPlanId];
   if (plan.includedCredits !== null) {
-    const balance = await getMonthlyBalance(orgId, billingPlanId);
+    const [balance, modelMix, allowedClasses] = await Promise.all([
+      getMonthlyBalance(orgId, billingPlanId),
+      getModelMixForMonth(orgId),
+      getAllowedModelClasses(billingPlanId),
+    ]);
     const effectiveLimit = plan.includedCredits + balance.topups;
     const used = balance.used;
     const remaining = balance.remaining ?? 0;
     const percentUsed = effectiveLimit > 0 ? Math.round((used / effectiveLimit) * 100) : 0;
+    const highestModelClass = allowedClasses.length > 0
+      ? highestAllowedModelClass(allowedClasses as ModelClass[])
+      : null;
     return {
+      unit: 'credits',
       monthlyLimit: effectiveLimit,
       usedThisMonth: used,
       remaining,
       percentUsed,
       warning: percentUsed >= 80,
+      creditsIncluded: plan.includedCredits,
+      topups: balance.topups,
+      modelMix,
+      allowedClasses,
+      highestModelClass,
     };
   }
 
-  const quota = await checkOrgUsageQuota(orgId, tenantId);
+  const quota = await checkOrgUsageQuota(orgId, tenantId, orgPlan);
   const percentUsed = quota.limit > 0 ? Math.round((quota.used / quota.limit) * 100) : 0;
 
   return {
+    unit: 'tokens',
     monthlyLimit: quota.limit,
     usedThisMonth: quota.used,
     remaining: Math.max(0, quota.limit - quota.used),
     percentUsed,
     warning: quota.warning,
+    creditsIncluded: null,
+    topups: 0,
+    modelMix: [],
+    allowedClasses: [],
+    highestModelClass: null,
   };
 }
 

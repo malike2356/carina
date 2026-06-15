@@ -33,6 +33,9 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 [[ -d "$CORE" ]] || die "Missing core.carinaai.uk at $CORE"
 [[ -f "$IGNORE_FILE" ]] || die "Missing $IGNORE_FILE"
 
+log "Running kernel boundary check..."
+(cd "$CORE" && node scripts/prune-pack-dist.mjs && pnpm tsx scripts/check-kernel-boundaries.ts)
+
 log "Source: $CORE"
 log "Output: $OUT_DIR"
 
@@ -73,6 +76,11 @@ pkg.repository = {
   type: 'git',
   url: `git+${repo}.git`,
 };
+
+// Public export is @verlox/carina-core; carina-agent meta-package publishes separately.
+if (pkg.name === 'carina-agent') {
+  pkg.name = '@verlox/carina-core';
+}
 
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 NODE

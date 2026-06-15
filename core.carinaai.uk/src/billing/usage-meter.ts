@@ -1,3 +1,8 @@
+/**
+ * Legacy token usage meter. Credit-based Ops plans delegate allowance checks to
+ * ops_credit_ledger via getMonthlyBalance(); this class still records usage_records
+ * for backward-compatible reporting and non-credit plans.
+ */
 import { pool } from '../memory/db.js';
 import { BILLING_PLANS, type BillingPlanId } from './plans.js';
 import { getMonthlyBalance } from './credit-ledger.js';
@@ -77,28 +82,28 @@ export class UsageMeter {
 
   async statusForOrg(orgId: string, tenantId: string, plan: BillingPlanId): Promise<UsageStatus> {
     const planMeta = BILLING_PLANS[plan];
+    const tokensUsed = await this.getMonthlyUsageForOrg(orgId, tenantId);
     if (planMeta.includedCredits !== null) {
       const balance = await getMonthlyBalance(orgId, plan);
       const limit = planMeta.includedCredits + balance.topups;
-      const tokensUsed = balance.used;
-      if (limit > 0 && tokensUsed >= limit) {
+      const creditUsed = balance.used;
+      if (limit > 0 && creditUsed >= limit) {
         return {
           tokensUsed,
           limit,
           blocked: `You've used ${formatTokens(limit)} of ${formatTokens(limit)} credits this month. Upgrade or top up to continue.`,
         };
       }
-      if (limit > 0 && tokensUsed >= limit * 0.8) {
+      if (limit > 0 && creditUsed >= limit * 0.8) {
         return {
           tokensUsed,
           limit,
-          warning: `You've used ${formatTokens(tokensUsed)} of ${formatTokens(limit)} credits this month`,
+          warning: `You've used ${formatTokens(creditUsed)} of ${formatTokens(limit)} credits this month`,
         };
       }
       return { tokensUsed, limit };
     }
 
-    const tokensUsed = await this.getMonthlyUsageForOrg(orgId, tenantId);
     const limit = BILLING_PLANS[plan].tokenLimit;
     if (!limit) return { tokensUsed, limit };
     if (tokensUsed >= limit) {

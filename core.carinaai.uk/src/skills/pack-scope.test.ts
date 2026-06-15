@@ -17,14 +17,19 @@ describe('pack scope helpers', () => {
 
   it('blocks builtin pack skills when no pack is active', async () => {
     delete process.env.ACTIVE_SKILL_PACKS;
-    const { isSkillAllowedForActivePacks } = await import('./index.js');
+    const { warmPackSkillIndex, isSkillAllowedForActivePacks } = await import('./index.js');
+    await warmPackSkillIndex();
     expect(isSkillAllowedForActivePacks('brr-analysis')).toBe(false);
     expect(isSkillAllowedForActivePacks('my-custom-skill')).toBe(true);
   });
 
   it('allows skills only from active packs', async () => {
     process.env.ACTIVE_SKILL_PACKS = 'property-uk';
-    const { isSkillAllowedForActivePacks } = await import('./index.js');
+    const { setOperatorActivePacks } = await import('./operator-pack-store.js');
+    setOperatorActivePacks(['property-uk']);
+    const { warmPackSkillIndex, primeActivePackSkillCache, isSkillAllowedForActivePacks } = await import('./index.js');
+    await warmPackSkillIndex();
+    await primeActivePackSkillCache();
     expect(isSkillAllowedForActivePacks('brr-analysis')).toBe(true);
     expect(isSkillAllowedForActivePacks('delegate-coding-task')).toBe(false);
   });

@@ -1,0 +1,44 @@
+{
+  "name": "@verlox/pack-property",
+  "version": "1.0.0",
+  "description": "UK property entrepreneurship domain pack for Carina",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "pack.json",
+    "data/",
+    "README.md"
+  ],
+  "carina": {
+    "pack": "./pack.json",
+    "slug": "property-uk"
+  },
+  "imports": {
+    "#core/*": "@verlox/carina-core/internal/*"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "peerDependencies": {
+    "@verlox/carina-core": "^0.2.0"
+  },
+  "devDependencies": {
+    "@verlox/carina-core": "workspace:*",
+    "typescript": "^6.0.3"
+  },
+  "keywords": ["carina", "pack", "property", "uk"],
+  "author": "VERLOX Ltd",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

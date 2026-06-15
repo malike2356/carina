@@ -29,6 +29,25 @@ vi.mock('../api/hosted-billing.js', () => ({
   checkOrgUsageQuota: (...args: unknown[]) => checkOrgUsageQuotaMock(...args),
 }));
 
+vi.mock('./plan-gates.js', () => ({
+  getOrgPlan: vi.fn(async () => 'carina_ops_starter'),
+}));
+
+vi.mock('../billing/credit-ledger.js', () => ({
+  getMonthlyBalance: vi.fn(async () => ({
+    used: 400_000,
+    remaining: 100_000,
+    topups: 0,
+    percentUsed: 80,
+    netLedger: -400_000,
+  })),
+  getModelMixForMonth: vi.fn(async () => []),
+}));
+
+vi.mock('../billing/credit-gate.js', () => ({
+  getAllowedModelClasses: vi.fn(async () => ['mini', 'balanced']),
+}));
+
 import {
   renderUsageWarningEmailText,
   sendUsageWarningEmail,
@@ -87,11 +106,12 @@ describe('sendUsageWarningEmail', () => {
       threshold: 80,
       used: 800_000,
       limit: 1_000_000,
+      unit: 'credits',
     });
     expect(sent).toBe(true);
     expect(sendMock).toHaveBeenCalledWith(expect.objectContaining({
       to: 'owner@example.com',
-      subject: 'Carina Ops: your Acme Ops workspace has reached 80% of its monthly limit',
+      subject: 'Carina Ops: Acme Ops has reached 80% of its monthly credit allowance',
     }));
     const text = renderUsageWarningEmailText({
       orgName: 'Acme Ops',
@@ -99,7 +119,10 @@ describe('sendUsageWarningEmail', () => {
       threshold: 80,
       used: 800_000,
       limit: 1_000_000,
+      unit: 'credits',
     });
+    expect(text).toContain('800,000 / 1,000,000 credits');
+    expect(text).not.toContain('tokens');
     expect(text).toContain('https://core.carinaai.uk/ops/billing');
   });
 });
@@ -129,11 +152,13 @@ describe('maybeNotifyUsageWarning', () => {
 
   it('sends a higher threshold email after a lower one was already sent', async () => {
     await maybeNotifyUsageWarning('org-a', 'user-1');
-    checkOrgUsageQuotaMock.mockResolvedValue({
-      allowed: true,
-      warning: true,
-      used: 900_000,
-      limit: 1_000_000,
+    const { getMonthlyBalance } = await import('../billing/credit-ledger.js');
+    vi.mocked(getMonthlyBalance).mockResolvedValueOnce({
+      used: 450_000,
+      remaining: 50_000,
+      topups: 0,
+      percentUsed: 90,
+      netLedger: -450_000,
     });
     await maybeNotifyUsageWarning('org-a', 'user-1');
     expect(sendMock).toHaveBeenCalledTimes(2);

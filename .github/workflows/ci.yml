@@ -2,22 +2,144 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, develop]
   pull_request:
     branches: [main, master]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-test:
+  test-linux:
+    name: Test on Linux
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: core.carinaai.uk
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 11
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           cache: pnpm
-      - run: pnpm install
-      - run: pnpm build
-      - run: pnpm test
+          cache-dependency-path: core.carinaai.uk/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Prune pack dist
+        run: node scripts/prune-pack-dist.mjs
+
+      - name: Boundary check
+        run: pnpm boundary-check
+
+      - name: Run tests
+        run: pnpm test
+        env:
+          NODE_ENV: test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-linux
+          path: core.carinaai.uk/test-results/
+          if-no-files-found: ignore
+
+  test-windows:
+    name: Test on Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: core.carinaai.uk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: core.carinaai.uk/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native modules for Windows
+        run: pnpm rebuild
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+        env:
+          NODE_ENV: test
+          FORCE_PLATFORM: win32
+
+      - name: Run shell integration tests (Windows)
+        run: pnpm vitest run src/tools/shell-exec.windows.test.ts
+        env:
+          RUN_SHELL_INTEGRATION: 'true'
+          FORCE_PLATFORM: win32
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-windows
+          path: core.carinaai.uk/test-results/
+          if-no-files-found: ignore
+
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: core.carinaai.uk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: core.carinaai.uk/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+        env:
+          NODE_ENV: test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos
+          path: core.carinaai.uk/test-results/
+          if-no-files-found: ignore

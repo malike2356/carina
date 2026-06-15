@@ -4,7 +4,7 @@
 [![CI Windows](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml/badge.svg?job=test-windows)](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml)
 [![CI macOS](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml/badge.svg?job=test-macos)](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml)
 
-Carina is the free, self-hosted AI agent kernel; MIT licensed, with Scout as the commercial governance layer for production monitoring, approvals, audit trails, and incident response. The current public npm install path is **`carina-agent`**. The scoped **`@carina/core`** package name is reserved for a future package split and is not the live public install path yet. See [MANIFESTO.md](../MANIFESTO.md) and [docs/kernel/BRAND_RULES.md](docs/kernel/BRAND_RULES.md).
+Carina is the free, self-hosted AI agent kernel; MIT licensed, with Scout as the commercial governance layer for production monitoring, approvals, audit trails, and incident response. The current public npm install path is **`carina-agent`**. The scoped **`@verlox/carina-core`** package name is reserved for a future package split and is not the live public install path yet. See [MANIFESTO.md](../MANIFESTO.md) and [docs/kernel/BRAND_RULES.md](docs/kernel/BRAND_RULES.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to develop on the kernel.
 

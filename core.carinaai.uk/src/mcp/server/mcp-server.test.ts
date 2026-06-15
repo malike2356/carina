@@ -1,7 +1,16 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../../skills/store.js', () => ({
+  listSkills: vi.fn(async () => []),
+  getSkillByName: vi.fn(async () => null),
+  saveSkill: vi.fn(async (skill: unknown) => skill),
+  updateSkill: vi.fn(async (skill: unknown) => skill),
+  deleteSkill: vi.fn(async () => false),
+}));
+
 import { registry } from '../../tools/registry.js';
 import '../../tools/index.js';
 import {

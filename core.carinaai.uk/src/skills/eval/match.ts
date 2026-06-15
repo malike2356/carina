@@ -1,5 +1,5 @@
 import { jaccardSimilarity } from '../store.js';
-import type { PackSkillInput } from '../packs/property-uk/skills.js';
+import type { PackSkillInput } from '../pack-types.js';
 import { extractEvalKeywords } from './keywords.js';
 
 export interface MatchedSkill {

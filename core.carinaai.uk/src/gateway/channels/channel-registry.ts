@@ -9,6 +9,7 @@ export class ChannelRegistry {
   private readonly order: ChannelName[] = [
     'telegram', 'whatsapp', 'web', 'discord', 'slack', 'sms',
     'signal', 'matrix', 'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
+    'line', 'viber', 'google-chat', 'teams',
     'homeassistant', 'api', 'webhooks', 'cli',
   ];
 

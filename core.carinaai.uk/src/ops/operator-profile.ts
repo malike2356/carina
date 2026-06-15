@@ -8,6 +8,7 @@ import {
 } from '../profiles/manager.js';
 import { bindProfileEnvironment } from '../profiles/scope.js';
 import { loadCarinaEnv } from '../config/load-env.js';
+import { CARINA_HOME } from '../config/paths.js';
 
 export interface OperatorProfileContext {
   profileName: string;
@@ -32,7 +33,7 @@ export function bindOperatorProfile(profileArg?: string): OperatorProfileContext
   }
 
   const profileName = profile?.name ?? getActiveProfileName() ?? 'default';
-  const baseDir = profile?.dir ?? process.env.CARINA_HOME ?? path.join(process.env.HOME ?? '/tmp', '.carina');
+  const baseDir = profile?.dir ?? CARINA_HOME;
 
   if (profile) {
     bindProfileEnvironment(profile);

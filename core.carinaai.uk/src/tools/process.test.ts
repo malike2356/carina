@@ -98,6 +98,58 @@ describe('process-registry', () => {
     expect(registry.getProcess(running.sessionId)?.status).toBe('running');
     expect(registry.getProcess(exited.sessionId)).toBeUndefined();
   });
+  it('spawn uses the platform shell instead of hardcoded sh -c', async () => {
+    const spawnMock = vi.fn(() => createMockChild());
+    vi.doMock('child_process', () => ({ spawn: spawnMock }));
+
+    const registry = await import('./process-registry.js');
+    registry._resetRegistryForTests();
+    registry.spawnBackgroundProcess('echo hello');
+
+    expect(spawnMock).toHaveBeenCalledTimes(1);
+    const [command, args, options] = spawnMock.mock.calls[0] as [string, string[], { windowsHide?: boolean }];
+    if (process.platform === 'win32') {
+      expect(command).toBe('pwsh.exe');
+    } else {
+      expect(command).toBe('/bin/bash');
+      expect(args).toEqual(['-c', 'echo hello']);
+    }
+    expect(options.windowsHide).toBe(true);
+  });
+});
+
+describe('process signals', () => {
+  it('returns true for the current process', async () => {
+    const { isProcessAlive } = await import('./process-signals.js');
+    expect(isProcessAlive(process.pid)).toBe(true);
+  });
+
+  it('returns false for a non-existent PID', async () => {
+    const { isProcessAlive } = await import('./process-signals.js');
+    expect(isProcessAlive(999_999_999)).toBe(false);
+  });
+
+  it('returns false when killing a non-existent PID', async () => {
+    const { killProcessByPid } = await import('./process-signals.js');
+    expect(killProcessByPid(999_999_999)).toBe(false);
+  });
+});
+
+describe.runIf(process.env.RUN_PTY_INTEGRATION === 'true')('PTY integration', () => {
+  it('creates a PTY shell that responds to echo', async () => {
+    const { createPty } = await import('../infrastructure/pty.js');
+    const term = createPty({ cols: 80, rows: 24, cwd: process.cwd() });
+
+    const output: string[] = [];
+    term.onData((data) => output.push(data));
+
+    await new Promise<void>((resolve) => setTimeout(resolve, 500));
+    term.write('echo carina-test\r');
+    await new Promise<void>((resolve) => setTimeout(resolve, 500));
+
+    term.kill();
+    expect(output.join('')).toContain('carina-test');
+  });
 });
 
 describe('process tool', () => {

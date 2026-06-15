@@ -6,11 +6,11 @@ beforeEach(() => {
 });
 
 async function loadDomainLookup(searchResult: unknown[] = []) {
-  vi.doMock('../memory/store.js', () => ({
+  vi.doMock('@verlox/carina-core/internal/memory/store.js', () => ({
     searchRag: vi.fn(async () => searchResult),
   }));
-  const domain = await import('./domain-lookup.js');
-  await import('../skills/packs/property-uk/domain-data.js');
+  await import('@verlox/pack-property');
+  const domain = await import('@verlox/carina-core/internal/tools/domain-lookup.js');
   return domain;
 }
 

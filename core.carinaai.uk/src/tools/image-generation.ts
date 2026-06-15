@@ -1,17 +1,21 @@
-import fs from 'fs/promises';
-import path from 'path';
-import OpenAI from 'openai';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { Tool } from '../types/index.js';
-import { config } from '../config/index.js';
+import {
+  generateImage,
+  isImageGenerationConfigured,
+  parseSizeDimensions,
+  resolveOpenAiSize,
+} from '../gateway/images-provider.js';
 
-const OUTPUT_DIR = 'data/generated-images';
+const LEGACY_OUTPUT_DIR = 'data/generated-images';
 
 export const imageGenerationTool: Tool = {
   name: 'image-generation',
   dangerous: true,
   requiresConfirmation: true,
   description:
-    'Generate an image from a text prompt using OpenAI DALL-E. Returns a local file path to the generated image.',
+    'Generate an image from a text prompt using OpenAI DALL-E. Returns a local file path to the generated image and saves it to the gallery.',
   parameters: {
     type: 'object',
     properties: {
@@ -32,37 +36,39 @@ export const imageGenerationTool: Tool = {
   execute: async (params) => {
     const prompt = String(params.prompt ?? '').trim();
     if (!prompt) return { error: 'prompt is required' };
-    if (!config.openai.apiKey) return { error: 'OPENAI_API_KEY required for image generation' };
+    if (!isImageGenerationConfigured()) {
+      return { error: 'OPENAI_API_KEY required for image generation' };
+    }
 
     const size = String(params.size ?? '1024x1024') as '1024x1024' | '1792x1024' | '1024x1792';
-    const quality = String(params.quality ?? 'standard') as 'standard' | 'hd';
+    const dims = parseSizeDimensions(size);
 
     try {
-      const client = new OpenAI({ apiKey: config.openai.apiKey });
-      const response = await client.images.generate({
-        model: 'dall-e-3',
+      const generated = await generateImage({
+        tenantId: '__operator__',
         prompt,
-        n: 1,
-        size,
-        quality,
-        response_format: 'b64_json',
+        model: 'dall-e-3',
+        width: dims.width,
+        height: dims.height,
       });
 
-      const b64 = response.data?.[0]?.b64_json;
-      if (!b64) return { error: 'no image returned from provider' };
-
-      await fs.mkdir(OUTPUT_DIR, { recursive: true });
-      const filename = `carina-${Date.now()}.png`;
-      const filePath = path.join(OUTPUT_DIR, filename);
-      await fs.writeFile(filePath, Buffer.from(b64, 'base64'));
+      await fs.mkdir(LEGACY_OUTPUT_DIR, { recursive: true });
+      const legacyPath = path.join(LEGACY_OUTPUT_DIR, path.basename(generated.filepath));
+      await fs.copyFile(generated.filepath, legacyPath).catch(async () => {
+        const buffer = await fs.readFile(generated.filepath);
+        await fs.writeFile(legacyPath, buffer);
+      });
 
       return {
-        path: filePath,
+        id: generated.id,
+        path: legacyPath,
+        galleryPath: generated.filepath,
+        url: `/api/images/${generated.id}/file`,
         format: 'png',
         prompt,
         size,
-        quality,
-        message: `MEDIA: ${filePath}`,
+        quality: String(params.quality ?? 'standard'),
+        message: `MEDIA: ${legacyPath}`,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -70,3 +76,5 @@ export const imageGenerationTool: Tool = {
     }
   },
 };
+
+export { resolveOpenAiSize };

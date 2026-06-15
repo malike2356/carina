@@ -1,4 +1,4 @@
-import type { PackSkillInput } from '../property-uk/skills.js';
+import type { PackSkillInput } from '../../pack-types.js';
 
 export const devopsSkills: PackSkillInput[] = [
   {

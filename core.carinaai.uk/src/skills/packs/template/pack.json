@@ -1,0 +1,9 @@
+{
+  "name": "hello-world-template",
+  "version": "0.1.0",
+  "description": "Copy this template to build your first domain pack",
+  "author": "Your Name",
+  "skillCount": 1,
+  "optional": true,
+  "category": "demo"
+}

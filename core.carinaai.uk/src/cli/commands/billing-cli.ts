@@ -15,6 +15,28 @@ export async function runBillingCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina billing status');
+  if (action === 'reconcile') {
+    const orgArg = args.find((value) => value.startsWith('--org='));
+    const orgId = orgArg ? orgArg.slice('--org='.length).trim() : undefined;
+    const { initDb, pool } = await import('../../memory/db.js');
+    await initDb();
+    const { runBillingReconciliation } = await import('../../billing/reconciliation-job.js');
+    const report = await runBillingReconciliation(orgId);
+    console.log(chalk.bold('\nBilling reconciliation\n'));
+    console.log(`  month:        ${report.month}`);
+    console.log(`  threshold:    ${report.driftThresholdPercent}%`);
+    console.log(`  drift rows:   ${report.rows.length}`);
+    for (const row of report.rows) {
+      console.log(
+        `  - ${row.orgId}: ledger $${row.ledgerProviderCostUsd.toFixed(4)} `
+        + `vs model_usage $${row.modelUsageCostUsd.toFixed(4)} (${row.driftPercent}%)`,
+      );
+    }
+    console.log('');
+    await pool.end().catch(() => undefined);
+    return;
+  }
+
+  console.error('Usage: carina billing status | carina billing reconcile [--org=ORG_ID]');
   process.exit(1);
 }

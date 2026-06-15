@@ -19,7 +19,11 @@ export type ChannelName =
   | 'homeassistant'
   | 'api'
   | 'webhooks'
-  | 'irc';
+  | 'irc'
+  | 'line'
+  | 'viber'
+  | 'google-chat'
+  | 'teams';
 
 export interface Attachment {
   id?: string;

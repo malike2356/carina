@@ -31,7 +31,7 @@ test -x "${BIN}"
 
 VERSION="$("${BIN}" --version)"
 echo "==> version: ${VERSION}"
-echo "${VERSION}" | grep -q 'carina-agent'
+echo "${VERSION}" | grep -qE 'carina-agent|@verlox/carina-core'
 
 echo "==> non-interactive setup"
 "${BIN}" setup </dev/null
@@ -51,7 +51,7 @@ DOC="$("${BIN}" doctor 2>&1 || true)"
 echo "${DOC}" | grep -q 'Carina doctor'
 
 echo "==> npx entry"
-NPX_OUT="$(cd "${WORK}/install" && npx --yes carina-agent --version 2>/dev/null)"
-echo "${NPX_OUT}" | grep -q 'carina-agent'
+NPX_OUT="$(cd "${WORK}/install" && npx --yes carina-agent --version 2>/dev/null || npx --yes @verlox/carina-core --version 2>/dev/null)"
+echo "${NPX_OUT}" | grep -qE 'carina-agent|@verlox/carina-core'
 
 echo "smoke-install: ok"

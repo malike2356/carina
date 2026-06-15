@@ -1,0 +1,23 @@
+{
+  "name": "borehole-africa",
+  "displayName": "Borehole Africa",
+  "description": "Ghana borehole drilling industry tools, knowledge, and calculators for ABBIS",
+  "version": "0.1.0",
+  "author": "VERLOX (verlox.uk)",
+  "license": "private",
+  "skillCount": 8,
+  "categories": ["industry", "ghana", "drilling", "water"],
+  "requires": ["@verlox/carina-core >= 0.2.0"],
+  "corpusFiles": [
+    "corpus/01-drilling-methods.md",
+    "corpus/02-ghana-geology.md",
+    "corpus/03-casing-specifications.md",
+    "corpus/04-pump-selection.md",
+    "corpus/05-water-quality-standards.md",
+    "corpus/06-cwsa-standards.md",
+    "corpus/07-drilling-prices-by-region.md",
+    "corpus/08-equipment-registry.md",
+    "corpus/09-troubleshooting-guide.md",
+    "corpus/10-gbda-constitution-summary.md"
+  ]
+}

@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { PACK_REGISTRY } from '../index.js';
+import { listKnownPackNames } from '../pack-manifests.js';
+import { resolvePack } from '../pack-resolver.js';
 import { buildPackArchive, buildPropertyUkArchive } from './build-pack.js';
 import { replacePackSkills, upsertHubPack } from './registry.js';
 
@@ -10,7 +11,8 @@ export async function seedHubRegistry(storageDir: string): Promise<{ packs: numb
   await fs.mkdir(storageDir, { recursive: true });
   let skillTotal = 0;
 
-  for (const pack of Object.values(PACK_REGISTRY)) {
+  for (const name of listKnownPackNames()) {
+    const pack = await resolvePack(name);
     const { manifest, skills } = pack;
     if (process.env.CARINA_EVAL_GATE === 'require') {
       const { runPackEvalGate } = await import('../eval/gate.js');
@@ -25,7 +27,7 @@ export async function seedHubRegistry(storageDir: string): Promise<{ packs: numb
     skillTotal += skills.length;
   }
 
-  return { packs: Object.keys(PACK_REGISTRY).length, skills: skillTotal };
+  return { packs: listKnownPackNames().length, skills: skillTotal };
 }
 
 async function ensurePackArchive(packName: string, storageDir: string): Promise<string> {

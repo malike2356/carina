@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import type { PackSkillInput } from './packs/property-uk/skills.js';
+import type { PackSkillInput } from './pack-types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const BUILTIN_PACKS_DIR = path.join(__dirname, 'packs');
@@ -14,12 +14,7 @@ export interface PackManifest {
   skillCount: number;
   optional?: boolean;
   category?: string;
-}
-
-export interface PackDefinition {
-  manifest: PackManifest;
-  skills: PackSkillInput[];
-  systemSuffix: string;
+  npmPackage?: string;
 }
 
 export function validatePackManifest(raw: unknown, dirName: string): PackManifest {

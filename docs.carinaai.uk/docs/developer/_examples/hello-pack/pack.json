@@ -1,0 +1,9 @@
+{
+  "name": "hello-pack",
+  "version": "0.1.0",
+  "description": "Hello World domain pack (tutorial example)",
+  "author": "Carina Docs",
+  "skillCount": 1,
+  "optional": true,
+  "category": "demo"
+}

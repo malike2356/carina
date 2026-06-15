@@ -1,4 +1,4 @@
-import type { PackSkillInput } from '../packs/property-uk/skills.js';
+import type { PackSkillInput } from '../pack-types.js';
 import { scanForSensitive } from './fixtures.js';
 import type { EvalFixture, EvalFixtureInput } from './types.js';
 

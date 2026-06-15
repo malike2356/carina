@@ -32,6 +32,7 @@ describe('tool-policy-middleware disabled', () => {
     };
     vi.doMock('../tools/index.js', () => ({
       registry: { get: () => mockTool },
+      getSessionTool: vi.fn(() => undefined),
     }));
 
     const { executeToolCall } = await import('../agents/tool-runner.js');

@@ -1,6 +1,7 @@
 import { pool } from '../memory/db.js';
-import { BILLING_PLANS, type BillingPlanId } from './plans.js';
+import { BILLING_PLANS, type BillingPlanId, resolveCreditUsdRate } from './plans.js';
 import { getMonthlyBalance } from './credit-ledger.js';
+import { impliedGrossMargin, MARGIN_FLOOR } from './margin-report.js';
 import type { ModelClass } from './rate-card.js';
 
 export interface CreditGateResult {
@@ -8,6 +9,12 @@ export interface CreditGateResult {
   reason?: string;
   remainingCredits: number;
   modelClassAllowed: boolean;
+  impliedMargin?: number | null;
+}
+
+export interface CreditGateOptions {
+  managedInference?: boolean;
+  estimatedProviderCostUsd?: number;
 }
 
 export async function getAllowedModelClasses(planId: BillingPlanId): Promise<ModelClass[]> {
@@ -34,6 +41,7 @@ export async function checkCreditGate(
   planId: BillingPlanId,
   modelClass: ModelClass,
   estimatedCredits: number,
+  options?: CreditGateOptions,
 ): Promise<CreditGateResult> {
   const plan = BILLING_PLANS[planId];
 
@@ -75,6 +83,23 @@ export async function checkCreditGate(
       remainingCredits,
       modelClassAllowed: true,
     };
+  }
+
+  if (options?.managedInference && options.estimatedProviderCostUsd != null) {
+    const creditUsdRate = resolveCreditUsdRate(planId);
+    if (creditUsdRate > 0) {
+      const revenueUsd = estimatedCredits * creditUsdRate;
+      const margin = impliedGrossMargin(revenueUsd, options.estimatedProviderCostUsd);
+      if (margin !== null && margin < MARGIN_FLOOR) {
+        return {
+          allowed: false,
+          reason: 'call would fall below minimum gross margin threshold',
+          remainingCredits,
+          modelClassAllowed: true,
+          impliedMargin: margin,
+        };
+      }
+    }
   }
 
   if (estimatedCredits > remainingCredits) {

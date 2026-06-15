@@ -203,7 +203,7 @@ After the last existing tab content `<div>`, add:
   cursor: pointer;
   letter-spacing: .05em;
 }
-.fleet-btn-kill   { border-color: var(--red);   color: var(--red); }
+.fleet-btn-kill   { border-color: var(--red); color: var(--red); }
 .fleet-btn-resume { border-color: var(--green); color: var(--green); }
 .fleet-btn:disabled { opacity: .35; cursor: not-allowed; }
 

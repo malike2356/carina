@@ -361,7 +361,7 @@ Add an inline keyboard button after each reply: `[ History]` that triggers a his
 
 ## 6. CLI: History Command
 
-The Carina CLI (`hermes chat` / `carina chat`) has its own local session DB. It should also fetch from the server when in hosted mode.
+The Carina CLI (`carina chat`) has its own local session DB. It should also fetch from the server when in hosted mode.
 
 ### 6.1 CLI command
 

@@ -221,6 +221,42 @@ const SPECS: ChannelSpec[] = [
     checkConnected: () => channelRegistry.getByName('webhooks')?.enabled ?? false,
     transport: () => 'webhook',
   },
+  {
+    channel: 'line',
+    env: ['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN'],
+    note: 'LINE Messaging API bot',
+    webhook: '/webhooks/line',
+    checkConfigured: () => hasEnv(['LINE_CHANNEL_SECRET', 'LINE_CHANNEL_ACCESS_TOKEN']),
+    checkConnected: () => channelRegistry.getByName('line')?.enabled ?? false,
+    transport: () => 'webhook',
+  },
+  {
+    channel: 'viber',
+    env: ['VIBER_AUTH_TOKEN'],
+    note: 'Viber Public Account bot',
+    webhook: '/webhooks/viber',
+    checkConfigured: () => hasEnv(['VIBER_AUTH_TOKEN']),
+    checkConnected: () => channelRegistry.getByName('viber')?.enabled ?? false,
+    transport: () => 'webhook',
+  },
+  {
+    channel: 'google-chat',
+    env: ['GOOGLE_CHAT_VERIFICATION_TOKEN'],
+    note: 'Google Chat app webhook',
+    webhook: '/webhooks/google-chat',
+    checkConfigured: () => hasEnv(['GOOGLE_CHAT_VERIFICATION_TOKEN']),
+    checkConnected: () => channelRegistry.getByName('google-chat')?.enabled ?? false,
+    transport: () => 'webhook',
+  },
+  {
+    channel: 'teams',
+    env: ['TEAMS_APP_ID', 'TEAMS_APP_PASSWORD'],
+    note: 'Microsoft Teams Bot Framework',
+    webhook: '/webhooks/teams',
+    checkConfigured: () => hasEnv(['TEAMS_APP_ID', 'TEAMS_APP_PASSWORD']),
+    checkConnected: () => channelRegistry.getByName('teams')?.enabled ?? false,
+    transport: () => 'webhook',
+  },
 ];
 
 export function whatsappBridgeMode(): 'baileys' | 'twilio' | 'none' {

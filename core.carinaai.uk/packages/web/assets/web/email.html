@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Email; Carina</title>
+<style>
+  .layout { flex: 1; display: grid; grid-template-columns: 320px 1fr; min-height: 0; }
+  .list-pane, .detail-pane { min-height: 0; display: flex; flex-direction: column; }
+  .list-pane { border-right: 1px solid var(--border); background: var(--surface-2); }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--border); background: var(--surface);
+  }
+  .toolbar input, .toolbar select, .toolbar button {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.4rem 0.55rem; font-size: 0.78rem;
+  }
+  .toolbar button { cursor: pointer; }
+  .toolbar button.active { border-color: var(--accent); color: var(--accent); }
+  .email-list { flex: 1; overflow-y: auto; padding: 0.45rem; }
+  .email-item {
+    padding: 0.6rem 0.65rem; border-radius: 8px; cursor: pointer; margin-bottom: 0.25rem;
+    border: 1px solid transparent;
+  }
+  .email-item:hover { background: var(--surface); }
+  .email-item.active { background: var(--surface); border-color: var(--border); }
+  .email-item.unread { border-left: 3px solid var(--accent); }
+  .email-subject { font-size: 0.82rem; font-weight: 600; }
+  .email-meta { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+  .badge {
+    display: inline-block; font-size: 0.62rem; text-transform: uppercase;
+    padding: 0.08rem 0.3rem; border-radius: 4px; margin-right: 0.25rem;
+  }
+  .badge.high { background: rgba(240,80,80,0.15); color: var(--danger); }
+  .badge.normal { background: rgba(25,196,154,0.12); color: var(--accent); }
+  .badge.low { background: rgba(87,87,104,0.2); color: var(--muted); }
+  .detail-pane { background: var(--bg); }
+  .detail-empty {
+    flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted);
+  }
+  .detail-content { flex: 1; overflow-y: auto; padding: 1rem; display: none; flex-direction: column; gap: 0.75rem; }
+  .detail-content.open { display: flex; }
+  .detail-head h2 { font-size: 1rem; margin-bottom: 0.35rem; }
+  .detail-head .meta { font-size: 0.78rem; color: var(--muted); }
+  .detail-body {
+    white-space: pre-wrap; line-height: 1.5; font-size: 0.86rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem;
+  }
+  .detail-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .detail-actions button {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.4rem 0.65rem; font-size: 0.78rem; cursor: pointer;
+  }
+  .detail-actions button.primary { background: var(--accent); border-color: var(--accent); color: #0d0d0f; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: 220px 1fr; }
+  }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Email Triage</h1>
+  <span class="status" id="status"></span>
+</header>
+<div class="layout">
+  <section class="list-pane">
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search subject or sender" style="flex:1;min-width:120px;">
+      <button type="button" class="filter-btn active" data-status="inbox">Inbox</button>
+      <button type="button" class="filter-btn" data-status="archived">Archive</button>
+      <button type="button" class="filter-btn" data-status="spam">Spam</button>
+    </div>
+    <div class="email-list" id="email-list"></div>
+  </section>
+  <section class="detail-pane">
+    <div class="detail-empty" id="detail-empty">Select an email to triage.</div>
+    <div class="detail-content" id="detail-content">
+      <div class="detail-head">
+        <h2 id="detail-subject"></h2>
+        <div class="meta" id="detail-meta"></div>
+      </div>
+      <div class="detail-actions">
+        <button type="button" id="mark-read" class="primary">Mark read</button>
+        <button type="button" data-urgency="high">High urgency</button>
+        <button type="button" data-urgency="normal">Normal</button>
+        <button type="button" data-urgency="low">Low</button>
+        <button type="button" id="archive-btn">Archive</button>
+        <button type="button" id="spam-btn">Spam</button>
+        <button type="button" id="use-prompt-btn">Ask agent about this</button>
+      </div>
+      <div class="detail-body" id="detail-body"></div>
+    </div>
+  </section>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script src="/email.js"></script>
+</body>
+</html>

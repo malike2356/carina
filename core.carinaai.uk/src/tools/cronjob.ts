@@ -9,6 +9,7 @@ import {
   updateJob,
 } from '../agents/cron-scheduler.js';
 import { getSessionDelivery } from '../agents/cron-delivery-registry.js';
+import { syncCronReminder } from '../gateway/notes-sync.js';
 
 function resolveDeliverMode(params: Record<string, unknown>): string {
   const deliver = params.deliver ? String(params.deliver) : '';
@@ -87,6 +88,7 @@ export function createCronjobTool(sessionId: string): Tool {
         const deliver = resolveDeliverMode(params);
 
         try {
+          const parsed = parseSchedule(schedule);
           const job = await createJob({
             name: params.name ? String(params.name) : null,
             schedule,
@@ -106,6 +108,15 @@ export function createCronjobTool(sessionId: string): Tool {
             originConversationId: sessionDelivery?.conversationId ?? null,
             originThreadId: sessionDelivery?.threadId ?? null,
           });
+          if (parsed.oneShot && prompt) {
+            syncCronReminder({
+              jobId: job.id,
+              sessionId,
+              title: job.name ?? 'Scheduled reminder',
+              body: prompt,
+              remindAt: parsed.oneShot.toISOString(),
+            });
+          }
           return { job_id: job.id, status: job.status, schedule: job.schedule };
         } catch (err) {
           return { error: err instanceof Error ? err.message : String(err) };

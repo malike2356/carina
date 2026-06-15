@@ -109,7 +109,29 @@ export async function debitCredits(input: {
   await maybeNotifyUsageWarning(input.orgId, input.tenantId, {
     used: balance.used,
     limit: included + balance.topups,
+    unit: 'credits',
   });
+}
+
+export async function recordByokUsage(input: {
+  orgId: string;
+  sessionId: string;
+  model: string;
+  modelClass: ModelClass;
+  providerCostUsd: number;
+}): Promise<void> {
+  await pool.query(
+    `INSERT INTO ops_credit_ledger
+      (org_id, event_type, credits, provider_cost_usd, model, model_class, session_id)
+     VALUES ($1, 'byok_usage', 0, $2, $3, $4, $5)`,
+    [
+      input.orgId,
+      input.providerCostUsd,
+      input.model,
+      input.modelClass,
+      input.sessionId,
+    ],
+  );
 }
 
 export async function creditTopup(orgId: string, credits: number, note?: string): Promise<void> {

@@ -7,6 +7,12 @@ export default defineConfig({
   cleanUrls: true,
   title: 'Labyrinth Scout Docs',
   description: 'Documentation for Labyrinth Scout: prompt guard, kill switch, governance, API, and SDKs.',
+  markdown: {
+    theme: {
+      light: 'github-light',
+      dark: 'github-dark',
+    },
+  },
   head: [
     ['meta', { name: 'theme-color', content: '#0a0e1a' }],
     [

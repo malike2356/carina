@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Calendar; Carina</title>
+<style>
+  .calendar-wrap { flex: 1; overflow-y: auto; padding: 1rem 1.25rem 2rem; }
+  .calendar-head { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .calendar-head h2 { font-size: 1rem; flex: 1; margin: 0; }
+  .calendar-head button {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.4rem 0.65rem; cursor: pointer; font-size: 0.8rem;
+  }
+  .calendar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.35rem;
+  }
+  .dow {
+    font-size: 0.68rem; text-transform: uppercase; color: var(--muted);
+    text-align: center; padding: 0.25rem 0;
+  }
+  .day {
+    min-height: 88px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface-2); padding: 0.35rem; font-size: 0.72rem;
+  }
+  .day.other { opacity: 0.45; }
+  .day-num { font-weight: 600; margin-bottom: 0.25rem; font-size: 0.75rem; }
+  .event {
+    display: block; margin-bottom: 0.2rem; padding: 0.15rem 0.25rem; border-radius: 4px;
+    background: var(--accent-dim); color: var(--accent); text-decoration: none; line-height: 1.25;
+  }
+  .event.overdue { background: rgba(240,80,80,0.12); color: var(--danger); }
+  .upcoming { margin-top: 1.25rem; }
+  .upcoming h3 { font-size: 0.88rem; margin-bottom: 0.5rem; }
+  .upcoming-item {
+    padding: 0.55rem 0.65rem; border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 0.35rem; background: var(--surface);
+  }
+  .upcoming-item a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.82rem; }
+  .upcoming-item .meta { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
+  .empty { color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Calendar</h1>
+  <span class="status" id="status"></span>
+</header>
+<div class="calendar-wrap">
+  <div class="calendar-head">
+    <button type="button" id="prev-month">Prev</button>
+    <h2 id="month-label"></h2>
+    <button type="button" id="next-month">Next</button>
+    <button type="button" id="today-btn">Today</button>
+  </div>
+  <div class="calendar-grid" id="calendar-grid"></div>
+  <section class="upcoming">
+    <h3>Upcoming reminders</h3>
+    <div id="upcoming-list"></div>
+  </section>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script src="/calendar.js"></script>
+</body>
+</html>

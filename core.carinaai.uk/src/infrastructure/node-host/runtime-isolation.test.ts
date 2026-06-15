@@ -13,7 +13,8 @@ describe('node-host runtime isolation', () => {
   });
 
   it('gateway only mounts node routes when env flag is set', async () => {
-    const source = await fs.readFile(path.join(srcRoot, 'gateway', 'web.ts'), 'utf8');
+    const webServerPath = path.join(srcRoot, '..', 'packages', 'web', 'src', 'web-server.ts');
+    const source = await fs.readFile(webServerPath, 'utf8');
     expect(source).toMatch(/CARINA_NODE_HOST_ENABLED/);
     expect(source).toMatch(/mountNodeHostRoutes/);
   });

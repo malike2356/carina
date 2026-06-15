@@ -17,11 +17,13 @@ function stubExecuteCodeModule(overrides: Record<string, unknown> = {}): void {
   }));
 }
 
-function mockSandboxLegacy(runCodeInSandbox: ReturnType<typeof vi.fn>): void {
+function mockSandboxLegacy(runInSandboxFn: ReturnType<typeof vi.fn>): void {
   stubExecuteCodeModule();
   vi.doMock('./sandbox.js', () => ({
     checkDocker: vi.fn().mockResolvedValue(false),
-    runCodeInSandbox,
+  }));
+  vi.doMock('../sandbox/sandbox-factory.js', () => ({
+    runInSandbox: runInSandboxFn,
   }));
 }
 
@@ -32,6 +34,8 @@ describe('code-exec tool', () => {
         stdout: '42',
         stderr: '',
         exitCode: 0,
+        sandboxTier: 'worker_threads',
+        durationMs: 1,
       }),
     );
     const { codeExecTool } = await import('./code.js');
@@ -51,6 +55,8 @@ describe('code-exec tool', () => {
         stdout: '',
         stderr: 'NameError: name x is not defined',
         exitCode: 1,
+        sandboxTier: 'worker_threads',
+        durationMs: 1,
       }),
     );
     const { codeExecTool } = await import('./code.js');
@@ -65,26 +71,40 @@ describe('code-exec tool', () => {
   });
 
   it('auto-detects python from print( keyword', async () => {
-    const runCodeInSandbox = vi.fn().mockResolvedValue({ stdout: 'hi', stderr: '', exitCode: 0 });
-    mockSandboxLegacy(runCodeInSandbox);
+    const runInSandboxFn = vi.fn().mockResolvedValue({
+      stdout: 'hi',
+      stderr: '',
+      exitCode: 0,
+      sandboxTier: 'worker_threads',
+      durationMs: 1,
+    });
+    mockSandboxLegacy(runInSandboxFn);
     const { codeExecTool } = await import('./code.js');
     await codeExecTool.execute({ code: 'print("hi")' });
-    expect(runCodeInSandbox).toHaveBeenCalledWith(
+    expect(runInSandboxFn).toHaveBeenCalledWith(
       'print("hi")',
       'python',
-      expect.any(Object),
+      5000,
+      expect.objectContaining({ memoryMb: 128, networkDisabled: true }),
     );
   });
 
   it('auto-detects javascript when no python keywords found', async () => {
-    const runCodeInSandbox = vi.fn().mockResolvedValue({ stdout: '2', stderr: '', exitCode: 0 });
-    mockSandboxLegacy(runCodeInSandbox);
+    const runInSandboxFn = vi.fn().mockResolvedValue({
+      stdout: '2',
+      stderr: '',
+      exitCode: 0,
+      sandboxTier: 'worker_threads',
+      durationMs: 1,
+    });
+    mockSandboxLegacy(runInSandboxFn);
     const { codeExecTool } = await import('./code.js');
     await codeExecTool.execute({ code: '1 + 1' });
-    expect(runCodeInSandbox).toHaveBeenCalledWith(
+    expect(runInSandboxFn).toHaveBeenCalledWith(
       '1 + 1',
       'javascript',
-      expect.any(Object),
+      5000,
+      expect.objectContaining({ memoryMb: 128, networkDisabled: true }),
     );
   });
 
@@ -105,7 +125,13 @@ describe('code-exec tool', () => {
 
   it('includes executionTime in the result', async () => {
     mockSandboxLegacy(
-      vi.fn().mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 }),
+      vi.fn().mockResolvedValue({
+        stdout: 'ok',
+        stderr: '',
+        exitCode: 0,
+        sandboxTier: 'worker_threads',
+        durationMs: 1,
+      }),
     );
     const { codeExecTool } = await import('./code.js');
     const result = (await codeExecTool.execute({ code: '"ok"' })) as { executionTime: number };
@@ -122,7 +148,6 @@ describe('code-exec tool', () => {
     stubExecuteCodeModule({ runCodeWithBridge });
     vi.doMock('./sandbox.js', () => ({
       checkDocker: vi.fn().mockResolvedValue(true),
-      runCodeInSandbox: vi.fn(),
     }));
     const { codeExecTool } = await import('./code.js');
     const result = await codeExecTool.execute({ code: 'print("bridged")', _sessionId: 'sess-1' });
@@ -139,12 +164,15 @@ describe('code-exec tool', () => {
 
 describe('runCodeInSandbox Python fallback', () => {
   function mockDockerUnavailable(): void {
-    vi.doMock('./sandbox.js', async () => vi.importActual('./sandbox.js'));
     vi.doMock('child_process', () => ({
       exec: vi.fn((_cmd: string, _opts: unknown, cb: (err: Error | null) => void) => {
         cb(new Error('docker not available'));
       }),
     }));
+    vi.doMock('./sandbox.js', async () => vi.importActual('./sandbox.js'));
+    vi.doMock('../sandbox/sandbox-factory.js', async () =>
+      vi.importActual('../sandbox/sandbox-factory.js'),
+    );
   }
 
   it('returns clear error for Python when Docker is unavailable', async () => {
@@ -160,15 +188,16 @@ describe('runCodeInSandbox Python fallback', () => {
     expect(result.stdout).toBe('');
   });
 
-  it('falls back to vm for JavaScript when Docker is unavailable', async () => {
+  it('falls back to worker_threads for JavaScript when Docker is unavailable', async () => {
     mockDockerUnavailable();
     const { runCodeInSandbox } = await import('./sandbox.js');
-    const result = await runCodeInSandbox('1 + 1', 'javascript', {
+    const result = await runCodeInSandbox('return 1 + 1', 'javascript', {
       timeout: 5000,
       memoryMb: 128,
       networkDisabled: true,
     });
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toBe('2');
+    expect(result.stdout.trim()).toBe('2');
+    expect(result.stderr).toContain('worker_threads sandbox');
   });
 });

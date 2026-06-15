@@ -4,7 +4,7 @@ import { initRedis, getRedis } from './memory/redis.js';
 import { initRouter } from './gateway/router.js';
 import { startCLI } from './gateway/cli.js';
 import { startTelegram } from './gateway/telegram.js';
-import { startWeb } from './gateway/web.js';
+import { startWebGateway } from './gateway/load-web-package.js';
 import { startDiscord } from './gateway/discord.js';
 import { startSlack } from './gateway/slack.js';
 import { config } from './config/index.js';
@@ -16,12 +16,14 @@ import { TaskScheduler } from './agents/scheduled-tasks.js';
 import { createProactiveCheckInTask } from './agents/check-in.js';
 import { createCommitmentDeliveryTask } from './commitments/delivery.js';
 import { commitmentsEnabled } from './commitments/inference.js';
+import { createReminderDeliveryTask } from './agents/reminder-delivery.js';
 import { loadAndRegisterAllJobs, setJobDeliverCallback } from './agents/cron-scheduler.js';
 import { deliverJobOutput } from './agents/cron-delivery.js';
 import { initMemoryBackend } from './memory/backends/index.js';
 import { startBaileysWhatsApp, isBaileysConfigured } from './gateway/baileys/whatsapp-baileys.js';
 import { importInboundMedia, importWorkspaceFiles } from './sync/agent-sync.js';
 import { startSkillCuratorSchedule } from './skills/curator-scheduler.js';
+import { startBillingReconciliationSchedule } from './billing/reconciliation-scheduler.js';
 import { initSkills } from './skills/index.js';
 import { applyActiveProfileFromDisk } from './profiles/manager.js';
 import { channelRegistry } from './gateway/channels/channel-registry.js';
@@ -90,6 +92,7 @@ async function main(): Promise<void> {
       const jobCount = await loadAndRegisterAllJobs();
       await initSkills();
       startSkillCuratorSchedule();
+      startBillingReconciliationSchedule();
       console.log(chalk.gray(`Memory store ready (${jobCount} scheduled jobs loaded)`));
     }
     if (process.env.CARINA_IMPORT_WORKSPACE === 'true') {
@@ -126,8 +129,9 @@ async function main(): Promise<void> {
     }
   });
 
-  if (process.env.CARINA_CHECK_IN_ENABLED === 'true' || commitmentsEnabled()) {
-    taskScheduler = new TaskScheduler();
+  if (process.env.CARINA_CHECK_IN_ENABLED === 'true' || commitmentsEnabled()
+    || process.env.CARINA_REMINDER_DELIVERY !== 'false') {
+    taskScheduler = new TaskScheduler(60_000);
     if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
       taskScheduler.register(createProactiveCheckInTask('cli'));
       console.log(chalk.gray('Proactive check-in cycle enabled'));
@@ -135,6 +139,10 @@ async function main(): Promise<void> {
     if (commitmentsEnabled()) {
       taskScheduler.register(createCommitmentDeliveryTask());
       console.log(chalk.gray('Inferred commitment delivery enabled'));
+    }
+    if (process.env.CARINA_REMINDER_DELIVERY !== 'false') {
+      taskScheduler.register(createReminderDeliveryTask());
+      console.log(chalk.gray('Notes reminder delivery enabled'));
     }
     taskScheduler.start();
   }
@@ -156,7 +164,7 @@ async function main(): Promise<void> {
   }
 
   if (config.web.enabled) {
-    gateways.push(startWeb());
+    gateways.push(startWebGateway().then(() => undefined));
   }
 
   gateways.push(startDiscord());

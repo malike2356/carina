@@ -1,0 +1,9 @@
+{
+  "name": "borehole-africa",
+  "version": "1.0.0",
+  "description": "Sub-Saharan borehole siting, drilling costs, water quality, and community handover",
+  "author": "VERLOX Ltd",
+  "category": "africa",
+  "optional": true,
+  "skillCount": 5
+}

@@ -36,6 +36,14 @@ vi.mock('../../hosted/plan-gates.js', () => ({
   }),
 }));
 
+vi.mock('../../billing/credit-ledger.js', () => ({
+  getMonthlyBalance: vi.fn(async (orgId: string) => {
+    if (orgId === 'org-over') return { used: 500_000, topups: 0 };
+    if (orgId === 'org-warn') return { used: 420_000, topups: 0 };
+    return { used: 1_000, topups: 0 };
+  }),
+}));
+
 import { checkOrgUsageQuota } from '../hosted-billing.js';
 
 describe('checkOrgUsageQuota', () => {

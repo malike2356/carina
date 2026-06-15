@@ -1,0 +1,35 @@
+{
+  "name": "@verlox/pack-borehole-africa",
+  "version": "0.1.0",
+  "description": "Ghana/West Africa borehole drilling pack for ABBIS",
+  "type": "module",
+  "private": true,
+  "main": "./index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "pack.json",
+    "skills.json",
+    "prompts/",
+    "corpus/",
+    "README.md"
+  ],
+  "carina": {
+    "pack": "./pack.json",
+    "slug": "borehole-africa"
+  },
+  "peerDependencies": {
+    "@verlox/carina-core": "^0.2.0"
+  },
+  "devDependencies": {
+    "@verlox/carina-core": "workspace:*"
+  },
+  "keywords": ["carina", "pack", "borehole", "ghana", "abbis"],
+  "author": "VERLOX Ltd",
+  "license": "MIT"
+}

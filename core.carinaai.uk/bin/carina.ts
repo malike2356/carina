@@ -8,6 +8,12 @@ import type { PackageInfo } from '../src/cli/types.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function readPackageInfo(): PackageInfo {
+  if (process.env.CARINA_PACKAGE_NAME) {
+    return {
+      name: process.env.CARINA_PACKAGE_NAME,
+      version: process.env.CARINA_PACKAGE_VERSION ?? '0.0.0',
+    };
+  }
   const candidates = [
     path.resolve(__dirname, '../package.json'),
     path.resolve(__dirname, '../../package.json'),

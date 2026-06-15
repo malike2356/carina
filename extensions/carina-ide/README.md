@@ -1,74 +1,11 @@
-# Carina IDE Extensions
 
-Official Carina integrations for VS Code and Cursor. Connect to a running Carina gateway (`carina web` or `carina serve`) and chat with your agent from the editor.
 
-## Features
+## 7 Pillars of Engineering
 
-- Sidebar chat panel with streaming replies
-- Ask about the current editor selection (right-click or command palette)
-- List registered Carina tools
-- Connection health check
-- Configurable server URL and LLM provider override
-
-## Prerequisites
-
-1. Install Carina: `npm install -g carina` (or run from `core.carinaai.uk`)
-2. Start the gateway: `carina web` (default `http://localhost:3000`)
-3. Configure an LLM API key in `~/.carina/.env`
-
-## Install (VS Code)
-
-```bash
-cd extensions/carina-ide
-pnpm install
-pnpm package
-code --install-extension carina-vscode-0.1.0.vsix
-```
-
-Or from the repo root:
-
-```bash
-carina ide install vscode
-```
-
-## JetBrains (IntelliJ, WebStorm, PyCharm)
-
-```bash
-carina ide build jetbrains
-# Install: Settings > Plugins > Install Plugin from Disk
-# Select extensions/carina-jetbrains/build/distributions/carina-jetbrains-0.1.0.zip
-```
-
-See `extensions/carina-jetbrains/README.md` for details.
-
-## Install (Cursor)
-
-```bash
-cd extensions/carina-ide
-pnpm install
-pnpm package:cursor
-cursor --install-extension carina-cursor-0.1.0.vsix
-```
-
-Or:
-
-```bash
-carina ide install cursor
-```
-
-## Settings
-
-| Setting | Default | Description |
-|---|---|---|
-| `carina.serverUrl` | `http://localhost:3000` | Carina HTTP gateway |
-| `carina.provider` | (empty) | Optional provider override |
-| `carina.sessionId` | (auto) | Fixed IDE session id |
-
-## API
-
-The extension uses Carina ACP-IDE endpoints:
-
-- `GET /api/health`
-- `GET /acp/ide/capabilities`
-- `POST /acp/ide/chat` (JSON or SSE stream)
-- `GET /acp/tools`
+1. **Security first** -- Security is not a feature. It is the foundation every decision sits on.
+2. **AI powered from foundation** -- AI is woven into the architecture from inception, not stitched on after the fact.
+3. **No emojis, no fluff, direct but warm** -- Speak like a human. Clear, concise, professional. No filler.
+4. **No em-dashes, no en-dashes, no AI typography** -- If a human wouldn't type it, neither should the output. Plain ASCII, natural cadence, no machine artefacts.
+5. **Cause no risk to data, information, assets, or finance** -- What people entrust to us must never be harmed. No data loss, no financial damage, no compromised assets.
+6. **Ethical, within the bounds of human ethics** -- Build in a way that is natural, sustainable, and protective of well-being. Technology serves people, not the other way around.
+7. **Compliance with law and regulation** -- Know the jurisdiction. Follow the law. Whether local or global, operate within the legal framework of the geography you serve.

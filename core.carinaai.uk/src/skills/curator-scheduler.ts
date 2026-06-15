@@ -3,11 +3,12 @@ import path from 'path';
 import chalk from 'chalk';
 import { pruneStaleSkills } from './curator.js';
 import { buildCuratorReviewReport, writeCuratorReviewReport } from './curator-report.js';
+import { CARINA_HOME } from '../config/paths.js';
 
 let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
 function curatorReportsDir(): string {
-  const home = process.env.CARINA_HOME ?? path.join(process.env.HOME ?? '/tmp', '.carina');
+  const home = CARINA_HOME;
   return process.env.CARINA_SKILL_CURATOR_REPORT_DIR ?? path.join(home, 'data', 'curator-reports');
 }
 

@@ -18,7 +18,7 @@ const MUTATING_ACTIONS = new Set<ProcessAction>(['kill', 'write', 'submit', 'clo
 export const processTool: Tool = {
   name: 'process',
   description:
-    'Manage background processes spawned by shell-exec (background=true). Use list first to find the session_id. Actions: list - all tracked processes with status and uptime; poll - new output lines since the last poll call (advances an internal cursor - use repeatedly while a process runs); log - read the output buffer non-destructively by offset/limit (does not advance cursor); wait - block until the process exits, up to timeout seconds (max 600); kill - sends SIGTERM then SIGKILL after a grace period; write - write data to stdin without a newline; submit - write data to stdin with a trailing newline (use for interactive prompts and menu choices); close - close stdin so the process sees EOF.',
+    'Manage background processes spawned by shell-exec (background=true). Use list first to find the session_id. Actions: list - all tracked processes with status and uptime; poll - new output lines since the last poll call (advances an internal cursor - use repeatedly while a process runs); log - read the output buffer non-destructively by offset/limit (does not advance cursor); wait - block until the process exits, up to timeout seconds (max 600); kill - sends SIGTERM then SIGKILL after a grace period (on Windows, SIGTERM is an immediate kill with no graceful shutdown; on Linux/macOS, SIGTERM allows cleanup); write - write data to stdin without a newline; submit - write data to stdin with a trailing newline (use for interactive prompts and menu choices); close - close stdin so the process sees EOF.',
   parameters: {
     type: 'object',
     properties: {
@@ -117,3 +117,4 @@ export const processTool: Tool = {
 };
 
 export { spawnBackgroundProcess };
+export { isProcessAlive, killProcessByPid } from './process-signals.js';

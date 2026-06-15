@@ -25,10 +25,13 @@ import {
   listWorkbenchRuns,
   orgHasWorkbenchRun,
   summarizeRun,
+  WorkbenchCreditsError,
+  WorkbenchInferenceUnavailableError,
   WorkbenchMissingKeyError,
   WorkbenchQuotaError,
   WorkbenchValidationError,
 } from '../hosted/workbench-service.js';
+import { resolveWorkbenchInferenceMode } from '../hosted/workbench-inference.js';
 import {
   getCreditsStatus,
   getTodayUsage,
@@ -52,9 +55,13 @@ import {
   type CreditTopupPackId,
 } from '../billing/plans.js';
 import {
+  billingPlanIdFromOrgPlan,
+  estimateWorkbenchUsage,
   getOpsCreditUsageSummary,
   getOpsModelMetering,
 } from '../billing/ops-metering-service.js';
+import { getPlatformMarginSummary } from '../billing/margin-report.js';
+import { requireOpsAuth } from '../ops/ops-auth.js';
 import { redactSecrets } from '../hosted/redact.js';
 
 async function overviewHandler(req: Request, res: Response): Promise<void> {
@@ -100,11 +107,30 @@ function handleServiceError(res: Response, err: unknown): void {
     res.status(err.statusCode).json(safeJsonBody({ error: err.message }));
     return;
   }
+  if (err instanceof WorkbenchInferenceUnavailableError) {
+    res.status(err.statusCode).json(safeJsonBody({
+      error: err.message,
+      byokAvailable: err.byokAvailable,
+      managedAvailable: err.managedAvailable,
+    }));
+    return;
+  }
   if (err instanceof WorkbenchQuotaError) {
     res.status(429).json(safeJsonBody({
       error: 'quota_exceeded',
       used: err.used,
       limit: err.limit,
+    }));
+    return;
+  }
+  if (err instanceof WorkbenchCreditsError) {
+    res.status(429).json(safeJsonBody({
+      error: err.code,
+      message: err.message,
+      modelClass: err.modelClass,
+      used: err.used,
+      limit: err.limit,
+      remaining: err.remaining,
     }));
     return;
   }
@@ -129,6 +155,13 @@ export function mountCarinaOpsRoutes(app: Express): void {
     res.json({ ok: true, product: 'carina-ops' });
   });
 
+  router.get('/admin/margins', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (_req, res) => {
+    const summary = await getPlatformMarginSummary();
+    res.json(safeJsonBody(summary));
+  });
+
   router.use(requireHostedSession);
   router.use(requireOpsPlan('carina_ops_starter'));
 
@@ -136,10 +169,40 @@ export function mountCarinaOpsRoutes(app: Express): void {
 
   router.get('/models', requireOrgMember('usage.read'), async (req, res) => {
     const ctx = orgContext(req);
-    const plan = await getOrgPlan(ctx.orgId) as BillingPlanId;
+    const plan = billingPlanIdFromOrgPlan(await getOrgPlan(ctx.orgId));
     const models = await listModelsForOrg(ctx.orgId);
     const metering = await getOpsModelMetering(ctx.orgId, plan);
     res.json({ models, ...metering });
+  });
+
+  router.post('/workbench/estimate', requireOrgMember('workbench.run'), async (req, res) => {
+    const ctx = orgContext(req);
+    const prompt = String(req.body?.prompt ?? '');
+    const provider = String(req.body?.provider ?? '').trim();
+    const model = String(req.body?.model ?? '').trim();
+    if (!provider || !model) {
+      res.status(400).json(safeJsonBody({ error: 'provider and model are required' }));
+      return;
+    }
+    const planId = billingPlanIdFromOrgPlan(await getOrgPlan(ctx.orgId));
+    const inferenceMode = await resolveWorkbenchInferenceMode(ctx.userId, provider);
+    if (!inferenceMode) {
+      res.status(400).json(safeJsonBody({
+        error: 'No inference path available for this provider. Add a Vault key or enable managed inference.',
+        allowed: false,
+        inferenceMode: null,
+      }));
+      return;
+    }
+    const estimate = await estimateWorkbenchUsage({
+      orgId: ctx.orgId,
+      planId,
+      provider,
+      model,
+      prompt,
+      byok: inferenceMode === 'byok',
+    });
+    res.json(safeJsonBody({ ...estimate, inferenceMode }));
   });
 
   router.get('/vault', requireOrgMember('vault.read'), async (req, res) => {
@@ -201,6 +264,9 @@ export function mountCarinaOpsRoutes(app: Express): void {
         provider: String(req.body?.provider ?? ''),
         model: String(req.body?.model ?? ''),
         title: req.body?.title ? String(req.body.title) : undefined,
+        inferencePreference: req.body?.inferenceMode === 'managed' || req.body?.inferenceMode === 'byok'
+          ? req.body.inferenceMode
+          : 'auto',
         req,
       });
       res.json(safeJsonBody(result));

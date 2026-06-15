@@ -1,0 +1,58 @@
+[
+  {
+    "name": "ghana-drilling-estimate",
+    "description": "Estimate borehole drilling cost and timeline for Ghana regions using GBDA benchmarks",
+    "trigger": ["borehole cost", "drilling estimate", "Ghana water", "CWSA", "how much to drill", "price per metre"],
+    "steps": "1. Confirm region, target depth, formation difficulty, and pump requirement.\n2. Run calculate_drilling_cost with depth_m and region from pack knowledge.\n3. Present cost breakdown: drilling, rig hire, crew, materials.\n4. State data_as_of (GBDA 2022 benchmarks) and recommend formal written quote.\n5. Flag if site access or mobilisation may add cost beyond table rates.",
+    "toolsUsed": ["calculate_drilling_cost", "file-read"]
+  },
+  {
+    "name": "water-quality-limits",
+    "description": "Check water sample results against Ghana Standards Authority and WHO drinking water limits",
+    "trigger": ["water quality", "Ghana standards", "WHO limits", "bacteria", "nitrate", "iron", "fluoride", "turbidity"],
+    "steps": "1. Collect parameter names and measured values from user or lab PDF.\n2. Compare against limits in corpus/05-water-quality-standards.md.\n3. Flag exceedances with health significance (iron, manganese, fluoride, E. coli).\n4. Suggest retest or treatment; not a substitute for certified lab sign-off.",
+    "toolsUsed": ["file-read"]
+  },
+  {
+    "name": "project-tracking",
+    "description": "Track active borehole projects, depth progress, and submit drilling logs via ABBIS",
+    "trigger": ["active projects", "drilling log", "project status", "depth progress", "borehole project"],
+    "steps": "1. Use ABBIS API tools when available: list boreholes, get project detail.\n2. For log submission: confirm project_id, depth_start_m, depth_end_m, formation, fluid returns.\n3. Summarise depth progress vs target and days on site.\n4. Alert rig owner if no log received for an active drilling project.",
+    "toolsUsed": ["file-read"]
+  },
+  {
+    "name": "fleet-management",
+    "description": "Rig status, maintenance schedules, and equipment fault reporting",
+    "trigger": ["rig status", "fleet", "maintenance", "equipment fault", "breakdown", "rig down"],
+    "steps": "1. List rigs by status when ABBIS fleet API is available.\n2. For faults: capture rig_id, severity (minor/moderate/critical), description, project_id.\n3. Critical faults: advise stop drilling until inspected.\n4. Reference equipment makes from corpus/08-equipment-registry.md when relevant.",
+    "toolsUsed": ["file-read"]
+  },
+  {
+    "name": "financial-invoicing",
+    "description": "Invoices, outstanding payments, and project P&L for rig owners",
+    "trigger": ["invoice", "payment", "outstanding", "receivables", "billing", "margin", "profit"],
+    "steps": "1. List invoices by status when ABBIS billing API is available.\n2. Summarise aging: 0-30, 31-60, 60+ days overdue.\n3. Link invoice lines to borehole project milestones where possible.\n4. Do not initiate Paystack payments without user confirmation.",
+    "toolsUsed": ["file-read"]
+  },
+  {
+    "name": "cwsa-compliance",
+    "description": "CWSA completion reports, siting rules, and compliance deadlines",
+    "trigger": ["CWSA", "completion report", "compliance", "EPA", "borehole certificate", "siting"],
+    "steps": "1. Apply CWSA siting rules from corpus/06-cwsa-standards.md (150m from latrine, etc.).\n2. Generate completion report via API when project is marked complete.\n3. Verify pump test and water quality records attached before certification.\n4. Flag missing EPA permit where applicable.",
+    "toolsUsed": ["generate_cwsa_report", "file-read"]
+  },
+  {
+    "name": "marketplace-vendor",
+    "description": "Search marketplace products and vendor profiles for drilling materials",
+    "trigger": ["marketplace", "vendor", "casing supplier", "bentonite", "drill bit", "buy materials"],
+    "steps": "1. Search products by category and region when marketplace API is available.\n2. Compare lead times and delivery radius for mobilising projects.\n3. For vendors: summarise order backlog and review scores.\n4. Recommend GBDA-member vendors when trust signal matters.",
+    "toolsUsed": ["file-read", "web-search"]
+  },
+  {
+    "name": "drilling-calculators",
+    "description": "Pump sizing, casing design, bentonite volumes, and pump test yield analysis",
+    "trigger": ["pump size", "casing design", "screen slot", "bentonite", "gravel pack", "pump test", "drawdown"],
+    "steps": "1. Pump selection: use calculate_pump_selection with yield, TDH, power supply.\n2. Casing: use calculate_casing_design with aquifer top/bottom and static water level.\n3. Fluids: calculate_bentonite_volume for hole diameter and depth.\n4. Gravel pack: calculate_gravel_pack_volume for screen length.\n5. Pump test: calculate_yield_from_pump_test for specific capacity estimate.",
+    "toolsUsed": ["calculate_pump_selection", "calculate_casing_design", "calculate_bentonite_volume", "calculate_gravel_pack_volume", "calculate_yield_from_pump_test"]
+  }
+]

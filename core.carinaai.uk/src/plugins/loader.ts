@@ -16,6 +16,12 @@ function resolvePluginProvidersDir(projectRoot: string): string {
   const sourceDir = path.join(projectRoot, PLUGIN_PROVIDERS_DIR);
   const distDir = path.join(projectRoot, 'dist', PLUGIN_PROVIDERS_DIR);
   try {
+    const hasTs = fs.readdirSync(sourceDir).some((name) => name.endsWith('.ts') && !name.endsWith('.d.ts'));
+    if (hasTs) return sourceDir;
+  } catch {
+    // fall through to dist or default source tree
+  }
+  try {
     const hasJs = fs.readdirSync(distDir).some((name) => name.endsWith('.js') && !name.endsWith('.d.ts'));
     if (hasJs) return distDir;
   } catch {

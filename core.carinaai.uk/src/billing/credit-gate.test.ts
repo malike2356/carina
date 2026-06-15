@@ -84,4 +84,16 @@ describe('credit-gate', () => {
     expect(result.allowed).toBe(true);
     expect(result.reason).toContain('warning');
   });
+
+  it('blocks managed inference when implied margin is below floor', async () => {
+    process.env.CREDIT_USD_RATE = '0.00001';
+    const { checkCreditGate } = await import('./credit-gate.js');
+    const result = await checkCreditGate('org-1', 'carina_ops_starter', 'balanced', 1000, {
+      managedInference: true,
+      estimatedProviderCostUsd: 0.05,
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toContain('margin');
+    delete process.env.CREDIT_USD_RATE;
+  });
 });

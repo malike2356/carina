@@ -4,12 +4,13 @@ import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { BUILTIN_PACKS_DIR } from '../pack-loader.js';
+import { resolvePackDirectory } from '../pack-discovery.js';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function buildPackArchive(packName: string, outputDir: string): Promise<string> {
-  const packRoot = path.join(BUILTIN_PACKS_DIR, packName);
+  const packRoot = resolvePackDirectory(packName) ?? path.join(BUILTIN_PACKS_DIR, packName);
   await fs.access(packRoot);
   const archivePath = path.join(outputDir, `${packName}.tar.gz`);
   await fs.mkdir(outputDir, { recursive: true });
@@ -28,7 +29,8 @@ export async function buildPropertyUkArchive(outputDir: string): Promise<string>
   await fs.mkdir(knowledgeDir, { recursive: true });
 
   await copyMdTree(brainRoot, knowledgeDir);
-  const packRoot = path.join(BUILTIN_PACKS_DIR, 'property-uk');
+  const packRoot = resolvePackDirectory('property-uk')
+    ?? path.join(BUILTIN_PACKS_DIR, 'property-uk');
   await copyPackFilesExceptKnowledge(packRoot, tmpDir);
 
   await fs.writeFile(

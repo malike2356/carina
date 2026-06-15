@@ -1,0 +1,37 @@
+{
+  "name": "carina-agent",
+  "version": "0.2.0",
+  "description": "Meta-package for Carina; installs the @verlox/carina-core kernel (transition shim for npm install -g carina-agent)",
+  "homepage": "https://carinaai.uk",
+  "type": "module",
+  "bin": {
+    "carina": "./bin/carina.js"
+  },
+  "files": [
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@verlox/carina-core": "workspace:*",
+    "@verlox/carina-web": "workspace:*"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "carina",
+    "carina-agent"
+  ],
+  "author": "VERLOX Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/malike2356/carina-agent.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

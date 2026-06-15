@@ -380,7 +380,12 @@ export async function syncOperatorActivePacks(
 
   const { enablePackRuntime } = await import('./index.js');
   for (const name of toAdd) {
-    await enablePackRuntime(name);
+    try {
+      await enablePackRuntime(name);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[operator-packs] enablePackRuntime(${name}) failed: ${msg}`);
+    }
   }
 
   if (toAdd.length > 0 || toRemove.length > 0 || before.length !== normalized.length) {

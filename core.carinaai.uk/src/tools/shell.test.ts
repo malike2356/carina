@@ -71,9 +71,10 @@ describe('shell-exec tool', () => {
       sessionSandboxEnabled: vi.fn().mockReturnValue(false),
     }));
     const { shellExecTool } = await import('./shell.js');
-    const result = await shellExecTool.execute({ command: 'echo hello' }) as { stdout: string };
+    const result = await shellExecTool.execute({ command: 'echo hello' }) as { stdout: string; shell: string };
     expect(runDirectShell).toHaveBeenCalledWith('echo hello', expect.objectContaining({ timeout: 30_000 }));
     expect(result.stdout).toBe('hello');
+    expect(result.shell).toBe('bash');
     delete process.env.CARINA_DIRECT_SHELL;
   });
 
