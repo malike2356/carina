@@ -240,4 +240,8 @@ return [
         'evening_cron_time' => env('ACCOUNTABILITY_COACH_EVENING_CRON', '20:00'),
     ],
 
+    'calculator_analytics' => [
+        'token' => env('CALCULATOR_ANALYTICS_TOKEN', ''),
+    ],
+
 ];
