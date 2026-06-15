@@ -5,9 +5,10 @@ const docsBase = process.env.VP_BASE || '/';
 export default defineConfig({
   base: docsBase,
   cleanUrls: true,
-  title: 'Labyrinth Scout',
-  description: 'Security control plane for AI agents. Self-hosted or hosted by VERLOX.',
+  title: 'Labyrinth Scout Docs',
+  description: 'Documentation for Labyrinth Scout: prompt guard, kill switch, governance, API, and SDKs.',
   head: [
+    ['meta', { name: 'theme-color', content: '#0a0e1a' }],
     [
       'link',
       {
@@ -17,24 +18,27 @@ export default defineConfig({
     ],
   ],
   themeConfig: {
-    siteTitle: 'Scout',
-    appearance: true,
+    logo: '/scout-mark.svg',
+    siteTitle: 'Scout Docs',
+    appearance: 'dark',
     nav: [
       { text: 'Guide', link: '/getting-started', activeMatch: '/getting-started|/configuration|/dashboard' },
       { text: 'Integrations', link: '/integration/carina', activeMatch: '/integration/' },
+      { text: 'Security', link: '/security/threat-model', activeMatch: '/security/' },
+      { text: 'Trust', link: '/trust/platform', activeMatch: '/trust/' },
       { text: 'API', link: '/api/events', activeMatch: '/api/' },
       { text: 'SDK', link: '/sdk/node', activeMatch: '/sdk/' },
+      { text: 'labyrinthscout.com', link: 'https://labyrinthscout.com', target: '_blank', rel: 'noopener noreferrer' },
     ],
     sidebar: [
       {
         text: 'Introduction',
         items: [
           { text: 'Overview', link: '/' },
-          { text: 'Getting Started', link: '/getting-started' },
+          { text: 'Getting started', link: '/getting-started' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Dashboard', link: '/dashboard' },
-          { text: 'Public Trust API', link: '/api/public-trust' },
-          { text: 'Trust platform', link: '/trust/platform' },
+          { text: 'Troubleshooting', link: '/troubleshooting' },
         ],
       },
       {
@@ -49,18 +53,20 @@ export default defineConfig({
         text: 'Trust',
         items: [
           { text: 'Platform decision', link: '/trust/platform' },
+          { text: 'Least privilege defaults', link: '/trust/least-privilege-defaults' },
+          { text: 'Type 3 runbook', link: '/trust/type3-runbook' },
           { text: 'Public trust API', link: '/api/public-trust' },
         ],
       },
       {
         text: 'Security',
         items: [
-          { text: 'Threat Model', link: '/security/threat-model' },
-          { text: 'Prompt Guard', link: '/security/prompt-guard' },
-          { text: 'Tool Policy', link: '/security/tool-policy' },
-          { text: 'Egress Filter', link: '/security/egress-filter' },
+          { text: 'Threat model', link: '/security/threat-model' },
+          { text: 'Prompt guard', link: '/security/prompt-guard' },
+          { text: 'Tool policy', link: '/security/tool-policy' },
+          { text: 'Egress filter', link: '/security/egress-filter' },
           { text: 'Honeypots', link: '/security/honeypots' },
-          { text: 'Anomaly Detection', link: '/security/anomaly-detection' },
+          { text: 'Anomaly detection', link: '/security/anomaly-detection' },
         ],
       },
       {
@@ -93,6 +99,10 @@ export default defineConfig({
     outline: {
       level: [2, 3],
       label: 'On this page',
+    },
+    docFooter: {
+      prev: 'Previous',
+      next: 'Next',
     },
   },
 });
