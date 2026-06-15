@@ -37,4 +37,17 @@ return [
     'android_apk_url' => env('MOBILE_ANDROID_APK_URL'),
     'ios_app_url' => env('MOBILE_IOS_APP_URL'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Build webhook (CI/GitHub Actions)
+    |--------------------------------------------------------------------------
+    |
+    | Set MOBILE_BUILD_WEBHOOK_SECRET to a strong random string and add the
+    | same value as PROPRENEUR_WEBHOOK_SECRET in GitHub Actions secrets.
+    | The webhook receiver at POST /api/webhooks/mobile-build updates the
+    | APK download URL automatically after each EAS build.
+    |
+    */
+    'build_webhook_secret' => env('MOBILE_BUILD_WEBHOOK_SECRET'),
+
 ];
