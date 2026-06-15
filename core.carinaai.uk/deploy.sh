@@ -55,7 +55,15 @@ sync_pack_packages() {
   rsync -az --delete \
     packages/packs/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/dist/packages/packs/"
   ssh "${VPS_USER}@${VPS_HOST}" "for pack in ${DEPLOY_DIR}/dist/packages/packs/*; do [ -d \"\$pack\" ] || continue; mkdir -p \"\$pack/node_modules/@verlox\"; ln -sfn ../../../../../.. \"\$pack/node_modules/@verlox/carina-core\"; done"
-  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p ${DEPLOY_DIR}/node_modules/@verlox && ln -sfn ${DEPLOY_DIR} ${DEPLOY_DIR}/node_modules/@verlox/carina-core"
+  ssh "${VPS_USER}@${VPS_HOST}" "
+    mkdir -p ${DEPLOY_DIR}/node_modules/@verlox
+    ln -sfn ${DEPLOY_DIR} ${DEPLOY_DIR}/node_modules/@verlox/carina-core
+    ln -sfn ${DEPLOY_DIR}/packages/transport ${DEPLOY_DIR}/node_modules/@verlox/carina-transport
+    ln -sfn ${DEPLOY_DIR}/packages/scout-client ${DEPLOY_DIR}/node_modules/@verlox/carina-scout
+    ln -sfn ${DEPLOY_DIR}/dist/packages/packs/borehole-africa ${DEPLOY_DIR}/node_modules/@verlox/pack-borehole-africa
+    ln -sfn ${DEPLOY_DIR}/dist/packages/packs/healthcare ${DEPLOY_DIR}/node_modules/@verlox/pack-health
+    ln -sfn ${DEPLOY_DIR}/dist/packages/packs/property-uk ${DEPLOY_DIR}/node_modules/@verlox/pack-property
+  "
 }
 
 sync_web_package() {
@@ -84,7 +92,20 @@ sync_cloud_dist() {
 
 install_vps_deps() {
   log "Installing/updating npm packages on VPS if needed..."
-  ssh "${VPS_USER}@${VPS_HOST}" "cd ${DEPLOY_DIR} && npm install --omit=dev --ignore-scripts 2>&1 | tail -5"
+  ssh "${VPS_USER}@${VPS_HOST}" "
+    cd ${DEPLOY_DIR}
+    node -e \"
+      const fs = require('fs');
+      const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+      const deps = pkg.dependencies || {};
+      Object.keys(deps).forEach(k => { if ((deps[k] || '').startsWith('workspace:')) delete deps[k]; });
+      fs.writeFileSync('/tmp/carina-pkg-deploy.json', JSON.stringify(pkg));
+    \"
+    cp package.json package.json.bak
+    cp /tmp/carina-pkg-deploy.json package.json
+    npm install --omit=dev --ignore-scripts 2>&1 | tail -5
+    mv package.json.bak package.json
+  "
 }
 
 check_service() {
