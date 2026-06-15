@@ -25,7 +25,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Android app (sideload APK)
+    | Propreneur Mobile app (full workspace - sideload APK)
     |--------------------------------------------------------------------------
     |
     | Set MOBILE_ANDROID_APK_PATH on the server (recommended) or MOBILE_ANDROID_APK_URL
@@ -36,6 +36,19 @@ return [
     'android_apk_path' => env('MOBILE_ANDROID_APK_PATH'),
     'android_apk_url' => env('MOBILE_ANDROID_APK_URL'),
     'ios_app_url' => env('MOBILE_IOS_APP_URL'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Propreneur Assistant app (AI companion - sideload APK)
+    |--------------------------------------------------------------------------
+    |
+    | Separate from the full Propreneur Mobile app. Set MOBILE_ASSISTANT_APK_PATH
+    | or MOBILE_ASSISTANT_APK_URL. Served at route tenant.mobile.assistant.
+    |
+    */
+    'assistant_version' => env('MOBILE_ASSISTANT_VERSION', '1.0.0'),
+    'assistant_apk_path' => env('MOBILE_ASSISTANT_APK_PATH'),
+    'assistant_apk_url' => env('MOBILE_ASSISTANT_APK_URL'),
 
     /*
     |--------------------------------------------------------------------------
