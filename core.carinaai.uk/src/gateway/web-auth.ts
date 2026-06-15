@@ -24,6 +24,8 @@ const PUBLIC_HOSTED_PATHS = new Set([
   '/hosted-register',
   '/app/auth/login',
   '/app/auth/register',
+  '/api/cloud/auth/login',
+  '/api/cloud/auth/register',
   '/api/auth/login',
   '/api/auth/register',
   '/api/carina-ops/health',
