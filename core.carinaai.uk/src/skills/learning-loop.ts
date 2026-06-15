@@ -90,6 +90,13 @@ export async function runLearningLoop(input: LearningLoopInput): Promise<Learnin
   if (process.env.CARINA_AUTO_SKILL === 'false' || process.env.SKILL_AUTO_WRITE === 'false') {
     return { saved: false };
   }
+
+  if (isUserCorrection(input.userMessage)) {
+    void import('./preference-learner.js')
+      .then(({ learnPreferenceFromCorrection }) => learnPreferenceFromCorrection(input.userMessage))
+      .catch(() => null);
+  }
+
   if (input.toolsUsed.length < 3) return { saved: false };
 
   const draft = await evalForSkill(input);

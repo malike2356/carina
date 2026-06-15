@@ -16,7 +16,7 @@ describe('operator management isolation', () => {
       const source = readFileSync(file, 'utf8');
       expect(source.includes('curator-cli')).toBe(false);
       expect(source.includes('kanban-cli')).toBe(false);
-      expect(source.includes('operator-profile')).toBe(false);
+      expect(source.includes('ops/operator-profile')).toBe(false);
     }
   });
 

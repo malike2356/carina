@@ -8,6 +8,24 @@ type ProviderChoice = 'deepseek' | 'anthropic' | 'openai' | 'later';
 
 export async function runSetupWizard(): Promise<void> {
   console.log('\nWelcome to Carina.\n');
+  console.log('Before we start: a few quick questions so I can know who I\'m working with.\n');
+
+  const agentName = await input({
+    message: 'What would you like to call me? (This is how I\'ll refer to myself)',
+    default: 'Carina',
+  });
+
+  const operatorName = await input({
+    message: 'What\'s your name?',
+    default: '',
+  });
+
+  const operatorContext = await input({
+    message: 'What are you building or working on? (One sentence is enough, or skip with Enter)',
+    default: '',
+  });
+
+  console.log('');
 
   const provider = await select<ProviderChoice>({
     message: 'Which AI provider do you want to start with?',
@@ -19,7 +37,14 @@ export async function runSetupWizard(): Promise<void> {
     ],
   });
 
+  const trimmedAgentName = agentName.trim() || 'Carina';
+  const trimmedOperatorName = operatorName.trim();
+  const trimmedOperatorContext = operatorContext.trim();
+
   const lines: string[] = ['DEFAULT_PROVIDER=' + provider];
+  if (trimmedAgentName !== 'Carina') lines.push('CARINA_AGENT_NAME=' + trimmedAgentName);
+  if (trimmedOperatorName) lines.push('CARINA_OPERATOR_NAME=' + trimmedOperatorName);
+  if (trimmedOperatorContext) lines.push('CARINA_OPERATOR_CONTEXT=' + trimmedOperatorContext);
 
   if (provider === 'deepseek') {
     const key = await input({ message: 'Enter your DeepSeek API key:' });

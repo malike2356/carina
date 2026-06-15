@@ -36,6 +36,7 @@ import { registry, registerSessionTools, listSessionTools, getSessionTool } from
 import { resolveActiveToolNames } from '../tools/toolset-config.js';
 import { ALWAYS_ON_TOOLS } from '../tools/toolset.js';
 import { getAllPersistentContext } from '../memory/persistent-memory.js';
+import { maybeBootstrapOperatorProfile } from '../memory/operator-profile.js';
 import { memoryInjectionEnabled, memoryInjectionIncludesSemantic } from '../memory/memory-injection.js';
 import { memoryTool } from '../tools/memory.js';
 import { getPendingClarification, clearPendingClarification } from '../tools/clarify.js';
@@ -220,6 +221,7 @@ export class CarinaAgent {
     }
 
     if (this.memoryReady && !this.fastMode && memoryInjectionEnabled()) {
+      await maybeBootstrapOperatorProfile();
       const keywords = extractKeywords(userMessage);
       const semantic = memoryInjectionIncludesSemantic();
       const [persistent, history, similar, rawRag, rawSkills] = await Promise.all([
@@ -232,6 +234,26 @@ export class CarinaAgent {
 
       if (persistent) {
         contextParts.push(`Persistent memory:\n${persistent}`);
+      }
+
+      if (history.length === 0) {
+        if (persistent.trim()) {
+          contextParts.push(
+            'Session context: the operator just opened a new session. ' +
+            'The User profile and agent notes above contain everything you know about them. ' +
+            'Carry that context forward -- you already know this person. ' +
+            'Do not announce "welcome back" unless they prompt it. ' +
+            'If their first message is a task, do the task. ' +
+            'If they seem to want to reconnect or check in, respond in kind.',
+          );
+        } else {
+          contextParts.push(
+            'Session context: this appears to be your first interaction with this operator. ' +
+            'You have no prior context about them. When you respond, introduce yourself by name ' +
+            'and ask who they are and what they are building or working on. ' +
+            'One question at a time. Be warm and direct.',
+          );
+        }
       }
 
       if (history.length > 0) {
