@@ -14,10 +14,12 @@ import { config } from '#core/config/index.js';
 import { llm } from '#core/brain/llm.js';
 import { emailWebhookRouter } from '#core/api/email-webhook.js';
 import { mountHostedRoutes } from '#core/api/hosted.js';
+import { mountCloudRawRoutes, mountServerRoutes } from '#core/server.js';
 import { mountBillingRoutes, mountBillingWebhook } from '#core/api/billing-routes.js';
 import { subscribeRouter } from '#core/api/subscribe.js';
 import { memoryApiRouter } from '#core/api/memory-api.js';
 import { documentsApiRouter } from '#core/gateway/documents-api.js';
+import { imagesApiRouter } from '#core/gateway/images-api.js';
 import { notesApiRouter } from '#core/gateway/notes-api.js';
 import { emailApiRouter } from '#core/gateway/email-api.js';
 import { packsApiRouter } from '#core/api/packs-api.js';
@@ -60,6 +62,9 @@ import { mountControlRoutes } from '#core/api/control-routes.js';
 import { mountPairingRoutes } from '#core/api/pairing-routes.js';
 import { writeHostPidFile, clearHostPidFile } from '#core/infrastructure/host-service.js';
 import { pairedDeviceFromRequest } from '#core/infrastructure/control-auth.js';
+import { createSkillsHubApp } from '#core/skills/hub/server.js';
+import { initHubDb } from '#core/skills/hub/migrations.js';
+import { seedHubRegistry } from '#core/skills/hub/seed.js';
 
 export type StartWebOptions = {
   localMode?: boolean;
@@ -110,6 +115,12 @@ const WEB_STATIC = WEB_ASSET_DIR;
 const PRICING_STATIC = resolveCorePricingDir();
 const DASHBOARD_STATIC = DASHBOARD_ASSET_DIR;
 const activeServers: Server[] = [];
+const HUB_HOSTNAMES = new Set(['hub.carinaai.uk', 'skills.carinaai.uk']);
+
+function resolveHubPacksStorage(): string {
+  const coreRoot = path.dirname(require.resolve('@verlox/carina-core/package.json'));
+  return path.join(coreRoot, 'data/hub-packs');
+}
 
 async function resolveCarinaVersion(): Promise<string> {
   try {
@@ -349,10 +360,26 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   const localMode = options.localMode === true;
   if (localMode) process.env.CARINA_LOCAL_MODE = 'true';
   const carinaVersion = await resolveCarinaVersion();
+  let hubApp: Express | null = null;
 
   const app = express();
   channelRegistry.register(new WebAdapter(config.web.enabled));
   app.set('trust proxy', 1);
+
+  if (!localMode) {
+    const hubPacksStorage = resolveHubPacksStorage();
+    await fs.mkdir(hubPacksStorage, { recursive: true });
+    await initHubDb();
+    await seedHubRegistry(hubPacksStorage);
+    hubApp = createSkillsHubApp();
+    app.use((req, res, next) => {
+      if (HUB_HOSTNAMES.has(req.hostname.toLowerCase())) {
+        hubApp?.(req, res, next);
+        return;
+      }
+      next();
+    });
+  }
 
   app.use((_req, res, next) => {
     const allowedOrigin = process.env.CORS_ORIGIN ?? '*';
@@ -370,6 +397,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     } else {
       console.warn(chalk.yellow('Billing webhook skipped: STRIPE_SECRET_KEY not configured'));
     }
+    mountCloudRawRoutes(app);
   }
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
@@ -411,6 +439,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     app.use('/api/email', emailApiRouter);
     app.use('/api/packs', packsApiRouter);
     mountHostedRoutes(app);
+    mountServerRoutes(app);
     if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
       mountHostedWebRoutes(app);
     } else {
@@ -745,7 +774,6 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     const html = decoratePageHtml(
       await fs.readFile(path.join(WEB_STATIC, 'index.html'), 'utf-8'),
       carinaVersion,
-      { whyCarina: true },
     );
     const memoryHtml = decoratePageHtml(
       await fs.readFile(path.join(WEB_STATIC, 'memory.html'), 'utf-8').catch(() => null),
