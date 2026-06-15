@@ -104,13 +104,15 @@ async function loadFromDirectory(packDir: string): Promise<LoadedPackModule> {
     }
   }
 
-  const skillsTs = path.join(packDir, 'skills.ts');
+  const skillsJs = path.join(packDir, 'skills.js');
+  const skillsTs = fsSync.existsSync(skillsJs) ? skillsJs : path.join(packDir, 'skills.ts');
   if (fsSync.existsSync(skillsTs)) {
     const mod = await import(pathToFileURL(skillsTs).href) as Record<string, unknown>;
     const skillsKey = Object.keys(mod).find((k) => k.endsWith('Skills'));
     if (skillsKey && Array.isArray(mod[skillsKey])) {
       let systemSuffix = '';
-      const promptsPath = path.join(packDir, 'prompts/system.ts');
+      const promptsJs = path.join(packDir, 'prompts/system.js');
+      const promptsPath = fsSync.existsSync(promptsJs) ? promptsJs : path.join(packDir, 'prompts/system.ts');
       if (fsSync.existsSync(promptsPath)) {
         const promptMod = await import(pathToFileURL(promptsPath).href) as Record<string, string>;
         systemSuffix = promptMod.propertyUkSystemSuffix
