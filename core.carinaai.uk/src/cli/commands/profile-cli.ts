@@ -8,7 +8,15 @@ import {
   importProfile,
   listProfiles,
 } from '../../profiles/manager.js';
-import { describeNamedProfileScope } from '../../profiles/scope.js';
+import {
+  describeNamedProfileScope,
+  formatProfileScopeBanner,
+} from '../../profiles/scope.js';
+import {
+  peekPreviousProfile,
+  switchProfile,
+  switchProfileBack,
+} from '../../profiles/isolation.js';
 import fs from 'fs/promises';
 
 export async function runProfileCommand(args: string[]): Promise<void> {
@@ -45,9 +53,32 @@ export async function runProfileCommand(args: string[]): Promise<void> {
       console.error('Usage: carina profile use <name>');
       process.exit(1);
     }
-    const profile = activateProfile(name);
-    console.log(`Active profile: ${profile.name}`);
-    console.log(`  CARINA_HOME=${profile.dir}`);
+    const profile = switchProfile(name);
+    console.log(formatProfileScopeBanner(profile.name));
+    return;
+  }
+
+  if (action === 'current') {
+    const active = getActiveProfileName() ?? 'default';
+    try {
+      const scope = describeNamedProfileScope(active, getActiveProfileName());
+      console.log(formatProfileScopeBanner(active));
+      console.log(JSON.stringify(scope, null, 2));
+    } catch {
+      console.log(`Active profile: ${active}`);
+    }
+    const prev = peekPreviousProfile();
+    if (prev) console.log(`Previous profile (carina profile back): ${prev}`);
+    return;
+  }
+
+  if (action === 'back') {
+    const profile = switchProfileBack();
+    if (!profile) {
+      console.error('No previous profile on the switch stack.');
+      process.exit(1);
+    }
+    console.log(formatProfileScopeBanner(profile.name));
     return;
   }
 
@@ -116,6 +147,6 @@ export async function runProfileCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina profile <list|create|use|show|scope|clone|export|import|delete> [args]');
+  console.error('Usage: carina profile <list|create|use|current|back|show|scope|clone|export|import|delete> [args]');
   process.exit(1);
 }

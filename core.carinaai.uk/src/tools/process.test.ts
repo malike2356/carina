@@ -33,7 +33,7 @@ describe('process-registry', () => {
     const registry = await import('./process-registry.js');
     registry._resetRegistryForTests();
 
-    const state = registry.spawnBackgroundProcess('echo hello');
+    const state = await registry.spawnBackgroundProcess('echo hello');
     mockChild.stdout?.emit('data', Buffer.from('line-1\n'));
     mockChild.stdout?.emit('data', Buffer.from('line-2\n'));
 
@@ -57,7 +57,7 @@ describe('process-registry', () => {
     const registry = await import('./process-registry.js');
     registry._resetRegistryForTests();
 
-    const state = registry.spawnBackgroundProcess('sleep 999');
+    const state = await registry.spawnBackgroundProcess('sleep 999');
     const killPromise = registry.killProcess(state.sessionId, 100);
 
     expect(killSpy).toHaveBeenCalledWith(9001, 'SIGTERM');
@@ -83,8 +83,8 @@ describe('process-registry', () => {
     const registry = await import('./process-registry.js');
     registry._resetRegistryForTests();
 
-    const running = registry.spawnBackgroundProcess('sleep 10');
-    const exited = registry.spawnBackgroundProcess('echo done');
+    const running = await registry.spawnBackgroundProcess('sleep 10');
+    const exited = await registry.spawnBackgroundProcess('echo done');
     exitedChild.emit('close', 0);
 
     const oldExit = registry.getProcess(exited.sessionId);
@@ -104,7 +104,7 @@ describe('process-registry', () => {
 
     const registry = await import('./process-registry.js');
     registry._resetRegistryForTests();
-    registry.spawnBackgroundProcess('echo hello');
+    await registry.spawnBackgroundProcess('echo hello');
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
     const [command, args, options] = spawnMock.mock.calls[0] as [string, string[], { windowsHide?: boolean }];

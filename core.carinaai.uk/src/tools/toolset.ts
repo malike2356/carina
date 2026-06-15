@@ -88,8 +88,37 @@ export const TOOLSET_MAP: Record<string, string[]> = {
     'yuanbao',
     'yb-chat',
     'yb-search',
+    'platform-integrate',
   ],
   ensemble: ['mixture-of-agents'],
+  workspace: ['notes-manage', 'documents-manage', 'images-gallery'],
+  ops: ['secrets-audit', 'debug-helpers', 'capabilities-audit', 'channel-status-snapshot', 'learning-status'],
+  utilities: [
+    'json-format',
+    'text-hash',
+    'uuid-generate',
+    'timestamp-convert',
+    'base64-codec',
+    'url-parse',
+    'markdown-to-text',
+    'text-diff',
+    'random-string',
+    'unit-convert',
+    'semver-compare',
+    'regex-test',
+    'slugify-text',
+    'csv-parse',
+    'ip-parse',
+    'env-presence',
+    'cron-explain',
+    'rss-fetch',
+    'research-list',
+    'yaml-json-convert',
+    'color-convert',
+    'git-brief-status',
+    'disk-usage',
+    'hex-encode',
+  ],
 };
 
 export const TOOLSET_NAMES = [
@@ -108,6 +137,9 @@ export const TOOLSET_NAMES = [
   'checkpoint',
   'integrations',
   'ensemble',
+  'workspace',
+  'ops',
+  'utilities',
 ] as const;
 
 export function resolveToolset(toolsets: string[]): string[] {

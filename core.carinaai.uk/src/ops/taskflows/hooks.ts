@@ -13,3 +13,10 @@ export function onCronJobComplete(jobId: string, data: Record<string, unknown>):
     triggerTaskFlowsForCronJob(jobId, data);
   });
 }
+
+export function onKanbanEvent(event: 'review' | 'done' | 'move', data: Record<string, unknown>): void {
+  if (!taskFlowsEnabled()) return;
+  void import('./engine.js').then(({ triggerTaskFlowsForKanban }) => {
+    triggerTaskFlowsForKanban(event, data);
+  });
+}

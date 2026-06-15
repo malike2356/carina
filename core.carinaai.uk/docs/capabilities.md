@@ -5,16 +5,18 @@
 
 Edit the public page first. This file is an operator-local mirror with runtime-verified counts only.
 
-## Snapshot (12 June 2026)
+## Snapshot (15 June 2026)
 
 | Metric | Count | Notes |
 |---|---:|---|
-| Vitest tests | 7,500+ | `pnpm test` in `core.carinaai.uk` |
+| Vitest tests | 8,000+ | `pnpm test` in `core.carinaai.uk` |
 | LLM providers (catalog) | 51 | `PROVIDER_DEFINITIONS` |
 | LLM providers (chat-routable) | ~39 | Configured subset |
 | Channel adapters | 19 | `CHANNEL_CAPABILITIES` |
-| Registered tools (base) | 66+ | `registry.list()` at startup |
-| Skill packs | 16 | `src/skills/packs/` |
+| Registered tools (base) | 72+ | `registry.list()` at startup; +12 browser when Playwright available |
+| Tool inventory doc | 1 | `instructions/operations/TOOL_INVENTORY.md` |
+| Skill packs | 17 | `src/skills/packs/` |
+| Curated pack skills | 120 | `instructions/operations/SKILL_ROADMAP.md` |
 | npm package | 0.1.1 | `carina-agent` |
 
 ## Status labels
@@ -26,3 +28,9 @@ Edit the public page first. This file is an operator-local mirror with runtime-v
 - **Scout:** `LABYRINTH_ENABLED=true`
 
 Full inventory, ops surfaces, and links to detail guides live on the public page above. Do not duplicate tool or provider lists here.
+
+## Integrations
+
+Third-party connectors documented under `docs/integrations/`:
+
+- **n8n:** visual workflow automation (trigger n8n workflows from Carina; use Carina as a node in n8n). See `docs/integrations/n8n.md`.

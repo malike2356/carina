@@ -3,7 +3,8 @@ import os from 'os';
 import path from 'path';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { CARINA_HOME } from '../config/paths.js';
+import { resolveCarinaHome } from '../config/paths.js';
+import { getActiveProfileName } from '../profiles/manager.js';
 import { listBackups } from './backup-restore.js';
 import { auditSecrets } from './secrets-audit.js';
 import { runHealthCheck, type HealthReport } from './health-check.js';
@@ -12,6 +13,7 @@ export type OperatorStatusReport = {
   generatedAt: string;
   hostname: string;
   version: string;
+  activeProfile: string;
   carinaHome: string;
   health: HealthReport['summary'];
   healthEndpoint: { url: string; ok: boolean; detail?: string };
@@ -78,8 +80,9 @@ export type OperatorStatusOptions = {
 export async function buildOperatorStatus(
   options: OperatorStatusOptions = {},
 ): Promise<OperatorStatusReport> {
-  const homeDir = options.homeDir ?? CARINA_HOME;
+  const homeDir = options.homeDir ?? resolveCarinaHome();
   const version = readVersion();
+  const activeProfile = process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default';
   const port = process.env.WEB_PORT ?? '3000';
   const healthEndpoint = await probeHealthEndpoint(port);
 
@@ -103,6 +106,7 @@ export async function buildOperatorStatus(
     generatedAt: new Date().toISOString(),
     hostname: os.hostname(),
     version,
+    activeProfile,
     carinaHome: homeDir,
     health: healthSummary,
     healthEndpoint: { url: `http://127.0.0.1:${port}/api/health`, ...healthEndpoint },

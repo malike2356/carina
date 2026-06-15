@@ -20,6 +20,13 @@ function bindingTier(binding: AgentBinding, ctx: RoutingContext): number | null 
   const m = binding.match;
   if (m.channel && m.channel !== '*' && m.channel !== ctx.channel) return null;
 
+  if (m.contactId) {
+    if (!ctx.contactId || m.contactId !== ctx.contactId) return null;
+    let tier = 105;
+    if (m.accountId && matchAccount(m.accountId, ctx.accountId)) tier += 5;
+    return tier;
+  }
+
   if (m.peer) {
     if (!matchPeer(m.peer, ctx.peerKind, ctx.peerId)) return null;
     let tier = 100;
@@ -61,6 +68,7 @@ function bindingTier(binding: AgentBinding, ctx: RoutingContext): number | null 
 }
 
 function tierLabel(tier: number): string {
+  if (tier >= 105) return 'contact';
   if (tier >= 100) return 'peer';
   if (tier >= 60) return 'guild';
   if (tier >= 50) return 'team';
@@ -84,11 +92,11 @@ export function resolveAgentRoute(
   if (winner) {
     const agent = config.agents.find((a) => a.id === winner.binding.agentId);
     if (agent) {
-      return { agent, binding: winner.binding, tier: tierLabel(winner.tier) };
+      return { agent, binding: winner.binding, tier: tierLabel(winner.tier), source: 'binding' };
     }
   }
 
-  return { agent: getDefaultAgentDefinition(), tier: 'default' };
+  return { agent: getDefaultAgentDefinition(), tier: 'default', source: 'default' };
 }
 
 export function describeRoute(

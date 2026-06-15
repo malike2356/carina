@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Environments</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div id="team-gate" class="banner-warn" hidden>Environments require the Team plan. <a href="/ops/billing">Upgrade</a></div>
+    <div class="card">
+      <h2>Environments</h2>
+      <table class="ops-table">
+        <thead><tr><th>Name</th><th>Slug</th><th>Status</th><th>API base</th></tr></thead>
+        <tbody id="env-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card" id="env-form-card">
+      <h2>Create environment</h2>
+      <form id="env-form">
+        <div class="form-row"><label for="env-name">Name</label><input type="text" id="env-name" name="name" required></div>
+        <div class="form-row"><label for="env-slug">Slug</label><input type="text" id="env-slug" name="slug" placeholder="production"></div>
+        <div class="form-row"><label for="env-api">API base URL</label><input type="text" id="env-api" name="apiBaseUrl" placeholder="https://api.example.com"></div>
+        <button class="btn" type="submit">Create environment</button>
+        <p class="error-msg" id="env-error" hidden></p>
+      </form>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    async function loadEnvironments() {
+      const { ok, status, data } = await CarinaPlatform.fetchJson('/api/carina-ops/environments');
+      if (status === 402) {
+        document.getElementById('team-gate').hidden = false;
+        document.getElementById('env-form-card').hidden = true;
+        CarinaPlatform.renderTable('env-body', [], [], 'Team plan required.');
+        return;
+      }
+      if (!ok) {
+        CarinaPlatform.renderTable('env-body', [], [], 'Unable to load environments.');
+        return;
+      }
+      CarinaPlatform.renderTable('env-body', [
+        { key: 'name' },
+        { key: 'slug' },
+        { key: 'status' },
+        { key: 'apiBaseUrl', render: (row) => row.apiBaseUrl || '-' },
+      ], data.environments || [], 'No environments yet.');
+    }
+
+    CarinaOpsLayout.initPage('environments', {
+      onReady: async () => {
+        await loadEnvironments();
+        CarinaPlatform.bindCreateForm('env-form', async (formData) => {
+          CarinaPlatform.showError('env-error', '');
+          const { ok, status, data } = await CarinaPlatform.fetchJson('/api/carina-ops/environments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: String(formData.get('name') || '').trim(),
+              slug: String(formData.get('slug') || '').trim() || undefined,
+              apiBaseUrl: String(formData.get('apiBaseUrl') || '').trim() || undefined,
+            }),
+          });
+          if (status === 402) {
+            CarinaPlatform.showError('env-error', 'Team plan required.');
+            return;
+          }
+          if (!ok) {
+            CarinaPlatform.showError('env-error', data.error || 'Unable to create environment.');
+            return;
+          }
+          document.getElementById('env-form').reset();
+          await loadEnvironments();
+        });
+      },
+    });
+  </script>
+</body>
+</html>

@@ -17,6 +17,7 @@ vi.mock('../../../config/paths.js', async (importOriginal) => {
   return {
     ...actual,
     CARINA_HOME: tmpHome,
+    resolveCarinaHome: () => tmpHome,
     CARINA_PACKS_DIR: path.join(tmpHome, 'packs'),
     CARINA_ENV_PATH: path.join(tmpHome, '.env'),
     packDir: (name: string) => path.join(tmpHome, 'packs', name),

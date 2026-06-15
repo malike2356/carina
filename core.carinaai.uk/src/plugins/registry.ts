@@ -64,6 +64,14 @@ export async function loadPluginsFromDisk(): Promise<number> {
 
 export async function runPluginHook(hook: string, payload: unknown): Promise<unknown[]> {
   const results: unknown[] = [];
+  if (process.env.CARINA_EXTENSIONS_ENABLED === 'true') {
+    try {
+      const { runExtensionHooks } = await import('../extensions/hooks-loader.js');
+      results.push(...await runExtensionHooks(hook, payload));
+    } catch {
+      // extension hooks optional
+    }
+  }
   for (const plugin of plugins.values()) {
     if (!plugin.enabled || !plugin.hooks?.includes(hook)) continue;
     const hookPath = path.join(plugin.path, 'hooks', `${hook}.js`);

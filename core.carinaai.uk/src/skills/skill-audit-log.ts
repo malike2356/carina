@@ -1,6 +1,6 @@
 import { pool } from '../memory/db.js';
 
-type AuditAction = 'created' | 'promoted' | 'archived' | 'consolidated' | 'merged' | 'refined' | 'demoted';
+type AuditAction = 'created' | 'promoted' | 'archived' | 'consolidated' | 'merged' | 'refined' | 'demoted' | 'rolled_back';
 
 export async function logSkillAction(
   action: AuditAction,

@@ -2,7 +2,15 @@
   const NAV = [
     { id: 'overview', label: 'Overview', href: '/ops/' },
     { id: 'workbench', label: 'Workbench', href: '/ops/workbench' },
+    { id: 'files', label: 'Files', href: '/ops/files' },
+    { id: 'skills', label: 'Skills', href: '/ops/skills' },
+    { id: 'batches', label: 'Batches', href: '/ops/batches' },
+    { id: 'agents', label: 'Agents', href: '/ops/agents' },
+    { id: 'sessions', label: 'Sessions', href: '/ops/sessions' },
     { id: 'vault', label: 'Vault', href: '/ops/vault' },
+    { id: 'memory', label: 'Memory', href: '/ops/memory' },
+    { id: 'analytics', label: 'Analytics', href: '/ops/analytics' },
+    { id: 'credits', label: 'Credits', href: '/ops/credits' },
     { id: 'usage', label: 'Usage', href: '/ops/usage' },
     { id: 'audit', label: 'Audit', href: '/ops/audit' },
     { id: 'settings', label: 'Settings', href: '/ops/settings' },
@@ -10,7 +18,8 @@
   ];
 
   const TEAM_NAV = [
-    { id: 'deployments', label: 'Deployments', href: '/ops/#deployments' },
+    { id: 'deployments', label: 'Deployments', href: '/ops/deployments' },
+    { id: 'environments', label: 'Environments', href: '/ops/environments' },
   ];
 
   function escapeHtml(value) {
@@ -43,7 +52,9 @@
     if (!nav) return;
     const items = NAV.slice();
     if (plan === 'carina_ops_team') {
-      items.splice(5, 0, TEAM_NAV[0]);
+      const vaultIdx = items.findIndex((item) => item.id === 'vault');
+      const insertAt = vaultIdx >= 0 ? vaultIdx : 8;
+      items.splice(insertAt, 0, ...TEAM_NAV);
     }
     nav.innerHTML = items.map((item) => {
       const active = item.id === activePage ? ' class="active"' : '';

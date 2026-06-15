@@ -44,6 +44,9 @@ jobs:
         env:
           NODE_ENV: test
 
+      - name: Benchmark regression
+        run: pnpm benchmark:regression
+
       - name: Upload test results
         if: failure()
         uses: actions/upload-artifact@v4
@@ -81,6 +84,11 @@ jobs:
         run: pnpm test
         env:
           NODE_ENV: test
+          FORCE_PLATFORM: win32
+
+      - name: Validate Windows packaging
+        run: pnpm validate:windows
+        env:
           FORCE_PLATFORM: win32
 
       - name: Run shell integration tests (Windows)

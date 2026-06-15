@@ -134,3 +134,27 @@ export async function updateInboundEmail(
   const row = result.rows[0] as Record<string, unknown> | undefined;
   return row ? rowToEmail(row) : null;
 }
+
+export async function upsertInboundEmail(fields: {
+  message_id: string;
+  from_address: string;
+  to_address: string;
+  subject: string | null;
+  body_text: string | null;
+  received_at: string;
+}): Promise<void> {
+  if (!fields.message_id.trim()) return;
+  await pool.query(
+    `INSERT INTO inbound_emails (from_address, to_address, subject, body_text, message_id, urgency, triage_status, received_at)
+     VALUES ($1, $2, $3, $4, $5, 'normal', 'inbox', $6)
+     ON CONFLICT (message_id) DO NOTHING`,
+    [
+      fields.from_address,
+      fields.to_address,
+      fields.subject,
+      fields.body_text,
+      fields.message_id,
+      fields.received_at,
+    ],
+  );
+}

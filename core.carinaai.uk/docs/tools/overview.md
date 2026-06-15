@@ -24,7 +24,7 @@ Registered when API keys are set:
 | Tool | Env key |
 |---|---|
 | `property-data-lookup` | `PROPERTY_DATA_API_KEY` |
-| `land-registry-lookup` | `LAND_REGISTRY_API_KEY` |
+| `land-registry-search` | `LAND_REGISTRY_API_KEY` or `PROPERTY_DATA_API_KEY` |
 
 ## Scout integration
 

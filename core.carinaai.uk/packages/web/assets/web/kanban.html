@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Kanban; Carina</title>
+<style>
+  .kb-toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-bottom: 12px;
+  }
+  .kb-toolbar input, .kb-toolbar select, .kb-toolbar button {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; font-size: 0.82rem;
+  }
+  .kb-toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #0a0a0c; font-weight: 600; }
+  .kb-toolbar .role-toggle { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .kb-toolbar .role-toggle button {
+    border: none; border-radius: 0; background: transparent;
+  }
+  .kb-toolbar .role-toggle button.active { background: var(--accent-dim); color: var(--accent); }
+  .kb-board {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    align-items: start;
+    min-height: 420px;
+  }
+  .kb-col {
+    min-width: 0;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 200px);
+  }
+  .kb-col-head {
+    padding: 10px 10px 8px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .kb-col-body {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 120px;
+  }
+  .kb-card {
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 9px;
+    min-height: 88px;
+    max-height: 120px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .kb-card:hover { border-color: rgba(25,196,154,0.45); }
+  .kb-card.selected { outline: 2px solid var(--accent); }
+  .kb-card .title {
+    font-size: 0.82rem; font-weight: 600; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .kb-card .meta { font-size: 0.68rem; color: var(--muted); margin-top: auto; }
+  .kb-card .badge {
+    display: inline-block; font-size: 0.62rem; padding: 1px 5px; border-radius: 4px;
+    background: var(--accent-dim); color: var(--accent);
+  }
+  .kb-detail {
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    padding: 12px;
+    display: none;
+  }
+  .kb-detail.open { display: block; }
+  .kb-detail h2 { font-size: 0.95rem; margin-bottom: 8px; }
+  .kb-detail label { font-size: 0.72rem; color: var(--muted); display: block; margin-top: 8px; }
+  .kb-detail textarea, .kb-detail input {
+    width: 100%; margin-top: 4px; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.82rem;
+  }
+  .kb-detail textarea { min-height: 72px; resize: vertical; }
+  .kb-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .kb-actions button {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 5px 9px; font-size: 0.75rem; cursor: pointer;
+  }
+  .kb-actions button.primary { background: var(--accent); border-color: var(--accent); color: #0a0a0c; }
+  .kb-comments { margin-top: 10px; font-size: 0.78rem; }
+  .kb-comment { padding: 6px 0; border-top: 1px solid var(--border); }
+  .kb-empty { color: var(--muted); font-size: 0.78rem; text-align: center; padding: 16px 8px; }
+  .kb-status { font-size: 0.75rem; color: var(--muted); }
+  @media (max-width: 1100px) {
+    .kb-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .kb-board { grid-template-columns: 1fr; }
+    .kb-col { max-height: 280px; }
+  }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Kanban</h1>
+  <span class="status" id="kb-status">Loading...</span>
+</header>
+<div class="ws-scroll-page">
+  <div class="kb-toolbar">
+    <div class="role-toggle" id="role-toggle">
+      <button type="button" data-role="orchestrator" class="active">Orchestrator</button>
+      <button type="button" data-role="worker">Worker</button>
+    </div>
+    <input type="text" id="kb-profile" placeholder="Profile" value="default" style="width:90px" title="Operator profile scope">
+    <input type="text" id="kb-board" placeholder="Board ID" value="default" style="width:100px">
+    <input type="text" id="kb-new-title" placeholder="New card title" style="flex:1; min-width:160px">
+    <button type="button" class="primary" id="kb-add-btn">Add card</button>
+    <button type="button" id="kb-refresh-btn">Refresh</button>
+  </div>
+  <div class="kb-board" id="kb-board"></div>
+  <div class="kb-detail" id="kb-detail"></div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script>
+const API = '/api/kanban';
+const COLUMNS = [
+  { key: 'backlog', label: 'Backlog' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'review', label: 'Review' },
+  { key: 'blocked', label: 'Blocked' },
+  { key: 'done', label: 'Done' },
+];
+let boardData = { columns: {} };
+let selectedCard = null;
+let actorRole = 'orchestrator';
+
+function qs(sel) { return document.querySelector(sel); }
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function apiUrl(path, extra = {}) {
+  const params = new URLSearchParams({
+    profile: qs('#kb-profile').value || 'default',
+    role: actorRole,
+    board_id: qs('#kb-board').value || 'default',
+    ...extra,
+  });
+  return `${API}${path}?${params}`;
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(apiUrl(path), opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+async function loadBoard() {
+  qs('#kb-status').textContent = 'Loading...';
+  try {
+    const data = await fetch(apiUrl('/board')).then(r => r.json());
+    if (data.error) throw new Error(data.error);
+    boardData = data;
+    renderBoard();
+    qs('#kb-status').textContent = `Session ${data.session_id}`;
+  } catch (err) {
+    qs('#kb-status').textContent = err.message || 'Failed to load';
+    qs('#kb-board').innerHTML = '<div class="kb-empty">Could not load board. Log in as operator.</div>';
+  }
+}
+
+function renderBoard() {
+  const root = qs('#kb-board');
+  root.innerHTML = COLUMNS.map(col => {
+    const cards = boardData.columns?.[col.key] || [];
+    return `<div class="kb-col" data-col="${col.key}">
+      <div class="kb-col-head"><span>${col.label}</span><span>${cards.length}</span></div>
+      <div class="kb-col-body">${cards.length ? cards.map(renderCard).join('') : '<div class="kb-empty">Empty</div>'}</div>
+    </div>`;
+  }).join('');
+  root.querySelectorAll('.kb-card').forEach(el => {
+    el.addEventListener('click', () => openDetail(el.dataset.id));
+  });
+}
+
+function renderCard(c) {
+  const sel = selectedCard?.card_id === c.card_id ? ' selected' : '';
+  const who = c.assignee ? `@${esc(c.assignee)}` : '';
+  const badge = c.blocked ? '<span class="badge">blocked</span>' : '';
+  return `<div class="kb-card${sel}" data-id="${c.card_id}">
+    <div class="title">${esc(c.title)}</div>
+    <div class="meta">p${c.priority} ${who} ${badge}</div>
+  </div>`;
+}
+
+async function openDetail(cardId) {
+  const cols = boardData.columns || {};
+  let card = null;
+  for (const list of Object.values(cols)) {
+    card = (list || []).find(c => c.card_id === cardId);
+    if (card) break;
+  }
+  if (!card) return;
+  selectedCard = card;
+  renderBoard();
+  const el = qs('#kb-detail');
+  el.classList.add('open');
+  const comments = await fetch(apiUrl(`/cards/${cardId}/comments`)).then(r => r.json()).catch(() => ({ comments: [] }));
+  el.innerHTML = `
+    <h2>${esc(card.title)}</h2>
+    <div class="kb-status">Column: ${esc(card.column)} | v${card.version} | ${card.card_id.slice(0,8)}</div>
+    <label>Work prompt (agent instructions)</label>
+    <textarea id="kb-work-prompt">${esc(card.work_prompt || '')}</textarea>
+    <label>Orchestrator notes</label>
+    <textarea id="kb-notes">${esc(card.orchestrator_notes || '')}</textarea>
+    <label>Result summary</label>
+    <textarea id="kb-result" readonly>${esc(card.result_summary || '')}</textarea>
+    <div class="kb-actions" id="kb-card-actions"></div>
+    <div class="kb-comments">
+      <strong>Comments</strong>
+      ${(comments.comments || []).map(cm => `<div class="kb-comment"><b>${esc(cm.author)}</b>: ${esc(cm.body)}</div>`).join('') || '<div class="kb-empty">No comments</div>'}
+      <label>Add comment</label>
+      <input type="text" id="kb-comment-input" placeholder="Note...">
+      <button type="button" id="kb-comment-btn" style="margin-top:6px">Post</button>
+    </div>`;
+  renderActions(card);
+  qs('#kb-comment-btn').onclick = async () => {
+    const body = qs('#kb-comment-input').value.trim();
+    if (!body) return;
+    await api('POST', `/cards/${cardId}/comments`, { body });
+    openDetail(cardId);
+  };
+}
+
+function renderActions(card) {
+  const wrap = qs('#kb-card-actions');
+  const btns = [];
+  const saveBtn = `<button type="button" class="primary" data-act="save">Save notes</button>`;
+  if (actorRole === 'orchestrator') {
+    btns.push(saveBtn);
+    if (card.column === 'backlog' || card.column === 'review') {
+      btns.push(`<button type="button" data-act="run">Run agent work</button>`);
+    }
+    if (card.column === 'review') btns.push(`<button type="button" data-act="close">Close (done)</button>`);
+    if (!card.blocked) btns.push(`<button type="button" data-act="block">Block</button>`);
+    else btns.push(`<button type="button" data-act="unblock">Unblock</button>`);
+    ['in_progress','review','backlog'].filter(c => c !== card.column).forEach(col => {
+      btns.push(`<button type="button" data-act="move" data-col="${col}">Move: ${col}</button>`);
+    });
+  } else {
+    if (card.column === 'backlog' || card.column === 'review') {
+      btns.push(`<button type="button" data-act="claim">Claim</button>`);
+    }
+    if (card.column === 'in_progress') {
+      btns.push(`<button type="button" data-act="release">Release</button>`);
+      btns.push(`<button type="button" data-act="move" data-col="review">Submit for review</button>`);
+    }
+  }
+  wrap.innerHTML = btns.join('');
+  wrap.querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => handleAction(card, btn.dataset.act, btn.dataset.col);
+  });
+}
+
+async function handleAction(card, act, col) {
+  const id = card.card_id;
+  const version = card.version;
+  try {
+    if (act === 'save') {
+      await api('PATCH', `/cards/${id}`, {
+        version,
+        work_prompt: qs('#kb-work-prompt').value,
+        orchestrator_notes: qs('#kb-notes').value,
+      });
+    } else if (act === 'run') {
+      qs('#kb-status').textContent = 'Running agent...';
+      await api('POST', `/cards/${id}/run`, {});
+    } else if (act === 'close') {
+      await api('POST', `/cards/${id}/close`, { version });
+    } else if (act === 'claim') {
+      await api('POST', `/cards/${id}/claim`, { version, assignee: 'operator' });
+    } else if (act === 'release') {
+      await api('POST', `/cards/${id}/release`, { version, assignee: card.assignee || 'operator' });
+    } else if (act === 'move') {
+      await api('POST', `/cards/${id}/move`, { version, column: col });
+    } else if (act === 'block') {
+      const reason = prompt('Block reason?') || 'blocked';
+      await api('POST', `/cards/${id}/block`, { version, reason });
+    } else if (act === 'unblock') {
+      await api('POST', `/cards/${id}/unblock`, { version });
+    }
+    await loadBoard();
+    if (selectedCard) openDetail(id);
+  } catch (err) {
+    alert(err.message || 'Action failed');
+    await loadBoard();
+  }
+}
+
+qs('#role-toggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-role]');
+  if (!btn) return;
+  actorRole = btn.dataset.role;
+  qs('#role-toggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+  if (selectedCard) openDetail(selectedCard.card_id);
+});
+
+qs('#kb-refresh-btn').onclick = () => loadBoard();
+qs('#kb-add-btn').onclick = async () => {
+  const title = qs('#kb-new-title').value.trim();
+  if (!title) return;
+  try {
+    await api('POST', '/cards', { title, board_id: qs('#kb-board').value || 'default' });
+    qs('#kb-new-title').value = '';
+    await loadBoard();
+  } catch (err) {
+    alert(err.message || 'Could not add card');
+  }
+};
+
+loadBoard();
+</script>
+</body>
+</html>

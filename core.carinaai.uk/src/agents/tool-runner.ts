@@ -15,8 +15,14 @@ import {
   evaluateApprovalPolicy,
   rememberApprovalAfterConfirm,
 } from '../security/approval-policy.js';
+import { getToolExecutionContext } from '../security/tool-execution-context.js';
+import { evaluateToolRbac } from '../security/tool-rbac.js';
+import { resolveSandboxExecution } from '../security/sandbox-policy.js';
+import { appendSecurityAudit } from '../security/security-audit.js';
+import { evaluateScoutToolPolicy, reportPolicyFallback } from '../security/scout-policy-client.js';
 import { toolRiskTier } from '../security/tool-risk.js';
 import { getActiveProfileName } from '../profiles/manager.js';
+import { getActiveAgentDefinition } from '../workspaces/agent-registry.js';
 
 export type ConfirmFn = (
   toolName: string,
@@ -60,6 +66,37 @@ export async function executeToolCall(
   const tool = getSessionTool(sessionId, call.toolName) ?? registry.get(call.toolName);
   if (!tool) {
     return { error: `Unknown tool: ${call.toolName}` };
+  }
+
+  const rbac = evaluateToolRbac(call.toolName, getToolExecutionContext().orgRole, tool);
+  if (!rbac.allowed) {
+    appendSecurityAudit({
+      category: 'tool_rbac',
+      action: 'deny',
+      detail: rbac.reason ?? 'Role denied',
+      sessionId,
+      toolName: call.toolName,
+      metadata: { role: rbac.role, requiredRole: rbac.requiredRole, riskTier: rbac.riskTier },
+    });
+    return {
+      error: rbac.reason ?? 'Tool access denied by role policy.',
+      code: 'TOOL_RBAC_DENIED',
+      requiredRole: rbac.requiredRole,
+    };
+  }
+
+  const activeAgent = getActiveAgentDefinition();
+  const sandboxResolution = resolveSandboxExecution(sessionId, call.toolName, activeAgent.id);
+  if (sandboxResolution.mode === 'blocked') {
+    appendSecurityAudit({
+      category: 'sandbox_policy',
+      action: 'block',
+      detail: sandboxResolution.reason,
+      sessionId,
+      toolName: call.toolName,
+      metadata: { policyMode: sandboxResolution.policyMode },
+    });
+    return { error: sandboxResolution.reason, code: 'SANDBOX_POLICY_BLOCKED' };
   }
 
   if (tool.dangerous) {
@@ -110,13 +147,46 @@ export async function executeToolCall(
   const jitError = enforceJitCredentials(sessionId, call.toolName, call.params);
   if (jitError) return jitError;
 
+  if (process.env.LABYRINTH_ENABLED === 'true') {
+    const scoutPolicy = await evaluateScoutToolPolicy(call.toolName, call.params, sessionId);
+    if (scoutPolicy.enforced && scoutPolicy.code) {
+      if (scoutPolicy.decision === 'require_approval') {
+        if (!confirm) {
+          return {
+            error: scoutPolicy.reason ?? 'Scout requires approval before running this tool.',
+            code: scoutPolicy.code,
+          };
+        }
+        const ok = await confirm(
+          call.toolName,
+          call.params,
+          scoutPolicy.reason ?? 'Scout policy requires confirmation.',
+        );
+        if (!ok) return { error: 'User declined Scout policy approval.' };
+        call.params = { ...call.params, _confirmed: true };
+      } else if (scoutPolicy.decision === 'block' || scoutPolicy.decision === 'quarantine_session') {
+        return {
+          error: scoutPolicy.reason ?? 'Blocked by Scout policy.',
+          code: scoutPolicy.code,
+        };
+      }
+    } else if (scoutPolicy.source === 'local_fallback' && scoutPolicy.reason) {
+      void reportPolicyFallback(call.toolName, sessionId, scoutPolicy.reason);
+    }
+  }
+
   const policyError = await enforceToolPolicy(call.toolName, call.params, sessionId);
   if (policyError) {
     return policyError;
   }
 
   try {
-    const paramsWithSession: Record<string, unknown> = { ...call.params, _sessionId: sessionId };
+    const paramsWithSession: Record<string, unknown> = {
+      ...call.params,
+      _sessionId: sessionId,
+      _sandboxMode: sandboxResolution.mode,
+      _sandboxPolicy: sandboxResolution.policyMode,
+    };
     if (confirm) {
       paramsWithSession._confirm = confirm;
     }

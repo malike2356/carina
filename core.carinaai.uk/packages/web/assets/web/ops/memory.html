@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Memory</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Memory stores</h2>
+      <p style="margin-bottom:12px;">Org-scoped memory store registry. Episodic data lives in Carina memory tables per tenant.</p>
+      <table class="ops-table">
+        <thead><tr><th>Name</th><th>Slug</th><th>Type</th><th>Status</th><th>Records</th></tr></thead>
+        <tbody id="memory-body"><tr><td colspan="5" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Create store</h2>
+      <form id="memory-form">
+        <div class="form-row"><label for="mem-name">Name</label><input type="text" id="mem-name" name="name" required></div>
+        <div class="form-row"><label for="mem-type">Store type</label>
+          <select id="mem-type" name="storeType">
+            <option value="episodic">episodic</option>
+            <option value="semantic">semantic</option>
+            <option value="custom">custom</option>
+          </select>
+        </div>
+        <div class="form-row"><label for="mem-notes">Notes</label><textarea id="mem-notes" name="notes"></textarea></div>
+        <button class="btn" type="submit">Create store</button>
+        <p class="error-msg" id="memory-error" hidden></p>
+      </form>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    async function loadStores() {
+      const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/memory-stores');
+      if (!ok) {
+        CarinaPlatform.renderTable('memory-body', [], [], 'Unable to load memory stores.');
+        return;
+      }
+      CarinaPlatform.renderTable('memory-body', [
+        { key: 'name' },
+        { key: 'slug' },
+        { key: 'storeType' },
+        { key: 'status' },
+        { key: 'recordCount' },
+      ], data.stores || [], 'No memory stores yet.');
+    }
+
+    CarinaOpsLayout.initPage('memory', {
+      onReady: async () => {
+        await loadStores();
+        CarinaPlatform.bindCreateForm('memory-form', async (formData) => {
+          CarinaPlatform.showError('memory-error', '');
+          const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/memory-stores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: String(formData.get('name') || '').trim(),
+              storeType: String(formData.get('storeType') || 'episodic'),
+              notes: String(formData.get('notes') || '').trim() || undefined,
+            }),
+          });
+          if (!ok) {
+            CarinaPlatform.showError('memory-error', data.error || 'Unable to create store.');
+            return;
+          }
+          document.getElementById('memory-form').reset();
+          await loadStores();
+        });
+      },
+    });
+  </script>
+</body>
+</html>

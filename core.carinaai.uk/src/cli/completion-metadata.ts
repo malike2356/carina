@@ -9,14 +9,18 @@ export const TOP_LEVEL_COMMANDS = [
   'checkpoint', 'rag', 'backup', 'commitments', 'ops', 'providers', 'scout', 'security', 'tenant',
   'billing', 'plugins', 'hooks', 'migrate', 'update', 'ingest', 'hub', 'contacts',
   'secrets', 'credentials', 'curator', 'kanban', 'env', 'completion', 'ide', 'help', 'version',
-  'taskflows', 'tasks', 'acp', 'approvals', 'node-host',
+  'taskflows', 'tasks', 'acp', 'approvals', 'node-host', 'learning', 'capabilities', 'benchmark',
 ] as const;
 
 export const CHANNEL_NAMES = [
   'telegram', 'whatsapp', 'web', 'discord', 'slack', 'sms', 'signal', 'matrix',
-  'mattermost', 'irc', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
+  'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
   'line', 'viber', 'google-chat', 'teams',
   'homeassistant', 'api', 'webhooks', 'cli',
+  'ntfy', 'pushover', 'zulip', 'rocketchat', 'twitch', 'reddit', 'bluesky',
+  'messenger', 'nextcloud-talk', 'groupme', 'linkedin', 'skype', 'gotify', 'pumble', 'twist', 'ryver', 'workplace',
+  'threema', 'kakaotalk', 'naver-works', 'qq', 'weibo', 'openhab', 'synology-chat',
+  'keybase', 'gitter', 'element', 'mastodon', 'snapchat', 'bridge-generic', 'apple-business-chat',
 ] as const;
 
 export { TOOLSET_NAMES };
@@ -25,7 +29,7 @@ export const SUBCOMMANDS: Record<string, readonly string[]> = {
   config: ['list', 'show', 'get', 'set', 'unset', 'edit', 'check', 'migrate'],
   model: ['menu', 'list', 'set', 'pick', 'current', 'preset', 'scan', 'test'],
   tools: ['menu', 'list', 'toolsets', 'platform', 'enable', 'disable', 'show'],
-  profile: ['list', 'create', 'use', 'show', 'scope', 'clone', 'export', 'import', 'delete'],
+  profile: ['list', 'create', 'use', 'current', 'back', 'show', 'scope', 'clone', 'export', 'import', 'delete'],
   agents: ['list', 'add', 'use', 'show', 'remove', 'bind', 'route'],
   personality: ['show', 'list', 'edit'],
   mcp: ['server', 'status'],
@@ -55,11 +59,13 @@ export const SUBCOMMANDS: Record<string, readonly string[]> = {
   hooks: ['list'],
   migrate: ['status', 'claude', 'export', 'import'],
   update: ['check', 'run'],
-  hub: ['start', 'browse', 'status', 'packs', 'skills', 'search', 'install'],
+  hub: ['start', 'browse', 'status', 'catalog', 'marketplace', 'show', 'install', 'enable', 'disable', 'update', 'remove', 'packs', 'skills', 'search', 'publish'],
   contacts: ['list', 'show'],
   secrets: ['list', 'audit', 'review', 'set', 'reload'],
   credentials: ['status', 'pools', 'add', 'remove', 'retire', 'rotate', 'test', 'oauth'],
   curator: ['report', 'list', 'prune', 'archive', 'restore', 'run'],
+  capabilities: ['audit', 'status', 'tools', 'channels', 'gaps'],
+  benchmark: ['run', 'regression', 'list', 'runs', 'report', 'public', 'compare'],
   kanban: ['status', 'board', 'queue', 'add', 'claim', 'release', 'complete'],
   env: ['show'],
   completion: ['bash', 'zsh', 'fish'],
@@ -68,7 +74,7 @@ export const SUBCOMMANDS: Record<string, readonly string[]> = {
   uninstall: [],
   status: [],
   ide: ['install', 'build'],
-  taskflows: ['status', 'list', 'runs', 'delivery', 'create', 'trigger', 'pause', 'resume', 'cancel', 'worker'],
+  taskflows: ['status', 'list', 'runs', 'history', 'import', 'delivery', 'create', 'trigger', 'pause', 'resume', 'cancel', 'retry', 'worker'],
   tasks: ['background', 'cron', 'taskflows', 'delivery'],
   acp: ['status', 'sessions', 'create', 'label', 'delete', 'prompt', 'bridge'],
   approvals: ['list', 'allow', 'block', 'grant', 'revoke', 'audit'],

@@ -4,6 +4,7 @@ const state = {
   category: '',
   packs: [],
   skills: [],
+  marketplace: [],
 };
 
 const els = {
@@ -12,6 +13,7 @@ const els = {
   category: document.getElementById('category'),
   packsView: document.getElementById('packs-view'),
   skillsView: document.getElementById('skills-view'),
+  marketplaceView: document.getElementById('marketplace-view'),
   detail: document.getElementById('detail'),
   tabs: document.querySelectorAll('.tab'),
 };
@@ -233,16 +235,40 @@ function queryParams() {
   return q ? `?${q}` : '';
 }
 
+function renderMarketplace(entries) {
+  els.marketplaceView.innerHTML = entries.slice(0, 120).map((e) => `
+    <article class="card">
+      <div class="card-head">
+        <h3>${esc(e.name)}</h3>
+        <span class="pill">${esc(e.kind)}</span>
+        ${e.trust?.verified ? '<span class="pill verified">verified</span>' : ''}
+        ${e.trust?.featured ? '<span class="pill certified">featured</span>' : ''}
+      </div>
+      <p>${esc(e.description)}</p>
+      <div class="meta">
+        <span class="pill">${esc(e.id)}</span>
+        <span class="pill">${esc(e.status)}</span>
+        <span class="pill">${esc(e.trust?.publisher ?? '')}</span>
+      </div>
+      <code>carina hub install ${esc(e.id)}</code>
+    </article>
+  `).join('');
+}
+
 async function refresh() {
   const q = queryParams();
   if (state.view === 'packs') {
     const data = await api(`/api/packs${q}`);
     state.packs = data.packs;
     renderPacks(state.packs);
-  } else {
+  } else if (state.view === 'skills') {
     const data = await api(`/api/skills${q}${q ? '&' : '?'}limit=200`);
     state.skills = data.skills;
     renderSkills(state.skills);
+  } else {
+    const data = await api(`/api/marketplace${state.q ? `?q=${encodeURIComponent(state.q)}` : ''}`);
+    state.marketplace = data.entries;
+    renderMarketplace(state.marketplace);
   }
 }
 
@@ -251,6 +277,7 @@ function setView(view) {
   els.tabs.forEach((tab) => tab.classList.toggle('active', tab.dataset.view === view));
   els.packsView.classList.toggle('hidden', view !== 'packs');
   els.skillsView.classList.toggle('hidden', view !== 'skills');
+  els.marketplaceView.classList.toggle('hidden', view !== 'marketplace');
   els.detail.classList.add('hidden');
   refresh().catch(console.error);
 }

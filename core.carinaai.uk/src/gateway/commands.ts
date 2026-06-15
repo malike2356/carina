@@ -84,10 +84,12 @@ export async function handleGatewayCommandAsync(
       });
       const plain = PLAIN_TEXT_CHANNELS.has(context.channel ?? '');
       const reportPath = await writeResearchReportFile(report, 'markdown');
+      const { saveResearchReport } = await import('../research/research-store.js');
+      const saved = await saveResearchReport(report, { query: researchMatch[1].trim(), format: 'both' });
       const reply = formatGatewaySummary(report, plain);
       return {
         handled: true,
-        reply: `${reply}\n\nFull report saved to ${reportPath}`,
+        reply: `${reply}\n\nFull report: ${reportPath}\nShare id: ${saved.shareId}`,
         attachment: { path: reportPath, filename: path.basename(reportPath) },
       };
     } catch (err) {

@@ -6,6 +6,7 @@ export type AgentBindingMatch = {
   channel?: ChannelName | '*';
   accountId?: string;
   peer?: { kind: PeerKind; id: string };
+  contactId?: string;
   guildId?: string;
   teamId?: string;
 };
@@ -26,11 +27,27 @@ export type AgentDefinition = {
   model?: string;
   skillPacks?: string[];
   description?: string;
+  /** Per-agent sandbox routing override for shell/code tools */
+  sandboxMode?: AgentSandboxMode;
 };
+
+export type AgentSandboxMode =
+  | 'default'
+  | 'host'
+  | 'docker'
+  | 'session'
+  | 'openshell'
+  | 'blocked';
 
 export type AgentToAgentPolicy = {
   enabled: boolean;
   allow: string[];
+};
+
+export type ShareLearningPolicy = {
+  mode: 'off' | 'kernel' | 'allowlist';
+  allowAgents?: string[];
+  minSuccessCount?: number;
 };
 
 export type AgentsConfig = {
@@ -40,6 +57,9 @@ export type AgentsConfig = {
   tools?: {
     agentToAgent?: AgentToAgentPolicy;
   };
+  learning?: {
+    shareAcrossAgents?: ShareLearningPolicy;
+  };
 };
 
 export type RoutingContext = {
@@ -47,12 +67,17 @@ export type RoutingContext = {
   accountId?: string;
   peerKind?: PeerKind;
   peerId?: string;
+  contactId?: string;
   guildId?: string;
   teamId?: string;
 };
+
+export type RoutingSource = 'ownership' | 'binding' | 'default';
 
 export type RoutingResult = {
   agent: AgentDefinition;
   binding?: AgentBinding;
   tier: string;
+  source: RoutingSource;
+  handoffFromAgentId?: string;
 };

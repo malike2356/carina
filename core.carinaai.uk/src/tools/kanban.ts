@@ -1,23 +1,16 @@
 import type { Tool } from '../types/index.js';
+import type { KanbanColumn } from '../agents/kanban-types.js';
+import { getCard, removeCard } from '../agents/kanban-store.js';
 import {
-  addCard,
-  getCard,
-  groupByColumn,
-  listCards,
-  moveCard,
-  removeCard,
-  type KanbanColumn,
-} from '../agents/kanban-store.js';
-import { GenericSubAgent } from '../agents/generic-sub-agent.js';
-import {
-  canDelegate,
-  createChildAbortController,
-  getDelegationDepth,
-  releaseChildAbortController,
-  setDelegationDepth,
-  clearDelegationDepth,
-} from '../agents/delegation-context.js';
-import { resolveToolset } from './toolset.js';
+  createBoardCard,
+  getBoardView,
+  orchestratorCloseCard,
+  patchCard,
+  runCardWork,
+  transitionCard,
+  workerClaimCard,
+  workerReleaseCard,
+} from '../agents/kanban-service.js';
 
 const COLUMNS: KanbanColumn[] = ['backlog', 'in_progress', 'review', 'done'];
 
@@ -26,33 +19,39 @@ function parseColumn(value: unknown): KanbanColumn {
   return COLUMNS.includes(col) ? col : 'backlog';
 }
 
+function parseRole(value: unknown): 'orchestrator' | 'worker' {
+  return String(value ?? 'orchestrator').toLowerCase() === 'worker' ? 'worker' : 'orchestrator';
+}
+
 export function createKanbanTool(sessionId: string): Tool {
   return {
     name: 'kanban',
     dangerous: true,
     requiresConfirmation: true,
     description:
-      'Multi-agent work queue board. Columns: backlog, in_progress, review, done. Actions: add, board, move, assign, remove.',
+      'Operator Kanban board for multi-step agent work. Roles: orchestrator (create, assign work, close) or worker (claim, release, submit for review). Columns: backlog, in_progress, review, done. Actions: add, board, move, claim, release, close, update, run, remove.',
     parameters: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          enum: ['add', 'board', 'move', 'assign', 'remove'],
+          enum: ['add', 'board', 'move', 'claim', 'release', 'close', 'update', 'run', 'remove'],
         },
+        role: { type: 'string', enum: ['orchestrator', 'worker'], description: 'Actor role (default orchestrator)' },
         board_id: { type: 'string', description: 'Board identifier (default: default)' },
         card_id: { type: 'string' },
         title: { type: 'string' },
         description: { type: 'string' },
-        column: {
-          type: 'string',
-          enum: COLUMNS,
-        },
+        column: { type: 'string', enum: COLUMNS },
         priority: { type: 'number' },
+        work_prompt: { type: 'string', description: 'Instructions for agent when running card work' },
+        orchestrator_notes: { type: 'string' },
+        assignee: { type: 'string', description: 'Worker name for claim/release' },
+        version: { type: 'number', description: 'Optimistic lock version for updates' },
         toolsets: {
           type: 'array',
           items: { type: 'string' },
-          description: 'For assign: toolsets for the subagent',
+          description: 'For run: toolsets for the subagent',
         },
       },
       required: ['action'],
@@ -61,39 +60,26 @@ export function createKanbanTool(sessionId: string): Tool {
       const action = String(params.action ?? '');
       const sid = String(params._sessionId ?? sessionId);
       const boardId = String(params.board_id ?? 'default');
+      const role = parseRole(params.role);
 
       if (action === 'add') {
         const title = String(params.title ?? '').trim();
         if (!title) return { error: 'title is required for add' };
-        const card = await addCard({
+        const card = await createBoardCard(role, {
           sessionId: sid,
           boardId,
           title,
           description: params.description ? String(params.description) : undefined,
           column: parseColumn(params.column),
           priority: params.priority != null ? Number(params.priority) : undefined,
+          workPrompt: params.work_prompt ? String(params.work_prompt) : undefined,
+          orchestratorNotes: params.orchestrator_notes ? String(params.orchestrator_notes) : undefined,
         });
-        return { card_id: card.id, column: card.column, title: card.title };
+        return { card };
       }
 
       if (action === 'board') {
-        const cards = await listCards(sid, boardId);
-        const grouped = groupByColumn(cards);
-        return {
-          board_id: boardId,
-          columns: Object.fromEntries(
-            COLUMNS.map((col) => [
-              col,
-              grouped[col].map((c) => ({
-                card_id: c.id,
-                title: c.title,
-                description: c.description,
-                assignee: c.assignee,
-                priority: c.priority,
-              })),
-            ]),
-          ),
-        };
+        return getBoardView(sid, boardId);
       }
 
       const cardId = String(params.card_id ?? '').trim();
@@ -103,60 +89,70 @@ export function createKanbanTool(sessionId: string): Tool {
 
       if (action === 'move') {
         const column = parseColumn(params.column);
-        const card = await moveCard(cardId, column);
-        return card
-          ? { card_id: card.id, column: card.column, title: card.title }
-          : { error: 'card not found' };
+        const card = await transitionCard(role, cardId, column, {
+          assignee: params.assignee ? String(params.assignee) : undefined,
+          expectedVersion: params.version != null ? Number(params.version) : undefined,
+          actor: params.assignee ? String(params.assignee) : undefined,
+        });
+        return { card };
+      }
+
+      if (action === 'claim') {
+        const assignee = String(params.assignee ?? 'subagent');
+        const card = await workerClaimCard(
+          cardId,
+          assignee,
+          params.version != null ? Number(params.version) : undefined,
+        );
+        return { card };
+      }
+
+      if (action === 'release') {
+        const assignee = String(params.assignee ?? 'subagent');
+        const card = await workerReleaseCard(
+          cardId,
+          assignee,
+          params.version != null ? Number(params.version) : undefined,
+        );
+        return { card };
+      }
+
+      if (action === 'close') {
+        const card = await orchestratorCloseCard(
+          cardId,
+          params.version != null ? Number(params.version) : undefined,
+        );
+        return { card };
+      }
+
+      if (action === 'update') {
+        const card = await patchCard(role, cardId, {
+          expectedVersion: params.version != null ? Number(params.version) : undefined,
+          title: params.title ? String(params.title) : undefined,
+          description: params.description !== undefined ? String(params.description) : undefined,
+          priority: params.priority != null ? Number(params.priority) : undefined,
+          workPrompt: params.work_prompt !== undefined ? String(params.work_prompt) : undefined,
+          orchestratorNotes: params.orchestrator_notes !== undefined
+            ? String(params.orchestrator_notes)
+            : undefined,
+        });
+        return { card };
+      }
+
+      if (action === 'run') {
+        if (role !== 'orchestrator') return { error: 'Only orchestrators can run card work' };
+        const toolsets = Array.isArray(params.toolsets)
+          ? (params.toolsets as string[]).map(String)
+          : undefined;
+        return runCardWork(sid, cardId, toolsets);
       }
 
       if (action === 'remove') {
+        if (role !== 'orchestrator') return { error: 'Only orchestrators can remove cards' };
+        const existing = await getCard(cardId);
+        if (!existing) return { error: 'card not found' };
         const ok = await removeCard(cardId);
         return ok ? { card_id: cardId, status: 'removed' } : { error: 'card not found' };
-      }
-
-      if (action === 'assign') {
-        if (!canDelegate(sid)) {
-          return { error: 'Delegation depth limit reached.' };
-        }
-
-        const card = await getCard(cardId);
-        if (!card) return { error: 'card not found' };
-
-        await moveCard(cardId, 'in_progress', 'subagent');
-
-        const toolsets = Array.isArray(params.toolsets)
-          ? (params.toolsets as string[]).map(String)
-          : ['terminal', 'file', 'web'];
-        const allowedTools = resolveToolset(toolsets);
-        const childDepth = getDelegationDepth(sid) + 1;
-        const childAbort = createChildAbortController(sid);
-        const subSessionId = `${sid}:kanban:${cardId}`;
-
-        try {
-          setDelegationDepth(subSessionId, childDepth);
-          const agent = new GenericSubAgent(
-            subSessionId,
-            card.title,
-            allowedTools,
-            undefined,
-            undefined,
-            childDepth,
-            childAbort.signal,
-          );
-          const prompt = card.description
-            ? `${card.description}\n\nTask: ${card.title}`
-            : card.title;
-          const summary = await agent.run(prompt);
-          await moveCard(cardId, 'review');
-          return { card_id: cardId, status: 'review', summary };
-        } catch (err) {
-          await moveCard(cardId, 'backlog');
-          const msg = err instanceof Error ? err.message : String(err);
-          return { error: msg, card_id: cardId, status: 'backlog' };
-        } finally {
-          releaseChildAbortController(sid, childAbort);
-          clearDelegationDepth(subSessionId);
-        }
       }
 
       return { error: `unknown action: ${action}` };

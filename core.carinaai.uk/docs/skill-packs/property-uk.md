@@ -26,7 +26,7 @@ Skills activate on keyword overlap or when you name them explicitly:
 | Tool | Variable | Capability |
 |---|---|---|
 | `property-data-lookup` | `PROPERTY_DATA_API_KEY` | Prices, yields, sold comparables by postcode |
-| `land-registry-lookup` | `LAND_REGISTRY_API_KEY` | Title and registration lookups |
+| `land-registry-search` | `LAND_REGISTRY_API_KEY` or `PROPERTY_DATA_API_KEY` | Title lookup, postcode freehold list, address match via PropertyData.co.uk |
 
 Tools register only when the corresponding API key is set.
 

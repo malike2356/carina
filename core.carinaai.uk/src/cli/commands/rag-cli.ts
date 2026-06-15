@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { initDb } from '../../memory/db.js';
+import { embeddingProviderStatus } from '../../memory/embeddings.js';
 import { searchRag } from '../../memory/store.js';
 
 export async function runRagCommand(args: string[]): Promise<void> {
@@ -7,9 +8,16 @@ export async function runRagCommand(args: string[]): Promise<void> {
 
   if (action === 'status') {
     const backend = process.env.CARINA_MEMORY_BACKEND ?? 'builtin';
+    const embed = embeddingProviderStatus();
     console.log(chalk.bold('\nRAG status\n'));
-    console.log(`  backend:    ${backend}`);
-    console.log(`  embeddings: ${process.env.GEMINI_API_KEY ? 'gemini' : process.env.OPENAI_API_KEY ? 'openai' : 'not configured'}`);
+    console.log(`  backend:     ${backend}`);
+    console.log(`  dimensions:  ${embed.dimensions}`);
+    console.log(`  active:      ${embed.active ?? 'not configured'}`);
+    console.log(`  configured:  ${embed.configured.join(', ') || 'none'}`);
+    console.log(`  chain:       ${embed.chain.join(' -> ') || 'none'}`);
+    if (embed.override) {
+      console.log(`  override:    CARINA_EMBEDDING_PROVIDER=${embed.override}`);
+    }
     console.log('');
     return;
   }

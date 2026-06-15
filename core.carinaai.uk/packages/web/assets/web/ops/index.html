@@ -23,14 +23,21 @@
       <div class="card"><h2>Model class</h2><div class="stat" id="stat-model-class" style="font-size:16px;">-</div></div>
     </div>
     <div class="card">
+      <h2>Platform</h2>
+      <table class="ops-table">
+        <thead><tr><th>Surface</th><th>Count</th><th>Link</th></tr></thead>
+        <tbody id="platform-body"><tr><td colspan="3" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
       <h2>Onboarding</h2>
       <p id="onboarding-status" class="placeholder">Loading...</p>
     </div>
     <div class="card">
       <h2>Quick links</h2>
-      <p style="margin-bottom:12px;">Manage BYOK keys, usage, audit events, and team settings from the nav above.</p>
-      <a class="btn secondary" href="/ops/vault">Open Vault</a>
-      <a class="btn secondary" href="/ops/usage" style="margin-left:8px;">View Usage</a>
+      <p style="margin-bottom:12px;">Manage platform surfaces from the nav: files, agents, sessions, vault, analytics, and more.</p>
+      <a class="btn secondary" href="/ops/workbench">Open Workbench</a>
+      <a class="btn secondary" href="/ops/vault" style="margin-left:8px;">Open Vault</a>
     </div>
     <div class="card" id="deployments-card" hidden>
       <h2>Deployments (Team)</h2>
@@ -59,6 +66,32 @@
       ).join('');
     }
 
+    async function loadPlatformSummary(plan) {
+      const res = await fetch('/api/carina-ops/platform/summary');
+      if (!res.ok) return;
+      const data = await res.json();
+      const s = data.summary || {};
+      const rows = [
+        { label: 'Files', count: s.files, href: '/ops/files' },
+        { label: 'Batches', count: s.batches, href: '/ops/batches' },
+        { label: 'Agents', count: s.agents, href: '/ops/agents' },
+        { label: 'Sessions', count: s.sessions, href: '/ops/sessions' },
+        { label: 'Memory stores', count: s.memoryStores, href: '/ops/memory' },
+        { label: 'Workbench runs', count: s.workbenchRuns, href: '/ops/workbench' },
+        { label: 'Skill packs installed', count: s.skillPacksInstalled, href: '/ops/skills' },
+      ];
+      if (plan === 'carina_ops_team') {
+        rows.push(
+          { label: 'Deployments', count: s.deployments, href: '/ops/deployments' },
+          { label: 'Environments', count: s.environments, href: '/ops/environments' },
+        );
+      }
+      const body = document.getElementById('platform-body');
+      body.innerHTML = rows.map((row) =>
+        `<tr><td>${CarinaOpsLayout.escapeHtml(row.label)}</td><td>${CarinaOpsLayout.escapeHtml(String(row.count ?? 0))}</td><td><a href="${row.href}">Open</a></td></tr>`,
+      ).join('');
+    }
+
     CarinaOpsLayout.initPage('overview', {
       onReady: async (me) => {
         const res = await fetch('/api/carina-ops/overview');
@@ -78,7 +111,9 @@
         parts.push(onboarding.hasByok ? 'BYOK configured' : 'Add a BYOK key in Vault');
         parts.push(onboarding.hasWorkbenchRun ? 'Workbench run completed' : 'Run your first workbench prompt');
         document.getElementById('onboarding-status').textContent = parts.join(' · ');
-        if ((me.org?.plan || data.org?.plan) === 'carina_ops_team') {
+        const plan = me.org?.plan || data.org?.plan;
+        await loadPlatformSummary(plan);
+        if (plan === 'carina_ops_team') {
           await loadDeployments();
         }
       },

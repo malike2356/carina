@@ -150,9 +150,11 @@ export async function reloadExtensionRuntimeContributions(id: string): Promise<{
   toolsRegistered: number;
   promptSections: number;
   chunksIngested: number;
+  mcpServers: number;
+  hooksLoaded: number;
 }> {
   if (!extensionsRuntimeEnabled()) {
-    return { skillsLoaded: 0, toolsRegistered: 0, promptSections: 0, chunksIngested: 0 };
+    return { skillsLoaded: 0, toolsRegistered: 0, promptSections: 0, chunksIngested: 0, mcpServers: 0, hooksLoaded: 0 };
   }
 
   await stageExtensionContributions(id);
@@ -173,7 +175,12 @@ export async function reloadExtensionRuntimeContributions(id: string): Promise<{
   const { loadExtensionPromptSuffixes } = await import('./prompts.js');
   const promptSections = await loadExtensionPromptSuffixes();
 
-  return { skillsLoaded, toolsRegistered, promptSections, chunksIngested };
+  const { loadExtensionMcpServers } = await import('./mcp-loader.js');
+  const { loadExtensionHooks } = await import('./hooks-loader.js');
+  const mcpServers = await loadExtensionMcpServers(id);
+  const hooksLoaded = await loadExtensionHooks(id);
+
+  return { skillsLoaded, toolsRegistered, promptSections, chunksIngested, mcpServers, hooksLoaded };
 }
 
 /** Tear down one extension from the live runtime (no-op when extensions flag is off). */
@@ -181,6 +188,10 @@ export async function unloadExtensionRuntimeContributions(id: string): Promise<v
   if (!extensionsRuntimeEnabled()) return;
   const { unregisterExtensionTools } = await import('./tools.js');
   unregisterExtensionTools(id);
+  const { unloadExtensionMcpServers } = await import('./mcp-loader.js');
+  const { unloadExtensionHooks } = await import('./hooks-loader.js');
+  await unloadExtensionMcpServers(id);
+  await unloadExtensionHooks(id);
   await clearStagedExtensionContributions(id);
   const { loadExtensionPromptSuffixes } = await import('./prompts.js');
   await loadExtensionPromptSuffixes();

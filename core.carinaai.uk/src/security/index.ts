@@ -20,6 +20,21 @@ export {
 export { scanUserInput, scanToolOutput, scanAgentOutput } from './prompt-guard-middleware.js';
 export { getDeceptionAugmentation } from './deception-client.js';
 export { enforceToolPolicy, _resetToolPolicyEnforcer } from './tool-policy-middleware.js';
+export { evaluateToolRbac, ToolRbacDeniedError } from './tool-rbac.js';
+export { resolveSandboxExecution } from './sandbox-policy.js';
+export { appendSecurityAudit, readSecurityAuditTail, searchSecurityAudit } from './security-audit.js';
+export {
+  buildTrustComplianceReport,
+  formatTrustComplianceMarkdown,
+} from './trust-compliance-report.js';
+export type { InputScanResult, InputBlockInfo } from './prompt-guard-middleware.js';
+export { evaluateScoutToolPolicy } from './scout-policy-client.js';
+export { buildSecurityTrustState, formatTrustStateSummary } from './trust-state.js';
+export {
+  getToolExecutionContext,
+  runWithToolExecutionContext,
+  runWithToolExecutionContextAsync,
+} from './tool-execution-context.js';
 export { evaluateApprovalPolicy, rememberApprovalAfterConfirm, approvalPolicyEnabled } from './approval-policy.js';
 export { evaluateNodeShellCommand, nodeShellPolicyEnabled } from './node-command-policy.js';
 export { toolRiskTier, type ToolRiskTier } from './tool-risk.js';

@@ -58,7 +58,8 @@ export async function runHostCommand(args: string[]): Promise<void> {
       console.log(`  plist: ${installed.path ?? launchdPlistPath()}`);
       console.log('  launchctl load ~/Library/LaunchAgents/com.carina.gateway.plist');
     } else if (manager === 'schtasks') {
-      console.log('  Windows: run the schtasks command shown in ~/.carina/daemon.log');
+      console.log(`  task: ${installed.path ?? 'schtasks:CarinaGateway'}`);
+      console.log('  Starts on user logon. Manual run: schtasks /Run /TN CarinaGateway');
     } else {
       console.log('  No service manager found. Use `carina host start` to run the supervisor.');
     }

@@ -1,4 +1,5 @@
 import type { Role } from '../../types/index.js';
+import { storageSessionId } from '../session-scope.js';
 import type { MemoryBackend } from './types.js';
 import { builtinBackend, resolveBuiltinTarget } from './builtin-backend.js';
 export { resolveBuiltinTarget };
@@ -75,7 +76,7 @@ export function listMemoryBackends(): string[] {
 }
 
 export async function backendSaveMemory(sessionId: string, role: Role, content: string): Promise<void> {
-  return active.saveMemory(sessionId, role, content);
+  return active.saveMemory(storageSessionId(sessionId), role, content);
 }
 
 export async function backendSearchMemory(query: string, limit: number) {
@@ -83,11 +84,11 @@ export async function backendSearchMemory(query: string, limit: number) {
 }
 
 export async function backendGetSessionHistory(sessionId: string, limit: number) {
-  return active.getSessionHistory(sessionId, limit);
+  return active.getSessionHistory(storageSessionId(sessionId), limit);
 }
 
 export async function backendClearSession(sessionId: string): Promise<void> {
-  return active.clearSession(sessionId);
+  return active.clearSession(storageSessionId(sessionId));
 }
 
 export async function backendListRecentMemories(limit: number) {

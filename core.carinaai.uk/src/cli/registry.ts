@@ -37,15 +37,16 @@ export function buildCommands(): CliCommand[] {
       await runChat();
     }, { usage: 'carina [chat]', aliases: [''] }),
 
-    cmd('tui', 'Rich terminal UI with provider picker', async () => {
+    cmd('tui', 'Operator terminal UI (sessions, tasks, processes, chat)', async (args) => {
       const { runTui } = await import('../tui/index.js');
-      await runTui({ memoryReady: true });
-    }, { loadEnv: true }),
+      const simple = args.includes('--simple');
+      await runTui({ memoryReady: true, simple });
+    }, { loadEnv: true, usage: 'carina tui [--simple]' }),
 
-    cmd('setup', 'First-run setup wizard', async () => {
+    cmd('setup', 'First-run setup wizard', async (args) => {
       const { runCliSetup } = await import('./commands/setup.js');
-      await runCliSetup();
-    }, { aliases: ['onboard'] }),
+      await runCliSetup(args);
+    }, { usage: 'carina setup [--full] [--provider-only]' }),
 
     cmd('onboard', 'Guided first-run (setup + doctor)', async (args) => {
       const { runOnboardCommand } = await import('./commands/onboard-cli.js');
@@ -159,7 +160,11 @@ export function buildCommands(): CliCommand[] {
 
     cmd('cron', 'Scheduled job management', async (args) => {
       const { runCronCommand } = await import('./commands/cron.js');
-      await runCronCommand(args[0] ?? 'list', args[1]);
+      if ((args[0] ?? 'list') === 'workflow') {
+        await runCronCommand('workflow', undefined, args.slice(1));
+      } else {
+        await runCronCommand(args[0] ?? 'list', args[1], args.slice(2));
+      }
     }, { loadEnv: true }),
 
     cmd('tasks', 'Background processes, cron, TaskFlows, delivery queue', async (args) => {
@@ -199,7 +204,31 @@ export function buildCommands(): CliCommand[] {
       await runCuratorCommand(args);
     }, {
       loadEnv: true,
-      usage: 'carina curator <report|list|duplicates|prune|archive|restore|run> [--profile NAME]',
+      usage: 'carina curator <report|list|duplicates|prune|archive|restore|run> [--profile NAME] [--force]',
+    }),
+
+    cmd('learning', 'Self-improvement loop operator (status, events, rollback)', async (args) => {
+      const { runLearningCommand } = await import('./commands/learning-cli.js');
+      await runLearningCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina learning <status|events|shared|share|sync|pending|improvements|show|versions|rollback> [--json]',
+    }),
+
+    cmd('capabilities', 'Tools, skills, and channel discovery audit', async (args) => {
+      const { runCapabilitiesCommand } = await import('./commands/capabilities-cli.js');
+      await runCapabilitiesCommand(args[0] ?? 'audit', ...args.slice(1));
+    }, {
+      loadEnv: true,
+      usage: 'carina capabilities <audit|status|tools|channels|gaps> [--json]',
+    }),
+
+    cmd('benchmark', 'Platform capability benchmarks vs published references', async (args) => {
+      const { runBenchmarkCommand } = await import('./commands/benchmark-cli.js');
+      await runBenchmarkCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina benchmark <run|regression|list|runs|report|public|compare> [--json] [--out dir]',
     }),
 
     cmd('workshop', 'Review queue for captured skills (opt-in)', async (args) => {
@@ -316,7 +345,7 @@ export function buildCommands(): CliCommand[] {
     cmd('research', 'Multi-step deep research with cited report', async (args) => {
       const { runResearchCommand } = await import('./commands/research-cli.js');
       await runResearchCommand(args);
-    }, { loadEnv: true, usage: 'carina research "<query>" [--rounds N] [--sources N] [--save file] [--format markdown|html] [--provider name]' }),
+    }, { loadEnv: true, usage: 'carina research "<query>" | list | show <id> | edit <id> | export <id> [--rounds N] [--sources N] [--save file]' }),
 
     cmd('compare', 'Send one prompt to multiple LLM providers in parallel', async (args) => {
       const { runCompareCommand } = await import('./commands/compare-cli.js');
@@ -383,10 +412,23 @@ export function buildCommands(): CliCommand[] {
       await runIngestCommand(args);
     }),
 
-    cmd('hub', 'Community Skills Hub (browse, registry, server)', async (args) => {
+    cmd('hub', 'Carina Hub marketplace (catalog, install, publish)', async (args) => {
       const { runHubCommand } = await import('./commands/hub-cli.js');
       await runHubCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina hub <catalog|ecosystem|author|show|install|publish|status|start> [args]',
     }),
+
+    cmd('certify', 'Built on Carina certification checks', async (args) => {
+      const { runCertifyCommand } = await import('./commands/certify-cli.js');
+      await runCertifyCommand(args);
+    }, { usage: 'carina certify [built-on|powered-by] [project-path] [--json]' }),
+
+    cmd('enterprise', 'Enterprise support model (MIT kernel + paid layers)', async (args) => {
+      const { runEnterpriseCommand } = await import('./commands/enterprise-cli.js');
+      await runEnterpriseCommand(args);
+    }, { usage: 'carina enterprise <status|tiers|offer> [--json]' }),
 
     cmd('contacts', 'Contact directory', async (args) => {
       const { runContactsCommand } = await import('./commands/contacts-cli.js');
@@ -401,7 +443,7 @@ export function buildCommands(): CliCommand[] {
     cmd('credentials', 'API key pools and OAuth device login', async (args) => {
       const { runCredentialsCommand } = await import('./commands/credentials-cli.js');
       await runCredentialsCommand(args);
-    }, { loadEnv: true, usage: 'carina credentials <status|add|remove|retire|rotate|test|oauth> [--profile NAME]' }),
+    }, { loadEnv: true, usage: 'carina credentials <status|profiles|configure|add|remove|retire|rotate|test|oauth> [--profile NAME]' }),
 
     cmd('env', 'Show non-secret environment', async (args) => {
       const { runEnvCommand } = await import('./commands/env-cli.js');

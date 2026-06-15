@@ -147,7 +147,17 @@ export async function requireOpsPlanGate(
 
 export const OPS_PAGE_FILES: Record<string, string> = {
   workbench: 'workbench.html',
+  files: 'files.html',
+  skills: 'skills.html',
+  batches: 'batches.html',
+  agents: 'agents.html',
+  sessions: 'sessions.html',
+  deployments: 'deployments.html',
+  environments: 'environments.html',
   vault: 'vault.html',
+  memory: 'memory.html',
+  analytics: 'analytics.html',
+  credits: 'credits.html',
   usage: 'usage.html',
   audit: 'audit.html',
   settings: 'settings.html',

@@ -205,6 +205,18 @@ export class CarinaOrchestrator {
       const stepOutputs = new Map<number, string>();
       const pending = new Set(plan.steps.map((_, i) => i));
 
+      const useKanbanLanes = process.env.CARINA_ORCHESTRATOR_KANBAN === 'true';
+      if (useKanbanLanes) {
+        const { decomposePlanToKanban, runParallelKanbanLanes } = await import('./orchestrator-kanban.js');
+        const cardIds = await decomposePlanToKanban(this.sessionId, userMessage, plan);
+        yield { type: 'status', content: `[kanban: ${cardIds.length} parallel lanes]\n` };
+        const laneResults = await runParallelKanbanLanes(this.sessionId, cardIds);
+        for (let idx = 0; idx < plan.steps.length; idx++) {
+          const lane = laneResults[idx];
+          stepOutputs.set(idx, lane?.summary || lane?.error || '');
+          pending.delete(idx);
+        }
+      } else {
       while (pending.size > 0) {
         const ready = [...pending].filter((idx) =>
           plan.steps[idx]!.dependsOn.every((dep) => stepOutputs.has(dep)),
@@ -231,6 +243,7 @@ export class CarinaOrchestrator {
             stepOutputs.set(idx, result);
           }),
         );
+      }
       }
 
       yield { type: 'status', content: '[synthesising...]\n' };

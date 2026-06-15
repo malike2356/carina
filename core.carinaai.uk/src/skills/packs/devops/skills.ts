@@ -43,4 +43,34 @@ export const devopsSkills: PackSkillInput[] = [
     steps: '1. Run pnpm test/build via shell-exec.\n2. checkpoint-manager before deploy.\n3. Summarize blockers.',
     toolsUsed: ['shell-exec', 'checkpoint-manager'],
   },
+  {
+    name: 'backup-migration',
+    description: 'Migrate Carina data between machines with verified archives',
+    trigger: ['migrate carina', 'move install', 'transfer backup', 'new machine setup'],
+    steps: `1. carina backup create on source; copy archive securely.
+2. carina backup verify on target before restore.
+3. carina doctor on target after restore.
+4. Re-enter channel tokens via env; never bundle secrets in archives.`,
+    toolsUsed: ['shell-exec'],
+  },
+  {
+    name: 'disk-space-reclamation',
+    description: 'Find and reclaim disk space safely on the host',
+    trigger: ['disk full', 'free space', 'clean logs', 'storage cleanup'],
+    steps: `1. shell-exec df -h and du on large dirs under CARINA_HOME and project roots.
+2. Identify logs, node_modules, old backups; confirm before delete.
+3. carina backup list; prune only after operator confirms retention policy.
+4. Never rm -rf without explicit approval.`,
+    toolsUsed: ['shell-exec', 'search-files'],
+  },
+  {
+    name: 'server-troubleshooting',
+    description: 'Structured triage for service outages and port conflicts',
+    trigger: ['service down', 'port in use', 'cannot connect', 'server troubleshoot'],
+    steps: `1. Confirm symptom: URL, port, error message.
+2. shell-exec ss -lntp or lsof for port owners; systemctl/docker status if applicable.
+3. Tail recent logs; propose minimal restart only after checkpoint or backup.
+4. Document root cause in notes-manage if recurring.`,
+    toolsUsed: ['shell-exec', 'http-request', 'notes-manage'],
+  },
 ];

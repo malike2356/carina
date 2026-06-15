@@ -4,7 +4,7 @@ import { runWebSearch, searchProviderLabel, resolveSearchProvider } from './web-
 export const webSearchTool: Tool = {
   name: 'web-search',
   description:
-    'Live web search via Tavily (default). Call with a search query when the user needs current facts, news, or URLs. Do not use for local file lookup.',
+    'Live web search (SearXNG, Tavily, or Brave depending on config). Call with a search query when the user needs current facts, news, or URLs. Do not use for local file lookup.',
   parameters: {
     type: 'object',
     properties: {

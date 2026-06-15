@@ -5,14 +5,23 @@ import { getUserProfile } from '../api/hosted-auth.js';
 import { scoutServiceUrl } from '../billing/tenant-scout.js';
 import { isHostedRequest } from './hosted-domain.js';
 import { getActivePackNames } from '../skills/index.js';
+import { getActiveProfileName } from '../profiles/manager.js';
+import { describeNamedProfileScope } from '../profiles/scope.js';
 
 export type WebContextResponse = {
   mode: 'operator' | 'hosted';
+  activeProfile: string;
+  profileScope?: {
+    carinaHome: string;
+    operatorSession: string;
+    sessionPrefix: string;
+  };
   activeSkillPack: string | null;
   activeSkillPacks: string[];
   provider: string;
   providers: string[];
   scoutAvailable: boolean;
+  security?: Awaited<ReturnType<typeof import('../security/trust-state.js').buildSecurityTrustState>>;
   hosted?: {
     user: {
       id: string;
@@ -36,14 +45,36 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
   const activeSkillPack = config.carina.activePack || packs[0] || null;
   const scoutAvailable = Boolean(config.labyrinth.apiKey && scoutServiceUrl());
   const mode: WebContextResponse['mode'] = isHostedRequest(req.hostname) ? 'hosted' : 'operator';
+  let security: WebContextResponse['security'];
+  try {
+    const { buildSecurityTrustState } = await import('../security/trust-state.js');
+    security = await buildSecurityTrustState();
+  } catch {
+    security = undefined;
+  }
+  const activeProfile = process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default';
+  let profileScope: WebContextResponse['profileScope'];
+  try {
+    const scope = describeNamedProfileScope(activeProfile, getActiveProfileName());
+    profileScope = {
+      carinaHome: scope.scoped.carinaHome,
+      operatorSession: scope.runtime.operatorSession,
+      sessionPrefix: scope.runtime.sessionPrefix,
+    };
+  } catch {
+    profileScope = undefined;
+  }
 
   const body: WebContextResponse = {
     mode,
+    activeProfile,
+    profileScope,
     activeSkillPack,
     activeSkillPacks: packs,
     provider: activeProvider,
     providers: llm.list(),
     scoutAvailable,
+    security,
   };
 
   if (mode === 'hosted') {

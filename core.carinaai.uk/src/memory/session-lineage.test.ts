@@ -86,6 +86,14 @@ describe('session-lineage', () => {
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
   });
 
+  it('getLineageRoot returns oldest ancestor', async () => {
+    const { recordSessionContinuation, getLineageRoot } = await import('./session-lineage.js');
+    recordSessionContinuation('child', 'parent');
+    recordSessionContinuation('parent', 'root');
+    expect(getLineageRoot('child')).toBe('root');
+    expect(getLineageRoot('solo')).toBe('solo');
+  });
+
   it('persists across module reloads', async () => {
     const { recordSessionContinuation } = await import('./session-lineage.js');
     recordSessionContinuation('reload-child', 'reload-parent');

@@ -5,11 +5,19 @@ import {
   enableProvider,
   isProviderConfigured,
   listDisabledProviders,
+  listEmbeddingProviders,
   providerApiKey,
   providerBaseUrl,
   providerModel,
   providerTransportType,
 } from '../../brain/provider-registry.js';
+import {
+  buildProviderCapabilityReport,
+  formatReasoningEffortLine,
+  formatStreamingLine,
+  streamingMatrixRows,
+} from '../../brain/provider-capability-detection.js';
+import { getCredentialPoolManager } from '../../credentials/index.js';
 import {
   buildCatalogRows,
   formatCompactCatalogLine,
@@ -54,7 +62,7 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
   if (action === 'info') {
     const name = args[1];
     if (!name) {
-      console.error('Usage: carina providers info <name>');
+      console.error('Usage: carina providers info <name> [--json]');
       process.exit(1);
     }
     const def = PROVIDER_DEFINITIONS.find((d) => d.name === name);
@@ -62,26 +70,49 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
       console.error(`Unknown provider: ${name}`);
       process.exit(1);
     }
+    const jsonFlag = args.includes('--json');
+    const modelOverride = args.find((a, i) => args[i - 1] === '--model');
+    const report = buildProviderCapabilityReport(def, {
+      model: modelOverride,
+      configured: isProviderConfigured(def),
+    });
+    if (jsonFlag) {
+      const pool = getCredentialPoolManager().describePool(def.name);
+      console.log(JSON.stringify({ ...report, authProfile: { keysInPool: pool.size } }, null, 2));
+      return;
+    }
     console.log(`\n${def.displayName}`);
     console.log(`  name:       ${def.name}`);
     console.log(`  status:     ${def.status}`);
     console.log(`  auth:       ${def.authType}`);
-    console.log(`  transport:  ${providerTransportType(def)}`);
+    console.log(`  transport:  ${report.transport}`);
     console.log(`  cost:       ${def.tags.cost}`);
-    if (def.status === 'active' || def.status === 'experimental') {
-      console.log(`  configured: ${isProviderConfigured(def)}`);
-      console.log(`  model:      ${providerModel(def)}`);
+    if (def.status === 'active' || def.status === 'experimental' || def.embeddingOnly) {
+      console.log(`  configured: ${report.configured}`);
+      if (!def.capabilities.embeddings || def.capabilities.chat) {
+        console.log(`  model:      ${report.model}`);
+      }
+      if (def.capabilities.embeddings) {
+        console.log(`  embed model: ${providerModel(def)}`);
+      }
       console.log(`  tags:       ${describeProviderTags(def)}`);
       console.log(`  key env:    ${def.apiKeyEnv}`);
       if (def.baseUrlEnv) console.log(`  base env:   ${def.baseUrlEnv}`);
+      const pool = getCredentialPoolManager().describePool(def.name);
+      if (pool.size > 0) {
+        console.log(`  auth pool:  ${pool.size} key(s) in credential store`);
+      }
     }
     if (def.aliasFor) console.log(`  alias for:  ${def.aliasFor}`);
     if (def.setupNote) console.log(`  setup:      ${def.setupNote}`);
     const caps = def.capabilities;
-    console.log(`  streaming:  ${caps.streaming ? 'yes' : 'no'}`);
+    console.log(`  streaming:  ${formatStreamingLine(report.streaming)}`);
+    if (report.streaming.notes) console.log(`              ${report.streaming.notes}`);
     console.log(`  tools:      ${caps.tools ? 'yes' : 'no'}`);
     console.log(`  vision:     ${caps.vision ? 'yes' : 'no'}`);
     console.log(`  reasoning:  ${caps.reasoning ? 'yes' : 'no'}`);
+    console.log(`  effort:     ${formatReasoningEffortLine(report.reasoningEffort)}`);
+    if (caps.embeddings) console.log(`  embeddings: yes (RAG + memory path)`);
     console.log('');
     return;
   }
@@ -285,21 +316,25 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
 
   if (action === 'matrix') {
     const allFlag = args.includes('--all');
+    const embedFlag = args.includes('--embeddings');
     const defs = allFlag
       ? PROVIDER_DEFINITIONS
-      : PROVIDER_DEFINITIONS.filter((d) => d.status === 'active' || d.status === 'experimental');
+      : embedFlag
+        ? listEmbeddingProviders()
+        : PROVIDER_DEFINITIONS.filter((d) => (d.status === 'active' || d.status === 'experimental') && !d.embeddingOnly);
     const yn = (v: boolean | undefined) => (v ? chalk.green('yes') : chalk.gray('no '));
     console.log(chalk.bold('\nStreaming compatibility matrix\n'));
-    const hdr = `  ${'Provider'.padEnd(18)} ${'Transport'.padEnd(22)} stream  tools   vision  reason  status`;
+    console.log(chalk.gray('  See docs/providers-streaming-matrix.md for transport notes.\n'));
+    const hdr = `  ${'Provider'.padEnd(18)} ${'Transport'.padEnd(22)} stream  s+tool  tools   vision  reason  effort  status`;
     console.log(chalk.gray(hdr));
-    for (const def of defs) {
-      const c = def.capabilities;
-      const transport = providerTransportType(def).padEnd(22);
-      const row = `  ${def.name.padEnd(18)} ${transport} ${yn(c.streaming)}    ${yn(c.tools)}    ${yn(c.vision)}    ${yn(c.reasoning)}    ${def.status}`;
-      const styled = def.status === 'active' ? row : chalk.gray(row);
+    for (const row of streamingMatrixRows(defs)) {
+      const styledRow = `  ${row.name.padEnd(18)} ${row.transport.padEnd(22)} ${yn(row.stream)}    ${yn(row.streamTools)}    ${yn(row.tools)}    ${yn(row.vision)}    ${yn(row.reasoning)}    ${yn(row.reasoningEffort)}    ${row.status}`;
+      const styled = row.status === 'active' ? styledRow : chalk.gray(styledRow);
       console.log(styled);
     }
-    if (!allFlag) console.log(chalk.gray('\n  Pass --all to include alias/oauth/external-cli entries'));
+    if (!allFlag && !embedFlag) {
+      console.log(chalk.gray('\n  Pass --all for alias/oauth/cli entries; --embeddings for RAG backends'));
+    }
     console.log('');
     return;
   }

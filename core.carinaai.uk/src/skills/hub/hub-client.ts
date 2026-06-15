@@ -310,6 +310,36 @@ export async function publishPackToHub(
   }
 }
 
+export async function fetchHubMarketplace(params: {
+  kind?: string;
+  q?: string;
+  category?: string;
+  featured?: boolean;
+  verified?: boolean;
+  publisher?: string;
+  baseUrl?: string;
+} = {}): Promise<{
+  entries: import('./marketplace-types.js').MarketplaceEntry[];
+  summary: import('./marketplace-types.js').MarketplaceCatalogSummary;
+}> {
+  const qs = new URLSearchParams();
+  if (params.kind) qs.set('kind', params.kind);
+  if (params.q) qs.set('q', params.q);
+  if (params.category) qs.set('category', params.category);
+  if (params.featured) qs.set('featured', 'true');
+  if (params.verified) qs.set('verified', 'true');
+  if (params.publisher) qs.set('publisher', params.publisher);
+  const query = qs.toString();
+  return hubFetch(`/api/marketplace${query ? `?${query}` : ''}`, params.baseUrl);
+}
+
+export async function fetchHubMarketplaceEntry(
+  id: string,
+  baseUrl?: string,
+): Promise<{ entry: import('./marketplace-types.js').MarketplaceEntry }> {
+  return hubFetch(`/api/marketplace/${encodeURIComponent(id)}`, baseUrl);
+}
+
 export function isPackVerified(row: HubPackRow): boolean {
   return row.featured === true || row.pricing_tier === 'certified';
 }

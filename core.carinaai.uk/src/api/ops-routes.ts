@@ -9,8 +9,10 @@ import {
 } from '../skills/operator-pack-store.js';
 import { listAvailablePacks } from '../skills/index.js';
 import { getWebPasswordStatus, setWebPassword } from '../ops/web-password.js';
+import { mountObservabilityRoutes } from './observability-routes.js';
 
 export function mountOpsRoutes(app: Express): void {
+  mountObservabilityRoutes(app);
   app.post('/api/ops/reload-secrets', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -153,6 +155,38 @@ export function mountOpsRoutes(app: Express): void {
     try {
       const result = await setWebPassword(password, confirmPassword, actor);
       res.json({ ok: true, ...getWebPasswordStatus(), updatedAt: result.updatedAt });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(400).json({ error: msg });
+    }
+  });
+
+  app.get('/api/ops/tenant-config/:tenantId', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { loadTenantWorkspaceConfig } = await import('../hosted/tenant-workspace-config.js');
+    res.json(loadTenantWorkspaceConfig(String(req.params.tenantId)));
+  });
+
+  app.put('/api/ops/tenant-config/:tenantId', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { saveTenantWorkspaceConfig } = await import('../hosted/tenant-workspace-config.js');
+    const actor = typeof req.body?.actor === 'string' ? req.body.actor.trim() : 'ops-admin';
+    try {
+      const config = saveTenantWorkspaceConfig(
+        String(req.params.tenantId),
+        {
+          activeSkillPacks: Array.isArray(req.body?.activeSkillPacks) ? req.body.activeSkillPacks.map(String) : undefined,
+          channels: req.body?.channels && typeof req.body.channels === 'object' ? req.body.channels : undefined,
+        },
+        actor,
+      );
+      res.json({ ok: true, config });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(400).json({ error: msg });

@@ -9,6 +9,7 @@ import { loadPluginsFromDisk } from '../plugins/registry.js';
 import { BUILTIN_PACKS_DIR, readPackManifest, type PackManifest } from './pack-loader.js';
 import { loadAllUserResources } from './user-resources.js';
 import { PACK_MANIFESTS, listKnownPackNames } from './pack-manifests.js';
+import type { Tool } from '../types/index.js';
 import {
   type PackDefinition,
   resolvePack,
@@ -142,9 +143,23 @@ export async function registerActivePackTools(): Promise<void> {
 
   await loadPackExtensions('property-uk');
   const { registry } = await import('../tools/registry.js');
+  const { config } = await import('../config/index.js');
   const { domainLookupTool } = await import('../tools/domain-lookup.js');
   if (!registry.get('domain_lookup')) {
     registry.register(domainLookupTool);
+  }
+
+  if (config.propertyData.apiKey && !registry.get('property-data-lookup')) {
+    const propDataMod = '../../packages/packs/property-uk/tools/property-data.js';
+    const { propertyDataTool } = await import(/* @ts-ignore */ propDataMod) as unknown as { propertyDataTool: Tool };
+    registry.register(propertyDataTool);
+  }
+
+  const landRegistryKey = config.landRegistry.apiKey.trim() || config.propertyData.apiKey.trim();
+  if (landRegistryKey && !registry.get('land-registry-search')) {
+    const landRegMod = '../../packages/packs/property-uk/tools/land-registry.js';
+    const { landRegistryTool } = await import(/* @ts-ignore */ landRegMod) as unknown as { landRegistryTool: Tool };
+    registry.register(landRegistryTool);
   }
 }
 
@@ -192,6 +207,8 @@ export async function initSkills(): Promise<void> {
   let extensionTools = 0;
   let extensionPrompts = 0;
   let extensionsActive = 0;
+  let extensionMcp = 0;
+  let extensionHooks = 0;
   if (process.env.CARINA_EXTENSIONS_ENABLED === 'true') {
     const { loadEnabledExtensionContributions, ingestStagedExtensionResources } = await import('../extensions/contributions.js');
     const { registerEnabledExtensionTools } = await import('../extensions/tools.js');
@@ -204,6 +221,10 @@ export async function initSkills(): Promise<void> {
     extensionChunks = ingested.chunksIngested;
     extensionTools = await registerEnabledExtensionTools();
     await loadExtensionPromptSuffixes();
+    const { loadEnabledExtensionMcpServers } = await import('../extensions/mcp-loader.js');
+    const { loadEnabledExtensionHooks } = await import('../extensions/hooks-loader.js');
+    extensionMcp = await loadEnabledExtensionMcpServers();
+    extensionHooks = await loadEnabledExtensionHooks();
   }
 
   if (packsLoaded > 0 || skillMdLoaded > 0 || user.skillsLoaded > 0 || extensionSkills > 0) {
@@ -218,6 +239,9 @@ export async function initSkills(): Promise<void> {
       if (extensionTools > 0) parts.push(`${extensionTools} extension tools`);
       if (extensionPrompts > 0) parts.push(`${extensionPrompts} extension prompt files`);
       if (extensionChunks > 0) parts.push(`${extensionChunks} extension knowledge chunks`);
+      if (extensionMcp > 0 || extensionHooks > 0) {
+        parts.push(`${extensionMcp} MCP servers, ${extensionHooks} hooks`);
+      }
     } else if (pluginsLoaded > 0) {
       parts.push(`${pluginsLoaded} legacy plugin dirs (migrate to carina extensions install)`);
     }

@@ -27,7 +27,7 @@ const STORE_PATH = path.join(CARINA_HOME, 'channel-dm-pairing.json');
 let cached: DmStore | null = null;
 
 const DM_PAIRING_CHANNELS = new Set<ChannelName>([
-  'telegram', 'whatsapp', 'discord', 'slack', 'signal', 'matrix', 'mattermost', 'imessage', 'sms',
+  'telegram', 'whatsapp', 'discord', 'slack', 'signal', 'matrix', 'mattermost', 'imessage', 'sms', 'irc',
 ]);
 
 function loadStore(): DmStore {

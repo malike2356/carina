@@ -20,9 +20,9 @@ describe('operator management isolation', () => {
     }
   });
 
-  it('curator scheduler stays opt-in via env flag', () => {
+  it('curator scheduler is on by default with opt-out via env flag', () => {
     const source = readFileSync(path.join(srcRoot, 'skills', 'curator-scheduler.ts'), 'utf8');
-    expect(source.includes("CARINA_SKILL_CURATOR_ENABLED !== 'true'")).toBe(true);
+    expect(source.includes("CARINA_SKILL_CURATOR_ENABLED !== 'false'")).toBe(true);
   });
 
   it('agent loop does not import ops health or migration modules', () => {

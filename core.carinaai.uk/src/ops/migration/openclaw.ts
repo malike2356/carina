@@ -131,6 +131,31 @@ export async function migrateOpenClaw(
 
   if (!dryRun) {
     items.push(...await migrateOpenClawAgents(srcDir, destDir));
+    const { importWorkspaceFiles } = await import('../../sync/agent-sync.js');
+    const ws = await importWorkspaceFiles(srcDir, { overwrite });
+    if (ws.imported.length > 0) {
+      items.push(item('workspace-md', 'imported', ws.imported.join(', ')));
+    }
+    if (ws.updated.length > 0) {
+      items.push(item('workspace-md', 'partial', `updated: ${ws.updated.join(', ')}`));
+    }
+    for (const agentDir of ['agents', 'workspaces']) {
+      const srcAgents = path.join(srcDir, agentDir);
+      if (!fsSync.existsSync(srcAgents)) continue;
+      const entries = await fs.readdir(srcAgents, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const agentWs = path.join(srcAgents, entry.name);
+        const nested = await importWorkspaceFiles(agentWs, { overwrite });
+        if (nested.imported.length > 0 || nested.updated.length > 0) {
+          items.push(item(
+            `${agentDir}/${entry.name}/workspace-md`,
+            nested.updated.length > 0 ? 'partial' : 'imported',
+            [...nested.imported, ...nested.updated].join(', '),
+          ));
+        }
+      }
+    }
   }
 
   if (items.some((i) => i.path.includes('skills') && i.status !== 'skipped')) {

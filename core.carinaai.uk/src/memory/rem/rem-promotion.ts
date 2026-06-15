@@ -1,5 +1,5 @@
 import { pool } from '../db.js';
-import { addPersistentFact, type MemoryTarget } from '../persistent-memory.js';
+import { addPersistentFact, activeAgentName, type MemoryTarget } from '../persistent-memory.js';
 import { getMemoryBackend, resolveBuiltinTarget } from '../backends/index.js';
 import {
   buildPromotionRationale,
@@ -127,7 +127,11 @@ export async function approvePromotion(queueId: string): Promise<PromotionQueueR
   const item = rowToQueue(row.rows[0]);
   if (item.status !== 'pending') throw new Error(`Promotion ${queueId} is already ${item.status}.`);
 
-  await addPersistentFact(item.proposedTarget, item.proposedContent);
+  await addPersistentFact(
+    item.proposedTarget,
+    item.proposedContent,
+    item.proposedTarget === 'memory' ? { agentId: activeAgentName() } : {},
+  );
   await markEpisodeLongTerm(item.episodeId, item.score);
   await pool.query(
     `UPDATE memory_promotion_queue
@@ -156,7 +160,11 @@ export async function rejectPromotion(queueId: string): Promise<void> {
 }
 
 async function autoPromote(item: PromotionQueueRow): Promise<void> {
-  await addPersistentFact(item.proposedTarget, item.proposedContent);
+  await addPersistentFact(
+    item.proposedTarget,
+    item.proposedContent,
+    item.proposedTarget === 'memory' ? { agentId: activeAgentName() } : {},
+  );
   await markEpisodeLongTerm(item.episodeId, item.score);
   await pool.query(
     `UPDATE memory_promotion_queue

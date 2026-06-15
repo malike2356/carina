@@ -189,6 +189,42 @@ vi.mock('../hosted/product-audit.js', () => ({
   writeProductAudit: vi.fn(async () => undefined),
 }));
 
+const controlPlaneSummary = vi.hoisted(() => vi.fn(async () => ({
+  files: 1,
+  batches: 0,
+  agents: 2,
+  sessions: 3,
+  memoryStores: 1,
+  workbenchRuns: 4,
+  deployments: 0,
+  environments: 0,
+  skillPacksInstalled: 1,
+})));
+
+vi.mock('../hosted/control-plane-service.js', () => ({
+  ControlPlaneValidationError: class extends Error {
+    statusCode = 400;
+  },
+  createAgentForOrg: vi.fn(async () => ({ id: 'agent-1', name: 'Support', slug: 'support', status: 'active', provider: '', model: '' })),
+  createBatchForOrg: vi.fn(async () => ({ id: 'batch-1', name: 'Batch', status: 'queued', batchInputCount: 1, batchOutputCount: 0 })),
+  createFileForOrg: vi.fn(async () => ({ id: 'file-1', name: 'doc.pdf', status: 'ready', mimeType: 'application/pdf' })),
+  createMemoryStoreForOrg: vi.fn(async () => ({ id: 'mem-1', name: 'Episodic', slug: 'episodic', storeType: 'episodic', status: 'active', recordCount: 0 })),
+  createSessionForOrg: vi.fn(async () => ({ id: 'sess-1', title: 'Chat', channel: 'workbench', status: 'open', messageCount: 0 })),
+  getAnalyticsForOrg: vi.fn(async () => ({
+    days: 30,
+    totals: { tokensIn: 10, tokensOut: 20, creditsBilled: 1, costEstimate: 0.01, requestCount: 2 },
+    daily: [{ usageDate: '2026-06-15', tokensIn: 10, tokensOut: 20, creditsBilled: 1, costEstimate: 0.01, requestCount: 2 }],
+    workbenchRuns: 2,
+  })),
+  getControlPlaneSummary: controlPlaneSummary,
+  listAgentsForOrg: vi.fn(async () => [{ id: 'agent-1', name: 'Support', slug: 'support', status: 'active', provider: 'anthropic', model: 'claude' }]),
+  listBatchesForOrg: vi.fn(async () => []),
+  listFilesForOrg: vi.fn(async () => [{ id: 'file-1', name: 'doc.pdf', status: 'ready', mimeType: 'application/pdf', sizeBytes: 100 }]),
+  listMemoryStoresForOrg: vi.fn(async () => []),
+  listSessionsForOrg: vi.fn(async () => []),
+  listSkillPacksForTenant: vi.fn(async () => [{ name: 'core', version: '1.0.0', skillCount: 3, installed: true, status: 'active' }]),
+}));
+
 import { mountCarinaOpsRoutes } from './carina-ops-routes.js';
 
 function makeApp(session?: { hostedAccountId?: string; hostedOrgId?: string; hostedOrgRole?: string }) {
@@ -473,6 +509,67 @@ describe('carina-ops-routes', () => {
       floor: 0.65,
       orgs: expect.arrayContaining([
         expect.objectContaining({ orgName: 'Test Org', belowFloor: false }),
+      ]),
+    });
+  });
+
+  it('platform summary returns control-plane counts', async () => {
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/platform/summary');
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      summary: { files: 1, agents: 2, sessions: 3 },
+    });
+    expect(controlPlaneSummary).toHaveBeenCalledWith('org-starter', 'user-2');
+  });
+
+  it('files list and create endpoints work', async () => {
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const list = await request(app, '/api/carina-ops/files');
+    expect(list.status).toBe(200);
+    expect(list.body).toMatchObject({ files: [{ name: 'doc.pdf' }] });
+    const created = await request(app, '/api/carina-ops/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'new.pdf' }),
+    });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ file: { name: 'doc.pdf' } });
+  });
+
+  it('skills endpoint returns pack catalog', async () => {
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/skills');
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      packs: [{ name: 'core', installed: true }],
+    });
+  });
+
+  it('analytics endpoint returns daily ledger', async () => {
+    const app = makeApp({
+      hostedAccountId: 'user-2',
+      hostedOrgId: 'org-starter',
+      hostedOrgRole: 'owner',
+    });
+    const result = await request(app, '/api/carina-ops/analytics?days=30');
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      totals: { requestCount: 2 },
+      daily: expect.arrayContaining([
+        expect.objectContaining({ usageDate: '2026-06-15' }),
       ]),
     });
   });

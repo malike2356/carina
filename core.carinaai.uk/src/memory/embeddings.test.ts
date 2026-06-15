@@ -138,4 +138,19 @@ describe('embeddings', () => {
     const body = JSON.parse(mockFetch.mock.calls[0]![1].body as string) as { model: string };
     expect(body.model).toBe('voyage-3-large');
   });
+
+  it('CARINA_EMBEDDING_PROVIDER=voyage forces Voyage first', async () => {
+    vi.stubEnv('GEMINI_API_KEY', 'gk');
+    vi.stubEnv('VOYAGE_API_KEY', 'vk');
+    vi.stubEnv('OPENAI_API_KEY', '');
+    vi.stubEnv('CARINA_EMBEDDING_PROVIDER', 'voyage');
+    mockFetch.mockReturnValueOnce(voyageOkResponse(Array(768).fill(0.9)));
+    const { embed, embeddingProviderStatus } = await import('./embeddings.js');
+    const status = embeddingProviderStatus();
+    expect(status.active).toBe('voyage');
+    expect(status.chain[0]).toBe('voyage');
+    const result = await embed('priority test');
+    expect(result[0]).toBeCloseTo(0.9);
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
 });

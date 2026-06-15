@@ -1,19 +1,25 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { sessionSearchTool } from './session-search.js';
-import {
-  browseRecentSessions,
-  getSessionWindow,
-  searchSessions,
-} from '../memory/session-index.js';
 
 vi.mock('../memory/session-index.js', () => ({
   browseRecentSessions: vi.fn(),
-  getSessionWindow: vi.fn(),
-  searchSessions: vi.fn(),
+  scrollSessionMessages: vi.fn(),
+  searchSessionsAdvanced: vi.fn(),
 }));
 
-const mockSearch = vi.mocked(searchSessions);
-const mockWindow = vi.mocked(getSessionWindow);
+vi.mock('../memory/session-scope.js', () => ({
+  searchMemoryScope: vi.fn(() => ({ sql: 'TRUE', params: [] })),
+}));
+
+vi.mock('../memory/session-lineage.js', () => ({
+  getLineageRoot: vi.fn((id: string) => id),
+  getSessionChain: vi.fn((id: string) => [{ sessionId: id }]),
+  lineageRelatedSessionIds: vi.fn((id: string) => [id]),
+}));
+
+const { scrollSessionMessages, searchSessionsAdvanced, browseRecentSessions } = await import('../memory/session-index.js');
+const mockScroll = vi.mocked(scrollSessionMessages);
+const mockAdvanced = vi.mocked(searchSessionsAdvanced);
 const mockBrowse = vi.mocked(browseRecentSessions);
 
 describe('session-search tool', () => {
@@ -21,66 +27,78 @@ describe('session-search tool', () => {
     vi.clearAllMocks();
   });
 
-  it('query mode calls searchSessions and returns discovery results', async () => {
-    const hits = [{ sessionId: 's1', title: 'Test', snippet: 'match' }];
-    mockSearch.mockResolvedValue(hits as never);
-
-    const result = await sessionSearchTool.execute({ query: 'TypeScript decorators' });
-
-    expect(mockSearch).toHaveBeenCalledWith('TypeScript decorators', {
-      limit: 5,
-      roleFilter: undefined,
-    });
-    expect(result).toEqual({
-      mode: 'discovery',
-      query: 'TypeScript decorators',
-      results: hits,
-    });
-  });
-
-  it('scroll mode calls getSessionWindow and returns scroll results', async () => {
-    const messages = [{
-      id: 'msg-1',
-      sessionId: 'sess-1',
-      role: 'user',
-      content: 'hello',
-      createdAt: new Date('2026-01-01'),
-    }];
-    mockWindow.mockResolvedValue(messages);
-
-    const result = await sessionSearchTool.execute({
-      session_id: 'sess-1',
-      around_message_id: 'msg-1',
-    });
-
-    expect(mockWindow).toHaveBeenCalledWith('sess-1', 'msg-1', 5);
-    expect(result).toEqual({
-      mode: 'scroll',
+  it('scroll mode paginates with cursor and lineage', async () => {
+    mockScroll.mockResolvedValue({
       sessionId: 'sess-1',
       messages: [{
         id: 'msg-1',
+        sessionId: 'sess-1',
         role: 'user',
         content: 'hello',
-        createdAt: messages[0].createdAt,
+        createdAt: new Date('2026-01-01'),
       }],
+      hasOlder: true,
+      hasNewer: false,
+      oldestMessageId: 'msg-1',
+      newestMessageId: 'msg-1',
+      lineage: {
+        rootSessionId: 'root',
+        chain: [{ sessionId: 'sess-1' }],
+        crossedFromParent: false,
+      },
+    });
+
+    const result = await sessionSearchTool.execute({
+      session_id: 'sess-1',
+      cursor: 'msg-0',
+      direction: 'older',
+      include_lineage: true,
+    });
+
+    expect(mockScroll).toHaveBeenCalledWith('sess-1', expect.objectContaining({
+      cursor: 'msg-0',
+      direction: 'older',
+      includeLineage: true,
+    }));
+    expect(result).toMatchObject({
+      mode: 'scroll',
+      hasOlder: true,
+      nextCursor: 'msg-1',
     });
   });
 
-  it('browse mode calls browseRecentSessions when no params', async () => {
-    const recent = [{ sessionId: 's2', title: 'Recent' }];
-    mockBrowse.mockResolvedValue(recent as never);
+  it('query mode returns lineage metadata on hits', async () => {
+    mockAdvanced.mockResolvedValue({
+      results: [{
+        sessionId: 's1',
+        messageId: 'm1',
+        title: 'Test',
+        snippet: 'match',
+        timestamp: new Date('2026-06-01'),
+        bookendStart: [],
+        bookendEnd: [],
+        contextWindow: [],
+        rank: 0.8,
+        matchStrategy: 'fts' as const,
+      }],
+      total: 1,
+      page: 1,
+      pageSize: 5,
+      totalPages: 1,
+      query: 'test',
+      sort: 'relevance',
+      strategy: 'fts',
+      fallbackUsed: false,
+      indexHealthy: true,
+    });
 
-    const result = await sessionSearchTool.execute({});
-
-    expect(mockBrowse).toHaveBeenCalledWith(5);
-    expect(result).toEqual({ mode: 'browse', results: recent });
+    const result = await sessionSearchTool.execute({ query: 'test' }) as { results: Array<{ lineageRoot: string }> };
+    expect(result.results[0]?.lineageRoot).toBe('s1');
   });
 
-  it('returns error when searchSessions throws', async () => {
-    mockSearch.mockRejectedValue(new Error('bad tsquery'));
-
-    const result = await sessionSearchTool.execute({ query: '!!!' }) as { error: string };
-
-    expect(result.error).toBe('Session search failed.');
+  it('browse mode when no params', async () => {
+    mockBrowse.mockResolvedValue([]);
+    const result = await sessionSearchTool.execute({});
+    expect(result).toEqual({ mode: 'browse', results: [] });
   });
 });

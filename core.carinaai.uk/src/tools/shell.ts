@@ -1,12 +1,13 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Tool } from '../types/index.js';
-import { runDirectShell, runInSandbox } from './sandbox.js';
+import { runDirectShell, runInSandbox, runInOpenShell } from './sandbox.js';
 import { getShellDisplayName } from './platform.js';
 import { execInSessionSandbox, sessionSandboxEnabled, type SandboxSessionState } from '../infrastructure/sandbox-session.js';
 import { expandPath, isBlockedSystemWrite, isSafePath } from './path-utils.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
-import { spawnBackgroundProcess, startProcessCleanup, type CompletionNotify } from './process-registry.js';
+import type { ProcessNotify, ProcessWatchAction, ProcessWatchRule } from './process-types.js';
+import { spawnBackgroundProcess, startProcessCleanup } from './process-registry.js';
 import { isPtyEnabled, runPtyCommand } from './pty-runner.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -60,7 +61,7 @@ export const shellExecTool: Tool = {
       },
       notify_on_complete: {
         type: 'object',
-        description: 'Send a message when the background process exits',
+        description: 'Send a message when the background process exits successfully',
         properties: {
           channel: {
             type: 'string',
@@ -70,6 +71,39 @@ export const shellExecTool: Tool = {
           message: { type: 'string', description: 'Optional custom prefix' },
         },
         required: ['channel', 'conversation_id'],
+      },
+      notify_on_failure: {
+        type: 'object',
+        description: 'Send a message when the background process fails (non-zero exit or error)',
+        properties: {
+          channel: {
+            type: 'string',
+            enum: ['telegram', 'discord', 'slack', 'sms', 'whatsapp'],
+          },
+          conversation_id: { type: 'string' },
+          message: { type: 'string', description: 'Optional custom prefix' },
+        },
+        required: ['channel', 'conversation_id'],
+      },
+      label: { type: 'string', description: 'Human-readable label for operators' },
+      dedupe_key: {
+        type: 'string',
+        description: 'Optional idempotency key; returns existing running process instead of spawning a duplicate',
+      },
+      watch_patterns: {
+        type: 'array',
+        description: 'Output patterns to watch (regex). Matched lines can trigger notify or kill.',
+        items: {
+          type: 'object',
+          properties: {
+            pattern: { type: 'string' },
+            flags: { type: 'string' },
+            action: { type: 'string', enum: ['notify', 'kill'] },
+            message: { type: 'string' },
+            once: { type: 'boolean' },
+          },
+          required: ['pattern'],
+        },
       },
     },
     required: ['command'],
@@ -122,21 +156,47 @@ export const shellExecTool: Tool = {
 
     if (background) {
       startProcessCleanup();
-      let notify: CompletionNotify | undefined;
-      const rawNotify = params.notify_on_complete;
-      if (rawNotify && typeof rawNotify === 'object') {
-        const n = rawNotify as Record<string, unknown>;
+      const parseNotify = (raw: unknown): ProcessNotify | undefined => {
+        if (!raw || typeof raw !== 'object') return undefined;
+        const n = raw as Record<string, unknown>;
         const channel = String(n.channel ?? '').toLowerCase() as ChannelName;
         const conversationId = String(n.conversation_id ?? '').trim();
-        if (channel && conversationId) {
-          notify = {
-            channel,
-            conversationId,
-            messagePrefix: n.message ? String(n.message) : undefined,
-          };
-        }
-      }
-      const state = spawnBackgroundProcess(command, workdir, notify);
+        if (!channel || !conversationId) return undefined;
+        return {
+          channel,
+          conversationId,
+          messagePrefix: n.message ? String(n.message) : undefined,
+        };
+      };
+
+      const watchRules: ProcessWatchRule[] = Array.isArray(params.watch_patterns)
+        ? params.watch_patterns
+          .filter((item): item is Record<string, unknown> => item && typeof item === 'object')
+          .map((item) => ({
+            pattern: String(item.pattern ?? ''),
+            flags: item.flags ? String(item.flags) : undefined,
+            action: (item.action === 'kill' ? 'kill' : 'notify') as ProcessWatchAction,
+            message: item.message ? String(item.message) : undefined,
+            once: item.once !== false,
+          }))
+          .filter((rule) => rule.pattern.length > 0)
+        : [];
+
+      const notifyOnComplete = parseNotify(params.notify_on_complete);
+      const notifyOnFailure = parseNotify(params.notify_on_failure);
+      const dedupeKey = params.dedupe_key ? String(params.dedupe_key).trim() : undefined;
+      const label = params.label ? String(params.label).trim() : undefined;
+      const ownerSessionId = typeof params._sessionId === 'string' ? params._sessionId : undefined;
+
+      const state = await spawnBackgroundProcess(command, {
+        workdir,
+        notifyOnComplete,
+        notifyOnFailure,
+        watchRules,
+        label,
+        dedupeKey: dedupeKey || undefined,
+        ownerSessionId,
+      });
       await logShell(command, 0);
       return {
         session_id: state.sessionId,
@@ -144,7 +204,11 @@ export const shellExecTool: Tool = {
         status: state.status,
         command: state.command,
         background: true,
-        notify_on_complete: notify ? true : undefined,
+        label: state.label,
+        dedupe_key: state.dedupeKey,
+        notify_on_complete: notifyOnComplete ? true : undefined,
+        notify_on_failure: notifyOnFailure ? true : undefined,
+        watch_patterns: watchRules.length > 0 ? watchRules.length : undefined,
       };
     }
 
@@ -153,19 +217,33 @@ export const shellExecTool: Tool = {
     );
 
     const sessionId = typeof params._sessionId === 'string' ? params._sessionId : 'default-session';
-    const useSessionSandbox = sessionSandboxEnabled() || params.sandbox_session === true;
-    const useDirectShell = process.env.CARINA_DIRECT_SHELL === 'true';
+    const sandboxMode = typeof params._sandboxMode === 'string' ? params._sandboxMode : null;
+    const useSessionSandbox =
+      sandboxMode === 'session'
+      || (sandboxMode === null && (sessionSandboxEnabled() || params.sandbox_session === true));
+    const useDirectShell =
+      sandboxMode === 'host'
+      || (sandboxMode === null && process.env.CARINA_DIRECT_SHELL === 'true');
+    const useOpenshell = sandboxMode === 'openshell';
+    const forceDocker = sandboxMode === 'docker';
 
-    const result = useDirectShell
+    const result = useDirectShell && !forceDocker && !useOpenshell
       ? await runDirectShell(command, { timeout: timeoutMs, workdir })
-      : useSessionSandbox
+      : useSessionSandbox && !forceDocker && !useOpenshell
         ? await execInSessionSandbox(sessionId, command, undefined, timeoutMs)
-        : await runInSandbox(command, SANDBOX_IMAGE, {
-            timeout: timeoutMs,
-            memoryMb: 128,
-            networkDisabled: true,
-            workdir,
-          });
+        : useOpenshell
+          ? await runInOpenShell(command, SANDBOX_IMAGE, {
+              timeout: timeoutMs,
+              memoryMb: 128,
+              networkDisabled: true,
+              workdir,
+            })
+          : await runInSandbox(command, SANDBOX_IMAGE, {
+              timeout: timeoutMs,
+              memoryMb: 128,
+              networkDisabled: true,
+              workdir,
+            });
 
     await logShell(command, result.exitCode);
     const payload: Record<string, unknown> = {
@@ -175,6 +253,12 @@ export const shellExecTool: Tool = {
     };
     if (useDirectShell) {
       payload.shell = getShellDisplayName();
+    }
+    if (sandboxMode) {
+      payload.sandboxPolicy = {
+        mode: sandboxMode,
+        policy: typeof params._sandboxPolicy === 'string' ? params._sandboxPolicy : undefined,
+      };
     }
     if ('sandbox' in result && result.sandbox) {
       const sandbox = result.sandbox as SandboxSessionState;

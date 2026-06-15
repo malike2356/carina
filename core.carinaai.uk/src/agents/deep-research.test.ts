@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import {
+  linkInlineCitations,
   parseSubQuestions,
   renderReportMarkdown,
   runDeepResearch,
@@ -48,6 +49,11 @@ describe('deep-research planning', () => {
     });
     chatMock.mockResolvedValueOnce({
       content: JSON.stringify({
+        keep: [{ id: 'src-1', note: 'ok' }, { id: 'src-2', note: 'ok' }, { id: 'src-3', note: 'ok' }],
+      }),
+    });
+    chatMock.mockResolvedValueOnce({
+      content: JSON.stringify({
         title: 'UK Stamp Duty 2026',
         summary: 'Executive summary here.',
         sections: [
@@ -67,7 +73,10 @@ describe('deep-research planning', () => {
         ];
       }
       if (call.toolName === 'http-request') {
-        return { status: 200, body: '<html><body><p>Stamp duty rates updated in 2026.</p></body></html>' };
+        return {
+          status: 200,
+          body: `<html><body><p>${'Stamp duty rates updated in 2026. '.repeat(12)}</p></body></html>`,
+        };
       }
       return { error: 'unknown' };
     });
@@ -77,6 +86,7 @@ describe('deep-research planning', () => {
       query: 'UK stamp duty changes 2026',
       maxRounds: 3,
       maxSources: 6,
+      persist: false,
       onProgress: (line) => progress.push(line),
     });
 
@@ -114,7 +124,7 @@ describe('deep-research synthesis and limits', () => {
       { title: 'A', url: 'https://example.com/a', description: 'a' },
     ]);
 
-    const report = await runDeepResearch({ query: 'test topic', maxRounds: 2, maxSources: 5 });
+    const report = await runDeepResearch({ query: 'test topic', maxRounds: 2, maxSources: 5, persist: false });
 
     expect(report.title).toBeTruthy();
     expect(report.summary).toBeTruthy();
@@ -152,6 +162,7 @@ describe('deep-research synthesis and limits', () => {
       query: 'cap test',
       maxRounds: 4,
       maxSources: 4,
+      persist: false,
     });
 
     expect(report.sources.length).toBeLessThanOrEqual(4);
@@ -177,6 +188,7 @@ describe('deep-research synthesis and limits', () => {
       query: 'save test',
       maxRounds: 2,
       saveToFile: target,
+      persist: false,
     });
 
     const written = await fs.readFile(target, 'utf8');
@@ -184,6 +196,82 @@ describe('deep-research synthesis and limits', () => {
     expect(written).toContain('## Executive Summary');
     expect(renderReportMarkdown(report)).toContain('Saved summary.');
     await fs.unlink(target);
+  });
+
+  it('renders inline citations and provenance', () => {
+    const md = renderReportMarkdown({
+      title: 'Cite Test',
+      summary: 'Summary.',
+      sections: [{ heading: 'H', body: 'Fact [src-1]', sourceCitations: ['src-1'] }],
+      sources: [{
+        id: 'src-1',
+        title: 'Example',
+        url: 'https://example.com',
+        snippet: 'snippet text',
+        fetchedAt: '2026-01-01T00:00:00Z',
+        verified: true,
+        verifyNote: 'relevant',
+      }],
+      searchQueries: [],
+      roundCount: 2,
+      generatedAt: '2026-01-01T00:00:00Z',
+    });
+    expect(md).toContain('## Source Provenance');
+    expect(md).toContain('[src-1](https://example.com');
+    expect(linkInlineCitations('See [src-1]', [{
+      id: 'src-1',
+      title: 'Example',
+      url: 'https://example.com',
+      snippet: 'x',
+      fetchedAt: '2026-01-01T00:00:00Z',
+    }])).toContain('https://example.com');
+  });
+
+  it('runs verify step and filters weak sources', async () => {
+    chatMock.mockResolvedValueOnce({ content: '1. Q1?\n2. Q2?\n3. Q3?' });
+    chatMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        keep: [{ id: 'src-1', note: 'primary source' }],
+      }),
+    });
+    chatMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        title: 'Verified Report',
+        summary: 'Verified summary.',
+        sections: [
+          { heading: 'A', body: 'a [src-1]', sourceCitations: ['src-1'] },
+          { heading: 'B', body: 'b', sourceCitations: [] },
+          { heading: 'C', body: 'c', sourceCitations: [] },
+        ],
+      }),
+    });
+
+    executeToolCallMock.mockImplementation(async (call: { toolName: string; params: Record<string, unknown> }) => {
+      if (call.toolName === 'web-search') {
+        return [
+          { title: 'Good', url: 'https://example.com/good', description: 'good' },
+          { title: 'Weak', url: 'https://example.com/weak', description: 'weak' },
+        ];
+      }
+      if (call.toolName === 'http-request') {
+        const url = String(call.params.url ?? '');
+        if (url.includes('weak')) return { status: 200, body: 'short' };
+        return { status: 200, body: 'x'.repeat(200) };
+      }
+      return { error: 'unknown' };
+    });
+
+    const progress: string[] = [];
+    const report = await runDeepResearch({
+      query: 'verify test',
+      maxRounds: 2,
+      maxSources: 4,
+      persist: false,
+      onProgress: (line) => progress.push(line),
+    });
+
+    expect(progress.some((p) => p.startsWith('Verifying'))).toBe(true);
+    expect(report.sources.length).toBeLessThanOrEqual(2);
   });
 });
 

@@ -46,6 +46,8 @@ export interface ProviderDefinition {
   baseUrl?: string;
   baseUrlEnv?: string;
   local?: boolean;
+  /** When true, provider is active for embeddings/RAG but excluded from chat routing. */
+  embeddingOnly?: boolean;
   capabilities: ProviderCapabilities;
   tags: ProviderRoutingTags;
   usdPerToken: number;
@@ -215,7 +217,7 @@ function aliasEntry(
 export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   /* ── NATIVE INTEGRATIONS ── */
   openaiCompat('deepseek', 'DeepSeek', 'DEEPSEEK_API_KEY', 'DEEPSEEK_MODEL', 'deepseek-chat', 'https://api.deepseek.com/v1', 'DEEPSEEK_BASE_URL', 0.00000028, 1, {
-    capabilities: { chat: true, vision: false, streaming: true, tools: true, reasoning: true },
+    capabilities: { chat: true, vision: false, streaming: true, tools: true, reasoning: true, reasoningEffort: true },
   }),
   openaiCompat('groq', 'Groq', 'GROQ_API_KEY', 'GROQ_MODEL', 'llama-3.3-70b-versatile', 'https://api.groq.com/openai/v1', 'GROQ_BASE_URL', 0.00000059, 2),
   nativeProvider({
@@ -239,16 +241,16 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     apiKeysPoolEnv: 'ANTHROPIC_API_KEYS',
     modelEnv: 'ANTHROPIC_MODEL',
     defaultModel: 'claude-sonnet-4-6',
-    capabilities: { chat: true, vision: true, streaming: true, tools: true, reasoning: true },
+    capabilities: { chat: true, vision: true, streaming: true, tools: true, reasoning: true, reasoningEffort: true, streamingTools: true },
     usdPerToken: 0.000009,
     fallbackPriority: 4,
     tags: { speed: 'balanced' },
   }),
   openaiCompat('openai', 'OpenAI', 'OPENAI_API_KEY', 'OPENAI_MODEL', 'gpt-4o', 'https://api.openai.com/v1', 'OPENAI_BASE_URL', 0.0000075, 5, {
-    capabilities: { chat: true, vision: true, streaming: true, tools: true, reasoning: true },
+    capabilities: { chat: true, vision: true, streaming: true, tools: true, reasoning: true, reasoningEffort: true, streamingTools: true },
   }),
   openaiCompat('openrouter', 'OpenRouter', 'OPENROUTER_API_KEY', 'OPENROUTER_MODEL', 'anthropic/claude-sonnet-4', 'https://openrouter.ai/api/v1', 'OPENROUTER_BASE_URL', 0.000003, 6, {
-    capabilities: { chat: true, vision: false, streaming: true, tools: true, reasoning: true },
+    capabilities: { chat: true, vision: false, streaming: true, tools: true, reasoning: true, reasoningEffort: true },
   }),
   openaiCompat('together', 'Together AI', 'TOGETHER_API_KEY', 'TOGETHER_MODEL', 'meta-llama/Llama-3.3-70B-Instruct-Turbo', 'https://api.together.xyz/v1', 'TOGETHER_BASE_URL', 0.00000088, 7),
   openaiCompat('mistral', 'Mistral', 'MISTRAL_API_KEY', 'MISTRAL_MODEL', 'mistral-large-latest', 'https://api.mistral.ai/v1', 'MISTRAL_BASE_URL', 0.000002, 8),
@@ -395,7 +397,7 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   aliasEntry('z-ai', 'Z.AI / GLM', 'zhipu', 98),
   aliasEntry('alibaba', 'Alibaba / DashScope', 'qwen', 99),
 
-  /* ── EMBEDDINGS-ONLY (catalog; not routable for chat) ── */
+  /* ── EMBEDDINGS-ONLY (active for RAG; not chat-routable) ── */
   {
     name: 'voyage',
     displayName: 'Voyage AI',
@@ -406,14 +408,21 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     defaultModel: 'voyage-3',
     baseUrl: 'https://api.voyageai.com/v1',
     baseUrlEnv: 'VOYAGE_BASE_URL',
-    capabilities: { chat: false, vision: false, streaming: false, tools: false },
+    embeddingOnly: true,
+    capabilities: {
+      chat: false,
+      vision: false,
+      streaming: false,
+      tools: false,
+      embeddings: true,
+    },
     usdPerToken: 0.0000001,
     fallbackPriority: 100,
-    status: 'unsupported',
+    status: 'active',
     authType: 'api-key',
-    setupNote: 'Embeddings-only provider. Use for RAG ingestion; not routed for chat turns.',
+    setupNote: 'Embeddings for RAG and memory search. Set VOYAGE_API_KEY or CARINA_EMBEDDING_PROVIDER=voyage.',
     tags: buildRoutingTags(
-      { name: 'voyage', local: false, fallbackPriority: 100, capabilities: { chat: false, vision: false, streaming: false, tools: false }, usdPerToken: 0.0000001 },
+      { name: 'voyage', local: false, fallbackPriority: 100, capabilities: { chat: false, vision: false, streaming: false, tools: false, embeddings: true }, usdPerToken: 0.0000001 },
       { cost: 'byo-key', speed: 'balanced', chat: false, code: false, vision: false, longContext: false, toolUse: false },
     ),
   },
@@ -428,6 +437,7 @@ export type ProviderName = (typeof PROVIDER_DEFINITIONS)[number]['name'];
 export const KNOWN_LLM_PROVIDERS = PROVIDER_DEFINITIONS.map((d) => d.name) as ProviderName[];
 
 export function isRoutableProvider(def: ProviderDefinition): boolean {
+  if (def.embeddingOnly) return false;
   return def.status === 'active' || def.status === 'experimental';
 }
 
@@ -450,7 +460,8 @@ export function providerModel(def: ProviderDefinition): string {
 }
 
 export function isProviderConfigured(def: ProviderDefinition): boolean {
-  if (!isRoutableProvider(def)) return false;
+  if (def.embeddingOnly) return isEmbeddingProviderConfigured(def);
+  if (!isRoutableProvider(def) && def.status !== 'alias') return false;
   if (isProviderDisabled(def.name)) return false;
   if (def.local) {
     const envName = def.name.toUpperCase().replace(/-/g, '_');
@@ -474,6 +485,18 @@ export function isProviderConfigured(def: ProviderDefinition): boolean {
   if (key) return true;
   const pool = process.env[def.apiKeysPoolEnv];
   return Boolean(pool && pool.trim());
+}
+
+export function isEmbeddingProviderConfigured(def: ProviderDefinition): boolean {
+  if (!def.capabilities.embeddings) return false;
+  const key = providerApiKey(def);
+  if (key) return true;
+  const pool = process.env[def.apiKeysPoolEnv];
+  return Boolean(pool && pool.trim());
+}
+
+export function listEmbeddingProviders(): ProviderDefinition[] {
+  return PROVIDER_DEFINITIONS.filter((d) => d.capabilities.embeddings);
 }
 
 export function buildProviderCapabilitiesMap(): Record<string, ProviderCapabilities> {

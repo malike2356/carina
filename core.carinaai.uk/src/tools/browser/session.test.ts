@@ -76,6 +76,7 @@ describe('browser session - unknown ref', () => {
     const mockContext = {
       addInitScript: vi.fn(),
       newPage: vi.fn().mockResolvedValue(mockPage),
+      close: vi.fn().mockResolvedValue(undefined),
     };
     const mockBrowser = {
       newContext: vi.fn().mockResolvedValue(mockContext),
@@ -87,6 +88,8 @@ describe('browser session - unknown ref', () => {
     const { browserNavigate, browserClick, checkPlaywright } = await import('./session.js');
     await checkPlaywright();
     await browserNavigate('ref-test', 'https://example.com');
+    await browserNavigate('other-session', 'https://example.com');
+    expect(mockBrowser.newContext).toHaveBeenCalledTimes(2);
     const result = await browserClick('ref-test', '@e999') as { error?: string };
     expect(result.error).toContain('@e999');
   });

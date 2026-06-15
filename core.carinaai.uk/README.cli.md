@@ -28,7 +28,10 @@ carina --version
 
 ## First run
 
-`carina` and `carina tui` detect a missing `~/.carina/.env`, print a short identity banner, and offer setup.
+`carina` and `carina tui` detect a fresh install, introduce Carina, and ask the minimum to start chatting:
+
+1. Your name and what you are building
+2. Optional provider API key (or local mode until you add one)
 
 ```sh
 carina setup
@@ -36,10 +39,11 @@ carina setup
 
 Options:
 
-- **Set up an API provider now** - provider, model, API key, optional connection test
-- **Configure later** - writes local-mode config; add `DEEPSEEK_API_KEY` (or other provider key) when ready
+- **Default** - short onboarding (name, project, optional API key)
+- **`carina setup --full`** - advanced wizard (Postgres, Scout, WhatsApp, custom packs)
+- **`carina setup --provider-only`** - change provider or API key only
 
-The wizard writes `~/.carina/config.yaml` and `~/.carina/.env` (mode `0600`).
+The flow writes `~/.carina/config.yaml` and `~/.carina/.env` (mode `0600`). No manual YAML editing required.
 
 ```sh
 carina doctor    # install health check

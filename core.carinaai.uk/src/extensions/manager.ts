@@ -17,6 +17,7 @@ import {
 } from './contributions.js';
 import { validateExtensionDependencies } from './dependencies.js';
 import { listExtensionHealth } from './health.js';
+import { detectExtensionConflicts, formatExtensionConflicts } from './conflicts.js';
 
 export type EnableExtensionOptions = {
   allowDangerous?: boolean;
@@ -63,6 +64,31 @@ export async function enableExtension(
     }
   }
 
+  const prefix = `ext_${id.replace(/-/g, '_')}_`;
+  const plannedTools: string[] = [];
+  if (validation.manifest.capabilities.includes('tools') && validation.manifest.entryPoints.tools) {
+    try {
+      const toolsPath = path.join(bundleDir, validation.manifest.entryPoints.tools);
+      const raw = JSON.parse(await fs.readFile(toolsPath, 'utf-8')) as unknown;
+      const items = Array.isArray(raw)
+        ? raw
+        : raw && typeof raw === 'object' && Array.isArray((raw as { tools?: unknown }).tools)
+          ? (raw as { tools: unknown[] }).tools
+          : [];
+      for (const item of items) {
+        if (!item || typeof item !== 'object') continue;
+        const name = String((item as Record<string, unknown>).name ?? '');
+        if (name) plannedTools.push(name.startsWith(prefix) ? name : `${prefix}${name}`);
+      }
+    } catch {
+      // module tools resolved at runtime
+    }
+  }
+  const conflicts = detectExtensionConflicts(id, { toolNames: plannedTools });
+  if (conflicts.length > 0 && !options.allowDangerous) {
+    throw new Error(`Extension conflicts: ${formatExtensionConflicts(conflicts)}`);
+  }
+
   const snapshot = await createExtensionSnapshot(id);
   await stageExtensionContributions(id);
 
@@ -81,7 +107,7 @@ export async function enableExtension(
   const { extensionsRuntimeEnabled, reloadExtensionRuntimeContributions } = await import('./contributions.js');
   if (extensionsRuntimeEnabled()) {
     const reloaded = await reloadExtensionRuntimeContributions(id);
-    runtimeNote = ` Runtime loaded ${reloaded.toolsRegistered} tool(s), ${reloaded.skillsLoaded} skill(s).`;
+    runtimeNote = ` Runtime loaded ${reloaded.toolsRegistered} tool(s), ${reloaded.skillsLoaded} skill(s), ${reloaded.mcpServers} MCP server(s), ${reloaded.hooksLoaded} hook(s).`;
   }
 
   const baseMessage = options.bypassEval

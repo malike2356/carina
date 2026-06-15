@@ -353,6 +353,11 @@
     if (event.key === 'Escape' && lightboxEl.classList.contains('open')) closeLightbox();
   });
 
+  // Show skeleton grid while images load
+  gridEl.innerHTML = [1, 2, 3, 4, 5, 6].map(() =>
+    '<div class="skeleton" style="height:160px;border-radius:10px;"></div>',
+  ).join('');
+
   loadModels()
     .then(function () { return loadImages(true); })
     .catch(function (err) { showToast(err.message || 'Failed to initialize gallery'); });

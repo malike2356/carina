@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
-import { CARINA_ENV_PATH } from './paths.js';
+import { resolveCarinaHome } from './paths.js';
+
+function carinaEnvPath(): string {
+  return path.join(resolveCarinaHome(), '.env');
+}
 
 function loadFile(envPath: string, override = false): void {
   if (fs.existsSync(envPath)) {
@@ -11,10 +15,10 @@ function loadFile(envPath: string, override = false): void {
 
 export function loadCarinaEnv(): void {
   const localEnv = path.resolve(process.cwd(), '.env');
-  loadFile(CARINA_ENV_PATH);
+  loadFile(carinaEnvPath());
   loadFile(localEnv, true);
 }
 
 export function envExists(): boolean {
-  return fs.existsSync(CARINA_ENV_PATH) || fs.existsSync(path.resolve(process.cwd(), '.env'));
+  return fs.existsSync(carinaEnvPath()) || fs.existsSync(path.resolve(process.cwd(), '.env'));
 }

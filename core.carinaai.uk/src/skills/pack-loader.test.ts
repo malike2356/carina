@@ -30,5 +30,6 @@ describe('listAvailablePacks', () => {
     expect(names).toContain('finance');
     expect(names).toContain('creative-basics');
     expect(names).toContain('productivity');
+    expect(names).toContain('operator-daily');
   });
 });

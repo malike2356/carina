@@ -208,6 +208,66 @@ export function createSkillsHubApp(): Express {
     }
   });
 
+  app.get('/api/marketplace', async (req, res, next) => {
+    try {
+      const { queryMarketplaceCatalog } = await import('./marketplace-catalog.js');
+      const packs = await listHubPacks();
+      const result = await queryMarketplaceCatalog({
+        kind: req.query.kind ? String(req.query.kind) as import('./marketplace-types.js').MarketplaceEntryKind : undefined,
+        q: String(req.query.q ?? ''),
+        category: req.query.category ? String(req.query.category) : undefined,
+        featured: parseBool(req.query.featured),
+        verified: parseBool(req.query.verified),
+        publisher: req.query.publisher
+          ? String(req.query.publisher) as import('./marketplace-types.js').MarketplacePublisher
+          : undefined,
+      }, { hubPacks: packs, includeHubDb: true });
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/marketplace/:id', async (req, res, next) => {
+    try {
+      const { getMarketplaceEntry } = await import('./marketplace-catalog.js');
+      const packs = await listHubPacks();
+      const entry = await getMarketplaceEntry(req.params.id, { hubPacks: packs, includeHubDb: true });
+      if (!entry) {
+        res.status(404).json({ error: 'Marketplace entry not found' });
+        return;
+      }
+      res.json({ entry });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post('/api/marketplace/publish', async (req, res, next) => {
+    try {
+      if (!publishRateLimit(req, res)) return;
+      const apiKey = req.headers['x-api-key'] ?? req.headers.authorization;
+      const token = String(apiKey ?? '').replace(/^Bearer\s+/i, '');
+      if (!config.hub.publishApiKey || token !== config.hub.publishApiKey) {
+        res.status(401).json({ error: 'Invalid publish API key' });
+        return;
+      }
+      const { validateMarketplaceEntryInput } = await import('./marketplace-validate.js');
+      const { upsertHubMarketplaceEntry } = await import('./marketplace-registry.js');
+      const input = validateMarketplaceEntryInput(req.body, 'publish body');
+      input.trust = {
+        ...input.trust,
+        publisher: 'community',
+        validation: 'pending',
+        verified: false,
+      };
+      await upsertHubMarketplaceEntry(input);
+      res.status(201).json({ id: input.id, pendingVerification: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.get('/api/author/packs', async (req, res, next) => {
     try {
       const apiKey = req.headers['x-api-key'] ?? req.headers.authorization;
@@ -223,6 +283,43 @@ export function createSkillsHubApp(): Express {
       }
       const packs = await listAuthorPacks(author);
       res.json({ packs });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/ecosystem/metrics', async (_req, res, next) => {
+    try {
+      const { buildEcosystemMetrics } = await import('./ecosystem-metrics.js');
+      res.json(await buildEcosystemMetrics());
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/shared-skills', async (req, res, next) => {
+    try {
+      const { listSharedSkillsFromStore } = await import('./shared-skills-store.js');
+      const limit = Math.min(Number(req.query.limit ?? 50), 200);
+      const skills = await listSharedSkillsFromStore(PACKS_STORAGE, limit);
+      res.json({ skills, count: skills.length });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post('/api/shared-skills/publish', async (req, res, next) => {
+    try {
+      if (!publishRateLimit(req, res)) return;
+      const apiKey = req.headers['x-api-key'] ?? req.headers.authorization;
+      const token = String(apiKey ?? '').replace(/^Bearer\s+/i, '');
+      if (!config.hub.publishApiKey || token !== config.hub.publishApiKey) {
+        res.status(401).json({ error: 'Invalid publish API key' });
+        return;
+      }
+      const { publishSharedSkillsToStore } = await import('./shared-skills-store.js');
+      const published = await publishSharedSkillsToStore(PACKS_STORAGE, req.body);
+      res.status(201).json({ published, url: '/api/shared-skills' });
     } catch (err) {
       next(err);
     }

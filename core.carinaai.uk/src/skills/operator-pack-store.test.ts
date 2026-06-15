@@ -20,6 +20,7 @@ vi.mock('../config/index.js', () => ({
 }));
 
 vi.mock('../config/paths.js', () => ({
+  resolveCarinaHome: () => tmpHome,
   CARINA_HOME: tmpHome,
 }));
 

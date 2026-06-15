@@ -25,7 +25,7 @@ export {
 } from './fixtures.js';
 export { evaluateAssertion, evaluateFixture, collectFailuresByType } from './assertions.js';
 export { mean, stdDev, aggregateFixtureResults, checkThresholds, compareMetrics } from './aggregate.js';
-export { runEval, runEvalWithBaseline } from './runner.js';
+export { runEval, runEvalWithBaseline, evalSkill } from './runner.js';
 export {
   compareEvalDefinitions,
   blindCompare,

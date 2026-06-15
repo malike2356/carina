@@ -28,7 +28,20 @@ Carina reads environment variables from `~/.carina/.env` (global CLI) or a proje
 | `BRAVE_SEARCH_API_KEY` | Optional paid fallback | - | Paid: [brave.com/search/api](https://brave.com/search/api) |
 | `RESEND_API_KEY` | For email tools | - | From [resend.com](https://resend.com) |
 | `PROPERTY_DATA_API_KEY` | For property-uk pack | - | PropertyData API (prices, yields, comparables) |
-| `LAND_REGISTRY_API_KEY` | For property-uk pack | - | Land Registry lookup tool |
+| `LAND_REGISTRY_API_KEY` | For property-uk pack | - | PropertyData.co.uk key for `land-registry-search`; falls back to `PROPERTY_DATA_API_KEY` |
+| `LAND_REGISTRY_BASE_URL` | No | `https://api.propertydata.co.uk` | Override PropertyData API base URL |
+| `CALDAV_URL` | For `/calendar` sync | - | Calendar collection URL (Nextcloud, Radicale, Fastmail, etc.) |
+| `CALDAV_USERNAME` | With CalDAV | - | CalDAV account username |
+| `CALDAV_PASSWORD` | With CalDAV | - | CalDAV account password or app password |
+| `CALDAV_PRINCIPAL_URL` | No | - | Optional principal URL for auto-discovery when `CALDAV_URL` is a server root |
+| `IRC_ENABLED` | For IRC | `false` | Set `true` to enable IRC channel |
+| `IRC_LIVE` | No | `true` | Live TLS client; set `false` for webhook-only inbound |
+| `IRC_SERVER` | With IRC | - | IRC server hostname (e.g. `irc.libera.chat`) |
+| `IRC_PORT` | No | `6697` | IRC port |
+| `IRC_TLS` | No | `true` | Use TLS for IRC connection |
+| `IRC_NICK` | With IRC | - | Bot nick |
+| `IRC_CHANNELS` | No | - | Comma-separated channels to join (e.g. `#carina`) |
+| `IRC_MENTION_ONLY` | No | `true` | Respond in channels only when nick is mentioned |
 
 ## Gateways
 

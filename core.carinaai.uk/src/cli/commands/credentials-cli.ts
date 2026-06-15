@@ -1,5 +1,5 @@
 import chalk from 'chalk';
-import { select } from '@inquirer/prompts';
+import { password, select } from '@inquirer/prompts';
 import {
   PROVIDER_DEFINITIONS,
   isProviderConfigured,
@@ -229,10 +229,45 @@ export async function runCredentialsCommand(args: string[]): Promise<void> {
     process.exit(1);
   }
 
+  if (action === 'configure') {
+    const provider = sub ?? await select({
+      message: 'Provider to configure',
+      choices: PROVIDER_DEFINITIONS
+        .filter((d) => isRoutableProvider(d) || d.capabilities.embeddings)
+        .map((d) => ({
+          name: `${d.displayName} (${d.name})`,
+          value: d.name,
+        })),
+    });
+    const def = PROVIDER_MAP[provider];
+    if (!def) {
+      console.error(`Unknown provider: ${provider}`);
+      process.exit(1);
+    }
+    const apiKey = await password({
+      message: `API key for ${def.displayName} (${def.apiKeyEnv})`,
+      mask: '*',
+    });
+    if (!apiKey?.trim()) {
+      console.error('API key is required.');
+      process.exit(1);
+    }
+    mgr.addKey(provider, apiKey.trim());
+    await appendEnvValue(def.apiKeyEnv, apiKey.trim());
+    const merged = mgr.resolveKeys(provider, process.env[def.apiKeyEnv] ?? '', process.env[def.apiKeysPoolEnv]);
+    if (merged.length > 1) {
+      await appendEnvValue(def.apiKeysPoolEnv, merged.join(','));
+    }
+    console.log(chalk.green(`Saved ${provider} credentials to profile ${opCtx.profileName} (${merged.length} key(s)).`));
+    console.log(chalk.gray(`  store: ${opCtx.credentialsPath}`));
+    console.log(chalk.gray(`  env:   ${def.apiKeyEnv}`));
+    return;
+  }
+
   if (action === 'profiles') {
     const mgr = getCredentialPoolManager();
     const oauthRows = describeOAuthSessions();
-    const routable = PROVIDER_DEFINITIONS.filter(isRoutableProvider);
+    const routable = PROVIDER_DEFINITIONS.filter((d) => isRoutableProvider(d) || d.capabilities.embeddings);
     console.log(chalk.bold(`\nProvider credential profiles (profile: ${opCtx.profileName})\n`));
     const hdr = `  ${'Provider'.padEnd(18)} ${'Auth'.padEnd(10)} ${'Transport'.padEnd(22)} ${'Keys'.padEnd(6)} Configured`;
     console.log(chalk.gray(hdr));
@@ -252,7 +287,7 @@ export async function runCredentialsCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina credentials <status|profiles|pools|add|remove|retire|rotate|test|oauth> [--profile NAME] ...');
+  console.error('Usage: carina credentials <status|profiles|configure|pools|add|remove|retire|rotate|test|oauth> [--profile NAME] ...');
   process.exit(1);
 }
 

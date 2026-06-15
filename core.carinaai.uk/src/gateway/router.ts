@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { allocateGatewaySession } from '../memory/session-scope.js';
 import { CarinaOrchestrator } from '../agents/orchestrator.js';
 import { llm } from '../brain/llm.js';
 import type { ConfirmFn } from '../agents/tool-runner.js';
@@ -18,11 +18,11 @@ import {
   getAgentDefinition,
   getDefaultAgentDefinition,
   resolveAgentRoute,
+  resolveInboundAgentRoute,
   type AgentRuntimeContext,
 } from '../workspaces/index.js';
 import { guardInboundMessage } from './channels/inbound-guards.js';
 import {
-  buildRoutingContext,
   buildSessionExternalKey,
 } from './channels/channel-routing.js';
 import type { AgentDefinition } from '../workspaces/types.js';
@@ -119,7 +119,7 @@ export class GatewayRouter {
     if (redis) {
       const existing = await redis.get(mapKey);
       if (existing) return existing;
-      const sessionId = uuidv4();
+      const sessionId = allocateGatewaySession();
       await redis.set(mapKey, sessionId);
       return sessionId;
     }
@@ -127,7 +127,7 @@ export class GatewayRouter {
     const cached = memoryFallback.get(mapKey);
     if (cached) return cached;
 
-    const sessionId = uuidv4();
+    const sessionId = allocateGatewaySession();
     memoryFallback.set(mapKey, sessionId);
     return sessionId;
   }
@@ -266,9 +266,11 @@ export class GatewayRouter {
     const inbound = await channelRegistry.getForInbound(channel, raw);
     if (!inbound) return;
 
-    const routingCtx = buildRoutingContext(inbound);
-    const route = resolveAgentRoute(routingCtx);
+    const route = await resolveInboundAgentRoute(inbound);
     const agentId = route.agent.id;
+    if (route.source === 'ownership' && route.handoffFromAgentId) {
+      console.log(`[routing] ownership handoff ${route.handoffFromAgentId} -> ${agentId} (${inbound.channel})`);
+    }
 
     const guard = guardInboundMessage(inbound, agentId);
     if (!guard.allow) {

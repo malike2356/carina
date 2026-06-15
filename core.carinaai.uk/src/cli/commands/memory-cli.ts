@@ -8,14 +8,14 @@ import {
   setMemoryBackend,
 } from '../../memory/backends/index.js';
 import { listRecentMemories, searchMemory, clearSession } from '../../memory/store.js';
-import { getAllPersistentContext, listPersistentFacts } from '../../memory/persistent-memory.js';
+import { getPersistentContextForAgent, listPersistentFacts, activeAgentName } from '../../memory/persistent-memory.js';
 import {
   findNearDuplicateFacts,
   getMemoryBudgetStatus,
   trimPersistentFactsToBudget,
 } from '../../memory/persistent-memory.js';
 import { memoryInjectionMode } from '../../memory/memory-injection.js';
-import { browseRecentSessions, searchSessions } from '../../memory/session-index.js';
+import { browseRecentSessions, searchSessionsAdvanced, scrollSessionMessages } from '../../memory/session-index.js';
 import {
   getSessionChain,
   getSessionChildren,
@@ -150,14 +150,27 @@ export async function runMemoryCommand(args: string[]): Promise<void> {
     if (sub === 'search') {
       const query = args.slice(2).join(' ');
       if (!query) {
-        console.error('Usage: carina memory sessions search <query>');
+        console.error('Usage: carina memory sessions search <query> [--page N] [--sort relevance|newest|oldest]');
         process.exit(1);
       }
-      const hits = await searchSessions(query, { limit: 15 });
-      for (const h of hits) {
-        console.log(`  ${h.sessionId.slice(0, 12)}  ${h.title.slice(0, 40)}`);
+      const pageArg = args.find((a) => a.startsWith('--page='));
+      const sortArg = args.find((a) => a.startsWith('--sort='));
+      const page = pageArg ? Number(pageArg.split('=')[1]) : 1;
+      const sort = sortArg?.split('=')[1];
+      const safeSort = sort === 'newest' || sort === 'oldest' ? sort : 'relevance';
+      const payload = await searchSessionsAdvanced({
+        query,
+        limit: 15,
+        offset: (Math.max(page, 1) - 1) * 15,
+        sort: safeSort,
+        enableSemantic: true,
+      });
+      console.log(chalk.bold(`\nSession search (${payload.total} matches, strategy=${payload.strategy}, fallback=${payload.fallbackUsed})\n`));
+      for (const h of payload.results) {
+        console.log(`  ${h.sessionId.slice(0, 12)}  score=${h.rank.toFixed(2)}  ${h.title.slice(0, 40)}`);
         console.log(chalk.gray(`    ${h.snippet}`));
       }
+      console.log('');
       return;
     }
     if (sub === 'lineage') {
@@ -196,16 +209,46 @@ export async function runMemoryCommand(args: string[]): Promise<void> {
       console.log(`Recorded: ${childId.slice(0, 12)} continues from ${parentId.slice(0, 12)}`);
       return;
     }
-    console.error('Usage: carina memory sessions <browse|search|lineage|link> [args]');
+    if (sub === 'scroll') {
+      const id = args[2];
+      if (!id) {
+        console.error('Usage: carina memory sessions scroll <session-id> [--cursor=id] [--direction older|newer] [--around=id] [--lineage] [--limit N]');
+        process.exit(1);
+      }
+      const cursorArg = args.find((a) => a.startsWith('--cursor='));
+      const aroundArg = args.find((a) => a.startsWith('--around='));
+      const directionArg = args.find((a) => a.startsWith('--direction='));
+      const limitArg = args.find((a) => a.startsWith('--limit='));
+      const page = await scrollSessionMessages(id, {
+        cursor: cursorArg?.split('=')[1],
+        around: aroundArg?.split('=')[1],
+        direction: directionArg?.split('=')[1] === 'newer' ? 'newer' : 'older',
+        limit: limitArg ? Number(limitArg.split('=')[1]) : 20,
+        includeLineage: args.includes('--lineage'),
+      });
+      console.log(chalk.bold(`\nSession scroll ${id.slice(0, 12)} (${page.messages.length} messages)\n`));
+      for (const m of page.messages) {
+        console.log(`  ${m.id.slice(0, 8)}  ${m.role.padEnd(9)}  ${m.content.slice(0, 72)}`);
+      }
+      console.log(chalk.gray(`\nolder=${page.hasOlder} newer=${page.hasNewer} nextCursor=${page.oldestMessageId ?? 'none'}`));
+      if (page.lineage?.crossedFromParent) {
+        console.log(chalk.gray(`included parent tail from ${page.lineage.parentSessionId?.slice(0, 12)}`));
+      }
+      console.log('');
+      return;
+    }
+    console.error('Usage: carina memory sessions <browse|search|lineage|link|scroll> [args]');
     process.exit(1);
     return;
   }
 
   if (action === 'budget') {
+    const agent = activeAgentName();
     for (const target of ['user', 'memory'] as const) {
-      const status = await getMemoryBudgetStatus(target);
+      const status = await getMemoryBudgetStatus(target, target === 'memory' ? agent : undefined);
+      const label = target === 'user' ? 'user (profile-wide)' : `memory (agent=${agent})`;
       console.log(
-        `${target}: ${status.used}/${status.max} chars (${status.percent}%) headroom=${status.headroom}`,
+        `${label}: ${status.used}/${status.max} chars (${status.percent}%) headroom=${status.headroom}`,
       );
     }
     return;
@@ -228,12 +271,20 @@ export async function runMemoryCommand(args: string[]): Promise<void> {
   }
 
   if (action === 'facts') {
-    const facts = await listPersistentFacts('user');
-    console.log(chalk.bold(`\nPersistent facts (${facts.length})\n`));
-    for (const f of facts.slice(0, 30)) {
+    const agent = args.includes('--agent')
+      ? args[args.indexOf('--agent') + 1]
+      : activeAgentName();
+    const userFacts = await listPersistentFacts('user');
+    const agentFacts = await listPersistentFacts('memory', agent);
+    console.log(chalk.bold(`\nUser profile facts (${userFacts.length}) [shared]\n`));
+    for (const f of userFacts.slice(0, 20)) {
       console.log(`  - ${f.content}`);
     }
-    const ctx = await getAllPersistentContext();
+    console.log(chalk.bold(`\nAgent memory (${agentFacts.length}) [agent=${agent}]\n`));
+    for (const f of agentFacts.slice(0, 20)) {
+      console.log(`  - ${f.content}`);
+    }
+    const ctx = await getPersistentContextForAgent(agent);
     if (ctx) console.log(chalk.gray(`\nInjected context: ${ctx.length} chars\n`));
     return;
   }

@@ -9,6 +9,12 @@ export interface ProviderCapabilities {
   streaming: boolean;
   tools: boolean;
   reasoning?: boolean;
+  /** Provider can accept reasoning-effort or thinking-budget controls on supported models. */
+  reasoningEffort?: boolean;
+  /** Embeddings API (not chat-routable when chat is false). */
+  embeddings?: boolean;
+  /** Tool call deltas stream alongside text (when streaming + tools). */
+  streamingTools?: boolean;
 }
 
 export const PROVIDER_CAPABILITIES = buildProviderCapabilitiesMap();

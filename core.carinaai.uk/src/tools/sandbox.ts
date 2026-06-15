@@ -5,6 +5,7 @@ import {
   resetDockerCheck,
 } from '../sandbox/docker-availability.js';
 import { runDockerContainer } from '../sandbox/docker-runner.js';
+import { runOpenShellContainer } from '../sandbox/openshell-sandbox.js';
 import { runInSandbox as runCodeInSandboxFactory } from '../sandbox/sandbox-factory.js';
 import { executeShellCommand } from './platform.js';
 
@@ -44,6 +45,14 @@ export async function runInSandbox(
   options: SandboxOptions,
 ): Promise<SandboxResult> {
   return runDockerContainer(command, image, options);
+}
+
+export async function runInOpenShell(
+  command: string,
+  image: string,
+  options: SandboxOptions,
+): Promise<SandboxResult> {
+  return runOpenShellContainer(command, image, options);
 }
 
 export async function runCodeInSandbox(

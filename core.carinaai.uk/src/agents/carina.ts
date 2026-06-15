@@ -35,7 +35,7 @@ import { getSessionDelivery } from './cron-delivery-registry.js';
 import { registry, registerSessionTools, listSessionTools, getSessionTool } from '../tools/index.js';
 import { resolveActiveToolNames } from '../tools/toolset-config.js';
 import { ALWAYS_ON_TOOLS } from '../tools/toolset.js';
-import { getAllPersistentContext } from '../memory/persistent-memory.js';
+import { getPersistentContextForAgent } from '../memory/persistent-memory.js';
 import { maybeBootstrapOperatorProfile } from '../memory/operator-profile.js';
 import { memoryInjectionEnabled, memoryInjectionIncludesSemantic } from '../memory/memory-injection.js';
 import { memoryTool } from '../tools/memory.js';
@@ -188,10 +188,13 @@ export class CarinaAgent {
       contextParts.push(this.systemPromptSuffix);
     }
 
-    const [personality, crossAgent, contacts] = await Promise.all([
+    const [personality, crossAgent, contacts, sharedSkills] = await Promise.all([
       loadProfilePersonality(),
       loadCrossAgentContext(),
       loadAllContacts(),
+      import('../skills/cross-agent-learning.js').then((m) =>
+        m.loadSharedSkillsContext(process.env.CARINA_ACTIVE_AGENT ?? 'main'),
+      ),
     ]);
 
     const personalitySuffix = personalityToSystemSuffix(personality);
@@ -200,6 +203,9 @@ export class CarinaAgent {
     }
     if (crossAgent.length > 0) {
       contextParts.push(crossAgent.join('\n\n---\n\n'));
+    }
+    if (sharedSkills) {
+      contextParts.push(sharedSkills);
     }
     const contactBlock = contactsContextBlock(contacts.slice(0, 15));
     if (contactBlock) {
@@ -225,7 +231,7 @@ export class CarinaAgent {
       const keywords = extractKeywords(userMessage);
       const semantic = memoryInjectionIncludesSemantic();
       const [persistent, history, similar, rawRag, rawSkills] = await Promise.all([
-        getAllPersistentContext(),
+        getPersistentContextForAgent(process.env.CARINA_ACTIVE_AGENT ?? 'main'),
         getSessionHistory(this.sessionId, config.carina.maxMemoryContext),
         semantic ? searchMemory(userMessage, 5) : Promise.resolve([]),
         semantic ? searchRag(userMessage, 3) : Promise.resolve([]),
@@ -340,7 +346,12 @@ export class CarinaAgent {
     userMessage: string,
     priorContext?: string,
   ): AsyncGenerator<TurnEvent> {
-    const safeUserMessage = await scanUserInput(userMessage);
+    const inputScan = await scanUserInput(userMessage);
+    if (!inputScan.allowed) {
+      yield { type: 'text', content: inputScan.block?.message ?? inputScan.text };
+      return;
+    }
+    const safeUserMessage = inputScan.text;
     const prompt = priorContext
       ? `${priorContext}\n\n---\n\nTask:\n${safeUserMessage}`
       : safeUserMessage;
@@ -602,19 +613,27 @@ export class CarinaAgent {
       toolCallLog,
     };
 
-    if (toolsUsed.length >= 3 && process.env.CARINA_AUTO_SKILL !== 'false') {
-      const { evaluateAfterTurn } = await import('../skills/post-task-evaluator.js');
-      const savedSkill = await evaluateAfterTurn({
-        userMessage: safeUserMessage,
-        assistantText: turnText,
-        toolsUsed,
-        toolCallLog,
-      }).catch(() => null);
-      if (savedSkill) {
-        const note = `\n\n(saved approach as skill: \`${savedSkill}\`)`;
-        turnText += note;
-        yield { type: 'text', content: note };
-        (this as CarinaAgent & { lastTurn?: TurnResult }).lastTurn = { text: turnText, toolsUsed, toolCallLog };
+    const shouldEvaluateLearning = process.env.CARINA_AUTO_SKILL !== 'false'
+      && (toolsUsed.length >= 3 || (await import('../skills/learning-loop.js')).isUserCorrection(safeUserMessage));
+
+    if (shouldEvaluateLearning) {
+      try {
+        const { evaluateAfterTurn, formatLearningNotice } = await import('../skills/post-task-evaluator.js');
+        const notice = await evaluateAfterTurn({
+          userMessage: safeUserMessage,
+          assistantText: turnText,
+          toolsUsed,
+          toolCallLog,
+          sessionId: this.sessionId,
+          tenantId: this.tenantId ?? '__operator__',
+        });
+        if (notice) {
+          const line = `\n\n${formatLearningNotice(notice)}\n`;
+          turnText += line;
+          yield { type: 'text', content: line };
+        }
+      } catch {
+        // learning must never break the user response
       }
     } else {
       void learnFromSessionTurn({

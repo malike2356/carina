@@ -114,18 +114,20 @@
     }
     .search-box input::placeholder { color: var(--muted); }
     .session-groups { flex: 1; overflow-y: auto; padding: 6px 6px 8px; }
-    .workspace-links {
-      padding: 8px 10px 10px; border-top: 1px solid var(--border); flex-shrink: 0;
+    .workspace-modal-links {
+      display: grid; grid-template-columns: 1fr; gap: 10px;
     }
-    .workspace-links .section-label {
-      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em;
-      color: var(--muted); padding: 4px 6px 6px;
+    .workspace-modal-links .link-group + .link-group {
+      padding-top: 10px; border-top: 1px solid var(--border);
     }
-    .workspace-links a {
-      display: block; padding: 7px 8px; border-radius: 8px; text-decoration: none;
-      color: var(--muted); font-size: 0.8rem;
+    .workspace-modal-links a {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 8px 10px; border-radius: 8px; color: var(--text);
+      text-decoration: none; background: var(--bg); border: 1px solid var(--border-strong);
+      font-size: 0.84rem;
     }
-    .workspace-links a:hover { background: var(--hover); color: var(--text); }
+    .workspace-modal-links a:hover { background: var(--hover); }
+    .workspace-modal-links .desc { font-size: 0.72rem; color: var(--muted); }
     .session-groups::-webkit-scrollbar { width: 3px; }
     .session-groups::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 99px; }
     .session-group-label {
@@ -222,7 +224,23 @@
       font-size: 0.68rem; color: var(--muted); padding: 2px 7px;
       border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); margin-left: 4px;
     }
+    #profile-badge {
+      font-size: 0.68rem; color: var(--muted); padding: 2px 7px;
+      border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); margin-left: 4px;
+    }
     .header-actions { display: flex; gap: 1px; align-items: center; }
+    .header-workspace-link {
+      display: inline-flex; align-items: center; gap: 5px; margin-right: 2px;
+      padding: 5px 10px; border-radius: 99px; background: var(--surface-2);
+      border: 1px solid var(--border); color: var(--muted); font-size: 0.75rem;
+      font-weight: 500; text-decoration: none; transition: color .12s, border-color .12s;
+    }
+    .header-workspace-link:hover { color: var(--accent); border-color: rgba(25,196,154,0.25); }
+    .header-workspace-link svg { width: 14px; height: 14px; flex-shrink: 0; }
+    @media (max-width: 640px) {
+      .header-workspace-link .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+      .header-workspace-link { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 8px; margin-right: 0; }
+    }
 
     /* chat scroll */
     #chat-scroll { flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; }
@@ -612,17 +630,6 @@
       </div>
     </div>
     <nav class="session-groups" id="session-list"></nav>
-    <div class="workspace-links" id="workspace-links" hidden>
-      <div class="section-label">Workspace</div>
-      <a href="/workspace">Overview</a>
-      <a href="/notes">Notes and Tasks</a>
-      <a href="/calendar">Calendar</a>
-      <a href="/documents">Documents</a>
-      <a href="/images">Images</a>
-      <a href="/email">Email</a>
-      <a href="/memory">Memory</a>
-      <a href="/packs">Skill packs</a>
-    </div>
     <div class="sidebar-foot">
       <button class="user-trigger" id="user-menu-btn" aria-haspopup="true" aria-expanded="false">
         <span class="avatar" id="user-avatar">O</span>
@@ -637,38 +644,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Personalise
         </button>
-        <a href="/workspace" id="operator-workspace-link" role="menuitem" hidden>
+        <button type="button" data-open-modal="workspace" id="workspace-pages-btn" role="menuitem">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-          Workspace
-        </a>
-        <a href="/notes" id="operator-notes-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-          Notes and Tasks
-        </a>
-        <a href="/documents" id="operator-documents-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          Documents
-        </a>
-        <a href="/images" id="operator-images-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Images
-        </a>
-        <a href="/email" id="operator-email-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><polyline points="22 6 12 13 2 6"/></svg>
-          Email
-        </a>
-        <a href="/calendar" id="operator-calendar-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Calendar
-        </a>
-        <a href="/memory" id="operator-memory-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-          Memories
-        </a>
-        <a href="/packs" id="operator-packs-link" role="menuitem" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-          Skill packs
-        </a>
+          Workspace pages
+        </button>
         <a href="/dashboard" id="operator-scout-link" role="menuitem" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Security (Scout)
@@ -725,8 +704,13 @@
           <div class="model-dropdown" id="model-dropdown"></div>
         </div>
         <span id="tier-badge" hidden></span>
+        <span id="profile-badge" class="profile-badge" hidden title="Active Carina profile"></span>
       </div>
       <div class="header-actions">
+        <a href="/workspace" class="header-workspace-link" title="Workspace">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span class="label">Workspace</span>
+        </a>
         <button class="icon-btn" id="header-new-chat" title="New chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
@@ -816,6 +800,60 @@
     </div>
   </div>
 
+  <!-- Workspace modal -->
+  <div class="modal-overlay" id="modal-workspace" data-modal="workspace">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Workspace pages</h3>
+        <button class="icon-btn" data-close-modal>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body workspace-modal-links">
+        <div class="link-group">
+          <a href="/workspace">
+            <span>Workspace overview</span>
+            <span class="desc">All workspace apps</span>
+          </a>
+          <a href="/notes">
+            <span>Notes and Tasks</span>
+            <span class="desc">Notes, tasks, and reminders</span>
+          </a>
+          <a href="/calendar" data-operator-only hidden>
+            <span>Calendar</span>
+            <span class="desc">Reminder schedule from notes</span>
+          </a>
+          <a href="/email">
+            <span>Email</span>
+            <span class="desc">Inbound triage and archive</span>
+          </a>
+        </div>
+        <div class="link-group" data-operator-only hidden>
+          <a href="/documents">
+            <span>Documents</span>
+            <span class="desc">Markdown, HTML, and CSV editor</span>
+          </a>
+          <a href="/images">
+            <span>Images</span>
+            <span class="desc">Generate, browse, and edit images</span>
+          </a>
+          <a href="/memory">
+            <span>Memory</span>
+            <span class="desc">Persistent agent memory entries</span>
+          </a>
+          <a href="/packs">
+            <span>Skill packs</span>
+            <span class="desc">Domain skill bundles</span>
+          </a>
+          <a href="/dashboard" data-scout-only hidden>
+            <span>Scout dashboard</span>
+            <span class="desc">Security monitoring</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Settings modal -->
   <div class="modal-overlay" id="modal-settings" data-modal="settings">
     <div class="modal-card">
@@ -848,8 +886,6 @@
           <label>Server configuration</label>
           <p class="field-hint">LLM API keys and integrations are configured on the server (<code>~/.carina/.env</code> or Docker). Use the CLI: <code>carina config set providers.deepseek.api_key ...</code></p>
           <p class="field-hint" style="margin-top:8px">
-            <a href="/memory" style="color:var(--accent)">Memories</a>
-            &middot; <a href="/packs" style="color:var(--accent)">Skill packs</a>
             <span id="settings-scout-link-wrap" hidden> &middot; <a href="/dashboard" style="color:var(--accent)">Scout dashboard</a></span>
           </p>
         </div>
@@ -885,30 +921,15 @@
           <div class="kbd-row"><span class="label">/model [provider]</span><span>Switch the active LLM</span></div>
           <div class="kbd-row"><span class="label">/clear</span><span>Start a fresh session</span></div>
         </div>
-        <div class="help-section" id="help-operator-links" hidden>
-          <h4>Workspace pages</h4>
-          <div class="kbd-row"><span class="label"><a href="/workspace" style="color:var(--accent)">Workspace</a></span><span>Unified shell for notes, documents, images, memory, and packs</span></div>
-          <div class="kbd-row"><span class="label"><a href="/notes" style="color:var(--accent)">Notes and Tasks</a></span><span>Notes, tasks, and reminders with delivery</span></div>
-          <div class="kbd-row"><span class="label"><a href="/documents" style="color:var(--accent)">Documents</a></span><span>Edit markdown, HTML, and CSV with AI assist</span></div>
-          <div class="kbd-row"><span class="label"><a href="/images" style="color:var(--accent)">Images</a></span><span>Generate, browse, inpaint, and remove backgrounds</span></div>
-          <div class="kbd-row"><span class="label"><a href="/email" style="color:var(--accent)">Email</a></span><span>Inbound triage, urgency tags, archive, and spam</span></div>
-          <div class="kbd-row"><span class="label"><a href="/calendar" style="color:var(--accent)">Calendar</a></span><span>Reminder schedule from notes</span></div>
-          <div class="kbd-row"><span class="label"><a href="/memory" style="color:var(--accent)">Memories</a></span><span>View and edit stored memories</span></div>
-          <div class="kbd-row"><span class="label"><a href="/packs" style="color:var(--accent)">Skill packs</a></span><span>Browse bundled domain packs</span></div>
-          <div class="kbd-row" data-scout-only hidden><span class="label"><a href="/dashboard" style="color:var(--accent)">Scout dashboard</a></span><span>Security monitoring</span></div>
-          <div class="kbd-row"><span class="label"><a href="https://docs.carinaai.uk" target="_blank" rel="noopener" style="color:var(--accent)">Documentation</a></span><span>Guides and reference</span></div>
-        </div>
-        <div class="help-section" id="help-hosted-workspace-links" hidden>
-          <h4>Workspace</h4>
-          <div class="kbd-row"><span class="label"><a href="/workspace" style="color:var(--accent)">Workspace</a></span><span>Notes, documents, images, email, and calendar</span></div>
-          <div class="kbd-row"><span class="label"><a href="/notes" style="color:var(--accent)">Notes</a></span><span>Tasks and reminders</span></div>
-          <div class="kbd-row"><span class="label"><a href="/email" style="color:var(--accent)">Email</a></span><span>Inbound triage inbox</span></div>
-        </div>
         <div class="help-section" id="help-hosted-links" hidden>
           <h4>Account</h4>
           <div class="kbd-row"><span class="label"><a href="/settings" style="color:var(--accent)">API keys</a></span><span>BYOK provider keys</span></div>
           <div class="kbd-row"><span class="label"><a href="/billing" style="color:var(--accent)">Billing</a></span><span>Plan and subscription</span></div>
           <div class="kbd-row"><span class="label"><a href="/security" style="color:var(--accent)">Scout</a></span><span>Security pairing and status</span></div>
+        </div>
+        <div class="help-section">
+          <h4>Documentation</h4>
+          <div class="kbd-row"><span class="label"><a href="https://docs.carinaai.uk" target="_blank" rel="noopener" style="color:var(--accent)">Documentation</a></span><span>Guides and reference</span></div>
         </div>
         <div class="help-section">
           <h4>About</h4>
@@ -1096,15 +1117,6 @@
       document.body.dataset.hosted = hosted ? 'true' : 'false';
       document.body.dataset.scout = ctx.scoutAvailable ? 'true' : 'false';
 
-      setMenuLink('workspace-links', true);
-      setMenuLink('operator-workspace-link', true);
-      setMenuLink('operator-notes-link', true);
-      setMenuLink('operator-documents-link', true);
-      setMenuLink('operator-images-link', true);
-      setMenuLink('operator-email-link', true);
-      setMenuLink('operator-calendar-link', true);
-      setMenuLink('operator-memory-link', true);
-      setMenuLink('operator-packs-link', true);
       setMenuLink('operator-scout-link', !hosted && ctx.scoutAvailable);
       setMenuLink('operator-settings-btn', !hosted);
       setMenuLink('operator-server-note', !hosted);
@@ -1114,9 +1126,14 @@
       setMenuLink('hosted-ops-link', false);
       setMenuLink('hosted-ops-upgrade-link', false);
       setMenuLink('hosted-security-link', false);
-      setMenuLink('help-operator-links', true);
-      setMenuLink('help-hosted-workspace-links', hosted);
       setMenuLink('help-hosted-links', false);
+      setMenuLink('workspace-pages-btn', true);
+      document.querySelectorAll('[data-operator-only]').forEach((el) => {
+        el.hidden = hosted;
+      });
+      document.querySelectorAll('[data-scout-only]').forEach((el) => {
+        el.hidden = !ctx.scoutAvailable;
+      });
 
       if (hosted) {
         if (ctx.hosted && ctx.hosted.user) {
@@ -1144,6 +1161,16 @@
       }
 
       document.getElementById('tier-badge').hidden = true;
+      const profileBadge = document.getElementById('profile-badge');
+      if (ctx.activeProfile && ctx.mode === 'operator') {
+        profileBadge.textContent = 'profile: ' + ctx.activeProfile;
+        profileBadge.hidden = false;
+        profileBadge.title = ctx.profileScope
+          ? ('CARINA_HOME=' + (ctx.profileScope.carinaHome || ''))
+          : ('Active profile: ' + ctx.activeProfile);
+      } else {
+        profileBadge.hidden = true;
+      }
       document.querySelector('.user-sub').textContent = formatPackLabel(ctx.activeSkillPack);
       activeDomain = resolveDomain(
         ctx.activeSkillPacks || (ctx.activeSkillPack ? [ctx.activeSkillPack] : []),
@@ -1339,10 +1366,58 @@
       return 'Older';
     }
 
+    let sessionSearchTimer = null;
+    let sessionSearchRequest = 0;
+    let serverSessionMatches = null;
+
+    async function fetchServerSessionMatches(query) {
+      if (!query || query.length < 2) {
+        serverSessionMatches = null;
+        return;
+      }
+      const requestId = ++sessionSearchRequest;
+      try {
+        const res = await fetch('/api/memory/sessions/search?q=' + encodeURIComponent(query) + '&limit=30');
+        if (!res.ok) throw new Error('search failed');
+        const payload = await res.json();
+        if (requestId !== sessionSearchRequest) return;
+        serverSessionMatches = Array.isArray(payload.results) ? payload.results : [];
+      } catch {
+        if (requestId === sessionSearchRequest) serverSessionMatches = null;
+      }
+      renderSessionList();
+    }
+
+    function queueSessionSearch(query) {
+      if (sessionSearchTimer) clearTimeout(sessionSearchTimer);
+      sessionSearchTimer = setTimeout(() => { fetchServerSessionMatches(query); }, 220);
+    }
+
     function renderSessionList() {
       const current = getSessionId();
-      const query = (sessionSearchEl.value || '').trim().toLowerCase();
-      const sessions = getSessions().filter(s => !query || (s.preview || '').toLowerCase().includes(query));
+      const query = (sessionSearchEl.value || '').trim();
+      const queryLower = query.toLowerCase();
+      let sessions = getSessions();
+
+      if (query) {
+        const ranked = new Map();
+        if (Array.isArray(serverSessionMatches)) {
+          serverSessionMatches.forEach((hit, idx) => {
+            ranked.set(hit.sessionId, {
+              id: hit.sessionId,
+              preview: hit.title || hit.snippet || 'Chat',
+              at: hit.timestamp ? new Date(hit.timestamp).getTime() : Date.now() - idx,
+              score: typeof hit.rank === 'number' ? hit.rank : (serverSessionMatches.length - idx),
+            });
+          });
+        }
+        sessions.forEach((s) => {
+          if (!ranked.has(s.id) && (s.preview || '').toLowerCase().includes(queryLower)) {
+            ranked.set(s.id, { ...s, score: 0.1 });
+          }
+        });
+        sessions = [...ranked.values()].sort((a, b) => (b.score || 0) - (a.score || 0) || (b.at || 0) - (a.at || 0));
+      }
 
       if (!sessions.length) {
         sessionListEl.innerHTML = '<div class="session-empty">' + (query ? 'No chats match your search.' : 'No chats yet. Start one below.') + '</div>';
@@ -2017,7 +2092,11 @@
 
     window.addEventListener('resize', () => setSidebarOpen(isSidebarOpen()));
 
-    sessionSearchEl.addEventListener('input', renderSessionList);
+    sessionSearchEl.addEventListener('input', () => {
+      const query = (sessionSearchEl.value || '').trim();
+      queueSessionSearch(query);
+      renderSessionList();
+    });
 
     function autoGrow() {
       inputEl.style.height = 'auto';

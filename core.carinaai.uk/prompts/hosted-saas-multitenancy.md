@@ -23,7 +23,7 @@ It is gated behind `HOSTED_MODE=true` and is mounted on hosted chat routes (`che
 ## Key architectural decision: one process, two domains, Host-aware gate
 
 `docker/nginx/carina-prod.conf` already proxies **both** `core.carinaai.uk` and
-`app.carinaai.uk` to the same upstream (`127.0.0.1:3333`). That was the original plan, and it's
+`app.carinaai.uk` to the same upstream (`127.0.0.1:3000`). That was the original plan, and it's
 still the right one - one Node process, one deploy, one supervisor entry. But it means the
 single-password gate just added for `core.carinaai.uk` would, unmodified, also block real
 customers from `app.carinaai.uk`.
@@ -57,7 +57,7 @@ deployable artifact. Do not stand up a second process or a second codebase for t
      `/api/chat` work, confirm logout works) before moving on.
    - Make the operator hostname list configurable via an env var, e.g.
      `CARINA_OPERATOR_HOSTS=core.carinaai.uk,localhost` (comma-separated, trimmed, lower-cased),
-     so local dev (`localhost:3333`) still uses the simple password gate.
+     so local dev (`localhost:3000`) still uses the simple password gate.
 
 2. Add `hostedAccountId?: string` to the `SessionData` augmentation (alongside `webAuthed` - put
    it in `src/types/web-session.d.ts`). When a hosted user logs in, set

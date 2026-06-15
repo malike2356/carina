@@ -95,4 +95,38 @@ describe('taskflows store', () => {
     const run = enqueueTaskFlowRun(flow.id, { idempotencyKey: 'stored-key' });
     expect(run?.idempotencyKey).toBe('stored-key');
   });
+
+  it('retries from failed step preserving prior outputs', async () => {
+    const { upsertTaskFlow, enqueueTaskFlowRun, updateTaskFlowRun, retryTaskFlowRun } = await import('./store.js');
+    const flow = upsertTaskFlow({
+      name: 'resume-flow',
+      steps: [{ type: 'delay', ms: 1 }, { type: 'delay', ms: 1 }],
+      chainOnSuccess: [],
+      status: 'active',
+    });
+    const run = enqueueTaskFlowRun(flow.id)!;
+    updateTaskFlowRun(run.id, {
+      status: 'failed',
+      stepIndex: 1,
+      stepOutputs: { '0': 'step0 ok' },
+    });
+    const retry = retryTaskFlowRun(run.id);
+    expect(retry?.stepIndex).toBe(1);
+    expect(retry?.stepOutputs?.['0']).toBe('step0 ok');
+    expect(retry?.retriedFromRunId).toBe(run.id);
+  });
+
+  it('search finds runs by output text', async () => {
+    const { upsertTaskFlow, enqueueTaskFlowRun, updateTaskFlowRun, searchTaskFlowRuns } = await import('./store.js');
+    const flow = upsertTaskFlow({
+      name: 'searchable',
+      steps: [{ type: 'delay', ms: 1 }],
+      chainOnSuccess: [],
+      status: 'active',
+    });
+    const run = enqueueTaskFlowRun(flow.id)!;
+    updateTaskFlowRun(run.id, { status: 'succeeded', output: 'unique-needle-xyz' });
+    const hits = searchTaskFlowRuns('needle-xyz');
+    expect(hits.some((r) => r.id === run.id)).toBe(true);
+  });
 });

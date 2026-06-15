@@ -4,6 +4,7 @@ function mockConfig(overrides: Record<string, unknown> = {}) {
   const base = {
     brave: { apiKey: '' },
     tavily: { apiKey: '', searchDepth: 'basic' as const },
+    searxng: { url: '' },
     search: { provider: 'auto' as const },
   };
   return { config: { ...base, ...overrides } };
@@ -16,11 +17,24 @@ beforeEach(async () => {
   config.brave.apiKey = '';
   config.tavily.apiKey = '';
   config.tavily.searchDepth = 'basic';
+  config.searxng.url = '';
   config.search.provider = 'auto';
 });
 
 describe('web-search-provider', () => {
-  it('prefers Tavily in auto mode when both keys exist', async () => {
+  it('prefers SearXNG in auto mode when SEARXNG_URL is set', async () => {
+    vi.doMock('../config/index.js', () =>
+      mockConfig({
+        searxng: { url: 'http://localhost:8888' },
+        tavily: { apiKey: 'tvly-key', searchDepth: 'basic' },
+        brave: { apiKey: 'brave-key' },
+      }),
+    );
+    const { resolveSearchProvider } = await import('./web-search-provider.js');
+    expect(resolveSearchProvider()).toBe('searxng');
+  });
+
+  it('prefers Tavily in auto mode when both keys exist and no SearXNG', async () => {
     vi.doMock('../config/index.js', () =>
       mockConfig({
         brave: { apiKey: 'brave-key' },
@@ -45,7 +59,7 @@ describe('web-search-provider', () => {
   it('throws when no search keys are configured', async () => {
     vi.doMock('../config/index.js', () => mockConfig());
     const { resolveSearchProvider } = await import('./web-search-provider.js');
-    expect(resolveSearchProvider).toThrow(/TAVILY_API_KEY/);
+    expect(resolveSearchProvider).toThrow(/No search provider configured/);
   });
 
   it('honours SEARCH_PROVIDER=brave even when Tavily key exists', async () => {
@@ -118,6 +132,34 @@ describe('web-search-provider', () => {
     expect(hits[0].description).toBe('Body text');
   });
 
+  it('returns SearXNG results with count cap', async () => {
+    vi.doMock('../config/index.js', () =>
+      mockConfig({
+        searxng: { url: 'http://localhost:8888' },
+        search: { provider: 'searxng' },
+      }),
+    );
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{ title: 'Hit', url: 'https://example.com', content: 'Snippet' }],
+        }),
+      }),
+    );
+
+    const { searchSearxng, searchProviderLabel } = await import('./web-search-provider.js');
+    expect(searchProviderLabel('searxng')).toBe('SearXNG');
+    const hits = await searchSearxng('UK inflation', 3);
+    expect(hits).toEqual([
+      { title: 'Hit', url: 'https://example.com', content: 'Snippet' },
+    ]);
+    const callUrl = (vi.mocked(fetch).mock.calls[0][0] as string);
+    expect(callUrl).toContain('http://localhost:8888/search');
+    expect(callUrl).toContain('format=json');
+  });
+
   it('returns Brave results with count cap', async () => {
     vi.doMock('../config/index.js', () =>
       mockConfig({
@@ -148,7 +190,7 @@ describe('web-search tool', () => {
   it('throws when no search API key is configured', async () => {
     vi.doMock('../config/index.js', () => mockConfig());
     const { webSearchTool } = await import('./web-search.js');
-    await expect(webSearchTool.execute({ query: 'test' })).rejects.toThrow(/TAVILY_API_KEY/);
+    await expect(webSearchTool.execute({ query: 'test' })).rejects.toThrow(/No search provider configured/);
   });
 
   it('returns array of search results via Brave', async () => {

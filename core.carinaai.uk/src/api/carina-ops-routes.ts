@@ -47,6 +47,22 @@ import {
   listDeploymentsForOrg,
   listEnvironmentsForOrg,
 } from '../hosted/deployments-service.js';
+import {
+  ControlPlaneValidationError,
+  createAgentForOrg,
+  createBatchForOrg,
+  createFileForOrg,
+  createMemoryStoreForOrg,
+  createSessionForOrg,
+  getAnalyticsForOrg,
+  getControlPlaneSummary,
+  listAgentsForOrg,
+  listBatchesForOrg,
+  listFilesForOrg,
+  listMemoryStoresForOrg,
+  listSessionsForOrg,
+  listSkillPacksForTenant,
+} from '../hosted/control-plane-service.js';
 import { UsageMeter } from '../billing/usage-meter.js';
 import { StripeService } from '../billing/stripe-service.js';
 import {
@@ -140,6 +156,10 @@ function handleServiceError(res: Response, err: unknown): void {
   }
   if (err instanceof VaultNotFoundError) {
     res.status(404).json(safeJsonBody({ error: err.message }));
+    return;
+  }
+  if (err instanceof ControlPlaneValidationError) {
+    res.status(err.statusCode).json(safeJsonBody({ error: err.message }));
     return;
   }
   throw err;
@@ -493,6 +513,151 @@ export function mountCarinaOpsRoutes(app: Express): void {
       res.status(201).json({ environment });
     },
   );
+
+  router.get('/platform/summary', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const summary = await getControlPlaneSummary(ctx.orgId, ctx.userId);
+    res.json({ summary });
+  });
+
+  router.get('/files', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const files = await listFilesForOrg(ctx.orgId);
+    res.json({ files });
+  });
+
+  router.post('/files', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const file = await createFileForOrg(
+        ctx.orgId,
+        {
+          name: String(req.body?.name ?? ''),
+          mimeType: req.body?.mimeType ? String(req.body.mimeType) : undefined,
+          sizeBytes: req.body?.sizeBytes != null ? Number(req.body.sizeBytes) : undefined,
+          storageUri: req.body?.storageUri ? String(req.body.storageUri) : undefined,
+          notes: req.body?.notes ? String(req.body.notes) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ file });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.get('/batches', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const batches = await listBatchesForOrg(ctx.orgId);
+    res.json({ batches });
+  });
+
+  router.post('/batches', requireOrgMember('workbench.run'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const batch = await createBatchForOrg(
+        ctx.orgId,
+        {
+          name: String(req.body?.name ?? ''),
+          inputCount: req.body?.inputCount != null ? Number(req.body.inputCount) : undefined,
+          notes: req.body?.notes ? String(req.body.notes) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ batch });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.get('/agents', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const agents = await listAgentsForOrg(ctx.orgId);
+    res.json({ agents });
+  });
+
+  router.post('/agents', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const agent = await createAgentForOrg(
+        ctx.orgId,
+        {
+          name: String(req.body?.name ?? ''),
+          slug: req.body?.slug ? String(req.body.slug) : undefined,
+          provider: req.body?.provider ? String(req.body.provider) : undefined,
+          model: req.body?.model ? String(req.body.model) : undefined,
+          instructions: req.body?.instructions ? String(req.body.instructions) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ agent });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.get('/sessions', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const limit = Number(req.query.limit ?? 50);
+    const sessions = await listSessionsForOrg(ctx.orgId, limit);
+    res.json({ sessions });
+  });
+
+  router.post('/sessions', requireOrgMember('workbench.run'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const session = await createSessionForOrg(
+        ctx.orgId,
+        {
+          title: req.body?.title ? String(req.body.title) : undefined,
+          channel: req.body?.channel ? String(req.body.channel) : undefined,
+          agentId: req.body?.agentId ? String(req.body.agentId) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ session });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.get('/memory-stores', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const stores = await listMemoryStoresForOrg(ctx.orgId);
+    res.json({ stores });
+  });
+
+  router.post('/memory-stores', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const store = await createMemoryStoreForOrg(
+        ctx.orgId,
+        {
+          name: String(req.body?.name ?? ''),
+          slug: req.body?.slug ? String(req.body.slug) : undefined,
+          storeType: req.body?.storeType ? String(req.body.storeType) : undefined,
+          notes: req.body?.notes ? String(req.body.notes) : undefined,
+        },
+        ctx.userId,
+      );
+      res.status(201).json({ store });
+    } catch (err) {
+      handleServiceError(res, err);
+    }
+  });
+
+  router.get('/skills', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const packs = await listSkillPacksForTenant(ctx.userId);
+    res.json({ packs });
+  });
+
+  router.get('/analytics', requireOrgMember('usage.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const days = Number(req.query.days ?? 30);
+    const analytics = await getAnalyticsForOrg(ctx.orgId, days);
+    res.json(analytics);
+  });
 
   app.use('/api/carina-ops', router);
 }

@@ -1,5 +1,7 @@
 import type TelegramBot from 'node-telegram-bot-api';
 import type { Message as TelegramMessage } from 'node-telegram-bot-api';
+
+type TelegramSendOptions = NonNullable<Parameters<TelegramBot['sendMessage']>[2]>;
 import { wasMentioned } from '../../group-chat.js';
 import { formatForPlatform } from '../../formatting.js';
 import type {
@@ -9,6 +11,53 @@ import type {
 } from '../channel-adapter.interface.js';
 
 type TelegramRawMessage = TelegramMessage;
+
+export type TelegramForumContext = {
+  chatId: string;
+  topicId: string;
+  topicName?: string;
+};
+
+export function topicId(msg: Partial<TelegramRawMessage>): string | undefined {
+  if (msg.chat?.is_forum !== true || msg.message_thread_id === undefined) {
+    return undefined;
+  }
+  return String(msg.message_thread_id);
+}
+
+function extractForumTopicName(msg: Partial<TelegramRawMessage>): string | undefined {
+  const created = (msg as { forum_topic_created?: { name?: string } }).forum_topic_created
+    ?? msg.reply_to_message?.forum_topic_created;
+  return created?.name ? String(created.name) : undefined;
+}
+
+export function parseTelegramForumContext(raw: unknown): TelegramForumContext | null {
+  const msg = raw as Partial<TelegramRawMessage>;
+  const thread = topicId(msg);
+  if (!msg.chat || !thread) return null;
+
+  return {
+    chatId: String(msg.chat.id),
+    topicId: thread,
+    topicName: extractForumTopicName(msg),
+  };
+}
+
+function isTelegramForumMention(msg: Partial<TelegramRawMessage>, botUsername: string): boolean {
+  const username = botUsername.replace(/^@/, '').toLowerCase();
+  const text = msg.text ?? '';
+
+  for (const entity of msg.entities ?? []) {
+    if (entity.type !== 'mention') continue;
+    const mention = text
+      .slice(entity.offset, entity.offset + entity.length)
+      .replace(/^@/, '')
+      .toLowerCase();
+    if (mention === username) return true;
+  }
+
+  return false;
+}
 
 export class TelegramAdapter implements IChannelAdapter {
   readonly name = 'telegram' as const;
@@ -26,9 +75,14 @@ export class TelegramAdapter implements IChannelAdapter {
     }
 
     const text = msg.text.trim();
-    const chatType = msg.chat.type === 'private' ? 'private' : 'group';
+    const privateChat = msg.chat.type === 'private';
+    const baseChatType = privateChat ? 'private' : 'group';
+    const isForumTopic = msg.chat.is_forum === true && msg.message_thread_id !== undefined;
+    const chatType = isForumTopic ? 'group' : baseChatType;
     const firstName = msg.from.first_name ?? '';
     const lastName = msg.from.last_name ?? '';
+    const forumThreadId = topicId(msg);
+
     return {
       id: String(msg.message_id),
       channel: 'telegram',
@@ -36,12 +90,15 @@ export class TelegramAdapter implements IChannelAdapter {
       conversationId: String(msg.chat.id),
       text,
       timestamp: new Date((msg.date ?? Math.floor(Date.now() / 1000)) * 1000),
-      isDirect: chatType === 'private',
-      isMention: wasMentioned(msg as TelegramRawMessage, this.botUsername),
+      isDirect: privateChat,
+      isMention: isForumTopic
+        ? isTelegramForumMention(msg, this.botUsername)
+        : wasMentioned(msg as TelegramRawMessage, this.botUsername),
       isCommand: text.startsWith('/'),
       chatType,
       chatTitle: 'title' in msg.chat ? msg.chat.title : undefined,
       senderName: [firstName, lastName].filter(Boolean).join(' ') || msg.from.username,
+      threadId: forumThreadId,
       replyTo: msg.reply_to_message?.message_id !== undefined
         ? String(msg.reply_to_message.message_id)
         : undefined,
@@ -49,10 +106,14 @@ export class TelegramAdapter implements IChannelAdapter {
     };
   }
 
-  async sendMessage(conversationId: string, text: string, _options: SendOptions = {}): Promise<void> {
+  async sendMessage(conversationId: string, text: string, options: SendOptions = {}): Promise<void> {
     if (!this.bot) return;
     for (const chunk of this.formatForChannel(text)) {
-      await this.bot.sendMessage(Number(conversationId), chunk);
+      const sendOptions: TelegramSendOptions = {};
+      if (options.threadId) {
+        sendOptions.message_thread_id = Number(options.threadId);
+      }
+      await this.bot.sendMessage(Number(conversationId), chunk, sendOptions);
     }
   }
 

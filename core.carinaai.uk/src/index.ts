@@ -18,6 +18,7 @@ import { createCommitmentDeliveryTask } from './commitments/delivery.js';
 import { commitmentsEnabled } from './commitments/inference.js';
 import { createReminderDeliveryTask } from './agents/reminder-delivery.js';
 import { loadAndRegisterAllJobs, setJobDeliverCallback } from './agents/cron-scheduler.js';
+import { loadAndRegisterAllWorkflows } from './agents/cron-workflow-scheduler.js';
 import { deliverJobOutput } from './agents/cron-delivery.js';
 import { initMemoryBackend } from './memory/backends/index.js';
 import { startBaileysWhatsApp, isBaileysConfigured } from './gateway/baileys/whatsapp-baileys.js';
@@ -49,6 +50,9 @@ async function shutdown(signal: string): Promise<void> {
   taskScheduler?.stop();
   cleanupKillSwitch?.();
   stopChannelListeners();
+  stopProcessCleanup();
+  const { stopWebhookRetrySweep } = await import('./webhooks/dispatcher.js');
+  stopWebhookRetrySweep();
   await pool.end().catch(() => undefined);
   const redis = getRedis();
   if (redis) redis.disconnect();
@@ -90,17 +94,29 @@ async function main(): Promise<void> {
       initMemoryBackend();
       memoryReady = true;
       const jobCount = await loadAndRegisterAllJobs();
+      const workflowCount = await loadAndRegisterAllWorkflows();
+      const { recoverProcessesOnStartup } = await import('./tools/process-registry.js');
+      const recoveredProcesses = await recoverProcessesOnStartup();
+      const { startWebhookRetrySweep } = await import('./webhooks/dispatcher.js');
+      startWebhookRetrySweep();
       await initSkills();
       startSkillCuratorSchedule();
       startBillingReconciliationSchedule();
-      console.log(chalk.gray(`Memory store ready (${jobCount} scheduled jobs loaded)`));
+      const recoveryNote = recoveredProcesses > 0 ? `, ${recoveredProcesses} background processes recovered` : '';
+      console.log(chalk.gray(`Memory store ready (${jobCount} jobs, ${workflowCount} workflows${recoveryNote})`));
     }
     if (process.env.CARINA_IMPORT_WORKSPACE === 'true') {
-      const { imported } = await importWorkspaceFiles();
+      const { imported, updated } = await importWorkspaceFiles();
       if (imported.length > 0) {
         console.log(chalk.gray(`Workspace import: ${imported.join(', ')}`));
       }
+      if (updated.length > 0) {
+        console.log(chalk.gray(`Workspace updated: ${updated.join(', ')}`));
+      }
     }
+
+    const { startWorkspaceWatcher } = await import('./memory/workspace-watcher.js');
+    startWorkspaceWatcher();
     if (process.env.CARINA_IMPORT_MEDIA === 'true') {
       const { imported, skipped } = await importInboundMedia();
       if (imported.length > 0 || skipped > 0) {
@@ -147,12 +163,10 @@ async function main(): Promise<void> {
     taskScheduler.start();
   }
 
-  if (process.env.CARINA_TASKFLOWS_ENABLED === 'true') {
+  if (process.env.CARINA_TASKFLOWS_ENABLED !== 'false') {
     const { startTaskFlowWorkerLoop } = await import('./ops/taskflows/worker.js');
     startTaskFlowWorkerLoop();
-    if (process.env.CARINA_TASKFLOWS_WORKER_INTERVAL_MS) {
-      console.log(chalk.gray('TaskFlow background worker enabled'));
-    }
+    console.log(chalk.gray('TaskFlow worker enabled (set CARINA_TASKFLOWS_ENABLED=false to disable)'));
   }
 
   const gateways: Promise<void>[] = [];

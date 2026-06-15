@@ -9,30 +9,36 @@ import {
   processQueuedTaskFlowRuns,
   resumeTaskFlow,
   retryTaskFlowRun,
+  searchTaskFlowRuns,
   summarizeTaskFlowRuns,
   taskFlowWorkerEnabled,
+  taskFlowWorkerPoolSize,
   taskFlowsEnabled,
   triggerTaskFlow,
   upsertTaskFlow,
 } from '../../ops/taskflows/index.js';
+import { parseTaskFlowYaml } from '../../ops/taskflows/parser.js';
+import fs from 'fs/promises';
 
 function usage(): void {
   console.log(`Usage: carina taskflows <command>
 
 Commands:
-  status                 Show whether TaskFlows are enabled
-  list                   List registered flows
-  runs [--status STATUS] List recent runs (queued|running|succeeded|failed|timed_out|cancelled|lost)
+  status                 Show whether TaskFlows are enabled (on by default)
+  list                   List registered flows for active profile
+  runs [--status STATUS] List recent runs
+  history <query>        Search run output and errors
+  import <file.yaml>     Import flow from YAML
   delivery               List queued deliveries
   create <name>          Create a minimal flow (agent step from --prompt)
   trigger <flow-id>      Queue and run a flow
   pause <flow-id>        Pause a flow
   resume <flow-id>       Resume a paused flow
   cancel <run-id>        Cancel a queued or running run
-  retry <run-id>         Requeue a failed or timed-out run from step 0
-  worker [--delivery]    Process queued runs (and optionally delivery queue)
+  retry <run-id> [--from-step N]  Resume failed run from step N (default: failed step)
+  worker [--delivery]    Process queued runs (pool size: CARINA_TASKFLOWS_WORKER_POOL)
 
-Set CARINA_TASKFLOWS_ENABLED=true to enable execution.
+Set CARINA_TASKFLOWS_ENABLED=false to disable.
 Set CARINA_TASKFLOWS_WEBHOOK_HOOK=true to trigger flows on webhook events.
 `);
 }
@@ -41,8 +47,9 @@ export async function runTaskFlowsCommand(args: string[]): Promise<void> {
   const cmd = args[0] ?? 'status';
 
   if (cmd === 'status') {
-    console.log(`TaskFlows: ${taskFlowsEnabled() ? 'enabled' : 'disabled (set CARINA_TASKFLOWS_ENABLED=true)'}`);
+    console.log(`TaskFlows: ${taskFlowsEnabled() ? 'enabled (default)' : 'disabled'}`);
     console.log(`Worker: ${taskFlowWorkerEnabled() ? 'enabled' : 'disabled'}`);
+    console.log(`Worker pool: ${taskFlowWorkerPoolSize()}`);
     console.log(`Flows: ${listTaskFlows().length}`);
     const counts = summarizeTaskFlowRuns();
     console.log(
@@ -56,7 +63,7 @@ export async function runTaskFlowsCommand(args: string[]): Promise<void> {
   if (cmd === 'list') {
     for (const f of listTaskFlows()) {
       const triggers = (f.triggers ?? []).map((t) => `${t.type}${'event' in t ? `:${t.event}` : ''}`).join(', ');
-      console.log(`  ${f.id}  ${f.name}  [${f.status}]  steps=${f.steps.length}  triggers=${triggers || '-'}`);
+      console.log(`  ${f.id}  ${f.name}  [${f.status}]  profile=${f.profileName ?? 'default'}  steps=${f.steps.length}  triggers=${triggers || '-'}`);
     }
     return;
   }
@@ -66,8 +73,51 @@ export async function runTaskFlowsCommand(args: string[]): Promise<void> {
     const status = statusIdx >= 0 ? args[statusIdx + 1] : undefined;
     const runs = listTaskFlowRuns(30).filter((r) => !status || r.status === status);
     for (const r of runs) {
-      console.log(`  ${r.id.slice(0, 8)}  ${r.flowName}  ${r.status}  step=${r.stepIndex}`);
+      console.log(`  ${r.id.slice(0, 8)}  ${r.flowName}  ${r.status}  step=${r.stepIndex}  profile=${r.profileName ?? '-'}`);
     }
+    return;
+  }
+
+  if (cmd === 'history') {
+    const query = args.slice(1).join(' ').trim();
+    if (!query) {
+      console.error('history requires a search query');
+      process.exitCode = 1;
+      return;
+    }
+    const runs = searchTaskFlowRuns(query, 25);
+    if (runs.length === 0) {
+      console.log('No matching runs.');
+      return;
+    }
+    for (const r of runs) {
+      const snippet = (r.output ?? r.error ?? '').slice(0, 120).replace(/\s+/g, ' ');
+      console.log(`  ${r.id.slice(0, 8)}  ${r.flowName}  ${r.status}  ${snippet}`);
+    }
+    return;
+  }
+
+  if (cmd === 'import') {
+    const file = args[1];
+    if (!file) {
+      console.error('import requires a YAML file path');
+      process.exitCode = 1;
+      return;
+    }
+    const text = await fs.readFile(file, 'utf8');
+    const doc = parseTaskFlowYaml(text);
+    const flow = upsertTaskFlow({
+      name: doc.name,
+      label: doc.label,
+      profileName: doc.profileName ?? doc.profile,
+      model: doc.model,
+      steps: doc.steps,
+      chainOnSuccess: doc.chainOnSuccess ?? [],
+      triggers: doc.triggers ?? [],
+      status: 'active',
+      maxRetries: doc.maxRetries,
+    });
+    console.log(`Imported flow ${flow.id} (${flow.name})`);
     return;
   }
 
@@ -82,8 +132,10 @@ export async function runTaskFlowsCommand(args: string[]): Promise<void> {
     const name = args[1];
     const promptIdx = args.indexOf('--prompt');
     const cronIdx = args.indexOf('--cron');
+    const profileIdx = args.indexOf('--profile');
     const prompt = promptIdx >= 0 ? args.slice(promptIdx + 1).join(' ') : 'Run scheduled task';
     const cronJobId = cronIdx >= 0 ? args[cronIdx + 1] : undefined;
+    const profileName = profileIdx >= 0 ? args[profileIdx + 1] : undefined;
     if (!name) {
       console.error('create requires a name');
       process.exitCode = 1;
@@ -92,6 +144,7 @@ export async function runTaskFlowsCommand(args: string[]): Promise<void> {
     const triggers = cronJobId ? [{ type: 'cron' as const, jobId: cronJobId }] : [];
     const flow = upsertTaskFlow({
       name,
+      profileName,
       steps: [{ type: 'agent', prompt }],
       chainOnSuccess: [],
       triggers,
@@ -159,25 +212,27 @@ export async function runTaskFlowsCommand(args: string[]): Promise<void> {
 
   if (cmd === 'retry') {
     const id = args[1];
+    const fromStepIdx = args.indexOf('--from-step');
+    const fromStep = fromStepIdx >= 0 ? Number(args[fromStepIdx + 1]) : undefined;
     if (!id) {
       console.error('retry requires run id (from carina taskflows runs)');
       process.exitCode = 1;
       return;
     }
-    const run = retryTaskFlowRun(id);
+    const run = retryTaskFlowRun(id, Number.isFinite(fromStep) ? { fromStep } : undefined);
     if (!run) {
-      console.error('Run not found or not in a failed/timed_out state');
+      console.error('Run not found or not in a failed/timed_out/cancelled state');
       process.exitCode = 1;
       return;
     }
     void executeTaskFlowRun(run.id);
-    console.log(`Retried as run ${run.id.slice(0, 8)} (retried from ${id.slice(0, 8)})`);
+    console.log(`Retried as run ${run.id.slice(0, 8)} from step ${run.stepIndex} (from ${id.slice(0, 8)})`);
     return;
   }
 
   if (cmd === 'worker') {
     const started = await processQueuedTaskFlowRuns();
-    console.log(`Started ${started} queued run(s)`);
+    console.log(`Started ${started} queued run(s) (pool=${taskFlowWorkerPoolSize()})`);
     if (args.includes('--delivery')) {
       const result = await processDeliveryQueue();
       console.log(`Delivery: ${result.delivered} delivered, ${result.failed} failed`);

@@ -6,9 +6,10 @@ import {
   getActiveProfileName,
   type CarinaProfile,
 } from '../profiles/manager.js';
+import { profileOperatorSessionId } from '../profiles/profile-ids.js';
 import { bindProfileEnvironment } from '../profiles/scope.js';
 import { loadCarinaEnv } from '../config/load-env.js';
-import { CARINA_HOME } from '../config/paths.js';
+import { resolveCarinaHome } from '../config/paths.js';
 
 export interface OperatorProfileContext {
   profileName: string;
@@ -19,7 +20,7 @@ export interface OperatorProfileContext {
 }
 
 export function operatorSessionId(profileName: string): string {
-  return `op:${profileName}`;
+  return profileOperatorSessionId(profileName);
 }
 
 export function bindOperatorProfile(profileArg?: string): OperatorProfileContext {
@@ -33,7 +34,7 @@ export function bindOperatorProfile(profileArg?: string): OperatorProfileContext
   }
 
   const profileName = profile?.name ?? getActiveProfileName() ?? 'default';
-  const baseDir = profile?.dir ?? CARINA_HOME;
+  const baseDir = profile?.dir ?? resolveCarinaHome();
 
   if (profile) {
     bindProfileEnvironment(profile);

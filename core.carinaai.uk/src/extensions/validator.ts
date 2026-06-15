@@ -6,7 +6,42 @@ import {
   type ExtensionRisk,
 } from './manifest.js';
 
-const CATALOG_ONLY_CAPABILITIES = new Set(['mcp', 'hooks']);
+const RUNTIME_CAPABILITIES = new Set(['mcp', 'hooks']);
+
+async function validateCapabilityManifest(
+  bundleDir: string,
+  manifest: ExtensionManifest,
+  cap: 'mcp' | 'hooks',
+): Promise<string[]> {
+  const errors: string[] = [];
+  const rel = manifest.entryPoints[cap];
+  if (!rel) return errors;
+  const target = path.join(bundleDir, rel);
+  try {
+    const raw = JSON.parse(await fs.readFile(target, 'utf-8')) as unknown;
+    if (cap === 'mcp') {
+      const servers = raw && typeof raw === 'object'
+        ? ((raw as Record<string, unknown>).servers ?? raw)
+        : null;
+      if (!servers || typeof servers !== 'object' || Object.keys(servers as object).length === 0) {
+        errors.push(`Invalid mcp manifest: servers object required in ${rel}`);
+      }
+    }
+    if (cap === 'hooks') {
+      const hooks = Array.isArray(raw)
+        ? raw
+        : raw && typeof raw === 'object' && Array.isArray((raw as { hooks?: unknown }).hooks)
+          ? (raw as { hooks: unknown[] }).hooks
+          : [];
+      if (hooks.length === 0) {
+        errors.push(`Invalid hooks manifest: hooks array required in ${rel}`);
+      }
+    }
+  } catch {
+    errors.push(`Could not parse ${cap} manifest at ${rel}`);
+  }
+  return errors;
+}
 
 const SENSITIVE = [
   /sk-[a-zA-Z0-9]{20,}/,
@@ -146,10 +181,8 @@ export async function validateExtensionBundle(
   errors.push(...await scanSensitive(bundleDir));
 
   for (const cap of manifest.capabilities) {
-    if (CATALOG_ONLY_CAPABILITIES.has(cap)) {
-      warnings.push(
-        `Capability "${cap}" is declared but has no runtime loader yet; entry will not be loaded until supported`,
-      );
+    if (RUNTIME_CAPABILITIES.has(cap)) {
+      errors.push(...await validateCapabilityManifest(bundleDir, manifest, cap as 'mcp' | 'hooks'));
     }
   }
 

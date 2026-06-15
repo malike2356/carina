@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isCardClaimable, type KanbanCard } from './kanban-store.js';
+import type { KanbanCard } from './kanban-types.js';
+import { isCardClaimable } from './kanban-workflow.js';
 import { operatorSessionId } from '../ops/operator-profile.js';
 
 function card(partial: Partial<KanbanCard>): KanbanCard {
@@ -15,6 +16,13 @@ function card(partial: Partial<KanbanCard>): KanbanCard {
     blocked: false,
     blockReason: null,
     linkedCardId: null,
+    sortOrder: 0,
+    version: 1,
+    workPrompt: null,
+    resultSummary: null,
+    orchestratorNotes: null,
+    targetRole: 'any',
+    closedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...partial,

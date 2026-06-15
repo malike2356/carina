@@ -1,17 +1,12 @@
 import { Cron } from 'croner';
 import { pool } from '../memory/db.js';
-import { CarinaAgent } from './carina.js';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import path from 'path';
 import fs from 'fs/promises';
-import { isSafePath, expandPath } from '../tools/path-utils.js';
 import { v4 as uuidv4 } from 'uuid';
 import { dispatchWebhook } from '../webhooks/dispatcher.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
-import { resolveJobWorkdir } from './cron-workdir.js';
-
-const execFileAsync = promisify(execFile);
+import { runCronStep } from './cron-step-runner.js';
+import { activeCronProfile } from '../profiles/isolation.js';
 
 export type JobStatus = 'active' | 'paused' | 'completed' | 'removed';
 
@@ -37,6 +32,9 @@ export interface ScheduledJob {
   originConversationId: string | null;
   originThreadId: string | null;
   deliverChannels: string[];
+  profileName: string;
+  modelProvider: string | null;
+  modelName: string | null;
   createdAt: Date;
 }
 
@@ -109,6 +107,9 @@ function rowToJob(row: Record<string, unknown>): ScheduledJob {
     originConversationId: row.origin_conversation_id ? String(row.origin_conversation_id) : null,
     originThreadId: row.origin_thread_id ? String(row.origin_thread_id) : null,
     deliverChannels: (row.deliver_channels as string[]) ?? [],
+    profileName: row.profile_name ? String(row.profile_name) : 'default',
+    modelProvider: row.model_provider ? String(row.model_provider) : null,
+    modelName: row.model_name ? String(row.model_name) : null,
     createdAt: new Date(String(row.created_at)),
   };
 }
@@ -119,13 +120,14 @@ export async function createJob(
   },
 ): Promise<ScheduledJob> {
   const id = uuidv4();
+  const profileName = input.profileName ?? activeCronProfile();
   const result = await pool.query(
     `INSERT INTO scheduled_tasks
        (id, name, schedule, prompt, script_path, no_agent, deliver,
         repeat_count, runs_remaining, status, context_from, chain_after, enabled_toolsets,
         workdir, origin_session_id, origin_channel, origin_conversation_id, origin_thread_id,
-        deliver_channels)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        deliver_channels, profile_name, model_provider, model_name)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
      RETURNING *`,
     [
       id,
@@ -147,6 +149,9 @@ export async function createJob(
       input.originConversationId ?? null,
       input.originThreadId ?? null,
       input.deliverChannels ?? [],
+      profileName,
+      input.modelProvider ?? null,
+      input.modelName ?? null,
     ],
   );
   const job = rowToJob(result.rows[0]);
@@ -154,8 +159,14 @@ export async function createJob(
   return job;
 }
 
-export async function listJobs(): Promise<ScheduledJob[]> {
-  const result = await pool.query('SELECT * FROM scheduled_tasks WHERE status != $1 ORDER BY created_at DESC', ['removed']);
+export async function listJobs(profileName?: string): Promise<ScheduledJob[]> {
+  const profile = profileName ?? activeCronProfile();
+  const result = await pool.query(
+    `SELECT * FROM scheduled_tasks
+     WHERE status != $1 AND COALESCE(profile_name, 'default') = $2
+     ORDER BY created_at DESC`,
+    ['removed', profile],
+  );
   return result.rows.map(rowToJob);
 }
 
@@ -253,38 +264,6 @@ export async function loadAndRegisterAllJobs(): Promise<number> {
   return jobs.length;
 }
 
-async function runScript(
-  scriptPath: string,
-  workdir?: string,
-): Promise<{ stdout: string; exitCode: number }> {
-  const resolved = expandPath(scriptPath);
-  if (!isSafePath(resolved)) {
-    throw new Error('Script path is not allowed.');
-  }
-  const scriptsRoot = path.resolve('data/scripts');
-  if (!resolved.startsWith(scriptsRoot)) {
-    throw new Error('Scripts must be under data/scripts/.');
-  }
-
-  const ext = path.extname(resolved).toLowerCase();
-  const cmd = ext === '.sh' || ext === '.bash' ? 'bash' : 'python3';
-  try {
-    const result = await execFileAsync(cmd, [resolved], {
-      timeout: 60_000,
-      cwd: workdir,
-      maxBuffer: 512 * 1024,
-    });
-    return { stdout: result.stdout, exitCode: 0 };
-  } catch (err) {
-    const execErr = err as { code?: number | string; stdout?: string; stderr?: string };
-    const code = execErr.code ?? 'unknown';
-    const stderr = String(execErr.stderr ?? '').trim();
-    const stdout = String(execErr.stdout ?? '').trim();
-    const detail = stderr || stdout || String(err);
-    throw new Error(`Script exited with code ${code}: ${detail}`);
-  }
-}
-
 async function buildJobContext(
   job: ScheduledJob,
   chainedFrom?: ExecuteJobOptions['chainedFrom'],
@@ -311,70 +290,42 @@ async function buildJobContext(
   return parts.join('\n\n');
 }
 
+async function recordJobRun(jobId: string, output: string, success: boolean): Promise<void> {
+  await pool.query(
+    `INSERT INTO scheduled_task_runs (job_id, output, success) VALUES ($1, $2, $3)`,
+    [jobId, output, success],
+  );
+}
+
 export async function executeJob(jobId: string, opts: ExecuteJobOptions = {}): Promise<string> {
   const job = await getJob(jobId);
   if (!job || job.status === 'removed') {
     throw new Error(`Job ${jobId} not found.`);
   }
 
-  let jobWorkdir: string | undefined;
-  try {
-    jobWorkdir = resolveJobWorkdir(job);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`[Job failed] ${job.name ?? jobId}: ${msg}`);
+  const contextPrefix = await buildJobContext(job, opts.chainedFrom);
+  const step = await runCronStep({
+    jobId,
+    prompt: job.prompt,
+    scriptPath: job.scriptPath,
+    noAgent: job.noAgent,
+    enabledToolsets: job.enabledToolsets,
+    workdir: job.workdir,
+    contextPrefix: contextPrefix || undefined,
+    chainedFrom: opts.chainedFrom,
+    modelProvider: job.modelProvider,
+    modelName: job.modelName,
+  });
+
+  if (!step.success) {
+    const alert = `[Job failed] ${job.name ?? jobId}: ${step.error ?? 'unknown error'}`;
+    if (deliverCallback) await deliverCallback(job, alert);
+    await recordJobRun(jobId, alert, false);
+    return alert;
   }
 
-  let scriptOutput = '';
-  if (job.scriptPath) {
-    try {
-      const result = await runScript(job.scriptPath, jobWorkdir);
-      scriptOutput = result.stdout;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const alert = `[Job failed] ${job.name ?? jobId}: ${msg}`;
-      if (deliverCallback) await deliverCallback(job, alert);
-      await pool.query(
-        `INSERT INTO scheduled_task_runs (job_id, output, success) VALUES ($1, $2, false)`,
-        [jobId, alert],
-      );
-      return alert;
-    }
-  }
-
-  let output = scriptOutput;
-
-  if (!job.noAgent && job.prompt) {
-    const context = await buildJobContext(job, opts.chainedFrom);
-    const sessionId = `cron:${jobId}:${Date.now()}`;
-    const workdirNote = jobWorkdir ? `\nWorking directory (isolated): ${jobWorkdir}` : '';
-    const previousWorkdir = process.env.CARINA_JOB_WORKDIR;
-    if (jobWorkdir) process.env.CARINA_JOB_WORKDIR = jobWorkdir;
-    try {
-      const agent = new CarinaAgent(sessionId, false, undefined, {
-        platform: 'cron',
-        allowedTools: job.enabledToolsets.length > 0 ? job.enabledToolsets : undefined,
-        persistMemory: false,
-        maxTurns: 10,
-        systemPromptSuffix: workdirNote,
-      });
-      const prompt = context
-        ? `${context}\n\n---\n\n${job.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`
-        : `${job.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`;
-      const result = await agent.runTurn(prompt);
-      output = result.text;
-    } finally {
-      if (previousWorkdir === undefined) delete process.env.CARINA_JOB_WORKDIR;
-      else process.env.CARINA_JOB_WORKDIR = previousWorkdir;
-    }
-  } else if (job.noAgent) {
-    output = scriptOutput.trim() ? scriptOutput : '';
-  }
-
-  await pool.query(
-    `INSERT INTO scheduled_task_runs (job_id, output, success) VALUES ($1, $2, true)`,
-    [jobId, output],
-  );
+  const output = step.output;
+  await recordJobRun(jobId, output, true);
   await pool.query(
     `UPDATE scheduled_tasks SET last_run = NOW() WHERE id = $1`,
     [jobId],
@@ -401,7 +352,7 @@ export async function executeJob(jobId: string, opts: ExecuteJobOptions = {}): P
     success: true,
   });
 
-  if (process.env.CARINA_TASKFLOWS_ENABLED === 'true') {
+  if (process.env.CARINA_TASKFLOWS_ENABLED !== 'false') {
     void import('../ops/taskflows/hooks.js').then(({ onCronJobComplete }) => {
       onCronJobComplete(jobId, {
         job_id: jobId,

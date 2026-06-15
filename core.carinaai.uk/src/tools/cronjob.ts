@@ -107,6 +107,9 @@ export function createCronjobTool(sessionId: string): Tool {
             originChannel: sessionDelivery?.channel ?? null,
             originConversationId: sessionDelivery?.conversationId ?? null,
             originThreadId: sessionDelivery?.threadId ?? null,
+            profileName: 'default',
+            modelProvider: null,
+            modelName: null,
           });
           if (parsed.oneShot && prompt) {
             syncCronReminder({

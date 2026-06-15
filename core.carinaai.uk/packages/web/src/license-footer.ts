@@ -10,7 +10,8 @@ export function mitLicenseFooterHtml(version = DEFAULT_VERSION): string {
   ].join('');
 }
 
-export function injectMitLicenseFooter(html: string, version = DEFAULT_VERSION): string {
+export function injectMitLicenseFooter(html: string, version = DEFAULT_VERSION, include = true): string {
+  if (!include) return html;
   if (html.includes('id="carina-mit-footer"')) return html;
   return html.replace('</body>', `${mitLicenseFooterHtml(version)}\n</body>`);
 }

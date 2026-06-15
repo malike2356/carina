@@ -1,7 +1,11 @@
 import type { ChannelName } from './channel-adapter.interface.js';
+import { buildCatalogChannelSpecs, isCatalogStubChannel } from './catalog-channel-specs.js';
+import { shouldExposeChannel } from './stub-channels.js';
 import { channelRegistry } from './channel-registry.js';
 import { isBaileysConfigured } from '../baileys/whatsapp-baileys.js';
 import { isSmsConfigured } from '../sms.js';
+import { isIrcConfigured } from '../irc.js';
+import { IrcAdapter } from './adapters/irc-adapter.js';
 import { config } from '../../config/index.js';
 
 export type ChannelHealthState =
@@ -13,7 +17,7 @@ export type ChannelHealthState =
   | 'error';
 
 export type ChannelStatusReport = {
-  channel: ChannelName | 'irc';
+  channel: ChannelName;
   state: ChannelHealthState;
   active: boolean;
   transport?: string;
@@ -23,7 +27,7 @@ export type ChannelStatusReport = {
 };
 
 type ChannelSpec = {
-  channel: ChannelName | 'irc';
+  channel: ChannelName;
   env: string[];
   note: string;
   webhook?: string;
@@ -128,10 +132,14 @@ const SPECS: ChannelSpec[] = [
   {
     channel: 'irc',
     env: ['IRC_ENABLED=true', 'IRC_SERVER', 'IRC_NICK'],
-    note: 'IRC stub: contract only; not a live core adapter yet',
-    checkConfigured: () => hasEnv(['IRC_ENABLED=true', 'IRC_SERVER', 'IRC_NICK']),
-    checkConnected: () => false,
-    transport: () => 'stub',
+    note: 'IRC live TLS client with optional webhook fallback (POST /webhooks/irc)',
+    webhook: '/webhooks/irc',
+    checkConfigured: () => isIrcConfigured(),
+    checkConnected: () => {
+      const adapter = channelRegistry.getByName('irc');
+      return adapter instanceof IrcAdapter && adapter.isConnected();
+    },
+    transport: () => (process.env.IRC_LIVE === 'false' ? 'webhook-only' : 'irc-live'),
   },
   {
     channel: 'sms',
@@ -257,6 +265,7 @@ const SPECS: ChannelSpec[] = [
     checkConnected: () => channelRegistry.getByName('teams')?.enabled ?? false,
     transport: () => 'webhook',
   },
+  ...buildCatalogChannelSpecs(),
 ];
 
 export function whatsappBridgeMode(): 'baileys' | 'twilio' | 'none' {
@@ -270,7 +279,7 @@ export function whatsappSelfBridgeEnabled(): boolean {
 }
 
 function resolveState(spec: ChannelSpec): ChannelHealthState {
-  if (spec.channel === 'irc') {
+  if (isCatalogStubChannel(spec.channel)) {
     if (!spec.checkConfigured()) return 'unsupported';
     return 'partial';
   }
@@ -286,19 +295,21 @@ function resolveState(spec: ChannelSpec): ChannelHealthState {
 }
 
 export function getChannelStatusReports(): ChannelStatusReport[] {
-  return SPECS.map((spec) => {
+  return SPECS.filter((spec) => shouldExposeChannel(spec.channel)).map((spec) => {
     const state = resolveState(spec);
-    const active = spec.channel === 'irc'
+    const active = isCatalogStubChannel(spec.channel)
       ? false
       : (channelRegistry.getByName(spec.channel as ChannelName)?.enabled ?? false);
     let reason: string | undefined;
     if (state === 'disabled') reason = `Missing env: ${spec.env.join(', ')}`;
-    if (state === 'partial') reason = 'Configured but adapter not active (start gateway or check credentials)';
-    if (spec.channel === 'irc' && state === 'unsupported') {
-      reason = 'IRC is not implemented in core; enable IRC_ENABLED only for integration stub/testing';
+    if (state === 'partial' && !isCatalogStubChannel(spec.channel)) {
+      reason = 'Configured but adapter not active (start gateway or check credentials)';
     }
-    if (spec.channel === 'irc' && state === 'partial') {
-      reason = 'IRC sidecar contract: POST JSON to /webhooks/irc; outbound send not implemented in core';
+    if (isCatalogStubChannel(spec.channel) && state === 'unsupported') {
+      reason = `${spec.channel} webhook contract only; configure env to enable inbound stub`;
+    }
+    if (isCatalogStubChannel(spec.channel) && state === 'partial') {
+      reason = `Webhook stub: POST JSON to ${spec.webhook ?? `/webhooks/${spec.channel}`}; outbound via send-message`;
     }
     if (spec.channel === 'whatsapp' && isBaileysConfigured()) {
       reason = [
@@ -318,7 +329,7 @@ export function getChannelStatusReports(): ChannelStatusReport[] {
   });
 }
 
-export function getChannelStatus(channel: ChannelName | 'irc'): ChannelStatusReport | undefined {
+export function getChannelStatus(channel: ChannelName): ChannelStatusReport | undefined {
   return getChannelStatusReports().find((r) => r.channel === channel);
 }
 

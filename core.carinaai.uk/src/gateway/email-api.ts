@@ -8,6 +8,9 @@ import {
   type EmailTriageStatus,
   type EmailUrgency,
 } from './email-store.js';
+import { fetchImapEmails } from './imap-fetcher.js';
+import { sendEmail } from './smtp-sender.js';
+import { getRouter } from './router.js';
 
 export const emailApiRouter: ExpressRouter = Router();
 
@@ -33,6 +36,29 @@ const URGENCIES = new Set<EmailUrgency>(['low', 'normal', 'high']);
 const TRIAGE_STATUSES = new Set<EmailTriageStatus>(['inbox', 'archived', 'spam']);
 
 emailApiRouter.use(emailAuth);
+
+emailApiRouter.post('/sync', async (_req: EmailRequest, res: Response) => {
+  try {
+    const count = await fetchImapEmails(100);
+    res.json({ synced: count });
+  } catch (err) {
+    res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+emailApiRouter.post('/send', async (req: EmailRequest, res: Response) => {
+  const { to, subject, text, html, inReplyTo } = req.body as Record<string, string>;
+  if (!to || !subject || !text) {
+    res.status(400).json({ error: 'to, subject, text required' });
+    return;
+  }
+  try {
+    const result = await sendEmail({ to, subject, text, html, inReplyTo });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
 
 emailApiRouter.get('/', async (req: EmailRequest, res: Response) => {
   try {
@@ -137,5 +163,38 @@ emailApiRouter.post('/:id/spam', async (req: EmailRequest, res: Response) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });
+  }
+});
+
+emailApiRouter.post('/:id/ai-draft', async (req: EmailRequest, res: Response) => {
+  try {
+    const email = await getInboundEmail(String(req.params.id));
+    if (!email) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const prompt = `Draft a professional email reply to this message.
+
+From: ${email.from_address}
+Subject: ${email.subject ?? '(no subject)'}
+Body:
+${(email.body_text ?? '').slice(0, 3000)}
+
+Output ONLY the reply body text. No subject line, no salutation unless natural, no signature.`;
+
+    const router = getRouter();
+    const chunks: string[] = [];
+    for await (const chunk of router.handle({
+      id: String(Date.now()),
+      sessionId: `email-draft-${email.id}`,
+      content: prompt,
+      source: 'api',
+      timestamp: new Date(),
+    })) {
+      chunks.push(chunk);
+    }
+    res.json({ draft: chunks.join('') });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

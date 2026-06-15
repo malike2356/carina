@@ -3,6 +3,7 @@ import type { Redis } from 'ioredis';
 import {
   ToolPolicyEnforcer,
   RateLimitError,
+  ToolBlockedError,
   DEFAULT_POLICY,
 } from './tool-policy.js';
 
@@ -83,6 +84,21 @@ describe('ToolPolicyEnforcer session rate override', () => {
         }),
       }),
     );
+  });
+
+  it('enforces allowlist when operator enables it', async () => {
+    const { _processControlMessage, _resetSandboxPolicies } = await import('./kill-switch-listener.js');
+    _resetSandboxPolicies();
+    _processControlMessage(
+      JSON.stringify({
+        action: 'set_tool_policy',
+        instance_id: 'test-001',
+        allowlist_enforced: true,
+      }),
+    );
+
+    const enforcer = new ToolPolicyEnforcer(createMockRedis(1, 1), reportFn, undefined, 'test-001');
+    await expect(enforcer.enforce('unknown-tool', {}, 'sess')).rejects.toThrow(/blocked/i);
   });
 
   it('reverts to default after clear_rate_limit control message', async () => {

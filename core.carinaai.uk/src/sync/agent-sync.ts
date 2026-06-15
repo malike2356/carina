@@ -109,13 +109,18 @@ function importSourceDir(envKey: string): string | null {
   return configured || null;
 }
 
-export async function importWorkspaceFiles(sourceDir?: string): Promise<{ imported: string[] }> {
+export async function importWorkspaceFiles(
+  sourceDir?: string,
+  options: { overwrite?: boolean } = {},
+): Promise<{ imported: string[]; updated: string[]; skipped: string[] }> {
   const srcRoot = sourceDir ?? importSourceDir('CARINA_IMPORT_WORKSPACE_FROM');
-  if (!srcRoot) return { imported: [] };
+  if (!srcRoot) return { imported: [], updated: [], skipped: [] };
 
   const carinaHome = syncDir();
   const files = ['AGENTS.md', 'SOUL.md', 'IDENTITY.md', 'USER.md', 'MEMORY.md', 'SHARED_MEMORY.md'];
   const imported: string[] = [];
+  const updated: string[] = [];
+  const skipped: string[] = [];
 
   await fs.mkdir(carinaHome, { recursive: true });
   for (const file of files) {
@@ -126,6 +131,11 @@ export async function importWorkspaceFiles(sourceDir?: string): Promise<{ import
       if (!fsSync.existsSync(dest)) {
         await fs.writeFile(dest, content, 'utf8');
         imported.push(file);
+      } else if (options.overwrite) {
+        await fs.writeFile(dest, content, 'utf8');
+        updated.push(file);
+      } else {
+        skipped.push(file);
       }
     } catch {
       // skip missing
@@ -138,12 +148,17 @@ export async function importWorkspaceFiles(sourceDir?: string): Promise<{ import
     if (!fsSync.existsSync(syncDest)) {
       await fs.copyFile(syncSrc, syncDest);
       imported.push('agent-sync.json');
+    } else if (options.overwrite) {
+      await fs.copyFile(syncSrc, syncDest);
+      updated.push('agent-sync.json');
+    } else {
+      skipped.push('agent-sync.json');
     }
   } catch {
     // optional
   }
 
-  return { imported };
+  return { imported, updated, skipped };
 }
 
 export async function importInboundMedia(sourceDir?: string): Promise<{ imported: string[]; skipped: number }> {

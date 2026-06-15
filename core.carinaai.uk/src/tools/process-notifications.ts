@@ -1,5 +1,6 @@
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
 import { dispatchWebhook } from '../webhooks/dispatcher.js';
+import type { WebhookEvent } from '../webhooks/webhook-types.js';
 
 export interface ProcessCompletionEvent {
   sessionId: string;
@@ -24,8 +25,11 @@ export function registerProcessCompletionHandler(fn: CompletionHandler): void {
   }
 }
 
-export async function emitProcessComplete(event: ProcessCompletionEvent): Promise<void> {
-  void dispatchWebhook('process.complete', {
+async function dispatchProcessEvent(
+  webhookEvent: WebhookEvent,
+  event: ProcessCompletionEvent,
+): Promise<void> {
+  void dispatchWebhook(webhookEvent, {
     session_id: event.sessionId,
     command: event.command,
     status: event.status,
@@ -34,6 +38,34 @@ export async function emitProcessComplete(event: ProcessCompletionEvent): Promis
     conversation_id: event.conversationId,
   });
 
+  if (handler) {
+    await handler(event);
+    return;
+  }
+  pending.push(event);
+}
+
+export async function emitProcessComplete(event: ProcessCompletionEvent): Promise<void> {
+  await dispatchProcessEvent('process.complete', event);
+}
+
+export async function emitProcessFailure(event: ProcessCompletionEvent): Promise<void> {
+  await dispatchProcessEvent('process.failure', event);
+}
+
+export interface ProcessWatchEvent extends ProcessCompletionEvent {
+  pattern: string;
+}
+
+export async function emitProcessWatch(event: ProcessWatchEvent): Promise<void> {
+  void dispatchWebhook('process.watch', {
+    session_id: event.sessionId,
+    command: event.command,
+    status: event.status,
+    channel: event.channel,
+    conversation_id: event.conversationId,
+    pattern: event.pattern,
+  });
   if (handler) {
     await handler(event);
     return;

@@ -53,4 +53,9 @@ export async function initHubDb(): Promise<void> {
     'utf8',
   );
   await hubPool.query(premiumSql);
+  const marketplaceSql = await fs.readFile(
+    path.join(__dirname, 'migrations/003-marketplace.sql'),
+    'utf8',
+  );
+  await hubPool.query(marketplaceSql);
 }

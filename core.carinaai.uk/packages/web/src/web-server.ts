@@ -12,17 +12,27 @@ import { injectMitLicenseFooter, injectWhyCarinaSection } from './license-footer
 import { injectWorkspaceChrome, injectWorkspaceHub, type WorkspacePageId } from './workspace-chrome.js';
 import { config } from '#core/config/index.js';
 import { llm } from '#core/brain/llm.js';
+import { getActiveProfileName } from '#core/profiles/manager.js';
 import { emailWebhookRouter } from '#core/api/email-webhook.js';
 import { mountHostedRoutes } from '#core/api/hosted.js';
 import { mountCloudRawRoutes, mountServerRoutes } from '#core/server.js';
 import { mountBillingRoutes, mountBillingWebhook } from '#core/api/billing-routes.js';
 import { subscribeRouter } from '#core/api/subscribe.js';
 import { memoryApiRouter } from '#core/api/memory-api.js';
+import { processApiRouter } from '#core/api/process-api.js';
+import { kanbanApiRouter } from '#core/api/kanban-api.js';
+import { webhookApiRouter } from '#core/api/webhook-api.js';
 import { documentsApiRouter } from '#core/gateway/documents-api.js';
 import { imagesApiRouter } from '#core/gateway/images-api.js';
 import { notesApiRouter } from '#core/gateway/notes-api.js';
 import { emailApiRouter } from '#core/gateway/email-api.js';
 import { packsApiRouter } from '#core/api/packs-api.js';
+import { cookbookApiRouter } from '#core/api/cookbook-api.js';
+import { curatorApiRouter } from '#core/api/curator-api.js';
+import { themeApiRouter } from '#core/api/theme-api.js';
+import { compareApiRouter } from '#core/api/compare-api.js';
+import { researchApiRouter } from '#core/api/research-api.js';
+import { calendarApiRouter } from '#core/api/calendar-api.js';
 import { getRouter } from '#core/gateway/router.js';
 import {
   checkWebPassword,
@@ -134,13 +144,13 @@ async function resolveCarinaVersion(): Promise<string> {
   }
 }
 
-function decoratePageHtml(
+export function decoratePageHtml(
   html: string | null | undefined,
   version: string,
-  opts?: { whyCarina?: boolean; workspacePage?: WorkspacePageId },
+  opts?: { whyCarina?: boolean; workspacePage?: WorkspacePageId; includeMitFooter?: boolean },
 ): string | null {
   if (html == null) return null;
-  let out = injectMitLicenseFooter(html, version);
+  let out = injectMitLicenseFooter(html, version, opts?.includeMitFooter !== false);
   if (opts?.whyCarina) out = injectWhyCarinaSection(out);
   if (opts?.workspacePage === 'hub') out = injectWorkspaceHub(out);
   else if (opts?.workspacePage) out = injectWorkspaceChrome(out, opts.workspacePage);
@@ -187,6 +197,7 @@ function setupChatRoutes(app: Express): void {
     res.json({
       provider: activeProvider,
       providers: llm.list(),
+      profile: process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default',
       web: { port: config.web.port },
     });
   });
@@ -425,6 +436,12 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     }
   }
   app.use('/api/chat', chatLimiter);
+  app.use('/api/cookbook', cookbookApiRouter);
+  app.use('/api/curator', curatorApiRouter);
+  app.use('/api/theme', themeApiRouter);
+  app.use('/api/compare', compareApiRouter);
+  app.use('/api/research', researchApiRouter);
+  app.use('/api/calendar', calendarApiRouter);
   if (!localMode) {
     app.use('/api/subscribe', subscribeRouter);
     if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
@@ -433,6 +450,9 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
       console.warn(chalk.yellow('Billing routes skipped: STRIPE_SECRET_KEY not configured'));
     }
     app.use('/api/memory', memoryApiRouter);
+    app.use('/api/processes', processApiRouter);
+    app.use('/api/kanban', kanbanApiRouter);
+    app.use('/api/webhooks', webhookApiRouter);
     app.use('/api/documents', documentsApiRouter);
     app.use('/api/notes', notesApiRouter);
     app.use('/api/images', imagesApiRouter);
@@ -486,30 +506,35 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
         .readFile(path.join(WEB_STATIC, 'login.html'), 'utf-8')
         .catch(() => '<h1>Login page missing</h1>'),
       carinaVersion,
+      { includeMitFooter: false },
     ) ?? '<h1>Login page missing</h1>';
     const hostedLoginHtml = decoratePageHtml(
       await fs
         .readFile(path.join(WEB_STATIC, 'hosted-login.html'), 'utf-8')
         .catch(() => null),
       carinaVersion,
+      { includeMitFooter: false },
     );
     const hostedRegisterHtml = decoratePageHtml(
       await fs
         .readFile(path.join(WEB_STATIC, 'hosted-register.html'), 'utf-8')
         .catch(() => null),
       carinaVersion,
+      { includeMitFooter: false },
     );
     const hostedForgotHtml = decoratePageHtml(
       await fs
         .readFile(path.join(WEB_STATIC, 'hosted-forgot.html'), 'utf-8')
         .catch(() => null),
       carinaVersion,
+      { includeMitFooter: false },
     );
     const hostedResetHtml = decoratePageHtml(
       await fs
         .readFile(path.join(WEB_STATIC, 'hosted-reset.html'), 'utf-8')
         .catch(() => null),
       carinaVersion,
+      { includeMitFooter: false },
     );
     const billingHtml = decoratePageHtml(
       await fs
@@ -785,6 +810,21 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
       carinaVersion,
       { workspacePage: 'packs' },
     );
+    const cookbookHtml = decoratePageHtml(
+      await fs.readFile(path.join(WEB_STATIC, 'cookbook.html'), 'utf-8').catch(() => null),
+      carinaVersion,
+      { workspacePage: 'cookbook' },
+    );
+    const researchHtml = decoratePageHtml(
+      await fs.readFile(path.join(WEB_STATIC, 'research.html'), 'utf-8').catch(() => null),
+      carinaVersion,
+      { workspacePage: 'research' },
+    );
+    const compareHtml = decoratePageHtml(
+      await fs.readFile(path.join(WEB_STATIC, 'compare.html'), 'utf-8').catch(() => null),
+      carinaVersion,
+      { workspacePage: 'compare' },
+    );
     const notesHtml = decoratePageHtml(
       await fs.readFile(path.join(WEB_STATIC, 'notes.html'), 'utf-8').catch(() => null),
       carinaVersion,
@@ -809,6 +849,16 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
       await fs.readFile(path.join(WEB_STATIC, 'calendar.html'), 'utf-8').catch(() => null),
       carinaVersion,
       { workspacePage: 'calendar' },
+    );
+    const kanbanHtml = decoratePageHtml(
+      await fs.readFile(path.join(WEB_STATIC, 'kanban.html'), 'utf-8').catch(() => null),
+      carinaVersion,
+      { workspacePage: 'kanban' },
+    );
+    const webhooksHtml = decoratePageHtml(
+      await fs.readFile(path.join(WEB_STATIC, 'webhooks.html'), 'utf-8').catch(() => null),
+      carinaVersion,
+      { workspacePage: 'webhooks' },
     );
     const workspaceHtml = decoratePageHtml(
       await fs.readFile(path.join(WEB_STATIC, 'workspace.html'), 'utf-8').catch(() => null),
@@ -845,6 +895,14 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     app.get('/calendar.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
       res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'calendar.js'));
+    });
+    app.get('/compare.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'compare.js'));
+    });
+    app.get('/research.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'research.js'));
     });
     app.get('/workspace-prefs.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
@@ -890,6 +948,16 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
         res.type('html').send(calendarHtml);
       });
     }
+    if (kanbanHtml) {
+      app.get('/kanban', (_req, res) => {
+        res.type('html').send(kanbanHtml);
+      });
+    }
+    if (webhooksHtml) {
+      app.get('/webhooks', (_req, res) => {
+        res.type('html').send(webhooksHtml);
+      });
+    }
     if (workspaceHtml) {
       app.get('/workspace', (_req, res) => {
         res.type('html').send(workspaceHtml);
@@ -898,6 +966,21 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     if (packsHtml) {
       app.get('/packs', (_req, res) => {
         res.type('html').send(packsHtml);
+      });
+    }
+    if (cookbookHtml) {
+      app.get('/cookbook', (_req, res) => {
+        res.type('html').send(cookbookHtml);
+      });
+    }
+    if (researchHtml) {
+      app.get('/research', (_req, res) => {
+        res.type('html').send(researchHtml);
+      });
+    }
+    if (compareHtml) {
+      app.get('/compare', (_req, res) => {
+        res.type('html').send(compareHtml);
       });
     }
   } catch {
@@ -958,5 +1041,10 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
     const server = host ? app.listen(port, host, onListen) : app.listen(port, onListen);
     server.on('close', () => clearHostPidFile());
     activeServers.push(server);
+    if (process.env.CARINA_NODE_HOST_ENABLED === 'true') {
+      void import('#core/infrastructure/node-host/ws-server.js').then(({ attachNodeWebSocketServer }) => {
+        attachNodeWebSocketServer(server);
+      });
+    }
   });
 }

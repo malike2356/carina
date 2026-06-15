@@ -12,6 +12,7 @@ import {
   unblockCard,
   type KanbanColumn,
 } from '../agents/kanban-store.js';
+import { cardToPayload } from '../agents/kanban-workflow.js';
 
 const COLUMNS: KanbanColumn[] = ['backlog', 'in_progress', 'review', 'done', 'blocked'];
 
@@ -19,28 +20,8 @@ function sid(params: Record<string, unknown>, fallback: string): string {
   return String(params._sessionId ?? fallback);
 }
 
-function cardPayload(c: {
-  id: string;
-  title: string;
-  column: string;
-  description: string | null;
-  assignee: string | null;
-  priority: number;
-  blocked: boolean;
-  blockReason: string | null;
-  linkedCardId: string | null;
-}) {
-  return {
-    card_id: c.id,
-    title: c.title,
-    column: c.column,
-    description: c.description,
-    assignee: c.assignee,
-    priority: c.priority,
-    blocked: c.blocked,
-    block_reason: c.blockReason,
-    linked_card_id: c.linkedCardId,
-  };
+function cardPayload(c: Parameters<typeof cardToPayload>[0]) {
+  return cardToPayload(c);
 }
 
 export function createKanbanGranularTools(sessionId: string): Tool[] {

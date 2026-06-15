@@ -1,87 +1,43 @@
 import { pool } from './db.js';
+import type { SessionSearchSort } from './session-search-ranking.js';
+import {
+  getSessionWindowInternal,
+  searchSessionsAdvanced,
+  type SessionMessage,
+  type SessionSearchHit,
+} from './session-search-service.js';
 
-export interface SessionSearchHit {
-  sessionId: string;
-  title: string;
-  timestamp: Date;
-  snippet: string;
-  bookendStart: string[];
-  bookendEnd: string[];
-  contextWindow: string[];
-}
-
-export interface SessionMessage {
-  id: string;
-  sessionId: string;
-  role: string;
-  content: string;
-  createdAt: Date;
-}
+export type { SessionMessage, SessionSearchHit, SessionSearchSort };
+export {
+  searchSessionsAdvanced,
+  tenantScopeFromId,
+  clearSessionSearchCacheForTests,
+  type SessionSearchHitResult,
+  type SessionSearchOptions,
+  type SessionSearchResponse,
+} from './session-search-service.js';
 
 export async function searchSessions(
   query: string,
-  options: { limit?: number; roleFilter?: string } = {},
+  options: {
+    limit?: number;
+    offset?: number;
+    roleFilter?: string;
+    sort?: SessionSearchSort;
+    tenantScope?: { sql: string; params: unknown[] };
+    enableSemantic?: boolean;
+  } = {},
 ): Promise<SessionSearchHit[]> {
-  const limit = options.limit ?? 5;
-  const tsQuery = query.trim();
-  if (!tsQuery) return [];
-
-  const roleClause = options.roleFilter
-    ? `AND role = $3`
-    : '';
-  const params: unknown[] = [tsQuery, limit];
-  if (options.roleFilter) params.push(options.roleFilter);
-
-  let result;
-  try {
-    result = await pool.query(
-      `SELECT sub.session_id, sub.message_id, sub.role, sub.content, sub.created_at,
-              sub.snippet, sub.rank
-       FROM (
-         SELECT DISTINCT ON (session_id)
-           session_id,
-           id AS message_id,
-           role,
-           content,
-           created_at,
-           ts_headline('english', content, websearch_to_tsquery('english', $1)) AS snippet,
-           ts_rank(content_tsv, websearch_to_tsquery('english', $1)) AS rank
-         FROM episodic_memories
-         WHERE content_tsv @@ websearch_to_tsquery('english', $1)
-         ${roleClause}
-         ORDER BY session_id, rank DESC
-       ) sub
-       ORDER BY sub.rank DESC
-       LIMIT $2`,
-      params,
-    );
-  } catch (err) {
-    console.error('searchSessions query failed:', err);
-    return [];
-  }
-
-  const hits: SessionSearchHit[] = [];
-  for (const row of result.rows) {
-    const sessionId = String(row.session_id);
-    const messageId = String(row.message_id);
-    const [bookendStart, bookendEnd, contextWindow, title] = await Promise.all([
-      fetchBookend(sessionId, 'start'),
-      fetchBookend(sessionId, 'end'),
-      fetchContextWindow(sessionId, messageId, 5),
-      deriveSessionTitle(sessionId),
-    ]);
-    hits.push({
-      sessionId,
-      title,
-      timestamp: new Date(String(row.created_at)),
-      snippet: String(row.snippet ?? row.content).slice(0, 300),
-      bookendStart,
-      bookendEnd,
-      contextWindow,
-    });
-    if (hits.length >= limit) break;
-  }
-  return hits;
+  const response = await searchSessionsAdvanced({
+    query,
+    limit: options.limit,
+    offset: options.offset,
+    roleFilter: options.roleFilter,
+    sort: options.sort,
+    tenantScope: options.tenantScope,
+    enableSemantic: options.enableSemantic,
+  });
+  return response.results.map(({ messageId: _m, rank: _r, matchStrategy: _s, ...hit }) => hit);
 }
 
 export async function getSessionWindow(
@@ -90,39 +46,35 @@ export async function getSessionWindow(
   window = 5,
 ): Promise<SessionMessage[]> {
   try {
-    const anchor = await pool.query(
-      `SELECT created_at FROM episodic_memories WHERE id = $1 AND session_id = $2`,
-      [aroundMessageId, sessionId],
-    );
-    if (anchor.rows.length === 0) {
-      return [];
-    }
-    const anchorTime = anchor.rows[0].created_at;
-
-    const result = await pool.query(
-      `SELECT id, session_id, role, content, created_at
-       FROM episodic_memories
-       WHERE session_id = $1
-         AND created_at BETWEEN ($2::timestamptz - interval '1 second' * $3)
-                            AND ($2::timestamptz + interval '1 second' * $3)
-       ORDER BY created_at ASC`,
-      [sessionId, anchorTime, window * 60],
-    );
-    return result.rows.map(rowToMessage);
+    const { getSessionMessageWindow } = await import('./session-scroll.js');
+    return await getSessionMessageWindow(sessionId, aroundMessageId, window);
   } catch (err) {
     console.error('getSessionWindow query failed:', err);
     return [];
   }
 }
 
-export async function browseRecentSessions(limit = 10): Promise<SessionSearchHit[]> {
+export {
+  scrollSessionMessages,
+  getSessionMessageWindow,
+  type SessionScrollPage,
+  type SessionScrollOptions,
+  type SessionScrollDirection,
+} from './session-scroll.js';
+
+export async function browseRecentSessions(
+  limit = 10,
+  tenantScope?: { sql: string; params: unknown[] },
+): Promise<SessionSearchHit[]> {
+  const scope = tenantScope ?? { sql: 'TRUE', params: [] };
   const result = await pool.query(
     `SELECT session_id, MAX(created_at) AS last_at
      FROM episodic_memories
+     WHERE ${scope.sql}
      GROUP BY session_id
      ORDER BY last_at DESC
-     LIMIT $1`,
-    [limit],
+     LIMIT $${scope.params.length + 1}`,
+    [...scope.params, limit],
   );
 
   const hits: SessionSearchHit[] = [];
@@ -159,15 +111,6 @@ async function fetchBookend(sessionId: string, which: 'start' | 'end'): Promise<
   return which === 'end' ? lines.reverse() : lines;
 }
 
-async function fetchContextWindow(
-  sessionId: string,
-  messageId: string,
-  window: number,
-): Promise<string[]> {
-  const messages = await getSessionWindow(sessionId, messageId, window);
-  return messages.map((m) => `${m.role}: ${m.content}`);
-}
-
 async function deriveSessionTitle(sessionId: string): Promise<string> {
   const result = await pool.query(
     `SELECT content FROM episodic_memories
@@ -177,14 +120,4 @@ async function deriveSessionTitle(sessionId: string): Promise<string> {
   );
   const first = String(result.rows[0]?.content ?? sessionId);
   return first.length > 60 ? `${first.slice(0, 57)}...` : first;
-}
-
-function rowToMessage(row: Record<string, unknown>): SessionMessage {
-  return {
-    id: String(row.id),
-    sessionId: String(row.session_id),
-    role: String(row.role),
-    content: String(row.content),
-    createdAt: new Date(String(row.created_at)),
-  };
 }

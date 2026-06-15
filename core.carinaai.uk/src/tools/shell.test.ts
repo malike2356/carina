@@ -110,12 +110,12 @@ describe('shell-exec tool', () => {
 
   it('starts background processes via the process registry', async () => {
     vi.doMock('./process-registry.js', () => ({
-      spawnBackgroundProcess: vi.fn(() => ({
+      spawnBackgroundProcess: vi.fn().mockResolvedValue({
         sessionId: 'sess-1',
         pid: 55,
         status: 'running',
         command: 'sleep 5',
-      })),
+      }),
       startProcessCleanup: vi.fn(),
     }));
     vi.doMock('./sandbox.js', () => ({

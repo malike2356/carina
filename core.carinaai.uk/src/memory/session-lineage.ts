@@ -73,3 +73,23 @@ export function recordNewSession(sessionId: string): void {
 export function generateSessionId(): string {
   return crypto.randomUUID();
 }
+
+/** Root session id in a continuation chain (oldest ancestor). */
+export function getLineageRoot(sessionId: string): string {
+  const chain = getSessionChain(sessionId);
+  return chain[chain.length - 1]?.sessionId ?? sessionId;
+}
+
+/** Session id plus ancestors and direct children (bounded for search dedupe). */
+export function lineageRelatedSessionIds(sessionId: string, maxIds = 32): string[] {
+  const ids = new Set<string>();
+  for (const entry of getSessionChain(sessionId)) {
+    if (ids.size >= maxIds) break;
+    ids.add(entry.sessionId);
+    for (const child of getSessionChildren(entry.sessionId)) {
+      if (ids.size >= maxIds) break;
+      ids.add(child);
+    }
+  }
+  return [...ids];
+}

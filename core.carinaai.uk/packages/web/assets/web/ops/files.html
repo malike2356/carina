@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Files</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Files</h2>
+      <p style="margin-bottom:12px;">Register file assets for your org. Metadata is stored locally until upstream storage is wired.</p>
+      <table class="ops-table">
+        <thead><tr><th>Name</th><th>Status</th><th>Type</th><th>Size</th><th>Created</th></tr></thead>
+        <tbody id="files-body"><tr><td colspan="5" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Register file</h2>
+      <form id="file-form">
+        <div class="form-row"><label for="file-name">Name</label><input type="text" id="file-name" name="name" required></div>
+        <div class="form-row"><label for="file-mime">MIME type</label><input type="text" id="file-mime" name="mimeType" placeholder="application/pdf"></div>
+        <div class="form-row"><label for="file-size">Size (bytes)</label><input type="text" id="file-size" name="sizeBytes" placeholder="0"></div>
+        <div class="form-row"><label for="file-uri">Storage URI</label><input type="text" id="file-uri" name="storageUri" placeholder="s3://bucket/key or local path"></div>
+        <button class="btn" type="submit">Register file</button>
+        <p class="error-msg" id="file-error" hidden></p>
+      </form>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    async function loadFiles() {
+      const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/files');
+      if (!ok) {
+        CarinaPlatform.renderTable('files-body', [], [], 'Unable to load files.');
+        return;
+      }
+      CarinaPlatform.renderTable('files-body', [
+        { key: 'name' },
+        { key: 'status' },
+        { key: 'mimeType' },
+        { key: 'sizeBytes', render: (row) => row.sizeBytes != null ? String(row.sizeBytes) : '-' },
+        { key: 'createdAt', render: (row) => row.createdAt ? new Date(row.createdAt).toLocaleString() : '-' },
+      ], data.files || [], 'No files registered yet.');
+    }
+
+    CarinaOpsLayout.initPage('files', {
+      onReady: async () => {
+        await loadFiles();
+        CarinaPlatform.bindCreateForm('file-form', async (formData) => {
+          CarinaPlatform.showError('file-error', '');
+          const payload = {
+            name: String(formData.get('name') || '').trim(),
+            mimeType: String(formData.get('mimeType') || '').trim() || undefined,
+            sizeBytes: formData.get('sizeBytes') ? Number(formData.get('sizeBytes')) : undefined,
+            storageUri: String(formData.get('storageUri') || '').trim() || undefined,
+          };
+          const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/files', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!ok) {
+            CarinaPlatform.showError('file-error', data.error || 'Unable to register file.');
+            return;
+          }
+          document.getElementById('file-form').reset();
+          await loadFiles();
+        });
+      },
+    });
+  </script>
+</body>
+</html>

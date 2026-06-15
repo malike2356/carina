@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.carina
+    volumes:
+      - ./.env.runtime:/root/.carina/.env:ro
     # Full stack: @carina/core + @carina/web (see packages/web, Dockerfile.carina)
     environment:
       NODE_ENV: production

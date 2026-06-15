@@ -18,10 +18,30 @@ import { LineAdapter } from './channels/adapters/line-adapter.js';
 import { ViberAdapter } from './channels/adapters/viber-adapter.js';
 import { GoogleChatAdapter } from './channels/adapters/google-chat-adapter.js';
 import { TeamsAdapter } from './channels/adapters/teams-adapter.js';
+import { NtfyAdapter } from './channels/adapters/ntfy-adapter.js';
+import { PushoverAdapter } from './channels/adapters/pushover-adapter.js';
+import { GotifyAdapter } from './channels/adapters/gotify-adapter.js';
+import { MessengerAdapter } from './channels/adapters/messenger-adapter.js';
+import { InstagramAdapter } from './channels/adapters/instagram-adapter.js';
+import { TwitterAdapter } from './channels/adapters/twitter-adapter.js';
+import { RocketChatAdapter } from './channels/adapters/rocketchat-adapter.js';
+import { WebexAdapter } from './channels/adapters/webex-adapter.js';
+import { KakaoTalkAdapter } from './channels/adapters/kakaotalk-adapter.js';
+import { ZaloAdapter } from './channels/adapters/zalo-adapter.js';
+import { ThreemaAdapter } from './channels/adapters/threema-adapter.js';
+import { WireAdapter } from './channels/adapters/wire-adapter.js';
+import { KeybaseAdapter } from './channels/adapters/keybase-adapter.js';
+import { TwitchAdapter } from './channels/adapters/twitch-adapter.js';
+import { YoutubeAdapter } from './channels/adapters/youtube-adapter.js';
+import { GroupMeAdapter } from './channels/adapters/groupme-adapter.js';
+import { NextcloudTalkAdapter } from './channels/adapters/nextcloud-talk-adapter.js';
+import { LinkedInAdapter } from './channels/adapters/linkedin-adapter.js';
 import { SmsAdapter } from './channels/adapters/sms-adapter.js';
+import { config } from '../config/index.js';
 import { getRouter } from './router.js';
 import { getChannelStatusReports } from './channels/channel-status.js';
 import { isSmsConfigured } from './sms.js';
+import { isIrcConfigured, isIrcLiveEnabled } from './irc.js';
 
 type AdapterFactory = {
   name: ChannelName;
@@ -102,6 +122,115 @@ const REST_ADAPTERS: AdapterFactory[] = [
       process.env.TEAMS_APP_ID && process.env.TEAMS_APP_PASSWORD,
     )),
   },
+  {
+    name: 'ntfy',
+    factory: () => new NtfyAdapter(Boolean(config.ntfy.topic)),
+  },
+  {
+    name: 'pushover',
+    factory: () => new PushoverAdapter(Boolean(config.pushover.token && config.pushover.user)),
+  },
+  {
+    name: 'gotify',
+    factory: () => new GotifyAdapter(Boolean(config.gotify.url && config.gotify.token)),
+  },
+  {
+    name: 'messenger',
+    factory: () => new MessengerAdapter(Boolean(
+      config.messenger.pageAccessToken
+      && config.messenger.verifyToken
+      && config.messenger.appSecret,
+    )),
+  },
+  {
+    name: 'instagram',
+    factory: () => new InstagramAdapter(Boolean(
+      config.instagram.accessToken
+      && config.instagram.verifyToken
+      && config.instagram.appSecret,
+    )),
+  },
+  {
+    name: 'twitter',
+    factory: () => new TwitterAdapter(Boolean(
+      config.twitter.apiKey
+      && config.twitter.apiSecret
+      && config.twitter.accessToken
+      && config.twitter.accessTokenSecret
+      && config.twitter.consumerSecret,
+    )),
+  },
+  {
+    name: 'rocketchat',
+    factory: () => new RocketChatAdapter(Boolean(
+      config.rocketchat.url
+      && config.rocketchat.botUserId
+      && config.rocketchat.botAuthToken,
+    )),
+  },
+  {
+    name: 'webex',
+    factory: () => new WebexAdapter(Boolean(config.webex.botToken)),
+  },
+  {
+    name: 'kakaotalk',
+    factory: () => new KakaoTalkAdapter(Boolean(
+      config.kakaotalk.apiKey && config.kakaotalk.botId,
+    )),
+  },
+  {
+    name: 'zalo',
+    factory: () => new ZaloAdapter(Boolean(
+      config.zalo.appId && config.zalo.oaAccessToken,
+    )),
+  },
+  {
+    name: 'threema',
+    factory: () => new ThreemaAdapter(Boolean(
+      config.threema.gatewayId && config.threema.gatewaySecret,
+    )),
+  },
+  {
+    name: 'wire',
+    factory: () => new WireAdapter(Boolean(
+      config.wire.botClientId && config.wire.botToken,
+    )),
+  },
+  {
+    name: 'keybase',
+    factory: () => new KeybaseAdapter(Boolean(
+      config.keybase.username && config.keybase.paperkey,
+    )),
+  },
+  {
+    name: 'twitch',
+    factory: () => new TwitchAdapter(Boolean(
+      config.twitch.clientId
+      && config.twitch.clientSecret
+      && config.twitch.eventsubSecret
+      && config.twitch.channelId,
+    )),
+  },
+  {
+    name: 'youtube',
+    factory: () => new YoutubeAdapter(Boolean(
+      config.youtube.apiKey && config.youtube.liveChatId,
+    )),
+  },
+  {
+    name: 'groupme',
+    factory: () => new GroupMeAdapter(Boolean(config.groupme.botId)),
+  },
+  {
+    name: 'nextcloud-talk',
+    factory: () => new NextcloudTalkAdapter(Boolean(
+      config.nextcloudTalk.url && config.nextcloudTalk.botSecret,
+    )),
+  },
+  {
+    name: 'linkedin',
+    factory: () => new LinkedInAdapter(Boolean(config.linkedin.accessToken)),
+  },
 ];
 
 const listenerHandles: Array<{ stop: () => void }> = [];
@@ -119,9 +248,12 @@ export function registerAllChannelAdapters(): ChannelName[] {
     console.log(chalk.green('sms gateway adapter registered'));
   }
 
-  if (process.env.IRC_ENABLED === 'true') {
+  if (isIrcConfigured()) {
     channelRegistry.register(new IrcAdapter(true));
-    console.log(chalk.yellow('irc gateway adapter registered (stub only)'));
+    active.push('irc');
+    console.log(chalk.green(
+      `irc gateway adapter registered (${isIrcLiveEnabled() ? 'live client' : 'webhook-only'})`,
+    ));
   }
 
   for (const entry of REST_ADAPTERS) {
@@ -224,6 +356,11 @@ export function mountAllChannelWebhooks(app: Express): void {
     const adapter = channelRegistry.getByName(entry.name);
     if (!adapter?.enabled) continue;
 
+    if (adapter.createRouter) {
+      router.use(`/${entry.name}`, adapter.createRouter());
+      continue;
+    }
+
     router.post(webhookPath(entry.name), express.json(), async (req: Request, res: Response) => {
       if (adapter.validateWebhook) {
         const ok = await adapter.validateWebhook({
@@ -248,7 +385,7 @@ export function mountAllChannelWebhooks(app: Express): void {
     });
   }
 
-  if (process.env.IRC_ENABLED === 'true') {
+  if (isIrcConfigured()) {
     const irc = channelRegistry.getByName('irc');
     if (irc?.enabled) {
       router.post('/irc', express.json(), async (req: Request, res: Response) => {
@@ -266,6 +403,12 @@ export function mountAllChannelWebhooks(app: Express): void {
 }
 
 export async function startChannelListeners(): Promise<void> {
+  const irc = channelRegistry.getByName('irc');
+  if (irc?.enabled && irc.start) {
+    const handle = await irc.start();
+    if (handle) listenerHandles.push(handle);
+  }
+
   for (const entry of REST_ADAPTERS) {
     const adapter = channelRegistry.getByName(entry.name);
     if (!adapter?.enabled || !adapter.start) continue;

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Deep Research; Carina</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  .research-wrap { flex: 1; overflow-y: auto; padding: 1rem 1.25rem 2rem; max-width: 900px; }
+  .research-form { display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1rem; }
+  .research-form textarea {
+    min-height: 96px; resize: vertical; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.75rem;
+    font-size: 0.88rem; font-family: inherit; line-height: 1.45;
+  }
+  .research-form button {
+    align-self: flex-start; background: var(--accent); color: #0d0d0f; border: none;
+    border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  }
+  .research-form button:disabled { opacity: 0.55; cursor: not-allowed; }
+  #research-progress { font-size: 0.75rem; color: var(--muted); min-height: 1.2rem; margin-bottom: 0.5rem; }
+  #research-output {
+    font-size: 0.88rem; line-height: 1.6; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.85rem 1rem; min-height: 120px;
+  }
+  #research-output.empty-output { color: var(--muted); white-space: pre-wrap; }
+  #research-output.markdown-body h1, #research-output.markdown-body h2 { font-size: 1rem; margin: 0.75rem 0 0.35rem; }
+  #research-output.markdown-body p { margin: 0.35rem 0; }
+  #research-output.markdown-body ul { padding-left: 1.2rem; }
+  .research-history-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .history-item {
+    display: block; width: 100%; text-align: left; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.65rem;
+    margin-bottom: 0.35rem; cursor: pointer; color: inherit;
+  }
+  .history-item .title { display: block; font-size: 0.82rem; font-weight: 600; }
+  .history-item .meta { display: block; font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Deep Research</h1>
+  <span class="status" id="status"></span>
+</header>
+<div class="research-wrap">
+  <div id="research-intro" style="background:rgba(25,196,154,0.06);border:1px solid rgba(25,196,154,0.18);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;font-size:0.82rem;line-height:1.55">
+    <strong>Carina Deep Research</strong> runs a multi-step loop: web search, source evaluation, synthesis, citation. Type a question and press Enter.
+    <br>Examples: "What are the top open-source LLMs in 2026?" or "Summarise the latest UK property market trends."
+    <button id="dismiss-intro" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem">x</button>
+  </div>
+  <div id="research-history"></div>
+  <form class="research-form" id="research-form">
+    <textarea id="research-query" placeholder="Ask a research question..." required></textarea>
+    <button type="submit" id="research-submit">Run research</button>
+  </form>
+  <div id="research-progress"></div>
+  <div id="research-output" class="empty-output">Results appear here after you submit a question.</div>
+</div>
+<script>
+(function(){
+  if(localStorage.getItem('carina:research-intro-done')){document.getElementById('research-intro').style.display='none';}
+  document.getElementById('dismiss-intro').onclick=function(){document.getElementById('research-intro').style.display='none';localStorage.setItem('carina:research-intro-done','1');};
+})();
+</script>
+<!--CARINA_WORKSPACE_END-->
+<script src="/research.js"></script>
+</body>
+</html>

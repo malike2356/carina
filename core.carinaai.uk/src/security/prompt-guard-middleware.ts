@@ -4,8 +4,32 @@ import { PromptGuard, type SecurityEvent } from './prompt-guard.js';
 import { isAgentGuardEnabled, scanWithAgentGuard } from './agent-guard-adapter.js';
 import { checkStaleMarkerInput } from './deception-client.js';
 import { scanForHoneypotLeak } from './honeypot-client.js';
+import { appendSecurityAudit } from './security-audit.js';
 
 let guard: PromptGuard | null = null;
+let auditPreview = '';
+
+export type InputBlockInfo = {
+  message: string;
+  ref?: string;
+  source: 'prompt-guard' | 'agent-guard' | 'deception';
+  layer?: 1 | 2 | 3;
+  patterns?: string[];
+};
+
+export type InputScanResult = {
+  allowed: boolean;
+  text: string;
+  block?: InputBlockInfo;
+};
+
+export function isPromptGuardEnabled(): boolean {
+  return process.env.CARINA_PROMPT_GUARD !== 'false';
+}
+
+export function isScoutReportingEnabled(): boolean {
+  return process.env.LABYRINTH_ENABLED === 'true';
+}
 
 function mapSeverity(severity: SecurityEvent['severity']): 'info' | 'warning' | 'critical' | 'breach' {
   if (severity === 'error' || severity === 'critical') return 'critical';
@@ -13,7 +37,27 @@ function mapSeverity(severity: SecurityEvent['severity']): 'info' | 'warning' | 
   return 'info';
 }
 
-async function scoutReportFn(event: SecurityEvent): Promise<void> {
+function recordPromptInjectionAudit(
+  event: SecurityEvent,
+  preview: string,
+): void {
+  appendSecurityAudit({
+    category: 'prompt_injection',
+    action: event.event_type.includes('blocked') ? 'block' : 'detect',
+    detail: String(event.metadata.blocked_message ?? event.event_type),
+    metadata: {
+      ...event.metadata,
+      scout_event_type: event.event_type,
+      severity: event.severity,
+      instance_id: event.instance_id,
+      preview: preview.slice(0, 200),
+    },
+  });
+}
+
+async function scoutReportFn(event: SecurityEvent, preview: string): Promise<void> {
+  recordPromptInjectionAudit(event, preview);
+  if (!isScoutReportingEnabled()) return;
   await reportEvent({
     severity: mapSeverity(event.severity),
     source: 'prompt-guard',
@@ -25,14 +69,14 @@ async function scoutReportFn(event: SecurityEvent): Promise<void> {
 }
 
 function getGuard(): PromptGuard | null {
-  if (process.env.LABYRINTH_ENABLED !== 'true') return null;
+  if (!isPromptGuardEnabled()) return null;
   if (!guard) {
     guard = new PromptGuard({
       llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL ?? config.labyrinth.llmRouterUrl,
       llmModel: process.env.LABYRINTH_JUDGE_MODEL ?? config.labyrinth.judgeModel,
       llmTimeoutMs: config.labyrinth.judgeTimeoutMs,
       instanceId: config.labyrinth.instanceId,
-      reportFn: scoutReportFn,
+      reportFn: async (event) => scoutReportFn(event, auditPreview),
     });
   }
   return guard;
@@ -41,38 +85,77 @@ function getGuard(): PromptGuard | null {
 const LEAK_BLOCK_MESSAGE =
   'Response withheld: output matched a monitored decoy credential. Security team notified.';
 
-export async function scanUserInput(text: string): Promise<string> {
-  if (process.env.LABYRINTH_ENABLED !== 'true') return text;
+function blockedResult(block: InputBlockInfo): InputScanResult {
+  return { allowed: false, text: block.message, block };
+}
 
-  const stale = await checkStaleMarkerInput(text);
-  if (stale.blocked) {
-    return stale.reason ?? 'This request was blocked by the deception security layer.';
+export async function scanUserInput(text: string): Promise<InputScanResult> {
+  if (!isPromptGuardEnabled()) {
+    return { allowed: true, text };
+  }
+
+  if (process.env.CARINA_DECEPTION_ENABLED === 'true' || isScoutReportingEnabled()) {
+    const stale = await checkStaleMarkerInput(text);
+    if (stale.blocked) {
+      const message = stale.reason ?? 'This request was blocked by the deception security layer.';
+      appendSecurityAudit({
+        category: 'prompt_injection',
+        action: 'block',
+        detail: message,
+        metadata: { source: 'deception', preview: text.slice(0, 200) },
+      });
+      return blockedResult({ message, source: 'deception' });
+    }
   }
 
   if (isAgentGuardEnabled()) {
     const agentGuard = await scanWithAgentGuard(text);
     if (!agentGuard.skipped && agentGuard.flagged) {
-      await reportEvent({
-        severity: 'warning',
-        source: 'agent-guard',
-        event_type: 'prompt_injection_blocked',
-        description: 'Agent Guard flagged input before LLM processing',
+      const message = 'I cannot process this request because it was flagged by the security filter.';
+      appendSecurityAudit({
+        category: 'prompt_injection',
+        action: 'block',
+        detail: message,
         metadata: {
+          source: 'agent-guard',
           score: agentGuard.score,
-          preview: text.slice(0, 500),
+          preview: text.slice(0, 200),
         },
       });
-      return 'I cannot process this request because it was flagged by the security filter.';
+      if (isScoutReportingEnabled()) {
+        await reportEvent({
+          severity: 'warning',
+          source: 'agent-guard',
+          event_type: 'prompt_injection_blocked',
+          description: 'Agent Guard flagged input before LLM processing',
+          metadata: {
+            score: agentGuard.score,
+            preview: text.slice(0, 500),
+          },
+        });
+      }
+      return blockedResult({ message, source: 'agent-guard' });
     }
   }
 
   const g = getGuard();
-  if (!g) return text;
+  if (!g) return { allowed: true, text };
   try {
+    auditPreview = text;
     const result = await g.scanInput(text);
-    return result.isMalicious ? (result.message ?? result.sanitized ?? text) : text;
+    if (result.isMalicious) {
+      const message = result.message ?? result.sanitized ?? 'This request was blocked by the security shield.';
+      return blockedResult({
+        message,
+        ref: result.ref,
+        source: 'prompt-guard',
+        layer: result.layer,
+        patterns: result.patterns,
+      });
+    }
+    return { allowed: true, text };
   } catch {
-    return text;
+    return { allowed: true, text };
   }
 }
 
@@ -83,6 +166,20 @@ export async function scanToolOutput(toolName: string, result: string): Promise<
     try {
       const scan = await g.scanToolResult(toolName, result);
       output = scan.isMalicious ? (scan.sanitized ?? result) : result;
+      if (scan.isMalicious) {
+        appendSecurityAudit({
+          category: 'prompt_injection',
+          action: 'block',
+          detail: scan.message ?? 'Tool output injection blocked',
+          toolName,
+          metadata: {
+            source: 'prompt-guard',
+            layer: scan.layer,
+            patterns: scan.patterns,
+            shield_ref: scan.ref,
+          },
+        });
+      }
     } catch {
       output = result;
     }
@@ -119,4 +216,9 @@ export async function scanAgentOutput(text: string, meta?: Record<string, unknow
   }
 
   return text;
+}
+
+export function _resetPromptGuardForTests(): void {
+  guard = null;
+  auditPreview = '';
 }

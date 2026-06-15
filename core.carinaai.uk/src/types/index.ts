@@ -1,3 +1,5 @@
+import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
+
 export type Role = 'user' | 'assistant' | 'system' | 'tool_result';
 
 export interface Message {
@@ -16,30 +18,7 @@ export interface CarinaMessage {
   agentId?: string;
   tenantId?: string;
   content: string;
-  source:
-    | 'cli'
-    | 'telegram'
-    | 'whatsapp'
-    | 'web'
-    | 'discord'
-    | 'slack'
-    | 'sms'
-    | 'signal'
-    | 'matrix'
-    | 'mattermost'
-    | 'dingtalk'
-    | 'feishu'
-    | 'wechat'
-    | 'imessage'
-    | 'email'
-    | 'homeassistant'
-    | 'api'
-    | 'webhooks'
-    | 'irc'
-    | 'line'
-    | 'viber'
-    | 'google-chat'
-    | 'teams';
+  source: ChannelName;
   timestamp: Date;
   chatType?: 'private' | 'group';
   mentioned?: boolean;
@@ -94,6 +73,7 @@ export interface Skill {
   usageCount: number;
   successCount?: number;
   failureCount?: number;
+  tags?: string[];
 }
 
 export interface Memory {

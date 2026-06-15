@@ -1,6 +1,7 @@
 import { pool } from './db.js';
 import { embed } from './embeddings.js';
 import pgvector from 'pgvector/pg';
+import { getActiveProfileOrDefault } from '../profiles/isolation.js';
 
 export type MemoryTarget = 'user' | 'memory';
 
@@ -16,27 +17,71 @@ export interface PersistentFact {
   createdAt: Date;
 }
 
-export async function listPersistentFacts(target: MemoryTarget): Promise<PersistentFact[]> {
+function activeProfileName(): string {
+  return getActiveProfileOrDefault();
+}
+
+export function activeAgentName(): string {
+  return process.env.CARINA_ACTIVE_AGENT ?? 'main';
+}
+
+function userFactsWhere(): { sql: string; params: unknown[] } {
+  return {
+    sql: "target = $1 AND COALESCE(profile_name, 'default') = $2 AND agent_name IS NULL",
+    params: ['user', activeProfileName()],
+  };
+}
+
+function agentFactsWhere(agentId?: string): { sql: string; params: unknown[] } {
+  const agent = agentId ?? activeAgentName();
+  return {
+    sql: "target = $1 AND COALESCE(profile_name, 'default') = $2 AND COALESCE(agent_name, 'main') = $3",
+    params: ['memory', activeProfileName(), agent],
+  };
+}
+
+function scopeForTarget(target: MemoryTarget, agentId?: string): { sql: string; params: unknown[] } {
+  if (target === 'user') return userFactsWhere();
+  return agentFactsWhere(agentId);
+}
+
+export async function listPersistentFacts(
+  target: MemoryTarget,
+  agentId?: string,
+): Promise<PersistentFact[]> {
+  const scope = scopeForTarget(target, agentId);
   const result = await pool.query(
     `SELECT id, target, content, created_at
      FROM persistent_facts
-     WHERE target = $1
+     WHERE ${scope.sql}
      ORDER BY created_at ASC`,
-    [target],
+    scope.params,
   );
   return result.rows.map(rowToFact);
 }
 
-export async function getPersistentFactsText(target: MemoryTarget): Promise<string> {
-  const facts = await listPersistentFacts(target);
+export async function getPersistentFactsText(
+  target: MemoryTarget,
+  agentId?: string,
+): Promise<string> {
+  const facts = await listPersistentFacts(target, agentId);
   return facts.map((f) => f.content).join('\n');
 }
 
-export async function getPersistentFactsTotal(target: MemoryTarget): Promise<number> {
+export async function getAgentMemoryText(agentId?: string): Promise<string> {
+  return getPersistentFactsText('memory', agentId);
+}
+
+export async function getPersistentFactsTotal(
+  target: MemoryTarget,
+  agentId?: string,
+): Promise<number> {
+  const scope = scopeForTarget(target, agentId);
   const result = await pool.query(
     `SELECT COALESCE(SUM(LENGTH(content)), 0)::int AS total
-     FROM persistent_facts WHERE target = $1`,
-    [target],
+     FROM persistent_facts
+     WHERE ${scope.sql}`,
+    scope.params,
   );
   return Number(result.rows[0]?.total ?? 0);
 }
@@ -44,11 +89,12 @@ export async function getPersistentFactsTotal(target: MemoryTarget): Promise<num
 export async function addPersistentFact(
   target: MemoryTarget,
   content: string,
+  options: { agentId?: string } = {},
 ): Promise<PersistentFact> {
   const trimmed = content.trim();
   if (!trimmed) throw new Error('Content cannot be empty.');
 
-  const current = await getPersistentFactsTotal(target);
+  const current = await getPersistentFactsTotal(target, options.agentId);
   if (current + trimmed.length > MEMORY_BUDGETS[target]) {
     throw new Error(
       `Memory budget exceeded for target "${target}" (${MEMORY_BUDGETS[target]} chars max). Consolidate or remove entries first.`,
@@ -57,12 +103,13 @@ export async function addPersistentFact(
 
   const embedding = await embed(trimmed);
   const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
+  const agentName = target === 'memory' ? (options.agentId ?? activeAgentName()) : null;
 
   const result = await pool.query(
-    `INSERT INTO persistent_facts (target, content, embedding)
-     VALUES ($1, $2, $3)
+    `INSERT INTO persistent_facts (target, content, embedding, profile_name, agent_name)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING id, target, content, created_at`,
-    [target, trimmed, vectorSql],
+    [target, trimmed, vectorSql, activeProfileName(), agentName],
   );
   return rowToFact(result.rows[0]);
 }
@@ -70,8 +117,9 @@ export async function addPersistentFact(
 export async function findFactsByText(
   target: MemoryTarget,
   oldText: string,
+  agentId?: string,
 ): Promise<PersistentFact[]> {
-  const facts = await listPersistentFacts(target);
+  const facts = await listPersistentFacts(target, agentId);
   const needle = oldText.trim().toLowerCase();
   const exact = facts.filter((f) => f.content.toLowerCase().includes(needle));
   if (exact.length > 0) return exact;
@@ -87,8 +135,9 @@ export async function replacePersistentFact(
   target: MemoryTarget,
   oldText: string,
   newText: string,
+  agentId?: string,
 ): Promise<PersistentFact> {
-  const matches = await findFactsByText(target, oldText);
+  const matches = await findFactsByText(target, oldText, agentId);
   if (matches.length === 0) {
     throw new Error(`No memory entry matching "${oldText}" found for target "${target}".`);
   }
@@ -96,7 +145,7 @@ export async function replacePersistentFact(
     throw new Error(`Ambiguous match: ${matches.length} entries match "${oldText}". Be more specific.`);
   }
 
-  const current = await getPersistentFactsTotal(target);
+  const current = await getPersistentFactsTotal(target, agentId);
   const delta = newText.trim().length - matches[0].content.length;
   if (current + delta > MEMORY_BUDGETS[target]) {
     throw new Error(`Memory budget exceeded for target "${target}".`);
@@ -117,8 +166,9 @@ export async function replacePersistentFact(
 export async function removePersistentFact(
   target: MemoryTarget,
   oldText: string,
+  agentId?: string,
 ): Promise<boolean> {
-  const matches = await findFactsByText(target, oldText);
+  const matches = await findFactsByText(target, oldText, agentId);
   if (matches.length === 0) {
     throw new Error(`No memory entry matching "${oldText}" found for target "${target}".`);
   }
@@ -129,13 +179,18 @@ export async function removePersistentFact(
   return (result.rowCount ?? 0) > 0;
 }
 
-export async function getAllPersistentContext(): Promise<string> {
+export async function getPersistentContextForAgent(agentId?: string): Promise<string> {
+  const agent = agentId ?? activeAgentName();
   const parts: string[] = [];
   const user = await getPersistentFactsText('user');
-  const memory = await getPersistentFactsText('memory');
-  if (user) parts.push(`User profile:\n${user}`);
-  if (memory) parts.push(`Agent notes:\n${memory}`);
+  const memory = await getAgentMemoryText(agent);
+  if (user) parts.push(`User profile (shared across agents on this profile):\n${user}`);
+  if (memory) parts.push(`Agent notes (${agent}):\n${memory}`);
   return parts.join('\n\n');
+}
+
+export async function getAllPersistentContext(): Promise<string> {
+  return getPersistentContextForAgent();
 }
 
 export type MemoryBudgetStatus = {
@@ -146,8 +201,11 @@ export type MemoryBudgetStatus = {
   headroom: number;
 };
 
-export async function getMemoryBudgetStatus(target: MemoryTarget): Promise<MemoryBudgetStatus> {
-  const used = await getPersistentFactsTotal(target);
+export async function getMemoryBudgetStatus(
+  target: MemoryTarget,
+  agentId?: string,
+): Promise<MemoryBudgetStatus> {
+  const used = await getPersistentFactsTotal(target, agentId);
   const max = MEMORY_BUDGETS[target];
   return {
     target,
@@ -162,11 +220,12 @@ export async function getMemoryBudgetStatus(target: MemoryTarget): Promise<Memor
 export async function trimPersistentFactsToBudget(
   target: MemoryTarget,
   targetPercent = 85,
+  agentId?: string,
 ): Promise<{ removed: number; removedIds: string[] }> {
   const budget = MEMORY_BUDGETS[target];
   const goal = Math.floor((budget * targetPercent) / 100);
-  let used = await getPersistentFactsTotal(target);
-  const facts = await listPersistentFacts(target);
+  let used = await getPersistentFactsTotal(target, agentId);
+  const facts = await listPersistentFacts(target, agentId);
   const removedIds: string[] = [];
 
   for (const fact of facts) {
@@ -179,8 +238,11 @@ export async function trimPersistentFactsToBudget(
   return { removed: removedIds.length, removedIds };
 }
 
-export async function findNearDuplicateFacts(target: MemoryTarget): Promise<string[][]> {
-  const facts = await listPersistentFacts(target);
+export async function findNearDuplicateFacts(
+  target: MemoryTarget,
+  agentId?: string,
+): Promise<string[][]> {
+  const facts = await listPersistentFacts(target, agentId);
   const groups: string[][] = [];
   const seen = new Set<string>();
 

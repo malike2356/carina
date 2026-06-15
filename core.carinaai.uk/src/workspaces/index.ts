@@ -7,6 +7,8 @@ export type {
   PeerKind,
   RoutingContext,
   RoutingResult,
+  RoutingSource,
+  ShareLearningPolicy,
 } from './types.js';
 export {
   activeAgentFile,
@@ -36,6 +38,13 @@ export {
   setActiveAgentId,
 } from './agent-registry.js';
 export { describeRoute, resolveAgentRoute } from './agent-routing.js';
+export {
+  enrichRoutingContext,
+  resolveInboundAgentRoute,
+  resolveOwnershipRoute,
+  shouldHandOffToOwner,
+  describeInboundRoute,
+} from './inbound-routing.js';
 export {
   applyAgentRuntimeEnv,
   buildAgentRuntimeContext,

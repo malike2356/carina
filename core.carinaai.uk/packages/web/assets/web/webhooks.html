@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Webhooks; Carina</title>
+<style>
+  .wh-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .wh-toolbar input, .wh-toolbar button {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; font-size: 0.82rem;
+  }
+  .wh-toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #0a0a0c; font-weight: 600; }
+  .wh-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 900px) { .wh-grid { grid-template-columns: 1fr; } }
+  .wh-panel {
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+    padding: 10px; min-height: 200px;
+  }
+  .wh-panel h2 { font-size: 0.85rem; margin-bottom: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .wh-row {
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 6px;
+    font-size: 0.78rem;
+  }
+  .wh-row .status-delivered { color: var(--success, #4ade80); }
+  .wh-row .status-failed, .wh-row .status-retrying { color: var(--danger); }
+  .wh-empty { color: var(--muted); font-size: 0.8rem; padding: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header"><h1>Webhooks</h1><span class="status" id="wh-status"></span></header>
+<div class="ws-scroll-page">
+  <div class="wh-toolbar">
+    <input type="text" id="wh-url" placeholder="https://example.com/webhook" style="flex:1; min-width:200px">
+    <input type="text" id="wh-name" placeholder="Name (optional)" style="width:140px">
+    <button type="button" class="primary" id="wh-subscribe">Subscribe</button>
+    <button type="button" id="wh-refresh">Refresh</button>
+  </div>
+  <div class="wh-grid">
+    <div class="wh-panel"><h2>Subscriptions</h2><div id="wh-subs"></div></div>
+    <div class="wh-panel"><h2>Recent deliveries</h2><div id="wh-deliveries"></div></div>
+  </div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script>
+const API = '/api/webhooks';
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+async function load() {
+  document.getElementById('wh-status').textContent = 'Loading...';
+  try {
+    const [subsRes, delRes] = await Promise.all([
+      fetch(`${API}/?include_inactive=true`),
+      fetch(`${API}/deliveries?limit=30`),
+    ]);
+    const subs = await subsRes.json();
+    const dels = await delRes.json();
+    renderSubs(subs.subscriptions || []);
+    renderDeliveries(dels.deliveries || []);
+    document.getElementById('wh-status').textContent = '';
+  } catch {
+    document.getElementById('wh-status').textContent = 'Load failed';
+  }
+}
+
+function renderSubs(subs) {
+  const el = document.getElementById('wh-subs');
+  if (!subs.length) { el.innerHTML = '<div class="wh-empty">No subscriptions</div>'; return; }
+  el.innerHTML = subs.map(s => `
+    <div class="wh-row">
+      <div><strong>${esc(s.name || s.id.slice(0,8))}</strong> ${s.active ? '' : '(disabled)'}</div>
+      <div style="color:var(--muted)">${esc(s.url)}</div>
+      <div>${(s.events||[]).join(', ')}</div>
+      <div style="margin-top:4px">
+        ${s.active ? `<button data-disable="${s.id}">Disable</button>` : `<button data-enable="${s.id}">Enable</button>`}
+        <button data-test="${s.id}">Test</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('[data-disable]').forEach(b => b.onclick = () => post(`/${b.dataset.disable}/disable`));
+  el.querySelectorAll('[data-enable]').forEach(b => b.onclick = () => post(`/${b.dataset.enable}/enable`));
+  el.querySelectorAll('[data-test]').forEach(b => b.onclick = async () => {
+    await fetch(`${API}/trigger`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'agent.turn.complete', data: { test: true, subscription_id: b.dataset.test } }) });
+    load();
+  });
+}
+
+function renderDeliveries(rows) {
+  const el = document.getElementById('wh-deliveries');
+  if (!rows.length) { el.innerHTML = '<div class="wh-empty">No deliveries yet</div>'; return; }
+  el.innerHTML = rows.map(d => `
+    <div class="wh-row">
+      <div><span class="status-${esc(d.status)}">${esc(d.status)}</span> ${esc(d.event)}</div>
+      <div style="color:var(--muted)">HTTP ${d.http_status ?? '-'} | attempts ${d.attempt_count}/${d.max_attempts}</div>
+      ${d.error_message ? `<div>${esc(d.error_message)}</div>` : ''}
+      ${d.status === 'failed' || d.status === 'retrying' ? `<button data-retry="${d.id}">Retry</button>` : ''}
+    </div>`).join('');
+  el.querySelectorAll('[data-retry]').forEach(b => b.onclick = () => post(`/deliveries/${b.dataset.retry}/retry`));
+}
+
+async function post(path) {
+  await fetch(`${API}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+  load();
+}
+
+document.getElementById('wh-refresh').onclick = load;
+document.getElementById('wh-subscribe').onclick = async () => {
+  const url = document.getElementById('wh-url').value.trim();
+  if (!url) return;
+  await fetch(API + '/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url,
+      name: document.getElementById('wh-name').value.trim() || undefined,
+      events: ['agent.turn.complete', 'process.complete', 'cron.complete', 'kanban.move'],
+    }),
+  });
+  document.getElementById('wh-url').value = '';
+  load();
+};
+load();
+</script>
+</body>
+</html>

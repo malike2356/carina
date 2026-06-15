@@ -29,19 +29,22 @@ Package: [carina-agent@0.1.1](https://www.npmjs.com/package/carina-agent)
 
 ### First run
 
-On first `carina` or `carina tui`, Carina shows a short identity banner and guides you through minimum setup:
+On first `carina` or `carina tui`, Carina introduces itself and asks two quick questions:
 
-1. **Configure now** - pick a provider (DeepSeek, Anthropic, or OpenAI), enter an API key, optional connection test
-2. **Configure later** - writes `~/.carina/.env` in local mode so you can add keys when ready
+1. **Your name** and **what you are building** (one sentence)
+2. **Optional API key** - connect DeepSeek, Anthropic, or OpenAI now, or start in local mode and add a key later
+
+No YAML editing. Config is written automatically to `~/.carina/.env` and `~/.carina/config.yaml` (mode `0600`).
 
 Non-interactive environments (CI, pipes) get a minimal `~/.carina/.env` automatically; add an API key before chatting.
 
 ```bash
-carina setup          # run or re-run the wizard
+carina setup          # re-run onboarding or add a provider key
+carina setup --full   # advanced wizard (Postgres, Scout, WhatsApp, packs)
 carina doctor         # check install health
 ```
 
-Config lives in `~/.carina/.env` and `~/.carina/config.yaml` (mode `0600`). Never commit these files.
+Never commit `~/.carina/` files.
 
 ### Your first conversation
 

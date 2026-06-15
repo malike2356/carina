@@ -193,13 +193,29 @@ export async function runNodeHostCommand(args: string[]): Promise<void> {
         console.error('Node not configured. Pair first or run node-host configure.');
         process.exit(1);
       }
+      const containerMode = rest.includes('--container');
+      const transportFlag = rest.find((a) => a.startsWith('--transport='));
+      const transportRaw = transportFlag?.split('=')[1]
+        ?? (rest.includes('--transport') ? rest[rest.indexOf('--transport') + 1] : undefined);
+      const transport = transportRaw === 'poll' || transportRaw === 'ws' || transportRaw === 'auto'
+        ? transportRaw
+        : undefined;
       writeNodeHostPid();
-      console.log(chalk.gray(`Node host connected to ${config.gatewayUrl} (Ctrl+C to stop)`));
+      const modeLabel = [
+        containerMode ? 'container' : 'host-shell',
+        transport ?? process.env.CARINA_NODE_TRANSPORT ?? 'auto',
+      ].join(', ');
+      console.log(chalk.gray(`Node host connected to ${config.gatewayUrl} (${modeLabel}; Ctrl+C to stop)`));
       const controller = new AbortController();
       process.on('SIGINT', () => controller.abort());
       process.on('SIGTERM', () => controller.abort());
       try {
-        await runNodeDaemon({ config, signal: controller.signal });
+        await runNodeDaemon({
+          config,
+          signal: controller.signal,
+          containerMode,
+          transport,
+        });
       } finally {
         clearNodeHostPid();
       }

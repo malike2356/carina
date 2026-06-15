@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import os from 'os';
+import { resetNodeSocketHub } from './node-ws-hub.js';
 
 const tmpHome = path.join(os.tmpdir(), `carina-node-routes-${process.pid}`);
 
@@ -122,5 +123,39 @@ describe('node-host routes', () => {
     expect(blocked.status).toBe(403);
     const body = await blocked.json() as { code?: string };
     expect(body.code).toBe('NODE_SHELL_BLOCKED');
+  });
+
+  it('returns poll transport when node is not on websocket', async () => {
+    await startApp();
+    const base = `http://127.0.0.1:${port}`;
+    resetNodeSocketHub();
+
+    const req = await fetch(`${base}/api/nodes/pair/request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'remote', hostname: 'remote', platform: 'linux' }),
+    });
+    const pending = await req.json() as { pendingId: string; code: string };
+
+    await fetch(`${base}/api/nodes/pair/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ops-test-token' },
+      body: JSON.stringify({ pendingId: pending.pendingId }),
+    });
+
+    const claim = await fetch(`${base}/api/nodes/pair/claim`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pendingId: pending.pendingId, code: pending.code }),
+    });
+    const creds = await claim.json() as { token: string; nodeId: string };
+
+    const dispatch = await fetch(`${base}/api/nodes/${creds.nodeId}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ops-test-token' },
+      body: JSON.stringify({ type: 'ping', payload: {} }),
+    });
+    const body = await dispatch.json() as { transport?: string };
+    expect(body.transport).toBe('poll');
   });
 });

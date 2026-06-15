@@ -1,4 +1,5 @@
 import twilio from 'twilio';
+import { sendTwilioSms } from '@verlox/carina-transport';
 import { config } from '../../../config/index.js';
 import { splitByLength } from '../channel-formatter.js';
 import type {
@@ -37,9 +38,10 @@ export class SmsAdapter implements IChannelAdapter {
 
   async sendMessage(conversationId: string, text: string, _options: SendOptions = {}): Promise<void> {
     if (!this.enabled) return;
-    const client = twilio(config.sms.accountSid, config.sms.authToken);
     for (const chunk of this.formatForChannel(text)) {
-      await client.messages.create({
+      await sendTwilioSms({
+        accountSid: config.sms.accountSid,
+        authToken: config.sms.authToken,
         from: config.sms.fromNumber,
         to: conversationId,
         body: chunk,

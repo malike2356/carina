@@ -28,7 +28,7 @@ export const propertyDataTool: Tool = {
 
     const postcode = String(params.postcode ?? '').trim();
     const dataType = String(params.dataType ?? 'prices');
-    const url = `https://api.propertydata.co.uk/${dataType}?postcode=${encodeURIComponent(postcode)}&api_key=${apiKey}`;
+    const url = `https://api.propertydata.co.uk/${dataType}?postcode=${encodeURIComponent(postcode)}&key=${apiKey}`;
 
     const response = await fetch(url);
     if (!response.ok) {

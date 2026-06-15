@@ -1,0 +1,9 @@
+{
+  "name": "capabilities-ops",
+  "version": "1.0.0",
+  "description": "Capability discovery, channel health, and daily operator utilities",
+  "author": "VERLOX Ltd",
+  "category": "operator",
+  "optional": true,
+  "skillCount": 20
+}

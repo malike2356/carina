@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Skills</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Skill packs</h2>
+      <p style="margin-bottom:12px;">Bundled and installed packs for your tenant. Install packs from Chat settings or the hub marketplace.</p>
+      <table class="ops-table">
+        <thead><tr><th>Pack</th><th>Version</th><th>Skills</th><th>Installed</th><th>Status</th></tr></thead>
+        <tbody id="skills-body"><tr><td colspan="5" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    CarinaOpsLayout.initPage('skills', {
+      onReady: async () => {
+        const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/skills');
+        if (!ok) {
+          CarinaPlatform.renderTable('skills-body', [], [], 'Unable to load skill packs.');
+          return;
+        }
+        CarinaPlatform.renderTable('skills-body', [
+          { key: 'name' },
+          { key: 'version' },
+          { key: 'skillCount' },
+          { key: 'installed', render: (row) => row.installed ? 'yes' : 'no' },
+          { key: 'status', render: (row) => row.status || '-' },
+        ], data.packs || [], 'No skill packs available.');
+      },
+    });
+  </script>
+</body>
+</html>

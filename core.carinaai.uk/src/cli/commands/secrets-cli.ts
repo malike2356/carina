@@ -96,6 +96,79 @@ export async function runSecretsCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina secrets <list|audit|review|set|reload> [--json]');
+  if (action === 'plan') {
+    const sub = args[1] ?? 'show';
+    const {
+      applySecretsPlan,
+      listSecretsPlans,
+      planFromCurrentAudit,
+      rollbackSecretsPlan,
+    } = await import('../../ops/secrets-plan.js');
+
+    if (sub === 'show' || sub === 'list') {
+      const plans = listSecretsPlans();
+      if (json) {
+        console.log(JSON.stringify(plans, null, 2));
+        return;
+      }
+      if (plans.length === 0) {
+        console.log('No saved secrets plans.');
+        return;
+      }
+      for (const plan of plans) {
+        console.log(`${plan.id}  ${plan.createdAt}  ${plan.description}  (${plan.actions.length} actions)`);
+      }
+      return;
+    }
+
+    if (sub === 'create') {
+      const plan = planFromCurrentAudit();
+      if (json) {
+        console.log(JSON.stringify(plan, null, 2));
+      } else {
+        console.log(`Created plan ${plan.id} with ${plan.actions.length} action(s)`);
+        console.log(`Snapshot: ${plan.snapshotPath}`);
+      }
+      return;
+    }
+
+    if (sub === 'apply') {
+      const planId = args[2];
+      if (!planId) {
+        console.error('Usage: carina secrets plan apply <plan-id>');
+        process.exit(1);
+      }
+      const result = applySecretsPlan(planId);
+      if (json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`Applied plan ${result.planId}`);
+        for (const line of result.applied) console.log(`  + ${line}`);
+        for (const line of result.skipped) console.log(`  ~ ${line}`);
+      }
+      return;
+    }
+
+    if (sub === 'rollback') {
+      const planId = args[2];
+      if (!planId) {
+        console.error('Usage: carina secrets plan rollback <plan-id>');
+        process.exit(1);
+      }
+      const result = rollbackSecretsPlan(planId);
+      if (json) {
+        console.log(JSON.stringify(result, null, 2));
+      } else {
+        console.log(`Rolled back plan ${result.planId}`);
+        for (const line of result.applied) console.log(`  + ${line}`);
+      }
+      return;
+    }
+
+    console.error('Usage: carina secrets plan <show|create|apply|rollback> [plan-id]');
+    process.exit(1);
+  }
+
+  console.error('Usage: carina secrets <list|audit|review|set|reload|plan> [--json]');
   process.exit(1);
 }

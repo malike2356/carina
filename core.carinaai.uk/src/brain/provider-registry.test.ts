@@ -48,7 +48,7 @@ describe('provider-registry', () => {
       });
 
       it('has capabilities', () => {
-        if (def.status === 'unsupported' && !def.capabilities.chat) {
+        if (!def.capabilities.chat && (def.embeddingOnly || def.status === 'unsupported')) {
           expect(def.capabilities.chat).toBe(false);
           return;
         }
@@ -58,7 +58,7 @@ describe('provider-registry', () => {
       it('has routing tags', () => {
         expect(def.tags.cost).toBeTruthy();
         expect(def.tags.speed).toBeTruthy();
-        if (def.status === 'unsupported' && !def.capabilities.chat) {
+        if (!def.capabilities.chat && (def.embeddingOnly || def.status === 'unsupported')) {
           expect(def.tags.chat).toBe(false);
           return;
         }

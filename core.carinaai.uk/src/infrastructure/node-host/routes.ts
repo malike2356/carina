@@ -2,12 +2,13 @@ import type { Express, Request, Response } from 'express';
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import os from 'os';
-import { isControlAuthorized } from '../control-auth.js';
+import { requireControlScope } from '../control-auth.js';
 import { appendNodeAudit } from './audit.js';
 import { decodeFilePayload, encodeFilePayload, maxNodeFileBytes } from './file-transfer.js';
 import { buildNodePairQrPayload, encodeQrPayload, formatPairingQrTerminal } from './qr.js';
 import { evaluateNodeShellCommand } from '../../security/node-command-policy.js';
 import { evaluateNodeFilePath } from '../../security/node-file-policy.js';
+import { pushNodeCommand } from './node-ws-hub.js';
 import {
   addPendingPairing,
   claimApprovedNodePairing,
@@ -107,10 +108,7 @@ export function mountNodeHostRoutes(app: Express): void {
   });
 
   app.get('/api/nodes/pair/pending', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     res.json({ pending: listPendingPairings() });
   });
 
@@ -132,10 +130,7 @@ export function mountNodeHostRoutes(app: Express): void {
   });
 
   app.post('/api/nodes/pair/approve', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     const pendingId = String(req.body?.pendingId ?? req.body?.id ?? '');
     const pending = getPendingPairing(pendingId);
     if (!pending) {
@@ -157,10 +152,7 @@ export function mountNodeHostRoutes(app: Express): void {
   });
 
   app.post('/api/nodes/pair/reject', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     const pendingId = String(req.body?.pendingId ?? req.body?.id ?? '');
     const ok = removePendingPairing(pendingId);
     if (ok) appendNodeAudit({ action: 'pair.reject', nodeId: pendingId });
@@ -168,28 +160,19 @@ export function mountNodeHostRoutes(app: Express): void {
   });
 
   app.get('/api/nodes', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     res.json({ nodes: redactNodesForApi(listPairedNodes()) });
   });
 
   app.post('/api/nodes/:id/revoke', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     const ok = revokePairedNode(String(req.params.id));
     if (ok) appendNodeAudit({ action: 'node.revoke', nodeId: String(req.params.id) });
     res.json({ ok });
   });
 
   app.post('/api/nodes/:id/rotate', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     const rotated = rotateNodeToken(String(req.params.id));
     if (!rotated) {
       res.status(404).json({ error: 'Node not found' });
@@ -212,10 +195,7 @@ export function mountNodeHostRoutes(app: Express): void {
   });
 
   app.get('/api/nodes/commands/:id', (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     const cmd = getNodeCommand(String(req.params.id));
     if (!cmd) {
       res.status(404).json({ error: 'Command not found' });
@@ -242,10 +222,7 @@ export function mountNodeHostRoutes(app: Express): void {
   });
 
   app.post('/api/nodes/:id/command', express.json(), (req: Request, res: Response) => {
-    if (!isControlAuthorized(req)) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    if (!requireControlScope(req, res, 'nodes')) return;
     const nodeId = String(req.params.id);
     if (!getPairedNode(nodeId)) {
       res.status(404).json({ error: 'Node not found' });
@@ -293,8 +270,9 @@ export function mountNodeHostRoutes(app: Express): void {
     }
 
     const cmd = enqueueNodeCommand(nodeId, type, payload);
-    appendNodeAudit({ action: 'command.dispatch', nodeId, detail: `${type}:${cmd.id}` });
-    res.json({ ok: true, command: cmd });
+    const pushed = pushNodeCommand(nodeId, cmd);
+    appendNodeAudit({ action: 'command.dispatch', nodeId, detail: `${type}:${cmd.id}${pushed ? ':ws' : ':poll'}` });
+    res.json({ ok: true, command: cmd, transport: pushed ? 'ws' : 'poll' });
   });
 
   app.get('/api/nodes/config/limits', (_req: Request, res: Response) => {
@@ -303,18 +281,24 @@ export function mountNodeHostRoutes(app: Express): void {
 }
 
 export function dispatchNodeShellCommand(nodeId: string, command: string) {
-  return enqueueNodeCommand(nodeId, 'shell', { command });
+  const cmd = enqueueNodeCommand(nodeId, 'shell', { command });
+  pushNodeCommand(nodeId, cmd);
+  return cmd;
 }
 
 export function dispatchNodeFilePush(nodeId: string, targetPath: string, content: Buffer) {
   const encoded = encodeFilePayload(content);
-  return enqueueNodeCommand(nodeId, 'file.push', {
+  const cmd = enqueueNodeCommand(nodeId, 'file.push', {
     path: targetPath,
     contentBase64: encoded.contentBase64,
     size: encoded.size,
   });
+  pushNodeCommand(nodeId, cmd);
+  return cmd;
 }
 
 export function dispatchNodeFilePull(nodeId: string, targetPath: string) {
-  return enqueueNodeCommand(nodeId, 'file.pull', { path: targetPath });
+  const cmd = enqueueNodeCommand(nodeId, 'file.pull', { path: targetPath });
+  pushNodeCommand(nodeId, cmd);
+  return cmd;
 }

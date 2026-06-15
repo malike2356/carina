@@ -10,6 +10,9 @@ export class ChannelRegistry {
     'telegram', 'whatsapp', 'web', 'discord', 'slack', 'sms',
     'signal', 'matrix', 'mattermost', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
     'line', 'viber', 'google-chat', 'teams',
+    'ntfy', 'pushover', 'gotify',
+    'messenger', 'instagram', 'twitter', 'rocketchat', 'webex', 'kakaotalk', 'zalo',
+    'threema', 'wire', 'keybase', 'twitch', 'youtube', 'groupme', 'nextcloud-talk', 'linkedin',
     'homeassistant', 'api', 'webhooks', 'cli',
   ];
 
@@ -28,7 +31,7 @@ export class ChannelRegistry {
   async getForInbound(channel: ChannelName, raw: unknown): Promise<ChannelMessage | null> {
     const adapter = this.adapters.get(channel);
     if (!adapter || !adapter.enabled) return null;
-    return adapter.parseInbound(raw);
+    return Promise.resolve(adapter.parseInbound(raw));
   }
 }
 

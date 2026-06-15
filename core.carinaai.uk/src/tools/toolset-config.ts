@@ -61,9 +61,9 @@ export const LEAST_PRIVILEGE_TOOLSETS = ['web', 'search', 'file', 'skills'] as c
 /** Sensible per-channel defaults when no platform override exists in config. */
 export const PLATFORM_DEFAULT_TOOLSETS: Record<string, readonly string[]> = {
   default: LEAST_PRIVILEGE_TOOLSETS,
-  cli: LEAST_PRIVILEGE_TOOLSETS,
-  web: LEAST_PRIVILEGE_TOOLSETS,
-  cron: ['terminal', 'file', 'web', 'search', 'skills', 'messaging'],
+  cli: [...LEAST_PRIVILEGE_TOOLSETS, 'workspace', 'utilities', 'ops'],
+  web: [...LEAST_PRIVILEGE_TOOLSETS, 'workspace', 'utilities'],
+  cron: ['terminal', 'file', 'web', 'search', 'skills', 'messaging', 'workspace'],
   telegram: ['messaging', 'file', 'web', 'search', 'skills', 'sync', 'media'],
   whatsapp: ['messaging', 'file', 'web', 'search', 'skills', 'sync'],
   discord: ['messaging', 'file', 'web', 'search', 'skills', 'integrations', 'sync'],

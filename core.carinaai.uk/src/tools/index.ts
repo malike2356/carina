@@ -58,7 +58,16 @@ import {
   yuanbaoTool,
   xPostTool,
 } from './integrations.js';
+import { n8nTool } from './n8n.js';
+import { trelloTool } from './trello.js';
+import { themeTool } from './theme.js';
 import { generatePdfTool } from './pdf.js';
+import { notesManageTool } from './notes-manage.js';
+import { documentsManageTool } from './documents-manage.js';
+import { imagesGalleryTool } from './images-gallery.js';
+import { secretsAuditTool } from './secrets-audit-tool.js';
+import { OPERATOR_UTILITY_TOOLS } from './operator-utils.js';
+import { phoneControlTool } from './phone-control.js';
 
 registry.register(webSearchTool);
 registry.register(fileReadTool);
@@ -66,6 +75,7 @@ registry.register(fileWriteTool);
 registry.register(patchTool);
 registry.register(searchFilesTool);
 registry.register(shellExecTool);
+registry.register(phoneControlTool);
 registry.register(processTool);
 registry.register(httpTool);
 registry.register(emailSendTool);
@@ -114,6 +124,16 @@ registry.register(agentSyncTool);
 registry.register(contactsTool);
 registry.register(skillCuratorTool);
 registry.register(generatePdfTool);
+registry.register(notesManageTool);
+registry.register(n8nTool);
+registry.register(trelloTool);
+registry.register(themeTool);
+registry.register(documentsManageTool);
+registry.register(imagesGalleryTool);
+registry.register(secretsAuditTool);
+for (const tool of OPERATOR_UTILITY_TOOLS) {
+  registry.register(tool);
+}
 registerPlatformTools((tool) => registry.register(tool));
 
 for (const tool of createKanbanGranularTools('default-session')) {

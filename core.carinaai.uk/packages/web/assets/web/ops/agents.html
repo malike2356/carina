@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Agents</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Managed agents</h2>
+      <p style="margin-bottom:12px;">Org-scoped agent registry. Execution routes through Workbench and deployments.</p>
+      <table class="ops-table">
+        <thead><tr><th>Name</th><th>Slug</th><th>Provider</th><th>Model</th><th>Status</th></tr></thead>
+        <tbody id="agents-body"><tr><td colspan="5" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Register agent</h2>
+      <form id="agent-form">
+        <div class="form-row"><label for="agent-name">Name</label><input type="text" id="agent-name" name="name" required></div>
+        <div class="form-row"><label for="agent-provider">Provider</label><input type="text" id="agent-provider" name="provider" placeholder="anthropic"></div>
+        <div class="form-row"><label for="agent-model">Model</label><input type="text" id="agent-model" name="model" placeholder="claude-sonnet"></div>
+        <div class="form-row"><label for="agent-instructions">Instructions</label><textarea id="agent-instructions" name="instructions"></textarea></div>
+        <button class="btn" type="submit">Create agent</button>
+        <p class="error-msg" id="agent-error" hidden></p>
+      </form>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    async function loadAgents() {
+      const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/agents');
+      if (!ok) {
+        CarinaPlatform.renderTable('agents-body', [], [], 'Unable to load agents.');
+        return;
+      }
+      CarinaPlatform.renderTable('agents-body', [
+        { key: 'name' },
+        { key: 'slug' },
+        { key: 'provider' },
+        { key: 'model' },
+        { key: 'status' },
+      ], data.agents || [], 'No agents registered yet.');
+    }
+
+    CarinaOpsLayout.initPage('agents', {
+      onReady: async () => {
+        await loadAgents();
+        CarinaPlatform.bindCreateForm('agent-form', async (formData) => {
+          CarinaPlatform.showError('agent-error', '');
+          const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/agents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: String(formData.get('name') || '').trim(),
+              provider: String(formData.get('provider') || '').trim() || undefined,
+              model: String(formData.get('model') || '').trim() || undefined,
+              instructions: String(formData.get('instructions') || '').trim() || undefined,
+            }),
+          });
+          if (!ok) {
+            CarinaPlatform.showError('agent-error', data.error || 'Unable to create agent.');
+            return;
+          }
+          document.getElementById('agent-form').reset();
+          await loadAgents();
+        });
+      },
+    });
+  </script>
+</body>
+</html>

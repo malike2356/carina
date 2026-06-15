@@ -1,4 +1,8 @@
 import type pg from 'pg';
+import { BACKGROUND_PROCESS_MIGRATION } from '../tools/process-persistence.js';
+import { KANBAN_BOARD_MIGRATION } from '../agents/kanban-persistence.js';
+import { WEBHOOK_MATURITY_MIGRATION } from '../webhooks/webhook-persistence.js';
+import { PROFILE_ISOLATION_MIGRATION } from '../profiles/isolation-persistence.js';
 
 const TABLES = `
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -314,6 +318,49 @@ CREATE INDEX IF NOT EXISTS episodic_memories_tsv_idx
   ON episodic_memories USING GIN (content_tsv);
 `;
 
+const SESSION_SEARCH_MIGRATION = `
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS episodic_memories_content_trgm_idx
+  ON episodic_memories USING GIN (content gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS episodic_memories_session_created_idx
+  ON episodic_memories (session_id, created_at DESC);
+`;
+
+const CRON_WORKFLOW_MIGRATION = `
+CREATE TABLE IF NOT EXISTS cron_workflows (
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL,
+  schedule TEXT NOT NULL,
+  definition JSONB NOT NULL,
+  deliver TEXT DEFAULT 'origin',
+  deliver_channels TEXT[] DEFAULT '{}',
+  status TEXT DEFAULT 'active',
+  workdir TEXT,
+  origin_session_id TEXT,
+  origin_channel TEXT,
+  origin_conversation_id TEXT,
+  origin_thread_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cron_workflow_runs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workflow_id UUID NOT NULL REFERENCES cron_workflows(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'queued',
+  current_step_id TEXT,
+  step_states JSONB NOT NULL DEFAULT '{}'::jsonb,
+  context JSONB NOT NULL DEFAULT '{}'::jsonb,
+  error TEXT,
+  started_at TIMESTAMPTZ,
+  finished_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_cron_workflow_runs_workflow
+  ON cron_workflow_runs (workflow_id, created_at DESC);
+`;
+
 // Migrate existing 1536-dim columns to 768 (DeepSeek native dimension).
 // Safe to run repeatedly - only fires when the old dimension is detected.
 async function migrateDimensions(client: pg.PoolClient): Promise<void> {
@@ -427,6 +474,39 @@ CREATE TABLE IF NOT EXISTS skill_audit_log (
 );
 CREATE INDEX IF NOT EXISTS skill_audit_log_skill_idx ON skill_audit_log(skill_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS skill_audit_log_action_idx ON skill_audit_log(action, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS learning_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id TEXT NOT NULL DEFAULT '__operator__',
+  session_id TEXT,
+  event_type TEXT NOT NULL,
+  idempotency_key TEXT,
+  skill_id UUID REFERENCES skill_documents(id) ON DELETE SET NULL,
+  skill_name TEXT,
+  version INTEGER,
+  input_summary JSONB,
+  output_summary JSONB,
+  internal_notes JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS learning_events_idempotency_idx
+  ON learning_events(idempotency_key) WHERE idempotency_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS learning_events_tenant_idx ON learning_events(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS learning_events_skill_idx ON learning_events(skill_name, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS skill_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  skill_id UUID NOT NULL REFERENCES skill_documents(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL,
+  steps TEXT NOT NULL,
+  trigger_keywords TEXT[] NOT NULL,
+  tools_used TEXT[] NOT NULL,
+  source TEXT NOT NULL,
+  learning_event_id UUID REFERENCES learning_events(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(skill_id, version)
+);
+CREATE INDEX IF NOT EXISTS skill_versions_skill_idx ON skill_versions(skill_id, version DESC);
 `;
 
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
@@ -463,6 +543,36 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(FTS_MIGRATION);
   } catch {
     // FTS column may already exist
+  }
+  try {
+    await client.query(SESSION_SEARCH_MIGRATION);
+  } catch {
+    // session search indexes may already exist
+  }
+  try {
+    await client.query(CRON_WORKFLOW_MIGRATION);
+  } catch {
+    // cron workflow tables may already exist
+  }
+  try {
+    await client.query(BACKGROUND_PROCESS_MIGRATION);
+  } catch {
+    // background process tables may already exist
+  }
+  try {
+    await client.query(KANBAN_BOARD_MIGRATION);
+  } catch {
+    // kanban board columns may already exist
+  }
+  try {
+    await client.query(WEBHOOK_MATURITY_MIGRATION);
+  } catch {
+    // webhook delivery tables may already exist
+  }
+  try {
+    await client.query(PROFILE_ISOLATION_MIGRATION);
+  } catch {
+    // profile isolation columns may already exist
   }
   try {
     await client.query(OPS_METERING_MIGRATION);

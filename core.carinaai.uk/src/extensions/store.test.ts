@@ -16,6 +16,7 @@ vi.mock('../config/paths.js', async (importOriginal) => {
   return {
     ...actual,
     CARINA_HOME: tmpHome,
+    resolveCarinaHome: () => tmpHome,
   };
 });
 

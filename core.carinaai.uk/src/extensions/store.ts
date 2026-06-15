@@ -1,9 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { CARINA_HOME } from '../config/paths.js';
+import { resolveCarinaHome } from '../config/paths.js';
 import type { ExtensionManifest } from './manifest.js';
 
-export type ExtensionStatus = 'installed' | 'enabled' | 'disabled';
+export type ExtensionStatus = 'installed' | 'enabled' | 'disabled' | 'error';
 
 export type ExtensionRecord = {
   id: string;
@@ -24,11 +24,11 @@ type ExtensionStoreFile = {
   extensions: ExtensionRecord[];
 };
 
-const STORE_PATH = path.join(CARINA_HOME, 'extension-store.json');
+const STORE_PATH = () => path.join(resolveCarinaHome(), 'extension-store.json');
 
 export async function readExtensionStore(): Promise<ExtensionRecord[]> {
   try {
-    const raw = await fs.readFile(STORE_PATH, 'utf-8');
+    const raw = await fs.readFile(STORE_PATH(), 'utf-8');
     const parsed = JSON.parse(raw) as ExtensionStoreFile;
     return Array.isArray(parsed.extensions) ? parsed.extensions : [];
   } catch {
@@ -37,8 +37,9 @@ export async function readExtensionStore(): Promise<ExtensionRecord[]> {
 }
 
 export async function writeExtensionStore(rows: ExtensionRecord[]): Promise<void> {
-  await fs.mkdir(CARINA_HOME, { recursive: true });
-  await fs.writeFile(STORE_PATH, JSON.stringify({ extensions: rows }, null, 2), { mode: 0o600 });
+  const home = resolveCarinaHome();
+  await fs.mkdir(home, { recursive: true });
+  await fs.writeFile(STORE_PATH(), JSON.stringify({ extensions: rows }, null, 2), { mode: 0o600 });
 }
 
 export async function getExtensionRecord(id: string): Promise<ExtensionRecord | undefined> {

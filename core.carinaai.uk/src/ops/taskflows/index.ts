@@ -5,15 +5,20 @@ export type {
   TaskFlowTrigger,
   TaskRunStatus,
   DeliveryQueueItem,
+  TaskFlowYamlDocument,
+  ModelOverride,
 } from './types.js';
 export {
   taskFlowsEnabled,
   listTaskFlows,
   getTaskFlow,
+  getTaskFlowRun,
   upsertTaskFlow,
   enqueueTaskFlowRun,
   listTaskFlowRuns,
   listTaskFlowRunsByStatus,
+  searchTaskFlowRuns,
+  waitForTaskFlowRun,
   enqueueDelivery,
   listDeliveryQueue,
   markDelivery,
@@ -28,11 +33,15 @@ export {
   triggerTaskFlow,
   triggerTaskFlowsForEvent,
   triggerTaskFlowsForCronJob,
+  triggerTaskFlowsForSubagent,
+  triggerTaskFlowsForKanban,
 } from './engine.js';
+export { parseTaskFlowYaml, parseTaskFlowDocument, validateTaskFlowDocument } from './parser.js';
 export { onWebhookEvent, onCronJobComplete } from './hooks.js';
 export { runTimeoutMs } from './config.js';
 export {
   taskFlowWorkerEnabled,
+  taskFlowWorkerPoolSize,
   cancelTaskFlowRun,
   markStaleTaskFlowRuns,
   processQueuedTaskFlowRuns,

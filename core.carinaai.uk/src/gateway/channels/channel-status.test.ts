@@ -10,17 +10,16 @@ describe('channel status', () => {
     vi.unstubAllEnvs();
   });
 
-  it('reports IRC as unsupported when not configured', async () => {
+  it('hides IRC from status reports unless IRC_ENABLED=true', async () => {
     delete process.env.IRC_ENABLED;
     delete process.env.IRC_SERVER;
     delete process.env.IRC_NICK;
     vi.resetModules();
     const { getChannelStatus } = await import('./channel-status.js');
-    const irc = getChannelStatus('irc');
-    expect(irc?.state).toBe('unsupported');
+    expect(getChannelStatus('irc')).toBeUndefined();
   }, 15_000);
 
-  it('reports IRC as partial when stub env is set', async () => {
+  it('reports IRC as partial when configured but not connected', async () => {
     vi.stubEnv('IRC_ENABLED', 'true');
     vi.stubEnv('IRC_SERVER', 'irc.libera.chat');
     vi.stubEnv('IRC_NICK', 'carina-bot');
@@ -60,5 +59,11 @@ describe('channel status', () => {
     const { getChannelPolicyFlags } = await import('./channel-status.js');
     expect(getChannelPolicyFlags().threadOwnership).toBe(true);
     expect(getChannelPolicyFlags().peerScoping).toBe(false);
+  });
+
+  it('catalogues at least fifty channels', async () => {
+    vi.resetModules();
+    const { getChannelStatusReports } = await import('./channel-status.js');
+    expect(getChannelStatusReports().length).toBeGreaterThanOrEqual(50);
   });
 });

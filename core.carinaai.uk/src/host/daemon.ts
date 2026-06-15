@@ -6,6 +6,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { CARINA_HOME } from '../config/paths.js';
 import {
+  installWindowsGatewayTask,
+  isWindowsGatewayTaskInstalled,
+  runWindowsGatewayTask,
+  stopWindowsGatewayTask,
+  uninstallWindowsGatewayTask,
+  WINDOWS_GATEWAY_TASK,
+} from '../windows/schtasks-service.js';
+import {
   clearHostPidFile,
   installSystemdUserUnit,
   systemdUnitTemplate,
@@ -258,10 +266,14 @@ export async function installHostService(execStart = defaultGatewayCommand()): P
   }
 
   if (manager === 'schtasks') {
-    const taskName = 'CarinaGateway';
-    const cmd = `schtasks /Create /TN ${taskName} /TR "${execStart}" /SC ONLOGON /RL LIMITED /F`;
-    appendDaemonLog(`Windows install command: ${cmd}`);
-    return { manager };
+    const installed = await isWindowsGatewayTaskInstalled();
+    if (!installed) {
+      const result = await installWindowsGatewayTask({ execStart, onLogon: true });
+      appendDaemonLog(`Installed Windows scheduled task ${result.taskName}: ${result.command}`);
+      return { manager, path: `schtasks:${result.taskName}` };
+    }
+    appendDaemonLog(`Windows scheduled task ${WINDOWS_GATEWAY_TASK} already exists`);
+    return { manager, path: `schtasks:${WINDOWS_GATEWAY_TASK}` };
   }
 
   appendDaemonLog('No OS service manager detected; use carina host start for foreground supervisor');
@@ -278,6 +290,8 @@ export async function uninstallHostService(): Promise<void> {
     const plist = launchdPlistPath();
     await tryLaunchctl('unload');
     if (fs.existsSync(plist)) fs.unlinkSync(plist);
+  } else if (manager === 'schtasks') {
+    await uninstallWindowsGatewayTask();
   }
 
   clearDaemonPid();
@@ -387,6 +401,13 @@ export async function startHostService(execStart = defaultGatewayCommand()): Pro
     if (pid) return { pid, url: localGatewayUrl() };
   }
 
+  if (manager === 'schtasks' && await isWindowsGatewayTaskInstalled()) {
+    await runWindowsGatewayTask();
+    await new Promise((r) => setTimeout(r, 800));
+    const pid = readDaemonPid();
+    if (pid) return { pid, url: localGatewayUrl() };
+  }
+
   const child = spawn('carina', ['host', 'supervise'], {
     detached: true,
     stdio: 'ignore',
@@ -411,6 +432,8 @@ export async function stopHostService(timeoutMs = 5000): Promise<boolean> {
     await trySystemdCtl('stop');
   } else if (manager === 'launchd' && fs.existsSync(launchdPlistPath())) {
     await tryLaunchctl('stop');
+  } else if (manager === 'schtasks' && await isWindowsGatewayTaskInstalled()) {
+    await stopWindowsGatewayTask();
   }
 
   const pid = readDaemonPid();

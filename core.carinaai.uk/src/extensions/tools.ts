@@ -7,6 +7,7 @@ import { extensionDir } from '../config/paths.js';
 import { extensionsRuntimeEnabled } from './contributions.js';
 import { listEnabledExtensionIds } from './store.js';
 import { readExtensionManifest } from './validator.js';
+import { resolveBuiltinToolFromJson } from './builtin-tools.js';
 
 const registeredByExtension = new Map<string, Set<string>>();
 
@@ -73,6 +74,11 @@ async function loadJsonTools(entryPath: string, prefix: string): Promise<Tool[]>
   for (const item of items) {
     if (!item || typeof item !== 'object') continue;
     const rec = item as Record<string, unknown>;
+    if (rec.integration === 'builtin' || rec.builtin || rec.builtinTool) {
+      const tool = resolveBuiltinToolFromJson(rec, prefix);
+      if (tool) out.push(tool);
+      continue;
+    }
     if (rec.integration === 'http' || rec.url || rec.urlEnv) {
       out.push(toolFromHttpDefinition({
         name: String(rec.name),

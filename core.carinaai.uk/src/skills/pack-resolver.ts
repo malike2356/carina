@@ -71,6 +71,14 @@ const LEGACY_PACK_LOADERS: Record<string, LegacyPackLoader> = {
     const { boreholeAfricaSkills } = await import('./packs/borehole-africa/skills.js');
     return { skills: boreholeAfricaSkills, systemSuffix: '' };
   },
+  'operator-daily': async () => {
+    const { operatorDailySkills } = await import('./packs/operator-daily/skills.js');
+    return { skills: operatorDailySkills, systemSuffix: '' };
+  },
+  'capabilities-ops': async () => {
+    const { capabilitiesOpsSkills } = await import('./packs/capabilities-ops/skills.js');
+    return { skills: capabilitiesOpsSkills, systemSuffix: '' };
+  },
 };
 
 const packCache = new Map<string, PackDefinition>();

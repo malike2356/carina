@@ -78,18 +78,21 @@ describe('taskflows engine', () => {
     expect(runs.length).toBe(1);
   });
 
-  it('webhook trigger records idempotency key on run', async () => {
-    const { upsertTaskFlow, listTaskFlowRuns } = await import('./store.js');
-    const { triggerTaskFlowsForEvent } = await import('./engine.js');
-    upsertTaskFlow({
-      name: 'webhook-key-check',
-      steps: [{ type: 'delay', ms: 1 }],
+  it('skips steps with cached outputs on resume', async () => {
+    const { upsertTaskFlow, enqueueTaskFlowRun, updateTaskFlowRun } = await import('./store.js');
+    const { executeTaskFlowRun } = await import('./engine.js');
+    const flow = upsertTaskFlow({
+      name: 'resume-cache',
+      steps: [{ type: 'delay', ms: 5 }, { type: 'delay', ms: 5 }],
       chainOnSuccess: [],
-      triggers: [{ type: 'webhook', event: 'key.check' }],
       status: 'active',
     });
-    triggerTaskFlowsForEvent('key.check');
-    const run = listTaskFlowRuns(5).find((r) => r.flowName === 'webhook-key-check');
-    expect(run?.idempotencyKey).toMatch(/^webhook:key\.check:/);
+    const run = enqueueTaskFlowRun(flow.id, {
+      fromStep: 1,
+      stepOutputs: { '0': 'cached-step-0' },
+    })!;
+    const finished = await executeTaskFlowRun(run.id);
+    expect(finished?.status).toBe('succeeded');
+    expect(finished?.stepOutputs?.['0']).toBe('cached-step-0');
   });
 });

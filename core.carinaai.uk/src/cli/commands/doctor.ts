@@ -6,8 +6,9 @@ export async function runDoctor(args: string[] = []): Promise<void> {
   const json = args.includes('--json');
   const repair = args.includes('--repair');
   const quiet = args.includes('--quiet');
+  const deep = args.includes('--deep');
 
-  const report = await runHealthCheck();
+  const report = await runHealthCheck({ deep });
 
   if (json) {
     console.log(JSON.stringify(report, null, 2));

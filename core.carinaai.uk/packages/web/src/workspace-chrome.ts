@@ -7,7 +7,12 @@ export type WorkspacePageId =
   | 'email'
   | 'calendar'
   | 'memory'
-  | 'packs';
+  | 'packs'
+  | 'cookbook'
+  | 'research'
+  | 'compare'
+  | 'kanban'
+  | 'webhooks';
 
 export interface WorkspaceNavItem {
   id: WorkspacePageId;
@@ -22,9 +27,29 @@ export const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
   { id: 'calendar', href: '/calendar', label: 'Calendar', description: 'Reminder schedule from notes' },
   { id: 'documents', href: '/documents', label: 'Documents', description: 'Markdown, HTML, and CSV editor' },
   { id: 'images', href: '/images', label: 'Images', description: 'Generate, browse, and edit images' },
+  {
+    id: 'research',
+    href: '/research',
+    label: 'Deep Research',
+    description: 'AI-powered multi-step research with citations',
+  },
+  {
+    id: 'compare',
+    href: '/compare',
+    label: 'Model Compare',
+    description: 'Query all configured LLM providers side by side',
+  },
   { id: 'email', href: '/email', label: 'Email', description: 'Inbound triage, urgency, and archive' },
   { id: 'memory', href: '/memory', label: 'Memory', description: 'Persistent agent memory entries' },
+  { id: 'kanban', href: '/kanban', label: 'Kanban', description: 'Operator board for multi-step agent work' },
+  { id: 'webhooks', href: '/webhooks', label: 'Webhooks', description: 'Subscriptions and delivery log' },
   { id: 'packs', href: '/packs', label: 'Skill packs', description: 'Domain skill bundles' },
+  {
+    id: 'cookbook',
+    href: '/cookbook',
+    label: 'Cookbook',
+    description: 'Hardware-aware local model serving',
+  },
 ];
 
 const WORKSPACE_BEGIN = '<!--CARINA_WORKSPACE_BEGIN-->';
@@ -75,6 +100,7 @@ export function workspaceThemeCss(): string {
     '.carina-ws-nav a.active { background: var(--accent-dim); border-color: rgba(25,196,154,0.25); color: var(--accent); }',
     '.carina-ws-nav a .desc { display: block; font-size: 0.68rem; color: var(--muted); margin-top: 2px; }',
     '.carina-ws-foot { padding: 8px 6px 4px; font-size: 0.68rem; color: var(--muted); }',
+    '.carina-ws-profile-scope { font-size: 0.65rem; color: var(--muted); margin-bottom: 6px; word-break: break-all; }',
     '.carina-ws-foot a { color: var(--accent); text-decoration: none; }',
     '.carina-ws-theme-btn {',
     '  width: 100%; margin-top: 6px; padding: 7px 10px; border-radius: 8px;',
@@ -92,12 +118,66 @@ export function workspaceThemeCss(): string {
     'body.carina-workspace .top-nav { display: none; }',
     '.ws-scroll-page { flex: 1; overflow-y: auto; padding: 1rem 1.25rem 2rem; width: 100%; }',
     'body.carina-workspace[data-workspace-page="memory"] .ws-scroll-page,',
-    'body.carina-workspace[data-workspace-page="packs"] .ws-scroll-page { max-width: 900px; margin: 0 auto; }',
+    'body.carina-workspace[data-workspace-page="packs"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="cookbook"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="research"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="compare"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="kanban"] .ws-scroll-page { max-width: none; margin: 0; }',
     '@media (max-width: 820px) {',
     '  .carina-ws-sidebar { width: 64px; min-width: 64px; padding: 10px 6px; }',
     '  .carina-ws-brand .name, .carina-ws-section-label, .carina-ws-nav a .desc, .carina-ws-foot { display: none; }',
     '  .carina-ws-nav a { font-size: 0.72rem; text-align: center; padding: 10px 4px; }',
     '}',
+    /* Mobile: sidebar off-canvas, bottom nav takes over */
+    '@media (max-width: 640px) {',
+    '  .carina-ws-sidebar {',
+    '    position: fixed; top: 0; bottom: 0; left: 0; z-index: 60;',
+    '    width: 240px; min-width: 240px; padding: 12px 10px;',
+    '    transform: translateX(-100%); transition: transform 0.22s ease;',
+    '    box-shadow: none;',
+    '  }',
+    '  .carina-ws-sidebar.mobile-open {',
+    '    transform: translateX(0); box-shadow: 4px 0 32px rgba(0,0,0,0.55);',
+    '  }',
+    '  .carina-ws-brand .name, .carina-ws-section-label, .carina-ws-nav a .desc, .carina-ws-foot { display: block; }',
+    '  .carina-ws-nav a { font-size: 0.84rem; text-align: left; padding: 8px 10px; }',
+    '  .carina-ws-overlay {',
+    '    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 59;',
+    '  }',
+    '  .carina-ws-sidebar.mobile-open ~ .carina-ws-overlay { display: block; }',
+    '  .carina-ws-main { padding-bottom: 60px; }',
+    '}',
+    /* Mobile bottom navigation bar */
+    '.carina-ws-bottom-nav {',
+    '  display: none; position: fixed; bottom: 0; left: 0; right: 0;',
+    '  background: var(--surface); border-top: 1px solid var(--border);',
+    '  justify-content: space-around; align-items: stretch;',
+    '  padding-bottom: env(safe-area-inset-bottom, 0px); z-index: 50;',
+    '}',
+    '@media (max-width: 640px) { .carina-ws-bottom-nav { display: flex; } }',
+    '.carina-ws-theme-picker-wrap { padding: 0.5rem 0.85rem; margin-top: auto; }',
+    '@media (max-width: 640px) { .carina-ws-theme-picker-wrap { display: none; } }',
+    '.carina-ws-bottom-nav a, .carina-ws-bottom-nav button {',
+    '  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;',
+    '  gap: 3px; padding: 8px 4px; font-size: 0.6rem; letter-spacing: 0.01em;',
+    '  color: var(--muted); text-decoration: none; background: none; border: none;',
+    '  cursor: pointer; line-height: 1; min-width: 0;',
+    '}',
+    '.carina-ws-bottom-nav a.active { color: var(--accent); }',
+    '.carina-ws-bottom-nav .bnav-icon {',
+    '  font-size: 1.1rem; line-height: 1; display: block;',
+    '}',
+    /* Card hover lift */
+    '.ws-card { transition: transform 0.12s ease, box-shadow 0.12s ease; }',
+    '.ws-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.32); }',
+    /* Loading skeleton */
+    '.skeleton {',
+    '  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);',
+    '  background-size: 200% 100%; animation: ws-shimmer 1.4s ease-in-out infinite; border-radius: 7px;',
+    '}',
+    '@keyframes ws-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }',
+    /* Smooth page transitions */
+    '.carina-ws-main { transition: opacity 0.1s ease; }',
   ].join('\n');
 }
 
@@ -113,8 +193,27 @@ export function workspaceSidebarHtml(active: WorkspacePageId): string {
   }).join('\n');
 
   const hubActive = active === 'hub' ? ' class="active"' : '';
+  const bnavItems = [
+    { href: '/', label: 'Chat', icon: 'C', id: 'chat' },
+    { href: '/notes', label: 'Notes', icon: 'N', id: 'notes' },
+    { href: '/documents', label: 'Docs', icon: 'D', id: 'documents' },
+    { href: '/email', label: 'Email', icon: 'M', id: 'email' },
+    { href: '/workspace', label: 'More', icon: '+', id: 'hub' },
+  ];
+  const bottomNavLinks = bnavItems.map((item) => {
+    const activeClass = item.id === active ? ' class="active"' : '';
+    return `<a href="${item.href}"${activeClass}><span class="bnav-icon">${item.icon}</span>${item.label}</a>`;
+  }).join('');
+
+  const themePicker = [
+    '<div class="carina-ws-theme-picker-wrap">',
+    '<label style="font-size:0.7rem;color:var(--muted);display:block;margin-bottom:0.3rem">Theme</label>',
+    '<select id="ws-theme-picker" style="width:100%;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.3rem 0.4rem;font-size:0.78rem"></select>',
+    '</div>',
+  ].join('');
+
   return [
-    '<aside class="carina-ws-sidebar" aria-label="Workspace navigation">',
+    '<aside class="carina-ws-sidebar" id="ws-sidebar" aria-label="Workspace navigation">',
     '<div class="carina-ws-brand"><a href="/workspace">',
     '<span class="logo">C</span><span class="name">Carina Workspace</span>',
     '</a></div>',
@@ -123,11 +222,15 @@ export function workspaceSidebarHtml(active: WorkspacePageId): string {
     `<a href="/workspace"${hubActive}>Overview<span class="desc">All workspace apps</span></a>`,
     navLinks,
     '</nav>',
+    themePicker,
     '<div class="carina-ws-foot">',
+    '<div id="ws-profile-scope" class="carina-ws-profile-scope"></div>',
     '<a href="/">Back to chat</a>',
     '<button type="button" class="carina-ws-theme-btn" id="ws-theme-toggle">Toggle theme</button>',
     '</div>',
     '</aside>',
+    '<div class="carina-ws-overlay" id="ws-overlay" aria-hidden="true"></div>',
+    `<nav class="carina-ws-bottom-nav" aria-label="Quick navigation">${bottomNavLinks}</nav>`,
     '<div class="carina-ws-main">',
   ].join('\n');
 }
@@ -171,12 +274,18 @@ export function injectWorkspaceChrome(
 }
 
 export function workspaceHubCardsHtml(): string {
-  const cards = WORKSPACE_NAV_ITEMS.filter((item) => item.id !== 'chat').map((item) => [
-    `<a class="ws-card" href="${item.href}">`,
-    `<h3>${item.label}</h3>`,
-    `<p>${item.description}</p>`,
-    '</a>',
-  ].join('')).join('\n');
+  const featuredIds = ['research', 'compare', 'cookbook'];
+  const cards = WORKSPACE_NAV_ITEMS.filter((item) => item.id !== 'chat').map((item) => {
+    const badge = featuredIds.includes(item.id)
+      ? '<span style="font-size:0.62rem;background:var(--accent);color:#0d0d0f;padding:0.1rem 0.35rem;border-radius:4px;margin-left:0.4rem;font-weight:700;vertical-align:middle">New</span>'
+      : '';
+    return [
+      `<a class="ws-card" href="${item.href}">`,
+      `<h3>${item.label}${badge}</h3>`,
+      `<p>${item.description}</p>`,
+      '</a>',
+    ].join('');
+  }).join('\n');
 
   return [
     '<header class="ws-page-header"><h1>Workspace</h1></header>',

@@ -17,7 +17,30 @@ const quarantinedTools = new Map<string, Set<string>>();
 const operatorBlockedDomains = new Map<string, Set<string>>();
 // Per-session rate limit overrides. Populated via Scout control messages.
 const sessionRateLimits = new Map<string, number>();
+export type SandboxPolicyMode = 'default' | 'docker_only' | 'session_only' | 'host_blocked';
+
+let instanceSandboxPolicy: SandboxPolicyMode = 'default';
+const sessionSandboxPolicies = new Map<string, SandboxPolicyMode>();
+let allowlistEnforced = process.env.SCOUT_ENFORCE_ALLOWLIST === 'true';
 let subscriber: Redis | null = null;
+
+export function getInstanceSandboxPolicy(): SandboxPolicyMode {
+  return instanceSandboxPolicy;
+}
+
+export function getSessionSandboxPolicy(sessionId: string): SandboxPolicyMode | null {
+  return sessionSandboxPolicies.get(sessionId) ?? null;
+}
+
+export function isAllowlistEnforced(): boolean {
+  return allowlistEnforced;
+}
+
+export function _resetSandboxPolicies(): void {
+  instanceSandboxPolicy = 'default';
+  sessionSandboxPolicies.clear();
+  allowlistEnforced = process.env.SCOUT_ENFORCE_ALLOWLIST === 'true';
+}
 
 export function getSessionRateLimit(sessionId: string): number | null {
   return sessionRateLimits.get(sessionId) ?? null;
@@ -121,6 +144,31 @@ function applyControlPayload(payload: Record<string, unknown>): void {
     if (typeof sid === 'string' && typeof cpm === 'number' && cpm >= 1) {
       sessionRateLimits.set(sid, cpm);
       console.log(`[KillSwitch] Rate limit set: ${cpm}/min for session ${sid.slice(0, 8)}...`);
+    }
+  } else if (payload.action === 'set_sandbox_policy') {
+    const mode = payload.mode;
+    const sid = payload.session_id;
+    const valid: SandboxPolicyMode[] = ['default', 'docker_only', 'session_only', 'host_blocked'];
+    if (typeof mode !== 'string' || !valid.includes(mode as SandboxPolicyMode)) return;
+    const policyMode = mode as SandboxPolicyMode;
+    if (typeof sid === 'string' && sid) {
+      sessionSandboxPolicies.set(sid, policyMode);
+      const logLine = `SANDBOX POLICY session=${sid}: ${policyMode}`;
+      console.warn(`[KillSwitch] ${logLine}`);
+      appendLog(logLine);
+    } else {
+      instanceSandboxPolicy = policyMode;
+      const logLine = `SANDBOX POLICY instance: ${policyMode}`;
+      console.warn(`[KillSwitch] ${logLine}`);
+      appendLog(logLine);
+    }
+  } else if (payload.action === 'set_tool_policy') {
+    if (payload.allowlist_enforced === true) {
+      allowlistEnforced = true;
+      appendLog('TOOL POLICY: allowlist enforcement enabled');
+    } else if (payload.allowlist_enforced === false) {
+      allowlistEnforced = false;
+      appendLog('TOOL POLICY: allowlist enforcement disabled');
     }
   } else if (payload.action === 'clear_rate_limit') {
     const sid = payload.session_id;

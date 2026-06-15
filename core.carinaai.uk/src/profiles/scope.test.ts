@@ -36,6 +36,7 @@ describe('profile scope', () => {
     expect(process.env.CARINA_HOME).toBe(profile.dir);
     expect(process.env.CARINA_CREDENTIALS_FILE).toBe(path.join(profile.dir, 'credentials.json'));
     expect(process.env.CARINA_TOOLSETS_FILE).toBe(path.join(profile.dir, 'toolsets.yaml'));
+    expect(process.env.CARINA_EXTENSIONS_DIR).toBe(path.join(profile.dir, 'extensions'));
   });
 
   it('describes scoped vs global paths', async () => {

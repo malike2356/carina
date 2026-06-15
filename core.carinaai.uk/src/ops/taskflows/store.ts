@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { CARINA_HOME } from '../../config/paths.js';
+import { getActiveProfileOrDefault } from '../../profiles/isolation.js';
 import type {
   DeliveryQueueItem,
   TaskFlow,
@@ -49,25 +50,31 @@ export function resetTaskFlowStoreCache(): void {
   cached = null;
 }
 
+/** Enabled by default; set CARINA_TASKFLOWS_ENABLED=false to disable. */
 export function taskFlowsEnabled(): boolean {
-  return process.env.CARINA_TASKFLOWS_ENABLED === 'true';
+  return process.env.CARINA_TASKFLOWS_ENABLED !== 'false';
 }
 
-export function listTaskFlows(): TaskFlow[] {
-  return [...loadStore().flows];
+export function listTaskFlows(profileName?: string): TaskFlow[] {
+  const profile = profileName ?? getActiveProfileOrDefault();
+  return loadStore().flows.filter((f) =>
+    !f.profileName || f.profileName === profile || profileName === undefined);
 }
 
 export function getTaskFlow(id: string): TaskFlow | undefined {
   return loadStore().flows.find((f) => f.id === id);
 }
 
-export function upsertTaskFlow(input: Omit<TaskFlow, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): TaskFlow {
+export function upsertTaskFlow(
+  input: Omit<TaskFlow, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+): TaskFlow {
   const store = loadStore();
   const now = new Date().toISOString();
+  const profileName = input.profileName ?? getActiveProfileOrDefault();
   if (input.id) {
     const idx = store.flows.findIndex((f) => f.id === input.id);
     if (idx >= 0) {
-      store.flows[idx] = { ...store.flows[idx]!, ...input, updatedAt: now };
+      store.flows[idx] = { ...store.flows[idx]!, ...input, profileName, updatedAt: now };
       saveStore(store);
       return store.flows[idx]!;
     }
@@ -76,10 +83,13 @@ export function upsertTaskFlow(input: Omit<TaskFlow, 'id' | 'createdAt' | 'updat
     id: input.id ?? crypto.randomUUID(),
     name: input.name,
     label: input.label,
+    profileName,
+    model: input.model,
     steps: input.steps,
     chainOnSuccess: input.chainOnSuccess ?? [],
     triggers: input.triggers ?? [],
     status: input.status ?? 'active',
+    maxRetries: input.maxRetries,
     createdAt: now,
     updatedAt: now,
   };
@@ -90,7 +100,7 @@ export function upsertTaskFlow(input: Omit<TaskFlow, 'id' | 'createdAt' | 'updat
 
 export function enqueueTaskFlowRun(
   flowId: string,
-  options?: { idempotencyKey?: string },
+  options?: { idempotencyKey?: string; profileName?: string; fromStep?: number; stepOutputs?: Record<string, string> },
 ): TaskFlowRun | null {
   const store = loadStore();
   const flow = store.flows.find((f) => f.id === flowId);
@@ -110,8 +120,10 @@ export function enqueueTaskFlowRun(
     id: crypto.randomUUID(),
     flowId: flow.id,
     flowName: flow.name,
+    profileName: options?.profileName ?? flow.profileName ?? getActiveProfileOrDefault(),
     status: 'queued',
-    stepIndex: 0,
+    stepIndex: options?.fromStep ?? 0,
+    stepOutputs: options?.stepOutputs,
     idempotencyKey: options?.idempotencyKey,
     queuedAt: new Date().toISOString(),
   };
@@ -133,13 +145,50 @@ export function updateTaskFlowRun(
   return store.runs[idx]!;
 }
 
-export function listTaskFlowRuns(limit = 50): TaskFlowRun[] {
-  return loadStore().runs.slice(-limit).reverse();
+export function getTaskFlowRun(runId: string): TaskFlowRun | undefined {
+  return loadStore().runs.find((r) => r.id === runId);
 }
 
-export function listTaskFlowRunsByStatus(status?: TaskRunStatus): TaskFlowRun[] {
-  const runs = listTaskFlowRuns(200);
+export function listTaskFlowRuns(limit = 50, profileName?: string): TaskFlowRun[] {
+  const runs = loadStore().runs.slice(-limit * 2).reverse();
+  if (!profileName) return runs.slice(0, limit);
+  return runs.filter((r) => !r.profileName || r.profileName === profileName).slice(0, limit);
+}
+
+export function searchTaskFlowRuns(query: string, limit = 30, profileName?: string): TaskFlowRun[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return listTaskFlowRuns(limit, profileName);
+  return loadStore().runs
+    .filter((r) => {
+      if (profileName && r.profileName && r.profileName !== profileName) return false;
+      return (
+        r.flowName.toLowerCase().includes(q)
+        || (r.output?.toLowerCase().includes(q) ?? false)
+        || (r.error?.toLowerCase().includes(q) ?? false)
+        || r.id.toLowerCase().includes(q)
+      );
+    })
+    .slice(-limit)
+    .reverse();
+}
+
+export function listTaskFlowRunsByStatus(status?: TaskRunStatus, profileName?: string): TaskFlowRun[] {
+  const runs = listTaskFlowRuns(200, profileName);
   return status ? runs.filter((r) => r.status === status) : runs;
+}
+
+export async function waitForTaskFlowRun(
+  runId: string,
+  timeoutMs = 120_000,
+  pollMs = 300,
+): Promise<TaskFlowRun | null> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const run = getTaskFlowRun(runId);
+    if (run && run.status !== 'queued' && run.status !== 'running') return run;
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
+  return getTaskFlowRun(runId) ?? null;
 }
 
 export function enqueueDelivery(item: Omit<DeliveryQueueItem, 'id' | 'status' | 'createdAt'>): DeliveryQueueItem {
@@ -186,17 +235,33 @@ export function resumeTaskFlow(flowId: string): TaskFlow | null {
   return upsertTaskFlow({ ...flow, status: 'active' });
 }
 
-export function retryTaskFlowRun(runId: string): TaskFlowRun | null {
+export function retryTaskFlowRun(
+  runId: string,
+  options?: { fromStep?: number },
+): TaskFlowRun | null {
   const store = loadStore();
   const original = store.runs.find((r) => r.id === runId);
   if (!original) return null;
-  if (original.status !== 'failed' && original.status !== 'timed_out') return null;
+  if (original.status !== 'failed' && original.status !== 'timed_out' && original.status !== 'cancelled') {
+    return null;
+  }
+
+  const fromStep = options?.fromStep ?? original.stepIndex ?? 0;
+  const preservedOutputs: Record<string, string> = {};
+  if (original.stepOutputs) {
+    for (const [key, value] of Object.entries(original.stepOutputs)) {
+      if (Number(key) < fromStep) preservedOutputs[key] = value;
+    }
+  }
+
   const retry: TaskFlowRun = {
     id: crypto.randomUUID(),
     flowId: original.flowId,
     flowName: original.flowName,
+    profileName: original.profileName,
     status: 'queued',
-    stepIndex: 0,
+    stepIndex: fromStep,
+    stepOutputs: Object.keys(preservedOutputs).length ? preservedOutputs : original.stepOutputs,
     retryCount: 0,
     retriedFromRunId: runId,
     queuedAt: new Date().toISOString(),

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Analytics</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="grid">
+      <div class="card"><h2>Requests</h2><div class="stat" id="stat-requests">-</div></div>
+      <div class="card"><h2>Tokens in</h2><div class="stat" id="stat-tokens-in" style="font-size:20px;">-</div></div>
+      <div class="card"><h2>Tokens out</h2><div class="stat" id="stat-tokens-out" style="font-size:20px;">-</div></div>
+      <div class="card"><h2>Credits billed</h2><div class="stat" id="stat-credits" style="font-size:20px;">-</div></div>
+    </div>
+    <div class="card">
+      <h2>Daily ledger (30 days)</h2>
+      <p style="margin-bottom:12px;">Aggregated from workbench runs and persisted locally.</p>
+      <table class="ops-table">
+        <thead><tr><th>Date</th><th>Requests</th><th>Tokens in</th><th>Tokens out</th><th>Credits</th></tr></thead>
+        <tbody id="analytics-body"><tr><td colspan="5" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    CarinaOpsLayout.initPage('analytics', {
+      onReady: async () => {
+        const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/analytics?days=30');
+        if (!ok) {
+          CarinaPlatform.renderTable('analytics-body', [], [], 'Unable to load analytics.');
+          return;
+        }
+        const totals = data.totals || {};
+        document.getElementById('stat-requests').textContent = String(totals.requestCount ?? 0);
+        document.getElementById('stat-tokens-in').textContent = CarinaOpsLayout.formatCredits(totals.tokensIn ?? 0);
+        document.getElementById('stat-tokens-out').textContent = CarinaOpsLayout.formatCredits(totals.tokensOut ?? 0);
+        document.getElementById('stat-credits').textContent = Number(totals.creditsBilled ?? 0).toFixed(2);
+        CarinaPlatform.renderTable('analytics-body', [
+          { key: 'usageDate' },
+          { key: 'requestCount' },
+          { key: 'tokensIn', render: (row) => CarinaOpsLayout.formatCredits(row.tokensIn) },
+          { key: 'tokensOut', render: (row) => CarinaOpsLayout.formatCredits(row.tokensOut) },
+          { key: 'creditsBilled', render: (row) => Number(row.creditsBilled).toFixed(2) },
+        ], data.daily || [], 'No usage recorded in this window.');
+      },
+    });
+  </script>
+</body>
+</html>

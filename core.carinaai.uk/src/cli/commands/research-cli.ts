@@ -1,4 +1,9 @@
 import {
+  getResearchReport,
+  listResearchReports,
+  updateResearchReport,
+} from '../../research/research-store.js';
+import {
   renderReportHtml,
   renderReportMarkdown,
   runDeepResearch,
@@ -20,7 +25,7 @@ function positionalQuery(args: string[]): string {
   for (let i = 0; i < args.length; i++) {
     if (args[i]!.startsWith('--')) {
       skip.add(i);
-      if (['--rounds', '--sources', '--save', '--format', '--provider'].includes(args[i]!)) {
+      if (['--rounds', '--sources', '--save', '--format', '--provider', '--title', '--file'].includes(args[i]!)) {
         skip.add(i + 1);
       }
     }
@@ -35,12 +40,10 @@ function progressSink(saveToFile: string | undefined): (line: string) => void {
   };
 }
 
-export async function runResearchCommand(args: string[]): Promise<void> {
-  loadLocalEnv();
-
+async function runResearchQuery(args: string[]): Promise<void> {
   const query = positionalQuery(args);
   if (!query) {
-    console.error('Usage: carina research "<query>" [--rounds N] [--sources N] [--save file] [--format markdown|html] [--provider name]');
+    console.error('Usage: carina research "<query>" [--rounds N] [--sources N] [--save file] [--format markdown|html] [--provider name] [--no-persist]');
     process.exit(1);
   }
 
@@ -59,6 +62,7 @@ export async function runResearchCommand(args: string[]): Promise<void> {
       saveToFile,
       providerOverride: provider ? { name: provider } : undefined,
       onProgress: progressSink(saveToFile),
+      persist: !flag(args, '--no-persist'),
     });
 
     if (saveToFile) {
@@ -79,4 +83,86 @@ export async function runResearchCommand(args: string[]): Promise<void> {
     }
     process.exit(1);
   }
+}
+
+export async function runResearchCommand(args: string[]): Promise<void> {
+  loadLocalEnv();
+
+  const action = args[0];
+  if (!action || action.startsWith('"') || action.startsWith("'") || !['list', 'show', 'edit', 'export'].includes(action)) {
+    await runResearchQuery(args);
+    return;
+  }
+
+  if (action === 'list') {
+    const reports = await listResearchReports();
+    if (reports.length === 0) {
+      console.log('No saved research reports yet. Run: carina research "your topic"');
+      return;
+    }
+    console.log('Saved research reports:\n');
+    for (const row of reports) {
+      console.log(`  ${row.id.slice(0, 8)}  ${row.createdAt}  sources=${row.sourceCount}  ${row.title}`);
+      console.log(`    share: ${row.shareId}  path: ${row.markdownPath}`);
+    }
+    return;
+  }
+
+  if (action === 'show') {
+    const id = args[1];
+    if (!id) {
+      console.error('Usage: carina research show <id-or-share-id>');
+      process.exit(1);
+    }
+    const record = await getResearchReport(id);
+    if (!record) {
+      console.error(`Report not found: ${id}`);
+      process.exit(1);
+    }
+    process.stdout.write(`${record.markdown}\n`);
+    return;
+  }
+
+  if (action === 'export') {
+    const id = args[1];
+    const format = (flagValue(args, '--format') ?? 'markdown') as 'markdown' | 'html';
+    if (!id) {
+      console.error('Usage: carina research export <id> [--format markdown|html]');
+      process.exit(1);
+    }
+    const record = await getResearchReport(id);
+    if (!record) {
+      console.error(`Report not found: ${id}`);
+      process.exit(1);
+    }
+    const out = format === 'html' && record.html ? record.html : record.markdown;
+    process.stdout.write(`${out}\n`);
+    return;
+  }
+
+  if (action === 'edit') {
+    const id = args[1];
+    if (!id) {
+      console.error('Usage: carina research edit <id> [--title text] [--file path]');
+      process.exit(1);
+    }
+    const title = flagValue(args, '--title');
+    const file = flagValue(args, '--file');
+    let markdown: string | undefined;
+    if (file) {
+      const fs = await import('node:fs/promises');
+      markdown = await fs.readFile(file, 'utf8');
+    }
+    const updated = await updateResearchReport(id, { title, markdown });
+    if (!updated) {
+      console.error(`Report not found: ${id}`);
+      process.exit(1);
+    }
+    console.log(`Updated report ${updated.id} (${updated.title})`);
+    console.log(`  markdown: ${updated.markdownPath}`);
+    return;
+  }
+
+  console.error('Usage: carina research "<query>" | list | show <id> | edit <id> | export <id>');
+  process.exit(1);
 }

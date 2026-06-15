@@ -1,0 +1,9 @@
+{
+  "name": "operator-daily",
+  "version": "1.0.0",
+  "description": "Daily operator workflows: workspace, memory, backups, email, MCP, voice briefings",
+  "author": "VERLOX Ltd",
+  "category": "operator",
+  "optional": true,
+  "skillCount": 12
+}

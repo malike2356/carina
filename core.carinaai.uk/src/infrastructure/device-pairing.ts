@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { CARINA_HOME } from '../config/paths.js';
+import { parseDeviceScopes } from './device-scopes.js';
 
 const DEVICES_FILE = path.join(CARINA_HOME, 'devices.json');
 const LEGACY_PAIRING_FILE = path.join(CARINA_HOME, 'pairing.json');
@@ -104,6 +105,7 @@ export type ClaimPairingInput = {
   code: string;
   name: string;
   platform: string;
+  scopes?: string[];
 };
 
 export type ClaimPairingResult = {
@@ -133,7 +135,7 @@ export function claimPairing(input: ClaimPairingInput): ClaimPairingResult {
     tokenHash: hashToken(token),
     pairedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
-    scopes: ['chat', 'control'],
+    scopes: parseDeviceScopes(input.scopes),
   };
   store.devices.push(device);
   store.pending = undefined;

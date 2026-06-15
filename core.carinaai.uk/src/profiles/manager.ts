@@ -3,7 +3,7 @@ import fsSync from 'fs';
 import path from 'path';
 import os from 'os';
 import { globalCarinaHome } from '../config/paths.js';
-import { bindProfileEnvironment, applyProfileProviderFromConfig } from './scope.js';
+import { bindProfileEnvironment } from './scope.js';
 
 export function profilesRootPath(): string {
   return process.env.CARINA_PROFILES_DIR
@@ -50,6 +50,8 @@ export async function createProfile(name: string): Promise<CarinaProfile> {
   const dir = profileDir(safe);
   await fs.mkdir(path.join(dir, 'data', 'checkpoints'), { recursive: true });
   await fs.mkdir(path.join(dir, 'resources'), { recursive: true });
+  await fs.mkdir(path.join(dir, 'extensions'), { recursive: true });
+  await fs.mkdir(path.join(dir, 'packs'), { recursive: true });
 
   const { ensureDefaultPersonalityFiles } = await import('./personality.js');
   await ensureDefaultPersonalityFiles(safe);
@@ -106,8 +108,6 @@ export function activateProfile(name: string): CarinaProfile {
   fsSync.writeFileSync(activeFile, name, 'utf8');
 
   bindProfileEnvironment(profile);
-  applyProfileProviderFromConfig(profile);
-
   return profile;
 }
 

@@ -13,6 +13,8 @@ export interface DeepResearchOptions {
   providerOverride?: ProviderOverride;
   sessionId?: string;
   onProgress?: (line: string) => void;
+  persist?: boolean;
+  skipVerify?: boolean;
 }
 
 export interface ResearchSection {
@@ -27,6 +29,8 @@ export interface SourceCitation {
   url: string;
   snippet: string;
   fetchedAt: string;
+  verified?: boolean;
+  verifyNote?: string;
 }
 
 export interface DeepResearchReport {
@@ -236,6 +240,67 @@ async function synthesizeReport(
   };
 }
 
+async function verifySources(
+  query: string,
+  sources: SourceCitation[],
+  providerOverride?: ProviderOverride,
+): Promise<SourceCitation[]> {
+  const candidates = sources.filter((s) => s.snippet.trim().length >= 80);
+  if (candidates.length === 0) {
+    return sources.map((s) => ({ ...s, verified: true, verifyNote: 'thin content retained' }));
+  }
+  if (candidates.length === 1) {
+    return candidates.map((s) => ({ ...s, verified: true, verifyNote: 'single source or thin content' }));
+  }
+
+  const prompt = [
+    `Research topic: ${query}`,
+    'Mark which sources are relevant and likely trustworthy for a cited report.',
+    'Sources:',
+    ...candidates.map((s) => `${s.id} | ${s.title} | ${s.url} | ${s.snippet.slice(0, 200)}`),
+    '',
+    'Return ONLY JSON: {"keep":[{"id":"src-1","note":"why"}]}',
+    'Drop sources that are off-topic, empty, or untrustworthy.',
+  ].join('\n');
+
+  const text = await chatText([
+    { role: 'user', content: prompt, timestamp: new Date() },
+  ], providerOverride);
+
+  const parsed = extractJsonObject(text);
+  const keep = Array.isArray(parsed?.keep) ? parsed.keep : [];
+  const keepIds = new Set(keep.map((row) => String((row as { id?: string }).id ?? '')));
+
+  if (keepIds.size === 0) {
+    return candidates.map((s) => ({ ...s, verified: true, verifyNote: 'verify fallback' }));
+  }
+
+  const noteById = new Map<string, string>();
+  for (const row of keep) {
+    const id = String((row as { id?: string }).id ?? '');
+    const note = String((row as { note?: string }).note ?? 'relevant');
+    if (id) noteById.set(id, note);
+  }
+
+  return candidates
+    .filter((s) => keepIds.has(s.id))
+    .map((s) => ({
+      ...s,
+      verified: true,
+      verifyNote: noteById.get(s.id) ?? 'relevant',
+    }));
+}
+
+export function linkInlineCitations(body: string, sources: SourceCitation[]): string {
+  let linked = body;
+  for (const source of sources) {
+    const bracket = `[${source.id}]`;
+    const footnote = `[${source.id}](${source.url} "${source.title}")`;
+    linked = linked.split(bracket).join(footnote);
+  }
+  return linked;
+}
+
 export function renderReportMarkdown(report: DeepResearchReport): string {
   const lines: string[] = [
     `# ${report.title}`,
@@ -247,20 +312,37 @@ export function renderReportMarkdown(report: DeepResearchReport): string {
   ];
 
   for (const section of report.sections) {
-    lines.push(`## ${section.heading}`, '', section.body, '');
+    lines.push(`## ${section.heading}`, '', linkInlineCitations(section.body, report.sources), '');
+    if (section.sourceCitations.length > 0) {
+      lines.push(
+        `_Citations: ${section.sourceCitations.join(', ')}_`,
+        '',
+      );
+    }
   }
 
   lines.push('## Sources', '');
   for (const source of report.sources) {
-    lines.push(`- [${source.id}] [${source.title}](${source.url})`);
+    const verified = source.verified === false ? ' (unverified)' : '';
+    lines.push(`- [${source.id}] [${source.title}](${source.url})${verified}`);
+    if (source.verifyNote) lines.push(`  - verify: ${source.verifyNote}`);
+  }
+
+  lines.push('', '## Source Provenance', '');
+  for (const source of report.sources) {
+    lines.push(
+      `- **${source.id}** | fetched ${source.fetchedAt} | ${source.url}`,
+      `  - excerpt: ${source.snippet.slice(0, 160).replace(/\n/g, ' ')}...`,
+    );
   }
 
   lines.push(
     '',
-    `---`,
+    '---',
     `Generated: ${report.generatedAt}`,
     `Search queries: ${report.searchQueries.length}`,
     `Rounds: ${report.roundCount}`,
+    `Sources verified: ${report.sources.filter((s) => s.verified).length}/${report.sources.length}`,
   );
 
   return lines.join('\n');
@@ -357,10 +439,17 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
   }
 
   emitProgress('Synthesising...', onProgress);
+  let verifiedSources = sources;
+  if (!options.skipVerify && sources.length > 0) {
+    emitProgress('Verifying sources...', onProgress);
+    verifiedSources = await verifySources(options.query, sources, options.providerOverride);
+    emitProgress(`Verified ${verifiedSources.length}/${sources.length} sources`, onProgress);
+  }
+
   const report = await synthesizeReport(
     options.query,
     subQuestions,
-    sources,
+    verifiedSources,
     options.providerOverride,
   );
 
@@ -373,6 +462,14 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
       : renderReportMarkdown(report);
     await fs.mkdir(path.dirname(options.saveToFile), { recursive: true });
     await fs.writeFile(options.saveToFile, content, 'utf8');
+  }
+
+  if (options.persist !== false) {
+    const { saveResearchReport } = await import('../research/research-store.js');
+    await saveResearchReport(report, {
+      query: options.query,
+      format: options.outputFormat === 'html' ? 'html' : 'both',
+    });
   }
 
   return report;

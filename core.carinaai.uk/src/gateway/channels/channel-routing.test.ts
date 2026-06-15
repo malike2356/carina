@@ -47,6 +47,17 @@ describe('channel-routing', () => {
     expect(buildSessionExternalKey(sample())).toBe('slack:C1:U1:t:t1');
   });
 
+  it('scopes telegram forum topics by thread id even without thread ownership', async () => {
+    process.env.CARINA_CHANNEL_PEER_SCOPING = 'true';
+    const { buildSessionExternalKey } = await import('./channel-routing.js');
+    expect(buildSessionExternalKey(sample({
+      channel: 'telegram',
+      conversationId: '-100123',
+      externalUserId: 'U9',
+      threadId: '77',
+    }))).toBe('telegram:-100123:U9:t:77');
+  });
+
   it('buildRoutingContext carries guild and team ids', async () => {
     const { buildRoutingContext } = await import('./channel-routing.js');
     const ctx = buildRoutingContext(sample({ guildId: 'g1', teamId: 'T1' }));

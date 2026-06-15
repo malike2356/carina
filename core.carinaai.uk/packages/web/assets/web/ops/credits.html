@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Credits</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card">
+      <h2>Credits</h2>
+      <p class="credits-summary" id="credits-summary">Loading...</p>
+      <div class="credits-bar"><div class="credits-bar-fill" id="credits-fill"></div></div>
+      <p class="placeholder" id="credits-detail"></p>
+      <div class="credits-actions">
+        <a class="btn secondary" href="/ops/usage">View usage</a>
+        <a class="btn secondary" href="/ops/billing">Billing and top-ups</a>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Model classes</h2>
+      <p id="model-classes" class="placeholder">Loading...</p>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script>
+    function applyCreditsBar(credits) {
+      const pct = Number(credits.percentUsed ?? 0);
+      const fill = document.getElementById('credits-fill');
+      fill.style.width = `${Math.min(100, pct)}%`;
+      fill.className = 'credits-bar-fill';
+      if (pct >= 90) fill.classList.add('warn-90');
+      else if (pct >= 75) fill.classList.add('warn-75');
+      const unit = credits.unit === 'tokens' ? 'tokens' : 'credits';
+      document.getElementById('credits-summary').textContent =
+        `${CarinaOpsLayout.formatCredits(credits.usedThisMonth)} / ${CarinaOpsLayout.formatCredits(credits.monthlyLimit)} ${unit} used this month`;
+      document.getElementById('credits-detail').textContent =
+        `${CarinaOpsLayout.formatCredits(credits.remaining)} ${unit} remaining` +
+        (credits.highestModelClass ? ` · highest class: ${credits.highestModelClass}` : '');
+      const classes = credits.allowedClasses || [];
+      document.getElementById('model-classes').textContent = classes.length
+        ? `Allowed: ${classes.join(', ')}`
+        : 'No model class data.';
+    }
+
+    CarinaOpsLayout.initPage('credits', {
+      onReady: async () => {
+        const res = await fetch('/api/carina-ops/credits');
+        if (!res.ok) {
+          document.getElementById('credits-summary').textContent = 'Unable to load credits.';
+          return;
+        }
+        applyCreditsBar(await res.json());
+      },
+    });
+  </script>
+</body>
+</html>

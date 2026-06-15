@@ -5,10 +5,16 @@ beforeEach(() => {
   vi.resetModules();
 });
 
-function mockLearningLoop(result: unknown) {
+function mockLearningLoop(result: unknown, isCorrection = false) {
   vi.doMock('./learning-loop.js', () => ({
     runLearningLoop: vi.fn().mockResolvedValue(result),
-    isUserCorrection: vi.fn().mockReturnValue(false),
+    isUserCorrection: vi.fn().mockImplementation((msg: string) => {
+      if (isCorrection) return true;
+      return msg.toLowerCase().trimStart().startsWith('no,');
+    }),
+  }));
+  vi.doMock('./curator.js', () => ({
+    runLightCuratorPass: vi.fn().mockResolvedValue(undefined),
   }));
 }
 
@@ -30,6 +36,9 @@ describe('evaluateAfterTurn', () => {
       runLearningLoop: vi.fn().mockRejectedValue(new Error('LLM down')),
       isUserCorrection: vi.fn().mockReturnValue(false),
     }));
+    vi.doMock('./curator.js', () => ({
+      runLightCuratorPass: vi.fn().mockResolvedValue(undefined),
+    }));
     const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
     const result = await evaluateAfterTurn({
       userMessage: 'do a thing',
@@ -40,7 +49,7 @@ describe('evaluateAfterTurn', () => {
     expect(result).toBeNull();
   });
 
-  it('returns skillName when learning loop creates a skill', async () => {
+  it('returns learning notice when learning loop creates a skill', async () => {
     mockLearningLoop({ saved: true, skillName: 'my-new-skill', action: 'created' });
     const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
     const result = await evaluateAfterTurn({
@@ -49,18 +58,108 @@ describe('evaluateAfterTurn', () => {
       toolsUsed: ['tool1', 'tool2', 'tool3'],
       toolCallLog: ['tool1: {}', 'tool2: {}', 'tool3: {}'],
     });
-    expect(result).toBe('my-new-skill');
+    expect(result).toEqual({ kind: 'skill', skillName: 'my-new-skill', action: 'created' });
   });
 
-  it('returns null when action is refined (not created)', async () => {
-    mockLearningLoop({ saved: true, skillName: 'existing-skill', action: 'refined' });
+  it('returns learning notice when a correction refines an existing skill', async () => {
+    mockLearningLoop({ saved: true, skillName: 'existing-skill', action: 'refined' }, true);
     const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
     const result = await evaluateAfterTurn({
-      userMessage: 'do a thing',
+      userMessage: 'No, do it the other way',
       assistantText: 'done',
-      toolsUsed: ['tool1', 'tool2', 'tool3'],
+      toolsUsed: ['tool1'],
       toolCallLog: [],
     });
-    expect(result).toBeNull();
+    expect(result).toEqual({ kind: 'skill', skillName: 'existing-skill', action: 'refined' });
+  });
+
+  it('returns preference notice on first correction', async () => {
+    mockLearningLoop({
+      saved: false,
+      action: 'preference_only',
+      preferenceLearned: true,
+      preferenceText: 'Operator prefers POST over GET for mutations',
+      preferenceAction: 'added',
+    }, true);
+    const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
+    const result = await evaluateAfterTurn({
+      userMessage: 'No, always use POST instead of GET',
+      assistantText: 'done',
+      toolsUsed: ['http-request'],
+      toolCallLog: [],
+    });
+    expect(result).toEqual({
+      kind: 'preference',
+      preference: 'Operator prefers POST over GET for mutations',
+      action: 'added',
+    });
+  });
+
+  it('returns protected notice when weak evidence would overwrite a good skill', async () => {
+    mockLearningLoop({
+      saved: false,
+      action: 'incremented',
+      skillName: 'fetch-and-parse',
+      blockedReason: 'weak_evidence',
+    });
+    const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
+    const result = await evaluateAfterTurn({
+      userMessage: 'fetch and parse a URL',
+      assistantText: 'failed',
+      toolsUsed: ['a', 'b', 'c'],
+      toolCallLog: [],
+    });
+    expect(result).toEqual({
+      kind: 'protected',
+      skillName: 'fetch-and-parse',
+      reason: 'weak_evidence',
+    });
+  });
+
+  it('returns ignored notice for vague corrections', async () => {
+    mockLearningLoop({
+      saved: false,
+      preferenceLearned: false,
+      preferenceAction: 'skipped',
+      preferenceSkipReason: 'low_confidence',
+    }, true);
+    const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
+    const result = await evaluateAfterTurn({
+      userMessage: 'wrong',
+      assistantText: 'done',
+      toolsUsed: ['tool1'],
+      toolCallLog: [],
+    });
+    expect(result).toEqual({ kind: 'ignored', reason: 'low_confidence' });
+  });
+});
+
+describe('formatLearningNotice', () => {
+  it('formats operator-visible learning notices', async () => {
+    const { formatLearningNotice } = await import('./post-task-evaluator.js');
+    expect(formatLearningNotice({ kind: 'skill', skillName: 'x', action: 'created' })).toContain('saved approach');
+    expect(formatLearningNotice({ kind: 'skill', skillName: 'x', action: 'refined' })).toContain('correction');
+    expect(formatLearningNotice({
+      kind: 'preference',
+      preference: 'Operator prefers concise replies',
+      action: 'added',
+    })).toContain('learned your preference');
+    expect(formatLearningNotice({
+      kind: 'protected',
+      skillName: 'demo',
+      reason: 'weak_evidence',
+    })).toContain('kept skill');
+    expect(formatLearningNotice({ kind: 'ignored', reason: 'low_confidence' })).toContain('noted your correction');
+  });
+});
+
+describe('scorePreferenceConfidence', () => {
+  it('blocks vague preferences', async () => {
+    const { scorePreferenceConfidence } = await import('./preference-learner.js');
+    expect(scorePreferenceConfidence('bad', 'wrong')).toBeLessThan(0.55);
+    expect(scorePreferenceConfidence(
+      'Operator prefers POST over GET for all mutation requests',
+      'No, always use POST instead of GET for writes',
+    )).toBeGreaterThanOrEqual(0.55);
   });
 });

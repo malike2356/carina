@@ -5,6 +5,7 @@ function mockConfig(overrides: Record<string, unknown> = {}) {
     config: {
       brave: { apiKey: '' },
       tavily: { apiKey: '', searchDepth: 'basic' as const },
+      searxng: { url: '' },
       search: { provider: 'tavily' as const },
       ...overrides,
     },
@@ -34,6 +35,17 @@ describe('buildSearchProviderContext', () => {
     const { buildSearchProviderContext } = await import('./web-search-provider.js');
     const ctx = buildSearchProviderContext();
     expect(ctx).toContain('not configured');
-    expect(ctx).toContain('TAVILY_API_KEY');
+    expect(ctx).toMatch(/SEARXNG_URL|TAVILY_API_KEY/);
+  });
+
+  it('mentions SearXNG when configured', async () => {
+    vi.doMock('../config/index.js', () =>
+      mockConfig({ searxng: { url: 'http://localhost:8888' }, search: { provider: 'searxng' } }),
+    );
+    vi.resetModules();
+    const { buildSearchProviderContext } = await import('./web-search-provider.js');
+    const ctx = buildSearchProviderContext();
+    expect(ctx).toContain('SearXNG');
+    expect(ctx).toContain('web-search');
   });
 });

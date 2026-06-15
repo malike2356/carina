@@ -38,11 +38,9 @@ export function buildSessionExternalKey(inbound: ChannelMessage): string {
     ? `${inbound.channel}:${peer}`
     : `${inbound.channel}:${conv}:${peer}`;
 
-  if (threadOwnershipEnabled()) {
-    const tid = inbound.threadId?.trim();
-    if (tid && tid !== 'root') {
-      key += `:t:${tid}`;
-    }
+  const tid = inbound.threadId?.trim();
+  if (tid && tid !== 'root' && (threadOwnershipEnabled() || inbound.channel === 'telegram')) {
+    key += `:t:${tid}`;
   }
   return key;
 }

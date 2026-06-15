@@ -28,6 +28,7 @@ function defaultConfig(homeDir = CARINA_HOME): AgentsConfig {
       { agentId: 'main', match: { channel: '*' }, label: 'default fallback' },
     ],
     tools: { agentToAgent: { enabled: false, allow: [] } },
+    learning: { shareAcrossAgents: { mode: 'kernel', minSuccessCount: 2 } },
   };
 }
 

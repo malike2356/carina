@@ -13,19 +13,21 @@ import {
 } from '../profiles/scope.js';
 import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
 import { getPromptCacheStats } from '../brain/prompt-cache.js';
-import { PROVIDER_DEFINITIONS, ROUTABLE_PROVIDER_NAMES, isProviderConfigured, providerTransportType } from '../brain/provider-registry.js';
+import { PROVIDER_DEFINITIONS, ROUTABLE_PROVIDER_NAMES } from '../brain/provider-registry.js';
 import { describeProviderTags, providerCostLabel } from '../brain/provider-tags.js';
+import { providerTransportType } from '../brain/provider-registry.js';
 import { listCheckpoints, latestCheckpoint, restoreCheckpoint } from '../tools/checkpoint-store.js';
 import { registry } from '../tools/index.js';
-import { buildEntranceSnapshot, printEntrance, printFreshStart } from '../cli/entrance.js';
+import { buildEntranceSnapshot, printEntrance } from '../cli/entrance.js';
 
 export interface TuiOptions {
   memoryReady?: boolean;
   sessionId?: string;
+  simple?: boolean;
 }
 
 const HELP_LINES = [
-  'CARINA TUI commands',
+  'CARINA simple TUI commands',
   '/help          show commands',
   '/profile       show or switch profile',
   '/provider      switch LLM provider',
@@ -53,7 +55,7 @@ async function reloadPersonality(agent: CarinaOrchestrator): Promise<string> {
   return personality.name;
 }
 
-export async function runTui(options: TuiOptions = {}): Promise<void> {
+export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
   const { ensureFirstRunReady } = await import('../cli/first-run.js');
   await ensureFirstRunReady();
 
@@ -77,8 +79,8 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
     }
 
     if (trimmed === '/help') {
-      for (const line of HELP_LINES) {
-        console.log(chalk.gray(`  ${line}`));
+      for (const helpLine of HELP_LINES) {
+        console.log(chalk.gray(`  ${helpLine}`));
       }
       continue;
     }
@@ -116,7 +118,6 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
 
     if (trimmed.startsWith('/profile')) {
       const arg = trimmed.slice('/profile'.length).trim();
-
       if (!arg) {
         const name = getActiveProfileName() ?? 'default';
         try {
@@ -127,7 +128,6 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
         }
         continue;
       }
-
       if (arg === 'list') {
         const profiles = await listProfiles();
         const active = getActiveProfileName();
@@ -136,61 +136,13 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
         }
         continue;
       }
-
       try {
         const profile = activateProfile(arg);
         applyProfileProviderFromConfig(profile);
-        const configured = llm.list();
-        const provider = process.env.DEFAULT_PROVIDER;
-        if (provider && configured.includes(provider)) {
-          llm.use(provider);
-        }
         personalityName = await reloadPersonality(agent);
         console.log(chalk.yellow(`Switched to profile: ${profile.name}`));
-        console.log(chalk.gray(`  Provider: ${llm.current().name} (${llm.currentModel()})`));
-        console.log(chalk.gray(`  Personality: ${personalityName}`));
       } catch (err) {
         console.log(chalk.red(err instanceof Error ? err.message : String(err)));
-      }
-      continue;
-    }
-
-    if (trimmed === '/plugins') {
-      const { listExtensions } = await import('../extensions/manager.js');
-      const rows = await listExtensions();
-      if (rows.length === 0) {
-        console.log(chalk.yellow('No extension bundles installed.'));
-        console.log(chalk.gray('Install: carina extensions install <path>'));
-        continue;
-      }
-      const runtime = process.env.CARINA_EXTENSIONS_ENABLED === 'true'
-        ? chalk.green('runtime on')
-        : chalk.gray('runtime off (set CARINA_EXTENSIONS_ENABLED=true)');
-      console.log(chalk.yellow(`Extensions (${runtime})`));
-      for (const row of rows) {
-        const status = row.status === 'enabled' ? chalk.green(row.status) : chalk.gray(row.status);
-        console.log(`  ${row.id.padEnd(18)} ${row.version.padEnd(8)} ${status}  ${row.name}`);
-      }
-      continue;
-    }
-
-    if (trimmed === '/skills') {
-      const packs = process.env.ACTIVE_SKILL_PACKS ?? process.env.ACTIVE_SKILL_PACK ?? '';
-      console.log(chalk.yellow(packs ? `Active packs: ${packs}` : 'No active skill packs configured'));
-      continue;
-    }
-
-    if (trimmed === '/copilot') {
-      const selection = llm.copilotSelection();
-      const preset = llm.getPreset();
-      console.log(chalk.yellow(preset ? `Preset: ${preset}` : 'Preset: none (use carina providers preset free-copilot)'));
-      console.log(chalk.gray(selection.note));
-      if (selection.order.length === 0) {
-        console.log(chalk.yellow('No Free Copilot providers configured.'));
-      } else {
-        for (const [i, name] of selection.order.entries()) {
-          console.log(i === 0 ? chalk.yellow(`  * ${name}`) : `    ${name}`);
-        }
       }
       continue;
     }
@@ -202,10 +154,7 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
         continue;
       }
       for (const c of checkpoints) {
-        const id = c.checkpoint_id.slice(0, 8);
-        const label = c.label ?? '';
-        const when = c.created_at ? c.created_at.slice(0, 19) : '';
-        console.log(chalk.yellow(`  ${id}  ${label}  ${when}`));
+        console.log(chalk.yellow(`  ${c.checkpoint_id.slice(0, 8)}  ${c.label ?? ''}`));
       }
       continue;
     }
@@ -216,13 +165,8 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
         console.log(chalk.yellow('No checkpoints to restore.'));
         continue;
       }
-      const confirm = await input({
-        message: `Restore latest (${latest.checkpoint_id.slice(0, 8)})? [y/N]`,
-      });
-      if (!/^y(es)?$/i.test(confirm.trim())) {
-        console.log(chalk.gray('Restore cancelled.'));
-        continue;
-      }
+      const confirm = await input({ message: `Restore latest (${latest.checkpoint_id.slice(0, 8)})? [y/N]` });
+      if (!/^y(es)?$/i.test(confirm.trim())) continue;
       try {
         const result = await restoreCheckpoint(latest.checkpoint_id);
         console.log(chalk.yellow(`Restored ${result.restored.length} path(s)`));
@@ -248,4 +192,27 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
   }
 
   console.log(chalk.gray('Goodbye.\n'));
+}
+
+export async function runTui(options: TuiOptions = {}): Promise<void> {
+  const { ensureFirstRunReady } = await import('../cli/first-run.js');
+  await ensureFirstRunReady();
+
+  if (options.simple || process.env.CARINA_TUI_SIMPLE === 'true') {
+    await runSimpleTui(options);
+    return;
+  }
+
+  try {
+    const { runOperatorTui } = await import('./app.js');
+    await runOperatorTui(options);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('interactive terminal')) {
+      console.error(msg);
+      process.exit(1);
+    }
+    console.error(chalk.yellow(`Operator TUI unavailable (${msg}); falling back to simple mode.`));
+    await runSimpleTui(options);
+  }
 }

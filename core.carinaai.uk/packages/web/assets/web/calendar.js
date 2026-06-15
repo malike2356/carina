@@ -1,12 +1,13 @@
 (function () {
-  const API = '/api/notes';
+  const API = '/api/calendar';
   let viewDate = new Date();
-  let reminders = [];
+  let events = [];
 
   const monthLabelEl = document.getElementById('month-label');
   const gridEl = document.getElementById('calendar-grid');
   const upcomingEl = document.getElementById('upcoming-list');
   const statusEl = document.getElementById('status');
+  const syncStatusEl = document.getElementById('sync-status');
 
   const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -22,6 +23,10 @@
     return new Date(date.getFullYear(), date.getMonth(), 1);
   }
 
+  function endOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  }
+
   function sameDay(a, b) {
     return a.getFullYear() === b.getFullYear() &&
       a.getMonth() === b.getMonth() &&
@@ -32,20 +37,53 @@
     return date.toLocaleString(undefined, { month: 'long', year: 'numeric' });
   }
 
-  async function loadReminders() {
-    statusEl.textContent = 'Loading...';
-    const res = await fetch(API);
-    const data = await res.json().catch(function () { return {}; });
-    if (!res.ok) throw new Error(data.error || 'Failed to load reminders');
-    reminders = (data.notes || []).filter(function (note) {
-      return note.format === 'reminder' && note.remindAt && !note.done;
-    });
-    statusEl.textContent = reminders.length + ' reminder' + (reminders.length === 1 ? '' : 's');
+  function rangeForView() {
+    const first = startOfMonth(viewDate);
+    const start = new Date(first);
+    start.setDate(first.getDate() - first.getDay());
+    const end = new Date(start);
+    end.setDate(start.getDate() + 41);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
   }
 
-  function remindersForDay(day) {
-    return reminders.filter(function (note) {
-      return sameDay(new Date(note.remindAt), day);
+  async function loadSyncStatus() {
+    if (!syncStatusEl) return;
+    const res = await fetch(API + '/sync/status');
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok) {
+      syncStatusEl.textContent = data.error || 'Sync status unavailable';
+      return;
+    }
+    syncStatusEl.textContent = data.message || '';
+    syncStatusEl.dataset.configured = data.configured ? '1' : '0';
+    syncStatusEl.dataset.implementation = data.implementation || 'none';
+    if (data.lastSyncAt) {
+      syncStatusEl.textContent += ' Last sync: ' + new Date(data.lastSyncAt).toLocaleString() + '.';
+    }
+    if (data.lastSyncError) {
+      syncStatusEl.textContent += ' Error: ' + data.lastSyncError;
+    }
+  }
+
+  async function loadEvents() {
+    statusEl.textContent = 'Loading...';
+    const range = rangeForView();
+    const qs = '?start=' + encodeURIComponent(range.start.toISOString()) +
+      '&end=' + encodeURIComponent(range.end.toISOString());
+    const res = await fetch(API + '/events' + qs);
+    const data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || 'Failed to load events');
+    events = data.events || [];
+    const notesCount = (data.sources && data.sources.notes) || 0;
+    const caldavCount = (data.sources && data.sources.caldav) || 0;
+    statusEl.textContent = events.length + ' event' + (events.length === 1 ? '' : 's') +
+      ' (' + notesCount + ' reminders' + (caldavCount ? ', ' + caldavCount + ' synced' : '') + ')';
+  }
+
+  function eventsForDay(day) {
+    return events.filter(function (event) {
+      return sameDay(new Date(event.start), day);
     });
   }
 
@@ -62,7 +100,6 @@
     const first = startOfMonth(viewDate);
     const start = new Date(first);
     start.setDate(first.getDate() - first.getDay());
-    const today = new Date();
 
     for (let i = 0; i < 42; i += 1) {
       const day = new Date(start);
@@ -70,11 +107,13 @@
       const cell = document.createElement('div');
       const otherMonth = day.getMonth() !== viewDate.getMonth();
       cell.className = 'day' + (otherMonth ? ' other' : '');
-      const dayEvents = remindersForDay(day);
-      const eventsHtml = dayEvents.map(function (note) {
-        const overdue = new Date(note.remindAt) < new Date();
-        return '<a class="event' + (overdue ? ' overdue' : '') + '" href="/notes">' +
-          escapeHtml(note.title || 'Reminder') + '</a>';
+      const dayEvents = eventsForDay(day);
+      const eventsHtml = dayEvents.map(function (event) {
+        const overdue = event.overdue || new Date(event.start) < new Date();
+        const href = event.href || '#';
+        const sourceTag = event.source === 'caldav' ? ' [sync]' : '';
+        return '<a class="event' + (overdue ? ' overdue' : '') + '" href="' + escapeHtml(href) + '">' +
+          escapeHtml(event.title + sourceTag) + '</a>';
       }).join('');
       cell.innerHTML = '<div class="day-num">' + day.getDate() + '</div>' + eventsHtml;
       gridEl.appendChild(cell);
@@ -82,45 +121,55 @@
   }
 
   function renderUpcoming() {
-    const sorted = reminders.slice().sort(function (a, b) {
-      return new Date(a.remindAt).getTime() - new Date(b.remindAt).getTime();
+    const sorted = events.slice().sort(function (a, b) {
+      return new Date(a.start).getTime() - new Date(b.start).getTime();
     }).slice(0, 12);
 
     if (!sorted.length) {
-      upcomingEl.innerHTML = '<p class="empty">No upcoming reminders. Add one in Notes.</p>';
+      upcomingEl.innerHTML = '<p class="empty">No upcoming events. Add a reminder in Notes or configure CalDAV sync.</p>';
       return;
     }
 
-    upcomingEl.innerHTML = sorted.map(function (note) {
-      const when = new Date(note.remindAt).toLocaleString();
-      const overdue = new Date(note.remindAt) < new Date();
+    upcomingEl.innerHTML = sorted.map(function (event) {
+      const when = new Date(event.start).toLocaleString();
+      const overdue = event.overdue || new Date(event.start) < new Date();
+      const href = event.href || '#';
       return '<div class="upcoming-item">' +
-        '<a href="/notes">' + escapeHtml(note.title || 'Reminder') + '</a>' +
-        '<div class="meta">' + escapeHtml(when) + (overdue ? ' | overdue' : '') + '</div>' +
-        '</div>';
+        '<a href="' + escapeHtml(href) + '">' + escapeHtml(event.title) + '</a>' +
+        '<div class="meta">' + escapeHtml(when) +
+        (overdue ? ' | overdue' : '') +
+        ' | ' + escapeHtml(event.source) +
+        '</div></div>';
     }).join('');
+  }
+
+  async function refresh() {
+    await loadEvents();
+    renderCalendar();
+    renderUpcoming();
   }
 
   document.getElementById('prev-month').addEventListener('click', function () {
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1);
-    renderCalendar();
+    refresh().catch(function (err) {
+      statusEl.textContent = err.message;
+    });
   });
   document.getElementById('next-month').addEventListener('click', function () {
     viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1);
-    renderCalendar();
+    refresh().catch(function (err) {
+      statusEl.textContent = err.message;
+    });
   });
   document.getElementById('today-btn').addEventListener('click', function () {
     viewDate = new Date();
-    renderCalendar();
+    refresh().catch(function (err) {
+      statusEl.textContent = err.message;
+    });
   });
 
-  loadReminders()
-    .then(function () {
-      renderCalendar();
-      renderUpcoming();
-    })
-    .catch(function (err) {
-      statusEl.textContent = '';
-      upcomingEl.innerHTML = '<p class="empty">' + escapeHtml(err.message) + '</p>';
-    });
+  Promise.all([loadSyncStatus(), refresh()]).catch(function (err) {
+    statusEl.textContent = '';
+    upcomingEl.innerHTML = '<p class="empty">' + escapeHtml(err.message) + '</p>';
+  });
 })();

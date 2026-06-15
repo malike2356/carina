@@ -40,6 +40,12 @@
   .upcoming-item a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 0.82rem; }
   .upcoming-item .meta { font-size: 0.72rem; color: var(--muted); margin-top: 0.15rem; }
   .empty { color: var(--muted); font-size: 0.85rem; }
+  .sync-panel {
+    font-size: 0.78rem; color: var(--muted); padding: 0.55rem 0.65rem;
+    border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem;
+    background: var(--surface-2); line-height: 1.45;
+  }
+  .sync-panel strong { color: var(--text); font-size: 0.8rem; }
 </style>
 </head>
 <body>
@@ -49,6 +55,10 @@
   <span class="status" id="status"></span>
 </header>
 <div class="calendar-wrap">
+  <div class="sync-panel" id="sync-panel">
+    <strong>Calendar sync</strong>
+    <div id="sync-status">Checking sync status...</div>
+  </div>
   <div class="calendar-head">
     <button type="button" id="prev-month">Prev</button>
     <h2 id="month-label"></h2>

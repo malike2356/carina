@@ -4,6 +4,7 @@ import {
   removePersistentFact,
   replacePersistentFact,
   listPersistentFacts,
+  activeAgentName,
   MEMORY_BUDGETS,
   type MemoryTarget,
 } from '../memory/persistent-memory.js';
@@ -31,13 +32,14 @@ export const memoryTool: Tool = {
   execute: async (params) => {
     const action = String(params.action ?? '');
     const target = parseTarget(params.target);
+    const agentId = target === 'memory' ? activeAgentName() : undefined;
 
     try {
       if (action === 'add') {
         const content = String(params.content ?? '').trim();
         if (!content) return { error: 'content is required for add' };
-        const fact = await addPersistentFact(target, content);
-        const facts = await listPersistentFacts(target);
+        const fact = await addPersistentFact(target, content, { agentId });
+        const facts = await listPersistentFacts(target, agentId);
         const used = facts.reduce((sum, f) => sum + f.content.length, 0);
         return {
           status: 'added',
@@ -48,7 +50,7 @@ export const memoryTool: Tool = {
       }
 
       if (action === 'list') {
-        const facts = await listPersistentFacts(target);
+        const facts = await listPersistentFacts(target, agentId);
         const used = facts.reduce((sum, f) => sum + f.content.length, 0);
         return {
           target,
@@ -63,14 +65,14 @@ export const memoryTool: Tool = {
         const newText = String(params.content ?? '').trim();
         if (!oldText) return { error: 'old_text is required for replace' };
         if (!newText) return { error: 'content is required for replace' };
-        const fact = await replacePersistentFact(target, oldText, newText);
+        const fact = await replacePersistentFact(target, oldText, newText, agentId);
         return { status: 'replaced', id: fact.id, target };
       }
 
       if (action === 'remove') {
         const oldText = String(params.old_text ?? '').trim();
         if (!oldText) return { error: 'old_text is required for remove' };
-        await removePersistentFact(target, oldText);
+        await removePersistentFact(target, oldText, agentId);
         return { status: 'removed', target };
       }
 

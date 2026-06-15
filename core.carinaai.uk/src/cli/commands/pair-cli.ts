@@ -17,8 +17,10 @@ export async function runPairCommand(args: string[]): Promise<void> {
 
   if (!action) {
     const session = createPairingToken();
+    const { getLocalLanIp } = await import('../../pairing/pairing.js');
     console.log(chalk.bold('\nDevice pairing\n'));
     console.log(`Token expires: ${session.expiresAt}`);
+    console.log(`LAN host: ${getLocalLanIp()}`);
     console.log(`URI: ${session.uri}`);
     console.log('');
     console.log(renderTerminalQr(session.uri));
@@ -59,9 +61,28 @@ export async function runPairCommand(args: string[]): Promise<void> {
 
   if (action === 'token') {
     const session = createPairingToken();
-    console.log(session.token);
-    console.log(session.uri);
+    const { getLocalLanIp } = await import('../../pairing/pairing.js');
+    console.log(chalk.bold('\nPairing token (scan or paste on mobile)\n'));
+    console.log(`Expires: ${session.expiresAt}`);
+    console.log(`LAN host: ${getLocalLanIp()}`);
+    console.log(`Token: ${session.token}`);
+    console.log(`URI: ${session.uri}`);
+    console.log('');
     console.log(renderTerminalQr(session.uri));
+    return;
+  }
+
+  if (action === 'presence') {
+    const { collectPresence } = await import('../../ops/observability/system-events.js');
+    const presence = collectPresence().filter((p) => p.kind === 'device');
+    if (presence.length === 0) {
+      console.log('No paired mobile devices.');
+      return;
+    }
+    for (const entry of presence) {
+      const status = entry.online ? chalk.green('online') : chalk.gray('offline');
+      console.log(`${entry.label}  ${status}  last seen ${entry.lastSeenAt}`);
+    }
     return;
   }
 
@@ -77,7 +98,7 @@ export async function runPairCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina pair [list|revoke|token|accept] [args]');
+  console.error('Usage: carina pair [list|revoke|token|accept|presence] [args]');
   process.exit(1);
 }
 

@@ -71,7 +71,12 @@
 
   function renderList() {
     if (!documents.length) {
-      docListEl.innerHTML = '<div style="padding:0.75rem;color:var(--muted);font-size:0.8rem;">No documents yet.</div>';
+      docListEl.innerHTML =
+        '<div style="padding:2.5rem 1rem;text-align:center;color:var(--muted)">' +
+        '<div style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">No documents yet</div>' +
+        '<div style="font-size:0.8rem;line-height:1.5">Click <strong>New doc</strong> or ask Carina:<br>' +
+        '"draft a project brief for my new app"</div>' +
+        '</div>';
       return;
     }
     docListEl.innerHTML = documents.map((doc) => {
@@ -323,6 +328,11 @@
     alert(err instanceof Error ? err.message : String(err));
     setSaveStatus('Error');
   }
+
+  // Show skeleton while documents load
+  docListEl.innerHTML = [1, 2, 3, 4].map(() =>
+    '<div class="skeleton" style="height:56px;margin-bottom:6px;"></div>',
+  ).join('');
 
   loadDocuments().catch(showError);
 })();

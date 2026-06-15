@@ -8,8 +8,9 @@ import {
   releaseChildAbortController,
   setDelegationDepth,
 } from '../agents/delegation-context.js';
-import { runDelegatedTask } from '../agents/subagent-runner.js';
+import { trackChildSession } from '../memory/session-scope.js';
 import { resolveToolset, LEAF_EXCLUDED_TOOLS } from './toolset.js';
+import { runDelegatedTask } from '../agents/subagent-runner.js';
 
 const DEFAULT_TIMEOUT_SECONDS = 60;
 
@@ -56,6 +57,7 @@ async function runSingleTask(
 ): Promise<string> {
   const childAbort = createChildAbortController(parentSessionId);
   const subSessionId = `${parentSessionId}:sub:${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  trackChildSession(subSessionId, parentSessionId);
 
   try {
     if (childAbort.signal.aborted) {

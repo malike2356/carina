@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { CARINA_HOME } from '../../config/paths.js';
+import { resolveCarinaHome } from '../../config/paths.js';
 import type { ChannelName } from './channel-adapter.interface.js';
 import { CHANNEL_CAPABILITIES } from './channel-capabilities.js';
 
@@ -24,21 +24,25 @@ type OwnershipStore = {
   audit: Array<{ at: string; action: string; key: string; detail?: string }>;
 };
 
-const STORE_PATH = path.join(CARINA_HOME, 'thread-ownership.json');
+function storePath(): string {
+  return path.join(resolveCarinaHome(), 'thread-ownership.json');
+}
 const THREAD_CHANNELS = new Set<ChannelName>([
   'slack', 'discord', 'telegram', 'whatsapp', 'matrix', 'mattermost', 'imessage', 'signal', 'email', 'irc',
+  'teams', 'google-chat', 'line', 'feishu', 'zulip', 'rocketchat', 'reddit', 'bluesky', 'mastodon',
+  'nextcloud-talk', 'groupme', 'element', 'workplace', 'twist', 'ryver', 'messenger', 'pumble',
 ]);
 
 let cached: OwnershipStore | null = null;
 
 function loadStore(): OwnershipStore {
   if (cached) return cached;
-  if (!fs.existsSync(STORE_PATH)) {
+  if (!fs.existsSync(storePath())) {
     cached = { version: 1, threads: [], audit: [] };
     return cached;
   }
   try {
-    cached = JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8')) as OwnershipStore;
+    cached = JSON.parse(fs.readFileSync(storePath(), 'utf-8')) as OwnershipStore;
     cached.threads = cached.threads ?? [];
     cached.audit = cached.audit ?? [];
     return cached;
@@ -49,8 +53,8 @@ function loadStore(): OwnershipStore {
 }
 
 function saveStore(store: OwnershipStore): void {
-  fs.mkdirSync(CARINA_HOME, { recursive: true });
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+  fs.mkdirSync(resolveCarinaHome(), { recursive: true });
+  fs.writeFileSync(storePath(), JSON.stringify(store, null, 2));
   cached = store;
 }
 

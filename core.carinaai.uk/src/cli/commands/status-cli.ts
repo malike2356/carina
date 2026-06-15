@@ -50,6 +50,7 @@ export async function runStatusCommand(args: string[]): Promise<void> {
   }
 
   console.log(chalk.bold(`\nCarina status (${report.hostname})\n`));
+  console.log(`  profile:   ${report.activeProfile}`);
   console.log(`  version:   ${report.version}`);
   console.log(`  home:      ${report.carinaHome}`);
   console.log(

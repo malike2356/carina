@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Model Compare; Carina</title>
+<style>
+  .compare-wrap { flex: 1; overflow-y: auto; padding: 1rem 1.25rem 2rem; }
+  .compare-form { display: flex; flex-direction: column; gap: 0.65rem; margin-bottom: 1rem; max-width: 900px; }
+  .compare-form textarea {
+    min-height: 96px; resize: vertical; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 0.65rem 0.75rem;
+    font-size: 0.88rem; font-family: inherit; line-height: 1.45;
+  }
+  .compare-options { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; font-size: 0.82rem; }
+  .compare-options label { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+  .compare-form button, .compare-actions button {
+    align-self: flex-start; background: var(--accent); color: #0d0d0f; border: none;
+    border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  }
+  .compare-form button:disabled { opacity: 0.55; cursor: not-allowed; }
+  .compare-actions { margin-bottom: 0.75rem; }
+  .compare-actions button.secondary {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border); font-weight: 500;
+  }
+  .compare-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem; align-items: start;
+  }
+  .compare-card {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    min-height: 160px; display: flex; flex-direction: column;
+  }
+  .compare-card header {
+    display: flex; justify-content: space-between; gap: 0.5rem; align-items: baseline;
+    padding: 0.65rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.78rem;
+  }
+  .compare-card header .meta { color: var(--muted); font-size: 0.68rem; white-space: nowrap; }
+  .compare-body {
+    padding: 0.75rem; font-size: 0.84rem; line-height: 1.55; white-space: pre-wrap; flex: 1;
+  }
+  .compare-card.loading .compare-body { color: var(--muted); }
+  .compare-history-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .history-chip {
+    display: inline-block; margin: 0 0.35rem 0.35rem 0; background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 99px; padding: 0.25rem 0.65rem;
+    font-size: 0.72rem; cursor: pointer; color: var(--text);
+  }
+  .empty-output { color: var(--muted); font-size: 0.85rem; }
+  .compare-reveal { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.55; }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Model Compare</h1>
+  <span class="status" id="status"></span>
+</header>
+<div class="compare-wrap">
+  <div id="compare-intro" style="background:rgba(25,196,154,0.06);border:1px solid rgba(25,196,154,0.18);border-radius:10px;padding:0.85rem 1rem;margin-bottom:1rem;font-size:0.82rem;line-height:1.55">
+    <strong>Carina Model Compare</strong> runs the same prompt across all your configured LLM providers simultaneously. Enable blind mode to hide provider names until all results are in.
+    <button id="dismiss-compare-intro" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem">x</button>
+  </div>
+  <div id="compare-history"></div>
+  <form class="compare-form" id="compare-form">
+    <textarea id="compare-query" placeholder="Enter a prompt to compare across providers..." required></textarea>
+    <div class="compare-options">
+      <label><input type="checkbox" id="compare-blind"> Blind mode (hide provider names)</label>
+    </div>
+    <button type="submit" id="compare-submit">Compare models</button>
+  </form>
+  <div class="compare-actions">
+    <button type="button" id="compare-reveal" class="secondary" hidden>Reveal providers</button>
+  </div>
+  <div id="compare-grid" class="compare-grid"></div>
+</div>
+<script>
+(function(){
+  if(localStorage.getItem('carina:compare-intro-done')){document.getElementById('compare-intro').style.display='none';}
+  document.getElementById('dismiss-compare-intro').onclick=function(){document.getElementById('compare-intro').style.display='none';localStorage.setItem('carina:compare-intro-done','1');};
+})();
+</script>
+<!--CARINA_WORKSPACE_END-->
+<script src="/compare.js"></script>
+</body>
+</html>

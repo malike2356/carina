@@ -60,10 +60,13 @@ export const config = {
     searchDepth:
       process.env.TAVILY_SEARCH_DEPTH === 'advanced' ? ('advanced' as const) : ('basic' as const),
   },
+  searxng: {
+    url: process.env.SEARXNG_URL ?? '',
+  },
   search: {
     provider: (() => {
-      const raw = (process.env.SEARCH_PROVIDER ?? 'tavily').trim().toLowerCase();
-      if (raw === 'brave' || raw === 'tavily') return raw;
+      const raw = (process.env.SEARCH_PROVIDER ?? '').trim().toLowerCase();
+      if (raw === 'brave' || raw === 'tavily' || raw === 'searxng') return raw;
       return 'auto' as const;
     })(),
   },
@@ -72,11 +75,50 @@ export const config = {
     webhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? '',
     from: 'Carina <hello@carinaai.uk>',
   },
+  imap: {
+    host: process.env.IMAP_HOST ?? '',
+    port: parseInt(process.env.IMAP_PORT ?? '993', 10),
+    user: process.env.IMAP_USER ?? '',
+    password: process.env.IMAP_PASSWORD ?? '',
+    tls: process.env.IMAP_TLS !== 'false',
+  },
+  smtp: {
+    host: process.env.SMTP_HOST ?? 'smtp.resend.com',
+    port: parseInt(process.env.SMTP_PORT ?? '465', 10),
+    user: process.env.SMTP_USER ?? 'resend',
+    password: process.env.SMTP_PASSWORD ?? process.env.RESEND_API_KEY ?? '',
+    from: process.env.SMTP_FROM ?? process.env.RESEND_FROM ?? 'hello@carinaai.uk',
+    tls: process.env.SMTP_TLS !== 'false',
+  },
+  caldav: {
+    url: process.env.CALDAV_URL ?? '',
+    username: process.env.CALDAV_USERNAME ?? '',
+    password: process.env.CALDAV_PASSWORD ?? '',
+    principalUrl: process.env.CALDAV_PRINCIPAL_URL ?? '',
+  },
   propertyData: {
     apiKey: process.env.PROPERTY_DATA_API_KEY ?? '',
   },
   landRegistry: {
     apiKey: process.env.LAND_REGISTRY_API_KEY ?? '',
+    baseUrl: process.env.LAND_REGISTRY_BASE_URL ?? 'https://api.propertydata.co.uk',
+  },
+  irc: {
+    enabled: process.env.IRC_ENABLED === 'true',
+    live: process.env.IRC_LIVE !== 'false',
+    server: process.env.IRC_SERVER ?? '',
+    port: parseInt(process.env.IRC_PORT ?? '6697', 10),
+    tls: process.env.IRC_TLS !== 'false',
+    nick: process.env.IRC_NICK ?? '',
+    username: process.env.IRC_USERNAME ?? process.env.IRC_NICK ?? '',
+    realname: process.env.IRC_REALNAME ?? 'Carina AI',
+    password: process.env.IRC_PASSWORD ?? '',
+    channels: (process.env.IRC_CHANNELS ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean),
+    mentionOnly: process.env.IRC_MENTION_ONLY !== 'false',
+    nickservIdentify: process.env.IRC_NICKSERV_IDENTIFY === 'true',
   },
   carina: {
     defaultProvider: (process.env.DEFAULT_PROVIDER ?? 'deepseek') as 'anthropic' | 'openai' | 'deepseek',
@@ -188,5 +230,116 @@ export const config = {
     llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL ?? 'http://localhost:3000',
     judgeModel: process.env.LABYRINTH_JUDGE_MODEL ?? 'deepseek/deepseek-chat',
     judgeTimeoutMs: 3000,
+  },
+  ntfy: {
+    baseUrl: process.env.NTFY_BASE_URL ?? 'https://ntfy.sh',
+    topic: process.env.NTFY_TOPIC ?? '',
+    token: process.env.NTFY_TOKEN ?? '',
+  },
+  n8n: {
+    baseUrl: process.env.N8N_BASE_URL ?? '',
+    apiKey: process.env.N8N_API_KEY ?? '',
+  },
+  trello: {
+    apiKey: process.env.TRELLO_API_KEY ?? '',
+    token: process.env.TRELLO_TOKEN ?? '',
+  },
+  pushover: {
+    token: process.env.PUSHOVER_TOKEN ?? '',
+    user: process.env.PUSHOVER_USER ?? '',
+  },
+  gotify: {
+    url: process.env.GOTIFY_URL ?? '',
+    token: process.env.GOTIFY_TOKEN ?? '',
+  },
+  messenger: {
+    pageAccessToken: process.env.MESSENGER_PAGE_ACCESS_TOKEN ?? '',
+    verifyToken: process.env.MESSENGER_VERIFY_TOKEN ?? '',
+    appSecret: process.env.MESSENGER_APP_SECRET ?? '',
+  },
+  instagram: {
+    accessToken: process.env.INSTAGRAM_ACCESS_TOKEN ?? '',
+    verifyToken: process.env.INSTAGRAM_VERIFY_TOKEN ?? '',
+    appSecret: process.env.INSTAGRAM_APP_SECRET ?? '',
+  },
+  twitter: {
+    bearerToken: process.env.TWITTER_BEARER_TOKEN ?? '',
+    apiKey: process.env.TWITTER_API_KEY ?? '',
+    apiSecret: process.env.TWITTER_API_SECRET ?? '',
+    accessToken: process.env.TWITTER_ACCESS_TOKEN ?? '',
+    accessTokenSecret: process.env.TWITTER_ACCESS_TOKEN_SECRET ?? '',
+    consumerSecret: process.env.TWITTER_CONSUMER_SECRET ?? '',
+    botUserId: process.env.TWITTER_BOT_USER_ID ?? '',
+    webhookEnv: process.env.TWITTER_WEBHOOK_ENV ?? '',
+  },
+  rocketchat: {
+    url: process.env.ROCKETCHAT_URL ?? '',
+    botUserId: process.env.ROCKETCHAT_BOT_USER_ID ?? '',
+    botAuthToken: process.env.ROCKETCHAT_BOT_AUTH_TOKEN ?? '',
+    webhookSecret: process.env.ROCKETCHAT_WEBHOOK_SECRET ?? '',
+  },
+  webex: {
+    botToken: process.env.WEBEX_BOT_TOKEN ?? '',
+    webhookSecret: process.env.WEBEX_WEBHOOK_SECRET ?? '',
+  },
+  kakaotalk: {
+    apiKey: process.env.KAKAOTALK_API_KEY ?? '',
+    botId: process.env.KAKAOTALK_BOT_ID ?? '',
+    webhookSecret: process.env.KAKAOTALK_WEBHOOK_SECRET ?? '',
+  },
+  zalo: {
+    appId: process.env.ZALO_APP_ID ?? '',
+    appSecret: process.env.ZALO_APP_SECRET ?? '',
+    oaAccessToken: process.env.ZALO_OA_ACCESS_TOKEN ?? '',
+    refreshToken: process.env.ZALO_REFRESH_TOKEN ?? '',
+  },
+  threema: {
+    gatewayId: process.env.THREEMA_GATEWAY_ID ?? '',
+    gatewaySecret: process.env.THREEMA_GATEWAY_SECRET ?? '',
+    privateKey: process.env.THREEMA_PRIVATE_KEY ?? '',
+  },
+  wire: {
+    botClientId: process.env.WIRE_BOT_CLIENT_ID ?? '',
+    botToken: process.env.WIRE_BOT_TOKEN ?? '',
+    botSecret: process.env.WIRE_BOT_SECRET ?? '',
+    apiBase: process.env.WIRE_API_BASE ?? 'https://prod-nginz-https.wire.com',
+  },
+  keybase: {
+    username: process.env.KEYBASE_USERNAME ?? '',
+    paperkey: process.env.KEYBASE_PAPERKEY ?? '',
+  },
+  twitch: {
+    clientId: process.env.TWITCH_CLIENT_ID ?? '',
+    clientSecret: process.env.TWITCH_CLIENT_SECRET ?? '',
+    eventsubSecret: process.env.TWITCH_EVENTSUB_SECRET ?? '',
+    botUsername: process.env.TWITCH_BOT_USERNAME ?? '',
+    channel: process.env.TWITCH_CHANNEL ?? '',
+    channelId: process.env.TWITCH_CHANNEL_ID ?? '',
+    botUserId: process.env.TWITCH_BOT_USER_ID ?? '',
+  },
+  youtube: {
+    apiKey: process.env.YOUTUBE_API_KEY ?? '',
+    botChannelId: process.env.YOUTUBE_BOT_CHANNEL_ID ?? '',
+    oauthClientId: process.env.YOUTUBE_OAUTH_CLIENT_ID ?? '',
+    oauthClientSecret: process.env.YOUTUBE_OAUTH_CLIENT_SECRET ?? '',
+    oauthRefreshToken: process.env.YOUTUBE_OAUTH_REFRESH_TOKEN ?? '',
+    liveChatId: process.env.YOUTUBE_LIVE_CHAT_ID ?? '',
+  },
+  groupme: {
+    botId: process.env.GROUPME_BOT_ID ?? '',
+    botToken: process.env.GROUPME_BOT_TOKEN ?? '',
+    groupId: process.env.GROUPME_GROUP_ID ?? '',
+    botUserId: process.env.GROUPME_BOT_USER_ID ?? '',
+  },
+  nextcloudTalk: {
+    url: process.env.NEXTCLOUD_URL ?? '',
+    botSecret: process.env.NEXTCLOUD_BOT_SECRET ?? '',
+    botUser: process.env.NEXTCLOUD_BOT_USER ?? '',
+  },
+  linkedin: {
+    accessToken: process.env.LINKEDIN_ACCESS_TOKEN ?? '',
+    clientId: process.env.LINKEDIN_CLIENT_ID ?? '',
+    clientSecret: process.env.LINKEDIN_CLIENT_SECRET ?? '',
+    webhookSecret: process.env.LINKEDIN_WEBHOOK_SECRET ?? '',
   },
 } as const;

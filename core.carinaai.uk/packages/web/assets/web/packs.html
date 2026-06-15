@@ -156,6 +156,20 @@
     </div>
   </div>
 </div>
+
+<section style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid var(--border)">
+  <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:0.65rem">Learning loop</div>
+  <div id="curator-info" style="font-size:0.82rem;color:var(--muted)">Checking...</div>
+</section>
+<script>
+fetch('/api/curator/last-run').then(function(r){return r.json();}).then(function(d){
+  var el=document.getElementById('curator-info');
+  if(!el) return;
+  if(!d.lastRun){el.textContent='No curator run recorded yet.';return;}
+  var ago=Math.round((Date.now()-new Date(d.lastRun).getTime())/3600000);
+  el.textContent='Last run: '+d.lastRun.slice(0,10)+' ('+ago+'h ago). Next run in 7 days.';
+});
+</script>
 </div>
 <!--CARINA_WORKSPACE_END-->
 <script>

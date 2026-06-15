@@ -12,7 +12,21 @@ import {
   type MigrationSource,
 } from '../../ops/migration/index.js';
 
-const SOURCES: MigrationSource[] = ['claude'];
+const SOURCES: MigrationSource[] = ['claude', 'openclaw', 'hermes'];
+
+function parseCsvFlag(args: string[], name: string): string[] | undefined {
+  const raw = parseFlag(args, name);
+  if (!raw) return undefined;
+  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+function parseBoolFlag(args: string[], name: string): boolean | undefined {
+  const raw = parseFlag(args, name);
+  if (raw === undefined) return undefined;
+  if (raw === 'true' || raw === '1') return true;
+  if (raw === 'false' || raw === '0') return false;
+  return undefined;
+}
 
 function parseFlag(args: string[], name: string): string | undefined {
   const eq = args.find((a) => a.startsWith(`${name}=`));
@@ -55,13 +69,25 @@ export async function runMigrateCommand(args: string[]): Promise<void> {
       const hints = scan.hints.length > 0 ? ` (${scan.hints.join(', ')})` : '';
       console.log(`  ${scan.source.padEnd(14)} ${tag}  ${scan.dir}${hints}`);
     }
-    console.log('\nRun: carina migrate claude [--dry-run] [--force]\n');
+    console.log('\nRun: carina migrate <claude|openclaw|hermes> [--dry-run] [--force]\n');
     return;
   }
 
   if (action === 'export') {
     const label = positionalArgs(args)[1];
-    const result = await exportCarinaBundle({ label, dryRun });
+    const filters = {
+      items: parseCsvFlag(args, '--items'),
+      profiles: parseCsvFlag(args, '--profiles'),
+      includeSessions: parseBoolFlag(args, '--sessions'),
+      includeMemory: parseBoolFlag(args, '--memory'),
+      includeWorkspaces: parseBoolFlag(args, '--workspaces'),
+    };
+    const hasFilters = Object.values(filters).some((v) => v !== undefined);
+    const result = await exportCarinaBundle({
+      label,
+      dryRun,
+      filters: hasFilters ? filters : undefined,
+    });
     if (json) {
       console.log(JSON.stringify(result, null, 2));
       return;
@@ -104,7 +130,8 @@ export async function runMigrateCommand(args: string[]): Promise<void> {
   }
 
   if (!SOURCES.includes(action as MigrationSource)) {
-    console.error('Usage: carina migrate <status|claude|export|import> [--from PATH] [--dry-run] [--force] [--no-backup]');
+    console.error('Usage: carina migrate <status|claude|openclaw|hermes|export|import> [--from PATH] [--dry-run] [--force] [--no-backup]');
+    console.error('  export filters: --items=a,b --profiles=name --sessions=true --memory=true --workspaces=true');
     process.exit(1);
   }
 

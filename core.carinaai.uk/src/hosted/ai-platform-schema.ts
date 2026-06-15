@@ -76,6 +76,89 @@ CREATE INDEX IF NOT EXISTS idx_ai_platform_environments_org
   ON ai_platform_environments (org_id);
 CREATE INDEX IF NOT EXISTS idx_ai_platform_deployments_org
   ON ai_platform_deployments (org_id, deployed_at DESC NULLS LAST);
+
+CREATE TABLE IF NOT EXISTS ai_platform_assets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ready',
+  mime_type TEXT,
+  size_bytes BIGINT,
+  storage_uri TEXT,
+  batch_input_count INTEGER,
+  batch_output_count INTEGER,
+  metadata_json JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_platform_agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  model TEXT NOT NULL DEFAULT '',
+  provider TEXT NOT NULL DEFAULT '',
+  instructions TEXT,
+  metadata_json JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (org_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS ai_platform_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  agent_id UUID REFERENCES ai_platform_agents(id) ON DELETE SET NULL,
+  title TEXT NOT NULL DEFAULT 'Untitled session',
+  channel TEXT NOT NULL DEFAULT 'workbench',
+  status TEXT NOT NULL DEFAULT 'open',
+  message_count INTEGER NOT NULL DEFAULT 0,
+  last_activity_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metadata_json JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_platform_memory_stores (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  slug TEXT NOT NULL,
+  store_type TEXT NOT NULL DEFAULT 'episodic',
+  status TEXT NOT NULL DEFAULT 'active',
+  record_count INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (org_id, slug)
+);
+
+CREATE TABLE IF NOT EXISTS ai_platform_usage_daily (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  usage_date DATE NOT NULL,
+  tokens_in INTEGER NOT NULL DEFAULT 0,
+  tokens_out INTEGER NOT NULL DEFAULT 0,
+  credits_billed NUMERIC(18,6) NOT NULL DEFAULT 0,
+  cost_estimate NUMERIC(12,6) NOT NULL DEFAULT 0,
+  request_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (org_id, usage_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_platform_assets_org_kind
+  ON ai_platform_assets (org_id, kind, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_platform_agents_org
+  ON ai_platform_agents (org_id, name);
+CREATE INDEX IF NOT EXISTS idx_ai_platform_sessions_org
+  ON ai_platform_sessions (org_id, last_activity_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_platform_memory_stores_org
+  ON ai_platform_memory_stores (org_id, name);
+CREATE INDEX IF NOT EXISTS idx_ai_platform_usage_daily_org
+  ON ai_platform_usage_daily (org_id, usage_date DESC);
 `;
 
 export interface DefaultModelSeed {

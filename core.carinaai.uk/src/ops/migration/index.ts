@@ -12,6 +12,7 @@ import { exportCarinaBundle, importCarinaBundle } from './interop-bundle.js';
 
 export type { MigrationReport, MigrationSource, SourceScan, MigrationItem, MigrationOptions, MigrationPlan } from './types.js';
 export { exportCarinaBundle, importCarinaBundle, INTEROP_VERSION } from './interop-bundle.js';
+export type { SelectiveExportFilters } from './interop-bundle.js';
 
 const SOURCE_DIRS: Record<Exclude<MigrationSource, 'claude' | 'carina-bundle'>, string> = {
   hermes: path.join(os.homedir(), '.hermes'),

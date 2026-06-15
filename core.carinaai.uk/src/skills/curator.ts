@@ -1,9 +1,68 @@
 import { pool } from '../memory/db.js';
 import type { Skill } from '../types/index.js';
-import { listSkills } from './store.js';
+import { getSkillByName, listSkills } from './store.js';
 import { logSkillAction } from './skill-audit-log.js';
 
 export type SkillStatus = 'active' | 'archived' | 'pruned';
+
+function deriveSkillTags(skill: Skill, row?: Record<string, unknown>): string[] {
+  const tags = [...(skill.tags ?? [])];
+  for (const keyword of skill.trigger) {
+    if (keyword.startsWith('domain:')) tags.push(keyword);
+  }
+  const draftSource = row?.draft_source ? String(row.draft_source) : '';
+  if (draftSource.startsWith('pack:')) {
+    tags.push(`domain:${draftSource.slice(5)}`);
+  }
+  return [...new Set(tags)];
+}
+
+function skillWithTags(skill: Skill, row?: Record<string, unknown>): Skill {
+  return { ...skill, tags: deriveSkillTags(skill, row) };
+}
+
+function sameDomain(a: Skill, b: Skill): boolean {
+  const da = a.tags?.find((t) => t.startsWith('domain:'));
+  const db = b.tags?.find((t) => t.startsWith('domain:'));
+  if (!da && !db) return true;
+  return da === db;
+}
+
+function hasDomainTag(skill: Skill): boolean {
+  return Boolean(skill.tags?.some((t) => t.startsWith('domain:')));
+}
+
+async function evalSkillCandidate(skill: Skill): Promise<boolean> {
+  try {
+    const { evalSkill } = await import('./eval/runner.js');
+    const result = await evalSkill(skill);
+    return result.pass;
+  } catch {
+    const steps = skill.steps?.trim() ?? '';
+    return Boolean(skill.name && skill.description && steps.length > 0);
+  }
+}
+
+async function propagateToAllAgents(generalSkills: Skill[]): Promise<void> {
+  try {
+    const { listAgentDefinitions, getDefaultAgentDefinition } = await import('../workspaces/agent-registry.js');
+    const { propagateSkillAcrossAgents } = await import('./cross-agent-learning.js');
+    const agents = listAgentDefinitions();
+    if (agents.length <= 1) return;
+
+    const sourceAgentId = getDefaultAgentDefinition()?.id ?? 'main';
+    for (const skill of generalSkills) {
+      if (hasDomainTag(skill)) continue;
+      await propagateSkillAcrossAgents({
+        skillName: skill.name,
+        sourceAgentId,
+        successCount: 99,
+      });
+    }
+  } catch {
+    // optional feature; skip when workspaces or sharing are unavailable
+  }
+}
 
 function rowToSkill(row: Record<string, unknown>): Skill & { status: SkillStatus } {
   return {
@@ -156,8 +215,14 @@ export async function promoteDraftSkills(): Promise<string[]> {
     const successCount = Number(row.success_count ?? 0);
     const createdAt = new Date(String(row.created_at));
     const ageDays = (Date.now() - createdAt.getTime()) / 86_400_000;
+    const candidate = skillWithTags(rowToSkill(row as Record<string, unknown>), row as Record<string, unknown>);
 
     if (usageCount >= 3 && successCount >= 2) {
+      const passes = await evalSkillCandidate(candidate);
+      if (!passes) {
+        console.log(`[curator] skipped "${name}": failed eval`);
+        continue;
+      }
       await pool.query(`UPDATE skill_documents SET status = 'active' WHERE id = $1`, [row.id]);
       await logSkillAction('promoted', String(row.id), { usageCount, successCount });
       promoted.push(name);
@@ -179,27 +244,39 @@ export async function consolidateOverlappingSkills(): Promise<string[]> {
 
     const rowA = skillA.rows[0] as Record<string, unknown>;
     const rowB = skillB.rows[0] as Record<string, unknown>;
+    const typedA = skillWithTags(rowToSkill(rowA), rowA);
+    const typedB = skillWithTags(rowToSkill(rowB), rowB);
+    if (!sameDomain(typedA, typedB)) continue;
+
     const scoreA = (Number(rowA.success_count ?? 0)) / Math.max(1, Number(rowA.usage_count ?? 1));
     const scoreB = (Number(rowB.success_count ?? 0)) / Math.max(1, Number(rowB.usage_count ?? 1));
 
-    const [keeper, loser] = scoreA >= scoreB ? [rowA, rowB] : [rowB, rowA];
+    const [keeper, loser, keeperRow, loserRow] = scoreA >= scoreB
+      ? [typedA, typedB, rowA, rowB]
+      : [typedB, typedA, rowB, rowA];
+    const passes = await evalSkillCandidate(keeper);
+    if (!passes) {
+      console.log(`[curator] skipped "${keeper.name}": failed eval`);
+      continue;
+    }
+
     const mergedKeywords = [...new Set([
-      ...((keeper.trigger_keywords as string[]) ?? []),
-      ...((loser.trigger_keywords as string[]) ?? []),
+      ...((keeperRow.trigger_keywords as string[]) ?? []),
+      ...((loserRow.trigger_keywords as string[]) ?? []),
     ])];
     await pool.query(
       `UPDATE skill_documents SET trigger_keywords = $1, updated_at = NOW() WHERE id = $2`,
-      [mergedKeywords, keeper.id],
+      [mergedKeywords, keeperRow.id],
     );
     await pool.query(
       `UPDATE skill_documents SET status = 'archived', archived_at = NOW() WHERE id = $1`,
-      [loser.id],
+      [loserRow.id],
     );
-    await logSkillAction('consolidated', String(keeper.id), {
-      merged: String(loser.name),
+    await logSkillAction('consolidated', String(keeperRow.id), {
+      merged: String(loserRow.name),
       overlap: dupes.find((d) => (d.a === a && d.b === b) || (d.a === b && d.b === a))?.overlap,
     });
-    consolidated.push(`${String(loser.name)} -> ${String(keeper.name)}`);
+    consolidated.push(`${String(loserRow.name)} -> ${String(keeperRow.name)}`);
   }
   return consolidated;
 }
@@ -233,21 +310,50 @@ export async function getLastCuratorRunMs(): Promise<number> {
   }
 }
 
+export async function runLightCuratorPass(): Promise<{ promoted: string[] }> {
+  try {
+    const promoted = await promoteDraftSkills();
+    return { promoted };
+  } catch {
+    return { promoted: [] };
+  }
+}
+
 export async function runFullCuratorCycle(options: {
   curatorSilent?: boolean;
   intervalDays?: number;
+  force?: boolean;
 } = {}): Promise<CuratorCycleResult> {
   const intervalDays = options.intervalDays ?? Number(process.env.CARINA_CURATOR_INTERVAL_DAYS ?? '7');
-  const lastRun = await getLastCuratorRunMs();
-  const msSinceRun = Date.now() - lastRun;
-  const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
-  if (lastRun > 0 && msSinceRun < intervalMs) {
-    return { promoted: [], consolidated: [], archived: [], reportSummary: '' };
+  if (!options.force) {
+    const lastRun = await getLastCuratorRunMs();
+    const msSinceRun = Date.now() - lastRun;
+    const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
+    if (lastRun > 0 && msSinceRun < intervalMs) {
+      return { promoted: [], consolidated: [], archived: [], reportSummary: '' };
+    }
   }
 
   const promoted = await promoteDraftSkills();
   const consolidated = await consolidateOverlappingSkills();
   const archived = await archiveStaleActiveSkills(30);
+
+  const consolidatedGeneralSkills: Skill[] = [];
+  for (const name of promoted) {
+    const skill = await getSkillByName(name);
+    if (skill && !hasDomainTag(skillWithTags(skill))) consolidatedGeneralSkills.push(skill);
+  }
+  for (const line of consolidated) {
+    const keeperName = line.split(' -> ')[1]?.trim();
+    if (!keeperName) continue;
+    const skill = await getSkillByName(keeperName);
+    if (skill && !hasDomainTag(skillWithTags(skill))) {
+      if (!consolidatedGeneralSkills.some((s) => s.name === skill.name)) {
+        consolidatedGeneralSkills.push(skill);
+      }
+    }
+  }
+  await propagateToAllAgents(consolidatedGeneralSkills);
 
   await pool.query(
     `INSERT INTO skill_audit_log (skill_id, action, details) VALUES (NULL, 'curator-run', $1)`,

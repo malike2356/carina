@@ -1,5 +1,5 @@
 import type { Redis } from 'ioredis';
-import { getSessionRateLimit } from './kill-switch-listener.js';
+import { getSessionRateLimit, isAllowlistEnforced } from './kill-switch-listener.js';
 
 export interface ToolPolicy {
   allowlist: string[];
@@ -133,8 +133,21 @@ export class ToolPolicyEnforcer {
   }
 
   async enforce(toolName: string, params: EnforceParams, sessionId: string): Promise<true> {
+    if (isAllowlistEnforced() && !this.policy.allowlist.includes(toolName)) {
+      await this.report(toolName, 'tool_blocked', 'critical', {
+        tool: toolName,
+        session: sessionId,
+        reason: 'allowlist_enforced',
+      });
+      throw new ToolBlockedError(toolName);
+    }
+
     if (this.policy.blocklist.includes(toolName)) {
-      await this.report(toolName, 'tool_blocked', 'critical', { tool: toolName, session: sessionId });
+      await this.report(toolName, 'tool_blocked', 'critical', {
+        tool: toolName,
+        session: sessionId,
+        reason: 'blocklist',
+      });
       throw new ToolBlockedError(toolName);
     }
 

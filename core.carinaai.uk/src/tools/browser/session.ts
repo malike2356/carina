@@ -13,6 +13,7 @@ interface ConsoleEntry {
 
 interface BrowserSession {
   page: Page;
+  context: BrowserContext;
   snapshot: SnapshotResult;
   consoleLog: ConsoleEntry[];
   lastActivity: number;
@@ -33,8 +34,15 @@ export async function checkPlaywright(): Promise<boolean> {
 }
 
 const sessions = new Map<string, BrowserSession>();
-const browsers = new Map<string, Browser>();
+let sharedBrowser: Browser | null = null;
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+async function destroyBrowserSession(sessionId: string): Promise<void> {
+  const session = sessions.get(sessionId);
+  if (!session) return;
+  sessions.delete(sessionId);
+  await session.context.close().catch(() => undefined);
+}
 
 function ensureCleanupTimer(): void {
   if (cleanupTimer) return;
@@ -42,7 +50,7 @@ function ensureCleanupTimer(): void {
     const now = Date.now();
     for (const [id, session] of sessions) {
       if (now - session.lastActivity > IDLE_TIMEOUT_MS) {
-        sessions.delete(id);
+        void destroyBrowserSession(id);
       }
     }
   }, 60_000);
@@ -60,13 +68,15 @@ async function getOrCreateSession(sessionId: string): Promise<BrowserSession> {
     throw new Error('Playwright is not installed. Run: pnpm add playwright && npx playwright install chromium');
   }
 
-  let browser = browsers.get('shared');
-  if (!browser) {
-    browser = await playwrightModule.chromium.launch({ headless: true });
-    browsers.set('shared', browser);
+  if (!sharedBrowser) {
+    sharedBrowser = await playwrightModule.chromium.launch({ headless: true });
   }
 
-  const context: BrowserContext = await browser.newContext();
+  const context: BrowserContext = await sharedBrowser.newContext({
+    javaScriptEnabled: true,
+    bypassCSP: false,
+    ignoreHTTPSErrors: false,
+  });
   await context.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
   });
@@ -82,6 +92,7 @@ async function getOrCreateSession(sessionId: string): Promise<BrowserSession> {
 
   const session: BrowserSession = {
     page,
+    context,
     snapshot: { compact: '', full: '', elements: [], refSelectors: new Map() },
     consoleLog,
     lastActivity: Date.now(),
@@ -261,7 +272,7 @@ export async function browserGetImages(sessionId: string): Promise<object> {
 }
 
 export function clearBrowserSession(sessionId: string): void {
-  sessions.delete(sessionId);
+  void destroyBrowserSession(sessionId);
 }
 
 export async function getBrowserPage(sessionId: string): Promise<Page> {

@@ -33,7 +33,7 @@ describe('validateExtensionBundle', () => {
     await fs.rm(tmpRoot, { recursive: true, force: true });
   });
 
-  it('warns on catalog-only mcp capability', async () => {
+  it('rejects invalid mcp manifest without servers', async () => {
     const dir = await writeBundle('mcp-demo', {
       manifestVersion: 1,
       id: 'mcp-demo',
@@ -47,7 +47,27 @@ describe('validateExtensionBundle', () => {
     await fs.writeFile(path.join(dir, 'mcp.json'), '{}');
 
     const result = await validateExtensionBundle(dir, { allowHighRisk: true });
-    expect(result.warnings.some((w) => w.includes('mcp'))).toBe(true);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((e) => e.includes('mcp'))).toBe(true);
+  });
+
+  it('accepts valid mcp manifest', async () => {
+    const dir = await writeBundle('mcp-ok', {
+      manifestVersion: 1,
+      id: 'mcp-ok',
+      version: '1.0.0',
+      name: 'MCP OK',
+      author: 'Test',
+      description: 'Demo',
+      capabilities: ['mcp'],
+      entryPoints: { mcp: 'mcp.json' },
+    });
+    await fs.writeFile(path.join(dir, 'mcp.json'), JSON.stringify({
+      servers: { demo: { transport: 'stdio', command: 'echo', args: ['ok'] } },
+    }));
+
+    const result = await validateExtensionBundle(dir, { allowHighRisk: true });
+    expect(result.errors.filter((e) => e.includes('mcp'))).toHaveLength(0);
   });
 
   it('rejects minCarinaVersion above running version', async () => {

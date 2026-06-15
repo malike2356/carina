@@ -9,6 +9,7 @@ import {
   redactDevicesForApi,
   validateDeviceToken,
 } from '../infrastructure/device-pairing.js';
+import { parseDeviceScopes } from '../infrastructure/device-scopes.js';
 
 const TOKEN_TTL_MS = 5 * 60 * 1000;
 const PENDING_FILE = path.join(CARINA_HOME, 'pair-pending-tokens.json');
@@ -138,7 +139,11 @@ export type AcceptPairingResult = {
   token: string;
 };
 
-export function acceptPairingToken(token: string, deviceName: string): AcceptPairingResult {
+export function acceptPairingToken(
+  token: string,
+  deviceName: string,
+  scopes?: string[],
+): AcceptPairingResult {
   const store = pruneExpired(loadPendingStore());
   const hash = hashToken(token);
   const pending = store.tokens.find((t) => t.tokenHash === hash && !t.consumed);
@@ -156,7 +161,7 @@ export function acceptPairingToken(token: string, deviceName: string): AcceptPai
     tokenHash: hashToken(bearer),
     pairedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
-    scopes: ['chat', 'control'],
+    scopes: parseDeviceScopes(scopes),
   };
 
   pending.consumed = true;

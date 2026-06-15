@@ -173,4 +173,14 @@ export const coreEngineeringSkills: PackSkillInput[] = [
 4. List available packs with carina packs list.`,
     toolsUsed: ['shell-exec', 'file-read'],
   },
+  {
+    name: 'multi-agent-orchestration',
+    description: 'Coordinate kanban cards and parallel subagents for larger goals',
+    trigger: ['orchestrate agents', 'multi agent', 'parallel workers', 'agent squad'],
+    steps: `1. writing-plans style breakdown into independent work units.
+2. kanban-create cards; delegate-task batch for parallel lanes (max 3).
+3. kanban-heartbeat for stale cards; synthesise summaries for the user.
+4. Do not nest delegate-task inside subagents.`,
+    toolsUsed: ['kanban-create', 'kanban-heartbeat', 'delegate-task'],
+  },
 ];

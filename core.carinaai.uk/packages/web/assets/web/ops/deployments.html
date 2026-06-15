@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Deployments</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div id="team-gate" class="banner-warn" hidden>Deployments require the Team plan. <a href="/ops/billing">Upgrade</a></div>
+    <div class="card" id="deployments-panel">
+      <h2>Deployments</h2>
+      <table class="ops-table">
+        <thead><tr><th>Name</th><th>Status</th><th>Provider</th><th>Model</th><th>Environment</th></tr></thead>
+        <tbody id="deployments-body"><tr><td colspan="5" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card" id="deploy-form-card">
+      <h2>Create deployment</h2>
+      <form id="deployment-form">
+        <div class="form-row"><label for="dep-name">Name</label><input type="text" id="dep-name" name="name" required></div>
+        <div class="form-row"><label for="dep-env">Environment ID</label><input type="text" id="dep-env" name="environmentId" placeholder="optional UUID"></div>
+        <div class="form-row"><label for="dep-provider">Provider</label><input type="text" id="dep-provider" name="provider" placeholder="anthropic"></div>
+        <div class="form-row"><label for="dep-model">Model</label><input type="text" id="dep-model" name="model" placeholder="claude-sonnet"></div>
+        <button class="btn" type="submit">Create deployment</button>
+        <p class="error-msg" id="dep-error" hidden></p>
+      </form>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    async function loadDeployments() {
+      const { ok, status, data } = await CarinaPlatform.fetchJson('/api/carina-ops/deployments');
+      if (status === 402) {
+        document.getElementById('team-gate').hidden = false;
+        document.getElementById('deploy-form-card').hidden = true;
+        CarinaPlatform.renderTable('deployments-body', [], [], 'Team plan required.');
+        return;
+      }
+      if (!ok) {
+        CarinaPlatform.renderTable('deployments-body', [], [], 'Unable to load deployments.');
+        return;
+      }
+      CarinaPlatform.renderTable('deployments-body', [
+        { key: 'name' },
+        { key: 'status' },
+        { key: 'provider' },
+        { key: 'model' },
+        { key: 'environmentId', render: (row) => row.environmentId || '-' },
+      ], data.deployments || [], 'No deployments yet.');
+    }
+
+    CarinaOpsLayout.initPage('deployments', {
+      onReady: async () => {
+        await loadDeployments();
+        CarinaPlatform.bindCreateForm('deployment-form', async (formData) => {
+          CarinaPlatform.showError('dep-error', '');
+          const { ok, status, data } = await CarinaPlatform.fetchJson('/api/carina-ops/deployments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: String(formData.get('name') || '').trim(),
+              environmentId: String(formData.get('environmentId') || '').trim() || undefined,
+              provider: String(formData.get('provider') || '').trim() || undefined,
+              model: String(formData.get('model') || '').trim() || undefined,
+            }),
+          });
+          if (status === 402) {
+            CarinaPlatform.showError('dep-error', 'Team plan required for deployments.');
+            return;
+          }
+          if (!ok) {
+            CarinaPlatform.showError('dep-error', data.error || 'Unable to create deployment.');
+            return;
+          }
+          document.getElementById('deployment-form').reset();
+          await loadDeployments();
+        });
+      },
+    });
+  </script>
+</body>
+</html>

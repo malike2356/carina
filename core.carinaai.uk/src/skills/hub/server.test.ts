@@ -158,4 +158,14 @@ describe('createSkillsHubApp', () => {
       expect(body.packs[0].name).toBe('property-uk');
     });
   });
+
+  it('exposes unified marketplace catalog', async () => {
+    await withServer(async (baseUrl) => {
+      const res = await fetch(`${baseUrl}/api/marketplace?kind=pack`);
+      expect(res.status).toBe(200);
+      const body = await res.json() as { summary: { total: number }; entries: Array<{ kind: string }> };
+      expect(body.summary.total).toBeGreaterThan(10);
+      expect(body.entries.every((e) => e.kind === 'pack')).toBe(true);
+    });
+  });
 });

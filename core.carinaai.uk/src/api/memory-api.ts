@@ -1,6 +1,11 @@
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { pool } from '../memory/db.js';
 import { isControlAuthorized } from '../infrastructure/control-auth.js';
+import { browseRecentSessions, searchSessions } from '../memory/session-index.js';
+import { scrollSessionMessages } from '../memory/session-scroll.js';
+import { searchSessionsAdvanced, tenantScopeFromId } from '../memory/session-search-service.js';
+import { getSessionChain, getLineageRoot } from '../memory/session-lineage.js';
+import { operatorMemoryScope } from '../profiles/isolation.js';
 
 export const memoryApiRouter: ExpressRouter = Router();
 
@@ -37,8 +42,11 @@ function memoryAuth(req: MemoryRequest, res: Response, next: NextFunction): void
 }
 
 function scopeClause(tenantId: string): { sql: string; params: unknown[] } {
-  if (tenantId === '__operator__' || tenantId === 'default') {
-    return { sql: 'TRUE', params: [] };
+  if (tenantId === '__operator__') {
+    return operatorMemoryScope();
+  }
+  if (tenantId === 'default') {
+    return operatorMemoryScope('default');
   }
   return { sql: 'session_id LIKE $1', params: [`${tenantId}:%`] };
 }
@@ -103,32 +111,120 @@ memoryApiRouter.get('/', async (req: MemoryRequest, res: Response) => {
   }
 });
 
-memoryApiRouter.get('/sessions', async (_req: MemoryRequest, res: Response) => {
+memoryApiRouter.get('/sessions', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
+  const scope = scopeClause(tenantId);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
   try {
-    const result = await pool.query<{
-      session_id: string;
-      turn_count: string;
-      last_active: string;
-    }>(
-      `SELECT session_id,
-              COUNT(*)::text         AS turn_count,
-              MAX(created_at)::text  AS last_active
-       FROM episodic_memories
-       GROUP BY session_id
-       ORDER BY MAX(created_at) DESC
-       LIMIT 50`,
-    );
-
+    const hits = await browseRecentSessions(limit, scope);
     res.json({
-      sessions: result.rows.map((r) => ({
-        session_id: r.session_id,
-        turn_count: parseInt(r.turn_count, 10),
-        last_active: r.last_active,
+      sessions: hits.map((h) => ({
+        session_id: h.sessionId,
+        title: h.title,
+        last_active: h.timestamp.toISOString(),
+        preview: h.snippet,
       })),
     });
   } catch (err) {
     console.error('[memory-api] sessions failed:', err instanceof Error ? err.message : err);
     res.status(500).json({ error: 'Failed to load sessions' });
+  }
+});
+
+memoryApiRouter.get('/sessions/search', async (req: MemoryRequest, res: Response) => {
+  const tenantId = req.tenantId ?? 'default';
+  const q = String(req.query.q ?? '').trim();
+  if (!q) {
+    return res.json({
+      results: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      totalPages: 0,
+      query: '',
+      sort: 'relevance',
+      strategy: 'fts',
+      fallbackUsed: false,
+      indexHealthy: false,
+    });
+  }
+
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const offset = (page - 1) * limit;
+  const sort = String(req.query.sort ?? 'relevance');
+  const safeSort = sort === 'newest' || sort === 'oldest' ? sort : 'relevance';
+  const roleFilter = String(req.query.role ?? '').trim() || undefined;
+  const semantic = String(req.query.semantic ?? 'true') !== 'false';
+
+  try {
+    const payload = await searchSessionsAdvanced({
+      query: q,
+      limit,
+      offset,
+      sort: safeSort,
+      roleFilter,
+      tenantScope: tenantScopeFromId(tenantId),
+      enableSemantic: semantic,
+    });
+    res.json(payload);
+  } catch (err) {
+    console.error('[memory-api] session search failed:', err instanceof Error ? err.message : err);
+    try {
+      const fallback = await searchSessions(q, {
+        limit,
+        roleFilter,
+        tenantScope: tenantScopeFromId(tenantId),
+        enableSemantic: false,
+      });
+      res.json({
+        results: fallback.map((hit) => ({ ...hit, messageId: '', rank: 0, matchStrategy: 'fallback_ilike' })),
+        total: fallback.length,
+        page,
+        pageSize: limit,
+        totalPages: fallback.length > 0 ? 1 : 0,
+        query: q,
+        sort: safeSort,
+        strategy: 'fallback_ilike',
+        fallbackUsed: true,
+        indexHealthy: false,
+      });
+    } catch {
+      res.status(500).json({ error: 'Session search failed' });
+    }
+  }
+});
+
+memoryApiRouter.get('/sessions/:sessionId/lineage', (req: MemoryRequest, res: Response) => {
+  const sessionId = String(req.params.sessionId);
+  const chain = getSessionChain(sessionId);
+  res.json({
+    sessionId,
+    rootSessionId: getLineageRoot(sessionId),
+    chain,
+  });
+});
+
+memoryApiRouter.get('/sessions/:sessionId/scroll', async (req: MemoryRequest, res: Response) => {
+  const sessionId = String(req.params.sessionId);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+  const direction = String(req.query.direction ?? 'older') === 'newer' ? 'newer' : 'older';
+  const includeLineage = String(req.query.include_lineage ?? 'false') === 'true';
+  const around = typeof req.query.around === 'string' ? req.query.around : undefined;
+  const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
+
+  try {
+    const page = await scrollSessionMessages(sessionId, {
+      around,
+      cursor,
+      direction,
+      limit,
+      includeLineage,
+    });
+    res.json(page);
+  } catch (err) {
+    console.error('[memory-api] scroll failed:', err instanceof Error ? err.message : err);
+    res.status(500).json({ error: 'Session scroll failed' });
   }
 });
 

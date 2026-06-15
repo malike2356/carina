@@ -63,4 +63,9 @@ describe('thread ownership', () => {
     const { threadOwnershipEnabled } = await import('./thread-ownership.js');
     expect(threadOwnershipEnabled()).toBe(false);
   });
+
+  it('builds telegram forum thread keys with chat and topic id', async () => {
+    const { buildThreadKey } = await import('./thread-ownership.js');
+    expect(buildThreadKey('telegram', '-100123', '77')).toBe('telegram:-100123:77');
+  });
 });

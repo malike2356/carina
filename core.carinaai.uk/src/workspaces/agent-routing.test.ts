@@ -30,6 +30,7 @@ describe('agent-routing', () => {
     }, config);
     expect(result.agent.id).toBe('family');
     expect(result.tier).toBe('peer');
+    expect(result.source).toBe('binding');
   });
 
   it('routes by account when no peer match', () => {
@@ -55,5 +56,26 @@ describe('agent-routing', () => {
   it('routes telegram to work agent', () => {
     const result = resolveAgentRoute({ channel: 'telegram', accountId: 'default' }, config);
     expect(result.agent.id).toBe('work');
+    expect(result.source).toBe('binding');
+  });
+
+  it('routes by contact id when configured', () => {
+    const withContact: AgentsConfig = {
+      ...config,
+      agents: [...config.agents, { id: 'vip', name: 'VIP', workspace: '/tmp/ws-vip' }],
+      bindings: [
+        { agentId: 'vip', match: { channel: 'whatsapp', contactId: 'alice-contact' } },
+        { agentId: 'work', match: { channel: 'whatsapp', accountId: 'biz' } },
+      ],
+    };
+    const result = resolveAgentRoute({
+      channel: 'whatsapp',
+      accountId: 'biz',
+      contactId: 'alice-contact',
+      peerKind: 'direct',
+      peerId: '+15550001111',
+    }, withContact);
+    expect(result.agent.id).toBe('vip');
+    expect(result.tier).toBe('contact');
   });
 });

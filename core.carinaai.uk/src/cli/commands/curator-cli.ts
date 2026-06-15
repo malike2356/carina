@@ -6,6 +6,7 @@ import {
   listCuratedSkills,
   pruneStaleSkills,
   restoreSkill,
+  runFullCuratorCycle,
   type SkillStatus,
 } from '../../skills/curator.js';
 import {
@@ -119,10 +120,16 @@ export async function runCuratorCommand(args: string[]): Promise<void> {
   }
 
   if (action === 'run') {
+    const force = rest.includes('--force');
+    const cycle = await runFullCuratorCycle({ force });
     const report = await buildCuratorReviewReport();
     await writeCuratorReviewReport(ctx.reportsDir, report);
     const result = await pruneStaleSkills({});
-    console.log(`Curator run complete. Pruned ${result.pruned.length}. Report: ${ctx.reportsDir}/latest.json`);
+    console.log(
+      `Curator run complete. Promoted ${cycle.promoted.length}, consolidated ${cycle.consolidated.length}, `
+      + `archived ${cycle.archived.length}, pruned ${result.pruned.length}. `
+      + `Report: ${ctx.reportsDir}/latest.json`,
+    );
     return;
   }
 

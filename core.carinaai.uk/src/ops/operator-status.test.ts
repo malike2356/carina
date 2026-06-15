@@ -30,6 +30,7 @@ describe('operator-status', () => {
       skipHealth: true,
     });
     expect(report.version).toBeTruthy();
+    expect(report.activeProfile).toBeTruthy();
     expect(report.sessions.localCount).toBe(1);
     expect(report.healthEndpoint.url).toContain('/api/health');
   });

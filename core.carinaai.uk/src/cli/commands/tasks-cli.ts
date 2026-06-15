@@ -12,6 +12,9 @@ export async function runTasksCommand(args: string[]): Promise<void> {
     status: p.status,
     command: p.command,
     pid: p.pid,
+    uptime: p.uptime,
+    label: p.label,
+    dedupe_key: p.dedupe_key,
   }));
 
   let cron: Array<Record<string, unknown>> = [];
@@ -64,7 +67,8 @@ export async function runTasksCommand(args: string[]): Promise<void> {
     console.log('\nBackground processes:');
     if (background.length === 0) console.log('  (none)');
     for (const p of background) {
-      console.log(`  ${p.id}  ${p.status}  pid=${p.pid}  ${p.command}`);
+      const label = p.label ? `  label=${p.label}` : '';
+      console.log(`  ${p.id}  ${p.status}  pid=${p.pid}  uptime=${p.uptime}s${label}  ${p.command}`);
     }
   }
 

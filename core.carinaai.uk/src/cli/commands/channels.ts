@@ -20,6 +20,7 @@ import {
   registerDirectoryPeer,
   searchDirectory,
 } from '../../gateway/channels/directory.js';
+import { shouldExposeChannel } from '../../gateway/channels/stub-channels.js';
 import type { ChannelName } from '../../gateway/channels/channel-adapter.interface.js';
 
 export const CHANNEL_SETUP: Record<string, { env: string[]; note: string; webhook?: string }> = {
@@ -34,7 +35,7 @@ export const CHANNEL_SETUP: Record<string, { env: string[]; note: string; webhoo
   signal: { env: ['SIGNAL_API_URL', 'SIGNAL_API_KEY', 'SIGNAL_PHONE_NUMBER'], note: 'signal-cli-rest-api sidecar + poll', webhook: '/webhooks/signal' },
   matrix: { env: ['MATRIX_HOMESERVER_URL', 'MATRIX_ACCESS_TOKEN', 'MATRIX_USER_ID'], note: 'Matrix bot with /sync listener', webhook: '/webhooks/matrix' },
   mattermost: { env: ['MATTERMOST_URL', 'MATTERMOST_TOKEN'], note: 'Mattermost outgoing webhook in + bot token out', webhook: '/webhooks/mattermost' },
-  irc: { env: ['IRC_ENABLED=true', 'IRC_SERVER', 'IRC_NICK'], note: 'Stub only; not a live core client' },
+  irc: { env: ['IRC_ENABLED=true', 'IRC_SERVER', 'IRC_NICK'], note: 'IRC live TLS client (Libera, OFTC, etc.) or webhook fallback', webhook: '/webhooks/irc' },
   dingtalk: { env: ['DINGTALK_WEBHOOK_URL', 'DINGTALK_SECRET'], note: 'DingTalk bot webhook', webhook: '/webhooks/dingtalk' },
   feishu: { env: ['FEISHU_APP_ID', 'FEISHU_APP_SECRET'], note: 'Feishu/Lark bot', webhook: '/webhooks/feishu' },
   wechat: { env: ['WECHAT_CORP_ID', 'WECHAT_CORP_SECRET', 'WECHAT_AGENT_ID', 'or WECHAT_WEBHOOK_URL'], note: 'WeCom (WeChat Work)', webhook: '/webhooks/wechat' },
@@ -77,7 +78,14 @@ export async function runChannelsCommand(action = 'list', ...rest: string[]): Pr
     }
     console.log('\nFlags: CARINA_THREAD_OWNERSHIP, CARINA_CHANNEL_DM_PAIRING, CARINA_CHANNEL_PEER_SCOPING, CARINA_WHATSAPP_SELF_BRIDGE');
     const flags = getChannelPolicyFlags();
-    console.log(chalk.gray(`  threadOwnership=${flags.threadOwnership}  dmPairing=${flags.dmPairing}  peerScoping=${flags.peerScoping}  whatsappSelfBridge=${flags.whatsappSelfBridge}\n`));
+    console.log(chalk.gray(`  threadOwnership=${flags.threadOwnership}  dmPairing=${flags.dmPairing}  peerScoping=${flags.peerScoping}  whatsappSelfBridge=${flags.whatsappSelfBridge}`));
+    if (flags.peerScoping) {
+      console.log(chalk.gray('  peer scoping: session keys use channel:peer (and :t:thread when thread ownership is on)'));
+    }
+    if (flags.dmPairing) {
+      console.log(chalk.gray('  DM pairing: unknown direct peers are held pending until `carina channels dm approve <channel> <peerId>`'));
+    }
+    console.log('');
     return;
   }
 
@@ -130,7 +138,9 @@ export async function runChannelsCommand(action = 'list', ...rest: string[]): Pr
       console.log('  Optional self-chat bridge: CARINA_WHATSAPP_SELF_BRIDGE=true (audited via channel status)');
     }
     if (channel === 'irc') {
-      console.log('  IRC is stub-only in core. Set IRC_ENABLED=true for contract testing.');
+      console.log('  Set IRC_ENABLED=true, IRC_SERVER, IRC_NICK for live client.');
+      console.log('  Optional: IRC_CHANNELS=#room1,#room2, IRC_PASSWORD, IRC_TLS=true');
+      console.log('  Webhook fallback: POST /webhooks/irc when IRC_LIVE=false');
     }
     if (channel === 'homeassistant') {
       console.log('  automation: webhook to POST /webhooks/homeassistant with { text, user_id, conversation_id }');
@@ -154,6 +164,7 @@ export async function runChannelsCommand(action = 'list', ...rest: string[]): Pr
   const active = channelRegistry.listActive();
   console.log(chalk.bold('\nCarina channels\n'));
   for (const [name, info] of Object.entries(CHANNEL_SETUP)) {
+    if (!shouldExposeChannel(name)) continue;
     const on = active.includes(name as typeof active[number]);
     const status = on ? chalk.green('active') : chalk.gray('inactive');
     console.log(`  ${name.padEnd(14)} ${status}  ${info.note}`);

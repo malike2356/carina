@@ -33,8 +33,22 @@ describe('workspace-chrome', () => {
     expect(cards).toContain('href="/documents"');
     expect(cards).toContain('href="/email"');
     expect(cards).toContain('href="/calendar"');
+    expect(cards).toContain('href="/research"');
+    expect(cards).toContain('href="/compare"');
+    expect(cards).toContain('Deep Research');
+    expect(cards).toContain('Model Compare');
+    expect(cards).toContain('New</span>');
     expect(cards).not.toContain('href="/"');
     expect(WORKSPACE_NAV_ITEMS.length).toBeGreaterThan(4);
+  });
+
+  it('orders research and compare before email in nav', () => {
+    const researchIdx = WORKSPACE_NAV_ITEMS.findIndex((item) => item.id === 'research');
+    const compareIdx = WORKSPACE_NAV_ITEMS.findIndex((item) => item.id === 'compare');
+    const emailIdx = WORKSPACE_NAV_ITEMS.findIndex((item) => item.id === 'email');
+    expect(researchIdx).toBeGreaterThan(-1);
+    expect(compareIdx).toBeGreaterThan(researchIdx);
+    expect(emailIdx).toBeGreaterThan(compareIdx);
   });
 
   it('sidebar marks the active page', () => {

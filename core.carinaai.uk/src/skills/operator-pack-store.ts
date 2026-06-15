@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { config } from '../config/index.js';
-import { CARINA_HOME } from '../config/paths.js';
+import { resolveCarinaHome } from '../config/paths.js';
 import { pool } from '../memory/db.js';
 
 export const OPERATOR_TENANT_ID = '__operator__';
@@ -40,8 +40,18 @@ let runtimeActivePacks: string[] | null = null;
 let storeReady = false;
 let fileOnlyMode = false;
 
-const OPERATOR_PACKS_FILE = path.join(CARINA_HOME, 'operator-packs.json');
-const OPERATOR_AUDIT_FILE = path.join(CARINA_HOME, 'operator-pack-audit.json');
+function operatorPacksFile(): string {
+  return path.join(resolveCarinaHome(), 'operator-packs.json');
+}
+
+function operatorAuditFile(): string {
+  return path.join(resolveCarinaHome(), 'operator-pack-audit.json');
+}
+
+export function resetOperatorPackRuntime(): void {
+  runtimeActivePacks = null;
+  storeReady = false;
+}
 
 export function getOperatorActivePacks(): string[] {
   if (runtimeActivePacks !== null) return runtimeActivePacks;
@@ -66,7 +76,7 @@ function emptyRow(name: string, version: string, meta: OperatorPackMeta = {}): I
 
 async function readFileStore(): Promise<InstalledPackRow[]> {
   try {
-    const raw = await fs.readFile(OPERATOR_PACKS_FILE, 'utf-8');
+    const raw = await fs.readFile(operatorPacksFile(), 'utf-8');
     const parsed = JSON.parse(raw) as OperatorPacksFile;
     return Array.isArray(parsed.packs) ? parsed.packs : [];
   } catch {
@@ -75,9 +85,10 @@ async function readFileStore(): Promise<InstalledPackRow[]> {
 }
 
 async function writeFileStore(rows: InstalledPackRow[]): Promise<void> {
-  await fs.mkdir(CARINA_HOME, { recursive: true });
+  const home = resolveCarinaHome();
+  await fs.mkdir(home, { recursive: true });
   await fs.writeFile(
-    OPERATOR_PACKS_FILE,
+    operatorPacksFile(),
     JSON.stringify({ packs: rows }, null, 2),
     { mode: 0o600 },
   );
@@ -85,7 +96,7 @@ async function writeFileStore(rows: InstalledPackRow[]): Promise<void> {
 
 async function readAuditFile(): Promise<OperatorPackAuditEntry[]> {
   try {
-    const raw = await fs.readFile(OPERATOR_AUDIT_FILE, 'utf-8');
+    const raw = await fs.readFile(operatorAuditFile(), 'utf-8');
     const parsed = JSON.parse(raw) as OperatorAuditFile;
     return Array.isArray(parsed.entries) ? parsed.entries : [];
   } catch {
@@ -96,9 +107,10 @@ async function readAuditFile(): Promise<OperatorPackAuditEntry[]> {
 async function appendAuditFile(entry: OperatorPackAuditEntry): Promise<void> {
   const entries = await readAuditFile();
   entries.unshift(entry);
-  await fs.mkdir(CARINA_HOME, { recursive: true });
+  const home = resolveCarinaHome();
+  await fs.mkdir(home, { recursive: true });
   await fs.writeFile(
-    OPERATOR_AUDIT_FILE,
+    operatorAuditFile(),
     JSON.stringify({ entries: entries.slice(0, 100) }, null, 2),
     { mode: 0o600 },
   );

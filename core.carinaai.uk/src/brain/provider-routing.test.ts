@@ -57,7 +57,9 @@ describe('provider-routing', () => {
     for (const name of ['litellm', 'sglang', 'vertex', 'cloudflare-ai-gateway', 'byteplus', 'tencent', 'volcengine', 'bedrock-mantle']) {
       expect(PROVIDER_MAP[name]).toBeDefined();
     }
-    expect(PROVIDER_MAP.voyage?.status).toBe('unsupported');
+    expect(PROVIDER_MAP.voyage?.status).toBe('active');
+    expect(PROVIDER_MAP.voyage?.embeddingOnly).toBe(true);
+    expect(PROVIDER_MAP.voyage?.capabilities.embeddings).toBe(true);
     expect(PROVIDER_MAP['github-copilot']?.status).toBe('external-cli');
   });
 });

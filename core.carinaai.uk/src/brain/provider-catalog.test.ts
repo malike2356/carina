@@ -217,9 +217,9 @@ describe('provider catalog - configured state', () => {
 /* ── capability-based selection ── */
 
 describe('provider catalog - capability selection', () => {
-  it('isRoutableProvider returns true only for active and experimental', () => {
+  it('isRoutableProvider returns true only for active and experimental chat providers', () => {
     for (const def of PROVIDER_DEFINITIONS) {
-      const expected = def.status === 'active' || def.status === 'experimental';
+      const expected = (def.status === 'active' || def.status === 'experimental') && !def.embeddingOnly;
       expect(isRoutableProvider(def)).toBe(expected);
     }
   });

@@ -9,7 +9,11 @@ import { executeTaskFlowRun } from './engine.js';
 import type { TaskFlowRun, TaskRunStatus } from './types.js';
 
 const DEFAULT_STALE_MS = 30 * 60_000;
-const DEFAULT_RUN_TIMEOUT_MS = 15 * 60_000;
+
+export function taskFlowWorkerPoolSize(): number {
+  const raw = Number(process.env.CARINA_TASKFLOWS_WORKER_POOL ?? 2);
+  return Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), 16) : 2;
+}
 
 export function taskFlowWorkerEnabled(): boolean {
   return taskFlowsEnabled() && process.env.CARINA_TASKFLOWS_WORKER !== 'false';
@@ -44,14 +48,15 @@ export function markStaleTaskFlowRuns(staleMs = DEFAULT_STALE_MS): number {
   return marked;
 }
 
-export async function processQueuedTaskFlowRuns(maxConcurrent = 2): Promise<number> {
+export async function processQueuedTaskFlowRuns(maxConcurrent?: number): Promise<number> {
   if (!taskFlowWorkerEnabled()) return 0;
 
   markStaleTaskFlowRuns();
 
+  const pool = maxConcurrent ?? taskFlowWorkerPoolSize();
   const queued = listTaskFlowRuns(500).filter((r) => r.status === 'queued');
   const running = listTaskFlowRuns(500).filter((r) => r.status === 'running').length;
-  const slots = Math.max(0, maxConcurrent - running);
+  const slots = Math.max(0, pool - running);
   if (slots === 0 || queued.length === 0) return 0;
 
   let started = 0;
@@ -111,10 +116,11 @@ let workerTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startTaskFlowWorkerLoop(): void {
   if (!taskFlowWorkerEnabled()) return;
-  const ms = Number(process.env.CARINA_TASKFLOWS_WORKER_INTERVAL_MS ?? 0);
+  const ms = Number(process.env.CARINA_TASKFLOWS_WORKER_INTERVAL_MS ?? 30_000);
   if (!Number.isFinite(ms) || ms <= 0) return;
   if (workerTimer) return;
 
+  void processQueuedTaskFlowRuns();
   workerTimer = setInterval(() => {
     void processQueuedTaskFlowRuns();
     if (process.env.CARINA_TASKFLOWS_DELIVERY_WORKER !== 'false') {

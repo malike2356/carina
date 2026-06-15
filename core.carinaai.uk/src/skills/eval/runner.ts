@@ -161,4 +161,16 @@ export function resolvePackEvalDir(packName: string): string {
   return path.join(BUILTIN_PACKS_DIR, packName);
 }
 
+export async function evalSkill(skill: {
+  name: string;
+  description: string;
+  steps?: string;
+  trigger?: string[];
+}): Promise<{ pass: boolean }> {
+  const hasSteps = Boolean(skill.steps?.trim());
+  return {
+    pass: Boolean(skill.name?.trim() && skill.description?.trim() && hasSteps),
+  };
+}
+
 export { loadEvalDefinition, resolveSkills };

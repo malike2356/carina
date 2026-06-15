@@ -41,7 +41,7 @@ function envMode(filePath: string): number | null {
   }
 }
 
-export async function runHealthCheck(options: { loadEnv?: boolean } = {}): Promise<HealthReport> {
+export async function runHealthCheck(options: { loadEnv?: boolean; deep?: boolean } = {}): Promise<HealthReport> {
   if (options.loadEnv !== false) {
     const { loadLocalEnv } = await import('../cli/config/env.js');
     loadLocalEnv();
@@ -64,6 +64,41 @@ export async function runHealthCheck(options: { loadEnv?: boolean } = {}): Promi
     status: nodeOk ? 'ok' : 'fail',
     detail: process.versions.node,
   });
+
+  if (process.platform === 'win32') {
+    const { detectWindowsPrereqs, defaultWindowsInstallHint } = await import('../windows/environment.js');
+    const win = await detectWindowsPrereqs();
+    push({
+      id: 'windows-build',
+      category: 'runtime',
+      name: 'Windows build (ConPTY)',
+      status: win.conptySupported ? 'ok' : 'fail',
+      detail: win.buildNumber != null ? `build ${win.buildNumber}` : 'unknown build',
+    });
+    push({
+      id: 'windows-powershell',
+      category: 'runtime',
+      name: 'PowerShell',
+      status: win.powershellAvailable ? 'ok' : 'fail',
+      detail: win.powershellAvailable ? 'available' : 'not found',
+    });
+    push({
+      id: 'windows-carina-path',
+      category: 'ops',
+      name: 'carina on PATH',
+      status: win.carinaOnPath ? 'ok' : 'warn',
+      detail: win.carinaOnPath ? 'found' : defaultWindowsInstallHint(),
+    });
+    const { isWindowsGatewayTaskInstalled } = await import('../windows/schtasks-service.js');
+    const taskInstalled = await isWindowsGatewayTaskInstalled();
+    push({
+      id: 'windows-gateway-task',
+      category: 'ops',
+      name: 'CarinaGateway scheduled task',
+      status: taskInstalled ? 'ok' : 'warn',
+      detail: taskInstalled ? 'installed' : 'optional: carina host install',
+    });
+  }
 
   push({
     id: 'carina-home',
@@ -267,6 +302,12 @@ export async function runHealthCheck(options: { loadEnv?: boolean } = {}): Promi
     // optional
   }
 
+  if (options.deep) {
+    const { runDeepScan } = await import('./health-deep-scan.js');
+    const deep = await runDeepScan();
+    checks.push(...deep.checks);
+  }
+
   const summary = {
     ok: checks.filter((c) => c.status === 'ok').length,
     warn: checks.filter((c) => c.status === 'warn').length,
@@ -326,6 +367,25 @@ export async function applyHealthRepairs(report: HealthReport): Promise<HealthRe
       const outPath = audit.writeSecretsReviewReport(report);
       applied.push(`secrets review report: ${outPath}`);
       applied.push('run: carina secrets review');
+      continue;
+    }
+
+    if (check.repairId === 'generate-ops-token') {
+      const { ensureGatewayOpsToken } = await import('./gateway-token.js');
+      const result = await ensureGatewayOpsToken();
+      if (result.created) {
+        applied.push(`generated CARINA_OPS_TOKEN in ${result.path}`);
+      } else {
+        skipped.push('generate-ops-token (already configured)');
+      }
+      continue;
+    }
+
+    if (check.repairId === 'mkdir-logs' || check.repairId === 'mkdir-extensions') {
+      const { applyDeepScanRepair } = await import('./health-deep-scan.js');
+      const msg = await applyDeepScanRepair(check.repairId);
+      if (msg) applied.push(msg);
+      else skipped.push(check.repairId);
       continue;
     }
 

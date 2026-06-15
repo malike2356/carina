@@ -8,6 +8,7 @@ import {
   formatHardwareLine,
   getCatalogEntry,
   listFittingModels,
+  recommendFullStack,
   recommendModels,
   searchCatalog,
   getHardwareProfile,
@@ -54,24 +55,42 @@ function formatEntryLine(entry: CatalogEntry): string {
 
 function printDefaultOverview(): void {
   const profile = getHardwareProfile();
+  const stack = recommendFullStack(profile);
   const rec = recommendModels(profile);
 
   console.log(`Hardware: ${formatHardwareLine(profile)}`);
-  console.log(`Tier: ${rec.tier}`);
+  console.log(`Tier: ${stack.tier}`);
+  console.log(`Scenario: ${stack.scenario}`);
   console.log('');
-  console.log('Recommended models (fit on your hardware):');
-  if (rec.recommended.length === 0) {
+  console.log(stack.message);
+  console.log('');
+  console.log('Recommended local models (fit on your hardware):');
+  if (stack.local.length === 0) {
     console.log('  (none fit; try carina cookbook list --all or free disk/RAM)');
   } else {
-    for (const entry of rec.recommended) {
+    for (const entry of stack.local) {
       console.log(formatEntryLine(entry));
+    }
+  }
+  console.log('');
+  console.log('Cloud API options (configured providers marked with *):');
+  for (const cloud of stack.cloud.slice(0, 5)) {
+    const mark = cloud.configured ? '*' : ' ';
+    console.log(`  ${mark} ${cloud.providerName.padEnd(16)} ${cloud.model.padEnd(24)} ${cloud.strengths.join(', ')}`);
+  }
+  if (stack.gapFillers.length > 0) {
+    console.log('');
+    console.log('Suggested cloud gap-fillers for this hardware:');
+    for (const cloud of stack.gapFillers) {
+      console.log(`  - ${cloud.providerName} (${cloud.model}): ${cloud.note}`);
     }
   }
   console.log('');
   if (rec.recommended[0]) {
     console.log(`Run \`carina cookbook serve ${rec.recommended[0].id} --via ollama\` to get serve commands.`);
   }
-  console.log('Run `carina cookbook list --all` to see all 40+ models.');
+  console.log('Run `carina cookbook list --all` to see all 40+ local models.');
+  console.log('Run `carina providers list` to configure cloud API keys.');
   console.log('');
 }
 

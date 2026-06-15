@@ -135,7 +135,12 @@
     const done = visible.filter((n) => n.format === 'task' && n.done);
 
     if (!active.length) {
-      activeListEl.innerHTML = '<div style="padding:0.75rem;color:var(--muted);font-size:0.8rem;">No items.</div>';
+      activeListEl.innerHTML =
+        '<div style="padding:2.5rem 1rem;text-align:center;color:var(--muted)">' +
+        '<div style="font-size:1rem;font-weight:600;margin-bottom:0.5rem">No notes yet</div>' +
+        '<div style="font-size:0.8rem;line-height:1.5">Click <strong>New note</strong> or ask Carina:<br>' +
+        '"remind me to call Alex tomorrow at 3pm"</div>' +
+        '</div>';
     } else {
       active.forEach((n) => renderItem(n, activeListEl, false));
     }
@@ -385,6 +390,11 @@
   }, REMINDER_REFRESH_MS);
 
   setInterval(() => { void pollInbox(); }, INBOX_POLL_MS);
+
+  // Show skeleton while notes load
+  activeListEl.innerHTML = [1, 2, 3, 4].map(() =>
+    '<div class="skeleton" style="height:56px;margin-bottom:6px;"></div>',
+  ).join('');
 
   loadNotes().then(() => pollInbox()).catch(showError);
 })();
