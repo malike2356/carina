@@ -37,6 +37,10 @@ export function isPublicHostedPath(path: string): boolean {
 }
 
 export async function requireWebAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
+  if (isPublicHostedPath(req.path)) {
+    next();
+    return;
+  }
   // Ops bearer must work on any host (127.0.0.1, docker internal, etc.) when HOSTED_MODE is on.
   if (isOpsMachineApiPath(req.path, req.method) && isControlAuthorized(req)) {
     next();
@@ -44,10 +48,6 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
   }
 
   if (isHostedRequest(req.hostname)) {
-    if (isPublicHostedPath(req.path)) {
-      next();
-      return;
-    }
     const accountId = req.session?.hostedAccountId;
     if (!accountId) {
       if (req.path.startsWith('/api/')) {
