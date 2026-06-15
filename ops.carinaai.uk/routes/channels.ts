@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { fetchChannelStatusReports } from '../lib/channel-status.js';
+import { CARINA_BASE } from '../lib/carina.js';
 
 export const channelsRouter = Router();
 
@@ -10,7 +11,7 @@ channelsRouter.get('/', async (_req, res) => {
       title: 'Channels',
       channels,
       policyFlags,
-      carinaApiUrl: process.env.CARINA_API_URL ?? 'http://localhost:3333',
+      carinaApiUrl: CARINA_BASE,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

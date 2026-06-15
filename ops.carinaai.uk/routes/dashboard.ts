@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../lib/db.js';
 import { fetchTenantSummary, hostedTablesReady } from '../lib/tenants.js';
+import { CARINA_BASE } from '../lib/carina.js';
 
 export const dashboardRouter = Router();
 
@@ -69,7 +70,7 @@ dashboardRouter.get('/', async (_req, res) => {
       },
       recentSessions: recentSessions.rows,
       recentSkills: recentSkills.rows,
-      carinaApiUrl: process.env.CARINA_API_URL ?? 'http://localhost:3000',
+      carinaApiUrl: CARINA_BASE,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

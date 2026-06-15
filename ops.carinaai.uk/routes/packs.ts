@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { carinaGet, carinaJson, carinaOpsTokenSet, carinaPut } from '../lib/carina.js';
+import { CARINA_BASE, carinaGet, carinaJson, carinaOpsTokenSet, carinaPut } from '../lib/carina.js';
 import { parseSelectedPacks } from '../lib/packs.js';
 
 export const packsRouter = Router();
@@ -88,7 +88,7 @@ packsRouter.get('/', async (req, res) => {
     active: new Set(loaded.state?.active ?? []),
     lastChange: loaded.state?.lastChange ?? null,
     audit: loaded.state?.audit ?? [],
-    carinaApiUrl: process.env.CARINA_API_URL ?? 'http://localhost:3333',
+    carinaApiUrl: CARINA_BASE,
     evalReports,
   });
 });

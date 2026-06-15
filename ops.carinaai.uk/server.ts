@@ -20,6 +20,7 @@ import { subscriptionsRouter } from './routes/subscriptions.js';
 import { packsRouter } from './routes/packs.js';
 import { aiPlatformRouter } from './routes/ai-platform.js';
 import { channelsRouter } from './routes/channels.js';
+import { CARINA_BASE } from './lib/carina.js';
 import { ensureHostedSchema } from './lib/tenants.js';
 import { ensureAiPlatformSchema } from './lib/ai-platform.js';
 import { autoPairCarinaFromLocalCore } from './lib/carina-pairing.js';
@@ -92,8 +93,8 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  res.locals.carinaApiUrl = process.env.CARINA_API_URL ?? 'http://localhost:3333';
-  res.locals.webUiUrl = res.locals.carinaApiUrl;
+  res.locals.carinaApiUrl = CARINA_BASE;
+  res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
   res.locals.activePath = req.path;
   next();
 });

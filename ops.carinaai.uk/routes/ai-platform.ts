@@ -136,7 +136,7 @@ aiPlatformRouter.get('/workbench', async (req, res) => {
     selectedRun,
     saved,
     autorun: req.query.autorun === '1',
-    carinaApiUrl: process.env.CARINA_API_URL ?? 'http://localhost:3333',
+    carinaApiUrl: CARINA_BASE,
   });
 });
 

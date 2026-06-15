@@ -2,7 +2,7 @@ import { execFileSync } from 'child_process';
 import { writeFileSync } from 'fs';
 import { Router } from 'express';
 import { scoutGet, scoutGetDetailed, scoutPut, scoutPost } from '../lib/scout.js';
-import { carinaGet, carinaJson, carinaOpsTokenSet, carinaPut } from '../lib/carina.js';
+import { CARINA_BASE, carinaGet, carinaJson, carinaOpsTokenSet, carinaPut } from '../lib/carina.js';
 import { autoPairCarinaFromLocalCore, testCarinaConnection } from '../lib/carina-pairing.js';
 import { coreEnvReadable, resolveCoreEnvPath } from '../lib/core-env.js';
 import { OPS_ENV_PATH, setEnvVar } from '../lib/env.js';
@@ -27,7 +27,7 @@ settingsRouter.get('/', async (req, res) => {
   }
   res.render('settings', {
     title: 'Settings',
-    carinaApiUrl: process.env.CARINA_API_URL ?? 'http://localhost:3333',
+    carinaApiUrl: CARINA_BASE,
     carinaAndroidApkUrl: process.env.CARINA_ANDROID_APK_URL ?? '',
     scoutUrl: process.env.SCOUT_URL ?? 'http://localhost:4444',
     adminPasswordSet: adminPassword !== 'changeme',

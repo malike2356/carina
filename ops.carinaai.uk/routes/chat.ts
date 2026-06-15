@@ -1,10 +1,10 @@
 import { Router, type Request, type Response } from 'express';
 import { VERLOX_QUICK_ACTIONS } from '../lib/constants.js';
-import { carinaGet, carinaHeaders, CARINA_BASE } from '../lib/carina.js';
+import { CARINA_BASE, carinaGet, carinaHeaders } from '../lib/carina.js';
 
 export const chatRouter = Router();
 
-const carinaUrl = () => process.env.CARINA_API_URL ?? 'http://localhost:3333';
+const carinaUrl = (): string => CARINA_BASE;
 
 chatRouter.get('/', (req, res) => {
   const prefill = String(req.query.prefill ?? '');
