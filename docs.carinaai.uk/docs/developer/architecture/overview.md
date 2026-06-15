@@ -4,11 +4,11 @@ sidebar_position: 1
 
 # Architecture overview
 
-Carina follows a gateway + agent + tools architecture similar in spirit to Hermes/OpenClaw, with multi-tenant SaaS and Scout security as differentiators.
+Carina follows a gateway + agent + tools architecture with multi-tenant SaaS and Scout security as differentiators.
 
 ```mermaid
 flowchart LR
-  subgraph channels [Gateways - 18 adapters]
+  subgraph channels [Gateways - 19 adapters]
     CLI[CLI]
     Web[Web UI]
     TG[Telegram]

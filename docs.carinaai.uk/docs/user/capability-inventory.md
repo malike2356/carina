@@ -73,9 +73,9 @@ Full tool tables and confirmation rules: [Tools overview](/docs/user/tools/overv
 
 ## Providers (configured)
 
-**51 providers** appear in the catalog (`carina providers list`). Chat routing uses the subset with valid keys or local backends.
+**23 live providers** appear in the public package registry (`carina providers list`). Chat routing uses the subset with valid keys or local backends.
 
-Common configured integrations: OpenAI, Anthropic, Gemini, DeepSeek, Groq, OpenRouter, xAI, Hugging Face, Ollama, LM Studio, vLLM, and OpenAI-compatible custom endpoints.
+Configured integrations: DeepSeek, Groq, Gemini, Anthropic, OpenAI, OpenRouter, Together AI, Mistral, Cohere, Perplexity, Fireworks, xAI, Moonshot, Qwen, Zhipu GLM, Azure OpenAI, Cerebras, DeepInfra, Novita, SiliconFlow, Ollama, LM Studio, and NVIDIA NIM.
 
 Free Copilot preset (`CARINA_LLM_PRESET=free-copilot`) prefers local and tagged-free routes when configured.
 
@@ -152,7 +152,7 @@ Pricing: [Open source + Scout pricing](/docs/user/open-source-pricing) and [laby
 
 - `carina doctor` health checks and optional repairs
 - Backup and restore (`carina backup`, ops parity)
-- Migration from Hermes, OpenClaw, Claude (`carina migrate`)
+- Migration from Claude and Carina bundles (`carina migrate`)
 - Secrets review and hosted bootstrap flows
 
 Operator tooling stays out of the chat hot path; enable explicitly when needed.
@@ -180,6 +180,6 @@ Use these for how-to detail. Return here for **what exists** and **what status i
 - [Toolsets](/docs/user/toolsets)
 - [Skill packs](/docs/user/skill-packs/overview)
 - [Gateways](/docs/user/gateways/cli)
-- [Migrating from Hermes](/docs/user/migration-from-hermes)
+- [CLI gateway](/docs/user/gateways/cli)
 - [Carina Cloud](/docs/user/carina-cloud)
 - [Developer overview](/docs/developer/intro)

@@ -6,7 +6,7 @@ Product boundaries and attestation honesty: [Capability inventory](/docs/capabil
 
 ## What is MIT licensed
 
-Carina core (`core.carinaai.uk`) is MIT licensed. Public repository release is a distribution step; review private operational files and secrets before switching repository visibility.
+Carina core, currently published for users as `carina-agent`, and the Scout **client SDK** (`@carina/scout`) are MIT licensed. The scoped `@carina/core` package name is reserved for a future package split and is not the live public npm install path yet. The Scout **server** (`console.labyrinthscout.com`) and Carina Ops are commercial. See the [commercial boundaries doc](https://github.com/malike2356/carina-agent/blob/main/docs/kernel/COMMERCIAL_BOUNDARIES.md) in the public repo (also shipped in the npm tarball under `docs/kernel/`).
 
 ## What is commercial
 

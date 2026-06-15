@@ -44,7 +44,7 @@ Runs when layers 1-2 are inconclusive or for high-risk sessions. Timeout default
 | `LABYRINTH_LLM_ROUTER_URL` | Judge API base |
 | `LABYRINTH_JUDGE_MODEL` | Model id (e.g. `deepseek/deepseek-chat`) |
 
-On Carina, enable with `LABYRINTH_ENABLED=true`. On third-party stacks, use [OpenClaw proxy](/integration/openclaw).
+On Carina, enable with `LABYRINTH_ENABLED=true`. On third-party stacks, use [custom agent integration](/integration/custom-agent).
 
 ## Reporting
 

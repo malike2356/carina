@@ -1,119 +1,41 @@
-# Carina Agent
+## Platform positioning
 
-[![npm version](https://img.shields.io/npm/v/carina-agent.svg)](https://www.npmjs.com/package/carina-agent)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![docs](https://img.shields.io/badge/docs-carinaai.uk-0a0a0f)](https://carinaai.uk/docs/)
+[![CI Linux](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml/badge.svg?job=test-linux)](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml)
+[![CI Windows](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml/badge.svg?job=test-windows)](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml)
+[![CI macOS](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml/badge.svg?job=test-macos)](https://github.com/malike2356/carina-ai/actions/workflows/ci.yml)
 
-An agent that gets work done on your stack, with vertical skill packs. Built by [VERLOX Ltd](https://carinaai.uk).
+Carina is the free, self-hosted AI agent kernel; MIT licensed, with Scout as the commercial governance layer for production monitoring, approvals, audit trails, and incident response. The current public npm install path is **`carina-agent`**. The scoped **`@carina/core`** package name is reserved for a future package split and is not the live public install path yet. See [MANIFESTO.md](../MANIFESTO.md) and [docs/kernel/BRAND_RULES.md](docs/kernel/BRAND_RULES.md).
 
-**MIT licensed.** Fork it, extend it, ship skill packs. [Contributing](CONTRIBUTING.md) | [Discussions](https://github.com/malike2356/carina-agent/discussions) | [Report a bug](https://github.com/malike2356/carina-agent/issues/new/choose)
-
-Carina is a general-purpose local-first agent. It gets work done across your stack. Skill packs are optional: enable them at `/packs` on the web UI, with `carina packs install <name>`, or via `ACTIVE_SKILL_PACKS` in `.env`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) to develop on the kernel.
 
 ## Install
 
-**npm (recommended):**
+### Windows
+
+Install Node.js 22+ for Windows, then install the public npm package:
+
+```powershell
+npm install -g carina-agent
+carina setup
+```
+
+PowerShell direct shell mode works on Windows. Docker Desktop is required for stronger shell isolation and Python code execution. Installer source exists in `installer/`; to build it locally on Windows, install [NSIS](https://nsis.sourceforge.io/Download), then run `installer/build-installer.ps1`.
+
+### macOS / Linux
 
 ```bash
 npm install -g carina-agent
-carina
+carina setup
 ```
 
-First run shows a short guide and runs `carina setup` if `~/.carina/.env` is missing. Choose **configure now** (API key) or **configure later** (local mode).
+Domain packs are optional; enable with `carina packs enable property-uk` or install from Hub.
 
-**One-shot:**
+## 7 Pillars of Engineering
 
-```bash
-npx carina-agent
-```
-
-Package: [carina-agent@0.1.1](https://www.npmjs.com/package/carina-agent) on npm. Requires **Node.js 22+**.
-
-**curl (when install host is live):**
-
-```bash
-curl -fsSL https://install.carinaai.uk | sh
-carina
-```
-
-**Hosted (no install):** [app.carinaai.uk](https://app.carinaai.uk)
-
-## Quick start
-
-```bash
-git clone https://github.com/malike2356/carina-agent.git
-cd carina-agent
-pnpm install
-pnpm build
-pnpm dev
-```
-
-Full documentation: [carinaai.uk/docs](https://carinaai.uk/docs/).
-
-Open `http://localhost:3000` for the web UI.
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `carina` | Interactive CLI (runs setup wizard on first use) |
-| `carina setup` | Configure API keys and skill packs |
-| `carina install-pack property-uk` | Install a pack from Skills Hub |
-| `carina list-packs` | List installed packs |
-| `carina web` | Web UI only |
-| `carina version` | Print version |
-
-## Configuration
-
-Config lives in `~/.carina/.env` for global installs, or `.env` in the project directory.
-
-| Variable | Description |
-|----------|-------------|
-| `DEFAULT_PROVIDER` | Any of 23 registered providers (see `carina providers list`) |
-| `DEEPSEEK_API_KEY` | DeepSeek API key (example) |
-| `ANTHROPIC_API_KEY` | Anthropic API key (example) |
-| `CARINA_MEMORY_BACKEND` | `builtin`, `postgres`, `sqlite`, or `mem0` |
-| `DATABASE_URL` | PostgreSQL with pgvector (when using postgres backend) |
-| `REDIS_URL` | Redis for sessions |
-| `ACTIVE_SKILL_PACKS` | Comma-separated skill packs (empty = general-purpose) |
-| `ACTIVE_SKILL_PACK` | Legacy single-pack alias |
-
-## Features
-
-- **Skill packs** with domain knowledge (property-uk: 95+ UK property docs)
-- **Memory transparency**: `/memories` and `/memories delete <id>`
-- **Provider hot-swap**: `/provider deepseek` in CLI, Telegram, and Web
-- **MCP-compatible** tool schemas for community extensions
-- **Multi-gateway**: 18 channel adapters (CLI, Web, Telegram, Discord, Slack, WhatsApp, SMS, Signal, Matrix, Email, and more); each needs credentials or env flags where applicable
-- **Scale**: 71 tools, 23 LLM providers, 16 skill packs, 5,369 Vitest tests (as of 2026-06-10)
-- **Hosted option**: [app.carinaai.uk](https://app.carinaai.uk) for non-technical users
-
-## Documentation
-
-- [docs.carinaai.uk](https://docs.carinaai.uk) - full documentation
-- [skills.carinaai.uk](https://skills.carinaai.uk) - Skills Hub
-
-## Development
-
-```bash
-pnpm install
-pnpm build
-pnpm test
-pnpm hub          # Skills Hub on :3001
-```
-
-Documentation source: [carinaai.uk/docs](https://carinaai.uk/docs/) (built from the private VERLOX docs repo).
-
-## Contributing
-
-Carina grows through **skill packs**, tools, gateways, and docs. The fastest path for new contributors is a [skill pack](https://carinaai.uk/docs/user/skill-packs/creating-packs).
-
-1. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-2. Pick a [`good first issue`](https://github.com/malike2356/carina-agent/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or propose a pack via the issue template
-3. Open a PR or start a [Discussion](https://github.com/malike2356/carina-agent/discussions)
-
-Community hub: [carinaai.uk/community](https://carinaai.uk/community)
-
-## License
-
-MIT - see [LICENSE](LICENSE).
+1. **Security first** -- Security is not a feature. It is the foundation every decision sits on.
+2. **AI powered from foundation** -- AI is woven into the architecture from inception, not stitched on after the fact.
+3. **No emojis, no fluff, direct but warm** -- Speak like a human. Clear, concise, professional. No filler.
+4. **No em-dashes, no en-dashes, no AI typography** -- If a human wouldn't type it, neither should the output. Plain ASCII, natural cadence, no machine artefacts.
+5. **Cause no risk to data, information, assets, or finance** -- What people entrust to us must never be harmed. No data loss, no financial damage, no compromised assets.
+6. **Ethical, within the bounds of human ethics** -- Build in a way that is natural, sustainable, and protective of well-being. Technology serves people, not the other way around.
+7. **Compliance with law and regulation** -- Know the jurisdiction. Follow the law. Whether local or global, operate within the legal framework of the geography you serve.

@@ -15,6 +15,7 @@ export const TOP_LEVEL_COMMANDS = [
 export const CHANNEL_NAMES = [
   'telegram', 'whatsapp', 'web', 'discord', 'slack', 'sms', 'signal', 'matrix',
   'mattermost', 'irc', 'dingtalk', 'feishu', 'wechat', 'imessage', 'email',
+  'line', 'viber', 'google-chat', 'teams',
   'homeassistant', 'api', 'webhooks', 'cli',
 ] as const;
 
@@ -52,7 +53,7 @@ export const SUBCOMMANDS: Record<string, readonly string[]> = {
   billing: ['status'],
   plugins: ['list', 'install', 'enable', 'disable', 'remove', 'rollback', 'validate', 'status'],
   hooks: ['list'],
-  migrate: ['status', 'hermes', 'openclaw', 'claude', 'export', 'import'],
+  migrate: ['status', 'claude', 'export', 'import'],
   update: ['check', 'run'],
   hub: ['start', 'browse', 'status', 'packs', 'skills', 'search', 'install'],
   contacts: ['list', 'show'],
@@ -115,10 +116,6 @@ export const NESTED_OPTIONS: Record<string, Record<string, readonly string[]>> =
   },
   ide: {
     install: ['vscode', 'cursor', 'zed', 'jetbrains', 'all'],
-  },
-  migrate: {
-    hermes: [],
-    openclaw: [],
   },
 };
 

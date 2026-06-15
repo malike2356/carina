@@ -21,7 +21,8 @@ Skill packs bundle domain knowledge (RAG corpus), pre-built skills (structured p
 Carina is **general-purpose by default** (no pack loaded). Enable packs without editing `.env` on operator hosts:
 
 - Web UI: open `/packs` and click **Enable** on a pack card
-- CLI: `carina packs install <name>` or `carina hub install <name>`
+- CLI: `carina pack install <name>` (see [Carina Hub](/docs/user/hub))
+- Hub: browse at [hub.carinaai.uk](https://hub.carinaai.uk)
 
 For `.env` or global CLI installs, set `ACTIVE_SKILL_PACKS=core-engineering,finance` (comma-separated). On first wizard run, Carina can install selected packs into `~/.carina/packs/`. Full catalogue: [carinaai.uk/skill-packs](https://carinaai.uk/skill-packs/).
 
@@ -48,7 +49,7 @@ For `.env` or global CLI installs, set `ACTIVE_SKILL_PACKS=core-engineering,fina
 
 ## Community Skills Hub
 
-The public registry lists every published pack and individual skill. Browse at [skills.carinaai.uk](https://skills.carinaai.uk/) or query from the CLI:
+The public registry lists every published pack and individual skill. Browse at [hub.carinaai.uk](https://hub.carinaai.uk/) or query from the CLI:
 
 ```bash
 carina hub browse          # hub URL and install hint

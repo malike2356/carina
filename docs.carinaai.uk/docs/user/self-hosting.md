@@ -60,7 +60,7 @@ Set `LABYRINTH_ENABLED=true` in Carina and matching `SCOUT_API_KEY` on both side
 
 ## npm global install
 
-[`carina-agent`](https://www.npmjs.com/package/carina-agent) v0.1.0 on npm (Node.js 22+):
+[`carina-agent`](https://www.npmjs.com/package/carina-agent) v0.1.1 on npm (Node.js 22+):
 
 ```bash
 npm install -g carina-agent
@@ -68,6 +68,17 @@ carina setup
 ```
 
 Then configure `~/.carina/.env` (wizard or manual) and start with `carina` or `carina web`.
+
+## Windows machines
+
+Carina can be self-hosted on Windows with Node.js 22+ and npm:
+
+```powershell
+npm install -g carina-agent
+carina setup
+```
+
+PowerShell direct shell mode works for local commands. Install Docker Desktop when you need stronger shell isolation or Python code execution through the sandboxed tools.
 
 ## Bare metal (from source)
 

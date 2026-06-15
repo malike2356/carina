@@ -1,42 +1,11 @@
-# docs.carinaai.uk
 
-Docusaurus documentation site for Carina: guides for the agent that gets work done on your stack, plus developer reference.
 
-## Commands
+## 7 Pillars of Engineering
 
-```bash
-pnpm install
-pnpm start    # dev server (default http://localhost:3000)
-pnpm build    # static output in build/
-pnpm serve    # preview production build
-```
-
-Deploy the `build/` directory to https://docs.carinaai.uk (nginx, Cloudflare Pages, or VPS static host).
-
-## Content layout
-
-| Path | Audience |
-|---|---|
-| `docs/user/` | Install, configure, gateways, tools, security |
-| `docs/developer/` | Architecture, CLI, extending tools and channels |
-
-Legacy VitePress sources remain in `core.carinaai.uk/docs/` for reference only; **do not edit them for public releases**. This site is canonical.
-
-## Deploy
-
-| Target | Command |
-|---|---|
-| `docs.carinaai.uk` subdomain | `pnpm build` then sync `build/` to nginx |
-| Embedded at `carinaai.uk/docs` | `bash scripts/deploy-marketing.sh carina` (sets `CARINA_DOCS_MARKETING=1`) |
-
-## Documentation map (mono-repo)
-
-| Site | Source | Build |
-|---|---|---|
-| Carina user + developer docs | `docs.carinaai.uk/docs/` | Docusaurus (`pnpm build`) |
-| Scout product docs | `console.labyrinthscout.com/docs/` | VitePress (`pnpm docs:build`) |
-| Carina marketing | `carinaai.uk/` | Static + embedded docs |
-| Scout marketing | `labyrinthscout.com/` | Static + embedded docs |
-| Internal wiring | `ARCHITECTURE.md`, `CONFIGURATION_READINESS.md` | Git only |
-
-**Security note:** Scout console URLs are emailed at provisioning. Do not link the hosted console hostname from public marketing pages.
+1. **Security first** -- Security is not a feature. It is the foundation every decision sits on.
+2. **AI powered from foundation** -- AI is woven into the architecture from inception, not stitched on after the fact.
+3. **No emojis, no fluff, direct but warm** -- Speak like a human. Clear, concise, professional. No filler.
+4. **No em-dashes, no en-dashes, no AI typography** -- If a human wouldn't type it, neither should the output. Plain ASCII, natural cadence, no machine artefacts.
+5. **Cause no risk to data, information, assets, or finance** -- What people entrust to us must never be harmed. No data loss, no financial damage, no compromised assets.
+6. **Ethical, within the bounds of human ethics** -- Build in a way that is natural, sustainable, and protective of well-being. Technology serves people, not the other way around.
+7. **Compliance with law and regulation** -- Know the jurisdiction. Follow the law. Whether local or global, operate within the legal framework of the geography you serve.

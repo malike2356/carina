@@ -139,10 +139,15 @@ export function buildCommands(): CliCommand[] {
       await runPairingCommand(args);
     }, { usage: 'carina pairing <status|code|devices|nodes|approve|reject|revoke|rotate|qr> [id]' }),
 
-    cmd('host', 'Gateway host service (systemd, status, PID)', async (args) => {
+    cmd('pair', 'Pair a mobile device via token and QR', async (args) => {
+      const { runPairCommand } = await import('./commands/pair-cli.js');
+      await runPairCommand(args);
+    }, { usage: 'carina pair [list|revoke|token|accept] [args]' }),
+
+    cmd('host', 'Gateway host daemon (install, start, logs)', async (args) => {
       const { runHostCommand } = await import('./commands/host-cli.js');
       await runHostCommand(args);
-    }, { loadEnv: true, usage: 'carina host <status|install|uninstall|systemd|pid>' }),
+    }, { loadEnv: true, usage: 'carina host <status|install|start|stop|restart|uninstall|logs|supervise> [args]' }),
 
     cmd('node-host', 'Remote node daemon (pair, install, start)', async (args) => {
       const { runNodeHostCommand } = await import('./commands/node-host-cli.js');
@@ -218,6 +223,19 @@ export function buildCommands(): CliCommand[] {
       await runPacksCommand(args);
     }, { usage: 'carina packs <list|status|enable|disable|install|remove> [--bypass-eval]' }),
 
+    cmd('pack', 'Domain pack hub (search, install, publish)', async (args) => {
+      const { runPackCommand } = await import('./commands/pack/index.js');
+      await runPackCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina pack <search|list|install|publish> [args]',
+    }),
+
+    cmd('rfc', 'RFC workflow (propose kernel API changes)', async (args) => {
+      const { runRfcCommand } = await import('./commands/rfc/index.js');
+      await runRfcCommand(args);
+    }, { usage: 'carina rfc <propose|list> [args]' }),
+
     cmd('extensions', 'Extension bundle install/enable (operator, opt-in)', async (args) => {
       const { runExtensionsCommand } = await import('./commands/extensions-cli.js');
       await runExtensionsCommand(args);
@@ -286,6 +304,30 @@ export function buildCommands(): CliCommand[] {
       await runProvidersCommand(args);
     }, { loadEnv: true, usage: 'carina providers <list|info|copilot|preset|health|test|disable|enable|scan> [args]' }),
 
+    cmd('cookbook', 'Local model discovery and serve helper', async (args) => {
+      const { runCookbookCommand, runCookbookDefault } = await import('./commands/cookbook-cli.js');
+      if (args.length === 0) {
+        await runCookbookDefault();
+        return;
+      }
+      await runCookbookCommand(args);
+    }, { usage: 'carina cookbook [list|search|inspect|serve] [args]' }),
+
+    cmd('research', 'Multi-step deep research with cited report', async (args) => {
+      const { runResearchCommand } = await import('./commands/research-cli.js');
+      await runResearchCommand(args);
+    }, { loadEnv: true, usage: 'carina research "<query>" [--rounds N] [--sources N] [--save file] [--format markdown|html] [--provider name]' }),
+
+    cmd('compare', 'Send one prompt to multiple LLM providers in parallel', async (args) => {
+      const { runCompareCommand } = await import('./commands/compare-cli.js');
+      await runCompareCommand(args);
+    }, { loadEnv: true, usage: 'carina compare "<prompt>" [--providers a,b] [--blind] [--save file.md] [--max-tokens N] [--format terminal|markdown]' }),
+
+    cmd('about', 'Runtime version and MIT license information', async () => {
+      const { runAboutCommand } = await import('./commands/about-cli.js');
+      await runAboutCommand();
+    }, { usage: 'carina about' }),
+
     cmd('scout', 'Labyrinth Scout integration', async (args) => {
       const { runScoutCommand } = await import('./commands/scout-cli.js');
       await runScoutCommand(args);
@@ -326,10 +368,10 @@ export function buildCommands(): CliCommand[] {
       await runHooksCommand(args);
     }),
 
-    cmd('migrate', 'Import from Hermes, Claude, or OpenClaw; export/import bundles', async (args) => {
+    cmd('migrate', 'Import from Claude or Carina bundles', async (args) => {
       const { runMigrateCommand } = await import('./commands/migrate-cli.js');
       await runMigrateCommand(args);
-    }, { usage: 'carina migrate <status|hermes|claude|openclaw|export|import> [--from PATH] [--dry-run] [--force]' }),
+    }, { usage: 'carina migrate <status|claude|export|import> [--from PATH] [--dry-run] [--force]' }),
 
     cmd('update', 'Check for package updates', async (args) => {
       const { runUpdateCommand } = await import('./commands/update-cli.js');
@@ -404,8 +446,8 @@ export function buildCommands(): CliCommand[] {
     }, { loadEnv: true, usage: 'carina hosted <reset-password|bootstrap> [options]' }),
 
     cmd('version', 'Print version', async () => {
-      const pkg = readPackageInfo();
-      console.log(`${pkg.name} ${pkg.version}`);
+      const { versionWithLicenseLine } = await import('./commands/about-cli.js');
+      console.log(versionWithLicenseLine());
     }, { aliases: ['-v', '--version'] }),
   ];
 }

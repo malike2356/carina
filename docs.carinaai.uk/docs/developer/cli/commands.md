@@ -25,7 +25,7 @@ sidebar_position: 2
 | `credentials` | API key pools and OAuth device login |
 | `memory` | Memory backends |
 | `profile` | Isolated install profiles (whole `CARINA_HOME`) |
-| `agents` | Named agent workspaces + channel routing (OpenClaw-style) |
+| `agents` | Named agent workspaces + channel routing |
 | `secrets` | Redacted `.env` listing |
 
 ## Gateway and channels
@@ -50,11 +50,11 @@ sidebar_position: 2
 | `logs` | Log tail |
 | `scout` | Labyrinth Scout integration |
 | `security` | Security audit (same checks as `ops audit`) |
-| `migrate` | Import from Hermes/OpenClaw |
+| `migrate` | Import from Claude or Carina bundles |
 
 ### `carina commitments` (inferred follow-ups)
 
-OpenClaw-style short-lived follow-up memories. Opt in with `CARINA_COMMITMENTS_ENABLED=true`.
+Short-lived follow-up memories. Opt in with `CARINA_COMMITMENTS_ENABLED=true`.
 
 | Subcommand / flag | Description |
 |---|---|

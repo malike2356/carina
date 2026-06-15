@@ -75,7 +75,7 @@ When Scout is enabled, Carina also respects client-side policy env vars document
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `SKILLS_HUB_URL` | No | `https://skills.carinaai.uk` | Public hub URL |
+| `SKILLS_HUB_URL` | No | `https://hub.carinaai.uk` | Public hub URL |
 | `SKILLS_HUB_PORT` | No | `3001` | Hub server port when self-hosting |
 | `SKILLS_HUB_DATABASE_URL` | No | `postgresql://localhost:5432/carina_skills_hub` | Hub Postgres database |
 | `SKILLS_HUB_PUBLISH_KEY` | For publishing | - | API key for `POST /packs` |

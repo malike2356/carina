@@ -12,10 +12,14 @@ describe('CLI registry', () => {
     expect(resolveCommand('checkpoint')?.name).toBe('checkpoint');
     expect(resolveCommand('migrate')?.name).toBe('migrate');
     expect(resolveCommand('help')?.name).toBe('help');
-    expect(resolveCommand('--version')?.name).toBe('version');
+    expect(resolveCommand('cookbook')?.name).toBe('cookbook');
+    expect(resolveCommand('research')?.name).toBe('research');
+    expect(resolveCommand('compare')?.name).toBe('compare');
+    expect(resolveCommand('about')?.name).toBe('about');
+    expect(resolveCommand('pair')?.name).toBe('pair');
   });
 
-  it('includes Hermes/OpenClaw parity commands', () => {
+  it('includes core platform commands', () => {
     const names = new Set(buildCommandList().map((c) => c.name));
     for (const required of [
       'setup', 'config', 'model', 'tools', 'gateway', 'channels', 'cron',

@@ -17,6 +17,8 @@ const sidebars: SidebarsConfig = {
         'user/toolsets',
         'user/credentials',
         'user/open-source-pricing',
+        'user/pricing',
+        'user/enterprise',
         'user/contributing',
       ],
     },
@@ -38,6 +40,7 @@ const sidebars: SidebarsConfig = {
       label: 'Skill packs',
       items: [
         'user/skill-packs/overview',
+        'user/hub',
         'user/skill-packs/property-uk',
         'user/skill-packs/creating-packs',
       ],
@@ -83,6 +86,10 @@ const sidebars: SidebarsConfig = {
   ],
 
   developerSidebar: [
+    'developer/manifesto',
+    'developer/platform-architecture',
+    'developer/stable-api',
+    'developer/rfc-process',
     'developer/intro',
     {
       type: 'category',
@@ -116,7 +123,14 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Skills',
-      items: ['developer/skills/packs'],
+      items: [
+        'developer/first-domain-pack',
+        'developer/university-program',
+        'developer/partner-program',
+        'developer/skills/packs',
+        'developer/publishing-a-pack',
+        'developer/selling-a-pack',
+      ],
     },
     {
       type: 'category',

@@ -20,6 +20,8 @@ If you are running a team and need BYOK vaults, audit retention, usage controls,
 | Redis | 7+ | Session persistence and Scout kill-switch channel |
 | Docker | Latest (optional) | Required for `shell-exec` and full `code-exec` sandboxing |
 
+Windows is supported with Node.js 22+ and npm. Use Docker Desktop if you need stronger shell isolation or Python code execution through the sandboxed tools.
+
 :::warning
 Never commit `.env` or `~/.carina/.env`. API keys in git are a common breach vector.
 :::
@@ -120,4 +122,4 @@ If memory is unavailable, Carina continues in chat-only mode and logs a warning 
 - [Skill packs overview](/docs/user/skill-packs/overview) - all 16 domain packs
 - [property-uk pack](/docs/user/skill-packs/property-uk) - optional UK property vertical
 - [Labyrinth Scout](/docs/user/security/labyrinth-scout) - optional security control plane
-- [Migrating from Hermes](/docs/user/migration-from-hermes) - import config, keys, and skills from Hermes, OpenClaw, or Claude Code
+- [CLI gateway](/docs/user/gateways/cli) - command reference and operations

@@ -32,8 +32,6 @@ export default defineConfig({
         text: 'Integrations',
         items: [
           { text: 'Carina', link: '/integration/carina' },
-          { text: 'OpenClaw', link: '/integration/openclaw' },
-          { text: 'Hermes', link: '/integration/hermes' },
           { text: 'Custom agents', link: '/integration/custom-agent' },
           { text: 'Docker', link: '/integration/docker' },
         ],
