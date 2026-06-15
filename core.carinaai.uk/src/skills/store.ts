@@ -1,7 +1,9 @@
 import { pool } from '../memory/db.js';
 import type { Skill } from '../types/index.js';
 
-type SkillInput = Omit<Skill, 'id' | 'createdAt' | 'usageCount'>;
+type SkillInput = Omit<Skill, 'id' | 'createdAt' | 'usageCount' | 'successCount' | 'failureCount'> & {
+  status?: 'draft' | 'active';
+};
 
 function rowToSkill(row: Record<string, unknown>): Skill {
   return {
@@ -13,15 +15,18 @@ function rowToSkill(row: Record<string, unknown>): Skill {
     toolsUsed: (row.tools_used as string[]) ?? [],
     createdAt: new Date(String(row.created_at)),
     usageCount: Number(row.usage_count ?? 0),
+    successCount: Number(row.success_count ?? 0),
+    failureCount: Number(row.failure_count ?? 0),
   };
 }
 
 export async function saveSkill(skill: SkillInput): Promise<Skill> {
+  const status = skill.status ?? 'active';
   const result = await pool.query(
-    `INSERT INTO skill_documents (name, description, trigger_keywords, steps, tools_used)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO skill_documents (name, description, trigger_keywords, steps, tools_used, status)
+     VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`,
-    [skill.name, skill.description, skill.trigger, skill.steps, skill.toolsUsed],
+    [skill.name, skill.description, skill.trigger, skill.steps, skill.toolsUsed, status],
   );
   return rowToSkill(result.rows[0]);
 }
@@ -152,4 +157,26 @@ export async function deleteSkill(name: string): Promise<boolean> {
     [name],
   );
   return result.rowCount !== null && result.rowCount > 0;
+}
+
+export async function incrementSkillSuccess(id: string): Promise<void> {
+  await pool.query(
+    `UPDATE skill_documents SET success_count = success_count + 1, last_used_at = NOW() WHERE id = $1`,
+    [id],
+  );
+}
+
+export async function incrementSkillFailure(id: string): Promise<void> {
+  await pool.query(
+    `UPDATE skill_documents SET failure_count = failure_count + 1 WHERE id = $1`,
+    [id],
+  );
+}
+
+export async function getTopSkillsByUsage(limit: number): Promise<Skill[]> {
+  const result = await pool.query(
+    `SELECT * FROM skill_documents WHERE COALESCE(status, 'active') = 'active' ORDER BY usage_count DESC LIMIT $1`,
+    [limit],
+  );
+  return result.rows.map(rowToSkill);
 }

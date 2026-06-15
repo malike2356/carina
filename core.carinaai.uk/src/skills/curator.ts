@@ -1,6 +1,7 @@
 import { pool } from '../memory/db.js';
 import type { Skill } from '../types/index.js';
 import { listSkills } from './store.js';
+import { logSkillAction } from './skill-audit-log.js';
 
 export type SkillStatus = 'active' | 'archived' | 'pruned';
 
@@ -133,4 +134,126 @@ function jaccard(a: string[], b: string[]): number {
   for (const k of setA) if (setB.has(k)) intersection++;
   const union = new Set([...setA, ...setB]).size;
   return union === 0 ? 0 : intersection / union;
+}
+
+export interface CuratorCycleResult {
+  promoted: string[];
+  consolidated: string[];
+  archived: string[];
+  reportSummary: string;
+}
+
+export async function promoteDraftSkills(): Promise<string[]> {
+  const result = await pool.query(
+    `SELECT id, name, usage_count, success_count, failure_count, created_at
+     FROM skill_documents
+     WHERE COALESCE(status, 'active') = 'draft'`,
+  );
+  const promoted: string[] = [];
+  for (const row of result.rows) {
+    const name = String(row.name);
+    const usageCount = Number(row.usage_count ?? 0);
+    const successCount = Number(row.success_count ?? 0);
+    const createdAt = new Date(String(row.created_at));
+    const ageDays = (Date.now() - createdAt.getTime()) / 86_400_000;
+
+    if (usageCount >= 3 && successCount >= 2) {
+      await pool.query(`UPDATE skill_documents SET status = 'active' WHERE id = $1`, [row.id]);
+      await logSkillAction('promoted', String(row.id), { usageCount, successCount });
+      promoted.push(name);
+    } else if (ageDays >= 14 && usageCount === 0) {
+      await pool.query(`UPDATE skill_documents SET status = 'archived', archived_at = NOW() WHERE id = $1`, [row.id]);
+      await logSkillAction('archived', String(row.id), { reason: 'draft unused for 14 days' });
+    }
+  }
+  return promoted;
+}
+
+export async function consolidateOverlappingSkills(): Promise<string[]> {
+  const consolidated: string[] = [];
+  const dupes = await findDuplicateSkillCandidates(0.7);
+  for (const { a, b } of dupes) {
+    const skillA = await pool.query(`SELECT * FROM skill_documents WHERE name = $1 LIMIT 1`, [a]);
+    const skillB = await pool.query(`SELECT * FROM skill_documents WHERE name = $1 LIMIT 1`, [b]);
+    if (!skillA.rows[0] || !skillB.rows[0]) continue;
+
+    const rowA = skillA.rows[0] as Record<string, unknown>;
+    const rowB = skillB.rows[0] as Record<string, unknown>;
+    const scoreA = (Number(rowA.success_count ?? 0)) / Math.max(1, Number(rowA.usage_count ?? 1));
+    const scoreB = (Number(rowB.success_count ?? 0)) / Math.max(1, Number(rowB.usage_count ?? 1));
+
+    const [keeper, loser] = scoreA >= scoreB ? [rowA, rowB] : [rowB, rowA];
+    const mergedKeywords = [...new Set([
+      ...((keeper.trigger_keywords as string[]) ?? []),
+      ...((loser.trigger_keywords as string[]) ?? []),
+    ])];
+    await pool.query(
+      `UPDATE skill_documents SET trigger_keywords = $1, updated_at = NOW() WHERE id = $2`,
+      [mergedKeywords, keeper.id],
+    );
+    await pool.query(
+      `UPDATE skill_documents SET status = 'archived', archived_at = NOW() WHERE id = $1`,
+      [loser.id],
+    );
+    await logSkillAction('consolidated', String(keeper.id), {
+      merged: String(loser.name),
+      overlap: dupes.find((d) => (d.a === a && d.b === b) || (d.a === b && d.b === a))?.overlap,
+    });
+    consolidated.push(`${String(loser.name)} -> ${String(keeper.name)}`);
+  }
+  return consolidated;
+}
+
+export async function archiveStaleActiveSkills(maxAgeDays = 30): Promise<string[]> {
+  const result = await pool.query(
+    `SELECT id, name FROM skill_documents
+     WHERE COALESCE(status, 'active') = 'active'
+       AND usage_count = 0
+       AND COALESCE(last_used_at, created_at) < NOW() - ($1 || ' days')::interval`,
+    [String(maxAgeDays)],
+  );
+  const archived: string[] = [];
+  for (const row of result.rows) {
+    await pool.query(`UPDATE skill_documents SET status = 'archived', archived_at = NOW() WHERE id = $1`, [row.id]);
+    await logSkillAction('archived', String(row.id), { reason: `unused for ${maxAgeDays} days` });
+    archived.push(String(row.name));
+  }
+  return archived;
+}
+
+export async function getLastCuratorRunMs(): Promise<number> {
+  try {
+    const result = await pool.query(
+      `SELECT details->>'ts' AS ts FROM skill_audit_log WHERE action = 'curator-run' ORDER BY created_at DESC LIMIT 1`,
+    );
+    const ts = result.rows[0]?.ts;
+    return ts ? Number(ts) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function runFullCuratorCycle(options: {
+  curatorSilent?: boolean;
+  intervalDays?: number;
+} = {}): Promise<CuratorCycleResult> {
+  const intervalDays = options.intervalDays ?? Number(process.env.CARINA_CURATOR_INTERVAL_DAYS ?? '7');
+  const lastRun = await getLastCuratorRunMs();
+  const msSinceRun = Date.now() - lastRun;
+  const intervalMs = intervalDays * 24 * 60 * 60 * 1000;
+  if (lastRun > 0 && msSinceRun < intervalMs) {
+    return { promoted: [], consolidated: [], archived: [], reportSummary: '' };
+  }
+
+  const promoted = await promoteDraftSkills();
+  const consolidated = await consolidateOverlappingSkills();
+  const archived = await archiveStaleActiveSkills(30);
+
+  await pool.query(
+    `INSERT INTO skill_audit_log (skill_id, action, details) VALUES (NULL, 'curator-run', $1)`,
+    [JSON.stringify({ ts: Date.now(), promoted: promoted.length, consolidated: consolidated.length, archived: archived.length })],
+  );
+
+  const reportSummary = `Curator reviewed skills: ${promoted.length} promoted, ${consolidated.length} consolidated, ${archived.length} archived.`;
+  return { promoted, consolidated, archived, reportSummary };
 }

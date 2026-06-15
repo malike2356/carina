@@ -580,12 +580,28 @@ export class CarinaAgent {
       toolCallLog,
     };
 
-    void learnFromSessionTurn({
-      userMessage: safeUserMessage,
-      assistantText: turnText,
-      toolsUsed,
-      toolCallLog,
-    });
+    if (toolsUsed.length >= 3 && process.env.CARINA_AUTO_SKILL !== 'false') {
+      const { evaluateAfterTurn } = await import('../skills/post-task-evaluator.js');
+      const savedSkill = await evaluateAfterTurn({
+        userMessage: safeUserMessage,
+        assistantText: turnText,
+        toolsUsed,
+        toolCallLog,
+      }).catch(() => null);
+      if (savedSkill) {
+        const note = `\n\n(saved approach as skill: \`${savedSkill}\`)`;
+        turnText += note;
+        yield { type: 'text', content: note };
+        (this as CarinaAgent & { lastTurn?: TurnResult }).lastTurn = { text: turnText, toolsUsed, toolCallLog };
+      }
+    } else {
+      void learnFromSessionTurn({
+        userMessage: safeUserMessage,
+        assistantText: turnText,
+        toolsUsed,
+        toolCallLog,
+      });
+    }
 
     const delivery = getSessionDelivery(this.sessionId);
     void maybeInferCommitments({

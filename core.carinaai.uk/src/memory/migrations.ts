@@ -413,6 +413,22 @@ ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS urgency TEXT DEFAULT 'normal
 ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS triage_status TEXT DEFAULT 'inbox';
 `;
 
+const SELF_IMPROVING_LOOP_MIGRATION = `
+ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS success_count INTEGER DEFAULT 0;
+ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS failure_count INTEGER DEFAULT 0;
+ALTER TABLE skill_documents ADD COLUMN IF NOT EXISTS draft_source TEXT;
+
+CREATE TABLE IF NOT EXISTS skill_audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  skill_id UUID REFERENCES skill_documents(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  details JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS skill_audit_log_skill_idx ON skill_audit_log(skill_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS skill_audit_log_action_idx ON skill_audit_log(action, created_at DESC);
+`;
+
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(TABLES);
   try {
@@ -457,5 +473,10 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(EMAIL_TRIAGE_MIGRATION);
   } catch {
     // triage columns may already exist
+  }
+  try {
+    await client.query(SELF_IMPROVING_LOOP_MIGRATION);
+  } catch {
+    // columns/table may already exist
   }
 }

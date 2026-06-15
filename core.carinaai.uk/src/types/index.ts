@@ -92,6 +92,8 @@ export interface Skill {
   toolsUsed: string[];
   createdAt: Date;
   usageCount: number;
+  successCount?: number;
+  failureCount?: number;
 }
 
 export interface Memory {
