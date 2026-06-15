@@ -72,7 +72,7 @@
       errorEl.hidden = true;
       submitBtn.disabled = true;
       try {
-        const res = await fetch('/app/auth/login', {
+        const res = await fetch('/api/cloud/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -80,9 +80,12 @@
             password: document.getElementById('password').value,
           }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Login failed');
-        location.href = '/';
+        if (data.token) {
+          localStorage.setItem('carina_cloud_token', data.token);
+        }
+        location.href = '/dashboard';
       } catch (err) {
         errorEl.textContent = err.message || 'Login failed';
         errorEl.hidden = false;

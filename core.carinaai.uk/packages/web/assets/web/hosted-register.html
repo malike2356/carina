@@ -54,6 +54,8 @@
     <p class="sub">Deploy a Carina agent in one click. Free tier: 100 messages per day. Add your own LLM API keys in Settings. Scout security is a separate paid product.</p>
     <div id="error" class="error" hidden></div>
     <form id="form">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required>
       <label for="email">Email</label>
       <input type="email" id="email" name="email" required autofocus>
       <label for="password">Password (8+ characters)</label>
@@ -71,17 +73,21 @@
       errorEl.hidden = true;
       submitBtn.disabled = true;
       try {
-        const res = await fetch('/app/auth/register', {
+        const res = await fetch('/api/cloud/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            name: document.getElementById('name').value.trim(),
             email: document.getElementById('email').value.trim(),
             password: document.getElementById('password').value,
           }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || 'Registration failed');
-        location.href = data.redirect || '/?welcome=1';
+        if (data.token) {
+          localStorage.setItem('carina_cloud_token', data.token);
+        }
+        location.href = data.redirect || '/dashboard';
       } catch (err) {
         errorEl.textContent = err.message || 'Registration failed';
         errorEl.hidden = false;
