@@ -27,7 +27,7 @@ function getVoyageApiKey(): string | null {
 
 async function embedWithGemini(text: string): Promise<number[]> {
   const client = getGeminiClient()!;
-  const model = client.getGenerativeModel({ model: 'text-embedding-004' });
+  const model = client.getGenerativeModel({ model: 'text-embedding-004' }, { apiVersion: 'v1' });
   const result = await model.embedContent({
     content: { role: 'user', parts: [{ text: text.slice(0, 8000) }] },
     taskType: 'RETRIEVAL_DOCUMENT' as never,
