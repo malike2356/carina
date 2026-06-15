@@ -11,7 +11,7 @@ Carina is the free, open-source kernel for AI agents. MIT licensed. Scout is the
 | Kernel | Carina | `@verlox/carina-core` (npm; `carina-agent` is transition meta-package) | MIT |
 | Security | Scout | `@verlox/carina-scout` (SDK only in public; server stays private) | MIT (SDK) / Commercial (server) |
 | Hosted SaaS | Carina Ops | not npm; `app.carinaai.uk` | Commercial |
-| Domain packs | `{name}` pack | `@carina/pack-{slug}` (target) | MIT unless premium |
+| Domain packs | `{name}` pack | `@verlox/pack-{slug}` (target) | MIT unless premium |
 | Hub | Carina Hub | `hub.carinaai.uk` | Free to browse/install |
 
 ## Product copy rules

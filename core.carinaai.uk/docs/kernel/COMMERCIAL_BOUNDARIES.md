@@ -11,7 +11,7 @@ This document defines what ships in the MIT `@verlox/carina-core` kernel versus 
 | Scout server | `console.labyrinthscout.com` | No (Docker commercial) | Commercial |
 | Carina Ops API/UI | `core.carinaai.uk/src/hosted/`, `src/api/carina-ops-routes.ts` | No (SaaS) | Commercial |
 | VERLOX ops panel | `ops.carinaai.uk` | Never | Private |
-| Domain packs | `@carina/pack-*` | Yes (opt-in) | MIT unless premium |
+| Domain packs | `@verlox/pack-*` | Yes (opt-in) | MIT unless premium |
 | Web gateway UI | `@verlox/carina-web` | Yes (opt-in) | MIT |
 
 ## Kernel rules

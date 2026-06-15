@@ -19,7 +19,7 @@ export class PackNotInstalledError extends Error {
   constructor(packName: string, cause?: unknown) {
     super(
       `Domain pack "${packName}" is not installed. ` +
-      `Install via Hub (carina pack install ${packName}), npm (@carina/pack-*), or enable in ACTIVE_SKILL_PACKS.`,
+      `Install via Hub (carina pack install ${packName}), npm (@verlox/pack-*), or enable in ACTIVE_SKILL_PACKS.`,
     );
     this.name = 'PackNotInstalledError';
     if (cause instanceof Error) this.cause = cause;
