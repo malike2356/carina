@@ -28,6 +28,7 @@ settingsRouter.get('/', async (req, res) => {
   res.render('settings', {
     title: 'Settings',
     carinaApiUrl: process.env.CARINA_API_URL ?? 'http://localhost:3333',
+    carinaAndroidApkUrl: process.env.CARINA_ANDROID_APK_URL ?? '',
     scoutUrl: process.env.SCOUT_URL ?? 'http://localhost:4444',
     adminPasswordSet: adminPassword !== 'changeme',
     coreWebPasswordSet,
@@ -48,6 +49,10 @@ settingsRouter.get('/', async (req, res) => {
       : '',
     carinaPairOk: req.query['carina_pair_ok'] === '1',
     carinaPairErr: typeof req.query['carina_pair_err'] === 'string' ? req.query['carina_pair_err'] : '',
+    carinaAndroidApkOk: req.query['carina_android_apk_ok'] === '1',
+    carinaAndroidApkErr: typeof req.query['carina_android_apk_err'] === 'string'
+      ? req.query['carina_android_apk_err']
+      : '',
     coreWebPasswordOk: req.query['core_web_password_ok'] === '1',
     coreWebPasswordErr: typeof req.query['core_web_password_err'] === 'string'
       ? req.query['core_web_password_err']
@@ -157,6 +162,23 @@ settingsRouter.post('/carina-pairing', (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.redirect('/settings?carina_pair_err=' + encodeURIComponent('Failed: ' + msg));
+  }
+});
+
+settingsRouter.post('/carina-android-apk', (req, res) => {
+  const apkUrl = String(req.body?.apkUrl ?? '').trim();
+
+  if (!apkUrl) {
+    res.redirect('/settings?carina_android_apk_err=' + encodeURIComponent('Paste the APK download URL'));
+    return;
+  }
+
+  try {
+    setEnvVar(OPS_ENV_PATH, 'CARINA_ANDROID_APK_URL', apkUrl);
+    res.redirect('/settings?carina_android_apk_ok=1');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.redirect('/settings?carina_android_apk_err=' + encodeURIComponent('Failed: ' + msg));
   }
 });
 

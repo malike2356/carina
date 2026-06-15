@@ -7,6 +7,7 @@
       "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --color-red-100: oklch(93.6% 0.032 17.717);
     --color-red-200: oklch(88.5% 0.062 18.334);
     --color-red-300: oklch(80.8% 0.114 19.571);
     --color-red-400: oklch(70.4% 0.191 22.216);
@@ -40,6 +41,7 @@
     --color-cyan-300: oklch(86.5% 0.127 207.078);
     --color-cyan-400: oklch(78.9% 0.154 211.53);
     --color-cyan-800: oklch(45% 0.085 224.283);
+    --color-cyan-900: oklch(39.8% 0.07 227.392);
     --color-cyan-950: oklch(30.2% 0.056 229.695);
     --color-gray-200: oklch(92.8% 0.006 264.531);
     --color-gray-300: oklch(87.2% 0.01 258.338);
@@ -675,6 +677,12 @@
   .border-green-800 {
     border-color: var(--color-green-800);
   }
+  .border-green-800\/50 {
+    border-color: color-mix(in srgb, oklch(44.8% 0.119 151.328) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-green-800) 50%, transparent);
+    }
+  }
   .border-red-600 {
     border-color: var(--color-red-600);
   }
@@ -682,6 +690,24 @@
     border-color: color-mix(in srgb, oklch(57.7% 0.245 27.325) 50%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--color-red-600) 50%, transparent);
+    }
+  }
+  .border-red-600\/60 {
+    border-color: color-mix(in srgb, oklch(57.7% 0.245 27.325) 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-red-600) 60%, transparent);
+    }
+  }
+  .border-red-700\/50 {
+    border-color: color-mix(in srgb, oklch(50.5% 0.213 27.518) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-red-700) 50%, transparent);
+    }
+  }
+  .border-red-700\/60 {
+    border-color: color-mix(in srgb, oklch(50.5% 0.213 27.518) 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-red-700) 60%, transparent);
     }
   }
   .border-red-800 {
@@ -762,6 +788,12 @@
       background-color: color-mix(in oklab, var(--color-black) 70%, transparent);
     }
   }
+  .bg-cyan-900\/50 {
+    background-color: color-mix(in srgb, oklch(39.8% 0.07 227.392) 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-cyan-900) 50%, transparent);
+    }
+  }
   .bg-cyan-950\/30 {
     background-color: color-mix(in srgb, oklch(30.2% 0.056 229.695) 30%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -820,6 +852,12 @@
     background-color: color-mix(in srgb, oklch(39.6% 0.141 25.723) 50%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-red-900) 50%, transparent);
+    }
+  }
+  .bg-red-900\/60 {
+    background-color: color-mix(in srgb, oklch(39.6% 0.141 25.723) 60%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-red-900) 60%, transparent);
     }
   }
   .bg-red-950\/30 {
@@ -1028,6 +1066,9 @@
   .text-cyan-200 {
     color: var(--color-cyan-200);
   }
+  .text-cyan-300 {
+    color: var(--color-cyan-300);
+  }
   .text-cyan-300\/70 {
     color: color-mix(in srgb, oklch(86.5% 0.127 207.078) 70%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1063,6 +1104,9 @@
   }
   .text-green-500 {
     color: var(--color-green-500);
+  }
+  .text-red-100 {
+    color: var(--color-red-100);
   }
   .text-red-200 {
     color: var(--color-red-200);
@@ -1196,6 +1240,23 @@
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-red-800);
+      }
+    }
+  }
+  .hover\:bg-red-900 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: var(--color-red-900);
+      }
+    }
+  }
+  .hover\:bg-red-900\/60 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: color-mix(in srgb, oklch(39.6% 0.141 25.723) 60%, transparent);
+        @supports (color: color-mix(in lab, red, red)) {
+          background-color: color-mix(in oklab, var(--color-red-900) 60%, transparent);
+        }
       }
     }
   }

@@ -40,6 +40,14 @@
 <% if (carinaPairErr) { %>
   <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaPairErr %></div>
 <% } %>
+<% if (carinaAndroidApkOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Android APK link saved. The download button below now points at the configured file.
+  </div>
+<% } %>
+<% if (carinaAndroidApkErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaAndroidApkErr %></div>
+<% } %>
 <% if (coreWebPasswordOk) { %>
   <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
     Core web login password updated. Sign in at core.carinaai.uk with the new password.
@@ -86,6 +94,38 @@
     </button>
   </section>
 </div>
+
+<section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 mb-6">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+    <div>
+      <h2 class="text-lg font-semibold text-white">Carina Android APK</h2>
+      <p class="text-xs text-gray-500 mt-1">
+        Publish a direct APK download link here so staff can install the Android build from one place.
+      </p>
+    </div>
+    <% if (carinaAndroidApkUrl) { %>
+      <a href="<%= carinaAndroidApkUrl %>" target="_blank" rel="noopener noreferrer"
+         class="text-sm bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-4 py-2 rounded transition-colors">
+        Download APK
+      </a>
+    <% } %>
+  </div>
+  <form method="post" action="/settings/carina-android-apk" class="flex flex-col gap-3">
+    <div>
+      <label class="block text-xs text-gray-400 mb-1" for="apkUrl">APK download URL</label>
+      <input id="apkUrl" name="apkUrl" type="url" required value="<%= carinaAndroidApkUrl %>"
+        placeholder="https://example.com/carina-ai.apk"
+        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+    </div>
+    <p class="text-xs text-gray-500">
+      Use a direct HTTPS link to the APK file or a release page that serves the file itself.
+    </p>
+    <button type="submit"
+      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+      Save APK link
+    </button>
+  </form>
+</section>
 
 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
   <div class="space-y-6 min-w-0">
