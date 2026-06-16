@@ -34,9 +34,6 @@ deploy() {
   rsync -az \
     public/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/public/"
 
-  log "Installing production dependencies on VPS..."
-  ssh "${VPS_USER}@${VPS_HOST}" "cd ${DEPLOY_DIR} && npm install --omit=dev --ignore-scripts 2>&1 | tail -5"
-
   log "Restarting ${SERVICE}..."
   ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl restart ${SERVICE}"
 
