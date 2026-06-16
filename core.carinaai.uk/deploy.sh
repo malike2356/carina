@@ -30,6 +30,7 @@ check_ssh() {
 
 build_local() {
   log "Building TypeScript..."
+  rm -rf dist
   pnpm build || die "Build failed. Run 'pnpm install' first if needed."
 }
 
