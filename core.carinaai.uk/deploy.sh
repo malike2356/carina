@@ -48,6 +48,10 @@ sync_static_assets() {
     brain/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/brain/"
   rsync -az \
     brain/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/dist/brain/"
+  rsync -az \
+    src/product/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/product/"
+  rsync -az \
+    dist/src/product/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/product/"
 }
 
 sync_pack_packages() {
