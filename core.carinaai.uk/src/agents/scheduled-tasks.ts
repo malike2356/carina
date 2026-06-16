@@ -44,7 +44,12 @@ export class TaskScheduler {
       if (!this.shouldRun(runtime, now)) continue;
       runtime.lastRunAt = now.getTime();
       runtime.lastRunDate = localDate(runtime.task.timezone, now);
-      await runtime.task.run();
+      try {
+        await runtime.task.run();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[scheduler] ${runtime.task.name} failed: ${msg}`);
+      }
     }
   }
 

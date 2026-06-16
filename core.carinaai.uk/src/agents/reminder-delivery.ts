@@ -67,7 +67,16 @@ async function defaultDeliver(note: CarinaNote, message: string): Promise<boolea
 }
 
 export async function processDueReminders(now = new Date()): Promise<number> {
-  const due = listDueReminders(now);
+  let due: CarinaNote[];
+  try {
+    due = listDueReminders(now);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (process.env.CARINA_REMINDER_VERBOSE === 'true') {
+      console.warn(`[reminders] notes store unavailable: ${msg}`);
+    }
+    return 0;
+  }
   let delivered = 0;
 
   for (const note of due) {

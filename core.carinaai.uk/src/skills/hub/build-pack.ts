@@ -35,7 +35,7 @@ export async function buildPropertyUkArchive(outputDir: string): Promise<string>
   await fs.rm(tmpDir, { recursive: true, force: true });
   await fs.mkdir(knowledgeDir, { recursive: true });
 
-  await copyMdTree(brainRoot, knowledgeDir);
+  await copyMdTree(brainRoot, knowledgeDir, brainRoot);
   const packRoot = resolvePackDirectory('property-uk')
     ?? path.join(BUILTIN_PACKS_DIR, 'property-uk');
   await copyPackFilesExceptKnowledge(packRoot, tmpDir);
@@ -76,17 +76,14 @@ async function copyPackFilesExceptKnowledge(packRoot: string, dest: string): Pro
   }
 }
 
-async function copyMdTree(src: string, destRoot: string): Promise<void> {
+async function copyMdTree(src: string, destRoot: string, brainRoot: string): Promise<void> {
   const entries = await fs.readdir(src, { withFileTypes: true });
   for (const e of entries) {
     const srcPath = path.join(src, e.name);
     if (e.isDirectory()) {
-      await copyMdTree(srcPath, destRoot);
+      await copyMdTree(srcPath, destRoot, brainRoot);
     } else if (e.name.endsWith('.md')) {
-      const rel = path.relative(
-        path.resolve(__dirname, '../../../brain/uk_property_knowldge_from_propreneur/masterbrain'),
-        srcPath,
-      );
+      const rel = path.relative(brainRoot, srcPath);
       const out = path.join(destRoot, rel);
       await fs.mkdir(path.dirname(out), { recursive: true });
       await fs.copyFile(srcPath, out);
