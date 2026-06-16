@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "file-transfer",
+    "name": "file-transfer",
+    "description": "Encode and push files via paired node hosts."
+  }
+]

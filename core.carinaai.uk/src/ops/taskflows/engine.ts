@@ -1,4 +1,5 @@
 import type { ProviderOverride } from '../../brain/llm.js';
+import { config } from '../../config/index.js';
 import {
   enqueueTaskFlowRun,
   getTaskFlow,
@@ -137,7 +138,7 @@ async function runStep(
     const agent = new CarinaAgent(sessionId, false, undefined, {
       platform: 'taskflow',
       persistMemory: false,
-      maxTurns: 8,
+      maxTurns: config.carina.taskflowMaxTurns,
     });
     if (override?.name) agent.setProviderOverride(override);
     const result = await agent.runTurn(step.prompt);

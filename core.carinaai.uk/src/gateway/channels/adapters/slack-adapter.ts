@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { config } from '../../../config/index.js';
 import { getRouter } from '../../router.js';
 import { formatForChannel } from '../channel-formatter.js';
+import { shouldAcceptGroupInbound } from '../channel-group-policy.js';
 import type {
   ChannelMessage,
   IChannelAdapter,
@@ -38,11 +39,8 @@ export class SlackAdapter implements IChannelAdapter {
     const isDirect = channelType === 'im' || channel.startsWith('D');
     const isMention = /^<@[^>]+>/.test(text) || /@carina\b/i.test(text);
     const isCommand = String(payload.command ?? '').startsWith('/carina') || text.startsWith('/carina');
-    if (!shouldRespond(isDirect, isMention, isCommand, channel, config.slack.allowedChannelIds)) {
-      return null;
-    }
 
-    return {
+    const message: ChannelMessage = {
       id: String(event.client_msg_id ?? event.ts ?? payload.trigger_id ?? Date.now()),
       channel: 'slack',
       externalUserId: user,
@@ -56,6 +54,12 @@ export class SlackAdapter implements IChannelAdapter {
       threadId: String(event.thread_ts ?? event.ts ?? ''),
       raw,
     };
+
+    if (!shouldAcceptGroupInbound(message).accept) {
+      return null;
+    }
+
+    return message;
   }
 
   async sendMessage(conversationId: string, text: string, options: SendOptions = {}): Promise<void> {
@@ -140,16 +144,6 @@ function cleanSlackText(text: string): string {
     .replace(/^<@[^>]+>\s*/, '')
     .replace(/^\/carina\s*/i, '')
     .trim();
-}
-
-function shouldRespond(
-  isDirect: boolean,
-  isMention: boolean,
-  isCommand: boolean,
-  channelId: string,
-  allowedChannelIds: string[],
-): boolean {
-  return isDirect || isMention || isCommand || allowedChannelIds.includes(channelId);
 }
 
 function headerValue(value: string | string[] | undefined): string | undefined {

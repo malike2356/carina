@@ -14,6 +14,8 @@ const chatMock = vi.fn();
 vi.mock('../brain/llm.js', () => ({
   llm: {
     chat: (...args: unknown[]) => chatMock(...args),
+    list: () => ['anthropic', 'deepseek'],
+    current: () => ({ name: 'deepseek' }),
   },
 }));
 
@@ -27,6 +29,7 @@ describe('deep-research planning', () => {
   beforeEach(() => {
     chatMock.mockReset();
     executeToolCallMock.mockReset();
+    process.env.CARINA_TEACHER_ESCALATION = 'false';
   });
 
   it('parseSubQuestions returns at least 3 sub-questions from numbered list', () => {
@@ -86,6 +89,7 @@ describe('deep-research planning', () => {
       query: 'UK stamp duty changes 2026',
       maxRounds: 3,
       maxSources: 6,
+      maxQualityPasses: 0,
       persist: false,
       onProgress: (line) => progress.push(line),
     });
@@ -93,8 +97,8 @@ describe('deep-research planning', () => {
     expect(report.sections.length).toBeGreaterThanOrEqual(3);
     expect(report.summary.length).toBeGreaterThan(0);
     expect(report.sources.length).toBeGreaterThanOrEqual(3);
-    expect(progress.some((p) => p.startsWith('Planning'))).toBe(true);
-    expect(progress.some((p) => p.startsWith('Synthesising'))).toBe(true);
+    expect(progress.some((p) => p.includes('Planning'))).toBe(true);
+    expect(progress.some((p) => p.includes('Synthesising'))).toBe(true);
   });
 });
 
@@ -102,11 +106,17 @@ describe('deep-research synthesis and limits', () => {
   beforeEach(() => {
     chatMock.mockReset();
     executeToolCallMock.mockReset();
+    process.env.CARINA_TEACHER_ESCALATION = 'false';
   });
 
   it('synthesis produces a report with all required fields', async () => {
     chatMock.mockResolvedValueOnce({
       content: '1. Question A?\n2. Question B?\n3. Question C?',
+    });
+    chatMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        keep: [{ id: 'src-1', note: 'ok' }, { id: 'src-2', note: 'ok' }],
+      }),
     });
     chatMock.mockResolvedValueOnce({
       content: JSON.stringify({
@@ -120,11 +130,26 @@ describe('deep-research synthesis and limits', () => {
       }),
     });
 
-    executeToolCallMock.mockResolvedValue([
-      { title: 'A', url: 'https://example.com/a', description: 'a' },
-    ]);
+    executeToolCallMock.mockImplementation(async (call: { toolName: string }) => {
+      if (call.toolName === 'web-search') {
+        return [
+          { title: 'A', url: 'https://example.com/a', description: 'a' },
+          { title: 'B', url: 'https://example.com/b', description: 'b' },
+        ];
+      }
+      if (call.toolName === 'http-request') {
+        return { status: 200, body: `<p>${'content '.repeat(30)}</p>` };
+      }
+      return { error: 'unknown' };
+    });
 
-    const report = await runDeepResearch({ query: 'test topic', maxRounds: 2, maxSources: 5, persist: false });
+    const report = await runDeepResearch({
+      query: 'test topic',
+      maxRounds: 2,
+      maxSources: 5,
+      maxQualityPasses: 0,
+      persist: false,
+    });
 
     expect(report.title).toBeTruthy();
     expect(report.summary).toBeTruthy();
@@ -135,6 +160,11 @@ describe('deep-research synthesis and limits', () => {
 
   it('maxSources cap is respected', async () => {
     chatMock.mockResolvedValueOnce({ content: '1. Q1?\n2. Q2?\n3. Q3?' });
+    chatMock.mockResolvedValueOnce({
+      content: JSON.stringify({
+        keep: [{ id: 'src-1', note: 'ok' }, { id: 'src-2', note: 'ok' }],
+      }),
+    });
     chatMock.mockResolvedValueOnce({
       content: JSON.stringify({
         title: 'Cap Test',
@@ -162,6 +192,7 @@ describe('deep-research synthesis and limits', () => {
       query: 'cap test',
       maxRounds: 4,
       maxSources: 4,
+      maxQualityPasses: 0,
       persist: false,
     });
 
@@ -187,6 +218,7 @@ describe('deep-research synthesis and limits', () => {
     const report = await runDeepResearch({
       query: 'save test',
       maxRounds: 2,
+      maxQualityPasses: 0,
       saveToFile: target,
       persist: false,
     });
@@ -266,11 +298,12 @@ describe('deep-research synthesis and limits', () => {
       query: 'verify test',
       maxRounds: 2,
       maxSources: 4,
+      maxQualityPasses: 0,
       persist: false,
       onProgress: (line) => progress.push(line),
     });
 
-    expect(progress.some((p) => p.startsWith('Verifying'))).toBe(true);
+    expect(progress.some((p) => p.includes('Verifying'))).toBe(true);
     expect(report.sources.length).toBeLessThanOrEqual(2);
   });
 });
@@ -279,24 +312,36 @@ describe('/research gateway command', () => {
   beforeEach(() => {
     chatMock.mockReset();
     executeToolCallMock.mockReset();
+    process.env.CARINA_TEACHER_ESCALATION = 'false';
   });
 
   it('returns a non-empty summary', async () => {
     chatMock.mockResolvedValueOnce({ content: '1. Q1?\n2. Q2?\n3. Q3?' });
     chatMock.mockResolvedValueOnce({
       content: JSON.stringify({
+        keep: [{ id: 'src-1', note: 'ok' }, { id: 'src-2', note: 'ok' }],
+      }),
+    });
+    chatMock.mockResolvedValueOnce({
+      content: JSON.stringify({
         title: 'Gateway Report',
-        summary: 'Gateway summary text.',
+        summary: 'Gateway summary text with enough length for quality checks.',
         sections: [
-          { heading: 'A', body: 'a', sourceCitations: [] },
-          { heading: 'B', body: 'b', sourceCitations: [] },
-          { heading: 'C', body: 'c', sourceCitations: [] },
+          { heading: 'A', body: 'Section A with enough content for quality gate.', sourceCitations: ['src-1'] },
+          { heading: 'B', body: 'Section B with enough content for quality gate.', sourceCitations: ['src-2'] },
+          { heading: 'C', body: 'Section C with enough content for quality gate.', sourceCitations: ['src-1'] },
         ],
       }),
     });
-    executeToolCallMock.mockResolvedValue([
-      { title: 'Source', url: 'https://example.com/source', description: 'snippet' },
-    ]);
+    executeToolCallMock.mockImplementation(async (call: { toolName: string }) => {
+      if (call.toolName === 'web-search') {
+        return [
+          { title: 'Source A', url: 'https://example.com/source-a', description: 'snippet a' },
+          { title: 'Source B', url: 'https://example.com/source-b', description: 'snippet b' },
+        ];
+      }
+      return { status: 200, body: `<p>${'gateway content '.repeat(30)}</p>` };
+    });
 
     const result = await handleGatewayCommandAsync('/research UK tax changes', {
       sessionId: 'test-session',

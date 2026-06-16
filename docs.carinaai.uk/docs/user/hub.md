@@ -10,7 +10,7 @@ Think of it like a package index for the agent kernel. The current public packag
 |-------|------------|------|
 | **Carina kernel** | Tools, memory, routing, channels, CLI (`carina-agent`) | Free, MIT |
 | **Domain packs** | Optional bundles (skills + knowledge + prompts) | Free or premium on Hub |
-| **Labyrinth Scout** | Commercial security product (separate brand) | Paid plans |
+| **Labyrinth Scout** | Commercial security layer that turns Carina installs into client-ready deployments | Paid plans |
 
 Installing the kernel does **not** enable any domain pack. Packs are opt-in via Hub install, web UI, or `ACTIVE_SKILL_PACKS` in config.
 

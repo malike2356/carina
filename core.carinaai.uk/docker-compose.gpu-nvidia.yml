@@ -1,0 +1,64 @@
+# Standalone NVIDIA GPU stack (single Compose file for UIs that reject multiple -f files).
+# Equivalent to: docker-compose.standalone.yml + docker/gpu.nvidia.yml + --profile ollama
+
+services:
+  carina:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.carina
+    ports:
+      - "${CARINA_BIND:-127.0.0.1}:${CARINA_PORT:-3000}:3000"
+    volumes:
+      - carina-data:/data
+    environment:
+      CARINA_HOME: /data/.carina
+      NODE_ENV: production
+      WEB_ENABLED: "true"
+      CARINA_LOCAL_MODE: "true"
+      CARINA_SKIP_POSTGRES: "true"
+      CARINA_MEMORY_BACKEND: builtin
+      OLLAMA_ENABLED: "true"
+      DEFAULT_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.2}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    depends_on:
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/config"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - carina-gpu
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - carina-gpu
+
+volumes:
+  carina-data:
+  ollama-data:
+
+networks:
+  carina-gpu:
+    driver: bridge

@@ -9,6 +9,11 @@ describe('formatForChannel', () => {
     expect(chunks.join(' ')).toContain('<https://example.com>');
   });
 
+  it('converts markdown tables to bullets for Discord', () => {
+    const chunks = formatForChannel('discord', '| Name | Value |\n| --- | --- |\n| Port | 3333 |');
+    expect(chunks[0]).toContain('- Name: Port; Value: 3333');
+  });
+
   it('splits Slack messages at 3000 characters', () => {
     const chunks = formatForChannel('slack', 's'.repeat(3500));
 

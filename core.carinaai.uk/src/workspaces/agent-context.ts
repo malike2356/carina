@@ -1,6 +1,7 @@
 import { loadWorkspaceContext } from '../workspace/context-files.js';
 import type { AgentDefinition } from './types.js';
 import { resolveAgentWorkspace } from './paths.js';
+import type { BootstrapMode } from '../workspace/bootstrap-files.js';
 
 export type AgentRuntimeContext = {
   agent: AgentDefinition;
@@ -9,12 +10,17 @@ export type AgentRuntimeContext = {
   providerOverride?: { name: string; model?: string };
 };
 
-export async function buildAgentRuntimeContext(agent: AgentDefinition): Promise<AgentRuntimeContext> {
+export async function buildAgentRuntimeContext(
+  agent: AgentDefinition,
+  options: { mode?: BootstrapMode } = {},
+): Promise<AgentRuntimeContext> {
   const workspaceDir = resolveAgentWorkspace(agent);
-  const parts = await loadWorkspaceContext(workspaceDir);
+  const mode = options.mode ?? 'full';
+  const parts = await loadWorkspaceContext(workspaceDir, { mode });
   const header = [
     `# Agent workspace: ${agent.name} (${agent.id})`,
     agent.description ? agent.description : '',
+    mode === 'minimal' ? 'Bootstrap mode: minimal (AGENTS.md + TOOLS.md only)' : '',
   ].filter(Boolean).join('\n');
   const workspaceContext = parts.length > 0
     ? `${header}\n\n${parts.join('\n\n---\n\n')}`

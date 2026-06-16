@@ -27,12 +27,15 @@ const features = [
   },
   {
     title: 'Labyrinth Scout',
-    description: 'Optional enterprise security: prompt injection guard, kill switch, audit, and trust APIs.',
+    description: 'Security and trust controls for agents that need to work in real environments.',
   },
 ];
 
-export default function Home(): JSX.Element {
+export default function Home() {
   const {siteConfig} = useDocusaurusContext();
+  const marketingEmbed = Boolean(siteConfig.customFields?.marketingEmbed);
+  const docRoot = marketingEmbed ? '' : '/docs';
+
   return (
     <Layout title={siteConfig.title} description={siteConfig.tagline}>
       <header className={styles.hero}>
@@ -41,16 +44,16 @@ export default function Home(): JSX.Element {
             Carina documentation
           </Heading>
           <p className={styles.heroSubtitle}>
-            An agent that gets work done on your stack. Free and MIT licensed.
+            Carina is the workspace. Scout is what keeps the same workflow safe enough for real work.
           </p>
           <div className={styles.buttons}>
-            <Link className="button button--primary button--lg" to="/docs/user/getting-started">
+            <Link className="button button--primary button--lg" to={`${docRoot}/user/getting-started`}>
               Get started
             </Link>
-            <Link className="button button--secondary button--lg" to="/docs/user/carina-cloud">
+            <Link className="button button--secondary button--lg" to={`${docRoot}/user/carina-cloud`}>
               Carina Cloud
             </Link>
-            <Link className="button button--outline button--secondary button--lg" to="/docs/developer/intro">
+            <Link className="button button--outline button--secondary button--lg" to={`${docRoot}/developer/intro`}>
               Developer guide
             </Link>
           </div>

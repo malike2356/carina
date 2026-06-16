@@ -1,0 +1,14 @@
+{
+  "node": "n8n-nodes-carina.carina",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": ["AI"],
+  "resources": {
+    "credentialDocumentation": [
+      { "url": "https://docs.carinaai.uk/developer/api" }
+    ],
+    "primaryDocumentation": [
+      { "url": "https://docs.carinaai.uk/integrations/n8n" }
+    ]
+  }
+}

@@ -89,7 +89,7 @@ Publish results under `docs/benchmark/` when comparing against Hermes or OpenCla
 
 - Channel breadth 50+ (roadmap; not all adapters production-hardened)
 - Blockchain trust (documented; not required for category claim)
-- Cookbook hardware detection (separate workstream)
+- Playbook hardware detection (separate workstream)
 - Federated hub replication across orgs
 
 Category claim rests on **trust in production**: security path, MIT kernel, domain packs, cross-agent learning, and a real Hub ecosystem with certification and enterprise support model.

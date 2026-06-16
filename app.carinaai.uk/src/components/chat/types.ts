@@ -18,6 +18,8 @@ export interface ContextPin {
   content: string;
 }
 
+import type { ChatErrorCode } from '@/lib/chat-errors';
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -30,4 +32,6 @@ export interface ChatMessage {
   model: string;
   createdAt: string;
   streaming?: boolean;
+  errorCode?: ChatErrorCode;
+  errorMessage?: string;
 }

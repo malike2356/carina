@@ -9,6 +9,7 @@ export type SubagentTaskParams = {
   context?: string;
   allowedTools: string[];
   childDepth: number;
+  role?: import('./delegation-context.js').SubagentRole;
   workdir?: string;
   timeoutMs?: number;
   abortSignal?: AbortSignal;
@@ -47,6 +48,7 @@ function buildWorkerPayload(params: SubagentTaskParams): SubagentWorkerData {
     allowedTools: params.allowedTools,
     childDepth: params.childDepth,
     workdir: params.workdir,
+    role: params.role,
   };
 }
 

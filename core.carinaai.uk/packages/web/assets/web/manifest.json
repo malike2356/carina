@@ -31,6 +31,12 @@
       "short_name": "New chat",
       "url": "/?new=1",
       "description": "Start a new conversation"
+    },
+    {
+      "name": "Mobile companion",
+      "short_name": "Mobile",
+      "url": "/mobile",
+      "description": "Pair and chat from your phone"
     }
   ],
   "categories": ["productivity", "utilities"]

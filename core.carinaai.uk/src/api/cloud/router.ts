@@ -15,7 +15,7 @@ import {
 
 type CloudRequest = Request & { cloudOrg?: { orgId: string; email: string } };
 
-async function registerCloudOrg(req: Request, res: Response): Promise<void> {
+export async function registerCloudOrg(req: Request, res: Response): Promise<void> {
   const name = String(req.body?.name ?? '').trim();
   const email = String(req.body?.email ?? '').trim().toLowerCase();
   const password = String(req.body?.password ?? '');
@@ -41,7 +41,7 @@ async function registerCloudOrg(req: Request, res: Response): Promise<void> {
   }
 }
 
-async function loginCloudOrg(req: Request, res: Response): Promise<void> {
+export async function loginCloudOrg(req: Request, res: Response): Promise<void> {
   const email = String(req.body?.email ?? '').trim().toLowerCase();
   const password = String(req.body?.password ?? '');
   const result = await pool.query(
@@ -102,10 +102,8 @@ cloudRouter.use(async (_req, _res, next) => {
 });
 
 cloudRouter.post('/auth/register', registerCloudOrg);
-cloudRouter.post('/app/auth/register', registerCloudOrg);
 
 cloudRouter.post('/auth/login', loginCloudOrg);
-cloudRouter.post('/app/auth/login', loginCloudOrg);
 
 cloudRouter.get('/auth/me', authMiddleware, async (req: CloudRequest, res) => {
   const result = await pool.query(

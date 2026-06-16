@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "bonjour-discovery",
+  "version": "1.0.0",
+  "name": "Bonjour Gateway Discovery",
+  "author": "VERLOX Ltd",
+  "description": "List configured gateway hosts for pairing.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

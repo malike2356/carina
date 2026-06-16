@@ -12,6 +12,7 @@ describe('CLI registry', () => {
     expect(resolveCommand('checkpoint')?.name).toBe('checkpoint');
     expect(resolveCommand('migrate')?.name).toBe('migrate');
     expect(resolveCommand('help')?.name).toBe('help');
+    expect(resolveCommand('playbook')?.name).toBe('playbook');
     expect(resolveCommand('cookbook')?.name).toBe('cookbook');
     expect(resolveCommand('research')?.name).toBe('research');
     expect(resolveCommand('compare')?.name).toBe('compare');

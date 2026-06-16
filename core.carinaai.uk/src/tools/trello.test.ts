@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 function mockConfig(overrides: Record<string, unknown> = {}) {
   return {
     config: {
-      trello: { apiKey: '', token: '' },
+      trello: { apiKey: '', token: '', baseUrl: 'https://api.trello.com/1' },
       ...overrides,
     },
   };
@@ -24,7 +24,7 @@ describe('trelloTool', () => {
 
   it('lists boards with formatted output', async () => {
     vi.doMock('../config/index.js', () =>
-      mockConfig({ trello: { apiKey: 'key', token: 'token' } }),
+      mockConfig({ trello: { apiKey: 'key', token: 'token', baseUrl: 'https://api.trello.com/1' } }),
     );
     vi.stubGlobal(
       'fetch',
@@ -45,7 +45,7 @@ describe('trelloTool', () => {
 
   it('requires confirmation for create-card', async () => {
     vi.doMock('../config/index.js', () =>
-      mockConfig({ trello: { apiKey: 'key', token: 'token' } }),
+      mockConfig({ trello: { apiKey: 'key', token: 'token', baseUrl: 'https://api.trello.com/1' } }),
     );
     const { trelloTool } = await import('./trello.js');
     expect(trelloTool.needsConfirmation?.({ action: 'create-card' })).toBe(true);

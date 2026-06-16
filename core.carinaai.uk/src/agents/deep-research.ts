@@ -3,6 +3,21 @@ import path from 'node:path';
 import { llm, type ProviderOverride } from '../brain/llm.js';
 import type { Message } from '../types/index.js';
 import { executeToolCall, type ConfirmFn } from './tool-runner.js';
+import {
+  emitResearchProgress,
+  legacyProgressLine,
+  type ResearchProgressHandler,
+} from './research-progress.js';
+import {
+  evaluateResearchQuality,
+  passesResearchQualityGate,
+  researchQualityThreshold,
+} from './research-quality-gate.js';
+import {
+  escalateToTeacher,
+  resolveTeacherProviderOverride,
+  shouldEscalateStudentProvider,
+} from './teacher-escalation.js';
 
 export interface DeepResearchOptions {
   query: string;
@@ -13,8 +28,11 @@ export interface DeepResearchOptions {
   providerOverride?: ProviderOverride;
   sessionId?: string;
   onProgress?: (line: string) => void;
+  onProgressEvent?: ResearchProgressHandler;
   persist?: boolean;
   skipVerify?: boolean;
+  maxQualityPasses?: number;
+  parallelSearch?: boolean;
 }
 
 export interface ResearchSection {
@@ -45,8 +63,19 @@ export interface DeepResearchReport {
 
 const autoConfirm: ConfirmFn = async () => true;
 
-function emitProgress(line: string, onProgress?: (line: string) => void): void {
-  onProgress?.(line);
+function emitProgress(
+  phase: Parameters<typeof emitResearchProgress>[0],
+  message: string,
+  options: Pick<DeepResearchOptions, 'onProgress' | 'onProgressEvent'>,
+  detail?: Record<string, unknown>,
+): void {
+  emitResearchProgress(phase, message, options.onProgressEvent, detail);
+  options.onProgress?.(legacyProgressLine({
+    phase,
+    message,
+    detail,
+    at: new Date().toISOString(),
+  }));
 }
 
 function extractJsonObject(text: string): Record<string, unknown> | null {
@@ -130,6 +159,74 @@ async function planResearch(
     `What recent changes or updates apply to ${query}?`,
     `What are the key facts and figures about ${query}?`,
   ];
+}
+
+async function gatherSourcesForQuestions(
+  questions: string[],
+  sessionId: string,
+  maxSources: number,
+  progress: Pick<DeepResearchOptions, 'onProgress' | 'onProgressEvent'>,
+  parallelSearch: boolean,
+): Promise<{ sources: SourceCitation[]; searchQueries: string[] }> {
+  const sources: SourceCitation[] = [];
+  const searchQueries: string[] = [];
+  let sourceCounter = 1;
+
+  const ingestHits = async (question: string, hits: Array<{ title: string; url: string; description: string }>) => {
+    searchQueries.push(question);
+    for (const hit of hits.slice(0, 3)) {
+      if (sources.length >= maxSources) break;
+      if (!hit.url.startsWith('https://')) continue;
+      if (sources.some((s) => s.url === hit.url)) continue;
+
+      emitProgress('extract', `Reading: ${hit.url}`, progress);
+      const pageText = await fetchPageText(hit.url, sessionId);
+      const id = `src-${sourceCounter}`;
+      sourceCounter += 1;
+      sources.push({
+        id,
+        title: hit.title || hit.url,
+        url: hit.url,
+        snippet: (pageText || hit.description || hit.title).slice(0, 8000),
+        fetchedAt: new Date().toISOString(),
+      });
+    }
+  };
+
+  if (parallelSearch && questions.length > 1) {
+    emitProgress('search', `Parallel search across ${questions.length} queries`, progress, {
+      queries: questions,
+    });
+    const batches = await Promise.all(questions.map(async (question) => {
+      emitProgress('search', `Searching: ${question}`, progress);
+      try {
+        return { question, hits: await runWebSearchTool(question, sessionId) };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        emitProgress('search', `Search skipped: ${msg}`, progress, { question });
+        return { question, hits: [] as Array<{ title: string; url: string; description: string }> };
+      }
+    }));
+    for (const batch of batches) {
+      await ingestHits(batch.question, batch.hits);
+      if (sources.length >= maxSources) break;
+    }
+    return { sources, searchQueries };
+  }
+
+  for (const question of questions) {
+    if (sources.length >= maxSources) break;
+    emitProgress('search', `Searching: ${question}`, progress);
+    try {
+      const hits = await runWebSearchTool(question, sessionId);
+      await ingestHits(question, hits);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      emitProgress('search', `Search skipped: ${msg}`, progress, { question });
+    }
+  }
+
+  return { sources, searchQueries };
 }
 
 async function runWebSearchTool(
@@ -390,71 +487,146 @@ export function formatGatewaySummary(report: DeepResearchReport, plainTextChanne
 export async function runDeepResearch(options: DeepResearchOptions): Promise<DeepResearchReport> {
   const sessionId = options.sessionId ?? 'deep-research';
   const maxSources = options.maxSources ?? 12;
-  const searchRoundCount = Math.max(1, (options.maxRounds ?? 4) - 1);
-  const onProgress = options.onProgress;
+  const maxQualityPasses = options.maxQualityPasses ?? 3;
+  const parallelSearch = options.parallelSearch !== false;
+  const progress = {
+    onProgress: options.onProgress,
+    onProgressEvent: options.onProgressEvent,
+  };
 
-  emitProgress('Planning...', onProgress);
+  emitProgress('plan', 'Planning research sub-questions', progress);
   const subQuestions = await planResearch(options.query, options.providerOverride);
   if (subQuestions.length < 3) {
     throw new Error('Planning failed to produce enough sub-questions.');
   }
-
-  const sources: SourceCitation[] = [];
-  const searchQueries: string[] = [];
-  let sourceCounter = 1;
-
-  for (let round = 0; round < searchRoundCount && sources.length < maxSources; round += 1) {
-    const question = subQuestions[round % subQuestions.length]!;
-    emitProgress(`Searching: ${question}`, onProgress);
-    searchQueries.push(question);
-
-    let hits: Array<{ title: string; url: string; description: string }>;
-    try {
-      hits = await runWebSearchTool(question, sessionId);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      emitProgress(`Search skipped: ${msg}`, onProgress);
-      continue;
-    }
-
-    for (const hit of hits.slice(0, 3)) {
-      if (sources.length >= maxSources) break;
-      if (!hit.url.startsWith('https://')) continue;
-      if (sources.some((s) => s.url === hit.url)) continue;
-
-      emitProgress(`Reading: ${hit.url}`, onProgress);
-      const pageText = await fetchPageText(hit.url, sessionId);
-
-      const id = `src-${sourceCounter}`;
-      sourceCounter += 1;
-
-      sources.push({
-        id,
-        title: hit.title || hit.url,
-        url: hit.url,
-        snippet: (pageText || hit.description || hit.title).slice(0, 8000),
-        fetchedAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  emitProgress('Synthesising...', onProgress);
-  let verifiedSources = sources;
-  if (!options.skipVerify && sources.length > 0) {
-    emitProgress('Verifying sources...', onProgress);
-    verifiedSources = await verifySources(options.query, sources, options.providerOverride);
-    emitProgress(`Verified ${verifiedSources.length}/${sources.length} sources`, onProgress);
-  }
-
-  const report = await synthesizeReport(
-    options.query,
+  emitProgress('plan', `Planned ${subQuestions.length} sub-questions`, progress, {
     subQuestions,
-    verifiedSources,
-    options.providerOverride,
+  });
+
+  let { sources, searchQueries } = await gatherSourcesForQuestions(
+    subQuestions,
+    sessionId,
+    maxSources,
+    progress,
+    parallelSearch,
   );
 
-  report.searchQueries = searchQueries;
-  report.roundCount = searchRoundCount + 1;
+  let qualityPass = 0;
+  let report: DeepResearchReport | null = null;
+
+  while (qualityPass <= maxQualityPasses) {
+    let verifiedSources = sources;
+    if (!options.skipVerify && sources.length > 0) {
+      emitProgress('verify', 'Verifying sources', progress);
+      verifiedSources = await verifySources(options.query, sources, options.providerOverride);
+      emitProgress('verify', `Verified ${verifiedSources.length}/${sources.length} sources`, progress, {
+        verified: verifiedSources.length,
+        total: sources.length,
+      });
+    }
+
+    emitProgress('synthesize', 'Synthesising report', progress);
+    report = await synthesizeReport(
+      options.query,
+      subQuestions,
+      verifiedSources,
+      options.providerOverride,
+    );
+    report.searchQueries = [...searchQueries];
+    report.roundCount = qualityPass + 1;
+
+    const quality = evaluateResearchQuality(report);
+    const passed = passesResearchQualityGate(report);
+    emitProgress(
+      'quality_gate',
+      passed ? 'Quality gate passed' : `Quality gate score ${quality.score} (need ${researchQualityThreshold()})`,
+      progress,
+      { score: quality.score, passed, reasons: quality.reasons },
+    );
+
+    if (passed) break;
+
+    qualityPass += 1;
+    if (qualityPass > maxQualityPasses) {
+      const providerName = options.providerOverride?.name ?? llm.current().name;
+      if (shouldEscalateStudentProvider(providerName)) {
+        emitProgress('escalate', 'Escalating synthesis to teacher model', progress);
+        const teacherOverride = resolveTeacherProviderOverride();
+        report = await synthesizeReport(
+          options.query,
+          subQuestions,
+          verifiedSources,
+          teacherOverride,
+        );
+        report.searchQueries = [...searchQueries];
+        report.roundCount = qualityPass + 1;
+
+        const teacherQuality = evaluateResearchQuality(report);
+        emitProgress(
+          'quality_gate',
+          `Teacher synthesis score ${teacherQuality.score}`,
+          progress,
+          {
+            score: teacherQuality.score,
+            passed: passesResearchQualityGate(report),
+            reasons: teacherQuality.reasons,
+            teacher: teacherOverride?.name,
+          },
+        );
+
+        try {
+          const escalation = await escalateToTeacher({
+            userMessage: options.query,
+            studentReply: report.summary,
+            toolResults: quality.reasons.map((reason) => ({ output: reason })),
+            failureReason: `Research quality gate failed: ${quality.reasons.join('; ')}`,
+          });
+          if (escalation.skillPath) {
+            emitProgress('retain', `Retained skill: ${escalation.skill?.name ?? 'teacher-skill'}`, progress, {
+              skillPath: escalation.skillPath,
+            });
+          }
+        } catch {
+          // skill retention must not block report delivery
+        }
+      }
+      break;
+    }
+
+    const retryIndex = qualityPass % subQuestions.length;
+    const retryQuestions = subQuestions.slice(retryIndex, retryIndex + 2);
+    if (retryQuestions.length === 0) retryQuestions.push(subQuestions[retryIndex]!);
+
+    emitProgress('search', `Quality retry ${qualityPass}: gathering more sources`, progress, {
+      reasons: quality.reasons,
+    });
+    const remaining = Math.max(0, maxSources - sources.length);
+    if (remaining > 0) {
+      const extra = await gatherSourcesForQuestions(
+        retryQuestions,
+        sessionId,
+        remaining,
+        progress,
+        parallelSearch,
+      );
+      for (const source of extra.sources) {
+        if (sources.length >= maxSources) break;
+        if (!sources.some((s) => s.url === source.url)) {
+          sources.push(source);
+        }
+      }
+      searchQueries.push(...extra.searchQueries);
+    }
+  }
+
+  if (!report) {
+    throw new Error('Research synthesis failed.');
+  }
+
+  emitProgress('done', 'Research complete', progress, {
+    title: report.title,
+    sourceCount: report.sources.length,
+  });
 
   if (options.saveToFile) {
     const content = options.outputFormat === 'html'

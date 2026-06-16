@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { researchJobs, type ResearchStatus } from '@/db/schema';
+import {
+  researchCoreConfigured,
+  runSyncCoreResearch,
+  startAsyncCoreResearch,
+} from '@/lib/research-core';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 const VALID_MODES = ['auto', 'product', 'compare', 'how-to', 'fact-check'] as const;
@@ -18,6 +23,52 @@ function parseRounds(value: unknown) {
   const numberValue = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(numberValue)) return 3;
   return Math.min(Math.max(1, Math.floor(numberValue)), 10);
+}
+
+async function markResearchFailed(jobId: string, error: string) {
+  await db
+    .update(researchJobs)
+    .set({
+      status: 'failed' satisfies ResearchStatus,
+      error,
+      completedAt: new Date(),
+    })
+    .where(eq(researchJobs.id, jobId));
+}
+
+async function markResearchCompleted(
+  jobId: string,
+  output: string,
+  sources: Array<{ url: string; title: string; snippet: string }>,
+) {
+  await db
+    .update(researchJobs)
+    .set({
+      status: 'completed',
+      output,
+      sources,
+      completedAt: new Date(),
+    })
+    .where(eq(researchJobs.id, jobId));
+}
+
+async function runDevStub(jobId: string, query: string, mode: string, rounds: number) {
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  await markResearchCompleted(
+    jobId,
+    [
+      `## Research Summary: ${query}`,
+      '',
+      'WARNING: DEV STUB. Set CARINA_INTERNAL_KEY and CARINA_CORE_URL to run real research via core.',
+      '',
+      '### Key Findings',
+      '',
+      `- Mode: ${mode}`,
+      `- Rounds requested: ${rounds}`,
+      '- This output is generated locally because no core internal key is configured.',
+    ].join('\n'),
+    [],
+  );
 }
 
 export async function GET() {
@@ -73,74 +124,53 @@ async function triggerResearchJob(
   mode: string,
   rounds: number,
 ) {
-  const now = new Date();
   await db
     .update(researchJobs)
     .set({ status: 'running' })
     .where(eq(researchJobs.id, jobId));
 
-  const coreUrl = process.env.CARINA_CORE_URL ?? 'http://localhost:3333';
-  const coreKey = process.env.CARINA_INTERNAL_KEY ?? '';
-
-  if (!coreKey) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    await db
-      .update(researchJobs)
-      .set({
-        status: 'completed',
-        output: [
-          `## Research Summary: ${query}`,
-          '',
-          'This is a stub result generated in development mode. In production, Carina executes multi-round web search and synthesis in core.carinaai.uk.',
-          '',
-          '### Key Findings',
-          '',
-          `- Mode: ${mode}`,
-          `- Rounds requested: ${rounds}`,
-          '- Finding 1: Placeholder evidence would be synthesized here.',
-          '- Finding 2: Conflicting claims would be compared here.',
-          '- Finding 3: Follow-up questions would be identified here.',
-          '',
-          '### Sources',
-          '',
-          '1. https://example.com/source-1',
-          '2. https://example.com/source-2',
-        ].join('\n'),
-        sources: [
-          {
-            url: 'https://example.com/source-1',
-            title: 'Example Source One',
-            snippet: 'Placeholder source metadata for the development stub.',
-          },
-          {
-            url: 'https://example.com/source-2',
-            title: 'Example Source Two',
-            snippet: 'Second placeholder source used to exercise the sources panel.',
-          },
-        ],
-        completedAt: new Date(),
-      })
-      .where(eq(researchJobs.id, jobId));
+  if (!researchCoreConfigured()) {
+    if (process.env.NODE_ENV === 'production') {
+      await markResearchFailed(
+        jobId,
+        'Research backend not configured. Set CARINA_INTERNAL_KEY or CARINA_OPS_TOKEN on the cloud app and core.',
+      );
+      return;
+    }
+    await runDevStub(jobId, query, mode, rounds);
     return;
   }
 
-  const response = await fetch(`${coreUrl}/research/start`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-internal-key': coreKey,
-    },
-    body: JSON.stringify({ jobId, workspaceId, query, mode, rounds }),
-  });
+  try {
+    const start = await startAsyncCoreResearch({
+      jobId,
+      workspaceId,
+      query,
+      mode,
+      rounds,
+    });
 
-  if (!response.ok) {
-    await db
-      .update(researchJobs)
-      .set({
-        status: 'failed' satisfies ResearchStatus,
-        error: `Core research handoff failed with ${response.status}`,
-        completedAt: now,
-      })
-      .where(eq(researchJobs.id, jobId));
+    if (start.status === 404) {
+      const result = await runSyncCoreResearch({ query, mode, rounds });
+      await markResearchCompleted(jobId, result.markdown, result.sources);
+      return;
+    }
+
+    if (!start.accepted) {
+      await markResearchFailed(
+        jobId,
+        `Core research failed to start (${start.status}): ${start.body || 'no response body'}`,
+      );
+      return;
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Research failed';
+    try {
+      const result = await runSyncCoreResearch({ query, mode, rounds });
+      await markResearchCompleted(jobId, result.markdown, result.sources);
+    } catch (syncError) {
+      const syncMessage = syncError instanceof Error ? syncError.message : message;
+      await markResearchFailed(jobId, syncMessage);
+    }
   }
 }

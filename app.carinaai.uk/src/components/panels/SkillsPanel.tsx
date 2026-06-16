@@ -169,6 +169,9 @@ export function SkillsPanel({ onClose }: SkillsPanelProps) {
 
       {activeTab === 'list' && (
         <div className="flex flex-col">
+          <p className="px-4 pt-3 text-[11px] leading-relaxed text-text-muted">
+            Cloud skills are memory helpers and custom prompt notes. They are not live integrations or agent tools.
+          </p>
           <div className="space-y-2 px-4 py-3">
             <div className="flex items-center gap-2 rounded-md border border-border bg-elevated px-3 py-2">
               <Search className="h-3.5 w-3.5 shrink-0 text-text-muted" />
@@ -294,8 +297,8 @@ export function SkillsPanel({ onClose }: SkillsPanelProps) {
       {activeTab === 'add' && (
         <div className="space-y-4 p-4">
           <p className="text-xs text-text-secondary">
-            Add a custom skill. You can point to a GitHub repository containing the skill definition,
-            or describe it manually. Custom skills are sent to the agent as extended context.
+            Add a custom skill note. Optional GitHub link for your reference. Custom skills are added to the chat
+            system prompt as hints, not as live tools.
           </p>
 
           <div>
@@ -314,7 +317,7 @@ export function SkillsPanel({ onClose }: SkillsPanelProps) {
             <textarea
               value={addDesc}
               onChange={(event) => setAddDesc(event.target.value)}
-              placeholder="What does this skill do? Be specific - the agent uses this to decide when to invoke it."
+              placeholder="What does this skill cover? The model may use this as a prompt hint when relevant."
               rows={3}
               className="w-full resize-none rounded-md border border-border bg-elevated px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-focus"
             />

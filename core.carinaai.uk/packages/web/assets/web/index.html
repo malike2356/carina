@@ -445,6 +445,13 @@
     #stop-btn.visible { display: flex; }
     #send.streaming-hidden { display: none; }
     .composer-hint { text-align: center; font-size: 0.7rem; color: var(--muted); margin-top: 8px; line-height: 1.4; opacity: 0.7; }
+    .carina-mit-footer {
+      text-align: center; font-size: 0.45rem; color: var(--muted);
+      margin: 2px 0 0; padding: 0; line-height: 1.2; opacity: 0.32;
+      letter-spacing: 0.02em; font-weight: 400;
+    }
+    .carina-mit-footer a { color: inherit; text-decoration: none; opacity: 0.85; }
+    .carina-mit-footer a:hover { color: var(--accent); opacity: 1; text-decoration: underline; }
 
     #scroll-bottom {
       position: fixed; bottom: 110px; right: 22px; width: 34px; height: 34px;
@@ -648,6 +655,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           Workspace pages
         </button>
+        <a href="/control" id="operator-control-link" role="menuitem" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Control Center
+        </a>
         <a href="/dashboard" id="operator-scout-link" role="menuitem" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Security (Scout)
@@ -741,7 +752,7 @@
         <div class="composer">
           <textarea id="input" rows="1" placeholder="Message Carina"></textarea>
           <div class="composer-actions">
-            <button class="icon-btn" id="mic-btn" title="Voice input" hidden>
+            <button class="icon-btn" id="mic-btn" title="Voice input" type="button" aria-pressed="false">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             </button>
             <button id="stop-btn" title="Stop generating" type="button">
@@ -1115,9 +1126,17 @@
     function applyWebContext(ctx) {
       const hosted = ctx.mode === 'hosted';
       document.body.dataset.hosted = hosted ? 'true' : 'false';
+      document.body.dataset.productMode = ctx.mode || 'private';
       document.body.dataset.scout = ctx.scoutAvailable ? 'true' : 'false';
 
-      setMenuLink('operator-scout-link', !hosted && ctx.scoutAvailable);
+      if (ctx.surface && ctx.surface.productName) {
+        const brandEl = document.getElementById('product-brand-name') || document.querySelector('.brand .name');
+        if (brandEl) brandEl.textContent = ctx.surface.productName;
+        document.title = hosted ? 'Carina Cloud' : 'Carina Agent';
+      }
+
+      setMenuLink('operator-control-link', !hosted);
+      setMenuLink('operator-scout-link', false);
       setMenuLink('operator-settings-btn', !hosted);
       setMenuLink('operator-server-note', !hosted);
       setMenuLink('settings-scout-link-wrap', !hosted && ctx.scoutAvailable);
@@ -1162,7 +1181,7 @@
 
       document.getElementById('tier-badge').hidden = true;
       const profileBadge = document.getElementById('profile-badge');
-      if (ctx.activeProfile && ctx.mode === 'operator') {
+      if (ctx.activeProfile && ctx.mode === 'private') {
         profileBadge.textContent = 'profile: ' + ctx.activeProfile;
         profileBadge.hidden = false;
         profileBadge.title = ctx.profileScope
@@ -1171,7 +1190,9 @@
       } else {
         profileBadge.hidden = true;
       }
-      document.querySelector('.user-sub').textContent = formatPackLabel(ctx.activeSkillPack);
+      document.querySelector('.user-sub').textContent = hosted
+        ? formatPackLabel(ctx.activeSkillPack)
+        : 'Private instance · ' + formatPackLabel(ctx.activeSkillPack);
       activeDomain = resolveDomain(
         ctx.activeSkillPacks || (ctx.activeSkillPack ? [ctx.activeSkillPack] : []),
       );
@@ -2207,18 +2228,112 @@
       window.visualViewport.addEventListener('scroll', syncVisualViewportHeight);
     }
 
-    /* ---------------- voice input (Web Speech API) ---------------- */
+    /* ---------------- voice input ---------------- */
 
     const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const MediaRecorderImpl = window.MediaRecorder;
+    const canRecordAudio = Boolean(
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === 'function' &&
+      MediaRecorderImpl,
+    );
+    const voiceSupportNote = document.getElementById('voice-support-note');
     let recognizer = null;
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let recordedChunks = [];
     let recording = false;
     let baseTranscript = '';
 
-    if (SpeechRecognitionImpl) {
-      micBtn.hidden = false;
-      document.getElementById('voice-support-note').textContent =
-        'Your browser supports voice input. Click the microphone in the message box and speak; your words appear in the input as you talk.';
+    micBtn.hidden = false;
 
+    function setVoiceNote(message) {
+      if (voiceSupportNote) voiceSupportNote.textContent = message;
+    }
+
+    function setMicState(active) {
+      recording = active;
+      micBtn.classList.toggle('recording', active);
+      micBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+
+    async function transcribeRecordedAudio(blob) {
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': blob.type || 'application/octet-stream',
+        },
+        body: blob,
+      });
+      const payload = await response.json().catch(() => ({ error: 'transcription failed' }));
+      if (!response.ok) {
+        throw new Error(payload.error || 'transcription failed');
+      }
+      return String(payload.text ?? '').trim();
+    }
+
+    async function startMediaRecording() {
+      if (!canRecordAudio) {
+        showToast('Voice input is not available in this browser');
+        return;
+      }
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(mediaStream);
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) recordedChunks.push(event.data);
+        };
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(recordedChunks, { type: mediaRecorder?.mimeType || 'audio/webm' });
+          const startedWith = baseTranscript;
+          recordedChunks = [];
+          if (mediaStream) {
+            mediaStream.getTracks().forEach((track) => track.stop());
+            mediaStream = null;
+          }
+          mediaRecorder = null;
+          try {
+            const transcript = await transcribeRecordedAudio(blob);
+            if (transcript) {
+              inputEl.value = [startedWith, transcript].filter(Boolean).join(' ').trim();
+              autoGrow();
+              showToast('Voice transcribed into the message box');
+            } else {
+              showToast('No speech detected');
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            showToast(msg);
+          } finally {
+            setMicState(false);
+          }
+        };
+        mediaRecorder.start();
+        setMicState(true);
+        setVoiceNote('Click the microphone to record. Carina will transcribe your speech into the message box when you stop.');
+        showToast('Recording... click the microphone again to transcribe');
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setMicState(false);
+        setVoiceNote('Voice input needs microphone permission in this browser.');
+        showToast(msg);
+      }
+    }
+
+    function stopMediaRecording() {
+      setMicState(false);
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        try { mediaRecorder.stop(); } catch {}
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
+        mediaStream = null;
+      }
+    }
+
+    if (SpeechRecognitionImpl) {
+      setVoiceNote('Your browser supports live dictation. Click the microphone and speak; Carina will place the words in the message box as you talk.');
       recognizer = new SpeechRecognitionImpl();
       recognizer.continuous = true;
       recognizer.interimResults = true;
@@ -2238,31 +2353,45 @@
       };
 
       recognizer.onerror = () => stopRecording();
-      recognizer.onend = () => { if (recording) recognizer.start(); };
+      recognizer.onend = () => {
+        if (recording) {
+          try { recognizer.start(); } catch {}
+        }
+      };
 
       micBtn.addEventListener('click', () => {
         if (recording) stopRecording();
         else startRecording();
       });
+    } else if (canRecordAudio) {
+      setVoiceNote('Click the microphone to record. Carina will transcribe your speech into the message box when you stop.');
+      micBtn.addEventListener('click', () => {
+        if (recording) stopRecording();
+        else void startRecording();
+      });
     } else {
-      document.getElementById('voice-support-note').textContent =
-        'Voice input uses your browser’s built-in speech recognition (Chrome or Edge). It is not available in this browser.';
+      setVoiceNote('Voice input is unavailable in this browser. Use Chrome or Edge, or another browser with microphone recording support.');
+      micBtn.disabled = true;
     }
 
     function startRecording() {
-      if (!recognizer) return;
       baseTranscript = inputEl.value.trim();
-      recording = true;
-      micBtn.classList.add('recording');
-      try { recognizer.start(); } catch {}
-      showToast('Listening... click the microphone again to stop');
+      if (recognizer) {
+        setMicState(true);
+        try { recognizer.start(); } catch {}
+        showToast('Listening... click the microphone again to stop');
+        return;
+      }
+      void startMediaRecording();
     }
 
     function stopRecording() {
-      if (!recognizer) return;
-      recording = false;
-      micBtn.classList.remove('recording');
-      try { recognizer.stop(); } catch {}
+      if (recognizer) {
+        setMicState(false);
+        try { recognizer.stop(); } catch {}
+        return;
+      }
+      stopMediaRecording();
     }
 
     /* ---------------- init ---------------- */

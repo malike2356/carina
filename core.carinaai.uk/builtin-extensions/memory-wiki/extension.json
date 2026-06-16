@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "memory-wiki",
+  "version": "1.0.0",
+  "name": "Memory Wiki",
+  "author": "VERLOX Ltd",
+  "description": "Markdown wiki pages for long-term operator notes.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

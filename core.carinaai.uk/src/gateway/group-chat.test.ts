@@ -61,6 +61,37 @@ describe('group response rules', () => {
     expect(decision.respond).toBe(false);
   });
 
+  it('skips unmentioned Discord group banter', () => {
+    const decision = shouldRespondInGroup({
+      message: {
+        source: 'discord',
+        content: 'lol nice',
+        chatType: 'group',
+        mentioned: false,
+        chatId: 'chan-1',
+        messageId: '99',
+      },
+    });
+
+    expect(decision.respond).toBe(false);
+    expect(decision.reason).toContain('banter');
+  });
+
+  it('responds in any group channel when mentioned', () => {
+    const decision = shouldRespondInGroup({
+      message: {
+        source: 'slack',
+        content: 'status?',
+        chatType: 'group',
+        mentioned: true,
+        chatId: 'C123',
+        messageId: '55',
+      },
+    });
+
+    expect(decision.respond).toBe(true);
+  });
+
   it('prevents repeated responses to the same trigger', () => {
     expect(hasRecentlyResponded('1', '2')).toBe(false);
     recordGroupResponse('1', '2');

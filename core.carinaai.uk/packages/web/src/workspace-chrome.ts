@@ -1,3 +1,6 @@
+import type { ProductMode } from '../../../src/product/types.js';
+import { hostedShellConfig, privateShellConfig } from '../../../src/product/shell-config.js';
+
 export type WorkspacePageId =
   | 'hub'
   | 'chat'
@@ -8,7 +11,8 @@ export type WorkspacePageId =
   | 'calendar'
   | 'memory'
   | 'packs'
-  | 'cookbook'
+  | 'prompt-packs'
+  | 'playbook'
   | 'research'
   | 'compare'
   | 'kanban'
@@ -44,13 +48,39 @@ export const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
   { id: 'kanban', href: '/kanban', label: 'Kanban', description: 'Operator board for multi-step agent work' },
   { id: 'webhooks', href: '/webhooks', label: 'Webhooks', description: 'Subscriptions and delivery log' },
   { id: 'packs', href: '/packs', label: 'Skill packs', description: 'Domain skill bundles' },
+  { id: 'prompt-packs', href: '/prompt-packs', label: 'Prompt packs', description: 'Internal gap-close prompts' },
   {
-    id: 'cookbook',
-    href: '/cookbook',
-    label: 'Cookbook',
+    id: 'playbook',
+    href: '/playbook',
+    label: 'Playbook',
     description: 'Hardware-aware local model serving',
   },
 ];
+
+export function workspaceNavForMode(mode: ProductMode): WorkspaceNavItem[] {
+  const shell = mode === 'hosted' ? hostedShellConfig() : privateShellConfig();
+  const allowed = new Set(shell.primaryNav.map((item) => item.id));
+  return WORKSPACE_NAV_ITEMS.filter((item) => allowed.has(item.id));
+}
+
+export function workspaceBrandingForMode(mode: ProductMode): {
+  productName: string;
+  workspaceName: string;
+  sectionLabel: string;
+} {
+  if (mode === 'hosted') {
+    return {
+      productName: 'Carina Cloud',
+      workspaceName: 'Cloud Workspace',
+      sectionLabel: 'Apps',
+    };
+  }
+  return {
+    productName: 'Carina',
+    workspaceName: 'Instance Workspace',
+    sectionLabel: 'Engine',
+  };
+}
 
 const WORKSPACE_BEGIN = '<!--CARINA_WORKSPACE_BEGIN-->';
 const WORKSPACE_END = '<!--CARINA_WORKSPACE_END-->';
@@ -102,6 +132,9 @@ export function workspaceThemeCss(): string {
     '.carina-ws-foot { padding: 8px 6px 4px; font-size: 0.68rem; color: var(--muted); }',
     '.carina-ws-profile-scope { font-size: 0.65rem; color: var(--muted); margin-bottom: 6px; word-break: break-all; }',
     '.carina-ws-foot a { color: var(--accent); text-decoration: none; }',
+    '.carina-ws-shell-links { padding: 8px 6px 4px; font-size: 0.72rem; }',
+    '.carina-ws-shell-links a { display: block; padding: 6px 8px; color: var(--text); text-decoration: none; border-radius: 6px; }',
+    '.carina-ws-shell-links a:hover { background: rgba(255,255,255,0.04); }',
     '.carina-ws-theme-btn {',
     '  width: 100%; margin-top: 6px; padding: 7px 10px; border-radius: 8px;',
     '  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);',
@@ -119,7 +152,8 @@ export function workspaceThemeCss(): string {
     '.ws-scroll-page { flex: 1; overflow-y: auto; padding: 1rem 1.25rem 2rem; width: 100%; }',
     'body.carina-workspace[data-workspace-page="memory"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="packs"] .ws-scroll-page,',
-    'body.carina-workspace[data-workspace-page="cookbook"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="prompt-packs"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="playbook"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="research"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="compare"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="kanban"] .ws-scroll-page { max-width: none; margin: 0; }',
@@ -181,8 +215,19 @@ export function workspaceThemeCss(): string {
   ].join('\n');
 }
 
-export function workspaceSidebarHtml(active: WorkspacePageId): string {
-  const navLinks = WORKSPACE_NAV_ITEMS.map((item) => {
+function shellFootLinks(mode: ProductMode): string {
+  const shell = mode === 'hosted' ? hostedShellConfig() : privateShellConfig();
+  const links = mode === 'hosted' ? shell.accountNav : shell.instanceNav;
+  if (links.length === 0) return '';
+  const items = links.map((link) => `<a href="${link.href}">${link.label}</a>`).join(' · ');
+  const label = mode === 'hosted' ? 'Account' : 'Instance';
+  return `<div class="carina-ws-shell-links" data-shell="${mode}"><span class="carina-ws-section-label">${label}</span>${items}</div>`;
+}
+
+export function workspaceSidebarHtml(active: WorkspacePageId, mode: ProductMode = 'private'): string {
+  const branding = workspaceBrandingForMode(mode);
+  const navItems = workspaceNavForMode(mode);
+  const navLinks = navItems.map((item) => {
     const activeClass = item.id === active ? ' class="active"' : '';
     return [
       `<a href="${item.href}"${activeClass}>`,
@@ -193,13 +238,18 @@ export function workspaceSidebarHtml(active: WorkspacePageId): string {
   }).join('\n');
 
   const hubActive = active === 'hub' ? ' class="active"' : '';
-  const bnavItems = [
-    { href: '/', label: 'Chat', icon: 'C', id: 'chat' },
-    { href: '/notes', label: 'Notes', icon: 'N', id: 'notes' },
-    { href: '/documents', label: 'Docs', icon: 'D', id: 'documents' },
-    { href: '/email', label: 'Email', icon: 'M', id: 'email' },
-    { href: '/workspace', label: 'More', icon: '+', id: 'hub' },
-  ];
+  const bottomNavIds = mode === 'hosted'
+    ? ['chat', 'notes', 'documents', 'memory', 'hub']
+    : ['chat', 'notes', 'documents', 'email', 'hub'];
+  const bottomNavMeta: Record<string, { href: string; label: string; icon: string }> = {
+    chat: { href: '/', label: 'Chat', icon: 'C' },
+    notes: { href: '/notes', label: 'Notes', icon: 'N' },
+    documents: { href: '/documents', label: 'Docs', icon: 'D' },
+    email: { href: '/email', label: 'Email', icon: 'M' },
+    memory: { href: '/memory', label: 'Memory', icon: 'M' },
+    hub: { href: '/workspace', label: 'More', icon: '+' },
+  };
+  const bnavItems = bottomNavIds.map((id) => ({ id, ...bottomNavMeta[id]! }));
   const bottomNavLinks = bnavItems.map((item) => {
     const activeClass = item.id === active ? ' class="active"' : '';
     return `<a href="${item.href}"${activeClass}><span class="bnav-icon">${item.icon}</span>${item.label}</a>`;
@@ -213,16 +263,17 @@ export function workspaceSidebarHtml(active: WorkspacePageId): string {
   ].join('');
 
   return [
-    '<aside class="carina-ws-sidebar" id="ws-sidebar" aria-label="Workspace navigation">',
+    `<aside class="carina-ws-sidebar" id="ws-sidebar" aria-label="Workspace navigation" data-product-mode="${mode}">`,
     '<div class="carina-ws-brand"><a href="/workspace">',
-    '<span class="logo">C</span><span class="name">Carina Workspace</span>',
+    `<span class="logo">C</span><span class="name">${branding.workspaceName}</span>`,
     '</a></div>',
-    '<div class="carina-ws-section-label">Apps</div>',
+    `<div class="carina-ws-section-label">${branding.sectionLabel}</div>`,
     '<nav class="carina-ws-nav">',
     `<a href="/workspace"${hubActive}>Overview<span class="desc">All workspace apps</span></a>`,
     navLinks,
     '</nav>',
     themePicker,
+    shellFootLinks(mode),
     '<div class="carina-ws-foot">',
     '<div id="ws-profile-scope" class="carina-ws-profile-scope"></div>',
     '<a href="/">Back to chat</a>',
@@ -260,22 +311,30 @@ export function injectWorkspaceHead(html: string): string {
 export function injectWorkspaceChrome(
   html: string,
   active: WorkspacePageId,
+  mode: ProductMode = 'private',
 ): string {
   if (!html.includes(WORKSPACE_BEGIN)) return injectWorkspaceHead(html);
 
   let out = injectWorkspaceHead(html);
-  const sidebar = workspaceSidebarHtml(active);
+  const sidebar = workspaceSidebarHtml(active, mode);
   out = out.replace(WORKSPACE_BEGIN, sidebar);
   out = out.replace(WORKSPACE_END, '</div>');
   if (!out.includes('class="carina-workspace"')) {
-    out = out.replace('<body>', `<body class="carina-workspace" data-workspace-page="${active}">`);
+    out = out.replace(
+      '<body>',
+      `<body class="carina-workspace" data-workspace-page="${active}" data-product-mode="${mode}">`,
+    );
   }
   return out;
 }
 
-export function workspaceHubCardsHtml(): string {
-  const featuredIds = ['research', 'compare', 'cookbook'];
-  const cards = WORKSPACE_NAV_ITEMS.filter((item) => item.id !== 'chat').map((item) => {
+export function workspaceHubCardsHtml(mode: ProductMode = 'private'): string {
+  const featuredIds = ['research', 'compare', 'playbook'];
+  const navItems = workspaceNavForMode(mode);
+  const intro = mode === 'hosted'
+    ? 'Your Carina Cloud workspace: shared engine apps for notes, documents, memory, and skill packs.'
+    : 'Your private instance workspace: local engine apps, operator tools, and host diagnostics.';
+  const cards = navItems.filter((item) => item.id !== 'chat').map((item) => {
     const badge = featuredIds.includes(item.id)
       ? '<span style="font-size:0.62rem;background:var(--accent);color:#0d0d0f;padding:0.1rem 0.35rem;border-radius:4px;margin-left:0.4rem;font-weight:700;vertical-align:middle">New</span>'
       : '';
@@ -288,9 +347,9 @@ export function workspaceHubCardsHtml(): string {
   }).join('\n');
 
   return [
-    '<header class="ws-page-header"><h1>Workspace</h1></header>',
+    `<header class="ws-page-header"><h1>${mode === 'hosted' ? 'Cloud Workspace' : 'Instance Workspace'}</h1></header>`,
     '<div class="ws-hub">',
-    '<p class="ws-hub-intro">Your Carina workspace: chat-linked apps for notes, documents, images, email triage, calendar, memory, and skill packs.</p>',
+    `<p class="ws-hub-intro">${intro}</p>`,
     '<div class="ws-card-grid">',
     cards,
     '</div>',
@@ -298,7 +357,22 @@ export function workspaceHubCardsHtml(): string {
   ].join('\n');
 }
 
-export function injectWorkspaceHub(html: string): string {
-  let out = injectWorkspaceChrome(html, 'hub');
-  return out.replace('<!--CARINA_WORKSPACE_HUB-->', workspaceHubCardsHtml());
+export function injectWorkspaceHub(html: string, mode: ProductMode = 'private'): string {
+  let out = injectWorkspaceChrome(html, 'hub', mode);
+  return out.replace('<!--CARINA_WORKSPACE_HUB-->', workspaceHubCardsHtml(mode));
+}
+
+export function injectChatShellBranding(html: string, mode: ProductMode): string {
+  const branding = workspaceBrandingForMode(mode);
+  let out = html;
+  const title = mode === 'hosted' ? 'Carina Cloud' : 'Carina Agent';
+  out = out.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+  out = out.replace(
+    '<span class="name">Carina</span>',
+    `<span class="name" id="product-brand-name">${branding.productName}</span>`,
+  );
+  if (!out.includes('data-product-mode=')) {
+    out = out.replace('<body>', `<body data-product-mode="${mode}">`);
+  }
+  return out;
 }

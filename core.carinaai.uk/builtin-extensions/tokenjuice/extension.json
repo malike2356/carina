@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "tokenjuice",
+  "version": "1.0.0",
+  "name": "Tokenjuice",
+  "author": "VERLOX Ltd",
+  "description": "Estimate token usage for prompts and text.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

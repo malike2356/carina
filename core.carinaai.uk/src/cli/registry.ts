@@ -89,7 +89,7 @@ export function buildCommands(): CliCommand[] {
     cmd('config', 'Manage config.yaml and .env', async (args) => {
       const { runConfigCommand } = await import('./commands/config-cli.js');
       await runConfigCommand(args);
-    }, { usage: 'carina config <list|get|set|edit|check|migrate>' }),
+    }, { usage: 'carina config <list|get|set|edit|check|validate|migrate>' }),
 
     cmd('model', 'List, set, or pick LLM provider/model', async (args) => {
       const { runModelCommand } = await import('./commands/model.js');
@@ -187,6 +187,11 @@ export function buildCommands(): CliCommand[] {
       await runDoctor(args);
     }, { loadEnv: true, usage: 'carina doctor [--json] [--repair] [--quiet]' }),
 
+    cmd('locale', 'Locale catalog and language helpers', async (args) => {
+      const { runLocaleCli } = await import('./commands/locale-cli.js');
+      await runLocaleCli(args);
+    }, { loadEnv: true, usage: 'carina locale [show|list|set <code>|t <key> [locale]]' }),
+
     cmd('logs', 'View agent log files', async (args) => {
       const { runLogsCommand } = await import('./commands/logs.js');
       const action = args[0] ?? 'tail';
@@ -196,7 +201,7 @@ export function buildCommands(): CliCommand[] {
 
     cmd('skills', 'Curated skills from skill curator', async (args) => {
       const { runSkillsCommand } = await import('./commands/skills-cli.js');
-      await runSkillsCommand(args[0] ?? 'list');
+      await runSkillsCommand(args[0] ?? 'list', args.slice(1));
     }, { loadEnv: true }),
 
     cmd('curator', 'Skill curator operator (report, prune, archive)', async (args) => {
@@ -333,14 +338,24 @@ export function buildCommands(): CliCommand[] {
       await runProvidersCommand(args);
     }, { loadEnv: true, usage: 'carina providers <list|info|copilot|preset|health|test|disable|enable|scan> [args]' }),
 
-    cmd('cookbook', 'Local model discovery and serve helper', async (args) => {
+    cmd('playbook', 'Hardware-aware model discovery and serve helper', async (args) => {
       const { runCookbookCommand, runCookbookDefault } = await import('./commands/cookbook-cli.js');
       if (args.length === 0) {
         await runCookbookDefault();
         return;
       }
       await runCookbookCommand(args);
-    }, { usage: 'carina cookbook [list|search|inspect|serve] [args]' }),
+    }, { usage: 'carina playbook [list|search|inspect|serve] [args]' }),
+
+    cmd('cookbook', 'Deprecated alias for playbook', async (args) => {
+      console.warn('Note: carina cookbook is deprecated. Use: carina playbook');
+      const { runCookbookCommand, runCookbookDefault } = await import('./commands/cookbook-cli.js');
+      if (args.length === 0) {
+        await runCookbookDefault();
+        return;
+      }
+      await runCookbookCommand(args);
+    }, { usage: 'carina cookbook (deprecated; use playbook)' }),
 
     cmd('research', 'Multi-step deep research with cited report', async (args) => {
       const { runResearchCommand } = await import('./commands/research-cli.js');

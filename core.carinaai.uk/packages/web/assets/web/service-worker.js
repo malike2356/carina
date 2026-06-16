@@ -1,4 +1,4 @@
-const CACHE = 'carina-ws-v2';
+const CACHE = 'carina-ws-v4';
 
 const WORKSPACE_SHELLS = [
   '/',
@@ -12,6 +12,8 @@ const WORKSPACE_SHELLS = [
   '/kanban',
   '/webhooks',
   '/packs',
+  '/prompt-packs',
+  '/playbook',
   '/cookbook',
   '/compare',
   '/research',

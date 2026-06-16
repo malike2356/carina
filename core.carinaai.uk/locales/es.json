@@ -1,0 +1,43 @@
+{
+  "web": {
+    "login": {
+      "title": "Carina",
+      "subtitle": "Instancia privada - inicia sesion para continuar",
+      "password": "Contrasena",
+      "submit": "Iniciar sesion",
+      "errorInvalidPassword": "Contrasena incorrecta",
+      "language": "Idioma"
+    },
+    "hostedLogin": {
+      "title": "Carina Cloud",
+      "subtitle": "Inicia sesion en tu cuenta. Trae tus propias claves API; nosotros ejecutamos el agente.",
+      "email": "Correo electronico",
+      "password": "Contrasena",
+      "submit": "Iniciar sesion",
+      "submitting": "Iniciando sesion...",
+      "noAccount": "No tienes cuenta?",
+      "createOne": "Crear una",
+      "forgotPassword": "Olvidaste tu contrasena?",
+      "errorInvalid": "Correo o contrasena incorrectos"
+    },
+    "chat": {
+      "stop": "Detener",
+      "newChat": "Nuevo chat",
+      "thinking": "Carina esta pensando",
+      "connectionError": "Error de conexion."
+    }
+  },
+  "cli": {
+    "locale": {
+      "current": "Idioma activo: {locale}",
+      "supported": "Idiomas disponibles: {locales}",
+      "missingKey": "(traduccion faltante)"
+    }
+  },
+  "gateway": {
+    "approval": {
+      "required": "Se requiere aprobacion para {tool}",
+      "reason": "{reason}"
+    }
+  }
+}

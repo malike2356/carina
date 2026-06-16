@@ -410,3 +410,87 @@ export function resetCalDavClientState(): void {
   cacheExpiresAt = 0;
   cacheEvents = [];
 }
+
+export interface CalDavCredentialsInput {
+  url: string;
+  username: string;
+  password: string;
+  principalUrl?: string;
+}
+
+async function discoverCalendarUrlForCredentials(
+  creds: CalDavCredentialsInput,
+  authHeader: string,
+): Promise<string> {
+  const candidates: string[] = [];
+  if (creds.principalUrl) candidates.push(creds.principalUrl);
+  if (creds.url) candidates.push(creds.url);
+
+  for (const candidate of candidates) {
+    const base = candidate.endsWith('/') ? candidate : `${candidate}/`;
+    const homeRes = await calDavRequest(base, 'PROPFIND', authHeader, PROPFIND_HOME, 0);
+    if (!homeRes.ok) continue;
+
+    const homeHref =
+      extractHrefFromProp(homeRes.text, 'calendar-home-set') ??
+      extractHrefFromProp(homeRes.text, 'current-user-principal');
+    if (!homeHref) continue;
+
+    const homeUrl = joinUrl(base, homeHref);
+    const listRes = await calDavRequest(homeUrl, 'PROPFIND', authHeader, PROPFIND_RESOURCETYPE, 1);
+    if (!listRes.ok) continue;
+
+    const collections = extractCalendarCollectionHrefs(listRes.text);
+    if (collections.length) {
+      return collections.find((href) => /personal|default|calendar/i.test(href)) ?? collections[0];
+    }
+  }
+
+  if (creds.url) {
+    const direct = creds.url.endsWith('/') ? creds.url : `${creds.url}/`;
+    if (await isCalendarCollection(direct, authHeader)) return direct;
+  }
+
+  throw new Error('Could not resolve a CalDAV calendar collection for the supplied credentials.');
+}
+
+async function resolveCalendarCollectionUrlForCredentials(
+  creds: CalDavCredentialsInput,
+  authHeader: string,
+): Promise<string> {
+  if (creds.url) {
+    const direct = creds.url.endsWith('/') ? creds.url : `${creds.url}/`;
+    if (await isCalendarCollection(direct, authHeader)) return direct;
+  }
+  return discoverCalendarUrlForCredentials(creds, authHeader);
+}
+
+export async function fetchCalDavEventsInRangeWithCredentials(
+  creds: CalDavCredentialsInput,
+  start: Date,
+  end: Date,
+): Promise<CalDavFetchResult> {
+  const authHeader = buildBasicAuthHeader(creds.username, creds.password);
+  const calendarUrl = await resolveCalendarCollectionUrlForCredentials(creds, authHeader);
+  const query = buildCalendarQuery(start, end);
+  const report = await calDavRequest(calendarUrl, 'REPORT', authHeader, query, 1);
+
+  if (!report.ok) {
+    throw new Error(`CalDAV REPORT failed (${report.status}). Check URL and credentials.`);
+  }
+
+  const blocks = extractCalendarDataBlocks(report.text);
+  const parsed: CalDavEvent[] = [];
+  for (const block of blocks) {
+    for (const event of parseVeventsFromIcs(block.ics, block.href)) {
+      if (eventOverlapsRange(event, start, end)) parsed.push(event);
+    }
+  }
+
+  parsed.sort((a, b) => a.dtStart.getTime() - b.dtStart.getTime());
+  return {
+    events: parsed,
+    calendarUrl,
+    fetchedAt: new Date().toISOString(),
+  };
+}

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { recordPromptCacheObservation } from '../telemetry/provider-observation.js';
 import type { Message } from '../types/index.js';
 
 export interface PromptCacheEntry {
@@ -46,10 +47,12 @@ export function getCachedSystemPrompt(messages: Message[]): {
   if (existing && now - existing.createdAt < DEFAULT_TTL_MS) {
     existing.hits++;
     hits++;
+    recordPromptCacheObservation(true, cacheKey);
     return { systemPrompt: existing.systemPrompt, cacheKey, hit: true };
   }
 
   misses++;
+  recordPromptCacheObservation(false, cacheKey);
   cache.set(cacheKey, { hash: cacheKey, systemPrompt, createdAt: now, hits: 0 });
   pruneCache();
   return { systemPrompt, cacheKey, hit: false };

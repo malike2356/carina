@@ -100,6 +100,8 @@ export interface SendOptions {
   blocks?: unknown[];
   embeds?: unknown[];
   attachments?: Attachment[];
+  /** Platform-specific markup (e.g. Telegram inline_keyboard). */
+  replyMarkup?: unknown;
 }
 
 export interface WebhookValidationInput {

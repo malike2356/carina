@@ -46,23 +46,26 @@
     .error { color: #f85149; font-size: 13px; margin-bottom: 16px; }
     .foot { margin-top: 20px; font-size: 13px; color: var(--muted); text-align: center; }
     .foot a { color: var(--accent); text-decoration: none; }
+    #locale-switcher { margin-top: 16px; }
   </style>
 </head>
-<body>
+<body data-i18n-prefix="web.hostedLogin">
   <div class="card">
-    <h1>Carina Cloud</h1>
-    <p class="sub">Sign in to your account. Bring your own API keys; we run the agent.</p>
+    <h1 data-i18n="web.hostedLogin.title">Carina Cloud</h1>
+    <p class="sub" data-i18n="web.hostedLogin.subtitle">Sign in to your account. Bring your own API keys; we run the agent.</p>
     <div id="error" class="error" hidden></div>
     <form id="form">
-      <label for="email">Email</label>
+      <label for="email" data-i18n="web.hostedLogin.email">Email</label>
       <input type="email" id="email" name="email" required autofocus>
-      <label for="password">Password</label>
+      <label for="password" data-i18n="web.hostedLogin.password">Password</label>
       <input type="password" id="password" name="password" required minlength="8">
-      <button type="submit" id="submit">Sign in</button>
+      <button type="submit" id="submit" data-i18n="web.hostedLogin.submit">Sign in</button>
     </form>
-    <p class="foot">No account? <a href="/hosted-register">Create one</a></p>
-    <p class="foot" style="margin-top:10px"><a href="/hosted-forgot">Forgot password?</a></p>
+    <p class="foot"><span data-i18n="web.hostedLogin.noAccount">No account?</span> <a href="/hosted-register" data-i18n="web.hostedLogin.createOne">Create one</a></p>
+    <p class="foot" style="margin-top:10px"><a href="/hosted-forgot" data-i18n="web.hostedLogin.forgotPassword">Forgot password?</a></p>
+    <div id="locale-switcher"></div>
   </div>
+  <script src="/i18n.js"></script>
   <script>
     const form = document.getElementById('form');
     const errorEl = document.getElementById('error');

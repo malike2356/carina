@@ -2,6 +2,8 @@
 
 Carina core is MIT licensed. You can install from npm, clone source, and contribute without a contributor agreement.
 
+Questions before contributing? Email [support@carinaai.uk](mailto:support@carinaai.uk).
+
 ## Start here
 
 | Resource | Link |

@@ -23,6 +23,15 @@ const BUILT_IN_TASKS = [
     prompt:
       'Review workspace memories. Flag duplicates, stale facts, and entries that should be merged or clarified.',
   },
+  {
+    name: 'Calendar sync',
+    description: 'Pull events from connected CalDAV into the workspace calendar cache.',
+    triggerType: 'schedule' as const,
+    taskType: 'action' as const,
+    status: 'paused' as const,
+    cronExpression: '*/30 * * * *',
+    prompt: 'calendar_sync',
+  },
 ];
 
 export async function ensureBuiltInTasks(workspaceId: string) {

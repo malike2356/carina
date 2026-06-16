@@ -6,6 +6,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Carina Cloud',
   description: 'Hosted Carina workspace with BYOK keys and browser chat.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 const themeBootScript = `

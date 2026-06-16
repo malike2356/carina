@@ -1,4 +1,5 @@
 import { config } from '../../../config/index.js';
+import { shouldAcceptGroupInbound } from '../channel-group-policy.js';
 import { getRouter } from '../../router.js';
 import { formatForChannel } from '../channel-formatter.js';
 import type {
@@ -45,11 +46,8 @@ export class DiscordAdapter implements IChannelAdapter {
     const isDirect = !payload.guildId && !payload.guild_id;
     const isMention = isDiscordMention(text, String(config.discord.applicationId ?? ''));
     const isCommand = isInteraction || text.startsWith('/carina') || text.startsWith('/chat');
-    if (!shouldRespond(isDirect, isMention, isCommand, channelId, config.discord.allowedChannelIds)) {
-      return null;
-    }
 
-    return {
+    const message: ChannelMessage = {
       id: String(payload.id ?? Date.now()),
       channel: 'discord',
       externalUserId: userId,
@@ -65,6 +63,12 @@ export class DiscordAdapter implements IChannelAdapter {
       threadId: String(payload.threadId ?? payload.channelId ?? channelId),
       raw,
     };
+
+    if (!shouldAcceptGroupInbound(message).accept) {
+      return null;
+    }
+
+    return message;
   }
 
   async sendMessage(conversationId: string, text: string, options: SendOptions = {}): Promise<void> {
@@ -151,16 +155,6 @@ function slashCommandText(payload: Record<string, unknown>): string {
 
 function isDiscordMention(text: string, applicationId: string): boolean {
   return /@carina\b/i.test(text) || (applicationId ? text.includes(`<@${applicationId}>`) : false);
-}
-
-function shouldRespond(
-  isDirect: boolean,
-  isMention: boolean,
-  isCommand: boolean,
-  channelId: string,
-  allowedChannelIds: string[],
-): boolean {
-  return isDirect || isMention || isCommand || allowedChannelIds.includes(channelId);
 }
 
 function cleanDiscordText(text: string): string {

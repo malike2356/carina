@@ -54,9 +54,11 @@ export const config = {
   },
   brave: {
     apiKey: process.env.BRAVE_SEARCH_API_KEY ?? '',
+    searchUrl: process.env.BRAVE_SEARCH_URL ?? 'https://api.search.brave.com/res/v1/web/search',
   },
   tavily: {
     apiKey: process.env.TAVILY_API_KEY ?? '',
+    searchUrl: process.env.TAVILY_SEARCH_URL ?? 'https://api.tavily.com/search',
     searchDepth:
       process.env.TAVILY_SEARCH_DEPTH === 'advanced' ? ('advanced' as const) : ('basic' as const),
   },
@@ -121,15 +123,19 @@ export const config = {
     nickservIdentify: process.env.IRC_NICKSERV_IDENTIFY === 'true',
   },
   carina: {
-    defaultProvider: (process.env.DEFAULT_PROVIDER ?? 'deepseek') as 'anthropic' | 'openai' | 'deepseek',
+    defaultProvider: process.env.DEFAULT_PROVIDER ?? '',
     activePack: process.env.ACTIVE_SKILL_PACK ?? '',
     activePacks: (process.env.ACTIVE_SKILL_PACKS ?? process.env.ACTIVE_SKILL_PACK ?? '')
       .split(',')
       .map((p) => p.trim())
       .filter(Boolean),
     resourcesDir: process.env.CARINA_RESOURCES_DIR ?? '',
-    sessionTimeout: 60 * 60 * 1000,
-    maxMemoryContext: 20,
+    sessionTimeout: intEnv('CARINA_SESSION_TIMEOUT_MS', 60 * 60 * 1000),
+    maxMemoryContext: intEnv('CARINA_MAX_MEMORY_CONTEXT', 20),
+    maxTurns: intEnv('CARINA_MAX_TURNS', 20),
+    subagentMaxTurns: intEnv('CARINA_SUBAGENT_MAX_TURNS', 10),
+    taskflowMaxTurns: intEnv('CARINA_TASKFLOW_MAX_TURNS', 8),
+    contextCharBudget: intEnv('CARINA_CONTEXT_CHAR_BUDGET', 48_000),
     skillAutoWrite: process.env.SKILL_AUTO_WRITE !== 'false',
     llmMonthlyBudgetUsd: process.env.CARINA_LLM_MONTHLY_BUDGET_USD
       ? parseFloat(process.env.CARINA_LLM_MONTHLY_BUDGET_USD)
@@ -229,7 +235,14 @@ export const config = {
     instanceName: process.env.LABYRINTH_INSTANCE_NAME ?? 'Carina Local',
     llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL ?? 'http://localhost:3000',
     judgeModel: process.env.LABYRINTH_JUDGE_MODEL ?? 'deepseek/deepseek-chat',
-    judgeTimeoutMs: 3000,
+    judgeTimeoutMs: intEnv('LABYRINTH_JUDGE_TIMEOUT_MS', 3000),
+  },
+  embeddings: {
+    dimensions: intEnv('CARINA_EMBEDDING_DIMENSIONS', 768),
+    maxChars: intEnv('CARINA_EMBEDDING_MAX_CHARS', 8000),
+    voyageMaxChars: intEnv('CARINA_EMBEDDING_VOYAGE_MAX_CHARS', 16000),
+    geminiModel: process.env.GEMINI_EMBEDDING_MODEL ?? 'text-embedding-004',
+    openaiModel: process.env.OPENAI_EMBEDDING_MODEL ?? 'text-embedding-3-small',
   },
   ntfy: {
     baseUrl: process.env.NTFY_BASE_URL ?? 'https://ntfy.sh',
@@ -243,6 +256,7 @@ export const config = {
   trello: {
     apiKey: process.env.TRELLO_API_KEY ?? '',
     token: process.env.TRELLO_TOKEN ?? '',
+    baseUrl: process.env.TRELLO_BASE_URL ?? 'https://api.trello.com/1',
   },
   pushover: {
     token: process.env.PUSHOVER_TOKEN ?? '',

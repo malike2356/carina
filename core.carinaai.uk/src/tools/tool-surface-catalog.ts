@@ -1,6 +1,7 @@
 import { registry } from './registry.js';
 import { TOOLSET_MAP } from './toolset.js';
 import { lookupToolRisk } from './tool-risk-registry.js';
+import { getCompactToolDescription } from './tool-descriptions.js';
 
 export type ToolSurface =
   | 'agent'
@@ -606,10 +607,13 @@ export function buildToolSurfaceCatalog(): ToolCatalogEntry[] {
       const tool = registered.get(name);
       const meta = TOOL_META[name];
       const risk = lookupToolRisk(name);
+      const catalogPurpose = meta?.purpose
+        ?? registry.getMeta(name)?.compactDescription
+        ?? getCompactToolDescription(name, tool?.description);
       return {
         name,
         category: meta?.category ?? 'unclassified',
-        purpose: meta?.purpose ?? (tool?.description.slice(0, 120) ?? 'Registered tool'),
+        purpose: catalogPurpose,
         surfaces: meta?.surfaces ?? ['agent'],
         toolset: meta?.toolset ?? resolveToolset(name),
         optional: meta?.optional,

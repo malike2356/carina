@@ -4,6 +4,7 @@ import {
   buildCopilotSelection,
   freeCopilotProviderOrder,
   mergeFallbackOrder,
+  resolveInitialActiveProvider,
 } from './provider-routing.js';
 
 describe('provider-routing', () => {
@@ -46,6 +47,42 @@ describe('provider-routing', () => {
       'deepseek',
       'openai',
     ]);
+  });
+
+  it('resolveInitialActiveProvider honours DEFAULT_PROVIDER when configured', () => {
+    const result = resolveInitialActiveProvider({
+      configuredNames: ['deepseek', 'openai'],
+      definitions: PROVIDER_DEFINITIONS,
+      preferred: 'openai',
+    });
+    expect(result.active).toBe('openai');
+    expect(result.preset).toBeUndefined();
+  });
+
+  it('resolveInitialActiveProvider skips missing preferred and picks first paid provider', () => {
+    const result = resolveInitialActiveProvider({
+      configuredNames: ['deepseek', 'github-copilot'],
+      definitions: PROVIDER_DEFINITIONS,
+      preferred: 'anthropic',
+    });
+    expect(result.active).toBe('deepseek');
+  });
+
+  it('resolveInitialActiveProvider falls back to github-copilot when only free provider', () => {
+    const result = resolveInitialActiveProvider({
+      configuredNames: ['github-copilot'],
+      definitions: PROVIDER_DEFINITIONS,
+    });
+    expect(result.active).toBe('github-copilot');
+    expect(result.preset).toBe('free-copilot');
+  });
+
+  it('resolveInitialActiveProvider returns null when nothing configured', () => {
+    const result = resolveInitialActiveProvider({
+      configuredNames: [],
+      definitions: PROVIDER_DEFINITIONS,
+    });
+    expect(result.active).toBeNull();
   });
 
   it('includes vllm in registry as local provider', () => {

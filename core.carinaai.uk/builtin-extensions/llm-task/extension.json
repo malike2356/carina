@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "llm-task",
+  "version": "1.0.0",
+  "name": "LLM Task",
+  "author": "VERLOX Ltd",
+  "description": "One-shot LLM completion without the full agent loop.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

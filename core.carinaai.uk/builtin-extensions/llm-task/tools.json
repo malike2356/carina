@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "llm-task",
+    "name": "llm-task",
+    "description": "One-shot LLM completion without the full agent loop."
+  }
+]

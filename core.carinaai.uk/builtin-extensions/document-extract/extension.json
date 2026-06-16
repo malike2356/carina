@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "document-extract",
+  "version": "1.0.0",
+  "name": "Document Extraction",
+  "author": "VERLOX Ltd",
+  "description": "Extract plain text from local documents.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

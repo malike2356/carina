@@ -42,25 +42,20 @@
     }
     button:hover { opacity: 0.9; }
     .error { color: #f85149; font-size: 13px; margin-bottom: 16px; }
+    #locale-switcher { margin-top: 16px; }
     @media (prefers-reduced-motion: reduce) { button { transition: none; } }
   </style>
 </head>
-<body>
+<body data-i18n-prefix="web.login">
   <form method="post" action="/login">
-    <h1>Carina</h1>
-    <p class="sub">Private instance - sign in to continue</p>
-    <div id="error" class="error" hidden></div>
-    <label for="password">Password</label>
+    <h1 data-i18n="web.login.title">Carina</h1>
+    <p class="sub" data-i18n="web.login.subtitle">Private instance - sign in to continue</p>
+    <div id="error" class="error" data-i18n="web.login.errorInvalidPassword" hidden></div>
+    <label for="password" data-i18n="web.login.password">Password</label>
     <input type="password" id="password" name="password" required autofocus>
-    <button type="submit">Sign in</button>
+    <button type="submit" data-i18n="web.login.submit">Sign in</button>
+    <div id="locale-switcher"></div>
   </form>
-  <script>
-    const params = new URLSearchParams(location.search);
-    if (params.get('error')) {
-      const el = document.getElementById('error');
-      el.textContent = 'Invalid password';
-      el.hidden = false;
-    }
-  </script>
+  <script src="/i18n.js"></script>
 </body>
 </html>

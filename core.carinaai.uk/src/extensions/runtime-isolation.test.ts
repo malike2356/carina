@@ -38,4 +38,15 @@ describe('extension runtime isolation', () => {
     expect(source).not.toMatch(/orchestrator/);
     expect(source).not.toMatch(/agents\/carina/);
   });
+
+  it('plugin-sdk does not import extension manager or installer', async () => {
+    const sdkDir = path.join(srcRoot, 'plugin-sdk');
+    const files = await fs.readdir(sdkDir);
+    for (const file of files.filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))) {
+      const source = await fs.readFile(path.join(sdkDir, file), 'utf8');
+      expect(source).not.toMatch(/extensions\/manager/);
+      expect(source).not.toMatch(/extensions\/installer/);
+      expect(source).not.toMatch(/agents\/carina/);
+    }
+  });
 });

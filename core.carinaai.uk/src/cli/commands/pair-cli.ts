@@ -26,6 +26,7 @@ export async function runPairCommand(args: string[]): Promise<void> {
     console.log(renderTerminalQr(session.uri));
     console.log('');
     console.log(chalk.gray('Waiting for a device to pair (5 minutes)...'));
+    console.log(chalk.gray(`Mobile companion: open /mobile on this gateway (or scan URI below)`));
 
     const result = await waitForPairingByToken(session.token);
     if (!result) {

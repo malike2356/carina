@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "active-memory",
+    "name": "active-memory",
+    "description": "Surface relevant durable memory and recent sessions."
+  }
+]

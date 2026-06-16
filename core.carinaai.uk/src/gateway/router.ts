@@ -9,7 +9,18 @@ import { hasImageAttachment } from './model-command.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import type { ChannelMessage, ChannelName } from './channels/channel-adapter.interface.js';
 import { recordGroupResponse, shouldRespondInGroup } from './group-chat.js';
-import { bindSessionDelivery } from '../agents/cron-delivery-registry.js';
+import { bindSessionDelivery, getSessionDelivery } from '../agents/cron-delivery-registry.js';
+import {
+  buildChannelApprovalPayload,
+  channelApprovalUiEnabled,
+  channelSupportsInteractiveApproval,
+  summarizeToolParamsForChannel,
+} from './channels/channel-approval-ui.js';
+import { normalizeChannelInbound } from './channels/channel-platform.js';
+import {
+  buildGatewaySessionMapKey,
+} from './channels/channel-session-binding.js';
+import { buildSurfaceSessionMapKey, resolveSurfaceExternalUserId, type ClientSurface } from '../surfaces/index.js';
 import {
   applyAgentRuntimeEnv,
   buildAgentRuntimeContext,
@@ -22,9 +33,6 @@ import {
   type AgentRuntimeContext,
 } from '../workspaces/index.js';
 import { guardInboundMessage } from './channels/inbound-guards.js';
-import {
-  buildSessionExternalKey,
-} from './channels/channel-routing.js';
 import type { AgentDefinition } from '../workspaces/types.js';
 import type { ProviderOverride } from './model-command.js';
 
@@ -41,6 +49,7 @@ export class GatewayRouter {
   private sessionAgentIds = new Map<string, string>();
   /** Per-session /model choice; survives bindAgentToSession (agent YAML default must not reset this). */
   private sessionProviderOverrides = new Map<string, ProviderOverride>();
+  private sessionConfirmHandlers = new Map<string, ConfirmFn>();
   private memoryReady: boolean;
   private confirmTool?: ConfirmFn;
   private gcTimer: ReturnType<typeof setInterval>;
@@ -64,8 +73,56 @@ export class GatewayRouter {
         this.sessionRuntime.delete(id);
         this.sessionAgentIds.delete(id);
         this.sessionProviderOverrides.delete(id);
+        this.sessionConfirmHandlers.delete(id);
       }
     }
+  }
+
+  private buildChannelConfirmHandler(sessionId: string, channel: ChannelName): ConfirmFn {
+    return async (toolName, params, reason) => {
+      if (process.env.CARINA_CHANNEL_AUTO_CONFIRM === 'true') return true;
+
+      const target = getSessionDelivery(sessionId);
+      const adapter = channelRegistry.getByName(channel);
+      if (!target || !adapter) return false;
+
+      const payload = buildChannelApprovalPayload(channel, {
+        toolName,
+        reason,
+        paramsSummary: summarizeToolParamsForChannel(params),
+      });
+
+      try {
+        await adapter.sendMessage(target.conversationId, payload.text, {
+          ...payload.options,
+          threadId: target.threadId,
+        });
+      } catch {
+        return false;
+      }
+
+      return process.env.CARINA_CHANNEL_APPROVAL_STRICT !== 'true';
+    };
+  }
+
+  async getChannelSession(agentId: string, inbound: ChannelMessage): Promise<string> {
+    const mapKey = buildGatewaySessionMapKey(agentId, inbound);
+    const redis = getRedis();
+
+    if (redis) {
+      const existing = await redis.get(mapKey);
+      if (existing) return existing;
+      const sessionId = allocateGatewaySession();
+      await redis.set(mapKey, sessionId);
+      return sessionId;
+    }
+
+    const cached = memoryFallback.get(mapKey);
+    if (cached) return cached;
+
+    const sessionId = allocateGatewaySession();
+    memoryFallback.set(mapKey, sessionId);
+    return sessionId;
   }
 
   private resolveSessionProviderOverride(sessionId: string): ProviderOverride | undefined {
@@ -85,6 +142,11 @@ export class GatewayRouter {
 
   setConfirmHandler(fn: ConfirmFn): void {
     this.confirmTool = fn;
+  }
+
+  setStreamAbortSignal(sessionId: string, signal?: AbortSignal): void {
+    const agent = this.agents.get(sessionId);
+    agent?.setAbortSignal(signal);
   }
 
   setSessionSystemPromptSuffix(sessionId: string, suffix: string): void {
@@ -108,12 +170,7 @@ export class GatewayRouter {
   }
 
   async getSession(agentId: string, source: string, externalUserId: string): Promise<string> {
-    // When CARINA_OPERATOR_SESSION=true, all surfaces (Telegram, web, CLI)
-    // share one session; Carina remembers across platforms.
-    const unifiedSession = process.env.CARINA_OPERATOR_SESSION === 'true';
-    const mapKey = unifiedSession
-      ? `carina:agent:${agentId}:gateway:operator`
-      : `carina:agent:${agentId}:gateway:${source}:${externalUserId}`;
+    const mapKey = buildSurfaceSessionMapKey(agentId, source, externalUserId);
     const redis = getRedis();
 
     if (redis) {
@@ -137,7 +194,7 @@ export class GatewayRouter {
     let agent = this.agents.get(sessionId);
     const runtime = this.sessionRuntime.get(sessionId);
     if (!agent) {
-      const confirm = this.confirmTool;
+      const confirm = this.sessionConfirmHandlers.get(sessionId) ?? this.confirmTool;
       agent = new CarinaOrchestrator(sessionId, this.memoryReady, confirm, {
         platform: source,
         agentId: runtime?.agent.id,
@@ -177,7 +234,10 @@ export class GatewayRouter {
     }
   }
 
-  async *handle(message: CarinaMessage): AsyncGenerator<string> {
+  async *handle(
+    message: CarinaMessage,
+    options?: { turnId?: string },
+  ): AsyncGenerator<string> {
     if (message.agentId && !this.sessionAgentIds.has(message.sessionId)) {
       const agentDef = getAgentDefinition(message.agentId) ?? getDefaultAgentDefinition();
       await this.bindAgentToSession(message.sessionId, agentDef);
@@ -229,6 +289,11 @@ export class GatewayRouter {
       this.sessionsWithRecentImages.add(message.sessionId);
     }
 
+    if (options?.turnId) {
+      const { getStreamAbortSignal } = await import('../telemetry/stream-session.js');
+      this.setStreamAbortSignal(message.sessionId, getStreamAbortSignal(message.sessionId, options.turnId));
+    }
+
     const agent = this.getAgent(message.sessionId, message.source);
     if (message.tenantId) {
       agent.setTenantId(message.tenantId);
@@ -263,8 +328,9 @@ export class GatewayRouter {
   }
 
   async *handleInbound(channel: ChannelName, raw: unknown): AsyncGenerator<string> {
-    const inbound = await channelRegistry.getForInbound(channel, raw);
-    if (!inbound) return;
+    const normalized = await normalizeChannelInbound(channel, raw);
+    if (!normalized.ok) return;
+    const inbound = normalized.message;
 
     const route = await resolveInboundAgentRoute(inbound);
     const agentId = route.agent.id;
@@ -277,9 +343,18 @@ export class GatewayRouter {
       return;
     }
 
-    const externalKey = buildSessionExternalKey(inbound);
-    const sessionId = await this.getSession(agentId, inbound.channel, externalKey);
+    const sessionId = await this.getChannelSession(agentId, inbound);
     await this.bindAgentToSession(sessionId, route.agent);
+
+    if (
+      channelApprovalUiEnabled()
+      && channelSupportsInteractiveApproval(inbound.channel)
+    ) {
+      this.sessionConfirmHandlers.set(
+        sessionId,
+        this.buildChannelConfirmHandler(sessionId, inbound.channel),
+      );
+    }
 
     bindSessionDelivery(sessionId, {
       channel: inbound.channel,
@@ -307,17 +382,35 @@ export class GatewayRouter {
     yield* this.handle(carinaMsg);
   }
 
-  async startCliSession(externalUserId = 'local'): Promise<{
+  async startCliSession(externalUserId = resolveSurfaceExternalUserId('cli')): Promise<{
     sessionId: string;
     agent: AgentDefinition;
     workspaceContextCount: number;
   }> {
+    return this.startSurfaceSession('cli', externalUserId) as Promise<{
+      sessionId: string;
+      agent: AgentDefinition;
+      workspaceContextCount: number;
+    }>;
+  }
+
+  async startSurfaceSession(
+    surface: ClientSurface,
+    externalUserId?: string,
+  ): Promise<{
+    sessionId: string;
+    agentId: string;
+    agent: AgentDefinition;
+    workspaceContextCount: number;
+  }> {
+    const ext = externalUserId ?? resolveSurfaceExternalUserId(surface);
     const agentDef = getActiveAgentDefinition();
-    const sessionId = await this.getSession(agentDef.id, 'cli', externalUserId);
+    const sessionId = await this.getSession(agentDef.id, surface, ext);
     const runtime = await this.bindAgentToSession(sessionId, agentDef);
     applyAgentRuntimeEnv(runtime);
     return {
       sessionId,
+      agentId: agentDef.id,
       agent: agentDef,
       workspaceContextCount: runtime.workspaceContext.split('---').length,
     };
@@ -340,14 +433,15 @@ export class GatewayRouter {
 }
 
 function buildGroupContext(message: CarinaMessage): string {
-  return `Telegram group context:
+  return `Group chat context (${message.source}):
 - Chat: ${message.chatTitle ?? message.chatId ?? 'unknown'}
 - Sender: ${message.senderName ?? 'unknown'}
 - Mentioned or replied to Carina: ${message.mentioned ? 'yes' : 'no'}
 
 Speaking rules:
-- Respond only if you can add clear value.
+- Respond only if you can add clear value or were addressed.
 - If no response is needed, respond exactly: NO_RESPONSE_NEEDED
+- Do not use tools for casual banter unless explicitly asked.
 - Send one concise response, not several fragments.`;
 }
 

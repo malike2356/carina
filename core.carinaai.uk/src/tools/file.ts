@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import path from 'path';
 import type { Tool } from '../types/index.js';
-import { expandPath, isBlockedSystemWrite, isSafePath, resolveResourcePath } from './path-utils.js';
+import { expandPath, resolveResourcePath } from './path-utils.js';
+import { evaluateResolvedPathSafety } from '../security/path-safety.js';
 import { checkHoneypotFilePath } from '../security/honeypot-client.js';
 import { collectSyntaxErrors, newSyntaxErrors } from './file-syntax.js';
 
@@ -67,8 +68,9 @@ export const fileReadTool: Tool = {
     const offset = Math.max(1, Number(params.offset ?? DEFAULT_OFFSET));
     const limit = Math.max(1, Math.min(Number(params.limit ?? DEFAULT_LIMIT), MAX_LIMIT));
 
-    if (!isSafePath(filePath)) {
-      return 'Error: path traversal or blocked path is not allowed.';
+    const safety = evaluateResolvedPathSafety(filePath, 'read');
+    if (!safety.allowed) {
+      return `Error: ${safety.reason}.`;
     }
 
     if (await getHoneypotCheckEnabled()) {
@@ -160,8 +162,9 @@ export const fileWriteTool: Tool = {
     const filePath = resolveResourcePath(expandPath(String(params.path ?? '')));
     const content = String(params.content ?? '');
 
-    if (!isSafePath(filePath) || isBlockedSystemWrite(filePath)) {
-      return 'Error: cannot write to this path.';
+    const safety = evaluateResolvedPathSafety(filePath, 'write');
+    if (!safety.allowed) {
+      return `Error: ${safety.reason}.`;
     }
 
     let priorContent = '';

@@ -1,5 +1,11 @@
 import { llm } from '../brain/llm.js';
 import { checkMonthlyBudget, estimateCost, recordUsage } from '../brain/cost-tracker.js';
+import {
+  buildPreflightWarning,
+  buildProviderCostContext,
+  preflightProviderChoiceAsync,
+} from '../brain/cost-guards.js';
+import { buildModelFamilyOverlay } from '../brain/prompt-overlays.js';
 import { checkCreditGate, getAllowedModelClasses } from '../billing/credit-gate.js';
 import { debitCredits } from '../billing/credit-ledger.js';
 import {
@@ -13,6 +19,8 @@ import type { BillingPlanId } from '../billing/plans.js';
 import { resolveOrgIdFromUser } from '../hosted/scoped-query.js';
 import { getOrgPlan } from '../hosted/plan-gates.js';
 import { config } from '../config/index.js';
+import { resolveTurnPolicy } from '../config/runtime-config.js';
+import { getSessionConfig } from '../config/session-config.js';
 import {
   getSessionHistory,
   searchMemory,
@@ -26,6 +34,11 @@ import { compressTrajectoryWithStats, isStaleToolCall } from './trajectory.js';
 import { maybeRunRemCycle } from '../memory/rem/rem-promotion.js';
 import { isRagPackAllowed, isSkillAllowedForActivePacks } from '../skills/index.js';
 import { buildSurfaceContext, buildSystemPromptParts } from './system-prompt.js';
+import { buildSubagentSystemPromptParts } from './subagent-prompt.js';
+import {
+  buildCasualMessageContext,
+  isCasualMessage,
+} from './conversation-discipline.js';
 import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
 import { loadCrossAgentContext } from '../sync/agent-sync.js';
 import { loadAllContacts, contactsContextBlock } from '../profiles/contacts.js';
@@ -33,16 +46,37 @@ import { learnFromSessionTurn } from '../skills/session-learner.js';
 import { maybeInferCommitments } from '../commitments/inference.js';
 import { getSessionDelivery } from './cron-delivery-registry.js';
 import { registry, registerSessionTools, listSessionTools, getSessionTool } from '../tools/index.js';
-import { resolveActiveToolNames } from '../tools/toolset-config.js';
-import { ALWAYS_ON_TOOLS } from '../tools/toolset.js';
+import { resolveSessionTools } from '../tools/session-tool-resolution.js';
+import { buildMandatoryToolHint } from '../tools/mandatory-tools.js';
+import { buildSessionRecallHint } from '../memory/retrieval-discipline.js';
+import { buildDomainRulesContext } from '../domain-rules/build-context.js';
+import { listAllDomainRulePacks } from '../domain-rules/registry.js';
+import { selectDomainRulePacks } from '../domain-rules/select.js';
 import { getPersistentContextForAgent } from '../memory/persistent-memory.js';
 import { maybeBootstrapOperatorProfile } from '../memory/operator-profile.js';
 import { memoryInjectionEnabled, memoryInjectionIncludesSemantic } from '../memory/memory-injection.js';
+import { applyContextBudget } from '../memory/context-budget.js';
+import { wrapCompactedContext } from '../memory/memory-discipline.js';
 import { memoryTool } from '../tools/memory.js';
 import { getPendingClarification, clearPendingClarification } from '../tools/clarify.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
+import { loadWorkspaceContext } from '../workspace/context-files.js';
+import { getAgentDefinition, getDefaultAgentDefinition } from '../workspaces/agent-registry.js';
+import { resolveAgentWorkspace } from '../workspaces/paths.js';
 import type { ConfirmFn } from './tool-runner.js';
 import { executeToolCall } from './tool-runner.js';
+import {
+  augmentFailedToolResult,
+  buildSilentTurnPreventionNudge,
+  getRecentToolFailures,
+  isSilentOrWeakResponse,
+} from './turn-discipline.js';
+import {
+  IterationBudget,
+  formatIterationBudgetWarning,
+  shouldRefundToolIteration,
+} from './iteration-budget.js';
+import { isExpensiveModelTier, getModelMetadata } from '../brain/model-metadata.js';
 import { scanUserInput, scanAgentOutput } from '../security/prompt-guard-middleware.js';
 import { isSessionBlocked, isSuspended, getDeceptionAugmentation } from '../security/index.js';
 import type { ProviderOverride } from '../brain/llm.js';
@@ -79,8 +113,9 @@ export class CarinaAgent {
   private confirmTool?: ConfirmFn;
   private allowedTools?: string[];
   private platform?: string;
+  private agentId?: string;
   private systemPromptSuffix = '';
-  private maxTurns = 20;
+  private maxTurns = config.carina.maxTurns;
   private persistMemory = true;
   private fastMode = false;
   private forceConfirm = false;
@@ -102,8 +137,9 @@ export class CarinaAgent {
     this.confirmTool = options.confirmTool ?? confirmTool;
     this.allowedTools = options.allowedTools;
     this.platform = options.platform;
+    this.agentId = options.agentId;
     this.systemPromptSuffix = options.systemPromptSuffix ?? '';
-    this.maxTurns = options.maxTurns ?? 20;
+    this.maxTurns = options.maxTurns ?? config.carina.maxTurns;
     this.persistMemory = options.persistMemory !== false;
     this.fastMode = options.fastMode === true;
     this.forceConfirm = options.forceConfirm ?? false;
@@ -151,32 +187,74 @@ export class CarinaAgent {
     this.fastMode = fastMode;
   }
 
+  setAbortSignal(signal?: AbortSignal): void {
+    this.abortSignal = signal;
+  }
+
   getProviderOverride(): ProviderOverride | undefined {
     return this.pendingProviderOverride ?? this.providerOverride;
   }
 
   getTools(): Tool[] {
-    const resolved = resolveActiveToolNames({
+    return resolveSessionTools({
+      sessionId: this.sessionId,
       platform: this.platform,
       explicitAllowed: this.allowedTools,
-    });
-    const allowed = new Set([...resolved, ...ALWAYS_ON_TOOLS]);
-    // Merge global tools with session-specific tools (session overrides global for same name)
-    const globalTools = registry.list().filter((t) => allowed.has(t.name));
-    const sessionTools = listSessionTools(this.sessionId).filter((t) => allowed.has(t.name));
-    const byName = new Map(globalTools.map((t) => [t.name, t]));
-    for (const t of sessionTools) byName.set(t.name, t);
-    return [...byName.values()];
+    }).tools;
   }
 
   async buildContext(userMessage: string): Promise<{ messages: Message[]; meta: TurnMeta }> {
     const meta: TurnMeta = { memoryTurns: 0, ragChunks: 0, skills: 0 };
     const contextParts: string[] = [];
+    const subagent = isSubagentSession(this.sessionId);
 
-    contextParts.push(...buildSystemPromptParts());
-    const surfaceContext = buildSurfaceContext(this.platform);
-    if (surfaceContext) {
-      contextParts.push(surfaceContext);
+    if (subagent) {
+      contextParts.push(...buildSubagentSystemPromptParts());
+    } else {
+      contextParts.push(...buildSystemPromptParts());
+      const surfaceContext = buildSurfaceContext(this.platform);
+      if (surfaceContext) {
+        contextParts.push(surfaceContext);
+      }
+      if (isCasualMessage(userMessage)) {
+        contextParts.push(buildCasualMessageContext());
+      }
+    }
+    const mandatoryHint = buildMandatoryToolHint(userMessage);
+    if (mandatoryHint) {
+      contextParts.push(mandatoryHint);
+    }
+    const recallHint = buildSessionRecallHint(userMessage);
+    if (recallHint) {
+      contextParts.push(recallHint);
+    }
+    if (!subagent) {
+      const sessionTools = resolveSessionTools({
+        sessionId: this.sessionId,
+        platform: this.platform,
+        explicitAllowed: this.allowedTools,
+      });
+      const domainRules = buildDomainRulesContext(
+        selectDomainRulePacks(listAllDomainRulePacks(), {
+          toolNames: sessionTools.names,
+          toolsets: sessionTools.toolsets,
+        }),
+      );
+      if (domainRules) {
+        contextParts.push(domainRules);
+      }
+
+      const providerName = this.getProviderOverride()?.name ?? llm.current().name;
+      const modelName = llm.modelFor(providerName);
+      const overlay = buildModelFamilyOverlay(providerName, modelName);
+      if (overlay) {
+        contextParts.push(overlay);
+      }
+      const budget = await checkMonthlyBudget();
+      const costContext = buildProviderCostContext(providerName, modelName, budget);
+      if (costContext) {
+        contextParts.push(costContext);
+      }
     }
     if (process.env.LABYRINTH_ENABLED === 'true') {
       const deceptionBlock = await getDeceptionAugmentation(config.labyrinth.instanceId);
@@ -186,30 +264,42 @@ export class CarinaAgent {
     }
     if (this.systemPromptSuffix) {
       contextParts.push(this.systemPromptSuffix);
+    } else if (subagent) {
+      const agentId = process.env.CARINA_ACTIVE_AGENT ?? 'main';
+      const agent = getAgentDefinition(agentId) ?? getDefaultAgentDefinition();
+      const workspaceDir = resolveAgentWorkspace(agent);
+      const bootstrapParts = await loadWorkspaceContext(workspaceDir, { mode: 'minimal' });
+      if (bootstrapParts.length > 0) {
+        contextParts.push(
+          `Subagent bootstrap (minimal):\n${bootstrapParts.join('\n\n---\n\n')}`,
+        );
+      }
     }
 
-    const [personality, crossAgent, contacts, sharedSkills] = await Promise.all([
-      loadProfilePersonality(),
-      loadCrossAgentContext(),
-      loadAllContacts(),
-      import('../skills/cross-agent-learning.js').then((m) =>
-        m.loadSharedSkillsContext(process.env.CARINA_ACTIVE_AGENT ?? 'main'),
-      ),
-    ]);
+    if (!subagent) {
+      const [personality, crossAgent, contacts, sharedSkills] = await Promise.all([
+        loadProfilePersonality(),
+        loadCrossAgentContext(),
+        loadAllContacts(),
+        import('../skills/cross-agent-learning.js').then((m) =>
+          m.loadSharedSkillsContext(process.env.CARINA_ACTIVE_AGENT ?? 'main'),
+        ),
+      ]);
 
-    const personalitySuffix = personalityToSystemSuffix(personality);
-    if (personalitySuffix) {
-      contextParts.push(personalitySuffix);
-    }
-    if (crossAgent.length > 0) {
-      contextParts.push(crossAgent.join('\n\n---\n\n'));
-    }
-    if (sharedSkills) {
-      contextParts.push(sharedSkills);
-    }
-    const contactBlock = contactsContextBlock(contacts.slice(0, 15));
-    if (contactBlock) {
-      contextParts.push(contactBlock);
+      const personalitySuffix = personalityToSystemSuffix(personality);
+      if (personalitySuffix) {
+        contextParts.push(personalitySuffix);
+      }
+      if (crossAgent.length > 0) {
+        contextParts.push(crossAgent.join('\n\n---\n\n'));
+      }
+      if (sharedSkills) {
+        contextParts.push(sharedSkills);
+      }
+      const contactBlock = contactsContextBlock(contacts.slice(0, 15));
+      if (contactBlock) {
+        contextParts.push(contactBlock);
+      }
     }
 
     const pendingClarification = getPendingClarification(this.sessionId);
@@ -229,7 +319,7 @@ export class CarinaAgent {
     if (this.memoryReady && !this.fastMode && memoryInjectionEnabled()) {
       await maybeBootstrapOperatorProfile();
       const keywords = extractKeywords(userMessage);
-      const semantic = memoryInjectionIncludesSemantic();
+      const semantic = memoryInjectionIncludesSemantic(userMessage);
       const [persistent, history, similar, rawRag, rawSkills] = await Promise.all([
         getPersistentContextForAgent(process.env.CARINA_ACTIVE_AGENT ?? 'main'),
         getSessionHistory(this.sessionId, config.carina.maxMemoryContext),
@@ -238,13 +328,15 @@ export class CarinaAgent {
         semantic ? findSkillsIncludingSkillMd(keywords) : Promise.resolve([]),
       ]);
 
+      const fixedParts = [...contextParts];
+
       if (persistent) {
-        contextParts.push(`Persistent memory:\n${persistent}`);
+        fixedParts.push(`Persistent memory:\n${persistent}`);
       }
 
       if (history.length === 0) {
         if (persistent.trim()) {
-          contextParts.push(
+          fixedParts.push(
             'Session context: the operator just opened a new session. ' +
             'The User profile and agent notes above contain everything you know about them. ' +
             'Carry that context forward -- you already know this person. ' +
@@ -253,7 +345,7 @@ export class CarinaAgent {
             'If they seem to want to reconnect or check in, respond in kind.',
           );
         } else {
-          contextParts.push(
+          fixedParts.push(
             'Session context: this appears to be your first interaction with this operator. ' +
             'You have no prior context about them. When you respond, introduce yourself by name ' +
             'and ask who they are and what they are building or working on. ' +
@@ -262,24 +354,35 @@ export class CarinaAgent {
         }
       }
 
+      const trimLayers: Array<{ id: 'history' | 'similar' | 'rag' | 'skills'; content: string }> = [];
+
       if (history.length > 0) {
         meta.memoryTurns = history.length;
         const lines = history.map((m) => `${m.role}: ${m.content}`);
-        contextParts.push(`Recent session history:\n${lines.join('\n')}`);
+        trimLayers.push({
+          id: 'history',
+          content: `Recent session history:\n${lines.join('\n')}`,
+        });
       }
 
       const otherSession = similar.filter((m) => m.sessionId !== this.sessionId);
       if (otherSession.length > 0) {
         meta.memoryTurns += otherSession.length;
         const lines = otherSession.map((m) => `[${m.sessionId}] ${m.role}: ${m.content}`);
-        contextParts.push(`Relevant past memories:\n${lines.join('\n')}`);
+        trimLayers.push({
+          id: 'similar',
+          content: `Relevant past memories:\n${lines.join('\n')}`,
+        });
       }
 
       const rag = rawRag.filter((chunk) => isRagPackAllowed(chunk.pack));
       if (rag.length > 0) {
         meta.ragChunks = rag.length;
         const lines = rag.map((c) => `[${c.pack}/${c.source}] ${c.content}`);
-        contextParts.push(`Reference knowledge from installed packs (use only when relevant):\n${lines.join('\n\n')}`);
+        trimLayers.push({
+          id: 'rag',
+          content: `Reference knowledge from installed packs (use only when relevant):\n${lines.join('\n\n')}`,
+        });
       }
 
       const skills = rawSkills.filter((skill) => isSkillAllowedForActivePacks(skill.name));
@@ -293,7 +396,21 @@ export class CarinaAgent {
         const lines = skills.map(
           (s) => `Skill: ${s.name}\n${s.description}\nSteps:\n${s.steps}`,
         );
-        contextParts.push(`Relevant skills:\n${lines.join('\n\n')}`);
+        trimLayers.push({
+          id: 'skills',
+          content: `Relevant skills:\n${lines.join('\n\n')}`,
+        });
+      }
+
+      const budgeted = applyContextBudget(fixedParts, trimLayers, config.carina.contextCharBudget);
+      contextParts.length = 0;
+      contextParts.push(...budgeted.fixedParts);
+      for (const layer of budgeted.layers) {
+        let content = layer.content;
+        if (layer.id === 'history' && budgeted.historyCompacted) {
+          content = wrapCompactedContext(content);
+        }
+        contextParts.push(content);
       }
     }
 
@@ -353,7 +470,7 @@ export class CarinaAgent {
     }
     const safeUserMessage = inputScan.text;
     const prompt = priorContext
-      ? `${priorContext}\n\n---\n\nTask:\n${safeUserMessage}`
+      ? `${wrapCompactedContext(priorContext)}\n\n---\n\nTask:\n${safeUserMessage}`
       : safeUserMessage;
     const { messages: initial, meta } = await this.buildContext(prompt);
     const messages = [...initial];
@@ -425,18 +542,50 @@ export class CarinaAgent {
     }
 
     const tools = this.getTools();
+    const agentId = this.agentId ?? process.env.CARINA_ACTIVE_AGENT ?? 'main';
+    const turnPolicy = resolveTurnPolicy({
+      agentId,
+      subagent: isSubagentSession(this.sessionId),
+      sessionOverrides: getSessionConfig(this.sessionId),
+    });
+    this.maxTurns = turnPolicy.maxTurns;
+    if (turnPolicy.provider && !this.providerOverride) {
+      this.providerOverride = { name: turnPolicy.provider, model: turnPolicy.model };
+    }
+    const iterationBudget = new IterationBudget(turnPolicy.iterationBudget);
     let turnText = '';
     const toolsUsed: string[] = [];
     const toolCallLog: string[] = [];
+    const toolResultsForEscalation: Array<{ toolName?: string; error?: string; output?: string }> = [];
     const recentToolCalls: ToolCall[] = [];
     let turns = 0;
     let budgetWarned = false;
+    let costPreflightWarned = false;
+    let iterationBudgetWarned = false;
     let awaitingClarification = false;
+    let failureNudgeUsed = false;
+    let budgetGraceCall = false;
+    let budgetGraceUsed = false;
 
-    while (turns < this.maxTurns) {
+    while ((turns < this.maxTurns) && (iterationBudget.remaining > 0 || budgetGraceCall)) {
       if (this.abortSignal?.aborted) {
         yield { type: 'text', content: '[Turn cancelled.]' };
         break;
+      }
+
+      if (budgetGraceCall) {
+        budgetGraceCall = false;
+      } else if (!iterationBudget.consume()) {
+        if (turnPolicy.graceCallEnabled && !budgetGraceUsed) {
+          budgetGraceUsed = true;
+          budgetGraceCall = true;
+        } else {
+          yield {
+            type: 'text',
+            content: `[Iteration budget exhausted: ${iterationBudget.used}/${iterationBudget.maxTotal} iterations used.]`,
+          };
+          break;
+        }
       }
 
       turns++;
@@ -453,6 +602,36 @@ export class CarinaAgent {
       if (budget.status === 'warn' && !budgetWarned) {
         budgetWarned = true;
         yield { type: 'text', content: `[${budget.message}]\n\n` };
+      }
+
+      if (!iterationBudgetWarned) {
+        const iterationWarning = formatIterationBudgetWarning(iterationBudget);
+        if (iterationWarning) {
+          iterationBudgetWarned = true;
+          yield { type: 'text', content: `[${iterationWarning}]\n\n` };
+        }
+      }
+
+      const providerName = this.getProviderOverride()?.name ?? llm.current().name;
+      const modelName = llm.modelFor(providerName);
+      if (turnPolicy.blockExpensiveModels && isExpensiveModelTier(getModelMetadata(providerName, modelName).tier)) {
+        yield {
+          type: 'text',
+          content: `[Expensive model ${providerName}/${modelName} is blocked for this agent or session. Switch to a cheaper model.]`,
+        };
+        break;
+      }
+      const preflight = await preflightProviderChoiceAsync(providerName, modelName);
+      if (preflight.decision === 'block') {
+        yield { type: 'text', content: `[${preflight.message ?? 'LLM budget blocked.'}]` };
+        break;
+      }
+      if (preflight.decision === 'warn' && !costPreflightWarned) {
+        costPreflightWarned = true;
+        const warning = buildPreflightWarning(preflight);
+        if (warning) {
+          yield { type: 'text', content: `[${warning}]\n\n` };
+        }
       }
 
       const { messages: compressed, stats } = compressTrajectoryWithStats(messages);
@@ -534,6 +713,18 @@ export class CarinaAgent {
       }
 
       if (toolCalls.length === 0) {
+        if (!failureNudgeUsed) {
+          const recentFailures = getRecentToolFailures(messages);
+          if (recentFailures.length > 0 && isSilentOrWeakResponse(turnText) && turns < this.maxTurns) {
+            failureNudgeUsed = true;
+            messages.push({
+              role: 'system',
+              content: buildSilentTurnPreventionNudge(recentFailures),
+              timestamp: new Date(),
+            });
+            continue;
+          }
+        }
         if (this.memoryReady && this.persistMemory) {
           await saveMemory(this.sessionId, 'user', safeUserMessage);
           await saveMemory(this.sessionId, 'assistant', turnText);
@@ -573,12 +764,24 @@ export class CarinaAgent {
 
         this.toolCallInFlight = true;
         try {
-          const result = await executeToolCall(
-            call,
-            this.confirmTool,
-            this.forceConfirm,
-            this.sessionId,
+          const result = augmentFailedToolResult(
+            await executeToolCall(
+              call,
+              this.confirmTool,
+              this.forceConfirm,
+              this.sessionId,
+            ),
+            call.toolName,
           );
+          toolResultsForEscalation.push({
+            toolName: call.toolName,
+            error: result !== null && typeof result === 'object' && 'error' in result
+              ? String((result as { error: string }).error)
+              : undefined,
+            output: typeof result === 'string'
+              ? result.slice(0, 500)
+              : JSON.stringify(result).slice(0, 500),
+          });
           messages.push({
             role: 'tool_result',
             content: '',
@@ -594,6 +797,9 @@ export class CarinaAgent {
             && (result as { status: string }).status === 'awaiting_clarification'
           ) {
             awaitingClarification = true;
+          }
+          if (shouldRefundToolIteration(call.toolName)) {
+            iterationBudget.refund();
           }
         } finally {
           this.toolCallInFlight = false;
@@ -642,6 +848,26 @@ export class CarinaAgent {
         toolsUsed,
         toolCallLog,
       });
+    }
+
+    try {
+      const { maybeEscalateTurn } = await import('./teacher-escalation.js');
+      const escalation = await maybeEscalateTurn({
+        userMessage: safeUserMessage,
+        studentReply: turnText,
+        toolResults: toolResultsForEscalation,
+        activeProvider: this.getProviderOverride()?.name ?? llm.current().name,
+      });
+      if (escalation?.escalated && escalation.teacherReply) {
+        let notice = `\n\n[Teacher escalation (${escalation.teacherProvider ?? 'teacher'})]\n${escalation.teacherReply}`;
+        if (escalation.skillPath) {
+          notice += `\n\nSkill retained at: ${escalation.skillPath}`;
+        }
+        turnText += notice;
+        yield { type: 'text', content: notice };
+      }
+    } catch {
+      // teacher escalation must never break the user response
     }
 
     const delivery = getSessionDelivery(this.sessionId);

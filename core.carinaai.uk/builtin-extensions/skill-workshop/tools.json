@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "skill-workshop",
+    "name": "skill-workshop",
+    "description": "Review and approve auto-captured skill drafts."
+  }
+]

@@ -6,12 +6,15 @@ import {
 } from '../../packages/web/src/license-footer.js';
 
 describe('MIT license footer injection', () => {
-  it('adds footer before closing body tag', () => {
-    const html = injectMitLicenseFooter('<html><body><main>chat</main></body></html>', '1.0.0');
+  it('adds footer inside the composer area when composer-hint is present', () => {
+    const html = injectMitLicenseFooter(
+      '<html><body><footer><p class="composer-hint">Carina can make mistakes.</p></footer></body></html>',
+      '1.0.0',
+    );
     expect(html).toContain('id="carina-mit-footer"');
     expect(html).toContain('Carina v1.0.0');
-    expect(html).toContain('MIT License');
-    expect(html).toContain('Build commercial products freely');
+    expect(html.indexOf('carina-mit-footer')).toBeGreaterThan(html.indexOf('composer-hint'));
+    expect(html.indexOf('carina-mit-footer')).toBeLessThan(html.indexOf('</footer>'));
   });
 
   it('does not duplicate footer when already present', () => {

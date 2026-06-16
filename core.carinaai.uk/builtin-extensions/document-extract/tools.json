@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "document-extract",
+    "name": "document-extract",
+    "description": "Extract plain text from local documents."
+  }
+]

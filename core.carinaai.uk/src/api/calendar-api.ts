@@ -5,6 +5,7 @@ import {
   getCalDavSyncDiagnostics,
   isCalDavConfigured,
 } from '../integrations/caldav-client.js';
+import { internalCalendarApiRouter } from './internal-calendar-api.js';
 
 export interface CalendarEvent {
   id: string;
@@ -81,6 +82,8 @@ export async function listCalendarEvents(start: Date, end: Date): Promise<Calend
 }
 
 export const calendarApiRouter: ExpressRouter = Router();
+
+calendarApiRouter.use('/cloud', internalCalendarApiRouter);
 
 calendarApiRouter.get('/events', async (req: Request, res: Response) => {
   const now = new Date();

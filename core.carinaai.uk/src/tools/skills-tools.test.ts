@@ -22,13 +22,25 @@ vi.mock('../skills/store.js', () => ({
   deleteSkill: deleteSkillMock,
 }));
 
+vi.mock('../skills/skill-versions.js', () => ({
+  getLatestSkillVersion: vi.fn(async () => 1),
+  recordSkillVersion: vi.fn(async () => 2),
+}));
+
+vi.mock('../skills/skill-audit-log.js', () => ({
+  logSkillAction: vi.fn(async () => undefined),
+}));
+
+const VALID_DESCRIPTION = 'A reusable operator workflow with enough detail for validation.';
+const VALID_STEPS = '1. Run the first tool and capture output.\n2. Summarize results for the operator.';
+
 function makeSkill(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
     id: 'skill-1',
     name: 'test-skill',
     description: 'A test skill',
     trigger: ['keyword'],
-    steps: '1. Do something.',
+    steps: VALID_STEPS,
     toolsUsed: ['shell-exec'],
     usageCount: 3,
     createdAt: new Date('2026-01-01T00:00:00Z'),
@@ -76,7 +88,7 @@ describe('skill-view tool', () => {
     getSkillByNameMock.mockResolvedValue(makeSkill());
     const { skillViewTool } = await import('./skills-tools.js');
     const result = await skillViewTool.execute({ name: 'test-skill' }) as Record<string, unknown>;
-    expect(result.steps).toBe('1. Do something.');
+    expect(result.steps).toBe(VALID_STEPS);
     expect(result.tools_used).toEqual(['shell-exec']);
     expect(result.usage_count).toBe(3);
   });
@@ -133,8 +145,9 @@ describe('skill-manage tool', () => {
     const result = await skillManageTool.execute({
       action: 'create',
       name: 'test-skill',
-      description: 'A skill',
-      steps: '1. Do it.',
+      description: VALID_DESCRIPTION,
+      steps: VALID_STEPS,
+      triggers: ['workflow'],
     }) as { error?: string };
     expect(result.error).toContain('already exists');
   });
@@ -146,8 +159,9 @@ describe('skill-manage tool', () => {
     const result = await skillManageTool.execute({
       action: 'create',
       name: 'new-skill',
-      description: 'A new skill',
-      steps: '1. Run something.',
+      description: VALID_DESCRIPTION,
+      steps: VALID_STEPS,
+      triggers: ['workflow'],
     }) as { status?: string; id?: string };
     expect(result.status).toBe('created');
     expect(result.id).toBe('skill-42');
@@ -171,7 +185,7 @@ describe('skill-manage tool', () => {
     const result = await skillManageTool.execute({
       action: 'update',
       name: 'test-skill',
-      description: 'Updated description',
+      description: 'Updated description with enough characters for lint.',
     }) as { status?: string };
     expect(result.status).toBe('updated');
   });
@@ -204,8 +218,9 @@ describe('skill-manage tool', () => {
     const result = await skillManageTool.execute({
       action: 'create',
       name: 'test-skill',
-      description: 'A skill',
-      steps: '1. Do it.',
+      description: VALID_DESCRIPTION,
+      steps: VALID_STEPS,
+      triggers: ['workflow'],
     }) as { error?: string };
     expect(result.error).toContain('unique constraint');
   });

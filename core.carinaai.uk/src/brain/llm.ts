@@ -16,27 +16,29 @@ import { isAbortLikeError, llmRequestSignal, llmRequestTimeoutMs } from './reque
 import { getTenantProvider } from './tenant-provider-keys.js';
 import type { TenantProviderOverride } from './tenant-provider-keys.js';
 import {
-  isProviderAvailable,
   markProviderHealthy,
   markProviderUnhealthy,
 } from './provider-health.js';
 import {
   buildCopilotSelection,
-  freeCopilotProviderOrder,
   isFreeCopilotPreset,
-  mergeFallbackOrder,
   FREE_COPILOT_PRESET,
+  resolveInitialActiveProvider,
 } from './provider-routing.js';
 import {
   PROVIDER_DEFINITIONS,
   PROVIDER_MAP,
   KNOWN_LLM_PROVIDERS,
-  fallbackOrderNames,
   isProviderConfigured,
   providerApiKey,
   providerModel,
   type ProviderName,
 } from './provider-registry.js';
+import { resolveProviderFallbackChain } from './fallback-chain.js';
+import {
+  recordProviderFallback,
+  recordProviderSuccess,
+} from '../telemetry/provider-observation.js';
 import { getProviderFactory } from '../plugins/loader.js';
 import {
   anthropicCacheControlBlocks,
@@ -326,15 +328,21 @@ export class LLMRouter {
 
     const envPreset = process.env.CARINA_LLM_PRESET;
     const preferred = process.env.DEFAULT_PROVIDER ?? config.carina.defaultProvider;
+    const configuredNames = [...this.providers.keys()];
+    const resolved = resolveInitialActiveProvider({
+      configuredNames,
+      definitions: PROVIDER_DEFINITIONS,
+      preferred,
+      envPreset,
+    });
 
-    if (isFreeCopilotPreset(envPreset) || isFreeCopilotPreset(preferred)) {
-      this.preset = FREE_COPILOT_PRESET;
-      const selection = buildCopilotSelection([...this.providers.keys()], PROVIDER_DEFINITIONS);
-      this.active = selection.primary
-        ?? this.providers.keys().next().value
-        ?? 'deepseek';
-    } else {
-      this.active = this.providers.has(preferred) ? preferred : (this.providers.keys().next().value ?? 'deepseek');
+    this.active = resolved.active ?? '';
+    if (resolved.preset) this.preset = resolved.preset;
+
+    if (!this.active) {
+      console.error(
+        'No LLM provider configured. Set DEFAULT_PROVIDER and an API key, or set GITHUB_TOKEN for GitHub Copilot.',
+      );
     }
   }
 
@@ -371,10 +379,12 @@ export class LLMRouter {
   }
 
   private orderedProviderNames(activeName: string): string[] {
-    const base = isFreeCopilotPreset(this.preset)
-      ? freeCopilotProviderOrder(this.configuredNames(), PROVIDER_DEFINITIONS)
-      : fallbackOrderNames();
-    return mergeFallbackOrder(activeName, base).filter((name) => isProviderAvailable(name));
+    return resolveProviderFallbackChain({
+      activeProvider: activeName,
+      preset: this.preset,
+      configuredNames: this.configuredNames(),
+      definitions: PROVIDER_DEFINITIONS,
+    });
   }
 
   use(provider: string, model?: string): void {
@@ -490,16 +500,20 @@ export class LLMRouter {
     tools?: Tool[],
   ): Promise<CarinaResponse> {
     let lastErr: unknown;
-    for (const { provider, model } of providers) {
+    for (let i = 0; i < providers.length; i++) {
+      const { provider, model } = providers[i]!;
       try {
         const result = await provider.chat(messages, tools, model);
         markProviderHealthy(provider.name);
+        recordProviderSuccess(provider.name, model);
         return result;
       } catch (err) {
         lastErr = err;
         const msg = err instanceof Error ? err.message : String(err);
         markProviderUnhealthy(provider.name, msg);
-        if (provider.name !== providers.at(-1)?.provider.name) {
+        const next = providers[i + 1]?.provider.name;
+        if (next) {
+          recordProviderFallback(provider.name, next, err);
           console.warn(`[llm] ${provider.name} failed (${msg}), trying next provider...`);
         }
       }
@@ -510,14 +524,18 @@ export class LLMRouter {
   async *stream(messages: Message[], tools?: Tool[], override?: ProviderOverride): AsyncGenerator<string | ToolCall> {
     const providers = this.fallbackOrder(override);
     let lastErr: unknown;
-    for (const { provider, model } of providers) {
+    for (let i = 0; i < providers.length; i++) {
+      const { provider, model } = providers[i]!;
       try {
         yield* provider.stream(messages, tools, model);
+        recordProviderSuccess(provider.name, model);
         return;
       } catch (err) {
         lastErr = err;
         const msg = err instanceof Error ? err.message : String(err);
-        if (provider.name !== providers.at(-1)?.provider.name) {
+        const next = providers[i + 1]?.provider.name;
+        if (next) {
+          recordProviderFallback(provider.name, next, err);
           console.warn(`[llm] ${provider.name} stream failed (${msg}), trying next provider...`);
         }
       }
@@ -530,11 +548,13 @@ export class LLMRouter {
   }
 
   cheap(): LLMProvider {
-    const order = isFreeCopilotPreset(this.preset)
-      ? freeCopilotProviderOrder(this.configuredNames(), PROVIDER_DEFINITIONS)
-      : fallbackOrderNames();
+    const order = resolveProviderFallbackChain({
+      activeProvider: this.active,
+      preset: this.preset,
+      configuredNames: this.configuredNames(),
+      definitions: PROVIDER_DEFINITIONS,
+    });
     for (const name of order) {
-      if (!isProviderAvailable(name)) continue;
       const p = this.providers.get(name);
       if (p) return p;
     }

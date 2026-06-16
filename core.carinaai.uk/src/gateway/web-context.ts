@@ -3,13 +3,24 @@ import { config } from '../config/index.js';
 import { llm } from '../brain/llm.js';
 import { getUserProfile } from '../api/hosted-auth.js';
 import { scoutServiceUrl } from '../billing/tenant-scout.js';
-import { isHostedRequest } from './hosted-domain.js';
+import { resolveProductMode, resolveProductSurface } from '../product/surface.js';
 import { getActivePackNames } from '../skills/index.js';
 import { getActiveProfileName } from '../profiles/manager.js';
 import { describeNamedProfileScope } from '../profiles/scope.js';
+import type { ProductMode } from '../product/types.js';
 
 export type WebContextResponse = {
-  mode: 'operator' | 'hosted';
+  mode: ProductMode;
+  surface: {
+    productName: string;
+    workspaceName: string;
+    titleSuffix: string;
+    loginPath: string;
+    defaultLanding: string;
+    primaryNav: Array<{ id: string; href: string; label: string }>;
+    accountNav: Array<{ id: string; href: string; label: string }>;
+    instanceNav: Array<{ id: string; href: string; label: string }>;
+  };
   activeProfile: string;
   profileScope?: {
     carinaHome: string;
@@ -44,7 +55,8 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
   const packs = getActivePackNames();
   const activeSkillPack = config.carina.activePack || packs[0] || null;
   const scoutAvailable = Boolean(config.labyrinth.apiKey && scoutServiceUrl());
-  const mode: WebContextResponse['mode'] = isHostedRequest(req.hostname) ? 'hosted' : 'operator';
+  const surface = resolveProductSurface(req.hostname);
+  const mode = resolveProductMode(req.hostname);
   let security: WebContextResponse['security'];
   try {
     const { buildSecurityTrustState } = await import('../security/trust-state.js');
@@ -67,6 +79,28 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
 
   const body: WebContextResponse = {
     mode,
+    surface: {
+      productName: surface.branding.productName,
+      workspaceName: surface.branding.workspaceName,
+      titleSuffix: surface.branding.titleSuffix,
+      loginPath: surface.branding.loginPath,
+      defaultLanding: surface.branding.defaultLanding,
+      primaryNav: surface.shell.primaryNav.map((item) => ({
+        id: item.id,
+        href: item.href,
+        label: item.label,
+      })),
+      accountNav: surface.shell.accountNav.map((item) => ({
+        id: item.id,
+        href: item.href,
+        label: item.label,
+      })),
+      instanceNav: surface.shell.instanceNav.map((item) => ({
+        id: item.id,
+        href: item.href,
+        label: item.label,
+      })),
+    },
     activeProfile,
     profileScope,
     activeSkillPack,
@@ -101,7 +135,9 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
 }
 
 async function hydrateHostedUser(req: Request): Promise<void> {
-  if (!isHostedRequest(req.hostname) || req.hostedUser || !req.session?.hostedAccountId) return;
+  if (resolveProductMode(req.hostname) !== 'hosted' || req.hostedUser || !req.session?.hostedAccountId) {
+    return;
+  }
   const profile = await getUserProfile(req.session.hostedAccountId);
   if (!profile) return;
   req.hostedUser = {

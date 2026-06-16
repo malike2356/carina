@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "bonjour-discovery",
+    "name": "bonjour-discovery",
+    "description": "List configured gateway hosts for pairing."
+  }
+]

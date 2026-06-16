@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@open-agent-economy/trust-sdk": "^1.2.0",
+    "@verlox/carina-transport": "file:../core.carinaai.uk/packages/transport",
     "bcryptjs": "^2.4.3",
     "chalk": "^5.3.0",
     "dotenv": "^16.4.5",

@@ -282,9 +282,9 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
 
                       <div className="mt-1.5 flex items-center gap-2">
                         <MemoryTypeBadge type={memory.type} />
-                        {memory.source === 'extracted' && (
+                        {memory.source === 'extracted' || memory.source === 'conversation' ? (
                           <span className="text-[10px] italic text-text-muted">auto-extracted</span>
-                        )}
+                        ) : null}
                         {memory.source === 'imported' && (
                           <span className="text-[10px] italic text-text-muted">imported</span>
                         )}

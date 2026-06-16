@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "web-readability",
+  "version": "1.0.0",
+  "name": "Web Readability",
+  "author": "VERLOX Ltd",
+  "description": "Fetch HTTPS pages as readable article text.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "medium"
+}

@@ -124,7 +124,7 @@ Odysseus is for end users. Carina is for builders.
 
 The biggest barrier to self-hosted AI is "which model works on my hardware?" Odysseus scans your GPU, estimates VRAM, and says "here are the 5 models that will run well on your machine. Click to download. Click to serve."
 
-Carina should have this. A `carina cookbook` command that:
+Carina should have this. A `carina playbook` command that:
 - Detects your GPU/CPU/RAM
 - Recommends models that fit
 - One-click download from HuggingFace
@@ -154,7 +154,7 @@ Their license prevents commercial use. That's intentional -- it protects their c
 
 | Priority | Action | Why |
 |----------|--------|------|
-| **P0** | Build a `carina cookbook` command | Single biggest UX gap. Model discovery and serving is the #1 barrier to self-hosted AI. |
+| **P0** | Build a `carina playbook` command | Single biggest UX gap. Model discovery and serving is the #1 barrier to self-hosted AI. |
 | **P0** | Update carinaai.uk with feature GIFs | Odysseus's landing page converts. Ours doesn't. Show, don't tell. |
 | **P1** | Package Deep Research as a named feature | It's already possible with Carina. Name it. Show it. |
 | **P1** | Lead every comparison with "MIT vs AGPL" | This is the structural advantage. Make it impossible to miss. |

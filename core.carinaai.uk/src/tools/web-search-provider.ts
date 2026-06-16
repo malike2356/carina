@@ -81,7 +81,7 @@ export async function searchBrave(query: string, count: number): Promise<WebSear
   }
 
   const capped = clampCount(count);
-  const url = new URL('https://api.search.brave.com/res/v1/web/search');
+  const url = new URL(config.brave.searchUrl);
   url.searchParams.set('q', query);
   url.searchParams.set('count', String(capped));
 
@@ -112,7 +112,7 @@ export async function searchTavily(query: string, count: number): Promise<WebSea
   const capped = clampCount(count);
   const depth = config.tavily.searchDepth === 'advanced' ? 'advanced' : 'basic';
 
-  const res = await fetch('https://api.tavily.com/search', {
+  const res = await fetch(config.tavily.searchUrl, {
     method: 'POST',
     headers: {
       Accept: 'application/json',

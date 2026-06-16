@@ -1,0 +1,103 @@
+# Standalone Carina stack (single-user self-host).
+# Usage:
+#   cp .env.docker.example .env.docker
+#   docker compose -f docker-compose.standalone.yml up -d
+#
+# With Postgres memory backend:
+#   docker compose -f docker-compose.standalone.yml --profile postgres up -d
+#
+# With local Ollama (CPU):
+#   docker compose -f docker-compose.standalone.yml --profile ollama up -d
+#
+# With NVIDIA GPU for Ollama:
+#   docker compose -f docker-compose.standalone.yml -f docker/gpu.nvidia.yml --profile ollama up -d
+
+services:
+  carina:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.carina
+    ports:
+      - "${CARINA_BIND:-127.0.0.1}:${CARINA_PORT:-3000}:3000"
+    volumes:
+      - carina-data:/data
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      CARINA_HOME: /data/.carina
+      NODE_ENV: production
+      WEB_ENABLED: "${WEB_ENABLED:-true}"
+      CARINA_LOCAL_MODE: "${CARINA_LOCAL_MODE:-true}"
+      CARINA_SKIP_POSTGRES: "${CARINA_SKIP_POSTGRES:-true}"
+      CARINA_MEMORY_BACKEND: "${CARINA_MEMORY_BACKEND:-builtin}"
+      DEFAULT_PROVIDER: "${DEFAULT_PROVIDER:-deepseek}"
+      DEFAULT_MODEL: "${DEFAULT_MODEL:-deepseek-chat}"
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:-}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      CARINA_OPERATOR_NAME: "${CARINA_OPERATOR_NAME:-}"
+      CARINA_OPERATOR_CONTEXT: "${CARINA_OPERATOR_CONTEXT:-}"
+      DATABASE_URL: "${DATABASE_URL:-}"
+      REDIS_URL: "${REDIS_URL:-}"
+      OLLAMA_ENABLED: "${OLLAMA_ENABLED:-false}"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://ollama:11434/v1}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.2}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/config"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    restart: unless-stopped
+    networks:
+      - carina-standalone
+
+  postgres:
+    profiles: [postgres, full]
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_USER: carina
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-secret}"
+      POSTGRES_DB: carina
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carina"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - carina-standalone
+
+  redis:
+    profiles: [redis, full]
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - carina-standalone
+
+  ollama:
+    profiles: [ollama, gpu]
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    networks:
+      - carina-standalone
+
+volumes:
+  carina-data:
+  pgdata:
+  ollama-data:
+
+networks:
+  carina-standalone:
+    driver: bridge

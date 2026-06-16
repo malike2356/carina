@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "active-memory",
+  "version": "1.0.0",
+  "name": "Active Memory",
+  "author": "VERLOX Ltd",
+  "description": "Surface relevant durable memory and recent sessions.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

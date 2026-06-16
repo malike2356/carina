@@ -4,6 +4,10 @@ import { collectGatewayLogs, formatSseLogLine } from '../ops/observability/gatew
 import { collectPresence, listSystemEvents } from '../ops/observability/system-events.js';
 import { buildSessionOverview } from '../ops/observability/session-overview.js';
 import { parseSinceArg } from '../telemetry/turn-log.js';
+import { buildUsageMetricsSnapshot } from '../telemetry/usage-metrics.js';
+import { buildTelemetryHealthSnapshot } from '../ops/observability/health-snapshot.js';
+import { listProviderObservations } from '../telemetry/provider-observation.js';
+import { listSubagentMetrics } from '../telemetry/subagent-metrics.js';
 
 function parseLimit(raw: unknown, fallback = 50, max = 500): number {
   const n = Number(raw);
@@ -104,6 +108,29 @@ export function mountObservabilityRoutes(app: Express): void {
       phoneNodeId,
       devices: presence,
       online: presence.filter((p) => p.online).length,
+    });
+  });
+
+  app.get('/api/ops/telemetry/health', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const snapshot = await buildTelemetryHealthSnapshot();
+    res.json(snapshot);
+  });
+
+  app.get('/api/ops/telemetry/metrics', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const hours = Number(req.query.hours ?? 24);
+    const metrics = await buildUsageMetricsSnapshot(Number.isFinite(hours) ? hours : 24);
+    res.json({
+      metrics,
+      providers: listProviderObservations(parseLimit(req.query.providerLimit, 20, 100)),
+      subagents: listSubagentMetrics(parseLimit(req.query.subagentLimit, 20, 100)),
     });
   });
 }

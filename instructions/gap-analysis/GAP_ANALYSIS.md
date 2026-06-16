@@ -229,7 +229,7 @@ Tracked separately from gap100.md (Section C). Source: `instructions/gap-analysi
 
 | Prompt | Feature | Priority | Status | Implementation notes |
 |--------|---------|----------|--------|---------------------|
-| O1 | `carina cookbook` (model discovery + serve) | P0 | [x] | `src/cookbook/` (hardware, catalog, recommender, serve); `carina cookbook` CLI; 15 tests |
+| O1 | `carina playbook` (model discovery + serve) | P0 | [x] | `src/cookbook/` (hardware, catalog, recommender, serve); `carina playbook` CLI; 15 tests |
 | O2 | Deep Research (named feature) | P0 | [x] | `src/agents/deep-research.ts`; `carina research` CLI; `/research` gateway command; 6 tests |
 | O3 | Model Compare | P1 | [x] | `src/agents/compare.ts`; `carina compare` CLI; `/compare` gateway command; blind mode; 6 tests |
 | O4 | Document Editor (web UI) | P2 | [x] | `src/gateway/documents-api.ts`, `documents-store.ts`, `/documents` page + `documents.js`; SQLite `carina_documents`; 6 tests |
@@ -242,7 +242,7 @@ Tracked separately from gap100.md (Section C). Source: `instructions/gap-analysi
 
 | Capability | Odysseus parity | Carina surface | Status |
 |------------|-----------------|----------------|--------|
-| Model cookbook (hardware scan, catalog, serve commands) | First-class | `carina cookbook [list|search|inspect|serve]` | [x] |
+| Model playbook (hardware scan, catalog, serve commands) | First-class | `carina playbook [list|search|inspect|serve]` | [x] |
 | Deep research (multi-step, cited report) | First-class | `carina research`, `/research` | [x] |
 | Model compare (parallel fan-out, blind mode) | First-class | `carina compare`, `/compare` | [x] |
 
@@ -402,7 +402,7 @@ Original audit found ~20% fulfillment. Current state:
 - Scout governance/approval/regulatory routers
 - Plugin manifest system (extensions/)
 - github-copilot in provider registry
-- **Odysseus parity O1-O5, O7, O8** (15 June 2026): cookbook, research, compare, documents, notes/tasks, node host daemon, device pairing, MIT commercial copy (see Section H)
+- **Odysseus parity O1-O5, O7, O8** (15 June 2026): playbook, research, compare, documents, notes/tasks, node host daemon, device pairing, MIT commercial copy (see Section H)
 
 ---
 

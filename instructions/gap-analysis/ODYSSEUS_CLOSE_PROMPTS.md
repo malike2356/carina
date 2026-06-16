@@ -33,7 +33,7 @@ feature, Model Compare, Document Editor, Notes/Tasks integration, Image Gallery.
 
 ---
 
-## O1: carina cookbook (model discovery and local serving)
+## O1: carina playbook (model discovery and local serving)
 
 ### Why
 
@@ -109,21 +109,21 @@ Given a `CatalogEntry`, emit shell commands to:
 - Wire it to Carina as a local provider (print the `.env` keys to set)
 
 Do not execute commands automatically. Print them. Let the user run them. Add a
-`--execute` flag to `carina cookbook serve` that runs with explicit confirmation.
+`--execute` flag to `carina playbook serve` that runs with explicit confirmation.
 
 **5. CLI commands** (`src/cli/commands/cookbook-cli.ts`)
 
 ```
-carina cookbook                  # show hardware profile + top 5 recommendations
-carina cookbook list             # full catalog, filtered to what runs on this machine
-carina cookbook list --all       # full catalog including what does not fit
-carina cookbook search <query>   # filter by family/strength/size
-carina cookbook inspect <id>     # detailed entry: specs, requirements, download URL, serve commands
-carina cookbook serve <id>       # print serve commands (--execute to run with confirm)
-carina cookbook serve <id> --via ollama|llama.cpp|vllm
+carina playbook                  # show hardware profile + top 5 recommendations
+carina playbook list             # full catalog, filtered to what runs on this machine
+carina playbook list --all       # full catalog including what does not fit
+carina playbook search <query>   # filter by family/strength/size
+carina playbook inspect <id>     # detailed entry: specs, requirements, download URL, serve commands
+carina playbook serve <id>       # print serve commands (--execute to run with confirm)
+carina playbook serve <id> --via ollama|llama.cpp|vllm
 ```
 
-Output format for `carina cookbook` (no flags):
+Output format for `carina playbook` (no flags):
 ```
 Hardware: NVIDIA RTX 3080 10GB VRAM | 32GB RAM | 240GB free
 Tier: mid-vram
@@ -135,8 +135,8 @@ Recommended models (fit on your hardware):
   deepseek-r1-7b-q4      7B  Q4_K_M  GGUF   4.8 GB   reasoning
   gemma-2-9b-q4          9B  Q4_K_M  GGUF   6.4 GB   instruction, multilingual
 
-Run `carina cookbook serve llama-3.1-8b-q4 --via ollama` to get serve commands.
-Run `carina cookbook list --all` to see all 40+ models.
+Run `carina playbook serve llama-3.1-8b-q4 --via ollama` to get serve commands.
+Run `carina playbook list --all` to see all 40+ models.
 ```
 
 **6. Tests** (`src/cookbook/cookbook.test.ts`)
@@ -147,7 +147,7 @@ Run `carina cookbook list --all` to see all 40+ models.
 - recommender respects VRAM headroom (0.85 factor)
 - catalog has no duplicate IDs
 - catalog entries all have valid `serveVia` arrays
-- CLI `cookbook` command does not call any model API
+- CLI `playbook` command does not call any model API
 
 ### Files to inspect first
 
@@ -158,11 +158,11 @@ Run `carina cookbook list --all` to see all 40+ models.
 
 ### Acceptance criteria
 
-- `carina cookbook` runs on a machine with no GPU and returns cpu-only recommendations
-- `carina cookbook` runs on a machine with an NVIDIA/AMD GPU and returns appropriate tier
-- `carina cookbook serve <id>` prints correct Ollama and llama.cpp commands without executing
-- `carina cookbook serve <id> --execute` prompts "Run these commands? (yes/no)" before acting
-- No model API is called during any cookbook command
+- `carina playbook` runs on a machine with no GPU and returns cpu-only recommendations
+- `carina playbook` runs on a machine with an NVIDIA/AMD GPU and returns appropriate tier
+- `carina playbook serve <id>` prints correct Ollama and llama.cpp commands without executing
+- `carina playbook serve <id> --execute` prompts "Run these commands? (yes/no)" before acting
+- No model API is called during any playbook command
 - All tests pass
 
 ---
@@ -875,7 +875,7 @@ No legal advice disclaimer is needed. State facts only.
 
 | Prompt | Feature | Priority | Effort estimate |
 |--------|---------|----------|----------------|
-| O1 | carina cookbook | P0 | 2 days |
+| O1 | carina playbook | P0 | 2 days |
 | O2 | Deep Research | P0 | 1 day |
 | O3 | Model Compare | P1 | 0.5 day |
 | O8 | MIT vs AGPL copy | P1 | 0.5 day |

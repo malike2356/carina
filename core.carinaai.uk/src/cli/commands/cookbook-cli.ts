@@ -66,7 +66,7 @@ function printDefaultOverview(): void {
   console.log('');
   console.log('Recommended local models (fit on your hardware):');
   if (stack.local.length === 0) {
-    console.log('  (none fit; try carina cookbook list --all or free disk/RAM)');
+    console.log('  (none fit; try carina playbook list --all or free disk/RAM)');
   } else {
     for (const entry of stack.local) {
       console.log(formatEntryLine(entry));
@@ -87,9 +87,9 @@ function printDefaultOverview(): void {
   }
   console.log('');
   if (rec.recommended[0]) {
-    console.log(`Run \`carina cookbook serve ${rec.recommended[0].id} --via ollama\` to get serve commands.`);
+    console.log(`Run \`carina playbook serve ${rec.recommended[0].id} --via ollama\` to get serve commands.`);
   }
-  console.log('Run `carina cookbook list --all` to see all 40+ local models.');
+  console.log('Run `carina playbook list --all` to see all 40+ local models.');
   console.log('Run `carina providers list` to configure cloud API keys.');
   console.log('');
 }
@@ -160,11 +160,11 @@ export async function runCookbookCommand(args: string[]): Promise<void> {
 
   if (!action || action === 'help' || action === '--help') {
     console.log('Usage:');
-    console.log('  carina cookbook');
-    console.log('  carina cookbook list [--all]');
-    console.log('  carina cookbook search <query>');
-    console.log('  carina cookbook inspect <id>');
-    console.log('  carina cookbook serve <id> [--via ollama|llama.cpp|vllm|lm-studio] [--execute]');
+    console.log('  carina playbook');
+    console.log('  carina playbook list [--all]');
+    console.log('  carina playbook search <query>');
+    console.log('  carina playbook inspect <id>');
+    console.log('  carina playbook serve <id> [--via ollama|llama.cpp|vllm|lm-studio] [--execute]');
     return;
   }
 
@@ -182,7 +182,7 @@ export async function runCookbookCommand(args: string[]): Promise<void> {
   if (action === 'search') {
     const query = positionalArgs(args.slice(1)).join(' ');
     if (!query) {
-      console.error('Usage: carina cookbook search <query>');
+      console.error('Usage: carina playbook search <query>');
       process.exit(1);
     }
     const results = searchCatalog(query);
@@ -197,7 +197,7 @@ export async function runCookbookCommand(args: string[]): Promise<void> {
   if (action === 'inspect') {
     const id = positionalArgs(args.slice(1))[0];
     if (!id) {
-      console.error('Usage: carina cookbook inspect <id>');
+      console.error('Usage: carina playbook inspect <id>');
       process.exit(1);
     }
     printInspect(id);
@@ -207,14 +207,14 @@ export async function runCookbookCommand(args: string[]): Promise<void> {
   if (action === 'serve') {
     const id = positionalArgs(args.slice(1))[0];
     if (!id) {
-      console.error('Usage: carina cookbook serve <id> [--via backend] [--execute]');
+      console.error('Usage: carina playbook serve <id> [--via backend] [--execute]');
       process.exit(1);
     }
     await printServe(id, parseVia(args), flag(args, '--execute'));
     return;
   }
 
-  console.error(`Unknown cookbook action: ${action}`);
+  console.error(`Unknown playbook action: ${action}`);
   process.exit(1);
 }
 

@@ -11,6 +11,7 @@ export type HealthCheck = {
   name: string;
   status: HealthStatus;
   detail: string;
+  guidance?: string;
   repairable?: boolean;
   repairId?: string;
 };
@@ -264,6 +265,27 @@ export async function runHealthCheck(options: { loadEnv?: boolean; deep?: boolea
     });
   }
 
+  try {
+    const { collectSecurityDoctorChecks } = await import('../security/security-doctor.js');
+    for (const check of collectSecurityDoctorChecks()) {
+      push({
+        id: `doctor-${check.id}`,
+        category: 'security',
+        name: check.name,
+        status: check.severity,
+        detail: check.detail,
+      });
+    }
+  } catch (err) {
+    push({
+      id: 'security-doctor',
+      category: 'security',
+      name: 'Security doctor',
+      status: 'warn',
+      detail: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   const redisUrl = process.env.REDIS_URL;
   if (redisUrl) {
     try {
@@ -306,6 +328,25 @@ export async function runHealthCheck(options: { loadEnv?: boolean; deep?: boolea
     const { runDeepScan } = await import('./health-deep-scan.js');
     const deep = await runDeepScan();
     checks.push(...deep.checks);
+  }
+
+  try {
+    const { scanStateRepair } = await import('./state-repair.js');
+    const stateIssues = scanStateRepair();
+    for (const issue of stateIssues) {
+      checks.push({
+        id: issue.id,
+        category: issue.category,
+        name: issue.name,
+        status: issue.status,
+        detail: issue.detail,
+        guidance: issue.guidance,
+        repairable: issue.repairable,
+        repairId: issue.repairId,
+      });
+    }
+  } catch {
+    // optional
   }
 
   const summary = {
@@ -390,6 +431,15 @@ export async function applyHealthRepairs(report: HealthReport): Promise<HealthRe
     }
 
     skipped.push(check.repairId);
+  }
+
+  try {
+    const { scanStateRepair, applyAllStateRepairs } = await import('./state-repair.js');
+    const stateResult = await applyAllStateRepairs(scanStateRepair());
+    applied.push(...stateResult.applied);
+    skipped.push(...stateResult.skipped);
+  } catch {
+    // optional
   }
 
   if (report.configDrift.length > 0) {

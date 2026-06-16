@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { workspaceSettings } from '@/db/schema';
 import { normalizeAppearance } from '@/lib/appearance';
+import { normalizeBrainSettings, parseBrainSettingsPatch } from '@/lib/brain-settings';
 import { isThemeName } from '@/lib/themes';
 import { getSession, requireWorkspace } from '@/lib/session';
 
@@ -19,7 +20,11 @@ export async function GET() {
     .where(eq(workspaceSettings.workspaceId, workspace.id))
     .limit(1);
 
-  return NextResponse.json({ data: settings ?? { workspaceId: workspace.id, theme: 'dark' } });
+  return NextResponse.json({
+    data: settings
+      ? { ...settings, ...normalizeBrainSettings(settings) }
+      : { workspaceId: workspace.id, theme: 'dark', ...normalizeBrainSettings(null) },
+  });
 }
 
 export async function PATCH(request: Request) {
@@ -31,8 +36,27 @@ export async function PATCH(request: Request) {
     theme?: string;
     customTheme?: unknown;
     appearance?: unknown;
+    autoExtractMemories?: boolean;
+    autoExtractSkills?: boolean;
+    autoApproveSkillsMinConfidence?: number;
+    maxSkillsPerRequest?: number;
+    injectMemoriesInChat?: boolean;
   };
   const updates: Partial<typeof workspaceSettings.$inferInsert> = { updatedAt: new Date() };
+  const brainPatch = parseBrainSettingsPatch(body);
+  if (brainPatch.autoExtractMemories !== undefined) {
+    updates.autoExtractMemories = brainPatch.autoExtractMemories;
+  }
+  if (brainPatch.autoExtractSkills !== undefined) updates.autoExtractSkills = brainPatch.autoExtractSkills;
+  if (brainPatch.autoApproveSkillsMinConfidence !== undefined) {
+    updates.autoApproveSkillsMinConfidence = brainPatch.autoApproveSkillsMinConfidence;
+  }
+  if (brainPatch.maxSkillsPerRequest !== undefined) {
+    updates.maxSkillsPerRequest = brainPatch.maxSkillsPerRequest;
+  }
+  if (brainPatch.injectMemoriesInChat !== undefined) {
+    updates.injectMemoriesInChat = brainPatch.injectMemoriesInChat;
+  }
 
   if (body.theme !== undefined) {
     if (!isThemeName(body.theme)) {

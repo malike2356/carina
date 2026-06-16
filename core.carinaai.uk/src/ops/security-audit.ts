@@ -202,6 +202,20 @@ export async function runSecurityAudit(): Promise<SecurityAuditReport> {
     push('redis', 'Redis (kill switch)', 'warn', 'REDIS_URL not set');
   }
 
+  try {
+    const { collectSecurityDoctorChecks } = await import('../security/security-doctor.js');
+    for (const check of collectSecurityDoctorChecks()) {
+      push(check.id, check.name, check.severity, check.detail);
+    }
+  } catch (err) {
+    push(
+      'security-doctor',
+      'Security doctor',
+      'warn',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
   const summary = {
     ok: checks.filter((c) => c.severity === 'ok').length,
     warn: checks.filter((c) => c.severity === 'warn').length,

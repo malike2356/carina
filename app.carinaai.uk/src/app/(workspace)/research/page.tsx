@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CheckCircle,
   Clock,
@@ -9,6 +10,7 @@ import {
   FileText,
   Globe,
   Loader2,
+  MessageSquare,
   Plus,
   RefreshCw,
   Search,
@@ -105,6 +107,7 @@ function downloadMarkdown(job: ResearchJob) {
 }
 
 export default function ResearchPage() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<ResearchJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -156,7 +159,7 @@ export default function ResearchPage() {
             setJobs((current) => current.map((job) => (job.id === id ? data.data : job)));
           });
       });
-    }, 3000);
+    }, 2000);
 
     return () => {
       if (pollRef.current) {
@@ -192,6 +195,14 @@ export default function ResearchPage() {
     await fetch(`/api/research/${job.id}`, { method: 'DELETE' });
     setJobs((current) => current.filter((item) => item.id !== job.id));
     if (activeJobId === job.id) setActiveJobId(null);
+  }
+
+  async function discussInChat(job: ResearchJob) {
+    const response = await fetch(`/api/research/${job.id}/discuss`, { method: 'POST' });
+    const data = await response.json();
+    if (data.data?.sessionId) {
+      router.push(`/chat/${data.data.sessionId}?researchJob=${job.id}`);
+    }
   }
 
   return (
@@ -345,10 +356,21 @@ export default function ResearchPage() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {activeJob.status === 'completed' && (
-                  <Button type="button" variant="outline" size="sm" onClick={() => downloadMarkdown(activeJob)}>
-                    <Download className="h-3.5 w-3.5" />
-                    Export
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void discussInChat(activeJob)}
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      Discuss in chat
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => downloadMarkdown(activeJob)}>
+                      <Download className="h-3.5 w-3.5" />
+                      Export
+                    </Button>
+                  </>
                 )}
                 <IconButton label="Delete report" size="sm" onClick={() => void deleteJob(activeJob)}>
                   <Trash2 className="h-3.5 w-3.5 text-danger" />

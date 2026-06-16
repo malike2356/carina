@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Playbook - Carina</title>
+<style>
+.playbook-wrap { flex: 1; overflow-y: auto; padding: 1rem 1.25rem 2rem; }
+.hw-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.85rem 1rem; margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; gap: 1rem;
+}
+.hw-item { font-size: 0.8rem; }
+.hw-item .label { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.hw-item .value { font-weight: 600; font-size: 0.88rem; margin-top: 0.2rem; }
+.tier-badge { display: inline-block; padding: 0.2rem 0.55rem; border-radius: 5px; font-size: 0.72rem; font-weight: 600; }
+.tier-high { background: rgba(25,196,154,0.15); color: var(--accent); }
+.tier-mid { background: rgba(87,87,104,0.2); color: var(--text); }
+.tier-low { background: rgba(240,80,80,0.12); color: #f05050; }
+.tier-cpu { background: rgba(87,87,104,0.15); color: var(--muted); }
+.controls { display: flex; gap: 0.55rem; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; }
+.controls input {
+  flex: 1; min-width: 160px; background: var(--surface-2); color: var(--text);
+  border: 1px solid var(--border); border-radius: 7px; padding: 0.45rem 0.65rem; font-size: 0.82rem; font-family: inherit;
+}
+.controls select {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 7px; padding: 0.45rem 0.55rem; font-size: 0.82rem;
+}
+.filter-btn {
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 7px; padding: 0.45rem 0.7rem; font-size: 0.8rem; cursor: pointer;
+}
+.filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.65rem; }
+.model-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 0.75rem 0.85rem; cursor: pointer; transition: border-color 0.12s;
+}
+.model-card:hover { border-color: var(--border-strong, #3a3a4a); }
+.model-card.selected { border-color: var(--accent); background: var(--accent-dim); }
+.model-card.fits { border-left: 3px solid var(--accent); }
+.model-card .name { font-size: 0.86rem; font-weight: 600; margin-bottom: 0.2rem; }
+.model-card .meta { font-size: 0.72rem; color: var(--muted); display: flex; gap: 0.55rem; flex-wrap: wrap; }
+.vram-tag { font-size: 0.68rem; padding: 0.1rem 0.35rem; border-radius: 4px; background: var(--surface-2); color: var(--muted); display: inline-block; }
+.vram-tag.fits { background: rgba(25,196,154,0.1); color: var(--accent); }
+.serve-panel {
+  position: fixed; right: 0; top: 0; bottom: 0; width: 360px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: none; flex-direction: column; padding: 1rem; overflow-y: auto; z-index: 100;
+}
+.serve-panel.open { display: flex; }
+.serve-panel h2 { font-size: 0.95rem; margin-bottom: 0.75rem; }
+.serve-panel .close-btn {
+  position: absolute; top: 0.75rem; right: 0.75rem; background: none; border: none;
+  color: var(--muted); cursor: pointer; font-size: 1rem;
+}
+.serve-info { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; line-height: 1.5; }
+.cmd-block {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 0.65rem 0.75rem; font-family: monospace; font-size: 0.78rem; white-space: pre-wrap; margin-bottom: 0.65rem;
+}
+.serve-actions { display: flex; flex-direction: column; gap: 0.5rem; }
+.serve-btn { padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; }
+.serve-btn.primary { background: var(--accent); color: #0d0d0f; }
+.serve-btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.status-bar { font-size: 0.75rem; color: var(--muted); margin-top: 0.65rem; min-height: 1.2em; }
+.section-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.55rem; }
+@media (max-width: 720px) { .model-grid { grid-template-columns: 1fr 1fr; } .serve-panel { width: 100%; } }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Playbook</h1>
+  <span class="status" id="hw-status">Detecting hardware...</span>
+</header>
+<div class="playbook-wrap">
+  <div class="hw-card" id="hw-card">
+    <div class="hw-item"><div class="label">Status</div><div class="value">Loading...</div></div>
+  </div>
+  <div class="controls">
+    <input type="text" id="search-box" placeholder="Search models (llama, mistral, gemma...)">
+    <select id="sort-sel">
+      <option value="fit">Best fit first</option>
+      <option value="size">Smallest first</option>
+      <option value="name">Name A-Z</option>
+    </select>
+    <button type="button" class="filter-btn active" id="show-all">All</button>
+    <button type="button" class="filter-btn" id="show-fits">Fits my hardware</button>
+  </div>
+  <div class="section-title">Model catalog</div>
+  <div class="model-grid" id="model-grid"></div>
+  <div class="status-bar" id="status"></div>
+</div>
+<div class="serve-panel" id="serve-panel">
+  <button type="button" class="close-btn" id="close-panel">x</button>
+  <h2 id="panel-name"></h2>
+  <div class="serve-info" id="panel-info"></div>
+  <div class="section-title">Install command</div>
+  <div class="cmd-block" id="panel-cmd"></div>
+  <div class="serve-actions">
+    <button type="button" class="serve-btn primary" id="btn-pull">Pull model (Ollama)</button>
+    <button type="button" class="serve-btn secondary" id="btn-copy">Copy command</button>
+  </div>
+  <div class="status-bar" id="panel-status"></div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script>
+(function() {
+  var API = '/api/playbook';
+  var allModels = [];
+  var fittingIds = new Set();
+  var selected = null;
+  var showFitsOnly = false;
+
+  var TIER_CLASS = {
+    'high-vram': 'tier-high',
+    'mid-vram': 'tier-mid',
+    'low-vram': 'tier-low',
+    'cpu-only': 'tier-cpu'
+  };
+
+  function ollamaTag(model) {
+    return model.ollamaTag || model.id;
+  }
+
+  function displayName(model) {
+    return model.displayName || model.id;
+  }
+
+  function fetchHardware() {
+    fetch(API + '/hardware').then(function(r) { return r.json(); }).then(function(d) {
+      var tier = d.tier || 'cpu-only';
+      var tierClass = TIER_CLASS[tier] || 'tier-cpu';
+      var gpuName = d.gpu && d.gpu.model ? d.gpu.model : 'None detected';
+      document.getElementById('hw-card').innerHTML =
+        '<div class="hw-item"><div class="label">GPU</div><div class="value">' + gpuName + '</div></div>' +
+        '<div class="hw-item"><div class="label">VRAM</div><div class="value">' + (d.gpu && d.gpu.vramGb ? d.gpu.vramGb + ' GB' : 'N/A') + '</div></div>' +
+        '<div class="hw-item"><div class="label">RAM</div><div class="value">' + (d.ramGb ? d.ramGb + ' GB' : 'N/A') + '</div></div>' +
+        '<div class="hw-item"><div class="label">Tier</div><div class="value"><span class="tier-badge ' + tierClass + '">' + tier + '</span></div></div>';
+      document.getElementById('hw-status').textContent = 'Tier: ' + tier;
+    }).catch(function() { document.getElementById('hw-status').textContent = 'Hardware detection failed'; });
+  }
+
+  function fetchModels() {
+    Promise.all([
+      fetch(API + '/models?limit=200').then(function(r) { return r.json(); }),
+      fetch(API + '/recommend').then(function(r) { return r.json(); }),
+    ]).then(function(results) {
+      allModels = results[0].models || [];
+      fittingIds = new Set((results[1].fitting || []).map(function(m) { return m.id; }));
+      renderGrid();
+    }).catch(function() { document.getElementById('status').textContent = 'Failed to load catalog'; });
+  }
+
+  function renderGrid() {
+    var q = document.getElementById('search-box').value.toLowerCase();
+    var sort = document.getElementById('sort-sel').value;
+    var models = allModels.filter(function(m) {
+      if (showFitsOnly && !fittingIds.has(m.id)) return false;
+      if (q && JSON.stringify(m).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    if (sort === 'fit') {
+      models.sort(function(a, b) {
+        return (fittingIds.has(b.id) ? 1 : 0) - (fittingIds.has(a.id) ? 1 : 0);
+      });
+    } else if (sort === 'size') {
+      models.sort(function(a, b) { return (a.diskGb || 99) - (b.diskGb || 99); });
+    } else {
+      models.sort(function(a, b) { return displayName(a).localeCompare(displayName(b)); });
+    }
+
+    var grid = document.getElementById('model-grid');
+    grid.innerHTML = models.map(function(m) {
+      var fits = fittingIds.has(m.id);
+      var vramClass = fits ? 'vram-tag fits' : 'vram-tag';
+      return '<div class="model-card' + (fits ? ' fits' : '') + (selected === m.id ? ' selected' : '') + '" data-id="' + m.id + '">' +
+        '<div class="name">' + displayName(m) + '</div>' +
+        '<div class="meta">' +
+        (m.diskGb ? '<span>' + m.diskGb + 'GB disk</span>' : '') +
+        (m.vramRequiredGb ? '<span class="' + vramClass + '">' + m.vramRequiredGb + 'GB VRAM</span>' : '') +
+        (m.family ? '<span>' + m.family + '</span>' : '') +
+        '</div></div>';
+    }).join('');
+
+    grid.querySelectorAll('.model-card').forEach(function(el) {
+      el.addEventListener('click', function() { openPanel(el.dataset.id); });
+    });
+    document.getElementById('status').textContent = models.length + ' models (' + fittingIds.size + ' fit your hardware)';
+  }
+
+  function openPanel(modelId) {
+    selected = modelId;
+    var model = allModels.find(function(m) { return m.id === modelId; });
+    if (!model) return;
+    renderGrid();
+    var tag = ollamaTag(model);
+    var strengths = (model.strengths || []).join(', ');
+    document.getElementById('panel-name').textContent = displayName(model);
+    document.getElementById('panel-info').textContent =
+      (strengths || '') +
+      (model.diskGb ? ' | ' + model.diskGb + 'GB disk' : '') +
+      (model.vramRequiredGb ? ' | Needs ' + model.vramRequiredGb + 'GB VRAM' : '');
+    document.getElementById('panel-cmd').textContent = 'ollama pull ' + tag;
+    document.getElementById('serve-panel').classList.add('open');
+    document.getElementById('panel-status').textContent = '';
+    document.getElementById('btn-pull').onclick = function() {
+      var btn = document.getElementById('btn-pull');
+      btn.disabled = true;
+      document.getElementById('panel-status').textContent = 'Pulling...';
+      fetch(API + '/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelId: model.id })
+      })
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+        .then(function(res) {
+          if (res.ok) {
+            document.getElementById('panel-status').textContent = 'Pull complete. Run: ollama run ' + tag;
+          } else {
+            document.getElementById('panel-status').textContent = res.data.error || 'Pull failed';
+          }
+        })
+        .catch(function() { document.getElementById('panel-status').textContent = 'Pull failed'; })
+        .finally(function() { btn.disabled = false; });
+    };
+    document.getElementById('btn-copy').onclick = function() {
+      navigator.clipboard.writeText('ollama pull ' + tag).then(function() {
+        document.getElementById('panel-status').textContent = 'Command copied.';
+      });
+    };
+  }
+
+  document.getElementById('close-panel').addEventListener('click', function() {
+    document.getElementById('serve-panel').classList.remove('open');
+    selected = null;
+    renderGrid();
+  });
+  document.getElementById('search-box').addEventListener('input', renderGrid);
+  document.getElementById('sort-sel').addEventListener('change', renderGrid);
+  document.getElementById('show-all').addEventListener('click', function() {
+    showFitsOnly = false;
+    this.classList.add('active');
+    document.getElementById('show-fits').classList.remove('active');
+    renderGrid();
+  });
+  document.getElementById('show-fits').addEventListener('click', function() {
+    showFitsOnly = true;
+    this.classList.add('active');
+    document.getElementById('show-all').classList.remove('active');
+    renderGrid();
+  });
+  fetchHardware();
+  fetchModels();
+})();
+</script>
+</body>
+</html>

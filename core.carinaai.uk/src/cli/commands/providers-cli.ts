@@ -31,6 +31,9 @@ import {
   resetProviderHealth,
 } from '../../brain/provider-health.js';
 import { FREE_COPILOT_PRESET } from '../../brain/provider-routing.js';
+import { resolveProviderFallbackChain } from '../../brain/fallback-chain.js';
+import { getMonthlyReport, formatCostReport } from '../../brain/cost-tracker.js';
+import { getModelMetadata, formatModelMetadataLine } from '../../brain/model-metadata.js';
 import { llm } from '../../brain/llm.js';
 import { loadLocalEnv } from '../config/env.js';
 import { appendEnvValue } from '../config/loader.js';
@@ -314,6 +317,39 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'fallback') {
+    const chain = resolveProviderFallbackChain({
+      activeProvider: llm.current().name,
+      preset: llm.getPreset(),
+      configuredNames: llm.list(),
+      definitions: PROVIDER_DEFINITIONS,
+    });
+    console.log(chalk.bold('\nProvider fallback chain\n'));
+    console.log(chalk.gray('  Active provider first, then fallbacks. Override with CARINA_PROVIDER_FALLBACK=deepseek,openai'));
+    if (chain.length === 0) {
+      console.log(chalk.yellow('  No configured providers in fallback chain.'));
+      return;
+    }
+    for (const [i, name] of chain.entries()) {
+      const marker = i === 0 ? chalk.green('*') : ' ';
+      const def = PROVIDER_DEFINITIONS.find((d) => d.name === name);
+      console.log(`  ${marker} ${name}${def ? chalk.gray(`  (${describeProviderTags(def)})`) : ''}`);
+    }
+    console.log('');
+    return;
+  }
+
+  if (action === 'budget') {
+    const report = await getMonthlyReport();
+    console.log(chalk.bold('\nLLM usage and budget\n'));
+    console.log(formatCostReport(report));
+    const providerName = llm.current().name;
+    const modelName = llm.modelFor(providerName);
+    console.log(`\nActive model: ${formatModelMetadataLine(getModelMetadata(providerName, modelName))}`);
+    console.log('');
+    return;
+  }
+
   if (action === 'matrix') {
     const allFlag = args.includes('--all');
     const embedFlag = args.includes('--embeddings');
@@ -339,7 +375,7 @@ export async function runProvidersCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina providers <list|info|plugins|copilot|preset|health|test|disable|enable|scan|matrix> [args]');
+  console.error('Usage: carina providers <list|info|plugins|copilot|preset|health|fallback|budget|test|disable|enable|scan|matrix> [args]');
   process.exit(1);
 }
 

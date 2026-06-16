@@ -20,6 +20,7 @@ Carina reads environment variables from `~/.carina/.env` (global CLI) or a proje
 | `ACTIVE_SKILL_PACKS` | Comma-separated packs (e.g. `finance,legal-uk`). Leave empty for general-purpose mode. |
 | `ACTIVE_SKILL_PACK` | Legacy alias for a single pack name |
 | `SKILL_AUTO_WRITE` | No | enabled | Set to `false` to disable auto skill documents after complex tasks |
+| `CARINA_AUTO_SKILL` | No | enabled | Set to `false` to disable the post-task learning loop (skill extraction and correction learning) |
 | `CARINA_HOME` | No | `~/.carina` | Config and data directory |
 
 ## Tools
@@ -32,7 +33,8 @@ Carina reads environment variables from `~/.carina/.env` (global CLI) or a proje
 | `BRAVE_SEARCH_API_KEY` | Optional paid fallback | - | Paid: [brave.com/search/api](https://brave.com/search/api) |
 | `RESEND_API_KEY` | For email tools | - | From [resend.com](https://resend.com) |
 | `PROPERTY_DATA_API_KEY` | For property-uk pack | - | PropertyData API (prices, yields, comparables) |
-| `LAND_REGISTRY_API_KEY` | For property-uk pack | - | Land Registry lookup tool |
+| `LAND_REGISTRY_API_KEY` | For property-uk pack | - | PropertyData.co.uk key for `land-registry-search`; falls back to `PROPERTY_DATA_API_KEY` |
+| `LAND_REGISTRY_BASE_URL` | No | `https://api.propertydata.co.uk` | Override PropertyData API base URL |
 
 ## Gateways
 

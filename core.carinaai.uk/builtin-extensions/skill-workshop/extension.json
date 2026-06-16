@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "skill-workshop",
+  "version": "1.0.0",
+  "name": "Skill Workshop",
+  "author": "VERLOX Ltd",
+  "description": "Review and approve auto-captured skill drafts.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "low"
+}

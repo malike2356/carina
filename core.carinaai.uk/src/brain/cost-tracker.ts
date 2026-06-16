@@ -1,4 +1,5 @@
 import { config } from '../config/index.js';
+import { getResolvedBudgetConfig } from '../config/runtime-config.js';
 import { pool } from '../memory/db.js';
 import { buildUsdPerTokenMap } from './provider-registry.js';
 
@@ -135,6 +136,7 @@ function totalCost(rows: UsageBreakdown[]): number {
 
 function budgetStatus(totalCost: number, budgetLimit: number | null): BudgetStatus {
   if (!budgetLimit || budgetLimit <= 0) return { status: 'ok', totalCost, budgetLimit: null };
+  const warnRatio = getResolvedBudgetConfig().warnAtPercent / 100;
   if (totalCost >= budgetLimit) {
     return {
       status: 'blocked',
@@ -143,7 +145,7 @@ function budgetStatus(totalCost: number, budgetLimit: number | null): BudgetStat
       message: `Monthly LLM budget reached: $${totalCost.toFixed(2)} of $${budgetLimit.toFixed(2)}. New requests are blocked until the next month or the budget is raised.`,
     };
   }
-  if (totalCost >= budgetLimit * 0.8) {
+  if (totalCost >= budgetLimit * warnRatio) {
     return {
       status: 'warn',
       totalCost,

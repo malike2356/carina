@@ -15,6 +15,7 @@ import { projectsRouter } from './routes/projects.js';
 import { securityRouter } from './routes/security.js';
 import { settingsRouter } from './routes/settings.js';
 import { operatorRouter } from './routes/operator.js';
+import { agentToolsRouter } from './routes/agent-tools.js';
 import { tenantsRouter } from './routes/tenants.js';
 import { subscriptionsRouter } from './routes/subscriptions.js';
 import { packsRouter } from './routes/packs.js';
@@ -23,6 +24,7 @@ import { channelsRouter } from './routes/channels.js';
 import { CARINA_BASE } from './lib/carina.js';
 import { ensureHostedSchema } from './lib/tenants.js';
 import { ensureAiPlatformSchema } from './lib/ai-platform.js';
+import { ensureAgentToolConfigSchema } from './lib/tool-config.js';
 import { autoPairCarinaFromLocalCore } from './lib/carina-pairing.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -116,6 +118,8 @@ app.use('/subscriptions', subscriptionsRouter);
 app.use('/settings', settingsRouter);
 app.use('/operator', operatorRouter);
 app.use('/ai-platform', aiPlatformRouter);
+app.use('/admin/agent-tools', agentToolsRouter);
+app.use('/agent-tools', agentToolsRouter);
 
 app.use((_req, res) => {
   res.status(404).render('error', { message: 'Page not found' });
@@ -136,6 +140,12 @@ app.listen(PORT, listenHost, () => {
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`  AI platform schema: skipped (${msg})`));
+    });
+  void ensureAgentToolConfigSchema()
+    .then(() => console.log(chalk.gray('  Agent tool config: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  Agent tool config: skipped (${msg})`));
     });
   void autoPairCarinaFromLocalCore()
     .then((result) => {

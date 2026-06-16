@@ -48,4 +48,23 @@ describe('observability-routes', () => {
     expect(Array.isArray(body.sessions)).toBe(true);
     expect(typeof body.summary.total).toBe('number');
   });
+
+  it('returns telemetry health snapshot', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/telemetry/health`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { healthy: boolean; checks: unknown[] };
+    expect(typeof body.healthy).toBe('boolean');
+    expect(Array.isArray(body.checks)).toBe(true);
+  });
+
+  it('returns telemetry usage metrics', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/telemetry/metrics`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { metrics: { turns: { total: number } } };
+    expect(body.metrics.turns).toBeDefined();
+  });
 });

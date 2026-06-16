@@ -53,6 +53,12 @@ python/fine_tuned/
 .idea/
 .vscode/
 *.swp
+.claude/
+
+# Local research clones (keep markdown prompts; do not commit nested .git trees)
+instructions/prompts/researched_gap/3-agents-to-adopt/hermes-agent/
+instructions/prompts/researched_gap/3-agents-to-adopt/odysseus/
+instructions/prompts/researched_gap/3-agents-to-adopt/openclaw/
 
 # Mobile (scaffolded, not built yet)
 mobile/android/.gradle/

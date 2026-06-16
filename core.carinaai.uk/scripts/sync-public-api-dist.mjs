@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const outDir = path.join(root, 'dist', 'public-api');
-const modules = ['index', 'pack', 'tool', 'channel', 'memory', 'provider'];
+const modules = ['index', 'pack', 'tool', 'channel', 'memory', 'provider', 'extension', 'plugin-sdk'];
 
 mkdirSync(outDir, { recursive: true });
 

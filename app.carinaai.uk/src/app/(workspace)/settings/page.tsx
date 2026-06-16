@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ReactNode, useEffect, useState } from 'react';
 import {
   Bell,
+  Brain,
   ChevronRight,
   Keyboard,
   MessageSquare,
@@ -18,15 +19,17 @@ import {
   type AppearanceSettings,
   normalizeAppearance,
 } from '@/lib/appearance';
+import { BRAIN_SETTINGS_DEFAULTS, type BrainSettings } from '@/lib/brain-settings-types';
 import { DEFAULT_THEME, isThemeName } from '@/lib/themes';
 import { groupShortcuts } from '@/lib/shortcuts';
 import { cn } from '@/lib/utils';
 
-type Section = 'appearance' | 'chat' | 'shortcuts' | 'account' | 'notifications' | 'security';
+type Section = 'appearance' | 'chat' | 'brain' | 'shortcuts' | 'account' | 'notifications' | 'security';
 
 interface WorkspaceSettingsData {
   theme: string;
   appearance: AppearanceSettings;
+  brain: BrainSettings;
 }
 
 function Toggle({
@@ -102,6 +105,7 @@ export default function SettingsPage() {
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettingsData>({
     theme: DEFAULT_THEME,
     appearance: APPEARANCE_DEFAULTS,
+    brain: BRAIN_SETTINGS_DEFAULTS,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -114,26 +118,61 @@ export default function SettingsPage() {
         setWorkspaceSettings({
           theme: isThemeName(data.data.theme) ? data.data.theme : DEFAULT_THEME,
           appearance: normalizeAppearance(data.data.appearance),
+          brain: {
+            autoExtractMemories:
+              data.data.autoExtractMemories ?? BRAIN_SETTINGS_DEFAULTS.autoExtractMemories,
+            autoExtractSkills:
+              data.data.autoExtractSkills ?? BRAIN_SETTINGS_DEFAULTS.autoExtractSkills,
+            autoApproveSkillsMinConfidence:
+              data.data.autoApproveSkillsMinConfidence ??
+              BRAIN_SETTINGS_DEFAULTS.autoApproveSkillsMinConfidence,
+            maxSkillsPerRequest:
+              data.data.maxSkillsPerRequest ?? BRAIN_SETTINGS_DEFAULTS.maxSkillsPerRequest,
+            injectMemoriesInChat:
+              data.data.injectMemoriesInChat ?? BRAIN_SETTINGS_DEFAULTS.injectMemoriesInChat,
+          },
         });
       })
       .catch(() => {});
   }, []);
 
-  async function saveSettings(updates: Partial<WorkspaceSettingsData>) {
+  async function saveSettings(payload: Record<string, unknown>) {
     setSaving(true);
     setSaved(false);
 
-    setWorkspaceSettings((current) => ({
-      theme: updates.theme ?? current.theme,
-      appearance: updates.appearance
-        ? normalizeAppearance({ ...current.appearance, ...updates.appearance })
-        : current.appearance,
-    }));
+    if (typeof payload.theme === 'string') {
+      setWorkspaceSettings((current) => ({ ...current, theme: payload.theme as string }));
+    }
+    if (payload.appearance && typeof payload.appearance === 'object') {
+      setWorkspaceSettings((current) => ({
+        ...current,
+        appearance: normalizeAppearance({
+          ...current.appearance,
+          ...(payload.appearance as AppearanceSettings),
+        }),
+      }));
+    }
+    const brainKeys = [
+      'autoExtractMemories',
+      'autoExtractSkills',
+      'autoApproveSkillsMinConfidence',
+      'maxSkillsPerRequest',
+      'injectMemoriesInChat',
+    ] as const;
+    const brainPatch = Object.fromEntries(
+      brainKeys.filter((key) => payload[key] !== undefined).map((key) => [key, payload[key]]),
+    );
+    if (Object.keys(brainPatch).length > 0) {
+      setWorkspaceSettings((current) => ({
+        ...current,
+        brain: { ...current.brain, ...brainPatch } as BrainSettings,
+      }));
+    }
 
     await fetch('/api/workspace/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
+      body: JSON.stringify(payload),
     });
 
     setSaving(false);
@@ -144,12 +183,21 @@ export default function SettingsPage() {
   function updateAppearance<K extends keyof AppearanceSettings>(key: K, value: AppearanceSettings[K]) {
     const next = normalizeAppearance({ ...workspaceSettings.appearance, [key]: value });
     document.dispatchEvent(new CustomEvent('set-appearance', { detail: next }));
-    void saveSettings({ appearance: { [key]: value } as Partial<AppearanceSettings> as AppearanceSettings });
+    void saveSettings({ appearance: { [key]: value } });
+  }
+
+  function updateBrain<K extends keyof BrainSettings>(key: K, value: BrainSettings[K]) {
+    setWorkspaceSettings((current) => ({
+      ...current,
+      brain: { ...current.brain, [key]: value },
+    }));
+    void saveSettings({ [key]: value });
   }
 
   const navItems: Array<{ id: Section; label: string; icon: ReactNode }> = [
     { id: 'appearance', label: 'Appearance', icon: <Monitor className="h-4 w-4" /> },
     { id: 'chat', label: 'Chat', icon: <MessageSquare className="h-4 w-4" /> },
+    { id: 'brain', label: 'Brain', icon: <Brain className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
     { id: 'account', label: 'Account', icon: <User className="h-4 w-4" /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
@@ -157,6 +205,7 @@ export default function SettingsPage() {
   ];
 
   const appearance = workspaceSettings.appearance;
+  const brain = workspaceSettings.brain;
 
   return (
     <div className="flex h-full bg-base">
@@ -282,6 +331,82 @@ export default function SettingsPage() {
                     onChange={(value) => updateAppearance('animationsEnabled', value)}
                   />
                 </div>
+              </section>
+            </div>
+          )}
+
+          {activeSection === 'brain' && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="mb-1 text-base font-semibold text-text-primary">Brain</h1>
+                <p className="text-xs text-text-muted">
+                  Memory capture and prompt hints from chat. Skill notes are not executable tools on cloud.
+                </p>
+              </div>
+
+              <div className="divide-y divide-border rounded-lg border border-border bg-surface px-4">
+                <Toggle
+                  label="Auto-extract memories"
+                  description="Save useful facts from conversations to Memory."
+                  value={brain.autoExtractMemories}
+                  onChange={(value) => updateBrain('autoExtractMemories', value)}
+                />
+                <Toggle
+                  label="Inject memories in chat"
+                  description="Include saved memories in the system prompt for each message."
+                  value={brain.injectMemoriesInChat}
+                  onChange={(value) => updateBrain('injectMemoriesInChat', value)}
+                />
+                <Toggle
+                  label="Auto-extract skills"
+                  description="Save short procedure notes from chat (prompt hints only on cloud)."
+                  value={brain.autoExtractSkills}
+                  onChange={(value) => updateBrain('autoExtractSkills', value)}
+                />
+              </div>
+
+              <section className="rounded-lg border border-border bg-surface px-4 py-4">
+                <label className="block text-sm text-text-primary">
+                  Auto-approve skills at or above
+                  <span className="ml-2 text-accent">{brain.autoApproveSkillsMinConfidence}%</span>
+                </label>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Learned skill notes above this confidence are enabled automatically.
+                </p>
+                <input
+                  type="range"
+                  min={50}
+                  max={100}
+                  step={5}
+                  value={brain.autoApproveSkillsMinConfidence}
+                  onChange={(e) =>
+                    updateBrain('autoApproveSkillsMinConfidence', Number(e.target.value))
+                  }
+                  className="mt-3 w-full accent-accent"
+                />
+              </section>
+
+              <section className="rounded-lg border border-border bg-surface px-4 py-4">
+                <label className="block text-sm text-text-primary" htmlFor="max-skills">
+                  Max skills per request
+                </label>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Cap how many learned skill notes are added to each chat system prompt.
+                </p>
+                <input
+                  id="max-skills"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={brain.maxSkillsPerRequest}
+                  onChange={(e) =>
+                    updateBrain(
+                      'maxSkillsPerRequest',
+                      Math.min(10, Math.max(1, Number(e.target.value) || 1)),
+                    )
+                  }
+                  className="mt-3 w-24 rounded-md border border-border bg-elevated px-2 py-1.5 text-sm text-text-primary"
+                />
               </section>
             </div>
           )}

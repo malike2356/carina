@@ -33,9 +33,9 @@ Carina ships **51 LLM providers** in its catalog; approximately 39 are chat-rout
 | LLM providers (catalog) | 51 | Configured |
 | LLM providers (chat-routable) | ~39 | Configured subset |
 | Channel adapters | 19 | Configured |
-| Registered tools (base registry) | 66+ | Shipped; grows with toolsets and session tools |
-| Skill packs | 16 | Optional |
-| Curated pack skills | 96 | Optional |
+| Registered tools (base registry) | 72+ | Shipped; grows with toolsets and session tools |
+| Skill packs | 17 | Optional |
+| Curated pack skills | 120 | Optional (kernel); 131 with npm-only packs |
 | CLI commands | 49+ | Shipped |
 
 If a provider, channel, or tool is not configured, Carina marks it **unavailable** rather than pretending it is live.
@@ -65,11 +65,11 @@ See [Configuration](/docs/user/configuration) for env reference. Detail pages be
 
 ## Tools (shipped; toolset-dependent)
 
-Carina registers **66+ tools** in the base registry. Toolsets in `~/.carina/toolsets.yaml` enable subsets per platform (web, CLI, Telegram, etc.).
+Carina registers **72+ tools** in the base registry. Toolsets in `~/.carina/toolsets.yaml` enable subsets per platform (web, CLI, Telegram, etc.).
 
-**Core categories:** web search, files, shell, HTTP, email, code execution, browser, MCP, kanban, cron, delegation, and pack-specific tools.
+**Core categories:** web search, files, shell, HTTP, email, code execution, browser, MCP, kanban, cron, delegation, workspace (notes, documents, images), ops audit, and pack-specific tools.
 
-Full tool tables and confirmation rules: [Tools overview](/docs/user/tools/overview) (implementation detail only; counts live on this page).
+Full inventory: `instructions/operations/TOOL_INVENTORY.md` in the Carina repo. Implementation detail: [Tools overview](/docs/user/tools/overview).
 
 ## Providers (configured)
 

@@ -3,7 +3,7 @@ import type { Message as TelegramMessage } from 'node-telegram-bot-api';
 
 type TelegramSendOptions = NonNullable<Parameters<TelegramBot['sendMessage']>[2]>;
 import { wasMentioned } from '../../group-chat.js';
-import { formatForPlatform } from '../../formatting.js';
+import { formatForChannel } from '../channel-formatter.js';
 import type {
   ChannelMessage,
   IChannelAdapter,
@@ -113,13 +113,15 @@ export class TelegramAdapter implements IChannelAdapter {
       if (options.threadId) {
         sendOptions.message_thread_id = Number(options.threadId);
       }
+      if (options.replyMarkup) {
+        sendOptions.reply_markup = options.replyMarkup as TelegramSendOptions['reply_markup'];
+      }
       await this.bot.sendMessage(Number(conversationId), chunk, sendOptions);
     }
   }
 
   formatForChannel(text: string): string[] {
-    const formatted = formatForPlatform(text, 'telegram');
-    return Array.isArray(formatted) ? formatted : [formatted];
+    return formatForChannel('telegram', text);
   }
 
   validateWebhook(): boolean {

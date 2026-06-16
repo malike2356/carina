@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import { checkHostedQuota } from '../api/hosted.js';
+import { resolveRequestExternalUserId } from '../surfaces/index.js';
 
 export function resolveClientSessionId(req: Request): string {
   const fromBody = req.body?.sessionId;
@@ -7,12 +8,9 @@ export function resolveClientSessionId(req: Request): string {
   return String(fromBody ?? fromQuery ?? 'default');
 }
 
+/** Stable external user id for gateway session maps (web, mobile, hosted). */
 export function resolveExternalId(req: Request): string {
-  const clientSessionId = resolveClientSessionId(req);
-  if (req.hostedUser) {
-    return `hosted:${req.hostedUser.id}:${clientSessionId}`;
-  }
-  return clientSessionId;
+  return resolveRequestExternalUserId(req);
 }
 
 export async function enforceHostedQuota(req: Request): Promise<string | null> {

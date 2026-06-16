@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { formatForPlatform } from './formatting.js';
 
 describe('formatForPlatform', () => {
-  it('keeps Telegram markdown intact', () => {
-    expect(formatForPlatform('**Bold**\n| A | B |', 'telegram')).toBe('**Bold**\n| A | B |');
+  it('converts markdown tables to bullets for Telegram', () => {
+    const result = formatForPlatform('| A | B |\n| --- | --- |\n| 1 | 2 |', 'telegram');
+    expect(result).toContain('- A: 1; B: 2');
   });
 
   it('converts markdown tables and headings for WhatsApp', () => {

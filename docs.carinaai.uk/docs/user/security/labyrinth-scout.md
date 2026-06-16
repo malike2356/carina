@@ -1,6 +1,6 @@
 # Labyrinth Scout
 
-[Labyrinth Scout](https://labyrinthscout.com) is an optional security control plane for Carina and other AI agents.
+[Labyrinth Scout](https://labyrinthscout.com) is the optional security control plane that turns a Carina install into a client-ready deployment, and it can also protect other AI agents.
 
 ## What Scout adds
 
@@ -49,7 +49,7 @@ If you use [Carina Cloud](/docs/user/carina-cloud) at app.carinaai.uk, Pro inclu
 - Cloud chat is monitored automatically (`hosted:{userId}` instance)
 - The same `scout_live_*` key pairs self-hosted Carina to the same Scout account
 
-No separate Scout signup is required when you upgrade through Carina Cloud billing.
+No separate Scout signup is required when you upgrade through Carina Cloud billing. That is the handoff from the Carina workspace into the paid security layer.
 
 ## Public trust metrics
 

@@ -5,6 +5,7 @@ import { isAgentGuardEnabled, scanWithAgentGuard } from './agent-guard-adapter.j
 import { checkStaleMarkerInput } from './deception-client.js';
 import { scanForHoneypotLeak } from './honeypot-client.js';
 import { appendSecurityAudit } from './security-audit.js';
+import { redactSensitiveText } from './redaction.js';
 
 let guard: PromptGuard | null = null;
 let auditPreview = '';
@@ -197,13 +198,14 @@ export async function scanToolOutput(toolName: string, result: string): Promise<
     return LEAK_BLOCK_MESSAGE;
   }
 
-  return output;
+  return redactSensitiveText(output);
 }
 
 export async function scanAgentOutput(text: string, meta?: Record<string, unknown>): Promise<string> {
   if (!text.trim()) return text;
 
-  const leaked = await scanForHoneypotLeak(text, { source: 'agent_output', ...meta });
+  const redacted = redactSensitiveText(text);
+  const leaked = await scanForHoneypotLeak(redacted, { source: 'agent_output', ...meta });
   if (leaked) {
     await reportEvent({
       severity: 'breach',
@@ -215,7 +217,7 @@ export async function scanAgentOutput(text: string, meta?: Record<string, unknow
     return LEAK_BLOCK_MESSAGE;
   }
 
-  return text;
+  return redacted;
 }
 
 export function _resetPromptGuardForTests(): void {

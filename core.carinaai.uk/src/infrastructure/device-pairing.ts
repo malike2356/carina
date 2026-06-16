@@ -201,3 +201,34 @@ export function redactDevicesForApi(devices: PairedDevice[]): Array<{
     scopes: d.scopes,
   }));
 }
+
+export function migrateLegacyPairingStore(homeDir = CARINA_HOME): {
+  migrated: boolean;
+  message?: string;
+  guidance?: string;
+} {
+  const devicesFile = path.join(homeDir, 'devices.json');
+  const legacyPairingFile = path.join(homeDir, 'pairing.json');
+  if (!fs.existsSync(legacyPairingFile) || fs.existsSync(devicesFile)) {
+    return { migrated: false, guidance: 'No legacy pairing.json to migrate.' };
+  }
+
+  let store: DeviceStore = emptyStore();
+  try {
+    const legacy = JSON.parse(fs.readFileSync(legacyPairingFile, 'utf-8')) as PendingPairing;
+    if (legacy.code && legacy.expiresAt) {
+      store.pending = legacy;
+    }
+  } catch {
+    return { migrated: false, guidance: 'pairing.json is corrupt; remove it manually after backup.' };
+  }
+
+  fs.mkdirSync(homeDir, { recursive: true });
+  fs.writeFileSync(devicesFile, JSON.stringify(store, null, 2), { mode: 0o600 });
+  try {
+    fs.unlinkSync(legacyPairingFile);
+  } catch {
+    // ignore
+  }
+  return { migrated: true, message: 'migrated pairing.json to devices.json' };
+}

@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "phone-control",
+    "name": "phone-control",
+    "description": "Dispatch commands to a paired phone node."
+  }
+]

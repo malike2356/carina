@@ -9,6 +9,10 @@ vi.mock('../agents/subagent-runner.js', () => ({
   runDelegatedTask: (...args: unknown[]) => runDelegatedTaskMock(...args),
 }));
 
+vi.mock('../agents/delegation-completion.js', () => ({
+  emitDelegationComplete: vi.fn().mockResolvedValue(undefined),
+}));
+
 beforeEach(() => {
   resetDelegationState();
   runDelegatedTaskMock.mockReset();
@@ -69,6 +73,16 @@ describe('delegate-task tool', () => {
   it('excludes delegate-task from resolved toolsets', () => {
     const tools = resolveToolset(['terminal', 'delegate-task']);
     expect(tools).not.toContain('delegate-task');
+  });
+
+  it('rejects messaging toolsets for subagents', async () => {
+    const tool = createDelegateTaskTool(sessionId);
+    const result = await tool.execute({
+      goal: 'notify user',
+      toolsets: ['messaging'],
+      _sessionId: sessionId,
+    }) as { error?: string };
+    expect(result.error).toContain('send-message');
   });
 
   it('returns error when goal and tasks are both absent', async () => {

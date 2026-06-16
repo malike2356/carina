@@ -1,11 +1,9 @@
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config/index.js';
-import { PROVIDER_MAP, isEmbeddingProviderConfigured } from '../brain/provider-registry.js';
+import { PROVIDER_MAP, isEmbeddingProviderConfigured, providerBaseUrl } from '../brain/provider-registry.js';
 
-// 768: Gemini text-embedding-004 native size; OpenAI text-embedding-3-small configurable to match.
-// Voyage voyage-3 with output_dimension=768 also matches this size.
-export const DIMENSIONS = 768;
+export const DIMENSIONS = config.embeddings.dimensions;
 
 export type EmbeddingProviderId = 'gemini' | 'voyage' | 'openai';
 
@@ -34,6 +32,21 @@ function getOpenAIClient(): OpenAI | null {
 
 function getVoyageApiKey(): string | null {
   return process.env.VOYAGE_API_KEY ?? null;
+}
+
+function embeddingMaxChars(forVoyage = false): number {
+  const fromEnv = process.env.CARINA_EMBEDDING_MAX_CHARS;
+  if (fromEnv) {
+    const parsed = parseInt(fromEnv, 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return forVoyage ? config.embeddings.voyageMaxChars : config.embeddings.maxChars;
+}
+
+function voyageEmbeddingsUrl(): string {
+  const voyageDef = PROVIDER_MAP.voyage;
+  const base = voyageDef ? providerBaseUrl(voyageDef) : 'https://api.voyageai.com/v1';
+  return `${base}/embeddings`;
 }
 
 function embeddingOverride(): EmbeddingProviderId | null {
@@ -79,9 +92,9 @@ export function embeddingProviderStatus(): EmbeddingProviderStatus {
 
 async function embedWithGemini(text: string): Promise<number[]> {
   const client = getGeminiClient()!;
-  const model = client.getGenerativeModel({ model: 'text-embedding-004' }, { apiVersion: 'v1' });
+  const model = client.getGenerativeModel({ model: config.embeddings.geminiModel }, { apiVersion: 'v1' });
   const result = await model.embedContent({
-    content: { role: 'user', parts: [{ text: text.slice(0, 8000) }] },
+    content: { role: 'user', parts: [{ text: text.slice(0, embeddingMaxChars()) }] },
     taskType: 'RETRIEVAL_DOCUMENT' as never,
   });
   return result.embedding.values;
@@ -90,8 +103,8 @@ async function embedWithGemini(text: string): Promise<number[]> {
 async function embedWithOpenAI(text: string): Promise<number[]> {
   const client = getOpenAIClient()!;
   const response = await client.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: text.slice(0, 8000),
+    model: config.embeddings.openaiModel,
+    input: text.slice(0, embeddingMaxChars()),
     dimensions: DIMENSIONS,
   });
   return response.data[0]?.embedding ?? [];
@@ -100,7 +113,7 @@ async function embedWithOpenAI(text: string): Promise<number[]> {
 async function embedWithVoyage(text: string): Promise<number[]> {
   const apiKey = getVoyageApiKey()!;
   const model = process.env.VOYAGE_MODEL ?? 'voyage-3';
-  const res = await fetch('https://api.voyageai.com/v1/embeddings', {
+  const res = await fetch(voyageEmbeddingsUrl(), {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -108,7 +121,7 @@ async function embedWithVoyage(text: string): Promise<number[]> {
     },
     body: JSON.stringify({
       model,
-      input: text.slice(0, 16000),
+      input: text.slice(0, embeddingMaxChars(true)),
       input_type: 'document',
       output_dimension: DIMENSIONS,
     }),

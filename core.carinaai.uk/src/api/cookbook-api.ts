@@ -13,6 +13,7 @@ import {
 import type { ServeBackend, ServeCommands } from '../cookbook/types.js';
 
 export const cookbookApiRouter: ExpressRouter = Router();
+export const playbookApiRouter = cookbookApiRouter;
 
 function runDownloadCommands(commands: ServeCommands): { ok: boolean; commands: string[]; error?: string } {
   const download = commands.download.filter((c) => !c.startsWith('#'));

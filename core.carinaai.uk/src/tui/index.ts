@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import { input, select } from '@inquirer/prompts';
 import { llm } from '../brain/llm.js';
-import { CarinaOrchestrator } from '../agents/orchestrator.js';
 import {
   activateProfile,
   getActiveProfileName,
@@ -11,7 +10,7 @@ import {
   applyProfileProviderFromConfig,
   describeNamedProfileScope,
 } from '../profiles/scope.js';
-import { loadProfilePersonality, personalityToSystemSuffix } from '../profiles/personality.js';
+import { loadProfilePersonality } from '../profiles/personality.js';
 import { getPromptCacheStats } from '../brain/prompt-cache.js';
 import { PROVIDER_DEFINITIONS, ROUTABLE_PROVIDER_NAMES } from '../brain/provider-registry.js';
 import { describeProviderTags, providerCostLabel } from '../brain/provider-tags.js';
@@ -48,24 +47,30 @@ function printBanner(personalityName: string): void {
   console.log(chalk.gray(`  personality: ${personalityName}\n`));
 }
 
-async function reloadPersonality(agent: CarinaOrchestrator): Promise<string> {
-  const personality = await loadProfilePersonality();
-  const suffix = personalityToSystemSuffix(personality);
-  agent.setSystemPromptSuffix(suffix);
-  return personality.name;
-}
-
 export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
   const { ensureFirstRunReady } = await import('../cli/first-run.js');
   await ensureFirstRunReady();
 
-  const sessionId = options.sessionId ?? `tui:${Date.now()}`;
-  const agent = new CarinaOrchestrator(sessionId, options.memoryReady ?? false, undefined, {
-    platform: 'cli',
-  });
+  const { getRouter } = await import('../gateway/router.js');
+  const { loadLastSurfaceSession, saveLastSurfaceSession } = await import('../surfaces/session-store.js');
+  const { resolveSurfaceExternalUserId } = await import('../surfaces/index.js');
 
-  let personalityName = await reloadPersonality(agent);
+  const router = getRouter();
+  const externalUserId = resolveSurfaceExternalUserId('tui');
+  const last = await loadLastSurfaceSession('tui');
+  const started = await router.startSurfaceSession('tui', externalUserId);
+  const sessionId = options.sessionId ?? last?.sessionId ?? started.sessionId;
+
+  let personalityName = 'Carina';
+  try {
+    const personality = await loadProfilePersonality();
+    personalityName = personality.name;
+  } catch {
+    personalityName = 'Carina';
+  }
+
   printBanner(personalityName);
+  console.log(chalk.gray(`  session: ${sessionId}\n`));
 
   let running = true;
   while (running) {
@@ -139,7 +144,7 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
       try {
         const profile = activateProfile(arg);
         applyProfileProviderFromConfig(profile);
-        personalityName = await reloadPersonality(agent);
+        personalityName = (await loadProfilePersonality()).name;
         console.log(chalk.yellow(`Switched to profile: ${profile.name}`));
       } catch (err) {
         console.log(chalk.red(err instanceof Error ? err.message : String(err)));
@@ -183,13 +188,23 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
     }
 
     process.stdout.write(chalk.green('\nCarina: '));
-    for await (const event of agent.turn(trimmed)) {
-      if (event.type === 'text' || event.type === 'tool' || event.type === 'status') {
-        process.stdout.write(event.content);
-      }
+    for await (const chunk of router.handle({
+      id: String(Date.now()),
+      sessionId,
+      content: trimmed,
+      source: 'cli',
+      timestamp: new Date(),
+    })) {
+      process.stdout.write(chunk);
     }
     console.log('\n');
   }
+
+  await saveLastSurfaceSession('tui', {
+    sessionId,
+    externalUserId,
+    updatedAt: new Date().toISOString(),
+  });
 
   console.log(chalk.gray('Goodbye.\n'));
 }

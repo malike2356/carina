@@ -1,8 +1,11 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { appearanceToCSS, normalizeAppearance, type AppearanceSettings } from '@/lib/appearance';
 import { DEFAULT_THEME, THEMES, type ThemeTokens, isThemeName } from '@/lib/themes';
+
+const PUBLIC_PATHS = new Set(['/', '/login', '/register']);
 
 function applyTheme(themeName: string, tokens: ThemeTokens) {
   const root = document.documentElement;
@@ -23,18 +26,36 @@ function applyAppearance(appearance: AppearanceSettings) {
   document.dispatchEvent(new CustomEvent('appearance-changed', { detail: appearance }));
 }
 
+function applyDefaults() {
+  applyTheme(DEFAULT_THEME, THEMES[DEFAULT_THEME].tokens);
+  applyAppearance(normalizeAppearance(null));
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+
   useEffect(() => {
+    if (PUBLIC_PATHS.has(pathname)) {
+      applyDefaults();
+      return;
+    }
+
     fetch('/api/workspace/settings')
-      .then((response) => response.json())
+      .then(async (response) => {
+        if (!response.ok) {
+          applyDefaults();
+          return null;
+        }
+        return response.json();
+      })
       .then((data) => {
+        if (!data) return;
         const themeName = isThemeName(data.data?.theme) ? data.data.theme : DEFAULT_THEME;
         applyTheme(themeName, THEMES[themeName].tokens);
         applyAppearance(normalizeAppearance(data.data?.appearance));
       })
       .catch(() => {
-        applyTheme(DEFAULT_THEME, THEMES[DEFAULT_THEME].tokens);
-        applyAppearance(normalizeAppearance(null));
+        applyDefaults();
       });
 
     function handleSetTheme(event: Event) {
@@ -53,7 +74,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('set-theme', handleSetTheme);
       document.removeEventListener('set-appearance', handleSetAppearance);
     };
-  }, []);
+  }, [pathname]);
 
   return <>{children}</>;
 }

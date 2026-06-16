@@ -1,5 +1,6 @@
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 import { clearDelegationDepth, setDelegationDepth } from './delegation-context.js';
+import type { SubagentRole } from './delegation-context.js';
 import { GenericSubAgent } from './generic-sub-agent.js';
 
 if (isMainThread) {
@@ -13,6 +14,7 @@ export type SubagentWorkerData = {
   allowedTools: string[];
   childDepth: number;
   workdir?: string;
+  role?: SubagentRole;
 };
 
 export type SubagentWorkerMessage =
@@ -31,6 +33,7 @@ async function runSubagent(data: SubagentWorkerData): Promise<string> {
       data.childDepth,
       undefined,
       data.workdir,
+      data.role ?? 'leaf',
     );
     return await agent.run(data.prompt);
   } finally {

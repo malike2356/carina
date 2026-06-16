@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { FileText, Paperclip, Wand2 } from 'lucide-react';
+import { FileText, Files, Paperclip, Wand2 } from 'lucide-react';
 
 interface AttachPanelProps {
   onClose: () => void;
   onAttachFiles: () => void;
   onAttachNote: () => void;
+  onAttachDocument: () => void;
   onInjectPrompt: () => void;
 }
 
@@ -14,6 +15,7 @@ export function AttachPanel({
   onClose,
   onAttachFiles,
   onAttachNote,
+  onAttachDocument,
   onInjectPrompt,
 }: AttachPanelProps) {
   const ref = useRef<HTMLDivElement>(null);
@@ -30,6 +32,7 @@ export function AttachPanel({
   const options = [
     { icon: <Paperclip className="h-3.5 w-3.5" />, label: 'Attach files', action: onAttachFiles },
     { icon: <FileText className="h-3.5 w-3.5" />, label: 'Note as context', action: onAttachNote },
+    { icon: <Files className="h-3.5 w-3.5" />, label: 'Document as context', action: onAttachDocument },
     { icon: <Wand2 className="h-3.5 w-3.5" />, label: 'Inject prompt', action: onInjectPrompt },
   ];
 

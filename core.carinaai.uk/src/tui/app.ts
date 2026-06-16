@@ -216,7 +216,16 @@ export async function runOperatorTui(options: { memoryReady?: boolean; sessionId
   const { startProcessCleanup } = await import('../tools/process-registry.js');
   startProcessCleanup();
 
-  const state = createInitialState(options.sessionId);
+  const { getRouter } = await import('../gateway/router.js');
+  const { loadLastSurfaceSession, saveLastSurfaceSession } = await import('../surfaces/session-store.js');
+  const { resolveSurfaceExternalUserId } = await import('../surfaces/index.js');
+  const router = getRouter();
+  const externalUserId = resolveSurfaceExternalUserId('tui');
+  const last = await loadLastSurfaceSession('tui');
+  const started = await router.startSurfaceSession('tui', externalUserId);
+  const initialSessionId = options.sessionId ?? last?.sessionId ?? started.sessionId;
+
+  const state = createInitialState(initialSessionId);
   const agent = new CarinaOrchestrator(state.chatSessionId, memoryReady, undefined, { platform: 'cli' });
   let snapshot = await loadTuiSnapshot(memoryReady);
 
@@ -251,6 +260,11 @@ export async function runOperatorTui(options: { memoryReady?: boolean; sessionId
       process.stdout.removeListener('resize', onResize);
       process.stdout.write(SHOW_CURSOR);
       process.stdout.write(ALT_SCREEN_OFF);
+      void saveLastSurfaceSession('tui', {
+        sessionId: state.chatSessionId,
+        externalUserId,
+        updatedAt: new Date().toISOString(),
+      });
     };
 
     process.stdin.on('keypress', (str, key) => {

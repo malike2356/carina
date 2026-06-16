@@ -1,0 +1,43 @@
+{
+  "web": {
+    "login": {
+      "title": "Carina",
+      "subtitle": "Private instance - sign in to continue",
+      "password": "Password",
+      "submit": "Sign in",
+      "errorInvalidPassword": "Invalid password",
+      "language": "Language"
+    },
+    "hostedLogin": {
+      "title": "Carina Cloud",
+      "subtitle": "Sign in to your account. Bring your own API keys; we run the agent.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "submitting": "Signing in...",
+      "noAccount": "No account?",
+      "createOne": "Create one",
+      "forgotPassword": "Forgot password?",
+      "errorInvalid": "Invalid email or password"
+    },
+    "chat": {
+      "stop": "Stop",
+      "newChat": "New chat",
+      "thinking": "Carina is thinking",
+      "connectionError": "Connection error."
+    }
+  },
+  "cli": {
+    "locale": {
+      "current": "Active locale: {locale}",
+      "supported": "Supported locales: {locales}",
+      "missingKey": "(missing translation)"
+    }
+  },
+  "gateway": {
+    "approval": {
+      "required": "Approval required for {tool}",
+      "reason": "{reason}"
+    }
+  }
+}

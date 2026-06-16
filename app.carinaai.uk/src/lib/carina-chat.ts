@@ -1,6 +1,9 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { userMemories, workspaceSkills } from '@/db/schema';
+import { getWorkspaceBrainSettings } from '@/lib/brain-settings';
+import { ChatStreamError } from '@/lib/chat-errors';
+import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 
 const PROVIDER_ENDPOINTS: Record<string, { url: string; model: string }> = {
   deepseek: { url: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat' },
@@ -61,7 +64,7 @@ async function* streamOpenAiCompatible(
 
   if (!res.ok || !res.body) {
     const text = await res.text();
-    throw new Error(text || `Provider request failed (${res.status})`);
+    throw new ChatStreamError(text || `Provider request failed (${res.status})`, 'PROVIDER_ERROR');
   }
 
   const reader = res.body.getReader();
@@ -142,29 +145,51 @@ function normalizeCoreEvent(parsed: unknown): CarinaChatStreamEvent | null {
 }
 
 async function buildSystemPrompt(workspaceId: string): Promise<string> {
-  const [memories, disabledSkills] = await Promise.all([
-    db
-      .select({ content: userMemories.content, type: userMemories.type })
-      .from(userMemories)
-      .where(and(eq(userMemories.workspaceId, workspaceId), eq(userMemories.enabled, true)))
-      .limit(50),
+  const brain = await getWorkspaceBrainSettings(workspaceId);
+
+  const [memories, disabledSkills, enabledSkills] = await Promise.all([
+    brain.injectMemoriesInChat
+      ? db
+          .select({ content: userMemories.content, type: userMemories.type })
+          .from(userMemories)
+          .where(and(eq(userMemories.workspaceId, workspaceId), eq(userMemories.enabled, true)))
+          .limit(50)
+      : Promise.resolve([]),
     db
       .select({ skillId: workspaceSkills.skillId })
       .from(workspaceSkills)
       .where(and(eq(workspaceSkills.workspaceId, workspaceId), eq(workspaceSkills.enabled, false))),
+    db
+      .select({
+        skillId: workspaceSkills.skillId,
+        name: workspaceSkills.name,
+        description: workspaceSkills.description,
+      })
+      .from(workspaceSkills)
+      .where(and(eq(workspaceSkills.workspaceId, workspaceId), eq(workspaceSkills.enabled, true)))
+      .orderBy(desc(workspaceSkills.updatedAt))
+      .limit(brain.maxSkillsPerRequest),
   ]);
 
-  const memoryBlock = memories.length > 0
-    ? `\n\nWhat you remember about this user:\n${memories
-        .map((memory) => `- [${memory.type}] ${memory.content}`)
-        .join('\n')}`
-    : '';
+  const memoryBlock =
+    memories.length > 0
+      ? `\n\nWhat you remember about this user:\n${memories
+          .map((memory) => `- [${memory.type}] ${memory.content}`)
+          .join('\n')}`
+      : '';
   const disabledSkillIds = disabledSkills.map((skill) => skill.skillId);
-  const skillBlock = disabledSkillIds.length > 0
-    ? `\n\nDisabled tools for this session (do not invoke): ${disabledSkillIds.join(', ')}`
-    : '';
+  const disabledBlock =
+    disabledSkillIds.length > 0
+      ? `\n\nDisabled tools for this session (do not invoke): ${disabledSkillIds.join(', ')}`
+      : '';
+  const enabledBlock =
+    enabledSkills.length > 0
+      ? `\n\nCustom skill notes for this session (prompt hints only, not live tools; max ${brain.maxSkillsPerRequest}):\n${enabledSkills
+          .map((skill) => `- ${skill.name ?? skill.skillId}: ${skill.description ?? 'No description'}`)
+          .join('\n')}`
+      : '';
 
-  return `You are Carina, an autonomous AI agent built by VERLOX Ltd for property professionals. Be direct and concise.${memoryBlock}${skillBlock}`;
+  return `You are Carina, an AI assistant for property professionals. Be direct and concise.${memoryBlock}${enabledBlock}${disabledBlock}`;
 }
 
 export async function* streamCarinaChat(input: {
@@ -177,22 +202,46 @@ export async function* streamCarinaChat(input: {
   model?: string;
 }): AsyncGenerator<CarinaChatStreamEvent> {
   if (input.providerKeys.length === 0) {
-    throw new Error('Add at least one provider key in Settings before chatting.');
+    throw new ChatStreamError(
+      'Add at least one provider key in Settings before chatting.',
+      'NO_BYOK_KEYS',
+    );
   }
 
   const systemPrompt = await buildSystemPrompt(input.workspaceId);
 
-  if (process.env.CARINA_USE_CORE_PROXY === 'true') {
-    const coreUrl = process.env.CARINA_CORE_URL ?? 'http://localhost:3000';
+  if (coreProxyEnabled()) {
+    const coreUrl = resolveCoreUrl();
+    const token = resolveCoreProxyToken();
     const url = new URL('/api/chat/stream', coreUrl);
     url.searchParams.set('message', input.message);
     url.searchParams.set('sessionId', `cloud:${input.workspaceId}:${input.sessionId}`);
     url.searchParams.set('systemPrompt', systemPrompt);
     if (input.provider) url.searchParams.set('provider', input.provider);
     if (input.model) url.searchParams.set('model', input.model);
-    const res = await fetch(url.toString());
+
+    let res: Response;
+    try {
+      res = await fetch(url.toString(), {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch {
+      throw new ChatStreamError(
+        'Carina could not reach the agent backend. Check Settings or try again.',
+        'CORE_PROXY_FAILED',
+      );
+    }
+
     if (!res.ok || !res.body) {
-      throw new Error('Carina core proxy failed');
+      const detail = await res.text().catch(() => '');
+      const suffix = detail ? ` (${res.status})` : ` (${res.status})`;
+      throw new ChatStreamError(
+        `Carina could not reach the agent backend${suffix}. Check Settings or try again.`,
+        'CORE_PROXY_FAILED',
+      );
     }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

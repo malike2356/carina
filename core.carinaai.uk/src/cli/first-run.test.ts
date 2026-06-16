@@ -107,6 +107,10 @@ describe('first-run onboarding persistence', () => {
     expect(env).toContain('CARINA_LOCAL_MODE=true');
     expect(env).toContain('CARINA_ONBOARDING_DONE=true');
     expect(env).not.toMatch(/^DEEPSEEK_API_KEY=\S/m);
+
+    const userPath = path.join(tmpHome, 'workspaces', 'main', 'USER.md');
+    const userMd = await fs.readFile(userPath, 'utf-8');
+    expect(userMd).toContain('**Name:** Jordan');
   });
 });
 

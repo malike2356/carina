@@ -6,7 +6,7 @@ Hosted vs self-hosted surfaces and billing boundaries: [Capability inventory](/d
 
 **Carina Cloud** is the hosted SaaS at [app.carinaai.uk](https://app.carinaai.uk). Sign up, add your LLM API key, optionally enable a domain pack, and chat in the browser. The agent runs the same MIT kernel as self-host; Cloud adds managed hosting, sessions, and the workspace UI.
 
-Carina Cloud is **not** the same product as **Labyrinth Scout**. Scout is a separate commercial security layer. The Cloud free tier does not bundle Scout.
+Carina Cloud is **not** the same product as **Labyrinth Scout**. Scout adds the controls that a workspace alone does not provide.
 
 For team features (BYOK vault, workbench, audit, deployments), upgrade to **Carina Ops** plans on the same app host.
 
@@ -30,7 +30,7 @@ For current Carina Cloud and Ops packaging, see [carinaai.uk/pricing](https://ca
 
 New orgs receive a **14-day Team trial** on registration. Full feature matrix: [Carina Ops plans](/docs/user/carina-ops/plans).
 
-Scout Monitor and Scout Pro are sold separately at [labyrinthscout.com](https://labyrinthscout.com#pricing). Do not conflate Scout checkout with Carina Cloud or Ops checkout.
+Scout Monitor and Scout Pro are sold separately at [labyrinthscout.com](https://labyrinthscout.com#pricing). Use Scout when the work needs stronger controls.
 
 Marketing summary: [carinaai.uk/cloud](https://carinaai.uk/cloud).
 
@@ -44,7 +44,7 @@ Marketing summary: [carinaai.uk/cloud](https://carinaai.uk/cloud).
 | Infrastructure | Your servers | VERLOX managed Postgres |
 | Inference keys | Your `.env` or BYOK config | BYOK in Settings |
 | Skill packs | `carina pack install`, `.env`, or operator store | Same packs; tenant `installed_packs` table |
-| Scout | Optional; separate subscription | Optional; not on free tier |
+| Scout | Optional; separate subscription | Optional; adds security controls |
 | Ops console | N/A unless you run hosted mode yourself | `/ops/*` on paid plans |
 
 You can use both: Cloud for daily work, self-hosted for local files and tools, with the same Scout key if you subscribe to Scout Pro.
@@ -65,7 +65,7 @@ Document any production migration with your operator before moving off Cloud.
 
 ---
 
-## Free tier guardrails
+## Hosted guardrails
 
 | Limit | Value |
 |-------|-------|
@@ -74,7 +74,7 @@ Document any production migration with your operator before moving off Cloud.
 | Ops console | No (trial elevates to Team features for 14 days) |
 | Members | 1 |
 
-When the free quota is exceeded, chat returns HTTP 429 with an upgrade link.
+When the quota is exceeded, chat returns HTTP 429 with an upgrade link.
 
 ---
 
@@ -90,7 +90,7 @@ Keys are encrypted at rest (`TENANT_KEY_ENCRYPTION_KEY` on the server) and scope
 
 ## Labyrinth Scout (optional, paid)
 
-Scout watches agents for prompt injection, runaway tools, secret leakage, and anomalies. It is **not included** on the Cloud free tier.
+Scout watches agents for prompt injection, runaway tools, secret leakage, and anomalies. It is added separately when the workspace needs production controls.
 
 If you subscribe to Scout separately:
 

@@ -19,6 +19,9 @@ import {
   Trash2,
   MoreHorizontal,
   Library,
+  Mail,
+  Files,
+  CalendarDays,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IconButton } from '@/components/ui/IconButton';
@@ -108,6 +111,21 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
             <Library className="h-4 w-4" />
           </IconButton>
         </Tooltip>
+        <Tooltip text="Documents" side="right">
+          <IconButton label="Documents" onClick={() => router.push('/documents')}>
+            <Files className="h-4 w-4" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip text="Email" side="right">
+          <IconButton label="Email" onClick={() => router.push('/email')}>
+            <Mail className="h-4 w-4" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip text="Calendar" side="right">
+          <IconButton label="Calendar" onClick={() => router.push('/calendar')}>
+            <CalendarDays className="h-4 w-4" />
+          </IconButton>
+        </Tooltip>
         <div className="flex-1" />
         <Tooltip text="Settings" side="right">
           <IconButton label="Settings" onClick={() => router.push('/settings')}>
@@ -189,6 +207,9 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
           }
         />
         <ToolLink icon={<Library className="h-3.5 w-3.5" />} label="Library" href="/library" />
+        <ToolLink icon={<Files className="h-3.5 w-3.5" />} label="Documents" href="/documents" />
+        <ToolLink icon={<Mail className="h-3.5 w-3.5" />} label="Email" href="/email" />
+        <ToolLink icon={<CalendarDays className="h-3.5 w-3.5" />} label="Calendar" href="/calendar" />
         <ToolLink icon={<SearchIcon className="h-3.5 w-3.5" />} label="Research" href="/research" />
         <ToolLink icon={<Clock className="h-3.5 w-3.5" />} label="Tasks" href="/tasks" />
       </div>

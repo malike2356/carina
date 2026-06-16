@@ -21,7 +21,9 @@ describe('provider copilot latency guard', () => {
 
   it('uses sync health cache only in llm router fallback', () => {
     const source = readFileSync(path.join(srcRoot, 'brain', 'llm.ts'), 'utf8');
-    expect(source.includes('isProviderAvailable')).toBe(true);
+    expect(source.includes('resolveProviderFallbackChain')).toBe(true);
+    const fallbackSource = readFileSync(path.join(srcRoot, 'brain', 'fallback-chain.ts'), 'utf8');
+    expect(fallbackSource.includes('isProviderAvailable')).toBe(true);
     expect(source.includes('probeProviderHealth')).toBe(false);
   });
 
@@ -30,9 +32,9 @@ describe('provider copilot latency guard', () => {
     expect(source.includes("CARINA_DEBUG_PROXY_ROUTING !== 'true'")).toBe(true);
   });
 
-  it('memory injection defaults to full and checks env synchronously', () => {
+  it('memory injection defaults to minimal and checks env synchronously', () => {
     const source = readFileSync(path.join(srcRoot, 'memory', 'memory-injection.ts'), 'utf8');
-    expect(source.includes("return 'full'")).toBe(true);
+    expect(source.includes("return 'minimal'")).toBe(true);
     const carina = readFileSync(path.join(srcRoot, 'agents', 'carina.ts'), 'utf8');
     expect(carina.includes('memoryInjectionEnabled')).toBe(true);
     expect(carina.includes('memoryInjectionIncludesSemantic')).toBe(true);

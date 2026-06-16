@@ -4,8 +4,12 @@ import {
   runDeepResearch,
   type DeepResearchReport,
 } from '../agents/deep-research.js';
+import { researchProgressToSse } from '../agents/research-progress.js';
+import { internalResearchApiRouter } from './internal-research-api.js';
 
 export const researchApiRouter: ExpressRouter = Router();
+
+researchApiRouter.use('/cloud', internalResearchApiRouter);
 
 researchApiRouter.get('/stream', async (req: Request, res: Response) => {
   const query = String(req.query.q ?? req.query.query ?? '').trim();
@@ -28,6 +32,9 @@ researchApiRouter.get('/stream', async (req: Request, res: Response) => {
       sessionId: 'web-research',
       onProgress: (line) => {
         res.write(`data: ${JSON.stringify({ type: 'progress', line })}\n\n`);
+      },
+      onProgressEvent: (event) => {
+        res.write(researchProgressToSse(event));
       },
     });
 

@@ -33,6 +33,29 @@ export { PACK_MANIFESTS, listKnownPackNames } from './pack-manifests.js';
 const suffixCache = new Map<string, string>();
 const activeSkillNamesCache = new Map<string, Set<string>>();
 
+export function clearActivePackCaches(): void {
+  suffixCache.clear();
+  activeSkillNamesCache.clear();
+}
+
+import { clearPackResolverCache } from './pack-resolver.js';
+import { clearSkillIndexCache } from './skill-index.js';
+export { buildSkillIndex, discoverSkills, clearSkillIndexCache } from './skill-index.js';
+export { validateSkillDocument, formatSkillValidation } from './skill-validate.js';
+export { scanSkillSecurity, formatSkillSecurityScan } from './skill-security.js';
+export type { SkillAuthoringInput, SkillGating, SkillRuntimeContext } from './skill-format.js';
+
+export async function refreshSkillRuntime(opts?: { platform?: string }) {
+  const mod = await import('./skill-refresh.js');
+  return mod.refreshSkillRuntime(opts);
+}
+
+export function clearSkillRuntimeCaches(): void {
+  clearPackResolverCache();
+  clearSkillIndexCache();
+  clearActivePackCaches();
+}
+
 export function listAvailablePacks(): PackManifest[] {
   return Object.values(PACK_MANIFESTS);
 }
@@ -223,8 +246,10 @@ export async function initSkills(): Promise<void> {
     await loadExtensionPromptSuffixes();
     const { loadEnabledExtensionMcpServers } = await import('../extensions/mcp-loader.js');
     const { loadEnabledExtensionHooks } = await import('../extensions/hooks-loader.js');
+    const { loadEnabledExtensionRulePacks } = await import('../extensions/rule-packs-loader.js');
     extensionMcp = await loadEnabledExtensionMcpServers();
     extensionHooks = await loadEnabledExtensionHooks();
+    await loadEnabledExtensionRulePacks();
   }
 
   if (packsLoaded > 0 || skillMdLoaded > 0 || user.skillsLoaded > 0 || extensionSkills > 0) {

@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "web-readability",
+    "name": "web-readability",
+    "description": "Fetch HTTPS pages as readable article text."
+  }
+]

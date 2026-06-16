@@ -2,6 +2,67 @@
 
 Run Carina on your own infrastructure with Docker or bare Node.js, so the agent works on your stack.
 
+## Quick install (npm)
+
+| Platform | Command |
+|---|---|
+| Linux / macOS | `curl -fsSL .../install.sh \| sh` or `npm install -g carina-agent` |
+| Windows (PowerShell) | `powershell -ExecutionPolicy Bypass -File installer/install-windows.ps1` |
+| Windows (cmd) | `install.cmd` |
+
+First run:
+
+```bash
+carina              # interactive onboarding (name, focus, optional API key)
+carina onboard      # guided setup + doctor
+carina setup --full # advanced wizard (Postgres, Scout, packs)
+```
+
+Non-interactive (CI, Docker init):
+
+```bash
+carina onboard --skip-doctor
+# or
+node dist/src/setup/container-bootstrap.js
+```
+
+## Standalone Docker (single-user)
+
+`docker-compose.standalone.yml` runs Carina with a persistent `/data` volume, tini supervision, and a health check on `/api/config`:
+
+```bash
+cd core.carinaai.uk
+cp .env.docker.example .env.docker   # fill API keys locally, never commit
+docker compose -f docker-compose.standalone.yml up -d --build
+```
+
+Open `http://127.0.0.1:3000` after the health check passes.
+
+Optional profiles:
+
+```bash
+# Postgres + Redis memory backend
+docker compose -f docker-compose.standalone.yml --profile postgres --profile redis up -d
+
+# Local Ollama (CPU)
+docker compose -f docker-compose.standalone.yml --profile ollama up -d
+
+# NVIDIA GPU for Ollama
+docker compose -f docker-compose.standalone.yml -f docker/gpu.nvidia.yml --profile ollama up -d
+```
+
+Single-file GPU stack (Portainer/Coolify):
+
+```bash
+docker compose -f docker-compose.gpu-nvidia.yml up -d --build
+```
+
+Container first boot:
+
+- Creates `CARINA_HOME` (default `/data/.carina`) with `.env`, `config.yaml`, and workspace bootstrap files (`AGENTS.md`, `USER.md`, etc.)
+- Copies operator profile from `CARINA_OPERATOR_NAME` / `CARINA_OPERATOR_CONTEXT` into `USER.md`
+- Skips bootstrap when `CARINA_SKIP_CONTAINER_BOOTSTRAP=true`
+
 ## Docker (production stack)
 
 `docker-compose.prod.yml` runs Carina web, Skills Hub, Postgres (pgvector), Redis, and nginx:

@@ -572,6 +572,49 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 #posture-regulatory-card.tier-limited .value { color: var(--amber); }
 #posture-regulatory-card.tier-high .value { color: var(--red); }
 #posture-regulatory-card.tier-unacceptable .value { color: var(--red); animation: blink 1s step-end infinite; }
+
+/* ── KILL SWITCH VISUAL ── */
+.hdr-kill-visual{display:flex;align-items:center;gap:.45rem;flex-shrink:0;position:relative}
+.hdr-kill-label{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--red);white-space:nowrap;cursor:pointer;background:rgba(255,34,68,.1);border:1px solid rgba(255,34,68,.4);border-radius:3px;padding:.32rem .6rem;line-height:1.2}
+.hdr-kill-label:hover{color:#ff4466;background:rgba(255,34,68,.16);border-color:rgba(255,34,68,.55);text-shadow:0 0 8px rgba(255,34,68,.35)}
+.hdr-kill-label:focus-visible{outline:2px solid var(--red);outline-offset:2px;border-radius:2px}
+.ks-switch.ks-fired+.hdr-kill-label{opacity:.85;text-shadow:0 0 10px rgba(255,34,68,.45)}
+.ks-switch{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ks-switch--hdr{width:52px;height:52px}
+.ks-flash{position:absolute;inset:-40%;border-radius:50%;background:radial-gradient(circle,rgba(255,34,68,.55) 0%,transparent 65%);opacity:0;pointer-events:none;z-index:5}
+.ks-shockwave{position:absolute;top:50%;left:50%;border-radius:50%;border:2px solid rgba(255,34,68,.7);opacity:0;pointer-events:none;z-index:1}
+.ks-switch--hdr .ks-shockwave{width:32px;height:32px;margin:-16px 0 0 -16px}
+.ks-kill-status{position:absolute;bottom:-1.35rem;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:.5rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--red);opacity:0;white-space:nowrap;pointer-events:none}
+.ks-switch--hdr .ks-kill-status{display:none}
+.ks-switch-ring{position:absolute;border-radius:50%;border:2px solid;animation:ks-pulse 2.5s ease-in-out infinite}
+.ks-switch--hdr .ks-switch-ring:nth-child(4){width:52px;height:52px;border-color:rgba(255,34,68,.15);animation-delay:0s}
+.ks-switch--hdr .ks-switch-ring:nth-child(5){width:42px;height:42px;border-color:rgba(255,34,68,.25);animation-delay:.3s}
+.ks-switch--hdr .ks-switch-ring:nth-child(6){width:32px;height:32px;border-color:rgba(255,34,68,.4);animation-delay:.6s}
+@keyframes ks-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.03)}}
+.ks-switch.ks-fired .ks-switch-ring{animation:ks-ring-burst .9s ease-out forwards}
+.ks-switch.ks-fired .ks-switch-ring+.ks-switch-ring{animation-delay:.08s}
+.ks-switch.ks-fired .ks-switch-ring+.ks-switch-ring+.ks-switch-ring{animation-delay:.16s}
+@keyframes ks-ring-burst{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(2.2);border-color:rgba(255,34,68,.8)}}
+.ks-switch.ks-fired .ks-flash{animation:ks-flash-burst .7s ease-out forwards}
+@keyframes ks-flash-burst{0%{opacity:0;transform:scale(.4)}20%{opacity:1}100%{opacity:0;transform:scale(2.5)}}
+.ks-shockwave.ks-shockwave-go{animation:ks-shockwave .9s ease-out forwards}
+@keyframes ks-shockwave{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(3.5);border-width:1px}}
+.hdr-kill-visual.ks-shake{animation:ks-shake .45s ease}
+@keyframes ks-shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-4px)}30%{transform:translateX(4px)}45%{transform:translateX(-3px)}60%{transform:translateX(3px)}75%{transform:translateX(-1px)}}
+.ks-switch-button{border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff4466,var(--red));border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;z-index:2;transition:transform .12s ease,box-shadow .2s ease,background .3s ease;animation:ks-btn-idle 2.4s ease-in-out infinite;padding:0}
+.ks-switch--hdr .ks-switch-button{width:34px;height:34px;box-shadow:0 0 0 3px rgba(255,34,68,.2),0 0 18px rgba(255,34,68,.35),0 4px 12px rgba(0,0,0,.5)}
+@keyframes ks-btn-idle{0%,100%{box-shadow:0 0 0 3px rgba(255,34,68,.2),0 0 16px rgba(255,34,68,.3),0 4px 12px rgba(0,0,0,.5)}50%{box-shadow:0 0 0 5px rgba(255,34,68,.28),0 0 26px rgba(255,34,68,.5),0 4px 12px rgba(0,0,0,.5)}}
+.ks-switch-button:hover{transform:scale(1.06)}
+.ks-switch-button:active{transform:scale(.9)}
+.ks-switch-button:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+.ks-switch.ks-fired .ks-switch-button{animation:ks-btn-killed .35s ease forwards;cursor:default}
+@keyframes ks-btn-killed{0%{transform:scale(.85)}40%{transform:scale(1.05)}100%{transform:scale(1);background:radial-gradient(circle at 35% 35%,#2a1014,#14080a);box-shadow:0 0 0 3px rgba(255,34,68,.55),0 0 16px rgba(255,34,68,.45),inset 0 0 14px rgba(0,0,0,.6)}}
+.ks-btn-icon-killed{display:none}
+.ks-switch.ks-fired .ks-btn-icon-power{display:none}
+.ks-switch.ks-fired .ks-btn-icon-killed{display:block;color:var(--red)}
+.ks-switch--hdr .ks-switch-button svg{width:16px;height:16px;color:#fff}
+.ks-switch--hdr .ks-switch-button .ks-btn-icon-killed{width:14px;height:14px}
+@media (prefers-reduced-motion:reduce){.ks-switch-button,.ks-switch-ring{animation:none}.hdr-kill-visual.ks-shake{animation:none}}
   </style>
 </head>
 <body>
@@ -585,9 +628,24 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <span class="hdr-inst" id="hdr-inst">instance: -</span>
     <span class="hdr-admin">admin: operator</span>
     <span class="hdr-admin">updated: <span id="last-updated">-</span></span>
-    <button class="global-kill" id="global-kill-button">KILL SWITCH</button>
+    <div class="hdr-kill-visual" id="hdr-kill-visual">
+      <div class="ks-switch ks-switch--hdr" id="header-kill-switch">
+        <div class="ks-flash" aria-hidden="true"></div>
+        <div class="ks-shockwave" aria-hidden="true"></div>
+        <div class="ks-shockwave" aria-hidden="true"></div>
+        <div class="ks-switch-ring"></div>
+        <div class="ks-switch-ring"></div>
+        <div class="ks-switch-ring"></div>
+        <button type="button" class="ks-switch-button" id="global-kill-button" data-kill-trigger aria-label="Open kill switch">
+          <svg class="ks-btn-icon-power" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v6"/><path d="M7.75 7.75a6 6 0 1 0 8.486 8.486"/></svg>
+          <svg class="ks-btn-icon-killed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        </button>
+        <div class="ks-kill-status" aria-live="polite"></div>
+      </div>
+      <button type="button" class="hdr-kill-label" data-kill-trigger aria-label="Open kill switch">Kill Switch</button>
+    </div>
     <span class="kill-status" id="kill-status"></span>
-    <a href="https://app.carinaai.uk/security" class="hdr-trust" title="Carina Cloud Security (customers)">YOUR SECURITY</a>
+    <a href="https://app.carinaai.uk/security" class="hdr-trust" title="Carina Cloud Security (customers)">CARINA SECURITY</a>
     <a href="/account/login" class="hdr-trust" title="Scout account portal">SCOUT ACCOUNT</a>
     <a href="https://carinaai.uk/trust" target="_blank" rel="noopener" class="hdr-trust" title="Public trust dashboard">PUBLIC TRUST</a>
     <a href="/governance" class="hdr-trust nav-link" title="Governance compliance dashboard">GOVERNANCE</a>
@@ -2719,12 +2777,18 @@ document.getElementById('platform-settings-save')?.addEventListener('click', (e)
 let killTargetName = '';
 function openKill(id, name) {
   killTargetId = id; killTargetName = name;
-  document.getElementById('kill-desc').textContent = `This will immediately suspend "${name}". All tool calls will be blocked.`;
+  const desc = document.getElementById('kill-desc');
+  if (id === '__global__') {
+    desc.textContent = `This will immediately stop ${name}. All tool calls will be blocked. This action is logged.`;
+  } else {
+    desc.textContent = `This will immediately suspend "${name}". All tool calls will be blocked.`;
+  }
   document.getElementById('kill-confirm').value = '';
   document.getElementById('kill-reason').value = '';
   document.getElementById('kill-submit').disabled = true;
   document.getElementById('kill-overlay').hidden = false;
 }
+window.openKill = openKill;
 function closeKill() { document.getElementById('kill-overlay').hidden = true; }
 document.getElementById('kill-confirm').addEventListener('input', function() {
   document.getElementById('kill-submit').disabled = this.value.trim() !== 'KILL';
@@ -2734,14 +2798,19 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeKill();
 async function executeKill() {
   const reason = document.getElementById('kill-reason').value.trim() || 'Manual kill switch';
   closeKill();
+  const isGlobal = killTargetId === '__global__';
   try {
-    const r = await fetch(`/api/kill/${encodeURIComponent(killTargetId)}`, {
-      method: 'POST', headers: H(), body: JSON.stringify({ reason })
-    });
+    const url = isGlobal ? '/api/killswitch/trigger' : `/api/kill/${encodeURIComponent(killTargetId)}`;
+    const body = isGlobal ? { password: 'dashboard-operator', reason } : { reason };
+    const r = await fetch(url, { method: 'POST', headers: H(), body: JSON.stringify(body) });
     const d = await r.json();
-    if (d.ok || d.status === 'suspended') {
+    const ok = isGlobal ? (r.ok && d.triggered) : (d.ok || d.status === 'suspended');
+    if (ok) {
+      const effectLabel = isGlobal ? 'All agents suspended' : `${killTargetName} suspended`;
       toast(`Kill switch activated: ${killTargetName}`, 'critical');
-      if (window.DashboardKillSwitch) window.DashboardKillSwitch.renderKillStatus(d);
+      if (window.DashboardKillSwitch) {
+        window.DashboardKillSwitch.fireKillEffect(effectLabel);
+      }
       flashRadar();
       loadStatus();
     } else {

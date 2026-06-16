@@ -8,6 +8,11 @@ import {
   setConfigOrSecret,
   setConfigValue,
 } from '../config/loader.js';
+import {
+  formatRuntimeConfigSummary,
+  migrateRuntimeConfig,
+  validateRuntimeConfig,
+} from '../../config/runtime-config.js';
 
 export async function runConfigCommand(args: string[]): Promise<void> {
   const action = args[0] ?? 'list';
@@ -53,17 +58,51 @@ export async function runConfigCommand(args: string[]): Promise<void> {
       console.log(`  ${r.ok ? 'ok' : 'FAIL'}  ${r.key}: ${r.detail}`);
       if (!r.ok) failed++;
     }
+    const runtimeIssues = validateRuntimeConfig();
+    for (const issue of runtimeIssues) {
+      console.log(`  FAIL  runtime.${issue.path}: ${issue.message}`);
+      failed++;
+    }
+    if (runtimeIssues.length === 0) {
+      console.log('  ok  runtime.yaml: valid');
+    }
+    console.log('');
+    console.log(formatRuntimeConfigSummary());
     if (failed > 0) process.exit(1);
+    return;
+  }
+
+  if (action === 'validate') {
+    const runtimeIssues = validateRuntimeConfig();
+    const cliResults = await checkConfig();
+    let failed = runtimeIssues.length;
+    for (const r of cliResults) {
+      if (!r.ok) failed++;
+    }
+    if (failed === 0) {
+      console.log('Config validation passed.');
+      console.log(formatRuntimeConfigSummary());
+      return;
+    }
+    for (const issue of runtimeIssues) {
+      console.log(`FAIL runtime.${issue.path}: ${issue.message}`);
+    }
+    for (const r of cliResults) {
+      if (!r.ok) console.log(`FAIL ${r.key}: ${r.detail}`);
+    }
+    process.exit(1);
     return;
   }
 
   if (action === 'migrate') {
     const added = await migrateConfig();
-    if (added.length === 0) {
+    const runtimeAdded = migrateRuntimeConfig();
+    if (added.length === 0 && runtimeAdded.length === 0) {
       console.log('Config is up to date.');
       return;
     }
-    console.log(`Added missing keys: ${added.join(', ')}`);
+    if (added.length > 0) console.log(`config.yaml added: ${added.join(', ')}`);
+    if (runtimeAdded.length > 0) console.log(`runtime.yaml added: ${runtimeAdded.join(', ')}`);
     return;
   }
 
@@ -77,6 +116,6 @@ export async function runConfigCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina config <list|show|get|set|unset|edit|check|migrate>');
+  console.error('Usage: carina config <list|show|get|set|unset|edit|check|validate|migrate>');
   process.exit(1);
 }

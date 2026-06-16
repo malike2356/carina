@@ -21,6 +21,9 @@ export async function runDoctor(args: string[] = []): Promise<void> {
           ? chalk.yellow('WARN')
           : chalk.red('FAIL');
       console.log(`  ${icon}  [${c.category}] ${c.name}: ${c.detail}`);
+      if (c.guidance && c.status !== 'ok') {
+        console.log(chalk.gray(`       -> ${c.guidance}`));
+      }
     }
     if (report.configDrift.length > 0) {
       console.log(chalk.yellow('\nConfig drift:'));

@@ -152,3 +152,7 @@ export function clearPackResolverCacheForTests(): void {
   packCache.clear();
   skillIndexCache = null;
 }
+
+export function clearPackResolverCache(): void {
+  clearPackResolverCacheForTests();
+}

@@ -11,12 +11,36 @@ describe('workspace-chrome', () => {
     const html = injectWorkspaceChrome(
       '<html><head></head><body><!--CARINA_WORKSPACE_BEGIN--><main>app</main><!--CARINA_WORKSPACE_END--></body></html>',
       'notes',
+      'private',
     );
     expect(html).toContain('carina-ws-sidebar');
     expect(html).toContain('carina-ws-main');
     expect(html).toContain('data-workspace-page="notes"');
+    expect(html).toContain('data-product-mode="private"');
     expect(html).toContain('href="/notes" class="active"');
     expect(html).toContain('<main>app</main>');
+  });
+
+  it('uses different branding for hosted vs private shells', () => {
+    const hosted = workspaceSidebarHtml('memory', 'hosted');
+    const priv = workspaceSidebarHtml('memory', 'private');
+    expect(hosted).toContain('Cloud Workspace');
+    expect(hosted).toContain('data-product-mode="hosted"');
+    expect(priv).toContain('Instance Workspace');
+    expect(priv).toContain('Control Center');
+    expect(hosted).not.toContain('Control Center');
+    expect(priv).not.toContain('Cloud Workspace');
+  });
+
+  it('omits operator-only nav items from hosted shell', () => {
+    const hosted = workspaceSidebarHtml('chat', 'hosted');
+    const priv = workspaceSidebarHtml('chat', 'private');
+    expect(hosted).not.toContain('href="/kanban"');
+    expect(hosted).not.toContain('href="/email"');
+    expect(hosted).not.toContain('href="/prompt-packs"');
+    expect(priv).toContain('href="/kanban"');
+    expect(priv).toContain('href="/email"');
+    expect(priv).toContain('href="/prompt-packs"');
   });
 
   it('adds Inter font, shared theme CSS, and workspace prefs script', () => {
@@ -28,7 +52,7 @@ describe('workspace-chrome', () => {
   });
 
   it('renders hub cards for each workspace app except chat', () => {
-    const cards = workspaceHubCardsHtml();
+    const cards = workspaceHubCardsHtml('private');
     expect(cards).toContain('href="/notes"');
     expect(cards).toContain('href="/documents"');
     expect(cards).toContain('href="/email"');
@@ -36,10 +60,21 @@ describe('workspace-chrome', () => {
     expect(cards).toContain('href="/research"');
     expect(cards).toContain('href="/compare"');
     expect(cards).toContain('Deep Research');
-    expect(cards).toContain('Model Compare');
+    expect(cards).toContain('href="/prompt-packs"');
+    expect(cards).toContain('Prompt packs');
+    expect(cards).toContain('href="/playbook"');
+    expect(cards).toContain('Playbook');
     expect(cards).toContain('New</span>');
     expect(cards).not.toContain('href="/"');
     expect(WORKSPACE_NAV_ITEMS.length).toBeGreaterThan(4);
+  });
+
+  it('hosted hub intro does not mention private instance', () => {
+    const hosted = workspaceHubCardsHtml('hosted');
+    const priv = workspaceHubCardsHtml('private');
+    expect(hosted).toContain('Carina Cloud');
+    expect(priv).toContain('private instance');
+    expect(hosted).not.toContain('private instance');
   });
 
   it('orders research and compare before email in nav', () => {
@@ -52,8 +87,16 @@ describe('workspace-chrome', () => {
   });
 
   it('sidebar marks the active page', () => {
-    const sidebar = workspaceSidebarHtml('images');
+    const sidebar = workspaceSidebarHtml('images', 'private');
     expect(sidebar).toContain('href="/images" class="active"');
     expect(sidebar).not.toContain('href="/notes" class="active"');
+  });
+
+  it('includes mobile bottom nav markup for both modes', () => {
+    const hosted = workspaceSidebarHtml('chat', 'hosted');
+    const priv = workspaceSidebarHtml('chat', 'private');
+    expect(hosted).toContain('carina-ws-bottom-nav');
+    expect(priv).toContain('carina-ws-bottom-nav');
+    expect(hosted).toContain('bnav-icon');
   });
 });

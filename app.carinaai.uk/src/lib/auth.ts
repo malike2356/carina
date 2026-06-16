@@ -9,6 +9,9 @@ const appUrl = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ??
 
 export const auth = betterAuth({
   baseURL: appUrl,
+  trustedOrigins: [appUrl, 'https://app.carinaai.uk', 'http://localhost:4100'].filter(
+    (origin, index, list) => list.indexOf(origin) === index,
+  ),
   secret: process.env.BETTER_AUTH_SECRET,
   database: drizzleAdapter(db, {
     provider: 'pg',

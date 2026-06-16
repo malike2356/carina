@@ -1,6 +1,4 @@
-const defaultCarinaUrl = process.env.NODE_ENV === 'production'
-  ? 'https://core.carinaai.uk'
-  : 'http://localhost:3333';
+const defaultCarinaUrl = 'https://core.carinaai.uk';
 
 export const CARINA_BASE = process.env.CARINA_API_URL ?? defaultCarinaUrl;
 

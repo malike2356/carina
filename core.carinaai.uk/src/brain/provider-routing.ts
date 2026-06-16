@@ -79,3 +79,49 @@ export function mergeFallbackOrder(
 ): string[] {
   return [activeName, ...baseOrder.filter((n) => n !== activeName)];
 }
+
+/** Resolve startup LLM provider without hardcoded provider names. */
+export function resolveInitialActiveProvider(input: {
+  configuredNames: string[];
+  definitions: ProviderDefinition[];
+  preferred?: string;
+  envPreset?: string;
+}): { active: string | null; preset?: string } {
+  const { configuredNames, definitions, preferred, envPreset } = input;
+  const trimmedPreferred = preferred?.trim();
+
+  if (configuredNames.length === 0) {
+    return { active: null };
+  }
+
+  if (isFreeCopilotPreset(envPreset) || isFreeCopilotPreset(trimmedPreferred)) {
+    const selection = buildCopilotSelection(configuredNames, definitions);
+    if (selection.primary) {
+      return { active: selection.primary, preset: FREE_COPILOT_PRESET };
+    }
+  }
+
+  if (trimmedPreferred && configuredNames.includes(trimmedPreferred)) {
+    return { active: trimmedPreferred };
+  }
+
+  const configured = new Set(configuredNames);
+  const byPriority = definitions
+    .filter((d) => configured.has(d.name))
+    .sort((a, b) => a.fallbackPriority - b.fallbackPriority);
+  const firstPaid = byPriority.find((d) => d.name !== 'github-copilot');
+  if (firstPaid) {
+    return { active: firstPaid.name };
+  }
+
+  if (configuredNames.includes('github-copilot')) {
+    return { active: 'github-copilot', preset: FREE_COPILOT_PRESET };
+  }
+
+  const selection = buildCopilotSelection(configuredNames, definitions);
+  if (selection.primary) {
+    return { active: selection.primary, preset: FREE_COPILOT_PRESET };
+  }
+
+  return { active: configuredNames[0] ?? null };
+}

@@ -50,3 +50,33 @@ export {
   EgressBlockedError,
   DataLeakError,
 } from './egress-filter.js';
+export {
+  evaluatePathSafety,
+  evaluateResolvedPathSafety,
+  evaluateUrlSafety,
+  type PathSafetyResult,
+  type UrlSafetyResult,
+} from './path-safety.js';
+export {
+  redactSensitiveText,
+  redactSensitiveValue,
+  redactToolParams,
+} from './redaction.js';
+export {
+  authRateLimitEnabled,
+  checkAuthRateLimit,
+  recordAuthFailure,
+  clearAuthFailures,
+  _resetAuthRateLimitsForTests,
+  type AuthRateLimitResult,
+} from './auth-rate-limit.js';
+export {
+  isAdminRole,
+  evaluateAdminToolPolicy,
+  roleCanRunDangerousTools,
+  requiredRoleForTool,
+  allowlistFirstState,
+  isHighRiskTier,
+  ADMIN_ROLES,
+} from './admin-tool-policy.js';
+export { collectSecurityDoctorChecks, type SecurityDoctorCheck } from './security-doctor.js';

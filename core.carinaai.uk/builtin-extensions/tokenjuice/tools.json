@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "tokenjuice",
+    "name": "tokenjuice",
+    "description": "Estimate token usage for prompts and text."
+  }
+]

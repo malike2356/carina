@@ -32,15 +32,30 @@ function Resolve-CarinaCommand {
 $carinaExe = Resolve-CarinaCommand
 if (-not $carinaExe) {
     Write-Host 'Carina not found in PATH. Try reinstalling or run: npm install -g carina-agent' -ForegroundColor Red
+    Write-Host 'See docs/WINDOWS.md for recovery steps.' -ForegroundColor Gray
     Read-Host 'Press Enter to exit'
     exit 1
 }
 
 $configDir = Join-Path $env:USERPROFILE '.carina'
 $configFile = Join-Path $configDir '.env'
-if (-not (Test-Path $configFile)) {
+$firstRun = -not (Test-Path $configFile)
+
+if ($firstRun) {
     Write-Host 'Welcome to Carina! Let us set up your API keys.' -ForegroundColor Cyan
     & $carinaExe setup
+    Write-Host 'Running health check...' -ForegroundColor Cyan
+    & $carinaExe doctor --quiet
+} else {
+    try {
+        schtasks /Query /TN CarinaGateway /FO LIST | Out-Null
+        $gatewayTask = $true
+    } catch {
+        $gatewayTask = $false
+    }
+    if ($gatewayTask) {
+        schtasks /Run /TN CarinaGateway 2>$null | Out-Null
+    }
 }
 
 Write-Host 'Starting Carina chat...' -ForegroundColor Green

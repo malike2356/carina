@@ -9,6 +9,9 @@ import {
   recordTurn,
   type TurnLogEntry,
 } from '../telemetry/turn-log.js';
+import { recordSubagentMetric } from '../telemetry/subagent-metrics.js';
+import { recordAgentBehavior } from '../telemetry/agent-behavior-log.js';
+import { startTraceSpan, endTraceSpan } from '../telemetry/trace.js';
 import { CarinaAgent, type TurnEvent } from './carina.js';
 import { CodingAgent } from './coding-agent.js';
 import { CommunicationAgent } from './communication-agent.js';
@@ -83,6 +86,10 @@ export class CarinaOrchestrator {
     this.agent.setTenantId(tenantId);
   }
 
+  setAbortSignal(signal?: AbortSignal): void {
+    this.agent.setAbortSignal(signal);
+  }
+
   getProviderOverride(): ProviderOverride | undefined {
     return this.agent.getProviderOverride() ?? this.providerOverride;
   }
@@ -131,6 +138,16 @@ export class CarinaOrchestrator {
 
   async *turn(userMessage: string): AsyncGenerator<OrchestratorEvent> {
     const started = Date.now();
+    const turnSpan = startTraceSpan('orchestrator.turn', {
+      sessionId: this.sessionId,
+      platform: this.platform,
+    });
+    void recordAgentBehavior({
+      sessionId: this.sessionId,
+      platform: this.platform,
+      action: 'turn.start',
+      detail: `len=${userMessage.length}`,
+    });
     const logState: {
       path: TurnLogEntry['path'];
       complexity: TurnLogEntry['complexity'];
@@ -277,6 +294,17 @@ export class CarinaOrchestrator {
       logState.error = err instanceof Error ? err.message : String(err);
       throw err;
     } finally {
+      await endTraceSpan(turnSpan.spanId, logState.error ? 'error' : 'ok', {
+        path: logState.path,
+        tools: logState.toolsUsed.length,
+      });
+      void recordAgentBehavior({
+        sessionId: this.sessionId,
+        platform: this.platform,
+        action: 'turn.end',
+        detail: logState.path,
+        meta: { latencyMs: Date.now() - started, tools: logState.toolsUsed.length },
+      });
       this.agent.setFastMode(false);
       try {
         const latencyMs = Date.now() - started;
@@ -317,9 +345,33 @@ export class CarinaOrchestrator {
     originalTask: string,
     context: string,
   ): Promise<string> {
-    const sub = createSubAgent(step.agentType, this.sessionId, this.confirmTool, this.providerOverride);
-    const prompt = `Original task: ${originalTask}\n\nYour step: ${step.description}`;
-    return sub.run(prompt, context);
+    const started = Date.now();
+    recordSubagentMetric({
+      sessionId: this.sessionId,
+      agentType: step.agentType,
+      status: 'started',
+    });
+    try {
+      const sub = createSubAgent(step.agentType, this.sessionId, this.confirmTool, this.providerOverride);
+      const prompt = `Original task: ${originalTask}\n\nYour step: ${step.description}`;
+      const result = await sub.run(prompt, context);
+      recordSubagentMetric({
+        sessionId: this.sessionId,
+        agentType: step.agentType,
+        status: 'completed',
+        latencyMs: Date.now() - started,
+      });
+      return result;
+    } catch (err) {
+      recordSubagentMetric({
+        sessionId: this.sessionId,
+        agentType: step.agentType,
+        status: 'failed',
+        latencyMs: Date.now() - started,
+        errorClass: err instanceof Error ? err.name : 'error',
+      });
+      throw err;
+    }
   }
 
   async clear(): Promise<void> {

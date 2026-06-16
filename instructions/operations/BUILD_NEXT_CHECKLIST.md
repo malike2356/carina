@@ -138,16 +138,9 @@ Standalone Carina is building toward Hermes parity. Phase 2 target was "full Her
 
 ## Carina standalone tool inventory (current)
 
-**Always registered (core, 40+):**
-`web-search`, `file-read`, `file-write`, `patch`, `search-files`, `shell-exec`, `process`, `http-request`, `email-send`, `email-list`, `code-exec`, `memory`, `session-search`, `text-to-speech`, `transcription`, `vision-analyze`, `image-generation`, `video-generation`, `todo`, `clarify`, `delegate-task`, `cronjob`, `kanban`, `send-message`, `webhook`, `skills-list`, `skill-view`, `skill-manage`, `mcp`, `mixture-of-agents`, `checkpoint-manager`, `debug-helpers`, `homeassistant`, `x-search`, `discord`, `feishu-doc`, `feishu-drive`, `yuanbao`, `computer-use`
+See **`instructions/operations/TOOL_INVENTORY.md`** for the authoritative list (72+ base tools, 80 toolset entries, category tables, and Hermes parity matrix).
 
-**When Playwright available (+9):**
-`browser-navigate`, `browser-click`, `browser-type`, `browser-press`, `browser-scroll`, `browser-snapshot`, `browser-console`, `browser-back`, `browser-get-images`
-
-**When `property-uk` pack active (+1):**
-`domain_lookup`
-
-**Total:** 71 tools in `TOOLSET_MAP` (includes browser, kanban, integrations, MCP, etc.).
+**New in 2026-06-15 tool-count close:** `notes-manage`, `documents-manage`, `images-gallery`, `secrets-audit`, plus `workspace` and `ops` toolsets.
 
 ---
 

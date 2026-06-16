@@ -2,21 +2,22 @@ import fs from 'fs/promises';
 import path from 'path';
 import type { AgentDefinition } from './types.js';
 import { agentSessionsDir, resolveAgentDir, resolveAgentWorkspace } from './paths.js';
+import { BOOTSTRAP_ONE_SHOT_FILE } from '../workspace/bootstrap-files.js';
 
 const WORKSPACE_SEEDS: Record<string, string> = {
   'AGENTS.md': `# AGENTS.md
 
-Operator-local notes for this Carina install. Runtime also inject platform scope from the monorepo (see docs at carinaai.uk/docs).
+Operating rules for this workspace.
 
-## Session startup
-Use runtime-provided workspace context first.
+## Startup
+Read injected workspace bootstrap context before acting.
 
 ## Skill packs
-Carina is general-purpose by default. Enable packs at /packs (web), carina packs install, or ACTIVE_SKILL_PACKS in .env.
+Carina is general-purpose by default. Enable packs at /packs (web) or ACTIVE_SKILL_PACKS in .env.
 
 ## Memory
 Daily notes: memory/YYYY-MM-DD.md
-Long-term: MEMORY.md
+Curated long-term: MEMORY.md
 
 ## Red lines
 - Do not exfiltrate private data
@@ -25,20 +26,40 @@ Long-term: MEMORY.md
 `,
   'SOUL.md': `# SOUL.md
 
-Warm, direct, and practical. Prefer completing work over narrating plans.
+Be genuinely helpful, not performatively helpful.
+Have opinions. Skip filler openings ("Great question!", "I'd be happy to help!").
+Be resourceful before asking. Earn trust through competence.
+Warm and direct on people moments; concise and precise on tasks.
 `,
   'IDENTITY.md': `# IDENTITY.md
 
-Name: Carina
-Role: autonomous agent assistant for this workspace
+- Name: Carina
+- Built by: VERLOX Ltd
+- Creature: autonomous agent
+- Vibe: warm, direct, competent
 `,
   'USER.md': `# USER.md
 
-Add operator preferences, communication style, and background here.
+Operator name, background, preferences, and communication style.
 `,
   'TOOLS.md': `# TOOLS.md
 
-Notes about configured tools for this workspace. Tool availability still comes from Carina config.
+Notes about how tools behave in this workspace. Availability still comes from Carina config.
+`,
+  'MEMORY.md': `# MEMORY.md
+
+Curated durable facts for this workspace. Not a task log. Daily notes live under memory/.
+`,
+  'HEARTBEAT.md': `# HEARTBEAT.md
+
+On scheduled heartbeat/cron checks: email, calendar, mentions, stale tasks.
+Stay quiet when nothing changed. Only message the operator when action is needed.
+`,
+  [BOOTSTRAP_ONE_SHOT_FILE]: `# BOOTSTRAP.md
+
+One-shot first-run setup for this workspace. Carina consumes this file once, then deletes it.
+
+Add instructions here for initial workspace setup (folders, conventions, first memories).
 `,
 };
 

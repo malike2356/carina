@@ -7,9 +7,17 @@ import {
   MAX_CONCURRENT_SUBAGENTS,
   releaseChildAbortController,
   setDelegationDepth,
+  setSubagentRole,
+  type SubagentRole,
 } from '../agents/delegation-context.js';
+import { emitDelegationComplete } from '../agents/delegation-completion.js';
+import {
+  formatSubagentSummary,
+  resolveSubagentAllowedTools,
+  validateSubagentToolsets,
+  type SubagentRole as PolicyRole,
+} from '../agents/subagent-policy.js';
 import { trackChildSession } from '../memory/session-scope.js';
-import { resolveToolset, LEAF_EXCLUDED_TOOLS } from './toolset.js';
 import { runDelegatedTask } from '../agents/subagent-runner.js';
 
 const DEFAULT_TIMEOUT_SECONDS = 60;
@@ -20,30 +28,19 @@ interface DelegateTaskInput {
   toolsets?: string[];
   workdir?: string;
   timeoutSeconds?: number;
+  role?: PolicyRole;
   tasks?: Array<{
     goal: string;
     context?: string;
     toolsets?: string[];
     workdir?: string;
     timeoutSeconds?: number;
+    role?: PolicyRole;
   }>;
 }
 
-function validateToolsets(toolsets: string[]): string | null {
-  const excludedSet = new Set<string>(LEAF_EXCLUDED_TOOLS);
-  for (const set of toolsets) {
-    const key = set.toLowerCase().trim().replace(/_/g, '-');
-    if (excludedSet.has(key)) {
-      return `Subagents cannot use ${key}.`;
-    }
-  }
-  const resolved = resolveToolset(toolsets);
-  for (const tool of resolved) {
-    if (excludedSet.has(tool)) {
-      return `Subagents cannot use ${tool}.`;
-    }
-  }
-  return null;
+function normalizeRole(role: unknown): SubagentRole {
+  return role === 'orchestrator' ? 'orchestrator' : 'leaf';
 }
 
 async function runSingleTask(
@@ -52,9 +49,11 @@ async function runSingleTask(
   context: string | undefined,
   toolsets: string[],
   childDepth: number,
+  role: SubagentRole,
   workdir?: string,
   timeoutSeconds = DEFAULT_TIMEOUT_SECONDS,
 ): Promise<string> {
+  const started = Date.now();
   const childAbort = createChildAbortController(parentSessionId);
   const subSessionId = `${parentSessionId}:sub:${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   trackChildSession(subSessionId, parentSessionId);
@@ -65,21 +64,46 @@ async function runSingleTask(
     }
 
     setDelegationDepth(subSessionId, childDepth);
+    setSubagentRole(subSessionId, role);
 
-    const allowedTools = resolveToolset(toolsets.length > 0 ? toolsets : ['terminal', 'file', 'web']);
+    const allowedTools = resolveSubagentAllowedTools(toolsets);
 
-    return await runDelegatedTask({
+    const raw = await runDelegatedTask({
       subSessionId,
       goal,
       context,
       allowedTools,
       childDepth,
+      role,
       workdir,
       timeoutMs: timeoutSeconds * 1000,
       abortSignal: childAbort.signal,
     });
+    const summary = formatSubagentSummary(raw);
+    await emitDelegationComplete({
+      parentSessionId,
+      subSessionId,
+      goal,
+      summary,
+      mode: 'single',
+      success: !summary.startsWith('Error:') && !summary.startsWith('Subagent cancelled'),
+      role,
+      durationMs: Date.now() - started,
+    });
+    return summary;
   } catch (err) {
-    return `Error: ${err instanceof Error ? err.message : String(err)}`;
+    const message = `Error: ${err instanceof Error ? err.message : String(err)}`;
+    await emitDelegationComplete({
+      parentSessionId,
+      subSessionId,
+      goal,
+      summary: message,
+      mode: 'single',
+      success: false,
+      role,
+      durationMs: Date.now() - started,
+    });
+    return message;
   } finally {
     releaseChildAbortController(parentSessionId, childAbort);
     clearSubagentState(subSessionId);
@@ -122,7 +146,7 @@ export function createDelegateTaskTool(sessionId: string): Tool {
     dangerous: true,
     requiresConfirmation: true,
     description:
-      'Spawn isolated subagents in worker threads to run tasks in parallel on all platforms (Windows, Linux, macOS). Use when a task has genuinely independent sub-parts that can run concurrently. Single mode: provide goal + optional context and toolsets. Batch mode: provide a tasks array (up to 3 run concurrently, queue beyond that). The parent receives only the final summary from each subagent; intermediate tool calls are invisible. Subagents cannot use delegate-task, memory, clarify, todo, email, or cron. Pick toolsets from: terminal, file, web, browser, search, media. Default toolsets when omitted: terminal, file, web. Default timeout: 60 seconds per subagent. Do not delegate when a single-turn answer suffices.',
+      'Spawn isolated subagents in worker threads to run tasks in parallel on all platforms (Windows, Linux, macOS). Use when a task has genuinely independent sub-parts that can run concurrently. Single mode: provide goal + optional context and toolsets. Batch mode: provide a tasks array (up to 3 run concurrently, queue beyond that). Role leaf (default): worker only, no further delegation. Role orchestrator: may delegate one more level when CARINA_MAX_DELEGATION_DEPTH allows. The parent receives only the final summary from each subagent; intermediate tool calls are invisible. Subagents cannot use delegate-task (leaf), memory, clarify, send-message, todo, email, or cron. Pick toolsets from: terminal, file, web, browser, search, media. Default toolsets when omitted: terminal, file, web. Default timeout: 60 seconds per subagent. Do not delegate when a single-turn answer suffices.',
     parameters: {
       type: 'object',
       properties: {
@@ -131,7 +155,12 @@ export function createDelegateTaskTool(sessionId: string): Tool {
         toolsets: {
           type: 'array',
           items: { type: 'string' },
-          description: 'terminal, file, web, browser, search',
+          description: 'terminal, file, web, browser, search, media',
+        },
+        role: {
+          type: 'string',
+          enum: ['leaf', 'orchestrator'],
+          description: 'leaf: no further delegation (default). orchestrator: may spawn workers when depth allows.',
         },
         workdir: { type: 'string', description: 'Working directory for the subagent' },
         timeoutSeconds: {
@@ -148,6 +177,7 @@ export function createDelegateTaskTool(sessionId: string): Tool {
               toolsets: { type: 'array', items: { type: 'string' } },
               workdir: { type: 'string' },
               timeoutSeconds: { type: 'number' },
+              role: { type: 'string', enum: ['leaf', 'orchestrator'] },
             },
             required: ['goal'],
           },
@@ -160,19 +190,20 @@ export function createDelegateTaskTool(sessionId: string): Tool {
 
       if (!canDelegate(parentSessionId)) {
         return {
-          error: `Delegation depth limit (${getDelegationDepth(parentSessionId)}) reached. Subagents cannot delegate further.`,
+          error: `Delegation depth limit (${getDelegationDepth(parentSessionId)}) reached. Only orchestrator subagents may delegate further.`,
         };
       }
 
       const input = params as DelegateTaskInput;
       const childDepth = getDelegationDepth(parentSessionId) + 1;
       const defaultTimeout = input.timeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS;
+      const defaultRole = normalizeRole(input.role);
 
       if (input.tasks && input.tasks.length > 0) {
         const batch = input.tasks;
         const summaries = await runWithConcurrency(batch, async (task) => {
           const toolsets = task.toolsets ?? ['terminal', 'file', 'web'];
-          const err = validateToolsets(toolsets);
+          const err = validateSubagentToolsets(toolsets);
           if (err) return `Error: ${err}`;
           return runSingleTask(
             parentSessionId,
@@ -180,6 +211,7 @@ export function createDelegateTaskTool(sessionId: string): Tool {
             task.context,
             toolsets,
             childDepth,
+            normalizeRole(task.role ?? defaultRole),
             task.workdir,
             task.timeoutSeconds ?? defaultTimeout,
           );
@@ -197,7 +229,7 @@ export function createDelegateTaskTool(sessionId: string): Tool {
       if (!goal) return { error: 'goal or tasks is required.' };
 
       const toolsets = input.toolsets ?? ['terminal', 'file', 'web'];
-      const err = validateToolsets(toolsets);
+      const err = validateSubagentToolsets(toolsets);
       if (err) return { error: err };
 
       const summary = await runSingleTask(
@@ -206,10 +238,11 @@ export function createDelegateTaskTool(sessionId: string): Tool {
         input.context,
         toolsets,
         childDepth,
+        defaultRole,
         input.workdir ? String(input.workdir) : undefined,
         defaultTimeout,
       );
-      return { mode: 'single', summary, delegatedTo: 'worker_thread' };
+      return { mode: 'single', summary, delegatedTo: 'worker_thread', role: defaultRole };
     },
   };
 }

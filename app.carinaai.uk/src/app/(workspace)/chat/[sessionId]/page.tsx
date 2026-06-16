@@ -11,10 +11,12 @@ export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ sessionId: string }>;
+  searchParams: Promise<{ researchJob?: string; document?: string }>;
 }
 
-export default async function ChatPage({ params }: Props) {
+export default async function ChatPage({ params, searchParams }: Props) {
   const { sessionId } = await params;
+  const { researchJob, document: documentId } = await searchParams;
   const session = await getSession();
   if (!session) redirect('/login');
 
@@ -51,6 +53,8 @@ export default async function ChatPage({ params }: Props) {
           createdAt: m.createdAt.toISOString(),
         }))}
       workspacePlan={workspace.plan}
+      researchJobId={researchJob ?? null}
+      documentId={documentId ?? null}
     />
   );
 }

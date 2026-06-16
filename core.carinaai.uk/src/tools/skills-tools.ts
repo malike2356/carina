@@ -6,6 +6,9 @@ import {
   saveSkill,
   updateSkill,
 } from '../skills/store.js';
+import { validateSkillDocument, formatSkillValidation } from '../skills/skill-validate.js';
+import { getLatestSkillVersion, recordSkillVersion } from '../skills/skill-versions.js';
+import { logSkillAction } from '../skills/skill-audit-log.js';
 
 export const skillsListTool: Tool = {
   name: 'skills-list',
@@ -119,11 +122,37 @@ export const skillManageTool: Tool = {
         return { error: 'description and steps are required for create' };
       }
 
+      const validation = validateSkillDocument({
+        name,
+        description,
+        trigger: triggers,
+        steps,
+        toolsUsed,
+      });
+      if (!validation.ok) {
+        return { error: 'skill validation failed', details: formatSkillValidation(validation) };
+      }
+
       try {
         const existing = await getSkillByName(name);
         if (existing) return { error: `skill already exists: ${name}` };
-        const skill = await saveSkill({ name, description, trigger: triggers, steps, toolsUsed });
-        return { status: 'created', id: skill.id, name: skill.name };
+        const skill = await saveSkill({
+          name,
+          description,
+          trigger: triggers,
+          steps,
+          toolsUsed,
+        });
+        await recordSkillVersion({
+          skillId: skill.id,
+          version: 1,
+          steps: skill.steps,
+          trigger: skill.trigger,
+          toolsUsed: skill.toolsUsed,
+          source: 'skill-manage:create',
+        });
+        await logSkillAction('created', skill.id, { name: skill.name, source: 'skill-manage' });
+        return { status: 'created', id: skill.id, name: skill.name, version: 1 };
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) };
       }
@@ -148,8 +177,30 @@ export const skillManageTool: Tool = {
             : [];
         }
 
+        const candidate = {
+          name,
+          description: String(updates.description ?? existing.description),
+          trigger: (updates.trigger as string[] | undefined) ?? existing.trigger,
+          steps: String(updates.steps ?? existing.steps),
+          toolsUsed: (updates.toolsUsed as string[] | undefined) ?? existing.toolsUsed,
+        };
+        const validation = validateSkillDocument(candidate);
+        if (!validation.ok) {
+          return { error: 'skill validation failed', details: formatSkillValidation(validation) };
+        }
+
         const skill = await updateSkill(name, updates);
-        return { status: 'updated', id: skill.id, name: skill.name };
+        const nextVersion = (await getLatestSkillVersion(skill.id)) + 1;
+        await recordSkillVersion({
+          skillId: skill.id,
+          version: nextVersion,
+          steps: skill.steps,
+          trigger: skill.trigger,
+          toolsUsed: skill.toolsUsed,
+          source: 'skill-manage:update',
+        });
+        await logSkillAction('refined', skill.id, { name: skill.name, version: nextVersion });
+        return { status: 'updated', id: skill.id, name: skill.name, version: nextVersion };
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) };
       }

@@ -1,5 +1,4 @@
 import twilio from 'twilio';
-import { sendTwilioSms } from '@verlox/carina-transport';
 import { config } from '../../../config/index.js';
 import { splitByLength } from '../channel-formatter.js';
 import type {
@@ -10,6 +9,14 @@ import type {
 } from '../channel-adapter.interface.js';
 
 const SMS_PREFIX = '[Carina] ';
+let transportModulePromise: Promise<{ sendTwilioSms: typeof import('@verlox/carina-transport').sendTwilioSms } | null> | null = null;
+
+async function loadTransportModule(): Promise<{ sendTwilioSms: typeof import('@verlox/carina-transport').sendTwilioSms } | null> {
+  if (!transportModulePromise) {
+    transportModulePromise = import('@verlox/carina-transport').catch(() => null);
+  }
+  return transportModulePromise;
+}
 
 export class SmsAdapter implements IChannelAdapter {
   readonly name = 'sms' as const;
@@ -38,8 +45,12 @@ export class SmsAdapter implements IChannelAdapter {
 
   async sendMessage(conversationId: string, text: string, _options: SendOptions = {}): Promise<void> {
     if (!this.enabled) return;
+    const transport = await loadTransportModule();
+    if (!transport) {
+      throw new Error('carina-transport package is not installed');
+    }
     for (const chunk of this.formatForChannel(text)) {
-      await sendTwilioSms({
+      await transport.sendTwilioSms({
         accountSid: config.sms.accountSid,
         authToken: config.sms.authToken,
         from: config.sms.fromNumber,

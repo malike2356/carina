@@ -8,12 +8,16 @@ import { SessionHeader } from './SessionHeader';
 import { ToolCallBlock } from './ToolCallBlock';
 import { ChatMessage, ContextPin, LiveToolCall } from './types';
 import { UserMessage } from './UserMessage';
+import { ChatErrorMessage } from './ChatErrorMessage';
+import type { ChatErrorCode } from '@/lib/chat-errors';
 
 interface ChatViewProps {
   sessionId: string;
   sessionTitle: string;
   initialMessages: ChatMessage[];
   workspacePlan: string;
+  researchJobId?: string | null;
+  documentId?: string | null;
 }
 
 export function ChatView({
@@ -21,13 +25,79 @@ export function ChatView({
   sessionTitle,
   initialMessages,
   workspacePlan: _workspacePlan,
+  researchJobId,
+  documentId,
 }: ChatViewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [title, setTitle] = useState(sessionTitle);
   const [streamingContent, setStreamingContent] = useState('');
   const [liveToolCalls, setLiveToolCalls] = useState<LiveToolCall[]>([]);
   const [contextPins, setContextPins] = useState<ContextPin[]>([]);
+  const [streamError, setStreamError] = useState<{ message: string; code?: ChatErrorCode } | null>(
+    null,
+  );
+  const [researchReady, setResearchReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [webSearchAvailable, setWebSearchAvailable] = useState(false);
+  const [agentModeAvailable, setAgentModeAvailable] = useState(false);
+
+  useEffect(() => {
+    void fetch('/api/chat/health')
+      .then((response) => response.json())
+      .then((data) => {
+        const caps = data.capabilities as { webSearch?: boolean; agentTools?: boolean } | undefined;
+        setWebSearchAvailable(Boolean(caps?.webSearch));
+        setAgentModeAvailable(Boolean(caps?.agentTools));
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!researchJobId) return;
+    void fetch(`/api/research/${researchJobId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.data?.output) return;
+        setResearchReady(true);
+        setContextPins((current) => {
+          const exists = current.some((pin) => pin.id === researchJobId);
+          if (exists) return current;
+          return [
+            ...current,
+            {
+              id: researchJobId,
+              label: `Research: ${String(data.data.query).slice(0, 48)}`,
+              pinType: 'text',
+              content: String(data.data.output).slice(0, 4000),
+            },
+          ];
+        });
+      })
+      .catch(() => {});
+  }, [researchJobId]);
+
+  useEffect(() => {
+    if (!documentId) return;
+    void fetch(`/api/documents/${documentId}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.data) return;
+        setContextPins((current) => {
+          const exists = current.some((pin) => pin.id === documentId);
+          if (exists) return current;
+          return [
+            ...current,
+            {
+              id: documentId,
+              label: `Document: ${String(data.data.title).slice(0, 48)}`,
+              pinType: 'document',
+              content: String(data.data.content).slice(0, 4000),
+            },
+          ];
+        });
+      })
+      .catch(() => {});
+  }, [documentId]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -131,6 +201,7 @@ export function ChatView({
     setBusy(true);
     setStreamingContent('');
     setLiveToolCalls([]);
+    setStreamError(null);
 
     const res = await fetch('/api/chat', {
       method: 'POST',
@@ -176,6 +247,8 @@ export function ChatView({
       sessionId?: string;
       model?: string;
     } | null = null;
+    let streamFailed = false;
+    let streamErrorPayload: { message: string; code?: ChatErrorCode } | null = null;
     const streamToolCalls: LiveToolCall[] = [];
 
     while (true) {
@@ -190,6 +263,16 @@ export function ChatView({
           const parsed = JSON.parse(data) as
             | string
             | {
+                type?: string;
+                content?: string;
+                id?: string;
+                name?: string;
+                input?: unknown;
+                output?: unknown;
+                error?: string;
+                code?: ChatErrorCode;
+                durationMs?: number;
+                duration_ms?: number;
                 meta?: {
                   inputTokens: number;
                   outputTokens: number;
@@ -213,23 +296,79 @@ export function ChatView({
                   error: string;
                   durationMs?: number;
                 };
-              }
-            | { error?: string };
+              };
+
           if (typeof parsed === 'string') {
             assistant += parsed;
             setStreamingContent(assistant);
-          } else if ('tool_start' in parsed && parsed.tool_start) {
-            const nextToolCall: LiveToolCall = {
+            continue;
+          }
+
+          if (parsed.error) {
+            streamFailed = true;
+            streamErrorPayload = {
+              message: parsed.error,
+              code: parsed.code,
+            };
+            setStreamError(streamErrorPayload);
+            continue;
+          }
+
+          if (parsed.type === 'text' && typeof parsed.content === 'string') {
+            assistant += parsed.content;
+            setStreamingContent(assistant);
+            continue;
+          }
+
+          if (parsed.type === 'tool_start' && parsed.id && parsed.name) {
+            streamToolCalls.push({
+              id: parsed.id,
+              name: parsed.name,
+              input: parsed.input ?? {},
+              output: null,
+              durationMs: 0,
+              status: 'running',
+            });
+            setLiveToolCalls([...streamToolCalls]);
+            continue;
+          }
+
+          if (parsed.type === 'tool_done' && parsed.id) {
+            const toolCall = streamToolCalls.find((tc) => tc.id === parsed.id);
+            if (toolCall) {
+              toolCall.output = parsed.output;
+              toolCall.durationMs = Number(parsed.durationMs ?? parsed.duration_ms ?? 0);
+              toolCall.status = 'done';
+            }
+            setLiveToolCalls([...streamToolCalls]);
+            continue;
+          }
+
+          if (parsed.type === 'tool_error' && parsed.id) {
+            const toolCall = streamToolCalls.find((tc) => tc.id === parsed.id);
+            if (toolCall) {
+              toolCall.output = parsed.error ?? 'Tool failed';
+              toolCall.durationMs = Number(parsed.durationMs ?? parsed.duration_ms ?? 0);
+              toolCall.status = 'error';
+            }
+            setLiveToolCalls([...streamToolCalls]);
+            continue;
+          }
+
+          if (parsed.tool_start) {
+            streamToolCalls.push({
               id: parsed.tool_start.id,
               name: parsed.tool_start.name,
               input: parsed.tool_start.input ?? {},
               output: null,
               durationMs: 0,
               status: 'running',
-            };
-            streamToolCalls.push(nextToolCall);
+            });
             setLiveToolCalls([...streamToolCalls]);
-          } else if ('tool_done' in parsed && parsed.tool_done) {
+            continue;
+          }
+
+          if (parsed.tool_done) {
             const toolCall = streamToolCalls.find((tc) => tc.id === parsed.tool_done?.id);
             if (toolCall) {
               toolCall.output = parsed.tool_done.output;
@@ -237,7 +376,10 @@ export function ChatView({
               toolCall.status = 'done';
             }
             setLiveToolCalls([...streamToolCalls]);
-          } else if ('tool_error' in parsed && parsed.tool_error) {
+            continue;
+          }
+
+          if (parsed.tool_error) {
             const toolCall = streamToolCalls.find((tc) => tc.id === parsed.tool_error?.id);
             if (toolCall) {
               toolCall.output = parsed.tool_error.error;
@@ -245,11 +387,11 @@ export function ChatView({
               toolCall.status = 'error';
             }
             setLiveToolCalls([...streamToolCalls]);
-          } else if ('meta' in parsed && parsed.meta) {
+            continue;
+          }
+
+          if (parsed.meta) {
             finalMeta = parsed.meta;
-          } else if ('error' in parsed && parsed.error) {
-            assistant += `\n\nError: ${parsed.error}`;
-            setStreamingContent(assistant);
           }
         } catch {
           assistant += data;
@@ -258,27 +400,46 @@ export function ChatView({
       }
     }
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: assistant,
-        toolCalls: streamToolCalls.map((toolCall) => ({
-          id: toolCall.id,
-          name: toolCall.name,
-          input: toolCall.input,
-          output: toolCall.output,
-          durationMs: toolCall.durationMs,
-          status: toolCall.status,
-        })),
-        inputTokens: finalMeta?.inputTokens ?? 0,
-        outputTokens: finalMeta?.outputTokens ?? 0,
-        durationMs: finalMeta?.durationMs ?? 0,
-        model: finalMeta?.model ?? '',
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    if (streamFailed && streamErrorPayload) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: '',
+          errorCode: streamErrorPayload.code,
+          errorMessage: streamErrorPayload.message,
+          toolCalls: [],
+          inputTokens: 0,
+          outputTokens: 0,
+          durationMs: 0,
+          model: '',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    } else if (assistant.trim() || streamToolCalls.length > 0) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: assistant,
+          toolCalls: streamToolCalls.map((toolCall) => ({
+            id: toolCall.id,
+            name: toolCall.name,
+            input: toolCall.input,
+            output: toolCall.output,
+            durationMs: toolCall.durationMs,
+            status: toolCall.status,
+          })),
+          inputTokens: finalMeta?.inputTokens ?? 0,
+          outputTokens: finalMeta?.outputTokens ?? 0,
+          durationMs: finalMeta?.durationMs ?? 0,
+          model: finalMeta?.model ?? '',
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    }
     setStreamingContent('');
     setLiveToolCalls([]);
     setBusy(false);
@@ -302,8 +463,13 @@ export function ChatView({
             <AssistantMessage key={msg.id} message={msg} onDelete={deleteMessage} />
           )
         ))}
-        {(streamingContent !== '' || liveToolCalls.length > 0) && (
+        {(streamingContent !== '' || liveToolCalls.length > 0 || streamError) && (
           <div className="flex max-w-[85%] flex-col items-start gap-2">
+            {streamError && (
+              <div className="rounded-2xl rounded-tl-sm bg-bubble-assistant px-4 py-3">
+                <ChatErrorMessage message={streamError.message} code={streamError.code} />
+              </div>
+            )}
             {liveToolCalls.length > 0 && (
               <div className="w-full space-y-2">
                 {liveToolCalls.map((toolCall) => (
@@ -338,6 +504,13 @@ export function ChatView({
           disabled={busy}
           sessionId={sessionId}
           contextPins={contextPins}
+          webSearchAvailable={webSearchAvailable}
+          agentModeAvailable={agentModeAvailable}
+          placeholder={
+            researchReady
+              ? 'Ask a follow-up about this research...'
+              : undefined
+          }
           onAddContextPin={(pin) => setContextPins((prev) => [...prev, pin])}
           onRemoveContextPin={(id) => {
             setContextPins((prev) => prev.filter((pin) => pin.id !== id));

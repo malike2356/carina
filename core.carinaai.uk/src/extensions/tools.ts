@@ -95,12 +95,9 @@ async function loadJsonTools(entryPath: string, prefix: string): Promise<Tool[]>
 }
 
 async function loadModuleTools(entryPath: string, prefix: string): Promise<Tool[]> {
-  const mod = await import(entryPath) as {
-    default?: Tool | Tool[];
-    tools?: Tool[];
-  };
-  const exported = mod.tools ?? mod.default;
-  const list = Array.isArray(exported) ? exported : exported ? [exported] : [];
+  const mod = await import(entryPath);
+  const { normaliseExtensionTools } = await import('../plugin-sdk/types.js');
+  const list = normaliseExtensionTools(mod);
   return list.map((tool) => ({
     ...tool,
     name: tool.name.startsWith(prefix) ? tool.name : `${prefix}${tool.name}`,

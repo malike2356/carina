@@ -9,13 +9,21 @@ import session from 'express-session';
 import rateLimit from 'express-rate-limit';
 import chalk from 'chalk';
 import { injectMitLicenseFooter, injectWhyCarinaSection } from './license-footer.js';
-import { injectWorkspaceChrome, injectWorkspaceHub, type WorkspacePageId } from './workspace-chrome.js';
+import { injectWorkspaceChrome, injectWorkspaceHub, injectChatShellBranding, type WorkspacePageId } from './workspace-chrome.js';
+import type { ProductMode } from '#core/product/types.js';
+import { resolveProductMode } from '#core/product/surface.js';
+import { enforceRouteOwnership } from '#core/product/route-matrix.js';
 import { config } from '#core/config/index.js';
+import { getResolvedBudgetConfig, getResolvedTurnConfig } from '#core/config/runtime-config.js';
+import { checkMonthlyBudget } from '#core/brain/cost-tracker.js';
+import { formatBudgetVisibility } from '#core/brain/cost-guards.js';
 import { llm } from '#core/brain/llm.js';
 import { getActiveProfileName } from '#core/profiles/manager.js';
 import { emailWebhookRouter } from '#core/api/email-webhook.js';
 import { mountHostedRoutes } from '#core/api/hosted.js';
+import { mountLocaleRoutes } from '#core/api/locale-api.js';
 import { mountCloudRawRoutes, mountServerRoutes } from '#core/server.js';
+import { cloudRouter, loginCloudOrg, registerCloudOrg } from '#core/api/cloud/router.js';
 import { mountBillingRoutes, mountBillingWebhook } from '#core/api/billing-routes.js';
 import { subscribeRouter } from '#core/api/subscribe.js';
 import { memoryApiRouter } from '#core/api/memory-api.js';
@@ -32,8 +40,24 @@ import { curatorApiRouter } from '#core/api/curator-api.js';
 import { themeApiRouter } from '#core/api/theme-api.js';
 import { compareApiRouter } from '#core/api/compare-api.js';
 import { researchApiRouter } from '#core/api/research-api.js';
+import { internalResearchApiRouter } from '#core/api/internal-research-api.js';
 import { calendarApiRouter } from '#core/api/calendar-api.js';
 import { getRouter } from '#core/gateway/router.js';
+import {
+  cancelStreamSession,
+  clearStreamSession,
+  registerStreamSession,
+} from '#core/telemetry/stream-session.js';
+import {
+  classifyError,
+  formatClassifiedError,
+} from '#core/telemetry/error-classifier.js';
+import {
+  formatLegacyTokenChunk,
+  formatStreamDone,
+  formatStreamSseEvent,
+  streamEvent,
+} from '#core/telemetry/stream-events.js';
 import {
   checkWebPassword,
   redirectIfHostedAuthed,
@@ -41,6 +65,11 @@ import {
   requireHostedSession,
   requireWebAuth,
 } from '#core/gateway/web-auth.js';
+import {
+  checkAuthRateLimit,
+  clearAuthFailures,
+  recordAuthFailure,
+} from '#core/security/auth-rate-limit.js';
 import { OPS_PAGE_FILES, requireOpsPlanGate } from '#core/hosted/plan-gates.js';
 import { mountCarinaOpsRoutes } from '#core/api/carina-ops-routes.js';
 import { enforceHostedQuota, resolveExternalId } from '#core/gateway/hosted-chat.js';
@@ -75,6 +104,7 @@ import { pairedDeviceFromRequest } from '#core/infrastructure/control-auth.js';
 import { createSkillsHubApp } from '#core/skills/hub/server.js';
 import { initHubDb } from '#core/skills/hub/migrations.js';
 import { seedHubRegistry } from '#core/skills/hub/seed.js';
+import { transcribeUploadedAudio } from '#core/utils/transcribe-upload.js';
 
 export type StartWebOptions = {
   localMode?: boolean;
@@ -147,14 +177,52 @@ async function resolveCarinaVersion(): Promise<string> {
 export function decoratePageHtml(
   html: string | null | undefined,
   version: string,
-  opts?: { whyCarina?: boolean; workspacePage?: WorkspacePageId; includeMitFooter?: boolean },
+  opts?: {
+    whyCarina?: boolean;
+    workspacePage?: WorkspacePageId;
+    includeMitFooter?: boolean;
+    productMode?: ProductMode;
+    chatShell?: boolean;
+  },
 ): string | null {
   if (html == null) return null;
-  let out = injectMitLicenseFooter(html, version, opts?.includeMitFooter !== false);
+  const mode = opts?.productMode ?? 'private';
+  const showMitFooter = opts?.includeMitFooter !== false && mode !== 'hosted';
+  let out = injectMitLicenseFooter(html, version, showMitFooter);
   if (opts?.whyCarina) out = injectWhyCarinaSection(out);
-  if (opts?.workspacePage === 'hub') out = injectWorkspaceHub(out);
-  else if (opts?.workspacePage) out = injectWorkspaceChrome(out, opts.workspacePage);
+  if (opts?.workspacePage === 'hub') out = injectWorkspaceHub(out, mode);
+  else if (opts?.workspacePage) out = injectWorkspaceChrome(out, opts.workspacePage, mode);
+  else if (opts?.chatShell) out = injectChatShellBranding(out, mode);
   return out;
+}
+
+function surfaceModeFromRequest(req: Request): ProductMode {
+  const mode = resolveProductMode(req.hostname);
+  return mode === 'ops' ? 'private' : mode;
+}
+
+type SurfaceHtmlPair = { private: string | null; hosted: string | null };
+
+function pickSurfaceHtml(pages: SurfaceHtmlPair, req: Request): string | null {
+  return surfaceModeFromRequest(req) === 'hosted' ? pages.hosted : pages.private;
+}
+
+async function loadSurfaceHtmlPair(
+  filePath: string,
+  version: string,
+  opts?: {
+    whyCarina?: boolean;
+    workspacePage?: WorkspacePageId;
+    includeMitFooter?: boolean;
+    chatShell?: boolean;
+  },
+): Promise<SurfaceHtmlPair> {
+  const raw = await fs.readFile(filePath, 'utf-8').catch(() => null);
+  if (!raw) return { private: null, hosted: null };
+  return {
+    private: decoratePageHtml(raw, version, { ...opts, productMode: 'private', chatShell: opts?.chatShell }),
+    hosted: decoratePageHtml(raw, version, { ...opts, productMode: 'hosted', chatShell: opts?.chatShell }),
+  };
 }
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {
@@ -187,18 +255,46 @@ function setupChatRoutes(app: Express): void {
     });
   });
 
-  app.get('/api/config', (_req: Request, res: Response) => {
+  app.get('/api/config', async (_req: Request, res: Response) => {
     let activeProvider = '';
     try {
       activeProvider = llm.current().name;
     } catch {
       activeProvider = '';
     }
+    const turns = getResolvedTurnConfig();
+    const budgetConfig = getResolvedBudgetConfig();
+    let budget: Awaited<ReturnType<typeof checkMonthlyBudget>> | null = null;
+    try {
+      budget = await checkMonthlyBudget();
+    } catch {
+      budget = null;
+    }
     res.json({
       provider: activeProvider,
       providers: llm.list(),
       profile: process.env.CARINA_PROFILE ?? getActiveProfileName() ?? 'default',
+      locale: process.env.CARINA_LANGUAGE ?? process.env.CARINA_LOCALE ?? 'en',
       web: { port: config.web.port },
+      turns: {
+        max: turns.maxTurns,
+        subagentMax: turns.subagentMaxTurns,
+        parentIterationBudget: turns.parentIterationBudget,
+        subagentIterationBudget: turns.subagentIterationBudget,
+        graceCall: turns.graceCall,
+      },
+      budget: budgetConfig.monthlyUsd !== null ? {
+        monthlyUsd: budgetConfig.monthlyUsd,
+        warnAtPercent: budgetConfig.warnAtPercent,
+        turnWarnUsd: budgetConfig.turnWarnUsd,
+        blockExpensiveOnWarn: budgetConfig.blockExpensiveOnWarn,
+        status: budget?.status ?? 'ok',
+        usedUsd: budget?.totalCost ?? 0,
+        remainingUsd: budget?.budgetLimit !== null && budget?.budgetLimit !== undefined
+          ? Math.max(0, budget.budgetLimit - budget.totalCost)
+          : null,
+        message: budget ? formatBudgetVisibility(budget) : null,
+      } : null,
     });
   });
 
@@ -297,6 +393,20 @@ function setupChatRoutes(app: Express): void {
   app.post('/api/chat', express.json(), handleChatSend);
   app.post('/api/chat/send', express.json(), handleChatSend);
 
+  app.post('/api/transcribe', express.raw({ type: ['audio/*', 'video/webm', 'application/octet-stream'], limit: '25mb' }), async (req: Request, res: Response) => {
+    const audio = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body ?? []);
+    const contentType = Array.isArray(req.headers['content-type'])
+      ? req.headers['content-type'][0]
+      : req.headers['content-type'];
+    const language = String(req.query.language ?? '').trim() || undefined;
+    const result = await transcribeUploadedAudio(audio, contentType, language);
+    if ('error' in result) {
+      res.status(400).json(result);
+      return;
+    }
+    res.json(result);
+  });
+
   app.post('/api/clear', express.json(), async (req: Request, res: Response) => {
     const externalId = resolveExternalId(req);
     const router = getRouter();
@@ -310,6 +420,7 @@ function setupChatRoutes(app: Express): void {
     const pushNotify = req.query.notify === '1';
     const promptPreview = String(req.query.prompt ?? message).trim().slice(0, 240);
     const hostedAccountId = req.hostedUser?.id;
+    const turnId = String(req.query.turnId ?? `${Date.now().toString(36)}`);
 
     if (!message) {
       res.status(400).json({ error: 'message is required' });
@@ -328,12 +439,26 @@ function setupChatRoutes(app: Express): void {
     res.flushHeaders();
 
     let streamFailed = false;
+    let sessionId = '';
     try {
       await runWithHostedScout(req, async () => {
         await ensureHostedScoutHeartbeat(req);
         const router = getRouter();
         const externalId = resolveExternalId(req);
         const webSession = await router.startWebSession(externalId);
+        sessionId = webSession.sessionId;
+        const controller = registerStreamSession(sessionId, turnId);
+        res.write(formatStreamSseEvent(streamEvent('meta', {
+          sessionId,
+          turnId,
+          meta: { provider: router.getSessionActiveProvider(sessionId) },
+        })));
+        res.write(formatStreamSseEvent(streamEvent('status', {
+          sessionId,
+          turnId,
+          content: 'thinking',
+        })));
+
         const tenantId = await resolveTenantId(req);
         const stream = router.handle({
           id: String(Date.now()),
@@ -343,17 +468,32 @@ function setupChatRoutes(app: Express): void {
           content: message,
           source: 'web',
           timestamp: new Date(),
-        });
+        }, { turnId });
         for await (const chunk of stream) {
-          res.write(`data: ${JSON.stringify(chunk)}\n\n`);
+          if (controller.signal.aborted) break;
+          res.write(formatLegacyTokenChunk(chunk));
         }
-        res.write('data: [DONE]\n\n');
+        if (controller.signal.aborted) {
+          res.write(formatStreamSseEvent(streamEvent('error', {
+            sessionId,
+            turnId,
+            error: classifyError(new Error('cancelled')),
+          })));
+        }
+        res.write(formatStreamDone());
+        clearStreamSession(sessionId, turnId);
       });
     } catch (err) {
       streamFailed = true;
-      const msg = err instanceof Error ? err.message : String(err);
-      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-      res.write('data: [DONE]\n\n');
+      const classified = classifyError(err);
+      res.write(formatStreamSseEvent(streamEvent('error', {
+        sessionId: sessionId || undefined,
+        turnId,
+        error: classified,
+        content: formatClassifiedError(classified),
+      })));
+      res.write(formatLegacyTokenChunk(`\nError: ${formatClassifiedError(classified)}`));
+      res.write(formatStreamDone());
     }
     res.end();
 
@@ -364,6 +504,17 @@ function setupChatRoutes(app: Express): void {
         streamFailed ? 'failed' : 'completed',
       );
     }
+  });
+
+  app.post('/api/chat/cancel', express.json(), (req: Request, res: Response) => {
+    const sessionId = String(req.body?.sessionId ?? '').trim();
+    const turnId = String(req.body?.turnId ?? '').trim();
+    if (!sessionId || !turnId) {
+      res.status(400).json({ error: 'sessionId and turnId are required' });
+      return;
+    }
+    const cancelled = cancelStreamSession(sessionId, turnId);
+    res.json({ ok: cancelled });
   });
 }
 
@@ -396,7 +547,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     const allowedOrigin = process.env.CORS_ORIGIN ?? '*';
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-internal-key');
     if (_req.method === 'OPTIONS') { res.sendStatus(204); return; }
     next();
   });
@@ -412,6 +563,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   }
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
+  mountLocaleRoutes(app);
   mountOpsRoutes(app);
   if (!localMode) {
     app.use(
@@ -427,6 +579,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
         },
       }),
     );
+    app.use(enforceRouteOwnership);
     mountWebContextRoute(app);
     mountControlRoutes(app);
     mountPairingRoutes(app);
@@ -435,12 +588,19 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
       mountNodeHostRoutes(app);
     }
   }
+  app.post('/app/auth/register', registerCloudOrg);
+  app.post('/app/auth/login', loginCloudOrg);
+  if (!localMode) {
+    app.use('/api/cloud', cloudRouter);
+  }
   app.use('/api/chat', chatLimiter);
+  app.use('/api/playbook', cookbookApiRouter);
   app.use('/api/cookbook', cookbookApiRouter);
   app.use('/api/curator', curatorApiRouter);
   app.use('/api/theme', themeApiRouter);
   app.use('/api/compare', compareApiRouter);
   app.use('/api/research', researchApiRouter);
+  app.use('/api/internal/research', internalResearchApiRouter);
   app.use('/api/calendar', calendarApiRouter);
   if (!localMode) {
     app.use('/api/subscribe', subscribeRouter);
@@ -574,12 +734,20 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
         res.redirect('/hosted-login');
         return;
       }
+      const clientKey = String(req.ip ?? req.socket.remoteAddress ?? 'local');
+      const rate = checkAuthRateLimit('web-login', clientKey);
+      if (!rate.allowed) {
+        res.redirect('/login?error=rate');
+        return;
+      }
       const password = String(req.body?.password ?? '');
       const ok = await checkWebPassword(password);
       if (!ok) {
+        recordAuthFailure('web-login', clientKey);
         res.redirect('/login?error=1');
         return;
       }
+      clearAuthFailures('web-login', clientKey);
       req.session.webAuthed = true;
       res.redirect('/');
     });
@@ -602,6 +770,19 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     if (hostedResetHtml) {
       app.get('/hosted-reset', (_req, res) => {
         res.type('html').send(hostedResetHtml);
+      });
+    }
+
+    const mobileHtml = decoratePageHtml(
+      await fs
+        .readFile(path.join(WEB_STATIC, 'mobile.html'), 'utf-8')
+        .catch(() => null),
+      carinaVersion,
+      { includeMitFooter: false },
+    );
+    if (mobileHtml) {
+      app.get('/mobile', (_req, res) => {
+        res.type('html').send(mobileHtml);
       });
     }
 
@@ -796,75 +977,21 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   }
 
   try {
-    const html = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'index.html'), 'utf-8'),
-      carinaVersion,
-    );
-    const memoryHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'memory.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'memory' },
-    );
-    const packsHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'packs.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'packs' },
-    );
-    const cookbookHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'cookbook.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'cookbook' },
-    );
-    const researchHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'research.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'research' },
-    );
-    const compareHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'compare.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'compare' },
-    );
-    const notesHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'notes.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'notes' },
-    );
-    const documentsHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'documents.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'documents' },
-    );
-    const imagesHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'images.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'images' },
-    );
-    const emailHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'email.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'email' },
-    );
-    const calendarHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'calendar.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'calendar' },
-    );
-    const kanbanHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'kanban.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'kanban' },
-    );
-    const webhooksHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'webhooks.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'webhooks' },
-    );
-    const workspaceHtml = decoratePageHtml(
-      await fs.readFile(path.join(WEB_STATIC, 'workspace.html'), 'utf-8').catch(() => null),
-      carinaVersion,
-      { workspacePage: 'hub' },
-    );
+    const indexPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'index.html'), carinaVersion, { chatShell: true });
+    const memoryPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'memory.html'), carinaVersion, { workspacePage: 'memory' });
+    const packsPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'packs.html'), carinaVersion, { workspacePage: 'packs' });
+    const promptPacksPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'prompt-packs.html'), carinaVersion, { workspacePage: 'prompt-packs' });
+    const playbookPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'playbook.html'), carinaVersion, { workspacePage: 'playbook' });
+    const researchPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'research.html'), carinaVersion, { workspacePage: 'research' });
+    const comparePages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'compare.html'), carinaVersion, { workspacePage: 'compare' });
+    const notesPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'notes.html'), carinaVersion, { workspacePage: 'notes' });
+    const documentsPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'documents.html'), carinaVersion, { workspacePage: 'documents' });
+    const imagesPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'images.html'), carinaVersion, { workspacePage: 'images' });
+    const emailPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'email.html'), carinaVersion, { workspacePage: 'email' });
+    const calendarPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'calendar.html'), carinaVersion, { workspacePage: 'calendar' });
+    const kanbanPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'kanban.html'), carinaVersion, { workspacePage: 'kanban' });
+    const webhooksPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'webhooks.html'), carinaVersion, { workspacePage: 'webhooks' });
+    const workspacePages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'workspace.html'), carinaVersion, { workspacePage: 'hub' });
     app.get('/manifest.json', (_req, res) => {
       res.type('application/manifest+json').sendFile(path.join(WEB_STATIC, 'manifest.json'));
     });
@@ -875,6 +1002,14 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     app.get('/chat-turn-lifecycle.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
       res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'chat-turn-lifecycle.js'));
+    });
+    app.get('/i18n.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'i18n.js'));
+    });
+    app.get('/mobile.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'mobile.js'));
     });
     app.get('/notes.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
@@ -911,78 +1046,87 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     app.get('/icon.svg', (_req, res) => {
       res.type('image/svg+xml').sendFile(path.join(WEB_STATIC, 'icon.svg'));
     });
-    app.get('/', (_req, res) => {
+    app.get('/', (req, res) => {
+      const html = pickSurfaceHtml(indexPages, req);
       if (!html) {
         res.status(500).send('Web UI missing');
         return;
       }
       res.type('html').send(html);
     });
-    if (memoryHtml) {
-      app.get('/memory', (_req, res) => {
-        res.type('html').send(memoryHtml);
-      });
-    }
-    if (documentsHtml) {
-      app.get('/documents', (_req, res) => {
-        res.type('html').send(documentsHtml);
-      });
-    }
-    if (notesHtml) {
-      app.get('/notes', (_req, res) => {
-        res.type('html').send(notesHtml);
-      });
-    }
-    if (imagesHtml) {
-      app.get('/images', (_req, res) => {
-        res.type('html').send(imagesHtml);
-      });
-    }
-    if (emailHtml) {
-      app.get('/email', (_req, res) => {
-        res.type('html').send(emailHtml);
-      });
-    }
-    if (calendarHtml) {
-      app.get('/calendar', (_req, res) => {
-        res.type('html').send(calendarHtml);
-      });
-    }
-    if (kanbanHtml) {
-      app.get('/kanban', (_req, res) => {
-        res.type('html').send(kanbanHtml);
-      });
-    }
-    if (webhooksHtml) {
-      app.get('/webhooks', (_req, res) => {
-        res.type('html').send(webhooksHtml);
-      });
-    }
-    if (workspaceHtml) {
-      app.get('/workspace', (_req, res) => {
-        res.type('html').send(workspaceHtml);
-      });
-    }
-    if (packsHtml) {
-      app.get('/packs', (_req, res) => {
-        res.type('html').send(packsHtml);
-      });
-    }
-    if (cookbookHtml) {
-      app.get('/cookbook', (_req, res) => {
-        res.type('html').send(cookbookHtml);
-      });
-    }
-    if (researchHtml) {
-      app.get('/research', (_req, res) => {
-        res.type('html').send(researchHtml);
-      });
-    }
-    if (compareHtml) {
-      app.get('/compare', (_req, res) => {
-        res.type('html').send(compareHtml);
-      });
-    }
+    app.get('/memory', (req, res) => {
+      const html = pickSurfaceHtml(memoryPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/documents', (req, res) => {
+      const html = pickSurfaceHtml(documentsPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/notes', (req, res) => {
+      const html = pickSurfaceHtml(notesPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/images', (req, res) => {
+      const html = pickSurfaceHtml(imagesPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/email', (req, res) => {
+      const html = pickSurfaceHtml(emailPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/calendar', (req, res) => {
+      const html = pickSurfaceHtml(calendarPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/kanban', (req, res) => {
+      const html = pickSurfaceHtml(kanbanPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/webhooks', (req, res) => {
+      const html = pickSurfaceHtml(webhooksPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/workspace', (req, res) => {
+      const html = pickSurfaceHtml(workspacePages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/packs', (req, res) => {
+      const html = pickSurfaceHtml(packsPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/prompt-packs', (req, res) => {
+      const html = pickSurfaceHtml(promptPacksPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/playbook', (req, res) => {
+      const html = pickSurfaceHtml(playbookPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/cookbook', (_req, res) => {
+      res.redirect(302, '/playbook');
+    });
+    app.get('/research', (req, res) => {
+      const html = pickSurfaceHtml(researchPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/compare', (req, res) => {
+      const html = pickSurfaceHtml(comparePages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
   } catch {
     console.warn(chalk.yellow(`Web UI not found at ${WEB_STATIC}/index.html`));
   }

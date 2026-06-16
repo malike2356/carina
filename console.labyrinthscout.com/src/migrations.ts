@@ -548,5 +548,26 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
 
   await runPendingApprovalsMigration(client);
 
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS critical_event_attestations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id UUID NOT NULL UNIQUE REFERENCES security_events(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      severity TEXT NOT NULL,
+      instance_id TEXT,
+      content_hash TEXT NOT NULL,
+      chain_hash TEXT NOT NULL,
+      signature TEXT NOT NULL,
+      on_chain_status TEXT NOT NULL DEFAULT 'off_chain'
+        CHECK (on_chain_status IN ('off_chain', 'queued', 'submitted')),
+      attested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_critical_event_attestations_attested
+      ON critical_event_attestations (attested_at DESC)
+  `);
+
   console.log('[scout:migrations] Schema ready');
 }

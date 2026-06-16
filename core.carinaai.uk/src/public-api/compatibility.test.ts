@@ -5,6 +5,7 @@ import path from 'node:path';
 import { ToolRegistry, registerTool, type ToolDefinition } from './tool.js';
 import { validatePackManifest, PACK_API_VERSION } from './pack.js';
 import { STABLE_API_VERSION } from './index.js';
+import { PLUGIN_SDK_VERSION } from './plugin-sdk.js';
 
 const fixtureDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,6 +22,7 @@ describe('stable public API version', () => {
   it('exports STABLE_API_VERSION 0.2.0', () => {
     expect(STABLE_API_VERSION).toBe('0.2.0');
     expect(PACK_API_VERSION).toBe('0.2.0');
+    expect(PLUGIN_SDK_VERSION).toBe('0.2.0');
   });
 });
 

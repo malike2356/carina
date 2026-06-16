@@ -1,7 +1,9 @@
-export const MAX_DELEGATION_DEPTH = 1;
 export const MAX_CONCURRENT_SUBAGENTS = 3;
 
+export type SubagentRole = 'leaf' | 'orchestrator';
+
 const depthBySession = new Map<string, number>();
+const roleBySession = new Map<string, SubagentRole>();
 const parentControllers = new Map<string, AbortController>();
 const childControllers = new Map<string, Set<AbortController>>();
 
@@ -19,10 +21,34 @@ export function setDelegationDepth(sessionId: string, depth: number): void {
 
 export function clearDelegationDepth(sessionId: string): void {
   depthBySession.delete(sessionId);
+  roleBySession.delete(sessionId);
 }
 
+export function setSubagentRole(sessionId: string, role: SubagentRole): void {
+  roleBySession.set(sessionId, role);
+}
+
+export function getSubagentRole(sessionId: string): SubagentRole {
+  return roleBySession.get(sessionId) ?? 'leaf';
+}
+
+export function getMaxDelegationDepth(): number {
+  const raw = process.env.CARINA_MAX_DELEGATION_DEPTH;
+  if (!raw) return 1;
+  const parsed = parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
+}
+
+/** @deprecated use getMaxDelegationDepth() */
+export const MAX_DELEGATION_DEPTH = 1;
+
 export function canDelegate(sessionId: string): boolean {
-  return getDelegationDepth(sessionId) < MAX_DELEGATION_DEPTH;
+  const depth = getDelegationDepth(sessionId);
+  if (depth >= getMaxDelegationDepth()) return false;
+  if (isSubagentSession(sessionId) && getSubagentRole(sessionId) !== 'orchestrator') {
+    return false;
+  }
+  return true;
 }
 
 export function beginParentTurn(sessionId: string): AbortController {
@@ -90,6 +116,7 @@ function rootSessionId(sessionId: string): string {
 
 export function resetDelegationState(): void {
   depthBySession.clear();
+  roleBySession.clear();
   for (const controller of parentControllers.values()) {
     if (!controller.signal.aborted) controller.abort();
   }

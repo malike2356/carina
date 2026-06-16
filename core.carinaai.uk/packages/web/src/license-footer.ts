@@ -2,7 +2,7 @@ const DEFAULT_VERSION = '0.2.0';
 
 export function mitLicenseFooterHtml(version = DEFAULT_VERSION): string {
   return [
-    '<p id="carina-mit-footer" class="carina-mit-footer" style="text-align:center;font-size:0.7rem;color:#888;margin:12px 0;padding:0 12px;">',
+    '<p id="carina-mit-footer" class="carina-mit-footer">',
     `Carina v${version} | `,
     '<a href="https://github.com/carinaai/core/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>',
     ' | Build commercial products freely',
@@ -13,7 +13,19 @@ export function mitLicenseFooterHtml(version = DEFAULT_VERSION): string {
 export function injectMitLicenseFooter(html: string, version = DEFAULT_VERSION, include = true): string {
   if (!include) return html;
   if (html.includes('id="carina-mit-footer"')) return html;
-  return html.replace('</body>', `${mitLicenseFooterHtml(version)}\n</body>`);
+
+  const footer = mitLicenseFooterHtml(version);
+  if (html.includes('class="composer-hint"')) {
+    return html.replace(
+      /(<p class="composer-hint">[\s\S]*?<\/p>)/,
+      `$1\n        ${footer}`,
+    );
+  }
+  if (html.includes('</footer>')) {
+    return html.replace('</footer>', `  ${footer}\n    </footer>`);
+  }
+  if (!html.includes('</body>')) return html;
+  return html.replace('</body>', `${footer}\n</body>`);
 }
 
 export function injectWhyCarinaSection(html: string): string {

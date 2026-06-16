@@ -72,7 +72,7 @@
     fetch('/api/web/context')
       .then(function (res) { return res.ok ? res.json() : null; })
       .then(function (ctx) {
-        if (!ctx || ctx.mode !== 'operator' || !ctx.activeProfile) return;
+        if (!ctx || ctx.mode !== 'private' || !ctx.activeProfile) return;
         const home = ctx.profileScope && ctx.profileScope.carinaHome
           ? ctx.profileScope.carinaHome
           : '';

@@ -5,6 +5,7 @@ export const WEBHOOK_EVENTS = [
   'cron.complete',
   'kanban.move',
   'agent.turn.complete',
+  'delegation.complete',
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];

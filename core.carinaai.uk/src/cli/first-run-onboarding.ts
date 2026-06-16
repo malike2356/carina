@@ -3,6 +3,7 @@ import path from 'path';
 import chalk from 'chalk';
 import { confirm, input, password, select } from '@inquirer/prompts';
 import { resolveCarinaHome } from '../config/paths.js';
+import { seedWorkspaceFromProfile } from '../setup/workspace-seed.js';
 import { DEFAULT_CLI_CONFIG, type ProviderName } from './config/defaults.js';
 import { writeConfig } from './config/loader.js';
 import { format } from './output/formatter.js';
@@ -209,6 +210,7 @@ export async function persistFirstRunAnswers(
   if (answers.configureLater) {
     await writeConfig({ ...DEFAULT_CLI_CONFIG });
     await mergeEnvLines([...localModeEnvLines(), ...sharedLines], envPath);
+    await finalizeFirstRunWorkspace(answers, home);
     return;
   }
 
@@ -221,11 +223,26 @@ export async function persistFirstRunAnswers(
       },
       sharedLines,
     );
+    await finalizeFirstRunWorkspace(answers, home);
     return;
   }
 
   await writeConfig({ ...DEFAULT_CLI_CONFIG });
   await mergeEnvLines(sharedLines, envPath);
+  await finalizeFirstRunWorkspace(answers, home);
+}
+
+async function finalizeFirstRunWorkspace(
+  answers: FirstRunAnswers,
+  home = resolveCarinaHome(),
+): Promise<void> {
+  if (answers.operatorName) {
+    process.env.CARINA_OPERATOR_NAME = answers.operatorName;
+  }
+  if (answers.operatorContext) {
+    process.env.CARINA_OPERATOR_CONTEXT = answers.operatorContext;
+  }
+  await seedWorkspaceFromProfile(home);
 }
 
 export async function runFirstRunOnboarding(

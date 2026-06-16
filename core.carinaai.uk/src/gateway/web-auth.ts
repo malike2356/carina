@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { getUserProfile } from '../api/hosted-auth.js';
-import { isControlAuthorized } from '../infrastructure/control-auth.js';
-import { isHostedRequest } from './hosted-domain.js';
+import { isControlAuthorized, pairedDeviceFromRequest } from '../infrastructure/control-auth.js';
+import { deviceHasScope } from '../infrastructure/device-scopes.js';
+import { resolveProductMode } from '../product/surface.js';
 import { canPerform, type RbacAction } from '../hosted/rbac.js';
 import { requireOrgContext, type OrgContext } from '../hosted/org-context.js';
 
@@ -41,13 +42,20 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
     next();
     return;
   }
+
+  const pairedDevice = pairedDeviceFromRequest(req);
+  if (pairedDevice && req.path === '/api/chat' && req.method === 'POST' && deviceHasScope(pairedDevice, 'chat')) {
+    next();
+    return;
+  }
+
   // Ops bearer must work on any host (127.0.0.1, docker internal, etc.) when HOSTED_MODE is on.
   if (isOpsMachineApiPath(req.path, req.method) && isControlAuthorized(req)) {
     next();
     return;
   }
 
-  if (isHostedRequest(req.hostname)) {
+  if (resolveProductMode(req.hostname) === 'hosted') {
     const accountId = req.session?.hostedAccountId;
     if (!accountId) {
       if (req.path.startsWith('/api/')) {
@@ -97,7 +105,7 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
 }
 
 export function redirectIfWebAuthed(req: Request, res: Response, next: NextFunction): void {
-  if (isHostedRequest(req.hostname)) {
+  if (resolveProductMode(req.hostname) === 'hosted') {
     if (req.session?.hostedAccountId) {
       res.redirect('/');
       return;

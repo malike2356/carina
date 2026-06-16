@@ -51,7 +51,7 @@ export async function autoPairCarinaFromLocalCore(): Promise<CarinaPairResult> {
   if (!live) {
     return {
       ok: false,
-      error: 'Read token from core .env but Carina rejected the connection. Check CARINA_API_URL.',
+      error: 'Read token from core .env but Carina rejected the connection. Check CARINA_API_URL points at core.carinaai.uk.',
     };
   }
   return { ok: true, auto: true };

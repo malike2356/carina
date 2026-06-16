@@ -1,4 +1,8 @@
 import type { CarinaMessage } from '../types/index.js';
+import {
+  markdownTablesToBullets,
+  stripBasicMarkdown,
+} from './markdown-for-channels.js';
 
 const LIMITS: Record<RealPlatform, number> = {
   cli: 100_000,
@@ -14,9 +18,11 @@ export function formatForPlatform(text: string, platform: CarinaMessage['source'
 
   const normalized = platform === 'whatsapp'
     ? formatForWhatsApp(text)
-    : platform === 'cli'
-      ? formatForCli(text)
-      : text;
+    : platform === 'telegram'
+      ? formatForTelegram(text)
+      : platform === 'cli'
+        ? formatForCli(text)
+        : text;
   const chunks = splitByLength(normalized || ' ', LIMITS[platform]);
   return chunks.length === 1 ? chunks[0] : chunks;
 }
@@ -36,46 +42,16 @@ export function splitByLength(text: string, maxLength: number): string[] {
   return chunks;
 }
 
+function formatForTelegram(text: string): string {
+  return markdownTablesToBullets(text);
+}
+
 function formatForWhatsApp(text: string): string {
-  return markdownTablesToBullets(text)
-    .replace(/^#{1,6}\s+(.+)$/gm, (_, title: string) => title.toUpperCase())
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
+  return stripBasicMarkdown(markdownTablesToBullets(text));
 }
 
 function formatForCli(text: string): string {
   return markdownTablesToBullets(text);
-}
-
-function markdownTablesToBullets(text: string): string {
-  const lines = text.split('\n');
-  const out: string[] = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const next = lines[i + 1] ?? '';
-    if (isTableRow(line) && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(next)) {
-      const headers = cells(line);
-      i += 2;
-      while (i < lines.length && isTableRow(lines[i])) {
-        const values = cells(lines[i]);
-        out.push(`- ${headers.map((header, idx) => `${header}: ${values[idx] ?? ''}`).join('; ')}`);
-        i++;
-      }
-      i--;
-      continue;
-    }
-    out.push(line);
-  }
-  return out.join('\n');
-}
-
-function isTableRow(line: string): boolean {
-  return line.trim().startsWith('|') && line.includes('|');
-}
-
-function cells(line: string): string[] {
-  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((part) => part.trim());
 }
 
 function isRealPlatform(platform: CarinaMessage['source']): platform is RealPlatform {

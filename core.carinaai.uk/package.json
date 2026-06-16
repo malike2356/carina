@@ -33,9 +33,20 @@
       "types": "./dist/src/public-api/provider.d.ts",
       "import": "./dist/public-api/provider.js"
     },
+    "./extension": {
+      "types": "./dist/src/public-api/extension.d.ts",
+      "import": "./dist/public-api/extension.js"
+    },
+    "./plugin-sdk": {
+      "types": "./dist/src/public-api/plugin-sdk.d.ts",
+      "import": "./dist/public-api/plugin-sdk.js"
+    },
     "./internal/*": "./dist/src/*",
     "./package.json": "./package.json",
     "./bin/carina": "./dist/bin/carina.js"
+  },
+  "imports": {
+    "#core/*": "./dist/src/*"
   },
   "bin": {
     "carina": "./dist/bin/carina.js"

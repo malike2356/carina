@@ -9,6 +9,7 @@ import { MarkdownContent } from './MarkdownContent';
 import { MessageMetadata } from './MessageMetadata';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolCallBlock } from './ToolCallBlock';
+import { ChatErrorMessage } from './ChatErrorMessage';
 import type { ChatMessage } from './types';
 
 interface AssistantMessageProps {
@@ -57,7 +58,9 @@ export function AssistantMessage({ message, streaming, onDelete }: AssistantMess
       )}
 
       <div className="chat-message-content max-w-full overflow-hidden rounded-2xl rounded-tl-sm bg-bubble-assistant px-4 py-3 text-text-primary">
-        {streaming ? (
+        {message.errorMessage ? (
+          <ChatErrorMessage message={message.errorMessage} code={message.errorCode} />
+        ) : streaming ? (
           <div className="flex items-end gap-1">
             <span className="whitespace-pre-wrap">{message.content}</span>
             {appearance.showTypingDots && (

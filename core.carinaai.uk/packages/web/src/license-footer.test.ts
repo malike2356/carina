@@ -17,4 +17,11 @@ describe('injectMitLicenseFooter', () => {
     const html = '<html><body>' + mitLicenseFooterHtml('1.2.3') + '</body></html>';
     expect(injectMitLicenseFooter(html, '1.2.3')).toBe(html);
   });
+
+  it('does not inject into composer hints or the top of the page', () => {
+    const html = '<html><body><p class="composer-hint">Hint</p></body></html>';
+    const out = injectMitLicenseFooter(html, '1.2.3');
+    expect(out).toContain('carina-mit-footer');
+    expect(out.indexOf('carina-mit-footer')).toBeGreaterThan(out.indexOf('composer-hint'));
+  });
 });

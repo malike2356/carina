@@ -1,0 +1,50 @@
+{
+  "name": "@verlox/carina-transport",
+  "version": "0.2.0",
+  "description": "Shared outbound transport primitives for Carina core channels and Scout alerts (Discord webhooks, Twilio SMS).",
+  "homepage": "https://carinaai.uk",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "carina",
+    "scout",
+    "discord",
+    "twilio",
+    "transport"
+  ],
+  "author": "VERLOX Ltd",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/malike2356/carina-agent.git",
+    "directory": "packages/transport"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  }
+}

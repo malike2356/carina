@@ -57,6 +57,9 @@ deploy_app() {
     set -euo pipefail
     cd "$remote_dir"
 
+    echo "  Clearing stale build output..."
+    rm -rf dist
+
     if [[ -f pnpm-lock.yaml ]]; then
       echo "  Installing dependencies with pnpm..."
       corepack pnpm install --frozen-lockfile 2>&1 | tail -3

@@ -9,4 +9,4 @@ export type {
   WebhookValidationInput,
 } from '../gateway/channels/channel-adapter.interface.js';
 
-export const CHANNEL_API_VERSION = '0.2.0';
+export const CHANNEL_API_VERSION = '0.3.0';

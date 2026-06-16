@@ -2,6 +2,13 @@ import { pool } from './db.js';
 import { embed } from './embeddings.js';
 import pgvector from 'pgvector/pg';
 import { getActiveProfileOrDefault } from '../profiles/isolation.js';
+import {
+  filterMemoryFactsForInjection,
+  validateMemoryContent,
+} from './memory-discipline.js';
+
+const CURATED_SUMMARY_HEADER =
+  'Curated long-term memory (compact summary; use memory search/list or session-search for details):';
 
 export type MemoryTarget = 'user' | 'memory';
 
@@ -92,7 +99,8 @@ export async function addPersistentFact(
   options: { agentId?: string } = {},
 ): Promise<PersistentFact> {
   const trimmed = content.trim();
-  if (!trimmed) throw new Error('Content cannot be empty.');
+  const validation = validateMemoryContent(trimmed);
+  if (!validation.ok) throw new Error(validation.reason);
 
   const current = await getPersistentFactsTotal(target, options.agentId);
   if (current + trimmed.length > MEMORY_BUDGETS[target]) {
@@ -145,6 +153,9 @@ export async function replacePersistentFact(
     throw new Error(`Ambiguous match: ${matches.length} entries match "${oldText}". Be more specific.`);
   }
 
+  const validation = validateMemoryContent(newText.trim());
+  if (!validation.ok) throw new Error(validation.reason);
+
   const current = await getPersistentFactsTotal(target, agentId);
   const delta = newText.trim().length - matches[0].content.length;
   if (current + delta > MEMORY_BUDGETS[target]) {
@@ -179,13 +190,87 @@ export async function removePersistentFact(
   return (result.rowCount ?? 0) > 0;
 }
 
+export async function getPersistentFactById(
+  id: string,
+  agentId?: string,
+): Promise<PersistentFact | null> {
+  for (const target of ['user', 'memory'] as MemoryTarget[]) {
+    const scope = scopeForTarget(target, agentId);
+    const offsetSql = scope.sql.replace(/\$(\d+)/g, (_, n) => `$${Number(n) + 1}`);
+    const result = await pool.query(
+      `SELECT id, target, content, created_at
+       FROM persistent_facts
+       WHERE id = $1 AND ${offsetSql}`,
+      [id, ...scope.params],
+    );
+    if (result.rows[0]) return rowToFact(result.rows[0]);
+  }
+  return null;
+}
+
+export async function searchPersistentFacts(
+  query: string,
+  options: { target?: MemoryTarget; limit?: number; agentId?: string } = {},
+): Promise<PersistentFact[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const limit = Math.min(Math.max(1, options.limit ?? 5), 20);
+  const targets: MemoryTarget[] = options.target ? [options.target] : ['user', 'memory'];
+  const results: PersistentFact[] = [];
+
+  const embedding = await embed(trimmed);
+  if (embedding.length > 0) {
+    const vectorSql = pgvector.toSql(embedding);
+    for (const target of targets) {
+      const scope = scopeForTarget(target, options.agentId);
+      const q = await pool.query(
+        `SELECT id, target, content, created_at
+         FROM persistent_facts
+         WHERE ${scope.sql}
+           AND embedding IS NOT NULL
+         ORDER BY embedding <=> $${scope.params.length + 1}
+         LIMIT $${scope.params.length + 2}`,
+        [...scope.params, vectorSql, limit],
+      );
+      results.push(...q.rows.map(rowToFact));
+    }
+  }
+
+  if (results.length === 0) {
+    for (const target of targets) {
+      const matches = await findFactsByText(target, trimmed, options.agentId);
+      results.push(...matches.slice(0, limit));
+    }
+  }
+
+  const seen = new Set<string>();
+  return results
+    .filter((fact) => {
+      if (seen.has(fact.id)) return false;
+      seen.add(fact.id);
+      return true;
+    })
+    .slice(0, limit);
+}
+
 export async function getPersistentContextForAgent(agentId?: string): Promise<string> {
   const agent = agentId ?? activeAgentName();
   const parts: string[] = [];
-  const user = await getPersistentFactsText('user');
-  const memory = await getAgentMemoryText(agent);
-  if (user) parts.push(`User profile (shared across agents on this profile):\n${user}`);
-  if (memory) parts.push(`Agent notes (${agent}):\n${memory}`);
+  const userFacts = filterMemoryFactsForInjection(
+    (await listPersistentFacts('user')).map((f) => f.content),
+  );
+  const memoryFacts = filterMemoryFactsForInjection(
+    (await listPersistentFacts('memory', agent)).map((f) => f.content),
+  );
+  if (userFacts.length > 0 || memoryFacts.length > 0) {
+    parts.push(CURATED_SUMMARY_HEADER);
+  }
+  if (userFacts.length > 0) {
+    parts.push(`User profile (shared across agents on this profile):\n${userFacts.join('\n')}`);
+  }
+  if (memoryFacts.length > 0) {
+    parts.push(`Agent notes (${agent}):\n${memoryFacts.join('\n')}`);
+  }
   return parts.join('\n\n');
 }
 

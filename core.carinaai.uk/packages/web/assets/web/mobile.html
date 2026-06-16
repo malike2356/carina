@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.json">
+  <title>Carina Mobile</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100svh; min-height: 100dvh;
+      display: flex; flex-direction: column;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    header {
+      padding: 12px 16px; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    header h1 { font-size: 16px; }
+    header p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    #pair-panel, #chat-panel { display: none; flex: 1; flex-direction: column; }
+    #pair-panel.active, #chat-panel.active { display: flex; }
+    #pair-panel { padding: 24px 16px; gap: 12px; justify-content: center; }
+    label { font-size: 13px; color: var(--muted); }
+    input, textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 12px; color: var(--text); font-size: 16px;
+    }
+    button {
+      background: var(--send); color: #fff; border: none; border-radius: 8px;
+      padding: 12px 16px; font-size: 15px; font-weight: 600; cursor: pointer;
+      min-height: 44px;
+    }
+    button.secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    #messages {
+      flex: 1; overflow-y: auto; padding: 12px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .msg { max-width: 92%; padding: 10px 12px; border-radius: 10px; font-size: 15px; line-height: 1.4; white-space: pre-wrap; }
+    .msg.user { align-self: flex-end; background: #1f6feb; }
+    .msg.assistant { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); }
+    .msg.system { align-self: center; color: var(--muted); font-size: 12px; background: transparent; }
+    #composer {
+      display: flex; gap: 8px; padding: 12px 16px;
+      border-top: 1px solid var(--border); background: var(--surface);
+    }
+    #composer textarea { flex: 1; min-height: 44px; max-height: 120px; resize: none; }
+    .error { color: #f85149; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Carina Mobile</h1>
+    <p id="status">Pair with your desktop Carina instance</p>
+  </header>
+
+  <section id="pair-panel" class="active">
+    <p>Paste the pairing token from <code>carina pair token</code> on your desktop, or open the QR link.</p>
+    <label for="device-name">Device name</label>
+    <input id="device-name" type="text" placeholder="My phone" autocomplete="name">
+    <label for="pair-token">Pairing token</label>
+    <input id="pair-token" type="text" placeholder="Paste token" autocomplete="one-time-code">
+    <button id="pair-btn" type="button">Pair device</button>
+    <p id="pair-error" class="error" hidden></p>
+    <p style="font-size:12px;color:var(--muted)">Your token is exchanged for a device bearer stored on this phone only.</p>
+  </section>
+
+  <section id="chat-panel">
+    <div id="messages"></div>
+    <form id="composer">
+      <textarea id="prompt" rows="1" placeholder="Message Carina..." required></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </section>
+
+  <script src="/mobile.js"></script>
+</body>
+</html>

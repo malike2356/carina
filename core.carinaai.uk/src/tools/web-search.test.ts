@@ -2,12 +2,21 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 function mockConfig(overrides: Record<string, unknown> = {}) {
   const base = {
-    brave: { apiKey: '' },
-    tavily: { apiKey: '', searchDepth: 'basic' as const },
+    brave: { apiKey: '', searchUrl: 'https://api.search.brave.com/res/v1/web/search' },
+    tavily: { apiKey: '', searchDepth: 'basic' as const, searchUrl: 'https://api.tavily.com/search' },
     searxng: { url: '' },
     search: { provider: 'auto' as const },
   };
-  return { config: { ...base, ...overrides } };
+  return {
+    config: {
+      ...base,
+      ...overrides,
+      brave: { ...base.brave, ...(overrides.brave as object | undefined) },
+      tavily: { ...base.tavily, ...(overrides.tavily as object | undefined) },
+      searxng: { ...base.searxng, ...(overrides.searxng as object | undefined) },
+      search: { ...base.search, ...(overrides.search as object | undefined) },
+    },
+  };
 }
 
 beforeEach(async () => {
@@ -15,8 +24,10 @@ beforeEach(async () => {
   vi.resetModules();
   const { config } = await import('../config/index.js');
   config.brave.apiKey = '';
+  config.brave.searchUrl = 'https://api.search.brave.com/res/v1/web/search';
   config.tavily.apiKey = '';
   config.tavily.searchDepth = 'basic';
+  config.tavily.searchUrl = 'https://api.tavily.com/search';
   config.searxng.url = '';
   config.search.provider = 'auto';
 });

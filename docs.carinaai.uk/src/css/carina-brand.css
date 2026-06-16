@@ -1,0 +1,116 @@
+/**
+ * Carina docs branding aligned with carinaai.uk marketing (#06090f, #16c97e).
+ * Loaded after shared docs-ui tokens; does not affect Scout VitePress docs.
+ */
+
+:root {
+  --carina-bg: #06090f;
+  --carina-bg-lift: #0c1118;
+  --carina-bg-card: #111722;
+  --carina-green: #16c97e;
+  --carina-green-hover: #12b06d;
+  --carina-green-dim: rgba(22, 201, 126, 0.12);
+  --carina-text: #f0f4f8;
+  --carina-text-mid: #8a9bb0;
+  --carina-border: rgba(255, 255, 255, 0.07);
+
+  --docs-brand-primary: var(--carina-green);
+  --docs-brand-primary-hover: var(--carina-green-hover);
+  --docs-brand-primary-soft: var(--carina-green-dim);
+  --docs-brand-primary-muted: rgba(22, 201, 126, 0.35);
+  --docs-hero-bg: var(--carina-bg);
+  --docs-hero-text: var(--carina-text);
+
+  --ifm-color-primary: var(--carina-green);
+  --ifm-color-primary-dark: var(--carina-green-hover);
+  --ifm-color-primary-darker: #0f9a5f;
+  --ifm-color-primary-darkest: #0c7a4c;
+  --ifm-color-primary-light: #3dd68c;
+  --ifm-color-primary-lighter: rgba(22, 201, 126, 0.25);
+  --ifm-color-primary-lightest: var(--carina-green-dim);
+
+  --ifm-link-color: var(--carina-green);
+  --ifm-link-hover-color: var(--carina-green-hover);
+  --docusaurus-highlighted-code-line-bg: rgba(22, 201, 126, 0.12);
+}
+
+[data-theme='dark'] {
+  --docs-surface-base: var(--carina-bg);
+  --docs-surface-subtle: var(--carina-bg-lift);
+  --docs-surface-muted: var(--carina-bg-card);
+  --docs-surface-raised: #1a2332;
+  --docs-border-subtle: var(--carina-border);
+  --docs-border-default: rgba(255, 255, 255, 0.12);
+  --docs-border-strong: rgba(255, 255, 255, 0.18);
+
+  --docs-text-primary: var(--carina-text);
+  --docs-text-secondary: #c5d0dc;
+  --docs-text-muted: var(--carina-text-mid);
+
+  --docs-code-bg: var(--carina-bg-card);
+  --docs-code-border: rgba(255, 255, 255, 0.1);
+  --docs-code-text: #d4ffe8;
+  --docs-pre-bg: #04070c;
+  --docs-pre-text: #e2e8f0;
+  --docs-pre-border: rgba(255, 255, 255, 0.08);
+
+  --docs-table-head-bg: var(--carina-bg-card);
+  --docs-table-border: rgba(255, 255, 255, 0.1);
+  --docs-table-stripe-bg: var(--carina-bg-lift);
+
+  --docs-footer-bg: var(--carina-bg-lift);
+  --docs-footer-text: var(--carina-text-mid);
+  --docs-footer-title: var(--carina-text);
+  --docs-footer-link: var(--carina-text-mid);
+  --docs-footer-link-hover: var(--carina-text);
+
+  --ifm-background-color: var(--carina-bg);
+  --ifm-background-surface-color: var(--carina-bg-lift);
+  --ifm-navbar-background-color: rgba(6, 9, 15, 0.92);
+  --ifm-navbar-shadow: 0 1px 0 var(--carina-border);
+  --ifm-menu-color-background-active: var(--carina-green-dim);
+  --ifm-menu-color-background-hover: rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme='dark'] {
+  background-color: var(--carina-bg);
+}
+
+.navbar {
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--carina-border);
+}
+
+.navbar__title {
+  letter-spacing: -0.01em;
+}
+
+.navbar__link--active {
+  color: var(--carina-green);
+}
+
+.button--primary {
+  color: var(--carina-bg);
+  font-weight: 600;
+}
+
+.button--primary:hover {
+  color: var(--carina-bg);
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  border-left-color: var(--carina-green);
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--carina-green);
+}
+
+html[data-theme='dark'] .main-wrapper,
+html[data-theme='dark'] .theme-doc-markdown {
+  background: var(--carina-bg);
+}
+
+html[data-theme='dark'] .theme-doc-sidebar-container {
+  border-right: 1px solid var(--carina-border);
+}

@@ -8,6 +8,7 @@ import { anomalyDetector } from '../security/anomaly-detector.js';
 import type { SessionMetrics } from '../security/anomaly-detector.js';
 import type { IncomingEventPayload, SecurityEventRow, Severity } from '../types.js';
 import { buildLineage } from '../lib/session-lineage.js';
+import { attestCriticalSecurityEvent } from '../trust/critical-event-attestation.js';
 
 export const eventsRouter: IRouter = Router();
 
@@ -271,6 +272,21 @@ eventsRouter.post('/', async (req: Request, res: Response): Promise<void> => {
         console.error('[events] Anomaly detection error:', err);
       });
     }
+
+    void attestCriticalSecurityEvent(inserted)
+      .then((attestation) => {
+        if (!attestation) return;
+        const redis = getRedis();
+        if (redis) {
+          return redis.publish(
+            'scout:attestations',
+            JSON.stringify({ type: 'critical_event', attestation }),
+          );
+        }
+      })
+      .catch((err) => {
+        console.error('[events] Critical attestation error:', err);
+      });
 
     res.status(201).json({ ok: true, id: inserted.id });
   } catch (err) {

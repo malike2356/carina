@@ -16,6 +16,8 @@ import {
   rememberApprovalAfterConfirm,
 } from '../security/approval-policy.js';
 import { getToolExecutionContext } from '../security/tool-execution-context.js';
+import { isSubagentSession } from './delegation-context.js';
+import { isSubagentBlockedTool } from './subagent-policy.js';
 import { evaluateToolRbac } from '../security/tool-rbac.js';
 import { resolveSandboxExecution } from '../security/sandbox-policy.js';
 import { appendSecurityAudit } from '../security/security-audit.js';
@@ -23,6 +25,7 @@ import { evaluateScoutToolPolicy, reportPolicyFallback } from '../security/scout
 import { toolRiskTier } from '../security/tool-risk.js';
 import { getActiveProfileName } from '../profiles/manager.js';
 import { getActiveAgentDefinition } from '../workspaces/agent-registry.js';
+import { isToolAllowed, recordToolPolicyCall } from './tool-operator-policy.js';
 
 export type ConfirmFn = (
   toolName: string,
@@ -66,6 +69,46 @@ export async function executeToolCall(
   const tool = getSessionTool(sessionId, call.toolName) ?? registry.get(call.toolName);
   if (!tool) {
     return { error: `Unknown tool: ${call.toolName}` };
+  }
+
+  if (isSubagentSession(sessionId)) {
+    if (isSubagentBlockedTool(call.toolName)) {
+      return {
+        error: `Tool "${call.toolName}" is blocked for subagents.`,
+        code: 'SUBAGENT_TOOL_BLOCKED',
+      };
+    }
+    if (!confirm && (tool.dangerous || tool.requiresConfirmation)) {
+      return {
+        error: `Subagents cannot run "${call.toolName}" without interactive approval.`,
+        code: 'SUBAGENT_CONFIRM_BLOCKED',
+      };
+    }
+  }
+
+  const workspaceId = String(call.params._workspaceId ?? call.params.workspaceId ?? sessionId);
+  const operatorPolicy = await isToolAllowed(call.toolName, workspaceId);
+  if (!operatorPolicy.allowed) {
+    return {
+      error: 'Tool disabled by operator',
+      code: 'OPERATOR_TOOL_DISABLED',
+      category: operatorPolicy.category,
+    };
+  }
+  const messageKey = String(call.params._messageId ?? call.params._turnId ?? sessionId);
+  const policyCount = recordToolPolicyCall(
+    workspaceId,
+    operatorPolicy.category,
+    messageKey,
+    operatorPolicy.maxCalls,
+  );
+  if (!policyCount.allowed) {
+    return {
+      error: `Tool category "${operatorPolicy.category}" exceeded operator max calls (${operatorPolicy.maxCalls}) for this message.`,
+      code: 'OPERATOR_TOOL_LIMIT_EXCEEDED',
+      category: operatorPolicy.category,
+      maxCalls: operatorPolicy.maxCalls,
+    };
   }
 
   const rbac = evaluateToolRbac(call.toolName, getToolExecutionContext().orgRole, tool);
@@ -122,14 +165,21 @@ export async function executeToolCall(
   const policyAllows = policy?.decision === 'allow';
   const mustConfirm =
     !policyAllows
-    && (alwaysConfirm || needsJitApproval || (await needsUserConfirmation(tool, call.params)));
+    && (
+      alwaysConfirm ||
+      needsJitApproval ||
+      operatorPolicy.requiresApproval ||
+      (await needsUserConfirmation(tool, call.params))
+    );
   if (mustConfirm) {
     if (!confirm) {
       return { error: 'Tool requires confirmation but no confirm handler is configured.' };
     }
     const reason = policy?.decision === 'needs_confirm'
       ? policy.reason
-      : tool.dangerous
+      : operatorPolicy.requiresApproval
+        ? 'Operator policy requires approval before running this tool.'
+        : tool.dangerous
         ? 'This tool is marked dangerous.'
         : 'Confirmation required before running.';
     const ok = await confirm(call.toolName, call.params, reason);
@@ -191,8 +241,10 @@ export async function executeToolCall(
       paramsWithSession._confirm = confirm;
     }
     const ttlSeconds = getToolCacheTtlSeconds(call.toolName, call.params);
-    const result = await withCache(call.toolName, call.params, ttlSeconds, () =>
-      tool.execute(paramsWithSession),
+    const result = await withTimeout(
+      withCache(call.toolName, call.params, ttlSeconds, () => tool.execute(paramsWithSession)),
+      operatorPolicy.timeoutMs,
+      call.toolName,
     );
     const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
     recordToolSequenceStep(sessionId, call.toolName, call.params);
@@ -226,5 +278,22 @@ export async function executeToolCall(
       errorMessage: err instanceof Error ? err.message : String(err),
     });
     return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, toolName: string): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error(`Tool "${toolName}" timed out after ${timeoutMs}ms by operator policy.`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
   }
 }

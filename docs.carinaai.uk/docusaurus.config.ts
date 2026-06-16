@@ -8,7 +8,7 @@ const docPath = (slug: string) => (marketingEmbed ? `/${slug}` : `/docs/${slug}`
 
 const config: Config = {
   title: 'Carina Docs',
-  tagline: 'An agent that gets work done on your stack. User guides and developer reference.',
+  tagline: 'One Memory. One Agent. Everywhere. User guides and developer reference.',
   favicon: 'img/favicon.ico',
 
   url: marketingEmbed ? 'https://carinaai.uk' : 'https://docs.carinaai.uk',
@@ -31,6 +31,10 @@ const config: Config = {
       type: 'text/css',
     },
   ],
+
+  customFields: {
+    marketingEmbed,
+  },
 
   presets: [
     [
@@ -134,8 +138,9 @@ const config: Config = {
       copyright: `Copyright ${new Date().getFullYear()} VERLOX Ltd. MIT Licensed.`,
     },
     colorMode: {
-      defaultMode: 'light',
-      respectPrefersColorScheme: true,
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: false,
     },
     prism: {
       theme: prismThemes.github,

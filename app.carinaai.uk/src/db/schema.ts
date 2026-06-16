@@ -7,7 +7,6 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -216,6 +215,24 @@ export const userMemories = pgTable(
   ],
 );
 
+export const userNotes = pgTable(
+  'user_notes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    title: text('title').notNull().default(''),
+    content: text('content').notNull().default(''),
+    reminderAt: timestamp('reminder_at'),
+    archived: boolean('archived').notNull().default(false),
+    pinned: boolean('pinned').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [index('user_notes_workspace_id_idx').on(t.workspaceId)],
+);
+
 export const workspaceSkills = pgTable(
   'workspace_skills',
   {
@@ -235,25 +252,8 @@ export const workspaceSkills = pgTable(
   },
   (t) => [
     index('workspace_skills_workspace_id_idx').on(t.workspaceId),
-    uniqueIndex('workspace_skills_workspace_skill_uniq').on(t.workspaceId, t.skillId),
+    index('workspace_skills_workspace_skill_uniq').on(t.workspaceId, t.skillId),
   ],
-);
-
-export const userNotes = pgTable(
-  'user_notes',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    workspaceId: uuid('workspace_id')
-      .notNull()
-      .references(() => workspaces.id, { onDelete: 'cascade' }),
-    title: text('title').notNull().default(''),
-    content: text('content').notNull().default(''),
-    archived: boolean('archived').notNull().default(false),
-    pinned: boolean('pinned').notNull().default(false),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  (t) => [index('user_notes_workspace_id_idx').on(t.workspaceId)],
 );
 
 export const pinTypeEnum = pgEnum('pin_type', ['note', 'document', 'text']);
@@ -274,10 +274,7 @@ export const sessionContextPins = pgTable(
     content: text('content').notNull(),
     createdAt: timestamp('created_at').notNull().defaultNow(),
   },
-  (t) => [
-    index('session_context_pins_session_id_idx').on(t.sessionId),
-    uniqueIndex('session_context_pins_uniq').on(t.sessionId, t.pinType, t.referenceId),
-  ],
+  (t) => [index('session_context_pins_session_id_idx').on(t.sessionId)],
 );
 
 export const taskTriggerEnum = pgEnum('task_trigger', ['schedule', 'on_event', 'webhook']);
@@ -367,10 +364,105 @@ export const researchJobs = pgTable(
   ],
 );
 
+export const documents = pgTable(
+  'documents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id').references(() => chatSessions.id, { onDelete: 'set null' }),
+    title: text('title').notNull().default('Untitled'),
+    content: text('content').notNull().default(''),
+    format: varchar('format', { length: 20 }).notNull().default('markdown'),
+    archived: boolean('archived').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('documents_workspace_id_idx').on(t.workspaceId),
+    index('documents_updated_at_idx').on(t.updatedAt),
+  ],
+);
+
+export const emailMessages = pgTable(
+  'email_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    externalId: text('external_id'),
+    fromAddress: text('from_address').notNull(),
+    subject: text('subject').notNull().default(''),
+    bodyPreview: text('body_preview'),
+    bodyFull: text('body_full'),
+    urgency: varchar('urgency', { length: 20 }).notNull().default('normal'),
+    status: varchar('status', { length: 30 }).notNull().default('inbox'),
+    aiDraftReply: text('ai_draft_reply'),
+    aiDraftGeneratedAt: timestamp('ai_draft_generated_at'),
+    receivedAt: timestamp('received_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('email_messages_workspace_id_idx').on(t.workspaceId),
+    index('email_messages_status_idx').on(t.status),
+    index('email_messages_received_at_idx').on(t.receivedAt),
+  ],
+);
+
+export const calendarEvents = pgTable(
+  'calendar_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    externalUid: text('external_uid'),
+    title: text('title').notNull(),
+    description: text('description'),
+    startsAt: timestamp('starts_at').notNull(),
+    endsAt: timestamp('ends_at'),
+    allDay: boolean('all_day').notNull().default(false),
+    source: varchar('source', { length: 30 }).notNull().default('local'),
+    noteId: uuid('note_id').references(() => userNotes.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('calendar_events_workspace_id_idx').on(t.workspaceId),
+    index('calendar_events_starts_at_idx').on(t.startsAt),
+    index('calendar_events_external_uid_idx').on(t.externalUid),
+  ],
+);
+
+export const calendarConnections = pgTable(
+  'calendar_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    provider: varchar('provider', { length: 30 }).notNull().default('caldav'),
+    url: text('url'),
+    username: text('username'),
+    encryptedPassword: text('encrypted_password'),
+    passwordIv: text('password_iv'),
+    passwordTag: text('password_tag'),
+    lastSyncAt: timestamp('last_sync_at'),
+    lastSyncError: text('last_sync_error'),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [index('calendar_connections_workspace_id_idx').on(t.workspaceId)],
+);
+
 export const workspaceSettings = pgTable('workspace_settings', {
   workspaceId: uuid('workspace_id')
     .primaryKey()
     .references(() => workspaces.id, { onDelete: 'cascade' }),
+  inboundEmailToken: text('inbound_email_token'),
   theme: varchar('theme', { length: 30 }).notNull().default('dark'),
   customTheme: jsonb('custom_theme'),
   appearance: jsonb('appearance'),
@@ -382,7 +474,7 @@ export const workspaceSettings = pgTable('workspace_settings', {
   showShellButton: boolean('show_shell_button').notNull().default(false),
   showAgentModeToggle: boolean('show_agent_mode_toggle').notNull().default(true),
   showDeepResearchButton: boolean('show_deep_research_button').notNull().default(true),
-  showCalendar: boolean('show_calendar').notNull().default(false),
+  showCalendar: boolean('show_calendar').notNull().default(true),
   showResearch: boolean('show_research').notNull().default(true),
   showTasks: boolean('show_tasks').notNull().default(true),
   showNotes: boolean('show_notes').notNull().default(true),
@@ -391,6 +483,11 @@ export const workspaceSettings = pgTable('workspace_settings', {
   defaultMode: varchar('default_mode', { length: 20 }).notNull().default('chat'),
   defaultModel: varchar('default_model', { length: 120 }).notNull().default(''),
   defaultProvider: varchar('default_provider', { length: 50 }).notNull().default(''),
+  autoExtractMemories: boolean('auto_extract_memories').notNull().default(true),
+  autoExtractSkills: boolean('auto_extract_skills').notNull().default(false),
+  autoApproveSkillsMinConfidence: integer('auto_approve_skills_min_confidence').notNull().default(85),
+  maxSkillsPerRequest: integer('max_skills_per_request').notNull().default(3),
+  injectMemoriesInChat: boolean('inject_memories_in_chat').notNull().default(true),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
@@ -401,11 +498,14 @@ export type ByokKey = typeof byokKeys.$inferSelect;
 export type ChatSession = typeof chatSessions.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type UserMemory = typeof userMemories.$inferSelect;
-export type WorkspaceSkill = typeof workspaceSkills.$inferSelect;
 export type UserNote = typeof userNotes.$inferSelect;
 export type ScheduledTask = typeof scheduledTasks.$inferSelect;
 export type TaskRun = typeof taskRuns.$inferSelect;
 export type ResearchJob = typeof researchJobs.$inferSelect;
+export type Document = typeof documents.$inferSelect;
+export type EmailMessage = typeof emailMessages.$inferSelect;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type CalendarConnection = typeof calendarConnections.$inferSelect;
 export type WorkspaceSettings = typeof workspaceSettings.$inferSelect;
 export type MemoryType = (typeof memoryTypeEnum.enumValues)[number];
 export type MessageRole = (typeof messageRoleEnum.enumValues)[number];

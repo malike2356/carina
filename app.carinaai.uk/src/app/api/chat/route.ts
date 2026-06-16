@@ -2,21 +2,45 @@ import { NextResponse } from 'next/server';
 import { getDecryptedWorkspaceKeys } from '@/lib/keys';
 import { streamCarinaChat } from '@/lib/carina-chat';
 import {
+  ChatStreamError,
+  chatErrorPayload,
+  isNoByokKeysMessage,
+} from '@/lib/chat-errors';
+import { coreProxyEnabled, resolveCoreUrl } from '@/lib/core-proxy';
+import {
   assertWithinQuota,
   estimateTokensFromText,
   QuotaExceededError,
   recordUsage,
 } from '@/lib/quota';
 import { getSession, requireWorkspace } from '@/lib/session';
+import { triggerBrainExtraction } from '@/lib/brain-extract';
 import {
   getOrCreateSession,
   saveMessage,
   autoTitleSession,
   getSessionMessages,
 } from '@/lib/chat-sessions';
+import type { CarinaChatStreamEvent } from '@/lib/carina-chat';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+function sseResponse(stream: ReadableStream<Uint8Array>) {
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  });
+}
+
+function appendStreamText(outputText: string, chunk: CarinaChatStreamEvent): string {
+  if (chunk.type === 'text') return outputText + chunk.content;
+  return outputText;
+}
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -28,7 +52,6 @@ export async function POST(req: Request) {
     provider?: string;
     model?: string;
     mode?: 'chat' | 'agent';
-    webSearch?: boolean;
   };
 
   const message = String(body.message ?? '').trim();
@@ -43,6 +66,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: err.message, upgradeUrl: '/billing' }, { status: 429 });
     }
     throw err;
+  }
+
+  const providerKeys = await getDecryptedWorkspaceKeys(workspace.id);
+  if (providerKeys.length === 0) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify(
+              chatErrorPayload(
+                'Add at least one provider key in Settings before chatting.',
+                'NO_BYOK_KEYS',
+              ),
+            )}\n\n`,
+          ),
+        );
+        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+        controller.close();
+      },
+    });
+    return sseResponse(stream);
   }
 
   const sessionId = await getOrCreateSession(workspace.id, body.sessionId ?? null);
@@ -61,7 +106,6 @@ export async function POST(req: Request) {
     await autoTitleSession(sessionId, message);
   }
 
-  const providerKeys = await getDecryptedWorkspaceKeys(workspace.id);
   const skillPacks = workspace.activeSkillPacks
     .split(',')
     .map((p) => p.trim())
@@ -70,14 +114,6 @@ export async function POST(req: Request) {
   const encoder = new TextEncoder();
   let outputText = '';
   const startTime = Date.now();
-  const toolCalls: Array<{
-    id: string;
-    name: string;
-    input: unknown;
-    output: unknown;
-    durationMs: number;
-    status: 'running' | 'done' | 'error';
-  }> = [];
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -88,7 +124,7 @@ export async function POST(req: Request) {
       enqueue(JSON.stringify({ sessionId }));
 
       try {
-        for await (const event of streamCarinaChat({
+        for await (const chunk of streamCarinaChat({
           message,
           sessionId,
           workspaceId: workspace.id,
@@ -97,87 +133,70 @@ export async function POST(req: Request) {
           provider: body.provider,
           model: body.model,
         })) {
-          if (event.type === 'text') {
-            outputText += event.content;
-            enqueue(JSON.stringify(event.content));
-          } else if (event.type === 'tool_start') {
-            toolCalls.push({
-              id: event.id,
-              name: event.name,
-              input: event.input,
-              output: null,
-              durationMs: 0,
-              status: 'running',
-            });
-            enqueue(JSON.stringify({
-              tool_start: {
-                id: event.id,
-                name: event.name,
-                input: event.input,
-              },
-            }));
-          } else if (event.type === 'tool_done') {
-            const toolCall = toolCalls.find((tc) => tc.id === event.id);
-            if (toolCall) {
-              toolCall.output = event.output;
-              toolCall.durationMs = event.durationMs;
-              toolCall.status = 'done';
-            }
-            enqueue(JSON.stringify({
-              tool_done: {
-                id: event.id,
-                output: event.output,
-                durationMs: event.durationMs,
-              },
-            }));
-          } else if (event.type === 'tool_error') {
-            const toolCall = toolCalls.find((tc) => tc.id === event.id);
-            if (toolCall) {
-              toolCall.output = event.error;
-              toolCall.durationMs = event.durationMs;
-              toolCall.status = 'error';
-            }
-            enqueue(JSON.stringify({
-              tool_error: {
-                id: event.id,
-                error: event.error,
-                durationMs: event.durationMs,
-              },
-            }));
-          }
+          outputText = appendStreamText(outputText, chunk);
+          enqueue(JSON.stringify(chunk));
         }
 
         const durationMs = Date.now() - startTime;
         const inputTokens = estimateTokensFromText(message);
         const outputTokens = estimateTokensFromText(outputText);
-        const provider = body.provider || providerKeys[0]?.provider || 'unknown';
-        const model = body.model || provider;
+        const modelName =
+          body.model ??
+          body.provider ??
+          providerKeys[0]?.provider ??
+          'unknown';
 
-        await saveMessage({
-          sessionId,
-          workspaceId: workspace.id,
-          role: 'assistant',
-          content: outputText,
-          inputTokens,
-          outputTokens,
-          durationMs,
-          model,
-          toolCalls,
-        });
+        if (outputText.trim()) {
+          await saveMessage({
+            sessionId,
+            workspaceId: workspace.id,
+            role: 'assistant',
+            content: outputText,
+            inputTokens,
+            outputTokens,
+            durationMs,
+            model: modelName,
+          });
 
-        await recordUsage(
-          workspace.id,
-          provider,
-          'default',
-          inputTokens,
-          outputTokens,
+          await recordUsage(
+            workspace.id,
+            body.provider ?? providerKeys[0]?.provider ?? 'deepseek',
+            body.model ?? 'default',
+            inputTokens,
+            outputTokens,
+          );
+
+          void triggerBrainExtraction({
+            workspaceId: workspace.id,
+            sessionId,
+            mode: body.mode ?? 'chat',
+            userMessage: message,
+            assistantMessage: outputText,
+          }).catch(() => {});
+        }
+
+        enqueue(
+          JSON.stringify({
+            meta: {
+              inputTokens,
+              outputTokens,
+              durationMs,
+              sessionId,
+              model: modelName,
+            },
+          }),
         );
-
-        enqueue(JSON.stringify({ meta: { inputTokens, outputTokens, durationMs, sessionId, model } }));
         enqueue('[DONE]');
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Chat failed';
-        enqueue(JSON.stringify({ error: msg }));
+        let payload = chatErrorPayload('Chat failed', 'CHAT_FAILED');
+        if (err instanceof ChatStreamError) {
+          payload = chatErrorPayload(err.message, err.code);
+        } else if (err instanceof Error && isNoByokKeysMessage(err.message)) {
+          payload = chatErrorPayload(err.message, 'NO_BYOK_KEYS');
+        } else if (err instanceof Error) {
+          payload = chatErrorPayload(err.message, 'CHAT_FAILED');
+        }
+        enqueue(JSON.stringify(payload));
         enqueue('[DONE]');
       } finally {
         controller.close();
@@ -185,12 +204,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    },
-  });
+  return sseResponse(stream);
 }

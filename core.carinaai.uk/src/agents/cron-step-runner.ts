@@ -1,4 +1,5 @@
 import { CarinaAgent } from './carina.js';
+import { config } from '../config/index.js';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'path';
@@ -96,7 +97,7 @@ export async function runCronStep(input: CronStepInput): Promise<CronStepResult>
       platform: 'cron',
       allowedTools: input.enabledToolsets.length > 0 ? input.enabledToolsets : undefined,
       persistMemory: false,
-      maxTurns: input.maxTurns ?? 10,
+      maxTurns: input.maxTurns ?? config.carina.subagentMaxTurns,
       systemPromptSuffix: workdirNote,
     });
     if (input.modelProvider) {

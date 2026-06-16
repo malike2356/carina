@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "phone-control",
+  "version": "1.0.0",
+  "name": "Phone Control",
+  "author": "VERLOX Ltd",
+  "description": "Dispatch commands to a paired phone node.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "medium"
+}

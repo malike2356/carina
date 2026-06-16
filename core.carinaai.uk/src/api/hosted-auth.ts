@@ -4,6 +4,7 @@ import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
 import { createOrgForUser, getOrgProfile, getPrimaryOrgForUser } from '../hosted/org-service.js';
 import { runHostedMigrations } from './hosted-migrations.js';
+import { checkAuthRateLimit, clearAuthFailures, recordAuthFailure } from '../security/auth-rate-limit.js';
 
 let hostedReady = false;
 
@@ -105,19 +106,30 @@ export async function loginUser(
   email: string,
   password: string,
 ): Promise<{ token: string; apiKey: string; orgId?: string; role?: string } | null> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const rate = checkAuthRateLimit('hosted-login', normalizedEmail);
+  if (!rate.allowed) return null;
+
   await initHostedDb();
   const result = await pool.query(
     'SELECT id, password_hash, api_key FROM hosted_users WHERE email = $1',
-    [email],
+    [normalizedEmail],
   );
-  if (result.rowCount === 0) return null;
+  if (result.rowCount === 0) {
+    recordAuthFailure('hosted-login', normalizedEmail);
+    return null;
+  }
   const row = result.rows[0];
-  if (!verifyPassword(password, String(row.password_hash))) return null;
+  if (!verifyPassword(password, String(row.password_hash))) {
+    recordAuthFailure('hosted-login', normalizedEmail);
+    return null;
+  }
+  clearAuthFailures('hosted-login', normalizedEmail);
   const blocked = await checkHostedAccess(String(row.id));
   if (blocked) return null;
   const userId = String(row.id);
   const membership = await getPrimaryOrgForUser(userId);
-  const tokenPayload: Record<string, string> = { userId, email };
+  const tokenPayload: Record<string, string> = { userId, email: normalizedEmail };
   if (membership) {
     tokenPayload.orgId = membership.orgId;
     tokenPayload.role = membership.role;

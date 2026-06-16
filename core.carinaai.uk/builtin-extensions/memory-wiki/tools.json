@@ -1,0 +1,8 @@
+[
+  {
+    "integration": "builtin",
+    "builtin": "memory-wiki",
+    "name": "memory-wiki",
+    "description": "Markdown wiki pages for long-term operator notes."
+  }
+]

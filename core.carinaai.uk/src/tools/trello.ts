@@ -1,7 +1,9 @@
 import type { Tool } from '../types/index.js';
 import { config } from '../config/index.js';
 
-const BASE = 'https://api.trello.com/1';
+function trelloBase(): string {
+  return config.trello.baseUrl.replace(/\/$/, '');
+}
 
 function authQuery(): string {
   return `key=${encodeURIComponent(config.trello.apiKey)}&token=${encodeURIComponent(config.trello.token)}`;
@@ -9,7 +11,7 @@ function authQuery(): string {
 
 function urlWithAuth(path: string): string {
   const sep = path.includes('?') ? '&' : '?';
-  return `${BASE}${path}${sep}${authQuery()}`;
+  return `${trelloBase()}${path}${sep}${authQuery()}`;
 }
 
 async function tGet(path: string): Promise<unknown> {
@@ -24,7 +26,7 @@ async function tPost(path: string, body: Record<string, string>): Promise<unknow
     key: config.trello.apiKey,
     token: config.trello.token,
   });
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${trelloBase()}${path}`, {
     method: 'POST',
     body: p,
     signal: AbortSignal.timeout(10_000),
@@ -39,7 +41,7 @@ async function tPut(path: string, body: Record<string, string>): Promise<unknown
     key: config.trello.apiKey,
     token: config.trello.token,
   });
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${trelloBase()}${path}`, {
     method: 'PUT',
     body: p,
     signal: AbortSignal.timeout(10_000),

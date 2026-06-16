@@ -1,6 +1,7 @@
 import { CarinaAgent, type TurnResult } from './carina.js';
 import type { ConfirmFn } from './tool-runner.js';
 import type { ProviderOverride } from '../brain/llm.js';
+import { subagentMaxTurns } from './subagent-policy.js';
 
 export abstract class SubAgent {
   abstract name: string;
@@ -11,7 +12,7 @@ export abstract class SubAgent {
   protected sessionId: string;
   protected memoryReady: boolean;
   protected confirmTool?: ConfirmFn;
-  protected maxTurns = 10;
+  protected maxTurns = subagentMaxTurns();
   protected providerOverride?: ProviderOverride;
   protected abortSignal?: AbortSignal;
 

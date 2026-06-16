@@ -12,6 +12,8 @@ import {
   recordDeliveryAttempt,
   resetDeliveryForRetry,
 } from './webhook-delivery.js';
+import { retryAsync, RetryError } from '../infrastructure/retry.js';
+import { httpRetryError, httpRetryPolicy, shouldRetryHttpError } from '../infrastructure/retry-policy.js';
 
 export type { WebhookPayload } from './webhook-types.js';
 
@@ -22,30 +24,47 @@ async function postToEndpoint(
   body: string,
   event: WebhookEvent,
   secret: string | null,
+  attempts = INLINE_ATTEMPTS,
 ): Promise<{ ok: boolean; status?: number; error?: string }> {
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Carina-Webhook/1.0',
-      'X-Carina-Event': event,
-    };
-    if (secret) {
-      headers['X-Carina-Signature'] = signPayload(secret, body);
-    }
+    return await retryAsync(async () => {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Carina-Webhook/1.0',
+        'X-Carina-Event': event,
+      };
+      if (secret) {
+        headers['X-Carina-Signature'] = signPayload(secret, body);
+      }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body,
-      signal: AbortSignal.timeout(15_000),
-    });
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body,
+        signal: AbortSignal.timeout(15_000),
+      });
 
-    if (response.ok) {
-      return { ok: true, status: response.status };
-    }
-    return { ok: false, status: response.status, error: `HTTP ${response.status}` };
+      if (response.ok) {
+        return { ok: true, status: response.status };
+      }
+
+      const err = httpRetryError({
+        status: response.status,
+        message: `HTTP ${response.status}`,
+        retryAfterHeader: response.headers.get('Retry-After'),
+      });
+      if (!shouldRetryHttpError(err)) {
+        return { ok: false, status: response.status, error: err.message };
+      }
+      throw err;
+    }, httpRetryPolicy({ attempts }));
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+    const last = err instanceof RetryError ? err.lastError : err;
+    if (last && typeof last === 'object' && 'kind' in last && (last as { kind: string }).kind === 'http') {
+      const httpErr = last as unknown as { status?: number; message: string };
+      return { ok: false, status: httpErr.status, error: httpErr.message };
+    }
+    const msg = last instanceof Error ? last.message : String(last ?? err);
     return { ok: false, error: msg };
   }
 }
@@ -83,27 +102,26 @@ export async function deliverToSubscription(
 
   const body = JSON.stringify(payloadEnvelope);
 
-  let lastError: string | undefined;
-  let lastStatus: number | undefined;
-  const attempts = existingDeliveryId ? 1 : INLINE_ATTEMPTS;
+  const result = await postToEndpoint(
+    sub.url,
+    body,
+    event,
+    sub.secret,
+    existingDeliveryId ? 1 : INLINE_ATTEMPTS,
+  );
 
-  for (let i = 0; i < attempts; i++) {
-    const result = await postToEndpoint(sub.url, body, event, sub.secret);
-    lastError = result.error;
-    lastStatus = result.status;
-    if (result.ok) {
-      await recordDeliveryAttempt(delivery.id, {
-        success: true,
-        httpStatus: result.status,
-      });
-      return { deliveryId: delivery.id, delivered: true };
-    }
+  if (result.ok) {
+    await recordDeliveryAttempt(delivery.id, {
+      success: true,
+      httpStatus: result.status,
+    });
+    return { deliveryId: delivery.id, delivered: true };
   }
 
   const updated = await recordDeliveryAttempt(delivery.id, {
     success: false,
-    httpStatus: lastStatus,
-    errorMessage: lastError ?? 'delivery failed',
+    httpStatus: result.status,
+    errorMessage: result.error ?? 'delivery failed',
     scheduleRetry: delivery.attemptCount + 1 < delivery.maxAttempts,
     nextRetryAt: delivery.attemptCount + 1 < delivery.maxAttempts
       ? computeNextRetry(delivery.attemptCount + 1)

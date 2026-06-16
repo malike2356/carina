@@ -7,6 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+function getCallbackUrl(): string {
+  if (typeof window === 'undefined') return '/dashboard';
+  const value = new URLSearchParams(window.location.search).get('callbackUrl');
+  return value && value.startsWith('/') ? value : '/dashboard';
+}
+
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
@@ -20,11 +26,16 @@ export default function LoginPage() {
     const password = String(formData.get('password'));
     const result = await authClient.signIn.email({ email, password });
     if (result.error) {
-      setError(result.error.message ?? 'Sign in failed');
+      const message = result.error.message ?? 'Sign in failed';
+      setError(
+        message.includes('Invalid email or password')
+          ? 'Invalid email or password. Use the password from when you registered on app.carinaai.uk, or create a new account.'
+          : message,
+      );
       setPending(false);
       return;
     }
-    window.location.href = '/dashboard';
+    window.location.href = getCallbackUrl();
   }
 
   return (
@@ -48,7 +59,11 @@ export default function LoginPage() {
         </Button>
       </form>
       <p className="text-sm text-text-secondary">
-        No account? <Link href="/register" className="font-medium text-accent">Register</Link>
+        No account on app.carinaai.uk yet?{' '}
+        <Link href="/register" className="font-medium text-accent">
+          Create one here
+        </Link>
+        . Accounts are separate from local dev.
       </p>
     </main>
   );

@@ -1,4 +1,4 @@
-const SCOUT_URL = process.env.SCOUT_URL ?? 'http://localhost:4444';
+const SCOUT_URL = process.env.SCOUT_URL ?? 'https://console.labyrinthscout.com';
 const SCOUT_KEY = process.env.SCOUT_API_KEY ?? '';
 
 export const SCOUT_BASE = SCOUT_URL;

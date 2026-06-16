@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "id": "file-transfer",
+  "version": "1.0.0",
+  "name": "File Transfer",
+  "author": "VERLOX Ltd",
+  "description": "Encode and push files via paired node hosts.",
+  "capabilities": [
+    "tools"
+  ],
+  "entryPoints": {
+    "tools": "tools.json"
+  },
+  "risk": "medium"
+}
