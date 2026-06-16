@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "session_context_pins_uniq" ON "session_context_pins" USING btree ("session_id","pin_type","reference_id");

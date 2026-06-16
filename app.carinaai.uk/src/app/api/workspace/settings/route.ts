@@ -1,0 +1,76 @@
+import { NextResponse } from 'next/server';
+import { eq } from 'drizzle-orm';
+import { db } from '@/db';
+import { workspaceSettings } from '@/db/schema';
+import { normalizeAppearance } from '@/lib/appearance';
+import { isThemeName } from '@/lib/themes';
+import { getSession, requireWorkspace } from '@/lib/session';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const workspace = await requireWorkspace(session.user.id);
+  const [settings] = await db
+    .select()
+    .from(workspaceSettings)
+    .where(eq(workspaceSettings.workspaceId, workspace.id))
+    .limit(1);
+
+  return NextResponse.json({ data: settings ?? { workspaceId: workspace.id, theme: 'dark' } });
+}
+
+export async function PATCH(request: Request) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const workspace = await requireWorkspace(session.user.id);
+  const body = (await request.json()) as {
+    theme?: string;
+    customTheme?: unknown;
+    appearance?: unknown;
+  };
+  const updates: Partial<typeof workspaceSettings.$inferInsert> = { updatedAt: new Date() };
+
+  if (body.theme !== undefined) {
+    if (!isThemeName(body.theme)) {
+      return NextResponse.json({ error: 'Unsupported theme' }, { status: 400 });
+    }
+    updates.theme = body.theme;
+  }
+  if (body.customTheme !== undefined) updates.customTheme = body.customTheme;
+  if (body.appearance !== undefined) {
+    const [current] = await db
+      .select({ appearance: workspaceSettings.appearance })
+      .from(workspaceSettings)
+      .where(eq(workspaceSettings.workspaceId, workspace.id))
+      .limit(1);
+    updates.appearance = normalizeAppearance({
+      ...(typeof current?.appearance === 'object' && current.appearance !== null ? current.appearance : {}),
+      ...(typeof body.appearance === 'object' && body.appearance !== null ? body.appearance : {}),
+    });
+  }
+
+  await db
+    .insert(workspaceSettings)
+    .values({
+      workspaceId: workspace.id,
+      ...updates,
+    })
+    .onConflictDoUpdate({
+      target: workspaceSettings.workspaceId,
+      set: updates,
+    });
+
+  const response = NextResponse.json({ data: { ok: true } });
+  if (updates.theme) {
+    response.cookies.set('carina_theme', updates.theme, {
+      maxAge: 60 * 60 * 24 * 365,
+      path: '/',
+      sameSite: 'lax',
+    });
+  }
+  return response;
+}
