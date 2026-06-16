@@ -27,12 +27,22 @@ deploy() {
   build_local
 
   log "Syncing standalone build to VPS..."
-  rsync -az --delete \
+  rsync -az --delete --exclude='start.sh' \
     .next/standalone/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/"
   rsync -az \
     .next/static/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/.next/static/"
   rsync -az \
     public/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/public/"
+
+  log "Ensuring start.sh is present on VPS..."
+  ssh "${VPS_USER}@${VPS_HOST}" "test -x ${DEPLOY_DIR}/start.sh || (cat > ${DEPLOY_DIR}/start.sh << 'SEOF'
+#!/bin/bash
+set -a
+source ${DEPLOY_DIR}/.env
+set +a
+exec /usr/bin/node ${DEPLOY_DIR}/server.js
+SEOF
+chmod +x ${DEPLOY_DIR}/start.sh)"
 
   log "Restarting ${SERVICE}..."
   ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl restart ${SERVICE}"
