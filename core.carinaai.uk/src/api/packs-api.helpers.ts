@@ -1,3 +1,5 @@
+import { config } from '../config/index.js';
+
 export type InstalledPackRow = {
   pack_name: string;
   version: string;
@@ -29,6 +31,6 @@ export function guiInstalledPayload(installed: InstalledPackRow[]): {
     installed,
     management: 'gui',
     operatorHint:
-      'Enable or disable packs here, or use the ops.carinaai.uk Skill Packs page. Changes apply immediately without editing .env or restarting.',
+      `Enable or disable packs here, or use the ${config.product.opsUrl} Skill Packs page. Changes apply immediately without editing .env or restarting.`,
   };
 }

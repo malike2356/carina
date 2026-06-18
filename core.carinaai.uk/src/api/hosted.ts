@@ -62,7 +62,7 @@ async function sendWelcomeEmail(email: string, apiKey: string): Promise<void> {
     from: config.resend.from,
     to: email,
     subject: 'Welcome to Carina',
-    text: `Your Carina hosted account is ready.\n\nAPI key: ${apiKey}\n\nUse app.carinaai.uk to chat.`,
+    text: `Your Carina hosted account is ready.\n\nAPI key: ${apiKey}\n\nUse ${config.product.appUrl} to chat.`,
   });
 }
 

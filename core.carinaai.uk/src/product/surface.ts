@@ -4,7 +4,7 @@ import { hostedShellConfig, privateShellConfig } from './shell-config.js';
 import type { ProductMode, ProductSurface } from './types.js';
 
 const OPS_HOSTNAMES = new Set(
-  (process.env.CARINA_OPS_HOSTS ?? 'ops.carinaai.uk')
+  (process.env.CARINA_OPS_HOSTS ?? `ops.${config.product.domain}`)
     .split(',')
     .map((h) => h.split(':')[0].trim().toLowerCase())
     .filter(Boolean),

@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readPackageInfo } from '../../registry.js';
+import { config } from '../../../config/index.js';
 import {
   defaultRfcDirFromModule,
   proposeRfc,
@@ -35,7 +36,7 @@ export async function runRfcPropose(args: string[]): Promise<void> {
   console.log('  2. Optional: post a draft in GitHub Discussions (RFCs category) for pre-PR feedback');
   console.log('  3. Open a PR with this RFC file for community review');
   console.log('');
-  console.log('Docs: https://carinaai.uk/docs/developer/rfc-process');
+  console.log(`Docs: ${config.product.docsUrl}/developer/rfc-process`);
 
   const editor = process.env.EDITOR ?? process.env.VISUAL;
   if (editor) {

@@ -18,7 +18,7 @@ export function renderUsageWarningEmailText(input: UsageWarningEmailInput): stri
     `Usage this month: ${input.used.toLocaleString()} / ${input.limit.toLocaleString()} ${unitLabel} (${percentUsed}%).`,
     '',
     'Review usage, top up credits, or upgrade your plan on the billing page:',
-    'https://core.carinaai.uk/ops/billing',
+    `${config.product.coreUrl}/ops/billing`,
   ].join('\n');
 }
 

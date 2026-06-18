@@ -1,5 +1,6 @@
 import { runRfcList } from './list.js';
 import { runRfcPropose } from './propose.js';
+import { config } from '../../../config/index.js';
 
 function printRfcHelp(): void {
   console.log(`Usage: carina rfc <command> [args]
@@ -15,7 +16,7 @@ Examples:
   carina rfc list
   carina rfc list --json
 
-Docs: https://carinaai.uk/docs/developer/rfc-process
+Docs: ${config.product.docsUrl}/developer/rfc-process
 `);
 }
 

@@ -13,7 +13,7 @@ export interface InviteEmailSender {
 }
 
 export function buildInviteUrl(token: string, appHost?: string): string {
-  const host = appHost ?? config.hosted.appHost ?? 'app.carinaai.uk';
+  const host = appHost ?? config.hosted.appHost;
   return `https://${host}/hosted-register?invite=${encodeURIComponent(token)}`;
 }
 

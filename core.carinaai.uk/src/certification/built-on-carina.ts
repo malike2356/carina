@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { config } from '../config/index.js';
 
 export type CertificationLevel = 'built-on-carina' | 'powered-by-carina' | 'enterprise-supported';
 
@@ -163,7 +164,7 @@ export function evaluateBuiltOnCarina(projectPath: string): CertificationReport 
     nextSteps.push(check.detail);
   }
   if (passedRequired) {
-    nextSteps.push('Apply for badge at hello@carinaai.uk with this report (--json)');
+    nextSteps.push(`Apply for badge at ${config.product.supportEmail} with this report (--json)`);
   }
 
   return {

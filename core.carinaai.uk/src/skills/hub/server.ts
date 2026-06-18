@@ -22,11 +22,11 @@ const PACKS_STORAGE = path.resolve(__dirname, '../../../data/hub-packs');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 const HUB_CORS_ORIGINS = new Set([
-  'https://carinaai.uk',
-  'https://www.carinaai.uk',
-  'https://docs.carinaai.uk',
-  'https://hub.carinaai.uk',
-  'https://skills.carinaai.uk',
+  config.product.marketingUrl,
+  `https://www.${config.product.domain}`,
+  config.product.docsUrl,
+  config.product.hubUrl,
+  config.product.skillsUrl,
   'http://localhost:3001',
   'http://127.0.0.1:3001',
 ]);
@@ -505,7 +505,7 @@ export async function startSkillsHub(): Promise<void> {
   await new Promise<void>((resolve) => {
     app.listen(config.hub.port, () => {
       console.log(`Skills Hub ready at http://localhost:${config.hub.port}`);
-      console.log(`Public registry: https://hub.carinaai.uk/ (local browse: http://localhost:${config.hub.port}/)`);
+      console.log(`Public registry: ${config.product.hubUrl}/ (local browse: http://localhost:${config.hub.port}/)`);
       resolve();
     });
   });

@@ -1,4 +1,6 @@
-const DEFAULT_ALLOWED_DOMAINS = [
+import { config } from '../config/index.js';
+
+const DEFAULT_ALLOWED_DOMAINS: readonly string[] = [
   'api.search.brave.com',
   'api.tavily.com',
   'api.openai.com',
@@ -9,10 +11,10 @@ const DEFAULT_ALLOWED_DOMAINS = [
   'api.twilio.com',
   'api.propertydata.co.uk',
   'generativelanguage.googleapis.com',
-  '*.carinaai.uk',
+  `*.${config.product.domain}`,
   '*.github.com',
   'github.com',
-] as const;
+];
 
 const SENSITIVE_PATTERNS = [
   { pattern: /sk-[A-Za-z0-9]{48}/, name: 'openai_key' },

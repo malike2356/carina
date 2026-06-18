@@ -1,4 +1,5 @@
 import { readPackageInfo } from '../registry.js';
+import { config } from '../../config/index.js';
 
 const MIT_URL = 'https://opensource.org/licenses/MIT';
 
@@ -11,8 +12,8 @@ export function aboutText(version = readPackageInfo().version): string {
     '',
     'Carina does not.',
     '',
-    'Docs:     https://core.carinaai.uk/docs/',
-    'Hosted:   https://app.carinaai.uk/',
+    `Docs:     ${config.product.coreUrl}/docs/`,
+    `Hosted:   ${config.product.appUrl}/`,
     'Scout:    https://console.labyrinthscout.com/',
     'GitHub:   https://github.com/carinaai/core',
   ].join('\n');

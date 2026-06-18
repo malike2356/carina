@@ -11,6 +11,8 @@ function intEnv(name: string, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
+const DOMAIN = process.env.CARINA_DOMAIN ?? 'carinaai.uk';
+
 export const config = {
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
@@ -75,7 +77,7 @@ export const config = {
   resend: {
     apiKey: process.env.RESEND_API_KEY ?? '',
     webhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? '',
-    from: 'Carina <hello@carinaai.uk>',
+    from: `Carina <hello@${DOMAIN}>`,
   },
   imap: {
     host: process.env.IMAP_HOST ?? '',
@@ -89,7 +91,7 @@ export const config = {
     port: parseInt(process.env.SMTP_PORT ?? '465', 10),
     user: process.env.SMTP_USER ?? 'resend',
     password: process.env.SMTP_PASSWORD ?? process.env.RESEND_API_KEY ?? '',
-    from: process.env.SMTP_FROM ?? process.env.RESEND_FROM ?? 'hello@carinaai.uk',
+    from: process.env.SMTP_FROM ?? process.env.RESEND_FROM ?? `hello@${DOMAIN}`,
     tls: process.env.SMTP_TLS !== 'false',
   },
   caldav: {
@@ -144,6 +146,18 @@ export const config = {
   server: {
     port: parseInt(process.env.PORT ?? '3000', 10),
   },
+  product: {
+    domain: DOMAIN,
+    marketingUrl: `https://${DOMAIN}`,
+    appUrl: `https://app.${DOMAIN}`,
+    coreUrl: `https://core.${DOMAIN}`,
+    opsUrl: `https://ops.${DOMAIN}`,
+    hubUrl: `https://hub.${DOMAIN}`,
+    docsUrl: `https://docs.${DOMAIN}`,
+    installUrl: `https://install.${DOMAIN}`,
+    skillsUrl: `https://skills.${DOMAIN}`,
+    supportEmail: `hello@${DOMAIN}`,
+  },
   tts: {
     provider: (process.env.TTS_PROVIDER ?? 'edge') as 'edge' | 'openai',
     voice: process.env.TTS_VOICE ?? 'en-GB-SoniaNeural',
@@ -193,8 +207,8 @@ export const config = {
     stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
     proPriceId: process.env.STRIPE_PRO_PRICE_ID ?? '',
-    appHost: process.env.CARINA_HOSTED_APP_HOST ?? 'app.carinaai.uk',
-    operatorHosts: (process.env.CARINA_OPERATOR_HOSTS ?? 'core.carinaai.uk,localhost')
+    appHost: process.env.CARINA_HOSTED_APP_HOST ?? `app.${DOMAIN}`,
+    operatorHosts: (process.env.CARINA_OPERATOR_HOSTS ?? `core.${DOMAIN},localhost`)
       .split(',')
       .map((h) => h.trim().toLowerCase())
       .filter(Boolean),
@@ -215,14 +229,14 @@ export const config = {
     managedWorkbenchEnabled: process.env.CARINA_OPS_MANAGED_WORKBENCH_ENABLED === 'true',
   },
   hub: {
-    url: process.env.SKILLS_HUB_URL ?? process.env.HUB_URL ?? 'https://hub.carinaai.uk',
+    url: process.env.SKILLS_HUB_URL ?? process.env.HUB_URL ?? `https://hub.${DOMAIN}`,
     port: parseInt(process.env.SKILLS_HUB_PORT ?? '3001', 10),
     databaseUrl: process.env.SKILLS_HUB_DATABASE_URL ?? 'postgresql://localhost:5432/carina_skills_hub',
     publishApiKey: process.env.SKILLS_HUB_PUBLISH_KEY ?? '',
     stripeSecretKey: process.env.HUB_STRIPE_SECRET_KEY ?? process.env.STRIPE_SECRET_KEY ?? '',
     stripeWebhookSecret: process.env.HUB_STRIPE_WEBHOOK_SECRET ?? process.env.STRIPE_WEBHOOK_SECRET ?? '',
-    checkoutSuccessUrl: process.env.HUB_CHECKOUT_SUCCESS_URL ?? 'https://hub.carinaai.uk/?purchase=success',
-    checkoutCancelUrl: process.env.HUB_CHECKOUT_CANCEL_URL ?? 'https://hub.carinaai.uk/?purchase=cancel',
+    checkoutSuccessUrl: process.env.HUB_CHECKOUT_SUCCESS_URL ?? `https://hub.${DOMAIN}/?purchase=success`,
+    checkoutCancelUrl: process.env.HUB_CHECKOUT_CANCEL_URL ?? `https://hub.${DOMAIN}/?purchase=cancel`,
     authorRevenueShareBps: intEnv('HUB_PACK_AUTHOR_REVENUE_SHARE_BPS', 7000),
     carinaRevenueShareBps: intEnv('HUB_PACK_CARINA_REVENUE_SHARE_BPS', 2000),
     platformFeeBps: intEnv('HUB_PACK_PLATFORM_FEE_BPS', 1000),
@@ -355,5 +369,82 @@ export const config = {
     clientId: process.env.LINKEDIN_CLIENT_ID ?? '',
     clientSecret: process.env.LINKEDIN_CLIENT_SECRET ?? '',
     webhookSecret: process.env.LINKEDIN_WEBHOOK_SECRET ?? '',
+  },
+  zulip: {
+    site: process.env.ZULIP_SITE ?? '',
+    botEmail: process.env.ZULIP_BOT_EMAIL ?? '',
+    apiKey: process.env.ZULIP_API_KEY ?? '',
+  },
+  reddit: {
+    webhookSecret: process.env.REDDIT_WEBHOOK_SECRET ?? '',
+  },
+  bluesky: {
+    handle: process.env.BLUESKY_HANDLE ?? '',
+    appPassword: process.env.BLUESKY_APP_PASSWORD ?? '',
+    serviceUrl: process.env.BLUESKY_SERVICE_URL ?? 'https://bsky.social',
+  },
+  skype: {
+    appId: process.env.SKYPE_APP_ID ?? '',
+    appSecret: process.env.SKYPE_APP_SECRET ?? '',
+    serviceUrl: process.env.SKYPE_SERVICE_URL ?? '',
+  },
+  pumble: {
+    webhookUrl: process.env.PUMBLE_WEBHOOK_URL ?? '',
+  },
+  twist: {
+    integrationToken: process.env.TWIST_INTEGRATION_TOKEN ?? '',
+  },
+  ryver: {
+    webhookUrl: process.env.RYVER_WEBHOOK_URL ?? '',
+  },
+  workplace: {
+    pageAccessToken: process.env.WORKPLACE_PAGE_ACCESS_TOKEN ?? '',
+    appSecret: process.env.WORKPLACE_APP_SECRET ?? '',
+    verifyToken: process.env.WORKPLACE_VERIFY_TOKEN ?? '',
+  },
+  naverWorks: {
+    botId: process.env.NAVER_WORKS_BOT_ID ?? '',
+    botSecret: process.env.NAVER_WORKS_BOT_SECRET ?? '',
+    apiBase: process.env.NAVER_WORKS_API_BASE ?? '',
+  },
+  qq: {
+    appId: process.env.QQ_BOT_APP_ID ?? '',
+    token: process.env.QQ_BOT_TOKEN ?? '',
+    apiBase: process.env.QQ_BOT_API_BASE ?? '',
+  },
+  weibo: {
+    appKey: process.env.WEIBO_APP_KEY ?? '',
+    appSecret: process.env.WEIBO_APP_SECRET ?? '',
+    accessToken: process.env.WEIBO_ACCESS_TOKEN ?? '',
+    apiBase: process.env.WEIBO_API_BASE ?? '',
+  },
+  openhab: {
+    url: process.env.OPENHAB_URL ?? '',
+    token: process.env.OPENHAB_TOKEN ?? '',
+  },
+  synologyChat: {
+    token: process.env.SYNOLOGY_CHAT_TOKEN ?? '',
+    webhookUrl: process.env.SYNOLOGY_CHAT_WEBHOOK_URL ?? '',
+  },
+  gitter: {
+    token: process.env.GITTER_TOKEN ?? '',
+  },
+  element: {
+    webhookUrl: process.env.ELEMENT_WEBHOOK_URL ?? '',
+  },
+  mastodon: {
+    instance: process.env.MASTODON_INSTANCE ?? '',
+    accessToken: process.env.MASTODON_ACCESS_TOKEN ?? '',
+  },
+  snapchat: {
+    webhookSecret: process.env.SNAPCHAT_WEBHOOK_SECRET ?? '',
+  },
+  bridgeGeneric: {
+    secret: process.env.BRIDGE_CHANNEL_SECRET ?? '',
+  },
+  appleBusinessChat: {
+    merchantId: process.env.ABC_MERCHANT_ID ?? '',
+    apiKey: process.env.ABC_API_KEY ?? '',
+    apiBase: process.env.ABC_API_BASE ?? '',
   },
 } as const;

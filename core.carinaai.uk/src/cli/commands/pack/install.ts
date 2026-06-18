@@ -3,6 +3,7 @@ import path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { CARINA_PACKS_DIR, packDir } from '../../../config/paths.js';
+import { config } from '../../../config/index.js';
 import { BUILTIN_PACKS_DIR } from '../../../skills/pack-loader.js';
 import { downloadHubPackArchive, fetchHubPack, hubUnreachableHint, isPremiumPaidPack, resolvePremiumPackLicense } from '../../../skills/hub/hub-client.js';
 import { validatePackDir } from '../../../skills/hub/validate.js';
@@ -58,7 +59,7 @@ export async function installPackSlug(
     if (isPremiumPaidPack(hubPack)) {
       const license = await resolvePremiumPackLicense(name);
       if (!license) {
-        const hub = baseUrl ?? process.env.HUB_URL ?? process.env.SKILLS_HUB_URL ?? 'https://hub.carinaai.uk';
+        const hub = baseUrl ?? process.env.HUB_URL ?? process.env.SKILLS_HUB_URL ?? config.hub.url;
         const price = hubPack.price_gbp_cents != null
           ? ` (£${(hubPack.price_gbp_cents / 100).toFixed(2)} ex VAT)`
           : '';

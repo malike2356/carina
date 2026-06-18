@@ -1,4 +1,5 @@
 import { deleteMemory, listRecentMemories } from '../memory/store.js';
+import { config } from '../config/index.js';
 import { formatCostReport, getMonthlyReport } from '../brain/cost-tracker.js';
 import { clearToolCache } from '../tools/cache.js';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import {
   handleModelCommand,
   type ModelCommandContext,
 } from './model-command.js';
+import { formatGatewayStatusReply, formatMessengerHelp } from './session-control.js';
 
 import {
   formatGatewaySummary,
@@ -22,7 +24,7 @@ export type CommandResult =
   | {
       handled: true;
       reply: string;
-      action?: 'exit' | 'clear';
+      action?: 'exit' | 'clear' | 'new_session' | 'stop_turn';
       attachment?: { path: string; filename: string };
     }
   | { handled: false };
@@ -30,6 +32,8 @@ export type CommandResult =
 export interface GatewayCommandContext {
   sessionId?: string;
   channel?: string;
+  activeProvider?: string;
+  activeModel?: string;
 }
 
 const PLAIN_TEXT_CHANNELS = new Set(['telegram', 'sms', 'signal', 'irc']);
@@ -102,6 +106,23 @@ export async function handleGatewayCommandAsync(
     return { handled: true, reply: await formatMemoriesList() };
   }
 
+  if (trimmed === '/status') {
+    const provider = context.activeProvider ?? 'unknown';
+    return {
+      handled: true,
+      reply: formatGatewayStatusReply({
+        sessionId: context.sessionId,
+        channel: context.channel,
+        activeProvider: provider,
+        activeModel: context.activeModel,
+      }),
+    };
+  }
+
+  if (trimmed === '/stop') {
+    return { handled: true, reply: 'Stopping current turn...', action: 'stop_turn' };
+  }
+
   if (trimmed === '/usage' || trimmed === '/usage --month') {
     return { handled: true, reply: formatCostReport(await getMonthlyReport()) };
   }
@@ -124,10 +145,14 @@ export async function handleGatewayCommandAsync(
     return { handled: true, reply: `Deleted memory ${match.id.slice(0, 8)}...` };
   }
 
-  return handleGatewayCommand(trimmed);
+  return handleGatewayCommand(trimmed, {}, context);
 }
 
-export function handleGatewayCommand(input: string, modelContext: ModelCommandContext = {}): CommandResult {
+export function handleGatewayCommand(
+  input: string,
+  modelContext: ModelCommandContext = {},
+  gatewayContext: GatewayCommandContext = {},
+): CommandResult {
   const trimmed = input.trim();
 
   if (trimmed === '/exit') {
@@ -138,29 +163,41 @@ export function handleGatewayCommand(input: string, modelContext: ModelCommandCo
     return { handled: true, reply: 'Session memory cleared.', action: 'clear' };
   }
 
+  if (trimmed === '/new' || trimmed === '/reset') {
+    return {
+      handled: true,
+      reply: 'Starting a fresh conversation.',
+      action: 'new_session',
+    };
+  }
+
   if (trimmed.startsWith('/provider') || trimmed.startsWith('/model')) {
     return handleModelCommand(trimmed, modelContext);
   }
 
   if (trimmed === '/help') {
+    const fullHelp = [
+      'CARINA commands',
+      '/help - show this message',
+      '/model [provider] [model] - switch LLM provider',
+      '/model list - list configured providers',
+      '/provider [provider] [model] - alias for /model',
+      '/status - session, provider, and continuity mode',
+      '/new, /reset - fresh conversation',
+      '/stop - interrupt the current reply',
+      '/memories - list episodic memories',
+      '/memories delete <id> - delete a memory',
+      '/usage --month - show model token usage and estimated cost',
+      '/research <query> - run deep research and return a summary',
+      '/compare <prompt> - query multiple configured providers in parallel',
+      '/clear-cache [tool] - clear cached tool results',
+      '/clear - clear session memory (same thread)',
+      `Docs - full capabilities: ${config.product.marketingUrl}/docs/capabilities`,
+      '/exit - quit',
+    ].join('\n');
     return {
       handled: true,
-      reply: [
-        'CARINA commands',
-        '/help - show this message',
-        '/model [provider] [model] - switch LLM provider',
-        '/model list - list configured providers',
-        '/provider [provider] [model] - alias for /model',
-        '/memories - list episodic memories',
-        '/memories delete <id> - delete a memory',
-        '/usage --month - show model token usage and estimated cost',
-        '/research <query> - run deep research and return a summary',
-        '/compare <prompt> - query multiple configured providers in parallel',
-        '/clear-cache [tool] - clear cached tool results',
-        '/clear - fresh start (compact identity screen)',
-        'Docs - full capabilities: https://carinaai.uk/docs/capabilities',
-        '/exit - quit',
-      ].join('\n'),
+      reply: formatMessengerHelp(fullHelp, gatewayContext.channel),
     };
   }
 

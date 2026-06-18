@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { loadLocalEnv } from '../config/env.js';
+import { config } from '../../config/index.js';
 
 export async function runBillingCommand(args: string[]): Promise<void> {
   loadLocalEnv();
@@ -10,7 +11,7 @@ export async function runBillingCommand(args: string[]): Promise<void> {
     console.log(chalk.bold('\nBilling\n'));
     console.log(`  stripe:       ${stripe ? chalk.green('configured') : chalk.gray('not configured')}`);
     console.log(`  price id:     ${process.env.STRIPE_PRICE_ID ?? '(default)'}`);
-    console.log(`  portal:       https://carinaai.uk/pricing`);
+    console.log(`  portal:       ${config.product.marketingUrl}/pricing`);
     console.log('');
     return;
   }

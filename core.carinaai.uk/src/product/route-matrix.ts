@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { config } from '../config/index.js';
 import { hostedAppOrigin } from './surface.js';
 import { resolveProductMode, resolveProductSurface } from './surface.js';
 import type { ProductMode, RouteOwnership } from './types.js';
@@ -36,6 +37,7 @@ const SHARED_PREFIXES = [
   '/documents',
   '/images',
   '/calendar',
+  '/scheduled',
   '/compare',
   '/research',
   '/playbook',
@@ -82,6 +84,7 @@ export function classifyRoute(path: string): RouteOwnership {
     || normalised.startsWith('/api/notes')
     || normalised.startsWith('/api/email')
     || normalised.startsWith('/api/calendar')
+    || normalised.startsWith('/api/scheduled')
     || normalised.startsWith('/api/compare')
     || normalised.startsWith('/api/research')
     || normalised.startsWith('/api/playbook')
@@ -90,6 +93,8 @@ export function classifyRoute(path: string): RouteOwnership {
     || normalised.startsWith('/api/webhook')
     || normalised.startsWith('/api/kanban')
     || normalised.startsWith('/api/theme')
+    || normalised.startsWith('/api/auth')
+    || normalised.startsWith('/api/workspace')
     || normalised.startsWith('/api/web/context')
     || normalised.startsWith('/api/dashboard')
     || normalised.startsWith('/api/events')
@@ -209,7 +214,7 @@ export function enforceRouteOwnership(req: Request, res: Response, next: NextFun
       next();
       return;
     }
-    res.status(404).send('Use ops.carinaai.uk for the operator console');
+    res.status(404).send(`Use ${config.product.opsUrl} for the operator console`);
     return;
   }
 
