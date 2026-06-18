@@ -78,3 +78,6 @@ archive/
 platform_admin/node_modules/
 carinaai.uk/
 HESTIACP_CREDENTIALS.txt
+
+# Media and credentials - not for source control
+instructions/media/
