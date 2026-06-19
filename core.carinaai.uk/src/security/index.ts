@@ -62,6 +62,7 @@ export {
   redactSensitiveValue,
   redactToolParams,
 } from './redaction.js';
+export { sanitizeCarinaProse } from './writing-style.js';
 export {
   authRateLimitEnabled,
   checkAuthRateLimit,

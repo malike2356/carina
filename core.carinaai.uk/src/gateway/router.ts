@@ -414,6 +414,7 @@ export class GatewayRouter {
 
     const guard = guardInboundMessage(inbound, agentId);
     if (!guard.allow) {
+      yield guard.reason;
       return;
     }
 

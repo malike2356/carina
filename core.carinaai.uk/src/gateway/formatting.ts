@@ -1,4 +1,5 @@
 import type { CarinaMessage } from '../types/index.js';
+import { sanitizeCarinaProse } from '../security/writing-style.js';
 import {
   markdownTablesToBullets,
   stripBasicMarkdown,
@@ -14,15 +15,16 @@ const LIMITS: Record<RealPlatform, number> = {
 type RealPlatform = Extract<CarinaMessage['source'], 'cli' | 'telegram' | 'whatsapp' | 'web'>;
 
 export function formatForPlatform(text: string, platform: CarinaMessage['source']): string | string[] {
-  if (!isRealPlatform(platform)) return text;
+  if (!isRealPlatform(platform)) return sanitizeCarinaProse(text);
 
+  const prose = sanitizeCarinaProse(text);
   const normalized = platform === 'whatsapp'
-    ? formatForWhatsApp(text)
+    ? formatForWhatsApp(prose)
     : platform === 'telegram'
-      ? formatForTelegram(text)
+      ? formatForTelegram(prose)
       : platform === 'cli'
-        ? formatForCli(text)
-        : text;
+        ? formatForCli(prose)
+        : prose;
   const chunks = splitByLength(normalized || ' ', LIMITS[platform]);
   return chunks.length === 1 ? chunks[0] : chunks;
 }

@@ -6,6 +6,7 @@ import { checkStaleMarkerInput } from './deception-client.js';
 import { scanForHoneypotLeak } from './honeypot-client.js';
 import { appendSecurityAudit } from './security-audit.js';
 import { redactSensitiveText } from './redaction.js';
+import { sanitizeCarinaProse } from './writing-style.js';
 
 let guard: PromptGuard | null = null;
 let auditPreview = '';
@@ -198,13 +199,13 @@ export async function scanToolOutput(toolName: string, result: string): Promise<
     return LEAK_BLOCK_MESSAGE;
   }
 
-  return redactSensitiveText(output);
+  return sanitizeCarinaProse(redactSensitiveText(output));
 }
 
 export async function scanAgentOutput(text: string, meta?: Record<string, unknown>): Promise<string> {
   if (!text.trim()) return text;
 
-  const redacted = redactSensitiveText(text);
+  const redacted = sanitizeCarinaProse(redactSensitiveText(text));
   const leaked = await scanForHoneypotLeak(redacted, { source: 'agent_output', ...meta });
   if (leaked) {
     await reportEvent({

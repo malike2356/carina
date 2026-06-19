@@ -93,7 +93,16 @@ async function streamToTelegram(
     if (tail) fullText += tail;
   }
 
-  await flushEdit();
+  if (messageId === null) {
+    const trimmed = fullText.trim();
+    if (trimmed) {
+      const formatted = formatForPlatform(trimmed, 'telegram');
+      const display = Array.isArray(formatted) ? formatted[0] : formatted;
+      await bot.sendMessage(chatId, display.slice(0, TELEGRAM_MAX));
+    }
+  } else {
+    await flushEdit();
+  }
 
   if (fullText.length > TELEGRAM_MAX && messageId !== null) {
     const remainder = fullText.slice(TELEGRAM_MAX);

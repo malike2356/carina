@@ -35,5 +35,5 @@ Set `TELEGRAM_WEBHOOK_URL` to your public HTTPS endpoint if you prefer webhooks 
 | Symptom | Fix |
 |---|---|
 | `Telegram gateway skipped` at startup | Set `TELEGRAM_BOT_TOKEN` |
-| Bot silent | Check token, restart Carina, send `/start` |
+| Bot silent | Check token and restart Carina. If `TELEGRAM_WEBHOOK_URL` is set, it must point at **core** (`https://core.carinaai.uk/webhooks/telegram`), not `app.carinaai.uk` (that URL 404s). Or clear `TELEGRAM_WEBHOOK_URL` to use polling. |
 | Rate limits from Telegram | Reduce message frequency; Carina batches edits during streaming |
