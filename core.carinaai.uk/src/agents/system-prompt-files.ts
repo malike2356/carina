@@ -6,6 +6,7 @@ import { CARINA_HOME } from '../config/paths.js';
 export type SystemPromptFileKey =
   | 'tool_enforcement'
   | 'anti_fabrication'
+  | 'behavior_proof'
   | 'turn_end_model'
   | 'memory_discipline'
   | 'execution_checklist'
@@ -14,6 +15,7 @@ export type SystemPromptFileKey =
 const FILE_KEYS: readonly SystemPromptFileKey[] = [
   'tool_enforcement',
   'anti_fabrication',
+  'behavior_proof',
   'turn_end_model',
   'memory_discipline',
   'execution_checklist',
