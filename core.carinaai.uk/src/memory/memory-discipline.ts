@@ -20,6 +20,16 @@ export const COMPACTION_REFERENCE_PREFIX = [
 
 import { buildRetrievalDisciplineBlock } from './retrieval-discipline.js';
 
+export function buildWriteItDownBlock(): string {
+  return [
+    'Write it down:',
+    'Memory is limited. If you want something to survive session restarts, use the memory tool or update MEMORY.md/USER.md.',
+    '"Mental notes" do not survive restarts. When someone says "remember this", write it immediately with memory(action="add").',
+    'When you learn a durable lesson about how to work with this operator, save it as a declarative fact.',
+    'Text > brain.',
+  ].join('\n');
+}
+
 export function buildMemoryDisciplineBlock(): string {
   return [
     'Memory discipline:',
@@ -29,6 +39,8 @@ export function buildMemoryDisciplineBlock(): string {
     'Write memories as facts ("User prefers concise replies"), not instructions to yourself ("Always respond concisely").',
     'Use session-search to recall past transcripts; durable memory is not a work log.',
     'Keep memory compact and high-value. Stale details in memory are a bug.',
+    '',
+    buildWriteItDownBlock(),
     '',
     buildRetrievalDisciplineBlock(),
   ].join('\n');

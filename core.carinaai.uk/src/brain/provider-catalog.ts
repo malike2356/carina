@@ -122,7 +122,10 @@ export function formatProviderCatalogReply(options: {
     lines.push(formatCompactCatalogLine(row));
   }
   lines.push('');
-  lines.push('Usage: /provider <name> [model]  |  carina providers list  |  carina providers copilot');
+  lines.push('Usage: /provider <name> [model]  |  carina model menu  |  carina providers list');
+  if (options.configuredNames.length > 1) {
+    lines.push('Tip: configure CARINA_PROVIDER_FALLBACK for automatic failover order.');
+  }
   return lines.join('\n');
 }
 

@@ -7,6 +7,8 @@ export type TuiCommand =
   | { type: 'scroll'; delta: number }
   | { type: 'kill_process' }
   | { type: 'open_session' }
+  | { type: 'task_action'; action: 'pause' | 'resume' | 'run' }
+  | { type: 'stop_turn' }
   | { type: 'chat'; message: string }
   | { type: 'noop' };
 
@@ -28,6 +30,14 @@ export function parseInputLine(line: string, activeView: TuiView): TuiCommand {
   }
   if (trimmed === ':kill' && activeView === 'processes') {
     return { type: 'kill_process' };
+  }
+  if (trimmed === ':stop' || trimmed === '/stop') {
+    return { type: 'stop_turn' };
+  }
+  if (activeView === 'tasks') {
+    if (trimmed === ':pause') return { type: 'task_action', action: 'pause' };
+    if (trimmed === ':resume') return { type: 'task_action', action: 'resume' };
+    if (trimmed === ':run') return { type: 'task_action', action: 'run' };
   }
   if (trimmed === ':open' && activeView === 'sessions') {
     return { type: 'open_session' };

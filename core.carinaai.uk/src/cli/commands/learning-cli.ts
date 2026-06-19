@@ -42,6 +42,8 @@ export async function runLearningCommand(args: string[]): Promise<void> {
     }
     console.log(chalk.bold('\nLearning loop status\n'));
     console.log(`  auto skill capture: ${metrics.autoSkillEnabled ? 'on' : 'off'}`);
+    console.log(`  task outcome indexing: ${process.env.CARINA_TASK_OUTCOMES !== 'false' ? 'on' : 'off'}`);
+    console.log(`  skill workshop: ${process.env.CARINA_SKILL_WORKSHOP === 'true' ? 'on' : 'off'}`);
     console.log(`  curator scheduler: ${metrics.curatorEnabled ? 'on' : 'off'}`);
     console.log(`  events (24h): ${metrics.eventsLast24h}`);
     console.log(`  corrections (24h): ${metrics.correctionsLast24h}`);
@@ -50,7 +52,20 @@ export async function runLearningCommand(args: string[]): Promise<void> {
     console.log(`  preferences learned: ${metrics.preferencesLearnedTotal}`);
     console.log(`  last preference: ${metrics.lastPreferenceLearnedAt ?? 'never'}`);
     console.log(`  last curator run: ${metrics.lastCuratorRunAt ?? 'never'}`);
-    console.log('');
+    console.log(chalk.gray('\n  Recap: carina learning recap'));
+    console.log(chalk.gray('  Find prior work: carina memory sessions search "<topic>"\n'));
+    return;
+  }
+
+  if (action === 'recap') {
+    const days = Number(rest.find((a) => a.startsWith('--days='))?.split('=')[1] ?? '7');
+    const { buildLearningRecap, formatLearningRecap } = await import('../../skills/learning-recap.js');
+    const recap = await buildLearningRecap(tenantId, { days });
+    if (rest.includes('--json')) {
+      console.log(JSON.stringify(recap, null, 2));
+      return;
+    }
+    console.log(chalk.bold(`\n${formatLearningRecap(recap)}\n`));
     return;
   }
 
@@ -221,7 +236,7 @@ export async function runLearningCommand(args: string[]): Promise<void> {
   }
 
   console.error(
-    'Usage: carina learning <status|events|pending|preferences|improvements|show|versions|rollback|shared|share|sync> [--profile NAME] [--json]',
+    'Usage: carina learning <status|recap|events|pending|preferences|improvements|show|versions|rollback|shared|share|sync> [--profile NAME] [--json] [--days=N]',
   );
   process.exit(1);
 }

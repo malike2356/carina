@@ -1,5 +1,7 @@
 export const PROFILE_ISOLATION_MIGRATION = `
-ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS profile_name TEXT DEFAULT 'default';
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS script_config JSONB;
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS failure_count INTEGER DEFAULT 0;
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS failure_limit INTEGER DEFAULT 3;
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS model_provider TEXT;
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS model_name TEXT;
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_profile_status

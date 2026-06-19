@@ -1,5 +1,6 @@
 import { runLearningLoop, isUserCorrection } from './learning-loop.js';
 import { runLightCuratorPass } from './curator.js';
+import { persistTaskOutcome } from './task-outcome.js';
 import type { LearningLoopInput, LearningLoopResult } from './learning-loop.js';
 
 export interface PostTaskInput {
@@ -15,7 +16,8 @@ export type LearningNotice =
   | { kind: 'skill'; skillName: string; action: 'created' | 'refined' }
   | { kind: 'preference'; preference: string; action: 'added' | 'replaced' }
   | { kind: 'protected'; skillName: string; reason: string }
-  | { kind: 'ignored'; reason: string };
+  | { kind: 'ignored'; reason: string }
+  | { kind: 'outcome'; topic: string };
 
 const BLOCKED_REASON_LABELS: Record<string, string> = {
   weak_evidence: 'new evidence was weaker than the existing approach',
@@ -49,6 +51,8 @@ export function formatLearningNotice(notice: LearningNotice): string {
       return `(kept skill "${notice.skillName}"; ${reasonLabel(notice.reason, BLOCKED_REASON_LABELS)})`;
     case 'ignored':
       return `(noted your correction; ${reasonLabel(notice.reason, IGNORED_REASON_LABELS)})`;
+    case 'outcome':
+      return `(indexed work summary for later search; topic: ${notice.topic})`;
     default:
       return '';
   }
@@ -104,6 +108,22 @@ export async function evaluateAfterTurn(input: PostTaskInput): Promise<LearningN
 
     if (notice?.kind === 'skill' && process.env.CARINA_SKILL_CURATOR_ENABLED !== 'false') {
       void runLightCuratorPass();
+    }
+
+    const skillArtifact = notice?.kind === 'skill';
+    const preferenceArtifact = notice?.kind === 'preference';
+    if (!skillArtifact && !preferenceArtifact && input.toolsUsed.length >= 3) {
+      const outcome = await persistTaskOutcome({
+        sessionId: input.sessionId,
+        tenantId: input.tenantId,
+        userMessage: input.userMessage,
+        assistantText: input.assistantText,
+        toolsUsed: input.toolsUsed,
+        succeeded: loopInput.succeeded,
+      });
+      if (outcome.saved && outcome.topic) {
+        return notice ?? { kind: 'outcome', topic: outcome.topic };
+      }
     }
 
     return notice;

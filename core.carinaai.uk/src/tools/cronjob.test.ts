@@ -55,7 +55,7 @@ describe('cronjob tool', () => {
       schedule: '30m',
       no_agent: true,
     });
-    expect(result).toEqual({ error: 'script is required when no_agent is true (script-only mode).' });
+    expect(result).toEqual({ error: 'script, script_inline, or script_config is required when no_agent is true.' });
   });
 
   it('creates job with origin delivery metadata', async () => {

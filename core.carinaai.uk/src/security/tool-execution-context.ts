@@ -3,6 +3,7 @@ import type { OrgRole } from '../hosted/org-types.js';
 
 export interface ToolExecutionContext {
   orgRole?: OrgRole;
+  planMode?: boolean;
 }
 
 export const toolExecutionContext = new AsyncLocalStorage<ToolExecutionContext>();

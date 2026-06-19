@@ -1,12 +1,21 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   anthropicCacheControlBlocks,
+  applyPendingInvalidation,
   clearPromptCache,
+  deferPromptInvalidation,
   extractSystemPrompt,
+  forceImmediateInvalidation,
+  freezeSessionPrompt,
   getCachedSystemPrompt,
+  getFrozenSystemPrompt,
   getPromptCacheStats,
+  getSessionPromptCacheStats,
   hashPrompt,
+  hasPendingInvalidation,
   openaiPromptCacheKey,
+  resolveFrozenSystemPrompt,
+  thawSession,
 } from './prompt-cache.js';
 import type { Message } from '../types/index.js';
 
@@ -14,6 +23,7 @@ describe('prompt-cache', () => {
   beforeEach(() => {
     clearPromptCache();
     delete process.env.CARINA_PROMPT_CACHE;
+    delete process.env.CARINA_PROMPT_NOW;
   });
 
   it('hashes prompts deterministically', () => {
@@ -54,5 +64,52 @@ describe('prompt-cache', () => {
   it('returns openai cache key when enabled', () => {
     process.env.CARINA_PROMPT_CACHE = 'true';
     expect(openaiPromptCacheKey('abc')).toHaveLength(32);
+  });
+
+  it('freezes prompt per session and returns same bytes on later turns', () => {
+    const sessionId = 'sess-alpha';
+    const prompt = 'stable persona and skills block';
+    freezeSessionPrompt(sessionId, prompt, ['skill-a'], ['memory']);
+
+    for (let turn = 2; turn <= 10; turn += 1) {
+      expect(resolveFrozenSystemPrompt(sessionId)).toBe(prompt);
+    }
+    expect(getSessionPromptCacheStats(sessionId).hits).toBe(9);
+  });
+
+  it('keeps independent frozen prompts per session', () => {
+    freezeSessionPrompt('sess-a', 'prompt-a', [], []);
+    freezeSessionPrompt('sess-b', 'prompt-b', [], []);
+
+    expect(getFrozenSystemPrompt('sess-a')).toBe('prompt-a');
+    expect(getFrozenSystemPrompt('sess-b')).toBe('prompt-b');
+  });
+
+  it('applyPendingInvalidation clears freeze for next build', () => {
+    const sessionId = 'sess-clear';
+    freezeSessionPrompt(sessionId, 'frozen', [], []);
+    deferPromptInvalidation(sessionId, 'skill installed: demo');
+    expect(hasPendingInvalidation(sessionId)).toBe(true);
+
+    const cleared = applyPendingInvalidation(sessionId);
+    expect(cleared).toBe(true);
+    expect(getFrozenSystemPrompt(sessionId)).toBeNull();
+    expect(hasPendingInvalidation(sessionId)).toBe(false);
+  });
+
+  it('forceImmediateInvalidation clears freeze without pending flag', () => {
+    const sessionId = 'sess-force';
+    freezeSessionPrompt(sessionId, 'frozen', [], []);
+    forceImmediateInvalidation(sessionId);
+    expect(getFrozenSystemPrompt(sessionId)).toBeNull();
+  });
+
+  it('thawSession clears freeze and pending invalidation', () => {
+    const sessionId = 'sess-thaw';
+    freezeSessionPrompt(sessionId, 'frozen', [], []);
+    deferPromptInvalidation(sessionId, 'tool registered: demo');
+    thawSession(sessionId);
+    expect(getFrozenSystemPrompt(sessionId)).toBeNull();
+    expect(hasPendingInvalidation(sessionId)).toBe(false);
   });
 });

@@ -10,6 +10,7 @@
     { id: 'vault', label: 'Vault', href: '/ops/vault' },
     { id: 'memory', label: 'Memory', href: '/ops/memory' },
     { id: 'analytics', label: 'Analytics', href: '/ops/analytics' },
+    { id: 'telemetry', label: 'Telemetry', href: '/ops/telemetry' },
     { id: 'credits', label: 'Credits', href: '/ops/credits' },
     { id: 'usage', label: 'Usage', href: '/ops/usage' },
     { id: 'audit', label: 'Audit', href: '/ops/audit' },

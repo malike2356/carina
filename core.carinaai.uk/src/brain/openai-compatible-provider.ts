@@ -3,7 +3,12 @@ import { withCredentialRotation } from '../credentials/credential-retry.js';
 import { resolveApiKey } from './credential-pool.js';
 import { isAbortLikeError, llmRequestSignal, llmRequestTimeoutMs } from './request-timeout.js';
 import { openaiTools, toOpenAIMessages } from './messages.js';
-import { getCachedSystemPrompt, openaiPromptCacheKey, recordProviderCacheHit } from './prompt-cache.js';
+import {
+  getCachedSystemPrompt,
+  openaiPromptCacheKey,
+  recordProviderCacheHit,
+} from './prompt-cache.js';
+import { recordProviderRateLimitHeaders } from './provider-quota-poller.js';
 import type { ProviderDefinition } from './provider-registry.js';
 import { providerApiKey, providerBaseUrl, providerModel } from './provider-registry.js';
 import type { CarinaResponse, LLMProvider, Message, Tool, ToolCall } from '../types/index.js';
@@ -86,7 +91,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const run = async (client: OpenAI) => {
       let response;
       try {
-        response = await client.chat.completions.create({
+        const result = await client.chat.completions.create({
           model: model ?? this.defaultModel,
           max_tokens: 8192,
           messages: toOpenAIMessages(messages, prompt),
@@ -94,7 +99,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
           ...(cacheKeyHeader
             ? { user: `carina-cache-${cacheKeyHeader}` }
             : {}),
-        }, { signal: llmRequestSignal() });
+        }, { signal: llmRequestSignal() }).withResponse();
+        recordProviderRateLimitHeaders(this.name, Object.fromEntries(result.response.headers));
+        response = result.data;
       } catch (err) {
         if (isAbortLikeError(err)) {
           throw new Error(`LLM request timed out after ${Math.round(llmRequestTimeoutMs() / 1000)}s`);
@@ -143,13 +150,15 @@ export class OpenAICompatibleProvider implements LLMProvider {
     const toolDefs = openaiTools(tools);
     let stream;
     try {
-      stream = await client.chat.completions.create({
+      const result = await client.chat.completions.create({
         model: model ?? this.defaultModel,
         max_tokens: 8192,
         stream: true,
         messages: toOpenAIMessages(messages, prompt),
         ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
-      }, { signal: llmRequestSignal() });
+      }, { signal: llmRequestSignal() }).withResponse();
+      recordProviderRateLimitHeaders(this.name, Object.fromEntries(result.response.headers));
+      stream = result.data;
     } catch (err) {
       if (isAbortLikeError(err)) {
         throw new Error(`LLM request timed out after ${Math.round(llmRequestTimeoutMs() / 1000)}s`);

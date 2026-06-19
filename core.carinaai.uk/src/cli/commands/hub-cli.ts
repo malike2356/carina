@@ -1,4 +1,7 @@
 import chalk from 'chalk';
+import os from 'os';
+import fsp from 'fs/promises';
+import path from 'path';
 import {
   fetchHubMarketplace,
   fetchHubMarketplaceEntry,
@@ -8,6 +11,20 @@ import {
   hubBaseUrl,
 } from '../../skills/hub/hub-client.js';
 import type { MarketplaceEntry, MarketplaceEntryKind } from '../../skills/hub/marketplace-types.js';
+
+function hubTokenPath(): string {
+  const home = process.env.CARINA_HOME ?? path.join(os.homedir(), '.carina');
+  return path.join(home, 'hub-token');
+}
+
+export async function readHubToken(): Promise<string | undefined> {
+  try {
+    const raw = await fsp.readFile(hubTokenPath(), 'utf-8');
+    return raw.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 function trustBadge(entry: MarketplaceEntry): string {
   const parts: string[] = [];
@@ -205,7 +222,7 @@ export async function runHubCommand(args: string[]): Promise<void> {
     return;
   }
 
-  if (action === 'packs' || action === 'list') {
+  if (action === 'packs') {
     const q = rest[1] && !rest[1].startsWith('--') ? rest[1] : undefined;
     const category = rest.includes('--category') ? rest[rest.indexOf('--category') + 1] : undefined;
     try {
@@ -229,7 +246,7 @@ export async function runHubCommand(args: string[]): Promise<void> {
     return;
   }
 
-  if (action === 'skills' || action === 'search') {
+  if (action === 'skills') {
     const q = rest[1] && !rest[1].startsWith('--') ? rest[1] : '';
     const packIdx = rest.indexOf('--pack');
     const pack = packIdx >= 0 ? rest[packIdx + 1] : undefined;
@@ -335,8 +352,144 @@ export async function runHubCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'search') {
+    const query = rest.slice(1).filter((a) => !a.startsWith('--')).join(' ');
+    if (!query) {
+      console.error('Usage: carina hub search <query>');
+      process.exit(1);
+    }
+    try {
+      const { entries } = await fetchHubMarketplace({ q: query });
+      if (json) {
+        console.log(JSON.stringify(entries, null, 2));
+        return;
+      }
+      await printCatalog(entries, `Search: "${query}"`);
+    } catch {
+      const { queryMarketplaceCatalog } = await import('../../skills/hub/marketplace-catalog.js');
+      const local = await queryMarketplaceCatalog({ q: query });
+      await printCatalog(local.entries, `Search (local): "${query}"`);
+    }
+    return;
+  }
+
+  if (action === 'info') {
+    const raw = rest[1];
+    if (!raw) {
+      console.error('Usage: carina hub info <pack-name>');
+      process.exit(1);
+    }
+    const id = raw.includes(':') ? raw : `pack:${raw}`;
+    await runHubCommand(['show', id, ...(json ? ['--json'] : [])]);
+    return;
+  }
+
+  if (action === 'uninstall') {
+    const id = rest[1];
+    if (!id) {
+      console.error('Usage: carina hub uninstall <kind:slug>');
+      process.exit(1);
+    }
+    await runHubCommand(['remove', id, ...(json ? ['--json'] : [])]);
+    return;
+  }
+
+  if (action === 'list') {
+    try {
+      const { entries } = await fetchHubMarketplace();
+      const installed = entries.filter(
+        (e) => e.status === 'installed' || e.status === 'enabled',
+      );
+      if (json) {
+        console.log(JSON.stringify(installed, null, 2));
+        return;
+      }
+      if (installed.length === 0) {
+        console.log(chalk.gray('No installed hub entries. Run: carina hub install <kind:slug>'));
+        return;
+      }
+      await printCatalog(installed, 'Installed');
+    } catch {
+      const { queryMarketplaceCatalog } = await import('../../skills/hub/marketplace-catalog.js');
+      const local = await queryMarketplaceCatalog();
+      const installed = local.entries.filter(
+        (e) => e.status === 'installed' || e.status === 'enabled',
+      );
+      if (json) {
+        console.log(JSON.stringify(installed, null, 2));
+        return;
+      }
+      await printCatalog(installed, 'Installed (local)');
+    }
+    return;
+  }
+
+  if (action === 'outdated') {
+    try {
+      const { entries } = await fetchHubMarketplace();
+      const installed = entries.filter(
+        (e) => e.status === 'installed' || e.status === 'enabled',
+      );
+      const outdated: Array<{ id: string; local: string; remote: string }> = [];
+      for (const entry of installed) {
+        try {
+          const remote = await fetchHubMarketplaceEntry(entry.id);
+          if (remote.entry.version !== entry.version) {
+            outdated.push({
+              id: entry.id,
+              local: entry.version,
+              remote: remote.entry.version,
+            });
+          }
+        } catch {
+          // remote entry unavailable; skip
+        }
+      }
+      if (json) {
+        console.log(JSON.stringify(outdated, null, 2));
+        return;
+      }
+      if (outdated.length === 0) {
+        console.log(chalk.green('All installed hub entries are up to date.'));
+        return;
+      }
+      console.log(chalk.bold('\nOutdated\n'));
+      for (const o of outdated) {
+        console.log(`  ${o.id.padEnd(32)} local=${o.local}  remote=${o.remote}`);
+      }
+      console.log(chalk.gray('\nRun: carina hub update <kind:slug>\n'));
+    } catch {
+      console.error(chalk.red('Could not reach hub to check for updates.'));
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (action === 'login') {
+    const token = rest[1];
+    if (!token) {
+      console.error('Usage: carina hub login <api-token>');
+      process.exit(1);
+    }
+    const tokenPath = hubTokenPath();
+    await fsp.mkdir(path.dirname(tokenPath), { recursive: true });
+    await fsp.writeFile(tokenPath, token, { mode: 0o600 });
+    console.log(chalk.green('Hub token saved to ' + tokenPath));
+    return;
+  }
+
+  if (action === 'logout') {
+    try {
+      await fsp.unlink(hubTokenPath());
+      console.log(chalk.green('Hub token removed.'));
+    } catch {
+      console.log(chalk.gray('No hub token found.'));
+    }
+    return;
+  }
+
   console.error(
-    'Usage: carina hub <start|browse|status|catalog|ecosystem|author|show|install|enable|disable|update|remove|packs|skills|publish> [args]',
+    'Usage: carina hub <start|browse|status|catalog|search|ecosystem|author|show|info|install|enable|disable|update|remove|uninstall|list|outdated|login|logout|packs|skills|publish> [args]',
   );
   process.exit(1);
 }

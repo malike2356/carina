@@ -10,14 +10,13 @@
     <main class="shell">
       <nav class="nav"><a class="brand" href="/pricing">Carina<span style="color: var(--amber)">.</span></a></nav>
       <p class="eyebrow">Checkout</p>
-      <h1>Create your account, then add Scout when the workspace needs protection.</h1>
-      <p class="lead">Carina is the entry point. Scout is the paid layer that keeps client data, audit logs, and operator actions inside a controlled boundary.</p>
+      <h1>Start in Carina. Add Scout when the workflow needs control.</h1>
+      <p class="lead">Carina is the workspace. Scout is the production layer that keeps client data, audit logs, and operator actions inside a controlled boundary.</p>
       <form class="form" id="checkout-form">
         <div class="field">
           <label for="plan">Plan</label>
-          <select id="plan" name="plan">
-            <option value="scout_pro">Scout Pro - £99/month (full control)</option>
-            <option value="scout_monitor">Scout Monitor - £79/month (visibility)</option>
+          <select id="plan" name="plan" disabled>
+            <option>Loading plans...</option>
           </select>
         </div>
         <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" required></div>
@@ -27,16 +26,49 @@
       </form>
     </main>
     <script>
-      const params = new URLSearchParams(window.location.search);
-      const plan = params.get('plan');
-      if (plan) {
-        const normalized = plan === 'scout_monitor' ? 'scout_monitor' : 'scout_pro';
-        document.getElementById('plan').value = normalized;
+      const planAliases = {
+        scout_govern: 'scout_monitor',
+        scout_standard: 'scout_pro',
+      };
+
+      function normalizePlanId(value) {
+        return planAliases[value] || value || 'scout_pro';
       }
+
+      const params = new URLSearchParams(window.location.search);
+      const defaultPlan = normalizePlanId(params.get('plan'));
+      const planSelect = document.getElementById('plan');
+      const message = document.getElementById('message');
+
+      async function loadPlans() {
+        try {
+          const res = await fetch('/api/billing/plans');
+          if (!res.ok) throw new Error('Unable to load pricing');
+          const body = await res.json();
+          const plans = (body.plans || []).filter((plan) => plan.id === 'scout_monitor' || plan.id === 'scout_pro');
+          if (!plans.length) throw new Error('No Scout plans available');
+          planSelect.innerHTML = plans.map((plan) => {
+            const price = plan.monthlyPriceGbp == null ? 'Custom' : `£${plan.monthlyPriceGbp}/month`;
+            const suffix = plan.highlight ? ` (${String(plan.highlight).toLowerCase()})` : '';
+            return `<option value="${plan.id}">${plan.name} - ${price}${suffix}</option>`;
+          }).join('');
+          planSelect.value = plans.some((plan) => plan.id === defaultPlan) ? defaultPlan : plans[0].id;
+        } catch (_err) {
+          planSelect.innerHTML = [
+            '<option value="scout_monitor">Scout Monitor - £49/month (visibility)</option>',
+            '<option value="scout_pro">Scout Govern - £79/month (full control)</option>',
+          ].join('');
+          planSelect.value = defaultPlan === 'scout_monitor' ? 'scout_monitor' : 'scout_pro';
+        } finally {
+          planSelect.disabled = false;
+        }
+      }
+
+      void loadPlans();
+
       document.getElementById('checkout-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
-        const message = document.getElementById('message');
         message.textContent = 'Creating checkout session...';
         const res = await fetch('/api/billing/checkout/session', {
           method: 'POST',

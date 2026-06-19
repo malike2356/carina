@@ -64,7 +64,27 @@ describe('observability-routes', () => {
       headers: { authorization: 'Bearer test-ops-token-123456' },
     });
     expect(res.status).toBe(200);
-    const body = await res.json() as { metrics: { turns: { total: number } } };
+    const body = await res.json() as { metrics: { turns: { total: number } }; promptCache: { stats: unknown } };
     expect(body.metrics.turns).toBeDefined();
+    expect(body.promptCache.stats).toBeDefined();
+  });
+
+  it('returns telemetry overview bundle', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/telemetry/overview`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { health: { checks: unknown[] }; channels: { channels: unknown[] } };
+    expect(Array.isArray(body.health.checks)).toBe(true);
+    expect(Array.isArray(body.channels.channels)).toBe(true);
+  });
+
+  it('returns channel health snapshot', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/telemetry/channels`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { summary: { total: number } };
+    expect(body.summary.total).toBeGreaterThan(0);
   });
 });

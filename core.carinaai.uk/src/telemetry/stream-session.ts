@@ -30,6 +30,17 @@ export function clearStreamSession(sessionId: string, turnId: string): void {
   controllers.delete(key(sessionId, turnId));
 }
 
+export function cancelAllStreamsForSession(sessionId: string): number {
+  let cancelled = 0;
+  for (const [id, controller] of controllers) {
+    if (!id.startsWith(`${sessionId}:`)) continue;
+    controller.abort();
+    controllers.delete(id);
+    cancelled++;
+  }
+  return cancelled;
+}
+
 export function _resetStreamSessionsForTests(): void {
   for (const c of controllers.values()) c.abort();
   controllers.clear();

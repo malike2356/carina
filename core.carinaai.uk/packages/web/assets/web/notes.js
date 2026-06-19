@@ -61,8 +61,8 @@
   }
 
   function filteredNotes() {
-    if (activeFilter === 'all') return notes;
-    return notes.filter((n) => n.format === activeFilter);
+    const base = activeFilter === 'all' ? notes : notes.filter((n) => n.format === activeFilter);
+    return base.slice().sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
   function relativeReminder(remindAt) {
@@ -396,5 +396,23 @@
     '<div class="skeleton" style="height:56px;margin-bottom:6px;"></div>',
   ).join('');
 
-  loadNotes().then(() => pollInbox()).catch(showError);
+  loadNotes().then(async () => {
+    await pollInbox();
+    const params = new URLSearchParams(window.location.search);
+    const openId = params.get('open');
+    const newFormat = params.get('new');
+    if (newFormat === 'reminder') {
+      const note = await api('POST', '', { title: 'Reminder', body: '', format: 'reminder' });
+      notes.unshift(note);
+      await openNote(note.id);
+      formatEl.value = 'reminder';
+      updateReminderUi();
+      history.replaceState({}, '', '/notes');
+      return;
+    }
+    if (openId) {
+      await openNote(openId);
+      history.replaceState({}, '', '/notes');
+    }
+  }).catch(showError);
 })();

@@ -78,5 +78,6 @@ export {
   allowlistFirstState,
   isHighRiskTier,
   ADMIN_ROLES,
+  getPlanModeToolAllowlist,
+  isPlanModeToolAllowed,
 } from './admin-tool-policy.js';
-export { collectSecurityDoctorChecks, type SecurityDoctorCheck } from './security-doctor.js';

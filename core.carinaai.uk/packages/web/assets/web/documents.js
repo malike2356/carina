@@ -329,10 +329,42 @@
     setSaveStatus('Error');
   }
 
+  async function importFromResearch(researchId) {
+    const res = await fetch('/api/research/reports/' + encodeURIComponent(researchId));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Research report not found');
+    const doc = await api('POST', '', {
+      title: data.meta?.title || 'Research report',
+      content: data.markdown || '',
+      format: 'markdown',
+    });
+    documents.unshift({
+      id: doc.id,
+      title: doc.title,
+      format: doc.format,
+      updatedAt: doc.updatedAt,
+    });
+    await openDocument(doc.id);
+    setSaveStatus('Imported from research');
+  }
+
   // Show skeleton while documents load
   docListEl.innerHTML = [1, 2, 3, 4].map(() =>
     '<div class="skeleton" style="height:56px;margin-bottom:6px;"></div>',
   ).join('');
 
-  loadDocuments().catch(showError);
+  loadDocuments().then(async () => {
+    const params = new URLSearchParams(window.location.search);
+    const fromResearch = params.get('fromResearch');
+    const openId = params.get('open');
+    if (fromResearch) {
+      await importFromResearch(fromResearch);
+      history.replaceState({}, '', '/documents');
+      return;
+    }
+    if (openId) {
+      await openDocument(openId);
+      history.replaceState({}, '', '/documents');
+    }
+  }).catch(showError);
 })();

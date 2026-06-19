@@ -12,6 +12,8 @@ Carina layers multiple containment controls when Labyrinth Scout is enabled.
 | 4 Scout Type 3 pipeline | Scout anomaly + injection events | `LABYRINTH_ENABLED=true` |
 | 5 Forensic snapshot | Scout `forensic_snapshots` | automatic on suspend |
 
+Channel DM pairing and tool approval for messengers: [Channel trust and approval](./channel-trust-and-approval.md).
+
 ## Agent Guard (optional)
 
 Install the Python package on the host running Carina:

@@ -23,6 +23,7 @@ export function printFirstRunGuide(): void {
   console.log(chalk.gray('    3. Your name, what you are building, optional API key'));
   console.log('');
   console.log(chalk.cyan('  carina setup    re-run onboarding or add a provider key'));
+  console.log(chalk.cyan('  carina onboard  guided setup + gateway + doctor'));
   console.log(chalk.cyan('  carina doctor   check install health'));
   console.log('');
 }
@@ -55,8 +56,8 @@ export async function ensureFirstRunReady(): Promise<void> {
   if (!needsOnboarding) return;
 
   if (isInteractiveTerminal()) {
-    const { runFirstRunOnboarding } = await import('./first-run-onboarding.js');
-    await runFirstRunOnboarding();
+    const { runInkOnboarding } = await import('./ink-onboarding.js');
+    await runInkOnboarding();
     loadCarinaEnv();
     return;
   }

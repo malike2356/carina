@@ -25,6 +25,13 @@ vi.mock('../config/index.js', () => ({
     carina: {
       activePacks: [],
     },
+    product: {
+      domain: 'carinaai.uk',
+      opsUrl: 'https://ops.carinaai.uk',
+      appUrl: 'https://app.carinaai.uk',
+      marketingUrl: 'https://carinaai.uk',
+      coreUrl: 'https://core.carinaai.uk',
+    },
   },
 }));
 
@@ -170,6 +177,13 @@ describe('packs-api routes', () => {
       config: {
         carina: {
           activePacks: ['property-uk'],
+        },
+        product: {
+          domain: 'carinaai.uk',
+          opsUrl: 'https://ops.carinaai.uk',
+          appUrl: 'https://app.carinaai.uk',
+          marketingUrl: 'https://carinaai.uk',
+          coreUrl: 'https://core.carinaai.uk',
         },
       },
     }));

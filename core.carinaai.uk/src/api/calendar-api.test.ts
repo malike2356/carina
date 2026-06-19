@@ -93,11 +93,12 @@ describe('calendar-api', () => {
         const port = (server.address() as { port: number }).port;
         const url = `http://127.0.0.1:${port}/api/calendar/events?start=2026-06-01T00:00:00.000Z&end=2026-06-30T23:59:59.999Z`;
         const res = await fetch(url);
-        const data = await res.json() as { events: Array<{ id: string; source: string; title: string }> };
+        const data = await res.json() as { events: Array<{ id: string; source: string; title: string; href: string }> };
         expect(res.status).toBe(200);
         expect(data.events).toHaveLength(1);
         expect(data.events[0]?.source).toBe('notes');
         expect(data.events[0]?.title).toBe('Call supplier');
+        expect(data.events[0]?.href).toContain('/notes?open=n1');
         server.close(() => resolve());
       });
     });

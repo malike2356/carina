@@ -1,7 +1,8 @@
 import fs from 'fs/promises';
 import chalk from 'chalk';
 import YAML from 'yaml';
-import { listJobs, parseSchedule, removeJob, updateJob } from '../../agents/cron-scheduler.js';
+import { listJobs, parseSchedule, removeJob, updateJob, createJob } from '../../agents/cron-scheduler.js';
+import { importCronYamlDocument } from '../../agents/cron-yaml-import.js';
 import { searchJobRunHistory } from '../../agents/job-history.js';
 import { executeWorkflow, retryWorkflowRun } from '../../agents/cron-workflow-engine.js';
 import { parseWorkflowDocument } from '../../agents/cron-workflow-parser.js';
@@ -205,6 +206,22 @@ export async function runCronCommand(action = 'list', id?: string, extra: string
     return;
   }
 
+  if (action === 'import') {
+    const file = extra[0] ?? id;
+    if (!file) {
+      console.error('Usage: carina cron import <file.yaml>');
+      process.exit(1);
+    }
+    const raw = await fs.readFile(file, 'utf8');
+    const doc = YAML.parse(raw);
+    const ids = await importCronYamlDocument(doc);
+    console.log(chalk.green(`Imported ${ids.length} cron job(s).`));
+    for (const jobId of ids) {
+      console.log(chalk.gray(`  ${jobId.slice(0, 8)}`));
+    }
+    return;
+  }
+
   if (action === 'list') {
     const jobs = await listJobs();
     if (jobs.length === 0) {
@@ -219,12 +236,64 @@ export async function runCronCommand(action = 'list', id?: string, extra: string
       if (j.deliver) console.log(chalk.gray(`           deliver: ${j.deliver}`));
       if (j.chainAfter.length > 0) console.log(chalk.gray(`           chain_after: ${j.chainAfter.join(', ')}`));
     }
-    console.log('');
+    console.log(chalk.gray('\nCreate: carina cron add --schedule "0 9 * * *" --prompt "..." --name daily\n'));
+    return;
+  }
+
+  if (action === 'add') {
+    const scheduleFlag = extra.find((a) => a.startsWith('--schedule='))?.split('=').slice(1).join('=')
+      ?? extra[0];
+    const promptFlag = extra.find((a) => a.startsWith('--prompt='))?.split('=').slice(1).join('=')
+      ?? extra[1];
+    const nameFlag = extra.find((a) => a.startsWith('--name='))?.split('=')[1]
+      ?? 'scheduled-task';
+    const deliverFlag = extra.find((a) => a.startsWith('--deliver='))?.split('=')[1]
+      ?? 'origin';
+
+    if (!scheduleFlag || !promptFlag) {
+      console.error('Usage: carina cron add --schedule "<expr>" --prompt "<text>" [--name label] [--deliver origin|local|all]');
+      process.exit(1);
+    }
+
+    try {
+      parseSchedule(scheduleFlag);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      process.exit(1);
+    }
+
+    const job = await createJob({
+      name: nameFlag,
+      schedule: scheduleFlag,
+      prompt: promptFlag,
+      scriptPath: null,
+      scriptConfig: null,
+      noAgent: false,
+      deliver: deliverFlag,
+      repeatCount: null,
+      runsRemaining: null,
+      contextFrom: [],
+      chainAfter: [],
+      enabledToolsets: [],
+      workdir: null,
+      originSessionId: null,
+      originChannel: null,
+      originConversationId: null,
+      originThreadId: null,
+      deliverChannels: [],
+      profileName: 'default',
+      modelProvider: null,
+      modelName: null,
+      failureLimit: 3,
+    });
+    console.log(chalk.green(`Created cron job ${job.id.slice(0, 8)} (${job.name ?? 'unnamed'})`));
+    console.log(chalk.gray(`  schedule: ${job.schedule}`));
+    console.log(chalk.gray(`  deliver: ${job.deliver}`));
     return;
   }
 
   if (!id) {
-    console.error('Usage: carina cron <list|pause|resume|remove|workflow> [job-id]');
+    console.error('Usage: carina cron <list|add|import|pause|resume|remove|history|workflow> [job-id]');
     process.exit(1);
   }
 
@@ -246,6 +315,6 @@ export async function runCronCommand(action = 'list', id?: string, extra: string
     return;
   }
 
-  console.error('Usage: carina cron <list|pause|resume|remove|workflow> [job-id]');
+  console.error('Usage: carina cron <list|add|pause|resume|remove|history|workflow> [job-id]');
   process.exit(1);
 }

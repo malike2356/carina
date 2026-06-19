@@ -3,7 +3,8 @@ import type { ShellNavLink } from './types.js';
 const SHARED_WORKSPACE_NAV: ShellNavLink[] = [
   { id: 'chat', href: '/', label: 'Chat', description: 'Agent conversations' },
   { id: 'notes', href: '/notes', label: 'Notes', description: 'Notes, tasks, and reminders' },
-  { id: 'calendar', href: '/calendar', label: 'Calendar', description: 'Reminder schedule' },
+  { id: 'calendar', href: '/calendar', label: 'Calendar', description: 'Reminders and CalDAV events' },
+  { id: 'scheduled', href: '/scheduled', label: 'Scheduled', description: 'Cron jobs and TaskFlows' },
   { id: 'documents', href: '/documents', label: 'Documents', description: 'Markdown and CSV editor' },
   { id: 'images', href: '/images', label: 'Images', description: 'Generate and browse images' },
   {
@@ -21,12 +22,14 @@ const SHARED_WORKSPACE_NAV: ShellNavLink[] = [
   { id: 'memory', href: '/memory', label: 'Memory', description: 'Persistent agent memory' },
   { id: 'packs', href: '/packs', label: 'Skill packs', description: 'Domain skill bundles' },
   { id: 'playbook', href: '/playbook', label: 'Playbook', description: 'Local model serving' },
+  { id: 'mobile', href: '/mobile', label: 'Mobile companion', description: 'Pair your phone for chat on the go' },
   { id: 'webhooks', href: '/webhooks', label: 'Webhooks', description: 'Subscriptions and delivery log' },
 ];
 
 const PRIVATE_OPERATOR_NAV: ShellNavLink[] = [
   { id: 'email', href: '/email', label: 'Email', description: 'Inbound triage and archive' },
   { id: 'kanban', href: '/kanban', label: 'Kanban', description: 'Operator work board' },
+  { id: 'trello', href: '/trello', label: 'Trello', description: 'Boards and cards' },
 ];
 
 export function hostedShellConfig(): {

@@ -23,10 +23,11 @@ describe('delegate-task tool', () => {
   const sessionId = 'delegate-test';
 
   it('returns error when depth limit reached', async () => {
-    setDelegationDepth(sessionId, 1);
+    setDelegationDepth(sessionId, 2);
     const tool = createDelegateTaskTool(sessionId);
     const result = await tool.execute({ goal: 'test task', _sessionId: sessionId }) as { error?: string };
-    expect(result.error).toContain('Delegation depth limit');
+    expect(result.error).toContain('[ROLE RESTRICTION]');
+    expect(result.error).toContain('spawn depth');
   });
 
   it('runs single task mode in a worker thread', async () => {

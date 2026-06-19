@@ -33,6 +33,9 @@ export function renderViewLines(
       lines.push(`${mark} [${t.kind}] ${t.status}  ${truncate(t.detail, colW - 20)}`);
       lines.push(`  ${truncate(t.id, colW - 2)}`);
     });
+    lines.push('');
+    lines.push('Cron: :pause :resume :run on selected row');
+    lines.push('Delegate in chat: ask Carina to use delegate-task for parallel work');
     return lines;
   }
 
@@ -65,6 +68,7 @@ export function renderViewLines(
   }
 
   lines.push('Chat with Carina (Enter to send, /help for slash commands)');
+  lines.push('/new /retry /stop /tasks /model /memories');
   for (const line of chatLines.slice(-40)) {
     for (const wrapped of line.split('\n')) {
       lines.push(truncate(wrapped, colW));

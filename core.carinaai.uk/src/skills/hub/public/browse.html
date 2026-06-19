@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Browse - Carina Hub</title>
+  <link rel="stylesheet" href="/hub.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main class="wrap">
+    <h1>Browse packs</h1>
+    <div class="browse-layout">
+      <aside class="filters">
+        <label for="filter-search">Search</label>
+        <input id="filter-search" type="search" placeholder="Name, author..." autocomplete="off" />
+
+        <label for="filter-category">Category</label>
+        <select id="filter-category">
+          <option value="">All categories</option>
+        </select>
+
+        <label class="check-row">
+          <input type="checkbox" id="filter-verified" />
+          Verified only
+        </label>
+
+        <label for="filter-sort">Sort</label>
+        <select id="filter-sort">
+          <option value="downloads">Most installed</option>
+          <option value="newest">Newest</option>
+          <option value="name">Name A-Z</option>
+        </select>
+      </aside>
+
+      <div>
+        <div class="grid" id="results-grid"></div>
+        <div class="pagination">
+          <button type="button" class="btn secondary" id="page-prev" disabled>Previous</button>
+          <span id="page-info">Page 1</span>
+          <button type="button" class="btn secondary" id="page-next">Next</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="/hub.js"></script>
+  <script>
+    (function () {
+      const H = window.CarinaHub;
+      const PAGE_SIZE = 12;
+      let allPacks = [];
+
+      document.getElementById('nav').innerHTML = H.renderNav('browse');
+      document.getElementById('footer').innerHTML = H.renderFooter();
+
+      const params = new URLSearchParams(location.search);
+      const state = {
+        q: params.get('q') || '',
+        category: params.get('category') || '',
+        verified: params.get('verified') === '1',
+        sort: params.get('sort') || 'downloads',
+        offset: Math.max(0, Number(params.get('offset') || 0)),
+      };
+
+      document.getElementById('filter-search').value = state.q;
+      document.getElementById('filter-category').value = state.category;
+      document.getElementById('filter-verified').checked = state.verified;
+      document.getElementById('filter-sort').value = state.sort;
+
+      function syncUrl() {
+        const p = new URLSearchParams();
+        if (state.q) p.set('q', state.q);
+        if (state.category) p.set('category', state.category);
+        if (state.verified) p.set('verified', '1');
+        if (state.sort !== 'downloads') p.set('sort', state.sort);
+        if (state.offset > 0) p.set('offset', String(state.offset));
+        const qs = p.toString();
+        history.replaceState(null, '', qs ? '?' + qs : location.pathname);
+      }
+
+      function filteredPacks() {
+        let list = allPacks.slice();
+        if (state.q) {
+          const q = state.q.toLowerCase();
+          list = list.filter((p) =>
+            p.name.toLowerCase().includes(q) ||
+            (p.description || '').toLowerCase().includes(q) ||
+            (p.author || '').toLowerCase().includes(q)
+          );
+        }
+        if (state.category) {
+          list = list.filter((p) => p.category === state.category);
+        }
+        if (state.verified) {
+          list = list.filter((p) => p.featured === true);
+        }
+        if (state.sort === 'downloads') {
+          list.sort((a, b) => (b.download_count || 0) - (a.download_count || 0));
+        } else if (state.sort === 'newest') {
+          list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        } else {
+          list.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        return list;
+      }
+
+      function renderCard(p) {
+        const cmd = H.installCommand(p.name);
+        return (
+          '<article class="card">' +
+          '<div class="card-head"><h3><a href="/skill.html?pack=' + encodeURIComponent(p.name) + '">' +
+          H.esc(p.name) + '</a></h3>' +
+          (p.featured ? H.badgePill('Verified', 'verified') : '') +
+          '</div>' +
+          '<p>' + H.esc(H.excerpt(p.description, 100)) + '</p>' +
+          '<div class="meta">' +
+          H.badgePill(p.category || 'general', 'category') +
+          '<span class="muted">' + H.esc(p.author) + '</span>' +
+          '<span class="muted">' + p.skill_count + ' skills</span>' +
+          '<span class="muted">' + p.download_count + ' installs</span>' +
+          '</div>' +
+          '<button type="button" class="btn small secondary" data-copy="' + H.esc(cmd) + '">Copy install</button>' +
+          '</article>'
+        );
+      }
+
+      function renderPage() {
+        const list = filteredPacks();
+        const page = Math.floor(state.offset / PAGE_SIZE);
+        const slice = list.slice(state.offset, state.offset + PAGE_SIZE);
+        const grid = document.getElementById('results-grid');
+        grid.innerHTML = slice.length
+          ? slice.map(renderCard).join('')
+          : '<p class="muted">No packs match your filters.</p>';
+        H.bindCopyButtons(grid);
+
+        const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+        const currentPage = page + 1;
+        document.getElementById('page-info').textContent =
+          'Page ' + currentPage + ' of ' + totalPages + ' (' + list.length + ' packs)';
+        document.getElementById('page-prev').disabled = state.offset <= 0;
+        document.getElementById('page-next').disabled = state.offset + PAGE_SIZE >= list.length;
+        syncUrl();
+      }
+
+      function applyFilters(resetOffset) {
+        if (resetOffset) state.offset = 0;
+        state.q = document.getElementById('filter-search').value.trim();
+        state.category = document.getElementById('filter-category').value;
+        state.verified = document.getElementById('filter-verified').checked;
+        state.sort = document.getElementById('filter-sort').value;
+        renderPage();
+      }
+
+      const debouncedSearch = H.debounce(() => applyFilters(true), 300);
+      document.getElementById('filter-search').addEventListener('input', debouncedSearch);
+      document.getElementById('filter-category').addEventListener('change', () => applyFilters(true));
+      document.getElementById('filter-verified').addEventListener('change', () => applyFilters(true));
+      document.getElementById('filter-sort').addEventListener('change', () => applyFilters(true));
+
+      document.getElementById('page-prev').addEventListener('click', () => {
+        state.offset = Math.max(0, state.offset - PAGE_SIZE);
+        renderPage();
+      });
+      document.getElementById('page-next').addEventListener('click', () => {
+        state.offset += PAGE_SIZE;
+        renderPage();
+      });
+
+      async function init() {
+        const cats = await H.api('/api/categories');
+        const sel = document.getElementById('filter-category');
+        (cats.categories || []).forEach((c) => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          sel.appendChild(opt);
+        });
+        sel.value = state.category;
+
+        const data = await H.api('/api/packs');
+        allPacks = data.packs || [];
+        renderPage();
+      }
+
+      init().catch((err) => {
+        document.getElementById('results-grid').innerHTML =
+          '<p class="form-msg error">' + H.esc(err.message) + '</p>';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -38,9 +38,11 @@ describe('workspace-chrome', () => {
     expect(hosted).not.toContain('href="/kanban"');
     expect(hosted).not.toContain('href="/email"');
     expect(hosted).not.toContain('href="/prompt-packs"');
+    expect(hosted).not.toContain('href="/trello"');
     expect(priv).toContain('href="/kanban"');
     expect(priv).toContain('href="/email"');
     expect(priv).toContain('href="/prompt-packs"');
+    expect(priv).toContain('href="/trello"');
   });
 
   it('adds Inter font, shared theme CSS, and workspace prefs script', () => {

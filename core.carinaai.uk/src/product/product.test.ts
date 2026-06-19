@@ -60,6 +60,7 @@ describe('route matrix', () => {
     expect(classifyRoute('/kanban')).toBe('private');
     expect(classifyRoute('/email')).toBe('private');
     expect(classifyRoute('/prompt-packs')).toBe('private');
+    expect(classifyRoute('/trello')).toBe('private');
   });
 
   it('classifies shared workspace routes', () => {

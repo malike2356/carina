@@ -10,6 +10,26 @@ export type WorkspaceContextOptions = {
   mode?: BootstrapMode;
 };
 
+export function workspaceContextHasIdentity(context?: string): boolean {
+  if (!context?.trim()) return false;
+  return context.includes('(SOUL.md)') || context.includes('(IDENTITY.md)');
+}
+
+export async function loadWorkspaceFile(
+  homeDir: string,
+  fileName: string,
+): Promise<string | null> {
+  const filePath = path.join(homeDir, fileName);
+  try {
+    const content = await readFile(filePath, 'utf-8');
+    const trimmed = content.trim();
+    return trimmed || null;
+  } catch (err) {
+    if (isMissingFile(err)) return null;
+    throw err;
+  }
+}
+
 export async function loadWorkspaceContext(
   homeDir: string,
   options: WorkspaceContextOptions = {},

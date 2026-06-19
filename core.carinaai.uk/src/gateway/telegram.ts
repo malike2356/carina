@@ -6,9 +6,17 @@ import { channelRegistry } from './channels/channel-registry.js';
 import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
 import { formatForPlatform } from './formatting.js';
 import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective } from './telegram-audio.js';
+import { BlockStreamAssembler } from './block-stream-assembler.js';
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
+
+type TelegramWebhookBot = TelegramBot & {
+  processUpdate: (update: unknown) => Promise<void> | void;
+};
+
+let telegramBot: TelegramWebhookBot | null = null;
+let telegramBotUsername = 'carina';
 
 const WELCOME = `Welcome to Carina.
 
@@ -34,6 +42,8 @@ async function streamToTelegram(
   generator: AsyncGenerator<string>,
   adapter: TelegramAdapter,
 ): Promise<void> {
+  const blockStream = process.env.CARINA_BLOCK_STREAM !== 'false';
+  const assembler = blockStream ? new BlockStreamAssembler() : null;
   let fullText = '';
   let messageId: number | null = null;
   let lastEdit = 0;
@@ -56,7 +66,13 @@ async function streamToTelegram(
   };
 
   for await (const chunk of generator) {
-    fullText += chunk;
+    if (assembler) {
+      const { blocks } = assembler.push(chunk);
+      if (blocks.length === 0) continue;
+      fullText += blocks.join('');
+    } else {
+      fullText += chunk;
+    }
 
     if (messageId === null) {
       const sent = await bot.sendMessage(chatId, fullText.slice(0, TELEGRAM_MAX) || '...');
@@ -70,6 +86,11 @@ async function streamToTelegram(
     if (now - lastEdit >= EDIT_INTERVAL_MS) {
       await flushEdit();
     }
+  }
+
+  if (assembler) {
+    const tail = assembler.flush();
+    if (tail) fullText += tail;
   }
 
   await flushEdit();
@@ -92,6 +113,12 @@ function handleTelegramCommand(
   return false;
 }
 
+export async function processTelegramWebhookUpdate(update: unknown): Promise<boolean> {
+  if (!telegramBot) return false;
+  await telegramBot.processUpdate(update);
+  return true;
+}
+
 export async function startTelegram(): Promise<void> {
   const token = config.telegram.botToken;
   if (!token) {
@@ -101,15 +128,21 @@ export async function startTelegram(): Promise<void> {
 
   const useWebhook = Boolean(config.telegram.webhookUrl);
   const bot = new TelegramBot(token, useWebhook ? { polling: false as const } : { polling: true as const });
+  telegramBot = bot as TelegramWebhookBot;
   const me = await bot.getMe();
-  const botUsername = me.username ?? 'carina';
-  const adapter = new TelegramAdapter(true, bot, botUsername);
+  telegramBotUsername = me.username ?? 'carina';
+  const adapter = new TelegramAdapter(true, bot, telegramBotUsername);
   channelRegistry.register(adapter);
 
   if (useWebhook) {
     await bot.setWebHook(config.telegram.webhookUrl);
     console.log(chalk.gray(`Telegram gateway: webhook mode (${config.telegram.webhookUrl})`));
   } else {
+    try {
+      await bot.deleteWebHook({ drop_pending_updates: false });
+    } catch {
+      // ignore, this is a best-effort cleanup when switching back to polling
+    }
     console.log(chalk.gray('Telegram gateway: polling mode'));
   }
 
@@ -153,4 +186,8 @@ export async function startTelegram(): Promise<void> {
   });
 
   console.log(chalk.green('Telegram gateway ready'));
+}
+
+export function getTelegramBotUsername(): string {
+  return telegramBotUsername;
 }

@@ -38,6 +38,7 @@ const SHARED_PREFIXES = [
   '/images',
   '/calendar',
   '/scheduled',
+  '/trello',
   '/compare',
   '/research',
   '/playbook',
@@ -46,7 +47,7 @@ const SHARED_PREFIXES = [
   '/webhooks',
 ];
 
-const PRIVATE_WORKSPACE_ONLY = ['/email', '/kanban', '/workspace', '/prompt-packs'];
+const PRIVATE_WORKSPACE_ONLY = ['/email', '/kanban', '/workspace', '/prompt-packs', '/trello'];
 
 const OPS_BEARER_ANY_HOST = new Set([
   '/api/health',
@@ -85,6 +86,7 @@ export function classifyRoute(path: string): RouteOwnership {
     || normalised.startsWith('/api/email')
     || normalised.startsWith('/api/calendar')
     || normalised.startsWith('/api/scheduled')
+    || normalised.startsWith('/api/trello')
     || normalised.startsWith('/api/compare')
     || normalised.startsWith('/api/research')
     || normalised.startsWith('/api/playbook')

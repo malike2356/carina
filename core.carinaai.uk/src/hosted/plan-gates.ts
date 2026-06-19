@@ -157,6 +157,7 @@ export const OPS_PAGE_FILES: Record<string, string> = {
   vault: 'vault.html',
   memory: 'memory.html',
   analytics: 'analytics.html',
+  telemetry: 'telemetry.html',
   credits: 'credits.html',
   usage: 'usage.html',
   audit: 'audit.html',

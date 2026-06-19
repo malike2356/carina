@@ -43,7 +43,7 @@ export function BillingPage() {
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">
-          Carina is the free workspace. Scout is the paid layer that adds security, audit logs, and controls once a workflow moves into client data.
+          Carina Cloud is the hosted workspace. Scout is the paid control layer that adds security, audit logs, and production controls once a workflow moves into client data.
         </p>
       </div>
       {billing && (

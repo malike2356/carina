@@ -64,6 +64,10 @@ export function isSuspended(): boolean {
   return suspended;
 }
 
+export function getKillSwitchStatus(): { active: boolean; reason: string } {
+  return { active: suspended, reason: suspensionReason };
+}
+
 export function isSessionBlocked(sessionId: string): boolean {
   return blockedSessions.has(sessionId);
 }

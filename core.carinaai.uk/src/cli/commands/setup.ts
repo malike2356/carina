@@ -1,16 +1,14 @@
 import path from 'path';
-import { confirm, input, password, select } from '@inquirer/prompts';
 import { CARINA_ENV_PATH, CARINA_HOME } from '../../config/paths.js';
 import { type ProviderName } from '../config/defaults.js';
 import { format } from '../output/formatter.js';
 import { installCustomDomainPack } from '../../setup/custom-domain-pack.js';
-import { isInteractiveTerminal, writeMinimalBootstrap } from '../first-run.js';
+import { isInteractiveTerminal, needsFirstRunOnboarding, writeMinimalBootstrap } from '../first-run.js';
 import {
   persistProviderBootstrap,
   PROVIDER_MODELS,
   testProviderConnection,
 } from '../provider-bootstrap.js';
-import { runFirstRunOnboarding } from '../first-run-onboarding.js';
 
 export async function runCliSetup(args: string[] = []): Promise<void> {
   if (args.includes('--full')) {
@@ -34,22 +32,14 @@ export async function runCliSetup(args: string[] = []): Promise<void> {
     return;
   }
 
-  const ranOnboarding = await runFirstRunOnboarding();
-  if (ranOnboarding) return;
-
-  const rerun = await confirm({
-    message: 'Onboarding is complete. Reconfigure provider or profile?',
-    default: false,
-  });
-  if (!rerun) {
-    console.log(format.muted('No changes made. Run carina setup --full for advanced options.'));
-    return;
-  }
-
-  await runProviderOnlySetup();
+  const { runInkOnboarding } = await import('../ink-onboarding.js');
+  const needsOnboarding = await needsFirstRunOnboarding();
+  await runInkOnboarding({ force: !needsOnboarding });
 }
 
 async function runProviderOnlySetup(): Promise<void> {
+  const { confirm, input, password, select } = await import('@inquirer/prompts');
+
   const provider = await select<ProviderName>({
     message: 'Default provider',
     choices: [

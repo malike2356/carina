@@ -37,17 +37,34 @@ import { emailApiRouter } from '#core/gateway/email-api.js';
 import { packsApiRouter } from '#core/api/packs-api.js';
 import { cookbookApiRouter } from '#core/api/cookbook-api.js';
 import { curatorApiRouter } from '#core/api/curator-api.js';
+import { learningApiRouter } from '#core/api/learning-api.js';
+import { mountDesktopApiRoutes } from '#core/api/desktop-api.js';
 import { themeApiRouter } from '#core/api/theme-api.js';
+import { webAuthApiRouter } from '#core/api/web-auth-api.js';
+import { workspacePresetsApiRouter } from '#core/api/workspace-presets-api.js';
+import { isWebTotpEnabled } from '#core/auth/web-totp-store.js';
 import { compareApiRouter } from '#core/api/compare-api.js';
 import { researchApiRouter } from '#core/api/research-api.js';
 import { internalResearchApiRouter } from '#core/api/internal-research-api.js';
 import { calendarApiRouter } from '#core/api/calendar-api.js';
+import { scheduledApiRouter } from '#core/api/scheduled-api.js';
+import { trelloApiRouter } from '#core/api/trello-api.js';
 import { getRouter } from '#core/gateway/router.js';
 import {
   cancelStreamSession,
   clearStreamSession,
   registerStreamSession,
 } from '#core/telemetry/stream-session.js';
+import {
+  appendStreamDraft,
+  discardStreamDraft,
+  getStreamDraftPreview,
+  getStreamDraftState,
+  initStreamDraft,
+  pauseStreamDraft,
+  resumeStreamDraft,
+  waitWhileStreamPaused,
+} from '#core/telemetry/stream-draft-controls.js';
 import {
   classifyError,
   formatClassifiedError,
@@ -93,6 +110,7 @@ import {
   startChannelListeners,
   logChannelStatus,
 } from '#core/gateway/channel-bootstrap.js';
+import { processTelegramWebhookUpdate } from '#core/gateway/telegram.js';
 import { tenantKeysRouter } from '#core/api/tenant-keys.js';
 import { getUserByApiKey, verifyJwt } from '#core/api/hosted-auth.js';
 import { mountWebContextRoute } from '#core/gateway/web-context.js';
@@ -245,7 +263,7 @@ async function resolveTenantId(req: Request): Promise<string | undefined> {
 }
 
 function setupChatRoutes(app: Express): void {
-  app.get('/api/health', async (_req: Request, res: Response) => {
+  const healthHandler = async (_req: Request, res: Response) => {
     const device = pairedDeviceFromRequest(_req);
     res.json({
       ok: true,
@@ -253,7 +271,10 @@ function setupChatRoutes(app: Express): void {
       service: 'carina-gateway',
       pairedDevice: device ? { id: device.id, name: device.name } : undefined,
     });
-  });
+  };
+
+  app.get('/api/health', healthHandler);
+  app.get('/health', healthHandler);
 
   app.get('/api/config', async (_req: Request, res: Response) => {
     let activeProvider = '';
@@ -407,6 +428,18 @@ function setupChatRoutes(app: Express): void {
     res.json(result);
   });
 
+  app.post('/api/lsp/request', express.json(), async (req: Request, res: Response) => {
+    const { handleLspRequest } = await import('#core/api/lsp-api.js');
+    await handleLspRequest(req, res);
+  });
+
+  mountDesktopApiRoutes(app);
+
+  app.post('/api/tts', express.json({ limit: '32kb' }), async (req: Request, res: Response) => {
+    const { handleTtsRequest } = await import('#core/api/tts-api.js');
+    await handleTtsRequest(req, res);
+  });
+
   app.post('/api/clear', express.json(), async (req: Request, res: Response) => {
     const externalId = resolveExternalId(req);
     const router = getRouter();
@@ -448,6 +481,7 @@ function setupChatRoutes(app: Express): void {
         const webSession = await router.startWebSession(externalId);
         sessionId = webSession.sessionId;
         const controller = registerStreamSession(sessionId, turnId);
+        initStreamDraft(sessionId, turnId);
         res.write(formatStreamSseEvent(streamEvent('meta', {
           sessionId,
           turnId,
@@ -471,6 +505,9 @@ function setupChatRoutes(app: Express): void {
         }, { turnId });
         for await (const chunk of stream) {
           if (controller.signal.aborted) break;
+          await waitWhileStreamPaused(sessionId, turnId);
+          if (getStreamDraftState(sessionId, turnId) === 'discarded') break;
+          appendStreamDraft(sessionId, turnId, chunk);
           res.write(formatLegacyTokenChunk(chunk));
         }
         if (controller.signal.aborted) {
@@ -513,8 +550,41 @@ function setupChatRoutes(app: Express): void {
       res.status(400).json({ error: 'sessionId and turnId are required' });
       return;
     }
+    discardStreamDraft(sessionId, turnId);
     const cancelled = cancelStreamSession(sessionId, turnId);
-    res.json({ ok: cancelled });
+    res.json({ ok: cancelled, draft: getStreamDraftPreview(sessionId, turnId) });
+  });
+
+  app.post('/api/chat/stream/pause', express.json(), (req: Request, res: Response) => {
+    const sessionId = String(req.body?.sessionId ?? '').trim();
+    const turnId = String(req.body?.turnId ?? '').trim();
+    if (!sessionId || !turnId) {
+      res.status(400).json({ error: 'sessionId and turnId are required' });
+      return;
+    }
+    res.json({ ok: pauseStreamDraft(sessionId, turnId), state: getStreamDraftState(sessionId, turnId) });
+  });
+
+  app.post('/api/chat/stream/resume', express.json(), (req: Request, res: Response) => {
+    const sessionId = String(req.body?.sessionId ?? '').trim();
+    const turnId = String(req.body?.turnId ?? '').trim();
+    if (!sessionId || !turnId) {
+      res.status(400).json({ error: 'sessionId and turnId are required' });
+      return;
+    }
+    res.json({ ok: resumeStreamDraft(sessionId, turnId), state: getStreamDraftState(sessionId, turnId) });
+  });
+
+  app.post('/api/chat/stream/discard', express.json(), (req: Request, res: Response) => {
+    const sessionId = String(req.body?.sessionId ?? '').trim();
+    const turnId = String(req.body?.turnId ?? '').trim();
+    if (!sessionId || !turnId) {
+      res.status(400).json({ error: 'sessionId and turnId are required' });
+      return;
+    }
+    discardStreamDraft(sessionId, turnId);
+    cancelStreamSession(sessionId, turnId);
+    res.json({ ok: true, state: getStreamDraftState(sessionId, turnId) });
   });
 }
 
@@ -565,6 +635,9 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   app.use(express.urlencoded({ extended: false }));
   mountLocaleRoutes(app);
   mountOpsRoutes(app);
+  const { marketplaceApiRouter, workshopApiRouter } = await import('#core/api/marketplace-api.js');
+  app.use('/api/marketplace', marketplaceApiRouter);
+  app.use('/api/workshop', workshopApiRouter);
   if (!localMode) {
     app.use(
       session({
@@ -597,11 +670,16 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   app.use('/api/playbook', cookbookApiRouter);
   app.use('/api/cookbook', cookbookApiRouter);
   app.use('/api/curator', curatorApiRouter);
+  app.use('/api/learning', learningApiRouter);
   app.use('/api/theme', themeApiRouter);
+  app.use('/api/auth', webAuthApiRouter);
+  app.use('/api/workspace/presets', workspacePresetsApiRouter);
   app.use('/api/compare', compareApiRouter);
   app.use('/api/research', researchApiRouter);
   app.use('/api/internal/research', internalResearchApiRouter);
   app.use('/api/calendar', calendarApiRouter);
+  app.use('/api/scheduled', scheduledApiRouter);
+  app.use('/api/trello', trelloApiRouter);
   if (!localMode) {
     app.use('/api/subscribe', subscribeRouter);
     if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
@@ -630,6 +708,14 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
       mountHostedBillingRoutes(app);
     }
     app.use('/webhooks/email', emailWebhookRouter);
+    app.post('/webhooks/telegram', express.json(), async (req, res) => {
+      const handled = await processTelegramWebhookUpdate(req.body);
+      if (!handled) {
+        res.status(404).json({ error: 'telegram gateway not running' });
+        return;
+      }
+      res.json({ ok: true });
+    });
 
     if (isWhatsAppConfigured()) {
       app.use('/webhooks', createWhatsAppRouter());
@@ -748,6 +834,44 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
         return;
       }
       clearAuthFailures('web-login', clientKey);
+      if (await isWebTotpEnabled()) {
+        req.session.webPendingTotp = true;
+        req.session.webAuthed = false;
+        res.redirect('/login/2fa');
+        return;
+      }
+      req.session.webPendingTotp = false;
+      req.session.webAuthed = true;
+      res.redirect('/');
+    });
+
+    const login2faHtml = decoratePageHtml(
+      await fs.readFile(path.join(WEB_STATIC, 'login-2fa.html'), 'utf-8').catch(() => ''),
+      carinaVersion,
+    );
+
+    app.get('/login/2fa', (req, res) => {
+      if (!req.session?.webPendingTotp) {
+        res.redirect('/login');
+        return;
+      }
+      res.type('html').send(login2faHtml || '<html><body><form method="post" action="/login/2fa"><input name="token" maxlength="6"><button>Verify</button></form></body></html>');
+    });
+
+    app.post('/login/2fa', async (req, res) => {
+      if (!req.session?.webPendingTotp) {
+        res.redirect('/login');
+        return;
+      }
+      const { verifyTotpCode } = await import('#core/auth/web-totp.js');
+      const { resolveWebTotpSecret } = await import('#core/auth/web-totp-store.js');
+      const token = String(req.body?.token ?? '').trim();
+      const secret = await resolveWebTotpSecret();
+      if (!secret || !verifyTotpCode(secret, token)) {
+        res.redirect('/login/2fa?error=1');
+        return;
+      }
+      req.session.webPendingTotp = false;
       req.session.webAuthed = true;
       res.redirect('/');
     });
@@ -989,9 +1113,13 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     const imagesPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'images.html'), carinaVersion, { workspacePage: 'images' });
     const emailPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'email.html'), carinaVersion, { workspacePage: 'email' });
     const calendarPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'calendar.html'), carinaVersion, { workspacePage: 'calendar' });
+    const scheduledPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'scheduled.html'), carinaVersion, { workspacePage: 'scheduled' });
+    const trelloPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'trello.html'), carinaVersion, { workspacePage: 'trello' });
     const kanbanPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'kanban.html'), carinaVersion, { workspacePage: 'kanban' });
     const webhooksPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'webhooks.html'), carinaVersion, { workspacePage: 'webhooks' });
     const workspacePages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'workspace.html'), carinaVersion, { workspacePage: 'hub' });
+    const marketplacePages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'marketplace.html'), carinaVersion, { workspacePage: 'packs' });
+    const surfacesPages = await loadSurfaceHtmlPair(path.join(WEB_STATIC, 'surfaces.html'), carinaVersion, { workspacePage: 'hub' });
     app.get('/manifest.json', (_req, res) => {
       res.type('application/manifest+json').sendFile(path.join(WEB_STATIC, 'manifest.json'));
     });
@@ -1030,6 +1158,14 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     app.get('/calendar.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
       res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'calendar.js'));
+    });
+    app.get('/scheduled.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'scheduled.js'));
+    });
+    app.get('/trello.js', (_req, res) => {
+      res.set('Cache-Control', 'no-cache');
+      res.type('application/javascript').sendFile(path.join(WEB_STATIC, 'trello.js'));
     });
     app.get('/compare.js', (_req, res) => {
       res.set('Cache-Control', 'no-cache');
@@ -1084,6 +1220,16 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
       if (html) res.type('html').send(html);
       else res.status(404).send('Not found');
     });
+    app.get('/scheduled', (req, res) => {
+      const html = pickSurfaceHtml(scheduledPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/trello', (req, res) => {
+      const html = pickSurfaceHtml(trelloPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
     app.get('/kanban', (req, res) => {
       const html = pickSurfaceHtml(kanbanPages, req);
       if (html) res.type('html').send(html);
@@ -1101,6 +1247,16 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     });
     app.get('/packs', (req, res) => {
       const html = pickSurfaceHtml(packsPages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/marketplace', (req, res) => {
+      const html = pickSurfaceHtml(marketplacePages, req);
+      if (html) res.type('html').send(html);
+      else res.status(404).send('Not found');
+    });
+    app.get('/surfaces', (req, res) => {
+      const html = pickSurfaceHtml(surfacesPages, req);
       if (html) res.type('html').send(html);
       else res.status(404).send('Not found');
     });
@@ -1163,6 +1319,12 @@ export async function startWeb(options: StartWebOptions = {}): Promise<void> {
 
   await new Promise<void>((resolve) => {
     const onListen = (): void => {
+      void import('#core/security/gateway-exposure.js').then(({ formatGatewayExposureWarning }) => {
+        const exposureWarning = formatGatewayExposureWarning(host);
+        if (exposureWarning) {
+          console.warn(chalk.yellow(`\n${exposureWarning}\n`));
+        }
+      });
       if (localMode) {
         console.log(chalk.green(`Carina API running on http://localhost:${port}`));
         console.log(chalk.gray('  GET  /'));

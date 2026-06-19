@@ -32,6 +32,8 @@ vi.mock('../config/index.js', () => ({
     },
     redis: { url: 'redis://localhost:6379' },
     database: { url: 'postgresql://localhost:5432/carina_test' },
+    embeddings: { dimensions: 768, maxChars: 8000, voyageMaxChars: 16000, geminiModel: 'text-embedding-004', openaiModel: 'text-embedding-3-small' },
+    carina: { defaultProvider: 'deepseek', activePacks: [], taskFlowsEnabled: false },
   },
 }));
 

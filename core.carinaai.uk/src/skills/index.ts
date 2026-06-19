@@ -9,13 +9,18 @@ import { loadPluginsFromDisk } from '../plugins/registry.js';
 import { BUILTIN_PACKS_DIR, readPackManifest, type PackManifest } from './pack-loader.js';
 import { loadAllUserResources } from './user-resources.js';
 import { PACK_MANIFESTS, listKnownPackNames } from './pack-manifests.js';
-import type { Tool } from '../types/index.js';
+import type { Tool, Skill } from '../types/index.js';
 import {
   type PackDefinition,
   resolvePack,
   warmPackSkillIndex,
   getBuiltinSkillNames,
 } from './pack-resolver.js';
+import {
+  deferPromptInvalidation,
+  deferPromptInvalidationForAllFrozen,
+  getFrozenSystemPrompt,
+} from '../brain/prompt-cache.js';
 
 const execAsync = promisify(exec);
 
@@ -68,6 +73,7 @@ export async function enablePackRuntime(packName: string): Promise<number> {
   const loaded = await loadPackSkills(packName);
   await loadPackExtensions(packName);
   await registerActivePackTools();
+  deferPromptInvalidationForAllFrozen(`pack enabled: ${packName}`);
   return loaded;
 }
 
@@ -337,6 +343,20 @@ export async function importPack(packPath: string): Promise<void> {
   }
 
   await fs.rm(tmpDir, { recursive: true, force: true });
+}
+
+type SkillInstallInput = Omit<Skill, 'id' | 'createdAt' | 'usageCount' | 'successCount' | 'failureCount'>;
+
+export async function installSkillInSession(
+  sessionId: string,
+  skill: SkillInstallInput,
+): Promise<{ deferred: boolean }> {
+  await saveSkill(skill);
+  if (getFrozenSystemPrompt(sessionId)) {
+    deferPromptInvalidation(sessionId, `skill installed: ${skill.name}`);
+    return { deferred: true };
+  }
+  return { deferred: false };
 }
 
 export async function syncPackManifests(): Promise<void> {

@@ -74,6 +74,7 @@
       <button type="button" class="filter-btn active" data-status="inbox">Inbox</button>
       <button type="button" class="filter-btn" data-status="archived">Archive</button>
       <button type="button" class="filter-btn" data-status="spam">Spam</button>
+      <button type="button" class="filter-btn" data-unread="1">Unread</button>
     </div>
     <div class="email-list" id="email-list"></div>
   </section>
@@ -86,6 +87,8 @@
       </div>
       <div class="detail-actions">
         <button type="button" id="mark-read" class="primary">Mark read</button>
+        <button type="button" id="mark-unread">Mark unread</button>
+        <button type="button" id="reply-btn" class="primary">Reply</button>
         <button type="button" data-urgency="high">High urgency</button>
         <button type="button" data-urgency="normal">Normal</button>
         <button type="button" data-urgency="low">Low</button>

@@ -112,6 +112,47 @@ function lspRequest(sessionKey: string, method: string, params: unknown): Promis
   });
 }
 
+const LANGUAGE_SPECS: Record<string, { command: string; args: string[] }> = {
+  typescript: { command: 'typescript-language-server', args: ['--stdio'] },
+  javascript: { command: 'typescript-language-server', args: ['--stdio'] },
+  python: { command: 'pylsp', args: [] },
+  rust: { command: 'rust-analyzer', args: [] },
+  go: { command: 'gopls', args: ['serve'] },
+};
+
+function inferLanguage(method: string, params: unknown): string {
+  if (method === 'textDocument/didOpen' && params && typeof params === 'object') {
+    const doc = (params as { textDocument?: { languageId?: string } }).textDocument;
+    if (doc?.languageId) return doc.languageId;
+  }
+  return 'typescript';
+}
+
+export async function executeLspRequest(
+  sessionKey: string,
+  method: string,
+  params: unknown,
+  options?: { language?: string; rootPath?: string },
+): Promise<unknown> {
+  if (method === 'shutdown' || method === 'exit') {
+    stopLspServer(sessionKey);
+    return null;
+  }
+
+  if (method === 'initialize') {
+    return { capabilities: {} };
+  }
+
+  const language = options?.language ?? inferLanguage(method, params);
+  if (!servers.has(sessionKey)) {
+    const spec = LANGUAGE_SPECS[language] ?? LANGUAGE_SPECS.typescript;
+    const rootPath = options?.rootPath ?? process.cwd();
+    await startLspServer(sessionKey, spec.command, spec.args, rootPath);
+  }
+
+  return lspRequest(sessionKey, method, params);
+}
+
 export async function lspDefinition(
   sessionKey: string,
   filePath: string,

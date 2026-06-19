@@ -33,13 +33,32 @@ function hasDomainTag(skill: Skill): boolean {
 }
 
 async function evalSkillCandidate(skill: Skill): Promise<boolean> {
+  const result = await evalSkillCandidateWithLLM(skill);
+  return result.pass;
+}
+
+async function evalSkillCandidateWithLLM(skill: Skill): Promise<{ pass: boolean; reason: string }> {
+  const prompt = `
+Evaluate this skill definition and decide if it should remain active or be archived.
+
+Skill name: ${skill.name}
+Description: ${skill.description}
+Last used: ${skill.usageCount} times
+Steps preview: ${(skill.steps ?? '').slice(0, 200)}
+
+Respond with JSON: { "pass": true/false, "reason": "one sentence" }
+`;
+
   try {
-    const { evalSkill } = await import('./eval/runner.js');
-    const result = await evalSkill(skill);
-    return result.pass;
+    const { callAuxiliaryModel } = await import('../brain/auxiliary-client.js');
+    const raw = await callAuxiliaryModel('curator', prompt);
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(jsonMatch?.[0] ?? raw.trim()) as { pass?: boolean; reason?: string };
+    return { pass: Boolean(parsed.pass), reason: String(parsed.reason ?? '') };
   } catch {
     const steps = skill.steps?.trim() ?? '';
-    return Boolean(skill.name && skill.description && steps.length > 0);
+    const pass = Boolean(skill.name && skill.description && steps.length > 0);
+    return { pass, reason: 'heuristic' };
   }
 }
 

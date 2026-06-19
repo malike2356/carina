@@ -3,27 +3,46 @@ import {
   addBinding,
   createAgentDefinition,
   deleteAgentDefinition,
-  describeRoute,
   ensureAgentsConfig,
   getActiveAgentId,
   getAgentDefinition,
   listAgentDefinitions,
   listBindings,
   removeBinding,
-  resolveAgentRoute,
   setActiveAgentId,
 } from '../../workspaces/index.js';
+import { buildRouteExplanation, ROUTING_PRECEDENCE } from '../../workspaces/routing-explain.js';
 import type { ChannelName } from '../../gateway/channels/channel-adapter.interface.js';
 import type { RoutingContext } from '../../workspaces/types.js';
 
 export async function runAgentsCommand(args: string[]): Promise<void> {
   await ensureAgentsConfig();
-  const action = args[0] ?? 'list';
-  const sub = args[1];
-  const rest = args.slice(2);
+  const json = args.includes('--json');
+  const explain = args.includes('--explain');
+  const filtered = args.filter((a) => a !== '--json' && a !== '--explain');
+  const action = filtered[0] ?? 'list';
+  const sub = filtered[1];
+  const rest = filtered.slice(2);
+
+  if (action === 'context') {
+    const {
+      getSpawnContext,
+      getActiveChildCount,
+    } = await import('../../agents/delegation-context.js');
+    const { MAX_SPAWN_DEPTH, MAX_CONCURRENT_CHILDREN } = await import('../../agents/agent-roles.js');
+    const sessionId = sub ?? process.env.CARINA_SESSION_ID ?? 'cli-default';
+    const ctx = getSpawnContext(sessionId);
+    console.log(chalk.bold('\nAgent spawn context\n'));
+    console.log(`  Role:            ${ctx.role}`);
+    console.log(`  Depth:           ${ctx.depth}/${MAX_SPAWN_DEPTH}`);
+    console.log(`  Parent:          ${ctx.parentAgentId ?? 'none (top-level)'}`);
+    console.log(`  Active children: ${getActiveChildCount(sessionId)}/${MAX_CONCURRENT_CHILDREN}`);
+    console.log('');
+    return;
+  }
 
   if (action === 'list') {
-    const showBindings = args.includes('--bindings') || sub === '--bindings';
+    const showBindings = filtered.includes('--bindings') || sub === '--bindings';
     const agents = listAgentDefinitions();
     const active = getActiveAgentId();
     console.log(chalk.bold('\nAgent workspaces\n'));
@@ -115,14 +134,38 @@ export async function runAgentsCommand(args: string[]): Promise<void> {
   }
 
   if (action === 'route') {
-    const ctx = parseRouteArgs(args.slice(1));
-    const result = resolveAgentRoute(ctx);
-    console.log(describeRoute(ctx));
-    console.log(`  -> ${result.agent.id} (${result.agent.name})`);
+    const ctx = parseRouteArgs(filtered.slice(1));
+    const details = buildRouteExplanation(ctx);
+    if (json) {
+      console.log(JSON.stringify({
+        context: details.context,
+        agentId: details.result.agent.id,
+        agentName: details.result.agent.name,
+        tier: details.result.tier,
+        source: details.result.source,
+        binding: details.result.binding ?? null,
+        description: details.description,
+      }, null, 2));
+      return;
+    }
+    console.log(chalk.bold('\nRoute preview\n'));
+    console.log(`  ${details.description}`);
+    console.log(`  -> ${details.result.agent.id} (${details.result.agent.name})`);
+    console.log(chalk.gray(`  tier=${details.result.tier}  source=${details.result.source}`));
+    if (details.result.binding?.label) {
+      console.log(chalk.gray(`  binding=${details.result.binding.label}`));
+    }
+    if (explain) {
+      console.log(chalk.bold('\nPrecedence (highest wins)\n'));
+      for (const line of ROUTING_PRECEDENCE) {
+        console.log(chalk.gray(`  - ${line}`));
+      }
+      console.log('');
+    }
     return;
   }
 
-  console.error('Usage: carina agents <list|add|show|remove|use|bind|route> [args]');
+  console.error('Usage: carina agents <list|add|show|remove|use|bind|route|context> [args]');
   process.exit(1);
 }
 

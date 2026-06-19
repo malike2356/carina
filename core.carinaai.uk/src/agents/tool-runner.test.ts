@@ -6,6 +6,10 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.resetModules();
   vi.stubEnv('CARINA_APPROVAL_POLICY', 'off');
+  vi.stubEnv(
+    'CARINA_PLAN_MODE_ALLOWLIST',
+    'web-search,file-read,http-request,memory,session-search,clarify,todo,email-list',
+  );
 });
 
 function makeCall(toolName: string, params: Record<string, unknown> = {}): ToolCall {
@@ -111,5 +115,49 @@ describe('executeToolCall', () => {
     const { executeToolCall: exec } = await import('./tool-runner.js');
     const result = await exec(makeCall('throwing-tool'));
     expect(result).toMatchObject({ error: 'network failure' });
+  });
+
+  it('blocks non-admin plan mode tools outside the allowlist', async () => {
+    const mockTool = {
+      name: 'notes-manage',
+      description: '',
+      parameters: {},
+      execute: vi.fn().mockResolvedValue('done'),
+    };
+    vi.doMock('../tools/index.js', () => ({
+      registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
+    }));
+    const { runWithToolExecutionContextAsync } = await import('../security/tool-execution-context.js');
+    const { executeToolCall: exec } = await import('./tool-runner.js');
+    const result = await runWithToolExecutionContextAsync(
+      { orgRole: 'viewer', planMode: true },
+      async () => exec(makeCall('notes-manage', { command: 'echo hi' })),
+    );
+
+    expect(result).toMatchObject({ code: 'PLAN_MODE_TOOL_BLOCKED' });
+    expect(mockTool.execute).not.toHaveBeenCalled();
+  });
+
+  it('allows allowlisted plan mode tools', async () => {
+    const mockTool = {
+      name: 'web-search',
+      description: '',
+      parameters: {},
+      execute: vi.fn().mockResolvedValue({ ok: true }),
+    };
+    vi.doMock('../tools/index.js', () => ({
+      registry: { get: () => mockTool },
+      getSessionTool: () => undefined,
+    }));
+    const { runWithToolExecutionContextAsync } = await import('../security/tool-execution-context.js');
+    const { executeToolCall: exec } = await import('./tool-runner.js');
+    const result = await runWithToolExecutionContextAsync(
+      { orgRole: 'viewer', planMode: true },
+      async () => exec(makeCall('web-search', { query: 'carina scout' })),
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(mockTool.execute).toHaveBeenCalled();
   });
 });

@@ -30,6 +30,7 @@ export interface DeepResearchOptions {
   onProgress?: (line: string) => void;
   onProgressEvent?: ResearchProgressHandler;
   persist?: boolean;
+  onSaved?: (meta: import('../research/research-store.js').ResearchRecordMeta) => void;
   skipVerify?: boolean;
   maxQualityPasses?: number;
   parallelSearch?: boolean;
@@ -638,10 +639,11 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
 
   if (options.persist !== false) {
     const { saveResearchReport } = await import('../research/research-store.js');
-    await saveResearchReport(report, {
+    const saved = await saveResearchReport(report, {
       query: options.query,
       format: options.outputFormat === 'html' ? 'html' : 'both',
     });
+    options.onSaved?.(saved);
   }
 
   return report;

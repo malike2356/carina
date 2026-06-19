@@ -10,12 +10,22 @@ import {
   type TurnLogEntry,
 } from '../telemetry/turn-log.js';
 import { recordSubagentMetric } from '../telemetry/subagent-metrics.js';
+import {
+  createChildAbortController,
+  releaseChildAbortController,
+} from './delegation-context.js';
+import { buildOrchestratorRolePrompt } from './role-enforcer.js';
+import {
+  registerSubagentCancel,
+  unregisterSubagentCancel,
+} from './subagent-cancel-registry.js';
 import { recordAgentBehavior } from '../telemetry/agent-behavior-log.js';
 import { startTraceSpan, endTraceSpan } from '../telemetry/trace.js';
 import { CarinaAgent, type TurnEvent } from './carina.js';
 import { CodingAgent } from './coding-agent.js';
 import { CommunicationAgent } from './communication-agent.js';
 import { FileAgent } from './file-agent.js';
+import { buildCapabilitySummaryLine } from '../product/feature-guide.js';
 import { ResearchAgent } from './research-agent.js';
 import type { ConfirmFn } from './tool-runner.js';
 import type { ProviderOverride } from '../brain/llm.js';
@@ -71,6 +81,9 @@ export class CarinaOrchestrator {
     this.confirmTool = confirmTool;
     this.platform = options.platform ?? 'cli';
     this.agent = new CarinaAgent(sessionId, memoryReady, confirmTool, options);
+    this.agent.setSystemPromptSuffix(
+      `${options.systemPromptSuffix ?? ''}\n\n---\n${buildOrchestratorRolePrompt(0)}`.trim(),
+    );
   }
 
   setSystemPromptSuffix(suffix: string): void {
@@ -101,7 +114,7 @@ export class CarinaOrchestrator {
       return 'Hi.';
     }
     if (/\bwhat can you do\b|\bcapabilit(y|ies)\b/.test(text) || /^help[?!.\s]*$/.test(text)) {
-      return 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.';
+      return buildCapabilitySummaryLine();
     }
     if (/\bwhich provider\b|\bwhat model\b|\bcurrent provider\b/.test(text)) {
       const preset = llm.getPreset();
@@ -351,8 +364,18 @@ export class CarinaOrchestrator {
       agentType: step.agentType,
       status: 'started',
     });
+    const childAbort = createChildAbortController(this.sessionId);
+    registerSubagentCancel(this.sessionId, step.agentType, () => {
+      if (!childAbort.signal.aborted) childAbort.abort();
+    });
     try {
-      const sub = createSubAgent(step.agentType, this.sessionId, this.confirmTool, this.providerOverride);
+      const sub = createSubAgent(
+        step.agentType,
+        this.sessionId,
+        this.confirmTool,
+        this.providerOverride,
+        childAbort.signal,
+      );
       const prompt = `Original task: ${originalTask}\n\nYour step: ${step.description}`;
       const result = await sub.run(prompt, context);
       recordSubagentMetric({
@@ -366,11 +389,14 @@ export class CarinaOrchestrator {
       recordSubagentMetric({
         sessionId: this.sessionId,
         agentType: step.agentType,
-        status: 'failed',
+        status: childAbort.signal.aborted ? 'cancelled' : 'failed',
         latencyMs: Date.now() - started,
         errorClass: err instanceof Error ? err.name : 'error',
       });
       throw err;
+    } finally {
+      unregisterSubagentCancel(this.sessionId, step.agentType);
+      releaseChildAbortController(this.sessionId, childAbort);
     }
   }
 
@@ -388,18 +414,19 @@ function createSubAgent(
   sessionId: string,
   confirmTool?: ConfirmFn,
   providerOverride?: ProviderOverride,
+  abortSignal?: AbortSignal,
 ) {
   switch (type) {
     case 'research':
-      return new ResearchAgent(sessionId, confirmTool, providerOverride);
+      return new ResearchAgent(sessionId, confirmTool, providerOverride, abortSignal);
     case 'coding':
-      return new CodingAgent(sessionId, confirmTool, providerOverride);
+      return new CodingAgent(sessionId, confirmTool, providerOverride, abortSignal);
     case 'communication':
-      return new CommunicationAgent(sessionId, confirmTool, providerOverride);
+      return new CommunicationAgent(sessionId, confirmTool, providerOverride, abortSignal);
     case 'file':
-      return new FileAgent(sessionId, confirmTool, providerOverride);
+      return new FileAgent(sessionId, confirmTool, providerOverride, abortSignal);
     default:
-      return new ResearchAgent(sessionId, confirmTool, providerOverride);
+      return new ResearchAgent(sessionId, confirmTool, providerOverride, abortSignal);
   }
 }
 

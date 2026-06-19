@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Publish - Carina Hub</title>
+  <link rel="stylesheet" href="/hub.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main class="wrap">
+    <div class="form-panel">
+      <h1>Publish to Carina Hub</h1>
+      <p class="muted">Submit a marketplace entry for community review. You need a publish API key.</p>
+
+      <form id="publish-form">
+        <label for="slug">Pack name (slug)</label>
+        <input id="slug" type="text" required pattern="[a-z][a-z0-9-]{0,62}" placeholder="my-skill-pack" />
+
+        <label for="display-name">Display name</label>
+        <input id="display-name" type="text" required placeholder="My Skill Pack" />
+
+        <label for="version">Version</label>
+        <input id="version" type="text" value="1.0.0" required />
+
+        <label for="author">Author</label>
+        <input id="author" type="text" required placeholder="Your name or org" />
+
+        <label for="description">Description</label>
+        <textarea id="description" required maxlength="500" placeholder="What does this pack do?"></textarea>
+
+        <label for="category">Category</label>
+        <select id="category" required>
+          <option value="property-uk">property-uk</option>
+          <option value="development">development</option>
+          <option value="productivity">productivity</option>
+          <option value="research">research</option>
+          <option value="communication">communication</option>
+          <option value="finance">finance</option>
+          <option value="other">other</option>
+        </select>
+
+        <label for="tags">Tags (comma-separated)</label>
+        <input id="tags" type="text" placeholder="automation, cli" />
+
+        <label for="api-key">API Key</label>
+        <input id="api-key" type="password" required autocomplete="off" />
+
+        <label for="yaml">Skill YAML content</label>
+        <textarea id="yaml" required placeholder="name: my-skill&#10;description: ..."></textarea>
+
+        <p style="margin-top:1rem">
+          <button type="submit" class="btn">Publish</button>
+        </p>
+        <div id="publish-msg" class="hidden"></div>
+      </form>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="/hub.js"></script>
+  <script>
+    (function () {
+      const H = window.CarinaHub;
+      document.getElementById('nav').innerHTML = H.renderNav('publish');
+      document.getElementById('footer').innerHTML = H.renderFooter();
+
+      document.getElementById('publish-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msg = document.getElementById('publish-msg');
+        msg.className = 'hidden';
+
+        const slug = document.getElementById('slug').value.trim();
+        const tags = document.getElementById('tags').value
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+        const body = {
+          kind: 'pack',
+          slug,
+          name: document.getElementById('display-name').value.trim(),
+          version: document.getElementById('version').value.trim(),
+          author: document.getElementById('author').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          category: document.getElementById('category').value,
+          tags,
+          trust: {
+            publisher: 'community',
+            validation: 'pending',
+            verified: false,
+            risk: 'low',
+          },
+          install: {
+            source: 'hub',
+            ref: slug,
+          },
+        };
+
+        const apiKey = document.getElementById('api-key').value;
+        const yaml = document.getElementById('yaml').value.trim();
+        body.description = body.description + '\n\n---\n' + yaml;
+
+        try {
+          const result = await H.api('/api/marketplace/publish', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Api-Key': apiKey,
+            },
+            body: JSON.stringify(body),
+          });
+
+          let text = 'Submission received.';
+          if (result.pendingVerification) {
+            text = 'Your submission is in review.';
+          } else if (result.badge === 'community') {
+            text = 'Published - community badge awarded.';
+          }
+          if (result.flags && result.flags.length) {
+            text += ' Flags: ' + result.flags.join(', ');
+          }
+          msg.className = 'form-msg success';
+          msg.textContent = text + ' (id: ' + (result.id || '') + ')';
+        } catch (err) {
+          msg.className = 'form-msg error';
+          msg.textContent = err.message;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

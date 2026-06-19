@@ -51,6 +51,12 @@ export function buildHelpText(commands: CliCommand[], pkg: { name: string; versi
     ].includes(c.name))
       .flatMap((c) => formatCommandHelp(c)),
     '',
+    'Command groups (aliases in parentheses):',
+    ...commands.filter((c) => [
+      'workspace', 'session', 'model', 'memory', 'task', 'skill', 'agent',
+      'webhook', 'mcp', 'scout', 'hub', 'channel', 'cert', 'config', 'doctor',
+    ].includes(c.name)).flatMap((c) => formatCommandHelp(c)),
+    '',
     '  carina --version                    Print version',
     '  carina help [command]               Show help',
     '',

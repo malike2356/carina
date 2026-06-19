@@ -12,6 +12,10 @@ describe('billing plans', () => {
     expect(normalizePlanId('unknown-plan')).toBe('free');
   });
 
+  it('normalizePlanId maps legacy Scout governance plans to Monitor', () => {
+    expect(normalizePlanId('scout_govern')).toBe('scout_monitor');
+  });
+
   it('resolveStripePriceId reads Carina Ops env vars', () => {
     process.env.STRIPE_PRICE_CARINA_OPS_TEAM = 'price_team_test';
     expect(resolveStripePriceId('carina_ops_team')).toBe('price_team_test');
@@ -19,5 +23,11 @@ describe('billing plans', () => {
 
   it('getPlan helper returns plan metadata', () => {
     expect(BILLING_PLANS[normalizePlanId('carina_ops_team')].name).toBe('Carina Ops Team');
+  });
+
+  it('exposes the current Scout pricing labels', () => {
+    expect(BILLING_PLANS.scout_monitor.monthlyPriceGbp).toBe(49);
+    expect(BILLING_PLANS.scout_pro.name).toBe('Scout Govern');
+    expect(BILLING_PLANS.scout_pro.monthlyPriceGbp).toBe(79);
   });
 });

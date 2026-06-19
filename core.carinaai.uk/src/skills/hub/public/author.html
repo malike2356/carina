@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Author - Carina Hub</title>
+  <link rel="stylesheet" href="/hub.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main class="wrap">
+    <h1 id="author-title">Author packs</h1>
+
+    <div class="form-panel" style="max-width:100%; margin-bottom:1.5rem">
+      <label for="api-key">API Key (required to load author packs)</label>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.35rem">
+        <input id="api-key" type="password" autocomplete="off" placeholder="Publish API key" style="flex:1; min-width:200px" />
+        <button type="button" class="btn" id="load-btn">Load packs</button>
+      </div>
+    </div>
+
+    <div id="author-msg" class="hidden"></div>
+    <div id="packs-list"></div>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="/hub.js"></script>
+  <script>
+    (function () {
+      const H = window.CarinaHub;
+      document.getElementById('nav').innerHTML = H.renderNav('');
+      document.getElementById('footer').innerHTML = H.renderFooter();
+
+      const author = new URLSearchParams(location.search).get('author');
+      if (author) {
+        document.getElementById('author-title').textContent = 'Packs by ' + author;
+      } else {
+        document.getElementById('author-title').textContent = 'Author packs';
+      }
+
+      async function loadPacks() {
+        const msg = document.getElementById('author-msg');
+        const list = document.getElementById('packs-list');
+        msg.className = 'hidden';
+
+        if (!author) {
+          msg.className = 'form-msg error';
+          msg.textContent = 'Missing ?author= parameter in the URL.';
+          return;
+        }
+
+        const apiKey = document.getElementById('api-key').value.trim();
+        if (!apiKey) {
+          msg.className = 'form-msg error';
+          msg.textContent = 'Enter your publish API key.';
+          return;
+        }
+
+        try {
+          const data = await H.api(
+            '/api/author/packs?author=' + encodeURIComponent(author),
+            { headers: { 'X-Api-Key': apiKey } }
+          );
+          const packs = data.packs || [];
+          list.innerHTML = packs.length
+            ? '<div class="grid">' + packs.map((p) =>
+              '<article class="card">' +
+              '<div class="card-head"><h3><a href="/skill.html?pack=' + encodeURIComponent(p.name) + '">' +
+              H.esc(p.name) + '</a></h3>' +
+              (p.featured ? H.badgePill('Featured', 'verified') : '') +
+              '</div>' +
+              '<p class="muted">v' + H.esc(p.version) + '</p>' +
+              '<div class="meta">' +
+              '<span class="muted">' + p.skill_count + ' skills</span>' +
+              '<span class="muted">' + p.download_count + ' installs</span>' +
+              '</div></article>'
+            ).join('') + '</div>'
+            : '<p class="muted">No packs found for this author.</p>';
+        } catch (err) {
+          msg.className = 'form-msg error';
+          msg.textContent = err.message;
+          list.innerHTML = '';
+        }
+      }
+
+      document.getElementById('load-btn').addEventListener('click', loadPacks);
+    })();
+  </script>
+</body>
+</html>

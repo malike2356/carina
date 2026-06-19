@@ -51,11 +51,11 @@ export function ScoutPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Labyrinth Scout</h1>
-        <p className="text-sm text-slate-600">This is the paid destination after Carina becomes part of a client workflow.</p>
+        <p className="text-sm text-slate-600">This is the control layer that governs a Carina workflow once it reaches production.</p>
       </div>
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">
-          Carina gets users in the door. Scout adds the controls businesses buy when they need audit logs, trust, and safe deployment.
+          Carina drives adoption. Scout adds the controls businesses need for audit logs, trust, approvals, and safe deployment.
         </p>
         <a
           href="https://labyrinthscout.com/pricing"
@@ -68,7 +68,7 @@ export function ScoutPage() {
       </div>
       {!status.canPair && (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-          Upgrade to Team to pair Scout. That is the point where Carina becomes the product and Scout becomes the control layer.
+          Upgrade to Team to pair Scout. That is the point where the workflow moves from workspace into governed production.
         </div>
       )}
       {status.paired ? (
@@ -76,7 +76,7 @@ export function ScoutPage() {
           <p className="inline-flex rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
             Scout connected
           </p>
-          <p className="mt-3 text-sm text-slate-600">Carina is now attached to the paid security layer.</p>
+          <p className="mt-3 text-sm text-slate-600">Carina is now attached to the production control layer.</p>
           {status.consoleUrl && (
             <p className="mt-4 text-sm">
               Console: <a className="font-medium text-slate-900" href={status.consoleUrl} target="_blank" rel="noreferrer">{status.consoleUrl}</a>
@@ -85,7 +85,7 @@ export function ScoutPage() {
         </div>
       ) : status.canPair ? (
         <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-600">Pair Carina to Scout so the workspace you already use starts reporting security events and trust data.</p>
+          <p className="text-sm text-slate-600">Pair Carina to Scout so the workspace you already use starts reporting security events, trust data, and approvals.</p>
           <input name="consoleUrl" required placeholder="Scout console URL" className="w-full rounded-md border border-slate-300 px-3 py-2" />
           <input name="apiKey" type="password" required placeholder="Scout API key" className="w-full rounded-md border border-slate-300 px-3 py-2" />
           {error && <p className="text-sm text-red-600">{error}</p>}

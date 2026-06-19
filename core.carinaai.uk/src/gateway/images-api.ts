@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+import path from 'node:path';
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { isControlAuthorized } from '../infrastructure/control-auth.js';
 import {
@@ -105,6 +107,34 @@ imagesApiRouter.post('/generate', async (req: ImagesRequest, res: Response) => {
     const status = providerErrorStatus(err);
     const msg = err instanceof Error ? err.message : String(err);
     res.status(status).json({ error: msg });
+  }
+});
+
+imagesApiRouter.post('/upload', async (req: ImagesRequest, res: Response) => {
+  const tenantId = req.tenantId ?? '__operator__';
+  const data = String(req.body?.data ?? '').trim();
+  if (!data) {
+    res.status(400).json({ error: 'data (base64 PNG) is required' });
+    return;
+  }
+  const prompt = String(req.body?.prompt ?? 'Uploaded image').trim() || 'Uploaded image';
+  try {
+    const buffer = Buffer.from(data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    if (buffer.length < 32) {
+      res.status(400).json({ error: 'Invalid image data' });
+      return;
+    }
+    const { createImageRecord, getDefaultImagesDir } = await import('./images-store.js');
+    const dir = getDefaultImagesDir();
+    await fs.mkdir(dir, { recursive: true });
+    const id = crypto.randomUUID();
+    const filepath = path.join(dir, `${id}.png`);
+    await fs.writeFile(filepath, buffer);
+    const image = createImageRecord(tenantId, { prompt, filepath }, id);
+    res.status(201).json(toImageResponse(image));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
   }
 });
 

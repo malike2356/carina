@@ -15,6 +15,15 @@
   }
   .compare-options { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; font-size: 0.82rem; }
   .compare-options label { display: flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+  .provider-picker {
+    display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.25rem; max-width: 900px;
+  }
+  .provider-chip {
+    display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 99px;
+    padding: 0.25rem 0.55rem; cursor: pointer;
+  }
+  .provider-chip input { margin: 0; }
   .compare-form button, .compare-actions button {
     align-self: flex-start; background: var(--accent); color: #0d0d0f; border: none;
     border-radius: 8px; padding: 0.55rem 1rem; font-size: 0.82rem; font-weight: 700; cursor: pointer;
@@ -63,6 +72,7 @@
     <button id="dismiss-compare-intro" style="float:right;background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem">x</button>
   </div>
   <div id="compare-history"></div>
+  <div id="provider-picker" class="provider-picker"></div>
   <form class="compare-form" id="compare-form">
     <textarea id="compare-query" placeholder="Enter a prompt to compare across providers..." required></textarea>
     <div class="compare-options">
@@ -72,6 +82,7 @@
   </form>
   <div class="compare-actions">
     <button type="button" id="compare-reveal" class="secondary" hidden>Reveal providers</button>
+    <button type="button" id="compare-open-doc" class="secondary" hidden>Open in Documents</button>
   </div>
   <div id="compare-grid" class="compare-grid"></div>
 </div>

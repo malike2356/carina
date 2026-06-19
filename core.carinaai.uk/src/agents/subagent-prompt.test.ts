@@ -12,11 +12,11 @@ describe('subagent-prompt', () => {
 
   it('buildSubagentTaskSuffix documents leaf vs orchestrator roles', () => {
     const leaf = buildSubagentTaskSuffix({ goal: 'scan logs', role: 'leaf', delegationDepth: 1 });
-    expect(leaf).toContain('Role: leaf');
-    expect(leaf).toContain('cannot delegate');
+    expect(leaf).toContain('LEAF WORKER');
+    expect(leaf).toContain('Spawning other agents');
 
     const orch = buildSubagentTaskSuffix({ goal: 'coordinate', role: 'orchestrator', delegationDepth: 1 });
-    expect(orch).toContain('Role: orchestrator');
-    expect(orch).toContain('may delegate');
+    expect(orch).toContain('ORCHESTRATOR');
+    expect(orch).toContain('delegate');
   });
 });

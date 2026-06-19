@@ -13,6 +13,9 @@ export class ChannelRegistry {
     'ntfy', 'pushover', 'gotify',
     'messenger', 'instagram', 'twitter', 'rocketchat', 'webex', 'kakaotalk', 'zalo',
     'threema', 'wire', 'keybase', 'twitch', 'youtube', 'groupme', 'nextcloud-talk', 'linkedin',
+    'zulip', 'reddit', 'bluesky', 'skype', 'pumble', 'twist', 'ryver', 'workplace',
+    'naver-works', 'qq', 'weibo', 'openhab', 'synology-chat', 'gitter', 'element',
+    'mastodon', 'snapchat', 'bridge-generic', 'apple-business-chat',
     'homeassistant', 'api', 'webhooks', 'cli',
   ];
 

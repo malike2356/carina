@@ -1,13 +1,9 @@
 import { CarinaAgent } from './carina.js';
 import { config } from '../config/index.js';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import path from 'path';
-import { isSafePath, expandPath } from '../tools/path-utils.js';
 import { resolveCronWorkdir } from './cron-workdir.js';
+import { runCronScriptFile } from './cron-script-runner.js';
+import { injectScriptOutput } from './cron-script-runner.js';
 import type { ExecuteJobOptions } from './cron-scheduler.js';
-
-const execFileAsync = promisify(execFile);
 
 export interface CronStepInput {
   jobId: string;
@@ -21,35 +17,13 @@ export interface CronStepInput {
   maxTurns?: number;
   modelProvider?: string | null;
   modelName?: string | null;
+  skipScript?: boolean;
 }
 
 export interface CronStepResult {
   output: string;
   success: boolean;
   error?: string;
-}
-
-async function runScript(
-  scriptPath: string,
-  workdir?: string,
-): Promise<{ stdout: string }> {
-  const resolved = expandPath(scriptPath);
-  if (!isSafePath(resolved)) {
-    throw new Error('Script path is not allowed.');
-  }
-  const scriptsRoot = path.resolve('data/scripts');
-  if (!resolved.startsWith(scriptsRoot)) {
-    throw new Error('Scripts must be under data/scripts/.');
-  }
-
-  const ext = path.extname(resolved).toLowerCase();
-  const cmd = ext === '.sh' || ext === '.bash' ? 'bash' : 'python3';
-  const result = await execFileAsync(cmd, [resolved], {
-    timeout: 60_000,
-    cwd: workdir,
-    maxBuffer: 512 * 1024,
-  });
-  return { stdout: result.stdout };
 }
 
 export async function runCronStep(input: CronStepInput): Promise<CronStepResult> {
@@ -62,21 +36,24 @@ export async function runCronStep(input: CronStepInput): Promise<CronStepResult>
   }
 
   let scriptOutput = '';
-  if (input.scriptPath) {
-    try {
-      const result = await runScript(input.scriptPath, jobWorkdir);
-      scriptOutput = result.stdout;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { output: '', success: false, error: msg };
+  if (!input.skipScript && input.scriptPath) {
+    const result = await runCronScriptFile(input.scriptPath, jobWorkdir);
+    if (result.exitCode !== 0) {
+      return { output: '', success: false, error: result.stderr || `exit ${result.exitCode}` };
     }
+    scriptOutput = result.stdout;
   }
 
   if (input.noAgent) {
     return { output: scriptOutput.trim(), success: true };
   }
 
-  if (!input.prompt?.trim()) {
+  let prompt = input.prompt ?? '';
+  if (scriptOutput) {
+    prompt = injectScriptOutput(prompt, scriptOutput);
+  }
+
+  if (!prompt.trim()) {
     return { output: scriptOutput.trim(), success: true };
   }
 
@@ -104,10 +81,8 @@ export async function runCronStep(input: CronStepInput): Promise<CronStepResult>
       agent.setProviderOverride({ name: input.modelProvider, model: input.modelName ?? undefined });
     }
     const context = contextParts.join('\n\n');
-    const prompt = context
-      ? `${context}\n\n---\n\n${input.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`
-      : `${input.prompt}${scriptOutput ? `\n\nScript output:\n${scriptOutput}` : ''}`;
-    const result = await agent.runTurn(prompt);
+    const finalPrompt = context ? `${context}\n\n---\n\n${prompt}` : prompt;
+    const result = await agent.runTurn(finalPrompt);
     return { output: result.text, success: true };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

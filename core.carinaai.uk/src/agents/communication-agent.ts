@@ -9,7 +9,12 @@ export class CommunicationAgent extends SubAgent {
   allowedTools = ['email-send', 'http-request'];
   requiresConfirmation = true;
 
-  constructor(sessionId: string, confirmTool?: ConfirmFn, providerOverride?: ProviderOverride) {
-    super(sessionId, false, confirmTool, providerOverride);
+  constructor(
+    sessionId: string,
+    confirmTool?: ConfirmFn,
+    providerOverride?: ProviderOverride,
+    abortSignal?: AbortSignal,
+  ) {
+    super(sessionId, false, confirmTool, providerOverride, abortSignal);
   }
 }

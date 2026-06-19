@@ -13,7 +13,7 @@ export const PROVIDER_MODELS: Record<ProviderName, string> = {
   openai: 'gpt-4o',
 };
 
-const LLM_KEY_PATTERN = /^(DEEPSEEK|ANTHROPIC|OPENAI)_API_KEY=/m;
+const LLM_KEY_PATTERN = /^(DEEPSEEK|ANTHROPIC|OPENAI|GEMINI|GROQ)_API_KEY=/m;
 
 export function carinaEnvPath(home = resolveCarinaHome()): string {
   return path.join(home, '.env');
@@ -27,7 +27,9 @@ export function hasLlmApiKeyInProcessEnv(): boolean {
   return Boolean(
     process.env.DEEPSEEK_API_KEY?.trim()
       || process.env.ANTHROPIC_API_KEY?.trim()
-      || process.env.OPENAI_API_KEY?.trim(),
+      || process.env.OPENAI_API_KEY?.trim()
+      || process.env.GEMINI_API_KEY?.trim()
+      || process.env.GROQ_API_KEY?.trim(),
   );
 }
 

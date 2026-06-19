@@ -67,3 +67,35 @@ curl -X PUT -H "Authorization: Bearer $CARINA_OPS_TOKEN" \
 ```
 
 **Status:** complete for config persistence; enforcement at message ingress is partial per channel adapter
+
+## Agent routing
+
+Inbound messages resolve to an agent workspace using bindings in `~/.carina/agents.json`.
+
+```bash
+carina agents list --bindings
+carina agents bind add work telegram
+carina agents route --channel telegram --account default --explain
+```
+
+Precedence (highest wins): thread ownership, contact, peer, guild, team, account, channel, default.
+
+**Status:** complete (CLI testable); configure during `carina onboard` or first `carina` run
+
+## Messenger slash commands
+
+After a channel is connected, users can type:
+
+- `/help`, `/model`, `/provider`, `/new`, `/stop`, `/status`
+
+Full reference: [Messaging gateway](../messaging-gateway.md).
+
+## Cross-surface continuity
+
+Set `CARINA_OPERATOR_SESSION=true` in `~/.carina/.env` to share one gateway session across CLI, web, TUI, and messengers.
+
+## Remote access
+
+Before exposing the gateway beyond localhost, read [Remote gateway access](./remote-access.md).
+
+**Status:** complete

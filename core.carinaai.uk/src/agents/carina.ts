@@ -20,6 +20,7 @@ import { resolveOrgIdFromUser } from '../hosted/scoped-query.js';
 import { getOrgPlan } from '../hosted/plan-gates.js';
 import { config } from '../config/index.js';
 import { resolveTurnPolicy } from '../config/runtime-config.js';
+import { mergeTokenUsage } from '../brain/token-counter.js';
 import { getSessionConfig } from '../config/session-config.js';
 import {
   getSessionHistory,
@@ -29,11 +30,30 @@ import {
   clearSession,
 } from '../memory/store.js';
 import { incrementSkillUsage } from '../skills/store.js';
-import { findSkillsIncludingSkillMd } from '../skills/index.js';
+import {
+  findSkillsIncludingSkillMd,
+  getActivePackSkillNames,
+  isRagPackAllowed,
+  isSkillAllowedForActivePacks,
+} from '../skills/index.js';
 import { compressTrajectoryWithStats, isStaleToolCall } from './trajectory.js';
 import { maybeRunRemCycle } from '../memory/rem/rem-promotion.js';
-import { isRagPackAllowed, isSkillAllowedForActivePacks } from '../skills/index.js';
-import { buildSurfaceContext, buildSystemPromptParts } from './system-prompt.js';
+import {
+  buildSurfaceContext,
+  buildSystemPromptTierParts,
+  buildVolatilePromptParts,
+} from './system-prompt.js';
+import {
+  buildSessionMetadataLine,
+  emptyPromptTiers,
+  joinPromptTiers,
+  pushPromptTier,
+} from './prompt-tiers.js';
+import {
+  buildSubagentWakeContext,
+  drainSubagentWakeMessages,
+} from './subagent-push-wake.js';
+import { buildMemorySessionAnchorLine } from '../ui/session-anchors.js';
 import { buildSubagentSystemPromptParts } from './subagent-prompt.js';
 import {
   buildCasualMessageContext,
@@ -60,7 +80,7 @@ import { wrapCompactedContext } from '../memory/memory-discipline.js';
 import { memoryTool } from '../tools/memory.js';
 import { getPendingClarification, clearPendingClarification } from '../tools/clarify.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
-import { loadWorkspaceContext } from '../workspace/context-files.js';
+import { loadWorkspaceContext, workspaceContextHasIdentity } from '../workspace/context-files.js';
 import { getAgentDefinition, getDefaultAgentDefinition } from '../workspaces/agent-registry.js';
 import { resolveAgentWorkspace } from '../workspaces/paths.js';
 import type { ConfirmFn } from './tool-runner.js';
@@ -79,6 +99,10 @@ import {
 import { isExpensiveModelTier, getModelMetadata } from '../brain/model-metadata.js';
 import { scanUserInput, scanAgentOutput } from '../security/prompt-guard-middleware.js';
 import { isSessionBlocked, isSuspended, getDeceptionAugmentation } from '../security/index.js';
+import {
+  freezeSessionPrompt,
+  resolveFrozenSystemPrompt,
+} from '../brain/prompt-cache.js';
 import type { ProviderOverride } from '../brain/llm.js';
 import type { AgentOptions, Message, Tool, ToolCall } from '../types/index.js';
 
@@ -195,44 +219,65 @@ export class CarinaAgent {
     return this.pendingProviderOverride ?? this.providerOverride;
   }
 
-  getTools(): Tool[] {
-    return resolveSessionTools({
+  async resolveTools(userMessage?: string): Promise<Tool[]> {
+    const providerName = this.getProviderOverride()?.name ?? llm.current().name;
+    const modelName = llm.modelFor(providerName);
+    const resolution = await resolveSessionTools({
       sessionId: this.sessionId,
       platform: this.platform,
       explicitAllowed: this.allowedTools,
-    }).tools;
+      userMessage,
+      provider: providerName,
+      model: modelName,
+    });
+    return resolution.tools;
   }
 
   async buildContext(userMessage: string): Promise<{ messages: Message[]; meta: TurnMeta }> {
+    const forceRebuild = process.env.CARINA_PROMPT_NOW === 'true';
+    const frozen = resolveFrozenSystemPrompt(this.sessionId, { forceRebuild });
+    if (frozen) {
+      const messages: Message[] = [
+        { role: 'system', content: frozen, timestamp: new Date() },
+        { role: 'user', content: userMessage, timestamp: new Date() },
+      ];
+      return { messages, meta: { memoryTurns: 0, ragChunks: 0, skills: 0 } };
+    }
+
     const meta: TurnMeta = { memoryTurns: 0, ragChunks: 0, skills: 0 };
-    const contextParts: string[] = [];
+    const tiers = emptyPromptTiers();
     const subagent = isSubagentSession(this.sessionId);
+    let providerName = '';
+    let modelName = '';
+    let modelMetadata = getModelMetadata('openai', 'gpt-4o');
 
     if (subagent) {
-      contextParts.push(...buildSubagentSystemPromptParts());
+      pushPromptTier(tiers, 'stable', ...buildSubagentSystemPromptParts());
     } else {
-      contextParts.push(...buildSystemPromptParts());
-      const surfaceContext = buildSurfaceContext(this.platform);
-      if (surfaceContext) {
-        contextParts.push(surfaceContext);
-      }
+      const { stable, context } = buildSystemPromptTierParts();
+      pushPromptTier(tiers, 'stable', ...stable);
+      pushPromptTier(tiers, 'context', ...context);
+      pushPromptTier(tiers, 'context', buildSurfaceContext(this.platform));
       if (isCasualMessage(userMessage)) {
-        contextParts.push(buildCasualMessageContext());
+        pushPromptTier(tiers, 'context', buildCasualMessageContext());
       }
     }
     const mandatoryHint = buildMandatoryToolHint(userMessage);
-    if (mandatoryHint) {
-      contextParts.push(mandatoryHint);
-    }
+    pushPromptTier(tiers, 'context', mandatoryHint);
     const recallHint = buildSessionRecallHint(userMessage);
-    if (recallHint) {
-      contextParts.push(recallHint);
-    }
+    pushPromptTier(tiers, 'context', recallHint);
     if (!subagent) {
-      const sessionTools = resolveSessionTools({
+      providerName = this.getProviderOverride()?.name ?? llm.current().name;
+      modelName = llm.modelFor(providerName);
+      modelMetadata = getModelMetadata(providerName, modelName);
+
+      const sessionTools = await resolveSessionTools({
         sessionId: this.sessionId,
         platform: this.platform,
         explicitAllowed: this.allowedTools,
+        userMessage,
+        provider: providerName,
+        model: modelName,
       });
       const domainRules = buildDomainRulesContext(
         selectDomainRulePacks(listAllDomainRulePacks(), {
@@ -240,66 +285,56 @@ export class CarinaAgent {
           toolsets: sessionTools.toolsets,
         }),
       );
-      if (domainRules) {
-        contextParts.push(domainRules);
-      }
+      pushPromptTier(tiers, 'context', domainRules);
 
-      const providerName = this.getProviderOverride()?.name ?? llm.current().name;
-      const modelName = llm.modelFor(providerName);
       const overlay = buildModelFamilyOverlay(providerName, modelName);
-      if (overlay) {
-        contextParts.push(overlay);
-      }
+      pushPromptTier(tiers, 'context', overlay);
       const budget = await checkMonthlyBudget();
       const costContext = buildProviderCostContext(providerName, modelName, budget);
-      if (costContext) {
-        contextParts.push(costContext);
-      }
+      pushPromptTier(tiers, 'context', costContext);
     }
     if (process.env.LABYRINTH_ENABLED === 'true') {
       const deceptionBlock = await getDeceptionAugmentation(config.labyrinth.instanceId);
-      if (deceptionBlock) {
-        contextParts.push(deceptionBlock);
-      }
+      pushPromptTier(tiers, 'context', deceptionBlock);
     }
     if (this.systemPromptSuffix) {
-      contextParts.push(this.systemPromptSuffix);
+      pushPromptTier(tiers, 'context', this.systemPromptSuffix);
     } else if (subagent) {
       const agentId = process.env.CARINA_ACTIVE_AGENT ?? 'main';
       const agent = getAgentDefinition(agentId) ?? getDefaultAgentDefinition();
       const workspaceDir = resolveAgentWorkspace(agent);
       const bootstrapParts = await loadWorkspaceContext(workspaceDir, { mode: 'minimal' });
       if (bootstrapParts.length > 0) {
-        contextParts.push(
+        pushPromptTier(
+          tiers,
+          'context',
           `Subagent bootstrap (minimal):\n${bootstrapParts.join('\n\n---\n\n')}`,
         );
       }
     }
 
     if (!subagent) {
+      const crossAgentEnabled = process.env.CARINA_CROSS_AGENT !== 'false';
+      const skipProfilePersonality = workspaceContextHasIdentity(this.systemPromptSuffix);
       const [personality, crossAgent, contacts, sharedSkills] = await Promise.all([
-        loadProfilePersonality(),
-        loadCrossAgentContext(),
+        skipProfilePersonality ? Promise.resolve(null) : loadProfilePersonality(),
+        crossAgentEnabled ? loadCrossAgentContext() : Promise.resolve<string[]>([]),
         loadAllContacts(),
         import('../skills/cross-agent-learning.js').then((m) =>
           m.loadSharedSkillsContext(process.env.CARINA_ACTIVE_AGENT ?? 'main'),
         ),
       ]);
 
-      const personalitySuffix = personalityToSystemSuffix(personality);
-      if (personalitySuffix) {
-        contextParts.push(personalitySuffix);
+      if (personality) {
+        const personalitySuffix = personalityToSystemSuffix(personality);
+        pushPromptTier(tiers, 'context', personalitySuffix);
       }
       if (crossAgent.length > 0) {
-        contextParts.push(crossAgent.join('\n\n---\n\n'));
+        pushPromptTier(tiers, 'context', crossAgent.join('\n\n---\n\n'));
       }
-      if (sharedSkills) {
-        contextParts.push(sharedSkills);
-      }
+      pushPromptTier(tiers, 'context', sharedSkills);
       const contactBlock = contactsContextBlock(contacts.slice(0, 15));
-      if (contactBlock) {
-        contextParts.push(contactBlock);
-      }
+      pushPromptTier(tiers, 'context', contactBlock);
     }
 
     const pendingClarification = getPendingClarification(this.sessionId);
@@ -307,13 +342,34 @@ export class CarinaAgent {
       const choicesText = pendingClarification.choices?.length
         ? pendingClarification.choices.join(', ')
         : 'open-ended';
-      contextParts.push(
+      pushPromptTier(
+        tiers,
+        'context',
         `Clarification context: on the previous turn you asked the user the following question `
         + `and are now receiving their answer. Question: "${pendingClarification.question}". `
         + `Choices offered: ${choicesText}. Resume your original task using their `
         + `answer. Do not ask the same question again.`,
       );
       clearPendingClarification(this.sessionId);
+    }
+
+    pushPromptTier(tiers, 'volatile', ...buildVolatilePromptParts());
+    pushPromptTier(
+      tiers,
+      'volatile',
+      buildSubagentWakeContext(drainSubagentWakeMessages(this.sessionId)),
+    );
+    if (!subagent && providerName) {
+      pushPromptTier(
+        tiers,
+        'volatile',
+        buildSessionMetadataLine({
+          sessionId: this.sessionId,
+          provider: providerName,
+          model: modelName,
+          platform: this.platform,
+        }),
+      );
     }
 
     if (this.memoryReady && !this.fastMode && memoryInjectionEnabled()) {
@@ -328,7 +384,8 @@ export class CarinaAgent {
         semantic ? findSkillsIncludingSkillMd(keywords) : Promise.resolve([]),
       ]);
 
-      const fixedParts = [...contextParts];
+      const volatileHeld = [...tiers.volatile];
+      const fixedParts = [...tiers.stable, ...tiers.context];
 
       if (persistent) {
         fixedParts.push(`Persistent memory:\n${persistent}`);
@@ -368,7 +425,9 @@ export class CarinaAgent {
       const otherSession = similar.filter((m) => m.sessionId !== this.sessionId);
       if (otherSession.length > 0) {
         meta.memoryTurns += otherSession.length;
-        const lines = otherSession.map((m) => `[${m.sessionId}] ${m.role}: ${m.content}`);
+        const lines = otherSession.map((m) =>
+          buildMemorySessionAnchorLine(m.sessionId, m.role ?? 'user', m.content),
+        );
         trimLayers.push({
           id: 'similar',
           content: `Relevant past memories:\n${lines.join('\n')}`,
@@ -402,23 +461,48 @@ export class CarinaAgent {
         });
       }
 
-      const budgeted = applyContextBudget(fixedParts, trimLayers, config.carina.contextCharBudget);
-      contextParts.length = 0;
-      contextParts.push(...budgeted.fixedParts);
+      const budgeted = applyContextBudget(fixedParts, trimLayers, {
+        budgetChars: config.carina.contextCharBudget,
+        modelWindowTokens: modelMetadata.contextWindow,
+      });
+
+      tiers.stable.length = 0;
+      tiers.context.length = 0;
+      tiers.volatile.length = 0;
+      pushPromptTier(tiers, 'stable', budgeted.fixedParts[0]);
+      pushPromptTier(tiers, 'context', ...budgeted.fixedParts.slice(1));
+      pushPromptTier(tiers, 'volatile', ...volatileHeld);
       for (const layer of budgeted.layers) {
         let content = layer.content;
         if (layer.id === 'history' && budgeted.historyCompacted) {
           content = wrapCompactedContext(content);
         }
-        contextParts.push(content);
+        pushPromptTier(tiers, 'volatile', content);
       }
     }
 
     const messages: Message[] = [];
-    if (contextParts.length > 0) {
+    const systemContent = joinPromptTiers(tiers);
+    if (systemContent) {
+      const toolNames = subagent
+        ? []
+        : (await resolveSessionTools({
+          sessionId: this.sessionId,
+          platform: this.platform,
+          explicitAllowed: this.allowedTools,
+          userMessage,
+          provider: providerName || (this.getProviderOverride()?.name ?? llm.current().name),
+          model: modelName || llm.modelFor(this.getProviderOverride()?.name ?? llm.current().name),
+        })).names;
+      freezeSessionPrompt(
+        this.sessionId,
+        systemContent,
+        [...getActivePackSkillNames()],
+        toolNames,
+      );
       messages.push({
         role: 'system',
-        content: contextParts.join('\n\n---\n\n'),
+        content: systemContent,
         timestamp: new Date(),
       });
     }
@@ -541,7 +625,7 @@ export class CarinaAgent {
       }
     }
 
-    const tools = this.getTools();
+    const tools = await this.resolveTools(safeUserMessage);
     const agentId = this.agentId ?? process.env.CARINA_ACTIVE_AGENT ?? 'main';
     const turnPolicy = resolveTurnPolicy({
       agentId,
@@ -613,7 +697,7 @@ export class CarinaAgent {
       }
 
       const providerName = this.getProviderOverride()?.name ?? llm.current().name;
-      const modelName = llm.modelFor(providerName);
+      let modelName = llm.modelFor(providerName);
       if (turnPolicy.blockExpensiveModels && isExpensiveModelTier(getModelMetadata(providerName, modelName).tier)) {
         yield {
           type: 'text',
@@ -678,10 +762,15 @@ export class CarinaAgent {
         this.providerOverride,
         this.tenantId,
       );
-      await recordUsage(this.sessionId, response.provider, response.tokensUsed, llm.modelFor(response.provider));
+      modelName = llm.modelFor(response.provider);
+      const usage = mergeTokenUsage(
+        response.tokensUsed,
+        `${response.content ?? ''}\n${messages.map((m) => m.content).join('\n')}`,
+        { provider: response.provider, model: modelName },
+      );
+      await recordUsage(this.sessionId, response.provider, usage.tokens, modelName);
 
       if (orgId) {
-        const modelName = llm.modelFor(response.provider);
         const modelClass = classifyModel(modelName);
         const rateCard = await getCurrentRateCard(modelClass);
         const credits = computeBillableCredits(
@@ -858,13 +947,9 @@ export class CarinaAgent {
         toolResults: toolResultsForEscalation,
         activeProvider: this.getProviderOverride()?.name ?? llm.current().name,
       });
-      if (escalation?.escalated && escalation.teacherReply) {
-        let notice = `\n\n[Teacher escalation (${escalation.teacherProvider ?? 'teacher'})]\n${escalation.teacherReply}`;
-        if (escalation.skillPath) {
-          notice += `\n\nSkill retained at: ${escalation.skillPath}`;
-        }
-        turnText += notice;
-        yield { type: 'text', content: notice };
+      if (escalation?.escalated && escalation.skillPath) {
+        // Teacher correction is internal only. Never expose it to the user.
+        // The skill is already persisted; nothing more to do here.
       }
     } catch {
       // teacher escalation must never break the user response

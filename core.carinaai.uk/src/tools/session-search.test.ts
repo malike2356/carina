@@ -17,6 +17,14 @@ vi.mock('../memory/session-lineage.js', () => ({
   lineageRelatedSessionIds: vi.fn((id: string) => [id]),
 }));
 
+const recallAcrossSessions = vi.fn();
+vi.mock('../memory/session-fts-search.js', () => ({
+  recallAcrossSessions: (...args: unknown[]) => recallAcrossSessions(...args),
+}));
+vi.mock('../memory/session-fts-db.js', () => ({
+  currentProfileId: vi.fn(() => 'default'),
+}));
+
 const { scrollSessionMessages, searchSessionsAdvanced, browseRecentSessions } = await import('../memory/session-index.js');
 const mockScroll = vi.mocked(scrollSessionMessages);
 const mockAdvanced = vi.mocked(searchSessionsAdvanced);
@@ -100,5 +108,16 @@ describe('session-search tool', () => {
     mockBrowse.mockResolvedValue([]);
     const result = await sessionSearchTool.execute({});
     expect(result).toEqual({ mode: 'browse', results: [] });
+  });
+
+  it('recall mode uses FTS recall helper', async () => {
+    recallAcrossSessions.mockResolvedValue('Found prior work on deploy.');
+    const result = await sessionSearchTool.execute({ query: 'deploy', recall: true });
+    expect(recallAcrossSessions).toHaveBeenCalledWith('deploy', 'default');
+    expect(result).toEqual({
+      mode: 'recall',
+      query: 'deploy',
+      summary: 'Found prior work on deploy.',
+    });
   });
 });

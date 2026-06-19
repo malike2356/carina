@@ -2,63 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Carina Hub</title>
-  <meta name="description" content="Discover and install domain packs for the Carina agent kernel. Free browse and install; verified badge for official packs." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carina Hub - Skills Marketplace</title>
+  <meta name="description" content="Discover and install community skill packs for Carina AI." />
   <link rel="canonical" href="https://hub.carinaai.uk/" />
   <link rel="stylesheet" href="/hub.css" />
 </head>
 <body>
-  <header class="top">
-    <div class="wrap top-inner">
-      <div>
-        <p class="eyebrow"><a href="https://carinaai.uk">Carina kernel</a></p>
-        <h1>Carina Hub</h1>
-        <p class="lede">Marketplace for packs, channels, toolsets, workflows, themes, MCP servers, and extensions. Browse, verify trust badges, and install with carina hub.</p>
-      </div>
-      <div class="stats" id="stats"></div>
-    </div>
-  </header>
+  <div id="nav"></div>
 
   <main class="wrap">
-    <section class="toolbar">
-      <input id="search" type="search" placeholder="Search packs by name, description, or author..." autocomplete="off" />
-      <select id="category">
-        <option value="">All categories</option>
-      </select>
-      <div class="tabs">
-        <button type="button" class="tab active" data-view="packs">Packs</button>
-        <button type="button" class="tab" data-view="skills">Skills</button>
-        <button type="button" class="tab" data-view="marketplace">Marketplace</button>
-      </div>
+    <section class="hero">
+      <h1>Carina Hub - Skills Marketplace</h1>
+      <p class="sub">Discover and install community skill packs for Carina AI</p>
+      <form class="hero-search" id="hero-search-form">
+        <input id="hero-search" type="search" placeholder="Search packs..." autocomplete="off" />
+        <button type="submit" class="btn">Search</button>
+      </form>
     </section>
 
-    <section id="packs-view" class="grid"></section>
-    <section id="skills-view" class="list hidden"></section>
-    <section id="marketplace-view" class="grid hidden"></section>
-    <section id="detail" class="detail hidden"></section>
+    <section class="stats-bar" id="stats-bar">
+      <div class="stat-card"><strong id="stat-packs">-</strong><span>Packs</span></div>
+      <div class="stat-card"><strong id="stat-skills">-</strong><span>Skills</span></div>
+      <div class="stat-card"><strong>Free</strong><span>Free and open</span></div>
+    </section>
 
-    <section class="author-panel">
-      <h2>For pack authors</h2>
-      <p>Publish from your machine with the CLI. Free to publish; verification is manual for official packs.</p>
-      <div class="code-row">
-        <code>carina pack publish ./my-pack</code>
-      </div>
-      <p class="muted">
-        See <a href="https://docs.carinaai.uk/docs/user/hub">Hub user guide</a> and
-        <a href="https://docs.carinaai.uk/docs/developer/stable-api">stable API docs</a>.
-        Premium packs use Stripe Checkout. Prices shown ex VAT.
-        See <a href="https://docs.carinaai.uk/docs/developer/selling-a-pack">Selling a pack</a>.
-      </p>
+    <section class="section">
+      <h2>Featured packs</h2>
+      <div class="grid" id="featured-grid"></div>
+    </section>
+
+    <section class="section">
+      <h2>Trending this week</h2>
+      <ul class="trend-list" id="trending-list"></ul>
+    </section>
+
+    <section class="section">
+      <h2>Categories</h2>
+      <div class="pills" id="category-pills"></div>
     </section>
   </main>
 
-  <footer class="wrap foot">
-    <p>MIT licensed agent kernel by <a href="https://carinaai.uk">VERLOX Ltd</a>.
-      Docs at <a href="https://docs.carinaai.uk">docs.carinaai.uk</a>.
-      Install the kernel: <code>npm install -g carina-agent</code></p>
-  </footer>
+  <div id="footer"></div>
 
   <script src="/hub.js"></script>
+  <script>
+    (function () {
+      const H = window.CarinaHub;
+      document.getElementById('nav').innerHTML = H.renderNav('home');
+      document.getElementById('footer').innerHTML = H.renderFooter();
+
+      function renderPackCard(p) {
+        const verified = p.featured === true
+          ? H.badgePill('Verified by Carina', 'verified')
+          : H.badgePill('Community', 'community');
+        const cmd = H.installCommand(p.name);
+        return (
+          '<article class="card">' +
+          '<div class="card-head"><h3><a href="/skill.html?pack=' + encodeURIComponent(p.name) + '">' +
+          H.esc(p.name) + '</a></h3>' + verified + '</div>' +
+          '<p>' + H.esc(H.excerpt(p.description, 80)) + '</p>' +
+          '<div class="meta">' +
+          H.badgePill(p.category || 'general', 'category') +
+          '<span class="muted">' + H.esc(p.author) + '</span>' +
+          '<span class="muted">' + p.skill_count + ' skills</span>' +
+          '<span class="muted">' + p.download_count + ' installs</span>' +
+          '</div>' +
+          '<button type="button" class="btn small secondary" data-copy="' + H.esc(cmd) + '">Copy install</button>' +
+          '</article>'
+        );
+      }
+
+      document.getElementById('hero-search-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = document.getElementById('hero-search').value.trim();
+        location.href = q ? '/browse.html?q=' + encodeURIComponent(q) : '/browse.html';
+      });
+
+      async function init() {
+        const registry = await H.api('/api/registry');
+        document.getElementById('stat-packs').textContent = registry.packCount;
+        document.getElementById('stat-skills').textContent = registry.skillCount;
+
+        const featured = await H.api('/api/packs?featured=true');
+        const grid = document.getElementById('featured-grid');
+        const packs = (featured.packs || []).slice(0, 6);
+        grid.innerHTML = packs.length
+          ? packs.map(renderPackCard).join('')
+          : '<p class="muted">No featured packs yet.</p>';
+        H.bindCopyButtons(grid);
+
+        const all = await H.api('/api/packs');
+        const trending = (all.packs || [])
+          .slice()
+          .sort((a, b) => (b.download_count || 0) - (a.download_count || 0))
+          .slice(0, 5);
+        document.getElementById('trending-list').innerHTML = trending.map((p) =>
+          '<li><a href="/skill.html?pack=' + encodeURIComponent(p.name) + '">' + H.esc(p.name) +
+          '</a><span class="muted">' + p.download_count + ' installs</span></li>'
+        ).join('') || '<li class="muted">No packs yet.</li>';
+
+        const cats = await H.api('/api/categories');
+        document.getElementById('category-pills').innerHTML = (cats.categories || []).map((c) =>
+          '<a class="pill-link" href="/browse.html?category=' + encodeURIComponent(c) + '">' +
+          H.esc(c) + '</a>'
+        ).join('') || '<span class="muted">No categories yet.</span>';
+      }
+
+      init().catch((err) => {
+        document.querySelector('main').innerHTML =
+          '<p class="form-msg error">Hub unavailable: ' + H.esc(err.message) + '</p>';
+      });
+    })();
+  </script>
 </body>
 </html>

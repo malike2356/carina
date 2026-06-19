@@ -52,6 +52,11 @@ export function createCronjobTool(sessionId: string): Tool {
         repeat: { type: 'number', description: 'Run count (1 = once, omit = forever)' },
         deliver: { type: 'string', description: 'origin, local, all, or telegram:chat_id[:thread_id]' },
         script: { type: 'string', description: 'Path to .sh/.py script under data/scripts/' },
+        script_inline: { type: 'string', description: 'Inline shell script (stdout injected into prompt)' },
+        script_config: {
+          type: 'object',
+          description: 'Inline script config: { script, cwd?, timeoutMs?, env? }',
+        },
         no_agent: { type: 'boolean', description: 'Script-only mode: skip LLM, deliver stdout verbatim' },
         context_from: { type: 'array', items: { type: 'string' } },
         chain_after: { type: 'array', items: { type: 'string' }, description: 'Job IDs to run after this job completes' },
@@ -75,12 +80,30 @@ export function createCronjobTool(sessionId: string): Tool {
 
         const prompt = params.prompt ? String(params.prompt) : null;
         const script = params.script ? String(params.script) : null;
+        const scriptInline = params.script_inline ? String(params.script_inline) : null;
+        const scriptConfigRaw = params.script_config;
         const noAgent = Boolean(params.no_agent);
 
+        const scriptConfig = scriptConfigRaw && typeof scriptConfigRaw === 'object'
+          ? {
+            script: String((scriptConfigRaw as Record<string, unknown>).script ?? ''),
+            cwd: (scriptConfigRaw as Record<string, unknown>).cwd
+              ? String((scriptConfigRaw as Record<string, unknown>).cwd)
+              : undefined,
+            timeoutMs: (scriptConfigRaw as Record<string, unknown>).timeoutMs != null
+              ? Number((scriptConfigRaw as Record<string, unknown>).timeoutMs)
+              : undefined,
+          }
+          : scriptInline
+            ? { script: scriptInline }
+            : null;
+
         if (noAgent) {
-          if (!script) return { error: 'script is required when no_agent is true (script-only mode).' };
-        } else if (!prompt && !script) {
-          return { error: 'Either prompt or script is required.' };
+          if (!script && !scriptConfig) {
+            return { error: 'script, script_inline, or script_config is required when no_agent is true.' };
+          }
+        } else if (!prompt && !script && !scriptConfig) {
+          return { error: 'Either prompt or a script is required.' };
         }
 
         const sessionDelivery = getSessionDelivery(sessionId);
@@ -94,6 +117,7 @@ export function createCronjobTool(sessionId: string): Tool {
             schedule,
             prompt,
             scriptPath: script,
+            scriptConfig: scriptConfig?.script ? scriptConfig : null,
             noAgent,
             deliver,
             deliverChannels,
@@ -110,6 +134,7 @@ export function createCronjobTool(sessionId: string): Tool {
             profileName: 'default',
             modelProvider: null,
             modelName: null,
+            failureLimit: 3,
           });
           if (parsed.oneShot && prompt) {
             syncCronReminder({
@@ -165,6 +190,11 @@ export function createCronjobTool(sessionId: string): Tool {
             deliver: params.deliver ? String(params.deliver) : undefined,
             deliverChannels,
             scriptPath: params.script ? String(params.script) : undefined,
+            scriptConfig: params.script_config !== undefined || params.script_inline !== undefined
+              ? (params.script_inline
+                ? { script: String(params.script_inline) }
+                : params.script_config as { script: string })
+              : undefined,
             noAgent: params.no_agent !== undefined ? Boolean(params.no_agent) : undefined,
             contextFrom: Array.isArray(params.context_from) ? (params.context_from as string[]) : undefined,
             chainAfter: Array.isArray(params.chain_after) ? (params.chain_after as string[]) : undefined,

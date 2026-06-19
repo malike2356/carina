@@ -5,6 +5,11 @@ import YAML from 'yaml';
 import { CARINA_HOME } from '../../config/paths.js';
 import { DEFAULT_CLI_CONFIG, expandHome, type CarinaCliConfig, type ProviderName } from './defaults.js';
 import { envKeyForProvider } from './env.js';
+import {
+  isAuxiliaryTaskName,
+  type AuxiliaryModelConfig,
+  type AuxiliaryModelMap,
+} from '../../types/auxiliary-model.js';
 
 export const CLI_CONFIG_PATH = path.join(CARINA_HOME, 'config.yaml');
 export type { CarinaCliConfig } from './defaults.js';
@@ -18,6 +23,30 @@ function isRecord(value: unknown): value is PlainRecord {
 function normaliseProvider(value: unknown): ProviderName {
   if (value === 'anthropic' || value === 'openai' || value === 'deepseek') return value;
   return DEFAULT_CLI_CONFIG.provider;
+}
+
+function parseAuxiliaryModelConfig(value: unknown): AuxiliaryModelConfig | undefined {
+  if (!isRecord(value)) return undefined;
+  const cfg: AuxiliaryModelConfig = {};
+  if (typeof value.provider === 'string' && value.provider.trim()) cfg.provider = value.provider.trim();
+  if (typeof value.model === 'string' && value.model.trim()) cfg.model = value.model.trim();
+  if (typeof value.maxTokens === 'number' && value.maxTokens > 0) cfg.maxTokens = value.maxTokens;
+  if (value.reasoningEffort === 'low' || value.reasoningEffort === 'medium' || value.reasoningEffort === 'high') {
+    cfg.reasoningEffort = value.reasoningEffort;
+  }
+  if (typeof value.temperature === 'number') cfg.temperature = value.temperature;
+  return Object.keys(cfg).length > 0 ? cfg : undefined;
+}
+
+function parseAuxiliaryModels(value: unknown): AuxiliaryModelMap | undefined {
+  if (!isRecord(value)) return undefined;
+  const map: AuxiliaryModelMap = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (!isAuxiliaryTaskName(key)) continue;
+    const parsed = parseAuxiliaryModelConfig(entry);
+    if (parsed) map[key] = parsed;
+  }
+  return Object.keys(map).length > 0 ? map : undefined;
 }
 
 function parseConfig(value: unknown): CarinaCliConfig {
@@ -48,6 +77,8 @@ function parseConfig(value: unknown): CarinaCliConfig {
         : DEFAULT_CLI_CONFIG.scout.url,
     },
     providers,
+    auxiliaryModels: parseAuxiliaryModels(raw.auxiliaryModels),
+    skin: typeof raw.skin === 'string' ? raw.skin : undefined,
   };
 }
 

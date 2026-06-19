@@ -30,6 +30,7 @@ const PUBLIC_HOSTED_PATHS = new Set([
   '/api/auth/login',
   '/api/auth/register',
   '/api/carina-ops/health',
+  '/webhooks/telegram',
 ]);
 
 export function isPublicHostedPath(path: string): boolean {
@@ -85,6 +86,18 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
     next();
     return;
   }
+  if (req.session?.webPendingTotp) {
+    if (req.path === '/login/2fa' || req.path.startsWith('/api/auth/totp')) {
+      next();
+      return;
+    }
+    if (req.path.startsWith('/api/')) {
+      res.status(401).json({ error: 'Two-factor verification required' });
+      return;
+    }
+    res.redirect('/login/2fa');
+    return;
+  }
   if (req.session?.hostedAccountId) {
     const profile = await getUserProfile(req.session.hostedAccountId);
     if (profile) {
@@ -115,6 +128,10 @@ export function redirectIfWebAuthed(req: Request, res: Response, next: NextFunct
   }
   if (req.session?.webAuthed) {
     res.redirect('/');
+    return;
+  }
+  if (req.session?.webPendingTotp && req.path === '/login') {
+    res.redirect('/login/2fa');
     return;
   }
   next();

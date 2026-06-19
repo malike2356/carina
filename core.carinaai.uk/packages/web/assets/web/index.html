@@ -148,7 +148,14 @@
       background: transparent; color: var(--muted); cursor: pointer; flex-shrink: 0;
       align-items: center; justify-content: center;
     }
+    .session-item .session-pin {
+      display: none; width: 22px; height: 22px; border-radius: 5px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer; flex-shrink: 0;
+      align-items: center; justify-content: center; font-size: 0.72rem;
+    }
+    .session-item .session-pin.pinned { display: inline-flex; color: var(--accent); }
     .session-item:hover .session-delete { display: inline-flex; }
+    .session-item:hover .session-pin { display: inline-flex; }
     .session-item .session-delete:hover { color: var(--danger); background: var(--hover); }
     .session-item .session-delete svg { width: 12px; height: 12px; }
     .session-empty { color: var(--muted); font-size: 0.78rem; padding: 24px 12px; text-align: center; line-height: 1.6; }
@@ -445,13 +452,7 @@
     #stop-btn.visible { display: flex; }
     #send.streaming-hidden { display: none; }
     .composer-hint { text-align: center; font-size: 0.7rem; color: var(--muted); margin-top: 8px; line-height: 1.4; opacity: 0.7; }
-    .carina-mit-footer {
-      text-align: center; font-size: 0.45rem; color: var(--muted);
-      margin: 2px 0 0; padding: 0; line-height: 1.2; opacity: 0.32;
-      letter-spacing: 0.02em; font-weight: 400;
-    }
-    .carina-mit-footer a { color: inherit; text-decoration: none; opacity: 0.85; }
-    .carina-mit-footer a:hover { color: var(--accent); opacity: 1; text-decoration: underline; }
+    .carina-mit-footer a:hover { opacity: 0.45; }
 
     #scroll-bottom {
       position: fixed; bottom: 110px; right: 22px; width: 34px; height: 34px;
@@ -763,7 +764,7 @@
             </button>
           </div>
         </div>
-        <p class="composer-hint">Carina can make mistakes. Check important info.</p>
+        <p class="composer-hint">Click the microphone for voice input. Use Listen on replies for text-to-speech.</p>
       </div>
     </footer>
   </div>
@@ -826,20 +827,14 @@
             <span>Workspace overview</span>
             <span class="desc">All workspace apps</span>
           </a>
-          <a href="/notes">
-            <span>Notes and Tasks</span>
-            <span class="desc">Notes, tasks, and reminders</span>
+          <a href="/research">
+            <span>Deep Research</span>
+            <span class="desc">Multi-step research with citations</span>
           </a>
-          <a href="/calendar" data-operator-only hidden>
-            <span>Calendar</span>
-            <span class="desc">Reminder schedule from notes</span>
+          <a href="/compare">
+            <span>Model Compare</span>
+            <span class="desc">Side-by-side model testing</span>
           </a>
-          <a href="/email">
-            <span>Email</span>
-            <span class="desc">Inbound triage and archive</span>
-          </a>
-        </div>
-        <div class="link-group" data-operator-only hidden>
           <a href="/documents">
             <span>Documents</span>
             <span class="desc">Markdown, HTML, and CSV editor</span>
@@ -848,6 +843,24 @@
             <span>Images</span>
             <span class="desc">Generate, browse, and edit images</span>
           </a>
+          <a href="/notes">
+            <span>Notes and Tasks</span>
+            <span class="desc">Notes, tasks, and reminders</span>
+          </a>
+          <a href="/calendar" data-operator-only hidden>
+            <span>Calendar</span>
+            <span class="desc">Reminder schedule from notes</span>
+          </a>
+          <a href="/email" data-operator-only hidden>
+            <span>Email</span>
+            <span class="desc">Inbound triage and archive</span>
+          </a>
+          <a href="/mobile">
+            <span>Mobile companion</span>
+            <span class="desc">Pair your phone for chat on the go</span>
+          </a>
+        </div>
+        <div class="link-group" data-operator-only hidden>
           <a href="/memory">
             <span>Memory</span>
             <span class="desc">Persistent agent memory entries</span>
@@ -901,6 +914,19 @@
           </p>
         </div>
         <div class="field">
+          <label>Chat presets</label>
+          <p class="field-hint">Save the current chat as a named preset. Presets live on the server; messages stay in this browser.</p>
+          <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+            <input type="text" id="preset-name" placeholder="Preset name" style="flex:1;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.45rem 0.6rem;font-size:0.82rem">
+            <button type="button" id="save-preset-btn" style="background:var(--accent);color:#0d0d0f;border:0;border-radius:6px;padding:0.45rem 0.75rem;font-size:0.82rem;font-weight:600;cursor:pointer">Save</button>
+          </div>
+          <div id="preset-list" style="font-size:0.78rem;color:var(--muted)"></div>
+        </div>
+        <div class="field">
+          <label>Media</label>
+          <p class="field-hint"><a href="/images" style="color:var(--accent)">Image gallery</a>: generate, upload, inpaint, and download.</p>
+        </div>
+        <div class="field">
           <label>Local chat history</label>
           <p class="field-hint">Chat sessions are stored only in this browser. Clearing them cannot be undone.</p>
           <button class="btn-danger-outline" id="clear-history-btn" type="button">Clear all local chat history</button>
@@ -925,6 +951,17 @@
           <div class="kbd-row"><span class="label">New line</span><span><kbd>Shift</kbd> + <kbd>Enter</kbd></span></div>
           <div class="kbd-row"><span class="label">Command palette</span><span><kbd>/</kbd></span></div>
           <div class="kbd-row"><span class="label">Toggle sidebar</span><span><kbd>Ctrl</kbd> + <kbd>B</kbd></span></div>
+        </div>
+        <div class="help-section">
+          <h4>Voice</h4>
+          <div class="kbd-row"><span class="label">Microphone button</span><span>Dictate into the message box</span></div>
+          <div class="kbd-row"><span class="label">Listen on replies</span><span>Play Carina's answer aloud</span></div>
+          <div class="kbd-row"><span class="label">Telegram</span><span>/speak or [speak] for voice replies</span></div>
+        </div>
+        <div class="help-section">
+          <h4>Workspace and companion</h4>
+          <div class="kbd-row"><span class="label"><a href="/workspace" style="color:var(--accent)">Workspace</a></span><span>Documents, images, research, compare</span></div>
+          <div class="kbd-row"><span class="label"><a href="/mobile" style="color:var(--accent)">Mobile companion</a></span><span>Pair your phone with carina pair</span></div>
         </div>
         <div class="help-section">
           <h4>Slash commands</h4>
@@ -1027,9 +1064,14 @@
     function attachCopyActions(el, text) {
       const actions = document.createElement('div');
       actions.className = 'thread-actions';
-      actions.innerHTML = '<button type="button" class="thread-action-btn copy-btn" title="Copy">' + copySvg() + ' Copy</button>';
+      actions.innerHTML =
+        '<button type="button" class="thread-action-btn speak-btn" title="Listen">' + speakSvg() + ' Listen</button>' +
+        '<button type="button" class="thread-action-btn copy-btn" title="Copy">' + copySvg() + ' Copy</button>';
       actions.querySelector('.copy-btn').addEventListener('click', () => {
         navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'));
+      });
+      actions.querySelector('.speak-btn').addEventListener('click', () => {
+        void speakAssistantText(text, actions.querySelector('.speak-btn'));
       });
       el.parentElement.appendChild(actions);
     }
@@ -1286,6 +1328,7 @@
         const prefs = getPrefs();
         syncSegGroup('theme-seg-group', 'data-theme-choice', prefs.theme);
         syncSegGroup('density-seg-group', 'data-density-choice', prefs.density);
+        loadWorkspacePresets();
       }
       overlay.classList.add('open');
     }
@@ -1334,6 +1377,36 @@
       });
     });
 
+    document.getElementById('save-preset-btn').addEventListener('click', async () => {
+      const name = document.getElementById('preset-name').value.trim();
+      if (!name) {
+        showToast('Enter a preset name');
+        return;
+      }
+      const sid = getSessionId();
+      const sessions = getSessions();
+      const current = sessions.find((s) => s.id === sid);
+      try {
+        const res = await fetch('/api/workspace/presets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            sessionId: sid,
+            preview: current?.preview || 'Saved chat',
+            provider: activeProvider || undefined,
+            theme: getPrefs().theme,
+          }),
+        });
+        if (!res.ok) throw new Error('Save failed');
+        document.getElementById('preset-name').value = '';
+        loadWorkspacePresets();
+        showToast('Preset saved');
+      } catch {
+        showToast('Could not save preset');
+      }
+    });
+
     document.getElementById('clear-history-btn').addEventListener('click', () => {
       if (!confirm('Clear all local chat history? This cannot be undone.')) return;
       localStorage.removeItem(SESSIONS_KEY);
@@ -1371,10 +1444,51 @@
     }
 
     function saveSessionEntry(id, preview) {
+      const existing = getSessions().find((s) => s.id === id);
       const sessions = getSessions().filter(s => s.id !== id);
-      sessions.unshift({ id, preview, at: Date.now() });
+      sessions.unshift({ id, preview, at: Date.now(), pinned: existing?.pinned || false });
       localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions.slice(0, 50)));
       renderSessionList();
+    }
+
+    function toggleSessionPin(id) {
+      const sessions = getSessions().map((s) => s.id === id ? { ...s, pinned: !s.pinned } : s);
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+      renderSessionList();
+    }
+
+    async function loadWorkspacePresets() {
+      const listEl = document.getElementById('preset-list');
+      if (!listEl) return;
+      try {
+        const res = await fetch('/api/workspace/presets');
+        const data = await res.json();
+        const presets = data.presets || [];
+        if (!presets.length) {
+          listEl.textContent = 'No presets saved yet.';
+          return;
+        }
+        listEl.innerHTML = presets.map(function (p) {
+          return '<div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.35rem">' +
+            '<button type="button" data-load-preset="' + escapeHtml(p.sessionId) + '" style="flex:1;text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.55rem;color:var(--text);cursor:pointer">' +
+            escapeHtml(p.name) + '</button>' +
+            '<button type="button" data-delete-preset="' + escapeHtml(p.id) + '" style="background:transparent;border:0;color:var(--muted);cursor:pointer">x</button></div>';
+        }).join('');
+        listEl.querySelectorAll('[data-load-preset]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            openSessionById(btn.getAttribute('data-load-preset'));
+            closeModal(document.getElementById('modal-settings'));
+          });
+        });
+        listEl.querySelectorAll('[data-delete-preset]').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            await fetch('/api/workspace/presets/' + encodeURIComponent(btn.getAttribute('data-delete-preset')), { method: 'DELETE' });
+            loadWorkspacePresets();
+          });
+        });
+      } catch {
+        listEl.textContent = 'Could not load presets.';
+      }
     }
 
     function groupLabel(at) {
@@ -1447,7 +1561,7 @@
 
       const order = ['Today', 'Yesterday', 'Previous 7 days', 'Older'];
       const groups = {};
-      sessions.forEach((s) => {
+      sessions.slice().sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.at || 0) - (a.at || 0)).forEach((s) => {
         const label = groupLabel(s.at);
         (groups[label] = groups[label] || []).push(s);
       });
@@ -1460,6 +1574,8 @@
           const title = escapeHtml((s.preview || 'New chat').slice(0, 60));
           html += '<div class="session-item' + (s.id === current ? ' active' : '') + '" data-id="' + s.id + '">' +
             '<span class="session-title">' + title + '</span>' +
+            '<button type="button" class="session-pin' + (s.pinned ? ' pinned' : '') + '" data-pin="' + s.id + '" title="Pin chat">' +
+            (s.pinned ? '*' : 'o') + '</button>' +
             '<button type="button" class="session-delete" data-delete="' + s.id + '" title="Delete chat">' +
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
             '</button></div>';
@@ -1469,7 +1585,7 @@
 
       sessionListEl.querySelectorAll('.session-item').forEach((el) => {
         el.addEventListener('click', (e) => {
-          if (e.target.closest('.session-delete')) return;
+          if (e.target.closest('.session-delete') || e.target.closest('.session-pin')) return;
           abandonActiveStreamForSessionSwitch();
           localStorage.setItem(SESSION_KEY, el.dataset.id);
           loadSessionMessages(el.dataset.id);
@@ -1482,6 +1598,13 @@
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           deleteSession(btn.dataset.delete);
+        });
+      });
+
+      sessionListEl.querySelectorAll('.session-pin').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSessionPin(btn.dataset.pin);
         });
       });
     }
@@ -1649,6 +1772,29 @@
       });
     }
 
+    function openSessionById(id) {
+      if (!id) return;
+      abandonActiveStreamForSessionSwitch();
+      localStorage.setItem(SESSION_KEY, id);
+      loadSessionMessages(id);
+      renderSessionList();
+      closeSidebarOnMobile();
+    }
+
+    function bindSessionAnchorLinks(root) {
+      if (!root || !root.querySelectorAll) return;
+      root.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        const href = anchor.getAttribute('href') || '';
+        const sessionId = decodeURIComponent(href.slice(1)).trim();
+        if (!sessionId || sessionId.length < 8) return;
+        anchor.classList.add('session-anchor-link');
+        anchor.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          openSessionById(sessionId);
+        });
+      });
+    }
+
     function renderMd(text) {
       if (isPlainAssistantText(text)) {
         return escapeHtml(text).replace(/\n/g, '<br>');
@@ -1657,6 +1803,7 @@
       const wrap = document.createElement('div');
       wrap.innerHTML = html;
       wrap.querySelectorAll('pre code').forEach((b) => hljs.highlightElement(b));
+      bindSessionAnchorLinks(wrap);
       return wrap.innerHTML;
     }
 
@@ -1716,6 +1863,61 @@
       return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
     }
 
+    function speakSvg() {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+    }
+
+    let activeSpeechAudio = null;
+
+    function plainTextForSpeech(content) {
+      const div = document.createElement('div');
+      div.innerHTML = renderMd(content || '');
+      return (div.textContent || div.innerText || content || '').replace(/\s+/g, ' ').trim();
+    }
+
+    async function speakAssistantText(content, button) {
+      const text = plainTextForSpeech(content);
+      if (!text) {
+        showToast('Nothing to read aloud');
+        return;
+      }
+      if (activeSpeechAudio) {
+        activeSpeechAudio.pause();
+        activeSpeechAudio = null;
+      }
+      if (button) button.disabled = true;
+      try {
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || 'Text-to-speech failed');
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        activeSpeechAudio = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          if (activeSpeechAudio === audio) activeSpeechAudio = null;
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(url);
+          if (activeSpeechAudio === audio) activeSpeechAudio = null;
+          showToast('Playback failed');
+        };
+        await audio.play();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        showToast(msg);
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
     function buildThreadRow(role, content, provider, opts) {
       const isUser = role === 'user';
       const profile = getProfile();
@@ -1744,6 +1946,9 @@
 
       const actions = (!isThinking && !isStreaming && content)
         ? '<div class="thread-actions">' +
+          (!isUser
+            ? '<button type="button" class="thread-action-btn speak-btn" title="Listen">' + speakSvg() + ' Listen</button>'
+            : '') +
           '<button type="button" class="thread-action-btn copy-btn" title="Copy">' + copySvg() + ' Copy</button>' +
           '</div>'
         : '';
@@ -1766,6 +1971,12 @@
       if (copyBtn) {
         copyBtn.addEventListener('click', () => {
           navigator.clipboard.writeText(content).then(() => showToast('Copied to clipboard'));
+        });
+      }
+      const speakBtn = row.querySelector('.speak-btn');
+      if (speakBtn) {
+        speakBtn.addEventListener('click', () => {
+          void speakAssistantText(content, speakBtn);
         });
       }
       return row;
@@ -1924,6 +2135,11 @@
         setStreamingState(false);
         return;
       }
+      fetch('/api/chat/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: getSessionId(), turnId: turnId }),
+      }).catch(function() {});
       const el = document.getElementById(turnId);
       const cancelled = turnRegistry.cancelTurn(turnId);
       const sessionId = cancelled?.sessionId
@@ -1984,7 +2200,8 @@
       if (!turnRegistry.shouldAcceptStreamEvent(sessionId, turnId)) return;
 
       const url = '/api/chat/stream?message=' + encodeURIComponent(text)
-        + '&sessionId=' + encodeURIComponent(sessionId);
+        + '&sessionId=' + encodeURIComponent(sessionId)
+        + '&turnId=' + encodeURIComponent(turnId);
       const es = new EventSource(url);
       activeEventSource = es;
 

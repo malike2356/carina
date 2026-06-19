@@ -1,10 +1,12 @@
 import { allocateGatewaySession } from '../memory/session-scope.js';
+import { cancelAllStreamsForSession } from '../telemetry/stream-session.js';
+import { applyPendingInvalidation, thawSession } from '../brain/prompt-cache.js';
 import { CarinaOrchestrator } from '../agents/orchestrator.js';
 import { llm } from '../brain/llm.js';
 import type { ConfirmFn } from '../agents/tool-runner.js';
 import { getRedis } from '../memory/redis.js';
 import type { CarinaMessage, Message } from '../types/index.js';
-import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
+import { handleGatewayCommand, handleGatewayCommandAsync, type GatewayCommandContext } from './commands.js';
 import { hasImageAttachment } from './model-command.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import type { ChannelMessage, ChannelName } from './channels/channel-adapter.interface.js';
@@ -17,9 +19,7 @@ import {
   summarizeToolParamsForChannel,
 } from './channels/channel-approval-ui.js';
 import { normalizeChannelInbound } from './channels/channel-platform.js';
-import {
-  buildGatewaySessionMapKey,
-} from './channels/channel-session-binding.js';
+import { buildGatewaySessionMapKey } from './channels/channel-session-binding.js';
 import { buildSurfaceSessionMapKey, resolveSurfaceExternalUserId, type ClientSurface } from '../surfaces/index.js';
 import {
   applyAgentRuntimeEnv,
@@ -214,12 +214,73 @@ export class GatewayRouter {
   }
 
   async clearSession(sessionId: string): Promise<void> {
+    const wasInvalidated = applyPendingInvalidation(sessionId);
+    if (wasInvalidated) {
+      console.debug(`[session] System prompt refreshed for next conversation (${sessionId})`);
+    }
     const agent = this.agents.get(sessionId);
     if (agent) {
       await agent.clear();
     }
     this.sessionsWithRecentImages.delete(sessionId);
     this.sessionProviderOverrides.delete(sessionId);
+  }
+
+  private async retireSession(sessionId: string): Promise<void> {
+    try {
+      const { indexEndedSession } = await import('../memory/session-fts-lifecycle.js');
+      await indexEndedSession(sessionId);
+    } catch (err) {
+      console.warn('[session-fts] Failed to index session on end:', err);
+    }
+    await this.clearSession(sessionId);
+    this.evictSessionRuntime(sessionId);
+  }
+
+  private evictSessionRuntime(sessionId: string): void {
+    thawSession(sessionId);
+    this.agents.delete(sessionId);
+    this.lastSeen.delete(sessionId);
+    this.sessionRuntime.delete(sessionId);
+    this.sessionAgentIds.delete(sessionId);
+    this.sessionSystemPromptSuffixes.delete(sessionId);
+    this.sessionConfirmHandlers.delete(sessionId);
+    this.sessionsWithRecentImages.delete(sessionId);
+    this.sessionProviderOverrides.delete(sessionId);
+  }
+
+  async rotateMappedSession(mapKey: string, oldSessionId: string): Promise<string> {
+    await this.retireSession(oldSessionId);
+    const newSessionId = allocateGatewaySession(oldSessionId);
+    const redis = getRedis();
+    if (redis) {
+      await redis.set(mapKey, newSessionId);
+    } else {
+      memoryFallback.set(mapKey, newSessionId);
+    }
+    return newSessionId;
+  }
+
+  async rotateSurfaceSession(
+    agentId: string,
+    surface: string,
+    externalUserId: string,
+    oldSessionId: string,
+  ): Promise<string> {
+    const mapKey = buildSurfaceSessionMapKey(agentId, surface, externalUserId);
+    return this.rotateMappedSession(mapKey, oldSessionId);
+  }
+
+  abortSessionTurn(sessionId: string): number {
+    cancelAllStreamsForSession(sessionId);
+    const agent = this.agents.get(sessionId);
+    if (agent) {
+      const controller = new AbortController();
+      controller.abort();
+      agent.setAbortSignal(controller.signal);
+      return 1;
+    }
+    return 0;
   }
 
   /** Active LLM for a web/cli session (honours per-session /model override). */
@@ -258,27 +319,40 @@ export class GatewayRouter {
     if (!groupDecision.respond) {
       return;
     }
+    const gatewayCtx: GatewayCommandContext = {
+      sessionId: message.sessionId,
+      channel: message.source,
+      activeProvider: this.getSessionActiveProvider(message.sessionId),
+    };
     const isModelCommand = trimmed.startsWith('/model') || trimmed.startsWith('/provider');
     const commandAgent = isModelCommand ? this.getAgent(message.sessionId, message.source) : undefined;
     const needsAsyncCommand = message.content.startsWith('/memories')
       || message.content.startsWith('/usage')
       || message.content.trim().startsWith('/research')
-      || message.content.trim().startsWith('/compare');
+      || message.content.trim().startsWith('/compare')
+      || trimmed === '/status';
     const cmd = needsAsyncCommand
-      ? await handleGatewayCommandAsync(message.content, {
-          sessionId: message.sessionId,
-          channel: message.source,
-        })
-      : handleGatewayCommand(message.content, commandAgent
-        ? {
-            currentOverride: this.sessionProviderOverrides.get(message.sessionId)
-              ?? commandAgent.getProviderOverride(),
-            applyProviderOverride: (override) => this.applySessionProviderOverride(message.sessionId, override),
-            hasRecentImage: this.sessionsWithRecentImages.has(message.sessionId),
-          }
-        : {});
+      ? await handleGatewayCommandAsync(message.content, gatewayCtx)
+      : handleGatewayCommand(
+        message.content,
+        commandAgent
+          ? {
+              currentOverride: this.sessionProviderOverrides.get(message.sessionId)
+                ?? commandAgent.getProviderOverride(),
+              applyProviderOverride: (override) => this.applySessionProviderOverride(message.sessionId, override),
+              hasRecentImage: this.sessionsWithRecentImages.has(message.sessionId),
+            }
+          : {},
+        gatewayCtx,
+      );
     if (cmd.handled) {
       if (cmd.action === 'clear') {
+        await this.clearSession(message.sessionId);
+      }
+      if (cmd.action === 'stop_turn') {
+        this.abortSessionTurn(message.sessionId);
+      }
+      if (cmd.action === 'new_session') {
         await this.clearSession(message.sessionId);
       }
       yield cmd.reply;
@@ -363,6 +437,25 @@ export class GatewayRouter {
     });
 
     const text = buildInboundText(inbound);
+    const trimmedInbound = text.trim();
+    if (trimmedInbound === '/new' || trimmedInbound === '/reset') {
+      const mapKey = buildGatewaySessionMapKey(agentId, inbound);
+      const newSessionId = await this.rotateMappedSession(mapKey, sessionId);
+      await this.bindAgentToSession(newSessionId, route.agent);
+      bindSessionDelivery(newSessionId, {
+        channel: inbound.channel,
+        conversationId: inbound.conversationId,
+        threadId: inbound.threadId,
+      });
+      yield `New conversation started (${newSessionId.slice(0, 8)}). Provider: ${this.getSessionActiveProvider(newSessionId)}. Try /status anytime.`;
+      return;
+    }
+    if (trimmedInbound === '/stop') {
+      const stopped = this.abortSessionTurn(sessionId);
+      yield stopped > 0 ? 'Stopping current turn...' : 'No active turn to stop.';
+      return;
+    }
+
     const carinaMsg: CarinaMessage = {
       id: inbound.id,
       sessionId,

@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { globalCarinaHome } from '../config/paths.js';
+import { isOtelInitialized, mirrorTraceSpanEnd, mirrorTraceSpanStart } from './otel.js';
 
 export type TraceSpanStatus = 'ok' | 'error' | 'cancelled';
 
@@ -53,6 +54,9 @@ export function startTraceSpan(
     if (first) activeSpans.delete(first);
   }
   activeSpans.set(span.spanId, span);
+  if (isOtelInitialized()) {
+    mirrorTraceSpanStart(span);
+  }
   return span;
 }
 
@@ -68,6 +72,9 @@ export async function endTraceSpan(
   span.status = status;
   if (attrs) span.attributes = { ...span.attributes, ...attrs };
   activeSpans.delete(spanId);
+  if (isOtelInitialized()) {
+    mirrorTraceSpanEnd(spanId, status, attrs);
+  }
   if (traceEnabled()) {
     try {
       const file = traceLogPath();

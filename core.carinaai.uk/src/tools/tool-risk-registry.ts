@@ -148,6 +148,12 @@ export const TOOL_RISK_REGISTRY: Record<string, ToolRiskSpec> = {
   'disk-usage': { riskClass: 'read', sideEffects: ['reads local filesystem metadata'], requiresDangerousFlag: false },
   'hex-encode': { riskClass: 'read', sideEffects: [], requiresDangerousFlag: false },
 
+  // Integrations (added with gap-02)
+  'n8n': { riskClass: 'write', sideEffects: ['triggers external n8n workflows'], requiresDangerousFlag: false },
+  'phone-control': { riskClass: 'write', sideEffects: ['dispatches shell commands to paired phone node'], requiresDangerousFlag: true },
+  'theme': { riskClass: 'read', sideEffects: [], requiresDangerousFlag: false },
+  'trello': { riskClass: 'write', sideEffects: ['creates and modifies Trello cards'], requiresDangerousFlag: false },
+
   // Credential access
   'mcp': { riskClass: 'credential', sideEffects: ['connects to external MCP servers'], requiresDangerousFlag: true },
 };

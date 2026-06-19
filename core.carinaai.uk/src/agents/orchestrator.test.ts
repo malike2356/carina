@@ -195,7 +195,7 @@ describe('CarinaOrchestrator fast lane', () => {
     expect(events).toEqual([
       {
         type: 'text',
-        content: 'Research, writing, coding, automation, planning, analysis, files, email, web, APIs.',
+        content: 'Chat, Notes, Calendar, Scheduled, Documents, Email, Trello, Deep Research, Model Compare, Images, Memory. Ask me how to use any of them and I will walk you through it.',
       },
     ]);
   });

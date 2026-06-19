@@ -349,6 +349,40 @@
   });
   inpaintSubmitEl.addEventListener('click', runInpaint);
 
+  var uploadInput = document.getElementById('upload-input');
+  var uploadBtn = document.getElementById('upload-btn');
+  if (uploadBtn && uploadInput) {
+    uploadBtn.addEventListener('click', function () {
+      var file = uploadInput.files && uploadInput.files[0];
+      if (!file) {
+        showToast('Choose an image file first');
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () {
+        var data = String(reader.result || '');
+        var base64 = data.indexOf(',') >= 0 ? data.slice(data.indexOf(',') + 1) : data;
+        setStatus('Uploading...');
+        api('POST', '/upload', {
+          data: base64,
+          prompt: 'Uploaded: ' + file.name,
+        }).then(function (created) {
+          images.unshift(created);
+          renderGrid(false);
+          emptyEl.hidden = true;
+          uploadInput.value = '';
+          setStatus(images.length + ' images');
+          showToast('Image uploaded');
+          openLightbox(created.id);
+        }).catch(function (err) {
+          showToast(err.message || 'Upload failed');
+          setStatus('');
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape' && lightboxEl.classList.contains('open')) closeLightbox();
   });

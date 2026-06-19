@@ -19,6 +19,13 @@ export interface BillingPlan {
   highlight?: string;
 }
 
+function resolveMonthlyPriceGbp(envKey: string, fallback: number): number {
+  const raw = process.env[envKey];
+  if (!raw) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
   free: {
     id: 'free',
@@ -68,7 +75,7 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
   scout_monitor: {
     id: 'scout_monitor',
     name: 'Scout Monitor',
-    monthlyPriceGbp: 79,
+    monthlyPriceGbp: resolveMonthlyPriceGbp('SCOUT_MONITOR_MONTHLY_GBP', 49),
     tokenLimit: 250_000,
     includedCredits: null,
     maxTopupCredits: null,
@@ -84,12 +91,12 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
   },
   scout_pro: {
     id: 'scout_pro',
-    name: 'Scout Pro',
-    monthlyPriceGbp: 99,
+    name: 'Scout Govern',
+    monthlyPriceGbp: resolveMonthlyPriceGbp('SCOUT_GOVERN_MONTHLY_GBP', 79),
     tokenLimit: 500_000,
     includedCredits: null,
     maxTopupCredits: null,
-    stripePriceEnv: 'STRIPE_PRICE_SCOUT_PRO',
+    stripePriceEnv: 'STRIPE_PRICE_SCOUT_GOVERN',
     highlight: 'Control',
     features: [
       'Everything in Monitor',
@@ -102,14 +109,14 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
   },
   scout_standard: {
     id: 'scout_standard',
-    name: 'Scout Pro (legacy)',
-    monthlyPriceGbp: 99,
+    name: 'Scout Govern (legacy)',
+    monthlyPriceGbp: resolveMonthlyPriceGbp('SCOUT_GOVERN_MONTHLY_GBP', 79),
     tokenLimit: 500_000,
     includedCredits: null,
     maxTopupCredits: null,
-    stripePriceEnv: 'STRIPE_PRICE_SCOUT_PRO',
+    stripePriceEnv: 'STRIPE_PRICE_SCOUT_GOVERN',
     features: [
-      'Legacy plan id; maps to Scout Pro',
+      'Legacy plan id; maps to Scout Govern',
     ],
   },
   enterprise: {
@@ -121,7 +128,7 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     maxTopupCredits: null,
     stripePriceEnv: 'STRIPE_PRICE_ENTERPRISE',
     features: [
-      'Everything in Scout Pro',
+      'Everything in Scout Govern',
       'SOC2 readiness export (operator-provided; not a third-party audit)',
       '99.9% uptime SLA',
       'Dedicated Slack support',
@@ -145,6 +152,7 @@ export const CHECKOUT_PLANS: BillingPlanId[] = [
 export function normalizePlanId(value: unknown): BillingPlanId {
   if (value === 'carina_ops_starter' || value === 'carina_ops_team') return value;
   if (value === 'scout_monitor' || value === 'scout_pro' || value === 'enterprise') return value;
+  if (value === 'scout_govern') return 'scout_monitor';
   if (value === 'scout_standard') return 'scout_pro';
   return 'free';
 }
@@ -175,7 +183,11 @@ export function resolveStripePriceId(plan: BillingPlanId): string {
   const priceId = process.env[envKey] ?? '';
   if (!priceId) {
     const legacy =
-      normalized === 'scout_pro' ? process.env.STRIPE_PRICE_SCOUT_STANDARD ?? '' : '';
+      normalized === 'scout_monitor'
+        ? process.env.STRIPE_PRICE_SCOUT_BASIC ?? ''
+        : normalized === 'scout_pro'
+          ? process.env.STRIPE_PRICE_SCOUT_PRO ?? process.env.STRIPE_PRICE_SCOUT_STANDARD ?? ''
+          : '';
     if (legacy) return legacy;
     throw new Error(`Missing required env var: ${envKey}`);
   }
@@ -189,7 +201,10 @@ export function planFromStripePriceId(priceId: string): BillingPlanId | null {
     if (configured && configured === priceId) return plan.id;
   }
   if (process.env.STRIPE_PRO_PRICE_ID === priceId) return 'scout_pro';
+  if (process.env.STRIPE_PRICE_SCOUT_PRO === priceId) return 'scout_pro';
   if (process.env.STRIPE_PRICE_SCOUT_STANDARD === priceId) return 'scout_pro';
+  if (process.env.STRIPE_PRICE_SCOUT_GOVERN === priceId) return 'scout_pro';
+  if (process.env.STRIPE_PRICE_SCOUT_BASIC === priceId) return 'scout_monitor';
   return null;
 }
 

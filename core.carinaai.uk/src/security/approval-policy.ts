@@ -1,5 +1,6 @@
 import type { Tool } from '../types/index.js';
 import { DEFAULT_POLICY } from './tool-policy.js';
+import { shellExecRequiresApproval } from './exec-approval-levels.js';
 import {
   appendApprovalAudit,
   findActiveGrant,
@@ -56,6 +57,13 @@ export function evaluateApprovalPolicy(
         decision: 'block',
         reason: `Command blocked by local approval policy (matched ${pattern})`,
         code: 'APPROVAL_BLOCKED',
+      };
+    }
+    if (shellExecRequiresApproval(params.command, false)) {
+      return {
+        decision: 'needs_confirm',
+        reason: 'shell-exec requires approval (CARINA_EXEC_APPROVAL_LEVEL=full)',
+        riskTier,
       };
     }
   }

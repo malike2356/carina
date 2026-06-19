@@ -16,10 +16,26 @@ export interface PromptCacheStats {
   misses: number;
 }
 
+export interface FrozenSessionPrompt {
+  systemPrompt: string;
+  frozenAt: number;
+  skillSnapshot: string[];
+  toolSnapshot: string[];
+}
+
+export interface SessionPromptCacheStats {
+  hits: number;
+  misses: number;
+  hitRatePercent: number | null;
+}
+
 const DEFAULT_TTL_MS = Number(process.env.CARINA_PROMPT_CACHE_TTL_MS ?? 30 * 60 * 1000);
 const MAX_ENTRIES = Number(process.env.CARINA_PROMPT_CACHE_MAX ?? 64);
 
 const cache = new Map<string, PromptCacheEntry>();
+const frozenSessionPrompts = new Map<string, FrozenSessionPrompt>();
+const pendingInvalidations = new Map<string, { reason: string; requestedAt: number }>();
+const sessionCacheStats = new Map<string, { hits: number; misses: number }>();
 let hits = 0;
 let misses = 0;
 
@@ -93,6 +109,7 @@ export function clearPromptCache(): void {
   cache.clear();
   hits = 0;
   misses = 0;
+  clearFrozenPromptState();
 }
 
 export function getPromptCacheStats(): PromptCacheStats {
@@ -102,4 +119,112 @@ export function getPromptCacheStats(): PromptCacheStats {
 export function recordProviderCacheHit(provider: string, cacheKey: string): void {
   const entry = cache.get(cacheKey);
   if (entry) entry.provider = provider;
+}
+
+function recordSessionCacheObservation(sessionId: string, hit: boolean): void {
+  const stats = sessionCacheStats.get(sessionId) ?? { hits: 0, misses: 0 };
+  if (hit) stats.hits += 1;
+  else stats.misses += 1;
+  sessionCacheStats.set(sessionId, stats);
+}
+
+export function freezeSessionPrompt(
+  sessionId: string,
+  systemPrompt: string,
+  skills: string[],
+  tools: string[],
+): void {
+  if (frozenSessionPrompts.has(sessionId)) return;
+  frozenSessionPrompts.set(sessionId, {
+    systemPrompt,
+    frozenAt: Date.now(),
+    skillSnapshot: [...skills],
+    toolSnapshot: [...tools],
+  });
+  recordSessionCacheObservation(sessionId, false);
+}
+
+export function getFrozenSystemPrompt(sessionId: string): string | null {
+  return frozenSessionPrompts.get(sessionId)?.systemPrompt ?? null;
+}
+
+export function getFrozenSessionPrompt(sessionId: string): FrozenSessionPrompt | null {
+  return frozenSessionPrompts.get(sessionId) ?? null;
+}
+
+export function deferPromptInvalidation(sessionId: string, reason: string): void {
+  pendingInvalidations.set(sessionId, { reason, requestedAt: Date.now() });
+  console.debug(`[prompt-cache] Deferred invalidation for session ${sessionId}: ${reason}`);
+}
+
+export function deferPromptInvalidationForAllFrozen(reason: string): number {
+  let count = 0;
+  for (const sessionId of frozenSessionPrompts.keys()) {
+    deferPromptInvalidation(sessionId, reason);
+    count += 1;
+  }
+  return count;
+}
+
+export function hasPendingInvalidation(sessionId: string): boolean {
+  return pendingInvalidations.has(sessionId);
+}
+
+export function getPendingInvalidationReason(sessionId: string): string | null {
+  return pendingInvalidations.get(sessionId)?.reason ?? null;
+}
+
+export function forceImmediateInvalidation(sessionId: string): void {
+  frozenSessionPrompts.delete(sessionId);
+  pendingInvalidations.delete(sessionId);
+}
+
+export function applyPendingInvalidation(sessionId: string): boolean {
+  const hasPending = pendingInvalidations.has(sessionId);
+  if (hasPending) {
+    frozenSessionPrompts.delete(sessionId);
+    pendingInvalidations.delete(sessionId);
+  }
+  return hasPending;
+}
+
+export function thawSession(sessionId: string): void {
+  frozenSessionPrompts.delete(sessionId);
+  pendingInvalidations.delete(sessionId);
+  sessionCacheStats.delete(sessionId);
+}
+
+export function resolveFrozenSystemPrompt(
+  sessionId: string,
+  opts: { forceRebuild?: boolean } = {},
+): string | null {
+  if (opts.forceRebuild) {
+    forceImmediateInvalidation(sessionId);
+    return null;
+  }
+  const frozen = getFrozenSystemPrompt(sessionId);
+  if (frozen) {
+    recordSessionCacheObservation(sessionId, true);
+  }
+  return frozen;
+}
+
+export function getSessionPromptCacheStats(sessionId: string): SessionPromptCacheStats {
+  const stats = sessionCacheStats.get(sessionId) ?? { hits: 0, misses: 0 };
+  const total = stats.hits + stats.misses;
+  return {
+    hits: stats.hits,
+    misses: stats.misses,
+    hitRatePercent: total > 0 ? Math.round((stats.hits / total) * 1000) / 10 : null,
+  };
+}
+
+export function listFrozenSessionIds(): string[] {
+  return [...frozenSessionPrompts.keys()];
+}
+
+export function clearFrozenPromptState(): void {
+  frozenSessionPrompts.clear();
+  pendingInvalidations.clear();
+  sessionCacheStats.clear();
 }

@@ -10,6 +10,16 @@ import { toolRiskTier, type ToolRiskTier } from './tool-risk.js';
 import { isAllowlistEnforced } from './kill-switch-listener.js';
 
 export const ADMIN_ROLES: ReadonlySet<OrgRole> = new Set(['admin', 'owner']);
+const DEFAULT_PLAN_MODE_ALLOWLIST = new Set<string>([
+  'web-search',
+  'file-read',
+  'http-request',
+  'memory',
+  'session-search',
+  'clarify',
+  'todo',
+  'email-list',
+]);
 
 export function isAdminRole(role: OrgRole | undefined): boolean {
   return role !== undefined && ADMIN_ROLES.has(role);
@@ -55,4 +65,27 @@ export function allowlistFirstState(): AllowlistFirstState {
 
 export function isHighRiskTier(tier: ToolRiskTier): boolean {
   return tier === 'high' || tier === 'critical';
+}
+
+function parseAllowlist(raw: string): ReadonlySet<string> {
+  return new Set(
+    raw
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean),
+  );
+}
+
+const PLAN_MODE_ALLOWLIST = process.env.CARINA_PLAN_MODE_ALLOWLIST?.trim()
+  ? parseAllowlist(process.env.CARINA_PLAN_MODE_ALLOWLIST)
+  : process.env.ODYSSEUS_PLAN_MODE_ALLOWLIST?.trim()
+    ? parseAllowlist(process.env.ODYSSEUS_PLAN_MODE_ALLOWLIST)
+    : DEFAULT_PLAN_MODE_ALLOWLIST;
+
+export function getPlanModeToolAllowlist(): ReadonlySet<string> {
+  return PLAN_MODE_ALLOWLIST;
+}
+
+export function isPlanModeToolAllowed(toolName: string): boolean {
+  return PLAN_MODE_ALLOWLIST.has(toolName);
 }

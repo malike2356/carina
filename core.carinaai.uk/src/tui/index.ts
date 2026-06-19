@@ -23,11 +23,17 @@ export interface TuiOptions {
   memoryReady?: boolean;
   sessionId?: string;
   simple?: boolean;
+  operator?: boolean;
+  gatewayUrl?: string;
+  gatewayToken?: string;
 }
 
 const HELP_LINES = [
   'CARINA simple TUI commands',
   '/help          show commands',
+  '/new, /reset   start a fresh session',
+  '/retry         resend last message',
+  '/tasks         reminder: use carina tui for cron/subagent view',
   '/profile       show or switch profile',
   '/provider      switch LLM provider',
   '/plugins       list installed extension bundles',
@@ -218,16 +224,25 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
     return;
   }
 
-  try {
-    const { runOperatorTui } = await import('./app.js');
-    await runOperatorTui(options);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('interactive terminal')) {
-      console.error(msg);
-      process.exit(1);
+  if (options.operator) {
+    try {
+      const { runOperatorTui } = await import('./app.js');
+      await runOperatorTui(options);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('interactive terminal')) {
+        console.error(msg);
+        process.exit(1);
+      }
+      console.error(chalk.yellow(`Operator TUI unavailable (${msg}); falling back to simple mode.`));
+      await runSimpleTui(options);
     }
-    console.error(chalk.yellow(`Operator TUI unavailable (${msg}); falling back to simple mode.`));
-    await runSimpleTui(options);
+    return;
   }
+
+  const { runInkTui } = await import('./ink/index.js');
+  if (options.gatewayToken) {
+    process.env.CARINA_GATEWAY_TOKEN = options.gatewayToken;
+  }
+  await runInkTui({ sessionId: options.sessionId, gatewayUrl: options.gatewayUrl });
 }

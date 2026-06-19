@@ -82,10 +82,6 @@
       }
       if (data.strings) applyStrings(data.strings);
       buildLanguageSelect(data.supported || [], data.locale || 'en');
-      if (readParam('error')) {
-        var errEl = document.getElementById('error');
-        if (errEl) errEl.hidden = false;
-      }
     } catch (_err) {
       // Keep English defaults when offline or API unavailable.
     }

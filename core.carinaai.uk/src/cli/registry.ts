@@ -1,6 +1,7 @@
 import type { CliCommand, PackageInfo } from './types.js';
 import { loadLocalEnv } from './config/env.js';
 import { loadCarinaEnv } from '../config/load-env.js';
+import { buildGroupCliCommands, expandArgvForGroups, isGroupCommandName, runCommandGroup } from './groups/index.js';
 
 function cmd(
   name: string,
@@ -37,11 +38,22 @@ export function buildCommands(): CliCommand[] {
       await runChat();
     }, { usage: 'carina [chat]', aliases: [''] }),
 
-    cmd('tui', 'Operator terminal UI (sessions, tasks, processes, chat)', async (args) => {
+    cmd('tui', 'Chat terminal UI (Ink) or operator dashboard', async (args) => {
       const { runTui } = await import('../tui/index.js');
       const simple = args.includes('--simple');
-      await runTui({ memoryReady: true, simple });
-    }, { loadEnv: true, usage: 'carina tui [--simple]' }),
+      const operator = args.includes('--operator');
+      const connectIdx = args.indexOf('--connect');
+      const tokenIdx = args.indexOf('--token');
+      const gatewayUrl = connectIdx >= 0 ? args[connectIdx + 1] : undefined;
+      const gatewayToken = tokenIdx >= 0 ? args[tokenIdx + 1] : undefined;
+      await runTui({
+        memoryReady: true,
+        simple,
+        operator,
+        gatewayUrl,
+        gatewayToken,
+      });
+    }, { loadEnv: true, usage: 'carina tui [--operator] [--simple] [--connect <url>] [--token <key>]' }),
 
     cmd('setup', 'First-run setup wizard', async (args) => {
       const { runCliSetup } = await import('./commands/setup.js');
@@ -51,7 +63,7 @@ export function buildCommands(): CliCommand[] {
     cmd('onboard', 'Guided first-run (setup + doctor)', async (args) => {
       const { runOnboardCommand } = await import('./commands/onboard-cli.js');
       await runOnboardCommand(args);
-    }, { loadEnv: true, usage: 'carina onboard [--skip-setup] [--skip-doctor] [--json]' }),
+    }, { loadEnv: true, usage: 'carina onboard [--install-daemon] [--skip-setup] [--skip-gateway] [--skip-doctor] [--json]' }),
 
     cmd('status', 'Operator overview (health, gateway, backups)', async (args) => {
       const { runStatusCommand } = await import('./commands/status-cli.js');
@@ -74,11 +86,11 @@ export function buildCommands(): CliCommand[] {
     }, { loadEnv: true, usage: 'carina serve [mcp] [--stdio|--http] [options]' }),
 
     cmd('mcp', 'MCP server mode (expose Carina tools to external clients)', async (args) => {
-      const { runMcpCommand } = await import('./commands/mcp-server-cli.js');
-      await runMcpCommand(args);
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('mcp', args);
     }, {
       loadEnv: true,
-      usage: 'carina mcp <server|status> [options]',
+      usage: 'carina mcp <list|server|status|tools> [options]',
     }),
 
     cmd('web', 'Start web UI and gateway', async () => {
@@ -87,14 +99,19 @@ export function buildCommands(): CliCommand[] {
     }, { loadEnv: true }),
 
     cmd('config', 'Manage config.yaml and .env', async (args) => {
-      const { runConfigCommand } = await import('./commands/config-cli.js');
-      await runConfigCommand(args);
-    }, { usage: 'carina config <list|get|set|edit|check|validate|migrate>' }),
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('config', args);
+    }, { usage: 'carina config <list|get|set|edit|check|validate|migrate>', aliases: ['cfg'] }),
+
+    cmd('skin', 'Switch terminal color theme', async (args) => {
+      const { runSkinCommand } = await import('./commands/skin-cli.js');
+      await runSkinCommand(args);
+    }, { usage: 'carina skin [list|set <name>|<name>|reset]' }),
 
     cmd('model', 'List, set, or pick LLM provider/model', async (args) => {
-      const { runModelCommand } = await import('./commands/model.js');
-      await runModelCommand(args);
-    }, { usage: 'carina model [menu|list|set|pick|test]' }),
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('model', args);
+    }, { usage: 'carina model [menu|list|set|pick|test]', aliases: ['m'] }),
 
     cmd('tools', 'List and toggle agent tools/toolsets', async (args) => {
       const { runToolsCommand } = await import('./commands/tools-cli.js');
@@ -112,7 +129,6 @@ export function buildCommands(): CliCommand[] {
     }, {
       loadEnv: true,
       usage: 'carina agents <list|add|use|bind|route|show|remove> [args]',
-      aliases: ['agent'],
     }),
 
     cmd('personality', 'View or edit profile personality', async (args) => {
@@ -183,9 +199,9 @@ export function buildCommands(): CliCommand[] {
     }, { loadEnv: true }),
 
     cmd('doctor', 'Health check (Node, DB, Redis, gateway)', async (args) => {
-      const { runDoctor } = await import('./commands/doctor.js');
-      await runDoctor(args);
-    }, { loadEnv: true, usage: 'carina doctor [--json] [--repair] [--quiet]' }),
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('doctor', args);
+    }, { loadEnv: true, usage: 'carina doctor [--json] [--fix|--repair] [--quiet]' }),
 
     cmd('locale', 'Locale catalog and language helpers', async (args) => {
       const { runLocaleCli } = await import('./commands/locale-cli.js');
@@ -212,12 +228,12 @@ export function buildCommands(): CliCommand[] {
       usage: 'carina curator <report|list|duplicates|prune|archive|restore|run> [--profile NAME] [--force]',
     }),
 
-    cmd('learning', 'Self-improvement loop operator (status, events, rollback)', async (args) => {
+    cmd('learning', 'Self-improvement loop operator (status, recap, rollback)', async (args) => {
       const { runLearningCommand } = await import('./commands/learning-cli.js');
       await runLearningCommand(args);
     }, {
       loadEnv: true,
-      usage: 'carina learning <status|events|shared|share|sync|pending|improvements|show|versions|rollback> [--json]',
+      usage: 'carina learning <status|recap|events|shared|share|sync|pending|improvements|show|versions|rollback> [--json] [--days=N]',
     }),
 
     cmd('capabilities', 'Tools, skills, and channel discovery audit', async (args) => {
@@ -301,9 +317,9 @@ export function buildCommands(): CliCommand[] {
     }, { usage: 'carina commitments [list|dismiss] [--all] [--agent <id>] [--status <status>] [--json]' }),
 
     cmd('memory', 'Episodic and persistent memory', async (args) => {
-      const { runMemoryCommand } = await import('./commands/memory-cli.js');
-      await runMemoryCommand(args);
-    }, { loadEnv: true, usage: 'carina memory <list|search|facts|dreams|promote|reindex|backends|use|status|test|clear>' }),
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('memory', args);
+    }, { loadEnv: true, usage: 'carina memory <list|search|facts|dreams|promote|reindex|backends|use|status|test|clear>', aliases: ['mem'] }),
 
     cmd('sessions', 'Session index and local sessions', async (args) => {
       const { runSessionsCommand } = await import('./commands/sessions-cli.js');
@@ -373,9 +389,9 @@ export function buildCommands(): CliCommand[] {
     }, { usage: 'carina about' }),
 
     cmd('scout', 'Labyrinth Scout integration', async (args) => {
-      const { runScoutCommand } = await import('./commands/scout-cli.js');
-      await runScoutCommand(args);
-    }, { loadEnv: true }),
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('scout', args);
+    }, { loadEnv: true, aliases: ['sec'] }),
 
     cmd('security', 'Security posture audit', async (args) => {
       const { runSecurityCommand } = await import('./commands/security-cli.js');
@@ -428,11 +444,11 @@ export function buildCommands(): CliCommand[] {
     }),
 
     cmd('hub', 'Carina Hub marketplace (catalog, install, publish)', async (args) => {
-      const { runHubCommand } = await import('./commands/hub-cli.js');
-      await runHubCommand(args);
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('hub', args);
     }, {
       loadEnv: true,
-      usage: 'carina hub <catalog|ecosystem|author|show|install|publish|status|start> [args]',
+      usage: 'carina hub <status|featured|search|stats|auth|catalog|install|publish> [args]',
     }),
 
     cmd('certify', 'Built on Carina certification checks', async (args) => {
@@ -466,9 +482,9 @@ export function buildCommands(): CliCommand[] {
     }, { loadEnv: true }),
 
     cmd('completion', 'Shell completion scripts', async (args) => {
-      const { runCompletionCommand } = await import('./commands/completion-cli.js');
+      const { runCompletionCommand } = await import('./commands/completion/index.js');
       await runCompletionCommand(args);
-    }),
+    }, { usage: 'carina completion <bash|zsh|fish|powershell|dynamic> [--install]' }),
 
     cmd('ide', 'IDE extension install/build', async (args) => {
       const action = args[0] ?? 'install';
@@ -484,9 +500,20 @@ export function buildCommands(): CliCommand[] {
 
     cmd('help', 'Show help', async (args) => {
       const { buildHelpText, buildCommandHelp } = await import('./help.js');
+      const { printGroupHelp } = await import('./group-command.js');
+      const { resolveCommandGroup, isGroupCommandName } = await import('./groups/index.js');
       const pkg = readPackageInfo();
       if (args[0]) {
-        const target = resolveCommand(args[0]);
+        const expanded = expandArgvForGroups(args);
+        const groupName = expanded[0] ?? args[0];
+        if (groupName && isGroupCommandName(groupName)) {
+          const group = resolveCommandGroup(groupName);
+          if (group) {
+            printGroupHelp(group, pkg);
+            return;
+          }
+        }
+        const target = resolveCommand(groupName);
         if (!target) {
           console.error(`Unknown command: ${args[0]}`);
           process.exit(1);
@@ -506,6 +533,8 @@ export function buildCommands(): CliCommand[] {
       const { versionWithLicenseLine } = await import('./commands/about-cli.js');
       console.log(versionWithLicenseLine());
     }, { aliases: ['-v', '--version'] }),
+
+    ...buildGroupCliCommands(),
   ];
 }
 
@@ -535,8 +564,16 @@ export async function runCli(argv: string[], pkg?: PackageInfo): Promise<void> {
     llm.refreshPlugins();
   }
 
-  const commandName = argv[0] ?? '';
-  const rest = argv.slice(1);
+  const expanded = expandArgvForGroups(argv);
+  const commandName = expanded[0] ?? '';
+  const rest = expanded.slice(1);
+
+  if (commandName && isGroupCommandName(commandName)) {
+    const { resolveCommandGroup } = await import('./groups/index.js');
+    if (resolveCommandGroup(commandName)?.loadEnv) loadLocalEnv();
+    await runCommandGroup(commandName, rest);
+    return;
+  }
 
   if (!commandName) {
     loadLocalEnv();

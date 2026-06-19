@@ -46,7 +46,7 @@ export function notesReminderEvents(start: Date, end: Date): CalendarEvent[] {
       title: note.title || 'Reminder',
       start: when.toISOString(),
       source: 'notes',
-      href: '/notes',
+      href: '/notes?open=' + encodeURIComponent(note.id),
       overdue: when < new Date(),
     });
   }

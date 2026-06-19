@@ -18,6 +18,7 @@ describe('extensibility status', () => {
   });
 
   it('reports disabled layers by default', async () => {
+    vi.stubEnv('CARINA_TASKFLOWS_ENABLED', 'false');
     const { buildExtensibilityStatus, formatExtensibilityStatus } = await import('./extensibility-status.js');
     const report = await buildExtensibilityStatus();
     expect(report.taskflows.enabled).toBe(false);

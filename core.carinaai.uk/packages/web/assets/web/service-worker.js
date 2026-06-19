@@ -1,4 +1,4 @@
-const CACHE = 'carina-ws-v4';
+const CACHE = 'carina-ws-v5';
 
 const WORKSPACE_SHELLS = [
   '/',
@@ -10,6 +10,7 @@ const WORKSPACE_SHELLS = [
   '/email',
   '/memory',
   '/kanban',
+  '/trello',
   '/webhooks',
   '/packs',
   '/prompt-packs',
@@ -17,6 +18,9 @@ const WORKSPACE_SHELLS = [
   '/cookbook',
   '/compare',
   '/research',
+  '/mobile',
+  '/marketplace',
+  '/surfaces',
   '/manifest.json',
   '/icon.svg',
   '/workspace-prefs.js',
@@ -25,6 +29,7 @@ const WORKSPACE_SHELLS = [
   '/images.js',
   '/email.js',
   '/calendar.js',
+  '/trello.js',
 ];
 
 self.addEventListener('install', (event) => {

@@ -4,6 +4,7 @@ export type CatalogChannelName =
   | 'ntfy'
   | 'pushover'
   | 'zulip'
+  | 'irc'
   | 'rocketchat'
   | 'twitch'
   | 'reddit'
@@ -38,6 +39,7 @@ export const CATALOG_CHANNEL_NAMES: readonly CatalogChannelName[] = [
   'ntfy',
   'pushover',
   'zulip',
+  'irc',
   'rocketchat',
   'twitch',
   'reddit',
@@ -71,25 +73,8 @@ export const CATALOG_CHANNEL_NAMES: readonly CatalogChannelName[] = [
 
 const PUSH_NOTIFICATION_CHANNELS = new Set<string>(['ntfy', 'pushover', 'gotify']);
 const META_GRAPH_CHANNELS = new Set<string>(['messenger', 'instagram']);
-const FULL_ADAPTER_CHANNELS = new Set<string>([
-  'rocketchat',
-  'kakaotalk',
-  'threema',
-  'keybase',
-  'twitch',
-  'groupme',
-  'nextcloud-talk',
-  'linkedin',
-]);
 
-export const CATALOG_STUB_CHANNELS = new Set<string>([
-  'irc',
-  ...CATALOG_CHANNEL_NAMES.filter((name) => (
-    !PUSH_NOTIFICATION_CHANNELS.has(name)
-    && !META_GRAPH_CHANNELS.has(name)
-    && !FULL_ADAPTER_CHANNELS.has(name)
-  )),
-]);
+export const CATALOG_STUB_CHANNELS = new Set<string>([]);
 
 export type CatalogChannelSpec = {
   channel: ChannelName;
@@ -120,11 +105,12 @@ function hasAnyEnv(keys: string[]): boolean {
   });
 }
 
-function catalogSpec(
+function liveCatalogSpec(
   channel: CatalogChannelName,
   env: string[],
   note: string,
   webhook: string,
+  transport: string,
 ): CatalogChannelSpec {
   return {
     channel,
@@ -132,7 +118,7 @@ function catalogSpec(
     note,
     webhook,
     checkConfigured: () => hasAnyEnv(env),
-    transport: () => 'webhook-stub',
+    transport: () => transport,
   };
 }
 
@@ -153,7 +139,19 @@ export function buildCatalogChannelSpecs(): CatalogChannelSpec[] {
       checkConfigured: () => hasEnv(['PUSHOVER_TOKEN', 'PUSHOVER_USER']),
       transport: () => 'push-api',
     },
-    catalogSpec('zulip', ['ZULIP_BOT_EMAIL', 'ZULIP_API_KEY', 'ZULIP_SITE'], 'Zulip team chat', '/webhooks/zulip'),
+    {
+      channel: 'irc',
+      env: ['IRC_ENABLED=true', 'IRC_SERVER', 'IRC_NICK'],
+      note: 'IRC live TLS client with optional webhook fallback',
+      webhook: '/webhooks/irc',
+      checkConfigured: () => Boolean(
+        process.env.IRC_ENABLED === 'true'
+        && process.env.IRC_SERVER?.trim()
+        && process.env.IRC_NICK?.trim(),
+      ),
+      transport: () => (process.env.IRC_LIVE === 'false' ? 'webhook-only' : 'irc-live'),
+    },
+    liveCatalogSpec('zulip', ['ZULIP_BOT_EMAIL', 'ZULIP_API_KEY', 'ZULIP_SITE'], 'Zulip team chat', '/webhooks/zulip', 'zulip-bot-api'),
     {
       channel: 'rocketchat',
       env: [
@@ -214,8 +212,8 @@ export function buildCatalogChannelSpecs(): CatalogChannelSpec[] {
       checkConfigured: () => hasEnv(['YOUTUBE_API_KEY', 'YOUTUBE_LIVE_CHAT_ID']),
       transport: () => 'youtube-livechat-poll',
     },
-    catalogSpec('reddit', ['REDDIT_WEBHOOK_SECRET'], 'Reddit bot webhook bridge', '/webhooks/reddit'),
-    catalogSpec('bluesky', ['BLUESKY_HANDLE', 'BLUESKY_APP_PASSWORD'], 'Bluesky firehose/webhook bridge', '/webhooks/bluesky'),
+    liveCatalogSpec('reddit', ['REDDIT_WEBHOOK_SECRET'], 'Reddit bot webhook bridge', '/webhooks/reddit', 'reddit-webhook-bridge'),
+    liveCatalogSpec('bluesky', ['BLUESKY_HANDLE', 'BLUESKY_APP_PASSWORD'], 'Bluesky ATProto chat bridge', '/webhooks/bluesky', 'bluesky-atproto'),
     {
       channel: 'messenger',
       env: ['MESSENGER_PAGE_ACCESS_TOKEN', 'MESSENGER_VERIFY_TOKEN', 'MESSENGER_APP_SECRET'],
@@ -292,11 +290,12 @@ export function buildCatalogChannelSpecs(): CatalogChannelSpec[] {
       checkConfigured: () => hasEnv(['LINKEDIN_ACCESS_TOKEN']),
       transport: () => 'linkedin-messaging-webhook',
     },
-    catalogSpec(
+    liveCatalogSpec(
       'skype',
       ['SKYPE_APP_ID', 'SKYPE_APP_SECRET'],
-      'Skype bot webhook bridge (catalog stub)',
+      'Skype Bot Framework webhook bridge',
       '/webhooks/skype',
+      'skype-bot-framework',
     ),
     {
       channel: 'gotify',
@@ -305,10 +304,10 @@ export function buildCatalogChannelSpecs(): CatalogChannelSpec[] {
       checkConfigured: () => hasEnv(['GOTIFY_URL', 'GOTIFY_TOKEN']),
       transport: () => 'push-api',
     },
-    catalogSpec('pumble', ['PUMBLE_WEBHOOK_URL'], 'Pumble team chat', '/webhooks/pumble'),
-    catalogSpec('twist', ['TWIST_INTEGRATION_TOKEN'], 'Twist async chat', '/webhooks/twist'),
-    catalogSpec('ryver', ['RYVER_WEBHOOK_URL'], 'Ryver team chat', '/webhooks/ryver'),
-    catalogSpec('workplace', ['WORKPLACE_APP_SECRET', 'WORKPLACE_VERIFY_TOKEN'], 'Meta Workplace', '/webhooks/workplace'),
+    liveCatalogSpec('pumble', ['PUMBLE_WEBHOOK_URL'], 'Pumble team chat', '/webhooks/pumble', 'pumble-webhook'),
+    liveCatalogSpec('twist', ['TWIST_INTEGRATION_TOKEN'], 'Twist async chat', '/webhooks/twist', 'twist-api'),
+    liveCatalogSpec('ryver', ['RYVER_WEBHOOK_URL'], 'Ryver team chat', '/webhooks/ryver', 'ryver-webhook'),
+    liveCatalogSpec('workplace', ['WORKPLACE_APP_SECRET', 'WORKPLACE_VERIFY_TOKEN'], 'Meta Workplace', '/webhooks/workplace', 'workplace-graph-webhook'),
     {
       channel: 'threema',
       env: ['THREEMA_GATEWAY_ID', 'THREEMA_GATEWAY_SECRET', 'THREEMA_PRIVATE_KEY'],
@@ -341,18 +340,18 @@ export function buildCatalogChannelSpecs(): CatalogChannelSpec[] {
       checkConfigured: () => hasEnv(['ZALO_APP_ID', 'ZALO_OA_ACCESS_TOKEN']),
       transport: () => 'zalo-oa-webhook',
     },
-    catalogSpec('naver-works', ['NAVER_WORKS_BOT_ID', 'NAVER_WORKS_BOT_SECRET'], 'Naver Works', '/webhooks/naver-works'),
-    catalogSpec('qq', ['QQ_BOT_APP_ID', 'QQ_BOT_TOKEN'], 'QQ bot webhook', '/webhooks/qq'),
-    catalogSpec('weibo', ['WEIBO_APP_KEY', 'WEIBO_APP_SECRET'], 'Weibo open platform', '/webhooks/weibo'),
+    liveCatalogSpec('naver-works', ['NAVER_WORKS_BOT_ID', 'NAVER_WORKS_BOT_SECRET'], 'Naver Works', '/webhooks/naver-works', 'naver-works-bot-api'),
+    liveCatalogSpec('qq', ['QQ_BOT_APP_ID', 'QQ_BOT_TOKEN'], 'QQ bot webhook', '/webhooks/qq', 'qq-bot-api'),
+    liveCatalogSpec('weibo', ['WEIBO_APP_KEY', 'WEIBO_APP_SECRET'], 'Weibo open platform', '/webhooks/weibo', 'weibo-open-api'),
     {
       channel: 'openhab',
       env: ['OPENHAB_URL', 'OPENHAB_TOKEN'],
       note: 'openHAB notification bridge',
       webhook: '/webhooks/openhab',
       checkConfigured: () => hasEnv(['OPENHAB_URL']),
-      transport: () => 'webhook-stub',
+      transport: () => 'openhab-notifications',
     },
-    catalogSpec('synology-chat', ['SYNOLOGY_CHAT_TOKEN'], 'Synology Chat incoming webhook', '/webhooks/synology-chat'),
+    liveCatalogSpec('synology-chat', ['SYNOLOGY_CHAT_TOKEN'], 'Synology Chat incoming webhook', '/webhooks/synology-chat', 'synology-chat-webhook'),
     {
       channel: 'keybase',
       env: ['KEYBASE_USERNAME', 'KEYBASE_PAPERKEY'],
@@ -360,19 +359,19 @@ export function buildCatalogChannelSpecs(): CatalogChannelSpec[] {
       checkConfigured: () => hasEnv(['KEYBASE_USERNAME', 'KEYBASE_PAPERKEY']),
       transport: () => 'keybase-bot-poll',
     },
-    catalogSpec('gitter', ['GITTER_TOKEN'], 'Gitter room bot', '/webhooks/gitter'),
-    catalogSpec('element', ['ELEMENT_WEBHOOK_URL'], 'Element/Matrix generic webhook bridge', '/webhooks/element'),
-    catalogSpec('mastodon', ['MASTODON_INSTANCE', 'MASTODON_ACCESS_TOKEN'], 'Mastodon bot', '/webhooks/mastodon'),
-    catalogSpec('snapchat', ['SNAPCHAT_WEBHOOK_SECRET'], 'Snapchat marketing API stub', '/webhooks/snapchat'),
+    liveCatalogSpec('gitter', ['GITTER_TOKEN'], 'Gitter room bot', '/webhooks/gitter', 'gitter-api'),
+    liveCatalogSpec('element', ['ELEMENT_WEBHOOK_URL'], 'Element/Matrix generic webhook bridge', '/webhooks/element', 'element-webhook-bridge'),
+    liveCatalogSpec('mastodon', ['MASTODON_INSTANCE', 'MASTODON_ACCESS_TOKEN'], 'Mastodon bot', '/webhooks/mastodon', 'mastodon-rest-api'),
+    liveCatalogSpec('snapchat', ['SNAPCHAT_WEBHOOK_SECRET'], 'Snapchat marketing API webhook', '/webhooks/snapchat', 'snapchat-webhook'),
     {
       channel: 'bridge-generic',
       env: ['BRIDGE_CHANNEL_ENABLED=true', 'BRIDGE_CHANNEL_SECRET'],
       note: 'Generic operator bridge with shared secret',
       webhook: '/webhooks/bridge',
       checkConfigured: () => hasEnv(['BRIDGE_CHANNEL_ENABLED=true']),
-      transport: () => 'webhook-stub',
+      transport: () => 'bridge-generic-webhook',
     },
-    catalogSpec('apple-business-chat', ['ABC_MERCHANT_ID', 'ABC_API_KEY'], 'Apple Business Chat', '/webhooks/apple-business-chat'),
+    liveCatalogSpec('apple-business-chat', ['ABC_MERCHANT_ID', 'ABC_API_KEY'], 'Apple Business Chat', '/webhooks/apple-business-chat', 'abc-messages-api'),
   ];
 }
 

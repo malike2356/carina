@@ -42,6 +42,7 @@ function workflowAsJob(workflow: CronWorkflow, deliver: string, deliverChannels:
     schedule: workflow.schedule,
     prompt: null,
     scriptPath: null,
+    scriptConfig: null,
     noAgent: false,
     deliver,
     repeatCount: null,
@@ -61,6 +62,8 @@ function workflowAsJob(workflow: CronWorkflow, deliver: string, deliverChannels:
     profileName: 'default',
     modelProvider: null,
     modelName: null,
+    failureLimit: 3,
+    failureCount: 0,
     createdAt: workflow.createdAt,
   };
 }

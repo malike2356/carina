@@ -29,7 +29,7 @@ describe('completion metadata', () => {
 
   it('generates bash completion with subcommand cases', () => {
     const script = buildBashCompletionScript();
-    expect(script).toContain('_carina_completion');
+    expect(script).toContain('_carina_complete');
     expect(script).toContain('model');
     expect(script).toContain('menu');
     for (const cmd of Object.keys(SUBCOMMANDS)) {
@@ -40,6 +40,7 @@ describe('completion metadata', () => {
   it('generates fish completion for channels setup', () => {
     const script = buildFishCompletionScript();
     expect(script).toContain('telegram');
+    expect(script).toContain('carina completion dynamic session-id');
     expect(NESTED_OPTIONS.channels?.setup).toContain('discord');
   });
 });

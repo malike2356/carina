@@ -14,6 +14,8 @@ describe('memory discipline', () => {
     expect(block).toContain('declarative facts');
     expect(block).toContain('not instructions to yourself');
     expect(block).toContain('session-search');
+    expect(block).toContain('Write it down');
+    expect(block).toContain('Text > brain');
     expect(block).toContain('Retrieval discipline:');
   });
 

@@ -1,5 +1,5 @@
-import type { ProductMode } from '../../../src/product/types.js';
-import { hostedShellConfig, privateShellConfig } from '../../../src/product/shell-config.js';
+import type { ProductMode } from '#core/product/types.js';
+import { hostedShellConfig, privateShellConfig } from '#core/product/shell-config.js';
 
 export type WorkspacePageId =
   | 'hub'
@@ -9,6 +9,8 @@ export type WorkspacePageId =
   | 'images'
   | 'email'
   | 'calendar'
+  | 'scheduled'
+  | 'trello'
   | 'memory'
   | 'packs'
   | 'prompt-packs'
@@ -28,7 +30,9 @@ export interface WorkspaceNavItem {
 export const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
   { id: 'chat', href: '/', label: 'Chat', description: 'Agent conversations and slash commands' },
   { id: 'notes', href: '/notes', label: 'Notes', description: 'Notes, tasks, and reminders' },
-  { id: 'calendar', href: '/calendar', label: 'Calendar', description: 'Reminder schedule from notes' },
+  { id: 'calendar', href: '/calendar', label: 'Calendar', description: 'Reminders and CalDAV events' },
+  { id: 'scheduled', href: '/scheduled', label: 'Scheduled', description: 'Cron jobs and TaskFlow runs' },
+  { id: 'trello', href: '/trello', label: 'Trello', description: 'Boards, lists, and cards' },
   { id: 'documents', href: '/documents', label: 'Documents', description: 'Markdown, HTML, and CSV editor' },
   { id: 'images', href: '/images', label: 'Images', description: 'Generate, browse, and edit images' },
   {
@@ -156,6 +160,8 @@ export function workspaceThemeCss(): string {
     'body.carina-workspace[data-workspace-page="playbook"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="research"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="compare"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="scheduled"] .ws-scroll-page,',
+    'body.carina-workspace[data-workspace-page="trello"] .ws-scroll-page,',
     'body.carina-workspace[data-workspace-page="kanban"] .ws-scroll-page { max-width: none; margin: 0; }',
     '@media (max-width: 820px) {',
     '  .carina-ws-sidebar { width: 64px; min-width: 64px; padding: 10px 6px; }',

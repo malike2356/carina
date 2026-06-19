@@ -1,6 +1,8 @@
 import os from 'os';
 import path from 'path';
 
+import type { AuxiliaryModelMap } from '../../types/auxiliary-model.js';
+
 export type ProviderName = 'deepseek' | 'anthropic' | 'openai';
 
 export type CliProviderConfig = {
@@ -17,6 +19,8 @@ export type CarinaCliConfig = {
     url: string;
   };
   providers: Record<ProviderName, CliProviderConfig>;
+  auxiliaryModels?: AuxiliaryModelMap;
+  skin?: string;
 };
 
 export const DEFAULT_CLI_CONFIG: CarinaCliConfig = {

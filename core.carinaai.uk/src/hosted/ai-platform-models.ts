@@ -1,5 +1,6 @@
 import { queryForOrg } from './scoped-query.js';
 import { classifyModel } from '../billing/rate-card.js';
+import { countTokens } from '../brain/token-counter.js';
 
 export interface AiPlatformModel {
   id: string;
@@ -72,5 +73,5 @@ export function estimateModelCost(
 }
 
 export function estimateTokensFromText(text: string): number {
-  return Math.max(1, Math.ceil(text.length / 4));
+  return countTokens(text).tokens;
 }

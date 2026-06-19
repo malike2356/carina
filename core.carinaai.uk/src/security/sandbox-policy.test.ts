@@ -5,6 +5,8 @@ vi.mock('../config/index.js', () => ({
     labyrinth: { instanceId: 'test-001' },
     redis: { url: 'redis://localhost' },
     database: { url: 'postgresql://localhost/carina_test' },
+    embeddings: { dimensions: 768, maxChars: 8000, voyageMaxChars: 16000, geminiModel: 'text-embedding-004', openaiModel: 'text-embedding-3-small' },
+    carina: { defaultProvider: 'deepseek', activePacks: [], taskFlowsEnabled: false },
   },
 }));
 

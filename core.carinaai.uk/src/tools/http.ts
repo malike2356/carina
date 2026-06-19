@@ -1,4 +1,5 @@
 import type { Tool } from '../types/index.js';
+import { evaluateUrlSafety } from '../security/path-safety.js';
 import {
   egressFilter,
   EgressBlockedError,
@@ -11,12 +12,12 @@ const TIMEOUT_MS = 15_000;
 const MAX_BODY_BYTES = 50 * 1024;
 
 function isBlockedHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return true;
-  if (h.startsWith('10.')) return true;
-  if (h.startsWith('192.168.')) return true;
-  if (h.startsWith('172.') && /^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
-  return false;
+  const result = evaluateUrlSafety(`https://${hostname}/`, {
+    httpsOnly: true,
+    blockPrivateHosts: true,
+    useEgressFilter: false,
+  });
+  return !result.allowed && (result.code === 'PRIVATE_HOST' || result.code === 'INVALID_URL');
 }
 
 async function getEgressFilter() {
@@ -52,6 +53,15 @@ export const httpTool: Tool = {
 
     if (parsed.protocol !== 'https:') {
       throw new Error('Only https:// URLs are allowed.');
+    }
+
+    const urlSafety = evaluateUrlSafety(urlStr, {
+      httpsOnly: true,
+      blockPrivateHosts: true,
+      useEgressFilter: process.env.CARINA_EGRESS_FILTER === 'true',
+    });
+    if (!urlSafety.allowed) {
+      throw new Error(urlSafety.reason);
     }
 
     if (isBlockedHost(parsed.hostname)) {

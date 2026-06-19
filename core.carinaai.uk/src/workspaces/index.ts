@@ -38,6 +38,7 @@ export {
   setActiveAgentId,
 } from './agent-registry.js';
 export { describeRoute, resolveAgentRoute } from './agent-routing.js';
+export { buildRouteExplanation, ROUTING_PRECEDENCE } from './routing-explain.js';
 export {
   enrichRoutingContext,
   resolveInboundAgentRoute,

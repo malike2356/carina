@@ -139,7 +139,9 @@ describe('first-run onboarding prompts', () => {
       .mockResolvedValueOnce('now')
       .mockResolvedValueOnce('deepseek');
     const password = vi.fn().mockResolvedValue('sk-live');
-    const confirm = vi.fn().mockResolvedValue(false);
+    const confirm = vi.fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
 
     const { runFirstRunOnboarding } = await import('./first-run-onboarding.js');
     const ran = await runFirstRunOnboarding({ input, select, password, confirm });

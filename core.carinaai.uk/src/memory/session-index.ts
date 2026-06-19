@@ -1,5 +1,6 @@
 import { pool } from './db.js';
 import type { SessionSearchSort } from './session-search-ranking.js';
+import { generateSessionTitle } from './session-titles.js';
 import {
   getSessionWindowInternal,
   searchSessionsAdvanced,
@@ -119,5 +120,6 @@ async function deriveSessionTitle(sessionId: string): Promise<string> {
     [sessionId],
   );
   const first = String(result.rows[0]?.content ?? sessionId);
-  return first.length > 60 ? `${first.slice(0, 57)}...` : first;
+  if (!result.rows[0]?.content) return sessionId;
+  return generateSessionTitle(first);
 }

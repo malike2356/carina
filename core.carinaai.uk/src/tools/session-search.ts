@@ -26,6 +26,7 @@ export const sessionSearchTool: Tool = {
       sort: { type: 'string', enum: ['relevance', 'newest', 'oldest'], description: 'Result ordering' },
       role_filter: { type: 'string', enum: ['user', 'assistant'] },
       semantic: { type: 'boolean', description: 'Blend embedding similarity when available (default true)' },
+      recall: { type: 'boolean', description: 'Summarize matching past sessions for cross-session recall (FTS5 + auxiliary model)' },
     },
   },
   execute: async (params) => {
@@ -81,6 +82,18 @@ export const sessionSearchTool: Tool = {
     }
 
     if (query) {
+      if (params.recall === true) {
+        try {
+          const { recallAcrossSessions } = await import('../memory/session-fts-search.js');
+          const { currentProfileId } = await import('../memory/session-fts-db.js');
+          const summary = await recallAcrossSessions(query, currentProfileId());
+          return { mode: 'recall', query, summary };
+        } catch (err) {
+          console.error('session-search recall failed:', err);
+          return { error: 'Session recall failed.' };
+        }
+      }
+
       try {
         const payload = await searchSessionsAdvanced({
           query,
@@ -101,6 +114,7 @@ export const sessionSearchTool: Tool = {
           strategy: payload.strategy,
           fallbackUsed: payload.fallbackUsed,
           indexHealthy: payload.indexHealthy,
+          summary: payload.summary,
           results: payload.results.map((r) => ({
             ...r,
             lineageRoot: getLineageRoot(r.sessionId),

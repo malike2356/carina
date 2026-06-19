@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Ops - Telemetry</title>
+  <link rel="stylesheet" href="/ops/assets/ops.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="ops-header"><div><h1>Carina Ops</h1><p class="ops-sub"><span id="org-name">Organization</span></p></div><span class="plan-badge" id="plan-badge"></span></div>
+    <nav class="ops-nav" id="ops-nav"></nav>
+    <div class="card" id="health-card">
+      <h2>Runtime health</h2>
+      <p id="health-summary" class="placeholder">Loading...</p>
+      <ul id="health-checks" style="margin-top:12px;padding-left:18px;"></ul>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>Turns (24h)</h2><div class="stat" id="stat-turns">-</div></div>
+      <div class="card"><h2>Sessions (24h)</h2><div class="stat" id="stat-sessions">-</div></div>
+      <div class="card"><h2>Avg latency</h2><div class="stat" id="stat-latency" style="font-size:20px;">-</div></div>
+      <div class="card"><h2>Prompt cache hit rate</h2><div class="stat" id="stat-cache" style="font-size:20px;">-</div></div>
+    </div>
+    <div class="card">
+      <h2>Channels</h2>
+      <table class="ops-table">
+        <thead><tr><th>Channel</th><th>State</th><th>Transport</th><th>Detail</th></tr></thead>
+        <tbody id="channels-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Subagent activity</h2>
+      <table class="ops-table">
+        <thead><tr><th>Time</th><th>Type</th><th>Status</th><th>Latency</th></tr></thead>
+        <tbody id="subagents-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h2>Recent provider events</h2>
+      <table class="ops-table">
+        <thead><tr><th>Time</th><th>Kind</th><th>Provider</th><th>Detail</th></tr></thead>
+        <tbody id="providers-body"><tr><td colspan="4" class="placeholder">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="/ops/assets/layout.js"></script>
+  <script src="/ops/assets/platform-page.js"></script>
+  <script>
+    function statusClass(status) {
+      if (status === 'fail') return 'badge-warn';
+      if (status === 'warn') return 'badge-warn';
+      return '';
+    }
+
+    CarinaOpsLayout.initPage('telemetry', {
+      onReady: async () => {
+        const { ok, data } = await CarinaPlatform.fetchJson('/api/carina-ops/telemetry/overview?hours=24');
+        if (!ok) {
+          document.getElementById('health-summary').textContent = 'Unable to load telemetry.';
+          return;
+        }
+
+        const health = data.health || {};
+        document.getElementById('health-summary').textContent =
+          health.healthy ? 'All runtime checks passing.' : 'One or more checks need attention.';
+        const checksEl = document.getElementById('health-checks');
+        checksEl.innerHTML = (health.checks || []).map((check) =>
+          `<li class="${statusClass(check.status)}"><strong>${CarinaOpsLayout.escapeHtml(check.id)}</strong>: ${CarinaOpsLayout.escapeHtml(check.detail)}</li>`,
+        ).join('');
+
+        const metrics = data.metrics || {};
+        const sessions = data.sessions || {};
+        document.getElementById('stat-turns').textContent = String(metrics.turns?.total ?? 0);
+        document.getElementById('stat-sessions').textContent = String(sessions.summary?.uniqueSessions ?? 0);
+        document.getElementById('stat-latency').textContent =
+          `${metrics.turns?.avgLatencyMs ?? sessions.summary?.avgLatencyMs ?? 0} ms`;
+        const cache = health.promptCache || {};
+        document.getElementById('stat-cache').textContent = cache.enabled
+          ? `${cache.hitRatePercent ?? 0}% (${cache.stats?.hits ?? 0}/${(cache.stats?.hits ?? 0) + (cache.stats?.misses ?? 0)})`
+          : 'disabled';
+
+        const channels = (data.channels?.channels || []).filter((row) =>
+          row.state !== 'disabled' && row.state !== 'unsupported',
+        ).slice(0, 20);
+        CarinaPlatform.renderTable('channels-body', [
+          { key: 'channel' },
+          { key: 'state' },
+          { key: 'transport', render: (row) => row.transport || '-' },
+          { key: 'reason', render: (row) => CarinaOpsLayout.escapeHtml(row.reason || '-') },
+        ], channels, 'No configured channels.');
+
+        CarinaPlatform.renderTable('subagents-body', [
+          { key: 'ts', render: (row) => new Date(row.ts).toLocaleString() },
+          { key: 'agentType' },
+          { key: 'status' },
+          { key: 'latencyMs', render: (row) => row.latencyMs != null ? `${row.latencyMs} ms` : '-' },
+        ], sessions.recentSubagents || [], 'No subagent runs recorded.');
+
+        const providers = metrics.providers?.recent || [];
+        CarinaPlatform.renderTable('providers-body', [
+          { key: 'ts', render: (row) => new Date(row.ts).toLocaleString() },
+          { key: 'kind' },
+          { key: 'provider' },
+          { key: 'message', render: (row) => CarinaOpsLayout.escapeHtml(row.message || row.errorClass || row.cacheKey || '-') },
+        ], providers, 'No provider observations yet.');
+      },
+    });
+  </script>
+</body>
+</html>

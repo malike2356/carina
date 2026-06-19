@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Carina - Two-factor sign in</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1117; color: #c9d1d9;
+      min-height: 100svh; display: flex; align-items: center; justify-content: center; padding: 16px;
+    }
+    form {
+      width: 100%; max-width: 360px; background: #161b22;
+      border: 1px solid #30363d; border-radius: 10px; padding: 32px;
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.sub { color: #8b949e; font-size: 13px; margin-bottom: 24px; line-height: 1.5; }
+    label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; }
+    input {
+      width: 100%; background: #0d1117; border: 1px solid #30363d;
+      border-radius: 6px; padding: 10px 12px; color: #c9d1d9; font-size: 20px;
+      letter-spacing: 0.25em; text-align: center; margin-bottom: 16px;
+    }
+    button {
+      width: 100%; background: #238636; color: #fff; border: none;
+      border-radius: 6px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .error { color: #f85149; font-size: 13px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/login/2fa">
+    <h1>Two-factor verification</h1>
+    <p class="sub">Enter the 6-digit code from your authenticator app.</p>
+    <div id="error" class="error" hidden>Invalid code. Try again.</div>
+    <label for="token">Authentication code</label>
+    <input type="text" id="token" name="token" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autofocus>
+    <button type="submit">Verify</button>
+  </form>
+  <script>
+    if (window.location.search.indexOf('error=1') >= 0) {
+      document.getElementById('error').hidden = false;
+    }
+  </script>
+</body>
+</html>

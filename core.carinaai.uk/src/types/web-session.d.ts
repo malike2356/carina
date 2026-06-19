@@ -5,6 +5,7 @@ import type { OrgContext } from '../hosted/org-context.js';
 declare module 'express-session' {
   interface SessionData {
     webAuthed?: boolean;
+    webPendingTotp?: boolean;
     hostedAccountId?: string;
     hostedOrgId?: string;
     hostedOrgRole?: OrgRole;

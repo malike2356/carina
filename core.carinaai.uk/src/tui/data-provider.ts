@@ -1,4 +1,5 @@
 import { browseRecentSessions } from '../memory/session-index.js';
+import { listSubagentMetrics } from '../telemetry/subagent-metrics.js';
 import { listJobs } from '../agents/cron-scheduler.js';
 import { listProcesses } from '../tools/process-registry.js';
 import { listTaskFlowRuns, listDeliveryQueue, taskFlowsEnabled } from '../ops/taskflows/index.js';
@@ -16,6 +17,7 @@ export interface TaskRow {
   id: string;
   status: string;
   detail: string;
+  flowId?: string;
 }
 
 export interface ProcessRow {
@@ -86,6 +88,7 @@ export async function loadTuiSnapshot(memoryReady: boolean): Promise<TuiSnapshot
       tasks.push({
         kind: 'taskflow',
         id: r.id,
+        flowId: r.flowId,
         status: r.status,
         detail: r.flowName,
       });
@@ -98,6 +101,14 @@ export async function loadTuiSnapshot(memoryReady: boolean): Promise<TuiSnapshot
         detail: d.channel,
       });
     }
+  }
+  for (const row of listSubagentMetrics(12)) {
+    tasks.push({
+      kind: 'subagent',
+      id: row.sessionId,
+      status: row.status,
+      detail: `${row.agentType}${row.latencyMs != null ? ` ${row.latencyMs}ms` : ''}`,
+    });
   }
 
   const processes: ProcessRow[] = listProcesses().map((p) => ({

@@ -1,5 +1,8 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { ProviderKind } from './provider-registry.js';
 import { PROVIDER_MAP } from './provider-registry.js';
+import { CARINA_HOME } from '../config/paths.js';
 import { classifyModel } from '../billing/rate-card.js';
 
 export type ModelFamily =
@@ -56,9 +59,27 @@ const OVERLAYS: Record<ModelFamily, string[]> = {
   ],
 };
 
+function overlayName(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '-');
+}
+
+function readProviderOverlay(provider: string): string | null {
+  const file = path.join(CARINA_HOME, 'overlays', `${overlayName(provider)}.md`);
+  if (!fs.existsSync(file)) return null;
+  const content = fs.readFileSync(file, 'utf8').trim();
+  return content.length > 0 ? content : null;
+}
+
 export function buildModelFamilyOverlay(provider: string, model: string): string | null {
   const family = resolveModelFamily(provider, model);
   const lines = OVERLAYS[family];
-  if (!lines.length) return null;
-  return `Model-family guidance (${family}):\n${lines.map((line) => `- ${line}`).join('\n')}`;
+  const providerOverlay = readProviderOverlay(provider);
+  const parts: string[] = [];
+  if (providerOverlay) {
+    parts.push(`Provider overlay (${overlayName(provider)}):\n${providerOverlay}`);
+  }
+  if (lines.length) {
+    parts.push(`Model-family guidance (${family}):\n${lines.map((line) => `- ${line}`).join('\n')}`);
+  }
+  return parts.length > 0 ? parts.join('\n\n') : null;
 }

@@ -89,12 +89,13 @@ function prompt(): void {
     const needsAsync = trimmed.startsWith('/memories')
       || trimmed.startsWith('/usage')
       || trimmed.startsWith('/research')
-      || trimmed.startsWith('/compare');
+      || trimmed.startsWith('/compare')
+      || trimmed === '/status';
     const cmd = routeThroughGateway
       ? { handled: false as const }
       : needsAsync
       ? await handleGatewayCommandAsync(trimmed, { sessionId, channel: 'cli' })
-      : handleGatewayCommand(trimmed);
+      : handleGatewayCommand(trimmed, {}, { sessionId, channel: 'cli' });
     if (cmd.handled) {
       if (cmd.action === 'clear') {
         await getRouter().clearSession(sessionId);
@@ -105,6 +106,20 @@ function prompt(): void {
         }));
         prompt();
         return;
+      }
+      if (cmd.action === 'new_session') {
+        const router = getRouter();
+        sessionId = await router.rotateSurfaceSession(activeAgentId, 'cli', 'local', sessionId);
+        printFreshStart(buildEntranceSnapshot({
+          surface: 'cli',
+          memoryReady,
+          toolCount: registry.list().length,
+        }));
+        prompt();
+        return;
+      }
+      if (cmd.action === 'stop_turn') {
+        getRouter().abortSessionTurn(sessionId);
       }
       console.log(chalk.yellow(`\n  ${cmd.reply}\n`));
       if (cmd.action === 'exit') {

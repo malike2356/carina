@@ -16,9 +16,11 @@ import {
   rememberApprovalAfterConfirm,
 } from '../security/approval-policy.js';
 import { getToolExecutionContext } from '../security/tool-execution-context.js';
-import { isSubagentSession } from './delegation-context.js';
+import { isSubagentSession, getSpawnContext } from './delegation-context.js';
 import { isSubagentBlockedTool } from './subagent-policy.js';
+import { checkToolPermission } from './role-enforcer.js';
 import { evaluateToolRbac } from '../security/tool-rbac.js';
+import { isAdminRole, isPlanModeToolAllowed } from '../security/admin-tool-policy.js';
 import { resolveSandboxExecution } from '../security/sandbox-policy.js';
 import { appendSecurityAudit } from '../security/security-audit.js';
 import { evaluateScoutToolPolicy, reportPolicyFallback } from '../security/scout-policy-client.js';
@@ -26,6 +28,7 @@ import { toolRiskTier } from '../security/tool-risk.js';
 import { getActiveProfileName } from '../profiles/manager.js';
 import { getActiveAgentDefinition } from '../workspaces/agent-registry.js';
 import { isToolAllowed, recordToolPolicyCall } from './tool-operator-policy.js';
+import { enforceCommandFlag } from '../security/command-flag-enforce.js';
 
 export type ConfirmFn = (
   toolName: string,
@@ -69,6 +72,14 @@ export async function executeToolCall(
   const tool = getSessionTool(sessionId, call.toolName) ?? registry.get(call.toolName);
   if (!tool) {
     return { error: `Unknown tool: ${call.toolName}` };
+  }
+
+  const roleError = checkToolPermission(call.toolName, getSpawnContext(sessionId));
+  if (roleError) {
+    return {
+      error: `[ROLE RESTRICTION] ${roleError}`,
+      code: 'ROLE_RESTRICTION',
+    };
   }
 
   if (isSubagentSession(sessionId)) {
@@ -125,6 +136,24 @@ export async function executeToolCall(
       error: rbac.reason ?? 'Tool access denied by role policy.',
       code: 'TOOL_RBAC_DENIED',
       requiredRole: rbac.requiredRole,
+    };
+  }
+
+  const executionContext = getToolExecutionContext();
+  if (executionContext.planMode && !isAdminRole(executionContext.orgRole) && !isPlanModeToolAllowed(call.toolName)) {
+    appendSecurityAudit({
+      category: 'tool_policy',
+      action: 'block',
+      detail: `Plan mode allowlist blocked ${call.toolName}`,
+      sessionId,
+      toolName: call.toolName,
+      metadata: {
+        role: executionContext.orgRole ?? 'unknown',
+      },
+    });
+    return {
+      error: `Tool "${call.toolName}" is blocked in plan mode.`,
+      code: 'PLAN_MODE_TOOL_BLOCKED',
     };
   }
 
@@ -189,6 +218,16 @@ export async function executeToolCall(
     call.params = { ...call.params, _confirmed: true };
     grantJitCredentialsAfterConfirm(sessionId, call.toolName, call.params);
     rememberApprovalAfterConfirm(call.toolName, call.params, approvalContext);
+  }
+
+  if (call.toolName === 'shell-exec' && typeof call.params.command === 'string') {
+    const flagResult = await enforceCommandFlag(call.params.command, sessionId);
+    if (!flagResult.allowed) {
+      return {
+        error: flagResult.reason,
+        code: flagResult.code,
+      };
+    }
   }
 
   const sequenceError = await enforceToolSequence(sessionId, call.toolName, call.params);

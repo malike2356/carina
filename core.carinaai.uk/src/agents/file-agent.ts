@@ -8,7 +8,12 @@ export class FileAgent extends SubAgent {
     'You are a file management specialist. Organise, summarise, and transform documents.';
   allowedTools = ['file-read', 'file-write'];
 
-  constructor(sessionId: string, confirmTool?: ConfirmFn, providerOverride?: ProviderOverride) {
-    super(sessionId, false, confirmTool, providerOverride);
+  constructor(
+    sessionId: string,
+    confirmTool?: ConfirmFn,
+    providerOverride?: ProviderOverride,
+    abortSignal?: AbortSignal,
+  ) {
+    super(sessionId, false, confirmTool, providerOverride, abortSignal);
   }
 }

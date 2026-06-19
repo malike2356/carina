@@ -15,6 +15,69 @@ import {
 } from './session-search-ranking.js';
 import { operatorMemoryScope } from '../profiles/isolation.js';
 import { getLineageRoot } from './session-lineage.js';
+import { generateSessionTitle } from './session-titles.js';
+
+async function searchFts5Sessions(
+  query: string,
+  limit: number,
+  offset: number,
+): Promise<SessionSearchResponse | null> {
+  try {
+    const { isSessionFtsAvailable, currentProfileId } = await import('./session-fts-db.js');
+    if (!isSessionFtsAvailable()) return null;
+
+    const { searchSessionsFts5 } = await import('./session-fts-search.js');
+    const hits = searchSessionsFts5(query, {
+      profileId: currentProfileId(),
+      limit: limit + offset,
+    });
+
+    const mapped: SessionSearchHitResult[] = hits.map((hit) => ({
+      sessionId: hit.sessionId,
+      messageId: `${hit.sessionId}:fts5`,
+      title: hit.title,
+      timestamp: new Date(hit.createdAt),
+      snippet: hit.snippet,
+      bookendStart: [],
+      bookendEnd: [],
+      contextWindow: [],
+      rank: Math.abs(hit.rank),
+      matchStrategy: 'fts',
+      lineageRoot: getLineageRoot(hit.sessionId),
+    }));
+
+    const pageRows = mapped.slice(offset, offset + limit);
+    let summary: string | undefined;
+    if (pageRows.length > 0) {
+      try {
+        const { summarizeSessionSearchResults } = await import('./session-search-summary.js');
+        summary = await summarizeSessionSearchResults(query, pageRows.map((r) => ({
+          sessionId: r.sessionId,
+          snippet: r.snippet,
+        })));
+      } catch {
+        summary = undefined;
+      }
+    }
+
+    return {
+      results: pageRows,
+      total: mapped.length,
+      page: Math.floor(offset / limit) + 1,
+      pageSize: limit,
+      totalPages: mapped.length > 0 ? Math.ceil(mapped.length / limit) : 0,
+      query,
+      sort: 'relevance',
+      strategy: 'fts',
+      fallbackUsed: false,
+      indexHealthy: true,
+      summary,
+    };
+  } catch (err) {
+    console.error('[session-search] FTS5 lookup skipped:', err);
+    return null;
+  }
+}
 
 export interface SessionMessage {
   id: string;
@@ -67,6 +130,7 @@ export interface SessionSearchResponse {
   strategy: SessionMatchStrategy | 'mixed';
   fallbackUsed: boolean;
   indexHealthy: boolean;
+  summary?: string;
 }
 
 let indexHealthCache: { at: number; healthy: boolean; trgm: boolean } | null = null;
@@ -271,6 +335,9 @@ export async function searchSessionsAdvanced(
   };
   if (!query) return empty;
 
+  const fts5Response = await searchFts5Sessions(query, limit, offset);
+  if (fts5Response && fts5Response.results.length > 0) return fts5Response;
+
   const health = await getIndexHealth();
   let fallbackUsed = false;
   let rows: RawSessionMatch[] = [];
@@ -313,6 +380,19 @@ export async function searchSessionsAdvanced(
   const strategies = new Set(results.map((r) => r.matchStrategy));
   const strategy = strategies.size === 1 ? results[0]!.matchStrategy : 'mixed';
 
+  let summary: string | undefined;
+  if (results.length > 0) {
+    try {
+      const { summarizeSessionSearchResults } = await import('./session-search-summary.js');
+      summary = await summarizeSessionSearchResults(query, results.map((r) => ({
+        sessionId: r.sessionId,
+        snippet: r.snippet,
+      })));
+    } catch {
+      summary = undefined;
+    }
+  }
+
   return {
     results,
     total,
@@ -324,6 +404,7 @@ export async function searchSessionsAdvanced(
     strategy,
     fallbackUsed,
     indexHealthy: health.fts,
+    summary,
   };
 }
 
@@ -357,7 +438,8 @@ async function deriveSessionTitle(sessionId: string): Promise<string> {
     [sessionId],
   );
   const first = String(result.rows[0]?.content ?? sessionId);
-  return first.length > 60 ? `${first.slice(0, 57)}...` : first;
+  if (!result.rows[0]?.content) return sessionId;
+  return generateSessionTitle(first);
 }
 
 export async function getSessionWindowInternal(

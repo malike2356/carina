@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { handleGatewayCommand } from './commands.js';
+import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
 
 describe('gateway help command', () => {
   it('includes the capabilities docs link', () => {
@@ -10,6 +10,36 @@ describe('gateway help command', () => {
 
     expect(result.reply).toContain('https://carinaai.uk/docs/capabilities');
     expect(result.reply).toContain('/model [provider] [model]');
-    expect(result.reply).toContain('/clear - fresh start');
+    expect(result.reply).toContain('/clear - clear session memory');
+  });
+
+  it('returns compact help on telegram', () => {
+    const result = handleGatewayCommand('/help', {}, { channel: 'telegram' });
+    expect(result.handled).toBe(true);
+    if (!result.handled) return;
+    expect(result.reply).toContain('/new');
+    expect(result.reply).not.toContain('https://carinaai.uk/docs/capabilities');
+  });
+
+  it('handles /new and /stop actions', async () => {
+    expect(handleGatewayCommand('/new').action).toBe('new_session');
+    const stop = await handleGatewayCommandAsync('/stop');
+    expect(stop.handled).toBe(true);
+    if (stop.handled) {
+      expect(stop.action).toBe('stop_turn');
+    }
+  });
+
+  it('returns status payload async', async () => {
+    const result = await handleGatewayCommandAsync('/status', {
+      sessionId: 'sess-abc',
+      channel: 'discord',
+      activeProvider: 'anthropic',
+      activeModel: 'claude-sonnet-4-6',
+    });
+    expect(result.handled).toBe(true);
+    if (!result.handled) return;
+    expect(result.reply).toContain('anthropic');
+    expect(result.reply).toContain('Continuity:');
   });
 });

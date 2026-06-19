@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pack - Carina Hub</title>
+  <link rel="stylesheet" href="/hub.css" />
+</head>
+<body>
+  <div id="nav"></div>
+
+  <main class="wrap" id="main">
+    <p class="muted">Loading pack...</p>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="/hub.js"></script>
+  <script>
+    (function () {
+      const H = window.CarinaHub;
+      let selectedRating = 0;
+      let firstSkill = null;
+
+      document.getElementById('nav').innerHTML = H.renderNav('browse');
+      document.getElementById('footer').innerHTML = H.renderFooter();
+
+      const packName = new URLSearchParams(location.search).get('pack');
+      if (!packName) {
+        document.getElementById('main').innerHTML =
+          '<p class="form-msg error">Missing ?pack= parameter.</p>';
+        return;
+      }
+
+      function avgFromReviews(reviews) {
+        if (!reviews.length) return 0;
+        const sum = reviews.reduce((a, r) => a + Number(r.rating || 0), 0);
+        return sum / reviews.length;
+      }
+
+      function renderStarInput() {
+        let html = '<div class="star-input" id="star-input">';
+        for (let i = 1; i <= 5; i += 1) {
+          html += '<button type="button" data-star="' + i + '" aria-label="' + i + ' stars">&#9733;</button>';
+        }
+        html += '</div>';
+        return html;
+      }
+
+      function bindStarInput() {
+        document.querySelectorAll('#star-input button').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            selectedRating = Number(btn.getAttribute('data-star'));
+            document.querySelectorAll('#star-input button').forEach((b, idx) => {
+              b.classList.toggle('active', idx < selectedRating);
+            });
+          });
+        });
+      }
+
+      async function loadReviews(skill) {
+        const section = document.getElementById('reviews-section');
+        if (!skill) {
+          section.innerHTML = '<p class="muted">No skills in this pack yet.</p>';
+          return;
+        }
+        firstSkill = skill;
+        try {
+          const data = await H.api(
+            '/api/v1/skills/' + encodeURIComponent(packName) + '/' +
+            encodeURIComponent(skill.name) + '/reviews?limit=50'
+          );
+          const reviews = data.reviews || [];
+          const avg = skill.rating_avg != null
+            ? Number(skill.rating_avg)
+            : avgFromReviews(reviews);
+          const count = skill.review_count != null
+            ? Number(skill.review_count)
+            : Number(data.total || reviews.length);
+
+          document.getElementById('rating-display').innerHTML =
+            H.renderStars(avg) +
+            ' <span class="muted">' + avg.toFixed(1) + ' (' + count + ' reviews)</span>';
+
+          document.getElementById('reviews-list').innerHTML = reviews.length
+            ? reviews.map((r) =>
+              '<div class="review-item">' +
+              '<div class="review-meta">' + H.renderStars(r.rating) +
+              '<span>' + H.esc(H.truncateId(r.author_id, 12)) + '</span>' +
+              '<span>' + H.esc(H.formatDate(r.created_at)) + '</span></div>' +
+              '<p>' + H.esc(r.body || '') + '</p></div>'
+            ).join('')
+            : '<p class="muted">No reviews yet. Be the first.</p>';
+        } catch (err) {
+          document.getElementById('reviews-list').innerHTML =
+            '<p class="form-msg error">' + H.esc(err.message) + '</p>';
+        }
+      }
+
+      async function init() {
+        const pack = await H.api('/api/packs/' + encodeURIComponent(packName));
+        const skills = pack.skills || [];
+        const cmd = H.installCommand(pack.name);
+        document.title = pack.name + ' - Carina Hub';
+
+        const main = document.getElementById('main');
+        main.innerHTML =
+          '<div class="pack-header">' +
+          '<h1>' + H.esc(pack.name) + '</h1>' +
+          '<div class="meta">' +
+          H.badgePill('v' + pack.version, 'category') +
+          (pack.featured ? H.badgePill('Verified by Carina', 'verified') : H.badgePill('Community', 'community')) +
+          H.badgePill(pack.category || 'general', 'category') +
+          '</div>' +
+          '<p class="muted">By ' + H.esc(pack.author) + '</p>' +
+          '<p>' + H.esc(pack.description) + '</p>' +
+          '<div class="pack-meta">' +
+          '<span>' + pack.download_count + ' installs</span>' +
+          '<span>Updated ' + H.esc(H.formatDate(pack.updated_at || pack.created_at)) + '</span>' +
+          '<span>Version ' + H.esc(pack.version) + '</span>' +
+          '</div>' +
+          '</div>' +
+
+          '<section class="section"><h2>Install</h2>' +
+          '<div class="code-box"><code>' + H.esc(cmd) + '</code>' +
+          '<button type="button" class="btn small" data-copy="' + H.esc(cmd) + '">Copy</button></div></section>' +
+
+          '<section class="section"><h2>Skills</h2>' +
+          '<div class="data-table-wrap"><table class="data-table"><thead><tr>' +
+          '<th>Name</th><th>Description</th><th>Triggers</th><th>Tools</th>' +
+          '</tr></thead><tbody>' +
+          (skills.length ? skills.map((s) =>
+            '<tr><td>' + H.esc(s.name) + '</td>' +
+            '<td>' + H.esc(s.description) + '</td>' +
+            '<td>' + H.esc((s.triggers || []).join(', ')) + '</td>' +
+            '<td>' + H.esc((s.tools_used || []).join(', ')) + '</td></tr>'
+          ).join('') : '<tr><td colspan="4" class="muted">No skills listed.</td></tr>') +
+          '</tbody></table></div></section>' +
+
+          '<section class="section" id="reviews-section">' +
+          '<h2>Reviews</h2>' +
+          '<div id="rating-display"></div>' +
+          '<div id="reviews-list"></div>' +
+          '<form class="review-form" id="review-form">' +
+          '<h3>Submit a review</h3>' +
+          '<label for="review-author">Your ID</label>' +
+          '<input id="review-author" type="text" required maxlength="128" placeholder="your-id" />' +
+          '<label>Rating</label>' + renderStarInput() +
+          '<label for="review-body">Review</label>' +
+          '<textarea id="review-body" maxlength="2000" placeholder="Share your experience..."></textarea>' +
+          '<p style="margin-top:1rem"><button type="submit" class="btn">Submit review</button></p>' +
+          '<div id="review-msg" class="hidden"></div>' +
+          '</form></section>';
+
+        H.bindCopyButtons(main);
+        bindStarInput();
+        await loadReviews(skills[0] || null);
+
+        document.getElementById('review-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById('review-msg');
+          msg.className = 'hidden';
+          if (!firstSkill) {
+            msg.className = 'form-msg error';
+            msg.textContent = 'No skill available to review.';
+            return;
+          }
+          if (selectedRating < 1) {
+            msg.className = 'form-msg error';
+            msg.textContent = 'Please select a rating.';
+            return;
+          }
+          const authorId = document.getElementById('review-author').value.trim();
+          const body = document.getElementById('review-body').value.trim();
+          try {
+            await H.api(
+              '/api/v1/skills/' + encodeURIComponent(packName) + '/' +
+              encodeURIComponent(firstSkill.name) + '/reviews',
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  author_id: authorId,
+                  rating: selectedRating,
+                  body,
+                }),
+              }
+            );
+            msg.className = 'form-msg success';
+            msg.textContent = 'Review submitted. Thank you.';
+            await loadReviews(firstSkill);
+          } catch (err) {
+            msg.className = 'form-msg error';
+            msg.textContent = err.message;
+          }
+        });
+      }
+
+      init().catch((err) => {
+        document.getElementById('main').innerHTML =
+          '<p class="form-msg error">' + H.esc(err.message) + '</p>';
+      });
+    })();
+  </script>
+</body>
+</html>

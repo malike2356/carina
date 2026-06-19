@@ -52,4 +52,19 @@ describe('applyContextBudget', () => {
     );
     expect(result.fixedParts).toEqual(fixed);
   });
+
+  it('caps context at 70 percent of the model window', () => {
+    const result = applyContextBudget(
+      ['system'],
+      [
+        { id: 'history', content: 'Recent session history:\n' + 'a'.repeat(1200) },
+        { id: 'similar', content: 'Relevant past memories:\n' + 'b'.repeat(1200) },
+      ],
+      { budgetChars: 10_000, modelWindowTokens: 100 },
+    );
+
+    expect(result.budgetTokens).toBe(70);
+    expect(result.estimatedTokens).toBeLessThanOrEqual(70);
+    expect(result.estimatedChars).toBeLessThanOrEqual(10_000);
+  });
 });

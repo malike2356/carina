@@ -9,6 +9,12 @@ import {
   setConfigValue,
 } from '../config/loader.js';
 import {
+  deleteAuxiliaryConfig,
+  getAuxiliaryModels,
+  saveAuxiliaryConfig,
+} from '../config/auxiliary-models.js';
+import { AUXILIARY_TASK_NAMES, isAuxiliaryTaskName } from '../../types/auxiliary-model.js';
+import {
   formatRuntimeConfigSummary,
   migrateRuntimeConfig,
   validateRuntimeConfig,
@@ -116,6 +122,56 @@ export async function runConfigCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina config <list|show|get|set|unset|edit|check|validate|migrate>');
+  if (action === 'set-task-model') {
+    const task = args[1];
+    const model = args[2];
+    if (!task || !model) {
+      console.error('Usage: carina config set-task-model <task> <model|reset> [--provider <name>] [--max-tokens <n>]');
+      process.exit(1);
+    }
+    if (!isAuxiliaryTaskName(task)) {
+      console.error(`Unknown task: ${task}. Choices: ${AUXILIARY_TASK_NAMES.join(', ')}`);
+      process.exit(1);
+    }
+    if (model === 'reset') {
+      await deleteAuxiliaryConfig(task);
+      console.log(`Auxiliary model for ${task} reset to primary model`);
+      return;
+    }
+    const providerIdx = args.indexOf('--provider');
+    const maxTokensIdx = args.indexOf('--max-tokens');
+    const provider = providerIdx >= 0 ? args[providerIdx + 1] : undefined;
+    const maxTokensRaw = maxTokensIdx >= 0 ? args[maxTokensIdx + 1] : undefined;
+    const maxTokens = maxTokensRaw ? Number.parseInt(maxTokensRaw, 10) : undefined;
+    await saveAuxiliaryConfig(task, {
+      model,
+      ...(provider ? { provider } : {}),
+      ...(Number.isFinite(maxTokens) && maxTokens! > 0 ? { maxTokens } : {}),
+    });
+    const label = provider ? `${provider}/${model}` : model;
+    console.log(`Auxiliary model for ${task} set to ${label}`);
+    return;
+  }
+
+  if (action === 'list-task-models') {
+    const map = await getAuxiliaryModels();
+    const rows = Object.entries(map).map(([task, cfg]) => {
+      const provider = cfg.provider ?? 'primary';
+      const model = cfg.model ?? 'primary';
+      const extras = [
+        cfg.maxTokens ? `maxTokens=${cfg.maxTokens}` : null,
+        cfg.temperature !== undefined ? `temperature=${cfg.temperature}` : null,
+      ].filter(Boolean).join(' ');
+      return `${task.padEnd(18)} ${provider}/${model}${extras ? ` (${extras})` : ''}`;
+    });
+    if (rows.length === 0) {
+      console.log('No auxiliary overrides set (all tasks use primary model)');
+      return;
+    }
+    console.log(rows.join('\n'));
+    return;
+  }
+
+  console.error('Usage: carina config <list|show|get|set|unset|edit|check|validate|migrate|set-task-model|list-task-models>');
   process.exit(1);
 }

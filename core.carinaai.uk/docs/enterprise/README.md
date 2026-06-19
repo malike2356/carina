@@ -24,7 +24,7 @@ carina enterprise status
 |------|------------|-----------------|----------|
 | Community (MIT) | none | community | no |
 | Carina Ops Team | 99.5% | 24h | no |
-| Scout Pro | 99.9% | 8h | no |
+| Scout Govern | 99.9% | 8h | no |
 | Enterprise Supported | 99.9% | 4h | yes |
 
 SLA numbers are **targets in product configuration**; contractual terms are in the signed Enterprise agreement.
@@ -33,7 +33,7 @@ SLA numbers are **targets in product configuration**; contractual terms are in t
 
 From `BILLING_PLANS.enterprise` (shipped in core):
 
-- Everything in Scout Pro
+- Everything in Scout Govern
 - SOC2 readiness export (operator-provided artifacts; not a third-party audit certificate)
 - 99.9% uptime SLA target
 - Dedicated Slack support channel
@@ -46,7 +46,7 @@ The CLI resolves your active tier from:
 
 - `CARINA_ENTERPRISE_CONTRACT=true` -> Enterprise Supported
 - `CARINA_OPS_PLAN=carina_ops_team` -> Carina Ops Team
-- `LABYRINTH_ENABLED=true` -> Scout Pro path
+- `LABYRINTH_ENABLED=true` -> Scout Govern path
 - otherwise -> Community MIT
 
 ## Kernel boundary

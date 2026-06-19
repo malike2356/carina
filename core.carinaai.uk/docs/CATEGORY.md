@@ -52,7 +52,7 @@ Authors scaffold with `carina hub author init`, validate knowledge (no secrets i
 
 MIT kernel remains free. Paid layers:
 
-- **Scout Pro** - security SLA
+- **Scout Govern** - security SLA
 - **Carina Ops Team** - hosted workspace billing
 - **Enterprise Supported** - contract, 99.9% SLA, dedicated support
 

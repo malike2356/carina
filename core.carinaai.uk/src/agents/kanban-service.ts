@@ -26,11 +26,13 @@ import { GenericSubAgent } from './generic-sub-agent.js';
 import {
   canDelegate,
   createChildAbortController,
-  getDelegationDepth,
+  getActiveChildCount,
+  getSpawnContext,
   releaseChildAbortController,
-  setDelegationDepth,
+  setSpawnContext,
   clearDelegationDepth,
 } from './delegation-context.js';
+import { buildChildSpawnContext, checkSpawnPermission } from './role-enforcer.js';
 import { resolveToolset } from '../tools/toolset.js';
 
 export async function getBoardView(sessionId: string, boardId = 'default') {
@@ -153,23 +155,28 @@ export async function runCardWork(
   if (!canDelegate(sessionId)) {
     throw new KanbanWorkflowError('Delegation depth limit reached', 'permission_denied');
   }
+  const parentCtx = getSpawnContext(sessionId);
+  const spawnErr = checkSpawnPermission(parentCtx, getActiveChildCount(sessionId));
+  if (spawnErr) {
+    throw new KanbanWorkflowError(spawnErr, 'permission_denied');
+  }
 
   await moveCard(cardId, 'in_progress', 'subagent', card.version);
 
   const allowedTools = resolveToolset(toolsets ?? ['terminal', 'file', 'web']);
-  const childDepth = getDelegationDepth(sessionId) + 1;
   const childAbort = createChildAbortController(sessionId);
   const subSessionId = `${sessionId}:kanban:${cardId}`;
 
   try {
-    setDelegationDepth(subSessionId, childDepth);
+    const childCtx = buildChildSpawnContext(parentCtx, sessionId);
+    setSpawnContext(subSessionId, childCtx);
     const agent = new GenericSubAgent(
       subSessionId,
       card.title,
       allowedTools,
       undefined,
       undefined,
-      childDepth,
+      childCtx.depth,
       childAbort.signal,
     );
     const base = card.workPrompt ?? card.description ?? '';

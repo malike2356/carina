@@ -16,6 +16,9 @@ function mockLearningLoop(result: unknown, isCorrection = false) {
   vi.doMock('./curator.js', () => ({
     runLightCuratorPass: vi.fn().mockResolvedValue(undefined),
   }));
+  vi.doMock('./task-outcome.js', () => ({
+    persistTaskOutcome: vi.fn().mockResolvedValue({ saved: false, reason: 'mock' }),
+  }));
 }
 
 describe('evaluateAfterTurn', () => {
@@ -38,6 +41,9 @@ describe('evaluateAfterTurn', () => {
     }));
     vi.doMock('./curator.js', () => ({
       runLightCuratorPass: vi.fn().mockResolvedValue(undefined),
+    }));
+    vi.doMock('./task-outcome.js', () => ({
+      persistTaskOutcome: vi.fn().mockResolvedValue({ saved: false }),
     }));
     const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
     const result = await evaluateAfterTurn({
@@ -131,6 +137,22 @@ describe('evaluateAfterTurn', () => {
       toolCallLog: [],
     });
     expect(result).toEqual({ kind: 'ignored', reason: 'low_confidence' });
+  });
+
+  it('returns outcome notice when no skill is saved but work is indexed', async () => {
+    mockLearningLoop({ saved: false });
+    vi.doMock('./task-outcome.js', () => ({
+      persistTaskOutcome: vi.fn().mockResolvedValue({ saved: true, topic: 'Deploy staging' }),
+    }));
+    const { evaluateAfterTurn } = await import('./post-task-evaluator.js');
+    const result = await evaluateAfterTurn({
+      userMessage: 'Deploy staging and verify health',
+      assistantText: 'Deployment finished successfully with all health checks passing.',
+      toolsUsed: ['shell-exec', 'http-request', 'todo'],
+      toolCallLog: [],
+      sessionId: 'sess-1',
+    });
+    expect(result).toEqual({ kind: 'outcome', topic: 'Deploy staging' });
   });
 });
 

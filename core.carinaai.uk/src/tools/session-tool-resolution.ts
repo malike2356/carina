@@ -4,12 +4,18 @@ import { listSessionTools } from './session-tool-store.js';
 import { resolveActiveToolNames } from './toolset-config.js';
 import { ALWAYS_ON_TOOLS, filterLeafTools } from './toolset.js';
 import { isSubagentSession } from '../agents/delegation-context.js';
+import {
+  selectToolsByEmbedding,
+  shouldUseEmbeddingToolSelect,
+} from './tool-embedding-select.js';
+import { getModelMetadata } from '../brain/model-metadata.js';
 
 export type SessionToolResolution = {
   names: string[];
   tools: Tool[];
   isSubagent: boolean;
   toolsets: string[];
+  embeddingFiltered?: boolean;
 };
 
 export function resolveSessionToolNames(opts: {
@@ -33,18 +39,49 @@ export function resolveSessionToolNames(opts: {
   return names;
 }
 
-export function resolveSessionTools(opts: {
+function resolveToolsFromNames(names: string[], sessionId: string): Tool[] {
+  const allowed = new Set(names);
+  const globalTools = registry.list().filter((t) => allowed.has(t.name));
+  const sessionTools = listSessionTools(sessionId).filter((t) => allowed.has(t.name));
+  const byName = new Map(globalTools.map((t) => [t.name, t]));
+  for (const tool of sessionTools) byName.set(tool.name, tool);
+  return [...byName.values()];
+}
+
+export async function resolveSessionTools(opts: {
   sessionId: string;
   platform?: string;
   explicitAllowed?: string[];
-}): SessionToolResolution {
+  userMessage?: string;
+  provider?: string;
+  model?: string;
+}): Promise<SessionToolResolution> {
   const names = resolveSessionToolNames(opts);
-  const allowed = new Set(names);
-  const globalTools = registry.list().filter((t) => allowed.has(t.name));
-  const sessionTools = listSessionTools(opts.sessionId).filter((t) => allowed.has(t.name));
-  const byName = new Map(globalTools.map((t) => [t.name, t]));
-  for (const tool of sessionTools) byName.set(tool.name, tool);
+  let tools = resolveToolsFromNames(names, opts.sessionId);
+  let embeddingFiltered = false;
 
+  const provider = opts.provider ?? 'openai';
+  const model = opts.model ?? 'gpt-4o';
+  const metadata = getModelMetadata(provider, model);
+
+  if (
+    opts.userMessage?.trim()
+    && shouldUseEmbeddingToolSelect({
+      toolCount: tools.length,
+      contextWindow: metadata.contextWindow,
+      provider,
+      model,
+    })
+  ) {
+    tools = await selectToolsByEmbedding({
+      tools,
+      query: opts.userMessage,
+      alwaysInclude: [...ALWAYS_ON_TOOLS],
+    });
+    embeddingFiltered = true;
+  }
+
+  const byName = new Map(tools.map((t) => [t.name, t]));
   const toolsets = registry.toolsetsForNames([...byName.keys()]);
 
   return {
@@ -52,5 +89,6 @@ export function resolveSessionTools(opts: {
     tools: [...byName.values()],
     isSubagent: isSubagentSession(opts.sessionId),
     toolsets,
+    embeddingFiltered,
   };
 }

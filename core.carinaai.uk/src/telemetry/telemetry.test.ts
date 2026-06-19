@@ -117,8 +117,12 @@ describe('trace', () => {
 describe('telemetry health snapshot', () => {
   it('returns structured health checks', async () => {
     const snapshot = await buildTelemetryHealthSnapshot();
-    expect(snapshot.checks.length).toBeGreaterThan(2);
+    expect(snapshot.checks.length).toBeGreaterThan(4);
     expect(typeof snapshot.healthy).toBe('boolean');
     expect(snapshot.channels).toHaveProperty('connected');
+    expect(snapshot.otel).toHaveProperty('enabled');
+    expect(snapshot.promptCache).toHaveProperty('stats');
+    expect(snapshot.sessions).toHaveProperty('turns');
+    expect(snapshot.subagents).toHaveProperty('completed');
   });
 });

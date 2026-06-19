@@ -35,6 +35,21 @@ const PUBLISH_RATE_WINDOW_MS = 60 * 60 * 1000;
 const PUBLISH_RATE_MAX = 20;
 const publishRateHits = new Map<string, number[]>();
 
+const REVIEW_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const reviewRateHits = new Map<string, number>();
+
+function reviewRateLimit(authorId: string, packName: string, skillName: string, res: Response): boolean {
+  const key = `${authorId}:${packName}:${skillName}`;
+  const last = reviewRateHits.get(key) ?? 0;
+  const now = Date.now();
+  if (now - last < REVIEW_RATE_WINDOW_MS) {
+    res.status(429).json({ error: 'You have already submitted a review for this skill recently.' });
+    return false;
+  }
+  reviewRateHits.set(key, now);
+  return true;
+}
+
 function hubCorsMiddleware(req: Request, res: Response, next: () => void): void {
   const origin = req.headers.origin;
   if (origin && HUB_CORS_ORIGINS.has(origin)) {
@@ -199,6 +214,82 @@ export function createSkillsHubApp(): Express {
     }
   });
 
+  app.post('/api/v1/skills/:pack/:name/reviews', async (req, res, next) => {
+    try {
+      const { pack, name } = req.params;
+      const { rating, body, author_id } = req.body as {
+        rating?: unknown;
+        body?: unknown;
+        author_id?: unknown;
+      };
+
+      const ratingNum = Number(rating);
+      if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        res.status(400).json({ error: 'rating must be an integer 1-5' });
+        return;
+      }
+      const authorId = String(author_id ?? '').trim();
+      if (!authorId || authorId.length > 128) {
+        res.status(400).json({ error: 'author_id is required (max 128 chars)' });
+        return;
+      }
+      const reviewBody = String(body ?? '').trim().slice(0, 2000);
+
+      if (!reviewRateLimit(authorId, pack, name, res)) return;
+
+      const { hubPool } = await import('./migrations.js');
+      await hubPool.query(
+        `INSERT INTO hub_skill_reviews (pack_name, skill_name, author_id, rating, body)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT ON CONSTRAINT hub_skill_reviews_unique_author
+         DO UPDATE SET rating = EXCLUDED.rating, body = EXCLUDED.body`,
+        [pack, name, authorId, ratingNum, reviewBody],
+      );
+
+      res.status(201).json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/v1/skills/:pack/:name/reviews', async (req, res, next) => {
+    try {
+      const { pack, name } = req.params;
+      const limit = Math.min(Number(req.query.limit ?? 20), 100);
+      const offset = Number(req.query.offset ?? 0);
+
+      const { hubPool } = await import('./migrations.js');
+      const result = await hubPool.query<{
+        id: string;
+        author_id: string;
+        rating: number;
+        body: string;
+        created_at: string;
+      }>(
+        `SELECT id, author_id, rating, body, created_at
+         FROM hub_skill_reviews
+         WHERE pack_name = $1 AND skill_name = $2
+         ORDER BY created_at DESC
+         LIMIT $3 OFFSET $4`,
+        [pack, name, limit, offset],
+      );
+
+      const countResult = await hubPool.query<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM hub_skill_reviews WHERE pack_name = $1 AND skill_name = $2`,
+        [pack, name],
+      );
+
+      res.json({
+        reviews: result.rows,
+        total: Number(countResult.rows[0]?.count ?? 0),
+        limit,
+        offset,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.get('/api/categories', async (_req, res, next) => {
     try {
       const summary = await getRegistrySummary();
@@ -255,14 +346,26 @@ export function createSkillsHubApp(): Express {
       const { validateMarketplaceEntryInput } = await import('./marketplace-validate.js');
       const { upsertHubMarketplaceEntry } = await import('./marketplace-registry.js');
       const input = validateMarketplaceEntryInput(req.body, 'publish body');
+      const { scanSkillContent } = await import('./hub-security-scanner.js');
+      const contentToScan = [
+        input.description,
+        input.name,
+        JSON.stringify(input.install),
+      ].join('\n');
+      const verdict = await scanSkillContent(contentToScan);
       input.trust = {
         ...input.trust,
         publisher: 'community',
-        validation: 'pending',
+        validation: verdict.passed ? 'passed' : 'pending',
         verified: false,
       };
       await upsertHubMarketplaceEntry(input);
-      res.status(201).json({ id: input.id, pendingVerification: true });
+      res.status(201).json({
+        id: input.id,
+        pendingVerification: !verdict.passed,
+        badge: verdict.badge,
+        flags: verdict.passed ? [] : verdict.flags,
+      });
     } catch (err) {
       next(err);
     }

@@ -43,11 +43,62 @@ const HUB_ALTER = `
 ALTER TABLE skill_packs ADD COLUMN IF NOT EXISTS category TEXT;
 ALTER TABLE skill_packs ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE skill_packs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE hub_skills ADD COLUMN IF NOT EXISTS security_verdict TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE hub_skills ADD COLUMN IF NOT EXISTS security_flags JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE skill_packs ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE skill_packs ADD COLUMN IF NOT EXISTS security_verdict TEXT NOT NULL DEFAULT 'pending';
+`;
+
+const HUB_REVIEWS_SCHEMA = `
+ALTER TABLE hub_skills ADD COLUMN IF NOT EXISTS rating_avg NUMERIC(3,2) NOT NULL DEFAULT 0;
+ALTER TABLE hub_skills ADD COLUMN IF NOT EXISTS review_count INTEGER NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS hub_skill_reviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pack_name TEXT NOT NULL,
+  skill_name TEXT NOT NULL,
+  author_id TEXT NOT NULL,
+  rating SMALLINT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  body TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT hub_skill_reviews_unique_author UNIQUE (pack_name, skill_name, author_id),
+  CONSTRAINT hub_skill_reviews_skill_fk FOREIGN KEY (pack_name, skill_name)
+    REFERENCES hub_skills (pack_name, name) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS hub_skill_reviews_skill_idx
+  ON hub_skill_reviews (pack_name, skill_name);
+
+CREATE OR REPLACE FUNCTION hub_update_skill_rating()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  UPDATE hub_skills
+  SET
+    rating_avg = (
+      SELECT COALESCE(AVG(rating), 0)
+      FROM hub_skill_reviews
+      WHERE pack_name = NEW.pack_name AND skill_name = NEW.skill_name
+    ),
+    review_count = (
+      SELECT COUNT(*)
+      FROM hub_skill_reviews
+      WHERE pack_name = NEW.pack_name AND skill_name = NEW.skill_name
+    )
+  WHERE pack_name = NEW.pack_name AND name = NEW.skill_name;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS hub_skill_rating_trigger ON hub_skill_reviews;
+CREATE TRIGGER hub_skill_rating_trigger
+  AFTER INSERT OR UPDATE OR DELETE ON hub_skill_reviews
+  FOR EACH ROW EXECUTE FUNCTION hub_update_skill_rating();
 `;
 
 export async function initHubDb(): Promise<void> {
   await hubPool.query(HUB_SCHEMA);
   await hubPool.query(HUB_ALTER);
+  await hubPool.query(HUB_REVIEWS_SCHEMA);
   const premiumSql = await fs.readFile(
     path.join(__dirname, 'migrations/002-premium-packs.sql'),
     'utf8',

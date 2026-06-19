@@ -37,6 +37,7 @@ import { GroupMeAdapter } from './channels/adapters/groupme-adapter.js';
 import { NextcloudTalkAdapter } from './channels/adapters/nextcloud-talk-adapter.js';
 import { LinkedInAdapter } from './channels/adapters/linkedin-adapter.js';
 import { SmsAdapter } from './channels/adapters/sms-adapter.js';
+import { STUB_CHANNEL_NAMES, createStubChannelAdapter } from './channels/adapters/catalog-stub-adapters.js';
 import { config } from '../config/index.js';
 import { getRouter } from './router.js';
 import { getChannelStatusReports } from './channels/channel-status.js';
@@ -231,6 +232,10 @@ const REST_ADAPTERS: AdapterFactory[] = [
     name: 'linkedin',
     factory: () => new LinkedInAdapter(Boolean(config.linkedin.accessToken)),
   },
+  ...STUB_CHANNEL_NAMES.map((name) => ({
+    name,
+    factory: () => createStubChannelAdapter(name)!,
+  })),
 ];
 
 const listenerHandles: Array<{ stop: () => void }> = [];
@@ -358,6 +363,9 @@ export function mountAllChannelWebhooks(app: Express): void {
 
     if (adapter.createRouter) {
       router.use(`/${entry.name}`, adapter.createRouter());
+      if (entry.name === 'bridge-generic') {
+        router.use('/bridge', adapter.createRouter());
+      }
       continue;
     }
 

@@ -3,6 +3,13 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 vi.mock('../config/index.js', () => ({
   config: {
     resend: { apiKey: 're_test', from: 'hello@carinaai.uk' },
+    product: {
+      domain: 'carinaai.uk',
+      coreUrl: 'https://core.carinaai.uk',
+      appUrl: 'https://app.carinaai.uk',
+      marketingUrl: 'https://carinaai.uk',
+      opsUrl: 'https://ops.carinaai.uk',
+    },
   },
 }));
 

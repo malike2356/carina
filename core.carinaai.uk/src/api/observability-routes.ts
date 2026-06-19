@@ -5,9 +5,16 @@ import { collectPresence, listSystemEvents } from '../ops/observability/system-e
 import { buildSessionOverview } from '../ops/observability/session-overview.js';
 import { parseSinceArg } from '../telemetry/turn-log.js';
 import { buildUsageMetricsSnapshot } from '../telemetry/usage-metrics.js';
-import { buildTelemetryHealthSnapshot } from '../ops/observability/health-snapshot.js';
+import { buildPromptCacheObservability } from '../telemetry/prompt-cache-observability.js';
+import { buildSessionTelemetryBundle } from '../telemetry/session-telemetry.js';
+import {
+  buildTelemetryHealthSnapshot,
+  buildTelemetryOverview,
+} from '../ops/observability/health-snapshot.js';
+import { buildChannelHealthSnapshot } from '../ops/observability/channel-health.js';
 import { listProviderObservations } from '../telemetry/provider-observation.js';
 import { listSubagentMetrics } from '../telemetry/subagent-metrics.js';
+import { getOtelStatus } from '../telemetry/otel.js';
 
 function parseLimit(raw: unknown, fallback = 50, max = 500): number {
   const n = Number(raw);
@@ -129,8 +136,59 @@ export function mountObservabilityRoutes(app: Express): void {
     const metrics = await buildUsageMetricsSnapshot(Number.isFinite(hours) ? hours : 24);
     res.json({
       metrics,
+      otel: getOtelStatus(),
+      promptCache: buildPromptCacheObservability(),
       providers: listProviderObservations(parseLimit(req.query.providerLimit, 20, 100)),
       subagents: listSubagentMetrics(parseLimit(req.query.subagentLimit, 20, 100)),
     });
+  });
+
+  app.get('/api/ops/telemetry/overview', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const hours = Number(req.query.hours ?? 24);
+    const overview = await buildTelemetryOverview(Number.isFinite(hours) ? hours : 24);
+    res.json(overview);
+  });
+
+  app.get('/api/ops/telemetry/sessions', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const hours = Number(req.query.hours ?? 24);
+    const bundle = await buildSessionTelemetryBundle(Number.isFinite(hours) ? hours : 24);
+    res.json(bundle);
+  });
+
+  app.get('/api/ops/telemetry/channels', (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    res.json(buildChannelHealthSnapshot());
+  });
+
+  app.get('/api/ops/telemetry/prompt-cache', (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const limit = parseLimit(req.query.limit, 20, 100);
+    res.json(buildPromptCacheObservability(limit));
+  });
+
+  app.get('/api/ops/telemetry/provider-quota', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { readProviderQuotaStore, pollProviderQuotas, providerQuotaPollingEnabled } =
+      await import('../brain/provider-quota-poller.js');
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    const store = refresh ? await pollProviderQuotas() : readProviderQuotaStore();
+    res.json({ enabled: providerQuotaPollingEnabled(), ...store });
   });
 }

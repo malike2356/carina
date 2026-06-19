@@ -9,6 +9,12 @@ import {
 import { validateSkillDocument, formatSkillValidation } from '../skills/skill-validate.js';
 import { getLatestSkillVersion, recordSkillVersion } from '../skills/skill-versions.js';
 import { logSkillAction } from '../skills/skill-audit-log.js';
+import { deferPromptInvalidationForAllFrozen } from '../brain/prompt-cache.js';
+
+function markSkillCatalogChange(reason: string): { deferred: boolean; sessions: number } {
+  const sessions = deferPromptInvalidationForAllFrozen(reason);
+  return { deferred: sessions > 0, sessions };
+}
 
 export const skillsListTool: Tool = {
   name: 'skills-list',
@@ -152,7 +158,14 @@ export const skillManageTool: Tool = {
           source: 'skill-manage:create',
         });
         await logSkillAction('created', skill.id, { name: skill.name, source: 'skill-manage' });
-        return { status: 'created', id: skill.id, name: skill.name, version: 1 };
+        const deferred = markSkillCatalogChange(`skill installed: ${skill.name}`);
+        return {
+          status: 'created',
+          id: skill.id,
+          name: skill.name,
+          version: 1,
+          promptRefreshDeferred: deferred.deferred,
+        };
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) };
       }
@@ -200,7 +213,14 @@ export const skillManageTool: Tool = {
           source: 'skill-manage:update',
         });
         await logSkillAction('refined', skill.id, { name: skill.name, version: nextVersion });
-        return { status: 'updated', id: skill.id, name: skill.name, version: nextVersion };
+        const deferred = markSkillCatalogChange(`skill updated: ${skill.name}`);
+        return {
+          status: 'updated',
+          id: skill.id,
+          name: skill.name,
+          version: nextVersion,
+          promptRefreshDeferred: deferred.deferred,
+        };
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) };
       }
@@ -210,7 +230,8 @@ export const skillManageTool: Tool = {
       try {
         const removed = await deleteSkill(name);
         if (!removed) return { error: `skill not found: ${name}` };
-        return { status: 'deleted', name };
+        const deferred = markSkillCatalogChange(`skill deleted: ${name}`);
+        return { status: 'deleted', name, promptRefreshDeferred: deferred.deferred };
       } catch (err) {
         return { error: err instanceof Error ? err.message : String(err) };
       }

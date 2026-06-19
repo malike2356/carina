@@ -659,5 +659,22 @@ export function mountCarinaOpsRoutes(app: Express): void {
     res.json(analytics);
   });
 
+  router.get('/telemetry/overview', requireOrgMember('usage.read'), async (req, res) => {
+    const hours = Number(req.query.hours ?? 24);
+    const { buildTelemetryOverview } = await import('../ops/observability/health-snapshot.js');
+    const overview = await buildTelemetryOverview(Number.isFinite(hours) ? hours : 24);
+    res.json(overview);
+  });
+
+  router.get('/telemetry/health', requireOrgMember('usage.read'), async (_req, res) => {
+    const { buildTelemetryHealthSnapshot } = await import('../ops/observability/health-snapshot.js');
+    res.json(await buildTelemetryHealthSnapshot());
+  });
+
+  router.get('/telemetry/channels', requireOrgMember('usage.read'), async (_req, res) => {
+    const { buildChannelHealthSnapshot } = await import('../ops/observability/channel-health.js');
+    res.json(buildChannelHealthSnapshot());
+  });
+
   app.use('/api/carina-ops', router);
 }

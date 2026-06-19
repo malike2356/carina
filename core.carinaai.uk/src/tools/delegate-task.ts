@@ -3,13 +3,18 @@ import {
   canDelegate,
   clearDelegationDepth,
   createChildAbortController,
+  getActiveChildCount,
   getDelegationDepth,
+  getSpawnContext,
   MAX_CONCURRENT_SUBAGENTS,
   releaseChildAbortController,
-  setDelegationDepth,
-  setSubagentRole,
+  setSpawnContext,
   type SubagentRole,
 } from '../agents/delegation-context.js';
+import {
+  buildChildSpawnContext,
+  checkSpawnPermission,
+} from '../agents/role-enforcer.js';
 import { emitDelegationComplete } from '../agents/delegation-completion.js';
 import {
   formatSubagentSummary,
@@ -53,18 +58,29 @@ async function runSingleTask(
   workdir?: string,
   timeoutSeconds = DEFAULT_TIMEOUT_SECONDS,
 ): Promise<string> {
+  const parentCtx = getSpawnContext(parentSessionId);
+  const spawnErr = checkSpawnPermission(parentCtx, getActiveChildCount(parentSessionId));
+  if (spawnErr) {
+    return `[ROLE RESTRICTION] ${spawnErr}`;
+  }
+
   const started = Date.now();
   const childAbort = createChildAbortController(parentSessionId);
   const subSessionId = `${parentSessionId}:sub:${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   trackChildSession(subSessionId, parentSessionId);
+  let effectiveRole: SubagentRole = role;
 
   try {
     if (childAbort.signal.aborted) {
       return 'Subagent cancelled: parent turn ended.';
     }
 
-    setDelegationDepth(subSessionId, childDepth);
-    setSubagentRole(subSessionId, role);
+    const childCtx = buildChildSpawnContext(parentCtx, parentSessionId);
+    effectiveRole = childCtx.role === 'leaf' ? 'leaf' : role;
+    setSpawnContext(subSessionId, {
+      ...childCtx,
+      role: effectiveRole,
+    });
 
     const allowedTools = resolveSubagentAllowedTools(toolsets);
 
@@ -73,8 +89,8 @@ async function runSingleTask(
       goal,
       context,
       allowedTools,
-      childDepth,
-      role,
+      childDepth: childCtx.depth,
+      role: effectiveRole,
       workdir,
       timeoutMs: timeoutSeconds * 1000,
       abortSignal: childAbort.signal,
@@ -87,7 +103,7 @@ async function runSingleTask(
       summary,
       mode: 'single',
       success: !summary.startsWith('Error:') && !summary.startsWith('Subagent cancelled'),
-      role,
+      role: effectiveRole,
       durationMs: Date.now() - started,
     });
     return summary;
@@ -100,7 +116,7 @@ async function runSingleTask(
       summary: message,
       mode: 'single',
       success: false,
-      role,
+      role: effectiveRole,
       durationMs: Date.now() - started,
     });
     return message;
@@ -189,8 +205,14 @@ export function createDelegateTaskTool(sessionId: string): Tool {
       const parentSessionId = String(params._sessionId ?? sessionId);
 
       if (!canDelegate(parentSessionId)) {
+        const ctx = getSpawnContext(parentSessionId);
+        const spawnErr = checkSpawnPermission(ctx, getActiveChildCount(parentSessionId));
+        if (spawnErr) {
+          return { error: `[ROLE RESTRICTION] ${spawnErr}` };
+        }
         return {
-          error: `Delegation depth limit (${getDelegationDepth(parentSessionId)}) reached. Only orchestrator subagents may delegate further.`,
+          error: `[ROLE RESTRICTION] Delegation depth limit (${ctx.depth}/${getDelegationDepth(parentSessionId)}) reached. `
+            + 'Complete this task yourself without spawning further agents.',
         };
       }
 

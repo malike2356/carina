@@ -49,6 +49,11 @@ describe('surface session keys', () => {
       clientSessionId: 'thread-a',
     })).toBe('hosted:u1:thread-a');
   });
+
+  it('resolves desktop external ids from profile', () => {
+    expect(resolveSurfaceExternalUserId('desktop', { profile: 'work' })).toBe('work');
+    expect(resolveSurfaceExternalUserId('desktop', {})).toBe('desktop-operator');
+  });
 });
 
 describe('surface session store', () => {

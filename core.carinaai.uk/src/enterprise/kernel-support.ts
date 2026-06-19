@@ -44,7 +44,7 @@ export const ENTERPRISE_SUPPORT_SLAS: Record<EnterpriseSupportTier, SupportSla> 
   },
   scout_pro: {
     tier: 'scout_pro',
-    name: 'Scout Pro',
+    name: 'Scout Govern',
     responseHours: 8,
     uptimeSla: '99.9%',
     channels: ['email', 'slack'],

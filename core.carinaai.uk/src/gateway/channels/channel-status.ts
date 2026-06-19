@@ -4,8 +4,6 @@ import { shouldExposeChannel } from './stub-channels.js';
 import { channelRegistry } from './channel-registry.js';
 import { isBaileysConfigured } from '../baileys/whatsapp-baileys.js';
 import { isSmsConfigured } from '../sms.js';
-import { isIrcConfigured } from '../irc.js';
-import { IrcAdapter } from './adapters/irc-adapter.js';
 import { config } from '../../config/index.js';
 
 export type ChannelHealthState =
@@ -128,18 +126,6 @@ const SPECS: ChannelSpec[] = [
     checkConfigured: () => hasEnv(['MATTERMOST_URL', 'MATTERMOST_TOKEN']),
     checkConnected: () => channelRegistry.getByName('mattermost')?.enabled ?? false,
     transport: () => 'webhook',
-  },
-  {
-    channel: 'irc',
-    env: ['IRC_ENABLED=true', 'IRC_SERVER', 'IRC_NICK'],
-    note: 'IRC live TLS client with optional webhook fallback (POST /webhooks/irc)',
-    webhook: '/webhooks/irc',
-    checkConfigured: () => isIrcConfigured(),
-    checkConnected: () => {
-      const adapter = channelRegistry.getByName('irc');
-      return adapter instanceof IrcAdapter && adapter.isConnected();
-    },
-    transport: () => (process.env.IRC_LIVE === 'false' ? 'webhook-only' : 'irc-live'),
   },
   {
     channel: 'sms',

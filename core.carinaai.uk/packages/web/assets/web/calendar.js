@@ -168,6 +168,13 @@
     });
   });
 
+  var newReminderBtn = document.getElementById('new-reminder-btn');
+  if (newReminderBtn) {
+    newReminderBtn.addEventListener('click', function () {
+      window.location.href = '/notes?new=reminder';
+    });
+  }
+
   Promise.all([loadSyncStatus(), refresh()]).catch(function (err) {
     statusEl.textContent = '';
     upcomingEl.innerHTML = '<p class="empty">' + escapeHtml(err.message) + '</p>';

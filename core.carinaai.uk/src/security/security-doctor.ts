@@ -1,9 +1,11 @@
 import fs from 'fs';
 import { CARINA_HOME } from '../config/paths.js';
+import { describeExecApprovalLevel, resolveExecApprovalLevel } from './exec-approval-levels.js';
 import { approvalPolicyEnabled } from './approval-policy.js';
 import { allowlistFirstState } from './admin-tool-policy.js';
 import { authRateLimitEnabled } from './auth-rate-limit.js';
 import { isAllowlistEnforced } from './kill-switch-listener.js';
+import { collectGatewayExposureChecks } from './gateway-exposure.js';
 
 export type SecurityDoctorCheck = {
   id: string;
@@ -93,6 +95,17 @@ export function collectSecurityDoctorChecks(): SecurityDoctorCheck[] {
     process.env.CARINA_PROMPT_GUARD === 'false' ? 'warn' : 'ok',
     process.env.CARINA_PROMPT_GUARD === 'false' ? 'disabled' : 'enabled by default',
   );
+
+  push(
+    'exec-approval-level',
+    'Exec approval level',
+    resolveExecApprovalLevel() === 'off' && isProd ? 'warn' : 'ok',
+    describeExecApprovalLevel(),
+  );
+
+  for (const check of collectGatewayExposureChecks()) {
+    push(check.id, check.name, check.severity, check.detail);
+  }
 
   return checks;
 }

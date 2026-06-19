@@ -37,6 +37,20 @@
   }
   .history-item .title { display: block; font-size: 0.82rem; font-weight: 600; }
   .history-item .meta { display: block; font-size: 0.68rem; color: var(--muted); margin-top: 0.15rem; }
+  .research-actions {
+    display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0 0.5rem;
+  }
+  .research-actions button, .research-actions a {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.4rem 0.75rem; font-size: 0.78rem; cursor: pointer;
+    text-decoration: none; display: inline-block;
+  }
+  .research-actions button.primary, .research-actions a.primary {
+    background: var(--accent); color: #0d0d0f; border-color: var(--accent); font-weight: 600;
+  }
+  .research-cite {
+    font-size: 0.72rem; color: var(--muted); margin-bottom: 0.5rem; word-break: break-all;
+  }
 </style>
 </head>
 <body>
@@ -57,6 +71,12 @@
     <button type="submit" id="research-submit">Run research</button>
   </form>
   <div id="research-progress"></div>
+  <div id="research-cite" class="research-cite" hidden></div>
+  <div id="research-actions" class="research-actions" hidden>
+    <button type="button" id="research-copy-cite">Copy cite link</button>
+    <button type="button" id="research-open-doc" class="primary">Open in Documents</button>
+    <button type="button" id="research-continue">Continue research</button>
+  </div>
   <div id="research-output" class="empty-output">Results appear here after you submit a question.</div>
 </div>
 <script>

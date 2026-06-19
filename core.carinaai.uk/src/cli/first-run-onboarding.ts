@@ -265,6 +265,22 @@ export async function runFirstRunOnboarding(
   } else if (answers.apiKey) {
     console.log(format.muted('Starting your session...'));
   }
+
+  const { isInteractiveTerminal } = await import('./first-run.js');
+  if (isInteractiveTerminal()) {
+    const runGateway = await prompts.confirm({
+      message: 'Set up gateway and your first channel now?',
+      default: true,
+    });
+    if (runGateway) {
+      const { runGatewayOnboardingStep } = await import('./onboarding-gateway.js');
+      await runGatewayOnboardingStep({ confirm: prompts.confirm, select: prompts.select });
+    } else {
+      const { printGatewayNextSteps } = await import('./onboarding-gateway.js');
+      printGatewayNextSteps();
+    }
+  }
+
   console.log('');
 
   return true;

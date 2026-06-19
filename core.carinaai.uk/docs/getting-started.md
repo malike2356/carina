@@ -41,8 +41,23 @@ Non-interactive environments (CI, pipes) get a minimal `~/.carina/.env` automati
 ```bash
 carina setup          # re-run onboarding or add a provider key
 carina setup --full   # advanced wizard (Postgres, Scout, WhatsApp, packs)
+carina onboard        # guided setup + gateway channels + doctor
+carina onboard --install-daemon   # also install background gateway service
 carina doctor         # check install health
 ```
+
+After first setup, connect a channel:
+
+```bash
+carina channels setup telegram
+carina gateway start
+carina channels status
+carina agents route --channel telegram --peer direct:12345 --explain
+```
+
+Remote access: [Remote gateway access](/gateways/remote-access).
+
+Voice and mobile companion: [Voice and companion surfaces](/gateways/voice-and-companion).
 
 Never commit `~/.carina/` files.
 
@@ -56,6 +71,16 @@ carina
 
 Ask anything. Skill packs are optional; install `property-uk` at `/packs` or with `carina packs install property-uk`.
 
+Operator terminal UI: [Operator TUI](/operator-tui) (`carina tui`).
+
+Messaging and provider switching: [Messaging gateway](/messaging-gateway).
+
+Research, compare, and writing: [Workspace research and compare](/workspace-research-compare).
+
+Email, notes, calendar, and scheduled work: [Workspace productivity](/workspace-productivity).
+
+Themes, presets, gallery, and 2FA: [Workspace personalization](/workspace-personalization).
+
 ### Optional: memory and RAG
 
 | Variable | Purpose |
@@ -65,6 +90,14 @@ Ask anything. Skill packs are optional; install `property-uk` at `/packs` or wit
 | `REDIS_URL` | Session persistence (optional for single-user CLI) |
 
 Without `DATABASE_URL`, Carina runs in chat-only mode and logs a warning at startup.
+
+Learning loop (skills, preferences, session recall): [Learning loop](/learning-loop).
+
+```bash
+carina learning status
+carina learning recap
+carina memory sessions search "your topic"
+```
 
 Local databases via Docker (Postgres on host port **5433**):
 

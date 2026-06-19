@@ -16,6 +16,13 @@ vi.mock('../../config/index.js', () => ({
     hosted: { enabled: true, appHost: 'app.test', jwtSecret: 'secret', freeDailyMessages: 100 },
     resend: { apiKey: '', from: 'test@example.com' },
     database: { url: 'postgresql://localhost/test' },
+    product: {
+      domain: 'carinaai.uk',
+      appUrl: 'https://app.carinaai.uk',
+      coreUrl: 'https://core.carinaai.uk',
+      marketingUrl: 'https://carinaai.uk',
+      opsUrl: 'https://ops.carinaai.uk',
+    },
   },
 }));
 

@@ -2,7 +2,7 @@ import type { Request } from 'express';
 import { pairedDeviceFromRequest } from '../infrastructure/control-auth.js';
 
 /** Client surfaces Carina ships today (not full channel adapters). */
-export const CLIENT_SURFACES = ['cli', 'tui', 'web', 'mobile', 'acp'] as const;
+export const CLIENT_SURFACES = ['cli', 'tui', 'web', 'mobile', 'acp', 'desktop'] as const;
 
 export type ClientSurface = (typeof CLIENT_SURFACES)[number];
 
@@ -54,6 +54,9 @@ export function resolveSurfaceExternalUserId(
   }
   if (surface === 'acp') {
     return input.clientSessionId?.trim() || 'acp-default';
+  }
+  if (surface === 'desktop') {
+    return input.profile?.trim() || 'desktop-operator';
   }
   if (input.hostedUserId) {
     const client = input.clientSessionId?.trim() || 'default';
@@ -111,7 +114,7 @@ export const SURFACE_ADOPTION_DECISIONS: SurfaceAdoptionDecision[] = [
   {
     surface: 'Mobile companion (paired PWA)',
     adopt: 'now',
-    rationale: 'Lightweight paired chat on phone; reuses gateway sessions via device token, no native app yet.',
+    rationale: 'Lightweight paired chat on phone with voice input; reuses gateway sessions via device token.',
     entrypoint: 'Desktop: carina pair  |  Phone: /mobile?token=...',
   },
   {

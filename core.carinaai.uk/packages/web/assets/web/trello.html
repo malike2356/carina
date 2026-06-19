@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Trello</title>
+  <link rel="stylesheet" href="/assets/web/workspace.css">
+  <style>
+    :root { color-scheme: dark; }
+    body { font-family: Inter, system-ui, sans-serif; margin: 0; background: #0d0d0f; color: #e6e6e6; }
+    .page { max-width: 1440px; margin: 0 auto; padding: 24px 16px 40px; }
+    .top { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 14px; }
+    .top h1 { margin: 0; font-size: 1.2rem; }
+    .muted { color: #8b949e; font-size: 0.9rem; }
+    .status { margin-top: 4px; font-size: 0.8rem; color: #8b949e; }
+    .layout { display: grid; grid-template-columns: 260px 1fr 360px; gap: 12px; min-height: calc(100vh - 140px); }
+    .panel { border: 1px solid #30363d; border-radius: 10px; background: #161b22; overflow: hidden; min-width: 0; }
+    .panel h2 { margin: 0; padding: 12px 14px; font-size: 0.9rem; border-bottom: 1px solid #30363d; }
+    .panel .body { padding: 12px 14px; }
+    .list { display: grid; gap: 8px; }
+    .item { border: 1px solid #30363d; border-radius: 8px; padding: 10px 12px; background: #0d1117; cursor: pointer; }
+    .item.active { border-color: #2f81f7; box-shadow: inset 0 0 0 1px rgba(47,129,247,0.3); }
+    .item .meta { color: #8b949e; font-size: 0.78rem; margin-top: 4px; }
+    .cards { display: grid; gap: 10px; }
+    .card { border: 1px solid #30363d; border-radius: 8px; background: #0d1117; padding: 10px 12px; }
+    .card h3 { margin: 0 0 4px; font-size: 0.92rem; }
+    .card .meta { color: #8b949e; font-size: 0.76rem; margin-bottom: 6px; }
+    .toolbar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .toolbar select, .toolbar input, .toolbar textarea, button {
+      width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 8px;
+      border: 1px solid #30363d; background: #0d1117; color: inherit;
+    }
+    textarea { min-height: 92px; resize: vertical; }
+    button { cursor: pointer; background: #1f6feb; border-color: #1f6feb; }
+    button.secondary { background: #161b22; border-color: #30363d; }
+    .row { display: grid; gap: 8px; margin-top: 8px; }
+    .small { font-size: 0.78rem; color: #8b949e; }
+    .error { color: #f85149; }
+    .empty { padding: 12px; border: 1px dashed #30363d; border-radius: 8px; color: #8b949e; }
+    @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="top">
+      <div>
+        <h1>Trello</h1>
+        <div class="muted">Browse boards, open lists, and manage cards without leaving Carina.</div>
+        <div id="status" class="status">Loading Trello.</div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <section class="panel">
+        <h2>Boards</h2>
+        <div class="body">
+          <div id="boards" class="list"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Cards</h2>
+        <div class="body">
+          <div class="toolbar">
+            <select id="list-select"></select>
+            <button id="refresh-btn" type="button" class="secondary">Refresh</button>
+          </div>
+          <div id="cards" class="cards"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Card</h2>
+        <div class="body">
+          <div id="card-detail" class="small">Select a card to inspect or update it.</div>
+          <div class="row" style="margin-top:14px;">
+            <input id="new-name" type="text" placeholder="New card title">
+            <textarea id="new-desc" placeholder="Card description"></textarea>
+            <button id="create-card-btn" type="button">Create card</button>
+          </div>
+          <div class="row" style="margin-top:14px;">
+            <textarea id="comment-text" placeholder="Comment on the selected card"></textarea>
+            <button id="comment-btn" type="button" class="secondary">Add comment</button>
+            <button id="archive-btn" type="button" class="secondary">Archive selected card</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/trello.js"></script>
+</body>
+</html>

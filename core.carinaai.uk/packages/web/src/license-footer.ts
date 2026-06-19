@@ -1,11 +1,29 @@
 const DEFAULT_VERSION = '0.2.0';
 
+const FOOTER_STYLE = [
+  'position:fixed',
+  'right:5px',
+  'bottom:3px',
+  'z-index:2',
+  'margin:0',
+  'padding:0',
+  'font-size:8px',
+  'line-height:1',
+  'color:var(--muted,#8b949e)',
+  'opacity:0.18',
+  'letter-spacing:0',
+  'pointer-events:auto',
+  'user-select:none',
+].join(';');
+
+const LINK_STYLE = 'color:inherit;text-decoration:none';
+
 export function mitLicenseFooterHtml(version = DEFAULT_VERSION): string {
+  const title = `Carina v${version} · MIT License`;
   return [
-    '<p id="carina-mit-footer" class="carina-mit-footer">',
-    `Carina v${version} | `,
-    '<a href="https://github.com/carinaai/core/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>',
-    ' | Build commercial products freely',
+    `<p id="carina-mit-footer" class="carina-mit-footer" style="${FOOTER_STYLE}" aria-hidden="true">`,
+    `<a href="https://github.com/carinaai/core/blob/main/LICENSE" target="_blank" rel="noopener" `,
+    `title="${title}" style="${LINK_STYLE}">MIT</a>`,
     '</p>',
   ].join('');
 }
@@ -15,15 +33,6 @@ export function injectMitLicenseFooter(html: string, version = DEFAULT_VERSION, 
   if (html.includes('id="carina-mit-footer"')) return html;
 
   const footer = mitLicenseFooterHtml(version);
-  if (html.includes('class="composer-hint"')) {
-    return html.replace(
-      /(<p class="composer-hint">[\s\S]*?<\/p>)/,
-      `$1\n        ${footer}`,
-    );
-  }
-  if (html.includes('</footer>')) {
-    return html.replace('</footer>', `  ${footer}\n    </footer>`);
-  }
   if (!html.includes('</body>')) return html;
   return html.replace('</body>', `${footer}\n</body>`);
 }

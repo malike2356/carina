@@ -1,9 +1,13 @@
+import type { AgentSpawnContext } from './agent-roles.js';
+import { MAX_SPAWN_DEPTH } from './agent-roles.js';
+
 export const MAX_CONCURRENT_SUBAGENTS = 3;
 
 export type SubagentRole = 'leaf' | 'orchestrator';
 
 const depthBySession = new Map<string, number>();
 const roleBySession = new Map<string, SubagentRole>();
+const spawnContextBySession = new Map<string, AgentSpawnContext>();
 const parentControllers = new Map<string, AbortController>();
 const childControllers = new Map<string, Set<AbortController>>();
 
@@ -22,6 +26,45 @@ export function setDelegationDepth(sessionId: string, depth: number): void {
 export function clearDelegationDepth(sessionId: string): void {
   depthBySession.delete(sessionId);
   roleBySession.delete(sessionId);
+  spawnContextBySession.delete(sessionId);
+}
+
+export function setSpawnContext(sessionId: string, context: AgentSpawnContext): void {
+  spawnContextBySession.set(sessionId, context);
+  setDelegationDepth(sessionId, context.depth);
+  if (context.role === 'leaf' || context.role === 'orchestrator') {
+    setSubagentRole(sessionId, context.role);
+  }
+}
+
+export function getSpawnContext(sessionId: string): AgentSpawnContext {
+  const stored = spawnContextBySession.get(sessionId);
+  const depth = getDelegationDepth(sessionId);
+  const max = getMaxDelegationDepth();
+  if (stored) {
+    return {
+      ...stored,
+      depth,
+      role: depth >= max ? 'leaf' : stored.role,
+    };
+  }
+  const role: AgentSpawnContext['role'] = isWorkerSession(sessionId)
+    ? getSubagentRole(sessionId)
+    : 'orchestrator';
+  return {
+    depth,
+    parentAgentId: parentSessionId(sessionId),
+    role: depth >= max ? 'leaf' : role,
+  };
+}
+
+export function getActiveChildCount(sessionId: string): number {
+  const root = rootSessionId(sessionId);
+  return childControllers.get(root)?.size ?? 0;
+}
+
+export function isWorkerSession(sessionId: string): boolean {
+  return sessionId.includes(':sub:') || sessionId.includes(':kanban:');
 }
 
 export function setSubagentRole(sessionId: string, role: SubagentRole): void {
@@ -34,28 +77,33 @@ export function getSubagentRole(sessionId: string): SubagentRole {
 
 export function getMaxDelegationDepth(): number {
   const raw = process.env.CARINA_MAX_DELEGATION_DEPTH;
-  if (!raw) return 1;
+  if (!raw) return MAX_SPAWN_DEPTH;
   const parsed = parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : MAX_SPAWN_DEPTH;
 }
 
 /** @deprecated use getMaxDelegationDepth() */
-export const MAX_DELEGATION_DEPTH = 1;
+export const MAX_DELEGATION_DEPTH = MAX_SPAWN_DEPTH;
 
 export function canDelegate(sessionId: string): boolean {
   const depth = getDelegationDepth(sessionId);
   if (depth >= getMaxDelegationDepth()) return false;
-  if (isSubagentSession(sessionId) && getSubagentRole(sessionId) !== 'orchestrator') {
+  if (isWorkerSession(sessionId) && getSubagentRole(sessionId) !== 'orchestrator') {
     return false;
   }
   return true;
 }
 
 export function beginParentTurn(sessionId: string): AbortController {
-  if (isSubagentSession(sessionId)) {
+  if (isWorkerSession(sessionId)) {
     return new AbortController();
   }
   endParentTurn(sessionId);
+  setSpawnContext(sessionId, {
+    depth: 0,
+    parentAgentId: null,
+    role: 'orchestrator',
+  });
   const controller = new AbortController();
   parentControllers.set(sessionId, controller);
   childControllers.set(sessionId, new Set());
@@ -110,13 +158,25 @@ export function releaseChildAbortController(
 }
 
 function rootSessionId(sessionId: string): string {
-  const idx = sessionId.indexOf(':sub:');
-  return idx === -1 ? sessionId : sessionId.slice(0, idx);
+  const subIdx = sessionId.indexOf(':sub:');
+  if (subIdx !== -1) return sessionId.slice(0, subIdx);
+  const kanbanIdx = sessionId.indexOf(':kanban:');
+  if (kanbanIdx !== -1) return sessionId.slice(0, kanbanIdx);
+  return sessionId;
+}
+
+function parentSessionId(sessionId: string): string | null {
+  const subIdx = sessionId.indexOf(':sub:');
+  if (subIdx !== -1) return sessionId.slice(0, subIdx);
+  const kanbanIdx = sessionId.indexOf(':kanban:');
+  if (kanbanIdx !== -1) return sessionId.slice(0, kanbanIdx);
+  return null;
 }
 
 export function resetDelegationState(): void {
   depthBySession.clear();
   roleBySession.clear();
+  spawnContextBySession.clear();
   for (const controller of parentControllers.values()) {
     if (!controller.signal.aborted) controller.abort();
   }

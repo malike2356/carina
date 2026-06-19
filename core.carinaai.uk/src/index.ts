@@ -14,6 +14,8 @@ import { startProcessCleanup, stopProcessCleanup } from './tools/process-registr
 import { initKillSwitchListener, reportHeartbeat } from './security/index.js';
 import { TaskScheduler } from './agents/scheduled-tasks.js';
 import { createProactiveCheckInTask } from './agents/check-in.js';
+import { createRemNightlyTask, remNightlyEnabled } from './memory/rem/rem-scheduler.js';
+import { createProviderQuotaPollTask, providerQuotaPollingEnabled } from './brain/provider-quota-poller.js';
 import { createCommitmentDeliveryTask } from './commitments/delivery.js';
 import { commitmentsEnabled } from './commitments/inference.js';
 import { createReminderDeliveryTask } from './agents/reminder-delivery.js';
@@ -24,12 +26,14 @@ import { initMemoryBackend } from './memory/backends/index.js';
 import { startBaileysWhatsApp, isBaileysConfigured } from './gateway/baileys/whatsapp-baileys.js';
 import { importInboundMedia, importWorkspaceFiles } from './sync/agent-sync.js';
 import { startSkillCuratorSchedule } from './skills/curator-scheduler.js';
+import { startHubSyncSchedule, stopHubSyncSchedule } from './skills/hub-sync-scheduler.js';
 import { startBillingReconciliationSchedule } from './billing/reconciliation-scheduler.js';
 import { initSkills } from './skills/index.js';
 import { applyActiveProfileFromDisk } from './profiles/manager.js';
 import { channelRegistry } from './gateway/channels/channel-registry.js';
 import { stopChannelListeners } from './gateway/channel-bootstrap.js';
 import { registerProcessCompletionHandler } from './tools/process-notifications.js';
+import { registerSubagentPushWakeHandler } from './agents/subagent-push-wake.js';
 import { preloadPlatformKnowledge } from './platform/knowledge.js';
 import './tools/index.js';
 
@@ -39,6 +43,8 @@ registerProcessCompletionHandler(async (event) => {
     await adapter.sendMessage(event.conversationId, event.message);
   }
 });
+
+registerSubagentPushWakeHandler();
 
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let cleanupKillSwitch: (() => void) | null = null;
@@ -53,6 +59,9 @@ async function shutdown(signal: string): Promise<void> {
   stopProcessCleanup();
   const { stopWebhookRetrySweep } = await import('./webhooks/dispatcher.js');
   stopWebhookRetrySweep();
+  stopHubSyncSchedule();
+  const { shutdownOtel } = await import('./telemetry/otel.js');
+  await shutdownOtel().catch(() => undefined);
   await pool.end().catch(() => undefined);
   const redis = getRedis();
   if (redis) redis.disconnect();
@@ -64,6 +73,16 @@ process.on('SIGINT', () => void shutdown('SIGINT'));
 
 async function main(): Promise<void> {
   applyActiveProfileFromDisk();
+
+  const { otelEnabled, initOtel, getOtelStatus } = await import('./telemetry/otel.js');
+  if (otelEnabled()) {
+    const ok = await initOtel();
+    if (ok) {
+      const otel = getOtelStatus();
+      console.log(chalk.gray(`OpenTelemetry export enabled (${otel.exporter ?? 'otlp'}, ${otel.serviceName})`));
+    }
+  }
+
   await preloadPlatformKnowledge();
   await initSandbox();
   startProcessCleanup();
@@ -101,6 +120,7 @@ async function main(): Promise<void> {
       startWebhookRetrySweep();
       await initSkills();
       startSkillCuratorSchedule();
+      startHubSyncSchedule();
       startBillingReconciliationSchedule();
       const recoveryNote = recoveredProcesses > 0 ? `, ${recoveredProcesses} background processes recovered` : '';
       console.log(chalk.gray(`Memory store ready (${jobCount} jobs, ${workflowCount} workflows${recoveryNote})`));
@@ -149,8 +169,16 @@ async function main(): Promise<void> {
     || process.env.CARINA_REMINDER_DELIVERY !== 'false') {
     taskScheduler = new TaskScheduler(60_000);
     if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
-      taskScheduler.register(createProactiveCheckInTask('cli'));
+      taskScheduler.register(createProactiveCheckInTask('cli', { memoryReady }));
       console.log(chalk.gray('Proactive check-in cycle enabled'));
+    }
+    if (remNightlyEnabled()) {
+      taskScheduler.register(createRemNightlyTask());
+      console.log(chalk.gray('REM nightly memory dreaming enabled'));
+    }
+    if (providerQuotaPollingEnabled()) {
+      taskScheduler.register(createProviderQuotaPollTask());
+      console.log(chalk.gray('Provider quota polling enabled'));
     }
     if (commitmentsEnabled()) {
       taskScheduler.register(createCommitmentDeliveryTask());

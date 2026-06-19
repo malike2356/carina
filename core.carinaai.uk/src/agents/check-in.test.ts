@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildCheckInPrompt, shouldStayQuiet, type CheckInState } from './check-in.js';
+import {
+  buildCheckInPrompt,
+  parseCheckInResponse,
+  shouldStayQuiet,
+  type CheckInState,
+} from './check-in.js';
 
 vi.mock('./checks/email-check.js', () => ({
   checkRecentInboundEmails: vi.fn(async () => ({ name: 'email', urgent: false, summary: null })),
@@ -42,6 +47,14 @@ describe('shouldStayQuiet', () => {
   });
 });
 
+describe('parseCheckInResponse', () => {
+  it('suppresses empty and NO_CHECK_IN_NEEDED replies', () => {
+    expect(parseCheckInResponse('NO_CHECK_IN_NEEDED').deliver).toBe(false);
+    expect(parseCheckInResponse('  ').deliver).toBe(false);
+    expect(parseCheckInResponse('New email needs review').deliver).toBe(true);
+  });
+});
+
 describe('buildCheckInPrompt', () => {
   it('advances rotation and wraps', async () => {
     const state: CheckInState = { key: 'cli', lastChecks: {}, rotationPosition: 2 };
@@ -60,5 +73,16 @@ describe('buildCheckInPrompt', () => {
     await buildCheckInPrompt({ state, source: 'web', projectPath: '/tmp/project' });
 
     expect(project.checkProjectStatus).not.toHaveBeenCalled();
+  });
+
+  it('includes HEARTBEAT.md guidance when provided', async () => {
+    const state: CheckInState = { key: 'cli', lastChecks: {}, rotationPosition: 0 };
+    const result = await buildCheckInPrompt({
+      state,
+      source: 'cli',
+      heartbeatGuidance: 'Check email and calendar mentions.',
+    });
+    expect(result.prompt).toContain('HEARTBEAT.md guidance');
+    expect(result.prompt).toContain('Check email and calendar mentions.');
   });
 });

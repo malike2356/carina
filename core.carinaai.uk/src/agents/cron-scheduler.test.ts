@@ -1,4 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('../memory/db.js', () => ({
+  pool: { query: vi.fn() },
+}));
+
+vi.mock('../profiles/isolation.js', () => ({
+  activeCronProfile: () => 'default',
+}));
+
+vi.mock('./cron-context-chain.js', () => ({
+  buildCronPrompt: vi.fn(),
+  runJobScript: vi.fn(),
+}));
+
+vi.mock('./cron-job-store.js', () => ({
+  incrementFailureCount: vi.fn(),
+  resetFailureCount: vi.fn(),
+}));
+
+vi.mock('./cron-step-runner.js', () => ({
+  runCronStep: vi.fn(),
+}));
+
+vi.mock('../webhooks/dispatcher.js', () => ({
+  dispatchWebhook: vi.fn(),
+}));
+
 import { parseSchedule } from './cron-scheduler.js';
 
 describe('parseSchedule', () => {

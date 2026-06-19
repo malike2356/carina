@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { buildModelFamilyOverlay, resolveModelFamily } from './prompt-overlays.js';
 
 describe('model-family prompt overlays', () => {
+  afterEach(() => {
+    delete process.env.CARINA_HOME;
+    vi.resetModules();
+  });
+
   it('resolves anthropic family from provider kind', () => {
     expect(resolveModelFamily('anthropic', 'claude-sonnet-4-20250514')).toBe('anthropic');
   });
@@ -25,5 +33,23 @@ describe('model-family prompt overlays', () => {
   it('adds tool persistence guidance for openai-compatible models', () => {
     const overlay = buildModelFamilyOverlay('openai', 'gpt-4o');
     expect(overlay).toContain('retry on empty or partial tool output');
+  });
+
+  it('loads provider overlays from CARINA_HOME', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'carina-overlay-'));
+    process.env.CARINA_HOME = home;
+    fs.mkdirSync(path.join(home, 'overlays'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, 'overlays', 'openai.md'),
+      'Provider-specific guidance\n- keep responses short',
+      'utf8',
+    );
+
+    vi.resetModules();
+    const { buildModelFamilyOverlay: buildOverlay } = await import('./prompt-overlays.js');
+    const overlay = buildOverlay('openai', 'gpt-4o');
+    expect(overlay).toContain('Provider overlay (openai)');
+    expect(overlay).toContain('Provider-specific guidance');
+    expect(overlay).toContain('Model-family guidance (openai)');
   });
 });

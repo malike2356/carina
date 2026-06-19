@@ -3,14 +3,20 @@ import {
   buildAntiFabricationBlock,
   buildExecutionDisciplineBlock,
   buildSystemPromptParts,
+  buildSystemPromptTierParts,
   buildSurfaceContext,
   buildToolPersistenceBlock,
   buildVerificationBlock,
+  buildVolatileExecutionChecklist,
   CARINA_BASE_SYSTEM_PROMPT,
 } from './system-prompt.js';
 import { buildTurnDisciplineBlock } from './turn-discipline.js';
 import { buildConversationDisciplineBlock } from './conversation-discipline.js';
-import { buildCarinaIdentityBlock } from './identity-defaults.js';
+import {
+  buildCarinaIdentityBlock,
+  buildHermesDefaultAgentIdentity,
+  buildOpenClawSoulFallback,
+} from './identity-defaults.js';
 
 describe('buildExecutionDisciplineBlock', () => {
   it('forces real tool calls instead of described intentions', () => {
@@ -29,13 +35,14 @@ describe('buildExecutionDisciplineBlock', () => {
     expect(block).toContain('Do not trail off mid-task');
   });
 
-  it('requires tool persistence and verification before finalizing', () => {
+  it('requires tool persistence but keeps verification in volatile tier', () => {
     expect(buildToolPersistenceBlock()).toContain('retry with a different query or strategy');
     expect(buildVerificationBlock()).toContain('Grounding: factual claims are backed by tool outputs');
     const block = buildExecutionDisciplineBlock();
     expect(block).toContain('Tool persistence:');
-    expect(block).toContain('Before finalizing a response:');
-    expect(block).toContain('Safety: confirm scope before side effects');
+    expect(block).not.toContain('Before finalizing a response:');
+    expect(buildVolatileExecutionChecklist()).toContain('Before finalizing a response:');
+    expect(buildVolatileExecutionChecklist()).toContain('Safety: confirm scope before side effects');
   });
 
   it('requires tools for factual system questions', () => {
@@ -58,9 +65,13 @@ describe('buildExecutionDisciplineBlock', () => {
 
 describe('buildCarinaIdentityBlock', () => {
   it('is included in the stable base prompt', () => {
-    expect(buildCarinaIdentityBlock()).toContain('Default identity:');
-    expect(CARINA_BASE_SYSTEM_PROMPT).toContain('Workspace SOUL.md and IDENTITY.md');
+    expect(buildCarinaIdentityBlock()).toContain('Default identity scaffold');
+    expect(buildHermesDefaultAgentIdentity()).toContain('VERLOX Ltd');
+    expect(buildOpenClawSoulFallback()).toContain('Core truths');
+    expect(CARINA_BASE_SYSTEM_PROMPT).toContain('Core truths');
+    expect(CARINA_BASE_SYSTEM_PROMPT).toContain('Workspace IDENTITY.md');
     expect(CARINA_BASE_SYSTEM_PROMPT).toContain('BOOTSTRAP.md is one-shot setup only');
+    expect(CARINA_BASE_SYSTEM_PROMPT).toContain('DREAMS.md');
   });
 });
 
@@ -86,6 +97,18 @@ describe('buildSystemPromptParts', () => {
     expect(base).toContain('Casual messages:');
     expect(base).toContain('How to end a turn:');
     expect(base).toContain('Group chats:');
+    expect(base).toContain('Proactive behavior:');
+    expect(base).toContain('Write it down:');
+    expect(base).not.toContain('Before finalizing a response:');
+  });
+
+  it('splits stable and context tiers (ASP-08)', () => {
+    const tiers = buildSystemPromptTierParts();
+    expect(tiers.stable.length).toBeGreaterThan(0);
+    expect(tiers.context.length).toBeGreaterThan(0);
+    expect(tiers.context.join('\n')).toContain('Feature guidance:');
+    expect(tiers.context.join('\n')).toContain('When a user asks how to use a feature');
+    expect(tiers.context.join('\n')).toContain('If a new feature is added later');
   });
 });
 
@@ -107,6 +130,7 @@ describe('buildSurfaceContext', () => {
     expect(ctx).toContain('Current surface: web UI.');
     expect(ctx).toContain('For skill packs, open /packs in the web UI');
     expect(ctx).toContain('Only mention CLI commands');
+    expect(ctx).toContain('Session anchors (web UI):');
   });
 
   it('gives CLI guidance for command-line questions', () => {

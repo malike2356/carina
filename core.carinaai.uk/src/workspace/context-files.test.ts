@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadWorkspaceContext } from './context-files.js';
+import { loadWorkspaceContext, workspaceContextHasIdentity } from './context-files.js';
 
 let tmpDir: string | undefined;
 
@@ -60,5 +60,13 @@ describe('loadWorkspaceContext', () => {
 
     expect(context[0]).toContain('Voice and tone');
     expect(context[0]).toContain('Tier: identity');
+  });
+
+  it('detects workspace identity bootstrap in injected context', async () => {
+    const home = await makeHome();
+    await writeFile(path.join(home, 'SOUL.md'), 'Custom voice.', 'utf-8');
+    const context = await loadWorkspaceContext(home);
+    expect(workspaceContextHasIdentity(context.join('\n'))).toBe(true);
+    expect(workspaceContextHasIdentity('no identity here')).toBe(false);
   });
 });

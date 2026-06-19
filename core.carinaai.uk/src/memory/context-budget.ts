@@ -7,6 +7,12 @@ export interface TrimContextLayer {
   content: string;
 }
 
+export interface ContextBudgetOptions {
+  budgetChars?: number;
+  budgetTokens?: number;
+  modelWindowTokens?: number;
+}
+
 const TRIM_ORDER: TrimContextLayerId[] = ['history', 'similar', 'rag', 'skills'];
 
 export function getContextCharBudget(): number {
@@ -37,17 +43,24 @@ export interface ContextBudgetResult {
   trimmed: TrimContextLayerId[];
   historyCompacted: boolean;
   estimatedChars: number;
+  estimatedTokens: number;
   budgetChars: number;
+  budgetTokens: number;
 }
 
 function totalChars(fixedParts: string[], kept: Map<TrimContextLayerId, string>): number {
   return estimateContextChars([...fixedParts, ...[...kept.values()]]);
 }
 
+function totalTokens(fixedParts: string[], kept: Map<TrimContextLayerId, string>): number {
+  return estimateContextTokens([...fixedParts, ...[...kept.values()]]);
+}
+
 function tryTruncateHistory(
   kept: Map<TrimContextLayerId, string>,
   fixedParts: string[],
   budgetChars: number,
+  budgetTokens: number,
 ): boolean {
   const history = kept.get('history');
   if (!history) return false;
@@ -57,14 +70,29 @@ function tryTruncateHistory(
   if (room >= history.length) return false;
   if (room < 80) return false;
   kept.set('history', `${history.slice(0, room)}${suffix}`);
-  return true;
+  return totalTokens(fixedParts, kept) <= budgetTokens;
+}
+
+function resolveBudgetTokens(options: ContextBudgetOptions): number {
+  const envBudget = getContextTokenBudget();
+  const requested = options.budgetTokens ?? envBudget;
+  if (!options.modelWindowTokens) return requested;
+  const windowGuard = Math.max(1, Math.floor(options.modelWindowTokens * 0.7));
+  return Math.min(requested, windowGuard);
 }
 
 export function applyContextBudget(
   fixedParts: string[],
   layers: TrimContextLayer[],
-  budgetChars = getContextCharBudget(),
+  budget: number | ContextBudgetOptions = getContextCharBudget(),
 ): ContextBudgetResult {
+  const budgetChars = typeof budget === 'number'
+    ? budget
+    : budget.budgetChars ?? getContextCharBudget();
+  const budgetTokens = typeof budget === 'number'
+    ? getContextTokenBudget()
+    : resolveBudgetTokens(budget);
+
   const kept = new Map<TrimContextLayerId, string>();
   for (const layer of layers) {
     if (layer.content.trim()) kept.set(layer.id, layer.content);
@@ -74,16 +102,16 @@ export function applyContextBudget(
   let historyCompacted = false;
 
   for (const id of TRIM_ORDER) {
-    if (totalChars(fixedParts, kept) <= budgetChars) break;
+    if (totalChars(fixedParts, kept) <= budgetChars && totalTokens(fixedParts, kept) <= budgetTokens) break;
     if (!kept.has(id)) continue;
 
-    if (id === 'history' && tryTruncateHistory(kept, fixedParts, budgetChars)) {
+    if (id === 'history' && tryTruncateHistory(kept, fixedParts, budgetChars, budgetTokens)) {
       historyCompacted = true;
       if (!trimmed.includes('history')) trimmed.push('history');
-      if (totalChars(fixedParts, kept) <= budgetChars) break;
+      if (totalChars(fixedParts, kept) <= budgetChars && totalTokens(fixedParts, kept) <= budgetTokens) break;
     }
 
-    if (totalChars(fixedParts, kept) <= budgetChars) break;
+    if (totalChars(fixedParts, kept) <= budgetChars && totalTokens(fixedParts, kept) <= budgetTokens) break;
     kept.delete(id);
     trimmed.push(id);
     if (id === 'history') historyCompacted = true;
@@ -97,6 +125,8 @@ export function applyContextBudget(
     trimmed,
     historyCompacted,
     estimatedChars: totalChars(fixedParts, kept),
+    estimatedTokens: totalTokens(fixedParts, kept),
     budgetChars,
+    budgetTokens,
   };
 }

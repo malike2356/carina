@@ -33,10 +33,10 @@ export function LoginPage() {
     <div className="mx-auto flex min-h-screen max-w-md items-center px-6">
       <div className="w-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold">Sign in</h1>
-        <p className="mt-1 text-sm text-slate-600">Start with Carina, then add Scout when client data and audit trails matter.</p>
+        <p className="mt-1 text-sm text-slate-600">Start in Carina Cloud, then add Scout when the workflow needs governance, audit trails, and production controls.</p>
         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
           <p className="font-medium text-slate-900">Carina is the vehicle.</p>
-          <p className="mt-1">Scout is the paid destination for security, governance, and enterprise readiness.</p>
+          <p className="mt-1">Scout is the control layer that takes the deployment into governed production.</p>
           <a
             href="https://labyrinthscout.com/pricing"
             target="_blank"

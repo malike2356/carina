@@ -52,7 +52,7 @@ export function subagentMaxTurns(): number {
 
 export function maxDelegationDepth(): number {
   const raw = process.env.CARINA_MAX_DELEGATION_DEPTH;
-  if (!raw) return 1;
+  if (!raw) return 2;
   const parsed = parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 2;
 }

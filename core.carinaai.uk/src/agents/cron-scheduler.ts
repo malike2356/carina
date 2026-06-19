@@ -7,6 +7,13 @@ import { dispatchWebhook } from '../webhooks/dispatcher.js';
 import type { ChannelName } from '../gateway/channels/channel-adapter.interface.js';
 import { runCronStep } from './cron-step-runner.js';
 import { activeCronProfile } from '../profiles/isolation.js';
+import type { CronScriptConfig } from './cron-job-types.js';
+import { parseScriptConfig } from './cron-job-types.js';
+import { buildCronPrompt, runJobScript } from './cron-context-chain.js';
+import {
+  incrementFailureCount,
+  resetFailureCount,
+} from './cron-job-store.js';
 
 export type JobStatus = 'active' | 'paused' | 'completed' | 'removed';
 
@@ -16,6 +23,7 @@ export interface ScheduledJob {
   schedule: string;
   prompt: string | null;
   scriptPath: string | null;
+  scriptConfig: CronScriptConfig | null;
   noAgent: boolean;
   deliver: string;
   repeatCount: number | null;
@@ -35,6 +43,8 @@ export interface ScheduledJob {
   profileName: string;
   modelProvider: string | null;
   modelName: string | null;
+  failureLimit: number | null;
+  failureCount: number;
   createdAt: Date;
 }
 
@@ -91,6 +101,7 @@ function rowToJob(row: Record<string, unknown>): ScheduledJob {
     schedule: String(row.schedule),
     prompt: row.prompt ? String(row.prompt) : null,
     scriptPath: row.script_path ? String(row.script_path) : null,
+    scriptConfig: parseScriptConfig(row.script_config),
     noAgent: Boolean(row.no_agent),
     deliver: String(row.deliver ?? 'origin'),
     repeatCount: row.repeat_count != null ? Number(row.repeat_count) : null,
@@ -110,6 +121,8 @@ function rowToJob(row: Record<string, unknown>): ScheduledJob {
     profileName: row.profile_name ? String(row.profile_name) : 'default',
     modelProvider: row.model_provider ? String(row.model_provider) : null,
     modelName: row.model_name ? String(row.model_name) : null,
+    failureLimit: row.failure_limit != null ? Number(row.failure_limit) : null,
+    failureCount: Number(row.failure_count ?? 0),
     createdAt: new Date(String(row.created_at)),
   };
 }
@@ -123,11 +136,11 @@ export async function createJob(
   const profileName = input.profileName ?? activeCronProfile();
   const result = await pool.query(
     `INSERT INTO scheduled_tasks
-       (id, name, schedule, prompt, script_path, no_agent, deliver,
+       (id, name, schedule, prompt, script_path, script_config, no_agent, deliver,
         repeat_count, runs_remaining, status, context_from, chain_after, enabled_toolsets,
         workdir, origin_session_id, origin_channel, origin_conversation_id, origin_thread_id,
-        deliver_channels, profile_name, model_provider, model_name)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)
+        deliver_channels, profile_name, model_provider, model_name, failure_limit, failure_count)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
      RETURNING *`,
     [
       id,
@@ -135,6 +148,7 @@ export async function createJob(
       input.schedule,
       input.prompt,
       input.scriptPath,
+      input.scriptConfig ? JSON.stringify(input.scriptConfig) : null,
       input.noAgent,
       input.deliver,
       input.repeatCount,
@@ -152,6 +166,8 @@ export async function createJob(
       profileName,
       input.modelProvider ?? null,
       input.modelName ?? null,
+      input.failureLimit ?? 3,
+      0,
     ],
   );
   const job = rowToJob(result.rows[0]);
@@ -186,6 +202,7 @@ export async function updateJob(id: string, patch: Partial<ScheduledJob>): Promi
     schedule: patch.schedule,
     prompt: patch.prompt,
     script_path: patch.scriptPath,
+    script_config: patch.scriptConfig ? JSON.stringify(patch.scriptConfig) : patch.scriptConfig,
     no_agent: patch.noAgent,
     deliver: patch.deliver,
     repeat_count: patch.repeatCount,
@@ -199,6 +216,8 @@ export async function updateJob(id: string, patch: Partial<ScheduledJob>): Promi
     origin_channel: patch.originChannel,
     origin_conversation_id: patch.originConversationId,
     origin_thread_id: patch.originThreadId,
+    failure_limit: patch.failureLimit,
+    failure_count: patch.failureCount,
   };
 
   for (const [col, val] of Object.entries(map)) {
@@ -265,29 +284,11 @@ export async function loadAndRegisterAllJobs(): Promise<number> {
 }
 
 async function buildJobContext(
-  job: ScheduledJob,
   chainedFrom?: ExecuteJobOptions['chainedFrom'],
 ): Promise<string> {
-  const parts: string[] = [];
-
-  if (chainedFrom?.output) {
-    const label = chainedFrom.name ?? chainedFrom.jobId;
-    parts.push(`[Chained from ${label}]\n${chainedFrom.output}`);
-  }
-
-  for (const depId of job.contextFrom) {
-    const depJob = await getJob(depId);
-    const depResult = await pool.query(
-      `SELECT output FROM scheduled_task_runs WHERE job_id = $1 ORDER BY completed_at DESC LIMIT 1`,
-      [depId],
-    );
-    const output = depResult.rows[0]?.output;
-    if (output) {
-      const label = depJob?.name ?? depId;
-      parts.push(`[Job ${label} output]\n${output}`);
-    }
-  }
-  return parts.join('\n\n');
+  if (!chainedFrom?.output) return '';
+  const label = chainedFrom.name ?? chainedFrom.jobId;
+  return `[Chained from ${label}]\n${chainedFrom.output}`;
 }
 
 async function recordJobRun(jobId: string, output: string, success: boolean): Promise<void> {
@@ -303,29 +304,76 @@ export async function executeJob(jobId: string, opts: ExecuteJobOptions = {}): P
     throw new Error(`Job ${jobId} not found.`);
   }
 
-  const contextPrefix = await buildJobContext(job, opts.chainedFrom);
-  const step = await runCronStep({
-    jobId,
-    prompt: job.prompt,
-    scriptPath: job.scriptPath,
-    noAgent: job.noAgent,
-    enabledToolsets: job.enabledToolsets,
-    workdir: job.workdir,
-    contextPrefix: contextPrefix || undefined,
-    chainedFrom: opts.chainedFrom,
-    modelProvider: job.modelProvider,
-    modelName: job.modelName,
-  });
+  const failureLimit = job.failureLimit ?? 3;
+  if (job.failureCount >= failureLimit) {
+    const alert = `[Job disabled] ${job.name ?? jobId} paused after ${job.failureCount} consecutive failures.`;
+    if (job.status === 'active') {
+      await updateJob(jobId, { status: 'paused' });
+    }
+    console.warn(`[cron] ${alert}`);
+    return alert;
+  }
 
-  if (!step.success) {
-    const alert = `[Job failed] ${job.name ?? jobId}: ${step.error ?? 'unknown error'}`;
-    if (deliverCallback) await deliverCallback(job, alert);
+  let output = '';
+  let success = false;
+
+  try {
+    if (job.noAgent) {
+      if (!job.scriptConfig && !job.scriptPath) {
+        throw new Error('no_agent jobs require scriptConfig or script_path.');
+      }
+      const scriptResult = await runJobScript(job);
+      output = scriptResult.stdout || scriptResult.stderr;
+      if (scriptResult.exitCode !== 0) {
+        throw new Error(`Script exited with code ${scriptResult.exitCode}: ${scriptResult.stderr}`);
+      }
+      success = true;
+    } else {
+      const contextPrefix = await buildJobContext(opts.chainedFrom);
+      const prompt = await buildCronPrompt(job);
+      const mergedPrompt = contextPrefix
+        ? `${contextPrefix}\n\n---\n\n${prompt}`
+        : prompt;
+
+      if (!mergedPrompt.trim() && !job.scriptConfig && !job.scriptPath) {
+        throw new Error('Agent cron jobs require a prompt or script.');
+      }
+
+      const step = await runCronStep({
+        jobId,
+        prompt: mergedPrompt || job.prompt,
+        scriptPath: null,
+        noAgent: false,
+        enabledToolsets: job.enabledToolsets,
+        workdir: job.workdir,
+        skipScript: true,
+        modelProvider: job.modelProvider,
+        modelName: job.modelName,
+      });
+
+      if (!step.success) {
+        throw new Error(step.error ?? 'unknown error');
+      }
+      output = step.output;
+      success = true;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const alert = `[Job failed] ${job.name ?? jobId}: ${msg}`;
+    const failures = await incrementFailureCount(jobId);
+    if (failures >= failureLimit) {
+      await updateJob(jobId, { status: 'paused' });
+      console.warn(`[cron] Job "${job.name ?? jobId}" paused after ${failures} failures`);
+    }
+    if (deliverCallback) {
+      await deliverCallback(job, alert);
+    }
     await recordJobRun(jobId, alert, false);
     return alert;
   }
 
-  const output = step.output;
-  await recordJobRun(jobId, output, true);
+  await recordJobRun(jobId, output, success);
+  await resetFailureCount(jobId);
   await pool.query(
     `UPDATE scheduled_tasks SET last_run = NOW() WHERE id = $1`,
     [jobId],

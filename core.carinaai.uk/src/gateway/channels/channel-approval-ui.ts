@@ -21,7 +21,9 @@ export function channelSupportsInteractiveApproval(channel: ChannelName): boolea
 }
 
 export function channelApprovalUiEnabled(): boolean {
-  return process.env.CARINA_CHANNEL_APPROVAL_UI === 'true';
+  if (process.env.CARINA_CHANNEL_APPROVAL_UI === 'false') return false;
+  return process.env.CARINA_CHANNEL_APPROVAL_UI === 'true'
+    || process.env.CARINA_CHANNEL_APPROVAL_UI !== 'off';
 }
 
 export function summarizeToolParamsForChannel(params: Record<string, unknown>): string {

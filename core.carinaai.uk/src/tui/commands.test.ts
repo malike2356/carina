@@ -16,7 +16,12 @@ describe('tui commands', () => {
     expect(viewFromKey('2')).toEqual({ type: 'tab', view: 'tasks' });
   });
 
-  it('parses kill on processes view', () => {
-    expect(parseInputLine(':kill', 'processes').type).toBe('kill_process');
+  it('parses task actions on tasks view', () => {
+    expect(parseInputLine(':run', 'tasks').type).toBe('task_action');
+    expect(parseInputLine(':pause', 'tasks')).toEqual({ type: 'task_action', action: 'pause' });
+  });
+
+  it('parses stop command', () => {
+    expect(parseInputLine('/stop', 'chat').type).toBe('stop_turn');
   });
 });

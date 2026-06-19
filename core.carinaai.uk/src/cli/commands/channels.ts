@@ -79,6 +79,13 @@ export async function runChannelsCommand(action = 'list', ...rest: string[]): Pr
     console.log('\nFlags: CARINA_THREAD_OWNERSHIP, CARINA_CHANNEL_DM_PAIRING, CARINA_CHANNEL_PEER_SCOPING, CARINA_WHATSAPP_SELF_BRIDGE');
     const flags = getChannelPolicyFlags();
     console.log(chalk.gray(`  threadOwnership=${flags.threadOwnership}  dmPairing=${flags.dmPairing}  peerScoping=${flags.peerScoping}  whatsappSelfBridge=${flags.whatsappSelfBridge}`));
+    const configuredMessengers = reports.filter((r) =>
+      ['telegram', 'discord', 'slack', 'whatsapp', 'signal', 'matrix'].includes(r.channel)
+      && r.state !== 'disabled');
+    if (configuredMessengers.length > 0 && !flags.dmPairing) {
+      console.log(chalk.yellow('\n  WARNING: Messenger channels configured but DM pairing is off.'));
+      console.log(chalk.yellow('  Set CARINA_CHANNEL_DM_PAIRING=true or rerun carina onboard for a messenger channel.'));
+    }
     if (flags.peerScoping) {
       console.log(chalk.gray('  peer scoping: session keys use channel:peer (and :t:thread when thread ownership is on)'));
     }

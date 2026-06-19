@@ -199,6 +199,27 @@ describe('images-api', () => {
     expect(result.json?.error).toBe('Inpaint not supported by configured provider');
   });
 
+  it('upload stores a PNG in the gallery', async () => {
+    ({ server, homeDir, imagesDir } = await mountImagesRouter(true));
+    const port = (server!.address() as { port: number }).port;
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+
+    const result = await request(port, 'POST', '/api/images/upload', {
+      data: png.toString('base64'),
+      prompt: 'Uploaded test',
+    });
+    expect(result.status).toBe(201);
+    expect(result.json?.id).toBeTruthy();
+    expect(result.json?.url).toBe(`/api/images/${result.json?.id}/file`);
+
+    const list = await request(port, 'GET', '/api/images?page=1&limit=24');
+    expect(list.status).toBe(200);
+    expect((list.json?.images as Array<{ prompt: string }>).some((i) => i.prompt === 'Uploaded test')).toBe(true);
+  });
+
   it('agent tool integration writes to carina_images', async () => {
     const home = path.join(os.tmpdir(), `carina-tool-gallery-${randomUUID()}`);
     const galleryDir = path.join(home, 'images');

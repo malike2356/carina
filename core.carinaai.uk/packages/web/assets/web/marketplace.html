@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Marketplace</title>
+  <link rel="stylesheet" href="/assets/web/workspace.css">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; background: #0d0d0f; color: #e6e6e6; }
+    main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .card { border: 1px solid #30363d; border-radius: 10px; padding: 14px; background: #161b22; }
+    .meta { color: #8b949e; font-size: 12px; margin-top: 8px; }
+    input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: inherit; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Skills Marketplace</h1>
+    <p>Browse packs, extensions, and workshop drafts from your Carina install.</p>
+    <input id="search" type="search" placeholder="Search marketplace..." aria-label="Search marketplace">
+    <div id="summary" class="meta"></div>
+    <div id="grid" class="grid"></div>
+  </main>
+  <script>
+    const grid = document.getElementById('grid');
+    const summary = document.getElementById('summary');
+    const search = document.getElementById('search');
+    let entries = [];
+
+    function render() {
+      const q = (search.value || '').trim().toLowerCase();
+      const filtered = q
+        ? entries.filter((e) => (e.name + ' ' + e.description).toLowerCase().includes(q))
+        : entries;
+      summary.textContent = filtered.length + ' entries';
+      grid.innerHTML = filtered.map((e) =>
+        '<article class="card"><strong>' + e.name + '</strong><div>' + e.description + '</div>' +
+        '<div class="meta">' + e.kind + ' · ' + (e.trust?.publisher || 'community') + ' · ' + e.status + '</div></article>'
+      ).join('');
+    }
+
+    fetch('/api/marketplace/catalog')
+      .then((r) => r.json())
+      .then((data) => {
+        entries = Array.isArray(data.entries) ? data.entries : [];
+        render();
+      })
+      .catch(() => { summary.textContent = 'Failed to load marketplace catalog.'; });
+
+    search.addEventListener('input', render);
+  </script>
+</body>
+</html>

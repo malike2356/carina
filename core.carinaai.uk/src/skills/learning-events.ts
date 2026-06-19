@@ -17,6 +17,7 @@ export type LearningEventType =
   | 'skill_refine_blocked'
   | 'skill_rolled_back'
   | 'skill_propagated'
+  | 'task_outcome_saved'
   | 'loop_error';
 
 export interface LearningEventInput {

@@ -1,5 +1,6 @@
 import { buildMandatoryToolsBlock } from '../tools/mandatory-tools.js';
 import type { SubagentRole } from './delegation-context.js';
+import { buildLeafRolePrompt, buildOrchestratorRolePrompt } from './role-enforcer.js';
 
 export function buildSubagentSystemPromptParts(): string[] {
   return [
@@ -21,12 +22,12 @@ export function buildSubagentTaskSuffix(input: {
   workdir?: string;
 }): string {
   const workdirLine = input.workdir ? `\nWork in directory: ${input.workdir}` : '';
-  const roleLine = input.role === 'orchestrator'
-    ? 'Role: orchestrator. You may delegate sub-tasks with delegate-task when depth allows.'
-    : 'Role: leaf. You cannot delegate further.';
+  const roleBlock = input.role === 'orchestrator'
+    ? buildOrchestratorRolePrompt(input.delegationDepth)
+    : buildLeafRolePrompt();
   return [
     'Delegated subagent task:',
-    roleLine,
+    roleBlock,
     `Delegation depth: ${input.delegationDepth}.${workdirLine}`,
     'Intermediate tool output stays in your context; the parent only sees your final summary.',
     `Task: ${input.goal}`,

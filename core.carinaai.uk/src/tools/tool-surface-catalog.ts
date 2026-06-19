@@ -584,6 +584,10 @@ const TOOL_META: Record<string, Omit<ToolCatalogEntry, 'name' | 'registered' | '
   'git-brief-status': { category: 'utilities', purpose: 'Read-only git status', surfaces: ['agent', 'cli', 'web'], toolset: 'utilities' },
   'disk-usage': { category: 'utilities', purpose: 'Local path size summary', surfaces: ['agent', 'cli', 'web'], toolset: 'utilities' },
   'hex-encode': { category: 'utilities', purpose: 'Hex encode/decode UTF-8 text', surfaces: ['agent', 'cli', 'web'], toolset: 'utilities' },
+  'n8n': { category: 'integrations', purpose: 'Trigger and monitor n8n workflow automations', surfaces: ['agent', 'web'], toolset: 'integrations' },
+  'phone-control': { category: 'infrastructure', purpose: 'Dispatch shell commands to a paired phone node', surfaces: ['agent'], toolset: 'system' },
+  'theme': { category: 'utilities', purpose: 'Set, list, or reset the workspace color theme', surfaces: ['agent', 'web'], toolset: 'utilities' },
+  'trello': { category: 'integrations', purpose: 'Manage Trello boards, lists, and cards', surfaces: ['agent', 'web'], toolset: 'integrations' },
 };
 
 function resolveToolset(name: string): string | undefined {

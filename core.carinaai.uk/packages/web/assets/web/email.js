@@ -3,6 +3,7 @@
   let emails = [];
   let activeId = null;
   let activeStatus = 'inbox';
+  let unreadOnly = false;
 
   const listEl = document.getElementById('email-list');
   const statusEl = document.getElementById('status');
@@ -86,6 +87,7 @@
     try {
       const q = searchEl.value.trim();
       const params = new URLSearchParams({ status: activeStatus, limit: '50' });
+      if (unreadOnly) params.set('unread', 'true');
       if (q) params.set('q', q);
       const data = await api('GET', '/?' + params.toString());
       emails = data.emails || [];
@@ -127,7 +129,13 @@
     btn.addEventListener('click', function () {
       document.querySelectorAll('.filter-btn').forEach(function (el) { el.classList.remove('active'); });
       btn.classList.add('active');
-      activeStatus = btn.dataset.status || 'inbox';
+      if (btn.dataset.unread === '1') {
+        unreadOnly = true;
+        activeStatus = 'inbox';
+      } else {
+        unreadOnly = false;
+        activeStatus = btn.dataset.status || 'inbox';
+      }
       closeDetail();
       loadEmails();
     });
@@ -139,6 +147,19 @@
   });
 
   document.getElementById('mark-read').addEventListener('click', function () { patchActive({ read: true }); });
+  document.getElementById('mark-unread').addEventListener('click', function () { patchActive({ read: false }); });
+  document.getElementById('reply-btn').addEventListener('click', function () {
+    if (!activeId) return;
+    var email = emails.find(function (e) { return e.id === activeId; });
+    if (!email || !composeModal) return;
+    document.getElementById('compose-to').value = email.from_address || '';
+    var subj = email.subject || '';
+    document.getElementById('compose-subject').value =
+      subj.toLowerCase().startsWith('re:') ? subj : ('Re: ' + subj);
+    document.getElementById('compose-reply-id').value = email.message_id || '';
+    document.getElementById('compose-body').value = '';
+    composeModal.style.display = 'flex';
+  });
   document.querySelectorAll('[data-urgency]').forEach(function (btn) {
     btn.addEventListener('click', function () { patchActive({ urgency: btn.dataset.urgency }); });
   });

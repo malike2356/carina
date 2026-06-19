@@ -9,6 +9,7 @@ describe('web-auth', () => {
     expect(isPublicHostedPath('/app/auth/register')).toBe(true);
     expect(isPublicHostedPath('/api/cloud/auth/login')).toBe(true);
     expect(isPublicHostedPath('/api/cloud/auth/register')).toBe(true);
+    expect(isPublicHostedPath('/webhooks/telegram')).toBe(true);
     expect(isPublicHostedPath('/api/chat')).toBe(false);
   });
 
