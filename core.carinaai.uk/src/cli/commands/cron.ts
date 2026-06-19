@@ -285,6 +285,7 @@ export async function runCronCommand(action = 'list', id?: string, extra: string
       modelProvider: null,
       modelName: null,
       failureLimit: 3,
+      failureCount: 0,
     });
     console.log(chalk.green(`Created cron job ${job.id.slice(0, 8)} (${job.name ?? 'unnamed'})`));
     console.log(chalk.gray(`  schedule: ${job.schedule}`));

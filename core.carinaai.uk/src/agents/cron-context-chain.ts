@@ -102,9 +102,11 @@ export async function buildCronPrompt(job: ScheduledJob): Promise<string> {
   if (job.workdir) {
     try {
       const resolved = resolveCronWorkdir(job.workdir);
-      const agentsContext = await loadAgentsMd(resolved);
-      if (agentsContext) {
-        prompt = `${agentsContext}\n\n---\n\n${prompt}`;
+      if (resolved) {
+        const agentsContext = await loadAgentsMd(resolved);
+        if (agentsContext) {
+          prompt = `${agentsContext}\n\n---\n\n${prompt}`;
+        }
       }
     } catch {
       // skip invalid workdir

@@ -19,7 +19,7 @@ export function parseCronYamlEntryFromDoc(raw: Record<string, unknown>): CronJob
   return parseCronYamlEntry(raw);
 }
 
-function entryToJobInput(entry: CronJobYamlEntry): Omit<ScheduledJob, 'id' | 'lastRun' | 'nextRun' | 'createdAt' | 'status' | 'failureCount'> & { status?: ScheduledJob['status'] } {
+function entryToJobInput(entry: CronJobYamlEntry): Omit<ScheduledJob, 'id' | 'lastRun' | 'nextRun' | 'createdAt' | 'status'> & { status?: ScheduledJob['status'] } {
   const scriptConfig = entry.scriptConfig
     ?? (entry.script ? { script: entry.script } : null);
 
@@ -46,6 +46,7 @@ function entryToJobInput(entry: CronJobYamlEntry): Omit<ScheduledJob, 'id' | 'la
     modelProvider: null,
     modelName: null,
     failureLimit: entry.failureLimit ?? 3,
+    failureCount: 0,
   };
 }
 

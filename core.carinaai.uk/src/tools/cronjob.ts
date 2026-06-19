@@ -135,6 +135,7 @@ export function createCronjobTool(sessionId: string): Tool {
             modelProvider: null,
             modelName: null,
             failureLimit: 3,
+            failureCount: 0,
           });
           if (parsed.oneShot && prompt) {
             syncCronReminder({
