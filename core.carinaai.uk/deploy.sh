@@ -113,6 +113,12 @@ install_vps_deps() {
   "
 }
 
+sync_start_script() {
+  log "Syncing start.sh to VPS..."
+  rsync -az start.sh "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/start.sh"
+  ssh "${VPS_USER}@${VPS_HOST}" "chmod +x ${DEPLOY_DIR}/start.sh"
+}
+
 check_service() {
   local svc="$1"
   local STATUS
@@ -139,6 +145,7 @@ deploy_full() {
   sync_web_package
   sync_hub_public
   sync_cloud_dist
+  sync_start_script
   install_vps_deps
 
   restart_service "${SERVICE}"
