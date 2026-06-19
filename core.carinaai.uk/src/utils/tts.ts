@@ -20,6 +20,29 @@ export function cleanForSpeech(text: string): string {
   return lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated;
 }
 
+async function synthesizeOpenAi(text: string, filePath: string): Promise<void> {
+  if (!config.openai.apiKey) {
+    throw new Error('OpenAI API key not configured for TTS fallback');
+  }
+  const OpenAI = (await import('openai')).default;
+  const client = new OpenAI({ apiKey: config.openai.apiKey });
+  const response = await client.audio.speech.create({
+    model: 'tts-1',
+    voice: 'nova',
+    input: text,
+  });
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.writeFile(filePath, buffer);
+}
+
+async function synthesizeEdge(text: string, filePath: string): Promise<void> {
+  await execFileAsync(
+    'edge-tts',
+    ['--voice', config.tts.voice, '--text', text, '--write-media', filePath],
+    { timeout: 30_000 },
+  );
+}
+
 export async function generateSpeech(
   text: string,
 ): Promise<{ filePath: string; cleanup: () => Promise<void> }> {
@@ -34,30 +57,30 @@ export async function generateSpeech(
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 
   try {
-    if (provider === 'edge') {
-      await execFileAsync(
-        'edge-tts',
-        ['--voice', config.tts.voice, '--text', cleaned, '--write-media', filePath],
-        { timeout: 30_000 },
-      );
+    if (provider === 'openai') {
+      await synthesizeOpenAi(cleaned, filePath);
     } else {
-      const OpenAI = (await import('openai')).default;
-      const client = new OpenAI({ apiKey: config.openai.apiKey });
-      const response = await client.audio.speech.create({
-        model: 'tts-1',
-        voice: 'nova',
-        input: cleaned,
-      });
-      const buffer = Buffer.from(await response.arrayBuffer());
-      await fs.writeFile(filePath, buffer);
+      try {
+        await synthesizeEdge(cleaned, filePath);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const edgeMissing = msg.includes('ENOENT') || msg.includes('edge-tts');
+        if (edgeMissing && config.openai.apiKey) {
+          await synthesizeOpenAi(cleaned, filePath);
+        } else if (edgeMissing) {
+          throw new Error(
+            'TTS generation failed: edge-tts CLI not found. Run: pip3 install edge-tts, or set OPENAI_API_KEY for OpenAI TTS fallback.',
+          );
+        } else {
+          throw new Error(`TTS generation failed: ${msg}`);
+        }
+      }
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes('ENOENT')) {
-      throw new Error(
-        'TTS generation failed: edge-tts CLI not found. Run: pip3 install edge-tts',
-      );
+    if (err instanceof Error && err.message.startsWith('TTS generation failed')) {
+      throw err;
     }
+    const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`TTS generation failed: ${msg}`);
   }
 

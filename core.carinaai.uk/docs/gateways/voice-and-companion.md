@@ -36,7 +36,7 @@ The agent can also call the `text-to-speech` tool during conversations.
 
 ## Telegram voice replies
 
-Send `/speak your question` or append `[speak]` to any message. Carina replies with a voice note when TTS is configured.
+Send `/speak your question`, append `[speak]`, or add phrases like **respond in voice** / **as audio** to any message. Carina replies with a voice note when TTS is configured (`pip3 install edge-tts` on the gateway host).
 
 ## Mobile companion
 

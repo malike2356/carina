@@ -5,7 +5,7 @@ import { getRouter } from './router.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
 import { formatForPlatform } from './formatting.js';
-import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective } from './telegram-audio.js';
+import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective, cleanTextForTelegramSpeech } from './telegram-audio.js';
 import { BlockStreamAssembler } from './block-stream-assembler.js';
 
 const TELEGRAM_MAX = 4096;
@@ -26,7 +26,7 @@ Commands:
 /help - show commands
 /clear - reset session memory
 /model [provider] [model] - switch LLM provider
-/speak [message] - get a voice reply (or add [speak] to any message)`;
+/speak [message] - get a voice reply (or add "respond in voice" / [speak] to any message)`;
 
 async function sendLong(bot: TelegramBot, chatId: number, text: string, adapter: TelegramAdapter): Promise<void> {
   const formatted = formatForPlatform(text, 'telegram');
@@ -41,7 +41,7 @@ async function streamToTelegram(
   chatId: number,
   generator: AsyncGenerator<string>,
   adapter: TelegramAdapter,
-): Promise<void> {
+): Promise<string> {
   const blockStream = process.env.CARINA_BLOCK_STREAM !== 'false';
   const assembler = blockStream ? new BlockStreamAssembler() : null;
   let fullText = '';
@@ -108,6 +108,8 @@ async function streamToTelegram(
     const remainder = fullText.slice(TELEGRAM_MAX);
     await sendLong(bot, chatId, remainder, adapter);
   }
+
+  return fullText;
 }
 
 function handleTelegramCommand(
@@ -173,17 +175,16 @@ export async function startTelegram(): Promise<void> {
       const generator = getRouter().handleInbound('telegram', inboundMsg);
 
       if (speakRequested) {
-        let fullReply = '';
-        for await (const chunk of generator) {
-          fullReply += chunk;
-        }
-        if (fullReply.trim()) {
-          await sendSpokenReply(bot, chatId, fullReply);
-        }
-        const formatted = formatForPlatform(fullReply, 'telegram');
-        const display = Array.isArray(formatted) ? formatted.join('\n') : formatted;
-        if (display.trim()) {
-          await bot.sendMessage(chatId, display.slice(0, TELEGRAM_MAX));
+        const fullReply = await streamToTelegram(bot, chatId, generator, adapter);
+        const speechText = cleanTextForTelegramSpeech(fullReply);
+        if (speechText) {
+          const voice = await sendSpokenReply(bot, chatId, speechText);
+          if (!voice.ok) {
+            await bot.sendMessage(
+              chatId,
+              `Voice note unavailable: ${voice.error}. Install edge-tts on the server (pip3 install edge-tts) or set TTS_PROVIDER=openai.`,
+            );
+          }
         }
       } else {
         await streamToTelegram(bot, chatId, generator, adapter);
