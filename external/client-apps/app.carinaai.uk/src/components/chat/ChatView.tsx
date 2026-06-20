@@ -18,6 +18,7 @@ import { Download, Copy } from 'lucide-react';
 import { copySessionMarkdown, downloadSessionMarkdown } from '@/lib/chat-session-export';
 import { loadDeletedMessageSnapshots, removeDeletedMessageSnapshot, saveDeletedMessageSnapshot } from '@/lib/chat-deletions';
 import { estimateTokensFromText } from '@/lib/token-estimation';
+import { pushInputHistory } from '@/lib/chat-history';
 
 interface ChatViewProps {
   sessionId: string;
@@ -111,6 +112,8 @@ export function ChatView({
       .catch(() => {});
   }, [documentId]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const lastSendOptionsRef = useRef<ChatSendOptions>({ mode: 'chat', provider: '', model: '', contextPins: [], webSearch: false });
   const router = useRouter();
 
   useEffect(() => {
@@ -203,6 +206,65 @@ export function ChatView({
   }, [streamingContent, visibleMessages]);
   const maxContextTokens = 128000;
   const heartbeatHold = useMemo(() => busy || streamingContent.length > 0, [busy, streamingContent.length]);
+  const lastAssistantId = useMemo(() => {
+    return [...renderedMessages].reverse().find((e) => e.kind === 'message' && e.message.role === 'assistant')?.message.id ?? null;
+  }, [renderedMessages]);
+
+  function stop() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setBusy(false);
+    setStreamingContent('');
+    setLiveToolCalls([]);
+  }
+
+  async function retry() {
+    if (busy) return;
+    const vis = visibleMessages;
+    const reversedVis = [...vis].reverse();
+    const lastUserMsg = reversedVis.find((m) => m.role === 'user');
+    if (!lastUserMsg) return;
+
+    const lastUserIdx = vis.findIndex((m) => m.id === lastUserMsg.id);
+    const toRemove = vis.slice(lastUserIdx);
+    const toRemoveIds = new Set(toRemove.map((m) => m.id));
+
+    setMessages((prev) => prev.filter((m) => !toRemoveIds.has(m.id)));
+    setDeletedMessages((prev) => {
+      const next = new Map(prev);
+      for (const m of toRemove) {
+        next.delete(m.id);
+        removeDeletedMessageSnapshot(sessionId, m.id);
+      }
+      return next;
+    });
+    void Promise.all(toRemove.map((m) => fetch(`/api/messages/${m.id}`, { method: 'DELETE' })));
+    await send(lastUserMsg.content, lastSendOptionsRef.current);
+  }
+
+  async function undo() {
+    if (busy) return;
+    const vis = visibleMessages;
+    const reversedVis = [...vis].reverse();
+    const lastUserMsg = reversedVis.find((m) => m.role === 'user');
+    if (!lastUserMsg) return;
+
+    const lastUserIdx = vis.findIndex((m) => m.id === lastUserMsg.id);
+    const toRemove = vis.slice(lastUserIdx);
+    const toRemoveIds = new Set(toRemove.map((m) => m.id));
+
+    setMessages((prev) => prev.filter((m) => !toRemoveIds.has(m.id)));
+    setDeletedMessages((prev) => {
+      const next = new Map(prev);
+      for (const m of toRemove) {
+        next.delete(m.id);
+        removeDeletedMessageSnapshot(sessionId, m.id);
+      }
+      return next;
+    });
+    await Promise.all(toRemove.map((m) => fetch(`/api/messages/${m.id}`, { method: 'DELETE' })));
+    router.refresh();
+  }
 
   async function deleteMessage(id: string) {
     const target = messages.find((message) => message.id === id);
@@ -275,6 +337,9 @@ export function ChatView({
   }
 
   async function send(message: string, options: ChatSendOptions) {
+    lastSendOptionsRef.current = options;
+    pushInputHistory(message);
+
     let fullMessage = message;
     if (options.contextPins.length > 0) {
       const context = options.contextPins
@@ -302,9 +367,13 @@ export function ChatView({
     setLiveToolCalls([]);
     setStreamError(null);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
       body: JSON.stringify({
         message: fullMessage,
         sessionId,
@@ -313,7 +382,17 @@ export function ChatView({
         model: options.model,
         webSearch: options.webSearch,
       }),
+    }).catch((err: unknown) => {
+      if (err instanceof DOMException && err.name === 'AbortError') return null;
+      throw err;
     });
+
+    if (!res) {
+      setBusy(false);
+      setStreamingContent('');
+      setLiveToolCalls([]);
+      return;
+    }
 
     if (!res.ok || !res.body) {
       const err = await res.json().catch(() => ({ error: 'Chat failed' }));
@@ -347,11 +426,22 @@ export function ChatView({
       model?: string;
     } | null = null;
     let streamFailed = false;
+    let streamAborted = false;
     let streamErrorPayload: { message: string; code?: ChatErrorCode } | null = null;
     const streamToolCalls: LiveToolCall[] = [];
 
     while (true) {
-      const { done, value } = await reader.read();
+      let done: boolean;
+      let value: Uint8Array | undefined;
+      try {
+        ({ done, value } = await reader.read());
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          streamAborted = true;
+          break;
+        }
+        throw err;
+      }
       if (done) break;
       const chunk = decoder.decode(value, { stream: true });
       for (const line of chunk.split('\n')) {
@@ -499,7 +589,31 @@ export function ChatView({
       }
     }
 
-    if (streamFailed && streamErrorPayload) {
+    if (streamAborted) {
+      if (assistant.trim() || streamToolCalls.length > 0) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: assistant,
+            toolCalls: streamToolCalls.map((tc) => ({
+              id: tc.id,
+              name: tc.name,
+              input: tc.input,
+              output: tc.output,
+              durationMs: tc.durationMs,
+              status: tc.status,
+            })),
+            inputTokens: finalMeta?.inputTokens ?? 0,
+            outputTokens: finalMeta?.outputTokens ?? 0,
+            durationMs: finalMeta?.durationMs ?? 0,
+            model: finalMeta?.model ?? '',
+            createdAt: new Date().toISOString(),
+          },
+        ]);
+      }
+    } else if (streamFailed && streamErrorPayload) {
       setMessages((prev) => [
         ...prev,
         {
@@ -584,7 +698,12 @@ export function ChatView({
           ) : entry.message.role === 'user' ? (
             <UserMessage key={entry.message.id} message={entry.message} onDelete={deleteMessage} />
           ) : (
-            <AssistantMessage key={entry.message.id} message={entry.message} onDelete={deleteMessage} />
+            <AssistantMessage
+              key={entry.message.id}
+              message={entry.message}
+              onDelete={deleteMessage}
+              onRetry={!busy && entry.message.id === lastAssistantId ? () => void retry() : undefined}
+            />
           ),
         )}
         {(streamingContent !== '' || liveToolCalls.length > 0 || streamError) && (
@@ -625,6 +744,7 @@ export function ChatView({
       <div className="border-t border-border p-4">
         <ChatInputBar
           onSend={send}
+          busy={busy}
           disabled={busy}
           sessionId={sessionId}
           contextPins={contextPins}
@@ -640,6 +760,10 @@ export function ChatView({
             setContextPins((prev) => prev.filter((pin) => pin.id !== id));
             document.dispatchEvent(new CustomEvent('context-pin-remove', { detail: { id } }));
           }}
+          onStop={stop}
+          onRetry={() => void retry()}
+          onUndo={() => void undo()}
+          onNewSession={() => void startNewSession()}
         />
       </div>
     </div>

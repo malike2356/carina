@@ -59,7 +59,7 @@
       flex-shrink: 0;
     }
     .sidebar-logo {
-      padding: 13px 14px 11px;
+      padding: 10px 14px 10px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
@@ -93,7 +93,7 @@
     }
     .nav-body { padding: 2px 0 6px; }
     .nav-pinned {
-      padding: 4px 0 6px;
+      padding: 2px 0 4px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
@@ -106,7 +106,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      padding: 6px 12px;
       font-size: var(--fs-2xs);
       font-weight: 700;
       letter-spacing: 2px;
@@ -131,7 +131,7 @@
     }
     .nav-link {
       display: block;
-      padding: 6px 12px;
+      padding: 5px 12px;
       font-size: var(--fs-nav);
       color: #56789a;
       text-decoration: none;
@@ -150,7 +150,7 @@
     .nav-group.governance summary { color: rgba(168,85,247,0.55); }
     /* radar */
     .radar-wrap {
-      padding: 8px 14px 4px;
+      padding: 6px 14px 3px;
       display: flex;
       justify-content: center;
       flex-shrink: 0;
@@ -170,7 +170,7 @@
     /* footer */
     .sidebar-footer {
       border-top: 1px solid var(--border);
-      padding: 10px 14px 12px;
+      padding: 8px 14px 10px;
       flex-shrink: 0;
     }
     .scout-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
@@ -318,7 +318,7 @@
     </div>
 
     <div class="radar-wrap">
-      <canvas id="ops-radar" width="110" height="110"></canvas>
+      <canvas id="ops-radar" width="86" height="86"></canvas>
     </div>
 
     <div class="nav-pinned">
@@ -334,10 +334,9 @@
         }
         return false;
       } %>
-      <a href="<%= withV('/') %>" class="nav-link<%= ap === '/' ? ' active' : '' %>">Dashboard</a>
       <a href="<%= withV('/control-center') %>" class="nav-link<%= ap.startsWith('/control-center') ? ' active' : '' %>">Control Center</a>
       <a href="<%= withV('/scout') %>" class="nav-link scout-pinned<%= ap.startsWith('/scout') ? ' active' : '' %>">
-        <span>Scout Dashboard</span>
+        <span>Scout</span>
         <span id="scout-dot" class="status-dot"></span>
       </a>
     </div>

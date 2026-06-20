@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 import { useAppearance } from '@/hooks/useAppearance';
 import { CopyButton } from './CopyButton';
@@ -16,9 +16,10 @@ interface AssistantMessageProps {
   message: ChatMessage;
   streaming?: boolean;
   onDelete?: (id: string) => void;
+  onRetry?: () => void;
 }
 
-export function AssistantMessage({ message, streaming, onDelete }: AssistantMessageProps) {
+export function AssistantMessage({ message, streaming, onDelete, onRetry }: AssistantMessageProps) {
   const [hovered, setHovered] = useState(false);
   const appearance = useAppearance();
   const showMeta = !streaming && (
@@ -86,6 +87,11 @@ export function AssistantMessage({ message, streaming, onDelete }: AssistantMess
         )}
         <div className={`flex items-center gap-0.5 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0'}`}>
           <CopyButton text={message.content} size="sm" />
+          {onRetry && (
+            <IconButton label="Regenerate response" size="sm" onClick={onRetry}>
+              <RotateCcw className="h-3 w-3" />
+            </IconButton>
+          )}
           {onDelete && (
             <IconButton label="Delete message" size="sm" onClick={() => onDelete(message.id)}>
               <Trash2 className="h-3 w-3 text-danger" />
