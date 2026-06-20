@@ -101,7 +101,7 @@ settingsRouter.post('/test-carina', async (_req, res) => {
 });
 
 settingsRouter.post('/test-scout', async (_req, res) => {
-  const data = (await scoutGet('/api/status')) as { instances?: unknown[] } | null;
+  const data = (await scoutGet('/api/admin/status')) as { instances?: unknown[] } | null;
   if (!data) {
     res.json({ ok: false });
     return;

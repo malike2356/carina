@@ -11,7 +11,7 @@
   <% if (!scoutOnline) { %>
     <div id="offline-banner" class="mb-4 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
       Labyrinth Scout is not running at <code class="text-amber-100"><%= scoutUrl %></code>.
-      Start it with: <code class="text-amber-100">cd console.labyrinthscout.com && pnpm dev</code>
+      Start it with: <code class="text-amber-100">cd internal/servers/scout-engine && pnpm server:dev</code>
     </div>
   <% } else { %>
     <div id="offline-banner" class="hidden mb-4 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200"></div>
@@ -123,7 +123,7 @@
     offlineBanner.classList.remove('hidden');
     offlineBanner.innerHTML =
       'Labyrinth Scout is not running at <code class="text-amber-100">' + SCOUT_URL + '</code>. ' +
-      'Start it with: <code class="text-amber-100">cd console.labyrinthscout.com && pnpm dev</code>';
+      'Start it with: <code class="text-amber-100">cd internal/servers/scout-engine && pnpm server:dev</code>';
     setDot(false);
   }
 

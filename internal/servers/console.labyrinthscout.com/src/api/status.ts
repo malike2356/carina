@@ -2,6 +2,7 @@ import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { pool } from '../db.js';
 import type { InstanceStatus, StatusResponse } from '../types.js';
+import { proxyScoutEngineJson } from '../lib/scout-engine-client.js';
 
 export const statusRouter: IRouter = Router();
 
@@ -107,7 +108,9 @@ export async function buildStatusResponse(): Promise<StatusResponse> {
   return { instances, stats, toolCalls };
 }
 
-statusRouter.get('/', async (_req: Request, res: Response): Promise<void> => {
+statusRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+  if (await proxyScoutEngineJson(req, res, { path: '/api/customer/status' })) return;
+
   try {
     const data = await buildStatusResponse();
     res.json(data);

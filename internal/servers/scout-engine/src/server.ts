@@ -12,6 +12,8 @@ import { requireApiKey } from './event-server/middleware/auth.js';
 import { eventsRouter } from './event-server/api/events.js';
 import { sseRouter, broadcastEvent } from './event-server/api/sse.js';
 import { healthRouter } from './event-server/api/health.js';
+import { adminRouter } from './api/admin.js';
+import { customerRouter } from './api/customer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -38,7 +40,11 @@ app.use((_req, res, next) => {
 // Serve static dashboard from console.labyrinthscout.com/public
 app.use(express.static(path.join(__dirname, '../../console.labyrinthscout.com/public'), { index: false }));
 
-// API routes
+// Boundary API routes. Ops uses /api/admin. The customer console uses /api/customer.
+app.use('/api/admin', requireApiKey, adminRouter);
+app.use('/api/customer', requireApiKey, customerRouter);
+
+// Legacy event ingestion routes kept for compatibility with existing Carina agents.
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/events', requireApiKey, eventsRouter);
 app.use('/api/v1/events/stream', sseRouter); // no auth for SSE; local network
@@ -50,6 +56,8 @@ app.get('/', (_req, res) => {
     version: '1.0.0',
     status: 'running',
     docs: '/api/v1/health',
+    adminApi: '/api/admin',
+    customerApi: '/api/customer',
   });
 });
 
@@ -102,6 +110,8 @@ async function main(): Promise<void> {
   app.listen(serverConfig.port, () => {
     console.log(chalk.green(`[scout] Listening on http://localhost:${serverConfig.port}`));
     console.log(chalk.gray(`[scout] Health: http://localhost:${serverConfig.port}/api/v1/health`));
+    console.log(chalk.gray(`[scout] Admin API: http://localhost:${serverConfig.port}/api/admin`));
+    console.log(chalk.gray(`[scout] Customer API: http://localhost:${serverConfig.port}/api/customer`));
     console.log(chalk.gray(`[scout] Events: http://localhost:${serverConfig.port}/api/v1/events`));
     console.log(chalk.gray(`[scout] SSE Stream: http://localhost:${serverConfig.port}/api/v1/events/stream`));
     console.log(chalk.gray('[scout] Ready to receive events from Carina instances'));

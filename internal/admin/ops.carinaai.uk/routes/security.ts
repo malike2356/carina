@@ -29,8 +29,8 @@ function emptyStats(): ScoutStats {
 }
 
 securityRouter.get('/', async (_req, res) => {
-  const scoutUrl = process.env.SCOUT_URL ?? 'http://localhost:4444';
-  const data = (await scoutGet('/api/status')) as StatusPayload | null;
+  const scoutUrl = SCOUT_BASE;
+  const data = (await scoutGet('/api/admin/status')) as StatusPayload | null;
 
   if (!data) {
     res.render('security', {
@@ -53,7 +53,7 @@ securityRouter.get('/', async (_req, res) => {
 });
 
 securityRouter.get('/events', async (_req, res) => {
-  const data = await scoutGet('/api/events?limit=50');
+  const data = await scoutGet('/api/admin/events?limit=50');
   if (!data) {
     res.status(503).json({ error: 'Scout offline' });
     return;
@@ -69,8 +69,8 @@ securityRouter.get('/stream', async (req: Request, res: Response) => {
 
   const scoutKey = scoutHeaders()['X-Scout-Key'] ?? '';
   const scoutUrl = scoutKey
-    ? `${SCOUT_BASE}/api/stream?key=${encodeURIComponent(scoutKey)}`
-    : `${SCOUT_BASE}/api/stream`;
+    ? `${SCOUT_BASE}/api/admin/stream?key=${encodeURIComponent(scoutKey)}`
+    : `${SCOUT_BASE}/api/admin/stream`;
 
   try {
     const upstream = await fetch(scoutUrl);
@@ -100,7 +100,7 @@ securityRouter.get('/stream', async (req: Request, res: Response) => {
 securityRouter.post('/kill/:instanceId', async (req, res) => {
   const instanceId = String(req.params.instanceId ?? '');
   const reason = String((req.body as { reason?: string }).reason ?? 'ops panel kill');
-  const result = await scoutPost(`/api/kill/${encodeURIComponent(instanceId)}`, { reason });
+  const result = await scoutPost(`/api/admin/kill/${encodeURIComponent(instanceId)}`, { reason });
   if (!result) {
     res.status(503).json({ error: 'Scout offline or kill failed' });
     return;
@@ -110,7 +110,7 @@ securityRouter.post('/kill/:instanceId', async (req, res) => {
 
 securityRouter.post('/resume/:instanceId', async (req, res) => {
   const instanceId = String(req.params.instanceId ?? '');
-  const result = await scoutPost(`/api/resume/${encodeURIComponent(instanceId)}`, {});
+  const result = await scoutPost(`/api/admin/resume/${encodeURIComponent(instanceId)}`, {});
   if (!result) {
     res.status(503).json({ error: 'Scout offline or resume failed' });
     return;

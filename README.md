@@ -83,7 +83,7 @@ Use these when changing APIs, persistence, auth, billing, events, or server-side
 | Carina Agent Core | `internal/servers/core.carinaai.uk/src/` | `cd internal/servers/core.carinaai.uk && pnpm dev` | `pnpm test`, `pnpm build` |
 | Scout Console API | `internal/servers/console.labyrinthscout.com/src/` | `cd internal/servers/console.labyrinthscout.com && pnpm dev` | `pnpm typecheck && pnpm test` |
 | Ops Panel API | `internal/admin/ops.carinaai.uk/server.ts`, `routes/`, `lib/` | `cd internal/admin/ops.carinaai.uk && pnpm dev` | `pnpm build`, `pnpm test` |
-| Scout Engine | `internal/servers/scout-engine/src/` | `cd internal/servers/scout-engine && pnpm dev` | `pnpm build`, `pnpm test` |
+| Scout Engine | `internal/servers/scout-engine/src/` | `cd internal/servers/scout-engine && npm run server:dev` | `npm run build`, `npm test` |
 
 ### Frontends
 
@@ -142,6 +142,7 @@ Use these when changing screens, navigation, copy, layout, visual design, or cli
 1. Work in `internal/servers/console.labyrinthscout.com/` for the customer console.
 2. Work in `external/sdks/labyrinth-scout-sdk/` for the integration SDK.
 3. Work in `internal/servers/scout-engine/` for engine experiments and services.
+4. Keep control boundaries explicit: `ops.carinaai.uk` calls `scout-engine` at `/api/admin/*`, while `console.labyrinthscout.com` calls `scout-engine` at `/api/customer/*`.
 4. Validate console work with `pnpm typecheck && pnpm test`.
 5. Deploy console work with `bash scripts/deploy-scout.sh` from the repo root.
 
@@ -161,6 +162,7 @@ Use these when changing screens, navigation, copy, layout, visual design, or cli
 | Carina Cloud, `app.carinaai.uk` | `external/client-apps/app.carinaai.uk/` | `cd external/client-apps/app.carinaai.uk && bash deploy.sh` |
 | Carina Agent and core services | `internal/servers/core.carinaai.uk/` | `bash scripts/deploy-carina.sh` |
 | Scout Console | `internal/servers/console.labyrinthscout.com/` | `bash scripts/deploy-scout.sh` |
+| Scout Engine | `internal/servers/scout-engine/` | `bash scripts/deploy-scout.sh` |
 | Public marketing and docs | `marketing/sites/`, `marketing/docs/` | `bash scripts/deploy-marketing.sh` |
 
 The VPS is a deployment target. Make changes locally, then deploy with the relevant script.

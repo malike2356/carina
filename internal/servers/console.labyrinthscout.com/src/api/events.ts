@@ -9,6 +9,7 @@ import type { SessionMetrics } from '../security/anomaly-detector.js';
 import type { IncomingEventPayload, SecurityEventRow, Severity } from '../types.js';
 import { buildLineage } from '../lib/session-lineage.js';
 import { attestCriticalSecurityEvent } from '../trust/critical-event-attestation.js';
+import { proxyScoutEngineJson } from '../lib/scout-engine-client.js';
 
 export const eventsRouter: IRouter = Router();
 
@@ -148,6 +149,8 @@ async function handleSessionMetrics(row: SecurityEventRow): Promise<void> {
 }
 
 eventsRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+  if (await proxyScoutEngineJson(req, res, { path: '/api/customer/events' })) return;
+
   const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 500);
   const accountId = req.scoutAuth?.kind === 'account' ? req.scoutAuth.accountId : null;
   try {

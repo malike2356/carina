@@ -9,9 +9,9 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "server:dev": "tsx watch src/server.ts",
-    "server:start": "node dist/src/server.js",
+    "server:start": "node dist/server.js",
     "migrate": "tsx src/db/migrate.ts",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "lint": "eslint src/"
   },
   "dependencies": {

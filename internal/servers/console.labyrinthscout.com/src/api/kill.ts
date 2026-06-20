@@ -1,10 +1,19 @@
 import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { suspendInstance, validateKillReason } from '../lib/instance-control.js';
+import { proxyScoutEngineJson } from '../lib/scout-engine-client.js';
 
 export const killRouter: IRouter = Router();
 
 killRouter.post('/:instanceId', async (req: Request, res: Response): Promise<void> => {
+  if (
+    await proxyScoutEngineJson(req, res, {
+      method: 'POST',
+      path: `/api/admin/kill/${encodeURIComponent(String(req.params.instanceId ?? ''))}`,
+      body: req.body,
+    })
+  ) return;
+
   try {
     const instanceId = req.params.instanceId;
     if (!instanceId || Array.isArray(instanceId)) {

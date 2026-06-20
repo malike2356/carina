@@ -1,4 +1,7 @@
-const SCOUT_URL = process.env.SCOUT_URL ?? 'https://console.labyrinthscout.com';
+const SCOUT_URL =
+  process.env.SCOUT_ADMIN_API_URL ??
+  process.env.SCOUT_ENGINE_URL ??
+  'http://127.0.0.1:4444';
 const SCOUT_KEY = process.env.SCOUT_API_KEY ?? '';
 
 export const SCOUT_BASE = SCOUT_URL;

@@ -1,10 +1,19 @@
 import { Router, type IRouter } from 'express';
 import type { Request, Response } from 'express';
 import { resumeInstance } from '../lib/instance-control.js';
+import { proxyScoutEngineJson } from '../lib/scout-engine-client.js';
 
 export const resumeRouter: IRouter = Router();
 
 resumeRouter.post('/:instanceId', async (req: Request, res: Response): Promise<void> => {
+  if (
+    await proxyScoutEngineJson(req, res, {
+      method: 'POST',
+      path: `/api/admin/resume/${encodeURIComponent(String(req.params.instanceId ?? ''))}`,
+      body: req.body,
+    })
+  ) return;
+
   try {
     const instanceId = req.params.instanceId;
     if (!instanceId || Array.isArray(instanceId)) {
