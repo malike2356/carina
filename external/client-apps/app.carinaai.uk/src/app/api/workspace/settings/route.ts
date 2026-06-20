@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { workspaceSettings } from '@/db/schema';
 import { normalizeAppearance } from '@/lib/appearance';
 import { normalizeBrainSettings, parseBrainSettingsPatch } from '@/lib/brain-settings';
+import { isWorkspaceOwner, listWorkspaceMembers, setMemberTerminalPermission } from '@/lib/terminal-access';
 import { isThemeName } from '@/lib/themes';
 import { getSession, requireWorkspace } from '@/lib/session';
 
@@ -20,10 +21,25 @@ export async function GET() {
     .where(eq(workspaceSettings.workspaceId, workspace.id))
     .limit(1);
 
+  const owner = await isWorkspaceOwner(workspace.id, session.user.id);
+  const members = owner ? await listWorkspaceMembers(workspace.id) : [];
+
   return NextResponse.json({
     data: settings
-      ? { ...settings, ...normalizeBrainSettings(settings) }
-      : { workspaceId: workspace.id, theme: 'dark', ...normalizeBrainSettings(null) },
+      ? {
+          ...settings,
+          ...normalizeBrainSettings(settings),
+          isOwner: owner,
+          members,
+        }
+      : {
+          workspaceId: workspace.id,
+          theme: 'dark',
+          terminalEnabled: true,
+          isOwner: owner,
+          members,
+          ...normalizeBrainSettings(null),
+        },
   });
 }
 
@@ -41,6 +57,9 @@ export async function PATCH(request: Request) {
     autoApproveSkillsMinConfidence?: number;
     maxSkillsPerRequest?: number;
     injectMemoriesInChat?: boolean;
+    terminalEnabled?: boolean;
+    memberUserId?: string;
+    memberTerminal?: boolean;
   };
   const updates: Partial<typeof workspaceSettings.$inferInsert> = { updatedAt: new Date() };
   const brainPatch = parseBrainSettingsPatch(body);
@@ -56,6 +75,19 @@ export async function PATCH(request: Request) {
   }
   if (brainPatch.injectMemoriesInChat !== undefined) {
     updates.injectMemoriesInChat = brainPatch.injectMemoriesInChat;
+  }
+  if (body.terminalEnabled !== undefined) {
+    if (!await isWorkspaceOwner(workspace.id, session.user.id)) {
+      return NextResponse.json({ error: 'Only the workspace owner can change terminal settings' }, { status: 403 });
+    }
+    updates.terminalEnabled = Boolean(body.terminalEnabled);
+  }
+
+  if (body.memberUserId && body.memberTerminal !== undefined) {
+    if (!await isWorkspaceOwner(workspace.id, session.user.id)) {
+      return NextResponse.json({ error: 'Only the workspace owner can change member terminal access' }, { status: 403 });
+    }
+    await setMemberTerminalPermission(workspace.id, body.memberUserId, Boolean(body.memberTerminal));
   }
 
   if (body.theme !== undefined) {

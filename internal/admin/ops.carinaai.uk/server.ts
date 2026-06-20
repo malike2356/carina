@@ -1,5 +1,4 @@
 import { createServer } from 'http';
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
@@ -27,6 +26,7 @@ import { controlCenterRouter } from './routes/control-center.js';
 import { mcpRouter } from './routes/mcp.js';
 import { tuiRouter } from './routes/tui.js';
 import { incidentBlogRouter } from './routes/incident-blog.js';
+import { scoutApiProxyRouter, scoutDashboardRouter, resolveConsolePublicDir } from './routes/scout-dashboard.js';
 import { CARINA_BASE } from './lib/carina.js';
 import { attachPtyBridge } from './lib/pty-bridge.js';
 import { ensureHostedSchema } from './lib/tenants.js';
@@ -142,25 +142,10 @@ app.use('/ai-platform', aiPlatformRouter);
 app.use('/admin/agent-tools', agentToolsRouter);
 app.use('/agent-tools', agentToolsRouter);
 
-app.get('/scout', requireAdmin, (req, res) => {
-  const scoutBase = process.env.SCOUT_API_BASE ?? 'https://console.labyrinthscout.com';
-  const apiKey = process.env.SCOUT_API_KEY ?? '';
-  const monorepoPath = path.resolve(__opsDir, '..', 'servers', 'console.labyrinthscout.com', 'public', 'dashboard.html');
-  const vpsPath = path.resolve(__opsDir, '..', 'console.labyrinthscout.com', 'public', 'dashboard.html');
-  const dashboardPath = process.env.SCOUT_DASHBOARD_PATH ?? (fs.existsSync(monorepoPath) ? monorepoPath : vpsPath);
-  try {
-    let html = fs.readFileSync(dashboardPath, 'utf8');
-    const keyEsc = apiKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const baseEsc = scoutBase.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const injection = `<script>window.__SCOUT_KEY = '${keyEsc}'; window.__SCOUT_API_BASE = '${baseEsc}';</script>`;
-    html = html.replace('<!-- __SCOUT_KEY_INJECTION__ -->', injection);
-    res.type('html').send(html);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[ops] Scout dashboard serve failed:', msg);
-    res.status(500).render('error', { message: 'Scout dashboard unavailable: ' + msg });
-  }
-});
+const consolePublicDir = resolveConsolePublicDir();
+app.use('/dashboard', requireAdmin, express.static(path.join(consolePublicDir, 'dashboard')));
+app.use('/scout-api', requireAdmin, scoutApiProxyRouter);
+app.use('/scout', requireAdmin, scoutDashboardRouter);
 
 app.use((_req, res) => {
   res.status(404).render('error', { message: 'Page not found' });

@@ -1,0 +1,4 @@
+FROM node:20-alpine
+RUN addgroup -g 1001 sandbox && adduser -u 1001 -G sandbox -s /bin/sh -D sandbox
+USER 1001
+WORKDIR /workspace

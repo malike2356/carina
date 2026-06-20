@@ -126,6 +126,9 @@ export default function SettingsPage() {
   );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [terminalEnabled, setTerminalEnabled] = useState(true);
+  const [members, setMembers] = useState<Array<{ userId: string; permissions?: Record<string, unknown> }>>([]);
 
   useEffect(() => {
     fetch('/api/workspace/settings')
@@ -149,6 +152,9 @@ export default function SettingsPage() {
               data.data.injectMemoriesInChat ?? BRAIN_SETTINGS_DEFAULTS.injectMemoriesInChat,
           },
         });
+        setIsOwner(Boolean(data.data.isOwner));
+        setTerminalEnabled(data.data.terminalEnabled !== false);
+        setMembers(Array.isArray(data.data.members) ? data.data.members : []);
       })
       .catch(() => {});
   }, []);
@@ -586,13 +592,55 @@ export default function SettingsPage() {
                     />
                   </div>
                 ) : (
-                  <p className="text-sm text-text-muted">
-                    See{' '}
-                    <Link href="/security" className="text-accent hover:underline">
-                      /security
-                    </Link>{' '}
-                    for session management and password settings.
-                  </p>
+                  <div className="space-y-4 text-left">
+                    <p className="text-sm text-text-muted">
+                      See{' '}
+                      <Link href="/security" className="text-accent hover:underline">
+                        /security
+                      </Link>{' '}
+                      for session management and password settings.
+                    </p>
+                    {isOwner ? (
+                      <div className="rounded-lg border border-border bg-base p-4">
+                        <h2 className="text-sm font-semibold text-text-primary mb-1">Terminal</h2>
+                        <p className="text-xs text-text-muted mb-3">
+                          Workspace shell access at /terminal. Runs in an isolated Docker sandbox when available.
+                        </p>
+                        <Toggle
+                          value={terminalEnabled}
+                          onChange={(value) => {
+                            setTerminalEnabled(value);
+                            void saveSettings({ terminalEnabled: value });
+                          }}
+                          label="Enable terminal for this workspace"
+                          description="Master switch. When off, nobody in this workspace can use the terminal."
+                        />
+                        {members.length > 0 ? (
+                          <div className="mt-4 space-y-2 border-t border-border pt-4">
+                            <p className="text-xs font-medium uppercase tracking-wider text-text-muted">
+                              Member access
+                            </p>
+                            {members.map((member) => (
+                              <Toggle
+                                key={member.userId}
+                                value={member.permissions?.terminal === true}
+                                onChange={(value) => {
+                                  void saveSettings({ memberUserId: member.userId, memberTerminal: value });
+                                  setMembers((current) => current.map((row) => (
+                                    row.userId === member.userId
+                                      ? { ...row, permissions: { ...row.permissions, terminal: value } }
+                                      : row
+                                  )));
+                                }}
+                                label={`Terminal for ${member.userId.slice(0, 8)}...`}
+                                description="Collaborators need explicit permission. Owners always have access when enabled."
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
                 )}
               </div>
             </div>

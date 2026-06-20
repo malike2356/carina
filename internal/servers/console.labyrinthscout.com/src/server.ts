@@ -9,9 +9,7 @@ import { initDb, pool } from './db.js';
 import { initRedis, getRedis } from './redis.js';
 import { requireApiKey, requireApiKeySse } from './middleware/auth.js';
 import { requireScoutPro } from './middleware/plan-gate.js';
-import { requireDashboardSession } from './middleware/dashboard-session.js';
 import { accountRouter } from './api/account.js';
-import { dashboardLoginRouter } from './api/dashboard-login.js';
 import { provisionRouter } from './api/provision.js';
 import { requireProvisionSecret } from './middleware/provision-auth.js';
 import { eventsRouter } from './api/events.js';
@@ -114,21 +112,6 @@ app.use((_req, res, next) => {
   next();
 });
 
-function serveDashboard(_req: express.Request, res: express.Response): void {
-  try {
-    const htmlPath = path.join(PUBLIC, 'dashboard.html');
-    let html = fs.readFileSync(htmlPath, 'utf8');
-    const escaped = config.auth.apiKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const injection = `<script>window.__SCOUT_KEY = '${escaped}';</script>`;
-    html = html.replace('<!-- __SCOUT_KEY_INJECTION__ -->', injection);
-    res.type('html').send(html);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[scout] Dashboard serve failed:', msg);
-    res.status(500).send('Dashboard unavailable');
-  }
-}
-
 function redirectHtml(stem: string) {
   return (_req: express.Request, res: express.Response): void => {
     res.redirect(301, stem);
@@ -164,10 +147,19 @@ app.get('/favicon.ico', (_req, res) => {
 app.get('/', servePublicPage('index.html'));
 app.get('/checkout', servePublicPage('checkout.html'));
 app.get('/checkout.html', redirectHtml('/checkout'));
-app.use('/dashboard', dashboardLoginRouter);
-app.get('/dashboard', requireDashboardSession, serveDashboard);
-app.get('/dashboard.html', redirectHtml('/dashboard'));
-app.get('/dashboard/login.html', redirectHtml('/dashboard/login'));
+
+const OPS_SCOUT_URL = process.env.OPS_SCOUT_URL ?? 'https://ops.carinaai.uk/scout';
+const OPS_LOGIN_URL = process.env.OPS_LOGIN_URL ?? 'https://ops.carinaai.uk/login';
+
+app.get('/dashboard/login', (_req, res) => {
+  res.redirect(301, `${OPS_LOGIN_URL}?callbackUrl=${encodeURIComponent(OPS_SCOUT_URL)}`);
+});
+app.get('/dashboard/login.html', (_req, res) => {
+  res.redirect(301, `${OPS_LOGIN_URL}?callbackUrl=${encodeURIComponent(OPS_SCOUT_URL)}`);
+});
+app.get('/dashboard', (_req, res) => res.redirect(301, OPS_SCOUT_URL));
+app.get('/dashboard.html', (_req, res) => res.redirect(301, OPS_SCOUT_URL));
+
 app.get('/governance', serveGovernance);
 app.get('/governance.html', redirectHtml('/governance'));
 app.get('/pricing', servePublicPage('pricing.html'));

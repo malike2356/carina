@@ -26,7 +26,14 @@ export function middleware(request: NextRequest) {
   }
 
   const { pathname } = request.nextUrl;
-  const needsAuth = protectedPrefixes.some((prefix) => pathname.startsWith(prefix));
+
+  if (pathname.startsWith('/api/terminal') && request.headers.get('x-carina-operator-token')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const needsAuth = protectedPrefixes.some((prefix) => pathname.startsWith(prefix))
+    || pathname.startsWith('/terminal')
+    || pathname.startsWith('/launcher');
   if (!needsAuth) return NextResponse.next();
 
   const sessionCookie = getSessionCookie(request);

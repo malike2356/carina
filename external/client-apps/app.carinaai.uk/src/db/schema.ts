@@ -488,9 +488,50 @@ export const workspaceSettings = pgTable('workspace_settings', {
   autoApproveSkillsMinConfidence: integer('auto_approve_skills_min_confidence').notNull().default(85),
   maxSkillsPerRequest: integer('max_skills_per_request').notNull().default(3),
   injectMemoriesInChat: boolean('inject_memories_in_chat').notNull().default(true),
-  terminalEnabled: boolean('terminal_enabled').notNull().default(false),
+  terminalEnabled: boolean('terminal_enabled').notNull().default(true),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+export const workspaceMembers = pgTable(
+  'workspace_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: varchar('role', { length: 30 }).notNull().default('member'),
+    permissions: jsonb('permissions').notNull().default({}),
+    invitedAt: timestamp('invited_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('workspace_members_workspace_id_idx').on(t.workspaceId),
+    index('workspace_members_user_id_idx').on(t.userId),
+  ],
+);
+
+export const terminalAuditLog = pgTable(
+  'terminal_audit_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id').notNull(),
+    command: text('command').notNull(),
+    exitCode: integer('exit_code'),
+    executedAt: timestamp('executed_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('terminal_audit_log_workspace_id_idx').on(t.workspaceId),
+    index('terminal_audit_log_executed_at_idx').on(t.executedAt),
+  ],
+);
 
 export type WorkspacePlan = (typeof planEnum.enumValues)[number];
 export type User = typeof users.$inferSelect;

@@ -43,10 +43,15 @@ deploy() {
   rsync -az \
     scripts/vps-schema-patch.sql "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/vps-schema-patch.sql"
   rsync -az \
+    docker/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/docker/"
+  rsync -az \
     scripts/migrate.mjs "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/migrate.mjs"
 
   log "Applying database schema patch..."
   ssh "${VPS_USER}@${VPS_HOST}" "set -a && source ${DEPLOY_DIR}/.env && set +a && psql \"\$DATABASE_URL\" -v ON_ERROR_STOP=1 -f ${DEPLOY_DIR}/scripts/vps-schema-patch.sql"
+
+  log "Building terminal sandbox image (if Docker available)..."
+  ssh "${VPS_USER}@${VPS_HOST}" "if command -v docker >/dev/null 2>&1; then docker build -f ${DEPLOY_DIR}/docker/Dockerfile.sandbox -t carina-sandbox:latest ${DEPLOY_DIR}/docker 2>&1 | tail -5; else echo 'Docker not available; terminal uses host fallback'; fi"
 
   log "Ensuring start.sh is present on VPS..."
   ssh "${VPS_USER}@${VPS_HOST}" "test -x ${DEPLOY_DIR}/start.sh || (cat > ${DEPLOY_DIR}/start.sh << 'SEOF'

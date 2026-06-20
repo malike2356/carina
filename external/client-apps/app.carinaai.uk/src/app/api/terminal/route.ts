@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
-import { db } from '@/db';
-import { workspaceSettings } from '@/db/schema';
 import { getSession, requireWorkspace } from '@/lib/session';
+import { canUseTerminal } from '@/lib/terminal-access';
+import { logTerminalCommand } from '@/lib/terminal-audit';
 import {
   appendTerminalCommand,
   createTerminalSession,
@@ -14,22 +13,13 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function requireTerminalAccess(workspaceId: string): Promise<boolean> {
-  const rows = await db
-    .select({ terminalEnabled: workspaceSettings.terminalEnabled })
-    .from(workspaceSettings)
-    .where(eq(workspaceSettings.workspaceId, workspaceId))
-    .limit(1);
-  return rows[0]?.terminalEnabled === true;
-}
-
 export async function GET(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const workspace = await requireWorkspace(session.user.id);
 
-  if (!await requireTerminalAccess(workspace.id)) {
+  if (!await canUseTerminal(workspace.id, session.user.id)) {
     return NextResponse.json({ error: 'Terminal not enabled for this workspace' }, { status: 403 });
   }
 
@@ -64,7 +54,7 @@ export async function POST(request: Request) {
 
   const workspace = await requireWorkspace(session.user.id);
 
-  if (!await requireTerminalAccess(workspace.id)) {
+  if (!await canUseTerminal(workspace.id, session.user.id)) {
     return NextResponse.json({ error: 'Terminal not enabled for this workspace' }, { status: 403 });
   }
   const body = await request.json().catch(() => ({})) as {
@@ -89,7 +79,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'command is required' }, { status: 400 });
   }
 
-  const terminalSession = await appendTerminalCommand(workspace.id, body.sessionId, command);
+  const terminalSession = await appendTerminalCommand(workspace.id, body.sessionId, command, {
+    userId: session.user.id,
+    log: async (entry) => {
+      await logTerminalCommand({
+        workspaceId: workspace.id,
+        userId: session.user.id,
+        sessionId: body.sessionId!,
+        command: entry.command,
+        exitCode: entry.exitCode,
+      });
+    },
+  });
   if (!terminalSession) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
@@ -108,7 +109,7 @@ export async function DELETE(request: Request) {
 
   const workspace = await requireWorkspace(session.user.id);
 
-  if (!await requireTerminalAccess(workspace.id)) {
+  if (!await canUseTerminal(workspace.id, session.user.id)) {
     return NextResponse.json({ error: 'Terminal not enabled for this workspace' }, { status: 403 });
   }
   const url = new URL(request.url);
