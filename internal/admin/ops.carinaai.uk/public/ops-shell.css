@@ -22,9 +22,11 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* Carina Ops shell: flat surfaces, minimal nesting */
+
 .ops-page-title {
   color: var(--heading);
-  font-size: 20px;
+  font-size: var(--fs-title, 24px);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -32,7 +34,7 @@
 
 .ops-page-sub {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   margin-top: 6px;
   line-height: 1.5;
   max-width: none;
@@ -59,7 +61,7 @@
 
 .ops-metric-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-label, 12px);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 4px;
@@ -67,7 +69,7 @@
 
 .ops-metric-value {
   color: var(--heading);
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
 }
 
@@ -102,7 +104,7 @@
   color: var(--muted);
   cursor: pointer;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   font-weight: 500;
   margin-bottom: -1px;
   padding: 10px 14px;
@@ -139,14 +141,14 @@
 
 .ops-section-title {
   color: var(--heading);
-  font-size: 14px;
+  font-size: var(--fs-base, 16px);
   font-weight: 600;
   margin-bottom: 4px;
 }
 
 .ops-section-sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
   line-height: 1.5;
   margin-bottom: 14px;
 }
@@ -172,7 +174,7 @@
 .ops-label {
   color: var(--muted);
   display: block;
-  font-size: 11px;
+  font-size: var(--fs-2xs, 12px);
   letter-spacing: 0.04em;
   margin-bottom: 6px;
   text-transform: uppercase;
@@ -186,7 +188,7 @@
   border-radius: 6px;
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   padding: 9px 11px;
   width: 100%;
 }
@@ -201,7 +203,7 @@
 .ops-input.mono,
 .ops-textarea.mono {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
 }
 
 .ops-textarea { min-height: 88px; resize: vertical; }
@@ -221,7 +223,7 @@
   color: var(--text);
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
   font-weight: 500;
   padding: 7px 12px;
 }
@@ -234,7 +236,7 @@
 .ops-flash {
   border-left: 3px solid;
   border-radius: 0 6px 6px 0;
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   margin-bottom: 16px;
   padding: 10px 14px;
 }
@@ -275,13 +277,13 @@
 
 .ops-link-row-title {
   color: var(--heading);
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   font-weight: 600;
 }
 
 .ops-link-row-sub {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs, 12px);
   margin-top: 3px;
 }
 
@@ -301,7 +303,7 @@
 
 .ops-kv dd {
   color: var(--heading);
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   font-weight: 500;
   margin: 0;
 }
@@ -328,7 +330,7 @@
 
 .ops-tool-name {
   color: var(--heading);
-  font-size: 14px;
+  font-size: var(--fs-base, 16px);
   font-weight: 600;
 }
 
@@ -371,7 +373,7 @@
 .ops-table td {
   border-bottom: 1px solid rgba(22, 35, 56, 0.55);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   padding: 11px 14px;
   vertical-align: middle;
 }
@@ -381,20 +383,20 @@
 
 .ops-empty {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-sm, 14px);
   padding: 28px 20px;
   text-align: center;
 }
 
 .ops-inline-note {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs, 12px);
   margin-top: 6px;
 }
 
 .ops-status-line {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
   margin-bottom: 10px;
 }
 
@@ -406,7 +408,7 @@ code.ops-code {
   border-radius: 4px;
   color: var(--heading);
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-2xs, 12px);
   padding: 1px 5px;
 }
 
@@ -445,7 +447,7 @@ code.ops-code {
 
 .ops-chat-head-meta {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
 }
 
 .ops-chat-messages {
@@ -474,7 +476,7 @@ code.ops-code {
   color: var(--text);
   flex: 1;
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--fs-base, 16px);
   line-height: 1.45;
   min-height: 44px;
   padding: 10px 12px;
@@ -534,7 +536,7 @@ code.ops-code {
   color: var(--text);
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
   line-height: 1.4;
   padding: 10px 0;
   text-align: left;
@@ -553,7 +555,7 @@ code.ops-code {
 .ops-msg.assistant { justify-content: flex-start; }
 
 .ops-msg-bubble {
-  font-size: 14px;
+  font-size: var(--fs-base, 16px);
   line-height: 1.55;
   max-width: 100%;
 }
@@ -644,13 +646,13 @@ code.ops-code {
 
 .ops-project-name {
   color: var(--heading);
-  font-size: 14px;
+  font-size: var(--fs-base, 16px);
   font-weight: 600;
 }
 
 .ops-project-meta {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs, 12px);
   margin-top: 4px;
 }
 
@@ -695,7 +697,7 @@ a.ops-filter-btn {
 .ops-filter-btn {
   padding: 5px 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs, 13px);
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--border);
@@ -722,7 +724,7 @@ a.ops-filter-btn {
   border-radius: 8px;
   color: var(--muted);
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11px;
+  font-size: var(--fs-2xs, 12px);
   line-height: 1.45;
   margin-bottom: 16px;
   max-height: 160px;
@@ -779,3 +781,25 @@ a.ops-filter-btn {
 .ops-page .divide-\[\#2a2a2a\] > * + * {
   border-color: var(--border) !important;
 }
+
+/* Scale legacy Tailwind text utilities inside ops content */
+.ops-content .text-xs,
+.ops-page .text-xs { font-size: var(--fs-xs, 13px) !important; }
+
+.ops-content .text-sm,
+.ops-page .text-sm { font-size: var(--fs-sm, 14px) !important; }
+
+.ops-content .text-lg,
+.ops-page .text-lg { font-size: 18px !important; }
+
+.ops-content .text-xl,
+.ops-page .text-xl { font-size: 20px !important; }
+
+.ops-content .text-2xl,
+.ops-page .text-2xl { font-size: var(--fs-title, 24px) !important; }
+
+.ops-content .text-gray-400,
+.ops-page .text-gray-400 { color: var(--muted) !important; }
+
+.ops-content .text-gray-500,
+.ops-page .text-gray-500 { color: var(--muted) !important; }
