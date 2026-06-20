@@ -50,29 +50,26 @@ type TelemetryOverview = {
   sessions?: { uniqueSessions?: number; turns?: number };
 };
 
-type ControlStatusPayload = {
+type HostServiceStatus = {
+  running: boolean;
+  pid: number | null;
+  startedAt: string | null;
+  uptimeSeconds: number;
+  hostname: string;
+  version: string;
+  carinaHome: string;
+  webPort: number;
+  memoryBackend: string;
+  scoutEnabled: boolean;
+  agents: number;
+  pairedDevices: number;
+  cronJobs: number | null;
+  pendingCommitments: number;
+};
+
+type ControlStatusResponse = {
   ok: boolean;
-  host: {
-    nodeHostEnabled: boolean;
-    hostRunning: boolean;
-    pairing: {
-      pendingNodes: number;
-      pairedNodes: number;
-      pairedDevices: number;
-    };
-    sandbox: {
-      sessionSandboxEnabled: boolean;
-      docker: boolean;
-      containersRunning: number;
-      containersTotal: number;
-    };
-    approvals: {
-      policyEnabled: boolean;
-      rules: number;
-      activeGrants: number;
-    };
-    recentNodeAudit: number;
-  };
+  host: HostServiceStatus;
 };
 
 type ControlAgentsPayload = {
@@ -163,14 +160,14 @@ controlCenterRouter.get('/', async (req, res) => {
         fetchCoreJson<LogsPayload>('/api/ops/logs?limit=20'),
         fetchCoreJson<SessionsPayload>('/api/ops/sessions?limit=20'),
         fetchCoreJson<TelemetryOverview>('/api/ops/telemetry/overview?hours=24'),
-        fetchCoreJson<ControlStatusPayload>('/api/control/status'),
+        fetchCoreJson<ControlStatusResponse>('/api/control/status'),
         fetchCoreJson<ControlAgentsPayload>('/api/control/agents'),
         fetchCoreJson<ControlDevicesPayload>('/api/control/devices'),
       ])
     : [];
 
   const telemetryHealth = telemetry?.data?.health ?? null;
-  const controlHost = controlStatus?.data?.host ?? null;
+  const hostStatus = controlStatus?.data?.host ?? null;
 
   res.render('control-center', {
     title: 'Control Center',
@@ -184,7 +181,7 @@ controlCenterRouter.get('/', async (req, res) => {
     sessions: sessions?.data,
     telemetry: telemetry?.data,
     telemetryHealth,
-    controlStatus: controlHost,
+    hostStatus,
     agents: agents?.data,
     devices: devices?.data,
     opsSurfaces: OPS_SURFACES,

@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Carina Admin</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
   <style>
     body { background: #0f0f0f; color: #e0e0e0; }
     .nav-link.active { background: #2a2a2a; color: #22c55e; }
     .badge-user { background: #06b6d4; color: #0f0f0f; }
     .badge-assistant { background: #22c55e; color: #0f0f0f; }
+    .ops-content { width: 100%; max-width: none; }
   </style>
 </head>
 <body class="min-h-screen flex">
@@ -65,8 +66,10 @@
       </form>
     </div>
   </aside>
-  <main class="flex-1 min-w-0 p-6 overflow-auto">
-    <%- body %>
+  <main class="flex-1 min-w-0 w-full p-6 overflow-auto">
+    <div class="ops-content">
+      <%- body %>
+    </div>
   </main>
   <script>
     document.getElementById('toggle-nav')?.addEventListener('click', () => {

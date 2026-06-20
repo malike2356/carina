@@ -1,141 +1,92 @@
 <% title = 'Settings' %>
-<div class="w-full max-w-7xl">
-<h1 class="text-2xl font-bold text-white mb-6">Settings</h1>
+<div class="w-full">
+  <header class="mb-6">
+    <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
+    <p class="text-sm text-gray-400">Pair services, rotate passwords, configure alerts, and publish the Android build.</p>
+  </header>
 
-<% if (!adminPasswordSet) { %>
-  <div class="mb-6 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
-    WARNING: Admin password is still the default <code>changeme</code>. Update it under <strong>Ops admin password</strong> below.
-  </div>
-<% } %>
-
-<% if (scoutOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Scout console password updated. Use the new password next time you visit console.labyrinthscout.com.
-  </div>
-<% } %>
-<% if (scoutErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= scoutErr %></div>
-<% } %>
-<% if (scoutPairOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Connected to Labyrinth Scout. Carina will start reporting security events on next restart.
-  </div>
-<% } %>
-<% if (scoutPairErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= scoutPairErr %></div>
-<% } %>
-<% if (carinaAutoPairOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Carina connected automatically from the local core install.
-  </div>
-<% } %>
-<% if (carinaAutoPairErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaAutoPairErr %></div>
-<% } %>
-<% if (carinaPairOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Carina ops token saved. Test connection again to verify.
-  </div>
-<% } %>
-<% if (carinaPairErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaPairErr %></div>
-<% } %>
-<% if (carinaAndroidApkOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Android APK link saved. The download button below now points at the configured file.
-  </div>
-<% } %>
-<% if (carinaAndroidApkErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= carinaAndroidApkErr %></div>
-<% } %>
-<% if (coreWebPasswordOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Core web login password updated. Sign in at core.carinaai.uk with the new password.
-  </div>
-<% } %>
-<% if (coreWebPasswordErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= coreWebPasswordErr %></div>
-<% } %>
-<% if (opsAdminPasswordOk) { %>
-  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
-    Ops admin password updated. Use it on the next login here.
-  </div>
-<% } %>
-<% if (opsAdminPasswordErr) { %>
-  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= opsAdminPasswordErr %></div>
-<% } %>
-
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-    <h2 class="text-lg font-semibold text-white mb-3">Carina agent</h2>
-    <p class="text-xs text-gray-500 mb-2">
-      Status:
-      <span class="<%= carinaConnected ? 'text-green-400' : (carinaPaired ? 'text-amber-400' : 'text-amber-400') %>">
-        <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved, not connected' : 'Not paired') %>
-      </span>
-    </p>
-    <dl class="text-sm space-y-2 text-gray-400">
-      <div><dt class="inline text-gray-500">API URL:</dt> <dd class="inline text-[#06b6d4] break-all"><%= carinaApiUrl %></dd></div>
-    </dl>
-    <p id="carina-status" class="text-xs mt-3 text-gray-500">Not tested yet</p>
-    <button type="button" id="test-carina" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
-      Test connection
-    </button>
-  </section>
-
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-    <h2 class="text-lg font-semibold text-white mb-3">Labyrinth Scout</h2>
-    <dl class="text-sm space-y-2 text-gray-400">
-      <div><dt class="inline text-gray-500">Scout URL:</dt> <dd class="inline text-[#06b6d4] break-all"><%= scoutUrl %></dd></div>
-    </dl>
-    <p id="scout-status-msg" class="text-xs mt-3 text-gray-500">Not tested yet</p>
-    <button type="button" id="test-scout" class="mt-3 text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded">
-      Test connection
-    </button>
-  </section>
-</div>
-
-<section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 mb-6">
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-    <div>
-      <h2 class="text-lg font-semibold text-white">Carina Android APK</h2>
-      <p class="text-xs text-gray-500 mt-1">
-        Publish a direct APK download link here so staff can install the Android build from one place.
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+      <p class="text-xs text-gray-500">Carina agent</p>
+      <p class="text-sm font-semibold mt-1 <%= carinaConnected ? 'text-green-400' : (carinaPaired ? 'text-amber-400' : 'text-gray-400') %>">
+        <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
       </p>
     </div>
-    <% if (carinaAndroidApkUrl) { %>
-      <a href="<%= carinaAndroidApkUrl %>" target="_blank" rel="noopener noreferrer"
-         class="text-sm bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-4 py-2 rounded transition-colors">
-        Download APK
-      </a>
-    <% } %>
-  </div>
-  <form method="post" action="/settings/carina-android-apk" class="flex flex-col gap-3">
-    <div>
-      <label class="block text-xs text-gray-400 mb-1" for="apkUrl">APK download URL</label>
-      <input id="apkUrl" name="apkUrl" type="url" required value="<%= carinaAndroidApkUrl %>"
-        placeholder="https://example.com/carina-ai.apk"
-        class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+      <p class="text-xs text-gray-500">Labyrinth Scout</p>
+      <p class="text-sm font-semibold mt-1 <%= scoutConnected ? 'text-green-400' : (scoutPaired ? 'text-amber-400' : 'text-gray-400') %>">
+        <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Key saved' : 'Not paired') %>
+      </p>
     </div>
-    <p class="text-xs text-gray-500">
-      Use a direct HTTPS link to the APK file or a release page that serves the file itself.
-    </p>
-    <button type="submit"
-      class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-      Save APK link
-    </button>
-  </form>
-</section>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+      <p class="text-xs text-gray-500">Ops login</p>
+      <p class="text-sm font-semibold mt-1 <%= adminPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+        <%= adminPasswordSet ? 'Custom password' : 'Default (changeme)' %>
+      </p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
+      <p class="text-xs text-gray-500">Core web login</p>
+      <p class="text-sm font-semibold mt-1 <%= coreWebPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+        <%= coreWebPasswordSet ? 'Password set' : 'Not set' %>
+      </p>
+    </div>
+  </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-  <div class="space-y-6 min-w-0">
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <h2 class="text-lg font-semibold text-white mb-1">Connect to Carina agent</h2>
-      <p class="text-xs text-gray-500 mb-4">
+  <% if (flashMessages && flashMessages.length) { %>
+    <div class="mb-6 space-y-2">
+      <% for (const msg of flashMessages) { %>
+        <% const styles = msg.type === 'success'
+          ? 'border-green-600/50 bg-green-950/30 text-green-200'
+          : msg.type === 'error'
+            ? 'border-red-600/50 bg-red-950/30 text-red-200'
+            : 'border-amber-600/50 bg-amber-950/30 text-amber-200'; %>
+        <div class="rounded-lg border px-4 py-3 text-sm <%= styles %>"><%= msg.text %></div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <nav class="flex flex-wrap gap-2 mb-6 border-b border-[#2a2a2a] pb-3" aria-label="Settings sections">
+    <button type="button" data-settings-tab="connections"
+      class="settings-tab px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
+      Connections
+    </button>
+    <button type="button" data-settings-tab="passwords"
+      class="settings-tab px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
+      Passwords
+    </button>
+    <button type="button" data-settings-tab="alerts"
+      class="settings-tab px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
+      Alerts
+    </button>
+  </nav>
+
+  <div id="settings-panel-connections" class="settings-panel">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Carina agent</h2>
+          <p class="text-xs mt-2 <%= carinaConnected ? 'text-green-400' : (carinaPaired ? 'text-amber-400' : 'text-gray-500') %>">
+            Status: <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            API URL: <span class="text-gray-300 break-all"><%= carinaApiUrl %></span>
+          </p>
+        </div>
+        <button type="button" id="test-carina"
+          class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded shrink-0">
+          Test connection
+        </button>
+      </div>
+      <p id="carina-status" class="text-xs text-gray-500 mb-4">Not tested yet</p>
+
+      <h3 class="text-sm font-semibold text-white mb-3 pt-3 border-t border-[#2a2a2a]">Connect to Carina agent</h3>
+      <p class="text-xs text-gray-500 mb-3">
         On this server, ops can read the existing core token automatically. No SSH or manual copy/paste needed.
       </p>
+
       <% if (coreEnvReadable) { %>
-        <form method="post" action="/settings/carina-auto-pair" class="mb-5">
+        <form method="post" action="/settings/carina-auto-pair" class="mb-4">
           <button type="submit"
             class="bg-[#06b6d4] hover:bg-cyan-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
             Connect automatically
@@ -146,36 +97,54 @@
         </form>
       <% } else { %>
         <p class="text-xs text-amber-300 mb-4">
-          Auto-connect unavailable (core .env not readable from ops). Use manual pairing below.
+          Auto-connect unavailable. Paste the ops token manually below.
         </p>
       <% } %>
-      <p class="text-xs text-gray-500 mb-4">
-        Manual fallback: paste <code class="text-gray-300">CARINA_OPS_TOKEN</code> if auto-connect is unavailable.
-      </p>
-      <form method="post" action="/settings/carina-pairing" class="flex flex-col gap-3">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="carinaOpsToken">Carina ops token</label>
-          <input id="carinaOpsToken" name="carinaOpsToken" type="password"
-            placeholder="paste CARINA_OPS_TOKEN"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <button type="submit"
-          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-          Save Carina token
-        </button>
-      </form>
+
+      <details class="group">
+        <summary class="text-sm text-[#06b6d4] cursor-pointer hover:underline list-none">
+          Manual fallback: paste CARINA_OPS_TOKEN if auto-connect is unavailable.
+        </summary>
+        <form method="post" action="/settings/carina-pairing" class="flex flex-col gap-3 mt-3 pt-3 border-t border-[#2a2a2a]">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="carinaOpsToken">Carina ops token</label>
+            <input id="carinaOpsToken" name="carinaOpsToken" type="password"
+              placeholder="paste CARINA_OPS_TOKEN"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <button type="submit"
+            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+            Save Carina token
+          </button>
+        </form>
+      </details>
     </section>
 
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <h2 class="text-lg font-semibold text-white mb-1">Connect to Labyrinth Scout</h2>
-      <p class="text-xs text-gray-500 mb-1">
-        Status: <span class="<%= scoutPaired ? 'text-green-400' : 'text-amber-400' %>"><%= scoutPaired ? 'Paired' : 'Not paired' %></span>
-      </p>
-      <p class="text-xs text-gray-500 mb-4">
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Labyrinth Scout</h2>
+          <p class="text-xs mt-2 <%= scoutConnected ? 'text-green-400' : (scoutPaired ? 'text-amber-400' : 'text-gray-500') %>">
+            Status: <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Paired' : 'Not paired') %>
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            Scout URL: <span class="text-gray-300 break-all"><%= scoutUrl %></span>
+          </p>
+        </div>
+        <button type="button" id="test-scout"
+          class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded shrink-0">
+          Test connection
+        </button>
+      </div>
+      <p id="scout-status-msg" class="text-xs text-gray-500 mb-4">Not tested yet</p>
+
+      <h3 class="text-sm font-semibold text-white mb-3 pt-3 border-t border-[#2a2a2a]">Connect to Labyrinth Scout</h3>
+      <p class="text-xs text-gray-500 mb-3">
         Paste your Scout API key from
-        <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">console.labyrinthscout.com</a>.
+        <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener"
+          class="text-[#06b6d4] hover:underline">console.labyrinthscout.com</a>.
       </p>
-      <form method="post" action="/settings/scout-pairing" class="flex flex-col gap-3">
+      <form method="post" action="/settings/scout-pairing" class="flex flex-col gap-3 w-full">
         <div>
           <label class="block text-xs text-gray-400 mb-1" for="scoutApiKey">Scout API key</label>
           <input id="scoutApiKey" name="scoutApiKey" type="password" required
@@ -188,14 +157,143 @@
         </button>
       </form>
     </section>
+    </div>
 
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4" id="alert-channels-section">
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 mt-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Carina Android APK</h2>
+          <p class="text-xs text-gray-500 mt-1">
+            Publish a direct APK download link here so staff can install the Android build from one place.
+          </p>
+        </div>
+        <% if (carinaAndroidApkUrl) { %>
+          <a href="<%= carinaAndroidApkUrl %>" target="_blank" rel="noopener noreferrer"
+            class="text-sm bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-4 py-2 rounded transition-colors">
+            Download APK
+          </a>
+        <% } %>
+      </div>
+      <form method="post" action="/settings/carina-android-apk" class="flex flex-col gap-3 max-w-2xl">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1" for="apkUrlConnections">APK download URL</label>
+          <input id="apkUrlConnections" name="apkUrl" type="url" required value="<%= carinaAndroidApkUrl %>"
+            placeholder="https://example.com/carina-ai.apk"
+            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+          <p class="text-xs text-gray-500 mt-1">Use a direct HTTPS link to the APK file or a release page that serves the file itself.</p>
+        </div>
+        <button type="submit"
+          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+          Save APK link
+        </button>
+      </form>
+    </section>
+  </div>
+
+  <div id="settings-panel-passwords" class="settings-panel hidden">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      <section class="bg-[#1a1a1a] border border-[#22c55e]/30 rounded-lg p-5 h-full">
+        <h2 class="text-base font-semibold text-white mb-1">Core web login password</h2>
+        <p class="text-xs mt-2 <%= coreWebPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+          Status: <%= coreWebPasswordSet ? 'Password set' : 'Not set' %>
+        </p>
+        <p class="text-xs text-gray-500 mb-4 mt-2">
+          Sets the password for
+          <a href="<%= carinaApiUrl %>/login" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">core.carinaai.uk/login</a>.
+          Takes effect immediately. Requires Carina connection (Test connection on Connections).
+        </p>
+        <form method="post" action="/settings/carina-web-password" class="flex flex-col gap-3">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="coreNewPassword">New password (min 8 chars)</label>
+            <input id="coreNewPassword" name="newPassword" type="password" required minlength="8"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="coreConfirmPassword">Confirm password</label>
+            <input id="coreConfirmPassword" name="confirmPassword" type="password" required minlength="8"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <button type="submit"
+            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+            Update core login password
+          </button>
+        </form>
+      </section>
+
+      <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
+        <h2 class="text-base font-semibold text-white mb-1">Ops admin password</h2>
+        <p class="text-xs mt-2 <%= adminPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+          Status: <%= adminPasswordSet ? 'Password set' : 'Default (changeme)' %>
+        </p>
+        <p class="text-xs text-gray-500 mb-4 mt-2">
+          Password for <a href="/login" class="text-[#06b6d4] hover:underline">ops.carinaai.uk</a> login.
+        </p>
+        <form method="post" action="/settings/ops-admin-password" class="flex flex-col gap-3">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="opsNewPassword">New password (min 8 chars)</label>
+            <input id="opsNewPassword" name="newPassword" type="password" required minlength="8"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="opsConfirmPassword">Confirm password</label>
+            <input id="opsConfirmPassword" name="confirmPassword" type="password" required minlength="8"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <button type="submit"
+            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+            Update ops login password
+          </button>
+        </form>
+      </section>
+
+      <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
+        <h2 class="text-base font-semibold text-white mb-1">Scout console password</h2>
+        <p class="text-xs text-gray-500 mb-4 mt-2">
+          Login password for
+          <a href="https://console.labyrinthscout.com" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">console.labyrinthscout.com</a>.
+        </p>
+        <form method="post" action="/settings/scout-password" class="flex flex-col gap-3">
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="newPassword">New password (min 8 chars)</label>
+            <input id="newPassword" name="newPassword" type="password" required minlength="8"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <div>
+            <label class="block text-xs text-gray-400 mb-1" for="confirmPassword">Confirm password</label>
+            <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8"
+              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          </div>
+          <button type="submit"
+            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
+            Update Scout console password
+          </button>
+        </form>
+      </section>
+
+      <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
+        <h2 class="text-base font-semibold text-white mb-1">Environment (read-only)</h2>
+        <ul class="mt-4 text-sm text-gray-400 space-y-1 font-mono break-all">
+          <li>PORT = <%= port %></li>
+          <li>CARINA_API_URL = <%= carinaApiUrl %></li>
+          <li>SCOUT_URL = <%= scoutUrl %></li>
+          <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
+          <li>CARINA_OPS_TOKEN = <%= carinaPaired ? '(set)' : '(not set)' %></li>
+          <li>SCOUT_API_KEY = <%= scoutPaired ? '(set)' : '(not set)' %></li>
+          <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <div id="settings-panel-alerts" class="settings-panel hidden">
+    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5" id="alert-channels-section">
       <h2 class="text-lg font-semibold text-white mb-1">Alert channels</h2>
       <p class="text-xs text-gray-500 mb-4">
-        Configure Telegram, email, and Slack alerts in Scout. Requires Scout pairing.
+        Route Scout security events to Telegram, email, or Slack. Pair Scout under Connections first.
       </p>
       <p id="alert-channels-status" class="text-xs text-gray-500 mb-4">Loading channels...</p>
-      <div class="mb-4">
+
+      <div class="mb-5">
         <label class="block text-xs text-gray-400 mb-1" for="alert-dashboard-url">Dashboard link in alerts</label>
         <div class="flex gap-2 flex-wrap">
           <input id="alert-dashboard-url" type="url"
@@ -207,9 +305,10 @@
           </button>
         </div>
       </div>
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="telegram">
-          <h3 class="text-sm font-semibold text-white mb-2">Telegram</h3>
+        <div class="border border-[#2a2a2a] rounded-lg p-4" data-channel="telegram">
+          <h3 class="text-sm font-semibold text-white mb-3">Telegram</h3>
           <label class="block text-xs text-gray-400 mb-1">Bot token</label>
           <input data-field="bot_token" type="password" placeholder="Leave blank to keep existing"
             class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
@@ -224,7 +323,7 @@
             <option value="critical">critical</option>
             <option value="breach">breach</option>
           </select>
-          <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+          <label class="flex items-center gap-2 text-xs text-gray-400 mb-3">
             <input data-field="enabled" type="checkbox" checked class="rounded" />
             Enabled
           </label>
@@ -233,8 +332,9 @@
             Save Telegram
           </button>
         </div>
-        <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="email">
-          <h3 class="text-sm font-semibold text-white mb-2">Email (Resend)</h3>
+
+        <div class="border border-[#2a2a2a] rounded-lg p-4" data-channel="email">
+          <h3 class="text-sm font-semibold text-white mb-3">Email (Resend)</h3>
           <label class="block text-xs text-gray-400 mb-1">Resend API key</label>
           <input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing"
             class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
@@ -252,7 +352,7 @@
             <option value="critical">critical</option>
             <option value="breach">breach</option>
           </select>
-          <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+          <label class="flex items-center gap-2 text-xs text-gray-400 mb-3">
             <input data-field="enabled" type="checkbox" checked class="rounded" />
             Enabled
           </label>
@@ -261,8 +361,9 @@
             Save email
           </button>
         </div>
-        <div class="border border-[#2a2a2a] rounded-lg p-3" data-channel="slack">
-          <h3 class="text-sm font-semibold text-white mb-2">Slack</h3>
+
+        <div class="border border-[#2a2a2a] rounded-lg p-4" data-channel="slack">
+          <h3 class="text-sm font-semibold text-white mb-3">Slack</h3>
           <label class="block text-xs text-gray-400 mb-1">Webhook URL</label>
           <input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing"
             class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
@@ -274,7 +375,7 @@
             <option value="critical">critical</option>
             <option value="breach">breach</option>
           </select>
-          <label class="flex items-center gap-2 text-xs text-gray-400 mb-2">
+          <label class="flex items-center gap-2 text-xs text-gray-400 mb-3">
             <input data-field="enabled" type="checkbox" checked class="rounded" />
             Enabled
           </label>
@@ -284,7 +385,8 @@
           </button>
         </div>
       </div>
-      <div class="mt-4 flex flex-wrap items-center gap-3">
+
+      <div class="mt-5 pt-4 border-t border-[#2a2a2a] flex flex-wrap items-center gap-3">
         <label class="text-xs text-gray-400">Test severity</label>
         <select id="alert-test-severity"
           class="rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
@@ -301,116 +403,55 @@
     </section>
   </div>
 
-  <div class="space-y-6 min-w-0">
-    <section class="bg-[#1a1a1a] border border-[#22c55e]/40 rounded-lg p-4">
-      <h2 class="text-lg font-semibold text-white mb-1">Core web login password</h2>
-      <p class="text-xs text-gray-500 mb-1">
-        Status:
-        <span class="<%= coreWebPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
-          <%= coreWebPasswordSet ? 'Password set' : 'Not set (core.carinaai.uk login blocked)' %>
-        </span>
-      </p>
-      <p class="text-xs text-gray-500 mb-4">
-        Sets the password for
-        <a href="<%= carinaApiUrl %>/login" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">core.carinaai.uk/login</a>.
-        Takes effect immediately. Requires Carina connection (Test connection above).
-      </p>
-      <form method="post" action="/settings/carina-web-password" class="flex flex-col gap-3">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="coreNewPassword">New password (min 8 chars)</label>
-          <input id="coreNewPassword" name="newPassword" type="password" required minlength="8"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="coreConfirmPassword">Confirm password</label>
-          <input id="coreConfirmPassword" name="confirmPassword" type="password" required minlength="8"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <button type="submit"
-          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-          Update core login password
-        </button>
-      </form>
-    </section>
-
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <h2 class="text-lg font-semibold text-white mb-1">Ops admin password</h2>
-      <p class="text-xs text-gray-500 mb-4">
-        Password for <a href="/login" class="text-[#06b6d4] hover:underline">ops.carinaai.uk</a> login.
-      </p>
-      <form method="post" action="/settings/ops-admin-password" class="flex flex-col gap-3">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="opsNewPassword">New password (min 8 chars)</label>
-          <input id="opsNewPassword" name="newPassword" type="password" required minlength="8"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="opsConfirmPassword">Confirm password</label>
-          <input id="opsConfirmPassword" name="confirmPassword" type="password" required minlength="8"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <button type="submit"
-          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-          Update ops login password
-        </button>
-      </form>
-    </section>
-
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <h2 class="text-lg font-semibold text-white mb-1">Scout console password</h2>
-      <p class="text-xs text-gray-500 mb-4">Login password for console.labyrinthscout.com.</p>
-      <form method="post" action="/settings/scout-password" class="flex flex-col gap-3">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="newPassword">New password (min 8 chars)</label>
-          <input id="newPassword" name="newPassword" type="password" required minlength="8"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="confirmPassword">Confirm password</label>
-          <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-        </div>
-        <button type="submit"
-          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-          Update Scout console password
-        </button>
-      </form>
-    </section>
-
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-      <h2 class="text-lg font-semibold text-white mb-3">Environment (read-only)</h2>
-      <ul class="text-sm text-gray-400 space-y-1 font-mono break-all">
-        <li>PORT = <%= port %></li>
-        <li>CARINA_API_URL = <%= carinaApiUrl %></li>
-        <li>SCOUT_URL = <%= scoutUrl %></li>
-        <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
-        <li>CARINA_OPS_TOKEN = <%= carinaPaired ? '(set)' : '(not set)' %></li>
-        <li>SCOUT_API_KEY = <%= scoutPaired ? '(set)' : '(not set)' %></li>
-        <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
-      </ul>
-    </section>
-  </div>
-</div>
 </div>
 
 <script>
+  (function settingsTabs() {
+    const tabs = document.querySelectorAll('[data-settings-tab]');
+    const panels = document.querySelectorAll('.settings-panel');
+    const activeClass = 'bg-[#2a2a2a] text-[#22c55e] font-medium';
+    const inactiveClass = 'text-gray-400';
+
+    function showTab(name) {
+      tabs.forEach((tab) => {
+        const active = tab.getAttribute('data-settings-tab') === name;
+        tab.className = 'settings-tab px-3 py-1.5 rounded-md text-sm hover:bg-[#2a2a2a] hover:text-white '
+          + (active ? activeClass : inactiveClass);
+      });
+      panels.forEach((panel) => {
+        panel.classList.toggle('hidden', panel.id !== 'settings-panel-' + name);
+      });
+      if (location.hash !== '#' + name) {
+        history.replaceState(null, '', '#' + name);
+      }
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => showTab(tab.getAttribute('data-settings-tab')));
+    });
+
+    const hash = (location.hash || '#connections').replace('#', '');
+    const valid = ['connections', 'passwords', 'alerts'];
+    showTab(valid.includes(hash) ? hash : 'connections');
+  })();
+
   document.getElementById('test-carina')?.addEventListener('click', async () => {
     const el = document.getElementById('carina-status');
     el.textContent = 'Testing...';
-    el.className = 'text-xs mt-3 text-gray-500';
+    el.className = 'text-xs text-gray-500 mb-4';
     try {
       const r = await fetch('/settings/test-carina', { method: 'POST' });
       const d = await r.json();
       if (d.ok) {
         el.textContent = 'Connected. Service: ' + (d.service || 'carina-gateway');
-        el.className = 'text-xs mt-3 text-green-400';
+        el.className = 'text-xs text-green-400 mb-4';
       } else {
         el.textContent = 'Offline: ' + (d.error || 'unknown error');
-        el.className = 'text-xs mt-3 text-red-400';
+        el.className = 'text-xs text-red-400 mb-4';
       }
-    } catch (e) {
+    } catch {
       el.textContent = 'Request failed';
-      el.className = 'text-xs mt-3 text-red-400';
+      el.className = 'text-xs text-red-400 mb-4';
     }
   });
 
@@ -557,21 +598,21 @@
   document.getElementById('test-scout')?.addEventListener('click', async () => {
     const el = document.getElementById('scout-status-msg');
     el.textContent = 'Testing...';
-    el.className = 'text-xs mt-3 text-gray-500';
+    el.className = 'text-xs text-gray-500 mb-4';
     try {
       const r = await fetch('/settings/test-scout', { method: 'POST' });
       const d = await r.json();
       if (d.ok) {
         const n = (d.instances || []).length;
         el.textContent = 'Connected. ' + n + ' instance(s) registered.';
-        el.className = 'text-xs mt-3 text-green-400';
+        el.className = 'text-xs text-green-400 mb-4';
       } else {
         el.textContent = 'Scout offline or unreachable';
-        el.className = 'text-xs mt-3 text-red-400';
+        el.className = 'text-xs text-red-400 mb-4';
       }
     } catch {
       el.textContent = 'Request failed';
-      el.className = 'text-xs mt-3 text-red-400';
+      el.className = 'text-xs text-red-400 mb-4';
     }
   });
 </script>

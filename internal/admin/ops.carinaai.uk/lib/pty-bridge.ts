@@ -93,6 +93,8 @@ async function handlePtyConnection(ws: WebSocket, req: import('node:http').Incom
       COLORTERM: 'truecolor',
       FORCE_COLOR: '3',
       CARINA_HOME: carinaHome,
+      CARINA_OPS_PTY: '1',
+      CARINA_TUI_SIMPLE: 'true',
     } as Record<string, string>,
   });
 

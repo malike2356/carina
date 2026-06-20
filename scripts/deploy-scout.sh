@@ -24,6 +24,104 @@ check_ssh() {
     die "Cannot SSH to ${VPS_USER}@${VPS_HOST}. Check SSH key."
 }
 
+setup_engine_service() {
+  log "Configuring scout-engine persistence..."
+  ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
+    set -euo pipefail
+    ENGINE_DIR="${ENGINE_REMOTE}"
+    LOG_DIR="/home/${VPS_USER}/logs"
+    ENSURE_SCRIPT="\${ENGINE_DIR}/deploy/ensure-running.sh"
+    ENABLE_BOOT="\${ENGINE_DIR}/deploy/enable-boot.sh"
+    SUP_CONF="${ENGINE_SUP_NAME}.conf"
+    SUP_PATH="/etc/supervisor/conf.d/\${SUP_CONF}"
+    USER_UNIT="\$HOME/.config/systemd/user/scout-engine.service"
+    CRON_MARK="# scout-engine ensure-running"
+
+    mkdir -p "\${LOG_DIR}" "\$HOME/.config/systemd/user"
+    chmod +x "\${ENSURE_SCRIPT}" "\${ENABLE_BOOT}"
+
+    SUP_INSTALLED=0
+    if sudo -n tee "\${SUP_PATH}" > /dev/null << CONF
+[program:scout-engine]
+command=/usr/bin/node ${ENGINE_REMOTE}/dist/server.js
+directory=${ENGINE_REMOTE}
+autostart=true
+autorestart=true
+user=${VPS_USER}
+stdout_logfile=/var/log/supervisor/scout-engine.out.log
+stderr_logfile=/var/log/supervisor/scout-engine.err.log
+stdout_logfile_maxbytes=10MB
+stderr_logfile_maxbytes=10MB
+stopwaitsecs=30
+environment=NODE_ENV="production"
+CONF
+    then
+      echo "  Supervisor config installed at \${SUP_PATH}"
+      sudo -n supervisorctl reread 2>/dev/null || true
+      sudo -n supervisorctl update 2>/dev/null || true
+      sudo -n supervisorctl restart "${ENGINE_SUP_NAME}" 2>/dev/null || \
+        sudo -n supervisorctl start "${ENGINE_SUP_NAME}" 2>/dev/null || true
+      SUP_INSTALLED=1
+    else
+      echo "  WARN: No passwordless sudo for supervisor; using user systemd"
+      echo "  Manual supervisor install:"
+      echo "    sudo cp \${ENGINE_DIR}/deploy/scout-engine.supervisor.conf \${SUP_PATH}"
+      echo "    sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start scout-engine"
+    fi
+
+    if [[ "\${SUP_INSTALLED}" -eq 0 ]]; then
+      cp "\${ENGINE_DIR}/deploy/scout-engine.service" "\${USER_UNIT}"
+      systemctl --user daemon-reload
+      systemctl --user enable scout-engine 2>/dev/null || true
+      systemctl --user restart scout-engine 2>/dev/null || "\${ENSURE_SCRIPT}"
+
+      LINGER=\$(loginctl show-user "${VPS_USER}" -p Linger --value 2>/dev/null || echo "no")
+      if [[ "\${LINGER}" == "yes" ]]; then
+        echo "  Linger enabled; scout-engine starts at boot via systemd"
+      elif sudo -n loginctl enable-linger "${VPS_USER}" 2>/dev/null; then
+        echo "  Linger enabled; scout-engine starts at boot via systemd"
+      else
+        echo ""
+        echo "  ACTION REQUIRED (one-time, on VPS):"
+        echo "    bash \${ENABLE_BOOT}"
+        echo "  Or: sudo loginctl enable-linger ${VPS_USER}"
+        echo "  Without linger, the user systemd service does not start at boot."
+      fi
+
+      TMP_CRON="\$(mktemp)"
+      crontab -l 2>/dev/null \
+        | grep -Fv "\${CRON_MARK}" \
+        | grep -Fv "\${ENSURE_SCRIPT}" > "\${TMP_CRON}" || true
+      crontab "\${TMP_CRON}" 2>/dev/null || true
+      rm -f "\${TMP_CRON}"
+    fi
+
+    sleep 2
+    if [[ "\${SUP_INSTALLED}" -eq 1 ]]; then
+      sudo -n supervisorctl status "${ENGINE_SUP_NAME}" 2>/dev/null || pgrep -af "\${ENGINE_DIR}/dist/server.js" || true
+    else
+      systemctl --user is-active scout-engine 2>/dev/null || pgrep -af "\${ENGINE_DIR}/dist/server.js" || true
+    fi
+REMOTE
+}
+
+restart_console_service() {
+  log "Restarting console (labyrinth-scout)..."
+  ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
+    set -euo pipefail
+    if sudo -n supervisorctl restart "${SUP_NAME}" 2>/dev/null; then
+      sudo -n supervisorctl status "${SUP_NAME}" 2>/dev/null || true
+    else
+      pkill -f "${REMOTE}/dist/server.js" 2>/dev/null || true
+      sleep 2
+      nohup /usr/bin/node "${REMOTE}/dist/server.js" \
+        >> /home/${VPS_USER}/logs/${SUP_NAME}.out.log \
+        2>> /home/${VPS_USER}/logs/${SUP_NAME}.err.log &
+      pgrep -af "${REMOTE}/dist/server.js" || true
+    fi
+REMOTE
+}
+
 main() {
   log "Scout engine and console deploy starting..."
   check_ssh
@@ -94,18 +192,8 @@ main() {
     echo "  Build complete."
 REMOTE
 
-  log "Starting engine and restarting console..."
-  ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
-    set -euo pipefail
-    pkill -f "${ENGINE_REMOTE}/dist/server.js" 2>/dev/null || true
-    cd "${ENGINE_REMOTE}"
-    nohup env NODE_ENV=production SCOUT_PORT=${ENGINE_PORT} /usr/bin/node "${ENGINE_REMOTE}/dist/server.js" \
-      >> scout-engine.out.log 2>> scout-engine.err.log &
-
-    pkill -f "${REMOTE}/dist/server.js" 2>/dev/null || true
-    sleep 2
-    pgrep -af "${ENGINE_REMOTE}/dist/server.js|${REMOTE}/dist/server.js" || true
-REMOTE
+  setup_engine_service
+  restart_console_service
 
   log "Scout engine and console deployed."
 }

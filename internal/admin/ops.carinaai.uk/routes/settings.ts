@@ -13,10 +13,31 @@ const SCOUT_HTPASSWD =
   process.env.SCOUT_HTPASSWD_FILE ?? '/home/malike/apps/console.labyrinthscout.com/.htpasswd';
 const SCOUT_HTPASSWD_USER = 'malike';
 
+type FlashMessage = { type: 'success' | 'error' | 'warning'; text: string };
+
+function buildFlashMessages(query: Record<string, unknown>): FlashMessage[] {
+  const messages: FlashMessage[] = [];
+  const add = (okKey: string, errKey: string, okText: string) => {
+    if (query[okKey] === '1') messages.push({ type: 'success', text: okText });
+    const err = query[errKey];
+    if (typeof err === 'string' && err.trim()) messages.push({ type: 'error', text: err });
+  };
+
+  add('scout_ok', 'scout_err', 'Scout console password updated.');
+  add('scout_pair_ok', 'scout_pair_err', 'Scout API key saved.');
+  add('carina_auto_pair_ok', 'carina_auto_pair_err', 'Carina agent connected automatically.');
+  add('carina_pair_ok', 'carina_pair_err', 'Carina ops token saved.');
+  add('carina_android_apk_ok', 'carina_android_apk_err', 'Android APK link saved.');
+  add('core_web_password_ok', 'core_web_password_err', 'Core web login password updated.');
+  add('ops_admin_password_ok', 'ops_admin_password_err', 'Ops admin password updated.');
+  return messages;
+}
+
 settingsRouter.get('/', async (req, res) => {
   const adminPassword = process.env.ADMIN_PASSWORD ?? 'changeme';
   let coreWebPasswordSet = false;
   let carinaConnected = false;
+  let scoutConnected = false;
   if (carinaOpsTokenSet()) {
     carinaConnected = await testCarinaConnection();
     if (carinaConnected) {
@@ -24,6 +45,9 @@ settingsRouter.get('/', async (req, res) => {
       const parsed = await carinaJson<{ set?: boolean }>(response);
       coreWebPasswordSet = parsed.ok && parsed.data?.set === true;
     }
+  }
+  if (process.env.SCOUT_API_KEY) {
+    scoutConnected = (await scoutGet('/api/admin/status')) !== null;
   }
   res.render('settings', {
     title: 'Settings',
@@ -37,6 +61,7 @@ settingsRouter.get('/', async (req, res) => {
     scoutOk: req.query['scout_ok'] === '1',
     scoutErr: typeof req.query['scout_err'] === 'string' ? req.query['scout_err'] : '',
     scoutPaired: Boolean(process.env.SCOUT_API_KEY),
+    scoutConnected,
     scoutPairOk: req.query['scout_pair_ok'] === '1',
     scoutPairErr: typeof req.query['scout_pair_err'] === 'string' ? req.query['scout_pair_err'] : '',
     carinaPaired: carinaOpsTokenSet(),
@@ -61,6 +86,7 @@ settingsRouter.get('/', async (req, res) => {
     opsAdminPasswordErr: typeof req.query['ops_admin_password_err'] === 'string'
       ? req.query['ops_admin_password_err']
       : '',
+    flashMessages: buildFlashMessages(req.query as Record<string, unknown>),
   });
 });
 

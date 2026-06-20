@@ -33,7 +33,7 @@ export interface CarinaSpawnCommand {
 
 export function resolveCarinaSpawnCommand(): CarinaSpawnCommand {
   const coreRoot = resolveDefaultCoreRoot();
-  const mode = process.env.CARINA_TUI_MODE ?? 'operator';
+  const mode = process.env.CARINA_TUI_MODE ?? 'simple';
   const tuiArgs = mode === 'ink'
     ? ['tui']
     : mode === 'simple'

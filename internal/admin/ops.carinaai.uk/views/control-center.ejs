@@ -78,8 +78,8 @@
         <p class="text-white font-semibold"><%= webPassword?.set ? 'Set' : 'Unset' %></p>
       </div>
       <div class="rounded border border-[#2a2a2a] p-3">
-        <p class="text-gray-500 text-xs">Control host</p>
-        <p class="text-white font-semibold"><%= controlStatus ? `${controlStatus.pairedNodes} nodes` : 'Unavailable' %></p>
+        <p class="text-gray-500 text-xs">Paired devices</p>
+        <p class="text-white font-semibold"><%= hostStatus ? hostStatus.pairedDevices + ' device(s)' : 'Unavailable' %></p>
       </div>
       <div class="rounded border border-[#2a2a2a] p-3">
         <p class="text-gray-500 text-xs">Telemetry</p>
@@ -90,7 +90,7 @@
       <div class="mt-4">
         <p class="text-xs text-gray-500 mb-2">Active packs</p>
         <div class="flex flex-wrap gap-2">
-          <% if (packs.active.length) { %>
+          <% if (packs.active && packs.active.length) { %>
             <% for (const pack of packs.active) { %>
               <span class="rounded-full border border-[#2a2a2a] bg-[#111] px-3 py-1 text-xs text-gray-300"><%= pack %></span>
             <% } %>
@@ -106,13 +106,14 @@
 <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Control plane</h2>
-    <% if (controlStatus) { %>
+    <% if (hostStatus) { %>
       <ul class="space-y-2 text-sm text-gray-300">
-        <li>Node host: <span class="text-white"><%= controlStatus.nodeHostEnabled ? 'Enabled' : 'Disabled' %></span></li>
-        <li>Sandbox: <span class="text-white"><%= controlStatus.sandbox.sessionSandboxEnabled ? 'On' : 'Off' %></span></li>
-        <li>Containers: <span class="text-white"><%= controlStatus.sandbox.containersRunning %>/<%= controlStatus.sandbox.containersTotal %></span></li>
-        <li>Approvals: <span class="text-white"><%= controlStatus.approvals.policyEnabled ? 'On' : 'Off' %></span></li>
-        <li>Recent node audit: <span class="text-white"><%= controlStatus.recentNodeAudit %></span></li>
+        <li>Gateway: <span class="text-white"><%= hostStatus.running ? 'Running' : 'Stopped' %></span></li>
+        <li>Version: <span class="text-white"><%= hostStatus.version %></span></li>
+        <li>Agents: <span class="text-white"><%= hostStatus.agents %></span></li>
+        <li>Paired devices: <span class="text-white"><%= hostStatus.pairedDevices %></span></li>
+        <li>Scout integration: <span class="text-white"><%= hostStatus.scoutEnabled ? 'Enabled' : 'Disabled' %></span></li>
+        <li>Pending commitments: <span class="text-white"><%= hostStatus.pendingCommitments %></span></li>
       </ul>
     <% } else { %>
       <p class="text-sm text-gray-500">Core control status unavailable.</p>
@@ -121,7 +122,7 @@
 
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Extensions</h2>
-    <% if (extensions) { %>
+    <% if (extensions && extensions.extensions) { %>
       <ul class="space-y-2 text-sm text-gray-300">
         <li>Runtime: <span class="text-white"><%= extensions.runtimeEnabled ? 'Enabled' : 'Disabled' %></span></li>
         <li>Loaded: <span class="text-white"><%= extensions.extensions.length %></span></li>
@@ -147,7 +148,7 @@
 
   <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
     <h2 class="text-lg font-semibold text-white mb-3">Telemetry</h2>
-    <% if (telemetryHealth) { %>
+    <% if (telemetryHealth && telemetryHealth.checks) { %>
       <ul class="space-y-2 text-sm text-gray-300">
         <% for (const check of telemetryHealth.checks.slice(0, 5)) { %>
           <li class="flex items-start justify-between gap-3 border-b border-[#2a2a2a] pb-2 last:border-b-0 last:pb-0">

@@ -55,7 +55,11 @@ export async function ensureFirstRunReady(): Promise<void> {
   const needsOnboarding = await needsFirstRunOnboarding();
   if (!needsOnboarding) return;
 
-  if (isInteractiveTerminal()) {
+  const skipInkOnboarding =
+    process.env.CARINA_TUI_SIMPLE === 'true' ||
+    process.env.CARINA_OPS_PTY === '1';
+
+  if (isInteractiveTerminal() && !skipInkOnboarding) {
     const { runInkOnboarding } = await import('./ink-onboarding.js');
     await runInkOnboarding();
     loadCarinaEnv();

@@ -37,7 +37,7 @@
           <td class="p-3 text-gray-500 whitespace-nowrap"><%= new Date(c.created_at).toLocaleString() %></td>
           <td class="p-3"><span class="text-[#22c55e]"><%= c.pack %></span></td>
           <td class="p-3 font-mono text-xs text-gray-400 max-w-[200px] truncate"><%= c.source %></td>
-          <td class="p-3 max-w-lg truncate text-gray-300"><%= c.content.slice(0, 150) %></td>
+          <td class="p-3 truncate text-gray-300"><%= c.content.slice(0, 150) %></td>
           <td class="p-3"><%= c.embedding != null ? 'yes' : 'no' %></td>
         </tr>
       <% } %>

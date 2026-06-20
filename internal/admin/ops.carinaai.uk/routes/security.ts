@@ -68,12 +68,12 @@ securityRouter.get('/stream', async (req: Request, res: Response) => {
   res.flushHeaders();
 
   const scoutKey = scoutHeaders()['X-Scout-Key'] ?? '';
-  const scoutUrl = scoutKey
-    ? `${SCOUT_BASE}/api/admin/stream?key=${encodeURIComponent(scoutKey)}`
-    : `${SCOUT_BASE}/api/admin/stream`;
+  const scoutUrl = `${SCOUT_BASE}/api/admin/stream`;
 
   try {
-    const upstream = await fetch(scoutUrl);
+    const upstream = await fetch(scoutUrl, {
+      headers: scoutKey ? { 'X-Scout-Key': scoutKey } : {},
+    });
 
     if (!upstream.ok || !upstream.body) {
       res.write('data: {"type":"offline"}\n\n');

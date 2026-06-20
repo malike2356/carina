@@ -57,7 +57,25 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
   const { ensureFirstRunReady } = await import('../cli/first-run.js');
   await ensureFirstRunReady();
 
-  const { getRouter } = await import('../gateway/router.js');
+  let memoryReady = options.memoryReady ?? false;
+  if (!memoryReady) {
+    try {
+      const { initDb } = await import('../memory/db.js');
+      await initDb();
+      memoryReady = true;
+    } catch {
+      memoryReady = false;
+    }
+  }
+  try {
+    const { initMemoryBackend } = await import('../memory/backends/index.js');
+    initMemoryBackend();
+  } catch {
+    // optional
+  }
+
+  const { initRouter, getRouter } = await import('../gateway/router.js');
+  initRouter(memoryReady);
   const { loadLastSurfaceSession, saveLastSurfaceSession } = await import('../surfaces/session-store.js');
   const { resolveSurfaceExternalUserId } = await import('../surfaces/index.js');
 
