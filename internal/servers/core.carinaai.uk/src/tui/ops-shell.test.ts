@@ -1,0 +1,22 @@
+import { describe, expect, it } from 'vitest';
+import { isOpsShellInput, normalizeOpsShellCommand, runOpsShellCommand } from './ops-shell.js';
+
+describe('ops-shell', () => {
+  it('detects common shell commands', () => {
+    expect(isOpsShellInput('ls')).toBe(true);
+    expect(isOpsShellInput('ls -la')).toBe(true);
+    expect(isOpsShellInput('! pwd')).toBe(true);
+    expect(isOpsShellInput('/help')).toBe(false);
+    expect(isOpsShellInput('what files are here')).toBe(false);
+  });
+
+  it('strips bang prefix', () => {
+    expect(normalizeOpsShellCommand('! ls -la')).toBe('ls -la');
+    expect(normalizeOpsShellCommand('ls')).toBe('ls');
+  });
+
+  it('runs shell commands', () => {
+    const out = runOpsShellCommand('echo ops-shell-ok', process.cwd());
+    expect(out.trim()).toBe('ops-shell-ok');
+  });
+});

@@ -146,21 +146,24 @@ async function embedWithProvider(id: EmbeddingProviderId, text: string): Promise
 
 export async function embed(text: string): Promise<number[]> {
   const chain = resolveEmbeddingChain();
+  const quiet = process.env.CARINA_OPS_PTY === '1' || process.env.CARINA_EMBEDDING_QUIET === 'true';
   for (const providerId of chain) {
     try {
       return await embedWithProvider(providerId, text);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       const next = chain[chain.indexOf(providerId) + 1];
-      if (next) {
-        console.warn(`${providerId} embedding failed (${msg}); trying ${next}...`);
-      } else {
-        console.warn(`${providerId} embedding failed (${msg}); memory search degraded.`);
+      if (!quiet) {
+        if (next) {
+          console.warn(`${providerId} embedding failed (${msg}); trying ${next}...`);
+        } else {
+          console.warn(`${providerId} embedding failed (${msg}); memory search degraded.`);
+        }
       }
     }
   }
 
-  if (chain.length === 0) {
+  if (chain.length === 0 && !quiet) {
     console.warn('No embedding provider available. Add GEMINI_API_KEY, VOYAGE_API_KEY, or OPENAI_API_KEY to .env');
   }
 

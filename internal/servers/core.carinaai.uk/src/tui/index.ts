@@ -44,6 +44,11 @@ const HELP_LINES = [
   '/quit          exit',
 ];
 
+const OPS_SHELL_HELP = [
+  'Shell (ops terminal): ls, pwd, git, docker, ... run directly',
+  'Prefix with ! for any shell command: ! cd /tmp && ls',
+];
+
 function printBanner(personalityName: string): void {
   printEntrance(buildEntranceSnapshot({
     surface: 'tui',
@@ -110,6 +115,11 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
     if (trimmed === '/help') {
       for (const helpLine of HELP_LINES) {
         console.log(chalk.gray(`  ${helpLine}`));
+      }
+      if (process.env.CARINA_OPS_PTY === '1') {
+        for (const helpLine of OPS_SHELL_HELP) {
+          console.log(chalk.gray(`  ${helpLine}`));
+        }
       }
       continue;
     }
@@ -209,6 +219,17 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
       const stats = getPromptCacheStats();
       console.log(chalk.yellow(`Prompt cache: size=${stats.size} hits=${stats.hits} misses=${stats.misses}`));
       continue;
+    }
+
+    if (process.env.CARINA_OPS_PTY === '1') {
+      const { isOpsShellInput, runOpsShellCommand } = await import('./ops-shell.js');
+      if (isOpsShellInput(trimmed)) {
+        const out = runOpsShellCommand(trimmed, process.cwd());
+        if (out) {
+          process.stdout.write(out.endsWith('\n') ? out : `${out}\n`);
+        }
+        continue;
+      }
     }
 
     process.stdout.write(chalk.green('\nCarina: '));
