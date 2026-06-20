@@ -3,93 +3,397 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Carina Admin</title>
+  <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Carina Ops</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
   <style>
-    body { background: #0f0f0f; color: #e0e0e0; }
-    .nav-link.active { background: #2a2a2a; color: #22c55e; }
-    .badge-user { background: #06b6d4; color: #0f0f0f; }
-    .badge-assistant { background: #22c55e; color: #0f0f0f; }
+    :root {
+      --void: #07101e;
+      --navy: #0b1827;
+      --panel: #0e1d2f;
+      --border: #162338;
+      --green: #00c864;
+      --green-dim: rgba(0,200,100,0.1);
+      --cyan: #00d4ff;
+      --amber: #d4af37;
+      --red: #ff2244;
+      --purple: #a855f7;
+      --text: #c0d0e0;
+      --muted: #3a5270;
+      --heading: #e0eaf4;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--void);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 12px;
+      display: flex;
+      min-height: 100vh;
+    }
+    /* sidebar */
+    aside#sidebar {
+      width: 210px;
+      min-width: 210px;
+      background: var(--navy);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      flex-shrink: 0;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .sidebar-logo {
+      padding: 13px 14px 11px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-logo a {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      text-decoration: none;
+    }
+    .logo-shield {
+      width: 30px;
+      height: 30px;
+      background: rgba(0,200,100,0.08);
+      border: 1px solid rgba(0,200,100,0.25);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-name { color: var(--heading); font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
+    .logo-sub { color: var(--muted); font-size: 8px; letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+    /* nav */
+    .nav-body { padding: 4px 0 8px; }
+    .nav-section { padding: 9px 0 2px; }
+    .nav-section-label {
+      padding: 0 12px 4px;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .nav-link {
+      display: block;
+      padding: 4px 12px;
+      font-size: 11px;
+      color: #56789a;
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: color 0.1s, background 0.1s, border-color 0.1s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.025); }
+    .nav-link.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
+    .nav-link.active-red { color: var(--red); border-left-color: var(--red); background: rgba(255,34,68,0.06); }
+    /* section colour accents */
+    .nav-section.threats .nav-section-label { color: rgba(255,100,100,0.5); }
+    .nav-section.defence .nav-section-label { color: rgba(212,175,55,0.5); }
+    .nav-section.forensics .nav-section-label { color: rgba(0,212,255,0.45); }
+    .nav-section.governance .nav-section-label { color: rgba(168,85,247,0.5); }
+    /* radar */
+    .radar-wrap {
+      padding: 10px 14px 6px;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    #ops-radar {
+      display: block;
+      border-radius: 50%;
+      border: 1px solid rgba(0,200,100,0.12);
+    }
+    /* footer */
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 14px 12px;
+      flex-shrink: 0;
+    }
+    .scout-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .status-dot.live { background: var(--green); box-shadow: 0 0 6px rgba(0,200,100,0.5); }
+    .status-dot.dead { background: var(--red); }
+    #scout-label { font-size: 10px; color: var(--muted); }
+    .footer-links { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .footer-links a { font-size: 10px; color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--cyan); }
+    .logout-btn { font-size: 10px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+    .logout-btn:hover { color: var(--red); }
+    /* main content area */
+    main { flex: 1; min-width: 0; overflow: auto; background: var(--void); padding: 20px 24px; }
     .ops-content { width: 100%; max-width: none; }
+    /* shared component tokens */
+    .ops-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+    .ops-card-label { color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+    .ops-card-val { color: var(--heading); font-size: 22px; font-weight: 700; }
+    .ops-card-val.green { color: var(--green); }
+    .ops-card-val.cyan { color: var(--cyan); }
+    .ops-card-val.amber { color: var(--amber); }
+    .ops-card-val.red { color: var(--red); }
+    .ops-card-val.purple { color: var(--purple); }
+    .ops-section-title { color: var(--heading); font-size: 13px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .ops-page-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+    .ops-page-title { color: var(--heading); font-size: 16px; font-weight: 700; letter-spacing: 0.5px; }
+    .ops-page-sub { color: var(--muted); font-size: 10px; margin-top: 2px; }
+    .ops-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .ops-table th { color: var(--muted); font-weight: 600; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); letter-spacing: 0.5px; font-size: 10px; text-transform: uppercase; }
+    .ops-table td { padding: 7px 8px; border-bottom: 1px solid rgba(22,35,56,0.6); vertical-align: middle; }
+    .ops-table tr:last-child td { border-bottom: none; }
+    .ops-table tr:hover td { background: rgba(255,255,255,0.015); }
+    .ops-badge { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .ops-badge-green { background: rgba(0,200,100,0.12); color: var(--green); border: 1px solid rgba(0,200,100,0.2); }
+    .ops-badge-amber { background: rgba(212,175,55,0.12); color: var(--amber); border: 1px solid rgba(212,175,55,0.2); }
+    .ops-badge-red { background: rgba(255,34,68,0.1); color: var(--red); border: 1px solid rgba(255,34,68,0.2); }
+    .ops-badge-cyan { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.2); }
+    .ops-badge-purple { background: rgba(168,85,247,0.1); color: var(--purple); border: 1px solid rgba(168,85,247,0.2); }
+    .ops-badge-gray { background: rgba(58,82,112,0.3); color: var(--muted); border: 1px solid var(--border); }
+    .ops-link { color: var(--cyan); text-decoration: none; }
+    .ops-link:hover { text-decoration: underline; }
+    .ops-link-green { color: var(--green); text-decoration: none; }
+    .ops-link-green:hover { text-decoration: underline; }
+    .ops-empty { color: var(--muted); font-size: 11px; padding: 20px 0; text-align: center; }
+    .ops-btn {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid;
+      font-family: inherit;
+      text-decoration: none;
+    }
+    .ops-btn-green { background: rgba(0,200,100,0.1); color: var(--green); border-color: rgba(0,200,100,0.3); }
+    .ops-btn-green:hover { background: rgba(0,200,100,0.2); }
+    .ops-btn-red { background: rgba(255,34,68,0.1); color: var(--red); border-color: rgba(255,34,68,0.3); }
+    .ops-btn-red:hover { background: rgba(255,34,68,0.18); }
+    .ops-btn-amber { background: rgba(212,175,55,0.1); color: var(--amber); border-color: rgba(212,175,55,0.3); }
+    .ops-btn-amber:hover { background: rgba(212,175,55,0.18); }
+    .ops-loading { color: var(--muted); font-size: 11px; padding: 12px 0; animation: opsFade 1s ease-in-out infinite alternate; }
+    @keyframes opsFade { from { opacity: 0.4; } to { opacity: 1; } }
   </style>
 </head>
-<body class="min-h-screen flex">
-  <aside id="sidebar" class="w-56 shrink-0 border-r border-[#2a2a2a] bg-[#1a1a1a] flex flex-col p-4">
-    <div class="flex items-center justify-between mb-6">
-      <a href="https://carinaai.uk" target="_blank" rel="noopener" class="font-bold text-white text-lg hover:text-[#22c55e] transition-colors">Carina Admin</a>
-      <button type="button" id="toggle-nav" class="text-xs text-gray-400 hover:text-white lg:hidden">Hide</button>
+<body>
+  <aside id="sidebar">
+    <div class="sidebar-logo">
+      <a href="/" title="Carina Ops Dashboard">
+        <div class="logo-shield">
+          <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
+            <path d="M8 0L0 3.5V9C0 13.25 3.47 17.2 8 18C12.53 17.2 16 13.25 16 9V3.5L8 0Z" fill="rgba(0,200,100,0.12)" stroke="rgba(0,200,100,0.4)" stroke-width="1"/>
+            <path d="M5 9L7 11L11 7" stroke="#00c864" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-name">CARINA</div>
+          <div class="logo-sub">Ops Console</div>
+        </div>
+      </a>
     </div>
-    <nav class="flex flex-col gap-1 text-sm flex-1">
-      <% const links = [
-        { href: '/', label: 'Dashboard', match: (p) => p === '/' },
-        { href: '/control-center', label: 'Control Center', match: (p) => p.startsWith('/control-center') },
-        { href: '/mcp', label: 'MCP Servers', match: (p) => p.startsWith('/mcp') },
-        { href: '/admin/incident-blog', label: 'Incident Blog', match: (p) => p.startsWith('/admin/incident-blog') },
-        { href: '/ai-platform', label: 'AI Platform', match: (p) => p.startsWith('/ai-platform') },
-        { href: '/admin/agent-tools', label: 'Agent Tools', match: (p) => p.startsWith('/admin/agent-tools') || p.startsWith('/agent-tools') },
-        { href: '/tenants', label: 'Tenants', match: (p) => p.startsWith('/tenants') },
-        { href: '/subscriptions', label: 'Subscriptions', match: (p) => p.startsWith('/subscriptions') },
-        { href: '/security', label: 'Security', match: (p) => p.startsWith('/security') },
-        { href: '/scout', label: 'Scout Console', match: (p) => p.startsWith('/scout') },
-        { href: '/channels', label: 'Channels', match: (p) => p.startsWith('/channels') },
-        { href: '/chat', label: 'Chat', match: (p) => p.startsWith('/chat') },
-        { href: '/tui', label: 'Terminal TUI', match: (p) => p.startsWith('/tui') },
-        { href: '/memories', label: 'Memories', match: (p) => p.startsWith('/memories') },
-        { href: '/skills', label: 'Skills', match: (p) => p.startsWith('/skills') },
-        { href: '/packs', label: 'Skill Packs', match: (p) => p.startsWith('/packs') },
-        { href: '/rag', label: 'RAG Corpus', match: (p) => p.startsWith('/rag') },
-        { href: '/projects', label: 'Projects', match: (p) => p.startsWith('/projects') },
-        { href: '/settings', label: 'Settings', match: (p) => p.startsWith('/settings') },
-      ]; %>
-      <% const withVersion = (href) => {
+
+    <div class="nav-body">
+      <% const withV = function(href) {
         if (!uiVersion) return href;
-        const sep = href.includes('?') ? '&' : '?';
-        return href + sep + 'v=' + encodeURIComponent(uiVersion);
+        return href + (href.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(uiVersion);
       }; %>
-      <% for (const link of links) { %>
-        <a href="<%= withVersion(link.href) %>"
-           class="nav-link px-3 py-2 rounded-md text-gray-300 hover:bg-[#2a2a2a] hover:text-white <%= link.match(activePath || '') ? 'active' : '' %>">
-          <%= link.label %>
-        </a>
-      <% } %>
-    </nav>
-    <div class="mt-auto pt-4 border-t border-[#2a2a2a] text-xs text-gray-500">
-      <p>Carina v0.1.0</p>
-      <div id="scout-status" class="text-xs mt-1 flex items-center gap-1">
-        <span id="scout-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600"></span>
-        <span id="scout-label" class="text-gray-600">Scout</span>
+      <% var ap = activePath || ''; %>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Platform</div>
+        <a href="<%= withV('/') %>" class="nav-link<%= ap === '/' ? ' active' : '' %>">Dashboard</a>
+        <a href="<%= withV('/control-center') %>" class="nav-link<%= ap.startsWith('/control-center') ? ' active' : '' %>">Control Center</a>
       </div>
-      <a href="<%= webUiUrl %>" target="_blank" rel="noopener" class="text-[#22c55e] hover:underline">Main web UI</a>
-      <form method="post" action="/logout" class="mt-2">
-        <button type="submit" class="text-gray-400 hover:text-white">Logout</button>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Fleet</div>
+        <a href="<%= withV('/tenants') %>" class="nav-link<%= ap.startsWith('/tenants') ? ' active' : '' %>">All Tenants</a>
+        <a href="<%= withV('/subscriptions') %>" class="nav-link<%= ap.startsWith('/subscriptions') ? ' active' : '' %>">Subscriptions</a>
+        <a href="<%= withV('/operator') %>" class="nav-link<%= ap.startsWith('/operator') ? ' active' : '' %>">Operator Tools</a>
+      </div>
+
+      <div class="nav-section threats">
+        <div class="nav-section-label">Threats</div>
+        <a href="<%= withV('/security/threats') %>" class="nav-link<%= ap === '/security/threats' ? ' active' : '' %>">Live Threats</a>
+        <a href="<%= withV('/security/incidents') %>" class="nav-link<%= ap === '/security/incidents' ? ' active' : '' %>">Incidents</a>
+        <a href="<%= withV('/security/anomalies') %>" class="nav-link<%= ap === '/security/anomalies' ? ' active' : '' %>">Anomalies</a>
+        <a href="<%= withV('/security/findings') %>" class="nav-link<%= ap === '/security/findings' ? ' active' : '' %>">Findings</a>
+        <a href="<%= withV('/security/attack-surface') %>" class="nav-link<%= ap === '/security/attack-surface' ? ' active' : '' %>">Attack Surface</a>
+      </div>
+
+      <div class="nav-section defence">
+        <div class="nav-section-label">Defence</div>
+        <a href="<%= withV('/security/killswitch') %>" class="nav-link<%= ap === '/security/killswitch' ? ' active-red' : '' %>">Kill Switch</a>
+        <a href="<%= withV('/security/honeypots') %>" class="nav-link<%= ap === '/security/honeypots' ? ' active' : '' %>">Honeypots</a>
+        <a href="<%= withV('/security/tripwires') %>" class="nav-link<%= ap === '/security/tripwires' ? ' active' : '' %>">Tripwires</a>
+        <a href="<%= withV('/security/auto-remediate') %>" class="nav-link<%= ap === '/security/auto-remediate' ? ' active' : '' %>">Auto-Remediation</a>
+        <a href="<%= withV('/security/deception') %>" class="nav-link<%= ap === '/security/deception' ? ' active' : '' %>">Deception Traps</a>
+        <a href="<%= withV('/security/quarantine') %>" class="nav-link<%= ap === '/security/quarantine' ? ' active' : '' %>">Quarantine</a>
+        <a href="<%= withV('/security/egress') %>" class="nav-link<%= ap === '/security/egress' ? ' active' : '' %>">Egress Control</a>
+        <a href="<%= withV('/security/policy') %>" class="nav-link<%= ap === '/security/policy' ? ' active' : '' %>">Policy</a>
+        <a href="<%= withV('/security/policy-packs') %>" class="nav-link<%= ap === '/security/policy-packs' ? ' active' : '' %>">Policy Packs</a>
+      </div>
+
+      <div class="nav-section forensics">
+        <div class="nav-section-label">Forensics</div>
+        <a href="<%= withV('/security') %>" class="nav-link<%= ap === '/security' ? ' active' : '' %>">Security Overview</a>
+        <a href="<%= withV('/scout') %>" class="nav-link<%= ap.startsWith('/scout') ? ' active' : '' %>">Scout Dashboard</a>
+        <a href="<%= withV('/security/score') %>" class="nav-link<%= ap === '/security/score' ? ' active' : '' %>">Scout Score</a>
+        <a href="<%= withV('/security/reports') %>" class="nav-link<%= ap === '/security/reports' ? ' active' : '' %>">Reports</a>
+        <a href="<%= withV('/admin/incident-blog') %>" class="nav-link<%= ap.startsWith('/admin/incident-blog') ? ' active' : '' %>">Incident Blog</a>
+      </div>
+
+      <div class="nav-section governance">
+        <div class="nav-section-label">Governance</div>
+        <a href="<%= withV('/governance/soc2') %>" class="nav-link<%= ap === '/governance/soc2' ? ' active' : '' %>">SOC2</a>
+        <a href="<%= withV('/governance') %>" class="nav-link<%= ap === '/governance' ? ' active' : '' %>">Governance</a>
+        <a href="<%= withV('/governance/trust') %>" class="nav-link<%= ap === '/governance/trust' ? ' active' : '' %>">Trust Verify</a>
+        <a href="<%= withV('/governance/posture') %>" class="nav-link<%= ap === '/governance/posture' ? ' active' : '' %>">Security Posture</a>
+        <a href="<%= withV('/governance/audit') %>" class="nav-link<%= ap === '/governance/audit' ? ' active' : '' %>">Audit Logs</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">AI Engine</div>
+        <a href="<%= withV('/ai-platform') %>" class="nav-link<%= ap.startsWith('/ai-platform') ? ' active' : '' %>">AI Platform</a>
+        <a href="<%= withV('/admin/agent-tools') %>" class="nav-link<%= ap.startsWith('/admin/agent-tools') || ap.startsWith('/agent-tools') ? ' active' : '' %>">Agent Tools</a>
+        <a href="<%= withV('/mcp') %>" class="nav-link<%= ap.startsWith('/mcp') ? ' active' : '' %>">MCP Servers</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Data</div>
+        <a href="<%= withV('/memories') %>" class="nav-link<%= ap.startsWith('/memories') ? ' active' : '' %>">Memories</a>
+        <a href="<%= withV('/skills') %>" class="nav-link<%= ap.startsWith('/skills') ? ' active' : '' %>">Skills</a>
+        <a href="<%= withV('/packs') %>" class="nav-link<%= ap.startsWith('/packs') ? ' active' : '' %>">Skill Packs</a>
+        <a href="<%= withV('/rag') %>" class="nav-link<%= ap.startsWith('/rag') ? ' active' : '' %>">RAG Corpus</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Comms</div>
+        <a href="<%= withV('/channels') %>" class="nav-link<%= ap.startsWith('/channels') ? ' active' : '' %>">Channels</a>
+        <a href="<%= withV('/chat') %>" class="nav-link<%= ap.startsWith('/chat') ? ' active' : '' %>">Chat</a>
+        <a href="<%= withV('/projects') %>" class="nav-link<%= ap.startsWith('/projects') ? ' active' : '' %>">Projects</a>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-label">Admin</div>
+        <a href="<%= withV('/tui') %>" class="nav-link<%= ap.startsWith('/tui') ? ' active' : '' %>">Terminal TUI</a>
+        <a href="<%= withV('/settings') %>" class="nav-link<%= ap.startsWith('/settings') ? ' active' : '' %>">Settings</a>
+      </div>
+    </div>
+
+    <div class="radar-wrap">
+      <canvas id="ops-radar" width="140" height="140"></canvas>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="scout-row">
+        <span id="scout-dot" class="status-dot"></span>
+        <span id="scout-label">Scout checking...</span>
+      </div>
+      <div class="footer-links">
+        <a href="<%= webUiUrl %>" target="_blank" rel="noopener">Main Web UI</a>
+      </div>
+      <form method="post" action="/logout">
+        <button type="submit" class="logout-btn">Sign Out</button>
       </form>
     </div>
   </aside>
-  <main class="flex-1 min-w-0 w-full p-6 overflow-auto">
+
+  <main>
     <div class="ops-content">
       <%- body %>
     </div>
   </main>
+
   <script>
-    document.getElementById('toggle-nav')?.addEventListener('click', () => {
-      document.getElementById('sidebar').classList.toggle('hidden');
-    });
+    // Scout live status
+    (function() {
+      var dot = document.getElementById('scout-dot');
+      var lbl = document.getElementById('scout-label');
+      if (!dot || !lbl) return;
+      fetch('/security/events', { credentials: 'same-origin' })
+        .then(function(r) {
+          dot.className = r.ok ? 'status-dot live' : 'status-dot dead';
+          lbl.textContent = r.ok ? 'Scout live' : 'Scout offline';
+          if (r.ok) lbl.style.color = '#00c864';
+        })
+        .catch(function() {
+          dot.className = 'status-dot dead';
+          lbl.textContent = 'Scout offline';
+        });
+    })();
 
-    (function scoutSidebarStatus() {
-      const dot = document.getElementById('scout-dot');
-      const label = document.getElementById('scout-label');
-      if (!dot || !label) return;
+    // Platform activity radar
+    (function() {
+      var canvas = document.getElementById('ops-radar');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var W = canvas.width, H = canvas.height;
+      var cx = W / 2, cy = H / 2;
+      var r = Math.min(cx, cy) - 5;
+      var sweep = 0;
+      var dots = [];
+      var lastDot = Date.now();
 
-      function setScout(live) {
-        dot.className = 'inline-block w-2 h-2 rounded-full ' + (live ? 'bg-green-500' : 'bg-red-600');
-        label.textContent = live ? 'Scout live' : 'Scout offline';
-        label.className = live ? 'text-green-500' : 'text-gray-600';
+      for (var i = 0; i < 3; i++) {
+        dots.push({ a: Math.random() * Math.PI * 2, d: 0.25 + Math.random() * 0.65, born: Date.now() - Math.random() * 9000 });
       }
 
-      fetch('/security/events', { credentials: 'same-origin' })
-        .then((r) => setScout(r.ok))
-        .catch(() => setScout(false));
+      function frame() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,200,100,0.02)'; ctx.fill();
+        [0.33, 0.66, 1.0].forEach(function(f) {
+          ctx.beginPath(); ctx.arc(cx, cy, r * f, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0,200,100,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+        });
+        ctx.strokeStyle = 'rgba(0,200,100,0.05)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+        var span = Math.PI * 0.55;
+        for (var ti = 0; ti < 28; ti++) {
+          var ta = sweep - (span / 28) * ti;
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, ta, ta + span / 28); ctx.closePath();
+          ctx.fillStyle = 'rgba(0,200,100,' + ((1 - ti / 28) * 0.14) + ')'; ctx.fill();
+        }
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(sweep) * r, cy + Math.sin(sweep) * r);
+        ctx.strokeStyle = 'rgba(0,200,100,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+        var now = Date.now();
+        var keep = [];
+        for (var di = 0; di < dots.length; di++) {
+          if (now - dots[di].born < 13000) keep.push(dots[di]);
+        }
+        dots = keep;
+        for (var di2 = 0; di2 < dots.length; di2++) {
+          var d = dots[di2];
+          var age = (now - d.born) / 13000;
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(d.a) * r * d.d, cy + Math.sin(d.a) * r * d.d, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0,200,100,' + (1 - age).toFixed(2) + ')'; ctx.fill();
+        }
+        if (now - lastDot > 3500) {
+          dots.push({ a: Math.random() * Math.PI * 2, d: 0.2 + Math.random() * 0.72, born: now });
+          lastDot = now;
+        }
+        sweep += 0.016;
+        if (sweep > Math.PI * 2) sweep -= Math.PI * 2;
+        requestAnimationFrame(frame);
+      }
+      frame();
     })();
   </script>
 </body>

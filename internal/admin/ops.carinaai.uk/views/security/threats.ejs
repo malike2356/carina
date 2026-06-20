@@ -1,0 +1,112 @@
+<% title = 'Live Threats' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Live Threats</div>
+    <div class="ops-page-sub">Real-time security events across all monitored instances.</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span id="threat-level-badge" class="ops-badge ops-badge-gray">Checking...</span>
+    <button onclick="loadThreats()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card">
+    <div class="ops-card-label">Critical</div>
+    <div class="ops-card-val red" id="cnt-critical">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Warning</div>
+    <div class="ops-card-val amber" id="cnt-warning">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Info</div>
+    <div class="ops-card-val cyan" id="cnt-info">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Breach Events</div>
+    <div class="ops-card-val red" id="cnt-breach">-</div>
+  </div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Recent Events</div>
+  <div id="threats-loading" class="ops-loading">Loading threat data...</div>
+  <table class="ops-table" id="threats-table" style="display:none;">
+    <thead>
+      <tr><th>Time</th><th>Severity</th><th>Type</th><th>Instance</th><th>Detail</th></tr>
+    </thead>
+    <tbody id="threats-body"></tbody>
+  </table>
+  <div id="threats-empty" class="ops-empty" style="display:none;">No threats recorded. Platform secure.</div>
+</div>
+
+<script>
+function loadThreats() {
+  document.getElementById('threats-loading').style.display = '';
+  document.getElementById('threats-table').style.display = 'none';
+  document.getElementById('threats-empty').style.display = 'none';
+
+  fetch('/security/events', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var events = d.events || d || [];
+      if (!Array.isArray(events)) events = [];
+
+      var cnt = { critical: 0, warning: 0, info: 0, breach: 0 };
+      events.forEach(function(ev) {
+        var sev = (ev.severity || ev.level || 'info').toLowerCase();
+        if (sev === 'critical') cnt.critical++;
+        else if (sev === 'warning' || sev === 'warn') cnt.warning++;
+        else cnt.info++;
+        if (ev.type === 'breach' || ev.breach) cnt.breach++;
+      });
+
+      document.getElementById('cnt-critical').textContent = cnt.critical;
+      document.getElementById('cnt-warning').textContent = cnt.warning;
+      document.getElementById('cnt-info').textContent = cnt.info;
+      document.getElementById('cnt-breach').textContent = cnt.breach;
+
+      var badge = document.getElementById('threat-level-badge');
+      if (cnt.critical > 0 || cnt.breach > 0) {
+        badge.textContent = 'CRITICAL';
+        badge.className = 'ops-badge ops-badge-red';
+      } else if (cnt.warning > 3) {
+        badge.textContent = 'ELEVATED';
+        badge.className = 'ops-badge ops-badge-amber';
+      } else {
+        badge.textContent = 'NORMAL';
+        badge.className = 'ops-badge ops-badge-green';
+      }
+
+      document.getElementById('threats-loading').style.display = 'none';
+      if (!events.length) {
+        document.getElementById('threats-empty').style.display = '';
+        return;
+      }
+      document.getElementById('threats-table').style.display = '';
+      var sevColor = { critical: 'ops-badge-red', warning: 'ops-badge-amber', warn: 'ops-badge-amber', info: 'ops-badge-gray', breach: 'ops-badge-red' };
+      document.getElementById('threats-body').innerHTML = events.slice(0, 100).map(function(ev) {
+        var sev = (ev.severity || ev.level || 'info').toLowerCase();
+        var clr = sevColor[sev] || 'ops-badge-gray';
+        var ts = ev.created_at || ev.timestamp || ev.ts;
+        var when = ts ? new Date(ts).toLocaleTimeString() : '-';
+        return '<tr><td>' + when + '</td>' +
+          '<td><span class="ops-badge ' + clr + '">' + esc(sev) + '</span></td>' +
+          '<td>' + esc(ev.type || ev.event_type || '-') + '</td>' +
+          '<td>' + esc(ev.instance_id || ev.instance || '-') + '</td>' +
+          '<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(ev.message || ev.detail || '') + '">' + esc((ev.message || ev.detail || '-').slice(0, 80)) + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('threats-loading').style.display = 'none';
+      document.getElementById('threats-empty').style.display = '';
+      document.getElementById('threats-empty').textContent = 'Scout offline or no data available.';
+    });
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+loadThreats();
+setInterval(loadThreats, 30000);
+</script>

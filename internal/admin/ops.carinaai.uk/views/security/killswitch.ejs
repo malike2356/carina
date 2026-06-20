@@ -1,0 +1,124 @@
+<% title = 'Kill Switch' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Kill Switch</div>
+    <div class="ops-page-sub">Platform-wide halt control. Arms or disarms all active agent instances.</div>
+  </div>
+  <div id="ks-status-badge"></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+  <div class="ops-card" id="ks-panel" style="border-color:rgba(255,34,68,0.2);">
+    <div class="ops-card-label">Kill Switch State</div>
+    <div class="ops-card-val red" id="ks-state" style="font-size:28px;letter-spacing:2px;">Loading...</div>
+    <div style="margin-top:14px;display:flex;gap:10px;">
+      <button onclick="armKs()" class="ops-btn ops-btn-red" id="btn-arm">ARM HALT</button>
+      <button onclick="disarmKs()" class="ops-btn ops-btn-green" id="btn-disarm">DISARM</button>
+    </div>
+    <div id="ks-msg" style="margin-top:10px;font-size:10px;color:var(--muted);"></div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Active Agent Instances</div>
+    <div class="ops-card-val" id="ks-instance-count">-</div>
+    <div style="margin-top:10px;font-size:10px;color:var(--muted);" id="ks-instance-status">Checking instance status...</div>
+  </div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Instance Status</div>
+  <table class="ops-table" id="ks-instance-table">
+    <thead><tr><th>Instance</th><th>Status</th><th>Heartbeat</th><th>Action</th></tr></thead>
+    <tbody id="ks-instance-body">
+      <tr><td colspan="4" class="ops-empty">Loading instances...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+var ksArmed = false;
+
+function loadKs() {
+  fetch('/scout-api/api/killswitch/status', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      ksArmed = d.armed === true || d.status === 'armed';
+      document.getElementById('ks-state').textContent = ksArmed ? 'ARMED' : 'DISARMED';
+      document.getElementById('ks-state').style.color = ksArmed ? 'var(--red)' : 'var(--green)';
+      document.getElementById('ks-panel').style.borderColor = ksArmed ? 'rgba(255,34,68,0.4)' : 'rgba(0,200,100,0.2)';
+    })
+    .catch(function() {
+      document.getElementById('ks-state').textContent = 'OFFLINE';
+      document.getElementById('ks-state').style.color = 'var(--muted)';
+    });
+
+  fetch('/security/events', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .catch(function() { return null; });
+
+  loadInstances();
+}
+
+function loadInstances() {
+  fetch('/scout-api/api/admin/status', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var instances = d.instances || [];
+      document.getElementById('ks-instance-count').textContent = instances.length;
+      document.getElementById('ks-instance-status').textContent = instances.filter(function(i){ return i.status === 'active'; }).length + ' active';
+      var tbody = document.getElementById('ks-instance-body');
+      if (!instances.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="ops-empty">No instances registered</td></tr>';
+        return;
+      }
+      tbody.innerHTML = instances.map(function(inst) {
+        var color = inst.status === 'active' ? 'ops-badge-green' : inst.status === 'suspended' ? 'ops-badge-red' : 'ops-badge-gray';
+        var ago = inst.last_heartbeat ? Math.round((Date.now() - new Date(inst.last_heartbeat).getTime()) / 1000) + 's ago' : 'never';
+        return '<tr><td>' + esc(inst.name || inst.id) + '</td>' +
+          '<td><span class="ops-badge ' + color + '">' + esc(inst.status) + '</span></td>' +
+          '<td>' + ago + '</td>' +
+          '<td><button onclick="killInstance(\'' + esc(inst.id) + '\')" class="ops-btn ops-btn-red" style="padding:3px 8px;font-size:9px;">KILL</button>' +
+          (inst.status === 'suspended' ? ' <button onclick="resumeInstance(\'' + esc(inst.id) + '\')" class="ops-btn ops-btn-green" style="padding:3px 8px;font-size:9px;">RESUME</button>' : '') +
+          '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('ks-instance-count').textContent = '-';
+      document.getElementById('ks-instance-body').innerHTML = '<tr><td colspan="4" class="ops-empty">Scout offline</td></tr>';
+    });
+}
+
+function armKs() {
+  if (!confirm('Arm the kill switch? This halts all active agent processing.')) return;
+  document.getElementById('ks-msg').textContent = 'Arming...';
+  fetch('/scout-api/api/killswitch/arm', { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: '{}' })
+    .then(function(r) { return r.json(); })
+    .then(function() { document.getElementById('ks-msg').textContent = 'Armed.'; loadKs(); })
+    .catch(function() { document.getElementById('ks-msg').textContent = 'Error - check Scout connection'; });
+}
+
+function disarmKs() {
+  document.getElementById('ks-msg').textContent = 'Disarming...';
+  fetch('/scout-api/api/killswitch/disarm', { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: '{}' })
+    .then(function(r) { return r.json(); })
+    .then(function() { document.getElementById('ks-msg').textContent = 'Disarmed.'; loadKs(); })
+    .catch(function() { document.getElementById('ks-msg').textContent = 'Error - check Scout connection'; });
+}
+
+function killInstance(id) {
+  if (!confirm('Kill instance ' + id + '?')) return;
+  fetch('/security/kill/' + encodeURIComponent(id), { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: '{"reason":"ops panel"}' })
+    .then(function() { loadInstances(); })
+    .catch(function() {});
+}
+
+function resumeInstance(id) {
+  fetch('/security/resume/' + encodeURIComponent(id), { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: '{}' })
+    .then(function() { loadInstances(); })
+    .catch(function() {});
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+loadKs();
+setInterval(loadInstances, 30000);
+</script>

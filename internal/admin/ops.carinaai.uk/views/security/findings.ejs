@@ -1,0 +1,66 @@
+<% title = 'Findings' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Findings</div>
+    <div class="ops-page-sub">Security findings catalogued by Scout analysis.</div>
+  </div>
+  <button onclick="loadFindings()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Critical</div><div class="ops-card-val red" id="f-critical">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">High</div><div class="ops-card-val amber" id="f-high">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Medium</div><div class="ops-card-val cyan" id="f-medium">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Low</div><div class="ops-card-val green" id="f-low">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Finding Catalogue</div>
+  <div id="find-loading" class="ops-loading">Loading findings...</div>
+  <table class="ops-table" id="find-table" style="display:none;">
+    <thead><tr><th>Severity</th><th>Category</th><th>Title</th><th>Instance</th><th>Detected</th></tr></thead>
+    <tbody id="find-body"></tbody>
+  </table>
+  <div id="find-empty" class="ops-empty" style="display:none;">No findings recorded.</div>
+</div>
+
+<script>
+function loadFindings() {
+  fetch('/scout-api/api/findings', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.findings || d || [];
+      if (!Array.isArray(items)) items = [];
+      var cnt = { critical: 0, high: 0, medium: 0, low: 0 };
+      items.forEach(function(f) {
+        var s = (f.severity || 'low').toLowerCase();
+        if (cnt[s] !== undefined) cnt[s]++;
+      });
+      document.getElementById('f-critical').textContent = cnt.critical;
+      document.getElementById('f-high').textContent = cnt.high;
+      document.getElementById('f-medium').textContent = cnt.medium;
+      document.getElementById('f-low').textContent = cnt.low;
+      document.getElementById('find-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('find-empty').style.display = ''; return; }
+      document.getElementById('find-table').style.display = '';
+      var clrMap = { critical: 'ops-badge-red', high: 'ops-badge-amber', medium: 'ops-badge-cyan', low: 'ops-badge-green' };
+      document.getElementById('find-body').innerHTML = items.slice(0, 100).map(function(f) {
+        var sev = (f.severity || 'low').toLowerCase();
+        var clr = clrMap[sev] || 'ops-badge-gray';
+        var ts = f.created_at || f.timestamp;
+        return '<tr><td><span class="ops-badge ' + clr + '">' + esc(sev) + '</span></td>' +
+          '<td>' + esc(f.category || f.type || '-') + '</td>' +
+          '<td>' + esc(f.title || f.message || '-') + '</td>' +
+          '<td>' + esc(f.instance_id || '-') + '</td>' +
+          '<td>' + (ts ? new Date(ts).toLocaleDateString() : '-') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('find-loading').style.display = 'none';
+      document.getElementById('find-empty').style.display = '';
+      document.getElementById('find-empty').textContent = 'Findings endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadFindings();
+</script>

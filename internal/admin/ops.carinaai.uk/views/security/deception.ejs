@@ -1,0 +1,57 @@
+<% title = 'Deception Traps' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Deception Traps</div>
+    <div class="ops-page-sub">Lure assets and canary tokens deployed to detect lateral movement.</div>
+  </div>
+  <button onclick="loadDeception()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Traps Deployed</div><div class="ops-card-val green" id="dec-total">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Triggered</div><div class="ops-card-val red" id="dec-triggered">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Canary Tokens</div><div class="ops-card-val amber" id="dec-canary">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Active Traps</div>
+  <div id="dec-loading" class="ops-loading">Loading deception data...</div>
+  <table class="ops-table" id="dec-table" style="display:none;">
+    <thead><tr><th>Trap</th><th>Type</th><th>Status</th><th>Triggered</th><th>Last Seen</th></tr></thead>
+    <tbody id="dec-body"></tbody>
+  </table>
+  <div id="dec-empty" class="ops-empty" style="display:none;">No deception traps configured.</div>
+</div>
+
+<script>
+function loadDeception() {
+  fetch('/scout-api/api/deception/traps', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.traps || d || [];
+      if (!Array.isArray(items)) items = [];
+      document.getElementById('dec-total').textContent = items.length;
+      document.getElementById('dec-triggered').textContent = items.filter(function(t){ return t.triggered || t.hit_count > 0; }).length;
+      document.getElementById('dec-canary').textContent = items.filter(function(t){ return (t.type || '').includes('canary'); }).length;
+      document.getElementById('dec-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('dec-empty').style.display = ''; return; }
+      document.getElementById('dec-table').style.display = '';
+      document.getElementById('dec-body').innerHTML = items.slice(0, 80).map(function(t) {
+        var sclr = t.triggered ? 'ops-badge-red' : t.status === 'active' ? 'ops-badge-green' : 'ops-badge-gray';
+        var ts = t.last_triggered || t.last_seen;
+        return '<tr><td>' + esc(t.name || t.label || '-') + '</td>' +
+          '<td>' + esc(t.type || '-') + '</td>' +
+          '<td><span class="ops-badge ' + sclr + '">' + esc(t.triggered ? 'TRIGGERED' : t.status || 'active') + '</span></td>' +
+          '<td>' + (t.hit_count || 0) + '</td>' +
+          '<td>' + (ts ? new Date(ts).toLocaleString() : 'Never') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('dec-loading').style.display = 'none';
+      document.getElementById('dec-empty').style.display = '';
+      document.getElementById('dec-empty').textContent = 'Deception endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadDeception();
+</script>

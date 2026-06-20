@@ -27,6 +27,7 @@ import { mcpRouter } from './routes/mcp.js';
 import { tuiRouter } from './routes/tui.js';
 import { incidentBlogRouter } from './routes/incident-blog.js';
 import { scoutApiProxyRouter, scoutDashboardRouter, resolveConsolePublicDir } from './routes/scout-dashboard.js';
+import { governanceRouter } from './routes/governance.js';
 import { CARINA_BASE } from './lib/carina.js';
 import { attachPtyBridge } from './lib/pty-bridge.js';
 import { ensureHostedSchema } from './lib/tenants.js';
@@ -141,6 +142,8 @@ app.use('/tui', tuiRouter);
 app.use('/ai-platform', aiPlatformRouter);
 app.use('/admin/agent-tools', agentToolsRouter);
 app.use('/agent-tools', agentToolsRouter);
+
+app.use('/governance', governanceRouter);
 
 const consolePublicDir = resolveConsolePublicDir();
 app.use('/dashboard', requireAdmin, express.static(path.join(consolePublicDir, 'dashboard')));

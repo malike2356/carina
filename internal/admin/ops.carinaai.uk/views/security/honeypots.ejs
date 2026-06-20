@@ -1,0 +1,72 @@
+<% title = 'Honeypots' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Honeypots</div>
+    <div class="ops-page-sub">Deception assets monitoring attacker interaction.</div>
+  </div>
+  <button onclick="loadHoneypots()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Total Deployed</div><div class="ops-card-val green" id="hp-total">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Triggered (24h)</div><div class="ops-card-val amber" id="hp-triggered">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Unique Attackers</div><div class="ops-card-val red" id="hp-attackers">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Active</div><div class="ops-card-val cyan" id="hp-active">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Honeypot Registry</div>
+  <div id="hp-loading" class="ops-loading">Loading honeypot data...</div>
+  <table class="ops-table" id="hp-table" style="display:none;">
+    <thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Hits</th><th>Last Triggered</th><th>Instance</th></tr></thead>
+    <tbody id="hp-body"></tbody>
+  </table>
+  <div id="hp-empty" class="ops-empty" style="display:none;">No honeypots deployed.</div>
+</div>
+
+<script>
+function loadHoneypots() {
+  fetch('/scout-api/api/honeypots/summary', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.honeypots || d.pots || d || [];
+      if (!Array.isArray(items)) {
+        if (typeof d === 'object' && d !== null) {
+          document.getElementById('hp-total').textContent = d.total || '-';
+          document.getElementById('hp-triggered').textContent = d.triggered_24h || d.hits || '-';
+          document.getElementById('hp-attackers').textContent = d.unique_attackers || '-';
+          document.getElementById('hp-active').textContent = d.active || '-';
+        }
+        document.getElementById('hp-loading').style.display = 'none';
+        document.getElementById('hp-empty').style.display = '';
+        return;
+      }
+      document.getElementById('hp-total').textContent = items.length;
+      var active = items.filter(function(h){ return h.status === 'active'; }).length;
+      var hits = items.reduce(function(s, h){ return s + (h.hits || h.trigger_count || 0); }, 0);
+      document.getElementById('hp-triggered').textContent = hits;
+      document.getElementById('hp-active').textContent = active;
+      document.getElementById('hp-attackers').textContent = d.unique_attackers || '-';
+      document.getElementById('hp-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('hp-empty').style.display = ''; return; }
+      document.getElementById('hp-table').style.display = '';
+      document.getElementById('hp-body').innerHTML = items.slice(0, 80).map(function(h) {
+        var sclr = h.status === 'active' ? 'ops-badge-green' : 'ops-badge-gray';
+        var ts = h.last_triggered || h.last_hit;
+        return '<tr><td>' + esc(h.name || h.label || '-') + '</td>' +
+          '<td>' + esc(h.type || '-') + '</td>' +
+          '<td><span class="ops-badge ' + sclr + '">' + esc(h.status || 'unknown') + '</span></td>' +
+          '<td>' + (h.hits || h.trigger_count || 0) + '</td>' +
+          '<td>' + (ts ? new Date(ts).toLocaleString() : 'Never') + '</td>' +
+          '<td>' + esc(h.instance_id || '-') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('hp-loading').style.display = 'none';
+      document.getElementById('hp-empty').style.display = '';
+      document.getElementById('hp-empty').textContent = 'Honeypot endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadHoneypots();
+</script>

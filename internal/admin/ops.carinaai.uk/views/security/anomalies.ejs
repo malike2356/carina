@@ -1,0 +1,69 @@
+<% title = 'Anomalies' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Anomalies</div>
+    <div class="ops-page-sub">Behavioural deviations flagged by Scout's detection engine.</div>
+  </div>
+  <button onclick="loadAnomalies()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card">
+    <div class="ops-card-label">Total (24h)</div>
+    <div class="ops-card-val amber" id="anom-total">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">High Confidence</div>
+    <div class="ops-card-val red" id="anom-high">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Unique Patterns</div>
+    <div class="ops-card-val cyan" id="anom-patterns">-</div>
+  </div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Anomaly Feed</div>
+  <div id="anom-loading" class="ops-loading">Loading anomalies...</div>
+  <table class="ops-table" id="anom-table" style="display:none;">
+    <thead><tr><th>Time</th><th>Score</th><th>Type</th><th>Instance</th><th>Detail</th></tr></thead>
+    <tbody id="anom-body"></tbody>
+  </table>
+  <div id="anom-empty" class="ops-empty" style="display:none;">No anomalies detected. Platform behaviour is normal.</div>
+</div>
+
+<script>
+function loadAnomalies() {
+  fetch('/scout-api/api/anomalies/recent?limit=100', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.anomalies || d || [];
+      if (!Array.isArray(items)) items = [];
+      document.getElementById('anom-total').textContent = items.length;
+      var high = items.filter(function(i){ return (i.score || i.confidence || 0) > 0.7; }).length;
+      document.getElementById('anom-high').textContent = high;
+      var patterns = new Set(items.map(function(i){ return i.type || i.pattern; })).size;
+      document.getElementById('anom-patterns').textContent = patterns;
+      document.getElementById('anom-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('anom-empty').style.display = ''; return; }
+      document.getElementById('anom-table').style.display = '';
+      document.getElementById('anom-body').innerHTML = items.slice(0, 80).map(function(i) {
+        var score = i.score || i.confidence || 0;
+        var clr = score > 0.7 ? 'ops-badge-red' : score > 0.4 ? 'ops-badge-amber' : 'ops-badge-gray';
+        var ts = i.created_at || i.timestamp;
+        return '<tr><td>' + (ts ? new Date(ts).toLocaleTimeString() : '-') + '</td>' +
+          '<td><span class="ops-badge ' + clr + '">' + (score > 0 ? (score * 100).toFixed(0) + '%' : '-') + '</span></td>' +
+          '<td>' + esc(i.type || i.pattern || '-') + '</td>' +
+          '<td>' + esc(i.instance_id || '-') + '</td>' +
+          '<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((i.detail || i.message || '-').slice(0, 80)) + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('anom-loading').style.display = 'none';
+      document.getElementById('anom-empty').style.display = '';
+      document.getElementById('anom-empty').textContent = 'Anomaly endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadAnomalies();
+</script>

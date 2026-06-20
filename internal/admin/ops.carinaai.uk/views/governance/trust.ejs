@@ -1,0 +1,60 @@
+<% title = 'Trust Verify' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Trust Verify</div>
+    <div class="ops-page-sub">Instance trust verification settings and attestation status.</div>
+  </div>
+  <button onclick="loadTrust()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Verified Instances</div><div class="ops-card-val green" id="tr-verified">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Pending Verification</div><div class="ops-card-val amber" id="tr-pending">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Trust Failures</div><div class="ops-card-val red" id="tr-failed">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Trust Registry</div>
+  <div id="tr-loading" class="ops-loading">Loading trust data...</div>
+  <table class="ops-table" id="tr-table" style="display:none;">
+    <thead><tr><th>Instance</th><th>Trust Level</th><th>Verified At</th><th>Method</th><th>Expires</th></tr></thead>
+    <tbody id="tr-body"></tbody>
+  </table>
+  <div id="tr-empty" class="ops-empty" style="display:none;">No trust data available.</div>
+</div>
+
+<script>
+function loadTrust() {
+  Promise.all([
+    fetch('/scout-api/api/trust-settings', { credentials: 'same-origin' }).then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    fetch('/scout-api/api/admin/status', { credentials: 'same-origin' }).then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(results) {
+    var trust = results[0] || {};
+    var status = results[1] || {};
+    var instances = status.instances || [];
+    var verified = instances.filter(function(i){ return i.trust_verified || i.verified; }).length;
+    document.getElementById('tr-verified').textContent = verified;
+    document.getElementById('tr-pending').textContent = instances.length - verified;
+    document.getElementById('tr-failed').textContent = trust.failures || 0;
+    document.getElementById('tr-loading').style.display = 'none';
+    if (!instances.length) { document.getElementById('tr-empty').style.display = ''; return; }
+    document.getElementById('tr-table').style.display = '';
+    document.getElementById('tr-body').innerHTML = instances.map(function(i) {
+      var lvl = i.trust_level || (i.trust_verified ? 'verified' : 'unverified');
+      var clr = lvl === 'verified' || lvl === 'high' ? 'ops-badge-green' : lvl === 'low' ? 'ops-badge-red' : 'ops-badge-amber';
+      var ts = i.verified_at || i.last_heartbeat;
+      var exp = i.trust_expires_at || i.cert_expires;
+      return '<tr><td>' + esc(i.name || i.id || '-') + '</td>' +
+        '<td><span class="ops-badge ' + clr + '">' + esc(lvl) + '</span></td>' +
+        '<td>' + (ts ? new Date(ts).toLocaleDateString() : '-') + '</td>' +
+        '<td>' + esc(i.trust_method || i.auth_method || '-') + '</td>' +
+        '<td>' + (exp ? new Date(exp).toLocaleDateString() : '-') + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    document.getElementById('tr-loading').style.display = 'none';
+    document.getElementById('tr-empty').style.display = '';
+  });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadTrust();
+</script>

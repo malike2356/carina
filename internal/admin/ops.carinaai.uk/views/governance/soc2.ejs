@@ -1,0 +1,74 @@
+<% title = 'SOC2' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">SOC2 Compliance</div>
+    <div class="ops-page-sub">Trust Service Criteria posture across Security, Availability, Confidentiality, Processing Integrity, and Privacy.</div>
+  </div>
+  <button onclick="loadSoc2()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
+  <div class="ops-card" style="text-align:center;">
+    <div class="ops-card-label" style="font-size:8px;">Security</div>
+    <div class="ops-card-val purple" id="soc2-cc" style="font-size:18px;">-</div>
+  </div>
+  <div class="ops-card" style="text-align:center;">
+    <div class="ops-card-label" style="font-size:8px;">Availability</div>
+    <div class="ops-card-val cyan" id="soc2-a" style="font-size:18px;">-</div>
+  </div>
+  <div class="ops-card" style="text-align:center;">
+    <div class="ops-card-label" style="font-size:8px;">Confidentiality</div>
+    <div class="ops-card-val green" id="soc2-c" style="font-size:18px;">-</div>
+  </div>
+  <div class="ops-card" style="text-align:center;">
+    <div class="ops-card-label" style="font-size:8px;">Processing</div>
+    <div class="ops-card-val amber" id="soc2-pi" style="font-size:18px;">-</div>
+  </div>
+  <div class="ops-card" style="text-align:center;">
+    <div class="ops-card-label" style="font-size:8px;">Privacy</div>
+    <div class="ops-card-val cyan" id="soc2-p" style="font-size:18px;">-</div>
+  </div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Control Evidence</div>
+  <div id="soc2-loading" class="ops-loading">Loading SOC2 data...</div>
+  <table class="ops-table" id="soc2-table" style="display:none;">
+    <thead><tr><th>Control ID</th><th>Category</th><th>Description</th><th>Status</th><th>Evidence</th></tr></thead>
+    <tbody id="soc2-body"></tbody>
+  </table>
+  <div id="soc2-empty" class="ops-empty" style="display:none;">SOC2 posture data unavailable. Configure controls in Settings.</div>
+</div>
+
+<script>
+function loadSoc2() {
+  fetch('/scout-api/api/soc2', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var cats = d.categories || {};
+      document.getElementById('soc2-cc').textContent = cats.security || d.cc || '-';
+      document.getElementById('soc2-a').textContent = cats.availability || d.a || '-';
+      document.getElementById('soc2-c').textContent = cats.confidentiality || d.c || '-';
+      document.getElementById('soc2-pi').textContent = cats.processing_integrity || d.pi || '-';
+      document.getElementById('soc2-p').textContent = cats.privacy || d.p || '-';
+      document.getElementById('soc2-loading').style.display = 'none';
+      var controls = d.controls || [];
+      if (!controls.length) { document.getElementById('soc2-empty').style.display = ''; return; }
+      document.getElementById('soc2-table').style.display = '';
+      document.getElementById('soc2-body').innerHTML = controls.slice(0, 100).map(function(c) {
+        var clr = c.status === 'pass' ? 'ops-badge-green' : c.status === 'fail' ? 'ops-badge-red' : 'ops-badge-amber';
+        return '<tr><td style="font-family:monospace;font-size:10px;color:var(--cyan);">' + esc(c.id || c.control_id || '-') + '</td>' +
+          '<td>' + esc(c.category || '-') + '</td>' +
+          '<td>' + esc((c.description || c.title || '-').slice(0, 70)) + '</td>' +
+          '<td><span class="ops-badge ' + clr + '">' + esc(c.status || 'pending') + '</span></td>' +
+          '<td style="color:var(--muted);font-size:10px;">' + esc(c.evidence || c.notes || '-') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('soc2-loading').style.display = 'none';
+      document.getElementById('soc2-empty').style.display = '';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadSoc2();
+</script>

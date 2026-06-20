@@ -1,0 +1,58 @@
+<% title = 'Auto-Remediation' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Auto-Remediation</div>
+    <div class="ops-page-sub">Automated response actions taken by the Scout defence engine.</div>
+  </div>
+  <button onclick="loadRemediation()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Actions (7d)</div><div class="ops-card-val green" id="rem-total">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Successful</div><div class="ops-card-val green" id="rem-ok">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Failed</div><div class="ops-card-val red" id="rem-fail">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Remediation Log</div>
+  <div id="rem-loading" class="ops-loading">Loading remediation log...</div>
+  <table class="ops-table" id="rem-table" style="display:none;">
+    <thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Result</th><th>Instance</th></tr></thead>
+    <tbody id="rem-body"></tbody>
+  </table>
+  <div id="rem-empty" class="ops-empty" style="display:none;">No auto-remediation actions recorded.</div>
+</div>
+
+<script>
+function loadRemediation() {
+  fetch('/scout-api/api/auto-remediation/log', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.actions || d.log || d || [];
+      if (!Array.isArray(items)) items = [];
+      document.getElementById('rem-total').textContent = items.length;
+      document.getElementById('rem-ok').textContent = items.filter(function(i){ return i.result === 'success' || i.status === 'ok'; }).length;
+      document.getElementById('rem-fail').textContent = items.filter(function(i){ return i.result === 'failed' || i.status === 'error'; }).length;
+      document.getElementById('rem-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('rem-empty').style.display = ''; return; }
+      document.getElementById('rem-table').style.display = '';
+      document.getElementById('rem-body').innerHTML = items.slice(0, 80).map(function(i) {
+        var ok = i.result === 'success' || i.status === 'ok';
+        var clr = ok ? 'ops-badge-green' : 'ops-badge-red';
+        var ts = i.created_at || i.timestamp;
+        return '<tr><td>' + (ts ? new Date(ts).toLocaleString() : '-') + '</td>' +
+          '<td>' + esc(i.action || i.type || '-') + '</td>' +
+          '<td>' + esc(i.target || i.entity || '-') + '</td>' +
+          '<td><span class="ops-badge ' + clr + '">' + esc(i.result || i.status || 'unknown') + '</span></td>' +
+          '<td>' + esc(i.instance_id || '-') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('rem-loading').style.display = 'none';
+      document.getElementById('rem-empty').style.display = '';
+      document.getElementById('rem-empty').textContent = 'Auto-remediation endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadRemediation();
+</script>

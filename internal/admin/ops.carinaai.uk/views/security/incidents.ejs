@@ -1,0 +1,70 @@
+<% title = 'Incidents' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Incidents</div>
+    <div class="ops-page-sub">Confirmed security incidents requiring investigation or remediation.</div>
+  </div>
+  <a href="/admin/incident-blog" class="ops-btn ops-btn-green" style="padding:5px 12px;">Incident Blog</a>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card">
+    <div class="ops-card-label">Open Incidents</div>
+    <div class="ops-card-val red" id="inc-open">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Resolved (7d)</div>
+    <div class="ops-card-val green" id="inc-resolved">-</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-card-label">Mean Time to Resolve</div>
+    <div class="ops-card-val cyan" id="inc-mttr">-</div>
+  </div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Incident Log</div>
+  <div id="inc-loading" class="ops-loading">Loading incidents...</div>
+  <table class="ops-table" id="inc-table" style="display:none;">
+    <thead><tr><th>Time</th><th>Severity</th><th>Title</th><th>Status</th><th>Instance</th></tr></thead>
+    <tbody id="inc-body"></tbody>
+  </table>
+  <div id="inc-empty" class="ops-empty" style="display:none;">No incidents recorded.</div>
+</div>
+
+<script>
+function loadIncidents() {
+  fetch('/scout-api/api/incidents?limit=100', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.incidents || d || [];
+      if (!Array.isArray(items)) items = [];
+      var open = items.filter(function(i){ return i.status !== 'resolved'; }).length;
+      var resolved = items.filter(function(i){ return i.status === 'resolved'; }).length;
+      document.getElementById('inc-open').textContent = open;
+      document.getElementById('inc-resolved').textContent = resolved;
+      document.getElementById('inc-mttr').textContent = '-';
+      document.getElementById('inc-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('inc-empty').style.display = ''; return; }
+      document.getElementById('inc-table').style.display = '';
+      document.getElementById('inc-body').innerHTML = items.slice(0, 80).map(function(i) {
+        var sev = (i.severity || 'info').toLowerCase();
+        var clr = sev === 'critical' ? 'ops-badge-red' : sev === 'warning' ? 'ops-badge-amber' : 'ops-badge-gray';
+        var sclr = i.status === 'resolved' ? 'ops-badge-green' : 'ops-badge-amber';
+        var ts = i.created_at || i.timestamp;
+        return '<tr><td>' + (ts ? new Date(ts).toLocaleString() : '-') + '</td>' +
+          '<td><span class="ops-badge ' + clr + '">' + esc(sev) + '</span></td>' +
+          '<td>' + esc(i.title || i.message || '-') + '</td>' +
+          '<td><span class="ops-badge ' + sclr + '">' + esc(i.status || 'open') + '</span></td>' +
+          '<td>' + esc(i.instance_id || '-') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('inc-loading').style.display = 'none';
+      document.getElementById('inc-empty').style.display = '';
+      document.getElementById('inc-empty').textContent = 'Scout offline or incidents endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadIncidents();
+</script>

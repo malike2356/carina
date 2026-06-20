@@ -1,0 +1,57 @@
+<% title = 'Egress Control' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Egress Control</div>
+    <div class="ops-page-sub">Outbound traffic rules and data exfiltration guards.</div>
+  </div>
+  <button onclick="loadEgress()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Active Rules</div><div class="ops-card-val green" id="eg-rules">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Blocked (24h)</div><div class="ops-card-val red" id="eg-blocked">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Allow-listed Domains</div><div class="ops-card-val cyan" id="eg-allowed">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Egress Rules</div>
+  <div id="eg-loading" class="ops-loading">Loading egress rules...</div>
+  <table class="ops-table" id="eg-table" style="display:none;">
+    <thead><tr><th>Rule</th><th>Action</th><th>Pattern</th><th>Hits</th><th>Status</th></tr></thead>
+    <tbody id="eg-body"></tbody>
+  </table>
+  <div id="eg-empty" class="ops-empty" style="display:none;">No egress rules configured.</div>
+</div>
+
+<script>
+function loadEgress() {
+  fetch('/scout-api/api/egress/rules', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.rules || d || [];
+      if (!Array.isArray(items)) items = [];
+      document.getElementById('eg-rules').textContent = items.length;
+      document.getElementById('eg-blocked').textContent = d.blocked_24h || items.reduce(function(s, r){ return s + (r.blocks || 0); }, 0);
+      document.getElementById('eg-allowed').textContent = items.filter(function(r){ return r.action === 'allow'; }).length;
+      document.getElementById('eg-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('eg-empty').style.display = ''; return; }
+      document.getElementById('eg-table').style.display = '';
+      document.getElementById('eg-body').innerHTML = items.slice(0, 80).map(function(r) {
+        var aclr = r.action === 'allow' ? 'ops-badge-green' : r.action === 'block' ? 'ops-badge-red' : 'ops-badge-amber';
+        var sclr = r.enabled !== false ? 'ops-badge-green' : 'ops-badge-gray';
+        return '<tr><td>' + esc(r.name || r.id || '-') + '</td>' +
+          '<td><span class="ops-badge ' + aclr + '">' + esc(r.action || '-') + '</span></td>' +
+          '<td style="font-family:monospace;font-size:10px;">' + esc(r.pattern || r.domain || '-') + '</td>' +
+          '<td>' + (r.blocks || r.hits || 0) + '</td>' +
+          '<td><span class="ops-badge ' + sclr + '">' + (r.enabled !== false ? 'enabled' : 'disabled') + '</span></td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('eg-loading').style.display = 'none';
+      document.getElementById('eg-empty').style.display = '';
+      document.getElementById('eg-empty').textContent = 'Egress control endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadEgress();
+</script>

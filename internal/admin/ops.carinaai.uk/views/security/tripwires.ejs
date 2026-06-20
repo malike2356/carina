@@ -1,0 +1,59 @@
+<% title = 'Tripwires' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Tripwires</div>
+    <div class="ops-page-sub">Silent monitors that fire on unauthorised access attempts.</div>
+  </div>
+  <button onclick="loadTripwires()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Total Tripwires</div><div class="ops-card-val green" id="tw-total">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Alerts (24h)</div><div class="ops-card-val amber" id="tw-hits">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Active</div><div class="ops-card-val cyan" id="tw-active">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Tripwire Alerts</div>
+  <div id="tw-loading" class="ops-loading">Loading tripwire data...</div>
+  <table class="ops-table" id="tw-table" style="display:none;">
+    <thead><tr><th>Tripwire</th><th>Type</th><th>Status</th><th>Total Hits</th><th>Last Alert</th></tr></thead>
+    <tbody id="tw-body"></tbody>
+  </table>
+  <div id="tw-empty" class="ops-empty" style="display:none;">No tripwire data available.</div>
+</div>
+
+<script>
+function loadTripwires() {
+  fetch('/scout-api/api/tripwires/hits', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var hits = d.hits || d || [];
+      if (!Array.isArray(hits)) hits = [];
+      var wires = d.tripwires || [];
+      document.getElementById('tw-total').textContent = wires.length || hits.length;
+      document.getElementById('tw-hits').textContent = hits.length;
+      document.getElementById('tw-active').textContent = wires.filter ? wires.filter(function(w){ return w.active; }).length : '-';
+      document.getElementById('tw-loading').style.display = 'none';
+      if (!hits.length && !wires.length) { document.getElementById('tw-empty').style.display = ''; return; }
+      var items = hits.length ? hits : wires;
+      document.getElementById('tw-table').style.display = '';
+      document.getElementById('tw-body').innerHTML = items.slice(0, 80).map(function(t) {
+        var sclr = t.active !== false ? 'ops-badge-green' : 'ops-badge-gray';
+        var ts = t.triggered_at || t.last_hit || t.created_at;
+        return '<tr><td>' + esc(t.name || t.label || t.id || '-') + '</td>' +
+          '<td>' + esc(t.type || '-') + '</td>' +
+          '<td><span class="ops-badge ' + sclr + '">' + (t.active !== false ? 'active' : 'inactive') + '</span></td>' +
+          '<td>' + (t.total_hits || t.hit_count || 1) + '</td>' +
+          '<td>' + (ts ? new Date(ts).toLocaleString() : '-') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('tw-loading').style.display = 'none';
+      document.getElementById('tw-empty').style.display = '';
+      document.getElementById('tw-empty').textContent = 'Tripwire endpoint unavailable.';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadTripwires();
+</script>

@@ -1,0 +1,70 @@
+<% title = 'Scout Score' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Scout Score</div>
+    <div class="ops-page-sub">Composite security health score derived from platform-wide signals.</div>
+  </div>
+  <button onclick="loadScore()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:20px;">
+  <div class="ops-card" style="text-align:center;">
+    <div class="ops-card-label">Overall Score</div>
+    <div id="score-val" style="font-size:52px;font-weight:700;color:var(--green);line-height:1.1;margin:10px 0;">-</div>
+    <div id="score-grade" class="ops-badge ops-badge-gray" style="display:inline-block;font-size:12px;padding:4px 12px;">-</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+    <div class="ops-card"><div class="ops-card-label">Threats Blocked</div><div class="ops-card-val green" id="sc-blocked">-</div></div>
+    <div class="ops-card"><div class="ops-card-label">Open Findings</div><div class="ops-card-val amber" id="sc-findings">-</div></div>
+    <div class="ops-card"><div class="ops-card-label">Policy Compliance</div><div class="ops-card-val cyan" id="sc-policy">-</div></div>
+    <div class="ops-card"><div class="ops-card-label">Uptime</div><div class="ops-card-val green" id="sc-uptime">-</div></div>
+  </div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Score Breakdown</div>
+  <div id="score-loading" class="ops-loading">Loading score data...</div>
+  <div id="score-breakdown" style="display:none;"></div>
+  <div id="score-empty" class="ops-empty" style="display:none;">Score data unavailable.</div>
+</div>
+
+<script>
+function loadScore() {
+  fetch('/scout-api/api/score', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var score = d.score || d.overall || d.value || 0;
+      document.getElementById('score-val').textContent = score > 0 ? score : '-';
+      var color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : score > 0 ? 'var(--red)' : 'var(--muted)';
+      document.getElementById('score-val').style.color = color;
+      var grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : score > 0 ? 'F' : '-';
+      var gBadge = document.getElementById('score-grade');
+      gBadge.textContent = 'Grade ' + grade;
+      gBadge.className = 'ops-badge ' + (score >= 80 ? 'ops-badge-green' : score >= 60 ? 'ops-badge-amber' : score > 0 ? 'ops-badge-red' : 'ops-badge-gray');
+      document.getElementById('sc-blocked').textContent = d.threats_blocked || '-';
+      document.getElementById('sc-findings').textContent = d.open_findings || '-';
+      document.getElementById('sc-policy').textContent = d.policy_compliance ? d.policy_compliance + '%' : '-';
+      document.getElementById('sc-uptime').textContent = d.uptime ? d.uptime + '%' : '-';
+      document.getElementById('score-loading').style.display = 'none';
+      var breakdown = d.breakdown || d.components || d.factors;
+      if (!breakdown || !Object.keys(breakdown).length) { document.getElementById('score-empty').style.display = ''; return; }
+      document.getElementById('score-breakdown').style.display = '';
+      document.getElementById('score-breakdown').innerHTML = Object.keys(breakdown).map(function(k) {
+        var v = breakdown[k];
+        var pct = Math.min(100, Math.max(0, v || 0));
+        var barColor = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
+        return '<div style="margin-bottom:12px;">' +
+          '<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px;">' +
+          '<span>' + esc(k) + '</span><span style="color:' + barColor + '">' + pct + '</span></div>' +
+          '<div style="height:6px;background:var(--border);border-radius:3px;">' +
+          '<div style="height:6px;width:' + pct + '%;background:' + barColor + ';border-radius:3px;transition:width .4s;"></div></div></div>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('score-loading').style.display = 'none';
+      document.getElementById('score-empty').style.display = '';
+    });
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadScore();
+</script>

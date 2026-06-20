@@ -117,3 +117,21 @@ securityRouter.post('/resume/:instanceId', async (req, res) => {
   }
   res.json(result);
 });
+
+// Module sub-pages - all render EJS views that load data client-side from /scout-api
+securityRouter.get('/killswitch', (_req, res) => { res.render('security/killswitch', { title: 'Kill Switch' }); });
+securityRouter.get('/threats',    (_req, res) => { res.render('security/threats',    { title: 'Live Threats' }); });
+securityRouter.get('/incidents',  (_req, res) => { res.render('security/incidents',  { title: 'Incidents' }); });
+securityRouter.get('/anomalies',  (_req, res) => { res.render('security/anomalies',  { title: 'Anomalies' }); });
+securityRouter.get('/findings',   (_req, res) => { res.render('security/findings',   { title: 'Findings' }); });
+securityRouter.get('/attack-surface', (_req, res) => { res.render('security/attack-surface', { title: 'Attack Surface' }); });
+securityRouter.get('/honeypots',  (_req, res) => { res.render('security/honeypots',  { title: 'Honeypots' }); });
+securityRouter.get('/tripwires',  (_req, res) => { res.render('security/tripwires',  { title: 'Tripwires' }); });
+securityRouter.get('/auto-remediate', (_req, res) => { res.render('security/auto-remediate', { title: 'Auto-Remediation' }); });
+securityRouter.get('/deception',  (_req, res) => { res.render('security/deception',  { title: 'Deception Traps' }); });
+securityRouter.get('/quarantine', (_req, res) => { res.render('security/quarantine', { title: 'Quarantine' }); });
+securityRouter.get('/egress',     (_req, res) => { res.render('security/egress',     { title: 'Egress Control' }); });
+securityRouter.get('/policy',     (_req, res) => { res.render('security/policy',     { title: 'Policy' }); });
+securityRouter.get('/policy-packs', (_req, res) => { res.render('security/policy-packs', { title: 'Policy Packs' }); });
+securityRouter.get('/score',      (_req, res) => { res.render('security/score',      { title: 'Scout Score' }); });
+securityRouter.get('/reports',    (_req, res) => { res.render('security/reports',    { title: 'Reports' }); });

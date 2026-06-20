@@ -1,0 +1,63 @@
+<% title = 'Quarantine' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Quarantine</div>
+    <div class="ops-page-sub">Entities isolated by Scout pending investigation or clearance.</div>
+  </div>
+  <button onclick="loadQuarantine()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">In Quarantine</div><div class="ops-card-val red" id="quar-total">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Released (7d)</div><div class="ops-card-val green" id="quar-released">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Oldest Entry</div><div class="ops-card-val amber" id="quar-oldest" style="font-size:13px;margin-top:4px;">-</div></div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Quarantine List</div>
+  <div id="quar-loading" class="ops-loading">Loading quarantine list...</div>
+  <table class="ops-table" id="quar-table" style="display:none;">
+    <thead><tr><th>Entity</th><th>Type</th><th>Reason</th><th>Quarantined At</th><th>Action</th></tr></thead>
+    <tbody id="quar-body"></tbody>
+  </table>
+  <div id="quar-empty" class="ops-empty" style="display:none;">Quarantine is empty.</div>
+</div>
+
+<script>
+function loadQuarantine() {
+  fetch('/scout-api/api/quarantine/list', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var items = d.quarantined || d || [];
+      if (!Array.isArray(items)) items = [];
+      document.getElementById('quar-total').textContent = items.length;
+      document.getElementById('quar-released').textContent = d.released_7d || '-';
+      var oldest = items.reduce(function(min, i){ return !min || new Date(i.created_at) < new Date(min) ? i.created_at : min; }, null);
+      document.getElementById('quar-oldest').textContent = oldest ? new Date(oldest).toLocaleDateString() : '-';
+      document.getElementById('quar-loading').style.display = 'none';
+      if (!items.length) { document.getElementById('quar-empty').style.display = ''; return; }
+      document.getElementById('quar-table').style.display = '';
+      document.getElementById('quar-body').innerHTML = items.slice(0, 80).map(function(i) {
+        var ts = i.created_at || i.quarantined_at;
+        return '<tr><td style="font-family:monospace;font-size:10px;">' + esc(i.entity || i.id || '-') + '</td>' +
+          '<td>' + esc(i.type || '-') + '</td>' +
+          '<td>' + esc((i.reason || '-').slice(0, 60)) + '</td>' +
+          '<td>' + (ts ? new Date(ts).toLocaleString() : '-') + '</td>' +
+          '<td><button onclick="releaseEntity(\'' + esc(i.id) + '\')" class="ops-btn ops-btn-green" style="padding:3px 8px;font-size:9px;">Release</button></td></tr>';
+      }).join('');
+    })
+    .catch(function() {
+      document.getElementById('quar-loading').style.display = 'none';
+      document.getElementById('quar-empty').style.display = '';
+      document.getElementById('quar-empty').textContent = 'Quarantine endpoint unavailable.';
+    });
+}
+function releaseEntity(id) {
+  if (!confirm('Release entity ' + id + ' from quarantine?')) return;
+  fetch('/scout-api/api/quarantine/release', { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id: id}) })
+    .then(function() { loadQuarantine(); })
+    .catch(function() {});
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadQuarantine();
+</script>

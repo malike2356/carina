@@ -1,0 +1,73 @@
+<% title = 'Policy' %>
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Policy</div>
+    <div class="ops-page-sub">Active security policy settings and enforcement controls.</div>
+  </div>
+  <button onclick="loadPolicy()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div id="policy-loading" class="ops-loading" style="margin-bottom:16px;">Loading policy...</div>
+<div id="policy-content" style="display:none;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    <div class="ops-card">
+      <div class="ops-card-label">Policy Version</div>
+      <div class="ops-card-val cyan" id="pol-version" style="font-size:16px;">-</div>
+    </div>
+    <div class="ops-card">
+      <div class="ops-card-label">Last Updated</div>
+      <div class="ops-card-val" id="pol-updated" style="font-size:14px;margin-top:4px;">-</div>
+    </div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-section-title">Policy Controls</div>
+    <table class="ops-table" id="pol-table">
+      <thead><tr><th>Control</th><th>Value</th><th>Description</th></tr></thead>
+      <tbody id="pol-body"></tbody>
+    </table>
+  </div>
+</div>
+<div id="policy-empty" class="ops-empty" style="display:none;">Policy endpoint unavailable or not configured.</div>
+
+<script>
+function loadPolicy() {
+  fetch('/scout-api/api/policy', { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('policy-loading').style.display = 'none';
+      if (!d || typeof d !== 'object') { document.getElementById('policy-empty').style.display = ''; return; }
+      document.getElementById('policy-content').style.display = '';
+      document.getElementById('pol-version').textContent = d.version || d.policy_version || '1.0';
+      var ts = d.updated_at || d.created_at;
+      document.getElementById('pol-updated').textContent = ts ? new Date(ts).toLocaleString() : '-';
+      var flat = flatten(d);
+      var rows = Object.keys(flat).filter(function(k){ return k !== 'version' && k !== 'updated_at' && k !== 'created_at'; });
+      document.getElementById('pol-body').innerHTML = rows.map(function(k) {
+        var v = flat[k];
+        var disp = typeof v === 'boolean' ? (v ? '<span class="ops-badge ops-badge-green">ON</span>' : '<span class="ops-badge ops-badge-gray">OFF</span>') : esc(String(v));
+        return '<tr><td style="font-family:monospace;font-size:10px;">' + esc(k) + '</td><td>' + disp + '</td><td style="color:var(--muted);font-size:10px;">-</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="ops-empty">No policy controls found.</td></tr>';
+    })
+    .catch(function() {
+      document.getElementById('policy-loading').style.display = 'none';
+      document.getElementById('policy-empty').style.display = '';
+    });
+}
+function flatten(obj, prefix) {
+  var out = {};
+  prefix = prefix || '';
+  Object.keys(obj).forEach(function(k) {
+    var v = obj[k];
+    var key = prefix ? prefix + '.' + k : k;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      var sub = flatten(v, key);
+      Object.assign(out, sub);
+    } else {
+      out[key] = v;
+    }
+  });
+  return out;
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+loadPolicy();
+</script>
