@@ -45,7 +45,9 @@ const HELP_LINES = [
 ];
 
 const OPS_SHELL_HELP = [
-  'Shell (ops terminal): ls, pwd, git, docker, ... run directly',
+  'Shell (ops terminal): ls, pwd, clear, git, docker, ... run directly',
+  'clear / cls     clear the terminal screen',
+  '/clear          clear Carina session memory (not the screen)',
   'Prefix with ! for any shell command: ! cd /tmp && ls',
 ];
 

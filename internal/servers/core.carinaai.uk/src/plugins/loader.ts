@@ -108,7 +108,9 @@ export async function loadProviderPlugins(projectRoot: string = DEFAULT_PROJECT_
 
       loaded.push(...names);
       loadedPluginFiles.push(file);
-      console.log(chalk.gray(`[plugins] ${file}: registered ${names.join(', ')}`));
+      if (process.env.CARINA_OPS_PTY !== '1' && process.env.CARINA_QUIET_PLUGINS !== 'true') {
+        console.log(chalk.gray(`[plugins] ${file}: registered ${names.join(', ')}`));
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`[plugins] ${file}: failed to load (${msg})`));

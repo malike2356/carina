@@ -5,6 +5,7 @@ const DIRECT_SHELL_COMMANDS = new Set([
   'ps', 'free', 'uptime', 'hostname', 'printenv', 'wc', 'tree', 'find', 'grep',
   'cat', 'head', 'tail', 'touch', 'mkdir', 'rm', 'mv', 'cp', 'chmod', 'stat', 'file',
   'npm', 'pnpm', 'node', 'git', 'docker', 'curl', 'wget', 'jq', 'tar', 'zip', 'unzip',
+  'clear', 'reset', 'cls',
 ]);
 
 const SHELL_COMMAND_ALIASES: Record<string, string> = {

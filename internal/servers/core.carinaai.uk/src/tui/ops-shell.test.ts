@@ -21,6 +21,12 @@ describe('ops-shell', () => {
     expect(normalizeOpsShellCommand('ls')).toBe('ls');
   });
 
+  it('treats clear as a shell command', () => {
+    expect(isOpsShellInput('clear')).toBe(true);
+    expect(isOpsShellInput('cls')).toBe(true);
+    expect(normalizeOpsShellCommand('clear')).toBe('clear');
+  });
+
   it('runs shell commands', () => {
     const out = runOpsShellCommand('echo ops-shell-ok', process.cwd());
     expect(out.trim()).toBe('ops-shell-ok');
