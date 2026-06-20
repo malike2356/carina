@@ -1,60 +1,57 @@
 <% title = 'Subscriptions' %>
 <div class="ops-page">
-<div class="ops-page-head"><div><div class="ops-page-title">Subscriptions</div><div class="ops-page-sub">All tenant subscription state across SaaS and manual provisioning.</div></div></div>
-<a href="/tenants/new" class="px-4 py-2 rounded bg-[#22c55e] hover:bg-green-400 text-black text-sm font-medium">
-    Create tenant
-  </a>
-</div>
-
-<% if (!ready) { %>
-  <div class="rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-4 text-sm text-amber-200">
-    <p>Hosted schema not initialized. <a href="/tenants" class="underline">Go to Tenants</a> to initialize.</p>
-  </div>
-<% } else { %>
-
-  <div class="flex flex-wrap gap-2 mb-4 text-sm">
-    <a href="/subscriptions" class="px-3 py-1 rounded <%= !statusFilter && !sourceFilter ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">All</a>
-    <a href="/subscriptions?source=manual" class="px-3 py-1 rounded <%= sourceFilter === 'manual' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Manual/direct</a>
-    <a href="/subscriptions?source=saas" class="px-3 py-1 rounded <%= sourceFilter === 'saas' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">SaaS</a>
-    <a href="/subscriptions?status=active" class="px-3 py-1 rounded <%= statusFilter === 'active' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Active</a>
-    <a href="/subscriptions?status=suspended" class="px-3 py-1 rounded <%= statusFilter === 'suspended' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Suspended</a>
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Subscriptions</div>
+      <div class="ops-page-sub">All tenant subscription state across SaaS and manual provisioning.</div>
+    </div>
+    <a href="/tenants/new" class="ops-btn ops-btn-green">Create tenant</a>
   </div>
 
-  <div class="ops-surface ops-table-wrap">
-    <% if (!subscriptions.length) { %>
-      <p class="p-6 text-gray-500 text-sm">No subscription records yet.</p>
-    <% } else { %>
-      <div class="overflow-x-auto">
-        <table class="ops-table w-full text-sm text-left">
-          <thead class="text-gray-400 border-b border-[#2a2a2a] bg-[#141414]">
+  <% if (!ready) { %>
+    <div class="ops-flash warn">
+      Hosted schema not initialized. <a href="/tenants" class="ops-link">Go to Tenants</a> to initialize.
+    </div>
+  <% } else { %>
+
+    <div class="ops-filter-bar" style="border-bottom:none;padding-bottom:0;margin-bottom:16px;">
+      <a href="/subscriptions" class="ops-filter-btn<%= !statusFilter && !sourceFilter ? ' active' : '' %>">All</a>
+      <a href="/subscriptions?source=manual" class="ops-filter-btn<%= sourceFilter === 'manual' ? ' active' : '' %>">Manual/direct</a>
+      <a href="/subscriptions?source=saas" class="ops-filter-btn<%= sourceFilter === 'saas' ? ' active' : '' %>">SaaS</a>
+      <a href="/subscriptions?status=active" class="ops-filter-btn<%= statusFilter === 'active' ? ' active' : '' %>">Active</a>
+      <a href="/subscriptions?status=suspended" class="ops-filter-btn<%= statusFilter === 'suspended' ? ' active' : '' %>">Suspended</a>
+    </div>
+
+    <div class="ops-surface ops-table-wrap">
+      <% if (!subscriptions.length) { %>
+        <div class="ops-empty">No subscription records yet.</div>
+      <% } else { %>
+        <table class="ops-table">
+          <thead>
             <tr>
-              <th class="px-4 py-3 font-medium">Tenant</th>
-              <th class="px-4 py-3 font-medium">Plan</th>
-              <th class="px-4 py-3 font-medium">Billing state</th>
-              <th class="px-4 py-3 font-medium">Source</th>
-              <th class="px-4 py-3 font-medium">Access</th>
-              <th class="px-4 py-3 font-medium">Renewal</th>
-              <th class="px-4 py-3 font-medium"></th>
+              <th>Tenant</th>
+              <th>Plan</th>
+              <th>Billing state</th>
+              <th>Source</th>
+              <th>Access</th>
+              <th>Renewal</th>
+              <th></th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-[#2a2a2a]">
+          <tbody>
             <% for (const s of subscriptions) { %>
-              <tr class="hover:bg-[#222]">
-                <td class="px-4 py-3">
-                  <div class="text-white"><%= tenantDisplayName(s) %></div>
-                  <div class="text-xs text-gray-500"><%= s.email %></div>
+              <tr>
+                <td>
+                  <div style="font-weight:600;color:var(--heading);"><%= tenantDisplayName(s) %></div>
+                  <div class="ops-inline-note" style="margin-top:2px;"><%= s.email %></div>
                 </td>
-                <td class="px-4 py-3 text-gray-300"><%= plans[s.plan]?.name || s.plan %></td>
-                <td class="px-4 py-3">
-                  <span class="px-2 py-0.5 rounded text-xs <%= s.status === 'active' ? 'bg-green-900/50 text-green-300' : 'bg-gray-800 text-gray-300' %>">
-                    <%= s.status %>
-                  </span>
+                <td style="color:var(--text);"><%= plans[s.plan]?.name || s.plan %></td>
+                <td>
+                  <span class="ops-badge <%= s.status === 'active' ? 'ops-badge-green' : 'ops-badge-gray' %>"><%= s.status %></span>
                 </td>
-                <td class="px-4 py-3 text-xs text-gray-400">
-                  <%= provisioningLabel(s.provisioningType, s.provisioningSource) %>
-                </td>
-                <td class="px-4 py-3 text-xs text-gray-400"><%= s.accessStatus %></td>
-                <td class="px-4 py-3 text-xs text-gray-500">
+                <td style="color:var(--muted);font-size:12px;"><%= provisioningLabel(s.provisioningType, s.provisioningSource) %></td>
+                <td style="color:var(--muted);font-size:12px;"><%= s.accessStatus %></td>
+                <td style="color:var(--muted);font-size:12px;">
                   <% if (s.stripeSubscriptionId) { %>
                     Stripe
                     <% if (s.currentPeriodEnd) { %>
@@ -64,15 +61,12 @@
                     Manual (no Stripe)
                   <% } %>
                 </td>
-                <td class="px-4 py-3">
-                  <a href="/tenants/<%= s.tenantId %>?tab=subscription" class="ops-link">Manage</a>
-                </td>
+                <td><a href="/tenants/<%= s.tenantId %>?tab=subscription" class="ops-link">Manage</a></td>
               </tr>
             <% } %>
           </tbody>
         </table>
-      </div>
-    <% } %>
-  </div>
-<% } %>
+      <% } %>
+    </div>
+  <% } %>
 </div>

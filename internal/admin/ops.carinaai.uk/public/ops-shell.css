@@ -3,6 +3,13 @@
 .ops-page {
   width: 100%;
   max-width: none;
+  display: block;
+}
+
+.ops-content {
+  width: 100%;
+  max-width: none;
+  display: block;
 }
 
 .ops-page-head {
@@ -678,6 +685,35 @@ code.ops-code {
   margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
+}
+
+a.ops-filter-btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.ops-filter-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  transition: color 0.1s, border-color 0.1s, background 0.1s;
+}
+
+.ops-filter-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ops-filter-btn.active {
+  border-color: rgba(0, 200, 100, 0.35);
+  color: var(--green);
+  background: var(--green-dim);
 }
 
 .ops-log-pre {
