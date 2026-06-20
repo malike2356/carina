@@ -6,7 +6,7 @@ import { AssistantMessage } from './AssistantMessage';
 import { ChatInputBar, type ChatSendOptions } from './ChatInputBar';
 import { ContextWarning } from './ContextWarning';
 import { DeletedMessage } from './DeletedMessage';
-import { HeartbeatNotice } from './HeartbeatNotice';
+import { ThinkingIndicator } from './ThinkingIndicator';
 import { SessionHeader } from './SessionHeader';
 import { ToolCallBlock } from './ToolCallBlock';
 import { ChatMessage, ContextPin, LiveToolCall } from './types';
@@ -47,7 +47,6 @@ export function ChatView({
   );
   const [researchReady, setResearchReady] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [heartbeatVisible, setHeartbeatVisible] = useState(false);
   const [deletedMessages, setDeletedMessages] = useState<Map<string, ChatMessage>>(
     () => new Map(),
   );
@@ -132,15 +131,6 @@ export function ChatView({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
 
-  useEffect(() => {
-    if (!busy) {
-      setHeartbeatVisible(false);
-      return;
-    }
-
-    const timer = window.setTimeout(() => setHeartbeatVisible(true), 2500);
-    return () => window.clearTimeout(timer);
-  }, [busy, sessionId]);
 
   useEffect(() => {
     function handler(event: Event) {
@@ -205,7 +195,6 @@ export function ChatView({
     return messageTokens + streamingTokens;
   }, [streamingContent, visibleMessages]);
   const maxContextTokens = 128000;
-  const heartbeatHold = useMemo(() => busy || streamingContent.length > 0, [busy, streamingContent.length]);
   const lastAssistantId = useMemo(() => {
     return [...renderedMessages].reverse().find((e) => e.kind === 'message' && e.message.role === 'assistant')?.message.id ?? null;
   }, [renderedMessages]);
@@ -679,7 +668,6 @@ export function ChatView({
       />
 
       <div className="px-4 pt-3">
-        <HeartbeatNotice visible={heartbeatVisible} />
         <ContextWarning
           usedTokens={currentContextTokens}
           maxTokens={maxContextTokens}
@@ -705,6 +693,9 @@ export function ChatView({
               onRetry={!busy && entry.message.id === lastAssistantId ? () => void retry() : undefined}
             />
           ),
+        )}
+        {busy && streamingContent === '' && liveToolCalls.length === 0 && !streamError && (
+          <ThinkingIndicator />
         )}
         {(streamingContent !== '' || liveToolCalls.length > 0 || streamError) && (
           <div className="flex max-w-[85%] flex-col items-start gap-2">
