@@ -31,20 +31,22 @@ if (path.basename(__opsDir) === 'dist') {
   __opsDir = path.dirname(__opsDir);
 }
 
-function resolveCoreChannelStatusModule(): string {
+function resolveCoreChannelStatusModule(): string | null {
   const coreRoot = path.resolve(__opsDir, '../core.carinaai.uk');
   const distModule = path.join(coreRoot, 'dist/gateway/channels/channel-status.js');
   if (fs.existsSync(distModule)) return distModule;
-  return path.join(coreRoot, 'src/gateway/channels/channel-status.ts');
+  return null;
 }
 
-// Reuses core getChannelStatusReports(); loads core .env and imports compiled dist when present, else TS source under tsx.
 export async function fetchChannelStatusReports(): Promise<{
   channels: ChannelStatusReport[];
   policyFlags: ChannelPolicyFlags;
 }> {
-  dotenv.config({ path: resolveCoreEnvPath() });
   const modulePath = resolveCoreChannelStatusModule();
+  if (!modulePath) {
+    return { channels: [], policyFlags: {} };
+  }
+  dotenv.config({ path: resolveCoreEnvPath() });
   const mod = await import(pathToFileURL(modulePath).href) as {
     getChannelStatusReports: () => ChannelStatusReport[];
     getChannelPolicyFlags: () => ChannelPolicyFlags;
