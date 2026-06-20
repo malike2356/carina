@@ -160,6 +160,37 @@ tr:hover td { background: rgba(0,200,100,0.03); }
 .empty { padding: 28px; text-align: center; color: var(--text3); font-size: 10px; }
 .loading { padding: 20px; text-align: center; color: var(--text3); font-size: 9px; letter-spacing: 2px; }
 
+/* Threat level banner */
+.threat-banner { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 12px; border: 1px solid; }
+.threat-banner.level-ok { background: rgba(0,200,100,0.06); border-color: rgba(0,200,100,0.2); }
+.threat-banner.level-warn { background: rgba(212,175,55,0.06); border-color: rgba(212,175,55,0.25); }
+.threat-banner.level-alert { background: rgba(255,34,68,0.06); border-color: rgba(255,34,68,0.25); }
+.threat-banner.level-loading { background: rgba(58,85,104,0.08); border-color: var(--border); }
+.threat-level-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--text2); }
+.threat-level-val { font-size: 13px; font-weight: 700; letter-spacing: 2px; }
+.threat-level-val.ok { color: var(--green); } .threat-level-val.warn { color: var(--amber); } .threat-level-val.alert { color: var(--red); }
+.threat-level-desc { font-size: 9px; color: var(--text2); }
+
+/* Kill switch panel - overview prominent */
+.kill-panel { background: rgba(255,34,68,0.04); border: 1px solid rgba(255,34,68,0.25); padding: 18px 20px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.kill-panel-left .kp-label { font-size: 8px; letter-spacing: 3px; text-transform: uppercase; color: var(--text3); margin-bottom: 4px; }
+.kill-panel-left .kp-status { font-size: 20px; font-weight: 700; }
+.kill-panel-left .kp-status.armed { color: var(--red); } .kill-panel-left .kp-status.standby { color: var(--text2); }
+.kill-panel-left .kp-sub { font-size: 9px; color: var(--text3); margin-top: 3px; }
+.kill-panel-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.halt-btn { padding: 12px 28px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 3px; cursor: pointer; background: rgba(255,34,68,0.12); border: 2px solid var(--red); color: var(--red); transition: all 0.15s; text-transform: uppercase; }
+.halt-btn:hover { background: rgba(255,34,68,0.22); box-shadow: 0 0 18px rgba(255,34,68,0.25); }
+.halt-btn.armed { background: rgba(255,34,68,0.25); animation: killpulse 1.5s infinite; }
+@keyframes killpulse { 0%,100%{box-shadow:0 0 10px rgba(255,34,68,0.3);}50%{box-shadow:0 0 24px rgba(255,34,68,0.6);} }
+
+/* Bottom stat row */
+.stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 12px; }
+.stat-mini { background: var(--panel); border: 1px solid var(--border); padding: 12px 14px; }
+.sm-label { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); margin-bottom: 5px; }
+.sm-val { font-size: 22px; font-weight: 700; color: var(--text); }
+.sm-val.red { color: var(--red); } .sm-val.amber { color: var(--amber); } .sm-val.green { color: var(--green); } .sm-val.cyan { color: var(--cyan); }
+.sm-sub { font-size: 8px; color: var(--text3); margin-top: 2px; }
+
 /* Modal */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 500; }
 .modal-box { background: var(--navy); border: 1px solid var(--border2); padding: 28px; max-width: 400px; width: 90%; text-align: center; }
@@ -320,37 +351,75 @@ tr:hover td { background: rgba(0,200,100,0.03); }
 
     <!-- OVERVIEW -->
     <div class="page active" id="page-overview">
+
+      <!-- Threat level -->
+      <div class="threat-banner level-loading" id="threatBanner">
+        <div><div class="threat-level-label">Threat Level</div><div class="threat-level-val" id="threatLevelVal">-</div></div>
+        <div class="threat-level-desc" id="threatLevelDesc">Evaluating...</div>
+      </div>
+
+      <!-- Kill switch panel -->
+      <div class="kill-panel">
+        <div class="kill-panel-left">
+          <div class="kp-label">Emergency Kill Switch</div>
+          <div class="kp-status standby" id="killPanelStatus">Standby</div>
+          <div class="kp-sub" id="killPanelSub">All agents operating normally</div>
+        </div>
+        <div class="kill-panel-right">
+          <button class="disarm-btn" onclick="disarmKill()" id="disarmBtnOv" style="display:none">Disarm</button>
+          <button class="halt-btn" onclick="triggerKill()" id="haltBtnOv">HALT ALL</button>
+        </div>
+      </div>
+
+      <!-- 4 tiles -->
       <div class="tiles">
         <div class="tile"><div class="tile-label">System Status</div><div class="tile-value green" id="tileStatus">-</div><div class="tile-sub" id="tileStatusSub">checking...</div></div>
         <div class="tile info"><div class="tile-label">Active Agents</div><div class="tile-value cyan" id="tileAgents">-</div><div class="tile-sub" id="tileAgentsSub">-</div></div>
-        <div class="tile warn"><div class="tile-label">Threats Blocked</div><div class="tile-value amber" id="tileThreats">-</div><div class="tile-sub">last 24h</div></div>
+        <div class="tile purple"><div class="tile-label">Scout Score</div><div class="tile-value purple" id="tileScore">-</div><div class="tile-sub" id="tileScoreSub">overall</div></div>
         <div class="tile alert"><div class="tile-label">Open Incidents</div><div class="tile-value red" id="tileIncidents">-</div><div class="tile-sub" id="tileIncidentsSub">-</div></div>
       </div>
+
+      <!-- Chart + feed -->
       <div class="row2">
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Event Volume / 24h</span><span style="font-size:8px;color:var(--text3)" id="chartTotal">-</span></div>
           <canvas id="chartCanvas" height="110"></canvas>
         </div>
         <div class="panel">
-          <div class="panel-head"><span class="panel-title">Recent Activity</span></div>
+          <div class="panel-head"><span class="panel-title">Live Activity Feed</span></div>
           <div class="feed" id="activityFeed"><div class="loading">Loading...</div></div>
         </div>
       </div>
-      <div class="row3">
-        <div class="card-mini" onclick="nav('audit')">
-          <div class="cm-head"><span class="cm-title">Audit Trail</span><span class="cm-badge ok" id="auditBadge">Active</span></div>
-          <div class="cm-val" id="auditCount">-</div><div class="cm-sub">events logged</div>
+
+      <!-- Bottom stat row -->
+      <div class="stat-row">
+        <div class="stat-mini" onclick="nav('threats')" style="cursor:pointer">
+          <div class="sm-label">Threats Blocked</div>
+          <div class="sm-val amber" id="smThreats">-</div>
+          <div class="sm-sub">last 24h events</div>
         </div>
-        <div class="card-mini" onclick="nav('trust')">
-          <div class="cm-head"><span class="cm-title">Trust Status</span><span class="cm-badge" id="trustBadge">-</span></div>
-          <div class="cm-val" id="trustVal">-</div><div class="cm-sub">trust records</div>
+        <div class="stat-mini" onclick="nav('honeypots')" style="cursor:pointer">
+          <div class="sm-label">Honeypot Hits</div>
+          <div class="sm-val red" id="smHoneypot">-</div>
+          <div class="sm-sub" id="smHoneypotSub">-</div>
         </div>
-        <div class="card-mini" onclick="nav('killswitch')">
-          <div class="cm-head"><span class="cm-title">Kill Switch</span><span class="cm-badge off" id="killBadgeOv">Standby</span></div>
-          <div class="cm-val" style="font-size:13px;color:var(--red)">HALT ALL AGENTS</div>
-          <div class="cm-sub">click to arm</div>
+        <div class="stat-mini" onclick="nav('tripwires')" style="cursor:pointer">
+          <div class="sm-label">Tripwire Alerts</div>
+          <div class="sm-val amber" id="smTripwire">-</div>
+          <div class="sm-sub" id="smTripwireSub">-</div>
+        </div>
+        <div class="stat-mini" onclick="nav('anomalies')" style="cursor:pointer">
+          <div class="sm-label">Anomalies</div>
+          <div class="sm-val cyan" id="smAnomalies">-</div>
+          <div class="sm-sub" id="smAnomaliesSub">recent detections</div>
+        </div>
+        <div class="stat-mini" onclick="nav('audit')" style="cursor:pointer">
+          <div class="sm-label">Audit Events</div>
+          <div class="sm-val green" id="smAudit">-</div>
+          <div class="sm-sub">logged total</div>
         </div>
       </div>
+
     </div>
 
     <!-- AGENTS -->
@@ -712,12 +781,46 @@ function radarDot(sev) {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function boot() {
-  loadOverview();
-  setInterval(loadOverview, 30000);
-  if (SCOUT_KEY) document.getElementById('apiKeyInput').value = SCOUT_KEY;
   fetch('/api/readiness',{credentials:'include'})
     .then(function(r){ document.getElementById('scoutDot').className='s-dot '+(r.ok?'live':'err'); document.getElementById('scoutStatus').textContent=r.ok?'Scout live':'Scout error'; })
     .catch(function(){ document.getElementById('scoutDot').className='s-dot err'; document.getElementById('scoutStatus').textContent='Scout offline'; });
+
+  // Auto-fetch the account's Scout API key; create one if none exists yet.
+  function startWithKey(key) {
+    SCOUT_KEY = key;
+    localStorage.setItem('scout_api_key', key);
+    var inp = document.getElementById('apiKeyInput');
+    if (inp) inp.value = key;
+    loadOverview();
+    setInterval(loadOverview, 30000);
+  }
+
+  var cached = localStorage.getItem('scout_api_key') || '';
+  if (cached) {
+    startWithKey(cached);
+  } else {
+    fetch('/account/api/keys', { credentials: 'include' })
+      .then(function(r) { return r.json().catch(function(){ return {}; }); })
+      .then(function(data) {
+        var keys = data.keys || [];
+        if (keys.length > 0) {
+          // Keys only return the hash/label after creation; try stored local value first.
+          // If we have an existing plaintext key stored on account, it's returned as `plaintext` only at creation.
+          // On subsequent fetches, keys show label + id only. Prompt the user to revisit Settings if no plaintext is cached.
+          startWithKey(cached);
+        } else {
+          // No key exists yet - auto-generate one for this session.
+          fetch('/account/api/keys', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({label:'Console auto-key'}) })
+            .then(function(r) { return r.json().catch(function(){ return {}; }); })
+            .then(function(result) {
+              if (result.key) { startWithKey(result.key); }
+              else { loadOverview(); setInterval(loadOverview, 30000); }
+            })
+            .catch(function() { loadOverview(); setInterval(loadOverview, 30000); });
+        }
+      })
+      .catch(function() { loadOverview(); setInterval(loadOverview, 30000); });
+  }
 }
 
 // ── Overview ──────────────────────────────────────────────────────────────────
@@ -730,28 +833,95 @@ function loadOverview() {
     document.getElementById('agentStatus').textContent=n>0?(n+' agent'+(n!==1?'s':'')):'No agents';
   }).catch(function(){});
 
-  apiA('/account/api/events?limit=100').then(function(data){
+  apiA('/account/api/events?limit=200').then(function(data){
     var ev=Array.isArray(data)?data:(data.events||[]);
     var threats=ev.filter(function(e){var t=(e.event_type||e.type||'').toLowerCase(); return t.indexOf('block')>=0||t.indexOf('deny')>=0||t.indexOf('threat')>=0||t.indexOf('breach')>=0||t.indexOf('kill')>=0;});
     var incidents=ev.filter(function(e){var s=(e.severity||'').toLowerCase(); return s==='critical'||s==='high'||s==='breach';});
-    document.getElementById('tileThreats').textContent=threats.length;
+    document.getElementById('smThreats').textContent=threats.length;
+    document.getElementById('smAudit').textContent=ev.length;
     document.getElementById('tileIncidents').textContent=incidents.length;
     document.getElementById('tileIncidentsSub').textContent=incidents.length?'needs attention':'all clear';
     document.getElementById('tileStatus').textContent=incidents.length?'ALERT':'OK';
     document.getElementById('tileStatus').className='tile-value '+(incidents.length?'red':'green');
     document.getElementById('tileStatusSub').textContent=incidents.length?(incidents.length+' high-sev event'+(incidents.length!==1?'s':'')):'no active alerts';
-    document.getElementById('auditCount').textContent=ev.length;
-    ev.slice(0,10).forEach(function(e){radarDot(e.severity||e.level||'info');});
-    renderFeed(ev.slice(0,16));
+    ev.slice(0,14).forEach(function(e){radarDot(e.severity||e.level||'info');});
+    renderFeed(ev.slice(0,20));
     renderChart(ev);
-  }).catch(function(){});
+    // Derive threat level from real data
+    var banner=document.getElementById('threatBanner');
+    var lv=document.getElementById('threatLevelVal');
+    var ld=document.getElementById('threatLevelDesc');
+    if(incidents.length>=3){
+      banner.className='threat-banner level-alert'; lv.className='threat-level-val alert'; lv.textContent='CRITICAL';
+      ld.textContent=incidents.length+' high-severity incidents in last 24h. Immediate review required.';
+    } else if(incidents.length>0||threats.length>2){
+      banner.className='threat-banner level-warn'; lv.className='threat-level-val warn'; lv.textContent='ELEVATED';
+      ld.textContent=(incidents.length||threats.length)+' active event'+(incidents.length!==1?'s':'')+' flagged in the monitoring window.';
+    } else {
+      banner.className='threat-banner level-ok'; lv.className='threat-level-val ok'; lv.textContent='NORMAL';
+      ld.textContent='No high-severity incidents detected. '+ev.length+' events logged in last 24h.';
+    }
+  }).catch(function(){
+    document.getElementById('threatBanner').className='threat-banner level-loading';
+    document.getElementById('threatLevelVal').textContent='-';
+    document.getElementById('threatLevelDesc').textContent='Could not load event data.';
+  });
 
-  apiA('/account/api/trust-settings').then(function(data){
-    var rules=Array.isArray(data)?data:(data.rules||data.policies||[]);
-    document.getElementById('trustVal').textContent=rules.length;
-    var b=document.getElementById('trustBadge');
-    b.textContent=rules.length?'Active':'None'; b.className='cm-badge '+(rules.length?'ok':'off');
-  }).catch(function(){});
+  // Kill switch status
+  if(SCOUT_KEY) {
+    apiK('/api/killswitch/status').then(function(data){
+      var armed=data.armed||data.active||data.triggered||false;
+      var ps=document.getElementById('killPanelStatus'), sub=document.getElementById('killPanelSub');
+      var hb=document.getElementById('haltBtnOv'), db=document.getElementById('disarmBtnOv');
+      if(armed){
+        ps.textContent='ARMED'; ps.className='kp-status armed';
+        sub.textContent=data.reason?'Reason: '+data.reason:'Kill switch active - agents halted';
+        hb.className='halt-btn armed'; db.style.display='inline-block';
+      } else {
+        ps.textContent='Standby'; ps.className='kp-status standby';
+        sub.textContent='All agents operating normally';
+        hb.className='halt-btn'; db.style.display='none';
+      }
+    }).catch(function(){});
+  }
+
+  // Scout score
+  if(SCOUT_KEY) {
+    apiK('/api/score').then(function(data){
+      var sc=data.score??data.overall??null;
+      document.getElementById('tileScore').textContent=sc!=null?sc:'-';
+      document.getElementById('tileScoreSub').textContent=sc!=null?'out of 100':'no data yet';
+    }).catch(function(){document.getElementById('tileScore').textContent='-';});
+  }
+
+  // Honeypot summary
+  if(SCOUT_KEY) {
+    apiK('/api/honeypots/summary').then(function(data){
+      var hits=data.total_hits??data.hits??null;
+      document.getElementById('smHoneypot').textContent=hits!=null?hits:'-';
+      document.getElementById('smHoneypotSub').textContent=data.unique_attackers!=null?(data.unique_attackers+' unique sources'):(data.active_count!=null?(data.active_count+' deployed'):'-');
+    }).catch(function(){document.getElementById('smHoneypot').textContent='-';});
+  }
+
+  // Tripwire hits
+  if(SCOUT_KEY) {
+    apiK('/api/tripwires/hits').then(function(data){
+      var hits=data.hits||data||[]; if(!Array.isArray(hits))hits=[];
+      document.getElementById('smTripwire').textContent=hits.length;
+      var recent=hits.filter(function(h){return h.triggered_at&&(Date.now()-new Date(h.triggered_at).getTime())<86400000;});
+      document.getElementById('smTripwireSub').textContent=recent.length+' in last 24h';
+    }).catch(function(){document.getElementById('smTripwire').textContent='-';});
+  }
+
+  // Anomalies
+  if(SCOUT_KEY) {
+    apiK('/api/anomalies/recent?limit=50').then(function(data){
+      var list=data.anomalies||data||[]; if(!Array.isArray(list))list=[];
+      document.getElementById('smAnomalies').textContent=list.length;
+      document.getElementById('smAnomaliesSub').textContent=list.length?'recent detections':'none detected';
+      list.slice(0,5).forEach(function(a){radarDot(a.severity||'medium');});
+    }).catch(function(){document.getElementById('smAnomalies').textContent='-';});
+  }
 }
 
 function renderFeed(ev) {
@@ -1044,12 +1214,12 @@ function triggerKill() {
   overlay.querySelector('#cancelKillBtn').onclick=function(){overlay.remove();};
   overlay.querySelector('#confirmKillBtn').onclick=function(){
     overlay.remove();
-    apiK('/api/killswitch/trigger',{method:'POST',body:JSON.stringify({reason:'Client console kill switch'})}).then(function(){loadKillSwitch();}).catch(function(){});
+    apiK('/api/killswitch/trigger',{method:'POST',body:JSON.stringify({reason:'Client console kill switch'})}).then(function(){loadKillSwitch(); loadOverview();}).catch(function(){});
   };
   overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.remove();});
 }
 function disarmKill() {
-  apiK('/api/killswitch/disarm',{method:'POST'}).then(function(){loadKillSwitch();}).catch(function(){});
+  apiK('/api/killswitch/disarm',{method:'POST'}).then(function(){loadKillSwitch(); loadOverview();}).catch(function(){});
 }
 
 // ── Quarantine ────────────────────────────────────────────────────────────────
