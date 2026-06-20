@@ -7,17 +7,39 @@ const DIRECT_SHELL_COMMANDS = new Set([
   'npm', 'pnpm', 'node', 'git', 'docker', 'curl', 'wget', 'jq', 'tar', 'zip', 'unzip',
 ]);
 
-export function isOpsShellInput(line: string): boolean {
+const SHELL_COMMAND_ALIASES: Record<string, string> = {
+  whomai: 'whoami',
+  whami: 'whoami',
+  woami: 'whoami',
+};
+
+export function parseOpsShellInput(line: string): { command: string; args: string } | null {
   const trimmed = line.trim();
-  if (!trimmed || trimmed.startsWith('/')) return false;
-  if (trimmed.startsWith('!')) return trimmed.length > 1;
-  const first = trimmed.split(/\s+/)[0]?.toLowerCase() ?? '';
-  return DIRECT_SHELL_COMMANDS.has(first);
+  if (!trimmed || trimmed.startsWith('/')) return null;
+
+  let body = trimmed.startsWith('!') ? trimmed.slice(1).trim() : trimmed;
+  if (!body) return null;
+
+  const spaceIdx = body.indexOf(' ');
+  const rawFirst = spaceIdx === -1 ? body : body.slice(0, spaceIdx);
+  const args = spaceIdx === -1 ? '' : body.slice(spaceIdx + 1).trim();
+  const normalizedFirst = rawFirst.replace(/^[^a-zA-Z0-9]+/, '').toLowerCase();
+  if (!normalizedFirst) return null;
+
+  const command = SHELL_COMMAND_ALIASES[normalizedFirst] ?? normalizedFirst;
+  if (!DIRECT_SHELL_COMMANDS.has(command)) return null;
+
+  return { command, args };
+}
+
+export function isOpsShellInput(line: string): boolean {
+  return parseOpsShellInput(line) !== null;
 }
 
 export function normalizeOpsShellCommand(line: string): string {
-  const trimmed = line.trim();
-  return trimmed.startsWith('!') ? trimmed.slice(1).trim() : trimmed;
+  const parsed = parseOpsShellInput(line);
+  if (!parsed) return line.trim().startsWith('!') ? line.trim().slice(1).trim() : line.trim();
+  return parsed.args ? `${parsed.command} ${parsed.args}` : parsed.command;
 }
 
 export function runOpsShellCommand(line: string, cwd: string): string {

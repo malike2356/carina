@@ -10,6 +10,12 @@ describe('ops-shell', () => {
     expect(isOpsShellInput('what files are here')).toBe(false);
   });
 
+  it('strips leading punctuation and fixes common typos', () => {
+    expect(isOpsShellInput(']whomai')).toBe(true);
+    expect(normalizeOpsShellCommand(']whomai')).toBe('whoami');
+    expect(normalizeOpsShellCommand('  !  ls -la')).toBe('ls -la');
+  });
+
   it('strips bang prefix', () => {
     expect(normalizeOpsShellCommand('! ls -la')).toBe('ls -la');
     expect(normalizeOpsShellCommand('ls')).toBe('ls');
