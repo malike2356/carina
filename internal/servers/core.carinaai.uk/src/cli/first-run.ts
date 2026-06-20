@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import path from 'path';
 import chalk from 'chalk';
 import { envExists, loadCarinaEnv } from '../config/load-env.js';
 import { resolveCarinaHome } from '../config/paths.js';
@@ -52,6 +53,20 @@ export async function needsFirstRunOnboarding(): Promise<boolean> {
 }
 
 export async function ensureFirstRunReady(): Promise<void> {
+  if (process.env.CARINA_OPS_PTY === '1') {
+    loadCarinaEnv();
+    const coreEnvPath = path.resolve(process.cwd(), '.env');
+    try {
+      const coreContents = await fs.readFile(coreEnvPath, 'utf-8');
+      const { hasLlmApiKeyInEnvContents } = await import('./provider-bootstrap.js');
+      if (hasLlmApiKeyInEnvContents(coreContents)) {
+        return;
+      }
+    } catch {
+      // core .env optional; continue with normal first-run checks
+    }
+  }
+
   const needsOnboarding = await needsFirstRunOnboarding();
   if (!needsOnboarding) return;
 

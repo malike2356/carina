@@ -5,6 +5,9 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
 mkdir -p "${HOME}/logs"
 
+export HOME="${HOME:-$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)}"
+export HOME="${HOME:-/home/malike}"
+
 export NODE_ENV="${NODE_ENV:-production}"
 if [[ -z "${CARINA_CORE_ROOT:-}" ]]; then
   if [[ -d "${ROOT}/../core.carinaai.uk" ]]; then

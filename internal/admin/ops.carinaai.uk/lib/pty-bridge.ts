@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import os from 'node:os';
 import path from 'node:path';
 import type { Server as HttpServer } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
@@ -18,6 +19,25 @@ interface PTYSession {
 const sessions = new Map<string, PTYSession>();
 
 export { resolveCarinaSpawnCommand, isWsAuthorized, validateWsAuthToken } from './pty-bridge-core.js';
+
+function resolvePtyUserHome(): string {
+  const fromEnv = process.env.HOME?.trim();
+  if (fromEnv) return fromEnv;
+  try {
+    const fromOs = os.homedir();
+    if (fromOs && fromOs !== '/tmp') return fromOs;
+  } catch {
+    // fall through
+  }
+  return '/tmp';
+}
+
+function resolvePtyCarinaHome(): string {
+  if (process.env.CARINA_HOME?.trim()) {
+    return path.resolve(process.env.CARINA_HOME.trim());
+  }
+  return path.join(resolvePtyUserHome(), '.carina');
+}
 
 export function getActivePtySessionCount(): number {
   return sessions.size;
@@ -81,7 +101,8 @@ async function handlePtyConnection(ws: WebSocket, req: import('node:http').Incom
     return;
   }
 
-  const carinaHome = process.env.CARINA_HOME ?? path.join(process.env.HOME ?? '/tmp', '.carina');
+  const ptyHome = resolvePtyUserHome();
+  const carinaHome = resolvePtyCarinaHome();
   const ptyProcess = pty.spawn(spawnCmd.file, spawnCmd.args, {
     name: 'xterm-256color',
     cols,
@@ -89,12 +110,14 @@ async function handlePtyConnection(ws: WebSocket, req: import('node:http').Incom
     cwd: spawnCmd.cwd,
     env: {
       ...process.env,
+      HOME: ptyHome,
       TERM: 'xterm-256color',
       COLORTERM: 'truecolor',
       FORCE_COLOR: '3',
       CARINA_HOME: carinaHome,
       CARINA_OPS_PTY: '1',
       CARINA_TUI_SIMPLE: 'true',
+      DOTENV_CONFIG_QUIET: 'true',
     } as Record<string, string>,
   });
 

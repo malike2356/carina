@@ -9,7 +9,11 @@ function carinaEnvPath(): string {
 
 function loadFile(envPath: string, override = false): void {
   if (fs.existsSync(envPath)) {
-    dotenv.config({ path: envPath, override });
+    dotenv.config({
+      path: envPath,
+      override,
+      quiet: process.env.CARINA_OPS_PTY === '1' || process.env.DOTENV_CONFIG_QUIET === 'true',
+    });
   }
 }
 

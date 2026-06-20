@@ -55,6 +55,24 @@ describe('first-run bootstrap', () => {
     expect(gaps.needsProfile).toBe(true);
     expect(gaps.needsProvider).toBe(false);
   });
+
+  it('skips bootstrap when ops PTY inherits core env with API keys', async () => {
+    const coreDir = await fs.mkdtemp(path.join(os.tmpdir(), 'carina-core-env-'));
+    await fs.writeFile(path.join(coreDir, '.env'), 'DEEPSEEK_API_KEY=sk-test\n');
+    process.env.CARINA_OPS_PTY = '1';
+    const prevCwd = process.cwd();
+    process.chdir(coreDir);
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { ensureFirstRunReady } = await import('./first-run.js');
+    await ensureFirstRunReady();
+
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('Non-interactive first run'));
+    logSpy.mockRestore();
+    process.chdir(prevCwd);
+    delete process.env.CARINA_OPS_PTY;
+    await fs.rm(coreDir, { recursive: true, force: true });
+  });
 });
 
 describe('first-run onboarding persistence', () => {
