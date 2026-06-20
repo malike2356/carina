@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Router } from 'express';
-import { SCOUT_BASE, scoutHeaders } from '../lib/scout.js';
+import { SCOUT_BASE, SCOUT_CONSOLE_BASE, scoutGet, scoutHeaders } from '../lib/scout.js';
 
 export const scoutDashboardRouter = Router();
 
@@ -24,6 +24,65 @@ export function resolveConsolePublicDir(): string {
   return candidates[0] ?? path.join(__opsDir, 'public');
 }
 
+interface ScoutStats {
+  critical: number;
+  warning: number;
+  info: number;
+  breach: number;
+}
+
+interface ScoutInstance {
+  id: string;
+  name: string;
+  status: string;
+  last_heartbeat: string | null;
+  secondsAgo?: number | null;
+}
+
+interface StatusPayload {
+  instances?: ScoutInstance[];
+  stats?: ScoutStats;
+}
+
+function emptyStats(): ScoutStats {
+  return { critical: 0, warning: 0, info: 0, breach: 0 };
+}
+
+function scoreLabel(score: number | null): string {
+  if (score == null) return 'Loading...';
+  if (score >= 80) return 'Healthy';
+  if (score >= 60) return 'Fair';
+  if (score > 0) return 'Needs attention';
+  return 'No data';
+}
+
+scoutDashboardRouter.get('/', async (_req, res) => {
+  const scoutUrl = SCOUT_BASE;
+  const scoutConsoleUrl = SCOUT_CONSOLE_BASE;
+  const data = (await scoutGet('/api/admin/status')) as StatusPayload | null;
+  let score: number | null = null;
+
+  if (data) {
+    const scoreData = (await scoutGet('/api/score')) as { score?: number; overall?: number; value?: number } | null;
+    score = scoreData?.score ?? scoreData?.overall ?? scoreData?.value ?? null;
+  }
+
+  const instances = data?.instances ?? [];
+  const activeCount = instances.filter((i) => i.status === 'active').length;
+
+  res.render('scout/index', {
+    title: 'Scout Dashboard',
+    scoutOnline: Boolean(data),
+    scoutUrl,
+    scoutConsoleUrl,
+    stats: data?.stats ?? emptyStats(),
+    instances,
+    activeCount,
+    score,
+    scoreLabel: scoreLabel(score),
+  });
+});
+
 function scoutDashboardInjection(): string {
   return [
     '<script>',
@@ -44,7 +103,7 @@ function scoutDashboardInjection(): string {
   ].join('');
 }
 
-scoutDashboardRouter.get('/', (_req, res) => {
+scoutDashboardRouter.get('/console', (_req, res) => {
   try {
     const consolePublic = resolveConsolePublicDir();
     const htmlPath = path.join(consolePublic, 'dashboard.html');
@@ -53,8 +112,8 @@ scoutDashboardRouter.get('/', (_req, res) => {
     res.type('html').send(html);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[ops] Scout dashboard serve failed:', msg);
-    res.status(500).render('error', { message: 'Scout dashboard unavailable: ' + msg });
+    console.error('[ops] Scout legacy console serve failed:', msg);
+    res.status(500).render('error', { message: 'Scout console unavailable: ' + msg });
   }
 });
 

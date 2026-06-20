@@ -803,3 +803,165 @@ a.ops-filter-btn {
 
 .ops-content .text-gray-500,
 .ops-page .text-gray-500 { color: var(--muted) !important; }
+
+/* Scout dashboard (ops-native) */
+.ops-scout-kill-bar {
+  align-items: center;
+  background: rgba(255, 34, 68, 0.08);
+  border: 1px solid rgba(255, 34, 68, 0.35);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding: 16px 20px;
+}
+
+.ops-scout-kill-title {
+  color: var(--red);
+  font-size: var(--fs-base, 16px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ops-scout-kill-sub {
+  color: var(--text);
+  font-size: var(--fs-sm, 14px);
+  margin-top: 4px;
+}
+
+.ops-scout-kill-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ops-scout-kill-btn {
+  font-size: var(--fs-sm, 14px) !important;
+  padding: 10px 20px !important;
+}
+
+.ops-scout-live {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  font-size: var(--fs-sm, 14px);
+  gap: 8px;
+}
+
+.ops-scout-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: 480px;
+}
+
+.ops-scout-stream-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 480px;
+}
+
+.ops-scout-stream-head {
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.ops-scout-stream {
+  flex: 1;
+  max-height: 620px;
+  min-height: 360px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.ops-scout-event {
+  align-items: center;
+  border-bottom: 1px solid rgba(22, 35, 56, 0.55);
+  display: grid;
+  font-size: var(--fs-sm, 14px);
+  gap: 10px;
+  grid-template-columns: 72px 88px 120px 1fr 100px;
+  padding: 12px 18px;
+}
+
+.ops-scout-event-time {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: var(--fs-xs, 13px);
+}
+
+.ops-scout-event-type {
+  color: var(--heading);
+  font-weight: 500;
+}
+
+.ops-scout-event-desc {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-scout-event-inst {
+  color: var(--muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: var(--fs-xs, 13px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ops-scout-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ops-scout-instances {
+  padding: 0;
+}
+
+.ops-scout-instances .ops-section-title {
+  padding: 14px 18px 0;
+}
+
+.ops-scout-inst {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+}
+
+.ops-scout-inst:last-child { border-bottom: none; }
+
+.ops-scout-inst-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.ops-scout-inst-name {
+  color: var(--heading);
+  font-size: var(--fs-base, 16px);
+  font-weight: 600;
+}
+
+.ops-scout-inst-actions {
+  margin-top: 10px;
+}
+
+@media (max-width: 1100px) {
+  .ops-scout-grid { grid-template-columns: 1fr; }
+  .ops-scout-event {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
