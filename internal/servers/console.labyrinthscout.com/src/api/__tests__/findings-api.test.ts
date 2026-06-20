@@ -275,7 +275,8 @@ describe('score API', () => {
 });
 
 describe('operator account scoping', () => {
-  it('requires account_id for operator auth', async () => {
+  it('requires account_id for operator auth when no default is configured', async () => {
+    delete process.env.SCOUT_OPERATOR_ACCOUNT_ID;
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
@@ -286,5 +287,22 @@ describe('operator account scoping', () => {
 
     const res = await request(app).get('/api/findings').expect(400);
     expect(res.body.error).toContain('account_id');
+  });
+
+  it('uses SCOUT_OPERATOR_ACCOUNT_ID for operator auth when query is omitted', async () => {
+    process.env.SCOUT_OPERATOR_ACCOUNT_ID = ACCOUNT_ID;
+    vi.mocked(listFindings).mockResolvedValue([]);
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+      req.scoutAuth = { kind: 'operator' };
+      next();
+    });
+    app.use('/api/findings', findingsRouter);
+
+    const res = await request(app).get('/api/findings').expect(200);
+    expect(res.body.findings).toEqual([]);
+    expect(listFindings).toHaveBeenCalledWith(ACCOUNT_ID, expect.any(Object));
+    delete process.env.SCOUT_OPERATOR_ACCOUNT_ID;
   });
 });
