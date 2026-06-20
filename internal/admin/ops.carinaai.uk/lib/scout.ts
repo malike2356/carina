@@ -1,34 +1,26 @@
-const SCOUT_URL =
-  process.env.SCOUT_ADMIN_API_URL ??
-  process.env.SCOUT_ENGINE_URL ??
-  'http://127.0.0.1:4444';
+const SCOUT_ENGINE_URL =
+  process.env.SCOUT_ADMIN_API_URL?.trim()
+  ?? process.env.SCOUT_ENGINE_URL?.trim()
+  ?? 'http://127.0.0.1:4455';
+
+const SCOUT_CONSOLE_URL =
+  process.env.SCOUT_CONSOLE_URL?.trim()
+  ?? process.env.SCOUT_URL?.trim()
+  ?? 'http://127.0.0.1:4444';
+
 const SCOUT_KEY = process.env.SCOUT_API_KEY ?? '';
 
-export const SCOUT_BASE = SCOUT_URL;
+/** Engine control plane (status, events, kill/resume). */
+export const SCOUT_BASE = SCOUT_ENGINE_URL;
+
+/** Console API (alert channels, platform settings). */
+export const SCOUT_CONSOLE_BASE = SCOUT_CONSOLE_URL;
 
 export function scoutHeaders(): Record<string, string> {
   return {
     'X-Scout-Key': SCOUT_KEY,
     'Content-Type': 'application/json',
   };
-}
-
-export async function scoutGet(path: string): Promise<unknown> {
-  try {
-    const r = await fetch(`${SCOUT_URL}${path}`, {
-      headers: scoutHeaders(),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!r.ok) {
-      console.warn(`[scout] GET ${path} returned ${r.status}`);
-      return null;
-    }
-    return r.json();
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn('[scout] offline:', msg);
-    return null;
-  }
 }
 
 export interface ScoutResponse {
@@ -38,9 +30,9 @@ export interface ScoutResponse {
   error?: string;
 }
 
-async function scoutRequest(method: string, path: string, body?: unknown): Promise<ScoutResponse> {
+async function scoutRequest(baseUrl: string, method: string, path: string, body?: unknown): Promise<ScoutResponse> {
   try {
-    const r = await fetch(`${SCOUT_URL}${path}`, {
+    const r = await fetch(`${baseUrl}${path}`, {
       method,
       headers: scoutHeaders(),
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -69,19 +61,36 @@ async function scoutRequest(method: string, path: string, body?: unknown): Promi
   }
 }
 
+export async function scoutGet(path: string): Promise<unknown> {
+  const result = await scoutRequest(SCOUT_ENGINE_URL, 'GET', path);
+  return result.ok ? result.data : null;
+}
+
 export async function scoutPost(path: string, body: unknown): Promise<unknown> {
-  const result = await scoutRequest('POST', path, body);
+  const result = await scoutRequest(SCOUT_ENGINE_URL, 'POST', path, body);
   return result.ok ? result.data : null;
 }
 
 export async function scoutPut(path: string, body: unknown): Promise<ScoutResponse> {
-  return scoutRequest('PUT', path, body);
+  return scoutRequest(SCOUT_ENGINE_URL, 'PUT', path, body);
 }
 
 export async function scoutGetDetailed(path: string): Promise<ScoutResponse> {
-  return scoutRequest('GET', path);
+  return scoutRequest(SCOUT_ENGINE_URL, 'GET', path);
+}
+
+export async function scoutConsoleGetDetailed(path: string): Promise<ScoutResponse> {
+  return scoutRequest(SCOUT_CONSOLE_URL, 'GET', path);
+}
+
+export async function scoutConsolePut(path: string, body: unknown): Promise<ScoutResponse> {
+  return scoutRequest(SCOUT_CONSOLE_URL, 'PUT', path, body);
+}
+
+export async function scoutConsolePost(path: string, body: unknown): Promise<ScoutResponse> {
+  return scoutRequest(SCOUT_CONSOLE_URL, 'POST', path, body);
 }
 
 export function scoutStreamUrl(path: string): string {
-  return `${SCOUT_URL}${path}`;
+  return `${SCOUT_ENGINE_URL}${path}`;
 }
