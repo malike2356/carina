@@ -1,0 +1,16 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { useEffect, useState } from 'react';
+import { getChannels } from '../../../lib/gateway-client.js';
+const CHANNEL_TYPES = ['telegram', 'discord', 'slack', 'whatsapp', 'email'];
+export default function ChannelsSettingsPage() {
+    const [channels, setChannels] = useState([]);
+    const [wizardOpen, setWizardOpen] = useState(false);
+    const [step, setStep] = useState(1);
+    const [type, setType] = useState('telegram');
+    const [token, setToken] = useState('');
+    const [channelName, setChannelName] = useState('');
+    useEffect(() => {
+        void getChannels().then(setChannels);
+    }, []);
+    return (_jsxs("div", { className: "space-y-4 max-w-2xl", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h2", { className: "text-sm font-semibold text-zinc-100", children: "Channels" }), _jsx("button", { type: "button", onClick: () => { setWizardOpen(true); setStep(1); }, className: "text-xs bg-indigo-600 text-white rounded px-2 py-1", children: "Add channel" })] }), channels.length === 0 ? (_jsx("p", { className: "text-sm text-zinc-500", children: "No channels configured. Use the wizard or `carina gateway channels` on the host." })) : (_jsx("div", { className: "space-y-2", children: channels.map((channel) => (_jsx("div", { className: "rounded-lg border border-zinc-800 p-3 flex items-center justify-between", children: _jsxs("div", { children: [_jsx("p", { className: "text-sm text-zinc-100", children: channel.name }), _jsxs("p", { className: "text-xs text-zinc-500", children: [channel.type, " | ", channel.status] })] }) }, channel.id))) })), wizardOpen && (_jsx("div", { className: "fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50", children: _jsxs("div", { className: "w-full max-w-md rounded-xl border border-zinc-700 bg-zinc-900 p-5", children: [_jsxs("h3", { className: "text-sm font-semibold text-zinc-100", children: ["Add channel (step ", step, "/4)"] }), step === 1 && (_jsx("select", { value: type, onChange: (e) => setType(e.target.value), className: "mt-3 w-full px-3 py-2 text-sm bg-zinc-950 border border-zinc-700 rounded-lg", children: CHANNEL_TYPES.map((item) => _jsx("option", { value: item, children: item }, item)) })), step === 2 && (_jsx("input", { value: token, onChange: (e) => setToken(e.target.value), placeholder: "Bot token or webhook URL", className: "mt-3 w-full px-3 py-2 text-sm bg-zinc-950 border border-zinc-700 rounded-lg" })), step === 3 && _jsx("p", { className: "mt-3 text-xs text-zinc-400", children: "Test message wiring uses gateway channel endpoints when available." }), step === 4 && (_jsx("input", { value: channelName, onChange: (e) => setChannelName(e.target.value), placeholder: "Channel name", className: "mt-3 w-full px-3 py-2 text-sm bg-zinc-950 border border-zinc-700 rounded-lg" })), _jsxs("div", { className: "mt-4 flex justify-end gap-2", children: [_jsx("button", { type: "button", onClick: () => setWizardOpen(false), className: "text-xs text-zinc-400", children: "Cancel" }), _jsx("button", { type: "button", onClick: () => setStep((s) => Math.min(4, s + 1)), className: "text-xs bg-indigo-600 text-white rounded px-2 py-1", children: step === 4 ? 'Finish' : 'Next' })] })] }) }))] }));
+}

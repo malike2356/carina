@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' · ' : '' %>Carina Admin</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    body { background: #0f0f0f; color: #e0e0e0; }
+    .nav-link.active { background: #2a2a2a; color: #22c55e; }
+    .badge-user { background: #06b6d4; color: #0f0f0f; }
+    .badge-assistant { background: #22c55e; color: #0f0f0f; }
+  </style>
+</head>
+<body class="min-h-screen flex">
+  <aside id="sidebar" class="w-56 shrink-0 border-r border-[#2a2a2a] bg-[#1a1a1a] flex flex-col p-4">
+    <div class="flex items-center justify-between mb-6">
+      <a href="https://carinaai.uk" target="_blank" rel="noopener" class="font-bold text-white text-lg hover:text-[#22c55e] transition-colors">Carina Admin</a>
+      <button type="button" id="toggle-nav" class="text-xs text-gray-400 hover:text-white lg:hidden">Hide</button>
+    </div>
+    <nav class="flex flex-col gap-1 text-sm flex-1">
+      <% const links = [
+        { href: '/', label: 'Dashboard', match: (p) => p === '/' },
+        { href: '/control-center', label: 'Control Center', match: (p) => p.startsWith('/control-center') },
+        { href: '/mcp', label: 'MCP Servers', match: (p) => p.startsWith('/mcp') },
+        { href: '/admin/incident-blog', label: 'Incident Blog', match: (p) => p.startsWith('/admin/incident-blog') },
+        { href: '/ai-platform', label: 'AI Platform', match: (p) => p.startsWith('/ai-platform') },
+        { href: '/admin/agent-tools', label: 'Agent Tools', match: (p) => p.startsWith('/admin/agent-tools') || p.startsWith('/agent-tools') },
+        { href: '/tenants', label: 'Tenants', match: (p) => p.startsWith('/tenants') },
+        { href: '/subscriptions', label: 'Subscriptions', match: (p) => p.startsWith('/subscriptions') },
+        { href: '/security', label: 'Security', match: (p) => p.startsWith('/security') },
+        { href: '/channels', label: 'Channels', match: (p) => p.startsWith('/channels') },
+        { href: '/chat', label: 'Chat', match: (p) => p.startsWith('/chat') },
+        { href: '/tui', label: 'Terminal TUI', match: (p) => p.startsWith('/tui') },
+        { href: '/memories', label: 'Memories', match: (p) => p.startsWith('/memories') },
+        { href: '/skills', label: 'Skills', match: (p) => p.startsWith('/skills') },
+        { href: '/packs', label: 'Skill Packs', match: (p) => p.startsWith('/packs') },
+        { href: '/rag', label: 'RAG Corpus', match: (p) => p.startsWith('/rag') },
+        { href: '/projects', label: 'Projects', match: (p) => p.startsWith('/projects') },
+        { href: '/settings', label: 'Settings', match: (p) => p.startsWith('/settings') },
+      ]; %>
+      <% const withVersion = (href) => {
+        if (!uiVersion) return href;
+        const sep = href.includes('?') ? '&' : '?';
+        return href + sep + 'v=' + encodeURIComponent(uiVersion);
+      }; %>
+      <% for (const link of links) { %>
+        <a href="<%= withVersion(link.href) %>"
+           class="nav-link px-3 py-2 rounded-md text-gray-300 hover:bg-[#2a2a2a] hover:text-white <%= link.match(activePath || '') ? 'active' : '' %>">
+          <%= link.label %>
+        </a>
+      <% } %>
+    </nav>
+    <div class="mt-auto pt-4 border-t border-[#2a2a2a] text-xs text-gray-500">
+      <p>Carina v0.1.0</p>
+      <div id="scout-status" class="text-xs mt-1 flex items-center gap-1">
+        <span id="scout-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600"></span>
+        <span id="scout-label" class="text-gray-600">Scout</span>
+      </div>
+      <a href="<%= webUiUrl %>" target="_blank" rel="noopener" class="text-[#22c55e] hover:underline">Main web UI</a>
+      <form method="post" action="/logout" class="mt-2">
+        <button type="submit" class="text-gray-400 hover:text-white">Logout</button>
+      </form>
+    </div>
+  </aside>
+  <main class="flex-1 min-w-0 p-6 overflow-auto">
+    <%- body %>
+  </main>
+  <script>
+    document.getElementById('toggle-nav')?.addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('hidden');
+    });
+
+    (function scoutSidebarStatus() {
+      const dot = document.getElementById('scout-dot');
+      const label = document.getElementById('scout-label');
+      if (!dot || !label) return;
+
+      function setScout(live) {
+        dot.className = 'inline-block w-2 h-2 rounded-full ' + (live ? 'bg-green-500' : 'bg-red-600');
+        label.textContent = live ? 'Scout live' : 'Scout offline';
+        label.className = live ? 'text-green-500' : 'text-gray-600';
+      }
+
+      fetch('/security/events', { credentials: 'same-origin' })
+        .then((r) => setScout(r.ok))
+        .catch(() => setScout(false));
+    })();
+  </script>
+</body>
+</html>

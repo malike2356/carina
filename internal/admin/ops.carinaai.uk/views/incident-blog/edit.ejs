@@ -1,0 +1,105 @@
+<% title = 'Incident Blog' %>
+<style>
+  .blog-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1rem; }
+  .grid { display:grid; gap:.75rem; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .grid .full { grid-column: 1 / -1; }
+  label { display:block; color:#8b8b8b; font-size:.8rem; margin-bottom:.25rem; }
+  input, textarea, select { width:100%; background:#111; border:1px solid #2a2a2a; color:#fff; border-radius:6px; padding:.65rem .75rem; }
+  textarea { min-height: 160px; }
+  .actions { display:flex; gap:.5rem; margin-top:1rem; }
+  .button-inline { display:inline-flex; align-items:center; justify-content:center; background:#16c97e; color:#06090f; border:1px solid #16c97e; border-radius:6px; padding:.55rem .8rem; font-size:.85rem; cursor:pointer; text-decoration:none; }
+  .source-row { display:grid; gap:.5rem; grid-template-columns: 1fr 1fr auto; margin-bottom:.5rem; }
+  .source-row button { background:#2a2a2a; color:#fff; border:1px solid #3a3a3a; border-radius:6px; padding:.55rem .8rem; cursor:pointer; }
+</style>
+<div class="blog-card">
+  <form method="post" action="<%= action %>">
+    <div class="grid">
+      <div class="full">
+        <label>Title</label>
+        <input name="title" value="<%= incident ? incident.title : '' %>">
+      </div>
+      <div>
+        <label>Slug</label>
+        <input name="slug" value="<%= incident ? incident.slug : '' %>">
+      </div>
+      <div>
+        <label>Category</label>
+        <select name="category">
+          <% for (const category of ['financial','security','brand','legal']) { %>
+            <option value="<%= category %>" <%= incident && incident.category === category ? 'selected' : '' %>><%= category %></option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label>Status</label>
+        <select name="status">
+          <% for (const status of ['draft','approved','published','rejected']) { %>
+            <option value="<%= status %>" <%= incident && incident.status === status ? 'selected' : (!incident && status === 'draft' ? 'selected' : '') %>><%= status %></option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label>Company</label>
+        <input name="company" value="<%= incident ? incident.company : '' %>">
+      </div>
+      <div>
+        <label>Damage</label>
+        <input name="damage" value="<%= incident ? incident.damage : '' %>">
+      </div>
+      <div>
+        <label>Date occurred</label>
+        <input name="dateOccurred" value="<%= incident ? incident.date_occurred || incident.dateOccurred : '' %>">
+      </div>
+      <div class="full">
+        <label>Body HTML</label>
+        <textarea name="bodyHtml"><%= incident ? incident.body_html || incident.bodyHtml : '' %></textarea>
+      </div>
+      <div class="full">
+        <label>Scout fix HTML</label>
+        <textarea name="scoutFixHtml"><%= incident ? incident.scout_fix_html || incident.scoutFixHtml : '' %></textarea>
+      </div>
+      <div class="full">
+        <label>Sources</label>
+        <div id="source-rows">
+          <% const sources = incident && incident.sources && incident.sources.length ? incident.sources : [{ label: '', url: '' }]; %>
+          <% for (const source of sources) { %>
+            <div class="source-row">
+              <input name="source_label" placeholder="Label" value="<%= source.label %>">
+              <input name="source_url" placeholder="URL" value="<%= source.url %>">
+              <button type="button" data-remove-source>Remove</button>
+            </div>
+          <% } %>
+        </div>
+        <button type="button" class="button-inline" id="add-source" style="margin-top:.5rem;">Add source</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="button-inline" type="submit">Save</button>
+      <a class="button-inline" href="/admin/incident-blog">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  (function () {
+    const rows = document.getElementById('source-rows');
+    const add = document.getElementById('add-source');
+    if (!rows || !add) return;
+
+    function wireRemove(button) {
+      button.addEventListener('click', () => {
+        const row = button.closest('.source-row');
+        if (row) row.remove();
+      });
+    }
+
+    rows.querySelectorAll('[data-remove-source]').forEach((button) => wireRemove(button));
+    add.addEventListener('click', () => {
+      const row = document.createElement('div');
+      row.className = 'source-row';
+      row.innerHTML = '<input name="source_label" placeholder="Label"><input name="source_url" placeholder="URL"><button type="button" data-remove-source>Remove</button>';
+      rows.appendChild(row);
+      const remove = row.querySelector('[data-remove-source]');
+      if (remove) wireRemove(remove);
+    });
+  })();
+</script>

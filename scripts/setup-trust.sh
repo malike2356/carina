@@ -11,7 +11,8 @@ VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
 SCOUT_REMOTE="/home/malike/apps/console.labyrinthscout.com"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCOUT_LOCAL="$(dirname "$SCRIPT_DIR")/console.labyrinthscout.com"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+SCOUT_LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
 REMOTE_SCRIPT="/tmp/labyrinth-scout-setup-trust.sh"
 
 log()  { echo "[setup-trust] $*"; }

@@ -1,0 +1,16 @@
+import { atom } from 'nanostores';
+export const $trustScore = atom(0);
+export const $scoutConnected = atom(false);
+export const $scoutUrl = atom(null);
+export const $securityEvents = atom([]);
+export const $killSwitchActive = atom(false);
+export const $killSwitchReason = atom('');
+export const $plan = atom(null);
+export const $usageThisPeriod = atom(null);
+export const $billingSessions = atom([]);
+export const $workspaces = atom([]);
+export const $activeWorkspace = atom(null);
+export const $commitments = atom([]);
+export const $learningMetrics = atom(null);
+export const $systemHealth = atom(null);
+export const $orchestrationAgents = atom([]);

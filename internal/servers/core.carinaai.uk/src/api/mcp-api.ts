@@ -1,0 +1,324 @@
+import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
+import { isControlAuthorized } from '../infrastructure/control-auth.js';
+import { readMcpServers, removeMcpServer, upsertMcpServer, type PersistedMcpServer } from '../mcp/config.js';
+import { disconnectServer, listConnections } from '../mcp/registry.js';
+import { McpHttpClient } from '../mcp/http-client.js';
+import { McpStdioClient } from '../mcp/stdio-client.js';
+import type { McpServerConfig, McpToolDefinition } from '../mcp/types.js';
+
+export const mcpApiRouter: ExpressRouter = Router();
+
+type McpApiRequest = Request & { tenantId?: string };
+
+function resolveExpectedInternalKey(): string {
+  return (
+    process.env.CARINA_INTERNAL_KEY?.trim() ||
+    process.env.CARINA_CLOUD_INTERNAL_KEY?.trim() ||
+    ''
+  );
+}
+
+function isMcpApiAuthorized(req: McpApiRequest): boolean {
+  if (isControlAuthorized(req)) return true;
+  const expected = resolveExpectedInternalKey();
+  if (!expected) return false;
+  const headerKey = String(req.headers['x-internal-key'] ?? '').trim();
+  return headerKey === expected;
+}
+
+function authMiddleware(req: McpApiRequest, res: Response, next: NextFunction): void {
+  if (!isMcpApiAuthorized(req)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  req.tenantId = '__operator__';
+  next();
+}
+
+function parseList(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.map(String).map((item) => item.trim()).filter(Boolean);
+  if (typeof raw !== 'string') return [];
+  const text = raw.trim();
+  if (!text) return [];
+  if (text.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.map(String).map((item) => item.trim()).filter(Boolean);
+      }
+    } catch {
+      // fall through to line parsing
+    }
+  }
+  return text
+    .split(/\r?\n/)
+    .flatMap((line) => line.split(','))
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function parseEnv(raw: unknown): Record<string, string> | undefined {
+  if (!raw) return undefined;
+  if (typeof raw === 'object' && !Array.isArray(raw)) {
+    const entries = Object.entries(raw as Record<string, unknown>)
+      .map(([key, value]) => [key.trim(), String(value).trim()] as const)
+      .filter(([key, value]) => key && value);
+    return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+  }
+  if (typeof raw !== 'string') return undefined;
+  const text = raw.trim();
+  if (!text) return undefined;
+  if (text.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(text) as unknown;
+      return parseEnv(parsed);
+    } catch {
+      // fall through to key=value parsing
+    }
+  }
+  const entries = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const idx = line.indexOf('=');
+      if (idx <= 0) return null;
+      const key = line.slice(0, idx).trim();
+      const value = line.slice(idx + 1).trim();
+      if (!key || !value) return null;
+      return [key, value] as const;
+    })
+    .filter((entry): entry is readonly [string, string] => Boolean(entry));
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function normalizeConfigBody(
+  body: Record<string, unknown>,
+  fallbackName?: string,
+): { config: McpServerConfig; name: string } {
+  const name = String(body.name ?? fallbackName ?? '').trim();
+  if (!name) {
+    throw new Error('name is required');
+  }
+
+  const transport = String(body.transport ?? 'stdio').trim().toLowerCase();
+  if (transport !== 'stdio' && transport !== 'http') {
+    throw new Error('transport must be stdio or http');
+  }
+
+  if (transport === 'http') {
+    const url = String(body.url ?? '').trim();
+    if (!url) throw new Error('url is required for http transport');
+    return {
+      name,
+      config: {
+        name,
+        transport,
+        url,
+      },
+    };
+  }
+
+  const command = String(body.command ?? '').trim();
+  if (!command) throw new Error('command is required for stdio transport');
+
+  return {
+    name,
+    config: {
+      name,
+      transport,
+      command,
+      args: parseList(body.args),
+      env: parseEnv(body.env),
+    },
+  };
+}
+
+function liveConnectionFor(name: string) {
+  return listConnections().find((connection) => connection.name === name) ?? null;
+}
+
+function mapServer(server: PersistedMcpServer) {
+  const live = liveConnectionFor(server.name);
+  const connected = Boolean(live || server.connected);
+  return {
+    name: server.name,
+    transport: server.transport,
+    command: server.command ?? null,
+    args: server.args ?? [],
+    url: server.url ?? null,
+    env: server.env ?? null,
+    savedConnected: Boolean(server.connected),
+    liveConnected: Boolean(live),
+    connected,
+    connectedAt: live?.connectedAt?.toISOString() ?? server.connectedAt ?? null,
+    tools: live?.tools?.map((tool) => tool.name) ?? server.tools ?? [],
+  };
+}
+
+async function connectTemporarily(config: McpServerConfig): Promise<McpToolDefinition[]> {
+  if (config.transport === 'http') {
+    const client = new McpHttpClient(config.name, config.url ?? '');
+    try {
+      return await client.connect();
+    } finally {
+      await client.disconnect().catch(() => undefined);
+    }
+  }
+
+  const client = new McpStdioClient(
+    config.name,
+    config.command ?? '',
+    config.args ?? [],
+    config.env ?? {},
+  );
+  try {
+    return await client.connect();
+  } finally {
+    await client.disconnect().catch(() => undefined);
+  }
+}
+
+mcpApiRouter.use(authMiddleware);
+
+mcpApiRouter.get('/', async (_req: McpApiRequest, res: Response) => {
+  try {
+    const servers = await readMcpServers();
+    res.json({
+      servers: servers.map(mapServer),
+      summary: {
+        configured: servers.length,
+        liveConnections: listConnections().length,
+      },
+      source: 'persisted',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.post('/', async (req: McpApiRequest, res: Response) => {
+  try {
+    const { config, name } = normalizeConfigBody((req.body ?? {}) as Record<string, unknown>);
+    const servers = await readMcpServers();
+    if (servers.some((server) => server.name === name)) {
+      res.status(409).json({ error: `MCP server already exists: ${name}` });
+      return;
+    }
+    const next: PersistedMcpServer = {
+      ...config,
+      connected: false,
+      connectedAt: undefined,
+      tools: [],
+    };
+    await upsertMcpServer(next);
+    res.status(201).json({ server: mapServer(next) });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.put('/:id', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    const { config, name } = normalizeConfigBody((req.body ?? {}) as Record<string, unknown>, id);
+    const servers = await readMcpServers();
+    const idx = servers.findIndex((server) => server.name === id);
+    if (idx < 0) {
+      res.status(404).json({ error: 'MCP server not found' });
+      return;
+    }
+    const renamedConflict = name !== id && servers.some((server) => server.name === name);
+    if (renamedConflict) {
+      res.status(409).json({ error: `MCP server already exists: ${name}` });
+      return;
+    }
+    await disconnectServer(id).catch(() => undefined);
+    const updated: PersistedMcpServer = {
+      ...config,
+      connected: false,
+      connectedAt: undefined,
+      tools: [],
+    };
+    servers.splice(idx, 1, updated);
+    await upsertMcpServer(updated);
+    if (name !== id) {
+      await removeMcpServer(id);
+    }
+    res.json({ server: mapServer(updated) });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.delete('/:id', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+    await disconnectServer(id).catch(() => undefined);
+    const ok = await removeMcpServer(id);
+    if (!ok) {
+      res.status(404).json({ error: 'MCP server not found' });
+      return;
+    }
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.get('/:id/tools', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    const servers = await readMcpServers();
+    const server = servers.find((item) => item.name === id);
+    if (!server) {
+      res.status(404).json({ error: 'MCP server not found' });
+      return;
+    }
+    const live = liveConnectionFor(id);
+    res.json({
+      name: id,
+      liveConnected: Boolean(live),
+      tools: live?.tools?.map((tool) => tool.name) ?? server.tools ?? [],
+      source: live ? 'live' : 'persisted',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.post('/:id/test', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    const servers = await readMcpServers();
+    const saved = servers.find((item) => item.name === id);
+    const override = (req.body ?? {}) as Record<string, unknown>;
+    const mergedBody = {
+      name: override.name ?? saved?.name ?? id,
+      transport: override.transport ?? saved?.transport,
+      command: override.command ?? saved?.command,
+      args: override.args ?? saved?.args,
+      url: override.url ?? saved?.url,
+      env: override.env ?? saved?.env,
+    };
+    const { config } = normalizeConfigBody(mergedBody, id);
+    const startedAt = Date.now();
+    const tools = await connectTemporarily(config);
+    res.json({
+      ok: true,
+      testedAt: new Date().toISOString(),
+      durationMs: Date.now() - startedAt,
+      transport: config.transport,
+      tools: tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description ?? '',
+      })),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});

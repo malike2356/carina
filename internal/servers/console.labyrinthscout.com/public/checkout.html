@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scout Checkout</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/hub.css?v=4">
+  <style>
+    .checkout-shell { width: min(860px, 100%); margin: 0 auto; padding: 44px 22px 72px; }
+    .checkout-hero { margin-top: 48px; }
+    .checkout-hero h1 { margin: 0; font-size: clamp(38px, 5vw, 64px); line-height: 1.02; max-width: 12ch; }
+    .checkout-hero p { max-width: 700px; color: var(--muted); font-size: 18px; margin: 18px 0 0; }
+    .checkout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 36px; }
+    .checkout-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 24px; }
+    .checkout-card h2 { margin: 0 0 8px; font-size: 24px; }
+    .checkout-card p { color: var(--muted); margin: 0 0 16px; }
+    .checkout-card ul { padding: 0; margin: 0; list-style: none; }
+    .checkout-card li { margin: 10px 0; color: #c8d8e2; }
+    .checkout-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+    .checkout-note { margin-top: 24px; color: var(--muted); }
+    @media (max-width: 760px) { .checkout-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="checkout-shell">
+    <nav class="hub-nav" aria-label="Console navigation">
+      <a class="hub-brand" href="/">LABYRINTH SCOUT</a>
+      <div class="hub-nav-links">
+        <a href="/">Home</a>
+        <a href="/pricing">Pricing</a>
+        <a href="/docs/">Docs</a>
+        <a href="/account/login">Sign in</a>
+      </div>
+    </nav>
+
+    <section class="checkout-hero">
+      <p class="hub-eyebrow">Checkout</p>
+      <h1>Scout is the control layer.</h1>
+      <p>Choose the level of protection your workflow needs. The workspace stays Carina; the security and governance stay here.</p>
+    </section>
+
+    <section class="checkout-grid" aria-label="Scout plans">
+      <article class="checkout-card">
+        <h2>Scout Monitor</h2>
+        <p>Visibility for workflows that are already in production and need the early warning layer first.</p>
+        <ul>
+          <li>Live security dashboard</li>
+          <li>Prompt injection detection</li>
+          <li>Audit log retention</li>
+        </ul>
+        <div class="checkout-actions">
+          <a class="hub-btn hub-btn-secondary" href="/pricing">Review plans</a>
+          <a class="hub-btn hub-btn-primary" href="mailto:contact@verlox.uk?subject=Scout%20Monitor">Contact sales</a>
+        </div>
+      </article>
+
+      <article class="checkout-card">
+        <h2>Scout Govern</h2>
+        <p>The production tier for workflows that need kill switch control, alerts, and incident-grade evidence.</p>
+        <ul>
+          <li>Kill switch and tool quarantine</li>
+          <li>Multi-channel alerts</li>
+          <li>Exports and trust API</li>
+        </ul>
+        <div class="checkout-actions">
+          <a class="hub-btn hub-btn-secondary" href="/account/login">Sign in</a>
+          <a class="hub-btn hub-btn-primary" href="mailto:contact@verlox.uk?subject=Scout%20Govern">Buy Scout Govern</a>
+        </div>
+      </article>
+    </section>
+
+    <p class="checkout-note">If you are already using Carina, this is the step that moves the deployment into governed production.</p>
+  </main>
+</body>
+</html>

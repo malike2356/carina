@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CORE="${ROOT}/core.carinaai.uk"
+CORE="${ROOT}/internal/servers/core.carinaai.uk"
 
 if [[ -n "${NPM_TOKEN:-}" ]]; then
   echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "${CORE}/.npmrc.publish"

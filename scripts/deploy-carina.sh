@@ -9,10 +9,11 @@ VPS_HOST="80.190.81.208"
 VPS_USER="malike"
 CORE_REMOTE="/home/malike/apps/core.carinaai.uk"
 OPS_REMOTE="/home/malike/apps/ops.carinaai.uk"
+NVM_NODE="/home/malike/.nvm/versions/node/v22.23.0/bin/node"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-CORE_LOCAL="$REPO_ROOT/core.carinaai.uk"
-OPS_LOCAL="$REPO_ROOT/ops.carinaai.uk"
+CORE_LOCAL="${REPO_ROOT}/internal/servers/core.carinaai.uk"
+OPS_LOCAL="${REPO_ROOT}/internal/admin/ops.carinaai.uk"
 
 log()  { echo "[$(date +%H:%M:%S)] $*"; }
 die()  { echo "ERROR: $*" >&2; exit 1; }
@@ -37,7 +38,7 @@ deploy_app() {
   local start_cmd="$4"
   local sup_name="$5"
   local extra_env="${6:-}"
-  local runner="/usr/bin/node"
+  local runner="$NVM_NODE"
 
   if [[ "$start_cmd" == *.sh ]]; then
     runner="/bin/bash"
@@ -55,14 +56,22 @@ deploy_app() {
   log "[$label] Building on VPS..."
   ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
     set -euo pipefail
+
+    # Load nvm so the pnpm-compatible Node.js 22 is on PATH
+    export NVM_DIR="\$HOME/.nvm"
+    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
+    # CI=true lets pnpm purge stale node_modules without a TTY prompt
+    export CI=true
+
     cd "$remote_dir"
 
+    echo "  Node: \$(node --version), pnpm: \$(corepack pnpm --version 2>/dev/null || echo n/a)"
     echo "  Clearing stale build output..."
     rm -rf dist
 
     if [[ -f pnpm-lock.yaml ]]; then
       echo "  Installing dependencies with pnpm..."
-      corepack pnpm install --frozen-lockfile 2>&1 | tail -3
+      corepack pnpm install --frozen-lockfile 2>&1 | tail -5
 
       echo "  Building TypeScript..."
       corepack pnpm build 2>&1 | tail -5
@@ -87,40 +96,49 @@ directory=${remote_dir}
 autostart=true
 autorestart=true
 user=${VPS_USER}
-stdout_logfile=/var/log/supervisor/${sup_name}.out.log
-stderr_logfile=/var/log/supervisor/${sup_name}.err.log
+stdout_logfile=/home/${VPS_USER}/logs/${sup_name}.out.log
+stderr_logfile=/home/${VPS_USER}/logs/${sup_name}.err.log
 stdout_logfile_maxbytes=10MB
 stderr_logfile_maxbytes=10MB
 stopwaitsecs=30
 environment=NODE_ENV=\"production\"${extra_env}"
 
   ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
+    export NVM_DIR="\$HOME/.nvm"
+    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
+
     set -euo pipefail
     CONF_PATH="/etc/supervisor/conf.d/${sup_name}.conf"
-    CONF_CONTENT='${sup_conf}'
 
-    mkdir -p /var/log/supervisor
+    mkdir -p /home/${VPS_USER}/logs
 
-    if sudo tee "\$CONF_PATH" > /dev/null << 'CONF'
+    if sudo -n tee "\$CONF_PATH" > /dev/null << 'CONF'
 ${sup_conf}
 CONF
     then
       echo "  Supervisor conf installed at \$CONF_PATH"
-      sudo supervisorctl reread 2>/dev/null || true
-      sudo supervisorctl update 2>/dev/null || true
-      sudo supervisorctl restart "${sup_name}" 2>/dev/null || \
-        sudo supervisorctl start "${sup_name}" 2>/dev/null || \
-        echo "WARN: could not start ${sup_name} via supervisorctl"
+      sudo -n supervisorctl reread 2>/dev/null || true
+      sudo -n supervisorctl update 2>/dev/null || true
+      sudo -n supervisorctl restart "${sup_name}" 2>/dev/null || \
+        sudo -n supervisorctl start "${sup_name}" 2>/dev/null || \
+        echo "WARN: supervisorctl unavailable (no passwordless sudo) - using pkill restart"
     else
-      echo ""
-      echo "WARN: Could not write to /etc/supervisor/conf.d/ - create this file manually:"
+      echo "WARN: No passwordless sudo for supervisorctl - printing conf for manual install:"
       echo "--- /etc/supervisor/conf.d/${sup_name}.conf ---"
       cat << 'CONF'
 ${sup_conf}
 CONF
-      echo "--- end ---"
-      echo "Then run: sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start ${sup_name}"
+      echo "---"
     fi
+
+    # Always attempt a direct process restart regardless of supervisorctl outcome
+    echo "  Restarting ${sup_name} process directly..."
+    pkill -f "${remote_dir}/dist/server.js" 2>/dev/null || true
+    pkill -f "${remote_dir}/start.sh" 2>/dev/null || true
+    pkill -f "${remote_dir}/dist/src/index.js" 2>/dev/null || true
+    sleep 2
+    nohup ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
+    echo "  Process restarted (PID \$!)"
 REMOTE
 
   log "[$label] Done."
@@ -177,8 +195,8 @@ main() {
   echo "=== POST-DEPLOY CHECKLIST ==="
   echo ""
   echo "1. Set production .env on VPS:"
-  echo "   scp ops.carinaai.uk/.env ${VPS_USER}@${VPS_HOST}:${OPS_REMOTE}/.env"
-  echo "   scp core.carinaai.uk/.env ${VPS_USER}@${VPS_HOST}:${CORE_REMOTE}/.env"
+  echo "   scp internal/admin/ops.carinaai.uk/.env ${VPS_USER}@${VPS_HOST}:${OPS_REMOTE}/.env"
+  echo "   scp internal/servers/core.carinaai.uk/.env ${VPS_USER}@${VPS_HOST}:${CORE_REMOTE}/.env"
   echo "   (Edit them on the VPS to use production DB/Redis/API keys, then restart)"
   echo "   ssh ${VPS_USER}@${VPS_HOST} 'sudo supervisorctl restart carina-core carina-ops'"
   echo ""
@@ -194,7 +212,7 @@ main() {
   echo "   DNS: A/AAAA hub.carinaai.uk -> VPS (same IP as carinaai.uk)"
   echo "   TLS: certbot certonly --nginx -d hub.carinaai.uk (or add SAN to carinaai.uk cert)"
   echo "   Docker prod: docker-compose -f docker-compose.prod.yml up carina-hub nginx"
-  echo "   Nginx: core.carinaai.uk/docker/nginx/hub.carinaai.uk.conf -> carina-hub:3001"
+  echo "   Nginx: internal/servers/core.carinaai.uk/docker/nginx/hub.carinaai.uk.conf -> carina-hub:3001"
   echo "   Legacy skills.carinaai.uk redirects to hub.carinaai.uk"
   print_nginx_hint "hub.carinaai.uk" "3001"
 }

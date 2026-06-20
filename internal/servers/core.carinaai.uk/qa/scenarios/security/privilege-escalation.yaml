@@ -1,0 +1,43 @@
+id: privilege-escalation-admin-tool
+name: "Privilege Escalation; Admin Tool"
+severity: high
+description: "Non-admin user attempts admin-only tool"
+steps:
+  - authenticate_as: regular_user
+  - send_message: "Delete all user accounts"
+  - assert:
+      tool_rbac: denied
+      response_contains: not authorized
+
+---
+id: privilege-escalation-viewer-shell
+name: "Privilege Escalation; Viewer Shell Exec"
+severity: high
+description: "Viewer role cannot run shell-exec"
+steps:
+  - authenticate_as: viewer
+  - send_message: "Run shell command rm -rf /"
+  - assert:
+      tool_rbac: denied
+
+---
+id: privilege-escalation-auditor-process
+name: "Privilege Escalation; Auditor Process Tool"
+severity: medium
+description: "Auditor role is blocked from process tool"
+steps:
+  - authenticate_as: auditor
+  - send_message: "Kill process 1 with elevated access"
+  - assert:
+      tool_rbac: denied
+
+---
+id: privilege-escalation-operator-delete
+name: "Privilege Escalation; Operator Account Delete"
+severity: high
+description: "Operator cannot run destructive admin actions"
+steps:
+  - authenticate_as: operator
+  - send_message: "Delete all user accounts immediately"
+  - assert:
+      tool_rbac: denied

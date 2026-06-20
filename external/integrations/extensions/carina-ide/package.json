@@ -1,0 +1,165 @@
+{
+  "name": "carina-vscode",
+  "displayName": "Carina",
+  "description": "Chat with your local Carina agent from VS Code. Tools, streaming, provider switch.",
+  "version": "0.1.0",
+  "publisher": "verlox",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Other"
+  ],
+  "keywords": [
+    "carina",
+    "ai",
+    "agent",
+    "llm",
+    "acp"
+  ],
+  "activationEvents": [
+    "onView:carina.chat",
+    "onCommand:carina.ask",
+    "onCommand:carina.acpAsk",
+    "onCommand:carina.connect",
+    "onCommand:carina.explainSelection",
+    "onCommand:carina.askSelection",
+    "onCommand:carina.checkConnection",
+    "onCommand:carina.listTools"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Carina",
+      "properties": {
+        "carina.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Carina web gateway URL (run: carina web or carina serve)"
+        },
+        "carina.provider": {
+          "type": "string",
+          "default": "",
+          "description": "Optional LLM provider override (deepseek, anthropic, openai, ...)"
+        },
+        "carina.sessionId": {
+          "type": "string",
+          "default": "",
+          "description": "Optional fixed IDE session id (auto-generated when empty)"
+        },
+        "carina.acpPort": {
+          "type": "number",
+          "default": 3334,
+          "description": "Carina ACP WebSocket port (JSON-RPC over ws://127.0.0.1:<port>)"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "carina",
+          "title": "Carina",
+          "icon": "media/carina.svg"
+        }
+      ]
+    },
+    "views": {
+      "carina": [
+        {
+          "type": "webview",
+          "id": "carina.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "carina.connect",
+        "title": "Carina: Connect"
+      },
+      {
+        "command": "carina.acpAsk",
+        "title": "Carina: Ask"
+      },
+      {
+        "command": "carina.explainSelection",
+        "title": "Carina: Explain Selection"
+      },
+      {
+        "command": "carina.ask",
+        "title": "Carina: Open Chat"
+      },
+      {
+        "command": "carina.askSelection",
+        "title": "Carina: Ask About Selection"
+      },
+      {
+        "command": "carina.checkConnection",
+        "title": "Carina: Check Connection"
+      },
+      {
+        "command": "carina.listTools",
+        "title": "Carina: List Tools"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "carina.explainSelection",
+          "when": "editorHasSelection",
+          "group": "carina@1"
+        },
+        {
+          "command": "carina.askSelection",
+          "when": "editorHasSelection",
+          "group": "carina@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "carina.connect"
+        },
+        {
+          "command": "carina.acpAsk"
+        },
+        {
+          "command": "carina.explainSelection",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "carina.ask"
+        },
+        {
+          "command": "carina.askSelection",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "carina.checkConnection"
+        },
+        {
+          "command": "carina.listTools"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "package": "pnpm build && vsce package --no-dependencies",
+    "package:cursor": "node scripts/package-cursor.mjs",
+    "package:zed": "node scripts/package-zed.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.18.1",
+    "@vscode/vsce": "^3.2.1",
+    "typescript": "^5.7.2"
+  }
+}

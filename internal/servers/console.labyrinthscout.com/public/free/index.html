@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Free Attack Surface Scan | Labyrinth Scout</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/hub.css?v=4">
+  <style>
+    .scan-hero { text-align: center; max-width: 640px; margin: 0 auto 2rem; }
+    .scan-hero h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); margin-bottom: 0.75rem; }
+    .scan-hero p { color: var(--text); }
+    .scan-form {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 1.5rem 0;
+    }
+    .scan-form input {
+      flex: 1 1 220px;
+      min-width: 0;
+      max-width: 420px;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--lift);
+      color: var(--bright);
+      font-size: 1rem;
+    }
+    .scan-form button {
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--green);
+      color: var(--void);
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .scan-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .scan-status {
+      text-align: center;
+      color: var(--cyan);
+      min-height: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .scan-results { max-width: 760px; margin: 0 auto; }
+    .severity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 0.75rem;
+      margin: 1.5rem 0;
+    }
+    .severity-card {
+      background: var(--lift);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+    }
+    .severity-card strong { display: block; font-size: 1.5rem; }
+    .severity-critical strong { color: #f87171; }
+    .severity-high strong { color: #fb923c; }
+    .severity-medium strong { color: var(--amber); }
+    .finding-list { list-style: none; margin: 1rem 0; }
+    .finding-list li {
+      background: var(--lift);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.5rem;
+    }
+    .finding-list .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      margin-right: 0.5rem;
+    }
+    .badge-critical { background: rgba(248,113,113,0.2); color: #f87171; }
+    .badge-high { background: rgba(251,146,60,0.2); color: #fb923c; }
+    .badge-medium { background: rgba(212,175,55,0.2); color: var(--amber); }
+    .badge-info { background: rgba(34,211,238,0.15); color: var(--cyan); }
+    .cta-box {
+      margin-top: 2rem;
+      padding: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(13, 27, 46, 0.8);
+    }
+    .cta-box code {
+      display: block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: var(--void);
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      margin: 0.5rem 0;
+      overflow-x: auto;
+    }
+    .cta-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="hub-wrap">
+    <nav class="hub-nav" aria-label="Console navigation">
+      <a class="hub-brand" href="/">LABYRINTH SCOUT</a>
+      <div class="hub-nav-links">
+        <a href="/">Home</a>
+        <a href="/free" class="active">Free Scan</a>
+        <a href="/pricing">Pricing</a>
+        <a href="https://carinaai.uk">Carina</a>
+      </div>
+    </nav>
+
+    <section class="scan-hero">
+      <p class="hub-eyebrow">No signup required</p>
+      <h1>What is on your attack surface?</h1>
+      <p>Paste a domain. Get open ports, subdomains, and critical CVEs in about two minutes.</p>
+      <form class="scan-form" id="scan-form">
+        <input type="text" id="domain-input" placeholder="example.com" autocomplete="off" required>
+        <button type="submit" id="scan-btn">Scan</button>
+      </form>
+      <p class="scan-status" id="scan-status" aria-live="polite"></p>
+    </section>
+
+    <section class="scan-results hidden" id="scan-results">
+      <div class="severity-grid" id="severity-grid"></div>
+      <div id="attack-surface"></div>
+      <ul class="finding-list" id="finding-list"></ul>
+      <div class="cta-box" id="cta-box"></div>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById('scan-form');
+    const input = document.getElementById('domain-input');
+    const btn = document.getElementById('scan-btn');
+    const statusEl = document.getElementById('scan-status');
+    const resultsEl = document.getElementById('scan-results');
+    let pollTimer = null;
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    function severityClass(sev) {
+      if (sev === 'critical') return 'badge-critical';
+      if (sev === 'high') return 'badge-high';
+      if (sev === 'medium') return 'badge-medium';
+      return 'badge-info';
+    }
+
+    function renderResults(data) {
+      resultsEl.classList.remove('hidden');
+      const f = data.findings || {};
+      document.getElementById('severity-grid').innerHTML = [
+        ['critical', f.critical || 0],
+        ['high', f.high || 0],
+        ['medium', f.medium || 0],
+        ['info', f.info || 0],
+      ].map(([label, count]) =>
+        `<div class="severity-card severity-${label}"><strong>${count}</strong>${label}</div>`
+      ).join('');
+
+      const surface = data.attack_surface || {};
+      document.getElementById('attack-surface').innerHTML = `
+        <p><strong>Open ports:</strong> ${(surface.open_ports || []).join(', ') || 'none detected'}</p>
+        <p><strong>Subdomains:</strong> ${(surface.subdomains || []).slice(0, 8).join(', ') || 'none detected'}</p>
+        <p><strong>Tech stack:</strong> ${(surface.tech_stack || []).join(', ') || 'unknown'}</p>
+      `;
+
+      const details = data.details || [];
+      document.getElementById('finding-list').innerHTML = details.length
+        ? details.map((d) =>
+            `<li><span class="badge ${severityClass(d.severity)}">${d.severity}</span><strong>${d.name}</strong><br><span style="color:var(--text);font-size:0.9rem">${d.description || ''}</span></li>`
+          ).join('')
+        : '<li>No critical or high severity issues detected in this pass.</li>';
+
+      const cta = data.cta || {};
+      document.getElementById('cta-box').innerHTML = `
+        <h3>Investigate with Carina</h3>
+        <p>${cta.message || 'Carina can validate and investigate these findings.'}</p>
+        <code>${cta.import_command || 'carina migrate agent-type-1'}</code>
+        <code>${cta.investigate_command || 'carina scout investigate &lt;finding-id&gt;'}</code>
+        <div class="cta-actions">
+          <a class="hub-btn hub-btn-primary" href="${cta.signup_url || 'https://carinaai.uk'}">Get Carina</a>
+          <a class="hub-btn hub-btn-secondary" href="/pricing">View Plans</a>
+        </div>
+      `;
+    }
+
+    async function pollScan(scanId) {
+      const res = await fetch(`/api/v1/free-scan/${encodeURIComponent(scanId)}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Scan failed');
+
+      if (data.status === 'completed' || data.status === 'failed') {
+        clearInterval(pollTimer);
+        btn.disabled = false;
+        if (data.status === 'failed') {
+          setStatus(data.error || 'Scan failed');
+          return;
+        }
+        setStatus(`Scan complete in ${data.duration_seconds || '?'}s`);
+        renderResults(data);
+        return;
+      }
+
+      setStatus(`Scanning ${data.domain || ''}... (${data.status})`);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const domain = input.value.trim();
+      if (!domain) return;
+
+      btn.disabled = true;
+      resultsEl.classList.add('hidden');
+      setStatus('Starting scan...');
+
+      try {
+        const res = await fetch('/api/v1/free-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ domain }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStatus(data.error || 'Could not start scan');
+          btn.disabled = false;
+          return;
+        }
+
+        const scanId = data.scan_id;
+        setStatus(`Scan queued. Estimated ${data.eta_seconds || 90}s...`);
+        await pollScan(scanId);
+        pollTimer = setInterval(() => pollScan(scanId), 4000);
+      } catch (err) {
+        setStatus(err.message || 'Network error');
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

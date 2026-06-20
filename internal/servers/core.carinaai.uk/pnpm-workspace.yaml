@@ -1,0 +1,20 @@
+packages:
+  - '.'
+  - 'apps/*'
+  - 'packages/*'
+  - 'packages/packs/*'
+
+allowBuilds:
+  '@whiskeysockets/baileys': true
+  bcrypt: true
+  better-sqlite3: true
+  esbuild: true
+  node-pty: true
+  protobufjs: true
+  puppeteer: true
+  sharp: true
+overrides:
+  esbuild: 0.28.1
+  minimist: '>=0.2.4'
+  form-data: '>=4.0.6'
+  nodemailer: '>=9.0.1'

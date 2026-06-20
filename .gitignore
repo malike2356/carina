@@ -10,7 +10,7 @@ archive/python-fastapi-stub/__pycache__/
 dist/
 *.tsbuildinfo
 
-# Environment — never commit
+# Environment - never commit
 .env
 .env.bak-*
 laravel/.env
@@ -55,10 +55,10 @@ python/fine_tuned/
 *.swp
 .claude/
 
-# Local research clones (keep markdown prompts; do not commit nested .git trees)
-instructions/prompts/researched_gap/3-agents-to-adopt/hermes-agent/
-instructions/prompts/researched_gap/3-agents-to-adopt/odysseus/
-instructions/prompts/researched_gap/3-agents-to-adopt/openclaw/
+# Local research clones (keep markdown prompts; do not commit nested Git trees)
+product/planning/prompts/researched_gap/3-agents-to-adopt/hermes-agent/
+product/planning/prompts/researched_gap/3-agents-to-adopt/odysseus/
+product/planning/prompts/researched_gap/3-agents-to-adopt/openclaw/
 
 # Mobile (scaffolded, not built yet)
 mobile/android/.gradle/
@@ -73,11 +73,13 @@ labyrinthscout/.env
 
 # Archive - never commit
 archive/
+product/archive/archive/
 
 # Platform admin
 platform_admin/node_modules/
-carinaai.uk/
+/carinaai.uk/
 HESTIACP_CREDENTIALS.txt
 
 # Media and credentials - not for source control
 instructions/media/
+product/planning/media/

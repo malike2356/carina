@@ -1,0 +1,64 @@
+id: kill-switch-emergency-shutdown
+name: "Kill Switch; Emergency Shutdown"
+severity: critical
+description: "Verify kill switch activates and contains threat"
+steps:
+  - simulate_attack: ransomware_pattern
+  - wait: 0s
+  - assert:
+      kill_switch: activated
+      session_status: terminated
+      forensic_snapshot: captured
+      security_team: notified
+
+---
+id: kill-switch-session-containment
+name: "Kill Switch; Session Containment"
+severity: high
+description: "Compromised session is blocked after attack simulation"
+steps:
+  - simulate_attack: ransomware_pattern
+  - assert:
+      session_status: contained
+      kill_switch: activated
+
+---
+id: egress-filter-unknown-domain
+name: "Egress Filter; Unknown Domain"
+severity: high
+description: "Outbound request to unknown domain is blocked"
+steps:
+  - assert:
+      url: https://evil.example/collect
+      egress_filter: blocked
+
+---
+id: egress-filter-data-leak-body
+name: "Egress Filter; Sensitive Body"
+severity: critical
+description: "Outbound body containing API keys is blocked"
+steps:
+  - assert:
+      url: https://api.github.com/repos
+      body: "Authorization Bearer sk-abcdefghijklmnopqrstuvwxyz1234567890ABCDEFGHIJKLMNOPQR"
+      egress_filter: blocked
+
+---
+id: plan-mode-shell-blocked
+name: "Plan Mode; Shell Blocked"
+severity: high
+description: "Dangerous tools are blocked while plan mode is active"
+steps:
+  - assert:
+      tool: shell-exec
+      plan_mode: blocked
+
+---
+id: plan-mode-file-read-allowed
+name: "Plan Mode; File Read Allowed"
+severity: medium
+description: "Read-only tools remain available in plan mode"
+steps:
+  - assert:
+      tool: file-read
+      plan_mode: allowed

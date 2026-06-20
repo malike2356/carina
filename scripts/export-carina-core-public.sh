@@ -20,7 +20,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-CORE="${REPO_ROOT}/core.carinaai.uk"
+CORE="${REPO_ROOT}/internal/servers/core.carinaai.uk"
 TEMPLATE_DIR="${SCRIPT_DIR}/public-repo"
 IGNORE_FILE="${TEMPLATE_DIR}/.public-exportignore"
 
@@ -53,7 +53,7 @@ done < "$IGNORE_FILE"
 rsync -a "${RSYNC_EXCLUDES[@]}" "${CORE}/" "${OUT_DIR}/"
 
 cp "${TEMPLATE_DIR}/.gitignore" "${OUT_DIR}/.gitignore"
-# Workflows: prefer core.carinaai.uk/.github; fall back to scripts/public-repo templates
+# Workflows: prefer internal/servers/core.carinaai.uk/.github; fall back to scripts/public-repo templates
 if [[ ! -f "${OUT_DIR}/.github/workflows/ci.yml" ]]; then
   mkdir -p "${OUT_DIR}/.github/workflows"
   cp "${TEMPLATE_DIR}/ci.yml" "${OUT_DIR}/.github/workflows/ci.yml"

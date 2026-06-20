@@ -14,8 +14,9 @@ VPS_USER="${VPS_USER:-malike}"
 SCOUT_REMOTE="/home/malike/apps/console.labyrinthscout.com"
 CORE_REMOTE="/home/malike/apps/core.carinaai.uk"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCOUT_LOCAL="$(dirname "$SCRIPT_DIR")/console.labyrinthscout.com"
-CORE_LOCAL="$(dirname "$SCRIPT_DIR")/core.carinaai.uk"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+SCOUT_LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
+CORE_LOCAL="${REPO_ROOT}/internal/servers/core.carinaai.uk"
 
 log() { echo "[complete-security] $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }

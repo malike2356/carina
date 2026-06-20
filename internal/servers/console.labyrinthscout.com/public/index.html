@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labyrinth Scout; Security Console</title>
+<style>
+:root {
+  --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+  --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b;
+  --primary: #4f46e5; --primary2: #6366f1;
+  --critical: #ef4444; --high: #f97316; --medium: #eab308; --low: #3b82f6; --info: #6b7280;
+  --success: #22c55e; --warning: #f59e0b; --border: #334155;
+  --radius: 8px; --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--primary2); text-decoration: none; }
+
+/* Layout */
+.layout { display: flex; min-height: 100vh; }
+.sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; }
+.sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.sidebar-logo h1 { font-size: 18px; color: var(--primary2); display: flex; align-items: center; gap: 8px; }
+.sidebar-logo h1 span { font-size: 24px; }
+.sidebar-nav { display: flex; flex-direction: column; }
+.sidebar-nav a { padding: 10px 20px; color: var(--text2); font-size: 14px; display: flex; align-items: center; gap: 10px; transition: all 0.15s; border-left: 3px solid transparent; }
+.sidebar-nav a:hover, .sidebar-nav a.active { background: var(--surface2); color: var(--text); border-left-color: var(--primary2); }
+.sidebar-nav a .icon { width: 20px; text-align: center; }
+.main { margin-left: 240px; flex: 1; padding: 24px; max-width: 1400px; }
+
+/* Header */
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.header h2 { font-size: 22px; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
+
+/* Cards */
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-title { font-size: 16px; font-weight: 600; }
+
+/* Score Widget */
+.score-widget { background: linear-gradient(135deg, #312e81, #4f46e5); color: white; padding: 32px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
+.score-widget .score-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; margin-bottom: 8px; }
+.score-widget .score-value { font-size: 80px; font-weight: 800; line-height: 1; }
+.score-widget .score-trend { margin-top: 8px; font-size: 14px; opacity: 0.9; }
+.score-categories { display: flex; gap: 12px; margin-top: 20px; }
+.score-cat { flex: 1; text-align: center; }
+.score-cat .cat-label { font-size: 10px; text-transform: uppercase; opacity: 0.7; margin-bottom: 4px; }
+.score-cat .cat-value { font-size: 22px; font-weight: 700; }
+.score-cat .cat-bar { height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.score-cat .cat-bar-fill { height: 100%; background: white; border-radius: 3px; }
+
+/* Grid */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+/* Stats */
+.stat { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
+.stat .stat-value { font-size: 28px; font-weight: 700; }
+.stat .stat-label { font-size: 12px; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
+.stat-critical .stat-value { color: var(--critical); }
+.stat-high .stat-value { color: var(--high); }
+.stat-medium .stat-value { color: var(--medium); }
+.stat-low .stat-value { color: var(--low); }
+
+/* Buttons */
+.btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary2); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: var(--critical); color: white; }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; background: var(--surface2); color: var(--text2); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 11px; text-transform: uppercase; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: rgba(79,70,229,0.05); }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.badge-critical { background: rgba(239,68,68,0.15); color: var(--critical); }
+.badge-high { background: rgba(249,115,22,0.15); color: var(--high); }
+.badge-medium { background: rgba(234,179,8,0.15); color: var(--medium); }
+.badge-low { background: rgba(59,130,246,0.15); color: var(--low); }
+.badge-info { background: rgba(107,114,128,0.15); color: var(--info); }
+.badge-success { background: rgba(34,197,94,0.15); color: var(--success); }
+
+/* Filters */
+.filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filters select, .filters input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+.filters select { min-width: 120px; }
+
+/* Page hiding */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Scan progress */
+.progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+.progress-fill { height: 100%; background: var(--primary2); border-radius: 4px; transition: width 0.3s; }
+
+/* Status indicators */
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.status-online { background: var(--success); }
+.status-offline { background: var(--text3); }
+.status-failed { background: var(--critical); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 200; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+.modal h3 { margin-bottom: 16px; }
+.modal .form-group { margin-bottom: 12px; }
+.modal label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; }
+.modal input, .modal select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { width: 60px; padding: 12px 0; }
+  .sidebar-logo h1 { font-size: 0; justify-content: center; }
+  .sidebar-logo h1 span { font-size: 24px; }
+  .sidebar-nav a { padding: 10px; justify-content: center; font-size: 0; }
+  .sidebar-nav a .icon { font-size: 18px; }
+  .main { margin-left: 60px; padding: 16px; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  .score-categories { flex-direction: column; }
+}
+
+/* Loading */
+.loading { text-align: center; padding: 40px; color: var(--text2); }
+.spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary2); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Toast */
+.toast { position: fixed; top: 16px; right: 16px; padding: 12px 20px; border-radius: 8px; color: white; font-size: 13px; z-index: 300; animation: slideIn 0.3s ease; }
+.toast-success { background: var(--success); }
+.toast-error { background: var(--critical); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <h1><span></span> Labyrinth Scout</h1>
+    </div>
+    <div class="sidebar-nav" id="nav">
+      <a href="#dashboard" class="active" data-page="dashboard"><span class="icon"></span> Dashboard</a>
+      <a href="#findings" data-page="findings"><span class="icon"></span> Findings</a>
+      <a href="#targets" data-page="targets"><span class="icon"></span> Targets</a>
+      <a href="#assets" data-page="assets"><span class="icon"></span> Assets</a>
+      <a href="#scans" data-page="scans"><span class="icon"></span> Scans</a>
+      <a href="#agents" data-page="agents"><span class="icon"></span> Agents</a>
+      <a href="#compliance" data-page="compliance"><span class="icon"></span> Compliance</a>
+      <a href="#settings" data-page="settings"><span class="icon"></span> Settings</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Dashboard Page -->
+    <div class="page active" id="page-dashboard">
+      <div class="header"><h2>Dashboard</h2><div><button class="btn btn-primary" onclick="triggerQuickScan()"> Quick Scan</button></div></div>
+      <div id="scoreWidget">Loading...</div>
+      <div class="grid-4" id="statCards"></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">Recent Scans</div><div id="recentScans">Loading...</div></div>
+        <div class="card"><div class="card-title">Critical Findings</div><div id="criticalFindings">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- Findings Page -->
+    <div class="page" id="page-findings">
+      <div class="header"><h2>Findings</h2><div><button class="btn btn-sm btn-secondary" onclick="exportCSV()"> Export CSV</button></div></div>
+      <div class="card">
+        <div class="filters">
+          <select id="filterSeverity" onchange="loadFindings()"><option value="">All Severity</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select>
+          <select id="filterStatus" onchange="loadFindings()"><option value="open">Open</option><option value="all">All Status</option><option value="confirmed">Confirmed</option><option value="remediated">Remediated</option></select>
+          <select id="filterType" onchange="loadFindings()"><option value="">All Types</option><option value="open_port">Open Port</option><option value="vulnerability">Vulnerability</option><option value="cve">CVE</option><option value="subdomain">Subdomain</option></select>
+          <input type="text" id="filterSearch" placeholder="Search..." oninput="loadFindings()" style="flex:1;min-width:150px">
+        </div>
+        <div class="table-wrap"><table id="findingsTable"><thead><tr><th>Severity</th><th>Title</th><th>Type</th><th>Host</th><th>Tool</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+        <div id="findingsPagination" style="margin-top:12px;text-align:center;"></div>
+      </div>
+    </div>
+
+    <!-- Targets Page -->
+    <div class="page" id="page-targets">
+      <div class="header"><h2>Targets</h2><div><button class="btn btn-primary" onclick="showAddTarget()">+ Add Target</button></div></div>
+      <div class="card"><div class="table-wrap"><table id="targetsTable"><thead><tr><th>Name</th><th>Type</th><th>Value</th><th>Schedule</th><th>Last Scan</th><th>Next Scan</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- Assets Page -->
+    <div class="page" id="page-assets">
+      <div class="header"><h2>Discovered Assets</h2></div>
+      <div class="card"><div class="table-wrap"><table id="assetsTable"><thead><tr><th>Type</th><th>Value</th><th>Source Tool</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- Scans Page -->
+    <div class="page" id="page-scans">
+      <div class="header"><h2>Scan History</h2></div>
+      <div class="card"><div class="table-wrap"><table id="scansTable"><thead><tr><th>Target</th><th>Status</th><th>Duration</th><th>Tools Run</th><th>Findings</th><th>Started</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- Agents Page -->
+    <div class="page" id="page-agents">
+      <div class="header"><h2>Connected Agents</h2><div><button class="btn btn-primary" onclick="showAddAgent()">+ Connect Agent</button></div></div>
+      <div class="card"><div class="table-wrap"><table id="agentsTable"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Last Heartbeat</th><th>Events</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+
+    <!-- Compliance Page -->
+    <div class="page" id="page-compliance">
+      <div class="header"><h2>Compliance</h2></div>
+      <div id="complianceScore">Loading...</div>
+    </div>
+
+    <!-- Settings Page -->
+    <div class="page" id="page-settings">
+      <div class="header"><h2>Settings</h2></div>
+      <div class="card">
+        <h3>Alert Preferences</h3>
+        <div id="alertRules">Loading...</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+<script>
+// ════════════════════════════════════════════
+// API Client
+// ════════════════════════════════════════════
+const API_BASE = '/api/v1';
+const WS_ID = 'default';
+
+async function api(path, opts = {}) {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json', 'X-Workspace-Id': WS_ID },
+    ...opts,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ════════════════════════════════════════════
+// Navigation
+// ════════════════════════════════════════════
+document.querySelectorAll('#nav a').forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const page = link.dataset.page;
+    document.querySelectorAll('#nav a').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${page}`).classList.add('active');
+    loadPage(page);
+    window.location.hash = page;
+  });
+});
+
+// Load page on hash change
+window.addEventListener('hashchange', () => {
+  const page = window.location.hash.slice(1) || 'dashboard';
+  document.querySelectorAll('#nav a').forEach(l => l.classList.remove('active'));
+  document.querySelector(`#nav a[data-page="${page}"]`)?.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`)?.classList.add('active');
+  loadPage(page);
+});
+
+// Initial load
+const initPage = window.location.hash.slice(1) || 'dashboard';
+loadPage(initPage);
+
+function loadPage(page) {
+  switch(page) {
+    case 'dashboard': loadDashboard(); break;
+    case 'findings': loadFindings(); break;
+    case 'targets': loadTargets(); break;
+    case 'assets': loadAssets(); break;
+    case 'scans': loadScans(); break;
+    case 'agents': loadAgents(); break;
+    case 'compliance': loadCompliance(); break;
+    case 'settings': loadSettings(); break;
+  }
+}
+
+// ════════════════════════════════════════════
+// Dashboard
+// ════════════════════════════════════════════
+async function loadDashboard() {
+  try {
+    const data = await api('/scout-score?workspace_id=' + WS_ID);
+    renderScoreWidget(data);
+  } catch(e) { document.getElementById('scoreWidget').innerHTML = `<div class="card"><p>No score data yet. Add a target and run a scan to get started.</p></div>`; }
+
+  try {
+    const findings = await api('/findings?status=open&limit=10');
+    renderStatCards(findings);
+    renderCriticalFindings(findings.findings.filter(f => f.severity === 'critical').slice(0, 5));
+  } catch {}
+
+  try {
+    const scans = await api('/scans?limit=5');
+    renderRecentScans(scans);
+  } catch {}
+}
+
+function renderScoreWidget(data) {
+  const trend = data.trend || {};
+  const trendArrow = trend.direction === 'up' ? '▲' : trend.direction === 'down' ? '▼' : ';';
+  const trendColor = trend.direction === 'up' ? 'var(--success)' : trend.direction === 'down' ? 'var(--critical)' : 'var(--text2)';
+  const cats = data.breakdown || {};
+
+  document.getElementById('scoreWidget').innerHTML = `
+    <div class="score-widget">
+      <div class="score-label">Scout Score</div>
+      <div class="score-value">${data.score ?? ';'}</div>
+      <div class="score-trend" style="color:${trendColor}">${trendArrow} ${trend.change || 0} this week</div>
+      <div class="score-categories">
+        ${['exposure','vulnerabilities','compliance','agentSafety'].map(k => `
+          <div class="score-cat">
+            <div class="cat-label">${k === 'agentSafety' ? 'Agent' : k.charAt(0).toUpperCase() + k.slice(1)}</div>
+            <div class="cat-value">${cats[k] ?? ';'}</div>
+            <div class="cat-bar"><div class="cat-bar-fill" style="width:${cats[k] || 0}%"></div></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+function renderStatCards(data) {
+  const counts = data.findings?.reduce((acc, f) => {
+    acc[f.severity] = (acc[f.severity] || 0) + 1;
+    return acc;
+  }, {}) || {};
+
+  document.getElementById('statCards').innerHTML = `
+    <div class="stat stat-critical"><div class="stat-value">${counts.critical || 0}</div><div class="stat-label">Critical</div></div>
+    <div class="stat stat-high"><div class="stat-value">${counts.high || 0}</div><div class="stat-label">High</div></div>
+    <div class="stat stat-medium"><div class="stat-value">${counts.medium || 0}</div><div class="stat-label">Medium</div></div>
+    <div class="stat stat-low"><div class="stat-value">${counts.low || 0}</div><div class="stat-label">Low</div></div>`;
+}
+
+function renderCriticalFindings(findings) {
+  if (!findings.length) {
+    document.getElementById('criticalFindings').innerHTML = '<p style="color:var(--success);padding:20px">Done:  No critical findings</p>';
+    return;
+  }
+  document.getElementById('criticalFindings').innerHTML = findings.map(f => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <span class="badge badge-${f.severity}">${f.severity}</span>
+      <strong style="margin-left:8px">${f.title?.slice(0, 80)}</strong>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">${f.affected_host || ''} · ${f.tool_name}</div>
+    </div>
+  `).join('');
+}
+
+function renderRecentScans(data) {
+  const scans = data.scans || [];
+  if (!scans.length) {
+    document.getElementById('recentScans').innerHTML = '<p style="color:var(--text2);padding:20px">No scans yet</p>';
+    return;
+  }
+  document.getElementById('recentScans').innerHTML = scans.map(s => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <span><span class="status-dot status-${s.status === 'completed' ? 'online' : s.status === 'failed' ? 'failed' : 'offline'}"></span>${s.status}</span>
+      <span style="font-size:12px;color:var(--text2)">${s.findings_new || 0} new / ${s.findings_total || 0} total</span>
+      <span style="font-size:11px;color:var(--text3)">${new Date(s.created_at).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════
+// Findings
+// ════════════════════════════════════════════
+let findingsPage = 0;
+async function loadFindings() {
+  const severity = document.getElementById('filterSeverity')?.value || '';
+  const status = document.getElementById('filterStatus')?.value || 'open';
+  const type = document.getElementById('filterType')?.value || '';
+  const params = new URLSearchParams({ workspace_id: WS_ID, status, limit: '50', offset: String(findingsPage * 50) });
+  if (severity) params.set('severity', severity);
+  if (type) params.set('type', type);
+
+  try {
+    const data = await api(`/findings?${params}`);
+    const tbody = document.querySelector('#findingsTable tbody');
+    tbody.innerHTML = (data.findings || []).map(f => `
+      <tr>
+        <td><span class="badge badge-${f.severity}">${f.severity}</span></td>
+        <td style="max-width:250px">${f.title?.slice(0, 100)}${f.cve_id ? `<br><small style="color:var(--text3)">${f.cve_id}</small>` : ''}</td>
+        <td>${f.finding_type}</td>
+        <td>${f.affected_host || ';'}</td>
+        <td>${f.tool_name}</td>
+        <td><span class="badge badge-${f.status === 'open' ? 'critical' : 'success'}">${f.status}</span></td>
+        <td style="font-size:11px">${new Date(f.last_seen_at).toLocaleDateString()}</td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="acknowledgeFinding('${f.id}')"></button>
+          <button class="btn btn-sm btn-danger" onclick="falsePositiveFinding('${f.id}')"></button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:30px">No findings found</td></tr>';
+
+    document.getElementById('findingsPagination').innerHTML = `
+      <button class="btn btn-sm btn-secondary" onclick="findingsPage=Math.max(0,findingsPage-1);loadFindings()" ${findingsPage === 0 ? 'disabled' : ''}>← Prev</button>
+      <span style="margin:0 12px">Showing ${data.offset + 1}-${Math.min(data.offset + data.limit, data.total)} of ${data.total}</span>
+      <button class="btn btn-sm btn-secondary" onclick="findingsPage++;loadFindings()" ${(findingsPage + 1) * 50 >= data.total ? 'disabled' : ''}>Next →</button>`;
+  } catch {}
+}
+
+async function acknowledgeFinding(id) {
+  await api(`/findings/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'confirmed' }) });
+  showToast('Finding acknowledged', 'success');
+  loadFindings();
+}
+
+async function falsePositiveFinding(id) {
+  await api(`/findings/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'false_positive' }) });
+  showToast('Marked as false positive', 'success');
+  loadFindings();
+}
+
+function exportCSV() {
+  const rows = document.querySelectorAll('#findingsTable tbody tr');
+  let csv = 'Severity,Title,Type,Host,Tool,Status,Last Seen\n';
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    csv += Array.from(cells).slice(0, -1).map(c => `"${c.textContent.trim()}"`).join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'scout-findings.csv'; a.click();
+}
+
+// ════════════════════════════════════════════
+// Targets
+// ════════════════════════════════════════════
+async function loadTargets() {
+  try {
+    const data = await api('/targets?workspace_id=' + WS_ID);
+    const tbody = document.querySelector('#targetsTable tbody');
+    tbody.innerHTML = (data.targets || []).map(t => `
+      <tr>
+        <td><strong>${t.name}</strong></td>
+        <td><span class="badge badge-info">${t.type}</span></td>
+        <td><code>${t.value}</code></td>
+        <td>${t.schedule}</td>
+        <td style="font-size:11px">${t.last_scan_at ? new Date(t.last_scan_at).toLocaleString() : 'Never'}</td>
+        <td style="font-size:11px">${t.next_scan_at ? new Date(t.next_scan_at).toLocaleString() : ';'}</td>
+        <td><span class="badge badge-${t.enabled ? 'success' : 'info'}">${t.enabled ? 'Active' : 'Disabled'}</span></td>
+        <td>
+          <button class="btn btn-sm btn-primary" onclick="triggerScan('${t.id}')">Scan Now</button>
+          <button class="btn btn-sm btn-secondary" onclick="toggleTarget('${t.id}', ${!t.enabled})">${t.enabled ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteTarget('${t.id}')">Delete</button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:30px">No targets registered. Add your first target to start scanning.</td></tr>';
+  } catch {}
+}
+
+async function triggerScan(targetId) {
+  try {
+    await api(`/targets/${targetId}/scan`, { method: 'POST' });
+    showToast('Scan triggered!', 'success');
+    loadTargets();
+  } catch(e) { showToast('Failed to trigger scan', 'error'); }
+}
+
+async function toggleTarget(id, enabled) {
+  await api(`/targets/${id}`, { method: 'PUT', body: JSON.stringify({ enabled }) });
+  loadTargets();
+}
+
+async function deleteTarget(id) {
+  if (!confirm('Delete this target?')) return;
+  await api(`/targets/${id}`, { method: 'DELETE' });
+  loadTargets();
+}
+
+function showAddTarget() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal">
+      <h3>Add Scan Target</h3>
+      <div class="form-group"><label>Name</label><input id="targetName" placeholder="Production Server"></div>
+      <div class="form-group"><label>Type</label><select id="targetType"><option value="domain">Domain</option><option value="ip">IP</option><option value="ip_range">IP Range</option><option value="url">URL</option></select></div>
+      <div class="form-group"><label>Value</label><input id="targetValue" placeholder="example.com"></div>
+      <div class="form-group"><label>Schedule</label><select id="targetSchedule"><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option></select></div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-primary" id="addTargetBtn">Add & Scan</button>
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#addTargetBtn').addEventListener('click', async () => {
+    const name = document.getElementById('targetName').value;
+    const type = document.getElementById('targetType').value;
+    const value = document.getElementById('targetValue').value;
+    const schedule = document.getElementById('targetSchedule').value;
+    if (!name || !value) { showToast('Name and value required', 'error'); return; }
+
+    try {
+      await api('/targets', { method: 'POST', body: JSON.stringify({ name, type, value, schedule }) });
+      modal.remove();
+      showToast('Target added! Scanning now...', 'success');
+      loadTargets();
+      setTimeout(() => { loadDashboard(); loadTargets(); }, 10000);
+    } catch(e) { showToast(e.message, 'error'); }
+  });
+
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+function triggerQuickScan() {
+  // Quick scan uses scanme.nmap.org as test
+  showToast('Quick scan started on scanme.nmap.org', 'success');
+  api('/targets', { method: 'POST', body: JSON.stringify({
+    name: 'Quick Test (scanme.nmap.org)',
+    type: 'domain',
+    value: 'scanme.nmap.org',
+    schedule: 'daily',
+  }) }).then(() => { loadTargets(); loadDashboard(); });
+}
+
+// ════════════════════════════════════════════
+// Assets
+// ════════════════════════════════════════════
+async function loadAssets() {
+  try {
+    const data = await api('/discovered-assets?workspace_id=' + WS_ID);
+    const tbody = document.querySelector('#assetsTable tbody');
+    tbody.innerHTML = (data.assets || []).map(a => `
+      <tr>
+        <td><span class="badge badge-info">${a.asset_type}</span></td>
+        <td><code>${a.value}</code></td>
+        <td>${a.source_tool}</td>
+        <td style="font-size:11px">${new Date(a.first_seen_at).toLocaleString()}</td>
+        <td style="font-size:11px">${new Date(a.last_seen_at).toLocaleString()}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px">No assets discovered yet</td></tr>';
+  } catch {}
+}
+
+// ════════════════════════════════════════════
+// Scans
+// ════════════════════════════════════════════
+async function loadScans() {
+  try {
+    const data = await api('/scans?workspace_id=' + WS_ID + '&limit=30');
+    const tbody = document.querySelector('#scansTable tbody');
+    tbody.innerHTML = (data.scans || []).map(s => `
+      <tr>
+        <td>${s.target_id?.slice(0,8) || ';'}</td>
+        <td><span class="badge badge-${s.status === 'completed' ? 'success' : s.status === 'failed' ? 'critical' : 'medium'}">${s.status}</span></td>
+        <td>${s.duration_ms ? (s.duration_ms / 1000).toFixed(1) + 's' : ';'}</td>
+        <td>${s.tools_run || 0}</td>
+        <td>${s.findings_new || 0} new / ${s.findings_total || 0} total</td>
+        <td style="font-size:11px">${s.started_at ? new Date(s.started_at).toLocaleString() : ';'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:30px">No scans yet</td></tr>';
+  } catch {}
+}
+
+// ════════════════════════════════════════════
+// Agents
+// ════════════════════════════════════════════
+async function loadAgents() {
+  try {
+    const data = await api('/agents?workspace_id=' + WS_ID);
+    const tbody = document.querySelector('#agentsTable tbody');
+    tbody.innerHTML = (data.agents || []).map(a => `
+      <tr>
+        <td>${a.name}</td>
+        <td><span class="badge badge-info">${a.agent_type}</span></td>
+        <td><span class="status-dot status-${a.status === 'online' ? 'online' : 'offline'}"></span>${a.status}</td>
+        <td style="font-size:11px">${a.last_heartbeat ? new Date(a.last_heartbeat).toLocaleString() : 'Never'}</td>
+        <td><button class="btn btn-sm btn-secondary" onclick="loadAgentEvents('${a.id}')">View Events</button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px">No agents connected</td></tr>';
+  } catch {}
+}
+
+function showAddAgent() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.innerHTML = `
+    <div class="modal">
+      <h3>Connect Agent</h3>
+      <div class="form-group"><label>Agent Name</label><input id="agentName" placeholder="My Carina Agent"></div>
+      <div class="form-group"><label>Agent Type</label><select id="agentType"><option>carina</option><option>external-agent</option><option>goal-result</option></select></div>
+      <div class="form-group"><label>API Key</label><input id="agentKey" type="password" placeholder="Generate or enter API key"></div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-primary" id="addAgentBtn">Connect</button>
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  modal.querySelector('#addAgentBtn').addEventListener('click', async () => {
+    const name = document.getElementById('agentName').value;
+    const agent_type = document.getElementById('agentType').value;
+    const api_key = document.getElementById('agentKey').value || crypto.randomUUID();
+    try {
+      await api('/agents', { method: 'POST', body: JSON.stringify({ name, agent_type, api_key }) });
+      modal.remove();
+      showToast('Agent connected!', 'success');
+      loadAgents();
+    } catch(e) { showToast(e.message, 'error'); }
+  });
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+async function loadAgentEvents(agentId) {
+  try {
+    const data = await api(`/agents/${agentId}/events?limit=20`);
+    const events = data.events || [];
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal" style="max-width:700px"><h3>Agent Events</h3>
+      ${events.length === 0 ? '<p style="color:var(--text2)">No events yet</p>' : events.map(e => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span class="badge badge-info">${e.event_type}</span>
+          ${e.tool_name ? `<strong style="margin-left:8px">${e.tool_name}</strong>` : ''}
+          <span style="color:var(--text2);margin-left:8px">${new Date(e.occurred_at).toLocaleString()}</span>
+        </div>`).join('')}
+      <button class="btn btn-secondary" style="margin-top:16px" onclick="this.closest('.modal-overlay').remove()">Close</button></div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  } catch {}
+}
+
+// ════════════════════════════════════════════
+// Compliance
+// ════════════════════════════════════════════
+async function loadCompliance() {
+  try {
+    const data = await api('/compliance/score');
+    document.getElementById('complianceScore').innerHTML = `
+      <div class="score-widget">
+        <div class="score-label">SOC2 Compliance</div>
+        <div class="score-value">${data.score}</div>
+        <div class="score-trend">${data.controls_covered} / ${data.total_controls} controls covered</div>
+        <div class="cat-bar" style="margin-top:16px;background:rgba(255,255,255,0.2);height:12px;border-radius:6px">
+          <div class="cat-bar-fill" style="width:${data.score}%;background:var(--success)"></div>
+        </div>
+      </div>`;
+  } catch {
+    document.getElementById('complianceScore').innerHTML = '<div class="card"><p>Compliance data not available yet.</p></div>';
+  }
+}
+
+// ════════════════════════════════════════════
+// Settings
+// ════════════════════════════════════════════
+async function loadSettings() {
+  try {
+    const data = await api('/alerts/rules');
+    const rules = data.rules || [];
+    document.getElementById('alertRules').innerHTML = rules.map(r => {
+      const trigger = typeof r.trigger === 'string' ? JSON.parse(r.trigger) : r.trigger;
+      return `<div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div><strong>${r.name}</strong><div style="font-size:11px;color:var(--text2)">Event: ${trigger.event} · Channels: ${(r.channels || []).join(', ')}</div></div>
+        <span class="badge badge-${r.enabled ? 'success' : 'info'}">${r.enabled ? 'Active' : 'Disabled'}</span>
+      </div>`;
+    }).join('') || '<p style="color:var(--text2)">Default alert rules will be created automatically.</p>';
+  } catch {}
+}
+
+// ════════════════════════════════════════════
+// Utilities
+// ════════════════════════════════════════════
+function showToast(msg, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = msg;
+  document.getElementById('toastContainer').appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// Auto-refresh dashboard every 30s
+setInterval(() => {
+  const active = document.querySelector('.page.active');
+  if (active?.id === 'page-dashboard') loadDashboard();
+}, 30000);
+</script>
+</body>
+</html>

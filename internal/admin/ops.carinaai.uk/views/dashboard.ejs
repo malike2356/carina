@@ -1,0 +1,118 @@
+<% title = 'Dashboard' %>
+<h1 class="text-2xl font-bold text-white mb-6">Dashboard</h1>
+
+<section class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+  <a href="/control-center" class="block bg-[#1a1a1a] border border-[#16c97e] rounded-lg p-4 hover:border-[#22c55e] transition-colors">
+    <div class="flex items-center justify-between gap-3 mb-2">
+      <h2 class="text-lg font-semibold text-white">Control Center</h2>
+      <span class="text-xs text-[#16c97e]">Internal</span>
+    </div>
+    <p class="text-sm text-gray-400 leading-6">
+      One place for core controls, observability, and the full internal surface map.
+    </p>
+  </a>
+  <a href="/admin/incident-blog" class="block bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 hover:border-[#16c97e] transition-colors">
+    <h2 class="text-lg font-semibold text-white mb-2">Incident Blog</h2>
+    <p class="text-sm text-gray-400 leading-6">
+      Draft, review, publish, and regenerate the Scout incident record.
+    </p>
+  </a>
+  <a href="/settings" class="block bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 hover:border-[#16c97e] transition-colors">
+    <h2 class="text-lg font-semibold text-white mb-2">Settings</h2>
+    <p class="text-sm text-gray-400 leading-6">
+      Pair Carina, pair Scout, rotate passwords, and manage alerts.
+    </p>
+  </a>
+</section>
+
+<% if (tenantSummary) { %>
+<section class="mb-8 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <h2 class="text-lg font-semibold text-white">Hosted tenants</h2>
+    <a href="/tenants" class="text-sm text-[#06b6d4] hover:underline">Open tenant dashboard</a>
+  </div>
+  <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div>
+      <p class="text-gray-400 text-sm">Total</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.total %></p>
+    </div>
+    <div>
+      <p class="text-gray-400 text-sm">Free / Pro</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.freeCount %> / <span class="text-[#22c55e]"><%= tenantSummary.proCount %></span></p>
+    </div>
+    <div>
+      <p class="text-gray-400 text-sm">Msgs today</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.messagesToday %></p>
+    </div>
+    <div>
+      <p class="text-gray-400 text-sm">Tokens (month)</p>
+      <p class="text-xl font-bold text-white"><%= tenantSummary.monthlyTokens.toLocaleString() %></p>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Total memories</p>
+    <p class="text-2xl font-bold text-white mt-1"><%= stats.totalMemories %></p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Sessions</p>
+    <p class="text-2xl font-bold text-white mt-1"><%= stats.sessions %></p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Skills saved</p>
+    <p class="text-2xl font-bold text-white mt-1"><%= stats.skills %></p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Most-used skill</p>
+    <p class="text-lg font-semibold text-[#22c55e] mt-1">
+      <%= stats.topSkill ? stats.topSkill.name + ' (' + stats.topSkill.usage_count + ')' : 'None yet' %>
+    </p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">RAG chunks</p>
+    <p class="text-2xl font-bold text-white mt-1"><%= stats.ragChunks %></p>
+    <p class="text-xs text-gray-500 mt-1">Packs: <%= stats.packs.length ? stats.packs.join(', ') : 'none' %></p>
+  </div>
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <p class="text-gray-400 text-sm">Unread emails</p>
+    <p class="text-2xl font-bold text-white mt-1"><%= stats.unreadEmails %></p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Recent sessions</h2>
+    <% if (!recentSessions.length) { %>
+      <p class="text-gray-500 text-sm">No sessions yet.</p>
+    <% } else { %>
+      <ul class="space-y-2 text-sm">
+        <% for (const s of recentSessions) { %>
+          <li class="flex justify-between gap-2 border-b border-[#2a2a2a] pb-2">
+            <a href="/memories/session/<%= s.session_id %>" class="text-[#06b6d4] hover:underline truncate">
+              <%= s.session_id.slice(0, 12) %>...
+            </a>
+            <span class="text-gray-500 shrink-0"><%= s.message_count %> msgs</span>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Recently written skills</h2>
+    <% if (!recentSkills.length) { %>
+      <p class="text-gray-500 text-sm">No skills yet.</p>
+    <% } else { %>
+      <ul class="space-y-2 text-sm">
+        <% for (const sk of recentSkills) { %>
+          <li class="flex justify-between gap-2 border-b border-[#2a2a2a] pb-2">
+            <a href="/skills/<%= sk.id %>" class="text-[#22c55e] hover:underline"><%= sk.name %></a>
+            <span class="text-gray-500"><%= new Date(sk.created_at).toLocaleDateString() %></span>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+</div>

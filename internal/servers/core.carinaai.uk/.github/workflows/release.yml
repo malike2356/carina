@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-installer:
+    name: Build Windows installer
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Install NSIS
+        run: choco install nsis --yes
+        shell: powershell
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+        shell: powershell
+
+      - name: Build installer
+        working-directory: installer
+        run: |
+          .\build-installer.ps1 -Version "${{ steps.version.outputs.version }}"
+        shell: powershell
+
+      - name: Attach installer to GitHub Release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631  # v2.2.2
+        with:
+          files: installer/carina-setup-${{ steps.version.outputs.version }}.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true

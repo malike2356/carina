@@ -9,7 +9,7 @@ VPS_USER="malike"
 REMOTE="/home/malike/apps/console.labyrinthscout.com"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-LOCAL="${REPO_ROOT}/console.labyrinthscout.com"
+LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
 SUP_NAME="labyrinth-scout"
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }

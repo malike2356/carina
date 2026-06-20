@@ -1,0 +1,122 @@
+# GAP: Terminal - Docker Sandbox (Tier 2)
+
+## Context
+
+`app.carinaai.uk` has a built-in terminal (`/terminal` route and embedded in the launcher).
+Currently it runs commands via `execFileAsync` on the host VPS as the `malike` system user.
+
+Tier 1 (already done) added:
+- `terminal_enabled` boolean on `workspace_settings` (default false)
+- API gate: all three terminal route handlers check `terminalEnabled` before executing
+- `buildSafeEnv()` strips secrets from child process env
+- 30s hard timeout with SIGKILL
+
+Tier 1 protects against unauthorized access but does NOT provide filesystem isolation.
+A workspace with `terminal_enabled = true` can still read/write any file owned by `malike`
+on the host (other apps, SSH keys, cron, etc.).
+
+## What needs to be built
+
+Replace the `runWithScript` / `runWithShell` execution path in
+`app.carinaai.uk/src/lib/terminal-session.ts` with Docker-based execution.
+
+### Each command must run in a throwaway container with these constraints
+
+```
+docker run --rm \
+  --network none \
+  --memory 128m \
+  --cpus 0.5 \
+  --read-only \
+  --tmpfs /tmp:size=32m,mode=1777 \
+  -v /home/malike/workspaces/${workspaceId}:/workspace:rw \
+  -w /workspace \
+  --user 1001:1001 \
+  carina-sandbox:latest \
+  sh -c "${command}"
+```
+
+### Key constraints
+
+- `--network none`: no outbound internet from inside the container
+- `--read-only`: container root filesystem is read-only; only /tmp and /workspace are writable
+- `--memory 128m --cpus 0.5`: prevent resource exhaustion
+- `--user 1001:1001`: non-root UID inside the container, cannot escape via UID 0
+- `-v /workspace:rw`: only the workspace-specific directory is mounted, not the host root
+- `--rm`: container is destroyed on exit, no persistence of compromised state
+
+### Workspace volume provisioning
+
+When a workspace is created (or when terminal is first enabled for it), create the workspace
+directory on the host:
+
+```
+/home/malike/workspaces/${workspaceId}/
+```
+
+This is the only directory the user can read/write. They cannot see other workspaces or the app code.
+
+### The sandbox image
+
+Build a minimal image. File is at `app.carinaai.uk/docker/Dockerfile.sandbox`:
+
+```dockerfile
+FROM node:20-alpine
+RUN addgroup -g 1001 sandbox && adduser -u 1001 -G sandbox -s /bin/sh -D sandbox
+USER 1001
+WORKDIR /workspace
+```
+
+Build and push to the VPS before enabling this feature:
+```bash
+docker build -f docker/Dockerfile.sandbox -t carina-sandbox:latest .
+```
+
+### Files to change
+
+- `src/lib/terminal-session.ts`: replace `runWithScript`/`runWithShell` with `runInContainer`
+- `src/lib/terminal-session.ts`: add `provisionWorkspaceDir(workspaceId)` called on session create
+- `docker/Dockerfile.sandbox`: new file, minimal sandbox image
+- `scripts/vps-schema-patch.sql`: add workspace dir provisioning note (no DB changes needed)
+
+### CWD handling
+
+Because `cd` does not persist across Docker `--rm` invocations, the session `cwd` tracking
+needs to be implemented differently. Options:
+
+A. Detect `cd <path>` commands specially, resolve them, and update `session.cwd` in the
+   Node layer, then pass `--workdir ${session.cwd}` to each docker run call.
+B. Use a long-running container per session (not `--rm`) and `docker exec` into it.
+   This is more complex but allows stateful shell (aliases, exports, cd persist).
+
+Recommended: Option A for simplicity. Intercept `cd` at the API layer, resolve the new path
+relative to the current cwd, update session.cwd, return immediately without spawning a container.
+All other commands run as one-shot `docker run --rm` with `-w ${session.cwd}`.
+
+### Acceptance criteria
+
+- `whoami` inside terminal returns `sandbox` (uid 1001), not `malike`
+- `cat /etc/passwd` works but shows only the sandbox user
+- `ls /home` shows only `/home/sandbox` if anything
+- `curl http://example.com` fails with network unreachable
+- `cat /home/malike/.env` fails with permission denied
+- Two workspaces cannot see each other's files
+- Commands that hang beyond 30s are killed
+- `rm -rf /workspace` is allowed (user's own workspace)
+- Workspace directory is re-provisioned on next terminal session create if deleted
+
+### Testing checklist
+
+Run these manually after implementation:
+
+```bash
+whoami                              # must print: sandbox
+id                                  # must show uid=1001
+cat /etc/passwd | grep malike       # must return nothing
+ls /home/malike                     # permission denied
+curl http://example.com             # network unreachable
+ls /home                            # only /home/sandbox or empty
+echo "test" > /workspace/test.txt   # must succeed
+cat /workspace/test.txt             # must print: test
+ls /tmp                             # must work (tmpfs mounted)
+```

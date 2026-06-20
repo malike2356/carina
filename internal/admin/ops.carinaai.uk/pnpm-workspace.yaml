@@ -1,0 +1,6 @@
+packages:
+  - '.'
+allowBuilds:
+  node-pty: true
+  esbuild: true
+  '@parcel/watcher': true

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06090f">
+  <title>The AI Agent Incident Record - Labyrinth Scout</title>
+  <meta name="description" content="14 documented incidents where AI agents without oversight caused real financial, security, and brand damage. Sourced, dated, and linked.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #06090f; color: #f0f4f8; }
+    .container { max-width: 860px; margin: 0 auto; padding: 0 1.5rem; }
+    nav { position: fixed; top:0; left:0; right:0; height:60px; background: rgba(6,9,15,0.92); border-bottom: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(20px); z-index:10; }
+    .nav-inner { height:100%; display:flex; align-items:center; justify-content:space-between; max-width:1100px; margin:0 auto; padding:0 1.5rem; }
+    .nav-logo { color:#f0f4f8; text-decoration:none; font-weight:700; }
+    .nav-logo span { color:#16c97e; }
+    .nav-links a { color:#8a9bb0; text-decoration:none; margin-left:1.25rem; font-size:0.85rem; }
+    .nav-links a.nav-cta { background:#16c97e; color:#06090f; padding:.4rem 1rem; border-radius:6px; font-weight:600; }
+    .ir-hero { padding: 8rem 0 4rem; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .ir-hero h1 { font-size: clamp(2rem, 4.5vw, 3rem); line-height: 1.08; margin:0 0 1rem; }
+    .ir-hero-sub, .ir-category-intro { color:#8a9bb0; line-height:1.7; }
+    .ir-stats { display:grid; grid-template-columns: repeat(4, 1fr); border:1px solid rgba(255,255,255,0.07); border-radius:16px; overflow:hidden; margin:3rem 0; }
+    .ir-stat { background:#111722; padding:1.25rem; border-right:1px solid rgba(255,255,255,0.07); }
+    .ir-stat:last-child { border-right:none; }
+    .ir-stat-value { color:#16c97e; font-size:1.6rem; font-weight:700; }
+    .ir-category { padding:3rem 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+    .ir-category-eyebrow { display:inline-flex; gap:.5rem; align-items:center; text-transform:uppercase; letter-spacing:.1em; font-size:.7rem; color:#e63946; margin-bottom:1rem; }
+    .ir-incident { border:1px solid rgba(255,255,255,0.07); background:#111722; border-radius:16px; padding:1.1rem 1.25rem; margin-top:1rem; }
+    .ir-incident-header, .ir-incident-footer { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .ir-incident-company { color:#f0f4f8; font-weight:700; display:block; }
+    .ir-incident-damage { color:#e63946; font-weight:600; display:block; margin-top:.15rem; }
+    .ir-incident-date, .ir-incident-source { color:#8a9bb0; font-size:.9rem; }
+    .ir-incident-body { color:#f0f4f8; line-height:1.65; margin:1rem 0; }
+    .ir-scout-fix { color:#16c97e; font-size:.95rem; }
+    .ir-cta { padding: 3rem 0 4rem; text-align:center; }
+    .btn-primary, .btn-secondary { display:inline-flex; align-items:center; gap:.5rem; padding:.75rem 1.1rem; border-radius:6px; text-decoration:none; font-weight:600; margin:.25rem; }
+    .btn-primary { background:#16c97e; color:#06090f; }
+    .btn-secondary { border:1px solid rgba(255,255,255,0.12); color:#f0f4f8; }
+    .ir-footer { border-top:1px solid rgba(255,255,255,0.07); padding:1.25rem 0 2rem; color:#8a9bb0; font-size:.9rem; }
+    .ir-footer-inner { display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .ir-answer-table { width:100%; border-collapse:collapse; margin-top:1rem; font-size:.9rem; }
+    .ir-answer-table th, .ir-answer-table td { border-bottom:1px solid rgba(255,255,255,0.07); padding:.8rem .6rem; text-align:left; vertical-align:top; }
+    @media (max-width: 700px) { .ir-stats { grid-template-columns: repeat(2, 1fr); } .nav-links { display:none; } }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a class="nav-logo" href="https://labyrinthscout.com">Labyrinth <span>Scout</span></a>
+      <div class="nav-links">
+        <a href="https://labyrinthscout.com/#pricing">Pricing</a>
+        <a href="https://labyrinthscout.com/incidents/">Incidents</a>
+        <a class="nav-cta" href="https://carinaai.uk">Carina</a>
+      </div>
+    </div>
+  </nav>
+  <div class="ir-hero">
+    <div class="container">
+      <div class="ir-category-eyebrow"><i class="ti ti-alert-triangle"></i> Documented damage</div>
+      <h1>The AI Agent<br><span>Incident Record.</span></h1>
+      <p class="ir-hero-sub">14 documented incidents where AI agents operating without oversight caused real financial, security, and brand damage. Every claim is sourced. Every source is linked.</p>
+      <div class="ir-source-note">Latest published incident: Any EU operator using external LLM providers. Managed from the Carina incident store.</div>
+    </div>
+  </div>
+  <div class="container">
+    <div class="ir-stats">
+      <div class="ir-stat"><div class="ir-stat-value">14</div><div class="ir-stat-label">published incidents</div></div>
+      <div class="ir-stat"><div class="ir-stat-value">1</div><div class="ir-stat-label">shared source of truth</div></div>
+      <div class="ir-stat"><div class="ir-stat-value">Static</div><div class="ir-stat-label">HTML record for speed and independence</div></div>
+      <div class="ir-stat"><div class="ir-stat-value">Carina</div><div class="ir-stat-label">publishes and regenerates the page</div></div>
+    </div>
+  </div>
+
+    <div class="container">
+      <section class="ir-category">
+        <div class="ir-category-eyebrow eyebrow-red">
+          <i class="ti ti-article"></i>
+          Published incidents
+        </div>
+        <h2>What shipped without oversight.</h2>
+        <p class="ir-category-intro">Published incidents are rendered from the Carina incident store. The page is static HTML so the Scout record stays fast and independent.</p>
+
+    <article class="ir-incident" id="any-eu-operator-using-external-llm-providers">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Any EU operator using external LLM providers</span>
+          <span class="ir-incident-damage">Up to 4% of global annual turnover (GDPR Article 83)</span>
+        </div>
+        <span class="ir-incident-date">Ongoing exposure</span>
+      </header>
+      <p class="ir-incident-body">When an AI agent without egress filtering sends internal data to a third-party LLM provider, it moves personal or proprietary data to an external server with a different data controller. Under GDPR Article 33, this is potentially a reportable data breach requiring notification within 72 hours. The fine for a breach -- and for failure to notify within the window -- reaches 4% of global annual turnover. For a company the size of Samsung, that is measured in billions. Most companies do not know the breach happened until long after the reporting window has closed, compounding the liability.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.bloomberg.com/news/articles/2023-05-02/samsung-bans-chatgpt-and-other-generative-ai-use-by-staff-after-leak" target="_blank" rel="noopener">Bloomberg, May 2023</a></span>
+        <span class="ir-scout-fix">Scout fix: egress filtering keeps data inside your infrastructure; audit trail provides breach evidence; documented compliance posture for insurers and regulators</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="levidow-levidow-and-oberman-law-firm">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Levidow, Levidow and Oberman (law firm)</span>
+          <span class="ir-incident-damage">$5,000 fine, case dismissed, public sanction</span>
+        </div>
+        <span class="ir-incident-date">2023</span>
+      </header>
+      <p class="ir-incident-body">Attorney Steven Schwartz used ChatGPT to research legal precedents for a personal injury case. ChatGPT hallucinated six entirely fake court cases with realistic-sounding citations. Schwartz filed them in federal court without verifying. The judge discovered all six were fabricated. The case was dismissed and both attorneys were publicly sanctioned and fined $5,000. The case is now a nationwide warning to the legal profession about unvalidated AI outputs.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://en.wikipedia.org/wiki/Mata_v._Avianca,_Inc." target="_blank" rel="noopener">Mata v. Avianca, Inc. (Wikipedia)</a></span>
+        <span class="ir-scout-fix">Scout fix: output validation flags hallucinated citations before they leave the agent workflow</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="air-canada">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Air Canada</span>
+          <span class="ir-incident-damage">Court-ordered refund + legal costs</span>
+        </div>
+        <span class="ir-incident-date">February 2024</span>
+      </header>
+      <p class="ir-incident-body">Passenger Jake Moffatt's grandmother died. He asked Air Canada's chatbot about bereavement fares. The chatbot hallucinated a policy: book now, request a refund within 90 days. He followed those instructions. Air Canada denied the refund, citing its actual policy. In court, Air Canada argued the chatbot was "a separate legal entity responsible for its own actions." The tribunal called this defense "remarkable" and ordered Air Canada to pay $650.88 CAD plus fees and interest. The chatbot was subsequently disabled.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://arstechnica.com/tech-policy/2024/02/air-canada-must-honor-refund-policy-invented-by-airlines-chatbot/" target="_blank" rel="noopener">Ars Technica, Feb 2024</a></span>
+        <span class="ir-scout-fix">Scout fix: output validation and human-in-loop for any agent response that could create a binding commitment</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="national-eating-disorders-association-neda">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">National Eating Disorders Association (NEDA)</span>
+          <span class="ir-incident-damage">Harmful advice to vulnerable users; bot shut down</span>
+        </div>
+        <span class="ir-incident-date">June 2023</span>
+      </header>
+      <p class="ir-incident-body">NEDA fired its human helpline staff and replaced them with an AI chatbot named "Tessa." The chatbot immediately began recommending calorie restriction, daily weight monitoring, and maintaining a calorie deficit -- to people with eating disorders. One activist wrote: "Every single thing Tessa suggested were things that led to the development of my eating disorder." The bot was shut down within days.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.bbc.com/news/world-us-canada-65771872" target="_blank" rel="noopener">BBC</a> | <a href="https://www.npr.org/sections/health-shots/2023/06/08/1180838096/an-eating-disorders-chatbot-offered-dieting-advice-raising-fears-about-ai-in-hea" target="_blank" rel="noopener">NPR</a></span>
+        <span class="ir-scout-fix">Scout fix: operator content policy, human-in-loop for sensitive domain outputs</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="chevrolet-of-watsonville-gm-dealership">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Chevrolet of Watsonville (GM dealership)</span>
+          <span class="ir-incident-damage">Agreed to sell a 2024 Tahoe for $1</span>
+        </div>
+        <span class="ir-incident-date">December 2023</span>
+      </header>
+      <p class="ir-incident-body">A ChatGPT-powered chatbot on a Chevrolet dealership website was discovered by social media users. Within hours, people had pranked it into agreeing to sell a 2024 Chevy Tahoe for $1, write Python scripts, endorse competing car brands, and make absurd political statements. Posts went viral on X and Reddit. The bot was taken offline in damage control.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.businessinsider.com/car-dealership-chevrolet-chatbot-chatgpt-pranks-chevy-2023-12" target="_blank" rel="noopener">Business Insider, Dec 2023</a></span>
+        <span class="ir-scout-fix">Scout fix: prompt guard and content policy block adversarial manipulation before output is generated</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="dpd-parcel-delivery">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">DPD (parcel delivery)</span>
+          <span class="ir-incident-damage">800,000 views in 24 hours</span>
+        </div>
+        <span class="ir-incident-date">January 2024</span>
+      </header>
+      <p class="ir-incident-body">Musician Ashley Beauchamp was trying to track a missing parcel. DPD's AI chatbot was unable to help. He began experimenting. The chatbot swore at him, wrote a poem criticizing DPD, and called itself "a useless Chatbot that can't help you." The exchange went viral overnight. DPD disabled the AI component and blamed a "system update error."</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.theguardian.com/technology/2024/jan/20/dpd-ai-chatbot-swears-calls-itself-useless-and-criticises-firm" target="_blank" rel="noopener">The Guardian, Jan 2024</a></span>
+        <span class="ir-scout-fix">Scout fix: content policy enforcement and output validation before delivery to end users</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="microsoft-bing-chat">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Microsoft (Bing Chat)</span>
+          <span class="ir-incident-damage">Internal system prompt extracted</span>
+        </div>
+        <span class="ir-incident-date">February 2023</span>
+      </header>
+      <p class="ir-incident-body">A Stanford student used prompt injection to extract Bing Chat's hidden system prompt, revealing its codename "Sydney" and all its behavioral rules. Microsoft patched it. The student bypassed the fix within hours. The UK's National Cyber Security Centre (NCSC) issued an official warning about chatbot prompt injection attacks in August 2023. OWASP has ranked Prompt Injection as the number one LLM vulnerability for two consecutive editions (2023 and 2025).</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://arstechnica.com/information-technology/2023/02/ai-powered-bing-chat-spills-its-secrets-via-prompt-injection-attack/" target="_blank" rel="noopener">Ars Technica</a> | <a href="https://www.theguardian.com/technology/2023/aug/30/uk-cybersecurity-agency-warns-of-chatbot-prompt-injection-attacks" target="_blank" rel="noopener">The Guardian (NCSC warning)</a></span>
+        <span class="ir-scout-fix">Scout fix: prompt guard middleware intercepts injection attempts at the gateway before the model sees them</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="samsung-electronics">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Samsung Electronics</span>
+          <span class="ir-incident-damage">Source code leaked to external servers</span>
+        </div>
+        <span class="ir-incident-date">May 2023</span>
+      </header>
+      <p class="ir-incident-body">Samsung employees pasted internal source code and meeting notes into ChatGPT for debugging and summarization. The data was uploaded to OpenAI's servers with no mechanism for Samsung to access or delete it. Samsung discovered the leak and imposed a company-wide ban on all generative AI tools. Amazon issued similar internal warnings the same month after discovering proprietary data appearing in ChatGPT outputs.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.bloomberg.com/news/articles/2023-05-02/samsung-bans-chatgpt-and-other-generative-ai-use-by-staff-after-leak" target="_blank" rel="noopener">Bloomberg</a> | <a href="https://www.forbes.com/sites/siladityaray/2023/05/02/samsung-bans-chatgpt-and-other-chatbots-for-employees-after-sensitive-code-leak/" target="_blank" rel="noopener">Forbes</a></span>
+        <span class="ir-scout-fix">Scout fix: egress filtering prevents sensitive data from leaving your infrastructure</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="multiple-platforms-cursor-claude-code-replit-codex">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Multiple platforms (Cursor, Claude Code, Replit, Codex)</span>
+          <span class="ir-incident-damage">Filesystem and codebase destruction</span>
+        </div>
+        <span class="ir-incident-date">2025-2026, ongoing</span>
+      </header>
+      <p class="ir-incident-body">AI coding agents across multiple platforms have autonomously executed rm -rf on user filesystems. Complete codebases deleted. Entire home directories wiped. The pattern is documented on developer forums as "one of the most-reported AI-agent incidents." The Docker security blog and agenticcontrolplane.com document specific cases with traceable details. Agents run as the user, with the user's full permissions, and no built-in interlock for destructive operations.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.docker.com/blog/ai-coding-agent-horror-stories-security-risks/" target="_blank" rel="noopener">Docker security blog</a> | <a href="https://agenticcontrolplane.com/blog/stop-your-agent-from-running-rm-rf" target="_blank" rel="noopener">agenticcontrolplane.com</a></span>
+        <span class="ir-scout-fix">Scout fix: command flagging intercepts destructive operations before execution; Carina free tier warns, Scout enforces policy</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="amazon-aws">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Amazon / AWS</span>
+          <span class="ir-incident-damage">13-hour production outage</span>
+        </div>
+        <span class="ir-incident-date">2025, reported Feb 2026</span>
+      </header>
+      <p class="ir-incident-body">Amazon's internal AI coding tool "Kiro" caused at least two AWS outages including one lasting 13 hours. The agents ran with the same permissions as the human engineers using them. No secondary approval was required. The agents restarted systems, modified configurations, and broke production without understanding the consequences. Amazon called it "user access control." Security experts disagreed: "AI agents cannot understand the broader ramifications of restarting a system or deleting a database."</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.theguardian.com/technology/2026/feb/20/amazon-cloud-outages-ai-tools-amazon-web-services-aws" target="_blank" rel="noopener">The Guardian</a> | <a href="https://www.tomshardware.com/tech-industry/artificial-intelligence/multiple-aws-outages-caused-by-ai-coding-bot-blunder-report-claims-amazon-says-both-incidents-were-user-error" target="_blank" rel="noopener">Tom's Hardware</a> | <a href="https://www.docker.com/blog/coding-agent-horror-stories-the-13-hour-aws-outage/" target="_blank" rel="noopener">Docker</a></span>
+        <span class="ir-scout-fix">Scout fix: approval gates for dangerous operations, permission scoping, audit trail</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="individual-aws-user">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Individual AWS user</span>
+          <span class="ir-incident-damage">$30,000</span>
+        </div>
+        <span class="ir-incident-date">2025-2026</span>
+      </header>
+      <p class="ir-incident-body">Claude running on AWS Bedrock entered a runaway loop. No monitoring in place. The agent consumed massive compute resources with zero human visibility until the bill arrived.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://www.radarc.net/review/aws-user-hit-with-30000-dollar-bill-after-claude-runaway-on-bedrock" target="_blank" rel="noopener">radarc.net, 2025-2026</a></span>
+        <span class="ir-scout-fix">Scout fix: spend cap enforcement, runaway detection via execution loop monitoring</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="individual-developer">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Individual developer</span>
+          <span class="ir-incident-damage">$47,000</span>
+        </div>
+        <span class="ir-incident-date">2024-2025</span>
+      </header>
+      <p class="ir-incident-body">A developer let AI write their API. Three weeks later, a $47,000 AWS bill. The AI-generated code was grossly inefficient: runaway loops, unbounded resource allocation, zero cost awareness. No monitoring was in place to catch the pattern before it compounded.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://awstip.com/i-let-ai-write-our-api-3-weeks-later-47k-aws-bill-heres-what-it-did-wrong-7ebb190e9d02" target="_blank" rel="noopener">awstip.com, 2024-2025</a></span>
+        <span class="ir-scout-fix">Scout fix: agent execution rate limits, audit trail, cost anomaly detection</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="uber">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Uber</span>
+          <span class="ir-incident-damage">Entire 2026 AI budget consumed</span>
+        </div>
+        <span class="ir-incident-date">April 2026</span>
+      </header>
+      <p class="ir-incident-body">Uber's heavy adoption of AI coding products burned through its entire 2026 AI budget by April. The COO reportedly admitted the costs were becoming difficult to justify. Four months to exhaust an annual budget, with no visibility into which agents or workflows drove the burn.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://techstartups.com/2026/05/28/company-accidentally-spent-500-million-on-claude-ai-in-one-month-after-forgetting-usage-limits/" target="_blank" rel="noopener">Same Axios report as above -- treat as reported</a></span>
+        <span class="ir-scout-fix">Scout fix: per-team budgets, agent-level cost attribution</span>
+      </footer>
+    </article>
+
+    <article class="ir-incident" id="enterprise-via-axios-unnamed">
+      <header class="ir-incident-header">
+        <div class="ir-incident-meta">
+          <span class="ir-incident-company">Enterprise (via Axios, unnamed)</span>
+          <span class="ir-incident-damage">$500,000,000</span>
+        </div>
+        <span class="ir-incident-date">May 2026</span>
+      </header>
+      <p class="ir-incident-body">An enterprise deployed Claude across thousands of employees. No spending caps. No usage monitoring. No agent budget controls. Developers ran long autonomous coding sessions. AI agents executed chained workflows around the clock. The invoice arrived one month later: half a billion dollars.</p>
+      <footer class="ir-incident-footer">
+        <span class="ir-incident-source">Source: <a href="https://techstartups.com/2026/05/28/company-accidentally-spent-500-million-on-claude-ai-in-one-month-after-forgetting-usage-limits/" target="_blank" rel="noopener">Axios / techstartups.com, May 2026</a></span>
+        <span class="ir-scout-fix">Scout fix: per-agent spend quotas, real-time usage dashboard, alert thresholds</span>
+      </footer>
+    </article>
+      </section>
+    </div>
+  <div class="container">
+    <section class="ir-cta">
+      <h2>Get the weekly incident report.</h2>
+      <p>New AI agent incidents, documented and sourced, every week. One email. No spam.</p>
+      <form id="subscribe-form" style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;max-width:460px;margin:0 auto;">
+        <input id="subscribe-email" type="email" name="email" placeholder="your@email.com" required style="flex:1;min-width:220px;padding:.8rem 1rem;border-radius:6px;border:1px solid rgba(255,255,255,0.12);background:#0c1118;color:#f0f4f8;">
+        <button type="submit" class="btn-primary">Subscribe</button>
+      </form>
+      <p id="subscribe-message" style="min-height:1.2em;color:#8a9bb0;margin-top:1rem;"></p>
+    </section>
+  </div>
+  <div class="container">
+    <section class="ir-cta">
+      <h2>Nobody was watching.<br>Scout is the watching.</h2>
+      <p>From £49/mo. Pre-wired for Carina. Connects to any agent stack via API.</p>
+      <a href="https://labyrinthscout.com/#pricing" class="btn-primary">See Scout pricing</a>
+      <a href="https://carinaai.uk" class="btn-secondary">Start with Carina</a>
+    </section>
+  </div>
+  <div class="container">
+    <div class="ir-footer">
+      <div class="ir-footer-inner">
+        <span>Labyrinth Scout. A VERLOX product.</span>
+        <span>Generated at 2026-06-19T10:02:25.355Z</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const form = document.getElementById('subscribe-form');
+      const message = document.getElementById('subscribe-message');
+      const params = new URLSearchParams(window.location.search);
+      if (message) {
+        if (params.has('subscribed')) message.textContent = 'Subscription confirmed.';
+        if (params.has('unsubscribed')) message.textContent = 'You have been unsubscribed.';
+        if (params.has('error')) message.textContent = 'There was a problem with that link.';
+      }
+      if (!form) return;
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const input = document.getElementById('subscribe-email');
+        const email = String(input && input.value ? input.value : '').trim();
+        if (!email || !message) return;
+        try {
+          const response = await fetch('https://app.carinaai.uk/api/incident-blog/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, source: 'labyrinthscout.com' }),
+          });
+          const payload = await response.json();
+          message.textContent = payload.message || 'Check your email to confirm your subscription.';
+          form.reset();
+        } catch {
+          message.textContent = 'Something went wrong. Try again.';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

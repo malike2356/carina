@@ -1,0 +1,108 @@
+import type { Tool } from '../types/index.js';
+import { registry } from './registry.js';
+import { listSessionTools } from './session-tool-store.js';
+import { resolveActiveToolNames } from './toolset-config.js';
+import { ALWAYS_ON_TOOLS, filterLeafTools } from './toolset.js';
+import { isSubagentSession } from '../agents/delegation-context.js';
+import {
+  selectToolsByEmbedding,
+  shouldUseEmbeddingToolSelect,
+} from './tool-embedding-select.js';
+import { getModelMetadata } from '../brain/model-metadata.js';
+import { filterToolsForPlanMode } from '../security/plan-mode-allowlist.js';
+import { resolvePlanMode } from '../security/plan-mode-state.js';
+import { getToolExecutionContext } from '../security/tool-execution-context.js';
+
+export type SessionToolResolution = {
+  names: string[];
+  tools: Tool[];
+  isSubagent: boolean;
+  toolsets: string[];
+  embeddingFiltered?: boolean;
+};
+
+export function resolveSessionToolNames(opts: {
+  sessionId: string;
+  platform?: string;
+  explicitAllowed?: string[];
+}): string[] {
+  const isSubagent = isSubagentSession(opts.sessionId);
+  let names = resolveActiveToolNames({
+    platform: opts.platform,
+    explicitAllowed: opts.explicitAllowed,
+  });
+
+  if (isSubagent || opts.explicitAllowed?.length) {
+    names = isSubagent ? filterLeafTools(names) : names;
+  } else {
+    const allowed = new Set([...names, ...ALWAYS_ON_TOOLS]);
+    names = [...allowed];
+  }
+
+  return names;
+}
+
+function resolveToolsFromNames(names: string[], sessionId: string): Tool[] {
+  const allowed = new Set(names);
+  const globalTools = registry.list().filter((t) => allowed.has(t.name));
+  const sessionTools = listSessionTools(sessionId).filter((t) => allowed.has(t.name));
+  const byName = new Map(globalTools.map((t) => [t.name, t]));
+  for (const tool of sessionTools) byName.set(tool.name, tool);
+  return [...byName.values()];
+}
+
+export async function resolveSessionTools(opts: {
+  sessionId: string;
+  platform?: string;
+  explicitAllowed?: string[];
+  userMessage?: string;
+  provider?: string;
+  model?: string;
+}): Promise<SessionToolResolution> {
+  const names = resolveSessionToolNames(opts);
+  let tools = resolveToolsFromNames(names, opts.sessionId);
+  let embeddingFiltered = false;
+
+  const provider = opts.provider ?? 'openai';
+  const model = opts.model ?? 'gpt-4o';
+  const metadata = getModelMetadata(provider, model);
+
+  if (
+    opts.userMessage?.trim()
+    && shouldUseEmbeddingToolSelect({
+      toolCount: tools.length,
+      contextWindow: metadata.contextWindow,
+      provider,
+      model,
+    })
+  ) {
+    tools = await selectToolsByEmbedding({
+      tools,
+      query: opts.userMessage,
+      alwaysInclude: [...ALWAYS_ON_TOOLS],
+    });
+    embeddingFiltered = true;
+  }
+
+  const executionContext = getToolExecutionContext();
+  const planMode = resolvePlanMode({
+    sessionId: opts.sessionId,
+    orgRole: executionContext.orgRole,
+    contextPlanMode: executionContext.planMode,
+  });
+  if (planMode) {
+    const filtered = filterToolsForPlanMode(tools);
+    tools = filtered.allowed;
+  }
+
+  const byName = new Map(tools.map((t) => [t.name, t]));
+  const toolsets = registry.toolsetsForNames([...byName.keys()]);
+
+  return {
+    names: [...byName.keys()].sort(),
+    tools: [...byName.values()],
+    isSubagent: isSubagentSession(opts.sessionId),
+    toolsets,
+    embeddingFiltered,
+  };
+}

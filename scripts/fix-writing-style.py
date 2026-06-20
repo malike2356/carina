@@ -14,8 +14,8 @@ SKIP_DIRS = {
 }
 SKIP_FILE_SUFFIXES = ('.min.js', '.min.css', '.map', '.woff', '.woff2', '.png', '.jpg', '.gif', '.webp', '.ico', '.svg', '.pdf', '.zip')
 SKIP_PATH_SNIPPETS = (
-    '/carinaai.uk/docs/',
-    '/labyrinthscout.com/docs/',
+    '/marketing/sites/carinaai.uk/docs/',
+    '/marketing/sites/labyrinthscout.com/docs/',
     '/utf8.txt',
     '/surrogate_pair_bug.txt',
     '/tests.json',

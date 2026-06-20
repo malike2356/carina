@@ -1,0 +1,224 @@
+<% title = 'Control Center' %>
+<h1 class="text-2xl font-bold text-white mb-3">Control Center</h1>
+<p class="text-sm text-gray-400 mb-6">Internal admin surfaces and live core control points.</p>
+
+<% if (reloadOk) { %>
+  <div class="mb-6 rounded-lg border border-green-600/50 bg-green-950/30 px-4 py-3 text-sm text-green-200">
+    Secrets reload requested.
+  </div>
+<% } %>
+<% if (reloadErr) { %>
+  <div class="mb-6 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200"><%= reloadErr %></div>
+<% } %>
+
+<% if (coreConnected) { %>
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-xs text-gray-500">Core</p>
+      <p class="text-lg font-semibold text-white mt-1">Connected</p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-xs text-gray-500">Skill packs</p>
+      <p class="text-lg font-semibold text-white mt-1"><%= packs?.active?.length ?? 0 %> active</p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-xs text-gray-500">Extensions</p>
+      <p class="text-lg font-semibold text-white mt-1"><%= extensions?.extensions?.length ?? 0 %> loaded</p>
+    </div>
+    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+      <p class="text-xs text-gray-500">Logs</p>
+      <p class="text-lg font-semibold text-white mt-1"><%= logs?.count ?? 0 %> recent</p>
+    </div>
+  </div>
+<% } else { %>
+  <div class="mb-6 rounded-lg border border-amber-600/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+    Core is not paired. Connect Carina in Settings to unlock the live control panels below.
+  </div>
+<% } %>
+
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <div class="flex items-center justify-between gap-3 mb-3">
+      <h2 class="text-lg font-semibold text-white">Core actions</h2>
+      <form method="post" action="/control-center/reload-secrets">
+        <button type="submit" class="bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-3 py-2 rounded">
+          Reload secrets
+        </button>
+      </form>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <a href="/settings" class="block rounded-lg border border-[#2a2a2a] bg-[#111] p-3 hover:border-[#16c97e]">
+        <p class="text-sm font-semibold text-white">Settings</p>
+        <p class="text-xs text-gray-500 mt-1">Passwords, pairing, and alerts.</p>
+      </a>
+      <a href="/ai-platform" class="block rounded-lg border border-[#2a2a2a] bg-[#111] p-3 hover:border-[#16c97e]">
+        <p class="text-sm font-semibold text-white">AI Platform</p>
+        <p class="text-xs text-gray-500 mt-1">Workbench, agents, vaults, deployments.</p>
+      </a>
+      <a href="/tenants" class="block rounded-lg border border-[#2a2a2a] bg-[#111] p-3 hover:border-[#16c97e]">
+        <p class="text-sm font-semibold text-white">Tenants</p>
+        <p class="text-xs text-gray-500 mt-1">Provisioning, billing, packs, access.</p>
+      </a>
+      <a href="/security" class="block rounded-lg border border-[#2a2a2a] bg-[#111] p-3 hover:border-[#16c97e]">
+        <p class="text-sm font-semibold text-white">Security</p>
+        <p class="text-xs text-gray-500 mt-1">Scout status, events, kill and resume.</p>
+      </a>
+    </div>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Core status</h2>
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Env audit</p>
+        <p class="text-white font-semibold"><%= env?.audit ? `${env.audit.ok} ok / ${env.audit.warn} warn / ${env.audit.fail} fail` : 'Unavailable' %></p>
+      </div>
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Web password</p>
+        <p class="text-white font-semibold"><%= webPassword?.set ? 'Set' : 'Unset' %></p>
+      </div>
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Control host</p>
+        <p class="text-white font-semibold"><%= controlStatus ? `${controlStatus.pairedNodes} nodes` : 'Unavailable' %></p>
+      </div>
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Telemetry</p>
+        <p class="text-white font-semibold"><%= telemetryHealth?.healthy ? 'Healthy' : 'Attention needed' %></p>
+      </div>
+    </div>
+    <% if (packs) { %>
+      <div class="mt-4">
+        <p class="text-xs text-gray-500 mb-2">Active packs</p>
+        <div class="flex flex-wrap gap-2">
+          <% if (packs.active.length) { %>
+            <% for (const pack of packs.active) { %>
+              <span class="rounded-full border border-[#2a2a2a] bg-[#111] px-3 py-1 text-xs text-gray-300"><%= pack %></span>
+            <% } %>
+          <% } else { %>
+            <span class="text-xs text-gray-500">None active</span>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Control plane</h2>
+    <% if (controlStatus) { %>
+      <ul class="space-y-2 text-sm text-gray-300">
+        <li>Node host: <span class="text-white"><%= controlStatus.nodeHostEnabled ? 'Enabled' : 'Disabled' %></span></li>
+        <li>Sandbox: <span class="text-white"><%= controlStatus.sandbox.sessionSandboxEnabled ? 'On' : 'Off' %></span></li>
+        <li>Containers: <span class="text-white"><%= controlStatus.sandbox.containersRunning %>/<%= controlStatus.sandbox.containersTotal %></span></li>
+        <li>Approvals: <span class="text-white"><%= controlStatus.approvals.policyEnabled ? 'On' : 'Off' %></span></li>
+        <li>Recent node audit: <span class="text-white"><%= controlStatus.recentNodeAudit %></span></li>
+      </ul>
+    <% } else { %>
+      <p class="text-sm text-gray-500">Core control status unavailable.</p>
+    <% } %>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Extensions</h2>
+    <% if (extensions) { %>
+      <ul class="space-y-2 text-sm text-gray-300">
+        <li>Runtime: <span class="text-white"><%= extensions.runtimeEnabled ? 'Enabled' : 'Disabled' %></span></li>
+        <li>Loaded: <span class="text-white"><%= extensions.extensions.length %></span></li>
+        <li>Healthy: <span class="text-white"><%= extensions.extensions.filter((ext) => ext.health !== 'fail').length %></span></li>
+      </ul>
+      <% if (extensions.extensions.length) { %>
+        <div class="mt-4 space-y-2">
+          <% for (const ext of extensions.extensions.slice(0, 5)) { %>
+            <div class="rounded border border-[#2a2a2a] px-3 py-2 text-xs text-gray-300">
+              <div class="flex items-center justify-between gap-3">
+                <span class="font-semibold text-white"><%= ext.id %></span>
+                <span><%= ext.health || ext.status || 'unknown' %></span>
+              </div>
+              <% if (ext.version) { %><p class="text-gray-500 mt-1">v<%= ext.version %></p><% } %>
+            </div>
+          <% } %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <p class="text-sm text-gray-500">Extension inventory unavailable.</p>
+    <% } %>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Telemetry</h2>
+    <% if (telemetryHealth) { %>
+      <ul class="space-y-2 text-sm text-gray-300">
+        <% for (const check of telemetryHealth.checks.slice(0, 5)) { %>
+          <li class="flex items-start justify-between gap-3 border-b border-[#2a2a2a] pb-2 last:border-b-0 last:pb-0">
+            <span class="text-white"><%= check.id %></span>
+            <span class="<%= check.status === 'ok' ? 'text-green-400' : check.status === 'warn' ? 'text-amber-400' : 'text-red-400' %>">
+              <%= check.detail %>
+            </span>
+          </li>
+        <% } %>
+      </ul>
+    <% } else { %>
+      <p class="text-sm text-gray-500">Telemetry overview unavailable.</p>
+    <% } %>
+  </div>
+</section>
+
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Recent ops data</h2>
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Sessions</p>
+        <p class="text-white font-semibold"><%= sessions?.summary?.total ?? 0 %></p>
+      </div>
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Logs</p>
+        <p class="text-white font-semibold"><%= logs?.count ?? 0 %></p>
+      </div>
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Eval reports</p>
+        <p class="text-white font-semibold"><%= evalReports?.reports?.length ?? 0 %></p>
+      </div>
+      <div class="rounded border border-[#2a2a2a] p-3">
+        <p class="text-gray-500 text-xs">Devices</p>
+        <p class="text-white font-semibold"><%= devices?.devices?.length ?? 0 %></p>
+      </div>
+    </div>
+    <% if (evalReports?.reports?.length) { %>
+      <div class="space-y-2">
+        <% for (const report of evalReports.reports) { %>
+          <div class="rounded border border-[#2a2a2a] px-3 py-2 text-xs text-gray-300">
+            <div class="flex items-center justify-between gap-3">
+              <span class="font-semibold text-white"><%= report.pack %></span>
+              <span><%= Math.round(report.passRate * 100) %>% pass</span>
+            </div>
+            <% if (report.summary) { %><p class="text-gray-500 mt-1"><%= report.summary %></p><% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+    <h2 class="text-lg font-semibold text-white mb-3">Managed surfaces</h2>
+    <div class="grid grid-cols-2 gap-2">
+      <% for (const item of opsSurfaces) { %>
+        <a href="<%= item.href %>" class="rounded border border-[#2a2a2a] bg-[#111] px-3 py-2 text-sm text-gray-300 hover:border-[#16c97e] hover:text-white">
+          <%= item.label %>
+        </a>
+      <% } %>
+    </div>
+    <div class="mt-5">
+      <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Workspace surfaces</p>
+      <div class="grid grid-cols-2 gap-2">
+        <% for (const item of workspaceSurfaces) { %>
+          <a href="<%= item.href %>" target="_blank" rel="noopener noreferrer"
+             class="rounded border border-[#2a2a2a] bg-[#111] px-3 py-2 text-sm text-gray-300 hover:border-[#16c97e] hover:text-white">
+            <%= item.label %>
+          </a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</section>

@@ -11,8 +11,9 @@ VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
 SCOUT_REMOTE="/home/malike/apps/console.labyrinthscout.com"
 CORE_REMOTE="/home/malike/apps/core.carinaai.uk"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0}")" && pwd)"
-SCOUT_LOCAL="$(dirname "$SCRIPT_DIR")/console.labyrinthscout.com"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+SCOUT_LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
 
 NEW_API_KEY="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
 NEW_SESSION_SECRET="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")"
@@ -36,7 +37,7 @@ log "Backups: .env.bak-${STAMP}"
 
 case "$TARGET" in
   local)
-    apply_rotation "${SCOUT_LOCAL}/.env" "$(dirname "$SCRIPT_DIR")/core.carinaai.uk/.env"
+    apply_rotation "${SCOUT_LOCAL}/.env" "${REPO_ROOT}/internal/servers/core.carinaai.uk/.env"
     ;;
   vps)
     ssh "${VPS_USER}@${VPS_HOST}" bash -s <<REMOTE
@@ -62,4 +63,4 @@ REMOTE
 esac
 
 log "Rotation applied. Run: bash scripts/post-deploy-security-check.sh ${TARGET}"
-log "Record rotation in instructions/operator-trust-log.md (date, operator, reason)."
+log "Record rotation in product/planning/trust/operator-trust-log.md (date, operator, reason)."

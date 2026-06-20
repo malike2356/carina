@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<title>Prompt Packs; Carina</title>
+<style>
+  :root {
+    --bg: #111318; --surface: #181b22; --border: #262a34;
+    --text: #e8eaef; --muted: #7a8296; --accent: #8b9dc3;
+    --accent-soft: rgba(139,157,195,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+  }
+  h1 { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.35rem; }
+  .subtitle { color: var(--muted); font-size: 0.84rem; margin-bottom: 1rem; max-width: 62rem; }
+  .path {
+    font-size: 0.77rem; color: var(--muted); margin-bottom: 1rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all;
+  }
+  .note {
+    border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem 1rem;
+    background: var(--surface); color: var(--muted); font-size: 0.8rem; margin-bottom: 1rem;
+  }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.65rem;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 0.85rem 0.95rem;
+  }
+  .card-head {
+    display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline;
+    margin-bottom: 0.35rem;
+  }
+  .card-head h2 { font-size: 0.92rem; font-weight: 600; }
+  .tag {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 0.18rem 0.45rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+    white-space: nowrap;
+  }
+  .desc { color: var(--muted); font-size: 0.78rem; margin-bottom: 0.55rem; }
+  .meta {
+    color: var(--muted); font-size: 0.72rem; line-height: 1.45;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-word;
+  }
+  .top-nav { margin-bottom: 1.5rem; }
+  .top-nav a { color: var(--muted); text-decoration: none; font-size: 0.82rem; }
+  .top-nav a:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Prompt Packs</h1>
+  <span class="status">Internal gap-close prompts</span>
+</header>
+<div class="ws-scroll-page">
+  <p class="subtitle">A read-only index for the workspace playbook gap-close prompt set. These prompts close remaining feature gaps and keep the build order explicit.</p>
+  <div class="path">instructions/prompts/gaps_closing_prompts/playbook_gap_close/</div>
+  <div class="note">Use the prompts in sequence. The overview file explains the build order, the playbook phases, and the workspace surfaces that need to be surfaced in the UI.</div>
+
+  <div class="grid">
+    <div class="card"><div class="card-head"><h2>00. Overview</h2><span class="tag">index</span></div><div class="desc">Build order, naming, and product surface map.</div><div class="meta">00-overview-and-build-order.md</div></div>
+    <div class="card"><div class="card-head"><h2>01. Production chat fix</h2><span class="tag">cloud</span></div><div class="desc">Proxy, BYOK gate, and error handling.</div><div class="meta">01-production-chat-fix.md</div></div>
+    <div class="card"><div class="card-head"><h2>02. Research wiring</h2><span class="tag">cloud</span></div><div class="desc">Deep research core and result plumbing.</div><div class="meta">02-research-core-wiring.md</div></div>
+    <div class="card"><div class="card-head"><h2>03. Email workspace</h2><span class="tag">cloud</span></div><div class="desc">Inbox triage and auto-reply review flow.</div><div class="meta">03-email-workspace-cloud.md</div></div>
+    <div class="card"><div class="card-head"><h2>04. Documents editor</h2><span class="tag">cloud</span></div><div class="desc">Human typing with AI assist.</div><div class="meta">04-documents-editor-cloud.md</div></div>
+    <div class="card"><div class="card-head"><h2>05. Calendar and CalDAV</h2><span class="tag">cloud</span></div><div class="desc">Calendar sync and scheduling.</div><div class="meta">05-calendar-caldav.md</div></div>
+    <div class="card"><div class="card-head"><h2>06. Compare page</h2><span class="tag">cloud</span></div><div class="desc">Side-by-side model comparison UI.</div><div class="meta">06-compare-cloud.md</div></div>
+    <div class="card"><div class="card-head"><h2>07. Images gallery</h2><span class="tag">cloud</span></div><div class="desc">Image browse and edit surface.</div><div class="meta">07-images-gallery-cloud.md</div></div>
+    <div class="card"><div class="card-head"><h2>08. Personas and group chat</h2><span class="tag">cloud</span></div><div class="desc">Multi-persona behavior and channel gating.</div><div class="meta">08-personas-group-chat.md</div></div>
+    <div class="card"><div class="card-head"><h2>09. Brain settings</h2><span class="tag">cloud</span></div><div class="desc">Auto-extract settings for memory and skills.</div><div class="meta">09-brain-auto-extract-settings.md</div></div>
+    <div class="card"><div class="card-head"><h2>10. Unified library tabs</h2><span class="tag">cloud</span></div><div class="desc">Chats, documents, research, archive.</div><div class="meta">10-library-unified-tabs.md</div></div>
+    <div class="card"><div class="card-head"><h2>11. Search AI defaults</h2><span class="tag">cloud</span></div><div class="desc">Search and model default settings.</div><div class="meta">11-search-ai-defaults-settings.md</div></div>
+    <div class="card"><div class="card-head"><h2>12. Mobile PWA</h2><span class="tag">cloud</span></div><div class="desc">Mobile shell and offline-friendly entry.</div><div class="meta">12-mobile-pwa.md</div></div>
+    <div class="card"><div class="card-head"><h2>13. Node pairing bridge</h2><span class="tag">cloud</span></div><div class="desc">Link cloud to a self-hosted node.</div><div class="meta">13-node-pairing-bridge.md</div></div>
+    <div class="card"><div class="card-head"><h2>14. Unified Brain panel</h2><span class="tag">cloud</span></div><div class="desc">Memory, skills, and settings in one panel.</div><div class="meta">14-unified-brain-panel.md</div></div>
+    <div class="card"><div class="card-head"><h2>20. Constraints + task classifier</h2><span class="tag">core</span></div><div class="desc">Playbook phase 1: task profiles, constraints, classification.</div><div class="meta">20-playbook-phase1-constraints-classifier.md</div></div>
+    <div class="card"><div class="card-head"><h2>21. Path generator + scorer</h2><span class="tag">core</span></div><div class="desc">Playbook phase 2: multiple paths and scoring.</div><div class="meta">21-playbook-phase2-path-generator.md</div></div>
+    <div class="card"><div class="card-head"><h2>22. Domain plays</h2><span class="tag">core</span></div><div class="desc">Playbook phase 3: property, security, and business plays.</div><div class="meta">22-playbook-phase3-domain-plays.md</div></div>
+    <div class="card"><div class="card-head"><h2>23. Learning loop + play curator</h2><span class="tag">core</span></div><div class="desc">Playbook phase 4: outcomes, weights, and play evolution.</div><div class="meta">23-playbook-phase4-learning-loop.md</div></div>
+    <div class="card"><div class="card-head"><h2>24. Cross-product integration</h2><span class="tag">core</span></div><div class="desc">Playbook phase 5: core, cloud, and Scout wiring.</div><div class="meta">24-playbook-phase5-cross-product.md</div></div>
+    <div class="card"><div class="card-head"><h2>25. Core UI</h2><span class="tag">ui</span></div><div class="desc">The /playbook workspace in core.</div><div class="meta">25-playbook-ui-core-workspace.md</div></div>
+    <div class="card"><div class="card-head"><h2>26. Cloud UI</h2><span class="tag">ui</span></div><div class="desc">The Playbook surface in Carina Cloud.</div><div class="meta">26-playbook-ui-app-cloud.md</div></div>
+    <div class="card"><div class="card-head"><h2>27. Migration</h2><span class="tag">polish</span></div><div class="desc">Cookbook to playbook naming and routing.</div><div class="meta">27-cookbook-to-playbook-migration.md</div></div>
+  </div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main Carina desktop window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "core:window:allow-is-visible",
+    "core:event:allow-emit",
+    "core:tray:default",
+    "global-shortcut:default",
+    "shell:default",
+    "notification:default",
+    "dialog:default",
+    "autostart:default",
+    "core:webview:allow-create-webview-window",
+    "core:webview:allow-webview-position",
+    "core:webview:allow-webview-size",
+    "core:webview:allow-set-webview-focus",
+    "deep-link:default",
+    "fs:default",
+    "process:default",
+    "updater:default"
+  ]
+}

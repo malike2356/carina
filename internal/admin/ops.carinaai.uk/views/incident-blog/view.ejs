@@ -1,0 +1,38 @@
+<% title = 'Incident Blog' %>
+<style>
+  .blog-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1rem; }
+  .blog-meta { color:#8b8b8b; font-size:.9rem; }
+  .blog-body { margin: 1rem 0; padding: 1rem; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; }
+  .actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
+  .button-inline { display:inline-flex; align-items:center; justify-content:center; background:#2a2a2a; color:#fff; border:1px solid #3a3a3a; border-radius:6px; padding:.45rem .7rem; font-size:.82rem; cursor:pointer; text-decoration:none; }
+  .button-inline.primary { background:#16c97e; color:#06090f; border-color:#16c97e; }
+  .button-inline.warn { background:#f59e0b; color:#06090f; border-color:#f59e0b; }
+  .button-inline.danger { background:#e63946; color:#fff; border-color:#e63946; }
+</style>
+<div class="blog-card">
+  <h1 class="text-2xl font-bold text-white mb-2"><%= incident.title %></h1>
+  <div class="blog-meta">
+    <div><strong>Status:</strong> <%= incident.status %></div>
+    <div><strong>Category:</strong> <%= incident.category %></div>
+    <div><strong>Company:</strong> <%= incident.company %></div>
+    <div><strong>Damage:</strong> <span style="color:#e63946"><%= incident.damage %></span></div>
+    <div><strong>Date:</strong> <%= incident.dateOccurred %></div>
+    <div><strong>Slug:</strong> <%= incident.slug %></div>
+  </div>
+  <div class="blog-body">
+    <%- incident.body_html || incident.bodyHtml %>
+  </div>
+  <div class="blog-meta">
+    <div><strong>Scout fix:</strong> <span style="color:#16c97e"><%- incident.scout_fix_html || incident.scoutFixHtml %></span></div>
+    <% if (incident.rejection_reason) { %>
+      <div><strong>Rejection:</strong> <%= incident.rejection_reason %></div>
+    <% } %>
+  </div>
+  <div class="actions">
+    <a class="button-inline" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve"><button class="button-inline warn" type="submit">Approve</button></form>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish"><button class="button-inline primary" type="submit">Publish</button></form>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject"><input type="hidden" name="reason" value="Needs revision"><button class="button-inline" type="submit">Reject</button></form>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete"><button class="button-inline danger" type="submit">Delete</button></form>
+  </div>
+</div>

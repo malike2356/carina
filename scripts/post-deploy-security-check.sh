@@ -10,6 +10,7 @@ VPS_USER="${VPS_USER:-malike}"
 SCOUT_REMOTE="/home/malike/apps/console.labyrinthscout.com"
 CORE_REMOTE="/home/malike/apps/core.carinaai.uk"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 log() { echo "[post-deploy-security] $*"; }
 fail() { echo "[post-deploy-security] FAIL $*" >&2; FAILED=1; }
@@ -18,13 +19,13 @@ FAILED=0
 
 run_local() {
   log "Scout doctor..."
-  (cd "$(dirname "$SCRIPT_DIR")/console.labyrinthscout.com" && npm run doctor) || fail "Scout doctor"
+  (cd "${REPO_ROOT}/internal/servers/console.labyrinthscout.com" && npm run doctor) || fail "Scout doctor"
 
   log "Carina doctor..."
-  (cd "$(dirname "$SCRIPT_DIR")/core.carinaai.uk" && npx tsx bin/carina.ts doctor) || fail "Carina doctor"
+  (cd "${REPO_ROOT}/internal/servers/core.carinaai.uk" && npx tsx bin/carina.ts doctor) || fail "Carina doctor"
 
   log "Carina security audit..."
-  (cd "$(dirname "$SCRIPT_DIR")/core.carinaai.uk" && npx tsx bin/carina.ts security audit) || fail "Carina security audit"
+  (cd "${REPO_ROOT}/internal/servers/core.carinaai.uk" && npx tsx bin/carina.ts security audit) || fail "Carina security audit"
 
   curl -fsS -m 8 http://127.0.0.1:4444/api/readiness >/dev/null || fail "Scout readiness endpoint"
 }
