@@ -1,10 +1,7 @@
 <% title = 'Subscriptions' %>
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-  <div>
-    <h1 class="text-2xl font-bold text-white">Subscriptions</h1>
-    <p class="text-sm text-gray-400 mt-1">All tenant subscription state across SaaS and manual provisioning.</p>
-  </div>
-  <a href="/tenants/new" class="px-4 py-2 rounded bg-[#22c55e] hover:bg-green-400 text-black text-sm font-medium">
+<div class="ops-page">
+<div class="ops-page-head"><div><div class="ops-page-title">Subscriptions</div><div class="ops-page-sub">All tenant subscription state across SaaS and manual provisioning.</div></div></div>
+<a href="/tenants/new" class="px-4 py-2 rounded bg-[#22c55e] hover:bg-green-400 text-black text-sm font-medium">
     Create tenant
   </a>
 </div>
@@ -23,12 +20,12 @@
     <a href="/subscriptions?status=suspended" class="px-3 py-1 rounded <%= statusFilter === 'suspended' ? 'bg-[#22c55e] text-black' : 'bg-[#2a2a2a] text-gray-300' %>">Suspended</a>
   </div>
 
-  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
+  <div class="ops-surface ops-table-wrap">
     <% if (!subscriptions.length) { %>
       <p class="p-6 text-gray-500 text-sm">No subscription records yet.</p>
     <% } else { %>
       <div class="overflow-x-auto">
-        <table class="w-full text-sm text-left">
+        <table class="ops-table w-full text-sm text-left">
           <thead class="text-gray-400 border-b border-[#2a2a2a] bg-[#141414]">
             <tr>
               <th class="px-4 py-3 font-medium">Tenant</th>
@@ -68,7 +65,7 @@
                   <% } %>
                 </td>
                 <td class="px-4 py-3">
-                  <a href="/tenants/<%= s.tenantId %>?tab=subscription" class="text-[#06b6d4] hover:underline">Manage</a>
+                  <a href="/tenants/<%= s.tenantId %>?tab=subscription" class="ops-link">Manage</a>
                 </td>
               </tr>
             <% } %>
@@ -78,3 +75,4 @@
     <% } %>
   </div>
 <% } %>
+</div>

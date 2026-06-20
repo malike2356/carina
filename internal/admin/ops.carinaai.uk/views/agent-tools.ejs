@@ -1,115 +1,65 @@
 <% title = 'Agent Tools' %>
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-  <div>
-    <h1 class="text-2xl font-bold text-white">Agent Tools</h1>
-    <p class="text-sm text-gray-400 mt-1">Global tool category configuration for all hosted workspaces.</p>
-  </div>
-  <form method="get" action="/admin/agent-tools/tenant/" onsubmit="event.preventDefault(); var value = this.workspaceId.value.trim(); if (value) window.location.href = '/admin/agent-tools/tenant/' + encodeURIComponent(value);">
-    <div class="flex gap-2">
-      <input name="workspaceId" placeholder="Workspace ID override"
-        class="w-64 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-      <button type="submit" class="px-3 py-2 rounded bg-[#2a2a2a] hover:bg-[#333] text-white text-sm">Open tenant</button>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Agent Tools</div>
+      <div class="ops-page-sub">Global tool category configuration for all hosted workspaces.</div>
     </div>
-  </form>
-</div>
-
-<% if (message) { %>
-  <div class="mb-4 rounded-lg border px-4 py-3 text-sm <%= messageIsError ? 'border-red-600/50 bg-red-950/30 text-red-200' : 'border-green-600/50 bg-green-950/30 text-green-200' %>">
-    <%= message %>
-  </div>
-<% } %>
-
-<div class="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 mb-8">
-  <% categories.forEach((cat) => { %>
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 <%= cat.enabled ? '' : 'opacity-70' %>">
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <div class="flex items-center gap-2 mb-1">
-            <span class="px-2 py-0.5 rounded text-xs font-medium <%= cat.enabled ? 'bg-green-900/50 text-green-300' : 'bg-gray-800 text-gray-300' %>">
-              <%= cat.enabled ? 'Enabled' : 'Disabled' %>
-            </span>
-            <% if (cat.requiresApproval) { %>
-              <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-900/50 text-amber-300">Approval</span>
-            <% } %>
-          </div>
-          <h2 class="text-lg font-semibold text-white"><%= cat.label %></h2>
-          <% if (cat.description) { %>
-            <p class="text-xs text-gray-500 mt-1"><%= cat.description %></p>
-          <% } %>
-          <p class="text-[11px] text-gray-600 mt-1 font-mono"><%= cat.category %></p>
-        </div>
+    <form method="get" action="/admin/agent-tools/tenant/" onsubmit="event.preventDefault(); var value = this.workspaceId.value.trim(); if (value) window.location.href = '/admin/agent-tools/tenant/' + encodeURIComponent(value);">
+      <div class="ops-actions" style="margin:0;">
+        <input name="workspaceId" placeholder="Workspace ID override" class="ops-input mono" style="width:220px;" />
+        <button type="submit" class="ops-btn-ghost">Open tenant</button>
       </div>
-
-      <form method="post" action="/admin/agent-tools/<%= encodeURIComponent(cat.category) %>" class="space-y-3">
-        <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="block text-xs text-gray-400 mb-1">Status</span>
-            <select name="enabled" class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-2 py-2">
-              <option value="true" <%= cat.enabled ? 'selected' : '' %>>Enabled</option>
-              <option value="false" <%= !cat.enabled ? 'selected' : '' %>>Disabled</option>
-            </select>
-          </label>
-          <label class="block">
-            <span class="block text-xs text-gray-400 mb-1">Approval</span>
-            <select name="requiresApproval" class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-2 py-2">
-              <option value="false" <%= !cat.requiresApproval ? 'selected' : '' %>>No</option>
-              <option value="true" <%= cat.requiresApproval ? 'selected' : '' %>>Yes</option>
-            </select>
-          </label>
-          <label class="block">
-            <span class="block text-xs text-gray-400 mb-1">Max calls / message</span>
-            <input type="number" name="maxCalls" value="<%= cat.maxCalls %>" min="1" max="50"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-2 py-2" />
-          </label>
-          <label class="block">
-            <span class="block text-xs text-gray-400 mb-1">Timeout (ms)</span>
-            <input type="number" name="timeoutMs" value="<%= cat.timeoutMs %>" min="1000" max="120000" step="1000"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-2 py-2" />
-          </label>
-        </div>
-        <button type="submit" class="px-3 py-2 rounded bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold">
-          Save
-        </button>
-      </form>
-    </section>
-  <% }) %>
-</div>
-
-<section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden">
-  <div class="px-4 py-3 border-b border-[#2a2a2a]">
-    <h2 class="text-lg font-semibold text-white">Recent tool calls</h2>
-    <p class="text-xs text-gray-500 mt-1">Last 100 tool invocations across hosted workspaces.</p>
+    </form>
   </div>
-  <% if (!log.length) { %>
-    <p class="p-6 text-sm text-gray-500">No tool calls recorded yet.</p>
-  <% } else { %>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm text-left">
-        <thead class="text-gray-400 border-b border-[#2a2a2a] bg-[#141414]">
-          <tr>
-            <th class="px-4 py-3 font-medium">Tool</th>
-            <th class="px-4 py-3 font-medium">Workspace</th>
-            <th class="px-4 py-3 font-medium">Duration</th>
-            <th class="px-4 py-3 font-medium">Status</th>
-            <th class="px-4 py-3 font-medium">Time</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-[#2a2a2a]">
-          <% log.forEach((entry) => { %>
-            <tr class="hover:bg-[#222]">
-              <td class="px-4 py-3"><code class="text-[#06b6d4]"><%= entry.toolName %></code></td>
-              <td class="px-4 py-3 text-gray-500 text-xs font-mono"><%= entry.workspaceId.slice(0, 18) %><%= entry.workspaceId.length > 18 ? '...' : '' %></td>
-              <td class="px-4 py-3 text-gray-300"><%= entry.durationMs %>ms</td>
-              <td class="px-4 py-3">
-                <span class="px-2 py-0.5 rounded text-xs font-medium <%= entry.status === 'done' ? 'bg-green-900/50 text-green-300' : entry.status === 'error' ? 'bg-red-900/50 text-red-300' : 'bg-gray-800 text-gray-300' %>">
-                  <%= entry.status %>
-                </span>
-              </td>
-              <td class="px-4 py-3 text-gray-500 text-xs"><%= new Date(entry.createdAt).toLocaleString() %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+
+  <% if (message) { %>
+    <div class="ops-flash <%= messageIsError ? 'error' : 'success' %>"><%= message %></div>
   <% } %>
-</section>
+
+  <div class="ops-surface ops-tool-list" style="margin-bottom:16px;">
+    <% categories.forEach((cat) => { %>
+      <article class="ops-tool-item <%= cat.enabled ? '' : 'opacity-70' %>">
+        <div class="ops-tool-head">
+          <span class="ops-badge <%= cat.enabled ? 'ops-badge-green' : 'ops-badge-gray' %>"><%= cat.enabled ? 'Enabled' : 'Disabled' %></span>
+          <% if (cat.requiresApproval) { %><span class="ops-badge ops-badge-amber">Approval</span><% } %>
+          <span class="ops-tool-name"><%= cat.label %></span>
+          <span class="ops-tool-code"><%= cat.category %></span>
+        </div>
+        <% if (cat.description) { %><p class="ops-section-sub" style="margin-bottom:10px;"><%= cat.description %></p><% } %>
+        <form method="post" action="/admin/agent-tools/<%= encodeURIComponent(cat.category) %>">
+          <div class="ops-form-grid">
+            <div class="ops-field"><label class="ops-label">Status</label><select name="enabled" class="ops-select"><option value="true" <%= cat.enabled ? 'selected' : '' %>>Enabled</option><option value="false" <%= !cat.enabled ? 'selected' : '' %>>Disabled</option></select></div>
+            <div class="ops-field"><label class="ops-label">Approval</label><select name="requiresApproval" class="ops-select"><option value="false" <%= !cat.requiresApproval ? 'selected' : '' %>>No</option><option value="true" <%= cat.requiresApproval ? 'selected' : '' %>>Yes</option></select></div>
+            <div class="ops-field"><label class="ops-label">Max calls / message</label><input type="number" name="maxCalls" value="<%= cat.maxCalls %>" min="1" max="50" class="ops-input" /></div>
+            <div class="ops-field"><label class="ops-label">Timeout (ms)</label><input type="number" name="timeoutMs" value="<%= cat.timeoutMs %>" min="1000" max="120000" step="1000" class="ops-input" /></div>
+          </div>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Save</button></div>
+        </form>
+      </article>
+    <% }) %>
+  </div>
+
+  <div class="ops-surface">
+    <div class="ops-section">
+      <div class="ops-section-title">Recent tool calls</div>
+      <% if (!log?.length) { %>
+        <div class="ops-empty">No tool calls recorded yet.</div>
+      <% } else { %>
+        <table class="ops-table">
+          <thead><tr><th>Time</th><th>Tool</th><th>Workspace</th><th>Status</th></tr></thead>
+          <tbody>
+            <% log.forEach((call) => { %>
+              <tr>
+                <td><%= new Date(call.createdAt).toLocaleString() %></td>
+                <td><%= call.toolName %></td>
+                <td style="font-family:'JetBrains Mono',monospace;font-size:11px;"><%= call.workspaceId?.slice(0, 8) || '-' %>...</td>
+                <td><%= call.status || '-' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+</div>

@@ -1,404 +1,272 @@
 <% title = 'Settings' %>
-<div class="w-full">
-  <header class="mb-6">
-    <h1 class="text-2xl font-bold text-white mb-1">Settings</h1>
-    <p class="text-sm text-gray-400">Pair services, rotate passwords, configure alerts, and publish the Android build.</p>
-  </header>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Settings</div>
+      <div class="ops-page-sub">Pair services, rotate passwords, configure alerts, and publish the Android build.</div>
+    </div>
+  </div>
 
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-      <p class="text-xs text-gray-500">Carina agent</p>
-      <p class="text-sm font-semibold mt-1 <%= carinaConnected ? 'text-green-400' : (carinaPaired ? 'text-amber-400' : 'text-gray-400') %>">
+  <div class="ops-metrics">
+    <div class="ops-metric">
+      <div class="ops-metric-label">Carina agent</div>
+      <div class="ops-metric-value <%= carinaConnected ? 'ok' : (carinaPaired ? 'warn' : 'muted') %>">
         <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
-      </p>
+      </div>
     </div>
-    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-      <p class="text-xs text-gray-500">Labyrinth Scout</p>
-      <p class="text-sm font-semibold mt-1 <%= scoutConnected ? 'text-green-400' : (scoutPaired ? 'text-amber-400' : 'text-gray-400') %>">
+    <div class="ops-metric">
+      <div class="ops-metric-label">Labyrinth Scout</div>
+      <div class="ops-metric-value <%= scoutConnected ? 'ok' : (scoutPaired ? 'warn' : 'muted') %>">
         <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Key saved' : 'Not paired') %>
-      </p>
+      </div>
     </div>
-    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-      <p class="text-xs text-gray-500">Ops login</p>
-      <p class="text-sm font-semibold mt-1 <%= adminPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+    <div class="ops-metric">
+      <div class="ops-metric-label">Ops login</div>
+      <div class="ops-metric-value <%= adminPasswordSet ? 'ok' : 'warn' %>">
         <%= adminPasswordSet ? 'Custom password' : 'Default (changeme)' %>
-      </p>
+      </div>
     </div>
-    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3">
-      <p class="text-xs text-gray-500">Core web login</p>
-      <p class="text-sm font-semibold mt-1 <%= coreWebPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
+    <div class="ops-metric">
+      <div class="ops-metric-label">Core web login</div>
+      <div class="ops-metric-value <%= coreWebPasswordSet ? 'ok' : 'warn' %>">
         <%= coreWebPasswordSet ? 'Password set' : 'Not set' %>
-      </p>
+      </div>
     </div>
   </div>
 
   <% if (flashMessages && flashMessages.length) { %>
-    <div class="mb-6 space-y-2">
+    <div class="mb-4 space-y-2">
       <% for (const msg of flashMessages) { %>
-        <% const styles = msg.type === 'success'
-          ? 'border-green-600/50 bg-green-950/30 text-green-200'
-          : msg.type === 'error'
-            ? 'border-red-600/50 bg-red-950/30 text-red-200'
-            : 'border-amber-600/50 bg-amber-950/30 text-amber-200'; %>
-        <div class="rounded-lg border px-4 py-3 text-sm <%= styles %>"><%= msg.text %></div>
+        <div class="ops-flash <%= msg.type === 'success' ? 'success' : msg.type === 'error' ? 'error' : 'warn' %>"><%= msg.text %></div>
       <% } %>
     </div>
   <% } %>
 
-  <nav class="flex flex-wrap gap-2 mb-6 border-b border-[#2a2a2a] pb-3" aria-label="Settings sections">
-    <button type="button" data-settings-tab="connections"
-      class="settings-tab px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
-      Connections
-    </button>
-    <button type="button" data-settings-tab="passwords"
-      class="settings-tab px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
-      Passwords
-    </button>
-    <button type="button" data-settings-tab="alerts"
-      class="settings-tab px-3 py-1.5 rounded-md text-sm text-gray-400 hover:text-white hover:bg-[#2a2a2a]">
-      Alerts
-    </button>
+  <nav class="ops-tabs" aria-label="Settings sections">
+    <button type="button" data-settings-tab="connections" class="settings-tab ops-tab active">Connections</button>
+    <button type="button" data-settings-tab="passwords" class="settings-tab ops-tab">Passwords</button>
+    <button type="button" data-settings-tab="alerts" class="settings-tab ops-tab">Alerts</button>
   </nav>
 
-  <div id="settings-panel-connections" class="settings-panel">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
-      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+  <div id="settings-panel-connections" class="settings-panel ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <div class="ops-split">
+    <section class="ops-section">
+      <div class="ops-row-head">
         <div>
-          <h2 class="text-lg font-semibold text-white">Carina agent</h2>
-          <p class="text-xs mt-2 <%= carinaConnected ? 'text-green-400' : (carinaPaired ? 'text-amber-400' : 'text-gray-500') %>">
-            Status: <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
+          <div class="ops-section-title">Carina agent</div>
+          <p class="ops-status-line <%= carinaConnected ? 'ok' : (carinaPaired ? 'warn' : '') %>">
+            <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
           </p>
-          <p class="text-xs text-gray-500 mt-1">
-            API URL: <span class="text-gray-300 break-all"><%= carinaApiUrl %></span>
-          </p>
+          <p class="ops-inline-note">API URL: <code class="ops-code"><%= carinaApiUrl %></code></p>
         </div>
-        <button type="button" id="test-carina"
-          class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded shrink-0">
-          Test connection
-        </button>
+        <button type="button" id="test-carina" class="ops-btn-ghost">Test connection</button>
       </div>
-      <p id="carina-status" class="text-xs text-gray-500 mb-4">Not tested yet</p>
+      <p id="carina-status" class="ops-status-line">Not tested yet</p>
 
-      <h3 class="text-sm font-semibold text-white mb-3 pt-3 border-t border-[#2a2a2a]">Connect to Carina agent</h3>
-      <p class="text-xs text-gray-500 mb-3">
-        On this server, ops can read the existing core token automatically. No SSH or manual copy/paste needed.
-      </p>
+      <div class="ops-section-divider"></div>
+      <div class="ops-section-title">Connect to Carina agent</div>
+      <p class="ops-section-sub">On this server, ops can read the existing core token automatically.</p>
 
       <% if (coreEnvReadable) { %>
-        <form method="post" action="/settings/carina-auto-pair" class="mb-4">
-          <button type="submit"
-            class="bg-[#06b6d4] hover:bg-cyan-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-            Connect automatically
-          </button>
-          <p class="text-xs text-gray-500 mt-2 break-all">
-            Uses token from <code class="text-gray-300"><%= coreEnvPath %></code>
-          </p>
+        <form method="post" action="/settings/carina-auto-pair" class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Connect automatically</button>
+          <span class="ops-inline-note">Uses token from <code class="ops-code"><%= coreEnvPath %></code></span>
         </form>
       <% } else { %>
-        <p class="text-xs text-amber-300 mb-4">
-          Auto-connect unavailable. Paste the ops token manually below.
-        </p>
+        <p class="ops-flash warn">Auto-connect unavailable. Paste the ops token manually below.</p>
       <% } %>
 
-      <details class="group">
-        <summary class="text-sm text-[#06b6d4] cursor-pointer hover:underline list-none">
-          Manual fallback: paste CARINA_OPS_TOKEN if auto-connect is unavailable.
-        </summary>
-        <form method="post" action="/settings/carina-pairing" class="flex flex-col gap-3 mt-3 pt-3 border-t border-[#2a2a2a]">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="carinaOpsToken">Carina ops token</label>
-            <input id="carinaOpsToken" name="carinaOpsToken" type="password"
-              placeholder="paste CARINA_OPS_TOKEN"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+      <details class="group" style="margin-top:12px;">
+        <summary class="ops-link" style="cursor:pointer;list-style:none;">Manual fallback: paste CARINA_OPS_TOKEN</summary>
+        <form method="post" action="/settings/carina-pairing" style="margin-top:12px;">
+          <div class="ops-field">
+            <label class="ops-label" for="carinaOpsToken">Carina ops token</label>
+            <input id="carinaOpsToken" name="carinaOpsToken" type="password" placeholder="paste CARINA_OPS_TOKEN" class="ops-input mono" />
           </div>
-          <button type="submit"
-            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-            Save Carina token
-          </button>
+          <div class="ops-actions">
+            <button type="submit" class="ops-btn ops-btn-green">Save Carina token</button>
+          </div>
         </form>
       </details>
     </section>
 
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
-      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
+    <section class="ops-section">
+      <div class="ops-row-head">
         <div>
-          <h2 class="text-lg font-semibold text-white">Labyrinth Scout</h2>
-          <p class="text-xs mt-2 <%= scoutConnected ? 'text-green-400' : (scoutPaired ? 'text-amber-400' : 'text-gray-500') %>">
-            Status: <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Paired' : 'Not paired') %>
+          <div class="ops-section-title">Labyrinth Scout</div>
+          <p class="ops-status-line <%= scoutConnected ? 'ok' : (scoutPaired ? 'warn' : '') %>">
+            <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Paired' : 'Not paired') %>
           </p>
-          <p class="text-xs text-gray-500 mt-1">
-            Scout URL: <span class="text-gray-300 break-all"><%= scoutUrl %></span>
-          </p>
+          <p class="ops-inline-note">Scout URL: <code class="ops-code"><%= scoutUrl %></code></p>
         </div>
-        <button type="button" id="test-scout"
-          class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded shrink-0">
-          Test connection
-        </button>
+        <button type="button" id="test-scout" class="ops-btn-ghost">Test connection</button>
       </div>
-      <p id="scout-status-msg" class="text-xs text-gray-500 mb-4">Not tested yet</p>
+      <p id="scout-status-msg" class="ops-status-line">Not tested yet</p>
 
-      <h3 class="text-sm font-semibold text-white mb-3 pt-3 border-t border-[#2a2a2a]">Connect to Labyrinth Scout</h3>
-      <p class="text-xs text-gray-500 mb-3">
-        Paste your Scout API key from
-        <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener"
-          class="text-[#06b6d4] hover:underline">console.labyrinthscout.com</a>.
-      </p>
-      <form method="post" action="/settings/scout-pairing" class="flex flex-col gap-3 w-full">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="scoutApiKey">Scout API key</label>
-          <input id="scoutApiKey" name="scoutApiKey" type="password" required
-            placeholder="lscout_..."
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
+      <div class="ops-section-divider"></div>
+      <div class="ops-section-title">Connect to Labyrinth Scout</div>
+      <p class="ops-section-sub">Paste your Scout API key from <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="ops-link">console.labyrinthscout.com</a>.</p>
+      <form method="post" action="/settings/scout-pairing">
+        <div class="ops-field">
+          <label class="ops-label" for="scoutApiKey">Scout API key</label>
+          <input id="scoutApiKey" name="scoutApiKey" type="password" required placeholder="lscout_..." class="ops-input mono" />
         </div>
-        <button type="submit"
-          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-          Pair with Scout
-        </button>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Pair with Scout</button>
+        </div>
       </form>
     </section>
     </div>
 
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 mt-6">
-      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div class="ops-section" style="border-top:1px solid var(--border);">
+      <div class="ops-row-head">
         <div>
-          <h2 class="text-lg font-semibold text-white">Carina Android APK</h2>
-          <p class="text-xs text-gray-500 mt-1">
-            Publish a direct APK download link here so staff can install the Android build from one place.
-          </p>
+          <div class="ops-section-title">Carina Android APK</div>
+          <p class="ops-section-sub">Publish a direct APK download link for staff installs.</p>
         </div>
         <% if (carinaAndroidApkUrl) { %>
-          <a href="<%= carinaAndroidApkUrl %>" target="_blank" rel="noopener noreferrer"
-            class="text-sm bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-4 py-2 rounded transition-colors">
-            Download APK
-          </a>
+          <a href="<%= carinaAndroidApkUrl %>" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-green">Download APK</a>
         <% } %>
       </div>
-      <form method="post" action="/settings/carina-android-apk" class="flex flex-col gap-3 max-w-2xl">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1" for="apkUrlConnections">APK download URL</label>
-          <input id="apkUrlConnections" name="apkUrl" type="url" required value="<%= carinaAndroidApkUrl %>"
-            placeholder="https://example.com/carina-ai.apk"
-            class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-          <p class="text-xs text-gray-500 mt-1">Use a direct HTTPS link to the APK file or a release page that serves the file itself.</p>
+      <form method="post" action="/settings/carina-android-apk">
+        <div class="ops-field">
+          <label class="ops-label" for="apkUrlConnections">APK download URL</label>
+          <input id="apkUrlConnections" name="apkUrl" type="url" required value="<%= carinaAndroidApkUrl %>" placeholder="https://example.com/carina-ai.apk" class="ops-input mono" />
         </div>
-        <button type="submit"
-          class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-          Save APK link
-        </button>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Save APK link</button>
+        </div>
       </form>
-    </section>
+    </div>
   </div>
 
-  <div id="settings-panel-passwords" class="settings-panel hidden">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-      <section class="bg-[#1a1a1a] border border-[#22c55e]/30 rounded-lg p-5 h-full">
-        <h2 class="text-base font-semibold text-white mb-1">Core web login password</h2>
-        <p class="text-xs mt-2 <%= coreWebPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
-          Status: <%= coreWebPasswordSet ? 'Password set' : 'Not set' %>
-        </p>
-        <p class="text-xs text-gray-500 mb-4 mt-2">
-          Sets the password for
-          <a href="<%= carinaApiUrl %>/login" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">core.carinaai.uk/login</a>.
-          Takes effect immediately. Requires Carina connection (Test connection on Connections).
-        </p>
-        <form method="post" action="/settings/carina-web-password" class="flex flex-col gap-3">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="coreNewPassword">New password (min 8 chars)</label>
-            <input id="coreNewPassword" name="newPassword" type="password" required minlength="8"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+  <div id="settings-panel-passwords" class="settings-panel hidden ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <div class="ops-split">
+      <section class="ops-section">
+        <div class="ops-section-title">Core web login password</div>
+        <p class="ops-status-line <%= coreWebPasswordSet ? 'ok' : 'warn' %>"><%= coreWebPasswordSet ? 'Password set' : 'Not set' %></p>
+        <p class="ops-section-sub">Sets the password for <a href="<%= carinaApiUrl %>/login" target="_blank" rel="noopener" class="ops-link">core.carinaai.uk/login</a>. Requires Carina connection.</p>
+        <form method="post" action="/settings/carina-web-password">
+          <div class="ops-form-grid">
+            <div class="ops-field">
+              <label class="ops-label" for="coreNewPassword">New password</label>
+              <input id="coreNewPassword" name="newPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+            <div class="ops-field">
+              <label class="ops-label" for="coreConfirmPassword">Confirm password</label>
+              <input id="coreConfirmPassword" name="confirmPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="coreConfirmPassword">Confirm password</label>
-            <input id="coreConfirmPassword" name="confirmPassword" type="password" required minlength="8"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-          </div>
-          <button type="submit"
-            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-            Update core login password
-          </button>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Update core login password</button></div>
         </form>
       </section>
 
-      <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
-        <h2 class="text-base font-semibold text-white mb-1">Ops admin password</h2>
-        <p class="text-xs mt-2 <%= adminPasswordSet ? 'text-green-400' : 'text-amber-400' %>">
-          Status: <%= adminPasswordSet ? 'Password set' : 'Default (changeme)' %>
-        </p>
-        <p class="text-xs text-gray-500 mb-4 mt-2">
-          Password for <a href="/login" class="text-[#06b6d4] hover:underline">ops.carinaai.uk</a> login.
-        </p>
-        <form method="post" action="/settings/ops-admin-password" class="flex flex-col gap-3">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="opsNewPassword">New password (min 8 chars)</label>
-            <input id="opsNewPassword" name="newPassword" type="password" required minlength="8"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+      <section class="ops-section">
+        <div class="ops-section-title">Ops admin password</div>
+        <p class="ops-status-line <%= adminPasswordSet ? 'ok' : 'warn' %>"><%= adminPasswordSet ? 'Password set' : 'Default (changeme)' %></p>
+        <p class="ops-section-sub">Password for <a href="/login" class="ops-link">ops.carinaai.uk</a> login.</p>
+        <form method="post" action="/settings/ops-admin-password">
+          <div class="ops-form-grid">
+            <div class="ops-field">
+              <label class="ops-label" for="opsNewPassword">New password</label>
+              <input id="opsNewPassword" name="newPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+            <div class="ops-field">
+              <label class="ops-label" for="opsConfirmPassword">Confirm password</label>
+              <input id="opsConfirmPassword" name="confirmPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
           </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="opsConfirmPassword">Confirm password</label>
-            <input id="opsConfirmPassword" name="confirmPassword" type="password" required minlength="8"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Update ops login password</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div class="ops-split" style="border-top:1px solid var(--border);">
+      <section class="ops-section">
+        <div class="ops-section-title">Scout console password</div>
+        <p class="ops-section-sub">Login password for <a href="https://console.labyrinthscout.com" target="_blank" rel="noopener" class="ops-link">console.labyrinthscout.com</a>.</p>
+        <form method="post" action="/settings/scout-password">
+          <div class="ops-form-grid">
+            <div class="ops-field">
+              <label class="ops-label" for="newPassword">New password</label>
+              <input id="newPassword" name="newPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+            <div class="ops-field">
+              <label class="ops-label" for="confirmPassword">Confirm password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
           </div>
-          <button type="submit"
-            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-            Update ops login password
-          </button>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Update Scout console password</button></div>
         </form>
       </section>
 
-      <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
-        <h2 class="text-base font-semibold text-white mb-1">Scout console password</h2>
-        <p class="text-xs text-gray-500 mb-4 mt-2">
-          Login password for
-          <a href="https://console.labyrinthscout.com" target="_blank" rel="noopener" class="text-[#06b6d4] hover:underline">console.labyrinthscout.com</a>.
-        </p>
-        <form method="post" action="/settings/scout-password" class="flex flex-col gap-3">
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="newPassword">New password (min 8 chars)</label>
-            <input id="newPassword" name="newPassword" type="password" required minlength="8"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-          </div>
-          <div>
-            <label class="block text-xs text-gray-400 mb-1" for="confirmPassword">Confirm password</label>
-            <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8"
-              class="w-full rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 focus:outline-none focus:border-[#22c55e]" />
-          </div>
-          <button type="submit"
-            class="self-start bg-[#22c55e] hover:bg-green-400 text-black text-sm font-semibold px-4 py-2 rounded transition-colors">
-            Update Scout console password
-          </button>
-        </form>
-      </section>
-
-      <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 h-full">
-        <h2 class="text-base font-semibold text-white mb-1">Environment (read-only)</h2>
-        <ul class="mt-4 text-sm text-gray-400 space-y-1 font-mono break-all">
-          <li>PORT = <%= port %></li>
-          <li>CARINA_API_URL = <%= carinaApiUrl %></li>
-          <li>SCOUT_URL = <%= scoutUrl %></li>
-          <li>ADMIN_PASSWORD = <%= adminPasswordSet ? '(set)' : '(default changeme)' %></li>
-          <li>CARINA_OPS_TOKEN = <%= carinaPaired ? '(set)' : '(not set)' %></li>
-          <li>SCOUT_API_KEY = <%= scoutPaired ? '(set)' : '(not set)' %></li>
-          <li>SKILL_AUTO_WRITE = <%= skillAutoWrite ? 'true' : 'false' %></li>
-        </ul>
+      <section class="ops-section">
+        <div class="ops-section-title">Environment (read-only)</div>
+        <dl class="ops-kv-grid" style="margin-top:12px;">
+          <div><dt>PORT</dt><dd><%= port %></dd></div>
+          <div><dt>CARINA_API_URL</dt><dd style="word-break:break-all;"><%= carinaApiUrl %></dd></div>
+          <div><dt>SCOUT_URL</dt><dd style="word-break:break-all;"><%= scoutUrl %></dd></div>
+          <div><dt>ADMIN_PASSWORD</dt><dd><%= adminPasswordSet ? '(set)' : '(default changeme)' %></dd></div>
+          <div><dt>CARINA_OPS_TOKEN</dt><dd><%= carinaPaired ? '(set)' : '(not set)' %></dd></div>
+          <div><dt>SCOUT_API_KEY</dt><dd><%= scoutPaired ? '(set)' : '(not set)' %></dd></div>
+          <div><dt>SKILL_AUTO_WRITE</dt><dd><%= skillAutoWrite ? 'true' : 'false' %></dd></div>
+        </dl>
       </section>
     </div>
   </div>
 
-  <div id="settings-panel-alerts" class="settings-panel hidden">
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5" id="alert-channels-section">
-      <h2 class="text-lg font-semibold text-white mb-1">Alert channels</h2>
-      <p class="text-xs text-gray-500 mb-4">
-        Route Scout security events to Telegram, email, or Slack. Pair Scout under Connections first.
-      </p>
-      <p id="alert-channels-status" class="text-xs text-gray-500 mb-4">Loading channels...</p>
+  <div id="settings-panel-alerts" class="settings-panel hidden ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <section class="ops-section" id="alert-channels-section">
+      <div class="ops-section-title">Alert channels</div>
+      <p class="ops-section-sub">Route Scout security events to Telegram, email, or Slack. Pair Scout under Connections first.</p>
+      <p id="alert-channels-status" class="ops-status-line">Loading channels...</p>
 
-      <div class="mb-5">
-        <label class="block text-xs text-gray-400 mb-1" for="alert-dashboard-url">Dashboard link in alerts</label>
-        <div class="flex gap-2 flex-wrap">
-          <input id="alert-dashboard-url" type="url"
-            placeholder="https://console.labyrinthscout.com/dashboard"
-            class="flex-1 min-w-[200px] rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-sm px-3 py-2 font-mono focus:outline-none focus:border-[#22c55e]" />
-          <button type="button" id="save-dashboard-url"
-            class="text-sm bg-[#2a2a2a] hover:bg-[#333] text-white px-3 py-1.5 rounded whitespace-nowrap">
-            Save URL
-          </button>
+      <div class="ops-field">
+        <label class="ops-label" for="alert-dashboard-url">Dashboard link in alerts</label>
+        <div class="ops-actions" style="margin-top:0;">
+          <input id="alert-dashboard-url" type="url" placeholder="https://console.labyrinthscout.com/dashboard" class="ops-input mono" style="flex:1;" />
+          <button type="button" id="save-dashboard-url" class="ops-btn-ghost">Save URL</button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="border border-[#2a2a2a] rounded-lg p-4" data-channel="telegram">
-          <h3 class="text-sm font-semibold text-white mb-3">Telegram</h3>
-          <label class="block text-xs text-gray-400 mb-1">Bot token</label>
-          <input data-field="bot_token" type="password" placeholder="Leave blank to keep existing"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-          <label class="block text-xs text-gray-400 mb-1">Chat ID</label>
-          <input data-field="chat_id" type="text"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-          <label class="block text-xs text-gray-400 mb-1">Min severity</label>
-          <select data-field="severity_threshold"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-            <option value="info">info</option>
-            <option value="warning" selected>warning</option>
-            <option value="critical">critical</option>
-            <option value="breach">breach</option>
-          </select>
-          <label class="flex items-center gap-2 text-xs text-gray-400 mb-3">
-            <input data-field="enabled" type="checkbox" checked class="rounded" />
-            Enabled
-          </label>
-          <button type="button" data-save-channel="telegram"
-            class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
-            Save Telegram
-          </button>
+      <div class="ops-split" style="margin-top:18px;border-top:1px solid var(--border);">
+        <div class="ops-section" data-channel="telegram">
+          <div class="ops-section-title">Telegram</div>
+          <div class="ops-field"><label class="ops-label">Bot token</label><input data-field="bot_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Chat ID</label><input data-field="chat_id" type="text" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning" selected>warning</option><option value="critical">critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="telegram" class="ops-btn ops-btn-green">Save Telegram</button>
         </div>
 
-        <div class="border border-[#2a2a2a] rounded-lg p-4" data-channel="email">
-          <h3 class="text-sm font-semibold text-white mb-3">Email (Resend)</h3>
-          <label class="block text-xs text-gray-400 mb-1">Resend API key</label>
-          <input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-          <label class="block text-xs text-gray-400 mb-1">To address</label>
-          <input data-field="to_address" type="email"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-          <label class="block text-xs text-gray-400 mb-1">From address</label>
-          <input data-field="from_address" type="email" placeholder="hello@carinaai.uk"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-          <label class="block text-xs text-gray-400 mb-1">Min severity</label>
-          <select data-field="severity_threshold"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-            <option value="info">info</option>
-            <option value="warning" selected>warning</option>
-            <option value="critical">critical</option>
-            <option value="breach">breach</option>
-          </select>
-          <label class="flex items-center gap-2 text-xs text-gray-400 mb-3">
-            <input data-field="enabled" type="checkbox" checked class="rounded" />
-            Enabled
-          </label>
-          <button type="button" data-save-channel="email"
-            class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
-            Save email
-          </button>
+        <div class="ops-section" data-channel="email">
+          <div class="ops-section-title">Email (Resend)</div>
+          <div class="ops-field"><label class="ops-label">Resend API key</label><input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">To address</label><input data-field="to_address" type="email" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">From address</label><input data-field="from_address" type="email" placeholder="hello@carinaai.uk" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning" selected>warning</option><option value="critical">critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="email" class="ops-btn ops-btn-green">Save email</button>
         </div>
 
-        <div class="border border-[#2a2a2a] rounded-lg p-4" data-channel="slack">
-          <h3 class="text-sm font-semibold text-white mb-3">Slack</h3>
-          <label class="block text-xs text-gray-400 mb-1">Webhook URL</label>
-          <input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5 font-mono" />
-          <label class="block text-xs text-gray-400 mb-1">Min severity</label>
-          <select data-field="severity_threshold"
-            class="w-full mb-2 rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
-            <option value="info">info</option>
-            <option value="warning" selected>warning</option>
-            <option value="critical">critical</option>
-            <option value="breach">breach</option>
-          </select>
-          <label class="flex items-center gap-2 text-xs text-gray-400 mb-3">
-            <input data-field="enabled" type="checkbox" checked class="rounded" />
-            Enabled
-          </label>
-          <button type="button" data-save-channel="slack"
-            class="text-xs bg-[#22c55e] hover:bg-green-400 text-black font-semibold px-3 py-1.5 rounded">
-            Save Slack
-          </button>
+        <div class="ops-section" data-channel="slack">
+          <div class="ops-section-title">Slack</div>
+          <div class="ops-field"><label class="ops-label">Webhook URL</label><input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning" selected>warning</option><option value="critical">critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="slack" class="ops-btn ops-btn-green">Save Slack</button>
         </div>
       </div>
 
-      <div class="mt-5 pt-4 border-t border-[#2a2a2a] flex flex-wrap items-center gap-3">
-        <label class="text-xs text-gray-400">Test severity</label>
-        <select id="alert-test-severity"
-          class="rounded bg-[#0f0f0f] border border-[#3a3a3a] text-white text-xs px-2 py-1.5">
+      <div class="ops-actions" style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+        <label class="ops-label" style="margin:0;">Test severity</label>
+        <select id="alert-test-severity" class="ops-select" style="width:auto;min-width:120px;">
           <option value="warning">warning</option>
           <option value="critical" selected>critical</option>
           <option value="breach">breach</option>
         </select>
-        <button type="button" id="send-test-alert"
-          class="text-sm bg-[#d4af37] hover:bg-yellow-500 text-black font-semibold px-4 py-2 rounded">
-          Send test alert
-        </button>
-        <span id="alert-test-result" class="text-xs text-gray-500"></span>
+        <button type="button" id="send-test-alert" class="ops-btn ops-btn-amber">Send test alert</button>
+        <span id="alert-test-result" class="ops-inline-note" style="margin:0;"></span>
       </div>
     </section>
   </div>
@@ -409,14 +277,11 @@
   (function settingsTabs() {
     const tabs = document.querySelectorAll('[data-settings-tab]');
     const panels = document.querySelectorAll('.settings-panel');
-    const activeClass = 'bg-[#2a2a2a] text-[#22c55e] font-medium';
-    const inactiveClass = 'text-gray-400';
 
     function showTab(name) {
       tabs.forEach((tab) => {
         const active = tab.getAttribute('data-settings-tab') === name;
-        tab.className = 'settings-tab px-3 py-1.5 rounded-md text-sm hover:bg-[#2a2a2a] hover:text-white '
-          + (active ? activeClass : inactiveClass);
+        tab.classList.toggle('active', active);
       });
       panels.forEach((panel) => {
         panel.classList.toggle('hidden', panel.id !== 'settings-panel-' + name);

@@ -1,4 +1,5 @@
 <% title = 'Workbench' %>
+<div class="ops-page">
 <%- include('../partials/ai-platform-nav') %>
 
 <h1 class="text-2xl font-bold text-white mb-4">Workbench</h1>
@@ -7,7 +8,7 @@
 
 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
   <div class="xl:col-span-2 space-y-4">
-    <form method="post" action="/ai-platform/workbench" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 space-y-3">
+    <form method="post" action="/ai-platform/workbench" class="ops-stat-cell space-y-3">
       <div>
         <label class="block text-xs text-gray-400 mb-1">Title</label>
         <input name="title" type="text" value="<%= selectedRun ? selectedRun.title : '' %>"
@@ -43,7 +44,7 @@
       </div>
     </form>
 
-    <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 min-h-[200px]">
+    <section class="ops-stat-cell min-h-[200px]">
       <h2 class="text-sm font-semibold text-white mb-2">Response</h2>
       <div id="response-panel" class="text-sm text-gray-300 whitespace-pre-wrap font-mono"><%= selectedRun && selectedRun.responseText ? selectedRun.responseText : '' %></div>
       <dl id="run-meta" class="mt-4 grid grid-cols-3 gap-2 text-xs text-gray-500 <%= selectedRun && selectedRun.status === 'completed' ? '' : 'hidden' %>">
@@ -54,7 +55,7 @@
     </section>
   </div>
 
-  <aside class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+  <aside class="ops-stat-cell">
     <h2 class="text-sm font-semibold text-white mb-3">Recent runs</h2>
     <% if (!runs.length) { %>
       <p class="text-gray-500 text-xs">No runs yet.</p>
@@ -62,7 +63,7 @@
       <ul class="space-y-2 text-xs max-h-[70vh] overflow-y-auto">
         <% for (const run of runs) { %>
           <li class="border-b border-[#2a2a2a] pb-2">
-            <a href="/ai-platform/workbench?run=<%= run.id %>" class="text-[#06b6d4] hover:underline block truncate"><%= run.title %></a>
+            <a href="/ai-platform/workbench?run=<%= run.id %>" class="ops-link block truncate"><%= run.title %></a>
             <span class="text-gray-500"><%= run.status %> · <%= new Date(run.createdAt).toLocaleString() %></span>
           </li>
         <% } %>
@@ -132,3 +133,4 @@
     streamRun(RUN_ID, promptEl.value.trim());
   }
 </script>
+</div>

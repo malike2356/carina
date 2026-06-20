@@ -1,77 +1,99 @@
 <% title = 'Projects' %>
-<div class="flex justify-between items-center mb-6">
-  <h1 class="text-2xl font-bold text-white">VERLOX Projects</h1>
-  <button type="button" id="open-modal" class="bg-[#22c55e] text-black px-4 py-2 rounded text-sm font-medium">Add project</button>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">VERLOX Projects</div>
+      <div class="ops-page-sub">Kanban tracker for active client work. Drag cards between columns or open Carina with project context.</div>
+    </div>
+    <button type="button" id="open-modal" class="ops-btn ops-btn-green">Add project</button>
+  </div>
+
+  <div class="ops-kanban" id="kanban">
+    <% const columns = [
+      { key: 'active', label: 'Active' },
+      { key: 'paused', label: 'Paused' },
+      { key: 'complete', label: 'Complete' },
+    ]; %>
+    <% for (const col of columns) { %>
+      <div class="ops-kanban-col" data-status="<%= col.key %>">
+        <div class="ops-kanban-head"><%= col.label %></div>
+        <div class="kanban-col ops-kanban-body" data-drop="<%= col.key %>">
+          <% for (const p of grouped[col.key]) { %>
+            <article class="project-card ops-project-item"
+                     draggable="true"
+                     data-id="<%= p.id %>"
+                     data-status="<%= p.status %>"
+                     data-name="<%= p.name %>"
+                     data-client="<%= p.client %>"
+                     data-type="<%= p.type %>"
+                     data-address="<%= p.address %>"
+                     data-notes="<%= p.notes %>">
+              <div class="ops-project-name"><%= p.name %></div>
+              <div class="ops-project-meta"><%= p.client %> · <%= p.type %></div>
+              <% if (p.address) { %><div class="ops-project-meta"><%= p.address %></div><% } %>
+              <details style="margin-top:8px;">
+                <summary class="ops-link" style="cursor:pointer;font-size:11px;list-style:none;">Notes</summary>
+                <form method="post" action="/projects/<%= p.id %>" style="margin-top:8px;">
+                  <input type="hidden" name="name" value="<%= p.name %>">
+                  <input type="hidden" name="client" value="<%= p.client %>">
+                  <input type="hidden" name="type" value="<%= p.type %>">
+                  <input type="hidden" name="address" value="<%= p.address %>">
+                  <input type="hidden" name="status" value="<%= p.status %>">
+                  <textarea name="notes" rows="3" class="ops-input" style="margin-bottom:8px;"><%= p.notes %></textarea>
+                  <button type="submit" class="ops-btn-ghost">Save notes</button>
+                </form>
+              </details>
+              <div class="ops-project-actions">
+                <a href="/chat?prefill=<%= encodeURIComponent("I'm working on " + p.name + " at " + p.address + ", type " + p.type + ". " + (p.notes || '')) %>"
+                   class="ops-link">Ask Carina</a>
+                <form method="post" action="/projects/<%= p.id %>/delete" class="inline" onsubmit="return confirm('Delete?')">
+                  <button type="submit" class="ops-btn-ghost" style="color:var(--red);padding:0;border:none;">Delete</button>
+                </form>
+              </div>
+            </article>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
 </div>
 
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full" id="kanban">
-  <% const columns = [
-    { key: 'active', label: 'Active' },
-    { key: 'paused', label: 'Paused' },
-    { key: 'complete', label: 'Complete' },
-  ]; %>
-  <% for (const col of columns) { %>
-    <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-3 min-h-[320px]"
-         data-status="<%= col.key %>">
-      <h2 class="text-sm font-semibold text-gray-400 mb-3 uppercase tracking-wide"><%= col.label %></h2>
-      <div class="kanban-col space-y-3" data-drop="<%= col.key %>">
-        <% for (const p of grouped[col.key]) { %>
-          <article class="project-card bg-[#0f0f0f] border border-[#2a2a2a] rounded p-3 cursor-grab"
-                   draggable="true"
-                   data-id="<%= p.id %>"
-                   data-status="<%= p.status %>"
-                   data-name="<%= p.name %>"
-                   data-client="<%= p.client %>"
-                   data-type="<%= p.type %>"
-                   data-address="<%= p.address %>"
-                   data-notes="<%= p.notes %>">
-            <h3 class="font-medium text-white text-sm"><%= p.name %></h3>
-            <p class="text-xs text-gray-500 mt-1"><%= p.client %> · <%= p.type %></p>
-            <p class="text-xs text-gray-400 mt-1 truncate"><%= p.address %></p>
-            <details class="mt-2 text-xs">
-              <summary class="text-[#06b6d4] cursor-pointer">Notes</summary>
-              <form method="post" action="/projects/<%= p.id %>" class="mt-2 space-y-2">
-                <input type="hidden" name="name" value="<%= p.name %>">
-                <input type="hidden" name="client" value="<%= p.client %>">
-                <input type="hidden" name="type" value="<%= p.type %>">
-                <input type="hidden" name="address" value="<%= p.address %>">
-                <input type="hidden" name="status" value="<%= p.status %>">
-                <textarea name="notes" rows="3" class="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded p-2 text-white"><%= p.notes %></textarea>
-                <button type="submit" class="text-[#22c55e]">Save notes</button>
-              </form>
-            </details>
-            <div class="flex gap-2 mt-2">
-              <a href="/chat?prefill=<%= encodeURIComponent("I'm working on " + p.name + " at " + p.address + ", type " + p.type + ". " + (p.notes || '')) %>"
-                 class="text-xs text-[#22c55e] hover:underline">Ask Carina</a>
-              <form method="post" action="/projects/<%= p.id %>/delete" class="inline" onsubmit="return confirm('Delete?')">
-                <button type="submit" class="text-xs text-red-400">Delete</button>
-              </form>
-            </div>
-          </article>
-        <% } %>
+<div id="modal" class="ops-modal-backdrop hidden">
+  <form method="post" action="/projects" class="ops-modal ops-modal-neutral">
+    <div class="ops-section-title" style="margin-bottom:16px;">New project</div>
+    <div class="ops-form-grid" style="grid-template-columns:1fr;">
+      <div class="ops-field">
+        <label class="ops-label" for="proj-name">Project name</label>
+        <input id="proj-name" name="name" placeholder="Project name" required class="ops-input">
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-client">Client</label>
+        <input id="proj-client" name="client" placeholder="Client" class="ops-input">
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-type">Type</label>
+        <select id="proj-type" name="type" class="ops-select">
+          <% for (const t of types) { %><option value="<%= t %>"><%= t %></option><% } %>
+        </select>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-status">Status</label>
+        <select id="proj-status" name="status" class="ops-select">
+          <% for (const s of statuses) { %><option value="<%= s %>"><%= s %></option><% } %>
+        </select>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-address">Address</label>
+        <input id="proj-address" name="address" placeholder="Address" class="ops-input">
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-notes">Notes</label>
+        <textarea id="proj-notes" name="notes" placeholder="Notes" rows="3" class="ops-input"></textarea>
       </div>
     </div>
-  <% } %>
-</div>
-
-<div id="modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-  <form method="post" action="/projects" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6 w-full max-w-md">
-    <h2 class="text-lg font-bold text-white mb-4">New project</h2>
-    <div class="space-y-3 text-sm">
-      <input name="name" placeholder="Project name" required class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
-      <input name="client" placeholder="Client" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
-      <select name="type" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
-        <% for (const t of types) { %><option value="<%= t %>"><%= t %></option><% } %>
-      </select>
-      <select name="status" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
-        <% for (const s of statuses) { %><option value="<%= s %>"><%= s %></option><% } %>
-      </select>
-      <input name="address" placeholder="Address" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white">
-      <textarea name="notes" placeholder="Notes" rows="3" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white"></textarea>
-    </div>
-    <div class="flex gap-2 mt-4">
-      <button type="submit" class="bg-[#22c55e] text-black px-4 py-2 rounded">Create</button>
-      <button type="button" id="close-modal" class="text-gray-400 px-4 py-2">Cancel</button>
+    <div class="ops-actions">
+      <button type="submit" class="ops-btn ops-btn-green">Create</button>
+      <button type="button" id="close-modal" class="ops-btn-ghost">Cancel</button>
     </div>
   </form>
 </div>
@@ -80,11 +102,18 @@
   const modal = document.getElementById('modal');
   document.getElementById('open-modal')?.addEventListener('click', () => modal.classList.remove('hidden'));
   document.getElementById('close-modal')?.addEventListener('click', () => modal.classList.add('hidden'));
+  modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
 
   let dragged = null;
   document.querySelectorAll('.project-card').forEach(card => {
-    card.addEventListener('dragstart', () => { dragged = card; card.classList.add('opacity-50'); });
-    card.addEventListener('dragend', () => { card.classList.remove('opacity-50'); dragged = null; });
+    card.addEventListener('dragstart', () => {
+      dragged = card;
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      dragged = null;
+    });
   });
   document.querySelectorAll('.kanban-col').forEach(col => {
     col.addEventListener('dragover', (e) => { e.preventDefault(); });

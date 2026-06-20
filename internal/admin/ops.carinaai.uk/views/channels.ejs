@@ -1,104 +1,48 @@
 <% title = 'Channels' %>
 <% const stateBadge = (state) => {
   switch (state) {
-    case 'connected': return 'bg-green-900/50 text-green-300';
-    case 'configured': return 'bg-cyan-900/50 text-cyan-300';
-    case 'partial': return 'bg-amber-900/50 text-amber-300';
-    case 'error': return 'bg-red-900/50 text-red-300';
-    case 'unsupported':
-    case 'disabled':
-    default: return 'bg-gray-800 text-gray-400';
+    case 'connected': return 'ops-badge-green';
+    case 'configured': return 'ops-badge-cyan';
+    case 'partial': return 'ops-badge-amber';
+    case 'error': return 'ops-badge-red';
+    default: return 'ops-badge-gray';
   }
 }; %>
 <% const connectedCount = channels.filter((c) => c.state === 'connected').length;
    const configuredCount = channels.filter((c) => c.state === 'configured' || c.state === 'partial').length;
    const disabledCount = channels.filter((c) => c.state === 'disabled' || c.state === 'unsupported').length; %>
 
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-  <div>
-    <h1 class="text-2xl font-bold text-white">Channel health</h1>
-    <p class="text-sm text-gray-400 mt-1">
-      Gateway adapter status from core env and registry. Live "connected" state requires Carina running at
-      <code class="text-gray-300"><%= carinaApiUrl %></code>.
-    </p>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Channel health</div>
+      <div class="ops-page-sub">Gateway adapter status from core env and registry. Live connected state requires Carina at <code class="ops-code"><%= carinaApiUrl %></code>.</div>
+    </div>
   </div>
-</div>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <div class="bg-[#1a1a1a] border border-green-800/50 rounded-lg p-4">
-    <p class="text-gray-400 text-sm">Connected</p>
-    <p class="text-2xl font-bold text-green-400 mt-1"><%= connectedCount %></p>
+  <div class="ops-metrics">
+    <div class="ops-metric"><div class="ops-metric-label">Connected</div><div class="ops-metric-value ok"><%= connectedCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Configured</div><div class="ops-metric-value"><%= configuredCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Disabled</div><div class="ops-metric-value muted"><%= disabledCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Total</div><div class="ops-metric-value"><%= channels.length %></div></div>
   </div>
-  <div class="bg-[#1a1a1a] border border-cyan-800/50 rounded-lg p-4">
-    <p class="text-gray-400 text-sm">Configured / partial</p>
-    <p class="text-2xl font-bold text-cyan-400 mt-1"><%= configuredCount %></p>
-  </div>
-  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-    <p class="text-gray-400 text-sm">Disabled</p>
-    <p class="text-2xl font-bold text-gray-400 mt-1"><%= disabledCount %></p>
-  </div>
-  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-    <p class="text-gray-400 text-sm">Total channels</p>
-    <p class="text-2xl font-bold text-white mt-1"><%= channels.length %></p>
-  </div>
-</div>
 
-<div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg overflow-hidden mb-6">
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm text-left">
-      <thead class="text-gray-400 border-b border-[#2a2a2a] bg-[#141414]">
-        <tr>
-          <th class="px-4 py-3 font-medium">Channel</th>
-          <th class="px-4 py-3 font-medium">State</th>
-          <th class="px-4 py-3 font-medium">Active</th>
-          <th class="px-4 py-3 font-medium">Transport</th>
-          <th class="px-4 py-3 font-medium">Notes</th>
-        </tr>
+  <div class="ops-surface ops-table-wrap">
+    <table class="ops-table">
+      <thead>
+        <tr><th>Channel</th><th>State</th><th>Active</th><th>Transport</th><th>Notes</th></tr>
       </thead>
-      <tbody class="divide-y divide-[#2a2a2a]">
+      <tbody>
         <% for (const ch of channels) { %>
-          <tr class="hover:bg-[#222]">
-            <td class="px-4 py-3">
-              <span class="text-white font-medium"><%= ch.channel %></span>
-              <% if (ch.webhook) { %>
-                <div class="text-xs text-gray-500 mt-0.5"><code><%= ch.webhook %></code></div>
-              <% } %>
-            </td>
-            <td class="px-4 py-3">
-              <span class="px-2 py-0.5 rounded text-xs <%= stateBadge(ch.state) %>"><%= ch.state %></span>
-            </td>
-            <td class="px-4 py-3">
-              <span class="text-xs <%= ch.active ? 'text-green-400' : 'text-gray-500' %>">
-                <%= ch.active ? 'yes' : 'no' %>
-              </span>
-            </td>
-            <td class="px-4 py-3 text-gray-300"><%= ch.transport || '-' %></td>
-            <td class="px-4 py-3 text-xs text-gray-400 max-w-md">
-              <% if (ch.reason) { %>
-                <%= ch.reason %>
-              <% } else if (ch.state === 'connected') { %>
-                Adapter active
-              <% } else { %>
-                <span class="text-gray-600">-</span>
-              <% } %>
-            </td>
+          <tr>
+            <td style="font-weight:600;color:var(--heading);"><%= ch.name %></td>
+            <td><span class="ops-badge <%= stateBadge(ch.state) %>"><%= ch.state %></span></td>
+            <td><%= ch.active ? 'yes' : 'no' %></td>
+            <td><%= ch.transport || '-' %></td>
+            <td style="color:var(--muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= ch.notes || '-' %></td>
           </tr>
         <% } %>
       </tbody>
     </table>
   </div>
 </div>
-
-<section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-  <h2 class="text-sm font-semibold text-white mb-3">Policy flags</h2>
-  <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
-    <% for (const [key, value] of Object.entries(policyFlags)) { %>
-      <div class="flex items-center justify-between gap-2 border border-[#2a2a2a] rounded px-3 py-2">
-        <dt class="text-gray-400 font-mono text-xs"><%= key %></dt>
-        <dd class="text-xs px-2 py-0.5 rounded <%= value ? 'bg-green-900/40 text-green-300' : 'bg-gray-800 text-gray-500' %>">
-          <%= value ? 'on' : 'off' %>
-        </dd>
-      </div>
-    <% } %>
-  </dl>
-</section>

@@ -1,5 +1,5 @@
 <% title = 'Dashboard' %>
-
+<div class="ops-page">
 <div class="ops-page-head">
   <div>
     <div class="ops-page-title">Carina Ops</div>
@@ -11,66 +11,20 @@
   </div>
 </div>
 
-<!-- Primary platform tiles -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;">
-  <div class="ops-card" style="border-color:rgba(0,200,100,0.15);">
-    <div class="ops-card-label">Tenants</div>
-    <div class="ops-card-val green"><%= tenantSummary ? tenantSummary.total : '-' %></div>
-    <% if (tenantSummary) { %>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px;"><%= tenantSummary.freeCount %> free / <span style="color:var(--green);"><%= tenantSummary.proCount %></span> pro</div>
-    <% } %>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Messages Today</div>
-    <div class="ops-card-val cyan"><%= tenantSummary ? tenantSummary.messagesToday : '-' %></div>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px;">across all tenants</div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Monthly Tokens</div>
-    <div class="ops-card-val" style="font-size:16px;margin-top:4px;"><%= tenantSummary ? tenantSummary.monthlyTokens.toLocaleString() : '-' %></div>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px;">this billing period</div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Scout Score</div>
-    <div class="ops-card-val" id="scout-score-val" style="color:var(--muted);">-</div>
-    <div style="font-size:10px;color:var(--muted);margin-top:4px;" id="scout-score-sub">Loading...</div>
-  </div>
-</div>
-
-<!-- Secondary stat tiles -->
-<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;">
-  <div class="ops-card">
-    <div class="ops-card-label">Memories</div>
-    <div class="ops-card-val" style="font-size:18px;"><%= stats.totalMemories %></div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Sessions</div>
-    <div class="ops-card-val" style="font-size:18px;"><%= stats.sessions %></div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Skills</div>
-    <div class="ops-card-val" style="font-size:18px;"><%= stats.skills %></div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">RAG Chunks</div>
-    <div class="ops-card-val" style="font-size:18px;"><%= stats.ragChunks %></div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Emails</div>
-    <div class="ops-card-val" style="font-size:18px;"><%= stats.unreadEmails %></div>
-  </div>
-  <div class="ops-card">
-    <div class="ops-card-label">Threats (24h)</div>
-    <div class="ops-card-val red" id="dash-threats" style="font-size:18px;">-</div>
-  </div>
+<div class="ops-metrics">
+  <div class="ops-metric"><div class="ops-metric-label">Tenants</div><div class="ops-metric-value ok"><%= tenantSummary ? tenantSummary.total : '-' %></div><div class="ops-inline-note"><%= tenantSummary ? tenantSummary.freeCount + ' free / ' + tenantSummary.proCount + ' pro' : '' %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Messages today</div><div class="ops-metric-value"><%= tenantSummary ? tenantSummary.messagesToday : '-' %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Monthly tokens</div><div class="ops-metric-value"><%= tenantSummary ? tenantSummary.monthlyTokens.toLocaleString() : '-' %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Scout score</div><div class="ops-metric-value" id="scout-score-val">-</div><div class="ops-inline-note" id="scout-score-sub">Loading...</div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Memories</div><div class="ops-metric-value"><%= stats.totalMemories %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Threats (24h)</div><div class="ops-metric-value warn" id="dash-threats">-</div></div>
 </div>
 
 <!-- Alert bar (shown if critical threats) -->
 <div id="scout-alert" style="display:none;padding:10px 14px;margin-bottom:14px;border-radius:5px;border:1px solid;font-size:11px;align-items:center;gap:10px;"></div>
 
-<!-- Three-column body -->
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
-  <div class="ops-card">
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-bottom:16px;" class="ops-surface">
+  <div class="ops-section">
     <div class="ops-section-title">Recent Sessions</div>
     <% if (!recentSessions.length) { %>
       <div class="ops-empty">No sessions yet.</div>
@@ -90,7 +44,7 @@
     <% } %>
   </div>
 
-  <div class="ops-card">
+  <div class="ops-section" style="border-left:1px solid var(--border);">
     <div class="ops-section-title">Recent Skills</div>
     <% if (!recentSkills.length) { %>
       <div class="ops-empty">No skills yet.</div>
@@ -115,7 +69,7 @@
     <% } %>
   </div>
 
-  <div class="ops-card">
+  <div class="ops-section" style="border-left:1px solid var(--border);">
     <div class="ops-section-title">Live Threat Feed</div>
     <div id="threat-feed-loading" class="ops-loading">Loading...</div>
     <div id="threat-feed-list"></div>
@@ -124,40 +78,26 @@
   </div>
 </div>
 
-<!-- Quick nav cards -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
-  <a href="/control-center" class="ops-card" style="display:block;text-decoration:none;border-color:rgba(0,200,100,0.2);">
-    <div style="font-size:9px;color:var(--green);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Platform</div>
-    <div style="color:var(--heading);font-weight:600;font-size:12px;">Control Center</div>
-    <div style="color:var(--muted);font-size:10px;margin-top:4px;">Core controls and surface map.</div>
-  </a>
-  <a href="/security/killswitch" class="ops-card" style="display:block;text-decoration:none;border-color:rgba(255,34,68,0.15);">
-    <div style="font-size:9px;color:var(--red);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Defence</div>
-    <div style="color:var(--heading);font-weight:600;font-size:12px;">Kill Switch</div>
-    <div style="color:var(--muted);font-size:10px;margin-top:4px;">Arm or disarm platform halt.</div>
-  </a>
-  <a href="/governance" class="ops-card" style="display:block;text-decoration:none;border-color:rgba(168,85,247,0.15);">
-    <div style="font-size:9px;color:var(--purple);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Governance</div>
-    <div style="color:var(--heading);font-weight:600;font-size:12px;">Governance</div>
-    <div style="color:var(--muted);font-size:10px;margin-top:4px;">SOC2, trust, posture, audit.</div>
-  </a>
-  <a href="/admin/incident-blog" class="ops-card" style="display:block;text-decoration:none;border-color:rgba(212,175,55,0.12);">
-    <div style="font-size:9px;color:var(--amber);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;">Incident</div>
-    <div style="color:var(--heading);font-weight:600;font-size:12px;">Incident Blog</div>
-    <div style="color:var(--muted);font-size:10px;margin-top:4px;">Draft, publish and review records.</div>
-  </a>
+<!-- Quick nav -->
+<div class="ops-surface" style="margin-bottom:16px;">
+  <div class="ops-link-grid">
+  <a href="/control-center" class="ops-link-row"><div class="ops-link-row-title">Control Center</div><div class="ops-link-row-sub">Core controls and surface map</div></a>
+  <a href="/security/killswitch" class="ops-link-row"><div class="ops-link-row-title">Kill Switch</div><div class="ops-link-row-sub">Arm or disarm platform halt</div></a>
+  <a href="/governance" class="ops-link-row"><div class="ops-link-row-title">Governance</div><div class="ops-link-row-sub">SOC2, trust, posture, audit</div></a>
+  <a href="/admin/incident-blog" class="ops-link-row"><div class="ops-link-row-title">Incident Blog</div><div class="ops-link-row-sub">Draft, publish and review records</div></a>
+  </div>
 </div>
 
 <% if (stats.packs.length) { %>
-<div class="ops-card">
+<div class="ops-section" style="padding:0;">
   <div class="ops-section-title">RAG Packs Active</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <% for (const p of stats.packs) { %>
-    <span class="ops-badge ops-badge-cyan"><%= p %></span>
-    <% } %>
+  <div class="ops-actions" style="margin-top:8px;">
+    <% for (const p of stats.packs) { %><span class="ops-badge ops-badge-cyan"><%= p %></span><% } %>
   </div>
 </div>
 <% } %>
+
+</div>
 
 <script>
 document.getElementById('dash-ts').textContent = new Date().toLocaleString();

@@ -7,8 +7,9 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
+  <link rel="stylesheet" href="/ops-shell.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
   <style>
     :root {
       --void: #07101e;
@@ -30,24 +31,23 @@
     body {
       background: var(--void);
       color: var(--text);
-      font-family: 'JetBrains Mono', 'Consolas', monospace;
-      font-size: 12px;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 13px;
       display: flex;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
     /* sidebar */
     aside#sidebar {
       width: 210px;
       min-width: 210px;
+      height: 100vh;
       background: var(--navy);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      overflow-y: auto;
-      overflow-x: hidden;
+      overflow: hidden;
       flex-shrink: 0;
-      scrollbar-width: thin;
-      scrollbar-color: var(--border) transparent;
     }
     .sidebar-logo {
       padding: 13px 14px 11px;
@@ -74,15 +74,51 @@
     .logo-name { color: var(--heading); font-size: 12px; font-weight: 700; letter-spacing: 1.5px; }
     .logo-sub { color: var(--muted); font-size: 8px; letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
     /* nav */
-    .nav-body { padding: 4px 0 8px; }
-    .nav-section { padding: 9px 0 2px; }
-    .nav-section-label {
-      padding: 0 12px 4px;
+    .nav-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .nav-body { padding: 2px 0 6px; }
+    .nav-pinned {
+      padding: 4px 0 6px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .nav-pinned .nav-link { font-weight: 600; }
+    .nav-group {
+      border-bottom: 1px solid rgba(22, 35, 56, 0.7);
+    }
+    .nav-group summary {
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
       font-size: 8px;
       font-weight: 700;
-      letter-spacing: 2.5px;
+      letter-spacing: 2px;
       text-transform: uppercase;
       color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .nav-group summary::-webkit-details-marker { display: none; }
+    .nav-group summary::after {
+      content: '+';
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1;
+    }
+    .nav-group[open] summary::after { content: '-'; }
+    .nav-group summary:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+    .nav-group-body { padding-bottom: 2px; }
+    .nav-section { padding: 0; }
+    .nav-section-label {
+      display: none;
     }
     .nav-link {
       display: block;
@@ -99,23 +135,29 @@
     .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.025); }
     .nav-link.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
     .nav-link.active-red { color: var(--red); border-left-color: var(--red); background: rgba(255,34,68,0.06); }
-    /* section colour accents */
-    .nav-section.threats .nav-section-label { color: rgba(255,100,100,0.5); }
-    .nav-section.defence .nav-section-label { color: rgba(212,175,55,0.5); }
-    .nav-section.forensics .nav-section-label { color: rgba(0,212,255,0.45); }
-    .nav-section.governance .nav-section-label { color: rgba(168,85,247,0.5); }
+    .nav-group.threats summary { color: rgba(255,100,100,0.55); }
+    .nav-group.defence summary { color: rgba(212,175,55,0.55); }
+    .nav-group.forensics summary { color: rgba(0,212,255,0.5); }
+    .nav-group.governance summary { color: rgba(168,85,247,0.55); }
     /* radar */
     .radar-wrap {
-      padding: 10px 14px 6px;
+      padding: 8px 14px 4px;
       display: flex;
       justify-content: center;
       flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
     }
     #ops-radar {
       display: block;
       border-radius: 50%;
       border: 1px solid rgba(0,200,100,0.12);
     }
+    .scout-pinned {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .scout-pinned .status-dot { margin-left: auto; }
     /* footer */
     .sidebar-footer {
       border-top: 1px solid var(--border);
@@ -133,10 +175,14 @@
     .logout-btn { font-size: 10px; color: var(--muted); background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
     .logout-btn:hover { color: var(--red); }
     /* main content area */
-    main { flex: 1; min-width: 0; overflow: auto; background: var(--void); padding: 20px 24px; }
+    main { flex: 1; min-width: 0; overflow: auto; background: var(--void); padding: 24px 28px 32px; }
     .ops-content { width: 100%; max-width: none; }
-    /* shared component tokens */
-    .ops-card { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+    /* legacy card tokens: flat cells, not nested boxes */
+    .ops-card { background: transparent; border: none; border-bottom: 1px solid var(--border); border-radius: 0; padding: 14px 16px; }
+    .ops-content [style*="grid-template-columns"] > .ops-card,
+    .ops-content [style*="grid-template-columns"] > a.ops-card { border-bottom: none; border-left: 1px solid var(--border); }
+    .ops-content [style*="grid-template-columns"] > .ops-card:first-child,
+    .ops-content [style*="grid-template-columns"] > a.ops-card:first-child { border-left: none; }
     .ops-card-label { color: var(--muted); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
     .ops-card-val { color: var(--heading); font-size: 22px; font-weight: 700; }
     .ops-card-val.green { color: var(--green); }
@@ -186,6 +232,65 @@
     .ops-btn-amber:hover { background: rgba(212,175,55,0.18); }
     .ops-loading { color: var(--muted); font-size: 11px; padding: 12px 0; animation: opsFade 1s ease-in-out infinite alternate; }
     @keyframes opsFade { from { opacity: 0.4; } to { opacity: 1; } }
+    .ops-filter-btn {
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-family: inherit;
+    }
+    .ops-filter-btn.active {
+      border-color: rgba(0,200,100,0.35);
+      color: var(--green);
+      background: var(--green-dim);
+    }
+    .ops-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.72);
+      padding: 16px;
+    }
+    .ops-modal {
+      width: 100%;
+      max-width: 420px;
+      background: var(--panel);
+      border: 1px solid rgba(255,34,68,0.3);
+      border-radius: 6px;
+      padding: 16px;
+    }
+    .ops-input {
+      width: 100%;
+      background: var(--void);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 11px;
+    }
+    .ops-event-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(22,35,56,0.6);
+      font-size: 10px;
+    }
+    .ops-event-stream {
+      max-height: 480px;
+      overflow-y: auto;
+      font-family: inherit;
+    }
   </style>
 </head>
 <body>
@@ -205,106 +310,133 @@
       </a>
     </div>
 
-    <div class="nav-body">
+    <div class="radar-wrap">
+      <canvas id="ops-radar" width="110" height="110"></canvas>
+    </div>
+
+    <div class="nav-pinned">
       <% const withV = function(href) {
         if (!uiVersion) return href;
         return href + (href.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(uiVersion);
       }; %>
       <% var ap = activePath || ''; %>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Platform</div>
-        <a href="<%= withV('/') %>" class="nav-link<%= ap === '/' ? ' active' : '' %>">Dashboard</a>
-        <a href="<%= withV('/control-center') %>" class="nav-link<%= ap.startsWith('/control-center') ? ' active' : '' %>">Control Center</a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Fleet</div>
-        <a href="<%= withV('/tenants') %>" class="nav-link<%= ap.startsWith('/tenants') ? ' active' : '' %>">All Tenants</a>
-        <a href="<%= withV('/subscriptions') %>" class="nav-link<%= ap.startsWith('/subscriptions') ? ' active' : '' %>">Subscriptions</a>
-        <a href="<%= withV('/operator') %>" class="nav-link<%= ap.startsWith('/operator') ? ' active' : '' %>">Operator Tools</a>
-      </div>
-
-      <div class="nav-section threats">
-        <div class="nav-section-label">Threats</div>
-        <a href="<%= withV('/security/threats') %>" class="nav-link<%= ap === '/security/threats' ? ' active' : '' %>">Live Threats</a>
-        <a href="<%= withV('/security/incidents') %>" class="nav-link<%= ap === '/security/incidents' ? ' active' : '' %>">Incidents</a>
-        <a href="<%= withV('/security/anomalies') %>" class="nav-link<%= ap === '/security/anomalies' ? ' active' : '' %>">Anomalies</a>
-        <a href="<%= withV('/security/findings') %>" class="nav-link<%= ap === '/security/findings' ? ' active' : '' %>">Findings</a>
-        <a href="<%= withV('/security/attack-surface') %>" class="nav-link<%= ap === '/security/attack-surface' ? ' active' : '' %>">Attack Surface</a>
-      </div>
-
-      <div class="nav-section defence">
-        <div class="nav-section-label">Defence</div>
-        <a href="<%= withV('/security/killswitch') %>" class="nav-link<%= ap === '/security/killswitch' ? ' active-red' : '' %>">Kill Switch</a>
-        <a href="<%= withV('/security/honeypots') %>" class="nav-link<%= ap === '/security/honeypots' ? ' active' : '' %>">Honeypots</a>
-        <a href="<%= withV('/security/tripwires') %>" class="nav-link<%= ap === '/security/tripwires' ? ' active' : '' %>">Tripwires</a>
-        <a href="<%= withV('/security/auto-remediate') %>" class="nav-link<%= ap === '/security/auto-remediate' ? ' active' : '' %>">Auto-Remediation</a>
-        <a href="<%= withV('/security/deception') %>" class="nav-link<%= ap === '/security/deception' ? ' active' : '' %>">Deception Traps</a>
-        <a href="<%= withV('/security/quarantine') %>" class="nav-link<%= ap === '/security/quarantine' ? ' active' : '' %>">Quarantine</a>
-        <a href="<%= withV('/security/egress') %>" class="nav-link<%= ap === '/security/egress' ? ' active' : '' %>">Egress Control</a>
-        <a href="<%= withV('/security/policy') %>" class="nav-link<%= ap === '/security/policy' ? ' active' : '' %>">Policy</a>
-        <a href="<%= withV('/security/policy-packs') %>" class="nav-link<%= ap === '/security/policy-packs' ? ' active' : '' %>">Policy Packs</a>
-      </div>
-
-      <div class="nav-section forensics">
-        <div class="nav-section-label">Forensics</div>
-        <a href="<%= withV('/security') %>" class="nav-link<%= ap === '/security' ? ' active' : '' %>">Security Overview</a>
-        <a href="<%= withV('/scout') %>" class="nav-link<%= ap.startsWith('/scout') ? ' active' : '' %>">Scout Dashboard</a>
-        <a href="<%= withV('/security/score') %>" class="nav-link<%= ap === '/security/score' ? ' active' : '' %>">Scout Score</a>
-        <a href="<%= withV('/security/reports') %>" class="nav-link<%= ap === '/security/reports' ? ' active' : '' %>">Reports</a>
-        <a href="<%= withV('/admin/incident-blog') %>" class="nav-link<%= ap.startsWith('/admin/incident-blog') ? ' active' : '' %>">Incident Blog</a>
-      </div>
-
-      <div class="nav-section governance">
-        <div class="nav-section-label">Governance</div>
-        <a href="<%= withV('/governance/soc2') %>" class="nav-link<%= ap === '/governance/soc2' ? ' active' : '' %>">SOC2</a>
-        <a href="<%= withV('/governance') %>" class="nav-link<%= ap === '/governance' ? ' active' : '' %>">Governance</a>
-        <a href="<%= withV('/governance/trust') %>" class="nav-link<%= ap === '/governance/trust' ? ' active' : '' %>">Trust Verify</a>
-        <a href="<%= withV('/governance/posture') %>" class="nav-link<%= ap === '/governance/posture' ? ' active' : '' %>">Security Posture</a>
-        <a href="<%= withV('/governance/audit') %>" class="nav-link<%= ap === '/governance/audit' ? ' active' : '' %>">Audit Logs</a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">AI Engine</div>
-        <a href="<%= withV('/ai-platform') %>" class="nav-link<%= ap.startsWith('/ai-platform') ? ' active' : '' %>">AI Platform</a>
-        <a href="<%= withV('/admin/agent-tools') %>" class="nav-link<%= ap.startsWith('/admin/agent-tools') || ap.startsWith('/agent-tools') ? ' active' : '' %>">Agent Tools</a>
-        <a href="<%= withV('/mcp') %>" class="nav-link<%= ap.startsWith('/mcp') ? ' active' : '' %>">MCP Servers</a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Data</div>
-        <a href="<%= withV('/memories') %>" class="nav-link<%= ap.startsWith('/memories') ? ' active' : '' %>">Memories</a>
-        <a href="<%= withV('/skills') %>" class="nav-link<%= ap.startsWith('/skills') ? ' active' : '' %>">Skills</a>
-        <a href="<%= withV('/packs') %>" class="nav-link<%= ap.startsWith('/packs') ? ' active' : '' %>">Skill Packs</a>
-        <a href="<%= withV('/rag') %>" class="nav-link<%= ap.startsWith('/rag') ? ' active' : '' %>">RAG Corpus</a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Comms</div>
-        <a href="<%= withV('/channels') %>" class="nav-link<%= ap.startsWith('/channels') ? ' active' : '' %>">Channels</a>
-        <a href="<%= withV('/chat') %>" class="nav-link<%= ap.startsWith('/chat') ? ' active' : '' %>">Chat</a>
-        <a href="<%= withV('/projects') %>" class="nav-link<%= ap.startsWith('/projects') ? ' active' : '' %>">Projects</a>
-      </div>
-
-      <div class="nav-section">
-        <div class="nav-section-label">Admin</div>
-        <a href="<%= withV('/tui') %>" class="nav-link<%= ap.startsWith('/tui') ? ' active' : '' %>">Terminal TUI</a>
-        <a href="<%= withV('/settings') %>" class="nav-link<%= ap.startsWith('/settings') ? ' active' : '' %>">Settings</a>
-      </div>
+      <% function navOpen(paths) {
+        for (var pi = 0; pi < paths.length; pi++) {
+          var p = paths[pi];
+          if (ap === p || ap.indexOf(p + '/') === 0) return true;
+        }
+        return false;
+      } %>
+      <a href="<%= withV('/') %>" class="nav-link<%= ap === '/' ? ' active' : '' %>">Dashboard</a>
+      <a href="<%= withV('/control-center') %>" class="nav-link<%= ap.startsWith('/control-center') ? ' active' : '' %>">Control Center</a>
+      <a href="<%= withV('/scout') %>" class="nav-link scout-pinned<%= ap.startsWith('/scout') ? ' active' : '' %>">
+        <span>Scout Dashboard</span>
+        <span id="scout-dot" class="status-dot"></span>
+      </a>
     </div>
 
-    <div class="radar-wrap">
-      <canvas id="ops-radar" width="140" height="140"></canvas>
+    <div class="nav-scroll">
+      <div class="nav-body">
+
+        <details class="nav-group"<%= navOpen(['/tenants', '/subscriptions', '/operator']) ? ' open' : '' %>>
+          <summary>Fleet</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/tenants') %>" class="nav-link<%= ap.startsWith('/tenants') ? ' active' : '' %>">All Tenants</a>
+            <a href="<%= withV('/subscriptions') %>" class="nav-link<%= ap.startsWith('/subscriptions') ? ' active' : '' %>">Subscriptions</a>
+            <a href="<%= withV('/operator') %>" class="nav-link<%= ap.startsWith('/operator') ? ' active' : '' %>">Operator Tools</a>
+          </div>
+        </details>
+
+        <details class="nav-group threats"<%= navOpen(['/security/threats', '/security/incidents', '/security/anomalies', '/security/findings', '/security/attack-surface']) ? ' open' : '' %>>
+          <summary>Threats</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/security/threats') %>" class="nav-link<%= ap === '/security/threats' ? ' active' : '' %>">Live Threats</a>
+            <a href="<%= withV('/security/incidents') %>" class="nav-link<%= ap === '/security/incidents' ? ' active' : '' %>">Incidents</a>
+            <a href="<%= withV('/security/anomalies') %>" class="nav-link<%= ap === '/security/anomalies' ? ' active' : '' %>">Anomalies</a>
+            <a href="<%= withV('/security/findings') %>" class="nav-link<%= ap === '/security/findings' ? ' active' : '' %>">Findings</a>
+            <a href="<%= withV('/security/attack-surface') %>" class="nav-link<%= ap === '/security/attack-surface' ? ' active' : '' %>">Attack Surface</a>
+          </div>
+        </details>
+
+        <details class="nav-group defence"<%= navOpen(['/security/killswitch', '/security/honeypots', '/security/tripwires', '/security/auto-remediate', '/security/deception', '/security/quarantine', '/security/egress', '/security/policy', '/security/policy-packs']) ? ' open' : '' %>>
+          <summary>Defence</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/security/killswitch') %>" class="nav-link<%= ap === '/security/killswitch' ? ' active-red' : '' %>">Kill Switch</a>
+            <a href="<%= withV('/security/honeypots') %>" class="nav-link<%= ap === '/security/honeypots' ? ' active' : '' %>">Honeypots</a>
+            <a href="<%= withV('/security/tripwires') %>" class="nav-link<%= ap === '/security/tripwires' ? ' active' : '' %>">Tripwires</a>
+            <a href="<%= withV('/security/auto-remediate') %>" class="nav-link<%= ap === '/security/auto-remediate' ? ' active' : '' %>">Auto-Remediation</a>
+            <a href="<%= withV('/security/deception') %>" class="nav-link<%= ap === '/security/deception' ? ' active' : '' %>">Deception Traps</a>
+            <a href="<%= withV('/security/quarantine') %>" class="nav-link<%= ap === '/security/quarantine' ? ' active' : '' %>">Quarantine</a>
+            <a href="<%= withV('/security/egress') %>" class="nav-link<%= ap === '/security/egress' ? ' active' : '' %>">Egress Control</a>
+            <a href="<%= withV('/security/policy') %>" class="nav-link<%= ap === '/security/policy' ? ' active' : '' %>">Policy</a>
+            <a href="<%= withV('/security/policy-packs') %>" class="nav-link<%= ap === '/security/policy-packs' ? ' active' : '' %>">Policy Packs</a>
+          </div>
+        </details>
+
+        <details class="nav-group forensics"<%= (ap === '/security' || navOpen(['/security/score', '/security/reports', '/admin/incident-blog'])) ? ' open' : '' %>>
+          <summary>Forensics</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/security') %>" class="nav-link<%= ap === '/security' ? ' active' : '' %>">Security Overview</a>
+            <a href="<%= withV('/security/score') %>" class="nav-link<%= ap === '/security/score' ? ' active' : '' %>">Scout Score</a>
+            <a href="<%= withV('/security/reports') %>" class="nav-link<%= ap === '/security/reports' ? ' active' : '' %>">Reports</a>
+            <a href="<%= withV('/admin/incident-blog') %>" class="nav-link<%= ap.startsWith('/admin/incident-blog') ? ' active' : '' %>">Incident Blog</a>
+          </div>
+        </details>
+
+        <details class="nav-group governance"<%= navOpen(['/governance']) ? ' open' : '' %>>
+          <summary>Governance</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/governance') %>" class="nav-link<%= ap === '/governance' ? ' active' : '' %>">Overview</a>
+            <a href="<%= withV('/governance/soc2') %>" class="nav-link<%= ap === '/governance/soc2' ? ' active' : '' %>">SOC2</a>
+            <a href="<%= withV('/governance/trust') %>" class="nav-link<%= ap === '/governance/trust' ? ' active' : '' %>">Trust Verify</a>
+            <a href="<%= withV('/governance/posture') %>" class="nav-link<%= ap === '/governance/posture' ? ' active' : '' %>">Security Posture</a>
+            <a href="<%= withV('/governance/audit') %>" class="nav-link<%= ap === '/governance/audit' ? ' active' : '' %>">Audit Logs</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/ai-platform', '/admin/agent-tools', '/agent-tools', '/mcp']) ? ' open' : '' %>>
+          <summary>AI Engine</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/ai-platform') %>" class="nav-link<%= ap.startsWith('/ai-platform') ? ' active' : '' %>">AI Platform</a>
+            <a href="<%= withV('/admin/agent-tools') %>" class="nav-link<%= ap.startsWith('/admin/agent-tools') || ap.startsWith('/agent-tools') ? ' active' : '' %>">Agent Tools</a>
+            <a href="<%= withV('/mcp') %>" class="nav-link<%= ap.startsWith('/mcp') ? ' active' : '' %>">MCP Servers</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/memories', '/skills', '/packs', '/rag']) ? ' open' : '' %>>
+          <summary>Data</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/memories') %>" class="nav-link<%= ap.startsWith('/memories') ? ' active' : '' %>">Memories</a>
+            <a href="<%= withV('/skills') %>" class="nav-link<%= ap.startsWith('/skills') ? ' active' : '' %>">Skills</a>
+            <a href="<%= withV('/packs') %>" class="nav-link<%= ap.startsWith('/packs') ? ' active' : '' %>">Skill Packs</a>
+            <a href="<%= withV('/rag') %>" class="nav-link<%= ap.startsWith('/rag') ? ' active' : '' %>">RAG Corpus</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/channels', '/chat', '/projects']) ? ' open' : '' %>>
+          <summary>Comms</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/channels') %>" class="nav-link<%= ap.startsWith('/channels') ? ' active' : '' %>">Channels</a>
+            <a href="<%= withV('/chat') %>" class="nav-link<%= ap.startsWith('/chat') ? ' active' : '' %>">Chat</a>
+            <a href="<%= withV('/projects') %>" class="nav-link<%= ap.startsWith('/projects') ? ' active' : '' %>">Projects</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/tui', '/settings']) ? ' open' : '' %>>
+          <summary>Admin</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/tui') %>" class="nav-link<%= ap.startsWith('/tui') ? ' active' : '' %>">Operator Chat</a>
+            <a href="<%= withV('/settings') %>" class="nav-link<%= ap.startsWith('/settings') ? ' active' : '' %>">Settings</a>
+          </div>
+        </details>
+
+      </div>
     </div>
 
     <div class="sidebar-footer">
-      <div class="scout-row">
-        <span id="scout-dot" class="status-dot"></span>
-        <span id="scout-label">Scout checking...</span>
-      </div>
       <div class="footer-links">
         <a href="<%= webUiUrl %>" target="_blank" rel="noopener">Main Web UI</a>
+        <span id="scout-label" style="font-size:10px;color:var(--muted);">Scout checking...</span>
       </div>
       <form method="post" action="/logout">
         <button type="submit" class="logout-btn">Sign Out</button>

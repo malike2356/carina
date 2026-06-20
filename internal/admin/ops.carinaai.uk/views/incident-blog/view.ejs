@@ -1,4 +1,5 @@
 <% title = 'Incident Blog' %>
+<div class="ops-page">
 <style>
   .blog-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1rem; }
   .blog-meta { color:#8b8b8b; font-size:.9rem; }
@@ -35,4 +36,5 @@
     <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject"><input type="hidden" name="reason" value="Needs revision"><button class="button-inline" type="submit">Reject</button></form>
     <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete"><button class="button-inline danger" type="submit">Delete</button></form>
   </div>
+</div>
 </div>

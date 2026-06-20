@@ -1,4 +1,5 @@
 <% title = 'Create tenant' %>
+<div class="ops-page">
 <div class="mb-6">
   <a href="/tenants" class="text-sm text-[#06b6d4] hover:underline">&larr; All tenants</a>
   <h1 class="text-2xl font-bold text-white mt-2">Create new Carina user</h1>
@@ -12,7 +13,7 @@
 <% } %>
 
 <form method="post" action="/tenants" class="w-full space-y-6">
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 space-y-4">
+  <section class="ops-surface p-5 space-y-4">
     <h2 class="text-lg font-semibold text-white">Account</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <label class="block text-sm">
@@ -33,7 +34,7 @@
     </div>
   </section>
 
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 space-y-4">
+  <section class="ops-surface p-5 space-y-4">
     <h2 class="text-lg font-semibold text-white">Plan and access</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <label class="block text-sm">
@@ -65,7 +66,7 @@
     <p class="text-xs text-gray-500">Manual/direct tenants are labeled separately from SaaS checkout subscribers.</p>
   </section>
 
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 space-y-4">
+  <section class="ops-surface p-5 space-y-4">
     <h2 class="text-lg font-semibold text-white">Login credentials</h2>
     <label class="flex items-center gap-2 text-sm text-gray-300">
       <input type="checkbox" name="generatePassword" checked class="rounded">
@@ -78,7 +79,7 @@
     </label>
   </section>
 
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 space-y-4">
+  <section class="ops-surface p-5 space-y-4">
     <h2 class="text-lg font-semibold text-white">Initial skill packs</h2>
     <% if (!availablePacks.length) { %>
       <p class="text-sm text-gray-500">No packs available. Pair Carina in Settings or install packs in core.</p>
@@ -98,7 +99,7 @@
     <p class="text-xs text-gray-500">Tenant packs are stored per tenant in the database, not in ACTIVE_SKILL_PACKS.</p>
   </section>
 
-  <section class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 space-y-4">
+  <section class="ops-surface p-5 space-y-4">
     <h2 class="text-lg font-semibold text-white">Operator notes</h2>
     <textarea name="notes" rows="3"
               class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white text-sm"
@@ -113,3 +114,4 @@
     <a href="/tenants" class="px-5 py-2.5 rounded bg-[#2a2a2a] hover:bg-[#333] text-white text-sm">Cancel</a>
   </div>
 </form>
+</div>

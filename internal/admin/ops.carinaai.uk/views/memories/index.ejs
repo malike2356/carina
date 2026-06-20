@@ -1,25 +1,23 @@
 <% title = 'Memories' %>
-<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-  <h1 class="text-2xl font-bold text-white">Memories</h1>
-</div>
-
+<div class="ops-page">
+<div class="ops-page-head"><div><div class="ops-page-title">Memories</div></div></div>
 <form method="get" class="flex flex-wrap gap-3 mb-4 text-sm">
   <input type="hidden" name="sort" value="<%= sortBy %>">
   <input type="hidden" name="dir" value="<%= sortDir %>">
   <input type="search" name="q" value="<%= search %>" placeholder="Search content..."
-         class="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2 text-white min-w-[200px]">
-  <select name="role" class="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2 text-white">
+         class="ops-input min-w-[200px]">
+  <select name="role" class="ops-input">
     <option value="all" <%= role === 'all' ? 'selected' : '' %>>All roles</option>
     <option value="user" <%= role === 'user' ? 'selected' : '' %>>User</option>
     <option value="assistant" <%= role === 'assistant' ? 'selected' : '' %>>Assistant</option>
   </select>
   <input type="text" name="session" value="<%= sessionFilter %>" placeholder="Session ID filter..."
-         class="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-3 py-2 text-white min-w-[180px]">
-  <button type="submit" class="bg-[#22c55e] text-black px-4 py-2 rounded font-medium">Filter</button>
+         class="ops-input min-w-[180px]">
+  <button type="submit" class="ops-btn ops-btn-green">Filter</button>
 </form>
 
-<div class="overflow-x-auto border border-[#2a2a2a] rounded-lg">
-  <table class="w-full text-sm">
+<div class="ops-surface ops-table-wrap">
+  <table class="ops-table w-full text-sm">
     <thead class="bg-[#1a1a1a] text-gray-400 text-left">
       <tr>
         <th class="p-3">
@@ -46,7 +44,7 @@
         <tr class="border-t border-[#2a2a2a] hover:bg-[#1a1a1a]">
           <td class="p-3 text-gray-500 whitespace-nowrap"><%= new Date(m.updated_at || m.created_at).toLocaleString() %></td>
           <td class="p-3">
-            <a href="/memories/session/<%= m.session_id %>" class="text-[#06b6d4] hover:underline font-mono text-xs">
+            <a href="/memories/session/<%= m.session_id %>" class="ops-link font-mono text-xs">
               <%= m.session_id.slice(0, 8) %>...
             </a>
           </td>
@@ -75,10 +73,11 @@
 
 <div class="flex gap-2 mt-4 text-sm">
   <% if (page > 1) { %>
-    <a href="/memories<%= pageLink(page - 1) %>" class="text-[#22c55e] hover:underline">Previous</a>
+    <a href="/memories<%= pageLink(page - 1) %>" class="ops-link-green">Previous</a>
   <% } %>
   <span class="text-gray-500">Page <%= page %> of <%= totalPages %> (<%= total %> total)</span>
   <% if (page < totalPages) { %>
-    <a href="/memories<%= pageLink(page + 1) %>" class="text-[#22c55e] hover:underline">Next</a>
+    <a href="/memories<%= pageLink(page + 1) %>" class="ops-link-green">Next</a>
   <% } %>
+</div>
 </div>

@@ -8,6 +8,10 @@ const execFileAsync = promisify(execFile);
 
 export const operatorRouter = Router();
 
+operatorRouter.get('/', (_req, res) => {
+  res.render('operator/index', { title: 'Operator Tools' });
+});
+
 async function learningMetricsFromDb(): Promise<Record<string, unknown>> {
   const [events, drafts, promotions, lastCurator] = await Promise.all([
     query<{ count: string }>(
