@@ -1,5 +1,9 @@
 #!/bin/bash
-cd "$(dirname "$0")"
+set -eo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+mkdir -p "${HOME}/logs"
+
 if [ -z "${HOME:-}" ]; then
   HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
   export HOME
@@ -44,4 +48,21 @@ if [ -n "${DATABASE_URL:-}" ] && [ -z "${SKILLS_HUB_DATABASE_URL:-}" ]; then
   export SKILLS_HUB_DATABASE_URL="$DATABASE_URL"
 fi
 export PATH="${HOME}/.local/bin:${PATH}"
-exec /usr/bin/node dist/src/index.js
+
+if [[ ! -f dist/src/index.js ]]; then
+  echo "Run pnpm build first." >&2
+  exit 1
+fi
+
+pkill -f "${ROOT}/dist/src/index.js" 2>/dev/null || true
+sleep 1
+
+nohup /usr/bin/node "${ROOT}/dist/src/index.js" >> "${HOME}/logs/carina-core.out.log" 2>> "${HOME}/logs/carina-core.err.log" &
+sleep 2
+
+if pgrep -f "${ROOT}/dist/src/index.js" >/dev/null 2>&1; then
+  echo "Core gateway: 127.0.0.1:3333"
+else
+  echo "ERROR: carina-core failed to start; see ${HOME}/logs/carina-core.err.log" >&2
+  exit 1
+fi

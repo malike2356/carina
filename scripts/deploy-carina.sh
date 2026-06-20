@@ -141,9 +141,7 @@ CONF
       nohup env NODE_ENV=production PORT=4001 CARINA_CORE_ROOT="${CORE_REMOTE}" \
         ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
     elif [[ "${sup_name}" == "carina-core" ]]; then
-      nohup env NODE_ENV=production WEB_ENABLED=true SKIP_CLI=true HOSTED_MODE=false \
-        CARINA_OPERATOR_HOSTS=core.carinaai.uk \
-        ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
+      ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log
     else
       nohup ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
     fi
