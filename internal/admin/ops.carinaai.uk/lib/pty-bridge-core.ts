@@ -5,7 +5,25 @@ import type { IncomingMessage } from 'node:http';
 import { peekWsToken } from './ws-tokens.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
-const __opsDir = path.basename(__moduleDir) === 'dist' ? path.dirname(__moduleDir) : path.resolve(__moduleDir, '..');
+let __opsDir = path.dirname(__moduleDir);
+if (path.basename(__opsDir) === 'dist') {
+  __opsDir = path.dirname(__opsDir);
+}
+
+function resolveDefaultCoreRoot(): string {
+  if (process.env.CARINA_CORE_ROOT?.trim()) {
+    return path.resolve(process.env.CARINA_CORE_ROOT.trim());
+  }
+  const candidates = [
+    path.resolve(__opsDir, '../core.carinaai.uk'),
+    path.resolve(__opsDir, '../../servers/core.carinaai.uk'),
+    '/home/malike/apps/core.carinaai.uk',
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(path.join(candidate, 'package.json'))) return candidate;
+  }
+  return candidates[0];
+}
 
 export interface CarinaSpawnCommand {
   file: string;
@@ -14,9 +32,7 @@ export interface CarinaSpawnCommand {
 }
 
 export function resolveCarinaSpawnCommand(): CarinaSpawnCommand {
-  const coreRoot = path.resolve(
-    process.env.CARINA_CORE_ROOT ?? path.join(__opsDir, '..', 'core.carinaai.uk'),
-  );
+  const coreRoot = resolveDefaultCoreRoot();
   const mode = process.env.CARINA_TUI_MODE ?? 'operator';
   const tuiArgs = mode === 'ink'
     ? ['tui']

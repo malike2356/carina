@@ -137,7 +137,16 @@ CONF
     pkill -f "${remote_dir}/start.sh" 2>/dev/null || true
     pkill -f "${remote_dir}/dist/src/index.js" 2>/dev/null || true
     sleep 2
-    nohup ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
+    if [[ "${sup_name}" == "carina-ops" ]]; then
+      nohup env NODE_ENV=production PORT=4001 CARINA_CORE_ROOT="${CORE_REMOTE}" \
+        ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
+    elif [[ "${sup_name}" == "carina-core" ]]; then
+      nohup env NODE_ENV=production WEB_ENABLED=true SKIP_CLI=true HOSTED_MODE=false \
+        CARINA_OPERATOR_HOSTS=core.carinaai.uk \
+        ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
+    else
+      nohup ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
+    fi
     echo "  Process restarted (PID \$!)"
 REMOTE
 
@@ -180,8 +189,8 @@ main() {
     ",WEB_ENABLED=\"true\",SKIP_CLI=\"true\",HOSTED_MODE=\"false\",CARINA_OPERATOR_HOSTS=\"core.carinaai.uk\""
 
   deploy_app "ops.carinaai.uk" "$OPS_LOCAL" "$OPS_REMOTE" \
-    "dist/server.js" "carina-ops" \
-    ",PORT=\"4002\""
+    "start.sh" "carina-ops" \
+    ",PORT=\"4001\",CARINA_CORE_ROOT=\"${CORE_REMOTE}\""
 
   log "All apps deployed."
 
@@ -206,7 +215,7 @@ main() {
   echo "   CREATE DATABASE carina_skills_hub OWNER carina;"
   echo ""
   print_nginx_hint "core.carinaai.uk" "3333"
-  print_nginx_hint "ops.carinaai.uk" "4002"
+  print_nginx_hint "ops.carinaai.uk" "4001"
   echo ""
   echo "3. Carina Hub (hub.carinaai.uk):"
   echo "   DNS: A/AAAA hub.carinaai.uk -> VPS (same IP as carinaai.uk)"

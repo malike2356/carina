@@ -6,6 +6,13 @@ cd "$ROOT"
 mkdir -p "${HOME}/logs"
 
 export NODE_ENV="${NODE_ENV:-production}"
+if [[ -z "${CARINA_CORE_ROOT:-}" ]]; then
+  if [[ -d "${ROOT}/../core.carinaai.uk" ]]; then
+    export CARINA_CORE_ROOT="${ROOT}/../core.carinaai.uk"
+  elif [[ -d "/home/malike/apps/core.carinaai.uk" ]]; then
+    export CARINA_CORE_ROOT="/home/malike/apps/core.carinaai.uk"
+  fi
+fi
 if [[ -z "${PORT:-}" ]]; then
   if pgrep -f "${ROOT}/ops-bridge.mjs" >/dev/null 2>&1; then
     export PORT=4001
