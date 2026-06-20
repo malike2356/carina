@@ -114,9 +114,13 @@ app.use(
 app.use((req, res, next) => {
   res.locals.carinaApiUrl = CARINA_BASE;
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
-  res.locals.uiVersion = process.env.UI_VERSION ?? '20260621d';
+  res.locals.uiVersion = process.env.UI_VERSION ?? '20260621e';
   res.locals.activePath = req.path;
   next();
+});
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, service: 'carina-ops' });
 });
 
 app.use(authRouter);
