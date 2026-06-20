@@ -3,694 +3,916 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Labyrinth Scout; Security Console</title>
+<title>SCOUT / Client Console</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
 :root {
-  --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
-  --text: #f1f5f9; --text2: #94a3b8; --text3: #64748b;
-  --primary: #4f46e5; --primary2: #6366f1;
-  --critical: #ef4444; --high: #f97316; --medium: #eab308; --low: #3b82f6; --info: #6b7280;
-  --success: #22c55e; --warning: #f59e0b; --border: #334155;
-  --radius: 8px; --shadow: 0 2px 8px rgba(0,0,0,0.3);
+  --void: #08101c;
+  --navy: #0c1828;
+  --panel: #0f1e30;
+  --border: #1a2e44;
+  --border2: #243a52;
+  --green: #00c864;
+  --green2: #00ff7f;
+  --red: #ff2244;
+  --amber: #d4af37;
+  --cyan: #00d4ff;
+  --text: #c8dce8;
+  --text2: #6b8fa8;
+  --text3: #3a5568;
+  --mono: 'JetBrains Mono', monospace;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-a { color: var(--primary2); text-decoration: none; }
+body { font-family: var(--mono); background: var(--void); color: var(--text); min-height: 100vh; overflow: hidden; }
+a { color: var(--green); text-decoration: none; }
 
 /* Layout */
-.layout { display: flex; min-height: 100vh; }
-.sidebar { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 20px 0; position: fixed; top: 0; bottom: 0; left: 0; z-index: 100; }
-.sidebar-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.sidebar-logo h1 { font-size: 18px; color: var(--primary2); display: flex; align-items: center; gap: 8px; }
-.sidebar-logo h1 span { font-size: 24px; }
-.sidebar-nav { display: flex; flex-direction: column; }
-.sidebar-nav a { padding: 10px 20px; color: var(--text2); font-size: 14px; display: flex; align-items: center; gap: 10px; transition: all 0.15s; border-left: 3px solid transparent; }
-.sidebar-nav a:hover, .sidebar-nav a.active { background: var(--surface2); color: var(--text); border-left-color: var(--primary2); }
-.sidebar-nav a .icon { width: 20px; text-align: center; }
-.main { margin-left: 240px; flex: 1; padding: 24px; max-width: 1400px; }
+.layout { display: flex; height: 100vh; }
 
-/* Header */
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.header h2 { font-size: 22px; }
-.header-actions { display: flex; gap: 12px; align-items: center; }
+/* Sidebar */
+.sidebar {
+  width: 220px; min-width: 220px; background: var(--navy);
+  border-right: 1px solid var(--border); display: flex; flex-direction: column;
+  padding: 0; overflow: hidden;
+}
+.sidebar-header {
+  padding: 20px 16px 16px; border-bottom: 1px solid var(--border);
+}
+.sidebar-logo {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+}
+.logo-shield {
+  width: 32px; height: 32px; flex-shrink: 0;
+}
+.logo-text {
+  display: flex; flex-direction: column;
+}
+.logo-text .brand { font-size: 13px; font-weight: 700; color: var(--green); letter-spacing: 1px; }
+.logo-text .sub { font-size: 9px; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; }
+.user-line {
+  margin-top: 10px; font-size: 10px; color: var(--text2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.user-line span { color: var(--cyan); }
 
-/* Cards */
-.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow); }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.card-title { font-size: 16px; font-weight: 600; }
+.sidebar-nav { flex: 1; padding: 8px 0; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 16px;
+  font-size: 11px; letter-spacing: 0.5px; color: var(--text2);
+  cursor: pointer; border-left: 3px solid transparent;
+  transition: all 0.15s; user-select: none;
+}
+.nav-item:hover { background: rgba(0,200,100,0.05); color: var(--text); }
+.nav-item.active { background: rgba(0,200,100,0.08); color: var(--green); border-left-color: var(--green); }
+.nav-item svg { width: 14px; height: 14px; flex-shrink: 0; opacity: 0.7; }
+.nav-item.active svg { opacity: 1; }
 
-/* Score Widget */
-.score-widget { background: linear-gradient(135deg, #312e81, #4f46e5); color: white; padding: 32px; border-radius: 12px; text-align: center; margin-bottom: 24px; }
-.score-widget .score-label { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.8; margin-bottom: 8px; }
-.score-widget .score-value { font-size: 80px; font-weight: 800; line-height: 1; }
-.score-widget .score-trend { margin-top: 8px; font-size: 14px; opacity: 0.9; }
-.score-categories { display: flex; gap: 12px; margin-top: 20px; }
-.score-cat { flex: 1; text-align: center; }
-.score-cat .cat-label { font-size: 10px; text-transform: uppercase; opacity: 0.7; margin-bottom: 4px; }
-.score-cat .cat-value { font-size: 22px; font-weight: 700; }
-.score-cat .cat-bar { height: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; margin-top: 6px; overflow: hidden; }
-.score-cat .cat-bar-fill { height: 100%; background: white; border-radius: 3px; }
+.sidebar-footer {
+  padding: 12px 16px 16px; border-top: 1px solid var(--border);
+}
+.radar-label {
+  font-size: 9px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+#radarCanvas { display: block; margin: 0 auto; }
+.logout-btn {
+  display: block; width: 100%; margin-top: 12px; padding: 6px 0;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px; text-align: center;
+  background: transparent; border: 1px solid var(--border2); color: var(--text2);
+  cursor: pointer; text-transform: uppercase;
+  transition: all 0.15s;
+}
+.logout-btn:hover { border-color: var(--red); color: var(--red); }
 
-/* Grid */
-.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+/* Main */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 24px; border-bottom: 1px solid var(--border);
+  background: var(--navy); flex-shrink: 0;
+}
+.topbar-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); }
+.topbar-right { display: flex; align-items: center; gap: 16px; font-size: 10px; }
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 2px;
+  color: var(--text2);
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.status-dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+.status-dot.warn { background: var(--amber); }
+.status-dot.err { background: var(--red); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-/* Stats */
-.stat { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
-.stat .stat-value { font-size: 28px; font-weight: 700; }
-.stat .stat-label { font-size: 12px; color: var(--text2); text-transform: uppercase; margin-top: 4px; }
-.stat-critical .stat-value { color: var(--critical); }
-.stat-high .stat-value { color: var(--high); }
-.stat-medium .stat-value { color: var(--medium); }
-.stat-low .stat-value { color: var(--low); }
+.content { flex: 1; overflow-y: auto; padding: 20px 24px; }
 
-/* Buttons */
-.btn { padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary2); }
-.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-.btn-danger { background: var(--critical); color: white; }
-.btn-sm { padding: 4px 10px; font-size: 11px; }
-
-/* Tables */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { text-align: left; padding: 10px 12px; background: var(--surface2); color: var(--text2); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 11px; text-transform: uppercase; }
-td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-tr:hover td { background: rgba(79,70,229,0.05); }
-
-/* Badges */
-.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
-.badge-critical { background: rgba(239,68,68,0.15); color: var(--critical); }
-.badge-high { background: rgba(249,115,22,0.15); color: var(--high); }
-.badge-medium { background: rgba(234,179,8,0.15); color: var(--medium); }
-.badge-low { background: rgba(59,130,246,0.15); color: var(--low); }
-.badge-info { background: rgba(107,114,128,0.15); color: var(--info); }
-.badge-success { background: rgba(34,197,94,0.15); color: var(--success); }
-
-/* Filters */
-.filters { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
-.filters select, .filters input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 6px; font-size: 13px; }
-.filters select { min-width: 120px; }
-
-/* Page hiding */
+/* Pages */
 .page { display: none; }
 .page.active { display: block; }
 
-/* Scan progress */
-.progress-bar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; margin-top: 8px; }
-.progress-fill { height: 100%; background: var(--primary2); border-radius: 4px; transition: width 0.3s; }
-
-/* Status indicators */
-.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
-.status-online { background: var(--success); }
-.status-offline { background: var(--text3); }
-.status-failed { background: var(--critical); }
-
-/* Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 200; }
-.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
-.modal h3 { margin-bottom: 16px; }
-.modal .form-group { margin-bottom: 12px; }
-.modal label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; text-transform: uppercase; }
-.modal input, .modal select { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 14px; }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .sidebar { width: 60px; padding: 12px 0; }
-  .sidebar-logo h1 { font-size: 0; justify-content: center; }
-  .sidebar-logo h1 span { font-size: 24px; }
-  .sidebar-nav a { padding: 10px; justify-content: center; font-size: 0; }
-  .sidebar-nav a .icon { font-size: 18px; }
-  .main { margin-left: 60px; padding: 16px; }
-  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
-  .score-categories { flex-direction: column; }
+/* Metric tiles */
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.tile {
+  background: var(--panel); border: 1px solid var(--border);
+  padding: 16px; position: relative; overflow: hidden;
 }
+.tile::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--green);
+}
+.tile.warn::before { background: var(--amber); }
+.tile.alert::before { background: var(--red); }
+.tile.info::before { background: var(--cyan); }
+.tile-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); margin-bottom: 8px; }
+.tile-value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+.tile-value.green { color: var(--green); }
+.tile-value.amber { color: var(--amber); }
+.tile-value.red { color: var(--red); }
+.tile-value.cyan { color: var(--cyan); }
+.tile-sub { font-size: 9px; color: var(--text3); margin-top: 4px; }
+
+/* Chart area */
+.row2 { display: grid; grid-template-columns: 1fr 340px; gap: 12px; margin-bottom: 16px; }
+.panel {
+  background: var(--panel); border: 1px solid var(--border); padding: 16px;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.panel-title { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); }
+#chartCanvas { width: 100%; display: block; }
+
+/* Activity feed */
+.feed { overflow-y: auto; max-height: 240px; }
+.feed-item {
+  display: flex; gap: 10px; padding: 6px 0;
+  border-bottom: 1px solid var(--border); font-size: 10px;
+  align-items: flex-start;
+}
+.feed-item:last-child { border-bottom: none; }
+.feed-sev {
+  flex-shrink: 0; width: 6px; height: 6px; border-radius: 50%;
+  margin-top: 4px;
+}
+.feed-sev.green { background: var(--green); }
+.feed-sev.amber { background: var(--amber); }
+.feed-sev.red { background: var(--red); }
+.feed-sev.cyan { background: var(--cyan); }
+.feed-body { flex: 1; min-width: 0; }
+.feed-msg { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feed-meta { color: var(--text3); margin-top: 2px; }
+
+/* Bottom cards */
+.row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.card-mini {
+  background: var(--panel); border: 1px solid var(--border); padding: 14px;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.card-mini:hover { border-color: var(--border2); }
+.card-mini .cm-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.card-mini .cm-title { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--text2); }
+.card-mini .cm-badge { font-size: 9px; padding: 2px 6px; border: 1px solid; }
+.cm-badge.ok { border-color: var(--green); color: var(--green); }
+.cm-badge.warn { border-color: var(--amber); color: var(--amber); }
+.cm-badge.off { border-color: var(--text3); color: var(--text3); }
+.card-mini .cm-val { font-size: 20px; font-weight: 700; }
+.card-mini .cm-sub { font-size: 9px; color: var(--text3); margin-top: 2px; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 10px; }
+th { text-align: left; padding: 8px 10px; color: var(--text3); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--border); font-size: 9px; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:hover td { background: rgba(0,200,100,0.03); }
+
+/* Badges */
+.badge { display: inline-block; padding: 1px 6px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border-radius: 1px; }
+.badge-green { background: rgba(0,200,100,0.12); color: var(--green); border: 1px solid rgba(0,200,100,0.2); }
+.badge-red { background: rgba(255,34,68,0.12); color: var(--red); border: 1px solid rgba(255,34,68,0.2); }
+.badge-amber { background: rgba(212,175,55,0.12); color: var(--amber); border: 1px solid rgba(212,175,55,0.2); }
+.badge-cyan { background: rgba(0,212,255,0.12); color: var(--cyan); border: 1px solid rgba(0,212,255,0.2); }
+.badge-gray { background: rgba(107,143,168,0.12); color: var(--text2); border: 1px solid rgba(107,143,168,0.2); }
+
+/* Empty state */
+.empty { padding: 32px; text-align: center; color: var(--text3); font-size: 11px; }
 
 /* Loading */
-.loading { text-align: center; padding: 40px; color: var(--text2); }
-.spinner { display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary2); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 8px; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.loading { padding: 24px; text-align: center; color: var(--text3); font-size: 10px; letter-spacing: 2px; }
 
-/* Toast */
-.toast { position: fixed; top: 16px; right: 16px; padding: 12px 20px; border-radius: 8px; color: white; font-size: 13px; z-index: 300; animation: slideIn 0.3s ease; }
-.toast-success { background: var(--success); }
-.toast-error { background: var(--critical); }
-@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+/* Kill switch */
+.killswitch-btn {
+  display: inline-block; padding: 8px 16px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+  background: transparent; border: 1px solid var(--red); color: var(--red);
+  transition: all 0.15s;
+}
+.killswitch-btn:hover { background: rgba(255,34,68,0.1); }
+
+/* API key input */
+.key-input {
+  background: var(--void); border: 1px solid var(--border); color: var(--cyan);
+  font-family: var(--mono); font-size: 10px; padding: 8px 10px;
+  width: 100%; margin-top: 4px; outline: none;
+}
+.key-input:focus { border-color: var(--border2); }
+.save-btn {
+  margin-top: 8px; padding: 6px 14px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  background: transparent; border: 1px solid var(--green); color: var(--green);
+  transition: all 0.15s;
+}
+.save-btn:hover { background: rgba(0,200,100,0.1); }
+
+/* Scan lines overlay */
+body::after {
+  content: ''; pointer-events: none; position: fixed; inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+  z-index: 1000;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: var(--border2); }
 </style>
 </head>
 <body>
 <div class="layout">
+
   <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="sidebar-logo">
-      <h1><span></span> Labyrinth Scout</h1>
-    </div>
-    <div class="sidebar-nav" id="nav">
-      <a href="#dashboard" class="active" data-page="dashboard"><span class="icon"></span> Dashboard</a>
-      <a href="#findings" data-page="findings"><span class="icon"></span> Findings</a>
-      <a href="#targets" data-page="targets"><span class="icon"></span> Targets</a>
-      <a href="#assets" data-page="assets"><span class="icon"></span> Assets</a>
-      <a href="#scans" data-page="scans"><span class="icon"></span> Scans</a>
-      <a href="#agents" data-page="agents"><span class="icon"></span> Agents</a>
-      <a href="#compliance" data-page="compliance"><span class="icon"></span> Compliance</a>
-      <a href="#settings" data-page="settings"><span class="icon"></span> Settings</a>
-    </div>
-  </nav>
-
-  <!-- Main Content -->
-  <main class="main">
-    <!-- Dashboard Page -->
-    <div class="page active" id="page-dashboard">
-      <div class="header"><h2>Dashboard</h2><div><button class="btn btn-primary" onclick="triggerQuickScan()"> Quick Scan</button></div></div>
-      <div id="scoreWidget">Loading...</div>
-      <div class="grid-4" id="statCards"></div>
-      <div class="grid-2">
-        <div class="card"><div class="card-title">Recent Scans</div><div id="recentScans">Loading...</div></div>
-        <div class="card"><div class="card-title">Critical Findings</div><div id="criticalFindings">Loading...</div></div>
-      </div>
-    </div>
-
-    <!-- Findings Page -->
-    <div class="page" id="page-findings">
-      <div class="header"><h2>Findings</h2><div><button class="btn btn-sm btn-secondary" onclick="exportCSV()"> Export CSV</button></div></div>
-      <div class="card">
-        <div class="filters">
-          <select id="filterSeverity" onchange="loadFindings()"><option value="">All Severity</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="info">Info</option></select>
-          <select id="filterStatus" onchange="loadFindings()"><option value="open">Open</option><option value="all">All Status</option><option value="confirmed">Confirmed</option><option value="remediated">Remediated</option></select>
-          <select id="filterType" onchange="loadFindings()"><option value="">All Types</option><option value="open_port">Open Port</option><option value="vulnerability">Vulnerability</option><option value="cve">CVE</option><option value="subdomain">Subdomain</option></select>
-          <input type="text" id="filterSearch" placeholder="Search..." oninput="loadFindings()" style="flex:1;min-width:150px">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <svg class="logo-shield" viewBox="0 0 32 32" fill="none">
+          <path d="M16 2L4 7v8c0 7.4 5.2 14.3 12 16 6.8-1.7 12-8.6 12-16V7L16 2z" fill="rgba(0,200,100,0.08)" stroke="#00c864" stroke-width="1.5"/>
+          <path d="M11 16l3 3 7-7" stroke="#00c864" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="logo-text">
+          <span class="brand">SCOUT</span>
+          <span class="sub">Client Console</span>
         </div>
-        <div class="table-wrap"><table id="findingsTable"><thead><tr><th>Severity</th><th>Title</th><th>Type</th><th>Host</th><th>Tool</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
-        <div id="findingsPagination" style="margin-top:12px;text-align:center;"></div>
+      </div>
+      <div class="user-line">Signed in as <span id="userEmail">-</span></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-item active" data-page="overview">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Overview
+      </div>
+      <div class="nav-item" data-page="agents">
+        <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Agents
+      </div>
+      <div class="nav-item" data-page="threats">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 14h14L8 1zm0 4v4m0 2v1" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Threats
+      </div>
+      <div class="nav-item" data-page="incidents">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v7m0 2v1M3 12.5L8 14l5-1.5M8 2C5 2 2 4 2 7v5l6 3 6-3V7c0-3-3-5-6-5z"/></svg>
+        Incidents
+      </div>
+      <div class="nav-item" data-page="audit">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h8M4 8h8M4 12h5"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
+        Audit Logs
+      </div>
+      <div class="nav-item" data-page="policy">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1L2 4v5c0 3 2.5 5.5 6 7 3.5-1.5 6-4 6-7V4L8 1z"/></svg>
+        Policy
+      </div>
+      <div class="nav-item" data-page="settings">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+        Settings
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="radar-label">Threat Radar</div>
+      <canvas id="radarCanvas" width="158" height="158"></canvas>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="pageTitle">OVERVIEW</span>
+      <div class="topbar-right">
+        <div class="status-pill">
+          <span class="status-dot" id="agentDot"></span>
+          <span id="agentStatus">Connecting...</span>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot" id="scoutDot"></span>
+          <span id="scoutStatus">Scout</span>
+        </div>
+        <span id="clockEl" style="color:var(--text3);font-size:9px;letter-spacing:1px;"></span>
       </div>
     </div>
+    <div class="content">
 
-    <!-- Targets Page -->
-    <div class="page" id="page-targets">
-      <div class="header"><h2>Targets</h2><div><button class="btn btn-primary" onclick="showAddTarget()">+ Add Target</button></div></div>
-      <div class="card"><div class="table-wrap"><table id="targetsTable"><thead><tr><th>Name</th><th>Type</th><th>Value</th><th>Schedule</th><th>Last Scan</th><th>Next Scan</th><th>Status</th><th>Actions</th></tr></thead><tbody></tbody></table></div></div>
-    </div>
-
-    <!-- Assets Page -->
-    <div class="page" id="page-assets">
-      <div class="header"><h2>Discovered Assets</h2></div>
-      <div class="card"><div class="table-wrap"><table id="assetsTable"><thead><tr><th>Type</th><th>Value</th><th>Source Tool</th><th>First Seen</th><th>Last Seen</th></tr></thead><tbody></tbody></table></div></div>
-    </div>
-
-    <!-- Scans Page -->
-    <div class="page" id="page-scans">
-      <div class="header"><h2>Scan History</h2></div>
-      <div class="card"><div class="table-wrap"><table id="scansTable"><thead><tr><th>Target</th><th>Status</th><th>Duration</th><th>Tools Run</th><th>Findings</th><th>Started</th></tr></thead><tbody></tbody></table></div></div>
-    </div>
-
-    <!-- Agents Page -->
-    <div class="page" id="page-agents">
-      <div class="header"><h2>Connected Agents</h2><div><button class="btn btn-primary" onclick="showAddAgent()">+ Connect Agent</button></div></div>
-      <div class="card"><div class="table-wrap"><table id="agentsTable"><thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Last Heartbeat</th><th>Events</th></tr></thead><tbody></tbody></table></div></div>
-    </div>
-
-    <!-- Compliance Page -->
-    <div class="page" id="page-compliance">
-      <div class="header"><h2>Compliance</h2></div>
-      <div id="complianceScore">Loading...</div>
-    </div>
-
-    <!-- Settings Page -->
-    <div class="page" id="page-settings">
-      <div class="header"><h2>Settings</h2></div>
-      <div class="card">
-        <h3>Alert Preferences</h3>
-        <div id="alertRules">Loading...</div>
+      <!-- Overview -->
+      <div class="page active" id="page-overview">
+        <div class="tiles" id="tiles">
+          <div class="tile"><div class="tile-label">System Status</div><div class="tile-value green" id="tileStatus">-</div><div class="tile-sub" id="tileStatusSub">checking...</div></div>
+          <div class="tile info"><div class="tile-label">Active Agents</div><div class="tile-value cyan" id="tileAgents">-</div><div class="tile-sub" id="tileAgentsSub">connected</div></div>
+          <div class="tile warn"><div class="tile-label">Threats Blocked</div><div class="tile-value amber" id="tileThreats">-</div><div class="tile-sub">last 24h</div></div>
+          <div class="tile alert"><div class="tile-label">Open Incidents</div><div class="tile-value red" id="tileIncidents">-</div><div class="tile-sub" id="tileIncidentsSub">active</div></div>
+        </div>
+        <div class="row2">
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Event volume / 24h</span>
+              <span style="font-size:9px;color:var(--text3)" id="chartTotal">loading...</span>
+            </div>
+            <canvas id="chartCanvas" height="120"></canvas>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span class="panel-title">Recent Activity</span></div>
+            <div class="feed" id="activityFeed"><div class="loading">Loading...</div></div>
+          </div>
+        </div>
+        <div class="row3">
+          <div class="card-mini" onclick="nav('audit')">
+            <div class="cm-head"><span class="cm-title">Audit Trail</span><span class="cm-badge ok" id="auditBadge">Active</span></div>
+            <div class="cm-val" id="auditCount">-</div>
+            <div class="cm-sub">events logged</div>
+          </div>
+          <div class="card-mini" onclick="nav('policy')">
+            <div class="cm-head"><span class="cm-title">Trust Settings</span><span class="cm-badge" id="trustBadge">-</span></div>
+            <div class="cm-val" id="trustScore">-</div>
+            <div class="cm-sub">policy rules active</div>
+          </div>
+          <div class="card-mini" onclick="showKillSwitch()">
+            <div class="cm-head"><span class="cm-title">Kill Switch</span><span class="cm-badge off" id="killBadge">Standby</span></div>
+            <div class="cm-val" style="font-size:14px;color:var(--red)">HALT</div>
+            <div class="cm-sub">emergency stop all agents</div>
+          </div>
+        </div>
       </div>
+
+      <!-- Agents -->
+      <div class="page" id="page-agents">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Instance</th><th>Model</th><th>Status</th><th>Last Heartbeat</th><th>Events</th></tr></thead>
+            <tbody id="agentsTbl"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Threats -->
+      <div class="page" id="page-threats">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Severity</th><th>Type</th><th>Agent</th><th>Description</th><th>Outcome</th></tr></thead>
+            <tbody id="threatsTbl"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Incidents -->
+      <div class="page" id="page-incidents">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Agent</th><th>Event</th><th>Tool</th><th>Status</th></tr></thead>
+            <tbody id="incidentsTbl"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Audit Logs -->
+      <div class="page" id="page-audit">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Type</th><th>Agent</th><th>Tool</th><th>Summary</th></tr></thead>
+            <tbody id="auditTbl"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Policy -->
+      <div class="page" id="page-policy">
+        <div id="policyContent"><div class="loading">Loading...</div></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="page" id="page-settings">
+        <div class="panel" style="max-width:480px">
+          <div class="panel-head"><span class="panel-title">Scout API Key</span></div>
+          <div style="font-size:10px;color:var(--text2);margin-bottom:8px">Your key is stored locally. It authenticates extended API calls from this console.</div>
+          <input class="key-input" id="apiKeyInput" type="password" placeholder="lbs-your-api-key-here">
+          <button class="save-btn" onclick="saveApiKey()">Save Key</button>
+          <div style="font-size:9px;color:var(--text3);margin-top:8px" id="keyStatus"></div>
+        </div>
+        <div class="panel" style="max-width:480px;margin-top:12px">
+          <div class="panel-head"><span class="panel-title">Account</span></div>
+          <div style="font-size:10px;color:var(--text2)">Email: <span id="settingsEmail" style="color:var(--cyan)">-</span></div>
+          <button class="killswitch-btn" style="margin-top:12px" onclick="doLogout()">Sign Out</button>
+        </div>
+      </div>
+
     </div>
-  </main>
+  </div>
 </div>
 
-<!-- Toast container -->
-<div id="toastContainer"></div>
-
 <script>
-// ════════════════════════════════════════════
-// API Client
-// ════════════════════════════════════════════
-const API_BASE = '/api/v1';
-const WS_ID = 'default';
+'use strict';
 
-async function api(path, opts = {}) {
-  const url = `${API_BASE}${path}`;
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', 'X-Workspace-Id': WS_ID },
-    ...opts,
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+// ── Auth check ───────────────────────────────────────────────────────────────
+(function authCheck() {
+  fetch('/account/api/me', { credentials: 'include' })
+    .then(function(r) {
+      if (!r.ok) { window.location.href = '/account/login'; return; }
+      return r.json();
+    })
+    .then(function(me) {
+      if (!me) return;
+      var email = me.email || me.username || 'user';
+      document.getElementById('userEmail').textContent = email;
+      document.getElementById('settingsEmail').textContent = email;
+      boot();
+    })
+    .catch(function() { window.location.href = '/account/login'; });
+})();
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+var SCOUT_KEY = (function() {
+  return localStorage.getItem('scout_api_key') || '';
+})();
+
+function apiScout(path, opts) {
+  opts = opts || {};
+  var headers = { 'Content-Type': 'application/json' };
+  if (SCOUT_KEY) headers['X-Scout-Key'] = SCOUT_KEY;
+  return fetch(path, Object.assign({}, opts, { headers: Object.assign(headers, opts.headers || {}), credentials: 'include' }))
+    .then(function(r) { return r.json().catch(function() { return {}; }); });
 }
 
-// ════════════════════════════════════════════
-// Navigation
-// ════════════════════════════════════════════
-document.querySelectorAll('#nav a').forEach(link => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    const page = link.dataset.page;
-    document.querySelectorAll('#nav a').forEach(l => l.classList.remove('active'));
-    link.classList.add('active');
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(`page-${page}`).classList.add('active');
-    loadPage(page);
-    window.location.hash = page;
+function apiAccount(path) {
+  return fetch(path, { credentials: 'include' })
+    .then(function(r) { return r.json().catch(function() { return {}; }); });
+}
+
+function fmtTime(ts) {
+  if (!ts) return '-';
+  var d = new Date(ts);
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function fmtDate(ts) {
+  if (!ts) return '-';
+  var d = new Date(ts);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' + fmtTime(ts);
+}
+
+function sevBadge(sev) {
+  var s = (sev || 'info').toLowerCase();
+  var map = { critical: 'red', high: 'red', medium: 'amber', warning: 'amber', low: 'cyan', info: 'gray', breach: 'red' };
+  var cls = map[s] || 'gray';
+  return '<span class="badge badge-' + cls + '">' + s + '</span>';
+}
+
+function sevDot(sev) {
+  var s = (sev || 'info').toLowerCase();
+  var map = { critical: 'red', high: 'red', medium: 'amber', warning: 'amber', breach: 'red', low: 'cyan', info: 'green' };
+  return map[s] || 'green';
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll('.nav-item').forEach(function(el) {
+    el.classList.toggle('active', el.dataset.page === page);
   });
-});
-
-// Load page on hash change
-window.addEventListener('hashchange', () => {
-  const page = window.location.hash.slice(1) || 'dashboard';
-  document.querySelectorAll('#nav a').forEach(l => l.classList.remove('active'));
-  document.querySelector(`#nav a[data-page="${page}"]`)?.classList.add('active');
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(`page-${page}`)?.classList.add('active');
+  document.querySelectorAll('.page').forEach(function(el) {
+    el.classList.toggle('active', el.id === 'page-' + page);
+  });
+  var titles = { overview: 'OVERVIEW', agents: 'AGENTS', threats: 'THREATS', incidents: 'INCIDENTS', audit: 'AUDIT LOGS', policy: 'POLICY', settings: 'SETTINGS' };
+  document.getElementById('pageTitle').textContent = titles[page] || page.toUpperCase();
   loadPage(page);
-});
+}
 
-// Initial load
-const initPage = window.location.hash.slice(1) || 'dashboard';
-loadPage(initPage);
+document.querySelectorAll('.nav-item').forEach(function(el) {
+  el.addEventListener('click', function() { nav(el.dataset.page); });
+});
 
 function loadPage(page) {
-  switch(page) {
-    case 'dashboard': loadDashboard(); break;
-    case 'findings': loadFindings(); break;
-    case 'targets': loadTargets(); break;
-    case 'assets': loadAssets(); break;
-    case 'scans': loadScans(); break;
-    case 'agents': loadAgents(); break;
-    case 'compliance': loadCompliance(); break;
-    case 'settings': loadSettings(); break;
-  }
+  if (page === 'agents') loadAgents();
+  else if (page === 'threats') loadThreats();
+  else if (page === 'incidents') loadIncidents();
+  else if (page === 'audit') loadAudit();
+  else if (page === 'policy') loadPolicy();
+  else if (page === 'settings') loadSettingsPage();
 }
 
-// ════════════════════════════════════════════
-// Dashboard
-// ════════════════════════════════════════════
-async function loadDashboard() {
-  try {
-    const data = await api('/scout-score?workspace_id=' + WS_ID);
-    renderScoreWidget(data);
-  } catch(e) { document.getElementById('scoreWidget').innerHTML = `<div class="card"><p>No score data yet. Add a target and run a scan to get started.</p></div>`; }
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function tickClock() {
+  var el = document.getElementById('clockEl');
+  if (el) el.textContent = new Date().toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+}
+setInterval(tickClock, 1000);
+tickClock();
 
-  try {
-    const findings = await api('/findings?status=open&limit=10');
-    renderStatCards(findings);
-    renderCriticalFindings(findings.findings.filter(f => f.severity === 'critical').slice(0, 5));
-  } catch {}
+// ── Radar canvas ──────────────────────────────────────────────────────────────
+var radarAngle = 0;
+var radarDots = [];
 
-  try {
-    const scans = await api('/scans?limit=5');
-    renderRecentScans(scans);
-  } catch {}
+function radarAddDot(sev) {
+  var r = 20 + Math.random() * 58;
+  var a = Math.random() * Math.PI * 2;
+  var colMap = { critical: '#ff2244', high: '#ff2244', breach: '#ff2244', medium: '#d4af37', warning: '#d4af37', low: '#00c864', info: '#00c864' };
+  var color = colMap[(sev || 'info').toLowerCase()] || '#00c864';
+  radarDots.push({ x: Math.cos(a) * r, y: Math.sin(a) * r, color: color, born: Date.now() });
 }
 
-function renderScoreWidget(data) {
-  const trend = data.trend || {};
-  const trendArrow = trend.direction === 'up' ? '▲' : trend.direction === 'down' ? '▼' : ';';
-  const trendColor = trend.direction === 'up' ? 'var(--success)' : trend.direction === 'down' ? 'var(--critical)' : 'var(--text2)';
-  const cats = data.breakdown || {};
+(function radarLoop() {
+  var canvas = document.getElementById('radarCanvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var cx = 79, cy = 79, R = 75;
 
-  document.getElementById('scoreWidget').innerHTML = `
-    <div class="score-widget">
-      <div class="score-label">Scout Score</div>
-      <div class="score-value">${data.score ?? ';'}</div>
-      <div class="score-trend" style="color:${trendColor}">${trendArrow} ${trend.change || 0} this week</div>
-      <div class="score-categories">
-        ${['exposure','vulnerabilities','compliance','agentSafety'].map(k => `
-          <div class="score-cat">
-            <div class="cat-label">${k === 'agentSafety' ? 'Agent' : k.charAt(0).toUpperCase() + k.slice(1)}</div>
-            <div class="cat-value">${cats[k] ?? ';'}</div>
-            <div class="cat-bar"><div class="cat-bar-fill" style="width:${cats[k] || 0}%"></div></div>
-          </div>
-        `).join('')}
-      </div>
-    </div>`;
-}
+  radarAngle += 0.018;
+  var now = Date.now();
+  radarDots = radarDots.filter(function(d) { return now - d.born < 18000; });
 
-function renderStatCards(data) {
-  const counts = data.findings?.reduce((acc, f) => {
-    acc[f.severity] = (acc[f.severity] || 0) + 1;
-    return acc;
-  }, {}) || {};
+  ctx.clearRect(0, 0, 158, 158);
 
-  document.getElementById('statCards').innerHTML = `
-    <div class="stat stat-critical"><div class="stat-value">${counts.critical || 0}</div><div class="stat-label">Critical</div></div>
-    <div class="stat stat-high"><div class="stat-value">${counts.high || 0}</div><div class="stat-label">High</div></div>
-    <div class="stat stat-medium"><div class="stat-value">${counts.medium || 0}</div><div class="stat-label">Medium</div></div>
-    <div class="stat stat-low"><div class="stat-value">${counts.low || 0}</div><div class="stat-label">Low</div></div>`;
-}
+  // Background
+  ctx.fillStyle = '#080e18';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
 
-function renderCriticalFindings(findings) {
-  if (!findings.length) {
-    document.getElementById('criticalFindings').innerHTML = '<p style="color:var(--success);padding:20px">Done:  No critical findings</p>';
-    return;
-  }
-  document.getElementById('criticalFindings').innerHTML = findings.map(f => `
-    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <span class="badge badge-${f.severity}">${f.severity}</span>
-      <strong style="margin-left:8px">${f.title?.slice(0, 80)}</strong>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px">${f.affected_host || ''} · ${f.tool_name}</div>
-    </div>
-  `).join('');
-}
-
-function renderRecentScans(data) {
-  const scans = data.scans || [];
-  if (!scans.length) {
-    document.getElementById('recentScans').innerHTML = '<p style="color:var(--text2);padding:20px">No scans yet</p>';
-    return;
-  }
-  document.getElementById('recentScans').innerHTML = scans.map(s => `
-    <div style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-      <span><span class="status-dot status-${s.status === 'completed' ? 'online' : s.status === 'failed' ? 'failed' : 'offline'}"></span>${s.status}</span>
-      <span style="font-size:12px;color:var(--text2)">${s.findings_new || 0} new / ${s.findings_total || 0} total</span>
-      <span style="font-size:11px;color:var(--text3)">${new Date(s.created_at).toLocaleString()}</span>
-    </div>
-  `).join('');
-}
-
-// ════════════════════════════════════════════
-// Findings
-// ════════════════════════════════════════════
-let findingsPage = 0;
-async function loadFindings() {
-  const severity = document.getElementById('filterSeverity')?.value || '';
-  const status = document.getElementById('filterStatus')?.value || 'open';
-  const type = document.getElementById('filterType')?.value || '';
-  const params = new URLSearchParams({ workspace_id: WS_ID, status, limit: '50', offset: String(findingsPage * 50) });
-  if (severity) params.set('severity', severity);
-  if (type) params.set('type', type);
-
-  try {
-    const data = await api(`/findings?${params}`);
-    const tbody = document.querySelector('#findingsTable tbody');
-    tbody.innerHTML = (data.findings || []).map(f => `
-      <tr>
-        <td><span class="badge badge-${f.severity}">${f.severity}</span></td>
-        <td style="max-width:250px">${f.title?.slice(0, 100)}${f.cve_id ? `<br><small style="color:var(--text3)">${f.cve_id}</small>` : ''}</td>
-        <td>${f.finding_type}</td>
-        <td>${f.affected_host || ';'}</td>
-        <td>${f.tool_name}</td>
-        <td><span class="badge badge-${f.status === 'open' ? 'critical' : 'success'}">${f.status}</span></td>
-        <td style="font-size:11px">${new Date(f.last_seen_at).toLocaleDateString()}</td>
-        <td>
-          <button class="btn btn-sm btn-secondary" onclick="acknowledgeFinding('${f.id}')"></button>
-          <button class="btn btn-sm btn-danger" onclick="falsePositiveFinding('${f.id}')"></button>
-        </td>
-      </tr>
-    `).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:30px">No findings found</td></tr>';
-
-    document.getElementById('findingsPagination').innerHTML = `
-      <button class="btn btn-sm btn-secondary" onclick="findingsPage=Math.max(0,findingsPage-1);loadFindings()" ${findingsPage === 0 ? 'disabled' : ''}>← Prev</button>
-      <span style="margin:0 12px">Showing ${data.offset + 1}-${Math.min(data.offset + data.limit, data.total)} of ${data.total}</span>
-      <button class="btn btn-sm btn-secondary" onclick="findingsPage++;loadFindings()" ${(findingsPage + 1) * 50 >= data.total ? 'disabled' : ''}>Next →</button>`;
-  } catch {}
-}
-
-async function acknowledgeFinding(id) {
-  await api(`/findings/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'confirmed' }) });
-  showToast('Finding acknowledged', 'success');
-  loadFindings();
-}
-
-async function falsePositiveFinding(id) {
-  await api(`/findings/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'false_positive' }) });
-  showToast('Marked as false positive', 'success');
-  loadFindings();
-}
-
-function exportCSV() {
-  const rows = document.querySelectorAll('#findingsTable tbody tr');
-  let csv = 'Severity,Title,Type,Host,Tool,Status,Last Seen\n';
-  rows.forEach(row => {
-    const cells = row.querySelectorAll('td');
-    csv += Array.from(cells).slice(0, -1).map(c => `"${c.textContent.trim()}"`).join(',') + '\n';
+  // Grid rings
+  [0.25, 0.5, 0.75, 1].forEach(function(f) {
+    ctx.beginPath(); ctx.arc(cx, cy, R * f, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,200,100,0.08)'; ctx.lineWidth = 1; ctx.stroke();
   });
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'scout-findings.csv'; a.click();
-}
+  // Cross hairs
+  ctx.strokeStyle = 'rgba(0,200,100,0.06)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
 
-// ════════════════════════════════════════════
-// Targets
-// ════════════════════════════════════════════
-async function loadTargets() {
-  try {
-    const data = await api('/targets?workspace_id=' + WS_ID);
-    const tbody = document.querySelector('#targetsTable tbody');
-    tbody.innerHTML = (data.targets || []).map(t => `
-      <tr>
-        <td><strong>${t.name}</strong></td>
-        <td><span class="badge badge-info">${t.type}</span></td>
-        <td><code>${t.value}</code></td>
-        <td>${t.schedule}</td>
-        <td style="font-size:11px">${t.last_scan_at ? new Date(t.last_scan_at).toLocaleString() : 'Never'}</td>
-        <td style="font-size:11px">${t.next_scan_at ? new Date(t.next_scan_at).toLocaleString() : ';'}</td>
-        <td><span class="badge badge-${t.enabled ? 'success' : 'info'}">${t.enabled ? 'Active' : 'Disabled'}</span></td>
-        <td>
-          <button class="btn btn-sm btn-primary" onclick="triggerScan('${t.id}')">Scan Now</button>
-          <button class="btn btn-sm btn-secondary" onclick="toggleTarget('${t.id}', ${!t.enabled})">${t.enabled ? 'Disable' : 'Enable'}</button>
-          <button class="btn btn-sm btn-danger" onclick="deleteTarget('${t.id}')">Delete</button>
-        </td>
-      </tr>
-    `).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text2);padding:30px">No targets registered. Add your first target to start scanning.</td></tr>';
-  } catch {}
-}
+  // Sweep gradient
+  var grad = ctx.createConicalGradient ? null : null;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(radarAngle);
+  var sg = ctx.createLinearGradient(0, 0, R, 0);
+  sg.addColorStop(0, 'rgba(0,200,100,0.28)');
+  sg.addColorStop(1, 'rgba(0,200,100,0)');
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, -0.35, 0); ctx.closePath();
+  ctx.fillStyle = sg; ctx.fill();
+  // Sweep line
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(R, 0);
+  ctx.strokeStyle = '#00c864'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.restore();
 
-async function triggerScan(targetId) {
-  try {
-    await api(`/targets/${targetId}/scan`, { method: 'POST' });
-    showToast('Scan triggered!', 'success');
-    loadTargets();
-  } catch(e) { showToast('Failed to trigger scan', 'error'); }
-}
-
-async function toggleTarget(id, enabled) {
-  await api(`/targets/${id}`, { method: 'PUT', body: JSON.stringify({ enabled }) });
-  loadTargets();
-}
-
-async function deleteTarget(id) {
-  if (!confirm('Delete this target?')) return;
-  await api(`/targets/${id}`, { method: 'DELETE' });
-  loadTargets();
-}
-
-function showAddTarget() {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `
-    <div class="modal">
-      <h3>Add Scan Target</h3>
-      <div class="form-group"><label>Name</label><input id="targetName" placeholder="Production Server"></div>
-      <div class="form-group"><label>Type</label><select id="targetType"><option value="domain">Domain</option><option value="ip">IP</option><option value="ip_range">IP Range</option><option value="url">URL</option></select></div>
-      <div class="form-group"><label>Value</label><input id="targetValue" placeholder="example.com"></div>
-      <div class="form-group"><label>Schedule</label><select id="targetSchedule"><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="weekly" selected>Weekly</option><option value="monthly">Monthly</option></select></div>
-      <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="btn btn-primary" id="addTargetBtn">Add & Scan</button>
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-
-  modal.querySelector('#addTargetBtn').addEventListener('click', async () => {
-    const name = document.getElementById('targetName').value;
-    const type = document.getElementById('targetType').value;
-    const value = document.getElementById('targetValue').value;
-    const schedule = document.getElementById('targetSchedule').value;
-    if (!name || !value) { showToast('Name and value required', 'error'); return; }
-
-    try {
-      await api('/targets', { method: 'POST', body: JSON.stringify({ name, type, value, schedule }) });
-      modal.remove();
-      showToast('Target added! Scanning now...', 'success');
-      loadTargets();
-      setTimeout(() => { loadDashboard(); loadTargets(); }, 10000);
-    } catch(e) { showToast(e.message, 'error'); }
+  // Dots
+  radarDots.forEach(function(d) {
+    var age = (now - d.born) / 18000;
+    var alpha = 1 - age;
+    ctx.beginPath(); ctx.arc(cx + d.x, cy + d.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = d.color.replace(')', ',' + alpha + ')').replace('rgb', 'rgba').replace('#', '');
+    // fallback: just set globalAlpha
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = d.color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
   });
 
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  // Center dot
+  ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#00c864'; ctx.fill();
+
+  // Clip circle
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  requestAnimationFrame(radarLoop);
+})();
+
+// ── Main boot ─────────────────────────────────────────────────────────────────
+function boot() {
+  loadOverview();
+  setInterval(loadOverview, 30000);
+  // preload API key from storage
+  var k = localStorage.getItem('scout_api_key') || '';
+  if (k) { document.getElementById('apiKeyInput').value = k; SCOUT_KEY = k; }
 }
 
-function triggerQuickScan() {
-  // Quick scan uses scanme.nmap.org as test
-  showToast('Quick scan started on scanme.nmap.org', 'success');
-  api('/targets', { method: 'POST', body: JSON.stringify({
-    name: 'Quick Test (scanme.nmap.org)',
-    type: 'domain',
-    value: 'scanme.nmap.org',
-    schedule: 'daily',
-  }) }).then(() => { loadTargets(); loadDashboard(); });
-}
+// ── Overview ──────────────────────────────────────────────────────────────────
+function loadOverview() {
+  apiAccount('/account/api/me').then(function(me) {
+    if (me && me.email) {
+      document.getElementById('userEmail').textContent = me.email;
+      document.getElementById('settingsEmail').textContent = me.email;
+    }
+  }).catch(function() {});
 
-// ════════════════════════════════════════════
-// Assets
-// ════════════════════════════════════════════
-async function loadAssets() {
-  try {
-    const data = await api('/discovered-assets?workspace_id=' + WS_ID);
-    const tbody = document.querySelector('#assetsTable tbody');
-    tbody.innerHTML = (data.assets || []).map(a => `
-      <tr>
-        <td><span class="badge badge-info">${a.asset_type}</span></td>
-        <td><code>${a.value}</code></td>
-        <td>${a.source_tool}</td>
-        <td style="font-size:11px">${new Date(a.first_seen_at).toLocaleString()}</td>
-        <td style="font-size:11px">${new Date(a.last_seen_at).toLocaleString()}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px">No assets discovered yet</td></tr>';
-  } catch {}
-}
-
-// ════════════════════════════════════════════
-// Scans
-// ════════════════════════════════════════════
-async function loadScans() {
-  try {
-    const data = await api('/scans?workspace_id=' + WS_ID + '&limit=30');
-    const tbody = document.querySelector('#scansTable tbody');
-    tbody.innerHTML = (data.scans || []).map(s => `
-      <tr>
-        <td>${s.target_id?.slice(0,8) || ';'}</td>
-        <td><span class="badge badge-${s.status === 'completed' ? 'success' : s.status === 'failed' ? 'critical' : 'medium'}">${s.status}</span></td>
-        <td>${s.duration_ms ? (s.duration_ms / 1000).toFixed(1) + 's' : ';'}</td>
-        <td>${s.tools_run || 0}</td>
-        <td>${s.findings_new || 0} new / ${s.findings_total || 0} total</td>
-        <td style="font-size:11px">${s.started_at ? new Date(s.started_at).toLocaleString() : ';'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text2);padding:30px">No scans yet</td></tr>';
-  } catch {}
-}
-
-// ════════════════════════════════════════════
-// Agents
-// ════════════════════════════════════════════
-async function loadAgents() {
-  try {
-    const data = await api('/agents?workspace_id=' + WS_ID);
-    const tbody = document.querySelector('#agentsTable tbody');
-    tbody.innerHTML = (data.agents || []).map(a => `
-      <tr>
-        <td>${a.name}</td>
-        <td><span class="badge badge-info">${a.agent_type}</span></td>
-        <td><span class="status-dot status-${a.status === 'online' ? 'online' : 'offline'}"></span>${a.status}</td>
-        <td style="font-size:11px">${a.last_heartbeat ? new Date(a.last_heartbeat).toLocaleString() : 'Never'}</td>
-        <td><button class="btn btn-sm btn-secondary" onclick="loadAgentEvents('${a.id}')">View Events</button></td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text2);padding:30px">No agents connected</td></tr>';
-  } catch {}
-}
-
-function showAddAgent() {
-  const modal = document.createElement('div');
-  modal.className = 'modal-overlay';
-  modal.innerHTML = `
-    <div class="modal">
-      <h3>Connect Agent</h3>
-      <div class="form-group"><label>Agent Name</label><input id="agentName" placeholder="My Carina Agent"></div>
-      <div class="form-group"><label>Agent Type</label><select id="agentType"><option>carina</option><option>external-agent</option><option>goal-result</option></select></div>
-      <div class="form-group"><label>API Key</label><input id="agentKey" type="password" placeholder="Generate or enter API key"></div>
-      <div style="display:flex;gap:10px;margin-top:20px">
-        <button class="btn btn-primary" id="addAgentBtn">Connect</button>
-        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-
-  modal.querySelector('#addAgentBtn').addEventListener('click', async () => {
-    const name = document.getElementById('agentName').value;
-    const agent_type = document.getElementById('agentType').value;
-    const api_key = document.getElementById('agentKey').value || crypto.randomUUID();
-    try {
-      await api('/agents', { method: 'POST', body: JSON.stringify({ name, agent_type, api_key }) });
-      modal.remove();
-      showToast('Agent connected!', 'success');
-      loadAgents();
-    } catch(e) { showToast(e.message, 'error'); }
+  apiAccount('/account/api/instances').then(function(data) {
+    var list = data.instances || data || [];
+    if (!Array.isArray(list)) list = [];
+    var active = list.filter(function(i) { return i.status === 'online' || i.last_seen_at; }).length;
+    document.getElementById('tileAgents').textContent = active || list.length || '0';
+    document.getElementById('tileAgentsSub').textContent = list.length + ' registered';
+    if (list.length > 0) {
+      document.getElementById('agentDot').className = 'status-dot live';
+      document.getElementById('agentStatus').textContent = list.length + ' agent' + (list.length !== 1 ? 's' : '');
+    } else {
+      document.getElementById('agentDot').className = 'status-dot';
+      document.getElementById('agentStatus').textContent = 'No agents';
+    }
+  }).catch(function() {
+    document.getElementById('agentDot').className = 'status-dot err';
+    document.getElementById('agentStatus').textContent = 'Agent error';
   });
-  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+  apiAccount('/account/api/events?limit=50').then(function(data) {
+    var events = data.events || data || [];
+    if (!Array.isArray(events)) events = [];
+
+    // Threats: blocked/denied events
+    var threats = events.filter(function(e) {
+      var t = (e.event_type || e.type || '').toLowerCase();
+      return t.indexOf('block') >= 0 || t.indexOf('deny') >= 0 || t.indexOf('threat') >= 0 || t.indexOf('breach') >= 0 || t.indexOf('kill') >= 0;
+    });
+    document.getElementById('tileThreats').textContent = threats.length;
+
+    // Incidents: high severity
+    var incidents = events.filter(function(e) {
+      var sev = (e.severity || '').toLowerCase();
+      return sev === 'critical' || sev === 'high' || sev === 'breach';
+    });
+    document.getElementById('tileIncidents').textContent = incidents.length;
+    document.getElementById('tileIncidentsSub').textContent = incidents.length ? 'needs attention' : 'all clear';
+
+    // Status tile
+    if (incidents.length > 0) {
+      document.getElementById('tileStatus').textContent = 'ALERT';
+      document.getElementById('tileStatus').className = 'tile-value red';
+      document.getElementById('tileStatusSub').textContent = incidents.length + ' high-sev event' + (incidents.length !== 1 ? 's' : '');
+    } else {
+      document.getElementById('tileStatus').textContent = 'OK';
+      document.getElementById('tileStatus').className = 'tile-value green';
+      document.getElementById('tileStatusSub').textContent = 'no active alerts';
+    }
+
+    // Radar: add dots for recent events
+    events.slice(0, 12).forEach(function(e) { radarAddDot(e.severity || e.level || 'info'); });
+
+    // Activity feed
+    renderFeed(events.slice(0, 20));
+
+    // 24h chart
+    renderChart(events);
+
+    // Audit count
+    document.getElementById('auditCount').textContent = events.length;
+  }).catch(function() {
+    document.getElementById('tileStatus').textContent = 'ERR';
+    document.getElementById('tileStatus').className = 'tile-value red';
+  });
+
+  apiAccount('/account/api/trust-settings').then(function(data) {
+    var rules = data.rules || data.policies || [];
+    if (!Array.isArray(rules)) rules = [];
+    document.getElementById('trustScore').textContent = rules.length;
+    var badge = document.getElementById('trustBadge');
+    if (rules.length > 0) { badge.textContent = 'Active'; badge.className = 'cm-badge ok'; }
+    else { badge.textContent = 'None'; badge.className = 'cm-badge off'; }
+  }).catch(function() {
+    document.getElementById('trustScore').textContent = '0';
+    document.getElementById('trustBadge').textContent = '-';
+    document.getElementById('trustBadge').className = 'cm-badge off';
+  });
+
+  // Scout connection check
+  fetch('/api/readiness', { credentials: 'include' })
+    .then(function(r) {
+      document.getElementById('scoutDot').className = 'status-dot ' + (r.ok ? 'live' : 'err');
+      document.getElementById('scoutStatus').textContent = r.ok ? 'Scout live' : 'Scout error';
+    })
+    .catch(function() {
+      document.getElementById('scoutDot').className = 'status-dot err';
+      document.getElementById('scoutStatus').textContent = 'Scout offline';
+    });
 }
 
-async function loadAgentEvents(agentId) {
-  try {
-    const data = await api(`/agents/${agentId}/events?limit=20`);
-    const events = data.events || [];
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `<div class="modal" style="max-width:700px"><h3>Agent Events</h3>
-      ${events.length === 0 ? '<p style="color:var(--text2)">No events yet</p>' : events.map(e => `
-        <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <span class="badge badge-info">${e.event_type}</span>
-          ${e.tool_name ? `<strong style="margin-left:8px">${e.tool_name}</strong>` : ''}
-          <span style="color:var(--text2);margin-left:8px">${new Date(e.occurred_at).toLocaleString()}</span>
-        </div>`).join('')}
-      <button class="btn btn-secondary" style="margin-top:16px" onclick="this.closest('.modal-overlay').remove()">Close</button></div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-  } catch {}
+function renderFeed(events) {
+  var el = document.getElementById('activityFeed');
+  if (!events.length) { el.innerHTML = '<div class="empty">No recent activity</div>'; return; }
+  el.innerHTML = events.map(function(e) {
+    var dot = sevDot(e.severity || e.level);
+    var msg = e.description || e.message || e.event_type || e.type || 'Event';
+    var agent = e.agent_id ? e.agent_id.slice(0, 8) : (e.instance_id ? e.instance_id.slice(0, 8) : '');
+    return '<div class="feed-item"><div class="feed-sev ' + dot + '"></div><div class="feed-body"><div class="feed-msg">' + esc(msg) + '</div><div class="feed-meta">' + fmtTime(e.created_at || e.occurred_at || e.timestamp) + (agent ? ' / ' + agent : '') + '</div></div></div>';
+  }).join('');
 }
 
-// ════════════════════════════════════════════
-// Compliance
-// ════════════════════════════════════════════
-async function loadCompliance() {
-  try {
-    const data = await api('/compliance/score');
-    document.getElementById('complianceScore').innerHTML = `
-      <div class="score-widget">
-        <div class="score-label">SOC2 Compliance</div>
-        <div class="score-value">${data.score}</div>
-        <div class="score-trend">${data.controls_covered} / ${data.total_controls} controls covered</div>
-        <div class="cat-bar" style="margin-top:16px;background:rgba(255,255,255,0.2);height:12px;border-radius:6px">
-          <div class="cat-bar-fill" style="width:${data.score}%;background:var(--success)"></div>
-        </div>
-      </div>`;
-  } catch {
-    document.getElementById('complianceScore').innerHTML = '<div class="card"><p>Compliance data not available yet.</p></div>';
-  }
+function renderChart(events) {
+  var canvas = document.getElementById('chartCanvas');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth || 600;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = 120;
+  var buckets = new Array(12).fill(0);
+  var now = Date.now();
+  var span = 24 * 3600 * 1000;
+  var bsize = span / 12;
+
+  events.forEach(function(e) {
+    var ts = new Date(e.created_at || e.occurred_at || e.timestamp || 0).getTime();
+    var age = now - ts;
+    if (age >= 0 && age < span) {
+      var b = Math.floor((span - age) / bsize);
+      if (b >= 0 && b < 12) buckets[b]++;
+    }
+  });
+
+  var max = Math.max.apply(null, buckets) || 1;
+  var bw = W / 12;
+  var pad = 4;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,200,100,0.06)'; ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(function(f) {
+    var y = H - H * f;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  });
+
+  // Bars
+  buckets.forEach(function(v, i) {
+    var bh = (v / max) * (H - 16);
+    var x = i * bw + pad;
+    var w = bw - pad * 2;
+    var y = H - bh;
+    var grad = ctx.createLinearGradient(0, y, 0, H);
+    grad.addColorStop(0, 'rgba(0,200,100,0.7)');
+    grad.addColorStop(1, 'rgba(0,200,100,0.1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w, bh);
+  });
+
+  // Hour labels
+  ctx.fillStyle = '#3a5568'; ctx.font = '8px JetBrains Mono, monospace'; ctx.textAlign = 'center';
+  [0, 6, 12, 18, 24].forEach(function(h) {
+    var i = Math.round(h / 2);
+    if (i > 12) i = 12;
+    var x = (i / 12) * W;
+    var label = h === 0 ? '-24h' : h === 24 ? 'now' : '-' + (24 - h) + 'h';
+    ctx.fillText(label, x, H - 2);
+  });
+
+  var total = buckets.reduce(function(a, b) { return a + b; }, 0);
+  document.getElementById('chartTotal').textContent = total + ' events';
 }
 
-// ════════════════════════════════════════════
-// Settings
-// ════════════════════════════════════════════
-async function loadSettings() {
-  try {
-    const data = await api('/alerts/rules');
-    const rules = data.rules || [];
-    document.getElementById('alertRules').innerHTML = rules.map(r => {
-      const trigger = typeof r.trigger === 'string' ? JSON.parse(r.trigger) : r.trigger;
-      return `<div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
-        <div><strong>${r.name}</strong><div style="font-size:11px;color:var(--text2)">Event: ${trigger.event} · Channels: ${(r.channels || []).join(', ')}</div></div>
-        <span class="badge badge-${r.enabled ? 'success' : 'info'}">${r.enabled ? 'Active' : 'Disabled'}</span>
-      </div>`;
-    }).join('') || '<p style="color:var(--text2)">Default alert rules will be created automatically.</p>';
-  } catch {}
+// ── Agents page ───────────────────────────────────────────────────────────────
+function loadAgents() {
+  var tbody = document.getElementById('agentsTbl');
+  tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiAccount('/account/api/instances').then(function(data) {
+    var list = data.instances || data || [];
+    if (!Array.isArray(list)) list = [];
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No agents registered</td></tr>'; return; }
+    tbody.innerHTML = list.map(function(a) {
+      var live = a.status === 'online' || (a.last_seen_at && (Date.now() - new Date(a.last_seen_at).getTime()) < 120000);
+      return '<tr><td>' + esc(a.name || a.id || '-') + '</td><td>' + esc(a.model || a.agent_type || '-') + '</td><td>' + (live ? '<span class="badge badge-green">Online</span>' : '<span class="badge badge-gray">Offline</span>') + '</td><td>' + fmtDate(a.last_seen_at || a.last_heartbeat) + '</td><td>' + (a.event_count || '-') + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load agents</td></tr>';
+  });
 }
 
-// ════════════════════════════════════════════
-// Utilities
-// ════════════════════════════════════════════
-function showToast(msg, type = 'success') {
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = msg;
-  document.getElementById('toastContainer').appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+// ── Threats page ──────────────────────────────────────────────────────────────
+function loadThreats() {
+  var tbody = document.getElementById('threatsTbl');
+  tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading...</td></tr>';
+  apiAccount('/account/api/events?limit=100').then(function(data) {
+    var events = data.events || data || [];
+    if (!Array.isArray(events)) events = [];
+    var threats = events.filter(function(e) {
+      var t = (e.event_type || e.type || '').toLowerCase();
+      var sev = (e.severity || '').toLowerCase();
+      return t.indexOf('block') >= 0 || t.indexOf('deny') >= 0 || t.indexOf('threat') >= 0 || t.indexOf('breach') >= 0 || t.indexOf('kill') >= 0 || sev === 'critical' || sev === 'high';
+    });
+    if (!threats.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No threats detected</td></tr>'; return; }
+    tbody.innerHTML = threats.map(function(e) {
+      return '<tr><td>' + fmtDate(e.created_at || e.occurred_at) + '</td><td>' + sevBadge(e.severity) + '</td><td>' + esc(e.event_type || e.type || '-') + '</td><td>' + esc((e.agent_id || e.instance_id || '-').slice(0, 12)) + '</td><td>' + esc((e.description || e.message || '-').slice(0, 80)) + '</td><td>' + esc(e.outcome || e.action || 'logged') + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Failed to load</td></tr>';
+  });
 }
 
-// Auto-refresh dashboard every 30s
-setInterval(() => {
-  const active = document.querySelector('.page.active');
-  if (active?.id === 'page-dashboard') loadDashboard();
-}, 30000);
+// ── Incidents page ────────────────────────────────────────────────────────────
+function loadIncidents() {
+  var tbody = document.getElementById('incidentsTbl');
+  tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiAccount('/account/api/events?limit=100').then(function(data) {
+    var events = data.events || data || [];
+    if (!Array.isArray(events)) events = [];
+    if (!events.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No incidents</td></tr>'; return; }
+    tbody.innerHTML = events.slice(0, 50).map(function(e) {
+      return '<tr><td>' + fmtDate(e.created_at || e.occurred_at) + '</td><td>' + esc((e.agent_id || e.instance_id || '-').slice(0, 12)) + '</td><td>' + esc(e.event_type || e.type || '-') + '</td><td>' + esc(e.tool_name || '-') + '</td><td>' + sevBadge(e.severity || 'info') + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load</td></tr>';
+  });
+}
+
+// ── Audit page ────────────────────────────────────────────────────────────────
+function loadAudit() {
+  var tbody = document.getElementById('auditTbl');
+  tbody.innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiAccount('/account/api/events?limit=100').then(function(data) {
+    var events = data.events || data || [];
+    if (!Array.isArray(events)) events = [];
+    if (!events.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No audit entries</td></tr>'; return; }
+    tbody.innerHTML = events.map(function(e) {
+      return '<tr><td>' + fmtDate(e.created_at || e.occurred_at) + '</td><td>' + esc(e.event_type || e.type || '-') + '</td><td>' + esc((e.agent_id || e.instance_id || '-').slice(0, 12)) + '</td><td>' + esc(e.tool_name || '-') + '</td><td>' + esc((e.description || e.message || '-').slice(0, 100)) + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Failed to load</td></tr>';
+  });
+}
+
+// ── Policy page ───────────────────────────────────────────────────────────────
+function loadPolicy() {
+  var el = document.getElementById('policyContent');
+  el.innerHTML = '<div class="loading">Loading...</div>';
+  apiAccount('/account/api/trust-settings').then(function(data) {
+    var rules = data.rules || data.policies || [];
+    if (!Array.isArray(rules)) rules = [];
+    if (!rules.length) {
+      el.innerHTML = '<div class="panel"><div class="empty">No policy rules configured</div></div>';
+      return;
+    }
+    el.innerHTML = '<div class="tbl-wrap"><table><thead><tr><th>Rule</th><th>Type</th><th>Action</th><th>Status</th></tr></thead><tbody>' +
+      rules.map(function(r) {
+        return '<tr><td>' + esc(r.name || r.id || '-') + '</td><td>' + esc(r.type || r.rule_type || '-') + '</td><td>' + esc(r.action || r.outcome || '-') + '</td><td>' + (r.enabled !== false ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-gray">Disabled</span>') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }).catch(function() {
+    el.innerHTML = '<div class="panel"><div class="empty">Failed to load policy</div></div>';
+  });
+}
+
+// ── Settings page ─────────────────────────────────────────────────────────────
+function loadSettingsPage() {
+  var k = localStorage.getItem('scout_api_key') || '';
+  document.getElementById('apiKeyInput').value = k;
+  if (k) document.getElementById('keyStatus').textContent = 'Key loaded from local storage.';
+}
+
+function saveApiKey() {
+  var k = document.getElementById('apiKeyInput').value.trim();
+  localStorage.setItem('scout_api_key', k);
+  SCOUT_KEY = k;
+  document.getElementById('keyStatus').textContent = k ? 'Key saved.' : 'Key cleared.';
+}
+
+// ── Kill switch ───────────────────────────────────────────────────────────────
+function showKillSwitch() {
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:500';
+  overlay.innerHTML = '<div style="background:#0c1828;border:1px solid #ff2244;padding:32px;max-width:380px;text-align:center">' +
+    '<div style="font-size:11px;letter-spacing:3px;color:#ff2244;margin-bottom:12px">KILL SWITCH</div>' +
+    '<div style="font-size:10px;color:#6b8fa8;margin-bottom:24px;line-height:1.6">This will send a halt signal to all connected Carina agents. They will stop processing immediately. Confirm to proceed.</div>' +
+    '<div style="display:flex;gap:12px;justify-content:center">' +
+    '<button onclick="confirmKill()" style="padding:8px 20px;font-family:var(--mono);font-size:10px;letter-spacing:2px;cursor:pointer;background:rgba(255,34,68,0.1);border:1px solid #ff2244;color:#ff2244">HALT ALL</button>' +
+    '<button onclick="this.closest(\'[data-modal]\').remove()" style="padding:8px 20px;font-family:var(--mono);font-size:10px;letter-spacing:2px;cursor:pointer;background:transparent;border:1px solid #1a2e44;color:#6b8fa8">Cancel</button>' +
+    '</div></div>';
+  overlay.dataset.modal = '1';
+  overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('[onclick="this.closest(\'[data-modal]\').remove()"]').addEventListener('click', function() { overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function confirmKill() {
+  document.querySelectorAll('[data-modal]').forEach(function(el) { el.remove(); });
+  fetch('/api/kill', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-Scout-Key': SCOUT_KEY } })
+    .then(function(r) {
+      var badge = document.getElementById('killBadge');
+      badge.textContent = r.ok ? 'TRIGGERED' : 'FAILED';
+      badge.className = 'cm-badge ' + (r.ok ? 'warn' : 'off');
+    })
+    .catch(function() {});
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+function doLogout() {
+  fetch('/account/logout', { method: 'POST', credentials: 'include' })
+    .finally(function() { window.location.href = '/account/login'; });
+}
+
+// ── Escape helper ─────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 </script>
 </body>
 </html>
