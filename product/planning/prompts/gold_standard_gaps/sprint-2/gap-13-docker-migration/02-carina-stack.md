@@ -1,11 +1,27 @@
 # Gap 13 - Prompt 02: Fix and Finalise the Carina Compose Stack
 
+**Status: COMPLETED 2026-06-21**
+
 **Gap:** 13 Docker Migration
 **Prompt number:** 02 of 05
 **Name:** Carina Stack - Fix Hub Crash, Activate Cloud and Ops, Remove Port Bindings
 **Primary agent:** Claude Code
 **Estimated hours:** 2-3 h
 **Depends on:** Prompt 01 (proxy network defined, nginx configs written)
+
+## What was done
+
+- Hub crash: `corecarinaaiuk-carina-hub-1` is HEALTHY in the prod stack. The crashing
+  hub (`carina-carina-hub-1`) is from a stale old stack at `/opt/carina/` - removed in
+  Prompt 05. `init.sql` already creates `carina_skills_hub`, so no fix was needed.
+- Removed host port bindings from all app services (carina-web, carina-hub, carina-ops,
+  carina-cloud) - replaced `ports:` with `expose:`. Only nginx keeps ports 80/443.
+- Added `restart: unless-stopped` to postgres and redis (was missing).
+- Updated `.env.docker.example` with VPS deploy overrides section documenting
+  CARINA_OPS_CONTEXT, CARINA_CLOUD_CONTEXT, CARINA_SSL_DIR, LABYRINTHSCOUT_STATIC.
+- VPS status: bare-metal nginx is running (holding 80/443, disabled from autostart).
+  `corecarinaaiuk-nginx-1` is Created but not started (port conflict). This is resolved
+  in Prompt 04 cutover.
 
 ---
 

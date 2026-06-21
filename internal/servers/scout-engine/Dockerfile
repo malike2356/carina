@@ -1,17 +1,15 @@
-# Scout Event Ingestion Server Dockerfile
-FROM node:22-alpine
-
+# Scout Event Ingestion Engine
+FROM node:22-alpine AS build
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
 
-# Copy package files and install
+FROM node:22-alpine AS runner
+WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
-
-# Copy built source
-COPY dist ./dist
-
-# Expose port
-EXPOSE 4444
-
-# Start the event ingestion server
-CMD ["node", "dist/src/server.js"]
+COPY --from=build /app/dist ./dist
+EXPOSE 4455
+CMD ["node", "dist/server.js"]

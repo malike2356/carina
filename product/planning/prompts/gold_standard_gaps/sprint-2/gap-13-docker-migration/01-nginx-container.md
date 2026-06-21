@@ -1,11 +1,27 @@
 # Gap 13 - Prompt 01: Nginx Container Config
 
+**Status: COMPLETED 2026-06-21**
+
 **Gap:** 13 Docker Migration
 **Prompt number:** 01 of 05
 **Name:** Nginx Container - Vhost Configs and Shared Proxy Network
 **Primary agent:** Claude Code
 **Estimated hours:** 2-3 h
 **Depends on:** README.md (read it first)
+
+## What was done
+
+- Created `docker/nginx/console.labyrinthscout.com.conf` (upstream labyrinth-scout:4444,
+  mirrors all bare-metal location blocks)
+- Created `docker/nginx/labyrinthscout.com.conf` (static site served from
+  `/var/www/labyrinthscout.com`)
+- Updated `docker-compose.prod.yml`:
+  - nginx service: mounted both Scout nginx configs
+  - nginx service: mounted `LABYRINTHSCOUT_STATIC` volume (defaults to
+    `/home/malike/apps/labyrinthscout.com-static`)
+  - nginx service: added `proxy` network so Scout containers are reachable
+  - Added `proxy` as external network in the networks section
+- Updated comment in `carina-prod.conf` HTTP block to clarify scope
 
 ---
 

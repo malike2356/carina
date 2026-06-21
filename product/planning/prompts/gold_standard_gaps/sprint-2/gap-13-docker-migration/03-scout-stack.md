@@ -1,11 +1,28 @@
 # Gap 13 - Prompt 03: Scout Stack - Production Compose File
 
+**Status: COMPLETED 2026-06-21**
+
 **Gap:** 13 Docker Migration
 **Prompt number:** 03 of 05
 **Name:** Scout Stack - Create docker-compose.prod.yml for Console and Engine
 **Primary agent:** Claude Code
 **Estimated hours:** 1-2 h
 **Depends on:** Prompt 02 (Carina compose fixed, proxy network concept established)
+
+## What was done
+
+- Created `console.labyrinthscout.com/Dockerfile` - multi-stage build (deps, build, runner);
+  pnpm-based; copies public/ assets into the image; exposes port 4444.
+- Updated `scout-engine/Dockerfile` from runtime-only to multi-stage (builds TypeScript
+  inside Docker); entry point is `dist/server.js`; exposes port 4455.
+- Created `console.labyrinthscout.com/docker-compose.prod.yml` with:
+  - `labyrinth-scout` container on port 4444, joined to `scout` + `proxy` networks
+  - `scout-engine` container on port 4455, `scout` network only (internal)
+  - Dedicated postgres (scout user/db) and redis for Scout
+  - `:?` required-var enforcement on SCOUT_DB_PASSWORD, SCOUT_API_KEY, SCOUT_SESSION_SECRET
+  - External `proxy` network (created once: `docker network create proxy`)
+  - SCOUT_ENGINE_CONTEXT override for VPS absolute path
+- Appended VPS deploy overrides to `.env.example`
 
 ---
 
