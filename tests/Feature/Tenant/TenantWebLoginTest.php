@@ -11,6 +11,22 @@ beforeEach(function (): void {
     $this->withoutMiddleware(VerifyCsrfToken::class);
 });
 
+it('redirects mistaken tenant account login url to workspace login', function (): void {
+    Http::preventStrayRequests();
+
+    $tenant = app(TenantCreationService::class)->createTenant([
+        'company_name' => 'Account login redirect '.uniqid(),
+        'owner_name' => 'Owner',
+        'owner_email' => 'owner-'.uniqid().'@account-login-redirect.test',
+        'plan' => 'starter',
+    ]);
+
+    $host = $tenant->domains->first()->domain.'.propreneur.test';
+
+    $this->get("http://{$host}/account/login")
+        ->assertRedirect("http://{$host}/login");
+});
+
 it('accepts tenant login post without server error when login throttle middleware is registered', function (): void {
     Http::preventStrayRequests();
 
