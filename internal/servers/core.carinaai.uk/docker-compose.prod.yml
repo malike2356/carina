@@ -78,6 +78,12 @@ services:
       PORT: "4001"
       CARINA_API_URL: http://carina-web:3000
       CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina_central
+      # Ops panel path overrides so it does not fall back to /home/malike/apps paths.
+      # CARINA_CORE_ROOT and SCOUT_CONSOLE_PUBLIC_DIR are only needed for the PTY bridge
+      # and Scout static proxy features; if those features are unused, leave them unset.
+      CARINA_CORE_ENV_PATH: ${CARINA_CORE_ENV_PATH:-}
+      SCOUT_CONSOLE_PUBLIC_DIR: ${SCOUT_CONSOLE_PUBLIC_DIR:-}
+      CARINA_WORKSPACE_ROOT: ${CARINA_WORKSPACE_ROOT:-/tmp/carina-workspaces}
     expose:
       - "4001"
     depends_on:
@@ -122,7 +128,7 @@ services:
       - ./docker/nginx/hub.carinaai.uk.conf:/etc/nginx/conf.d/hub.carinaai.uk.conf:ro
       - ./docker/nginx/console.labyrinthscout.com.conf:/etc/nginx/conf.d/console.labyrinthscout.com.conf:ro
       - ./docker/nginx/labyrinthscout.com.conf:/etc/nginx/conf.d/labyrinthscout.com.conf:ro
-      - ./docker/nginx/conf.d/certbot.conf:/etc/nginx/conf.d/certbot.conf:ro
+      - ./docker/nginx/conf.d/certbot-location.inc:/etc/nginx/certbot-location.inc:ro
       - ./docker/nginx/conf.d/ssl-params.conf:/etc/nginx/conf.d/ssl-params.conf:ro
       - ./docs/.vitepress/dist:/var/www/docs:ro
       - ./public_website:/var/www/public_website:ro
