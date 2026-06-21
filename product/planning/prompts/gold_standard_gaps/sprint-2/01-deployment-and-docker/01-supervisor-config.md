@@ -1,5 +1,7 @@
 # Prompt 01: Supervisor Configs for Core and Gateway
 
+**Status: COMPLETED 2026-06-21**
+
 ## Context
 
 `docker/supervisor/carina-hub.conf` exists and works for the Skills Hub process.

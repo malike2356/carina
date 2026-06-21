@@ -1,9 +1,15 @@
 # The Ultimate Carina Upgrade - Gap Prompts
 
-**Date:** 2026-06-19 (gap-13 truth in advertising added 2026-06-19)
+**Date:** 2026-06-21 (gap-14 deploy pipeline added 2026-06-21)
 **Status:** ALL PROMPTS WRITTEN - Ready for implementation
-**Total Gaps:** 13
-**Total Prompts:** 82
+**Total Gaps:** 14
+**Total Prompts:** 85
+
+**Infrastructure note (2026-06-21):** The stack is now fully Dockerised. gap-13-docker-migration
+prompts 01-03 are COMPLETED. Prompts 04 (VPS cutover) and 05 (cleanup) are pending manual
+execution on the VPS. gap-01-docker is SUPERSEDED. sprint-2/01-deployment-and-docker is FULLY
+BUILT. Any prompt that referenced bare-metal supervisor or host-binding nginx ports has been
+updated to reflect the Docker architecture.
 
 Reuse rule: Carina keeps its own voice. Treat Hermes, OpenClaw, and Odysseus as behavior references, then rewrite any copied phrasing, labels, comments, and UI copy before implementation.
 
@@ -25,7 +31,7 @@ Estimates assume 3 parallel agents + 7-10 hours/day. Collapse "week" to "1-2 day
 
 | # | Gap | Delivers | Prompts | Est. Days |
 |---|-----|----------|---------|-----------|
-| 01 | **Docker** | s6-overlay supervision, health checks, one-command prod deploy | 1 | 0.5 |
+| 01 | **Docker** | SUPERSEDED by gap-13-docker-migration | 1 | DONE |
 | 02 | **CarinaHub** | Skill marketplace: security scanner, reviews, public site, CLI, nginx deploy | 5 | 2-3 |
 | 03 | **Mobile** | Background connection, camera/motion, SMS/call relay, companion pairing UI | 4 | 3-4 |
 | 04 | **Desktop** | Tauri scaffold, chat engine, composer, pages, native OS integrations, Carina widgets | 6 | 4-6 |
@@ -38,6 +44,7 @@ Estimates assume 3 parallel agents + 7-10 hours/day. Collapse "week" to "1-2 day
 | 11 | *(reserved)* | | | |
 | 12 | **Scout Product** | Scanning engine, Scout Score, dashboard, alerting, API, onboarding, CLI | 9 | 15-20 |
 | 13 | **Truth in Advertising** | Per-surface capability contract, channel-honest quick replies, cloud identity, secret refusal guard, CI smoke tests | 8 | 1-2 |
+| 14 | **Deploy Pipeline** | GitHub Actions auto-deploy, one-script server bootstrap (VPS or AWS EC2), dev-to-prod guide | 3 | 0.5 |
 
 **Total estimated days with 3 parallel agents: 18-27 days of focused work.**
 
@@ -45,15 +52,12 @@ Estimates assume 3 parallel agents + 7-10 hours/day. Collapse "week" to "1-2 day
 
 ## PROMPT INVENTORY (complete)
 
-### Gap 01 - Docker (1 prompt)
+### Gap 01 - Docker (SUPERSEDED)
 
-```
-gap-01-docker/
-└── prompt.md               479 lines - supervisord vs s6-overlay, HEALTHCHECK, prod stack
-```
+DONE. Superseded by gap-13-docker-migration. The full Docker stack (Carina + Scout + nginx)
+is implemented. See `gap-13-docker-migration/` for implementation prompts and status.
 
-**Agent:** Cursor (Dockerfile) + Claude Code (compose config)
-**Start here:** Most other gaps assume Docker is working.
+See also: `sprint-2/01-deployment-and-docker/` (FULLY BUILT 2026-06-20).
 
 ---
 
@@ -321,6 +325,23 @@ Duplicate and weaker versions of prompts are in `_archive-duplicates/`. Safe to 
 
 ---
 
+### Gap 14 - Deploy Pipeline (3 prompts)
+
+```
+sprint-2/gap-14-deploy-pipeline/
+├── README.md                    (start here - current state + dev-to-prod flow)
+├── 01-github-actions-deploy.md  Add .github/workflows/deploy.yml (auto-deploy on CI pass)
+├── 02-server-bootstrap.md       bootstrap-server.sh + bootstrap-aws-ec2.md
+└── 03-dev-env-alignment.md      docs/dev-setup.md - port map, .env vars, deploy path
+```
+
+**Agent:** Claude Code
+**Priority:** Run 01 first (CI deploy), then 02 and 03 in parallel.
+**Key context:** Stack is fully Dockerised. deploy-carina.sh already works manually. This gap
+automates it via GitHub Actions and makes server migration a 5-minute operation.
+
+---
+
 ## KEY REFERENCE FILES
 
 ```
@@ -332,4 +353,7 @@ gap-07-tui-cli/GOLD-STANDARD-ONBOARDING-AESTHETICS.md  Odysseus onboarding quali
 00-PRE-WORK-ALIGNMENT.md                           Full codebase audit before starting
 gap-10-incident-blog/README.md                     Incident blog architecture and context
 gap-10-incident-blog/01-db-schema-and-carina-tools.md  Blog data layer and CLI specification
+gap-13-docker-migration/README.md                  Full Docker migration status (01-03 done, 04-05 pending)
+gap-14-deploy-pipeline/README.md                   CI/CD pipeline alignment and AWS portability
+internal/servers/core.carinaai.uk/docker/DEPLOY.md  Authoritative deploy runbook (always up to date)
 ```

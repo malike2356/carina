@@ -148,7 +148,7 @@ POST /api/profile/refresh    - trigger immediate profile rebuild
 - [ ] Profile summary appears at the top of system prompt in ops debug view
 - [ ] New session: Carina references an active project without being told which project to work on
 - [ ] Update preference to `responseStyle: 'brief'` - subsequent responses are shorter
-- [ ] Profile refreshes nightly (cron shows in supervisor log)
+- [ ] Profile refreshes nightly (cron fires inside the Docker container; verify with `docker compose logs carina-web | grep "profile refresh"`)
 
 ## Files to Create or Modify
 

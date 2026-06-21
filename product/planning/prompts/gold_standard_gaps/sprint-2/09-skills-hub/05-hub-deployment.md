@@ -72,8 +72,8 @@ carina-hub:
     HUB_PORT: 3444
     DATABASE_URL: "${DATABASE_URL}"
     HUB_SECRET: "${HUB_SECRET}"
-  ports:
-    - "3444:3444"
+  expose:
+    - "3444"
   networks: [backend]
   depends_on: [postgres]
   healthcheck:
@@ -122,15 +122,14 @@ DOMAINS+=(
 ## Verification Checklist
 
 - [ ] `curl https://hub.carinaai.uk/health` returns `{"status":"ok"}`
-- [ ] `supervisorctl status carina-hub` shows RUNNING
+- [ ] `docker compose ps carina-hub` shows status `running`
 - [ ] Hub crashes and restarts automatically (kill the process, see it restart in 3s)
 - [ ] `GET https://hub.carinaai.uk/hub/skills` returns list of approved skills (no auth)
 - [ ] `POST https://hub.carinaai.uk/hub/skills/publish` without token returns 401
 
 ## Files to Create or Modify
 
-- MODIFY `docker/supervisor/carina-hub.conf` - correct port and paths
 - CREATE `docker/nginx/conf.d/hub.conf`
-- MODIFY `docker-compose.prod.yml` - add carina-hub service
+- MODIFY `docker-compose.prod.yml` - add carina-hub service with `expose:` (not `ports:`)
 - MODIFY `docker/scripts/init-certs.sh` - add hub and skills domains
 - MODIFY `src/skills/hub.ts` - ensure /health and API key auth

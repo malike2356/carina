@@ -85,7 +85,7 @@ CREATE TABLE scout_scores (
 CREATE INDEX ON scout_scores (tenant_id, computed_at DESC);
 ```
 
-Compute and store score every hour via a cron job in supervisord.
+Compute and store score every hour via a cron scheduled inside the Scout Docker container (e.g., node-cron or a setInterval loop in the server process).
 
 ### 4. Score API
 

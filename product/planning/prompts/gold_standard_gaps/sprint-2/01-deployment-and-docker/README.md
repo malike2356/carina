@@ -1,28 +1,31 @@
 # Sprint 2 - Category 01: Deployment and Docker
 
+## Status: FULLY BUILT (2026-06-20)
+
+All prompts in this category are implemented in `internal/servers/core.carinaai.uk/docker/`.
+
 ## What Exists
 
-- `core.carinaai.uk/docker/Dockerfile.carina` - multi-stage build
-- `core.carinaai.uk/docker/nginx/` - nginx configs for all subdomains
-- `core.carinaai.uk/docker/postgres/` - Postgres init
-- `core.carinaai.uk/docker-compose.yml` - dev stack
-- `core.carinaai.uk/docker-compose.prod.yml` - prod stack
-- `core.carinaai.uk/docker-compose.verlox.yml` - full VERLOX stack
-- `core.carinaai.uk/docker/supervisor/carina-hub.conf` - supervisor for hub only
-
-## What Is Missing
-
-- Supervisor configs for carina-core and carina-gateway processes
-- HEALTHCHECK directives in Dockerfile.carina
-- Graceful shutdown (SIGTERM handling in start.sh)
-- Log rotation config for /data/logs inside container
-- One-command production stack with automatic TLS via Certbot
+- `docker/Dockerfile.carina` - multi-stage build, HEALTHCHECK, supervisord CMD
+- `docker/supervisor/container/` - carina-core, carina-gateway, carina-hub, carina-ops, logrotate
+- `docker/supervisor/vps/` - bare-metal supervisor templates for Contabo VPS
+- `docker/supervisor/supervisord.conf` - root supervisord config
+- `docker/healthcheck.sh` - probes `/health` and `/api/health`
+- `docker/logrotate/carina` - daily rotation for `/app/data/logs/*.log`
+- `docker/nginx/conf.d/certbot.conf` - ACME webroot snippet
+- `docker/nginx/conf.d/ssl-params.conf` - TLS hardening snippet
+- `docker/nginx/carina-prod-bootstrap.conf` - HTTP-only first boot for cert issue
+- `docker/scripts/init-certs.sh` - Let's Encrypt SAN certificate bootstrap
+- `docker/scripts/deploy-prod.sh` - one-command production deploy
+- `docker-compose.prod.yml` - prod stack with certbot, nginx, health checks, logrotate mount
+- `src/index.ts` - SIGTERM/SIGINT graceful shutdown with 25s force exit
+- `docker/DEPLOY.md` - deploy runbook
 
 ## Prompts in This Category
 
-- `01-supervisor-config.md` - Add supervisor for core and gateway
-- `02-healthcheck-and-graceful-shutdown.md` - HEALTHCHECK and SIGTERM
-- `03-production-compose-tls.md` - Production stack with auto-TLS
+- `01-supervisor-config.md` - DONE
+- `02-healthcheck-and-graceful-shutdown.md` - DONE
+- `03-production-compose-tls.md` - DONE
 
 ## Original Reference
 

@@ -26,48 +26,43 @@ Supervisor conf: `/etc/supervisor/conf.d/`
 
 ## Current state (as of 2026-06-21)
 
-### Supervisor-managed processes
+### Prompt execution status
 
-| Program | Status | Port | Notes |
-|---------|--------|------|-------|
-| carina-cloud | STOPPED | 4100 | Next.js frontend for app.carinaai.uk |
-| carina-core | RUNNING | 3333/3334 | DUPLICATE of Docker carina-web |
-| carina-hub | STOPPED | 3001 | DUPLICATE of Docker carina-hub |
-| carina-ops | RUNNING | 4001 | ops.carinaai.uk admin API |
-| labyrinth-scout | RUNNING | 4444 | console.labyrinthscout.com |
-| scout-engine | RUNNING | 4455 | internal event ingestion |
-| nginx-reload | FATAL | n/a | stale reload helper, not needed |
-| propreneur-horizon | RUNNING | n/a | OUT OF SCOPE - do not touch |
-| propreneur-scheduler | RUNNING | n/a | OUT OF SCOPE - do not touch |
+| Prompt | Status | Notes |
+|--------|--------|-------|
+| 01-nginx-container.md | COMPLETED | Scout vhosts added to Docker nginx; 3 upstream bugs in carina-prod.conf fixed in commit fd829d0 |
+| 02-carina-stack.md | COMPLETED | Hub crash fixed, proxy network wired, all Carina services on Docker |
+| 03-scout-stack.md | COMPLETED | Scout prod compose created at internal/servers/console.labyrinthscout.com/docker-compose.prod.yml |
+| 04-cutover.md | PENDING | Requires manual execution on VPS during a maintenance window; deploy-carina.sh updated to include Scout syncing |
+| 05-cleanup.md | PENDING | Requires VPS access after cutover is verified working |
 
-### Running Docker containers
+### What was built (prompts 01-03)
 
-From `core.carinaai.uk/docker-compose.prod.yml` (partially active):
-- `corecarinaaiuk-carina-web-1` - HEALTHY, port 3300 (the real core API)
-- `corecarinaaiuk-carina-hub-1` - RESTARTING (startup crash, needs fix)
-- `corecarinaaiuk-redis-1` - healthy
-- `corecarinaaiuk-postgres-1` - healthy
+- `internal/servers/core.carinaai.uk/docker/nginx/carina-prod.conf` - 3 nginx upstream bugs fixed (commit fd829d0)
+- `internal/servers/console.labyrinthscout.com/docker-compose.prod.yml` - Scout prod compose created
+- `scripts/deploy-carina.sh` - updated to sync Scout stack alongside Carina
+- `internal/servers/core.carinaai.uk/docker/DEPLOY.md` - rewritten to reflect full-Docker architecture
 
-From other stacks:
-- `carina-postgres-1`, `carina-redis-1` - from an older/separate stack (stale)
-- `tuinapp_*` - separate project, OUT OF SCOPE
-- `propreneur-observability-*` - OUT OF SCOPE
-- `portainer` - keep
+### What remains (prompts 04-05)
 
-### Bare-metal nginx
+Prompt 04 (cutover): Run `bash scripts/deploy-carina.sh` on the VPS to bring up the full Docker stack, then disable the bare-metal nginx service (`systemctl disable --now nginx`) and stop all bare-metal Carina supervisor programs. This requires a planned maintenance window (estimated 15-30 min downtime).
 
-Serves ALL traffic via `/etc/nginx/conf.d/*.conf` (not the sites-enabled default).
-Current proxy targets (all 127.0.0.1:PORT):
-- `app.carinaai.uk` -> 4100 (carina-cloud, STOPPED - site is DOWN)
-- `core.carinaai.uk` -> 3300 (carina-web Docker - working)
-- `hub.carinaai.uk` -> 3001 (carina-hub Docker, RESTARTING - site is DOWN)
-- `ops.carinaai.uk` -> 4001 (carina-ops supervisor - working)
-- `console.labyrinthscout.com` -> 4444 (labyrinth-scout supervisor - working)
+Prompt 05 (cleanup): After cutover is confirmed stable, remove supervisor conf files for Carina and Scout processes, remove bare-metal nginx vhost files, and delete any stale Docker volumes from the old stack.
 
-### SSL certs on host
+### Pre-cutover VPS state (for reference)
 
-`/etc/letsencrypt/live/carinaai.uk/` - covers app, core, hub, ops subdomains
-`/etc/letsencrypt/live/labyrinthscout.com/` - covers console subdomain
+Supervisor processes that are still running until cutover:
+- `carina-ops` (port 4001) - ops.carinaai.uk
+- `labyrinth-scout` (port 4444) - console.labyrinthscout.com
+- `scout-engine` (port 4455) - internal event ingestion
+- `propreneur-horizon` and `propreneur-scheduler` - OUT OF SCOPE, do not touch
+
+Docker stack already healthy:
+- `carina-web` (internal port 3000) - core.carinaai.uk
+- `carina-hub` (internal port 3001) - hub.carinaai.uk
+- `postgres`, `redis` - healthy
+
+SSL certs: `/etc/carina/ssl/` on the host (bind-mounted read-only into the nginx container).
 
 ---
 

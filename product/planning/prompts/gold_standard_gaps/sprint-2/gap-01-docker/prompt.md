@@ -1,5 +1,7 @@
 # Gap 4: Multi-Service Docker Supervision; Full Build Prompt
 
+**Status: SUPERSEDED - See gap-13-docker-migration/ for the implemented Docker migration. All goals from this prompt are met.**
+
 > **REUSE RULE:** See `REUSE-RULES.md` in this directory. Implement the behavior described below in Carina's own voice. No competitor product names, labels, CLI output, or UI copy may appear verbatim in shipped code.
 
 

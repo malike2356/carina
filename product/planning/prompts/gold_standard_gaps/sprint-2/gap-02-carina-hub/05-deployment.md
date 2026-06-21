@@ -8,10 +8,11 @@ Estimated time: 2-3 hours
 ## Context
 
 The Carina Skills Hub runs as a Node.js process on port 3001. On the
-VPS (Contabo, 80.190.81.208), it is managed by supervisor as
-`carina-hub` (config at
-`core.carinaai.uk/docker/supervisor/carina-hub.conf`). Nginx proxies
-hub.carinaai.uk to 127.0.0.1:3001. The nginx config already exists at
+VPS (Contabo, 80.190.81.208), it runs as the `carina-hub` Docker
+Compose service (defined in
+`core.carinaai.uk/docker-compose.prod.yml`). The Dockerized nginx
+container proxies hub.carinaai.uk to the `carina-hub` container via
+the shared `proxy` Docker network. The nginx config already exists at
 `core.carinaai.uk/docker/nginx/hub.carinaai.uk.conf`.
 
 The `carina-agent-public/` directory at the repo root is the public
@@ -19,11 +20,8 @@ distribution used for deployment. It has its own `package.json`,
 `docker-compose.yml`, `docker-compose.prod.yml`, and `start.sh`.
 
 The goal of this file is to wire everything together so that the hub is
-deployable in two ways:
-1. Via supervisor on the raw VPS (existing pattern - just document and
-   wire the env vars)
-2. Via Docker Compose as part of the Verlox personal stack in
-   `docker-compose.verlox.yml`
+deployable via Docker Compose as part of the Verlox personal stack in
+`docker-compose.verlox.yml`.
 
 There is no `carina-hub` service in `docker-compose.verlox.yml` yet.
 
@@ -70,8 +68,8 @@ block at the bottom, add a new service:
       HUB_PACK_PLATFORM_FEE_BPS: "1000"
     volumes:
       - hub_packs:/data/hub-packs
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -170,12 +168,11 @@ cert is needed. If not:
 
     sudo certbot certonly --nginx -d hub.carinaai.uk
 
-## VPS supervisor deploy
+## VPS deploy
 
-1. Copy supervisor/carina-hub.conf to /etc/supervisor/conf.d/ on the VPS
-2. Fill in the CHANGE_ME values in the environment= line
-3. sudo supervisorctl reread && sudo supervisorctl update
-4. sudo supervisorctl start carina-hub
+Deploy via Docker Compose. The carina-hub service is defined in
+docker-compose.prod.yml. Use `expose:` (not `ports:`); nginx routes
+traffic via the shared `proxy` Docker network.
 
 ## Docker Compose deploy (Verlox personal stack)
 

@@ -1,5 +1,7 @@
 # Prompt 02: HEALTHCHECK and Graceful Shutdown
 
+**Status: COMPLETED 2026-06-21**
+
 ## Context
 
 Docker containers need HEALTHCHECK directives so the orchestrator knows when a service is

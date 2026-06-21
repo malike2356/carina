@@ -38,12 +38,18 @@ fi
 echo "Backup complete: $BACKUP_FILE"
 ```
 
-Add cron in `docker/supervisor/carina-backup.conf`:
-```ini
-[program:carina-backup]
-command=/bin/bash -c "while true; do sleep 86400; /app/docker/scripts/backup.sh; done"
-autostart=true
-autorestart=true
+Schedule the backup as a Docker cron container or add to the Carina compose stack as a service:
+```yaml
+carina-backup:
+  image: verlox/carina:latest
+  command: /bin/bash -c "while true; do sleep 86400; /app/docker/scripts/backup.sh; done"
+  restart: unless-stopped
+  environment:
+    DATABASE_URL: "${DATABASE_URL}"
+    S3_BACKUP_BUCKET: "${S3_BACKUP_BUCKET:-}"
+  volumes:
+    - carina_backups:/app/data/backups
+  networks: [carina]
 ```
 
 ### 2. Restore script
@@ -88,17 +94,17 @@ Create `docker/DR_RUNBOOK.md`:
 
 ## Scenario 2: Database Corruption
 
-1. Stop carina-core: supervisorctl stop carina-core
+1. Stop carina-web: docker compose stop carina-web
 2. Identify last clean backup: ls -lt /app/data/backups/*.sql.gz | head -5
 3. Run restore to the backup immediately before corruption
-4. Restart: supervisorctl start carina-core
+4. Restart: docker compose start carina-web
 5. Verify data integrity: pnpm tsx scripts/verify-audit-chain.ts
 
 ## Scenario 3: Carina Process Crash Loop
 
-1. Check supervisor: supervisorctl status
-2. Check logs: tail -100 /app/data/logs/carina-core-err.log
-3. Rebuild and redeploy: git pull && pnpm build && supervisorctl restart carina-core
+1. Check containers: docker compose ps
+2. Check logs: docker compose logs --tail=100 carina-web
+3. Rebuild and redeploy: bash scripts/deploy-carina.sh
 ```
 
 ### 4. Weekly DR drill
@@ -133,7 +139,7 @@ export async function drDrillCheck(): Promise<AgentCheckResult> {
 
 - [ ] `bash docker/scripts/backup.sh` produces a `.sql.gz` file in `/app/data/backups/`
 - [ ] `bash docker/scripts/restore.sh backup.sql.gz` restores correctly (test on a dev DB)
-- [ ] Backup is created daily (supervisor log shows cron firing every 24h)
+- [ ] Backup is created daily (Docker carina-backup container fires every 24h; verify with `docker compose logs carina-backup`)
 - [ ] Backups older than 14 days are deleted
 - [ ] Sunday DR drill check reports pass in Carina Sunday briefing
 
@@ -141,7 +147,7 @@ export async function drDrillCheck(): Promise<AgentCheckResult> {
 
 - CREATE `docker/scripts/backup.sh`
 - CREATE `docker/scripts/restore.sh`
-- CREATE `docker/supervisor/carina-backup.conf`
+- MODIFY `docker-compose.prod.yml` - add carina-backup service
 - CREATE `docker/DR_RUNBOOK.md`
 - CREATE `src/agents/checks/dr-drill.ts`
 - MODIFY `src/agents/checks/index.ts` - register drDrillCheck
