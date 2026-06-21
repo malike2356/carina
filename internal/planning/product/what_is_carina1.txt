@@ -1,0 +1,147 @@
+What is Carina?
+The full picture.
+Everything built.
+Everything live.
+Carina is not an AI agent.
+Calling Carina an AI agent
+is like calling an aircraft carrier a boat.
+The word is
+technically correct and entirely misses
+the point.
+Hermes is an AI agent.
+Openclaw is an AI agent.
+Odysseus is an AI
+agent.
+They are excellent at what they do.
+They take prompts, they run tools,
+they produce output.
+They live in a terminal.
+They are tools for builders.
+Carina is something different.
+Carina is the first
+autonomous agent platform.
+Not an agent.
+A platform upon which
+agents operate, governed by
+security infrastructure that no other
+agent possesses, connected to
+a standalone security product that
+monitors everything those agents do.
+Backed by a forensics pipeline
+with cryptographic chain of custody,
+surrounded by 72 integrated
+offensive and defensive security
+tools, observable through a web dashboard,
+controllable through a
+TUI and CLI, accessible
+from desktop and mobile, extensible
+through a public skill hub,
+deployable in one command.
+Via Docker and importable
+from every competing ecosystem in
+30 seconds with zero data loss.
+That is not an AI agent.
+That is a category.
+When Carina is
+fully implemented, a developer
+types Carina import from Hermes
+and watches as 2 years of chat history,
+51 custom skills,
+12 cron jobs, and
+every provider configuration migrate
+into Carina in the time it takes to
+drink a coffee.
+Nothing is lost.
+The Hermes terminal they have known for years
+is now running inside Carina.
+But now, when that developer
+asks Carina to scan a domain,
+they do not get a text summary.
+They get a map running
+57 service detection probes
+across 6,000 ports while Nuclei
+simultaneously fires
+2,000 CVE templates at every
+discovered endpoint.
+The results do not scroll past in a
+terminal window.
+They materialize as structured findings
+in a web dashboard with CVSS
+scores, exploit availability
+indicators, and one-click investigation
+buttons.
+That developer has just learned what Carina
+is. But they have
+not seen Scout.
+Scout is running continuously in the background.
+It has been
+scanning their domains every week since
+they connected them.
+It discovered 3 subdomains they did not
+know existed.
+It flagged a critical CVE on their
+production Jinx server.
+It sent an alert to their phone.
+When they click investigate,
+Carina opens a case in their obsidian
+vault. The investigation
+note has YAML front matter with
+the CVE ID, CVSS
+score, affected targets, and
+a blank timeline waiting to be filled.
+Carina suggests
+the exploit module.
+The operator approves.
+Metasploit fires.
+The exploit succeeds.
+Carina captures
+the meterpreter session, dumps the
+evidence to the case folder, crosslinks
+the target profile, appends
+the timeline, and updates the Scout
+dashboard. The finding
+moves from open to confirmed to
+remediated. The operator
+did not write a single case note.
+The vault wrote itself.
+Now imagine that
+same workflow running for a CISO at a
+company with 40 developers,
+all using different AI agents.
+Some use Hermes.
+Some use Openclaw.
+One team built their own
+wrapper around a raw API.
+The CISO does not care
+which agent anyone uses.
+Scout monitors all of them.
+Every domain.
+Every deployment.
+Every exposed port.
+Every CVE.
+The CISO opens their
+Scout dashboard and sees a single
+number. The Scout score.
+92.
+It was 95
+last week.
+Three new critical findings dropped it.
+They click through to see
+which team is responsible.
+They generate a compliance report
+mapped to SOC2 and ISO
+27001 controls.
+The report
+is 70 pages of automated evidence,
+every finding time-stamped
+with a cryptographic hash, every
+action logged in an immutable audit trail.
+The auditors will love it.
+The CISO did
+not run a single command.
+Scout ran 25 automated
+tools this week.
+The CISO just read the output.
+That is Scout.
+That is what no other agent
+has.
