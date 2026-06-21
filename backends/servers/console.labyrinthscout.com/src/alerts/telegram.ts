@@ -20,14 +20,33 @@ const SEVERITY_LABELS: Record<string, string> = {
   breach: 'Security Breach',
 };
 
-const METRIC_DESCRIPTIONS: Record<string, string> = {
-  uniquetoolsused: 'unique tools used per session',
-  avgresponselength: 'average response length',
-  messagecount: 'messages per session',
-  tokensperminute: 'tokens per minute',
-  toolerrorrate: 'tool error rate',
-  sessionduration: 'session duration',
-  failedauths: 'failed authentication attempts',
+const METRIC_PLAIN: Record<string, string> = {
+  uniquetoolsused: 'number of tools used in a session',
+  avgresponselength: 'length of replies',
+  messagecount: 'number of messages in a session',
+  tokensperminute: 'speed of processing',
+  toolerrorrate: 'rate of tool failures',
+  sessionduration: 'how long a session lasted',
+  failedauths: 'failed login attempts',
+  hour_utc: 'time of day when active',
+};
+
+const METRIC_CONTEXT: Record<string, string> = {
+  uniquetoolsused:
+    'Tools let Carina search the web, read files, run code, and more. A sudden spike may mean an intensive task or unexpected automation.',
+  avgresponselength:
+    'Unusually long replies can indicate verbose output from a tool, data exfiltration attempts, or a stuck loop.',
+  messagecount:
+    'A high message count in one session may indicate an automated script interacting with Carina rather than a human.',
+  tokensperminute:
+    'Processing significantly faster than normal may indicate automated input rather than a human typing.',
+  toolerrorrate:
+    'A high error rate may mean Carina is attempting actions it does not have permission for, or is in an unexpected state.',
+  sessionduration: 'A very long session may indicate an unattended automated run.',
+  failedauths:
+    'Multiple failed logins may indicate a brute-force attempt on the API.',
+  hour_utc:
+    'Carina is active outside the hours it normally sees traffic. If you were using it at this time, this is expected.',
 };
 
 function escHtml(text: string): string {
@@ -42,47 +61,68 @@ function humanizeEventType(eventType: string): string {
 }
 
 interface AnomalyPayload {
+  anomalyType?: string;
   metricName?: string;
   zScore?: number;
   currentValue?: number;
   baselineMean?: number;
+  autoAction?: string;
 }
 
-function parseAnomalyDescription(raw: string): string | null {
+function formatHour(h: number): string {
+  const suffix = h < 12 ? 'AM' : 'PM';
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour12}:00 ${suffix}`;
+}
+
+function parseAnomalyDescription(raw: string): string {
   try {
     const data = JSON.parse(raw) as AnomalyPayload;
-    if (!data.metricName) return null;
 
-    const metricLabel =
-      METRIC_DESCRIPTIONS[data.metricName.toLowerCase()] ??
-      data.metricName.replace(/_/g, ' ');
-
-    const current =
-      typeof data.currentValue === 'number'
-        ? data.currentValue % 1 === 0
-          ? String(data.currentValue)
-          : data.currentValue.toFixed(2)
-        : null;
-
-    const baseline =
-      typeof data.baselineMean === 'number' ? data.baselineMean.toFixed(2) : null;
-
-    const deviation =
-      typeof data.zScore === 'number'
-        ? data.zScore > 5
-          ? 'far outside normal range'
-          : data.zScore > 3
-            ? 'outside normal range'
-            : 'slightly above normal'
-        : 'outside normal range';
-
-    let summary = `Carina's ${metricLabel} is ${deviation}.`;
-    if (current !== null && baseline !== null) {
-      summary += ` Current value: ${current} (expected around ${baseline}).`;
+    if (data.anomalyType === 'unusual_hours' && typeof data.currentValue === 'number') {
+      const hourLabel = formatHour(data.currentValue);
+      const context = METRIC_CONTEXT['hour_utc'] ?? '';
+      return `Carina was active at ${hourLabel} UTC. This is outside the hours when it normally runs.\n\n${context}`;
     }
-    return summary;
+
+    if (!data.metricName) {
+      return 'Labyrinth detected an unusual pattern. Check the technical details below for specifics.';
+    }
+
+    const key = data.metricName.toLowerCase();
+    const metricLabel = METRIC_PLAIN[key] ?? data.metricName.replace(/_/g, ' ');
+    const context = METRIC_CONTEXT[key] ?? '';
+
+    const current = typeof data.currentValue === 'number' ? data.currentValue : null;
+    const baseline = typeof data.baselineMean === 'number' ? data.baselineMean : null;
+
+    let main: string;
+
+    if (current !== null && baseline !== null && baseline > 0) {
+      const multiplier = current / baseline;
+      const currentStr = current % 1 === 0 ? String(current) : current.toFixed(2);
+      const baselineStr = baseline < 1 ? baseline.toFixed(2) : baseline.toFixed(1);
+      const multiplierStr =
+        multiplier >= 10 ? `${Math.round(multiplier)}x` : `${multiplier.toFixed(1)}x`;
+      main = `Carina's ${metricLabel} was ${currentStr} in this session. The usual level is about ${baselineStr}, so this is roughly ${multiplierStr} higher than normal.`;
+    } else if (current !== null) {
+      const deviation =
+        typeof data.zScore === 'number'
+          ? data.zScore > 5
+            ? 'much higher than normal'
+            : data.zScore > 3
+              ? 'higher than normal'
+              : 'slightly higher than normal'
+          : 'higher than normal';
+      const currentStr = current % 1 === 0 ? String(current) : current.toFixed(2);
+      main = `Carina's ${metricLabel} was ${currentStr}, which is ${deviation}.`;
+    } else {
+      main = `Carina's ${metricLabel} is outside the normal range.`;
+    }
+
+    return context ? `${main}\n\n${context}` : main;
   } catch {
-    return null;
+    return 'Labyrinth detected an unusual pattern. Check the technical details below for specifics.';
   }
 }
 
