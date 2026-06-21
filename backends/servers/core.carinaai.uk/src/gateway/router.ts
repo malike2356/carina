@@ -19,7 +19,12 @@ import {
   summarizeToolParamsForChannel,
 } from './channels/channel-approval-ui.js';
 import { normalizeChannelInbound } from './channels/channel-platform.js';
-import { buildGatewaySessionMapKey } from './channels/channel-session-binding.js';
+import { buildGatewaySessionMapKey, buildGatewaySessionMapKeyAsync } from './channels/channel-session-binding.js';
+import {
+  clearSessionIdentity,
+  ensureSessionIdentity,
+} from './session-identity-prefs.js';
+import { identityLinksEnabled } from './identity-resolver.js';
 import { buildSurfaceSessionMapKey, resolveSurfaceExternalUserId, type ClientSurface } from '../surfaces/index.js';
 import {
   applyAgentRuntimeEnv,
@@ -133,22 +138,64 @@ export class GatewayRouter {
   }
 
   async getChannelSession(agentId: string, inbound: ChannelMessage): Promise<string> {
-    const mapKey = buildGatewaySessionMapKey(agentId, inbound);
+    const mapKey = identityLinksEnabled()
+      ? await buildGatewaySessionMapKeyAsync(agentId, inbound)
+      : buildGatewaySessionMapKey(agentId, inbound);
     const redis = getRedis();
 
     if (redis) {
       const existing = await redis.get(mapKey);
-      if (existing) return existing;
+      if (existing) {
+        if (identityLinksEnabled()) {
+          const { getIdentityResolver } = await import('./identity-resolver.js');
+          const canonicalUserId = await getIdentityResolver().resolve(
+            inbound.channel,
+            inbound.externalUserId,
+            inbound.senderName,
+          );
+          ensureSessionIdentity(existing, canonicalUserId, inbound);
+        }
+        return existing;
+      }
       const sessionId = allocateGatewaySession();
       await redis.set(mapKey, sessionId);
+      if (identityLinksEnabled()) {
+        const { getIdentityResolver } = await import('./identity-resolver.js');
+        const canonicalUserId = await getIdentityResolver().resolve(
+          inbound.channel,
+          inbound.externalUserId,
+          inbound.senderName,
+        );
+        ensureSessionIdentity(sessionId, canonicalUserId, inbound);
+      }
       return sessionId;
     }
 
     const cached = memoryFallback.get(mapKey);
-    if (cached) return cached;
+    if (cached) {
+      if (identityLinksEnabled()) {
+        const { getIdentityResolver } = await import('./identity-resolver.js');
+        const canonicalUserId = await getIdentityResolver().resolve(
+          inbound.channel,
+          inbound.externalUserId,
+          inbound.senderName,
+        );
+        ensureSessionIdentity(cached, canonicalUserId, inbound);
+      }
+      return cached;
+    }
 
     const sessionId = allocateGatewaySession();
     memoryFallback.set(mapKey, sessionId);
+    if (identityLinksEnabled()) {
+      const { getIdentityResolver } = await import('./identity-resolver.js');
+      const canonicalUserId = await getIdentityResolver().resolve(
+        inbound.channel,
+        inbound.externalUserId,
+        inbound.senderName,
+      );
+      ensureSessionIdentity(sessionId, canonicalUserId, inbound);
+    }
     return sessionId;
   }
 
@@ -243,6 +290,7 @@ export class GatewayRouter {
 
   async clearSession(sessionId: string): Promise<void> {
     this.commandQueue.drain(sessionId);
+    clearSessionIdentity(sessionId);
     getTrajectoryRecorder().completeBundle(sessionId);
     const wasInvalidated = applyPendingInvalidation(sessionId);
     if (wasInvalidated) {
