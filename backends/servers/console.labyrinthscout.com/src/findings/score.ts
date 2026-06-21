@@ -45,7 +45,13 @@ export async function getCurrentScoutScore(
   };
 
   if (persist) {
-    return recordScoreSnapshot(accountId, snapshot);
+    try {
+      return await recordScoreSnapshot(accountId, snapshot);
+    } catch (err) {
+      const code = (err as { code?: string }).code;
+      if (code !== '23503') throw err;
+      // Account does not exist in this Scout DB (e.g. operator proxy); return without persisting.
+    }
   }
 
   return {
