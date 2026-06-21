@@ -10,7 +10,7 @@ deceptionRouter.get('/augmentation', async (req: Request, res: Response): Promis
   const instanceId =
     typeof req.query.instance_id === 'string' ? req.query.instance_id.trim() : '';
   if (!instanceId) {
-    res.status(400).json({ error: 'instance_id query parameter is required' });
+    res.json({ augmentation: null, marker: null, rotatesAt: null });
     return;
   }
 

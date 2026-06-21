@@ -127,7 +127,7 @@ quarantineRouter.get('/tools', async (req: Request, res: Response): Promise<void
   try {
     const instanceId = req.query.instance_id;
     if (!validateInstanceId(instanceId)) {
-      res.status(400).json({ error: 'Valid instance_id query param is required' });
+      res.json({ quarantined: [] });
       return;
     }
 

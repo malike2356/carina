@@ -73,7 +73,7 @@ honeypotsRouter.post('/rotate', async (req: Request, res: Response): Promise<voi
 honeypotsRouter.get('/active', async (req: Request, res: Response): Promise<void> => {
   const instanceId = typeof req.query.instance_id === 'string' ? req.query.instance_id.trim() : '';
   if (!instanceId) {
-    res.status(400).json({ error: 'instance_id query parameter is required' });
+    res.json({ honeypots: [] });
     return;
   }
 
