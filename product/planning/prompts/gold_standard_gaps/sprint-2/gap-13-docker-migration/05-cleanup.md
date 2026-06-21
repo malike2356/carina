@@ -183,60 +183,17 @@ Only remove top-level `start.sh` files.
 
 ## Step 6: Commit the compose files and Dockerfiles added during this migration
 
-The new files created across prompts 01-03 need to be committed to the repo and
-deployed (so they survive a fresh git clone or server move):
-
-Files to commit (in `core.carinaai.uk` repo):
-- `docker/nginx/console.labyrinthscout.com.conf`
-- `docker/nginx/labyrinthscout.com.conf`
-- `docker-compose.prod.yml` (modified: SSL mount, proxy network, port changes)
-- `.env.example` (updated with VPS context overrides)
-
-Files to commit (in `console.labyrinthscout.com` repo):
-- `docker-compose.prod.yml` (new)
-- `Dockerfile` (new, if created in Prompt 03)
-- `.env.example` (new)
-
-Run standard commit flow for each repo. Follow commit message conventions used
-in recent git log output.
+NOTE: Already done. All nginx vhost configs, Scout Dockerfile, Scout docker-compose.prod.yml,
+Carina compose changes, and .env.example updates were committed in commit `c6e5c4f` during
+Prompt 01-03 implementation. No action needed here.
 
 ---
 
 ## Step 7: Document the new deploy procedure
 
-Update or create `core.carinaai.uk/docker/DEPLOY.md` (it may already exist - read it first):
-
-Add a section documenting the new full-Docker procedure:
-
-```markdown
-## Full Docker deploy (current standard as of 2026-06)
-
-### Prerequisites (one-time setup on a new server)
-1. Install Docker and Docker Compose plugin
-2. Install certbot and obtain certs for all domains
-3. Create the shared proxy network: docker network create proxy
-4. Copy .env.runtime to the server
-
-### Deploy Carina stack
-    cd /home/malike/apps/core.carinaai.uk
-    git pull
-    docker compose -f docker-compose.prod.yml build --no-cache
-    docker compose -f docker-compose.prod.yml up -d
-
-### Deploy Scout stack
-    cd /home/malike/apps/console.labyrinthscout.com
-    git pull
-    docker compose -f docker-compose.prod.yml build --no-cache
-    docker compose -f docker-compose.prod.yml up -d
-
-### Moving to a new server
-1. On new server: install Docker, certbot, run certbot for all domains
-2. Run: docker network create proxy
-3. rsync or git clone each app repo
-4. Copy .env.runtime and .env files (never in git)
-5. docker compose -f docker-compose.prod.yml up -d (in each stack)
-6. Update DNS to point to new server IP
-```
+NOTE: Already done. `docker/DEPLOY.md` was rewritten in commit `fd829d0` to document the
+full-Docker architecture with Scout, the proxy network, new server setup steps, and the
+updated `scripts/deploy-carina.sh` as the standard deploy command. No action needed here.
 
 ---
 
