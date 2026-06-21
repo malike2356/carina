@@ -23,6 +23,8 @@ services:
       CARINA_SPLIT_GATEWAY: "false"
       CARINA_SUPERVISOR_HUB: "false"
       CARINA_SUPERVISOR_OPS: "false"
+      LABYRINTH_URL: http://labyrinth-scout:4444
+      LABYRINTH_LLM_ROUTER_URL: http://carina-web:3000
     healthcheck:
       test: ["CMD", "/usr/local/bin/carina-healthcheck"]
       interval: 15s
@@ -38,6 +40,7 @@ services:
       - "3000"
     networks:
       - carina
+      - proxy
     restart: unless-stopped
 
   carina-hub:
@@ -69,16 +72,25 @@ services:
 
   carina-ops:
     build:
-      context: ${CARINA_OPS_CONTEXT:-../../admin/ops.carinaai.uk}
+      context: ${CARINA_OPS_CONTEXT:-../../../backends/admin/ops.carinaai.uk}
       dockerfile: ${CARINA_OPS_DOCKERFILE:-docker/Dockerfile.runtime}
     env_file:
       - ${CARINA_OPS_ENV_FILE:-.env.ops.runtime}
+    # pid: "host" is required for nsenter to reach host systemd (service restarts)
+    pid: "host"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       NODE_ENV: production
       PORT: "4001"
+      BIND_HOST: 0.0.0.0
       CARINA_API_URL: http://carina-web:3000
-      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina_central
-      # Ops panel path overrides so it does not fall back to /home/malike/apps paths.
+      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina
+      SCOUT_CONSOLE_URL: http://labyrinth-scout:4444
+      SCOUT_URL: http://labyrinth-scout:4444
+      SCOUT_ADMIN_API_URL: http://scout-engine:4455
+      SCOUT_ENGINE_URL: http://scout-engine:4455
+      # Ops panel path overrides so it does not fall back to host-specific paths.
       # CARINA_CORE_ROOT and SCOUT_CONSOLE_PUBLIC_DIR are only needed for the PTY bridge
       # and Scout static proxy features; if those features are unused, leave them unset.
       CARINA_CORE_ENV_PATH: ${CARINA_CORE_ENV_PATH:-}
@@ -93,6 +105,7 @@ services:
         condition: service_healthy
     networks:
       - carina
+      - proxy
     restart: unless-stopped
 
   carina-cloud:
@@ -107,6 +120,7 @@ services:
       HOSTNAME: "0.0.0.0"
       CARINA_CORE_URL: http://carina-web:3000
       CARINA_USE_CORE_PROXY: "true"
+      SKILLS_HUB_INTERNAL_URL: http://carina-hub:3001
     expose:
       - "4100"
     depends_on:
@@ -132,7 +146,7 @@ services:
       - ./docker/nginx/conf.d/ssl-params.conf:/etc/nginx/conf.d/ssl-params.conf:ro
       - ./docs/.vitepress/dist:/var/www/docs:ro
       - ./public_website:/var/www/public_website:ro
-      - ${LABYRINTHSCOUT_STATIC:-/home/malike/apps/labyrinthscout.com-static}:/var/www/labyrinthscout.com:ro
+      - ${LABYRINTHSCOUT_STATIC:-../../../marketing/sites/labyrinthscout.com}:/var/www/labyrinthscout.com:ro
       - ${CARINA_SSL_DIR:-/etc/carina/ssl}:/etc/nginx/ssl:ro
       - certbot-www:/var/www/certbot:ro
     depends_on:

@@ -22,11 +22,11 @@ export function resolveScoutApiConfig(): ScoutApiConfig | null {
     ?? process.env.SCOUT_API_KEY
     ?? '';
   const baseUrl = (
-    process.env.SCOUT_API_URL
+    url: process.env.SCOUT_API_URL
     ?? process.env.SCOUT_BASE_URL
     ?? process.env.LABYRINTH_URL
     ?? process.env.LABYRINTH_SCOUT_URL
-    ?? 'http://localhost:4444'
+    ?? (process.env.NODE_ENV === 'production' ? 'http://labyrinth-scout:4444' : 'http://localhost:4444')
   ).replace(/\/+$/, '');
 
   if (!apiKey.trim()) return null;

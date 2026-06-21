@@ -1,0 +1,88 @@
+<% title = 'MCP Servers' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">MCP Servers</div>
+      <div class="ops-page-sub">Operator control for core <code class="ops-code">/api/mcp</code>. Persistent storage now lives in Postgres.</div>
+    </div>
+    <div class="ops-inline-note"><%= payload?.summary?.configured ?? 0 %> configured · <%= payload?.summary?.liveConnections ?? 0 %> live</div>
+  </div>
+
+  <% if (reloadOk) { %><div class="ops-flash success"><%= reloadOk === '1' ? 'Action completed successfully.' : reloadOk %></div><% } %>
+  <% if (reloadErr) { %><div class="ops-flash error"><%= reloadErr %></div><% } %>
+
+  <div class="ops-split ops-surface">
+    <section class="ops-section">
+      <div class="ops-section-title">Add server</div>
+      <% if (!coreConnected) { %>
+        <p class="ops-flash warn">Core is not connected. Set the inter-service token before using this page.</p>
+      <% } else { %>
+        <form method="post" action="/mcp/add">
+          <div class="ops-field"><label class="ops-label">Name</label><input name="name" required class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Transport</label><select name="transport" class="ops-select"><option value="stdio">stdio</option><option value="http">http</option></select></div>
+          <div class="ops-field"><label class="ops-label">Command</label><input name="command" placeholder="node server.js" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Args</label><textarea name="args" rows="3" placeholder="--stdio" class="ops-textarea mono"></textarea></div>
+          <div class="ops-field"><label class="ops-label">URL</label><input name="url" placeholder="https://example.test/mcp" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Env</label><textarea name="env" rows="4" placeholder="TOKEN=abc" class="ops-textarea mono"></textarea></div>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Add server</button></div>
+        </form>
+      <% } %>
+    </section>
+
+    <section class="ops-section ops-table-wrap">
+      <div class="ops-section-title">Configured servers</div>
+      <% if (!payload?.servers?.length) { %>
+        <div class="ops-empty">No MCP servers configured yet.</div>
+      <% } else { %>
+        <table class="ops-table">
+          <thead><tr><th>Name</th><th>Transport</th><th>Endpoint</th><th>Status</th><th>Ping</th><th>Tools</th><th>Actions</th></tr></thead>
+          <tbody>
+            <% payload.servers.forEach((server, index) => { const formId = `mcp-save-${index}`; %>
+              <tr class="align-top">
+                <td><input form="<%= formId %>" name="name" value="<%= server.name %>" class="ops-input mono" style="width:140px;" /></td>
+                <td><select form="<%= formId %>" name="transport" class="ops-select" style="width:90px;"><option value="stdio" <%= server.transport === 'stdio' ? 'selected' : '' %>>stdio</option><option value="http" <%= server.transport === 'http' ? 'selected' : '' %>>http</option></select></td>
+                <td>
+                  <% if (server.transport === 'http') { %>
+                    <input form="<%= formId %>" name="url" value="<%= server.url ?? '' %>" class="ops-input mono" style="min-width:220px;" />
+                  <% } else { %>
+                    <input form="<%= formId %>" name="command" value="<%= server.command ?? '' %>" class="ops-input mono" style="min-width:220px;" />
+                    <textarea form="<%= formId %>" name="args" rows="2" class="ops-textarea mono" style="margin-top:6px;min-width:220px;"><%= (server.args ?? []).join('\n') %></textarea>
+                    <textarea form="<%= formId %>" name="env" rows="2" class="ops-textarea mono" style="margin-top:6px;min-width:220px;"><%= server.env ? Object.entries(server.env).map(([k, v]) => `${k}=${v}`).join('\n') : '' %></textarea>
+                  <% } %>
+                  <form id="<%= formId %>" method="post" action="/mcp/<%= encodeURIComponent(server.name) %>/save" class="hidden"></form>
+                </td>
+                <td>
+                  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    <span class="ops-badge <%= server.enabled === false ? 'ops-badge-gray' : (server.liveConnected ? 'ops-badge-green' : 'ops-badge-amber') %>"><%= server.enabled === false ? 'Disabled' : (server.liveConnected ? 'Live' : 'Stored') %></span>
+                    <% if (server.connectedAt) { %><span class="ops-inline-note"><%= server.connectedAt.slice(0, 16).replace('T', ' ') %></span><% } %>
+                  </div>
+                </td>
+                <td>
+                  <span class="ops-inline-note">
+                    <% if (server.lastPingMs != null) { %>
+                      <%= server.lastPingMs %>ms
+                    <% } else { %>
+                      -
+                    <% } %>
+                    <% if (server.lastPing) { %>
+                      · <%= server.lastPing.slice(0, 16).replace('T', ' ') %>
+                    <% } %>
+                  </span>
+                </td>
+                <td style="color:var(--muted);font-size:12px;"><%= (server.tools ?? []).slice(0, 3).join(', ') || 'None' %></td>
+                <td>
+                  <div class="ops-actions" style="margin:0;">
+                    <button form="<%= formId %>" type="submit" class="ops-btn ops-btn-green" style="padding:5px 10px;">Save</button>
+                    <form method="post" action="/mcp/<%= encodeURIComponent(server.name) %>/toggle"><button type="submit" class="ops-btn-ghost" style="padding:5px 10px;"><%= server.enabled === false ? 'Enable' : 'Disable' %></button></form>
+                    <form method="post" action="/mcp/<%= encodeURIComponent(server.name) %>/test"><button type="submit" class="ops-btn-ghost" style="padding:5px 10px;">Ping</button></form>
+                    <form method="post" action="/mcp/<%= encodeURIComponent(server.name) %>/delete" onsubmit="return confirm('Delete MCP server <%= server.name %>?');"><button type="submit" class="ops-btn ops-btn-red" style="padding:5px 10px;">Delete</button></form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </section>
+  </div>
+</div>

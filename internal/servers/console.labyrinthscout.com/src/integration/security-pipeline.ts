@@ -39,7 +39,8 @@ export interface ScoutPipelineDeps {
 }
 
 const defaultPromptGuard = new PromptGuard({
-  llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL ?? 'http://localhost:3000',
+  llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL
+    ?? (process.env.NODE_ENV === 'production' ? 'http://carina-web:3000' : 'http://localhost:3000'),
   llmModel: process.env.LABYRINTH_JUDGE_MODEL ?? 'deepseek/deepseek-chat',
   llmTimeoutMs: 3000,
   instanceId: 'integration',

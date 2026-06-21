@@ -1,4 +1,5 @@
 import type { AlertAdapter, AlertChannel, SecurityEvent } from './types.js';
+import { config } from '../config/index.js';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   alert_test: 'Test alert',
@@ -163,7 +164,7 @@ export class TelegramAdapter implements AlertAdapter {
   }
 
   formatMessage(event: SecurityEvent): string {
-    const dashboardUrl = process.env.SCOUT_DASHBOARD_URL ?? 'http://localhost:4444';
+    const dashboardUrl = config.console.dashboardUrl;
     const severityLabel = SEVERITY_LABELS[event.severity] ?? event.severity.toUpperCase();
     const eventLabel = humanizeEventType(event.event_type);
     const summary = buildSummary(event);

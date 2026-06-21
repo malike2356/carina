@@ -17,7 +17,6 @@ function resolveDefaultCoreRoot(): string {
   const candidates = [
     path.resolve(__opsDir, '../core.carinaai.uk'),
     path.resolve(__opsDir, '../../servers/core.carinaai.uk'),
-    '/home/malike/apps/core.carinaai.uk',
   ];
   for (const candidate of candidates) {
     if (fs.existsSync(path.join(candidate, 'package.json'))) return candidate;

@@ -1,12 +1,26 @@
-const SCOUT_ENGINE_URL =
-  process.env.SCOUT_ADMIN_API_URL?.trim()
-  ?? process.env.SCOUT_ENGINE_URL?.trim()
-  ?? 'http://127.0.0.1:4455';
+function firstEnv(...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = process.env[key]?.trim();
+    if (value) return value;
+  }
+  return undefined;
+}
 
-const SCOUT_CONSOLE_URL =
-  process.env.SCOUT_CONSOLE_URL?.trim()
-  ?? process.env.SCOUT_URL?.trim()
-  ?? 'http://127.0.0.1:4444';
+function internalServiceUrl(envKeys: string[], dockerDefault: string, localDefault: string): string {
+  return firstEnv(...envKeys) ?? (process.env.NODE_ENV === 'production' ? dockerDefault : localDefault);
+}
+
+const SCOUT_ENGINE_URL = internalServiceUrl(
+  ['SCOUT_ADMIN_API_URL', 'SCOUT_ENGINE_URL'],
+  'http://scout-engine:4455',
+  'http://127.0.0.1:4455',
+);
+
+const SCOUT_CONSOLE_URL = internalServiceUrl(
+  ['SCOUT_CONSOLE_URL', 'SCOUT_URL'],
+  'http://labyrinth-scout:4444',
+  'http://127.0.0.1:4444',
+);
 
 const SCOUT_KEY = process.env.SCOUT_API_KEY ?? '';
 
@@ -15,6 +29,9 @@ export const SCOUT_BASE = SCOUT_ENGINE_URL;
 
 /** Console API (alert channels, platform settings). */
 export const SCOUT_CONSOLE_BASE = SCOUT_CONSOLE_URL;
+
+/** Full dashboard API surface (/api/status, /api/events, /api/stream, widgets). */
+export const SCOUT_DASHBOARD_API = SCOUT_CONSOLE_URL;
 
 export function scoutHeaders(): Record<string, string> {
   return {

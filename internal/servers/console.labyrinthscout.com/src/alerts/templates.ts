@@ -1,8 +1,9 @@
 import type { SecurityEvent } from './types.js';
+import { config } from '../config/index.js';
 
 type TemplateFn = (event: SecurityEvent, dashboardUrl: string) => string;
 
-const DASHBOARD = process.env.SCOUT_DASHBOARD_URL ?? 'http://localhost:4444';
+const DASHBOARD = config.console.dashboardUrl;
 
 interface TemplateSet {
   subject?: string;

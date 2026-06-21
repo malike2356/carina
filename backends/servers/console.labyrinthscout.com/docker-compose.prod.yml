@@ -1,0 +1,120 @@
+# Production compose for Labyrinth Scout.
+# Requires the external 'proxy' Docker network (created once on the host):
+#   docker network create proxy
+# The Carina nginx container proxies console.labyrinthscout.com to
+# labyrinth-scout:4444 via the proxy network.
+
+services:
+  labyrinth-scout:
+    build:
+      context: ..
+      dockerfile: console.labyrinthscout.com/Dockerfile
+    container_name: scout-console
+    expose:
+      - "4444"
+    environment:
+      NODE_ENV: production
+      SCOUT_PORT: ${SCOUT_PORT:-4444}
+      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@postgres:5432/scout
+      REDIS_URL: redis://redis:6379
+      SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
+      SCOUT_SESSION_SECRET: ${SCOUT_SESSION_SECRET:?set SCOUT_SESSION_SECRET}
+      SCOUT_DASHBOARD_PASSWORD: ${SCOUT_DASHBOARD_PASSWORD:-}
+      SCOUT_LICENSE_KEY: ${SCOUT_LICENSE_KEY:-}
+      SCOUT_PROXY_ENABLED: ${SCOUT_PROXY_ENABLED:-false}
+      SCOUT_PROXY_PORT: ${SCOUT_PROXY_PORT:-8080}
+      SCOUT_PROXY_KEY: ${SCOUT_PROXY_KEY:-}
+      SCOUT_CONSOLE_PUBLIC_URL: ${SCOUT_CONSOLE_PUBLIC_URL:-https://console.labyrinthscout.com}
+      SCOUT_ENGINE_URL: http://scout-engine:4455
+      LABYRINTH_LLM_ROUTER_URL: ${CARINA_API_URL:-http://carina-web:3000}
+      CARINA_API_URL: ${CARINA_API_URL:-}
+      CARINA_OPS_TOKEN: ${CARINA_OPS_TOKEN:-}
+      SCOUT_TELEGRAM_BOT_TOKEN: ${SCOUT_TELEGRAM_BOT_TOKEN:-}
+      SCOUT_TELEGRAM_CHAT_ID: ${SCOUT_TELEGRAM_CHAT_ID:-}
+      SCOUT_RESEND_API_KEY: ${SCOUT_RESEND_API_KEY:-}
+      SCOUT_ALERT_FROM_EMAIL: ${SCOUT_ALERT_FROM_EMAIL:-}
+      SCOUT_ALERT_TO_EMAIL: ${SCOUT_ALERT_TO_EMAIL:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - scout
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4444/api/readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  scout-engine:
+    build:
+      context: ${SCOUT_ENGINE_CONTEXT:-../scout-engine}
+      dockerfile: Dockerfile
+    container_name: scout-engine
+    expose:
+      - "4455"
+    environment:
+      NODE_ENV: production
+      SCOUT_PORT: ${SCOUT_ENGINE_PORT:-4455}
+      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@postgres:5432/scout
+      REDIS_URL: redis://redis:6379
+      SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
+      SCOUT_CONSOLE_URL: http://labyrinth-scout:4444
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      labyrinth-scout:
+        condition: service_healthy
+    networks:
+      - scout
+      - proxy
+    restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    container_name: scout-postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: scout
+      POSTGRES_PASSWORD: ${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}
+      POSTGRES_DB: scout
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scout"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - scout
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: scout-redis
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - scout
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  scout:
+    driver: bridge
+  proxy:
+    external: true
+    name: proxy

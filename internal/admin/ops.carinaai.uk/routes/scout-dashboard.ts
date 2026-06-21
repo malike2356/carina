@@ -9,6 +9,8 @@ import {
   SCOUT_DASHBOARD_API,
   scoutGet,
   scoutHeaders,
+  scoutConsoleGetDetailed,
+  scoutConsolePost,
 } from '../lib/scout.js';
 
 export const scoutDashboardRouter = Router();
@@ -23,7 +25,6 @@ export function resolveConsolePublicDir(): string {
     process.env.SCOUT_CONSOLE_PUBLIC_DIR,
     path.resolve(__opsDir, '..', 'servers', 'console.labyrinthscout.com', 'public'),
     path.resolve(__opsDir, '..', 'console.labyrinthscout.com', 'public'),
-    '/home/malike/apps/console.labyrinthscout.com/public',
   ].filter(Boolean) as string[];
   for (const dir of candidates) {
     if (fs.existsSync(path.join(dir, 'dashboard.html'))) return dir;
@@ -151,6 +152,108 @@ scoutDashboardRouter.get('/console', (_req, res) => {
 
 scoutDashboardRouter.get('/summary', (req, res) => {
   void renderScoutSummary(res);
+});
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function scoutAccountPublicBase(): string {
+  const raw = process.env.SCOUT_ACCOUNT_PUBLIC_URL?.trim()
+    ?? process.env.SCOUT_CONSOLE_PUBLIC_URL?.trim()
+    ?? 'https://console.labyrinthscout.com';
+  return raw.replace(/\/$/, '');
+}
+
+interface ScoutAccountRow {
+  id: string;
+  email: string;
+  createdAt: string;
+  isActive: boolean;
+  subscriptionPlan: string;
+  carinaTenantId: string | null;
+  apiKeyCount: number;
+  activeApiKeyCount: number;
+}
+
+scoutDashboardRouter.get('/accounts', async (req, res) => {
+  const result = await scoutConsoleGetDetailed('/api/admin/accounts');
+  const accounts = result.ok && result.data && typeof result.data === 'object' && 'accounts' in result.data
+    ? (result.data as { accounts: ScoutAccountRow[] }).accounts
+    : [];
+  res.render('scout/accounts', {
+    title: 'Scout Accounts',
+    accounts,
+    scoutConsoleUrl: SCOUT_CONSOLE_BASE,
+    scoutAccountPublicUrl: scoutAccountPublicBase(),
+    error: result.ok ? null : (result.error ?? 'Scout console unreachable'),
+    query: req.query,
+    resetUrl: typeof req.query.resetUrl === 'string' ? req.query.resetUrl : null,
+    apiKey: typeof req.query.apiKey === 'string' ? req.query.apiKey : null,
+    keyPrefix: typeof req.query.keyPrefix === 'string' ? req.query.keyPrefix : null,
+  });
+});
+
+scoutDashboardRouter.post('/accounts/:id/deactivate', async (req, res) => {
+  const id = String(req.params.id ?? '');
+  if (!UUID_RE.test(id)) {
+    res.redirect('/scout/accounts?error=Invalid+account');
+    return;
+  }
+  const result = await scoutConsolePost(`/api/admin/accounts/${id}/deactivate`, {});
+  if (!result.ok) {
+    res.redirect(`/scout/accounts?error=${encodeURIComponent(result.error ?? 'Deactivate failed')}`);
+    return;
+  }
+  res.redirect('/scout/accounts?deactivated=1');
+});
+
+scoutDashboardRouter.post('/accounts/:id/activate', async (req, res) => {
+  const id = String(req.params.id ?? '');
+  if (!UUID_RE.test(id)) {
+    res.redirect('/scout/accounts?error=Invalid+account');
+    return;
+  }
+  const result = await scoutConsolePost(`/api/admin/accounts/${id}/activate`, {});
+  if (!result.ok) {
+    res.redirect(`/scout/accounts?error=${encodeURIComponent(result.error ?? 'Activate failed')}`);
+    return;
+  }
+  res.redirect('/scout/accounts?activated=1');
+});
+
+scoutDashboardRouter.post('/accounts/:id/reset-password', async (req, res) => {
+  const id = String(req.params.id ?? '');
+  if (!UUID_RE.test(id)) {
+    res.redirect('/scout/accounts?error=Invalid+account');
+    return;
+  }
+  const result = await scoutConsolePost(`/api/admin/accounts/${id}/reset-password`, {});
+  if (!result.ok || !result.data || typeof result.data !== 'object') {
+    res.redirect(`/scout/accounts?error=${encodeURIComponent(result.error ?? 'Reset failed')}`);
+    return;
+  }
+  const setupToken = String((result.data as { setupToken?: string }).setupToken ?? '');
+  if (!setupToken) {
+    res.redirect('/scout/accounts?error=No+setup+token+returned');
+    return;
+  }
+  const resetUrl = `${scoutAccountPublicBase()}/account/activate?token=${encodeURIComponent(setupToken)}`;
+  res.redirect(`/scout/accounts?resetUrl=${encodeURIComponent(resetUrl)}`);
+});
+
+scoutDashboardRouter.post('/accounts/:id/reset-api-key', async (req, res) => {
+  const id = String(req.params.id ?? '');
+  if (!UUID_RE.test(id)) {
+    res.redirect('/scout/accounts?error=Invalid+account');
+    return;
+  }
+  const result = await scoutConsolePost(`/api/admin/accounts/${id}/reset-api-key`, {});
+  if (!result.ok || !result.data || typeof result.data !== 'object') {
+    res.redirect(`/scout/accounts?error=${encodeURIComponent(result.error ?? 'API key reset failed')}`);
+    return;
+  }
+  const data = result.data as { apiKey?: string; keyPrefix?: string };
+  const params = new URLSearchParams({ apiKey: data.apiKey ?? '', keyPrefix: data.keyPrefix ?? '' });
+  res.redirect(`/scout/accounts?${params.toString()}`);
 });
 
 async function proxyToScout(req: import('express').Request, res: import('express').Response): Promise<void> {

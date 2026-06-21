@@ -1,0 +1,210 @@
+import type { ActionPlaybook, PlaybookAction } from './types.js';
+
+const ACTIONS = {
+  terminateSession: {
+    id: 'terminate-session',
+    label: 'Terminate session',
+    description: 'Immediately ends the active session. The user will need to start a new conversation. This is reversible - the user can reconnect.',
+    type: 'button' as const,
+    destructive: false,
+    reversible: true,
+    requiresConfirmation: false,
+    apiEndpoint: '/api/block-session',
+    apiMethod: 'POST' as const,
+    apiBody: { session_id: '{{session_id}}', reason: 'Operator action: unusual activity' },
+  } satisfies PlaybookAction,
+
+  restrictSession: {
+    id: 'restrict-session',
+    label: 'Switch to restricted mode',
+    description: 'Moves the session to restricted mode: the agent can still respond but cannot use external tools, run code, or access files. Less disruptive than terminating.',
+    type: 'button' as const,
+    destructive: false,
+    reversible: true,
+    requiresConfirmation: false,
+    apiEndpoint: '/api/security-posture',
+    apiMethod: 'POST' as const,
+    apiBody: { instance_id: '{{instance_id}}', mode: 'restrict', reason: 'Operator action: anomaly detected' },
+  } satisfies PlaybookAction,
+
+  watchSession: {
+    id: 'watch-session',
+    label: 'Flag for elevated monitoring',
+    description: 'Marks this session for closer observation. Anomaly detection thresholds are lowered so any further unusual activity triggers an alert sooner. Non-disruptive.',
+    type: 'button' as const,
+    destructive: false,
+    reversible: true,
+    requiresConfirmation: false,
+    apiEndpoint: '/api/security-posture',
+    apiMethod: 'POST' as const,
+    apiBody: { instance_id: '{{instance_id}}', mode: 'elevated', reason: 'Operator action: session under watch' },
+  } satisfies PlaybookAction,
+
+  blockUser: {
+    id: 'block-user',
+    label: 'Block user account',
+    description: 'Prevents this user from starting new sessions. Existing session is terminated. This is reversible from the account management panel.',
+    type: 'button' as const,
+    destructive: true,
+    reversible: true,
+    requiresConfirmation: true,
+    apiEndpoint: '/api/block-session',
+    apiMethod: 'POST' as const,
+    apiBody: { session_id: '{{session_id}}', block_user: true, reason: 'Operator action: blocked after review' },
+  } satisfies PlaybookAction,
+
+  armKillSwitch: {
+    id: 'arm-killswitch',
+    label: 'Arm global kill switch',
+    description: 'Halts ALL Carina agent sessions across ALL instances globally. Use only for confirmed breaches. This is the nuclear option - it affects every user.',
+    type: 'button' as const,
+    destructive: true,
+    reversible: true,
+    requiresConfirmation: true,
+    apiEndpoint: '/api/killswitch/arm',
+    apiMethod: 'POST' as const,
+    apiBody: { reason: 'Operator action: breach response' },
+  } satisfies PlaybookAction,
+
+  disarmKillSwitch: {
+    id: 'disarm-killswitch',
+    label: 'Disarm kill switch',
+    description: 'Re-enables all agent sessions. Use after a breach has been contained and you are satisfied it is safe to resume operations.',
+    type: 'button' as const,
+    destructive: false,
+    reversible: false,
+    requiresConfirmation: true,
+    apiEndpoint: '/api/killswitch/disarm',
+    apiMethod: 'POST' as const,
+    apiBody: { reason: 'Operator action: breach contained' },
+  } satisfies PlaybookAction,
+
+  acknowledgeAndMonitor: {
+    id: 'acknowledge-monitor',
+    label: 'Acknowledge and continue monitoring',
+    description: 'Mark this as reviewed and not immediately concerning. The event is logged. Monitoring continues at the current level.',
+    type: 'button' as const,
+    destructive: false,
+    reversible: false,
+    requiresConfirmation: false,
+    apiEndpoint: '/api/actions/acknowledge',
+    apiMethod: 'POST' as const,
+    apiBody: { event_id: '{{event_id}}' },
+  } satisfies PlaybookAction,
+
+  runSessionAudit: {
+    id: 'run-session-audit',
+    label: 'Run session audit',
+    description: 'Generates a forensic snapshot of this session: tool calls made, messages sent, egress domains contacted. Opens in the response terminal.',
+    type: 'button' as const,
+    destructive: false,
+    reversible: false,
+    requiresConfirmation: false,
+    apiEndpoint: '/api/forensic-snapshot',
+    apiMethod: 'POST' as const,
+    apiBody: { session_id: '{{session_id}}', instance_id: '{{instance_id}}' },
+  } satisfies PlaybookAction,
+
+  manualRevokeSteps: {
+    id: 'manual-revoke-steps',
+    label: 'Revoke API key manually',
+    description: 'If you cannot use the dashboard, follow these steps to revoke the instance API key directly.',
+    type: 'steps' as const,
+    destructive: true,
+    reversible: false,
+    requiresConfirmation: true,
+    steps: [
+      'SSH into the VPS: ssh malike@80.190.81.208',
+      'Open the Scout database: psql $SCOUT_DATABASE_URL',
+      "Run: UPDATE carina_instances SET api_key = gen_random_uuid()::text, status = 'suspended' WHERE id = '{{instance_id}}';",
+      'Restart the affected Carina instance so the old key is invalidated.',
+      'Verify the instance no longer connects in the Fleet tab.',
+    ],
+  } satisfies PlaybookAction,
+};
+
+export const PLAYBOOKS: ActionPlaybook[] = [
+  {
+    id: 'anomaly-warning-playbook',
+    eventType: 'anomaly_detected',
+    minSeverity: 'warning',
+    title: 'Unusual AI behaviour',
+    summary: 'Carina is doing something outside its normal pattern. This is not necessarily harmful - it may just mean the user gave it an unusual task. But it is worth being aware of.',
+    riskNote: 'If the behaviour is part of a prompt injection attack or the agent acting on its own initiative, it could lead to unintended actions or data exposure.',
+    category: 'human',
+    actions: [ACTIONS.watchSession, ACTIONS.runSessionAudit, ACTIONS.acknowledgeAndMonitor],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'anomaly-critical-playbook',
+    eventType: 'anomaly_detected',
+    minSeverity: 'critical',
+    title: 'Significantly unusual AI behaviour',
+    summary: 'Carina is behaving in a way that is well outside its normal range. This level of deviation usually means the agent has received unusual instructions, is under a prompt injection attack, or is pursuing a goal it was not given.',
+    riskNote: 'Unaddressed, this could lead to data exfiltration, unintended tool use, or the agent taking actions on behalf of a third party rather than the user.',
+    category: 'human',
+    actions: [ACTIONS.restrictSession, ACTIONS.runSessionAudit, ACTIONS.terminateSession, ACTIONS.blockUser, ACTIONS.acknowledgeAndMonitor],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'breach-detected-playbook',
+    eventType: 'breach_detected',
+    minSeverity: 'breach',
+    title: 'Security breach confirmed',
+    summary: 'Labyrinth has detected a confirmed security breach. This is not a false positive trigger - something has crossed a hard security boundary.',
+    riskNote: 'This is a serious event. Data may have been accessed or exfiltrated. Other sessions may be at risk. Immediate action is recommended.',
+    category: 'human',
+    actions: [ACTIONS.armKillSwitch, ACTIONS.blockUser, ACTIONS.runSessionAudit, ACTIONS.manualRevokeSteps],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'alert-escalated-playbook',
+    eventType: 'alert_escalated',
+    minSeverity: 'warning',
+    title: 'Unacknowledged alert follow-up',
+    summary: 'An earlier alert has not been reviewed. Labyrinth is following up to make sure it does not get lost. This is the same event sent again, not a new incident.',
+    riskNote: 'The original event may still be active and unaddressed. Review it and either take action or dismiss it.',
+    category: 'human',
+    actions: [ACTIONS.watchSession, ACTIONS.restrictSession, ACTIONS.terminateSession, ACTIONS.acknowledgeAndMonitor],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'killswitch-armed-playbook',
+    eventType: 'killswitch_armed',
+    minSeverity: 'critical',
+    title: 'All agent sessions halted',
+    summary: 'The global kill switch has been armed. All Carina agent sessions across all instances are stopped. No users can start new sessions until it is disarmed.',
+    riskNote: 'This is affecting all users right now. Disarm only when you are confident the breach or threat has been contained.',
+    category: 'human',
+    actions: [ACTIONS.disarmKillSwitch, ACTIONS.runSessionAudit],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'alert-test-playbook',
+    eventType: 'alert_test',
+    minSeverity: 'info',
+    title: 'Test alert received',
+    summary: 'A test notification was triggered to confirm the alert pipeline is working. No action is needed.',
+    riskNote: 'None. This is a test.',
+    category: 'monitor',
+    actions: [ACTIONS.acknowledgeAndMonitor],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
+export function findPlaybook(eventType: string, severity: string): ActionPlaybook | null {
+  const RANK: Record<string, number> = { info: 1, warning: 2, critical: 3, breach: 4 };
+  const eventRank = RANK[severity] ?? 0;
+  const candidates = PLAYBOOKS.filter(
+    (p) => p.eventType === eventType && (RANK[p.minSeverity] ?? 0) <= eventRank,
+  );
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => (RANK[b.minSeverity] ?? 0) - (RANK[a.minSeverity] ?? 0));
+  return candidates[0] ?? null;
+}

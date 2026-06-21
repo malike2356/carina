@@ -1,4 +1,5 @@
 import type { AlertAdapter, AlertChannel, SecurityEvent } from './types.js';
+import { config } from '../config/index.js';
 
 export class EmailAdapter implements AlertAdapter {
   async send(event: SecurityEvent, channel: AlertChannel): Promise<void> {
@@ -43,7 +44,7 @@ export class EmailAdapter implements AlertAdapter {
   }
 
   private renderHtml(event: SecurityEvent): string {
-    const dashboardUrl = process.env.SCOUT_DASHBOARD_URL ?? 'http://localhost:4444';
+    const dashboardUrl = config.console.dashboardUrl;
     const severityColor = {
       info: '#3b82f6',
       warning: '#f59e0b',

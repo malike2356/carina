@@ -15,10 +15,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 CORE_LOCAL="${REPO_ROOT}/internal/servers/core.carinaai.uk"
-OPS_LOCAL="${REPO_ROOT}/internal/admin/ops.carinaai.uk"
+OPS_LOCAL="${REPO_ROOT}/backends/admin/ops.carinaai.uk"
 CLOUD_LOCAL="${REPO_ROOT}/external/client-apps/app.carinaai.uk"
 SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
 SCOUT_ENGINE_LOCAL="${REPO_ROOT}/internal/servers/scout-engine"
+CARINA_MARKETING_LOCAL="${REPO_ROOT}/marketing/sites/carinaai.uk"
+SCOUT_MARKETING_LOCAL="${REPO_ROOT}/marketing/sites/labyrinthscout.com"
 VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
 APPS_ROOT="${APPS_ROOT:-/home/malike/apps}"
@@ -55,6 +57,20 @@ rsync -az --delete \
   --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
   "${SCOUT_ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/scout-engine/"
 
+log "Syncing carinaai.uk marketing site..."
+ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/public_website'"
+rsync -az --delete \
+  --delete-excluded \
+  --exclude='.git' \
+  "${CARINA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/public_website/"
+
+log "Syncing labyrinthscout.com marketing site..."
+ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/labyrinthscout.com-static'"
+rsync -az --delete \
+  --delete-excluded \
+  --exclude='.git' \
+  "${SCOUT_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/labyrinthscout.com-static/"
+
 log "Running Docker production deploy on VPS..."
 ssh "${VPS_USER}@${VPS_HOST}" bash -s -- "${APPS_ROOT}" <<'REMOTE'
 set -euo pipefail
@@ -66,9 +82,9 @@ docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
 # Carina stack
 cd "$APPS_ROOT/core.carinaai.uk"
 export CARINA_OPS_CONTEXT="$APPS_ROOT/ops.carinaai.uk"
-export CARINA_OPS_DOCKERFILE=docker/Dockerfile
+export CARINA_OPS_DOCKERFILE=docker/Dockerfile.runtime
 export CARINA_CLOUD_CONTEXT="$APPS_ROOT/app.carinaai.uk"
-export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile
+export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile.runtime
 export CARINA_SSL_DIR=/etc/carina/ssl
 
 test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || true

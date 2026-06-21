@@ -24,6 +24,8 @@ services:
       SCOUT_PROXY_PORT: ${SCOUT_PROXY_PORT:-8080}
       SCOUT_PROXY_KEY: ${SCOUT_PROXY_KEY:-}
       SCOUT_CONSOLE_PUBLIC_URL: ${SCOUT_CONSOLE_PUBLIC_URL:-https://console.labyrinthscout.com}
+      SCOUT_ENGINE_URL: http://scout-engine:4455
+      LABYRINTH_LLM_ROUTER_URL: ${CARINA_API_URL:-http://carina-web:3000}
       CARINA_API_URL: ${CARINA_API_URL:-}
       CARINA_OPS_TOKEN: ${CARINA_OPS_TOKEN:-}
       SCOUT_TELEGRAM_BOT_TOKEN: ${SCOUT_TELEGRAM_BOT_TOKEN:-}
@@ -70,6 +72,7 @@ services:
         condition: service_healthy
     networks:
       - scout
+      - proxy
     restart: unless-stopped
 
   postgres:

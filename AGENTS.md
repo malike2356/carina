@@ -20,7 +20,7 @@ This is the VERLOX Carina monorepo. The canonical tree is grouped by audience an
 
 The repo root is intentionally small. Work inside `external/`, `internal/`, `marketing/`, or `product/` first, then choose the product directory.
 
-Product code for the packaged Carina agent lives in `internal/servers/core.carinaai.uk/`, a Node.js/TypeScript agent with CLI entry points in `bin/`, source in `src/`, and product data in `brain/`. Public documentation lives in `marketing/docs/docs.carinaai.uk/` (Docusaurus; user + developer guides). Legacy VitePress sources remain in `internal/servers/core.carinaai.uk/docs/` (deprecated; edit `marketing/docs/docs.carinaai.uk/` instead). The private operations panel is `internal/admin/ops.carinaai.uk/`, with Express routes in `routes/`, helpers in `lib/`, EJS templates in `views/`, and CSS generated to `public/styles.css`. Labyrinth Scout lives in `internal/servers/console.labyrinthscout.com/`, with server code in `src/` and dashboard/static assets in `public/`. The Carina mobile companion is `external/client-apps/carinaMobile/` (Expo Router; general-purpose default). Deployment scripts are in `scripts/`. Agent runtime knowledge is in `internal/servers/core.carinaai.uk/src/platform/platform-knowledge.md`.
+Product code for the packaged Carina agent lives in `internal/servers/core.carinaai.uk/`, a Node.js/TypeScript agent with CLI entry points in `bin/`, source in `src/`, and product data in `brain/`. Public documentation lives in `marketing/docs/docs.carinaai.uk/` (Docusaurus; user + developer guides). Legacy VitePress sources remain in `internal/servers/core.carinaai.uk/docs/` (deprecated; edit `marketing/docs/docs.carinaai.uk/` instead). The private operations panel is `internal/admin/ops.carinaai.uk/`, with Express routes in `routes/`, helpers in `lib/`, EJS templates in `views/`, and CSS generated to `public/styles.css`. Labyrinth Scout lives in `internal/servers/console.labyrinthscout.com/`, with server code in `src/` and dashboard/static assets in `public/`. The Carina mobile companion is `external/client-apps/carinaMobile/` (Expo Router; general-purpose default). Deployment scripts are in `scripts/`. **Production deploy guide:** `docs/DEPLOYMENT-GUIDE.md`. **Ops auth, user management, Scout accounts admin, and ops/Scout deploy quirks:** `docs/OPS-USER-MANAGEMENT.md`. Agent runtime knowledge is in `internal/servers/core.carinaai.uk/src/platform/platform-knowledge.md`.
 
 ## Build, Test, and Development Commands
 
@@ -54,3 +54,17 @@ Git history uses short imperative subjects, often with Conventional Commit scope
 ## Security & Configuration Tips
 
 Never commit real `.env` files, API keys, `.htpasswd`, or credentials. Use the existing `.env.example` files in `internal/servers/core.carinaai.uk/`, `internal/admin/ops.carinaai.uk/`, and `internal/servers/console.labyrinthscout.com/`. Preserve Scout/Carina trust boundaries: Carina reports sanitized telemetry; Scout control actions must remain scoped and auditable.
+
+## Ops panel: auth and user management
+
+Read **`docs/OPS-USER-MANAGEMENT.md`** before changing login, roles, tenant admin, or Scout subscriber accounts.
+
+Summary for agents:
+
+- **Ops operators** (`/users`, superadmin only): `internal/admin/ops.carinaai.uk/`
+- **Cloud subscribers** (`/tenants`): app.carinaai.uk better-auth users; do not add a second admin UI
+- **Scout customer accounts** (`/scout/accounts`): console.labyrinthscout.com `/account/*` users; API in Scout `src/api/admin.ts`
+- **core.carinaai.uk** and **Scout dashboard**: single-password operator surfaces; password changes via ops Settings only
+- **Deploy ops:** run `pnpm build` in ops first; production uses `docker/Dockerfile.runtime` (pre-built `dist/`)
+- **Deploy Scout console:** build Docker image from `$APPS_ROOT` (monorepo context), not from inside `console.labyrinthscout.com/` alone
+- **Env:** set `SCOUT_ACCOUNT_PUBLIC_URL` in ops `.env` for Scout password setup links

@@ -18,12 +18,14 @@ export const config = {
   port: parseInt(optional('SCOUT_PORT', '4444'), 10),
   db: {
     url:
-      optional('SCOUT_DATABASE_URL') ||
-      optional('DATABASE_URL') ||
-      'postgresql://carina:secret@localhost:5433/carina_central',
+      optional('SCOUT_DATABASE_URL')
+      || optional('DATABASE_URL')
+      || (process.env.NODE_ENV === 'production'
+        ? 'postgresql://scout:secret@postgres:5432/scout'
+        : 'postgresql://carina:secret@localhost:5433/carina_central'),
   },
   redis: {
-    url: optional('REDIS_URL', 'redis://localhost:6379'),
+    url: optional('REDIS_URL', process.env.NODE_ENV === 'production' ? 'redis://redis:6379' : 'redis://localhost:6379'),
   },
   auth: {
     apiKey: operatorApiKey,
@@ -39,6 +41,10 @@ export const config = {
   },
   console: {
     publicUrl: optional('SCOUT_CONSOLE_PUBLIC_URL', 'https://console.labyrinthscout.com').replace(/\/+$/, ''),
+    dashboardUrl: optional('SCOUT_DASHBOARD_URL')
+      || (process.env.NODE_ENV === 'production'
+        ? `${optional('SCOUT_CONSOLE_PUBLIC_URL', 'https://console.labyrinthscout.com').replace(/\/+$/, '')}/dashboard`
+        : 'http://localhost:4444'),
   },
   trust: {
     publicEnabled: optional('TRUST_PUBLIC_ENABLED', 'true') !== 'false',

@@ -246,11 +246,15 @@ export const config = {
   },
   labyrinth: {
     enabled: process.env.LABYRINTH_ENABLED === 'true' || process.env.SCOUT_ENABLED === 'true',
-    url: process.env.SCOUT_API_URL ?? process.env.LABYRINTH_URL ?? 'http://localhost:4444',
+    url: process.env.SCOUT_API_URL ?? process.env.LABYRINTH_URL ?? (
+      process.env.NODE_ENV === 'production' ? 'http://labyrinth-scout:4444' : 'http://localhost:4444'
+    ),
     apiKey: process.env.SCOUT_API_KEY ?? process.env.LABYRINTH_API_KEY ?? '',
     instanceId: process.env.CARINA_INSTANCE_ID ?? process.env.SCOUT_INSTANCE_ID ?? process.env.LABYRINTH_INSTANCE_ID ?? 'carina-local',
     instanceName: process.env.LABYRINTH_INSTANCE_NAME ?? 'Carina Local',
-    llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL ?? 'http://localhost:3000',
+    llmRouterUrl: process.env.LABYRINTH_LLM_ROUTER_URL ?? (
+      process.env.NODE_ENV === 'production' ? 'http://carina-web:3000' : 'http://localhost:3000'
+    ),
     judgeModel: process.env.LABYRINTH_JUDGE_MODEL ?? 'deepseek/deepseek-chat',
     judgeTimeoutMs: intEnv('LABYRINTH_JUDGE_TIMEOUT_MS', 3000),
   },

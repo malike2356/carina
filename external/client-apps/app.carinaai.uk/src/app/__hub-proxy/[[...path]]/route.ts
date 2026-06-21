@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 
-const HUB_UPSTREAM = 'http://127.0.0.1:3001';
+const HUB_UPSTREAM =
+  process.env.SKILLS_HUB_INTERNAL_URL?.trim()
+  ?? process.env.HUB_UPSTREAM?.trim()
+  ?? (process.env.NODE_ENV === 'production' ? 'http://carina-hub:3001' : 'http://127.0.0.1:3001');
 
 function buildUpstreamUrl(request: NextRequest): URL {
   const upstream = new URL(request.nextUrl.pathname.replace(/^\/__hub-proxy/, '') || '/', HUB_UPSTREAM);

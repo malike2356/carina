@@ -10,7 +10,7 @@ import { OPS_ENV_PATH, setEnvVar } from '../lib/env.js';
 export const settingsRouter = Router();
 
 const SCOUT_HTPASSWD =
-  process.env.SCOUT_HTPASSWD_FILE ?? '/home/malike/apps/console.labyrinthscout.com/.htpasswd';
+  process.env.SCOUT_HTPASSWD_FILE ?? '/etc/carina/scout/.htpasswd';
 const SCOUT_HTPASSWD_USER = process.env.SCOUT_HTPASSWD_USER ?? 'admin';
 
 type FlashMessage = { type: 'success' | 'error' | 'warning'; text: string };

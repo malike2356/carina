@@ -1,0 +1,169 @@
+<% title = 'Dashboard' %>
+<div class="ops-page">
+  <div class="ops-scout-kill-bar">
+    <div class="ops-scout-kill-copy">
+      <div class="ops-scout-kill-title">Emergency kill switch</div>
+      <div class="ops-scout-kill-sub">Stop all agent instances platform-wide.</div>
+    </div>
+    <a href="/security/killswitch" class="ops-btn ops-btn-red ops-scout-kill-btn">Open kill switch</a>
+  </div>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Carina Ops</div>
+    <div class="ops-page-sub">Platform control centre. All systems read below.</div>
+  </div>
+  <div class="ops-toolbar-actions">
+    <span id="platform-badge" class="ops-badge ops-badge-gray">Checking...</span>
+    <span class="ops-inline-note" id="dash-ts"></span>
+  </div>
+</div>
+
+<div class="ops-metrics">
+  <div class="ops-metric"><div class="ops-metric-label">Tenants</div><div class="ops-metric-value ok"><%= tenantSummary ? tenantSummary.total : '-' %></div><div class="ops-inline-note"><%= tenantSummary ? tenantSummary.freeCount + ' free / ' + tenantSummary.proCount + ' pro' : '' %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Messages today</div><div class="ops-metric-value"><%= tenantSummary ? tenantSummary.messagesToday : '-' %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Monthly tokens</div><div class="ops-metric-value"><%= tenantSummary ? tenantSummary.monthlyTokens.toLocaleString() : '-' %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Scout score</div><div class="ops-metric-value" id="scout-score-val">-</div><div class="ops-inline-note" id="scout-score-sub">Loading...</div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Memories</div><div class="ops-metric-value"><%= stats.totalMemories %></div></div>
+  <div class="ops-metric"><div class="ops-metric-label">Threats (24h)</div><div class="ops-metric-value warn" id="dash-threats">-</div></div>
+</div>
+
+<!-- Alert bar (shown if critical threats) -->
+<div id="scout-alert" style="display:none;padding:10px 14px;margin-bottom:14px;border-radius:5px;border:1px solid;font-size:11px;align-items:center;gap:10px;"></div>
+
+<div class="ops-surface ops-grid-surface ops-grid ops-grid-3" style="margin-bottom:16px;">
+  <div class="ops-section">
+    <div class="ops-section-title">Recent Sessions</div>
+    <% if (!recentSessions.length) { %>
+      <div class="ops-empty">No sessions yet.</div>
+    <% } else { %>
+      <table class="ops-table">
+        <thead><tr><th>Session</th><th>Msgs</th><th>Last Seen</th></tr></thead>
+        <tbody>
+          <% for (const s of recentSessions) { %>
+          <tr>
+            <td><a href="/memories/session/<%= s.session_id %>" class="ops-link"><%= s.session_id.slice(0, 10) %>...</a></td>
+            <td><%= s.message_count %></td>
+            <td style="color:var(--muted);font-size:10px;"><%= new Date(s.last_seen).toLocaleDateString() %></td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="ops-section">
+    <div class="ops-section-title">Recent Skills</div>
+    <% if (!recentSkills.length) { %>
+      <div class="ops-empty">No skills yet.</div>
+    <% } else { %>
+      <table class="ops-table">
+        <thead><tr><th>Skill</th><th>Uses</th><th>Added</th></tr></thead>
+        <tbody>
+          <% for (const sk of recentSkills) { %>
+          <tr>
+            <td><a href="/skills/<%= sk.id %>" class="ops-link-green"><%= sk.name %></a></td>
+            <td><%= sk.usage_count || 0 %></td>
+            <td style="color:var(--muted);font-size:10px;"><%= new Date(sk.created_at).toLocaleDateString() %></td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+    <% if (stats.topSkill) { %>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--muted);">
+      Top skill: <span style="color:var(--green)"><%= stats.topSkill.name %></span> (<%= stats.topSkill.usage_count %> uses)
+    </div>
+    <% } %>
+  </div>
+
+  <div class="ops-section">
+    <div class="ops-section-title">Live Threat Feed</div>
+    <div id="threat-feed-loading" class="ops-loading">Loading...</div>
+    <div id="threat-feed-list"></div>
+    <div id="threat-feed-empty" class="ops-empty" style="display:none;">No active threats.</div>
+    <a href="/security/threats" class="ops-link" style="display:block;margin-top:10px;font-size:10px;padding-top:8px;border-top:1px solid var(--border);">View all threats</a>
+  </div>
+</div>
+
+<!-- Quick nav -->
+<div class="ops-surface" style="margin-bottom:16px;">
+  <div class="ops-link-grid">
+  <a href="/control-center" class="ops-link-row"><div class="ops-link-row-title">Control Center</div><div class="ops-link-row-sub">Core controls and surface map</div></a>
+  <a href="/security/killswitch" class="ops-link-row"><div class="ops-link-row-title">Kill Switch</div><div class="ops-link-row-sub">Arm or disarm platform halt</div></a>
+  <a href="/governance" class="ops-link-row"><div class="ops-link-row-title">Governance</div><div class="ops-link-row-sub">SOC2, trust, posture, audit</div></a>
+  <a href="/admin/incident-blog" class="ops-link-row"><div class="ops-link-row-title">Incident Blog</div><div class="ops-link-row-sub">Draft, publish and review records</div></a>
+  </div>
+</div>
+
+<% if (stats.packs.length) { %>
+<div class="ops-section" style="padding:0;">
+  <div class="ops-section-title">RAG Packs Active</div>
+  <div class="ops-actions" style="margin-top:8px;">
+    <% for (const p of stats.packs) { %><span class="ops-badge ops-badge-cyan"><%= p %></span><% } %>
+  </div>
+</div>
+<% } %>
+
+</div>
+
+<script>
+document.getElementById('dash-ts').textContent = new Date().toLocaleString();
+
+// Platform ping
+fetch('/settings', { credentials: 'same-origin', method: 'HEAD' })
+  .then(function() {
+    var b = document.getElementById('platform-badge');
+    b.textContent = 'Online'; b.className = 'ops-badge ops-badge-green';
+  })
+  .catch(function() {
+    var b = document.getElementById('platform-badge');
+    b.textContent = 'Degraded'; b.className = 'ops-badge ops-badge-red';
+  });
+
+// Scout score
+fetch('/scout-api/api/score', { credentials: 'same-origin' })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var s = d.score || d.overall || d.value || 0;
+    var el = document.getElementById('scout-score-val');
+    el.textContent = s || '-';
+    el.style.color = s >= 80 ? 'var(--green)' : s >= 60 ? 'var(--amber)' : s > 0 ? 'var(--red)' : 'var(--muted)';
+    document.getElementById('scout-score-sub').textContent = s >= 80 ? 'Healthy' : s >= 60 ? 'Fair' : s > 0 ? 'Needs attention' : 'No data';
+  })
+  .catch(function() { document.getElementById('scout-score-sub').textContent = 'Scout offline'; });
+
+// Threat feed
+fetch('/security/events', { credentials: 'same-origin' })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var events = d.events || d || [];
+    if (!Array.isArray(events)) events = [];
+    document.getElementById('dash-threats').textContent = events.length;
+    document.getElementById('threat-feed-loading').style.display = 'none';
+    var crit = events.filter(function(e){ return (e.severity||'').toLowerCase() === 'critical'; });
+    if (crit.length) {
+      var al = document.getElementById('scout-alert');
+      al.style.display = 'flex';
+      al.style.cssText += ';background:rgba(255,34,68,0.06);border-color:rgba(255,34,68,0.3);color:#ff6080;';
+      al.innerHTML = '<span style="font-weight:700;letter-spacing:1px;">CRITICAL:</span>&nbsp;' + crit.length + ' critical threat(s). <a href="/security/threats" class="ops-link" style="margin-left:6px;">Investigate</a>';
+    }
+    if (!events.length) { document.getElementById('threat-feed-empty').style.display = ''; return; }
+    document.getElementById('threat-feed-list').innerHTML = events.slice(0, 8).map(function(e) {
+      var sev = (e.severity || 'info').toLowerCase();
+      var c = sev === 'critical' ? 'var(--red)' : sev === 'warning' || sev === 'warn' ? 'var(--amber)' : 'var(--muted)';
+      var ts = e.created_at || e.timestamp;
+      return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px;">' +
+        '<span style="color:' + c + ';text-transform:uppercase;font-size:9px;font-weight:700;width:52px;flex-shrink:0;">' + sev + '</span>' +
+        '<span style="color:var(--text);flex:1;margin:0 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(e.type || e.event_type || '-') + '</span>' +
+        '<span style="color:var(--muted);white-space:nowrap;font-size:9px;">' + (ts ? new Date(ts).toLocaleTimeString() : '') + '</span></div>';
+    }).join('');
+  })
+  .catch(function() {
+    document.getElementById('threat-feed-loading').style.display = 'none';
+    document.getElementById('threat-feed-empty').style.display = '';
+    document.getElementById('threat-feed-empty').textContent = 'Scout offline.';
+  });
+
+function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+</script>

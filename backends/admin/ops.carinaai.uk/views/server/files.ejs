@@ -1,0 +1,152 @@
+<% title = 'Server Files' %>
+<div class="ops-page server-files-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">File Browser</div>
+      <div class="ops-page-sub">Allowed roots only. Superadmins can save edits.</div>
+    </div>
+    <% if (flash) { %><div class="ops-flash ok"><%= flash %></div><% } %>
+  </div>
+
+  <div class="server-files-layout">
+    <aside class="server-files-sidebar">
+      <% if (breadcrumbs && breadcrumbs.length) { %>
+        <nav class="server-breadcrumbs">
+          <% breadcrumbs.forEach(function(crumb, i) { %>
+            <% if (i < breadcrumbs.length - 1) { %>
+              <a href="/server/files?path=<%= encodeURIComponent(crumb.path) %>"><%= crumb.name %></a>
+              <span class="crumb-sep">/</span>
+            <% } else { %>
+              <span class="crumb-current"><%= crumb.name %></span>
+            <% } %>
+          <% }); %>
+        </nav>
+      <% } %>
+
+      <% if (error) { %>
+        <p class="server-error"><%= error %></p>
+      <% } else if (!currentPath) { %>
+        <p class="server-muted">Select a root:</p>
+        <ul class="server-entry-list">
+          <% roots.forEach(function(root) { %>
+            <li><a href="/server/files?path=<%= encodeURIComponent(root) %>"><%= root %></a></li>
+          <% }); %>
+        </ul>
+      <% } else if (entries) { %>
+        <ul class="server-entry-list">
+          <% if (currentPath && breadcrumbs.length > 1) { %>
+            <% const parent = breadcrumbs[breadcrumbs.length - 2]; %>
+            <li><a href="/server/files?path=<%= encodeURIComponent(parent.path) %>">..</a></li>
+          <% } %>
+          <% entries.forEach(function(entry) { %>
+            <li>
+              <% if (entry.type === 'dir') { %>
+                <a href="/server/files?path=<%= encodeURIComponent(entry.path) %>"><%= entry.name %>/</a>
+              <% } else { %>
+                <button type="button" class="file-link" data-path="<%= entry.path %>"><%= entry.name %></button>
+              <% } %>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+    </aside>
+
+    <section class="server-files-editor">
+      <div class="editor-toolbar">
+        <span id="editor-filename" class="editor-filename">Select a file</span>
+        <% if (locals.session && session.role === 'superadmin') { %>
+          <button type="button" id="save-btn" class="ops-btn primary" disabled>Save</button>
+        <% } %>
+      </div>
+      <div id="editor-mount"></div>
+      <input type="hidden" id="current-file-path" value="">
+    </section>
+  </div>
+</div>
+
+<script>
+  var require = { paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs' } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.52.2/min/vs/loader.min.js"></script>
+<script>
+require(['vs/editor/editor.main'], function () {
+  window._monacoEditor = monaco.editor.create(document.getElementById('editor-mount'), {
+    value: '',
+    language: 'plaintext',
+    theme: 'vs-dark',
+    automaticLayout: true,
+    minimap: { enabled: false },
+    fontSize: 13,
+    lineNumbers: 'on',
+    scrollBeyondLastLine: false,
+  });
+
+  document.querySelectorAll('.file-link').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      loadFile(btn.getAttribute('data-path'));
+    });
+  });
+
+  var saveBtn = document.getElementById('save-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveFile);
+  }
+});
+
+async function loadFile(filePath) {
+  const r = await fetch('/server/files/read?path=' + encodeURIComponent(filePath));
+  const data = await r.json();
+  if (!data.ok) {
+    monaco.editor.setModelLanguage(window._monacoEditor.getModel(), 'plaintext');
+    window._monacoEditor.setValue('Error: ' + data.error);
+    return;
+  }
+  monaco.editor.setModelLanguage(window._monacoEditor.getModel(), data.language);
+  window._monacoEditor.setValue(data.content);
+  document.getElementById('current-file-path').value = data.path;
+  document.getElementById('editor-filename').textContent = data.path.split('/').pop();
+  var saveBtn = document.getElementById('save-btn');
+  if (saveBtn) saveBtn.disabled = false;
+}
+
+async function saveFile() {
+  var saveBtn = document.getElementById('save-btn');
+  var path = document.getElementById('current-file-path').value;
+  if (!path) return;
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+  try {
+    const r = await fetch('/server/files/write', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: path, content: window._monacoEditor.getValue() }),
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error);
+    saveBtn.textContent = 'Saved';
+    setTimeout(function() { saveBtn.textContent = 'Save'; saveBtn.disabled = false; }, 1200);
+  } catch (e) {
+    saveBtn.textContent = 'Failed';
+    alert(e.message || 'Save failed');
+    saveBtn.disabled = false;
+  }
+}
+</script>
+<style>
+.server-files-layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; min-height: calc(100vh - 160px); margin-top: 1rem; }
+.server-files-sidebar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; overflow-y: auto; max-height: calc(100vh - 160px); }
+.server-files-editor { display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+#editor-mount { flex: 1; min-height: 480px; }
+.editor-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.editor-filename { font-size: 13px; color: var(--muted); font-family: monospace; }
+.server-entry-list { list-style: none; margin: 0; padding: 0; }
+.server-entry-list li { margin: 0; }
+.server-entry-list a, .file-link { display: block; width: 100%; text-align: left; padding: 4px 6px; font-size: 13px; color: var(--text); text-decoration: none; background: none; border: none; cursor: pointer; font-family: monospace; }
+.server-entry-list a:hover, .file-link:hover { background: rgba(0,200,100,0.08); color: var(--green); }
+.server-breadcrumbs { font-size: 12px; margin-bottom: 12px; word-break: break-all; }
+.server-breadcrumbs a { color: var(--cyan); text-decoration: none; }
+.crumb-sep { color: var(--muted); margin: 0 4px; }
+.crumb-current { color: var(--heading); }
+.server-error { color: var(--red); font-size: 13px; }
+.server-muted { color: var(--muted); font-size: 13px; }
+</style>

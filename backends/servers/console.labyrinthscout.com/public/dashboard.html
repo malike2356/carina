@@ -1,0 +1,2622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- __SCOUT_KEY_INJECTION__ -->
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Labyrinth Scout</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --void:#020409;--navy:#050c1a;--lift:#0a1628;
+  --border:rgba(0,200,150,.12);
+  --green:#00c896;--red:#ff2244;--amber:#d4af37;--cyan:#00d4ff;--purple:#9b59ff;
+  --text:#8bafc0;--bright:#cce8f4;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--void)}
+body{font-family:Inter,system-ui,sans-serif;color:var(--bright);animation:crtBoot 1.4s ease-out forwards}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:linear-gradient(rgba(0,200,150,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,150,.025) 1px,transparent 1px);
+  background-size:40px 40px;transition:background-image .3s}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px)}
+body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,34,68,.07) 1px,transparent 1px)}
+@keyframes crtBoot{0%{opacity:0}12%{opacity:.6}20%{opacity:.1}35%{opacity:.8}50%{opacity:.2}100%{opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,200,150,.5)}50%{box-shadow:0 0 0 6px rgba(0,200,150,0)}}
+@keyframes blink{50%{opacity:0}}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}}
+@keyframes toastIn{from{transform:translateX(110%);opacity:0}}
+
+/* ── APP SHELL ── */
+.app{position:relative;z-index:1;width:100%;height:100vh;display:flex;flex-direction:column;padding:.4rem .75rem .35rem;gap:.35rem;overflow:hidden}
+
+/* ── HEADER ── */
+.hdr{height:36px;flex-shrink:0;display:flex;align-items:center;border-bottom:1px solid var(--border);gap:.75rem;padding-bottom:.3rem}
+.hdr-brand{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;letter-spacing:.2em;color:var(--amber);text-shadow:0 0 12px rgba(212,175,55,.4)}
+.hdr-live{display:flex;align-items:center;gap:.35rem;font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--text)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
+.live-dot.on{background:var(--green);animation:pulse 2s infinite}
+.hdr-inst{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--cyan);padding:.1rem .35rem;border:1px solid rgba(0,212,255,.2);border-radius:2px}
+.hdr-clock{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--bright);margin-left:auto}
+
+/* ── COLUMNS ── */
+.cols{flex:1;min-height:0;display:flex;gap:.35rem}
+.col-left{width:25%;flex-shrink:0;display:flex;flex-direction:column;gap:.35rem}
+.radar-panel{flex:3}
+.stream-panel{flex:2;display:flex;flex-direction:column;overflow:hidden}
+.col-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:.35rem}
+.row-stats{height:100px;flex-shrink:0;display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem}
+.freq-panel{height:68px;flex-shrink:0}
+.anomaly-panel{flex:3;min-height:0}
+.heatmap-panel{flex:4;min-height:0}
+.col-right{width:21%;flex-shrink:0;display:flex;flex-direction:column;gap:.35rem}
+.donut-panel{flex:3;min-height:0}
+.gauge-panel{flex:3;min-height:0}
+.scatter-panel{flex:3;min-height:0}
+.topevents-panel{flex:3;min-height:0}
+
+/* ── PANEL BASE ── */
+.panel{background:var(--navy);border:1px solid var(--border);border-radius:4px;display:flex;flex-direction:column;overflow:hidden;min-height:0;position:relative}
+/* Angular bracket corners on every panel */
+.panel::before,.panel::after{content:'';position:absolute;width:10px;height:10px;border-color:rgba(0,200,150,.5);border-style:solid;z-index:2;pointer-events:none}
+.panel::before{top:0;left:0;border-width:1px 0 0 1px}
+.panel::after{bottom:0;right:0;border-width:0 1px 1px 0}
+.radar-panel.flash-red{border-color:var(--red);box-shadow:0 0 20px rgba(255,34,68,.35)}
+.panel-lbl{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);padding:.3rem .6rem;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:.4rem;white-space:nowrap;min-height:26px}
+.panel-lbl .blink{width:6px;height:6px;border-radius:50%;background:var(--red);flex-shrink:0;animation:blink 1s step-end infinite}
+[data-tip]{cursor:default}
+.panel-body{flex:1;min-height:0;position:relative;overflow:hidden}
+/* All canvases fill their panel-body */
+.panel-body canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ── STAT CARDS ── */
+.stat-card{background:var(--lift);border:1px solid var(--border);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.1rem;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.stat-card.critical::after{background:var(--red)}
+.stat-card.warning::after{background:var(--amber)}
+.stat-card.info::after{background:var(--cyan)}
+.stat-card.breach::after{background:var(--red)}
+.stat-num{font-family:'JetBrains Mono',monospace;font-size:clamp(2rem,3vw,3.6rem);font-weight:700;line-height:1;text-align:center;transition:color .3s}
+.stat-lbl{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.15em;color:var(--text);text-align:center}
+.stat-card.critical .stat-num{color:var(--red)}
+.stat-card.warning  .stat-num{color:var(--amber)}
+.stat-card.info     .stat-num{color:var(--cyan)}
+.stat-card.breach   .stat-num{color:var(--red)}
+
+/* ── EVENT STREAM ── */
+.stream-body{flex:1;min-height:0;overflow-y:scroll;scrollbar-color:rgba(0,200,150,.25) transparent;scrollbar-width:thin}
+.stream-empty{padding:.75rem .5rem;color:rgba(139,175,192,.4);font-family:'JetBrains Mono',monospace;font-size:.72rem;text-align:center}
+.ev-row{font-family:'JetBrains Mono',monospace;font-size:.72rem;padding:.28rem .5rem;border-bottom:1px solid rgba(0,200,150,.05);border-left:2px solid transparent;display:grid;grid-template-columns:58px 72px 1fr auto;gap:.35rem;align-items:center;line-height:1.35;animation:slideIn .25s ease-out}
+.ev-row.sev-critical{border-left-color:var(--red)}
+.ev-row.sev-breach{border-left-color:var(--red);background:rgba(255,34,68,.04)}
+.ev-row.sev-warning{border-left-color:var(--amber)}
+.ev-row.sev-info{border-left-color:rgba(0,212,255,.28)}
+.ev-ts{color:rgba(139,175,192,.55);font-size:.66rem}
+.ev-sev{font-size:.67rem;font-weight:700;letter-spacing:.04em}
+.ev-sev.critical,.ev-sev.breach{color:var(--red)}
+.ev-sev.warning{color:var(--amber)}
+.ev-sev.info{color:var(--cyan)}
+.ev-type{color:var(--bright);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-inst{color:rgba(0,200,150,.45);font-size:.62rem}
+
+/* ── INSTANCES BAR ── */
+.instances-bar{height:34px;flex-shrink:0;background:var(--navy);border:1px solid var(--border);border-radius:4px;display:flex;align-items:center;padding:0 .65rem;gap:1.25rem;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:.7rem}
+.inst-lbl{color:var(--text);font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;margin-right:.25rem}
+.inst-chip{display:flex;align-items:center;gap:.35rem;white-space:nowrap}
+.inst-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.inst-dot.active{background:var(--green);animation:pulse 2s infinite}
+.inst-dot.suspended{background:var(--red)}
+.inst-dot.offline{background:var(--text);opacity:.4}
+.inst-name{color:var(--bright)}
+.inst-status.active{color:var(--green)}
+.inst-status.suspended{color:var(--red)}
+.inst-age{color:rgba(139,175,192,.4)}
+.btn-kill{background:rgba(255,34,68,.12);border:1px solid rgba(255,34,68,.35);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:.55rem;padding:.08rem .4rem;border-radius:2px;cursor:pointer;letter-spacing:.08em}
+.btn-kill:hover{background:rgba(255,34,68,.25)}
+.btn-resume{background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.25);color:var(--green);font-family:'JetBrains Mono',monospace;font-size:.55rem;padding:.08rem .4rem;border-radius:2px;cursor:pointer}
+.btn-block-session{background:rgba(212,175,55,.1);border:1px solid rgba(212,175,55,.35);color:var(--amber);font-family:'JetBrains Mono',monospace;font-size:.52rem;padding:.06rem .35rem;border-radius:2px;cursor:pointer;letter-spacing:.06em;opacity:0;transition:opacity .15s;flex-shrink:0}
+.ev-row:hover .btn-block-session{opacity:1}
+.btn-throttle{background:rgba(230,192,123,.1);border:1px solid rgba(230,192,123,.5);color:#e6c07b;font-family:'JetBrains Mono',monospace;font-size:.52rem;padding:.06rem .35rem;border-radius:2px;cursor:pointer;letter-spacing:.06em;opacity:0;transition:opacity .15s;flex-shrink:0}
+.ev-row:hover .btn-throttle{opacity:1}
+.btn-add-blocklist{background:rgba(255,34,68,.08);border:1px solid rgba(255,34,68,.25);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:.52rem;padding:.06rem .35rem;border-radius:2px;cursor:pointer;letter-spacing:.06em;opacity:0;transition:opacity .15s;flex-shrink:0}
+.ev-row:hover .btn-add-blocklist{opacity:1}
+.btn-ack{background:transparent;border:1px solid rgba(0,200,150,0.3);color:rgba(0,200,150,0.6);font-family:'JetBrains Mono',monospace;font-size:0.65rem;padding:0.1rem 0.4rem;border-radius:2px;cursor:pointer;flex-shrink:0;transition:border-color 0.15s,color 0.15s}
+.btn-ack:hover{border-color:var(--green);color:var(--green)}
+.btn-ack:disabled{opacity:0.3;cursor:default}
+.ev-acknowledged{opacity:0.4;transition:opacity 0.3s}
+.ev-acknowledged .btn-ack{display:none}
+.ack-filter-label{font-size:0.6rem;color:var(--text);display:flex;align-items:center;gap:0.3rem;cursor:pointer;user-select:none;margin-left:0.5rem}
+.ack-filter-label input[type="checkbox"]{accent-color:var(--green);cursor:pointer}
+.btn-test-alert{background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.35);color:#d4af37;font-family:'JetBrains Mono',monospace;font-size:0.6rem;padding:0.15rem 0.6rem;border-radius:2px;cursor:pointer;letter-spacing:0.08em;transition:background 0.15s,border-color 0.15s;margin-left:auto;flex-shrink:0}
+.btn-test-alert:hover{background:rgba(212,175,55,0.18);border-color:#d4af37}
+.btn-test-alert:disabled{opacity:0.4;cursor:default}
+.export-wrap{position:relative;display:inline-flex;flex-shrink:0}
+.btn-export{background:rgba(100,180,255,0.07);border:1px solid rgba(100,180,255,0.3);color:rgba(100,180,255,0.8);font-family:'JetBrains Mono',monospace;font-size:0.6rem;padding:0.15rem 0.6rem;border-radius:2px;cursor:pointer;letter-spacing:0.08em;transition:background 0.15s,border-color 0.15s}
+.btn-export:hover{background:rgba(100,180,255,0.15);border-color:rgba(100,180,255,0.7);color:rgba(100,180,255,1)}
+.export-dropdown{display:none;position:absolute;top:calc(100% + 4px);right:0;background:#1a1a1a;border:1px solid rgba(100,180,255,0.25);border-radius:2px;min-width:130px;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,0.5)}
+.export-dropdown.open{display:block}
+.export-dropdown button{display:block;width:100%;text-align:left;padding:0.4rem 0.7rem;background:none;border:none;color:rgba(200,220,255,0.75);font-family:'JetBrains Mono',monospace;font-size:0.6rem;cursor:pointer;letter-spacing:0.06em}
+.export-dropdown button:hover{background:rgba(100,180,255,0.1);color:#fff}
+.btn-honeypot-opt{background:none;border:1px solid rgba(139,175,192,.4);color:#8bc;border-radius:3px;padding:.35rem .75rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;cursor:pointer;text-align:left}
+.btn-honeypot-opt:hover{background:rgba(139,175,192,.08)}
+.sess-row{display:flex;align-items:center;gap:.6rem;padding:.3rem .4rem;border:1px solid rgba(139,175,192,.1);border-radius:3px;font-size:.62rem}
+.sess-row:hover{background:rgba(139,175,192,.04)}
+.sess-id{color:#8bc;font-family:'JetBrains Mono',monospace;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-count{color:rgba(139,175,192,.6);min-width:4.5rem;text-align:right}
+.sess-age{color:rgba(139,175,192,.4);min-width:5rem;text-align:right}
+.btn-clear-mem{background:none;border:1px solid rgba(230,192,123,.4);color:#e6c07b;border-radius:3px;padding:.2rem .55rem;font-family:'JetBrains Mono',monospace;font-size:.6rem;cursor:pointer;flex-shrink:0}
+.btn-clear-mem:hover{background:rgba(230,192,123,.08)}
+.btn-clear-mem-row{background:rgba(230,192,123,.1);border:1px solid rgba(230,192,123,.5);color:#e6c07b;font-family:'JetBrains Mono',monospace;font-size:.52rem;padding:.06rem .35rem;border-radius:2px;cursor:pointer;letter-spacing:.06em;opacity:0;transition:opacity .15s;flex-shrink:0}
+.ev-row:hover .btn-clear-mem-row{opacity:1}
+.egress-overlay{position:fixed;inset:0;z-index:1000;background:rgba(2,4,9,.85);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.egress-overlay[hidden]{display:none}
+.egress-box{background:var(--navy);border:1px solid var(--amber);box-shadow:0 0 40px rgba(212,175,55,.15);border-radius:6px;padding:1.5rem;width:min(480px,92vw);max-height:70vh;display:flex;flex-direction:column;gap:.75rem}
+.egress-title{font-family:'JetBrains Mono',monospace;font-size:.85rem;font-weight:700;color:var(--amber);letter-spacing:.15em}
+.egress-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem}
+.egress-item{display:flex;align-items:center;gap:.5rem;font-family:'JetBrains Mono',monospace;font-size:.7rem;color:var(--bright)}
+.btn-unblock{background:rgba(0,200,150,.08);border:1px solid rgba(0,200,150,.25);color:var(--green);font-size:.52rem;padding:.04rem .3rem;border-radius:2px;cursor:pointer;font-family:'JetBrains Mono',monospace}
+.egress-empty{color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.7rem;text-align:center;padding:.75rem 0}
+.inst-chip{position:relative}
+.quarantine-panel{display:none;position:absolute;top:38px;left:0;right:0;background:var(--navy);border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;padding:.4rem .65rem;z-index:500;gap:.3rem;flex-wrap:wrap;align-items:center}
+.quarantine-panel.open{display:flex}
+.btn-quarantine-toggle{background:transparent;border:1px solid rgba(155,89,255,.3);color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:.52rem;padding:.06rem .35rem;border-radius:2px;cursor:pointer;letter-spacing:.06em}
+.btn-tool-quarantine{background:rgba(155,89,255,.1);border:1px solid rgba(155,89,255,.3);color:var(--purple);font-family:'JetBrains Mono',monospace;font-size:.55rem;padding:.08rem .4rem;border-radius:2px;cursor:pointer}
+.btn-tool-quarantine.active{background:rgba(155,89,255,.3);border-color:var(--purple)}
+.quarantine-lbl{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);margin-right:.3rem}
+
+/* ── KILL MODAL ── */
+.kill-overlay{position:fixed;inset:0;z-index:1000;background:rgba(2,4,9,.85);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.kill-overlay[hidden]{display:none}
+.kill-box{background:var(--navy);border:1px solid var(--red);box-shadow:0 0 40px rgba(255,34,68,.25);border-radius:6px;padding:1.75rem;width:min(400px,90vw)}
+.kill-title{font-family:'JetBrains Mono',monospace;font-size:1rem;font-weight:700;color:var(--red);letter-spacing:.15em;margin-bottom:.65rem}
+.kill-desc{font-size:.78rem;color:var(--text);margin-bottom:.9rem;line-height:1.6}
+.kill-label{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--text);display:block;margin-bottom:.3rem}
+.kill-input,.kill-reason{width:100%;background:var(--lift);border:1px solid rgba(255,34,68,.3);color:var(--bright);font-family:'JetBrains Mono',monospace;padding:.4rem .6rem;border-radius:3px;outline:none}
+.kill-input{font-size:.85rem;margin-bottom:.6rem}
+.kill-reason{font-size:.72rem;margin-bottom:.9rem;min-height:54px;resize:vertical}
+.kill-input:focus,.kill-reason:focus{border-color:var(--red)}
+.kill-actions{display:flex;gap:.6rem;justify-content:flex-end}
+.btn-cancel{background:transparent;border:1px solid var(--border);color:var(--text);padding:.38rem .85rem;font-family:'JetBrains Mono',monospace;font-size:.7rem;border-radius:3px;cursor:pointer}
+.btn-confirm{background:rgba(255,34,68,.15);border:1px solid var(--red);color:var(--red);padding:.38rem .85rem;font-family:'JetBrains Mono',monospace;font-size:.7rem;border-radius:3px;cursor:pointer;letter-spacing:.08em}
+.btn-confirm:not(:disabled):hover{background:rgba(255,34,68,.3)}
+.btn-confirm:disabled{opacity:.35;cursor:not-allowed}
+
+/* ── SPEC DASHBOARD WIDGETS ── */
+.spec-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;padding:.65rem .75rem 0}
+.spec-tile{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:.7rem;min-height:82px}
+.spec-tile .label{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);letter-spacing:.12em}
+.spec-tile .value{font-family:'JetBrains Mono',monospace;font-size:1.45rem;color:var(--bright);margin:.2rem 0}
+.spec-tile .detail{font-size:.62rem;color:rgba(139,175,192,.68);line-height:1.35}
+.spec-progress{height:5px;background:rgba(139,175,192,.12);border-radius:99px;overflow:hidden;margin-top:.45rem}
+.spec-progress i{display:block;height:100%;width:0;background:var(--green)}
+.spec-dashboard{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:.65rem;padding:.65rem .75rem 0}
+.spec-panel{background:var(--panel);border:1px solid var(--border);border-radius:4px;min-height:154px;padding:.65rem;overflow:hidden}
+.spec-panel h3{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:var(--text);margin:0 0 .55rem}
+.spec-row{display:flex;align-items:center;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.64rem;color:var(--bright);padding:.22rem 0;border-bottom:1px solid rgba(139,175,192,.08)}
+.spec-row b.active{color:var(--green)}.spec-row b.offline{color:var(--amber)}.spec-row b.suspended{color:var(--red)}
+.spec-bar{position:relative;display:grid;grid-template-columns:1fr 34px;gap:.4rem;align-items:center;font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);margin:.28rem 0}
+.spec-bar span{position:relative;z-index:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spec-bar i{position:absolute;left:0;top:0;bottom:0;background:rgba(0,200,150,.18);border-left:2px solid var(--green);z-index:1}
+.spec-bar b{position:relative;z-index:2;text-align:right;color:var(--bright)}
+.audit-tools{display:flex;gap:.4rem;margin-bottom:.5rem}
+.audit-tools input{flex:1;background:var(--lift);border:1px solid var(--border);color:var(--bright);font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:.35rem .45rem;border-radius:3px}
+.audit-tools button,.global-kill{background:rgba(255,34,68,.12);border:1px solid rgba(255,34,68,.38);color:var(--red);font-family:'JetBrains Mono',monospace;font-size:.58rem;border-radius:3px;padding:.32rem .5rem;cursor:pointer}
+.audit-row{display:grid;grid-template-columns:54px 1fr 80px;gap:.4rem;font-family:'JetBrains Mono',monospace;font-size:.55rem;color:var(--text);border-bottom:1px solid rgba(139,175,192,.08);padding:.24rem 0}
+.audit-row small{grid-column:1/-1;color:rgba(139,175,192,.55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kill-status{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);margin-left:.5rem}.kill-status.active{color:var(--red)}
+.hdr-admin{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--text)}
+.spec-empty{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:rgba(139,175,192,.45);padding:.5rem 0}
+@media(max-width:1100px){.spec-overview,.spec-dashboard{grid-template-columns:1fr 1fr}.spec-panel.audit{grid-column:1/-1}}
+@media(max-width:700px){.spec-overview,.spec-dashboard{grid-template-columns:1fr}}
+
+
+/* ── TOP TABS + ACTIONS ── */
+.dash-views{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.dash-view{flex:1;min-height:0;display:flex;flex-direction:column;gap:.35rem;overflow:hidden;min-width:0}
+.dash-view[hidden]{display:none!important}
+#view-overview > .spec-overview,#view-overview > .spec-dashboard{flex-shrink:0}
+#view-overview > .cols{flex:1;min-height:0}
+#view-overview > .instances-bar,#view-overview > .response-terminal-strip{flex-shrink:0}
+.response-terminal-strip{border-top:1px solid var(--border);background:var(--navy);max-height:120px;overflow-y:auto}
+.response-terminal-strip .panel-lbl{padding:.22rem .5rem;font-size:.58rem;margin:0}
+#response-terminal-panel{padding:0 .5rem .35rem}
+
+.dash-toolbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-bottom:1px solid var(--border);padding:.28rem 0 .38rem;flex-wrap:wrap}
+.dash-tabs{display:flex;gap:.25rem;flex-wrap:wrap}
+.dash-tab{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.1em;padding:.38rem .72rem;border:1px solid transparent;background:transparent;color:var(--text);cursor:pointer;border-radius:3px;text-transform:uppercase}
+.dash-tab:hover{color:var(--bright);border-color:var(--border)}
+.dash-tab-active{color:var(--green);border-color:rgba(0,200,150,.35);background:rgba(0,200,150,.08)}
+.badge-count{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--amber);color:#000;font-size:10px;font-weight:700;text-align:center;line-height:18px;padding:0 4px;margin-left:6px;vertical-align:middle}
+.pending-action-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.pending-action-row:last-child{border-bottom:none}
+.pending-action-body{flex:1;display:flex;flex-direction:column;gap:2px}
+.pending-time{font-size:11px;color:var(--text)}
+.sev-label{font-size:10px;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:3px;font-weight:600;flex-shrink:0}
+.sev-label.red{background:rgba(255,34,68,.15);color:var(--red);border:1px solid var(--red)}
+.sev-label.amber{background:rgba(212,175,55,.12);color:var(--amber);border:1px solid var(--amber)}
+.sev-label.cyan{background:rgba(0,212,255,.1);color:var(--cyan);border:1px solid var(--cyan)}
+.btn-resolve{padding:5px 14px;background:transparent;border:1px solid var(--green);color:var(--green);border-radius:4px;cursor:pointer;font-size:12px;flex-shrink:0}
+.btn-resolve:hover{background:rgba(0,200,150,.1)}
+.modal-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.modal-header h2{font-size:16px;color:var(--bright);margin:0}
+.modal-close{background:transparent;border:none;color:var(--text);cursor:pointer;font-size:13px;padding:2px 8px}
+.modal-section{margin-bottom:20px}
+.modal-section h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text);margin-bottom:8px}
+.modal-section p{font-size:13px;color:var(--bright);line-height:1.6;margin:0}
+.modal-section.risk p{color:var(--amber)}
+.actions-list{display:flex;flex-direction:column;gap:14px}
+.action-option{border:1px solid var(--border);border-radius:6px;padding:14px}
+.action-option-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.action-option-header strong{font-size:13px;color:var(--bright)}
+.tag{font-size:10px;padding:1px 6px;border-radius:3px;font-family:'JetBrains Mono',monospace}
+.tag.reversible{background:rgba(0,200,150,.1);color:var(--green);border:1px solid var(--green)}
+.tag.permanent{background:rgba(255,34,68,.1);color:var(--red);border:1px solid var(--red)}
+.action-desc{font-size:12px;color:var(--text);margin:0 0 10px;line-height:1.5}
+.action-steps{margin-bottom:10px}
+.action-steps summary{font-size:12px;color:var(--cyan);cursor:pointer}
+.action-steps ol{margin:8px 0 0 18px}
+.action-steps li{font-size:12px;color:var(--text);margin-bottom:4px;line-height:1.5}
+.action-script{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);overflow-x:auto;margin:8px 0;white-space:pre}
+.btn-action{padding:7px 18px;background:var(--green);color:#000;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.btn-action.destructive{background:var(--red);color:#fff}
+.btn-action:hover{opacity:.85}
+.modal-section.dismiss{border-top:1px solid var(--border);padding-top:16px;display:flex;align-items:center;gap:12px}
+.btn-dismiss{padding:6px 14px;background:transparent;border:1px solid var(--text);color:var(--text);border-radius:4px;cursor:pointer;font-size:12px}
+.btn-dismiss:hover{border-color:var(--bright);color:var(--bright)}
+.dismiss-note{font-size:11px;color:var(--text);flex:1}
+.action-audit-row{display:grid;grid-template-columns:45px 80px 1fr 60px 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.action-audit-row:last-child{border-bottom:none}
+.audit-time{color:var(--text);font-family:'JetBrains Mono',monospace;font-size:11px}
+.audit-by{color:var(--cyan);font-size:11px}
+.audit-action{color:var(--bright)}
+.audit-outcome{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600}
+.audit-event{color:var(--text);font-size:11px}
+.widget-section{margin-bottom:.65rem}
+.widget-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem}
+.widget-header h3{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.12em;color:var(--text);margin:0}
+.dash-actions{display:flex;gap:.32rem;flex-wrap:wrap;align-items:center;margin-left:auto}
+.act-btn{font-family:'JetBrains Mono',monospace;font-size:.64rem;letter-spacing:.06em;padding:.32rem .58rem;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:rgba(139,175,192,.08);color:var(--text);white-space:nowrap}
+.act-btn:hover{color:var(--bright);border-color:rgba(139,175,192,.35)}
+.act-red{border-color:rgba(255,34,68,.45);color:var(--red);background:rgba(255,34,68,.12)}
+.act-amber{border-color:rgba(212,175,55,.45);color:var(--amber);background:rgba(212,175,55,.1)}
+.act-purple{border-color:rgba(155,89,255,.4);color:var(--purple);background:rgba(155,89,255,.1)}
+.act-cyan{border-color:rgba(0,212,255,.4);color:var(--cyan);background:rgba(0,212,255,.1)}
+.act-muted{color:var(--text);background:transparent}
+.scroll-view{flex:1;min-height:0;overflow-y:auto;padding-right:.15rem}
+.defense-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem;margin-top:.65rem}
+@media(max-width:900px){.defense-grid{grid-template-columns:1fr}}
+.defense-form-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:.45rem}
+.defense-form-row label{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--text);display:flex;flex-direction:column;gap:.2rem;flex:1;min-width:140px}
+.defense-input{background:var(--lift);border:1px solid var(--border);color:var(--bright);font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:.38rem .5rem;border-radius:3px;width:100%}
+.defense-btn{font-family:'JetBrains Mono',monospace;font-size:.64rem;padding:.34rem .58rem;border:1px solid rgba(0,200,150,.35);background:rgba(0,200,150,.1);color:var(--green);border-radius:3px;cursor:pointer}
+.defense-btn-active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.12)}
+.defense-btn-muted{border-color:var(--border);color:var(--text);background:transparent}
+.defense-btn-row{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.45rem}
+.defense-status-row{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:.22rem 0;border-bottom:1px solid rgba(139,175,192,.08)}
+.defense-list-row{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;font-size:.62rem;padding:.25rem 0;border-bottom:1px solid rgba(139,175,192,.06)}
+.defense-log-row{display:flex;gap:.5rem;font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:.2rem 0}
+.defense-log-row.critical{color:var(--red)}.defense-log-row.warning{color:var(--amber)}
+.defense-loading{opacity:.55;pointer-events:none}
+.op-metric .label{font-size:.58rem;color:var(--text);letter-spacing:.1em;text-transform:uppercase}
+.op-metric .value{font-family:'JetBrains Mono',monospace;font-size:1.15rem;color:var(--bright)}
+.op-metric .detail{font-size:.58rem;color:rgba(139,175,192,.6)}
+.op-grid{display:grid;gap:.45rem}
+.gov-tab-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.65rem;flex-wrap:wrap}
+.gov-tab-head span{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.12em;color:var(--amber);text-transform:uppercase}
+.gov-tab-score-banner{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:1rem 1.1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.65rem}
+.gov-tab-card{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.75rem .85rem;margin-bottom:.65rem}
+.gov-tab-card h3{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.12em;color:var(--text);margin:0 0 .45rem;text-transform:uppercase}
+.gov-tab-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+@media(max-width:900px){.gov-tab-grid{grid-template-columns:1fr}}
+.fleet-summary-bar{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.65rem}
+.fleet-summary-pill{font-family:'JetBrains Mono',monospace;font-size:.64rem;padding:.22rem .55rem;border:1px solid var(--border);border-radius:3px;color:var(--text)}
+.fleet-summary-pill.active{color:var(--green);border-color:rgba(0,200,150,.35)}
+.fleet-summary-pill.suspended{color:var(--red);border-color:rgba(255,34,68,.35)}
+.fleet-summary-pill.offline{color:var(--amber);border-color:rgba(212,175,55,.35)}
+.fleet-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.65rem}
+.fleet-card{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.75rem;font-family:'JetBrains Mono',monospace;font-size:.64rem}
+.fleet-empty{color:rgba(139,175,192,.5);font-size:.72rem;padding:1.5rem;text-align:center}
+.as-head{display:flex;align-items:center;gap:.65rem;margin-bottom:.65rem;flex-wrap:wrap}
+.as-score{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;color:var(--green)}
+.as-score-badge{font-size:.62rem;padding:.15rem .45rem;border:1px solid var(--border);border-radius:3px}
+.as-score-badge.ok{color:var(--green)}.as-score-badge.warn{color:var(--amber)}.as-score-badge.bad{color:var(--red)}
+.as-sev-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.35rem;margin-bottom:.65rem}
+.as-sev-box{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.55rem;text-align:center}
+.as-sev-box b{display:block;font-family:'JetBrains Mono',monospace;font-size:1.1rem}
+.as-sev-box span{font-size:.58rem;color:var(--text);text-transform:uppercase}
+.as-table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:.62rem}
+.as-table th,.as-table td{padding:.35rem .45rem;border-bottom:1px solid rgba(139,175,192,.08);text-align:left}
+.defense-confirm-overlay[hidden]{display:none!important}
+.defense-confirm-overlay{position:fixed;inset:0;z-index:1200;background:rgba(2,4,9,.88);display:flex;align-items:center;justify-content:center}
+.defense-confirm-box{background:var(--navy);border:1px solid var(--amber);border-radius:6px;padding:1.25rem;width:min(420px,92vw)}
+
+/* ── TOASTS ── */
+.toasts{position:fixed;top:.65rem;right:.65rem;z-index:2000;display:flex;flex-direction:column;gap:.35rem}
+.toast{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:.4rem .75rem;border-radius:3px;border:1px solid;background:var(--navy);animation:toastIn .25s ease-out;max-width:260px;line-height:1.4}
+.toast.critical,.toast.breach{border-color:var(--red);color:var(--red)}
+.toast.warning{border-color:var(--amber);color:var(--amber)}
+.toast.info{border-color:var(--cyan);color:var(--cyan)}
+.toast.ok{border-color:var(--green);color:var(--green)}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="hdr">
+    <span class="hdr-brand">VERLOX FLEET OPS</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:.52rem;letter-spacing:.14em;color:var(--text);align-self:center;margin-left:-.4rem">/ Labyrinth Scout</span>
+    <div class="hdr-live">
+      <div class="live-dot" id="live-dot"></div>
+      <span id="live-label">CONNECTING</span>
+    </div>
+    <span class="hdr-inst" id="hdr-inst">instance: -</span>
+    <span id="pending-action-count" class="badge-count" style="display:none" title="Pending actions require your review">0</span>
+    <span class="hdr-admin">admin: operator</span>
+    <span class="hdr-admin">updated: <span id="last-updated">-</span></span>
+    <button class="global-kill" id="global-kill-button">KILL SWITCH</button>
+    <span class="kill-status" id="kill-status"></span>
+    <span class="hdr-clock" id="hdr-clock"></span>
+    <button class="global-kill" style="background:rgba(139,175,192,.1);border-color:rgba(139,175,192,.3);color:var(--text);margin-left:.5rem" onclick="logoutDashboard()">LOGOUT</button>
+  </header>
+
+  <nav class="dash-toolbar" aria-label="Dashboard navigation">
+    <div class="dash-tabs" role="tablist">
+      <button type="button" class="dash-tab dash-tab-active" data-view="overview" aria-selected="true">Overview</button>
+      <button type="button" class="dash-tab" data-view="defense" aria-selected="false">Defense</button>
+      <button type="button" class="dash-tab" data-view="actions" aria-selected="false">Actions<span id="pending-tab-badge" class="badge-count" style="display:none">0</span></button>
+      <button type="button" class="dash-tab" data-view="governance" aria-selected="false">Governance</button>
+      <button type="button" class="dash-tab" data-view="fleet" aria-selected="false">Fleet</button>
+      <button type="button" class="dash-tab" data-view="attack-surface" aria-selected="false">Attack Surface</button>
+    </div>
+    <div class="dash-actions" aria-label="Threat response actions">
+      <button type="button" class="act-btn act-red" id="act-kill" title="Kill active instance">Kill</button>
+      <button type="button" class="act-btn act-amber" id="act-honeypot" title="Deploy honeypot">Honeypot</button>
+      <button type="button" class="act-btn act-purple" id="act-quarantine" title="Tool quarantine">Quarantine</button>
+      <button type="button" class="act-btn act-cyan" id="act-egress" title="Egress blocklist">Egress</button>
+      <button type="button" class="act-btn" id="act-memory" title="Session memory">Memory</button>
+      <button type="button" class="act-btn act-amber" id="act-block" title="Block session">Block Session</button>
+      <button type="button" class="act-btn act-muted" id="act-defense" title="Open defense controls">Defense Panel</button>
+      <button type="button" class="act-btn act-muted" id="act-test-alert">Test Alert</button>
+      <button type="button" class="act-btn act-muted" id="act-export">Export</button>
+    </div>
+  </nav>
+
+  <div class="dash-views">
+  <div id="view-overview" class="dash-view">
+
+  <section class="spec-overview" aria-label="Security summary">
+    <div class="spec-tile"><div class="label">AGENTS</div><div class="value" id="tile-agents-value">0</div><div class="detail" id="tile-agents-detail">Loading agent status</div></div>
+    <div class="spec-tile"><div class="label">THREATS</div><div class="value" id="tile-threats-value">0</div><div class="detail" id="tile-threats-detail">24h threat count</div></div>
+    <div class="spec-tile"><div class="label">BLOCKED</div><div class="value" id="tile-blocked-value">0</div><div class="detail" id="tile-blocked-detail">Blocked events, 24h</div></div>
+    <div class="spec-tile"><div class="label">TOKEN USAGE</div><div class="value" id="tile-token-value">0%</div><div class="detail" id="tile-token-detail">0 / 0 tokens</div><div class="spec-progress"><i id="token-usage-bar"></i></div></div>
+  </section>
+
+  <section class="spec-dashboard" aria-label="Security operations">
+    <div class="spec-panel"><h3>AGENT STATUS</h3><div id="agent-status-list"><div class="spec-empty">Loading agents</div></div></div>
+    <div class="spec-panel"><h3>ATTACKS (24H)</h3><div id="attacks-24h"></div><h3 style="margin-top:.75rem">TOP ATTACK SOURCES</h3><div id="attack-sources"></div></div>
+    <div class="spec-panel audit"><h3>AUDIT LOG</h3><div class="audit-tools"><input id="audit-search" placeholder="Search audit log, e.g. INJ-001"><button id="audit-export">EXPORT</button></div><div id="audit-log-results"><div class="spec-empty">Loading audit log</div></div></div>
+  </section>
+
+  <div class="cols">
+    <!-- LEFT -->
+    <div class="col-left">
+      <div class="panel radar-panel" id="radar-panel">
+        <div class="panel-lbl" data-tip="Rotating scan - dots show event locations by severity ring">THREAT RADAR</div>
+        <div class="panel-body"><canvas id="radar-canvas"></canvas></div>
+      </div>
+      <div class="panel stream-panel">
+        <div class="panel-lbl">
+          LIVE EVENT STREAM
+          <label class="ack-filter-label">
+            <input type="checkbox" id="hide-ack-check" onchange="applyAckFilter()" />
+            Hide acknowledged
+          </label>
+          <canvas id="egress-canvas" style="width:80px;height:14px;flex-shrink:0;margin-left:auto;opacity:.75"></canvas>
+          <span id="egress-total" style="font-size:.55rem;color:var(--red);flex-shrink:0"></span>
+        </div>
+        <div class="stream-body" id="stream-body">
+          <div class="stream-empty">Loading events...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MIDDLE -->
+    <div class="col-mid">
+      <div class="row-stats">
+        <div class="stat-card critical"><span class="stat-num" id="s-critical">0</span><span class="stat-lbl" data-tip="Critical events - 24h count">CRITICAL</span></div>
+        <div class="stat-card warning"><span class="stat-num" id="s-warning">0</span><span class="stat-lbl" data-tip="Warning events - 24h count">WARNING</span></div>
+        <div class="stat-card info"><span class="stat-num" id="s-info">0</span><span class="stat-lbl" data-tip="Info events - 24h count">INFO</span></div>
+        <div class="stat-card breach"><span class="stat-num" id="s-breach">0</span><span class="stat-lbl" data-tip="BREACH events - immediate action required">BREACH</span></div>
+      </div>
+      <div class="panel freq-panel">
+        <div class="panel-lbl" data-tip="60-minute rolling window, 1 bar per minute">EVENT FREQUENCY <span style="opacity:.4;font-size:.5rem">(60m)</span></div>
+        <div class="panel-body"><canvas id="freq-canvas"></canvas></div>
+      </div>
+      <div class="panel anomaly-panel">
+        <div class="panel-lbl">ANOMALY Z-SCORE <span style="opacity:.4;font-size:.5rem">(10m)</span></div>
+        <div class="panel-body"><canvas id="anomaly-canvas"></canvas></div>
+      </div>
+      <div class="panel heatmap-panel">
+        <div class="panel-lbl">TOOL HEATMAP <span style="opacity:.4;font-size:.5rem">(24h)</span></div>
+        <div class="panel-body"><canvas id="heatmap-canvas"></canvas></div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col-right">
+      <div class="panel donut-panel">
+        <div class="panel-lbl" data-tip="Proportion of event types in last 24h">SEVERITY MIX</div>
+        <div class="panel-body"><canvas id="donut-canvas"></canvas></div>
+      </div>
+      <div class="panel gauge-panel">
+        <div class="panel-lbl" data-tip="Score: breach×20 + critical×4 + warning×2 (max 100)">THREAT LEVEL</div>
+        <div class="panel-body"><canvas id="gauge-canvas"></canvas></div>
+      </div>
+      <div class="panel scatter-panel">
+        <div class="panel-lbl" data-tip="X=events per session  Y=max anomaly Z-score  size=duration">SESSION SCATTER</div>
+        <div class="panel-body"><canvas id="scatter-canvas"></canvas></div>
+      </div>
+      <div class="panel topevents-panel">
+        <div class="panel-lbl" data-tip="Red=attack/blocked  Amber=anomaly  Green=normal ops">TOP EVENT TYPES</div>
+        <div class="panel-body"><canvas id="top-canvas"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="response-terminal-strip" aria-label="Response terminal">
+    <div class="panel-lbl">RESPONSE TERMINAL</div>
+    <div id="response-terminal-panel"><div class="spec-empty">Select a session in Defense tab or from the event stream</div></div>
+  </section>
+
+  <div class="instances-bar" id="instances-bar">
+    <span class="inst-lbl">INSTANCES</span>
+    <span style="color:rgba(139,175,192,.35);font-size:.58rem">Loading...</span>
+  </div>
+
+  </div>
+
+  <div id="view-defense" class="dash-view scroll-view" hidden>
+    <div id="defense-tab-root">
+      <div class="spec-panel">
+        <h3>DEFENSE CONTEXT</h3>
+        <div class="defense-form-row">
+          <label>Session ID<input id="defense-session-id" class="defense-input" placeholder="from event stream" autocomplete="off"></label>
+          <label>Instance ID<input id="defense-instance-id" class="defense-input" value="default" autocomplete="off"></label>
+          <button type="button" class="defense-btn" id="defense-refresh">Refresh</button>
+        </div>
+      </div>
+      <div class="spec-panel"><h3>RESPONSE SUMMARY</h3><div id="defense-terminal-summary"><div class="spec-empty">Enter session ID and refresh</div></div></div>
+      <div class="defense-grid">
+        <div class="spec-panel"><h3>SHIELD MODE</h3><div id="defense-shield-panel"><div class="spec-empty">Loading...</div></div></div>
+        <div class="spec-panel"><h3>POLICY PACKS</h3><div id="defense-packs-panel"><div class="spec-empty">Loading...</div></div></div>
+        <div class="spec-panel"><h3>JIT PRIVILEGES</h3><div id="defense-jit-panel"><div class="spec-empty">Loading...</div></div></div>
+        <div class="spec-panel"><h3>ACTION SIMULATION</h3><div id="defense-simulation-panel"><div class="spec-empty">Loading...</div></div></div>
+        <div class="spec-panel"><h3>AUTO-REMEDIATION</h3><div id="defense-remediation-panel"><div class="spec-empty">Loading...</div></div></div>
+        <div class="spec-panel"><h3>TRIPWIRES</h3><div id="defense-tripwire-panel"><div class="spec-empty">Loading...</div></div></div>
+      </div>
+      <div class="spec-panel" style="margin-top:.65rem"><h3>SURFACE RESTRICTIONS</h3><div id="defense-restrictions-panel"><div class="spec-empty">Loading...</div></div></div>
+      <div class="spec-panel" style="margin-top:.65rem"><h3>OPERATOR ACTIONS</h3><div id="defense-operator-actions"><div class="spec-empty">Load a session to see actions</div></div></div>
+      <div class="spec-panel" style="margin-top:.65rem"><h3>OPERATOR LOG</h3><div id="defense-action-log"><div class="spec-empty">No operator actions yet this session</div></div></div>
+    </div>
+  </div>
+
+  <div id="view-actions" class="dash-view scroll-view" hidden>
+    <div class="spec-panel">
+      <div class="widget-header">
+        <h3>PENDING ACTIONS</h3>
+      </div>
+      <div id="pending-actions-list">
+        <div class="spec-empty">Loading pending actions...</div>
+      </div>
+    </div>
+    <div class="widget-section spec-panel" style="margin-top:.65rem">
+      <div class="widget-header">
+        <h3>ACTION HISTORY</h3>
+        <select id="action-audit-outcome-filter" style="font-size:11px;padding:2px 6px;background:var(--navy);border:1px solid var(--border);color:var(--text);border-radius:3px">
+          <option value="">All outcomes</option>
+          <option value="success">Success only</option>
+          <option value="failure">Failures only</option>
+          <option value="dry_run">Dry runs</option>
+        </select>
+      </div>
+      <div id="action-audit-list" class="audit-list">
+        <div class="spec-empty">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-governance" class="dash-view scroll-view" hidden>
+    <div class="gov-tab-head">
+      <span>Governance posture</span>
+      <button type="button" class="act-btn act-muted" id="gov-tab-refresh">Refresh</button>
+      <a href="/governance" class="act-btn act-muted" target="_blank" rel="noopener" style="text-decoration:none">Full page</a>
+    </div>
+    <div id="gov-tab-loading" class="spec-empty">Loading governance posture...</div>
+    <div id="gov-tab-content" hidden>
+      <div id="gov-tab-score-banner" class="gov-tab-score-banner score-at-risk">
+        <div><div id="gov-tab-score" style="font-family:'JetBrains Mono',monospace;font-size:2.5rem;font-weight:700">-</div><div style="font-size:.62rem;color:var(--text);letter-spacing:.12em">GOVERNANCE SCORE</div></div>
+        <div><div id="gov-tab-label" style="font-family:'JetBrains Mono',monospace;font-size:.72rem">-</div><div id="gov-tab-subline" style="font-size:.72rem;color:var(--text);margin-top:.25rem">-</div></div>
+      </div>
+      <div class="gov-tab-grid">
+        <div class="gov-tab-card tier-limited" id="gov-tab-eu-card"><h3>EU AI Act</h3><div id="gov-tab-eu-tier" style="font-size:1.1rem;margin-bottom:.35rem">-</div><ul id="gov-tab-eu-reasoning" style="font-size:.72rem;color:var(--text);margin-left:1rem"></ul><div id="gov-tab-eu-articles" style="font-size:.62rem;color:rgba(139,175,192,.6);margin-top:.35rem"></div></div>
+        <div class="gov-tab-card"><h3>UK DSIT</h3><div id="gov-tab-uk-alignment" style="font-size:1.1rem;margin-bottom:.35rem">-</div><div id="gov-tab-uk-met" style="font-size:.72rem;color:var(--text)"></div><div id="gov-tab-uk-partial" style="font-size:.72rem;color:rgba(139,175,192,.55)"></div></div>
+      </div>
+      <div id="gov-tab-framework-grid" class="gov-tab-grid" style="margin-top:.65rem"></div>
+      <div class="gov-tab-grid" style="margin-top:.65rem">
+        <div class="gov-tab-card"><h3>Governed agents</h3><div id="gov-tab-agents-summary" style="font-size:.72rem;color:var(--text);margin-bottom:.35rem">-</div><table class="as-table"><thead><tr><th>Agent</th><th>Status</th><th>Identified</th><th>Incidents</th></tr></thead><tbody id="gov-tab-agents-tbody"></tbody></table></div>
+        <div class="gov-tab-card"><h3>Human oversight</h3><div id="gov-tab-oversight-body" style="font-size:.72rem;color:var(--text)">-</div></div>
+        <div class="gov-tab-card"><h3>Attestations</h3><div id="gov-tab-attest-list"></div></div>
+        <div class="gov-tab-card"><h3>Action items</h3><div id="gov-tab-action-items"></div></div>
+        <div class="gov-tab-card gov-tab-fw-card" style="grid-column:1/-1"><h3>Governance template</h3><div id="gov-tab-template-body" class="spec-empty">Loading template...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-fleet" class="dash-view scroll-view" hidden>
+    <div id="fleet-summary-bar" class="fleet-summary-bar"></div>
+    <div id="fleet-grid" class="fleet-grid"><div class="fleet-empty">Loading fleet...</div></div>
+  </div>
+
+  <div id="view-attack-surface" class="dash-view scroll-view" hidden>
+    <div class="as-head">
+      <div class="as-score" id="as-score-value">-</div>
+      <span class="as-score-badge" id="as-score-badge">-</span>
+      <button type="button" class="act-btn act-muted" id="as-refresh">Refresh</button>
+      <a href="/api/reports/stix/download" class="act-btn act-muted" target="_blank" rel="noopener" style="text-decoration:none">STIX Export</a>
+    </div>
+    <div id="as-loading" class="spec-empty">Loading attack surface...</div>
+    <div id="as-content" hidden>
+      <div class="as-sev-grid">
+        <div class="as-sev-box"><b id="as-sev-critical">0</b><span>Critical</span></div>
+        <div class="as-sev-box"><b id="as-sev-high">0</b><span>High</span></div>
+        <div class="as-sev-box"><b id="as-sev-medium">0</b><span>Medium</span></div>
+        <div class="as-sev-box"><b id="as-sev-low">0</b><span>Low</span></div>
+        <div class="as-sev-box"><b id="as-sev-info">0</b><span>Info</span></div>
+      </div>
+      <div class="spec-panel"><h3>MONITORED TARGETS</h3><div id="as-targets-list"></div></div>
+      <div class="spec-panel" style="margin-top:.65rem"><h3>OPEN FINDINGS</h3><table class="as-table"><thead><tr><th>Sev</th><th>Title</th><th>Tool</th><th>Type</th><th>Status</th></tr></thead><tbody id="as-findings-table"></tbody></table></div>
+      <div class="spec-panel" style="margin-top:.65rem"><h3>ATTACK SURFACE</h3><div style="font-size:.68rem;color:var(--text);margin-bottom:.35rem">Open ports: <span id="as-open-ports">-</span></div><div style="font-size:.68rem;color:var(--text);margin-bottom:.35rem">Subdomains: <span id="as-subdomains">-</span></div><div id="as-cve-list"></div></div>
+    </div>
+  </div>
+  </div>
+</div>
+
+
+<div class="defense-confirm-overlay" id="defense-confirm-overlay" hidden>
+  <div class="defense-confirm-box">
+    <div class="kill-title" id="defense-confirm-title">Confirm action</div>
+    <p class="kill-desc" id="defense-confirm-detail"></p>
+    <div class="kill-actions">
+      <button type="button" class="btn-cancel" onclick="closeDefenseConfirm()">Cancel</button>
+      <button type="button" class="btn-confirm" id="defense-confirm-submit">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Kill modal -->
+<div class="kill-overlay" id="kill-overlay" hidden>
+  <div class="kill-box">
+    <div class="kill-title">KILL SWITCH</div>
+    <p class="kill-desc" id="kill-desc">This will immediately suspend the agent. All tool calls will be blocked. This action is logged.</p>
+    <label class="kill-label">Type KILL to confirm</label>
+    <input class="kill-input" id="kill-confirm" autocomplete="off" spellcheck="false" placeholder="KILL">
+    <label class="kill-label">Reason (optional)</label>
+    <textarea class="kill-reason" id="kill-reason" placeholder="Suspicious activity..."></textarea>
+    <div class="kill-actions">
+      <button class="btn-cancel" onclick="closeKill()">Cancel</button>
+      <button class="btn-confirm" id="kill-submit" disabled onclick="executeKill()">EXECUTE KILL</button>
+    </div>
+  </div>
+</div>
+
+<!-- HONEYPOT MODAL -->
+<div id="honeypot-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1500;display:none;align-items:center;justify-content:center">
+  <div style="background:#0d1826;border:1px solid #8bc;border-radius:6px;padding:1.5rem 2rem;min-width:340px;font-family:'JetBrains Mono',monospace">
+    <h3 style="color:#8bc;font-size:.85rem;margin:0 0 .5rem">DEPLOY HONEYPOT</h3>
+    <p style="color:rgba(139,175,192,.7);font-size:.65rem;margin:0 0 1rem;line-height:1.5">
+      Deploy a decoy credential or file that alerts when accessed.<br>
+      Used to detect credential harvesting by a compromised agent.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1rem">
+      <button class="btn-honeypot-opt" onclick="deployHoneypot('api_key','openai')">Fake OpenAI Key (sk-lab-...)</button>
+      <button class="btn-honeypot-opt" onclick="deployHoneypot('api_key','anthropic')">Fake Anthropic Key (sk-ant-...)</button>
+      <button class="btn-honeypot-opt" onclick="deployHoneypot('api_key','deepseek')">Fake DeepSeek Key (sk-...)</button>
+      <button class="btn-honeypot-opt" onclick="deployHoneypot('file',null)">Credential Files (/tmp + data/)</button>
+    </div>
+    <button onclick="closeHoneypotModal()" style="background:none;border:1px solid rgba(139,175,192,.3);color:rgba(139,175,192,.6);border-radius:3px;padding:.3rem .8rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;cursor:pointer">CANCEL</button>
+  </div>
+</div>
+
+<!-- MEMORY MODAL -->
+<div id="memory-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1500;display:none;align-items:center;justify-content:center">
+  <div style="background:#0d1826;border:1px solid #e6c07b;border-radius:6px;padding:1.5rem 2rem;min-width:400px;max-width:560px;font-family:'JetBrains Mono',monospace">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+      <h3 style="color:#e6c07b;font-size:.85rem;margin:0">SESSION MEMORY</h3>
+      <button onclick="closeMemoryModal()" style="background:none;border:none;color:rgba(139,175,192,.5);font-size:.9rem;cursor:pointer;padding:0 .25rem">x</button>
+    </div>
+    <p style="color:rgba(139,175,192,.6);font-size:.62rem;margin:0 0 .75rem;line-height:1.5">
+      Active agent sessions and their episodic memory turn counts.<br>
+      Clearing memory resets the session context. Use alongside KILL for compromised sessions.
+    </p>
+    <div id="memory-modal-body" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:.3rem">
+      <span style="color:rgba(139,175,192,.4);font-size:.62rem">Loading sessions...</span>
+    </div>
+    <div style="margin-top:.75rem;border-top:1px solid rgba(139,175,192,.15);padding-top:.6rem;display:flex;justify-content:flex-end">
+      <button onclick="closeMemoryModal()" style="background:none;border:1px solid rgba(139,175,192,.3);color:rgba(139,175,192,.6);border-radius:3px;padding:.3rem .8rem;font-family:'JetBrains Mono',monospace;font-size:.65rem;cursor:pointer">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<div class="egress-overlay" id="egress-overlay" hidden>
+  <div class="egress-box">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span class="egress-title">EGRESS BLOCKLIST</span>
+      <button class="btn-cancel" onclick="closeEgressModal()">CLOSE</button>
+    </div>
+    <div class="egress-list" id="egress-list">
+      <div class="egress-empty">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<div id="resolve-modal-overlay"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);
+            z-index:9000;align-items:center;justify-content:center;padding:20px">
+  <div id="resolve-modal"
+       style="background:var(--lift);border:1px solid var(--border);border-radius:8px;
+              max-width:600px;width:100%;max-height:85vh;overflow-y:auto;padding:24px">
+  </div>
+</div>
+
+<script>
+'use strict';
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const KEY = window.__SCOUT_KEY || '';
+const BASE = window.__SCOUT_API_BASE || '';
+const H = (extra) => ({ 'X-Scout-Key': KEY, 'Content-Type': 'application/json', ...extra });
+window.H = H;
+const API = (path) => fetch(BASE + path, { headers: H() }).then(r => r.json()).catch(() => null);
+
+async function logoutDashboard() {
+  if (BASE) {
+    window.location.href = '/logout';
+    return;
+  }
+  try { await fetch('/dashboard/logout', { method: 'POST', headers: H() }); } catch (_) {}
+  window.location.href = '/dashboard/login';
+}
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let stats = { critical: 0, warning: 0, info: 0, breach: 0 };
+let instances = [];
+let honeypotSummary = { total: 0, triggered: 0, untriggered: 0, by_type: {} };
+const activeInstanceIds = new Set();
+function honeypotSummaryHtml() {
+  const t = honeypotSummary;
+  const trigColor = t.triggered > 0 ? '#e06c75' : 'rgba(139,175,192,.5)';
+  return (
+    `<span style="color:rgba(139,175,192,.5);font-size:.62rem">[</span>` +
+    `<span style="color:rgba(139,175,192,.7);font-size:.62rem">${t.total} pots</span>` +
+    (t.triggered > 0
+      ? `<span style="color:${trigColor};font-size:.62rem">ALERT ${t.triggered}</span>`
+      : `<span style="color:rgba(139,175,192,.35);font-size:.62rem">${t.untriggered} safe</span>`) +
+    `<span style="color:rgba(139,175,192,.5);font-size:.62rem">]</span>`
+  );
+}
+
+async function loadHoneypotSummary() {
+  const instId = (instances.find(i => i.status === 'active') || {}).id || 'carina-local';
+  const d = await API(`/api/honeypots/summary?instance_id=${encodeURIComponent(instId)}`);
+  if (d && typeof d.total === 'number') {
+    honeypotSummary = d;
+    const chip = document.getElementById('hp-chip');
+    if (chip) chip.innerHTML = honeypotSummaryHtml();
+  }
+}
+
+function openHoneypotModal() {
+  closeMemoryModal();
+  document.getElementById('honeypot-overlay').style.display = 'flex';
+}
+function closeHoneypotModal() {
+  document.getElementById('honeypot-overlay').style.display = 'none';
+}
+
+async function deployHoneypot(type, keyType) {
+  const instId = (instances.find(i => i.status === 'active') || {}).id || 'carina-local';
+  const body = { type, instance_id: instId, instanceId: instId };
+  if (keyType) {
+    body.key_type = keyType;
+    body.keyType = keyType;
+  }
+
+  try {
+    const r = await fetch('/api/honeypots', {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify(body),
+    });
+    const d = await r.json();
+    if (d.honeypot || d.honeypots) {
+      const label = type === 'api_key' ? `${keyType} key` : 'credential files';
+      toast(`Honeypot deployed: ${label}`, 'ok');
+      closeHoneypotModal();
+      await loadHoneypotSummary();
+    } else {
+      toast('Deploy failed: ' + (d.error || 'unknown'), 'critical');
+    }
+  } catch {
+    toast('Deploy request failed', 'critical');
+  }
+}
+
+
+const TOOL_NAMES = [
+  'shell-exec', 'code-exec', 'file-write', 'http-request',
+  'email-send', 'web-search', 'file-read',
+];
+
+// Freq: 60 1-second buckets
+const freqBuckets = Array.from({ length: 60 }, () => ({ critical:0, warning:0, info:0, breach:0 }));
+let freqPtr = 0;
+
+// Anomaly: 10-minute rolling, 1 point per poll
+let anomalyPoints = []; // [{ z, t }]
+let injPerMin = new Array(10).fill(0);
+let injMinTs = Date.now();
+
+// Heatmap: tool × hour
+const TOOLS = ['web-search','file-read','file-write','http-request','email-send','code-exec','shell-exec'];
+const heatmap = {};
+TOOLS.forEach(t => { heatmap[t] = new Array(24).fill(0); });
+
+// Session scatter
+const sessions = new Map(); // id → { events, maxZ, maxSev, start }
+const SEV_RANK = { info:1, warning:2, critical:3, breach:4 };
+
+// Top event types
+const typeCounts = new Map();
+
+// Egress
+const egressBuckets = new Array(30).fill(0);
+let egressTotal = 0;
+
+// Kill switch state
+let killTargetId = '';
+let radarDots = []; // { x, y, col, born }
+let sweepAngle = 0;
+let radarRaf = null;
+
+// ── CANVAS HELPERS ───────────────────────────────────────────────────────────
+function sizeCanvas(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const r = c.parentElement.getBoundingClientRect();
+  if (r.width < 2 || r.height < 2) return false;
+  const pw = Math.floor(r.width * dpr);
+  const ph = Math.floor(r.height * dpr);
+  if (c.width === pw && c.height === ph) return true;
+  c.width = pw;
+  c.height = ph;
+  c.style.width = r.width + 'px';
+  c.style.height = r.height + 'px';
+  return true;
+}
+
+function ctx2d(c) {
+  const dpr = window.devicePixelRatio || 1;
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, W: c.width / dpr, H: c.height / dpr };
+}
+
+// ── RADAR (Canvas) ───────────────────────────────────────────────────────────
+function drawRadar(ts) {
+  const c = document.getElementById('radar-canvas');
+  if (!sizeCanvas(c)) { radarRaf = requestAnimationFrame(drawRadar); return; }
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * 0.47;
+
+  // Rings
+  ctx.lineWidth = 0.5;
+  [0.33, 0.66, 1].forEach(f => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * f, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,200,150,${0.12 * f})`;
+    ctx.stroke();
+  });
+
+  // Radial lines
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(a), cy + R * Math.sin(a));
+    ctx.strokeStyle = 'rgba(0,200,150,0.07)';
+    ctx.stroke();
+  }
+
+  // Sweep arc
+  sweepAngle = ((ts || 0) / 6000) * Math.PI * 2;
+  const sweepSpan = Math.PI / 9; // 20 degrees - precision scan beam
+  const startA = sweepAngle - sweepSpan;
+
+  const grad = ctx.createConicalGradient
+    ? null // not widely supported
+    : null;
+
+  // Draw sweep as filled pie slice with radial gradient
+  const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  grd.addColorStop(0, 'rgba(0,200,150,0)');
+  grd.addColorStop(0.6, 'rgba(0,200,150,0.12)');
+  grd.addColorStop(1, 'rgba(0,200,150,0.55)');
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.arc(cx, cy, R, startA, sweepAngle);
+  ctx.closePath();
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  // Leading edge glow line
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + R * Math.cos(sweepAngle), cy + R * Math.sin(sweepAngle));
+  ctx.strokeStyle = 'rgba(0,200,150,0.85)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#00c896';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Draw threat dots - dots live 20s, blink on fresh impact, fade after 8s
+  const now = Date.now();
+  radarDots = radarDots.filter(d => now - d.born < 20000);
+  radarDots.forEach(d => {
+    const age = (now - d.born) / 20000;
+    // Blink during first 3 seconds
+    const isFresh = now - d.born < 3000;
+    const blink = isFresh ? (Math.sin(now / 180) > 0 ? 1 : 0.2) : 1;
+    const alpha = blink * Math.max(0, 1 - Math.max(0, age - 0.4) / 0.6);
+    const radius = d.severity === 'breach' ? 6 : d.severity === 'critical' ? 5 : 4;
+
+    // Outer pulse ring on fresh dots
+    if (isFresh) {
+      const pulseR = radius + (now - d.born) / 100;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, Math.min(pulseR, radius * 3), 0, Math.PI * 2);
+      ctx.strokeStyle = d.col + '44';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = d.col + Math.round(alpha * 255).toString(16).padStart(2, '0');
+    ctx.shadowColor = d.col;
+    ctx.shadowBlur = isFresh ? 16 : 8 * (1 - age);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  });
+
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0,200,150,0.35)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  radarRaf = requestAnimationFrame(drawRadar);
+}
+
+function addRadarDot(ev, ageMs = 0) {
+  const c = document.getElementById('radar-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = c.width / dpr || 200, H = c.height / dpr || 200;
+  const cx = W / 2, cy = H / 2;
+  const R = Math.min(W, H) * 0.47;
+  const rings = { info: 0.28, warning: 0.52, critical: 0.76, breach: 0.92 };
+  const r = R * (rings[ev.severity] || 0.5);
+  // Spread dots around the full circle, seeded by event id/time for stable placement
+  const seed = ev.id ? parseInt(ev.id.slice(-4), 16) : Math.random() * 1000;
+  const a = (seed / 1000) * Math.PI * 2;
+  const cols = { info: '#00d4ff', warning: '#d4af37', critical: '#ff4460', breach: '#ff2244' };
+  radarDots.push({
+    x: cx + r * Math.cos(a),
+    y: cy + r * Math.sin(a),
+    col: cols[ev.severity] || '#00c896',
+    severity: ev.severity,
+    born: Date.now() - ageMs
+  });
+}
+
+// ── FREQ CHART ───────────────────────────────────────────────────────────────
+function drawFreq() {
+  const c = document.getElementById('freq-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = '#030810';
+  ctx.fillRect(0, 0, W, H);
+
+  const bw = W / 60;
+  const maxH = H - 2;
+
+  // Find max for scaling
+  let maxVal = 1;
+  freqBuckets.forEach(b => {
+    const v = b.critical * 4 + b.warning * 2 + b.info + b.breach * 8;
+    if (v > maxVal) maxVal = v;
+  });
+
+  freqBuckets.forEach((b, i) => {
+    const total = b.critical * 4 + b.warning * 2 + b.info + b.breach * 8;
+    if (!total) return;
+    const bh = Math.max(2, (total / maxVal) * maxH);
+    const col = b.breach > 0 ? '#ff2244' : b.critical > 0 ? '#ff4460' : b.warning > 0 ? '#d4af37' : '#00d4ff';
+    ctx.fillStyle = col;
+    ctx.fillRect(i * bw + 0.5, H - bh, bw - 1, bh);
+  });
+
+  // Baseline
+  ctx.beginPath();
+  ctx.moveTo(0, H - 0.5);
+  ctx.lineTo(W, H - 0.5);
+  ctx.strokeStyle = 'rgba(0,200,150,0.2)';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+}
+
+// ── ANOMALY CHART ────────────────────────────────────────────────────────────
+function drawAnomaly() {
+  const c = document.getElementById('anomaly-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = { top: 14, right: 8, bottom: 22, left: 30 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top - PAD.bottom;
+  const MAX_Z = 6;
+
+  // Background
+  ctx.fillStyle = '#030810';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid + Y labels
+  ctx.font = '7px JetBrains Mono';
+  ctx.fillStyle = 'rgba(139,175,192,0.5)';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  [1, 2, 3, 4, 5].forEach(z => {
+    const y = PAD.top + ph - (z / MAX_Z) * ph;
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(PAD.left + pw, y);
+    ctx.strokeStyle = z === 3 ? 'rgba(255,34,68,0.35)' : 'rgba(0,200,150,0.07)';
+    ctx.setLineDash(z === 3 ? [4, 4] : []);
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillText(z.toFixed(0), PAD.left - 4, y);
+  });
+
+  // Threshold label
+  if (ph > 60) {
+    const ty = PAD.top + ph - (3 / MAX_Z) * ph;
+    ctx.fillStyle = 'rgba(255,34,68,0.6)';
+    ctx.textAlign = 'right';
+    ctx.fillText('threshold', PAD.left + pw - 2, ty - 7);
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(0,200,150,0.2)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, PAD.top + ph);
+  ctx.lineTo(PAD.left + pw, PAD.top + ph);
+  ctx.stroke();
+
+  // No data
+  if (!anomalyPoints.length) {
+    ctx.fillStyle = 'rgba(139,175,192,0.25)';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No anomaly data yet', PAD.left + pw / 2, PAD.top + ph / 2);
+    return;
+  }
+
+  // Main line
+  const pts = anomalyPoints.slice(-120); // last 120 points
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const x = PAD.left + (i / (pts.length - 1 || 1)) * pw;
+    const y = PAD.top + ph - Math.min(p.z / MAX_Z, 1) * ph;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  const hasHigh = pts.some(p => p.z > 3);
+  ctx.strokeStyle = hasHigh ? '#ff2244' : '#00d4ff';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = ctx.strokeStyle;
+  ctx.shadowBlur = hasHigh ? 12 : 6;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Fill under line
+  const lastX = PAD.left + pw;
+  const baseY = PAD.top + ph;
+  ctx.lineTo(lastX, baseY);
+  ctx.lineTo(PAD.left, baseY);
+  ctx.closePath();
+  const fillGrad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + ph);
+  fillGrad.addColorStop(0, hasHigh ? 'rgba(255,34,68,0.2)' : 'rgba(0,212,255,0.15)');
+  fillGrad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+
+  // Injection overlay
+  if (injPerMin.some(v => v > 0)) {
+    const maxInj = Math.max(...injPerMin, 1);
+    ctx.beginPath();
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1;
+    injPerMin.forEach((v, i) => {
+      const x = PAD.left + (i / (injPerMin.length - 1)) * pw;
+      const y = PAD.top + ph - (v / maxInj) * ph * 0.7;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#d4af37';
+    ctx.font = '7px JetBrains Mono';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('- inj/min', PAD.left + pw, PAD.top + 2);
+  }
+}
+
+// ── HEATMAP ──────────────────────────────────────────────────────────────────
+function drawHeatmap() {
+  const c = document.getElementById('heatmap-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#030810';
+  ctx.fillRect(0, 0, W, H);
+
+  const LBL = 72, TOP = 18;
+  const cellW = (W - LBL) / 24;
+  const cellH = (H - TOP) / TOOLS.length;
+
+  // Max value for colour scaling
+  let maxVal = 1;
+  TOOLS.forEach(t => { (heatmap[t] || []).forEach(v => { if (v > maxVal) maxVal = v; }); });
+
+  // Hour labels
+  ctx.fillStyle = 'rgba(139,175,192,0.55)';
+  ctx.font = `${Math.min(8, cellW * 0.7)}px JetBrains Mono`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  [0, 4, 8, 12, 16, 20, 23].forEach(h => {
+    ctx.fillText(String(h).padStart(2, '0'), LBL + h * cellW + cellW / 2, TOP - 2);
+  });
+
+  TOOLS.forEach((tool, row) => {
+    // Label
+    ctx.fillStyle = '#8bafc0';
+    ctx.font = `${Math.max(7, Math.min(10, cellH * 0.52))}px JetBrains Mono`;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(tool, LBL - 4, TOP + row * cellH + cellH / 2);
+
+    // Cells
+    for (let h = 0; h < 24; h++) {
+      const v = (heatmap[tool] || [])[h] || 0;
+      const intensity = v / maxVal;
+      if (intensity === 0) {
+        ctx.fillStyle = '#050c1a';
+      } else {
+        const g = Math.round(12 + intensity * 188);
+        const b = Math.round(26 + intensity * 118);
+        ctx.fillStyle = `rgb(5,${g},${b})`;
+        ctx.shadowColor = `rgba(0,200,150,${intensity * 0.4})`;
+        ctx.shadowBlur = intensity > 0.5 ? 5 : 0;
+      }
+      ctx.fillRect(LBL + h * cellW + 1, TOP + row * cellH + 1, cellW - 2, cellH - 2);
+      ctx.shadowBlur = 0;
+    }
+  });
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,200,150,0.06)';
+  ctx.lineWidth = 0.5;
+  for (let h = 0; h <= 24; h++) {
+    ctx.beginPath();
+    ctx.moveTo(LBL + h * cellW, TOP);
+    ctx.lineTo(LBL + h * cellW, H);
+    ctx.stroke();
+  }
+  for (let r = 0; r <= TOOLS.length; r++) {
+    ctx.beginPath();
+    ctx.moveTo(LBL, TOP + r * cellH);
+    ctx.lineTo(W, TOP + r * cellH);
+    ctx.stroke();
+  }
+}
+
+// ── SEVERITY DONUT ───────────────────────────────────────────────────────────
+function drawDonut() {
+  const c = document.getElementById('donut-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H * 0.46;
+  const R = Math.min(W, H * 0.9) * 0.38;
+  const innerR = R * 0.54;
+  const total = stats.critical + stats.warning + stats.info + stats.breach || 1;
+
+  const slices = [
+    { v: stats.breach,   col: '#ff2244', label: 'BREACH' },
+    { v: stats.critical, col: '#ff4460', label: 'CRIT' },
+    { v: stats.warning,  col: '#d4af37', label: 'WARN' },
+    { v: stats.info,     col: '#00d4ff', label: 'INFO' },
+  ].filter(s => s.v > 0);
+
+  if (!slices.length) {
+    // Empty ring
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,200,150,0.1)';
+    ctx.lineWidth = R - innerR;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(139,175,192,0.3)';
+    ctx.font = '9px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NO DATA', cx, cy);
+    return;
+  }
+
+  let angle = -Math.PI / 2;
+  slices.forEach(s => {
+    const sweep = (s.v / total) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, angle, angle + sweep);
+    ctx.closePath();
+    ctx.fillStyle = s.col;
+    ctx.shadowColor = s.col;
+    ctx.shadowBlur = 8;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    angle += sweep;
+  });
+
+  // Punch hole
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Centre text
+  ctx.textAlign = 'center';
+  const numSize = Math.min(R * 0.44, 22);
+  ctx.font = `700 ${numSize}px JetBrains Mono`;
+  ctx.fillStyle = '#cce8f4';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(total, cx, cy + numSize * 0.35);
+  ctx.font = `${Math.min(7, numSize * 0.38)}px JetBrains Mono`;
+  ctx.fillStyle = '#8bafc0';
+  ctx.fillText('EVENTS', cx, cy + numSize * 0.35 + Math.min(10, numSize * 0.55));
+
+  // Legend below
+  const legY = cy + R + 10;
+  if (legY + 14 < H) {
+    const sliceW = W / slices.length;
+    ctx.font = '7px JetBrains Mono';
+    ctx.textBaseline = 'middle';
+    slices.forEach((s, i) => {
+      const lx = (i + 0.5) * sliceW;
+      ctx.fillStyle = s.col;
+      ctx.beginPath();
+      ctx.arc(lx - 12, legY + 7, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.textAlign = 'left';
+      ctx.fillText(`${s.label} ${Math.round(s.v / total * 100)}%`, lx - 7, legY + 7);
+    });
+  }
+}
+
+// ── THREAT GAUGE (Canvas semicircle) ─────────────────────────────────────────
+function computeThreatScore() {
+  return Math.min(100, stats.breach * 20 + stats.critical * 4 + stats.warning * 2);
+}
+
+function drawGauge() {
+  const c = document.getElementById('gauge-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const TOP_PAD = 10;
+  // R must fit: cy - R >= TOP_PAD, so R <= cy - TOP_PAD
+  // Pivot at 82% of height, R limited so arc stays within canvas
+  const cy = H * 0.82;
+  const maxR = Math.min(cx * 0.9, cy - TOP_PAD);
+  const R = maxR * 0.88;
+  const arcW = R * 0.20;
+  const score = computeThreatScore();
+
+  // 5 coloured arc zones (semicircle left→right through top)
+  // arc(cx, cy, r, startAngle, endAngle, anticlockwise=true) for upper semicircle
+  const zones = [
+    { s: Math.PI,      e: Math.PI * 0.8, col: '#00c896' },
+    { s: Math.PI * 0.8, e: Math.PI * 0.6, col: '#00d4ff' },
+    { s: Math.PI * 0.6, e: Math.PI * 0.4, col: '#d4af37' },
+    { s: Math.PI * 0.4, e: Math.PI * 0.2, col: '#ff5544' },
+    { s: Math.PI * 0.2, e: 0,             col: '#ff2244' },
+  ];
+
+  zones.forEach(z => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, z.s, z.e, true);
+    ctx.strokeStyle = z.col;
+    ctx.lineWidth = arcW;
+    ctx.shadowColor = z.col;
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  });
+
+  // Tick marks
+  for (let i = 0; i <= 10; i++) {
+    const θ = Math.PI - i * Math.PI / 10;
+    const cos = Math.cos(θ), sin = Math.sin(θ);
+    const r1 = R + arcW / 2 + 3;
+    const r2 = r1 + (i % 5 === 0 ? 7 : 4);
+    ctx.beginPath();
+    // Use cy - r*sin for upper semicircle
+    ctx.moveTo(cx + r1 * cos, cy - r1 * sin);
+    ctx.lineTo(cx + r2 * cos, cy - r2 * sin);
+    ctx.strokeStyle = 'rgba(139,175,192,0.35)';
+    ctx.lineWidth = i % 5 === 0 ? 1.5 : 0.8;
+    ctx.stroke();
+  }
+
+  // Needle
+  const needleAngle = Math.PI * (1 - score / 100);
+  const needleR = R - arcW * 0.45;
+  const nx = cx + needleR * Math.cos(needleAngle);
+  const ny = cy - needleR * Math.sin(needleAngle);
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(nx, ny);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Pivot
+  ctx.beginPath();
+  ctx.arc(cx, cy, arcW * 0.22, 0, Math.PI * 2);
+  ctx.fillStyle = '#050c1a';
+  ctx.fill();
+  ctx.strokeStyle = '#00c896';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Score number - positioned in the empty CENTRE of the semicircle arc, not inside the arc band
+  const scoreCol = score > 75 ? '#ff2244' : score > 50 ? '#d4af37' : score > 25 ? '#00d4ff' : '#00c896';
+  // The visual centre of the semicircle is roughly at cy - R*0.45
+  const scoreCentreY = cy - R * 0.48;
+  const scoreSize = Math.max(14, Math.min(R * 0.36, H * 0.2, 32));
+  ctx.font = `700 ${scoreSize}px JetBrains Mono`;
+  ctx.fillStyle = scoreCol;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = scoreCol;
+  ctx.shadowBlur = 14;
+  ctx.fillText(Math.round(score), cx, scoreCentreY);
+  ctx.shadowBlur = 0;
+  // Small label below score, above pivot
+  ctx.font = `500 ${Math.max(7, scoreSize * 0.32)}px JetBrains Mono`;
+  ctx.fillStyle = 'rgba(139,175,192,0.55)';
+  ctx.letterSpacing = '0.1em';
+  ctx.fillText('/ 100', cx, scoreCentreY + scoreSize * 0.72);
+}
+
+// ── SESSION SCATTER ───────────────────────────────────────────────────────────
+function drawScatter() {
+  const c = document.getElementById('scatter-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#030810';
+  ctx.fillRect(0, 0, W, H);
+
+  const PAD = { top: 8, right: 8, bottom: 26, left: 28 };
+  const pw = W - PAD.left - PAD.right;
+  const ph = H - PAD.top - PAD.bottom;
+
+  // Grid
+  ctx.strokeStyle = 'rgba(0,200,150,0.07)';
+  ctx.lineWidth = 0.5;
+  [0.25, 0.5, 0.75].forEach(f => {
+    ctx.beginPath(); ctx.moveTo(PAD.left, PAD.top + ph * (1-f)); ctx.lineTo(PAD.left + pw, PAD.top + ph * (1-f)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.left + pw * f, PAD.top); ctx.lineTo(PAD.left + pw * f, PAD.top + ph); ctx.stroke();
+  });
+
+  // Axes
+  ctx.strokeStyle = 'rgba(0,200,150,0.25)';
+  ctx.lineWidth = 0.75;
+  ctx.beginPath();
+  ctx.moveTo(PAD.left, PAD.top);
+  ctx.lineTo(PAD.left, PAD.top + ph);
+  ctx.lineTo(PAD.left + pw, PAD.top + ph);
+  ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(139,175,192,0.5)';
+  ctx.font = '7px JetBrains Mono';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText('events/session', PAD.left + pw / 2, H - 12);
+  ctx.save();
+  ctx.translate(9, PAD.top + ph / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('max Z', 0, 0);
+  ctx.restore();
+
+  const entries = [...sessions.values()];
+  if (!entries.length) {
+    ctx.fillStyle = 'rgba(139,175,192,0.22)';
+    ctx.font = '8px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('awaiting sessions', PAD.left + pw / 2, PAD.top + ph / 2);
+    return;
+  }
+
+  const maxEv = Math.max(...entries.map(s => s.events), 1);
+  const maxZ  = Math.max(...entries.map(s => s.maxZ), 5);
+  const COLS  = { info:'#00d4ff', warning:'#d4af37', critical:'#ff4460', breach:'#ff2244' };
+
+  entries.slice(-50).forEach(s => {
+    const x = PAD.left + (s.events / maxEv) * pw;
+    const y = PAD.top + ph - Math.min(s.maxZ / maxZ, 1) * ph;
+    const r = Math.max(3, Math.min(10, Math.log(s.events + 1) * 2.5));
+    const col = COLS[s.maxSev] || '#00c896';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = col + '88';
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+}
+
+// ── TOP EVENT TYPES ───────────────────────────────────────────────────────────
+function drawTopEvents() {
+  const c = document.getElementById('top-canvas');
+  if (!sizeCanvas(c)) return;
+  const { ctx, W, H } = ctx2d(c);
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.fillStyle = '#030810';
+  ctx.fillRect(0, 0, W, H);
+
+  const sorted = [...typeCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+  if (!sorted.length) {
+    ctx.fillStyle = 'rgba(139,175,192,0.25)';
+    ctx.font = '8px JetBrains Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('loading...', W / 2, H / 2);
+    return;
+  }
+
+  const max = sorted[0][1];
+  const rowH = H / sorted.length;
+  const LBL = Math.min(110, W * 0.44);
+  const BAR = W - LBL - 28;
+
+  sorted.forEach(([type, count], i) => {
+    const y = i * rowH;
+    const bw = (count / max) * BAR;
+    const isRed = /injection|blocked|breach|kill|egress|danger/.test(type);
+    const isAmb = /warning|honeypot|anomaly/.test(type);
+    const col = isRed ? '#ff2244' : isAmb ? '#d4af37' : '#00c896';
+
+    if (i % 2 === 0) { ctx.fillStyle = 'rgba(0,200,150,0.025)'; ctx.fillRect(0, y, W, rowH); }
+
+    const fs = Math.min(9, rowH * 0.54);
+    ctx.font = `${fs}px JetBrains Mono`;
+    ctx.fillStyle = '#8bafc0';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(type.replace(/_/g, ' ').slice(0, 20), LBL - 4, y + rowH / 2);
+
+    ctx.fillStyle = col + 'aa';
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 4;
+    ctx.fillRect(LBL, y + 2, bw, rowH - 4);
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = col;
+    ctx.textAlign = 'left';
+    ctx.font = `600 ${Math.min(8, rowH * 0.5)}px JetBrains Mono`;
+    ctx.fillText(count, LBL + bw + 4, y + rowH / 2);
+  });
+}
+
+// ── EGRESS SPARKLINE ─────────────────────────────────────────────────────────
+function drawEgress() {
+  const c = document.getElementById('egress-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const W = 80 * dpr, H = 14 * dpr;
+  c.width = W; c.height = H;
+  c.style.width = '80px'; c.style.height = '14px';
+  const ctx = c.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, 80, 14);
+  const max = Math.max(...egressBuckets, 1);
+  const bw = 80 / 30;
+  egressBuckets.forEach((v, i) => {
+    if (!v) return;
+    const bh = Math.max(2, (v / max) * 12);
+    ctx.fillStyle = '#ff2244cc';
+    ctx.fillRect(i * bw + 0.5, 14 - bh, bw - 1, bh);
+  });
+  document.getElementById('egress-total').textContent = egressTotal > 0 ? egressTotal : '';
+}
+
+// ── DRAW ALL ─────────────────────────────────────────────────────────────────
+function drawAll() {
+  drawFreq();
+  drawAnomaly();
+  drawHeatmap();
+  drawDonut();
+  drawGauge();
+  drawScatter();
+  drawTopEvents();
+  drawEgress();
+}
+
+function sizeAllAndDraw() {
+  const canvases = ['freq-canvas','anomaly-canvas','heatmap-canvas','donut-canvas','gauge-canvas','scatter-canvas','top-canvas'];
+  canvases.forEach(id => {
+    const c = document.getElementById(id);
+    if (c) sizeCanvas(c);
+  });
+  drawAll();
+}
+
+// ── DATA LOADING ─────────────────────────────────────────────────────────────
+function updateStatEls() {
+  document.getElementById('s-critical').textContent = stats.critical;
+  document.getElementById('s-warning').textContent  = stats.warning;
+  document.getElementById('s-info').textContent     = stats.info;
+  document.getElementById('s-breach').textContent   = stats.breach;
+}
+
+async function loadStatus() {
+  const d = await API('/api/status');
+  if (!d) return;
+  if (d.stats) {
+    stats = { critical: d.stats.critical||0, warning: d.stats.warning||0, info: d.stats.info||0, breach: d.stats.breach||0 };
+    updateStatEls();
+  }
+  if (d.instances) {
+    instances = d.instances;
+    updateInstances();
+  }
+  if (d.toolCalls) {
+    Object.entries(d.toolCalls).forEach(([tool, count]) => {
+      if (TOOLS.includes(tool) && count > 0) {
+        const hr = new Date().getHours();
+        if (!heatmap[tool]) heatmap[tool] = new Array(24).fill(0);
+        heatmap[tool][hr] = count;
+      }
+    });
+  }
+  drawDonut(); drawGauge(); drawHeatmap();
+}
+
+async function loadEvents() {
+  const d = await API('/api/events?limit=200');
+  if (!d) return;
+  const evs = Array.isArray(d) ? d : (d.events || []);
+
+  evs.forEach(ev => {
+    // Top event types
+    typeCounts.set(ev.event_type, (typeCounts.get(ev.event_type)||0)+1);
+    // Heatmap
+    const tool = ev.metadata?.tool;
+    const hr   = new Date(ev.created_at).getHours();
+    if (tool && TOOLS.includes(tool)) {
+      if (!heatmap[tool]) heatmap[tool] = new Array(24).fill(0);
+      heatmap[tool][hr]++;
+    }
+    // Sessions
+    const sid = ev.session_id;
+    if (sid) {
+      const s = sessions.get(sid) || { events:0, maxZ:0, maxSev:'info', start: Date.now() };
+      s.events++;
+      if ((SEV_RANK[ev.severity]||0) > (SEV_RANK[s.maxSev]||0)) s.maxSev = ev.severity;
+      sessions.set(sid, s);
+    }
+    // Egress
+    if (ev.event_type === 'egress_blocked') { egressTotal++; }
+    // Injection
+    if (/injection/.test(ev.event_type)) {
+      injPerMin[injPerMin.length - 1]++;
+    }
+    // Freq bucket - use 60-minute window (1 bucket per minute) so chart is never blank at load
+    const ageM = Math.floor((Date.now() - new Date(ev.created_at).getTime()) / 60000);
+    if (ageM >= 0 && ageM < 60) {
+      const bi = 59 - ageM;
+      if (freqBuckets[bi]) freqBuckets[bi][ev.severity] = (freqBuckets[bi][ev.severity]||0)+1;
+    }
+  });
+
+  // Render last 50 to stream (newest last = bottom)
+  const streamBody = document.getElementById('stream-body');
+  streamBody.innerHTML = '';
+  [...evs].reverse().slice(0, 50).forEach(ev => appendEvent(ev, false));
+
+  // Seed radar with recent events - gives dots to show on load
+  evs.slice(0, 30).forEach(ev => {
+    const ageMs = Math.min(18000, Date.now() - new Date(ev.created_at).getTime());
+    addRadarDot(ev, ageMs);
+  });
+
+  drawAll();
+}
+
+async function loadAnomalies() {
+  const d = await API('/api/anomalies/recent?limit=200');
+  if (!d) return;
+  const pts = Array.isArray(d) ? d : (d.anomalies || []);
+  anomalyPoints = pts.map(p => ({
+    z: parseFloat(p.z_score) || 0,
+    t: new Date(p.detected_at || p.created_at).getTime()
+  })).sort((a, b) => a.t - b.t);
+  drawAnomaly();
+}
+
+// ── STREAM ────────────────────────────────────────────────────────────────────
+function makeAckButton(eventId) {
+  const btn = document.createElement('button');
+  btn.className = 'btn-ack';
+  btn.textContent = 'ACK';
+  btn.title = 'Acknowledge - stops repeat alerts for this event type from this instance';
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const r = await fetch(`/api/events/${eventId}/acknowledge`, {
+        method: 'POST',
+        headers: H(),
+        body: JSON.stringify({ note: '' }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        btn.closest('.ev-row')?.classList.add('ev-acknowledged');
+        toast('Event acknowledged - repeat alerts suppressed', 'ok');
+        applyAckFilter();
+      } else {
+        btn.disabled = false;
+        toast('Acknowledge failed', 'warning');
+      }
+    } catch {
+      btn.disabled = false;
+      toast('Acknowledge request failed', 'critical');
+    }
+  };
+  return btn;
+}
+
+function applyAckFilter() {
+  const hide = document.getElementById('hide-ack-check')?.checked ?? false;
+  document.querySelectorAll('.ev-row.ev-acknowledged').forEach(row => {
+    row.style.display = hide ? 'none' : '';
+  });
+}
+
+
+function appendEvent(ev, animate = true) {
+  const body = document.getElementById('stream-body');
+  const empty = body.querySelector('.stream-empty');
+  if (empty) empty.remove();
+
+  const row = document.createElement('div');
+  row.className = `ev-row sev-${ev.severity}${animate ? '' : ''}`;
+  if (!animate) row.style.animation = 'none';
+
+  const ts = new Date(ev.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const sev = (ev.severity||'info').toUpperCase().padEnd(8);
+  row.innerHTML =
+    `<span class="ev-ts">${ts}</span>` +
+    `<span class="ev-sev ${ev.severity}">${sev}</span>` +
+    `<span class="ev-type">${(ev.event_type||'').replace(/_/g,' ')}</span>` +
+    `<span class="ev-inst">${(ev.instance_id||'').slice(0,12)}</span>`;
+
+  if (ev.event_type === 'alert_test') {
+    const sevBadge = row.querySelector('.ev-sev');
+    if (sevBadge) {
+      const badge = document.createElement('span');
+      badge.textContent = '[TEST]';
+      badge.style.cssText =
+        'font-size:0.55rem;color:#d4af37;border:1px solid rgba(212,175,55,0.4);' +
+        'padding:0 0.3rem;border-radius:2px;margin-left:0.3rem;flex-shrink:0;';
+      sevBadge.after(badge);
+    }
+  }
+
+  if (ev.session_id) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-block-session';
+    btn.textContent = 'BLOCK';
+    btn.title = `Block session ${ev.session_id}`;
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      void blockSession(ev.session_id, ev.instance_id || 'carina-local');
+    };
+    row.appendChild(btn);
+  }
+
+  if (ev.session_id) {
+    const rlBtn = document.createElement('button');
+    rlBtn.className = 'btn-throttle';
+    rlBtn.textContent = 'THROTTLE';
+    rlBtn.title = 'Adjust rate limit for this session';
+    rlBtn.onclick = (e) => {
+      e.stopPropagation();
+      promptRateLimit(ev.session_id, ev.instance_id || 'carina-local');
+    };
+    row.appendChild(rlBtn);
+  }
+
+  if (ev.session_id) {
+    const cmBtn = document.createElement('button');
+    cmBtn.className = 'btn-clear-mem-row';
+    cmBtn.textContent = 'CLEAR MEM';
+    cmBtn.title = 'Wipe episodic memory for this session';
+    cmBtn.onclick = (e) => {
+      e.stopPropagation();
+      confirmClearMemory(ev.session_id, ev.instance_id || 'carina-local');
+    };
+    row.appendChild(cmBtn);
+  }
+
+  if (ev.event_type === 'egress_blocked' || ev.event_type === 'egress_domain_blocked') {
+    const domain = (ev.metadata && ev.metadata.hostname)
+      ? String(ev.metadata.hostname)
+      : extractDomainFromDescription(ev.description);
+
+    if (domain) {
+      const blockBtn = document.createElement('button');
+      blockBtn.className = 'btn-add-blocklist';
+      blockBtn.textContent = 'BLOCK DOMAIN';
+      blockBtn.title = `Add ${domain} to operator blocklist`;
+      blockBtn.onclick = (e) => {
+        e.stopPropagation();
+        void blockEgressDomain(domain, ev.instance_id || 'carina-local');
+      };
+      row.appendChild(blockBtn);
+    }
+  }
+
+  const ackBtn = makeAckButton(ev.id);
+  row.appendChild(ackBtn);
+  if (ev.acknowledged) {
+    row.classList.add('ev-acknowledged');
+  }
+
+  body.prepend(row);
+  while (body.children.length > 120) body.lastElementChild.remove();
+}
+
+function extractDomainFromDescription(desc) {
+  const m = desc && desc.match(/hostname '([^']+)'/);
+  return m ? m[1] : null;
+}
+
+
+function buildQuarantinePanel(instanceId) {
+  const panel = document.createElement('div');
+  panel.className = 'quarantine-panel';
+  panel.id = `qpanel-${instanceId}`;
+
+  const lbl = document.createElement('span');
+  lbl.className = 'quarantine-lbl';
+  lbl.textContent = 'QUARANTINE:';
+  panel.appendChild(lbl);
+
+  for (const tool of TOOL_NAMES) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-tool-quarantine';
+    btn.id = `qtool-${instanceId}-${tool}`;
+    btn.textContent = tool;
+    btn.title = `Quarantine ${tool} for 60 minutes`;
+    btn.onclick = () => void quarantineTool(tool, instanceId, btn);
+    panel.appendChild(btn);
+  }
+  return panel;
+}
+
+async function quarantineTool(tool, instanceId, btn) {
+  const isActive = btn.classList.contains('active');
+  if (isActive) {
+    try {
+      const r = await fetch(
+        `/api/quarantine/tools/${encodeURIComponent(tool)}?instance_id=${encodeURIComponent(instanceId)}`,
+        { method: 'DELETE', headers: H() },
+      );
+      const d = await r.json();
+      if (d.ok) {
+        btn.classList.remove('active');
+        toast(`Quarantine lifted: ${tool}`, 'info');
+      } else {
+        toast('Lift failed: ' + (d.error || ''), 'critical');
+      }
+    } catch {
+      toast('Lift request failed (network error)', 'critical');
+    }
+  } else {
+    try {
+      const r = await fetch('/api/quarantine/tools', {
+        method: 'POST',
+        headers: H(),
+        body: JSON.stringify({
+          tool,
+          instance_id: instanceId,
+          duration_minutes: 60,
+          reason: 'Operator quarantine from dashboard',
+        }),
+      });
+      const d = await r.json();
+      if (d.ok) {
+        btn.classList.add('active');
+        toast(`Quarantined: ${tool} (60 min)`, 'warning');
+      } else {
+        toast('Quarantine failed: ' + (d.error || ''), 'critical');
+      }
+    } catch {
+      toast('Quarantine request failed (network error)', 'critical');
+    }
+  }
+}
+
+async function refreshQuarantinePanel(instanceId) {
+  try {
+    const r = await fetch(
+      `/api/quarantine/tools?instance_id=${encodeURIComponent(instanceId)}`,
+      { headers: H() },
+    );
+    const d = await r.json();
+    if (!d.quarantined) return;
+    const active = new Set(d.quarantined.map((q) => q.tool));
+    for (const tool of TOOL_NAMES) {
+      const btn = document.getElementById(`qtool-${instanceId}-${tool}`);
+      if (!btn) continue;
+      btn.classList.toggle('active', active.has(tool));
+      const entry = d.quarantined.find((q) => q.tool === tool);
+      if (entry) {
+        btn.title = `Quarantined: ${entry.reason} (${entry.ttl_seconds}s remaining). Click to lift.`;
+      } else {
+        btn.title = `Quarantine ${tool} for 60 minutes`;
+      }
+    }
+  } catch {
+    /* polling failure is non-fatal */
+  }
+}
+
+// ── INSTANCES BAR ─────────────────────────────────────────────────────────────
+let instTimers = {};
+function updateInstances() {
+  const bar = document.getElementById('instances-bar');
+  bar.innerHTML = '<span class="inst-lbl">INSTANCES</span>';
+  activeInstanceIds.clear();
+
+  if (!instances.length) {
+    bar.innerHTML += '<span style="color:rgba(139,175,192,.3);font-size:.58rem">No instances</span>';
+  } else {
+  instances.forEach(inst => {
+    activeInstanceIds.add(inst.id);
+    const age = inst.secondsAgo != null ? inst.secondsAgo : (inst.last_heartbeat ? Math.floor((Date.now() - new Date(inst.last_heartbeat)) / 1000) : null);
+    const ageStr = age != null ? (age < 60 ? `${age}s ago` : `${Math.floor(age/60)}m ago`) : '-';
+    const status = inst.status || 'offline';
+
+    const chip = document.createElement('div');
+    chip.className = 'inst-chip';
+    chip.innerHTML =
+      `<div class="inst-dot ${status}"></div>` +
+      `<span class="inst-name">${inst.name || inst.id}</span>` +
+      `<span class="inst-status ${status}">${status.toUpperCase()}</span>` +
+      `<span class="inst-age">${ageStr}</span>`;
+
+    if (status === 'active') {
+      const btn = document.createElement('button');
+      btn.className = 'btn-kill';
+      btn.textContent = 'KILL';
+      btn.onclick = () => openKill(inst.id, inst.name || inst.id);
+      chip.appendChild(btn);
+    } else if (status === 'suspended') {
+      const btn = document.createElement('button');
+      btn.className = 'btn-resume';
+      btn.textContent = 'RESUME';
+      btn.onclick = () => executeResume(inst.id);
+      chip.appendChild(btn);
+    }
+
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'btn-quarantine-toggle';
+    toggleBtn.textContent = 'TOOLS';
+    toggleBtn.title = 'Toggle tool quarantine panel';
+    toggleBtn.onclick = () => {
+      const panel = document.getElementById(`qpanel-${inst.id}`);
+      if (panel) panel.classList.toggle('open');
+    };
+    chip.appendChild(toggleBtn);
+
+    const egressBtn = document.createElement('button');
+    egressBtn.className = 'btn-quarantine-toggle';
+    egressBtn.textContent = 'EGRESS';
+    egressBtn.title = 'View and manage egress domain blocklist';
+    egressBtn.onclick = () => void openEgressModal(inst.id);
+    chip.appendChild(egressBtn);
+
+    chip.appendChild(buildQuarantinePanel(inst.id));
+    void refreshQuarantinePanel(inst.id);
+
+    bar.appendChild(chip);
+
+    // Update header instance tag
+    if (inst.status === 'active') {
+      document.getElementById('hdr-inst').textContent = `instance: ${inst.id}`;
+    }
+  });
+  }
+
+  const hpChip = document.createElement('div');
+  hpChip.id = 'hp-chip';
+  hpChip.style.cssText = 'display:flex;align-items:center;gap:.4rem;margin-left:auto;cursor:pointer;padding:0 .4rem';
+  hpChip.title = 'Deploy or inspect honeypots';
+  hpChip.onclick = openHoneypotModal;
+  hpChip.innerHTML = honeypotSummaryHtml();
+  bar.appendChild(hpChip);
+
+  const memBtn = document.createElement('button');
+  memBtn.style.cssText = 'background:none;border:1px solid rgba(230,192,123,.35);color:#e6c07b;border-radius:3px;padding:.2rem .6rem;font-family:"JetBrains Mono",monospace;font-size:.62rem;cursor:pointer;flex-shrink:0';
+  memBtn.textContent = 'MEMORY';
+  memBtn.title = 'View and clear session memory';
+  memBtn.onclick = openMemoryModal;
+  bar.appendChild(memBtn);
+
+  const testAlertBtn = document.createElement('button');
+  testAlertBtn.id = 'btn-test-alert';
+  testAlertBtn.className = 'btn-test-alert';
+  testAlertBtn.textContent = 'TEST ALERTS';
+  testAlertBtn.title = 'Fire a test alert to all configured channels to verify delivery';
+  testAlertBtn.onclick = () => void triggerAlertTest();
+  bar.appendChild(testAlertBtn);
+
+  const exportWrap = document.createElement('div');
+  exportWrap.className = 'export-wrap';
+  exportWrap.innerHTML =
+    '<button class="btn-export" title="Download audit log">EXPORT &#9662;</button>' +
+    '<div class="export-dropdown">' +
+    '<button type="button" data-format="json">Download JSON</button>' +
+    '<button type="button" data-format="csv">Download CSV</button>' +
+    '</div>';
+  const exportBtn = exportWrap.querySelector('.btn-export');
+  const exportMenu = exportWrap.querySelector('.export-dropdown');
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle('open');
+  });
+  exportWrap.querySelectorAll('[data-format]').forEach((btn) => {
+    btn.addEventListener('click', () => void exportLog(btn.getAttribute('data-format')));
+  });
+  bar.appendChild(exportWrap);
+}
+
+
+let egressModalInstanceId = null;
+
+async function openEgressModal(instanceId) {
+  egressModalInstanceId = instanceId;
+  document.getElementById('egress-overlay').removeAttribute('hidden');
+  await refreshEgressList(instanceId);
+}
+
+function closeEgressModal() {
+  document.getElementById('egress-overlay').setAttribute('hidden', '');
+  egressModalInstanceId = null;
+}
+
+async function refreshEgressList(instanceId) {
+  const list = document.getElementById('egress-list');
+  try {
+    const r = await fetch(
+      `/api/egress/blocklist?instance_id=${encodeURIComponent(instanceId)}`,
+      { headers: H() },
+    );
+    const d = await r.json();
+    const domains = d.blocked || [];
+    if (domains.length === 0) {
+      list.innerHTML = '<div class="egress-empty">No domains blocked</div>';
+      return;
+    }
+    list.innerHTML = '';
+    for (const domain of domains) {
+      const item = document.createElement('div');
+      item.className = 'egress-item';
+      const name = document.createElement('span');
+      name.textContent = domain;
+      name.style.flex = '1';
+      const unblockBtn = document.createElement('button');
+      unblockBtn.className = 'btn-unblock';
+      unblockBtn.textContent = 'UNBLOCK';
+      unblockBtn.onclick = () => void unblockDomain(domain, instanceId);
+      item.appendChild(name);
+      item.appendChild(unblockBtn);
+      list.appendChild(item);
+    }
+  } catch {
+    list.innerHTML = '<div class="egress-empty">Failed to load blocklist</div>';
+  }
+}
+
+async function blockEgressDomain(domain, instanceId) {
+  try {
+    const r = await fetch('/api/egress/block', {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify({
+        domain,
+        instance_id: instanceId || 'carina-local',
+        reason: 'Operator block from dashboard',
+      }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Blocked domain: ${d.domain}`, 'warning');
+      if (egressModalInstanceId === instanceId) await refreshEgressList(instanceId);
+    } else {
+      toast('Block failed: ' + (d.error || ''), 'critical');
+    }
+  } catch {
+    toast('Block request failed (network error)', 'critical');
+  }
+}
+
+function openMemoryModal() {
+  closeHoneypotModal();
+  const el = document.getElementById('memory-overlay');
+  el.style.display = 'flex';
+  void loadSessionMemory();
+}
+
+function closeMemoryModal() {
+  document.getElementById('memory-overlay').style.display = 'none';
+}
+
+function formatAge(isoStr) {
+  if (!isoStr) return 'unknown';
+  const ts = new Date(isoStr).getTime();
+  if (!Number.isFinite(ts)) return 'unknown';
+  const secs = Math.floor((Date.now() - ts) / 1000);
+  if (secs < 0) return 'just now';
+  if (secs < 60) return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}m ago`;
+  return `${Math.floor(secs / 3600)}h ago`;
+}
+
+async function loadSessionMemory() {
+  const body = document.getElementById('memory-modal-body');
+  if (!body) return;
+  body.innerHTML = '<span style="color:rgba(139,175,192,.4);font-size:.62rem">Loading sessions...</span>';
+
+  try {
+    // Use direct fetch with timeout rather than API() which has no timeout
+    const controller = new AbortController();
+    const tid = setTimeout(() => controller.abort(), 8000);
+    let d;
+    try {
+      const r = await fetch('/api/memory/sessions', {
+        headers: { 'X-Scout-Key': KEY },
+        signal: controller.signal,
+      });
+      clearTimeout(tid);
+      d = await r.json();
+    } catch (fetchErr) {
+      clearTimeout(tid);
+      const isTimeout = fetchErr instanceof Error && fetchErr.name === 'AbortError';
+      body.innerHTML = `<span style="color:#e06c75;font-size:.62rem">${isTimeout ? 'Request timed out' : 'Could not reach Scout server'}</span>`;
+      return;
+    }
+
+    if (!d || !Array.isArray(d.sessions)) {
+      body.innerHTML = `<span style="color:#e06c75;font-size:.62rem">Unexpected response: ${JSON.stringify(d).slice(0,80)}</span>`;
+      return;
+    }
+    if (d.sessions.length === 0) {
+      body.innerHTML = '<span style="color:rgba(139,175,192,.4);font-size:.62rem">No sessions with stored memory</span>';
+      return;
+    }
+    renderSessionList(d.sessions, 'carina-local');
+  } catch (err) {
+    body.innerHTML = `<span style="color:#e06c75;font-size:.62rem">Error: ${err instanceof Error ? err.message : String(err)}</span>`;
+  }
+}
+
+function renderSessionList(sessions, instanceId) {
+  const body = document.getElementById('memory-modal-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  for (const s of sessions) {
+    const row = document.createElement('div');
+    row.className = 'sess-row';
+
+    const idSpan = document.createElement('span');
+    idSpan.className = 'sess-id';
+    idSpan.title = s.session_id;
+    idSpan.textContent = `${String(s.session_id).slice(0, 16)}...`;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'sess-count';
+    const turns = Number(s.turn_count) || 0;
+    countSpan.textContent = `${turns} turn${turns !== 1 ? 's' : ''}`;
+
+    const ageSpan = document.createElement('span');
+    ageSpan.className = 'sess-age';
+    ageSpan.textContent = formatAge(s.last_active);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'btn-clear-mem';
+    clearBtn.textContent = 'CLEAR';
+    clearBtn.onclick = () => confirmClearMemory(s.session_id, instanceId);
+
+    row.append(idSpan, countSpan, ageSpan, clearBtn);
+    body.appendChild(row);
+  }
+}
+
+function confirmClearMemory(sessionId, instanceId) {
+  if (!confirm(`Clear all memory for session ${sessionId.slice(0,12)}...?\nThis cannot be undone.`)) return;
+  void clearSessionMemory(sessionId, instanceId);
+}
+
+async function clearSessionMemory(sessionId, instanceId) {
+  try {
+    const r = await fetch('/api/memory/clear-session', {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify({
+        session_id: sessionId,
+        instance_id: instanceId,
+        reason: 'Operator clear from dashboard',
+      }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Memory cleared: ${d.rows_deleted} turn${d.rows_deleted !== 1 ? 's' : ''} deleted`, 'ok');
+      if (!document.getElementById('memory-overlay').hidden) void loadSessionMemory();
+    } else {
+      toast('Clear failed: ' + (d.error || 'unknown'), 'critical');
+    }
+  } catch {
+    toast('Clear request failed', 'critical');
+  }
+}
+
+function promptRateLimit(sessionId, instanceId) {
+  const raw = prompt(`Max tool calls per minute for session ${sessionId.slice(0,8)}... (1-200):`, '5');
+  if (raw === null) return;
+  const cpm = parseInt(raw, 10);
+  if (!Number.isInteger(cpm) || cpm < 1 || cpm > 200) {
+    toast('Invalid rate limit. Enter a number 1-200.', 'warning');
+    return;
+  }
+  const reason = prompt('Reason for throttle:', 'Suspicious activity') || 'Operator throttle';
+  void setSessionRateLimit(sessionId, instanceId, cpm, reason);
+}
+
+async function setSessionRateLimit(sessionId, instanceId, cpm, reason) {
+  try {
+    const r = await fetch('/api/rate-limit', {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify({ session_id: sessionId, instance_id: instanceId, calls_per_minute: cpm, reason }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Rate limit: ${cpm}/min for session ${sessionId.slice(0,8)}... (1 hr)`, 'warning');
+    } else {
+      toast('Rate limit failed: ' + (d.error || 'unknown'), 'critical');
+    }
+  } catch {
+    toast('Rate limit request failed', 'critical');
+  }
+}
+
+async function clearSessionRateLimit(sessionId, instanceId) {
+  try {
+    const r = await fetch(
+      `/api/rate-limit?session_id=${encodeURIComponent(sessionId)}&instance_id=${encodeURIComponent(instanceId)}`,
+      { method: 'DELETE', headers: H() },
+    );
+    const d = await r.json();
+    if (d.ok) toast(`Rate limit cleared for session ${sessionId.slice(0,8)}...`, 'ok');
+    else toast('Clear failed: ' + (d.error || ''), 'warning');
+  } catch {
+    toast('Clear request failed', 'warning');
+  }
+}
+
+async function unblockDomain(domain, instanceId) {
+  try {
+    const r = await fetch(
+      `/api/egress/block/${encodeURIComponent(domain)}?instance_id=${encodeURIComponent(instanceId)}`,
+      { method: 'DELETE', headers: H() },
+    );
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Unblocked: ${domain}`, 'info');
+      await refreshEgressList(instanceId);
+    } else {
+      toast('Unblock failed: ' + (d.error || ''), 'critical');
+    }
+  } catch {
+    toast('Unblock request failed (network error)', 'critical');
+  }
+}
+
+
+
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.export-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    wrap.querySelector('.export-dropdown')?.classList.remove('open');
+  }
+});
+
+async function exportLog(format) {
+  document.querySelector('.export-dropdown')?.classList.remove('open');
+
+  const since = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const url =
+    `/api/export/events?format=${encodeURIComponent(format)}` +
+    `&since=${encodeURIComponent(since)}&limit=10000`;
+
+  toast(`Preparing ${format.toUpperCase()} export...`, 'ok');
+
+  try {
+    const r = await fetch(url, { headers: H() });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast('Export failed: ' + (d.error ?? r.status), 'critical');
+      return;
+    }
+    const blob = await r.blob();
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `scout-audit-${dateStr}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+    toast(`${format.toUpperCase()} audit log downloaded`, 'ok');
+  } catch {
+    toast('Export request failed', 'critical');
+  }
+}
+
+async function triggerAlertTest() {
+  const SEVERITIES = ['info', 'warning', 'critical', 'breach'];
+  const severity = window.prompt('Test alert severity (info / warning / critical / breach):', 'critical');
+  if (!severity || !SEVERITIES.includes(severity.trim().toLowerCase())) {
+    toast('Invalid severity - cancelled', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btn-test-alert');
+  if (btn) btn.disabled = true;
+
+  try {
+    const r = await fetch('/api/admin/alert-test', {
+      method: 'POST',
+      headers: H(),
+      body: JSON.stringify({ severity: severity.trim().toLowerCase(), instance_id: 'carina-local' }),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Test alert sent to ${d.channels_notified} channel(s)`, 'ok');
+    } else {
+      toast('Alert test failed: ' + (d.error ?? 'unknown error'), 'critical');
+    }
+  } catch {
+    toast('Alert test request failed', 'critical');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── KILL SWITCH ───────────────────────────────────────────────────────────────
+let killTargetName = '';
+function openKill(id, name) {
+  killTargetId = id; killTargetName = name;
+  document.getElementById('kill-desc').textContent = `This will immediately suspend "${name}". All tool calls will be blocked.`;
+  document.getElementById('kill-confirm').value = '';
+  document.getElementById('kill-reason').value = '';
+  document.getElementById('kill-submit').disabled = true;
+  document.getElementById('kill-overlay').hidden = false;
+}
+function closeKill() { document.getElementById('kill-overlay').hidden = true; }
+document.getElementById('kill-confirm').addEventListener('input', function() {
+  document.getElementById('kill-submit').disabled = this.value.trim() !== 'KILL';
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeKill(); });
+
+async function executeKill() {
+  const reason = document.getElementById('kill-reason').value.trim() || 'Manual kill switch';
+  closeKill();
+  try {
+    const r = await fetch(`/api/kill/${encodeURIComponent(killTargetId)}`, {
+      method: 'POST', headers: H(), body: JSON.stringify({ reason })
+    });
+    const d = await r.json();
+    if (d.ok || d.status === 'suspended') {
+      toast(`Kill switch activated: ${killTargetName}`, 'critical');
+      if (window.DashboardKillSwitch) window.DashboardKillSwitch.renderKillStatus(d);
+      flashRadar();
+      loadStatus();
+    } else {
+      toast('Kill failed: ' + (d.error || 'unknown'), 'warning');
+    }
+  } catch { toast('Kill request failed', 'warning'); }
+}
+
+async function executeResume(id) {
+  try {
+    const r = await fetch(`/api/resume/${encodeURIComponent(id)}`, { method: 'POST', headers: H() });
+    const d = await r.json();
+    if (d.ok || d.status === 'active') { toast('Agent resumed', 'ok'); loadStatus(); }
+    else toast('Resume failed', 'warning');
+  } catch { toast('Resume failed', 'warning'); }
+}
+
+async function blockSession(sessionId, instanceId) {
+  const short = String(sessionId).slice(0, 8);
+  const reason = prompt(
+    `Block session ${short}...?\n\nEnter reason (or Cancel to abort):`,
+    'Suspicious activity'
+  );
+  if (reason === null || !reason.trim()) return;
+
+  try {
+    const r = await fetch(
+      `/api/sessions/${encodeURIComponent(sessionId)}/block`,
+      {
+        method: 'POST',
+        headers: H(),
+        body: JSON.stringify({ reason: reason.trim(), instance_id: instanceId }),
+      }
+    );
+    const d = await r.json();
+    if (d.ok) {
+      toast(`Session blocked: ${short}...`, 'warning');
+    } else {
+      toast('Block failed: ' + (d.error || 'unknown'), 'critical');
+    }
+  } catch {
+    toast('Block request failed (network error)', 'critical');
+  }
+}
+
+// ── FLASH RADAR ───────────────────────────────────────────────────────────────
+function flashRadar() {
+  const p = document.getElementById('radar-panel');
+  p.classList.add('flash-red');
+  document.body.classList.add('grid-pulse');
+  setTimeout(() => { p.classList.remove('flash-red'); document.body.classList.remove('grid-pulse'); }, 2000);
+}
+
+// ── TOASTS ────────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const box = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  box.prepend(t);
+  while (box.children.length > 3) box.lastElementChild.remove();
+  setTimeout(() => t.remove(), 4000);
+}
+
+// ── SSE ───────────────────────────────────────────────────────────────────────
+let evtSource = null;
+function connectSSE() {
+  if (evtSource) { try { evtSource.close(); } catch {} }
+  evtSource = new EventSource('/api/stream');
+
+  evtSource.onopen = () => {
+    document.getElementById('live-dot').classList.add('on');
+    document.getElementById('live-label').textContent = 'LIVE';
+  };
+
+  evtSource.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'heartbeat') return;
+      if (msg.type === 'stats' && msg.data) {
+        stats = msg.data;
+        updateStatEls(); drawDonut(); drawGauge();
+      }
+      if (msg.type === 'event' && msg.data) {
+        onLiveEvent(msg.data);
+      }
+    } catch {}
+  };
+
+  evtSource.onerror = () => {
+    document.getElementById('live-dot').classList.remove('on');
+    document.getElementById('live-label').textContent = 'OFFLINE';
+    setTimeout(connectSSE, 5000);
+  };
+
+  ['live_event','threat_update','agent_update','kill_switch_status','audit_results','token_update'].forEach((name) => {
+    evtSource.addEventListener(name, (event) => {
+      if (window.DashboardLiveFeed) window.DashboardLiveFeed.handleNamedEvent(event);
+      if (name === 'kill_switch_status' && window.DashboardKillSwitch) {
+        try {
+          const msg = JSON.parse(event.data);
+          window.DashboardKillSwitch.renderKillStatus(msg.data || msg);
+        } catch {}
+      }
+    });
+  });
+}
+
+function onLiveEvent(ev) {
+  // Stream
+  appendEvent(ev, true);
+  // Radar dot
+  addRadarDot(ev);
+  // Freq bucket
+  freqBuckets[freqPtr][ev.severity] = (freqBuckets[freqPtr][ev.severity]||0)+1;
+  drawFreq();
+  // Session tracking
+  if (ev.session_id) {
+    const s = sessions.get(ev.session_id) || { events:0, maxZ:0, maxSev:'info', start:Date.now() };
+    s.events++;
+    if ((SEV_RANK[ev.severity]||0) > (SEV_RANK[s.maxSev]||0)) s.maxSev = ev.severity;
+    sessions.set(ev.session_id, s);
+    drawScatter();
+  }
+  // Top events
+  typeCounts.set(ev.event_type, (typeCounts.get(ev.event_type)||0)+1);
+  drawTopEvents();
+  // Heatmap
+  const tool = ev.metadata?.tool;
+  if (tool && TOOLS.includes(tool)) {
+    const hr = new Date().getHours();
+    if (!heatmap[tool]) heatmap[tool] = new Array(24).fill(0);
+    heatmap[tool][hr]++;
+    drawHeatmap();
+  }
+  // Egress
+  if (ev.event_type === 'egress_blocked') {
+    egressTotal++;
+    egressBuckets[egressBuckets.length - 1]++;
+    drawEgress();
+  }
+  // Injection
+  if (/injection/.test(ev.event_type)) { injPerMin[injPerMin.length - 1]++; }
+  // Severity flash
+  if (ev.severity === 'critical' || ev.severity === 'breach') { flashRadar(); }
+  // Toast for critical+
+  if (ev.severity === 'breach' || (ev.severity === 'critical' && ev.event_type !== 'tool_call')) {
+    toast(`${ev.severity.toUpperCase()}: ${ev.event_type.replace(/_/g,' ')}`, ev.severity);
+  }
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('hdr-clock').textContent =
+    `${now.getUTCFullYear()}-${pad(now.getUTCMonth()+1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())} UTC`;
+}
+
+// ── ROLLING TIMERS ────────────────────────────────────────────────────────────
+// Roll freq bucket every 60 seconds (1 bucket = 1 minute over a 60-minute window)
+setInterval(() => {
+  freqPtr = (freqPtr + 1) % 60;
+  freqBuckets[freqPtr] = { critical:0, warning:0, info:0, breach:0 };
+  drawFreq();
+}, 60000);
+
+setInterval(() => {
+  injPerMin.push(0); injPerMin.shift();
+  egressBuckets.push(0); egressBuckets.shift();
+  drawEgress();
+}, 60000);
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Start radar immediately
+  radarRaf = requestAnimationFrame(drawRadar);
+
+  // Load all data in parallel
+  await Promise.allSettled([
+    loadStatus(),
+    loadEvents(),
+    loadAnomalies(),
+    loadHoneypotSummary(),
+  ]);
+
+  // Size and draw canvases after two animation frames (layout must be complete)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    sizeAllAndDraw();
+    setInterval(sizeAllAndDraw, 10000); // periodic resize check
+  }));
+
+  // Connect live feed
+  connectSSE();
+
+  // Polling
+  setInterval(loadStatus, 30000);
+  setInterval(loadAnomalies, 15000);
+  setInterval(loadHoneypotSummary, 60_000);
+  setInterval(() => {
+    for (const instanceId of activeInstanceIds) {
+      void refreshQuarantinePanel(instanceId);
+    }
+  }, 30_000);
+});
+
+window.addEventListener('resize', () => {
+  requestAnimationFrame(sizeAllAndDraw);
+});
+
+// ── TOOLTIP ENGINE ────────────────────────────────────────────────────────────
+// CSS-only tooltips fail inside overflow:hidden panels. Use a floating div instead.
+const tipEl = document.createElement('div');
+tipEl.style.cssText = `
+  position:fixed;display:none;background:#050c1a;border:1px solid rgba(0,200,150,.4);
+  color:#cce8f4;font-family:'JetBrains Mono',monospace;font-size:.68rem;
+  padding:.3rem .65rem;border-radius:3px;white-space:nowrap;z-index:9998;
+  pointer-events:none;letter-spacing:.04em;box-shadow:0 4px 20px rgba(0,0,0,.6);
+`;
+document.body.appendChild(tipEl);
+
+document.addEventListener('mouseover', e => {
+  const el = e.target.closest('[data-tip]');
+  if (!el) { tipEl.style.display = 'none'; return; }
+  tipEl.textContent = el.dataset.tip;
+  tipEl.style.display = 'block';
+});
+document.addEventListener('mousemove', e => {
+  if (tipEl.style.display === 'none') return;
+  const x = Math.min(e.clientX + 12, window.innerWidth - tipEl.offsetWidth - 8);
+  const y = Math.min(e.clientY + 16, window.innerHeight - tipEl.offsetHeight - 8);
+  tipEl.style.left = x + 'px';
+  tipEl.style.top  = y + 'px';
+});
+document.addEventListener('mouseout', e => {
+  if (!e.relatedTarget || !e.relatedTarget.closest('[data-tip]')) {
+    tipEl.style.display = 'none';
+  }
+});
+</script>
+<script src="/dashboard/js/widgets/agent-status.js"></script>
+<script src="/dashboard/js/widgets/threat-metrics.js"></script>
+<script src="/dashboard/js/widgets/usage-analytics.js"></script>
+<script src="/dashboard/js/widgets/audit-log.js"></script>
+<script src="/dashboard/js/widgets/live-feed.js"></script>
+<script src="/dashboard/js/widgets/kill-switch.js"></script>
+
+<script src="/dashboard/js/widgets/posture-summary.js"></script>
+<script src="/dashboard/js/widgets/action-queue.js"></script>
+<script src="/dashboard/js/widgets/pending-actions.js"></script>
+<script src="/dashboard/js/widgets/action-audit.js"></script>
+<script src="/dashboard/js/widgets/attack-detail.js"></script>
+<script src="/dashboard/js/widgets/response-terminal.js"></script>
+<script src="/dashboard/js/widgets/defense-tab.js"></script>
+<script src="/dashboard/js/widgets/governance-render.js"></script>
+<script src="/dashboard/js/widgets/governance-tab.js"></script>
+<script src="/dashboard/js/widgets/fleet.js"></script>
+<script src="/dashboard/js/widgets/attack-surface-tab.js"></script>
+<script>
+(function () {
+  function primaryInstanceId() {
+    if (!Array.isArray(instances) || !instances.length) return null;
+    var active = instances.find(function (i) { return i.status === 'active'; });
+    return (active || instances[0]).id;
+  }
+
+  function wire(id, fn) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+  }
+
+  wire('act-kill', function () {
+    var id = primaryInstanceId();
+    if (id) openKill(id, id);
+    else document.getElementById('global-kill-button')?.click();
+  });
+  wire('act-honeypot', function () {
+    var id = primaryInstanceId();
+    openHoneypotModal();
+  });
+  wire('act-egress', function () {
+    var id = primaryInstanceId();
+    if (id) void openEgressModal(id);
+    else toast('No instance available for egress blocklist', 'warning');
+  });
+  wire('act-memory', function () { openMemoryModal(); });
+  wire('act-quarantine', function () {
+    var id = primaryInstanceId() || 'carina-local';
+    var panel = document.getElementById('qpanel-' + id);
+    if (panel) {
+      panel.classList.toggle('open');
+      return;
+    }
+    if (window.DashboardDefenseTab) window.DashboardDefenseTab.switchView('defense');
+  });
+  wire('act-block', function () {
+    var sid = window.prompt('Session ID to block (from event stream):', '');
+    if (!sid) return;
+    var iid = primaryInstanceId() || 'default';
+    void blockSession(sid.trim(), iid);
+  });
+  wire('act-defense', function () {
+    if (window.DashboardDefenseTab) window.DashboardDefenseTab.switchView('defense');
+  });
+  wire('act-test-alert', function () { triggerAlertTest(); });
+  wire('act-export', function () {
+    var btn = document.querySelector('.export-wrap .btn-export');
+    if (btn) btn.click();
+    else document.getElementById('audit-export')?.click();
+  });
+
+  (function () {
+    var params = new URLSearchParams(window.location.search);
+    var tab = params.get('tab');
+    if (tab && window.DashboardDefenseTab) {
+      window.addEventListener('load', function () {
+        window.DashboardDefenseTab.switchView(tab);
+      });
+    }
+  })();
+})();
+</script>
+
+</body>
+</html>

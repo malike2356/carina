@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 
-const SCOUT_ENGINE_URL = process.env.SCOUT_ENGINE_URL ?? '';
+const SCOUT_ENGINE_URL = process.env.SCOUT_ENGINE_URL?.trim()
+  ?? (process.env.NODE_ENV === 'production' ? 'http://scout-engine:4455' : '');
 const SCOUT_ENGINE_KEY = process.env.SCOUT_ENGINE_API_KEY ?? process.env.SCOUT_API_KEY ?? '';
 
 export function scoutEngineEnabled(): boolean {

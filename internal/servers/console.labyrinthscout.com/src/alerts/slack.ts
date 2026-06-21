@@ -1,4 +1,5 @@
 import type { AlertAdapter, AlertChannel, SecurityEvent } from './types.js';
+import { config } from '../config/index.js';
 
 export class SlackAdapter implements AlertAdapter {
   async send(event: SecurityEvent, channel: AlertChannel): Promise<void> {
@@ -15,7 +16,7 @@ export class SlackAdapter implements AlertAdapter {
       { info: '#3b82f6', warning: '#f59e0b', critical: '#ef4444', breach: '#7c3aed' }[
         event.severity
       ] ?? '#6b7280';
-    const dashboardUrl = process.env.SCOUT_DASHBOARD_URL ?? 'http://localhost:4444';
+    const dashboardUrl = config.console.dashboardUrl;
 
     const body = {
       attachments: [

@@ -80,26 +80,29 @@ type ControlDevicesPayload = {
   devices: Array<{ id: string; name?: string; status?: string; pairedAt?: string | null }>;
 };
 
-const WORKSPACE_SURFACES = [
-  { label: 'Analytics', href: 'https://app.carinaai.uk/analytics', external: true },
-  { label: 'Billing', href: 'https://app.carinaai.uk/billing', external: true },
-  { label: 'Calendar', href: 'https://app.carinaai.uk/calendar', external: true },
-  { label: 'Cron', href: 'https://app.carinaai.uk/cron', external: true },
-  { label: 'Documents', href: 'https://app.carinaai.uk/documents', external: true },
-  { label: 'Email', href: 'https://app.carinaai.uk/email', external: true },
-  { label: 'Environment', href: 'https://app.carinaai.uk/env', external: true },
-  { label: 'Files', href: 'https://app.carinaai.uk/files', external: true },
-  { label: 'Logs', href: 'https://app.carinaai.uk/logs', external: true },
-  { label: 'MCP', href: '/mcp' },
-  { label: 'Profiles', href: 'https://app.carinaai.uk/profiles', external: true },
-  { label: 'Research', href: 'https://app.carinaai.uk/research', external: true },
-  { label: 'Scheduled', href: 'https://app.carinaai.uk/scheduled', external: true },
-  { label: 'Security', href: 'https://app.carinaai.uk/security', external: true },
-  { label: 'Tasks', href: 'https://app.carinaai.uk/tasks', external: true },
-  { label: 'Terminal', href: 'https://app.carinaai.uk/terminal', external: true },
-  { label: 'Webhooks', href: 'https://app.carinaai.uk/webhooks', external: true },
-  { label: 'Settings', href: 'https://app.carinaai.uk/settings', external: true },
-];
+function workspaceSurfaces(): Array<{ label: string; href: string; external?: boolean }> {
+  const base = (process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk').replace(/\/+$/, '');
+  return [
+    { label: 'Analytics', href: `${base}/analytics`, external: true },
+    { label: 'Billing', href: `${base}/billing`, external: true },
+    { label: 'Calendar', href: `${base}/calendar`, external: true },
+    { label: 'Cron', href: `${base}/cron`, external: true },
+    { label: 'Documents', href: `${base}/documents`, external: true },
+    { label: 'Email', href: `${base}/email`, external: true },
+    { label: 'Environment', href: `${base}/env`, external: true },
+    { label: 'Files', href: `${base}/files`, external: true },
+    { label: 'Logs', href: `${base}/logs`, external: true },
+    { label: 'MCP', href: '/mcp' },
+    { label: 'Profiles', href: `${base}/profiles`, external: true },
+    { label: 'Research', href: `${base}/research`, external: true },
+    { label: 'Scheduled', href: `${base}/scheduled`, external: true },
+    { label: 'Security', href: `${base}/security`, external: true },
+    { label: 'Tasks', href: `${base}/tasks`, external: true },
+    { label: 'Terminal', href: `${base}/terminal`, external: true },
+    { label: 'Webhooks', href: `${base}/webhooks`, external: true },
+    { label: 'Settings', href: `${base}/settings`, external: true },
+  ];
+}
 
 const OPS_SURFACES = [
   { label: 'Incident Blog', href: '/admin/incident-blog' },
@@ -185,7 +188,7 @@ controlCenterRouter.get('/', async (req, res) => {
     agents: agents?.data,
     devices: devices?.data,
     opsSurfaces: OPS_SURFACES,
-    workspaceSurfaces: WORKSPACE_SURFACES,
+    workspaceSurfaces: workspaceSurfaces(),
     linkClass,
     reloadOk: req.query['ok'] === 'reload',
     reloadErr: typeof req.query['err'] === 'string' ? req.query['err'] : '',

@@ -1,0 +1,34 @@
+<% title = 'Server' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Server</div>
+      <div class="ops-page-sub">Browse files, control services, and tail logs on the host.</div>
+    </div>
+  </div>
+  <div class="server-card-grid">
+    <a href="/server/files" class="server-card">
+      <div class="server-card-icon">FS</div>
+      <div class="server-card-title">File Browser</div>
+      <div class="server-card-desc">Browse and edit config files on the VPS</div>
+    </a>
+    <a href="/server/services" class="server-card">
+      <div class="server-card-icon">SVC</div>
+      <div class="server-card-title">Services</div>
+      <div class="server-card-desc">Docker containers and host systemd status</div>
+    </a>
+    <a href="/server/logs" class="server-card">
+      <div class="server-card-icon">LOG</div>
+      <div class="server-card-title">Log Stream</div>
+      <div class="server-card-desc">Live tail of application and server logs</div>
+    </a>
+  </div>
+</div>
+<style>
+.server-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin-top: 1.5rem; }
+.server-card { display: block; padding: 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; text-decoration: none; color: inherit; transition: border-color 0.15s; }
+.server-card:hover { border-color: var(--green); }
+.server-card-icon { font-size: 11px; font-weight: 700; color: var(--green); letter-spacing: 0.08em; margin-bottom: 8px; }
+.server-card-title { font-size: 16px; font-weight: 600; color: var(--heading); margin-bottom: 6px; }
+.server-card-desc { font-size: 13px; color: var(--muted); line-height: 1.4; }
+</style>

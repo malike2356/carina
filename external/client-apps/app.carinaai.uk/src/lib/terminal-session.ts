@@ -28,7 +28,7 @@ export interface TerminalSession {
 const sessions = new Map<string, TerminalSession>();
 const COMMAND_TIMEOUT_MS = 30_000;
 const WORKSPACE_CONTAINER_ROOT = '/workspace';
-const WORKSPACE_HOST_ROOT = process.env.CARINA_WORKSPACE_ROOT ?? '/home/malike/workspaces';
+const WORKSPACE_HOST_ROOT = process.env.CARINA_WORKSPACE_ROOT ?? '/tmp/carina-workspaces';
 const SANDBOX_IMAGE = process.env.CARINA_SANDBOX_IMAGE ?? 'carina-sandbox:latest';
 const SANDBOX_MODE = process.env.CARINA_TERMINAL_SANDBOX ?? 'auto';
 

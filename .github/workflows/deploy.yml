@@ -5,12 +5,25 @@ on:
     workflows: [CI]
     branches: [main]
     types: [completed]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Deploy even if CI did not run (use with caution)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
@@ -35,7 +48,7 @@ jobs:
         run: |
           rsync -az --delete \
             --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
-            internal/admin/ops.carinaai.uk/ \
+            backends/admin/ops.carinaai.uk/ \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/apps/ops.carinaai.uk/
 
       - name: Sync app.carinaai.uk
@@ -69,9 +82,9 @@ jobs:
 
           cd "$APPS_ROOT/core.carinaai.uk"
           export CARINA_OPS_CONTEXT="$APPS_ROOT/ops.carinaai.uk"
-          export CARINA_OPS_DOCKERFILE=docker/Dockerfile
+          export CARINA_OPS_DOCKERFILE=docker/Dockerfile.runtime
           export CARINA_CLOUD_CONTEXT="$APPS_ROOT/app.carinaai.uk"
-          export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile
+          export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile.runtime
           export CARINA_SSL_DIR=/etc/carina/ssl
 
           test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || true
@@ -106,3 +119,15 @@ jobs:
             echo "Attempt $i failed, retrying in 15s..."
             sleep 15
           done
+
+      - name: Post deploy summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "## Deploy succeeded" >> $GITHUB_STEP_SUMMARY
+            echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Deploy FAILED" >> $GITHUB_STEP_SUMMARY
+            echo "Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+            echo "Check the steps above for the failure." >> $GITHUB_STEP_SUMMARY
+          fi

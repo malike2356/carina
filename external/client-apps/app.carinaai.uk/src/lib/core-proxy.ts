@@ -12,5 +12,6 @@ export function resolveCoreProxyToken(): string {
 }
 
 export function resolveCoreUrl(): string {
-  return process.env.CARINA_CORE_URL?.trim() || 'http://localhost:3000';
+  return process.env.CARINA_CORE_URL?.trim()
+    || (process.env.NODE_ENV === 'production' ? 'http://carina-web:3000' : 'http://localhost:3000');
 }

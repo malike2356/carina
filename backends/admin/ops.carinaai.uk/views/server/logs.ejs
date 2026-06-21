@@ -1,0 +1,108 @@
+<% title = 'Log Stream' %>
+<div class="ops-page server-logs-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Log Stream</div>
+      <div class="ops-page-sub">Live tail via SSE. Select a file to start streaming.</div>
+    </div>
+  </div>
+
+  <div class="server-logs-layout">
+    <aside class="server-logs-sidebar">
+      <% Object.keys(grouped).sort().forEach(function(group) { %>
+        <details open class="log-group">
+          <summary><%= group %></summary>
+          <ul class="log-file-list">
+            <% grouped[group].forEach(function(f) { %>
+              <li>
+                <button type="button" class="log-file-btn" data-log-path="<%= f.path %>"><%= f.displayName %></button>
+              </li>
+            <% }); %>
+          </ul>
+        </details>
+      <% }); %>
+      <% if (!Object.keys(grouped).length) { %>
+        <p class="server-muted">No log files found under configured roots.</p>
+      <% } %>
+    </aside>
+
+    <section class="server-logs-main">
+      <div class="log-toolbar">
+        <span id="log-filename" class="editor-filename">No file selected</span>
+        <label><input type="checkbox" id="auto-scroll" checked> Auto-scroll</label>
+        <button type="button" id="clear-btn" class="ops-btn sm">Clear</button>
+      </div>
+      <div id="log-output"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+let currentEs = null;
+
+function openLog(filePath) {
+  if (currentEs) { currentEs.close(); currentEs = null; }
+  document.getElementById('log-output').textContent = '';
+  document.getElementById('log-filename').textContent = filePath.split('/').pop();
+
+  document.querySelectorAll('.log-file-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-log-path') === filePath);
+  });
+
+  const es = new EventSource('/server/api/logs/stream?file=' + encodeURIComponent(filePath));
+  currentEs = es;
+
+  const output = document.getElementById('log-output');
+  const autoScroll = document.getElementById('auto-scroll');
+  const MAX_LINES = 2000;
+
+  es.onmessage = function(e) {
+    const line = document.createElement('div');
+    line.className = 'log-line';
+    line.textContent = e.data;
+    output.appendChild(line);
+    while (output.children.length > MAX_LINES) {
+      output.removeChild(output.firstChild);
+    }
+    if (autoScroll.checked) {
+      output.scrollTop = output.scrollHeight;
+    }
+  };
+
+  es.onerror = function() {
+    const line = document.createElement('div');
+    line.className = 'log-line log-error';
+    line.textContent = '[connection lost]';
+    output.appendChild(line);
+  };
+}
+
+document.querySelectorAll('.log-file-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    openLog(btn.getAttribute('data-log-path'));
+  });
+});
+
+document.getElementById('clear-btn').addEventListener('click', function() {
+  document.getElementById('log-output').textContent = '';
+});
+
+window.addEventListener('beforeunload', function() {
+  if (currentEs) currentEs.close();
+});
+</script>
+<style>
+.server-logs-layout { display: grid; grid-template-columns: 250px 1fr; gap: 16px; margin-top: 1rem; min-height: calc(100vh - 160px); }
+.server-logs-sidebar { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px; overflow-y: auto; max-height: calc(100vh - 160px); }
+.log-group { margin-bottom: 8px; }
+.log-group summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--heading); padding: 4px 6px; }
+.log-file-list { list-style: none; margin: 4px 0 0; padding: 0 0 0 8px; }
+.log-file-btn { display: block; width: 100%; text-align: left; padding: 3px 6px; font-size: 12px; font-family: monospace; background: none; border: none; color: var(--text); cursor: pointer; }
+.log-file-btn:hover, .log-file-btn.active { background: rgba(0,200,100,0.1); color: var(--green); }
+.server-logs-main { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.log-toolbar { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 13px; }
+#log-output { background: #0d0d0d; color: #d4d4d4; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; line-height: 1.5; padding: 12px; overflow-y: auto; flex: 1; min-height: 480px; }
+.log-line { white-space: pre-wrap; word-break: break-all; }
+.log-error { color: #e05555; }
+.server-muted { color: var(--muted); font-size: 13px; padding: 8px; }
+</style>

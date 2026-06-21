@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Carina Ops</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
+  <link rel="stylesheet" href="/ops-shell.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
+</head>
+<body class="ops-app">
+  <aside id="sidebar" class="ops-sidebar">
+    <div class="sidebar-logo">
+      <a href="/" title="Carina Ops Dashboard">
+        <div class="logo-shield">
+          <svg width="16" height="18" viewBox="0 0 16 18" fill="none">
+            <path d="M8 0L0 3.5V9C0 13.25 3.47 17.2 8 18C12.53 17.2 16 13.25 16 9V3.5L8 0Z" fill="rgba(0,200,100,0.12)" stroke="rgba(0,200,100,0.4)" stroke-width="1"/>
+            <path d="M5 9L7 11L11 7" stroke="#00c864" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-name">CARINA</div>
+          <div class="logo-sub">Ops Console</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="radar-wrap">
+      <canvas id="ops-radar" width="86" height="86"></canvas>
+    </div>
+
+    <div class="nav-pinned">
+      <% const withV = function(href) {
+        if (!uiVersion) return href;
+        return href + (href.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(uiVersion);
+      }; %>
+      <% var ap = activePath || ''; %>
+      <% function navOpen(paths) {
+        for (var pi = 0; pi < paths.length; pi++) {
+          var p = paths[pi];
+          if (ap === p || ap.indexOf(p + '/') === 0) return true;
+        }
+        return false;
+      } %>
+      <a href="<%= withV('/control-center') %>" class="nav-link<%= ap.startsWith('/control-center') ? ' active' : '' %>">Control Center</a>
+      <a href="<%= withV('/scout') %>" class="nav-link scout-pinned<%= ap.startsWith('/scout') ? ' active' : '' %>">
+        <span>Scout</span>
+        <span id="scout-dot" class="status-dot"></span>
+      </a>
+    </div>
+
+    <div class="nav-scroll">
+      <div class="nav-body">
+
+        <details class="nav-group"<%= navOpen(['/tenants', '/subscriptions', '/operator', '/scout/accounts']) ? ' open' : '' %>>
+          <summary>Fleet</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/tenants') %>" class="nav-link<%= ap.startsWith('/tenants') ? ' active' : '' %>">All Tenants</a>
+            <a href="<%= withV('/scout/accounts') %>" class="nav-link<%= ap.startsWith('/scout/accounts') ? ' active' : '' %>">Scout Accounts</a>
+            <a href="<%= withV('/subscriptions') %>" class="nav-link<%= ap.startsWith('/subscriptions') ? ' active' : '' %>">Subscriptions</a>
+            <a href="<%= withV('/operator') %>" class="nav-link<%= ap.startsWith('/operator') ? ' active' : '' %>">Operator Tools</a>
+          </div>
+        </details>
+
+        <details class="nav-group threats"<%= navOpen(['/security/threats', '/security/incidents', '/security/anomalies', '/security/findings', '/security/attack-surface']) ? ' open' : '' %>>
+          <summary>Threats</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/security/threats') %>" class="nav-link<%= ap === '/security/threats' ? ' active' : '' %>">Live Threats</a>
+            <a href="<%= withV('/security/incidents') %>" class="nav-link<%= ap === '/security/incidents' ? ' active' : '' %>">Incidents</a>
+            <a href="<%= withV('/security/anomalies') %>" class="nav-link<%= ap === '/security/anomalies' ? ' active' : '' %>">Anomalies</a>
+            <a href="<%= withV('/security/findings') %>" class="nav-link<%= ap === '/security/findings' ? ' active' : '' %>">Findings</a>
+            <a href="<%= withV('/security/attack-surface') %>" class="nav-link<%= ap === '/security/attack-surface' ? ' active' : '' %>">Attack Surface</a>
+          </div>
+        </details>
+
+        <details class="nav-group defence"<%= navOpen(['/security/killswitch', '/security/honeypots', '/security/tripwires', '/security/auto-remediate', '/security/deception', '/security/quarantine', '/security/egress', '/security/policy', '/security/policy-packs']) ? ' open' : '' %>>
+          <summary>Defence</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/security/killswitch') %>" class="nav-link<%= ap === '/security/killswitch' ? ' active-red' : '' %>">Kill Switch</a>
+            <a href="<%= withV('/security/honeypots') %>" class="nav-link<%= ap === '/security/honeypots' ? ' active' : '' %>">Honeypots</a>
+            <a href="<%= withV('/security/tripwires') %>" class="nav-link<%= ap === '/security/tripwires' ? ' active' : '' %>">Tripwires</a>
+            <a href="<%= withV('/security/auto-remediate') %>" class="nav-link<%= ap === '/security/auto-remediate' ? ' active' : '' %>">Auto-Remediation</a>
+            <a href="<%= withV('/security/deception') %>" class="nav-link<%= ap === '/security/deception' ? ' active' : '' %>">Deception Traps</a>
+            <a href="<%= withV('/security/quarantine') %>" class="nav-link<%= ap === '/security/quarantine' ? ' active' : '' %>">Quarantine</a>
+            <a href="<%= withV('/security/egress') %>" class="nav-link<%= ap === '/security/egress' ? ' active' : '' %>">Egress Control</a>
+            <a href="<%= withV('/security/policy') %>" class="nav-link<%= ap === '/security/policy' ? ' active' : '' %>">Policy</a>
+            <a href="<%= withV('/security/policy-packs') %>" class="nav-link<%= ap === '/security/policy-packs' ? ' active' : '' %>">Policy Packs</a>
+          </div>
+        </details>
+
+        <details class="nav-group forensics"<%= (ap === '/security' || navOpen(['/security/score', '/security/reports', '/admin/incident-blog'])) ? ' open' : '' %>>
+          <summary>Forensics</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/security') %>" class="nav-link<%= ap === '/security' ? ' active' : '' %>">Security Overview</a>
+            <a href="<%= withV('/security/score') %>" class="nav-link<%= ap === '/security/score' ? ' active' : '' %>">Scout Score</a>
+            <a href="<%= withV('/security/reports') %>" class="nav-link<%= ap === '/security/reports' ? ' active' : '' %>">Reports</a>
+            <a href="<%= withV('/admin/incident-blog') %>" class="nav-link<%= ap.startsWith('/admin/incident-blog') ? ' active' : '' %>">Incident Blog</a>
+          </div>
+        </details>
+
+        <details class="nav-group governance"<%= navOpen(['/governance']) ? ' open' : '' %>>
+          <summary>Governance</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/governance') %>" class="nav-link<%= ap === '/governance' ? ' active' : '' %>">Overview</a>
+            <a href="<%= withV('/governance/soc2') %>" class="nav-link<%= ap === '/governance/soc2' ? ' active' : '' %>">SOC2</a>
+            <a href="<%= withV('/governance/trust') %>" class="nav-link<%= ap === '/governance/trust' ? ' active' : '' %>">Trust Verify</a>
+            <a href="<%= withV('/governance/posture') %>" class="nav-link<%= ap === '/governance/posture' ? ' active' : '' %>">Security Posture</a>
+            <a href="<%= withV('/governance/audit') %>" class="nav-link<%= ap === '/governance/audit' ? ' active' : '' %>">Audit Logs</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/ai-platform', '/admin/agent-tools', '/agent-tools', '/mcp', '/standing-orders']) ? ' open' : '' %>>
+          <summary>AI Engine</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/ai-platform') %>" class="nav-link<%= ap.startsWith('/ai-platform') ? ' active' : '' %>">AI Platform</a>
+            <a href="<%= withV('/admin/agent-tools') %>" class="nav-link<%= ap.startsWith('/admin/agent-tools') || ap.startsWith('/agent-tools') ? ' active' : '' %>">Agent Tools</a>
+            <a href="<%= withV('/standing-orders') %>" class="nav-link<%= ap.startsWith('/standing-orders') ? ' active' : '' %>">Standing Orders</a>
+            <a href="<%= withV('/mcp') %>" class="nav-link<%= ap.startsWith('/mcp') ? ' active' : '' %>">MCP Servers</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/memories', '/skills', '/packs', '/rag']) ? ' open' : '' %>>
+          <summary>Data</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/memories') %>" class="nav-link<%= ap.startsWith('/memories') ? ' active' : '' %>">Memories</a>
+            <a href="<%= withV('/skills') %>" class="nav-link<%= ap.startsWith('/skills') ? ' active' : '' %>">Skills</a>
+            <a href="<%= withV('/packs') %>" class="nav-link<%= ap.startsWith('/packs') ? ' active' : '' %>">Skill Packs</a>
+            <a href="<%= withV('/rag') %>" class="nav-link<%= ap.startsWith('/rag') ? ' active' : '' %>">RAG Corpus</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/channels', '/chat', '/projects']) ? ' open' : '' %>>
+          <summary>Comms</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/channels') %>" class="nav-link<%= ap.startsWith('/channels') ? ' active' : '' %>">Channels</a>
+            <a href="<%= withV('/chat') %>" class="nav-link<%= ap.startsWith('/chat') ? ' active' : '' %>">Chat</a>
+            <a href="<%= withV('/projects') %>" class="nav-link<%= ap.startsWith('/projects') ? ' active' : '' %>">Projects</a>
+          </div>
+        </details>
+
+        <details class="nav-group"<%= navOpen(['/tui', '/settings', '/users', '/server']) ? ' open' : '' %>>
+          <summary>Admin</summary>
+          <div class="nav-group-body">
+            <a href="<%= withV('/tui') %>" class="nav-link<%= ap.startsWith('/tui') ? ' active' : '' %>">Operator Chat</a>
+            <a href="<%= withV('/settings') %>" class="nav-link<%= ap.startsWith('/settings') ? ' active' : '' %>">Settings</a>
+            <a href="<%= withV('/server') %>" class="nav-link<%= ap.startsWith('/server') ? ' active' : '' %>">Server</a>
+            <% if (locals.session && (session.role === 'superadmin')) { %>
+            <a href="<%= withV('/users') %>" class="nav-link<%= ap.startsWith('/users') ? ' active' : '' %>">Users</a>
+            <% } %>
+          </div>
+        </details>
+
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="footer-links">
+        <a href="<%= webUiUrl %>" target="_blank" rel="noopener">Main Web UI</a>
+        <span id="scout-label" style="font-size:10px;color:var(--muted);">Scout checking...</span>
+      </div>
+      <form method="post" action="/logout">
+        <button type="submit" class="logout-btn">Sign Out</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="ops-main">
+    <div class="ops-content">
+      <%- body %>
+    </div>
+  </main>
+
+  <script>
+    // Scout live status
+    (function() {
+      var dot = document.getElementById('scout-dot');
+      var lbl = document.getElementById('scout-label');
+      if (!dot || !lbl) return;
+      fetch('/security/events', { credentials: 'same-origin' })
+        .then(function(r) {
+          dot.className = r.ok ? 'status-dot live' : 'status-dot dead';
+          lbl.textContent = r.ok ? 'Scout live' : 'Scout offline';
+          if (r.ok) lbl.style.color = '#00c864';
+        })
+        .catch(function() {
+          dot.className = 'status-dot dead';
+          lbl.textContent = 'Scout offline';
+        });
+    })();
+
+    // Platform activity radar
+    (function() {
+      var canvas = document.getElementById('ops-radar');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var W = canvas.width, H = canvas.height;
+      var cx = W / 2, cy = H / 2;
+      var r = Math.min(cx, cy) - 5;
+      var sweep = 0;
+      var dots = [];
+      var lastDot = Date.now();
+
+      for (var i = 0; i < 3; i++) {
+        dots.push({ a: Math.random() * Math.PI * 2, d: 0.25 + Math.random() * 0.65, born: Date.now() - Math.random() * 9000 });
+      }
+
+      function frame() {
+        ctx.clearRect(0, 0, W, H);
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,200,100,0.02)'; ctx.fill();
+        [0.33, 0.66, 1.0].forEach(function(f) {
+          ctx.beginPath(); ctx.arc(cx, cy, r * f, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0,200,100,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+        });
+        ctx.strokeStyle = 'rgba(0,200,100,0.05)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+        var span = Math.PI * 0.55;
+        for (var ti = 0; ti < 28; ti++) {
+          var ta = sweep - (span / 28) * ti;
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, ta, ta + span / 28); ctx.closePath();
+          ctx.fillStyle = 'rgba(0,200,100,' + ((1 - ti / 28) * 0.14) + ')'; ctx.fill();
+        }
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(sweep) * r, cy + Math.sin(sweep) * r);
+        ctx.strokeStyle = 'rgba(0,200,100,0.6)'; ctx.lineWidth = 1.5; ctx.stroke();
+        var now = Date.now();
+        var keep = [];
+        for (var di = 0; di < dots.length; di++) {
+          if (now - dots[di].born < 13000) keep.push(dots[di]);
+        }
+        dots = keep;
+        for (var di2 = 0; di2 < dots.length; di2++) {
+          var d = dots[di2];
+          var age = (now - d.born) / 13000;
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(d.a) * r * d.d, cy + Math.sin(d.a) * r * d.d, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0,200,100,' + (1 - age).toFixed(2) + ')'; ctx.fill();
+        }
+        if (now - lastDot > 3500) {
+          dots.push({ a: Math.random() * Math.PI * 2, d: 0.2 + Math.random() * 0.72, born: now });
+          lastDot = now;
+        }
+        sweep += 0.016;
+        if (sweep > Math.PI * 2) sweep -= Math.PI * 2;
+        requestAnimationFrame(frame);
+      }
+      frame();
+    })();
+  </script>
+</body>
+</html>

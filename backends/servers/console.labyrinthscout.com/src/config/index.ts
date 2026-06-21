@@ -1,0 +1,109 @@
+import 'dotenv/config';
+
+function require(key: string, fallback?: string): string {
+  const val = process.env[key] ?? fallback;
+  if (val === undefined) {
+    throw new Error(`Missing required env var: ${key}. See .env.example.`);
+  }
+  return val;
+}
+
+function optional(key: string, fallback = ''): string {
+  return process.env[key] ?? fallback;
+}
+
+const operatorApiKey = require('SCOUT_API_KEY');
+
+export const config = {
+  port: parseInt(optional('SCOUT_PORT', '4444'), 10),
+  db: {
+    url:
+      optional('SCOUT_DATABASE_URL')
+      || optional('DATABASE_URL')
+      || (process.env.NODE_ENV === 'production'
+        ? 'postgresql://scout:secret@postgres:5432/scout'
+        : 'postgresql://carina:secret@localhost:5433/carina_central'),
+  },
+  redis: {
+    url: optional('REDIS_URL', process.env.NODE_ENV === 'production' ? 'redis://redis:6379' : 'redis://localhost:6379'),
+  },
+  auth: {
+    apiKey: operatorApiKey,
+    provisionSecret: optional('SCOUT_PROVISION_SECRET', operatorApiKey),
+    sessionSecret: optional('SCOUT_SESSION_SECRET', 'change-me-in-production'),
+    totpSecret: optional('SCOUT_TOTP_SECRET'),
+    ipWhitelist: optional('SCOUT_IP_WHITELIST')
+      .split(',')
+      .map((ip) => ip.trim())
+      .filter(Boolean),
+    sessionTimeoutMs: parseInt(optional('SCOUT_SESSION_TIMEOUT_MS', String(30 * 60 * 1000)), 10),
+    allowPublicRegister: optional('SCOUT_ALLOW_PUBLIC_REGISTER', 'false') === 'true',
+  },
+  console: {
+    publicUrl: optional('SCOUT_CONSOLE_PUBLIC_URL', 'https://console.labyrinthscout.com').replace(/\/+$/, ''),
+    dashboardUrl: optional('SCOUT_DASHBOARD_URL')
+      || (process.env.NODE_ENV === 'production'
+        ? `${optional('SCOUT_CONSOLE_PUBLIC_URL', 'https://console.labyrinthscout.com').replace(/\/+$/, '')}/dashboard`
+        : 'http://localhost:4444'),
+  },
+  trust: {
+    publicEnabled: optional('TRUST_PUBLIC_ENABLED', 'true') !== 'false',
+    erc8004Status: optional('TRUST_ERC8004_STATUS', 'registering'),
+    erc8126Status: optional('TRUST_ERC8126_STATUS', 'enterprise'),
+    chainId: parseInt(optional('TRUST_CHAIN_ID', '84532'), 10),
+    chainRpc: optional('TRUST_CHAIN_RPC', 'https://sepolia.base.org'),
+    attesterPrivateKey: optional('TRUST_ATTESTER_PRIVATE_KEY'),
+    erc8004Registry: optional('TRUST_ERC8004_REGISTRY'),
+    platform: optional('TRUST_PLATFORM', 'agent-trust-on-base'),
+    attestationEnabled: optional('TRUST_ATTESTATION_ENABLED', 'true') !== 'false',
+    attestationIntervalDays: parseInt(optional('TRUST_ATTESTATION_INTERVAL_DAYS', '7'), 10),
+    subjectAgentWallet: optional('TRUST_SUBJECT_AGENT_WALLET'),
+    verificationEnabled: optional('TRUST_VERIFICATION_ENABLED', 'true') !== 'false',
+    verificationIntervalDays: parseInt(optional('TRUST_VERIFICATION_INTERVAL_DAYS', '7'), 10),
+    wavEndpoints: optional(
+      'TRUST_WAV_ENDPOINTS',
+      'https://core.carinaai.uk,https://console.labyrinthscout.com/api/public/trust',
+    )
+      .split(',')
+      .map((url) => url.trim())
+      .filter(Boolean),
+    erc8126ValidationRegistry: optional('TRUST_ERC8126_VALIDATION_REGISTRY'),
+  },
+  security: {
+    egressFilterEnabled: optional('SCOUT_EGRESS_FILTER_ENABLED', 'false') === 'true',
+    sandboxEnabled: optional('SCOUT_SANDBOX_ENABLED', 'false') === 'true',
+  },
+  carina: {
+    apiUrl: optional('CARINA_API_URL'),
+    opsToken: optional('CARINA_OPS_TOKEN'),
+  },
+  alerts: {
+    telegram: {
+      botToken: optional('SCOUT_TELEGRAM_BOT_TOKEN') || optional('TELEGRAM_BOT_TOKEN'),
+      chatId: optional('SCOUT_TELEGRAM_CHAT_ID') || optional('TELEGRAM_CHAT_ID'),
+    },
+    email: {
+      resendApiKey: optional('SCOUT_RESEND_API_KEY') || optional('RESEND_API_KEY'),
+      from: optional('SCOUT_ALERT_FROM_EMAIL') || optional('ALERT_EMAIL_FROM', 'scout@verlox.co.uk'),
+      to: optional('SCOUT_ALERT_TO_EMAIL') || optional('ALERT_EMAIL_TO'),
+    },
+    slack: {
+      webhookUrl: optional('SCOUT_SLACK_WEBHOOK_URL') || optional('SLACK_WEBHOOK_URL'),
+    },
+    discord: {
+      webhookUrl: optional('SCOUT_DISCORD_WEBHOOK_URL') || optional('DISCORD_WEBHOOK_URL'),
+    },
+    sms: {
+      accountSid: optional('SCOUT_TWILIO_ACCOUNT_SID') || optional('TWILIO_ACCOUNT_SID'),
+      authToken: optional('SCOUT_TWILIO_AUTH_TOKEN') || optional('TWILIO_AUTH_TOKEN'),
+      from: optional('SCOUT_TWILIO_SMS_FROM') || optional('TWILIO_FROM_NUMBER'),
+      to: optional('SCOUT_ALERT_SMS_TO') || optional('ALERT_SMS_TO'),
+    },
+    whatsapp: {
+      accountSid: optional('SCOUT_TWILIO_ACCOUNT_SID') || optional('TWILIO_ACCOUNT_SID'),
+      authToken: optional('SCOUT_TWILIO_AUTH_TOKEN') || optional('TWILIO_AUTH_TOKEN'),
+      from: optional('SCOUT_TWILIO_WHATSAPP_FROM') || optional('TWILIO_WHATSAPP_FROM'),
+      to: optional('SCOUT_ALERT_WHATSAPP_TO') || optional('ALERT_WHATSAPP_TO'),
+    },
+  },
+} as const;

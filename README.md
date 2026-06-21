@@ -111,7 +111,7 @@ Use these when changing screens, navigation, copy, layout, visual design, or cli
 5. Put screens in `src/app/(workspace)/` or `src/app/(launcher)/`.
 6. Put reusable UI in `src/components/`.
 7. Validate with `pnpm build`.
-8. Deploy from `external/client-apps/app.carinaai.uk/` with `bash deploy.sh`.
+8. Deploy the full stack with `bash scripts/deploy-carina.sh` from the repo root (see `docs/DEPLOYMENT-GUIDE.md`).
 
 ### Change the packaged Carina agent
 
@@ -155,14 +155,17 @@ Use these when changing screens, navigation, copy, layout, visual design, or cli
 5. Rebuild CSS with `pnpm css` when Tailwind classes change.
 6. This panel is internal only. Do not treat it as customer product code.
 
-## Deployment Map
+## Deployment
+
+**Start here:** [`docs/DEPLOYMENT-GUIDE.md`](docs/DEPLOYMENT-GUIDE.md); full step-by-step guide for Docker production on any Linux server (Carina + Scout, TLS, secrets, migration).
+
+### Deployment map
 
 | Deploy target | Source directory | Command |
 |---|---|---|
-| Carina Cloud, `app.carinaai.uk` | `external/client-apps/app.carinaai.uk/` | `cd external/client-apps/app.carinaai.uk && bash deploy.sh` |
-| Carina Agent and core services | `internal/servers/core.carinaai.uk/` | `bash scripts/deploy-carina.sh` |
-| Scout Console | `internal/servers/console.labyrinthscout.com/` | `bash scripts/deploy-scout.sh` |
-| Scout Engine | `internal/servers/scout-engine/` | `bash scripts/deploy-scout.sh` |
+| Full Carina + Scout stack | repo root | `bash scripts/deploy-carina.sh` |
+| Carina Cloud only (legacy bare-metal path) | `external/client-apps/app.carinaai.uk/` | `cd external/client-apps/app.carinaai.uk && bash deploy.sh` |
+| Scout Console (standalone) | `internal/servers/console.labyrinthscout.com/` | `bash scripts/deploy-scout.sh` |
 | Public marketing and docs | `marketing/sites/`, `marketing/docs/` | `bash scripts/deploy-marketing.sh` |
 
 The VPS is a deployment target. Make changes locally, then deploy with the relevant script.

@@ -1,0 +1,105 @@
+<% title = 'Server Services' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Services</div>
+      <div class="ops-page-sub">Docker containers and host systemd units. Status refreshes every 10 seconds.</div>
+    </div>
+  </div>
+
+  <section class="server-section">
+    <h2 class="server-section-title">Docker Containers</h2>
+    <table class="ops-table">
+      <thead><tr><th>Name</th><th>Status</th><th>Image</th><th></th></tr></thead>
+      <tbody id="docker-rows">
+        <% dockerContainers.forEach(function(svc) { %>
+          <tr>
+            <td><code><%= svc.name %></code></td>
+            <td><span class="status-badge status-<%= svc.status %>" data-service-name="<%= svc.name %>" data-service-type="docker"><%= svc.status %></span></td>
+            <td class="muted-cell"><%= svc.detail || '' %></td>
+            <td>
+              <% if (locals.session && session.role === 'superadmin') { %>
+                <button type="button" class="ops-btn sm restart-btn" onclick="restart('<%= svc.name %>', 'docker', this)">Restart</button>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+        <% if (!dockerContainers.length) { %>
+          <tr><td colspan="4" class="muted-cell">No containers found (is Docker socket mounted?)</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="server-section">
+    <h2 class="server-section-title">System Services</h2>
+    <table class="ops-table">
+      <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
+      <tbody id="systemd-rows">
+        <% systemdServices.forEach(function(svc) { %>
+          <tr>
+            <td><code><%= svc.name %></code></td>
+            <td><span class="status-badge status-<%= svc.status %>" data-service-name="<%= svc.name %>" data-service-type="systemd"><%= svc.status %></span></td>
+            <td>
+              <% if (locals.session && session.role === 'superadmin') { %>
+                <button type="button" class="ops-btn sm restart-btn" onclick="restart('<%= svc.name %>', 'systemd', this)">Restart</button>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<script>
+async function refreshStatuses() {
+  try {
+    const r = await fetch('/server/api/services');
+    const data = await r.json();
+    updateBadges(data.docker || [], 'docker');
+    updateBadges(data.systemd || [], 'systemd');
+  } catch { /* ignore */ }
+}
+
+function updateBadges(services, type) {
+  services.forEach(function(svc) {
+    document.querySelectorAll('.status-badge[data-service-name="' + svc.name + '"][data-service-type="' + type + '"]').forEach(function(el) {
+      el.textContent = svc.status;
+      el.className = 'status-badge status-' + svc.status;
+    });
+  });
+}
+
+async function restart(name, type, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Restarting...';
+  try {
+    const r = await fetch('/server/api/services/restart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, type: type }),
+    });
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.error);
+    btn.textContent = 'Restart';
+    btn.disabled = false;
+    refreshStatuses();
+  } catch (e) {
+    btn.textContent = 'Failed';
+    btn.disabled = false;
+  }
+}
+
+setInterval(refreshStatuses, 10000);
+</script>
+<style>
+.server-section { margin-top: 1.5rem; }
+.server-section-title { font-size: 14px; font-weight: 600; color: var(--heading); margin: 0 0 10px; }
+.muted-cell { color: var(--muted); font-size: 13px; }
+.status-badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.status-active { background: rgba(0,200,100,0.15); color: #00c864; border: 1px solid rgba(0,200,100,0.3); }
+.status-inactive { background: rgba(120,120,120,0.15); color: #888; border: 1px solid rgba(120,120,120,0.3); }
+.status-failed { background: rgba(220,50,50,0.15); color: #e05555; border: 1px solid rgba(220,50,50,0.3); }
+.status-unknown { background: rgba(220,160,0,0.15); color: #daa520; border: 1px solid rgba(220,160,0,0.3); }
+</style>
