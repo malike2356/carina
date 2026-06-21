@@ -111,3 +111,26 @@ export async function scoutConsolePost(path: string, body: unknown): Promise<Sco
 export function scoutStreamUrl(path: string): string {
   return `${SCOUT_ENGINE_URL}${path}`;
 }
+
+/**
+ * Pick Scout engine vs console for /scout-api proxy paths.
+ * Engine routes live under /api/admin/*; console owns /api/killswitch, /api/kill, widgets, etc.
+ */
+const ENGINE_ADMIN_PREFIXES = [
+  '/api/admin/status',
+  '/api/admin/events',
+  '/api/admin/kill/',
+  '/api/admin/resume/',
+  '/api/v1/',
+];
+
+export function resolveScoutProxyBase(
+  pathname: string,
+  engineBase: string = SCOUT_ENGINE_URL,
+  consoleBase: string = SCOUT_CONSOLE_URL,
+): string {
+  if (ENGINE_ADMIN_PREFIXES.some((p) => pathname.startsWith(p))) {
+    return engineBase;
+  }
+  return consoleBase;
+}

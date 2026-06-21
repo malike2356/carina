@@ -898,9 +898,10 @@ function loadOverview() {
   // Honeypot summary
   if(SCOUT_KEY) {
     apiK('/api/honeypots/summary').then(function(data){
-      var hits=data.total_hits??data.hits??null;
+      var hits=data.total??data.total_hits??data.hits??null;
       document.getElementById('smHoneypot').textContent=hits!=null?hits:'-';
-      document.getElementById('smHoneypotSub').textContent=data.unique_attackers!=null?(data.unique_attackers+' unique sources'):(data.active_count!=null?(data.active_count+' deployed'):'-');
+      var triggered=data.triggered??null;
+      document.getElementById('smHoneypotSub').textContent=triggered!=null?(triggered+' triggered'):(data.unique_attackers!=null?(data.unique_attackers+' unique sources'):(data.active_count!=null?(data.active_count+' deployed'):'-'));
     }).catch(function(){document.getElementById('smHoneypot').textContent='-';});
   }
 

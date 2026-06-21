@@ -88,8 +88,10 @@ honeypotsRouter.get('/active', async (req: Request, res: Response): Promise<void
 
 honeypotsRouter.get('/summary', async (req: Request, res: Response): Promise<void> => {
   const instanceId = typeof req.query.instance_id === 'string' ? req.query.instance_id.trim() : '';
+
+  const emptySummary = { total: 0, triggered: 0, untriggered: 0, by_type: {} };
   if (!instanceId) {
-    res.status(400).json({ error: 'instance_id query parameter is required' });
+    res.json(emptySummary);
     return;
   }
 
