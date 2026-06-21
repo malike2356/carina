@@ -1,0 +1,108 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@a6f90b1f127823b31d4d4a8d96047790581349bd  # v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Add VPS host key
+        run: ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Sync core.carinaai.uk
+        run: |
+          rsync -az --delete \
+            --exclude='.env' --exclude='.env.*' --exclude='node_modules' \
+            --exclude='.git' --exclude='/data/' \
+            internal/servers/core.carinaai.uk/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/apps/core.carinaai.uk/
+
+      - name: Sync ops.carinaai.uk
+        run: |
+          rsync -az --delete \
+            --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+            internal/admin/ops.carinaai.uk/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/apps/ops.carinaai.uk/
+
+      - name: Sync app.carinaai.uk
+        run: |
+          rsync -az --delete \
+            --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='.next' \
+            external/client-apps/app.carinaai.uk/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/apps/app.carinaai.uk/
+
+      - name: Sync console.labyrinthscout.com
+        run: |
+          rsync -az --delete \
+            --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+            internal/servers/console.labyrinthscout.com/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/apps/console.labyrinthscout.com/
+
+      - name: Sync scout-engine
+        run: |
+          rsync -az --delete \
+            --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+            internal/servers/scout-engine/ \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/home/${{ secrets.VPS_USER }}/apps/scout-engine/
+
+      - name: Deploy on VPS
+        run: |
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} bash -s -- "/home/${{ secrets.VPS_USER }}/apps" << 'REMOTE'
+          set -euo pipefail
+          APPS_ROOT="$1"; shift
+
+          docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
+
+          cd "$APPS_ROOT/core.carinaai.uk"
+          export CARINA_OPS_CONTEXT="$APPS_ROOT/ops.carinaai.uk"
+          export CARINA_OPS_DOCKERFILE=docker/Dockerfile
+          export CARINA_CLOUD_CONTEXT="$APPS_ROOT/app.carinaai.uk"
+          export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile
+          export CARINA_SSL_DIR=/etc/carina/ssl
+
+          test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || true
+          test -f "$APPS_ROOT/ops.carinaai.uk/.env" && cp "$APPS_ROOT/ops.carinaai.uk/.env" .env.ops.runtime || true
+          test -f "$APPS_ROOT/app.carinaai.uk/.env" && cp "$APPS_ROOT/app.carinaai.uk/.env" .env.cloud.runtime || true
+
+          python3 docker/scripts/sync-docker-env.py
+          python3 docker/scripts/sync-ops-env.py
+          python3 docker/scripts/sync-cloud-env.py
+          bash docker/scripts/stop-bare-metal-carina.sh
+          bash docker/scripts/deploy-prod.sh
+
+          cd "$APPS_ROOT/console.labyrinthscout.com"
+          export SCOUT_ENGINE_CONTEXT="$APPS_ROOT/scout-engine"
+          test -f .env || true
+          docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
+          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          REMOTE
+
+      - name: Health check - Carina
+        run: |
+          for i in 1 2 3 4 5; do
+            curl -fsS --max-time 10 https://core.carinaai.uk/health && break
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done
+
+      - name: Health check - Scout
+        run: |
+          for i in 1 2 3 4 5; do
+            curl -fsS --max-time 10 https://console.labyrinthscout.com/api/readiness && break
+            echo "Attempt $i failed, retrying in 15s..."
+            sleep 15
+          done

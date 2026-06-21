@@ -4,6 +4,9 @@
 # From carina repo root:
 #   bash scripts/deploy-carina.sh
 #
+# Override defaults for a different server:
+#   VPS_HOST=1.2.3.4 VPS_USER=ubuntu APPS_ROOT=/opt/apps bash scripts/deploy-carina.sh
+#
 # Both Carina (core, ops, cloud) and Scout (console, engine) are synced and restarted.
 # Nginx runs inside Docker and proxies all domains via the 'proxy' external network.
 
@@ -18,6 +21,7 @@ SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
 SCOUT_ENGINE_LOCAL="${REPO_ROOT}/internal/servers/scout-engine"
 VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
+APPS_ROOT="${APPS_ROOT:-/home/malike/apps}"
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
@@ -29,48 +33,51 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev
 log "Syncing core.carinaai.uk..."
 rsync -az --delete \
   --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
-  "${CORE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/core.carinaai.uk/"
+  "${CORE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/"
 
 log "Syncing ops.carinaai.uk (Docker build context)..."
 rsync -az --delete \
   --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
-  "${OPS_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/ops.carinaai.uk/"
+  "${OPS_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/ops.carinaai.uk/"
 
 log "Syncing app.carinaai.uk (Docker build context)..."
 rsync -az --delete \
   --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='.next' \
-  "${CLOUD_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/app.carinaai.uk/"
+  "${CLOUD_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/app.carinaai.uk/"
 
 log "Syncing console.labyrinthscout.com (Docker build context)..."
 rsync -az --delete \
   --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
-  "${SCOUT_CONSOLE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/console.labyrinthscout.com/"
+  "${SCOUT_CONSOLE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/console.labyrinthscout.com/"
 
 log "Syncing scout-engine (Docker build context)..."
 rsync -az --delete \
   --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
-  "${SCOUT_ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/scout-engine/"
+  "${SCOUT_ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/scout-engine/"
 
 log "Running Docker production deploy on VPS..."
-ssh "${VPS_USER}@${VPS_HOST}" bash <<'REMOTE'
+ssh "${VPS_USER}@${VPS_HOST}" bash -s -- "${APPS_ROOT}" <<'REMOTE'
 set -euo pipefail
+APPS_ROOT="$1"; shift
 
 # Ensure the shared proxy network exists (idempotent).
 docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
 
 # Carina stack
-cd /home/malike/apps/core.carinaai.uk
-export CARINA_OPS_CONTEXT=/home/malike/apps/ops.carinaai.uk
-export CARINA_OPS_DOCKERFILE=docker/Dockerfile.runtime
-export CARINA_CLOUD_CONTEXT=/home/malike/apps/app.carinaai.uk
+cd "$APPS_ROOT/core.carinaai.uk"
+export CARINA_OPS_CONTEXT="$APPS_ROOT/ops.carinaai.uk"
+export CARINA_OPS_DOCKERFILE=docker/Dockerfile
+export CARINA_CLOUD_CONTEXT="$APPS_ROOT/app.carinaai.uk"
 export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile
 export CARINA_SSL_DIR=/etc/carina/ssl
 
-test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || cp /home/malike/.carina/.env .env.docker.runtime 2>/dev/null || true
-test -f /home/malike/apps/ops.carinaai.uk/.env && cp /home/malike/apps/ops.carinaai.uk/.env .env.ops.runtime || true
-test -f /home/malike/apps/app.carinaai.uk/.env && cp /home/malike/apps/app.carinaai.uk/.env .env.cloud.runtime || true
-if [[ -f /home/malike/secrets/app.carinaai.uk.env ]]; then
-  grep -E '^(DATABASE_URL|VAULT_SECRET|BETTER_AUTH|STRIPE_|CARINA_|NEXT_PUBLIC_)' /home/malike/secrets/app.carinaai.uk.env >> .env.cloud.runtime 2>/dev/null || true
+test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || true
+test -f "$APPS_ROOT/ops.carinaai.uk/.env" && cp "$APPS_ROOT/ops.carinaai.uk/.env" .env.ops.runtime || true
+test -f "$APPS_ROOT/app.carinaai.uk/.env" && cp "$APPS_ROOT/app.carinaai.uk/.env" .env.cloud.runtime || true
+SECRETS_DIR="$(dirname "$APPS_ROOT")/secrets"
+if [[ -f "$SECRETS_DIR/app.carinaai.uk.env" ]]; then
+  grep -E '^(DATABASE_URL|VAULT_SECRET|BETTER_AUTH|STRIPE_|CARINA_|NEXT_PUBLIC_)' \
+    "$SECRETS_DIR/app.carinaai.uk.env" >> .env.cloud.runtime 2>/dev/null || true
 fi
 
 python3 docker/scripts/sync-docker-env.py
@@ -80,10 +87,10 @@ bash docker/scripts/stop-bare-metal-carina.sh
 bash docker/scripts/deploy-prod.sh
 
 # Scout stack
-cd /home/malike/apps/console.labyrinthscout.com
-export SCOUT_ENGINE_CONTEXT=/home/malike/apps/scout-engine
+cd "$APPS_ROOT/console.labyrinthscout.com"
+export SCOUT_ENGINE_CONTEXT="$APPS_ROOT/scout-engine"
 # Copy .env from secrets dir if not already present; never overwrite an existing one.
-test -f .env || cp /home/malike/secrets/scout.env .env 2>/dev/null || true
+test -f .env || cp "$SECRETS_DIR/scout.env" .env 2>/dev/null || true
 docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
 docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 REMOTE

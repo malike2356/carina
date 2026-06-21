@@ -12,7 +12,7 @@ export function resolveCoreEnvPath(): string {
   if (process.env.CARINA_CORE_ENV_PATH?.trim()) {
     return process.env.CARINA_CORE_ENV_PATH.trim();
   }
-  const sibling = path.resolve(__opsDir, '../core.carinaai.uk/.env');
+  const sibling = path.resolve(__opsDir, '../../servers/core.carinaai.uk/.env');
   if (fs.existsSync(sibling)) return sibling;
   return '/home/malike/apps/core.carinaai.uk/.env';
 }
