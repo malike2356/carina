@@ -1,227 +1,93 @@
 #!/usr/bin/env bash
-# deploy-carina.sh - Deploy core.carinaai.uk and ops.carinaai.uk to Contabo VPS
-# Run from the carina repo root: bash scripts/deploy-carina.sh
-# First deployment: bash scripts/deploy-carina.sh --init
+# Deploy Carina + Labyrinth Scout production stacks via Docker Compose.
+#
+# From carina repo root:
+#   bash scripts/deploy-carina.sh
+#
+# Both Carina (core, ops, cloud) and Scout (console, engine) are synced and restarted.
+# Nginx runs inside Docker and proxies all domains via the 'proxy' external network.
 
 set -euo pipefail
 
-VPS_HOST="80.190.81.208"
-VPS_USER="malike"
-CORE_REMOTE="/home/malike/apps/core.carinaai.uk"
-OPS_REMOTE="/home/malike/apps/ops.carinaai.uk"
-NVM_NODE="/home/malike/.nvm/versions/node/v22.23.0/bin/node"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 CORE_LOCAL="${REPO_ROOT}/internal/servers/core.carinaai.uk"
 OPS_LOCAL="${REPO_ROOT}/internal/admin/ops.carinaai.uk"
+CLOUD_LOCAL="${REPO_ROOT}/external/client-apps/app.carinaai.uk"
+SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
+SCOUT_ENGINE_LOCAL="${REPO_ROOT}/internal/servers/scout-engine"
+VPS_HOST="${VPS_HOST:-80.190.81.208}"
+VPS_USER="${VPS_USER:-malike}"
 
-log()  { echo "[$(date +%H:%M:%S)] $*"; }
-die()  { echo "ERROR: $*" >&2; exit 1; }
+log() { echo "[$(date +%H:%M:%S)] $*"; }
 
-check_ssh() {
-  ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok &>/dev/null || \
-    die "Cannot SSH to ${VPS_USER}@${VPS_HOST}. Check SSH key."
+ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev/null || {
+  echo "ERROR: Cannot SSH to ${VPS_USER}@${VPS_HOST}" >&2
+  exit 1
 }
 
-install_node_tools() {
-  ssh "${VPS_USER}@${VPS_HOST}" bash << 'REMOTE'
-    set -euo pipefail
-    command -v npm &>/dev/null || { echo "npm not found - Node.js must be installed first"; exit 1; }
-    echo "Node tools OK (node: $(node --version), npm: $(npm --version))"
-REMOTE
-}
+log "Syncing core.carinaai.uk..."
+rsync -az --delete \
+  --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
+  "${CORE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/core.carinaai.uk/"
 
-deploy_app() {
-  local label="$1"
-  local local_dir="$2"
-  local remote_dir="$3"
-  local start_cmd="$4"
-  local sup_name="$5"
-  local extra_env="${6:-}"
-  local runner="$NVM_NODE"
+log "Syncing ops.carinaai.uk (Docker build context)..."
+rsync -az --delete \
+  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+  "${OPS_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/ops.carinaai.uk/"
 
-  if [[ "$start_cmd" == *.sh ]]; then
-    runner="/bin/bash"
-  fi
+log "Syncing app.carinaai.uk (Docker build context)..."
+rsync -az --delete \
+  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='.next' \
+  "${CLOUD_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/app.carinaai.uk/"
 
-  log "[$label] Syncing code..."
-  rsync -az --delete \
-    --exclude='.env' \
-    --exclude='node_modules' \
-    --exclude='.git' \
-    --exclude='dist' \
-    --exclude='/data/' \
-    "$local_dir/" "${VPS_USER}@${VPS_HOST}:${remote_dir}/"
+log "Syncing console.labyrinthscout.com (Docker build context)..."
+rsync -az --delete \
+  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+  "${SCOUT_CONSOLE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/console.labyrinthscout.com/"
 
-  log "[$label] Building on VPS..."
-  ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
-    set -euo pipefail
+log "Syncing scout-engine (Docker build context)..."
+rsync -az --delete \
+  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+  "${SCOUT_ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/home/malike/apps/scout-engine/"
 
-    # Load nvm so the pnpm-compatible Node.js 22 is on PATH
-    export NVM_DIR="\$HOME/.nvm"
-    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
-    # CI=true lets pnpm purge stale node_modules without a TTY prompt
-    export CI=true
+log "Running Docker production deploy on VPS..."
+ssh "${VPS_USER}@${VPS_HOST}" bash <<'REMOTE'
+set -euo pipefail
 
-    cd "$remote_dir"
+# Ensure the shared proxy network exists (idempotent).
+docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
 
-    echo "  Node: \$(node --version), pnpm: \$(corepack pnpm --version 2>/dev/null || echo n/a)"
-    echo "  Clearing stale build output..."
-    rm -rf dist
+# Carina stack
+cd /home/malike/apps/core.carinaai.uk
+export CARINA_OPS_CONTEXT=/home/malike/apps/ops.carinaai.uk
+export CARINA_OPS_DOCKERFILE=docker/Dockerfile.runtime
+export CARINA_CLOUD_CONTEXT=/home/malike/apps/app.carinaai.uk
+export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile
+export CARINA_SSL_DIR=/etc/carina/ssl
 
-    if [[ -f pnpm-lock.yaml ]]; then
-      echo "  Installing dependencies with pnpm..."
-      corepack pnpm install --frozen-lockfile 2>&1 | tail -5
+test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || cp /home/malike/.carina/.env .env.docker.runtime 2>/dev/null || true
+test -f /home/malike/apps/ops.carinaai.uk/.env && cp /home/malike/apps/ops.carinaai.uk/.env .env.ops.runtime || true
+test -f /home/malike/apps/app.carinaai.uk/.env && cp /home/malike/apps/app.carinaai.uk/.env .env.cloud.runtime || true
+if [[ -f /home/malike/secrets/app.carinaai.uk.env ]]; then
+  grep -E '^(DATABASE_URL|VAULT_SECRET|BETTER_AUTH|STRIPE_|CARINA_|NEXT_PUBLIC_)' /home/malike/secrets/app.carinaai.uk.env >> .env.cloud.runtime 2>/dev/null || true
+fi
 
-      echo "  Building TypeScript..."
-      corepack pnpm build 2>&1 | tail -5
-    else
-      echo "  Installing dependencies..."
-      npm install --include=dev 2>&1 | tail -3
+python3 docker/scripts/sync-docker-env.py
+python3 docker/scripts/sync-ops-env.py
+python3 docker/scripts/sync-cloud-env.py
+bash docker/scripts/stop-bare-metal-carina.sh
+bash docker/scripts/deploy-prod.sh
 
-      echo "  Building TypeScript..."
-      npm run build 2>&1 | tail -5
-    fi
-
-    echo "  Build complete."
-    chmod +x start.sh 2>/dev/null || true
-    pkill -f '/usr/bin/node dist/src/index.js' 2>/dev/null || true
-REMOTE
-
-  log "[$label] Setting up supervisor..."
-  local sup_conf
-  sup_conf="[program:${sup_name}]
-command=${runner} ${remote_dir}/${start_cmd}
-directory=${remote_dir}
-autostart=true
-autorestart=true
-user=${VPS_USER}
-stdout_logfile=/home/${VPS_USER}/logs/${sup_name}.out.log
-stderr_logfile=/home/${VPS_USER}/logs/${sup_name}.err.log
-stdout_logfile_maxbytes=10MB
-stderr_logfile_maxbytes=10MB
-stopwaitsecs=30
-environment=NODE_ENV=\"production\"${extra_env}"
-
-  ssh "${VPS_USER}@${VPS_HOST}" bash << REMOTE
-    export NVM_DIR="\$HOME/.nvm"
-    [ -s "\$NVM_DIR/nvm.sh" ] && . "\$NVM_DIR/nvm.sh"
-
-    set -euo pipefail
-    CONF_PATH="/etc/supervisor/conf.d/${sup_name}.conf"
-
-    mkdir -p /home/${VPS_USER}/logs
-
-    if sudo -n tee "\$CONF_PATH" > /dev/null << 'CONF'
-${sup_conf}
-CONF
-    then
-      echo "  Supervisor conf installed at \$CONF_PATH"
-      sudo -n supervisorctl reread 2>/dev/null || true
-      sudo -n supervisorctl update 2>/dev/null || true
-      sudo -n supervisorctl restart "${sup_name}" 2>/dev/null || \
-        sudo -n supervisorctl start "${sup_name}" 2>/dev/null || \
-        echo "WARN: supervisorctl unavailable (no passwordless sudo) - using pkill restart"
-    else
-      echo "WARN: No passwordless sudo for supervisorctl - printing conf for manual install:"
-      echo "--- /etc/supervisor/conf.d/${sup_name}.conf ---"
-      cat << 'CONF'
-${sup_conf}
-CONF
-      echo "---"
-    fi
-
-    # Always attempt a direct process restart regardless of supervisorctl outcome
-    echo "  Restarting ${sup_name} process directly..."
-    pkill -f "${remote_dir}/dist/server.js" 2>/dev/null || true
-    pkill -f "${remote_dir}/start.sh" 2>/dev/null || true
-    pkill -f "${remote_dir}/dist/src/index.js" 2>/dev/null || true
-    sleep 2
-    if [[ "${sup_name}" == "carina-ops" ]]; then
-      nohup env NODE_ENV=production PORT=4001 CARINA_CORE_ROOT="${CORE_REMOTE}" \
-        ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
-    elif [[ "${sup_name}" == "carina-core" ]]; then
-      ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log
-    else
-      nohup ${runner} ${remote_dir}/${start_cmd} >> /home/${VPS_USER}/logs/${sup_name}.out.log 2>> /home/${VPS_USER}/logs/${sup_name}.err.log &
-    fi
-    echo "  Process restarted (PID \$!)"
+# Scout stack
+cd /home/malike/apps/console.labyrinthscout.com
+export SCOUT_ENGINE_CONTEXT=/home/malike/apps/scout-engine
+# Copy .env from secrets dir if not already present; never overwrite an existing one.
+test -f .env || cp /home/malike/secrets/scout.env .env 2>/dev/null || true
+docker compose -f docker-compose.prod.yml pull --ignore-pull-failures 2>/dev/null || true
+docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
 REMOTE
 
-  log "[$label] Done."
-}
-
-print_nginx_hint() {
-  local domain="$1"
-  local port="$2"
-  echo ""
-  echo "--- aaPanel: Add site for $domain with this reverse proxy config ---"
-  echo "In aaPanel > Websites > $domain > Reverse Proxy, set target: http://127.0.0.1:$port"
-  echo "Then enable SSL via Let's Encrypt."
-  echo ""
-  echo "Or add this block to the nginx vhost for $domain:"
-  cat << NGINX
-location / {
-    proxy_pass         http://127.0.0.1:${port};
-    proxy_http_version 1.1;
-    proxy_set_header   Upgrade \$http_upgrade;
-    proxy_set_header   Connection 'upgrade';
-    proxy_set_header   Host \$host;
-    proxy_set_header   X-Real-IP \$remote_addr;
-    proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header   X-Forwarded-Proto \$scheme;
-    proxy_cache_bypass \$http_upgrade;
-}
-NGINX
-}
-
-main() {
-  log "Carina production deploy starting..."
-  check_ssh
-  install_node_tools
-
-  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p /home/malike/apps/core.carinaai.uk /home/malike/apps/ops.carinaai.uk"
-
-  deploy_app "core.carinaai.uk" "$CORE_LOCAL" "$CORE_REMOTE" \
-    "start.sh" "carina-core" \
-    ",WEB_ENABLED=\"true\",SKIP_CLI=\"true\",HOSTED_MODE=\"false\",CARINA_OPERATOR_HOSTS=\"core.carinaai.uk\""
-
-  deploy_app "ops.carinaai.uk" "$OPS_LOCAL" "$OPS_REMOTE" \
-    "start.sh" "carina-ops" \
-    ",PORT=\"4001\",CARINA_CORE_ROOT=\"${CORE_REMOTE}\""
-
-  log "All apps deployed."
-
-  if [[ -x "${SCRIPT_DIR}/post-deploy-security-check.sh" ]]; then
-    log "Running post-deploy security checks..."
-    bash "${SCRIPT_DIR}/post-deploy-security-check.sh" vps || \
-      log "WARN: post-deploy security checks failed; see scripts/verify-security-config.sh"
-  fi
-
-  echo ""
-  echo "=== POST-DEPLOY CHECKLIST ==="
-  echo ""
-  echo "1. Set production .env on VPS:"
-  echo "   scp internal/admin/ops.carinaai.uk/.env ${VPS_USER}@${VPS_HOST}:${OPS_REMOTE}/.env"
-  echo "   scp internal/servers/core.carinaai.uk/.env ${VPS_USER}@${VPS_HOST}:${CORE_REMOTE}/.env"
-  echo "   (Edit them on the VPS to use production DB/Redis/API keys, then restart)"
-  echo "   ssh ${VPS_USER}@${VPS_HOST} 'sudo supervisorctl restart carina-core carina-ops'"
-  echo ""
-  echo "2. Create carina postgres DB (on VPS as postgres user):"
-  echo "   CREATE USER carina WITH PASSWORD 'YOUR_PASSWORD';"
-  echo "   CREATE DATABASE carina_central OWNER carina;"
-  echo "   CREATE DATABASE carina_skills_hub OWNER carina;"
-  echo ""
-  print_nginx_hint "core.carinaai.uk" "3333"
-  print_nginx_hint "ops.carinaai.uk" "4001"
-  echo ""
-  echo "3. Carina Hub (hub.carinaai.uk):"
-  echo "   DNS: A/AAAA hub.carinaai.uk -> VPS (same IP as carinaai.uk)"
-  echo "   TLS: certbot certonly --nginx -d hub.carinaai.uk (or add SAN to carinaai.uk cert)"
-  echo "   Docker prod: docker-compose -f docker-compose.prod.yml up carina-hub nginx"
-  echo "   Nginx: internal/servers/core.carinaai.uk/docker/nginx/hub.carinaai.uk.conf -> carina-hub:3001"
-  echo "   Legacy skills.carinaai.uk redirects to hub.carinaai.uk"
-  print_nginx_hint "hub.carinaai.uk" "3001"
-}
-
-main "$@"
+log "Deploy complete."
+log "Verify Carina: curl -fsS https://core.carinaai.uk/health"
+log "Verify Scout:  curl -fsS https://console.labyrinthscout.com/api/health"

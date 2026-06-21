@@ -194,23 +194,11 @@ Expected: HTTP 200 responses or redirects to login. Not connection refused or 50
 
 ## Step 7: Remove host port bindings from Carina services
 
-Now that Docker nginx is live and routing via the internal Docker network, the Carina
-services no longer need to be reachable from the host.
+NOTE: This step is already done. The `docker-compose.prod.yml` in the repo already uses
+`expose:` (not `ports:`) for all Carina app services. Only the nginx service publishes
+host ports 80 and 443. No file edits needed.
 
-Edit `core.carinaai.uk/docker-compose.prod.yml` and replace `ports:` with `expose:` for:
-- carina-web: `ports: ["127.0.0.1:3300:3000"]` -> `expose: ["3000"]`
-- carina-hub: `ports: ["127.0.0.1:3001:3001"]` -> `expose: ["3001"]`
-- carina-ops: `ports: ["127.0.0.1:4001:4001"]` -> `expose: ["4001"]`
-- carina-cloud: `ports: ["127.0.0.1:4100:4100"]` -> `expose: ["4100"]`
-
-Then apply:
-```bash
-cd /home/malike/apps/core.carinaai.uk
-docker compose -f docker-compose.prod.yml up -d --force-recreate \
-  carina-web carina-hub carina-ops carina-cloud
-```
-
-Re-run the curl health checks from Step 6 to confirm everything still responds via nginx.
+Re-run the curl health checks from Step 6 to confirm everything responds via nginx.
 
 ---
 
