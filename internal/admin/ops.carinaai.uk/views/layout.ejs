@@ -428,11 +428,14 @@
           </div>
         </details>
 
-        <details class="nav-group"<%= navOpen(['/tui', '/settings']) ? ' open' : '' %>>
+        <details class="nav-group"<%= navOpen(['/tui', '/settings', '/users']) ? ' open' : '' %>>
           <summary>Admin</summary>
           <div class="nav-group-body">
             <a href="<%= withV('/tui') %>" class="nav-link<%= ap.startsWith('/tui') ? ' active' : '' %>">Operator Chat</a>
             <a href="<%= withV('/settings') %>" class="nav-link<%= ap.startsWith('/settings') ? ' active' : '' %>">Settings</a>
+            <% if (locals.session && (session.role === 'superadmin')) { %>
+            <a href="<%= withV('/users') %>" class="nav-link<%= ap.startsWith('/users') ? ' active' : '' %>">Users</a>
+            <% } %>
           </div>
         </details>
 

@@ -34,6 +34,8 @@ import { ensureHostedSchema } from './lib/tenants.js';
 import { ensureAiPlatformSchema } from './lib/ai-platform.js';
 import { ensureAgentToolConfigSchema } from './lib/tool-config.js';
 import { autoPairCarinaFromLocalCore } from './lib/carina-pairing.js';
+import { bootstrapFirstUser } from './lib/bootstrap-users.js';
+import { usersRouter } from './routes/users.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 // tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
@@ -116,6 +118,7 @@ app.use((req, res, next) => {
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
   res.locals.uiVersion = process.env.UI_VERSION ?? '20260621e';
   res.locals.activePath = req.path;
+  res.locals.session = req.session;
   next();
 });
 
@@ -148,6 +151,7 @@ app.use('/admin/agent-tools', agentToolsRouter);
 app.use('/agent-tools', agentToolsRouter);
 
 app.use('/governance', governanceRouter);
+app.use('/users', usersRouter);
 
 const consolePublicDir = resolveConsolePublicDir();
 app.use('/dashboard', requireAdmin, express.static(path.join(consolePublicDir, 'dashboard')));
@@ -158,7 +162,7 @@ app.use((_req, res) => {
   res.status(404).render('error', { message: 'Page not found' });
 });
 
-const listenHost = process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0';
+const listenHost = process.env.BIND_HOST ?? (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
 const server = createServer(app);
 attachPtyBridge(server);
 
@@ -166,7 +170,13 @@ server.listen(PORT, listenHost, () => {
   console.log(chalk.green(`Carina Platform Admin at http://localhost:${PORT}`));
   console.log(chalk.gray(`  PTY bridge: ws://localhost:${PORT}/ws/tui`));
   console.log(chalk.gray('  Browser TUI: http://localhost:' + PORT + '/tui'));
-  console.log(chalk.gray('  Password: ops.carinaai.uk/.env ADMIN_PASSWORD'));
+  console.log(chalk.gray('  Login: ops.carinaai.uk/login (email + password)'));
+  void bootstrapFirstUser()
+    .then(() => console.log(chalk.gray('  Ops users: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  Ops users: skipped (${msg})`));
+    });
   void ensureHostedSchema()
     .then(() => console.log(chalk.gray('  Hosted schema: ready')))
     .catch((err: unknown) => {
