@@ -3,11 +3,13 @@ import { ActivityIndicator, SafeAreaView, StyleSheet, View } from 'react-native'
 import { useAuth } from '@/store/auth-store';
 import { colors } from '@/theme/tokens';
 import { MobileLauncher } from '../components/launcher/MobileLauncher';
+import { useActiveSession } from '../hooks/useActiveSession';
 
 export default function Index() {
   const { ready, user, instance } = useAuth();
+  const { session: activeSession, loading: sessionLoading } = useActiveSession();
 
-  if (!ready) {
+  if (!ready || sessionLoading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.tealLight} />
@@ -21,6 +23,10 @@ export default function Index() {
 
   if (instance.mode === 'cloud' && !user) {
     return <Redirect href="/(auth)/login" />;
+  }
+
+  if (activeSession) {
+    return <Redirect href="/(tabs)/chat" />;
   }
 
   return (

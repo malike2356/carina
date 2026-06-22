@@ -29,6 +29,8 @@ COPY --from=build /app/packages/web/package.json ./packages/web/package.json
 COPY --from=build /app/packages/web/dist ./packages/web/dist
 COPY --from=build /app/packages/web/assets ./packages/web/assets
 COPY --from=build /app/packages/web/public ./packages/web/public
+COPY --from=build /app/packages/scout-client/package.json ./packages/scout-client/package.json
+COPY --from=build /app/packages/scout-client/dist ./packages/scout-client/dist
 COPY --from=build /app/locales ./locales
 COPY src/skills/packs ./src/skills/packs
 COPY brain ./brain

@@ -3,70 +3,262 @@
 <div class="ops-page-head">
   <div>
     <div class="ops-page-title">Scout Score</div>
-    <div class="ops-page-sub">Composite security health score derived from platform-wide signals.</div>
+    <div class="ops-page-sub">Composite security health score from open findings and attack-surface signals.</div>
   </div>
-  <button onclick="loadScore()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+  <button onclick="loadScore()" class="ops-btn ops-btn-green ops-btn-sm">Refresh</button>
 </div>
 
-<div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:20px;">
-  <div class="ops-card" style="text-align:center;">
-    <div class="ops-card-label">Overall Score</div>
-    <div id="score-val" style="font-size:52px;font-weight:700;color:var(--green);line-height:1.1;margin:10px 0;">-</div>
-    <div id="score-grade" class="ops-badge ops-badge-gray" style="display:inline-block;font-size:12px;padding:4px 12px;">-</div>
+<div id="score-loading" class="ops-loading">Loading score data...</div>
+
+<div id="score-content" style="display:none;">
+  <div class="ops-score-layout">
+    <div id="score-hero" class="ops-score-hero">
+      <div class="ops-score-ring-wrap">
+        <svg class="ops-score-ring" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="ops-score-ring-bg" cx="60" cy="60" r="52"></circle>
+          <circle id="score-ring-fill" class="ops-score-ring-fill" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="ops-score-ring-center">
+          <div id="score-val" class="ops-score-num">-</div>
+          <div class="ops-score-denom">/ 100</div>
+        </div>
+      </div>
+      <div class="ops-score-meta">
+        <span id="score-grade" class="ops-badge ops-badge-gray">Grade -</span>
+        <div id="score-status" class="ops-score-status">Calculating posture...</div>
+        <div id="score-updated" class="ops-score-updated"></div>
+      </div>
+    </div>
+
+    <div class="ops-severity-grid">
+      <div class="ops-severity-tile critical">
+        <div class="ops-card-label">Critical</div>
+        <div class="ops-card-val red" id="sc-critical">-</div>
+        <div class="ops-inline-note">-10 pts each</div>
+      </div>
+      <div class="ops-severity-tile high">
+        <div class="ops-card-label">High</div>
+        <div class="ops-card-val amber" id="sc-high">-</div>
+        <div class="ops-inline-note">-5 pts each</div>
+      </div>
+      <div class="ops-severity-tile medium">
+        <div class="ops-card-label">Medium</div>
+        <div class="ops-card-val cyan" id="sc-medium">-</div>
+        <div class="ops-inline-note">-2 pts each</div>
+      </div>
+      <div class="ops-severity-tile low">
+        <div class="ops-card-label">Low</div>
+        <div class="ops-card-val muted" id="sc-low">-</div>
+        <div class="ops-inline-note">informational</div>
+      </div>
+    </div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
-    <div class="ops-card"><div class="ops-card-label">Threats Blocked</div><div class="ops-card-val green" id="sc-blocked">-</div></div>
-    <div class="ops-card"><div class="ops-card-label">Open Findings</div><div class="ops-card-val amber" id="sc-findings">-</div></div>
-    <div class="ops-card"><div class="ops-card-label">Policy Compliance</div><div class="ops-card-val cyan" id="sc-policy">-</div></div>
-    <div class="ops-card"><div class="ops-card-label">Uptime</div><div class="ops-card-val green" id="sc-uptime">-</div></div>
+
+  <div class="ops-surface" style="margin-bottom:16px;">
+    <div class="ops-surface-body">
+      <div class="ops-section-title">Score factors</div>
+      <p class="ops-page-sub" style="margin-top:0;margin-bottom:14px;">Deductions applied from a baseline of 100 based on open finding severity.</p>
+      <div id="score-factors" class="ops-factor-list"></div>
+    </div>
+  </div>
+
+  <div class="ops-surface" style="margin-bottom:16px;">
+    <div class="ops-surface-body">
+      <div class="ops-section-title">30-day trend</div>
+      <div class="ops-score-chart-wrap">
+        <canvas id="score-canvas" height="100"></canvas>
+        <div id="score-chart-empty" class="ops-score-chart-empty" style="display:none;">History appears after scores are recorded on scan runs.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-link-grid">
+    <a href="/security/findings" class="ops-link-row">
+      <div class="ops-link-row-title">Open findings</div>
+      <div class="ops-link-row-sub">Review and triage active issues</div>
+    </a>
+    <a href="/security/attack-surface" class="ops-link-row">
+      <div class="ops-link-row-title">Attack surface</div>
+      <div class="ops-link-row-sub">Exposed services and vectors</div>
+    </a>
+    <a href="/security/reports" class="ops-link-row">
+      <div class="ops-link-row-title">Reports</div>
+      <div class="ops-link-row-sub">Latest Scout security reports</div>
+    </a>
+    <a href="/governance/posture" class="ops-link-row">
+      <div class="ops-link-row-title">Security posture</div>
+      <div class="ops-link-row-sub">Governance and compliance view</div>
+    </a>
   </div>
 </div>
 
-<div class="ops-card">
-  <div class="ops-section-title">Score Breakdown</div>
-  <div id="score-loading" class="ops-loading">Loading score data...</div>
-  <div id="score-breakdown" style="display:none;"></div>
-  <div id="score-empty" class="ops-empty" style="display:none;">Score data unavailable.</div>
-</div>
+<div id="score-error" class="ops-empty" style="display:none;">Unable to load Scout score. Check Scout API key in Settings.</div>
 
 <script>
-function loadScore() {
-  fetch('/scout-api/api/score', { credentials: 'same-origin' })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      var score = d.score || d.overall || d.value || 0;
-      document.getElementById('score-val').textContent = score > 0 ? score : '-';
-      var color = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : score > 0 ? 'var(--red)' : 'var(--muted)';
-      document.getElementById('score-val').style.color = color;
-      var grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : score > 0 ? 'F' : '-';
-      var gBadge = document.getElementById('score-grade');
-      gBadge.textContent = 'Grade ' + grade;
-      gBadge.className = 'ops-badge ' + (score >= 80 ? 'ops-badge-green' : score >= 60 ? 'ops-badge-amber' : score > 0 ? 'ops-badge-red' : 'ops-badge-gray');
-      document.getElementById('sc-blocked').textContent = d.threats_blocked || '-';
-      document.getElementById('sc-findings').textContent = d.open_findings || '-';
-      document.getElementById('sc-policy').textContent = d.policy_compliance ? d.policy_compliance + '%' : '-';
-      document.getElementById('sc-uptime').textContent = d.uptime ? d.uptime + '%' : '-';
-      document.getElementById('score-loading').style.display = 'none';
-      var breakdown = d.breakdown || d.components || d.factors;
-      if (!breakdown || !Object.keys(breakdown).length) { document.getElementById('score-empty').style.display = ''; return; }
-      document.getElementById('score-breakdown').style.display = '';
-      document.getElementById('score-breakdown').innerHTML = Object.keys(breakdown).map(function(k) {
-        var v = breakdown[k];
-        var pct = Math.min(100, Math.max(0, v || 0));
-        var barColor = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
-        return '<div style="margin-bottom:12px;">' +
-          '<div style="display:flex;justify-content:space-between;margin-bottom:4px;font-size:11px;">' +
-          '<span>' + esc(k) + '</span><span style="color:' + barColor + '">' + pct + '</span></div>' +
-          '<div style="height:6px;background:var(--border);border-radius:3px;">' +
-          '<div style="height:6px;width:' + pct + '%;background:' + barColor + ';border-radius:3px;transition:width .4s;"></div></div></div>';
-      }).join('');
-    })
-    .catch(function() {
-      document.getElementById('score-loading').style.display = 'none';
-      document.getElementById('score-empty').style.display = '';
-    });
+var SCORE_RING_R = 52;
+var SCORE_RING_C = 2 * Math.PI * SCORE_RING_R;
+
+function scoreTone(score) {
+  if (score >= 80) return { cls: '', badge: 'ops-badge-green', stroke: 'var(--green)' };
+  if (score >= 60) return { cls: 'is-warn', badge: 'ops-badge-amber', stroke: 'var(--amber)' };
+  if (score > 0) return { cls: 'is-risk', badge: 'ops-badge-red', stroke: 'var(--red)' };
+  return { cls: '', badge: 'ops-badge-gray', stroke: 'var(--muted)' };
 }
-function esc(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function scoreGrade(score) {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  if (score > 0) return 'F';
+  return '-';
+}
+
+function scoreStatusText(score, crit, high) {
+  if (score >= 90) return 'Excellent posture. Keep monitoring cadence.';
+  if (score >= 80) return 'Strong posture with minor gaps to watch.';
+  if (score >= 60) return 'Fair posture. Review medium and high findings.';
+  if (score > 0) {
+    if (crit > 0) return crit + ' critical finding(s). Prioritize remediation now.';
+    if (high > 0) return high + ' high finding(s). Schedule remediation this week.';
+    return 'At risk. Address open findings to recover score.';
+  }
+  return 'No score data yet. Run a Scout scan to populate.';
+}
+
+function renderFactors(d) {
+  var crit = d.openCritical || 0;
+  var high = d.openHigh || 0;
+  var med = d.openMedium || 0;
+  var factors = [
+    { label: 'Critical findings', sub: crit + ' open', penalty: crit * 10, cap: 50 },
+    { label: 'High findings', sub: high + ' open', penalty: high * 5, cap: 40 },
+    { label: 'Medium findings', sub: med + ' open', penalty: med * 2, cap: 30 }
+  ];
+  document.getElementById('score-factors').innerHTML = factors.map(function(f) {
+    var pct = Math.min(100, Math.round((f.penalty / f.cap) * 100));
+    var tone = pct >= 70 ? 'risk' : pct >= 35 ? 'warn' : 'ok';
+    return '<div class="ops-factor-row">' +
+      '<div class="ops-factor-label">' + esc(f.label) + '</div>' +
+      '<div class="ops-factor-val">-' + f.penalty + '</div>' +
+      '<div class="ops-factor-sub">' + esc(f.sub) + '</div>' +
+      '<div class="ops-factor-track"><div class="ops-factor-fill ' + tone + '" style="width:' + pct + '%"></div></div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderHistory(history) {
+  var canvas = document.getElementById('score-canvas');
+  var empty = document.getElementById('score-chart-empty');
+  var pts = Array.isArray(history) ? history.slice().reverse() : [];
+  if (!pts.length) {
+    canvas.style.display = 'none';
+    empty.style.display = '';
+    return;
+  }
+  canvas.style.display = '';
+  empty.style.display = 'none';
+  var wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth || 580;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width;
+  var H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  var vals = pts.map(function(p) { return p.score || 0; });
+  var mi = Math.min.apply(null, vals) - 5;
+  var ma = Math.max.apply(null, vals) + 5;
+  if (ma - mi < 10) mi = Math.max(0, ma - 20);
+  ctx.strokeStyle = 'rgba(0, 200, 100, 0.15)';
+  ctx.lineWidth = 1;
+  [0.33, 0.66].forEach(function(f) {
+    var y = H - H * f;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  });
+  ctx.beginPath();
+  pts.forEach(function(p, i) {
+    var x = (i / (pts.length - 1 || 1)) * (W - 4) + 2;
+    var y = H - (((p.score || 0) - mi) / (ma - mi)) * H;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#00c864';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  var last = pts[pts.length - 1];
+  var lx = W - 2;
+  var ly = H - (((last.score || 0) - mi) / (ma - mi)) * H;
+  ctx.fillStyle = '#00c864';
+  ctx.beginPath();
+  ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function loadScore() {
+  document.getElementById('score-loading').style.display = '';
+  document.getElementById('score-content').style.display = 'none';
+  document.getElementById('score-error').style.display = 'none';
+
+  Promise.all([
+    fetch('/scout-api/api/score', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : Promise.reject(); }),
+    fetch('/scout-api/api/score/history?limit=30', { credentials: 'same-origin' }).then(function(r) { return r.ok ? r.json() : { history: [] }; }).catch(function() { return { history: [] }; })
+  ]).then(function(res) {
+    var d = res[0];
+    var hist = res[1].history || [];
+    var score = typeof d.score === 'number' ? d.score : 0;
+    var tone = scoreTone(score);
+    var hero = document.getElementById('score-hero');
+    hero.className = 'ops-score-hero ' + tone.cls;
+
+    document.getElementById('score-val').textContent = score > 0 ? score : '-';
+    var ring = document.getElementById('score-ring-fill');
+    ring.style.stroke = tone.stroke;
+    ring.style.strokeDasharray = SCORE_RING_C + ' ' + SCORE_RING_C;
+    ring.style.strokeDashoffset = SCORE_RING_C - (SCORE_RING_C * Math.max(0, Math.min(100, score)) / 100);
+
+    var gBadge = document.getElementById('score-grade');
+    gBadge.textContent = 'Grade ' + scoreGrade(score);
+    gBadge.className = 'ops-badge ' + tone.badge;
+
+    var crit = d.openCritical || 0;
+    var high = d.openHigh || 0;
+    document.getElementById('score-status').textContent = scoreStatusText(score, crit, high);
+    document.getElementById('score-updated').textContent = d.calculatedAt
+      ? 'Updated ' + new Date(d.calculatedAt).toLocaleString()
+      : 'Live calculation';
+
+    document.getElementById('sc-critical').textContent = crit;
+    document.getElementById('sc-high').textContent = high;
+    document.getElementById('sc-medium').textContent = d.openMedium || 0;
+    document.getElementById('sc-low').textContent = d.openLow || 0;
+
+    renderFactors(d);
+    renderHistory(hist);
+
+    document.getElementById('score-loading').style.display = 'none';
+    document.getElementById('score-content').style.display = '';
+  }).catch(function() {
+    document.getElementById('score-loading').style.display = 'none';
+    document.getElementById('score-error').style.display = '';
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 loadScore();
+window.addEventListener('resize', function() {
+  if (document.getElementById('score-content').style.display !== 'none') {
+    fetch('/scout-api/api/score/history?limit=30', { credentials: 'same-origin' })
+      .then(function(r) { return r.ok ? r.json() : { history: [] }; })
+      .then(function(d) { renderHistory(d.history || []); })
+      .catch(function() {});
+  }
+});
 </script>
 </div>

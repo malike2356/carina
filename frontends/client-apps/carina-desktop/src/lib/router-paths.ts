@@ -1,4 +1,5 @@
 export const ROUTES = {
+  launcher: '/launcher',
   chat: '/',
   workspace: '/workspace',
   agents: '/agents',

@@ -4118,3 +4118,52 @@
 [2026-06-21T08:46:33.232Z] EGRESS UNBLOCKED: evil.com on test-001
 [2026-06-21T08:46:33.233Z] EGRESS BLOCKED: Evil.COM on test-001. Reason: test
 [2026-06-21T08:46:38.361Z] TOOL POLICY: allowlist enforcement enabled
+[2026-06-21T16:54:31.184Z] SANDBOX POLICY instance: default
+[2026-06-21T16:54:31.227Z] SANDBOX POLICY instance: default
+[2026-06-21T16:54:31.247Z] SANDBOX POLICY instance: default
+[2026-06-21T16:54:31.248Z] SANDBOX POLICY instance: host_blocked
+[2026-06-21T16:54:31.269Z] SANDBOX POLICY instance: default
+[2026-06-21T16:54:31.288Z] SANDBOX POLICY instance: default
+[2026-06-21T16:54:31.310Z] SANDBOX POLICY instance: default
+[2026-06-21T16:54:33.409Z] SUSPENDED (policy): Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.410Z] SESSION BLOCKED (policy): sess-rt-1. Reason: Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.572Z] SUSPENDED (policy): Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.572Z] SESSION BLOCKED (policy): sess-rt-1. Reason: Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.592Z] SUSPENDED (policy): Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.592Z] SESSION BLOCKED (policy): sess-rt-1. Reason: Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.603Z] SUSPENDED (policy): Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.603Z] SESSION BLOCKED (policy): sess-rt-1. Reason: Critical threat detected (prompt_injection). Activating kill switch.
+[2026-06-21T16:54:33.622Z] SUSPENDED (policy): Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.622Z] SESSION BLOCKED (policy): sess-rt-2. Reason: Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.623Z] SUSPENDED (policy): Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.623Z] SESSION BLOCKED (policy): sess-rt-2. Reason: Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.637Z] SUSPENDED (policy): Critical threat detected (data_exfiltration_test). Activating kill switch.
+[2026-06-21T16:54:33.637Z] SESSION BLOCKED (policy): sess-rt-3. Reason: Critical threat detected (data_exfiltration_test). Activating kill switch.
+[2026-06-21T16:54:33.642Z] SUSPENDED (policy): Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.642Z] SESSION BLOCKED (policy): sess-run-1. Reason: Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.642Z] SUSPENDED (policy): Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:33.642Z] SESSION BLOCKED (policy): sess-run-1. Reason: Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:34.183Z] SUSPENDED (policy): Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:34.183Z] SESSION BLOCKED (policy): sess-rasp-1. Reason: Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:34.291Z] SUSPENDED (policy): Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:34.291Z] SESSION BLOCKED (policy): sess-contain. Reason: Critical threat detected (malicious_tool_sequence). Activating kill switch.
+[2026-06-21T16:54:34.298Z] SUSPENDED (policy): Critical threat detected (prompt_injection_chain). Activating kill switch.
+[2026-06-21T16:54:34.298Z] SESSION BLOCKED (policy): sess-contain. Reason: Critical threat detected (prompt_injection_chain). Activating kill switch.
+[2026-06-21T16:54:34.496Z] SUSPENDED by Scout. Reason: test
+[2026-06-21T16:54:34.498Z] SUSPENDED by Scout. Reason: test
+[2026-06-21T16:54:34.498Z] RESUMED by Scout.
+[2026-06-21T16:54:34.505Z] SESSION BLOCKED: s-001. Reason: test
+[2026-06-21T16:54:34.511Z] SESSION BLOCKED: session-A. Reason: test
+[2026-06-21T16:54:34.512Z] TOOL QUARANTINED: shell-exec on test-001. Reason: test
+[2026-06-21T16:54:34.514Z] TOOL QUARANTINED: shell-exec on test-001. Reason: test
+[2026-06-21T16:54:34.514Z] TOOL QUARANTINE LIFTED: shell-exec on test-001
+[2026-06-21T16:54:34.516Z] EGRESS BLOCKED: evil.com on test-001. Reason: test
+[2026-06-21T16:54:34.519Z] EGRESS BLOCKED: evil.com on test-001. Reason: test
+[2026-06-21T16:54:34.519Z] EGRESS UNBLOCKED: evil.com on test-001
+[2026-06-21T16:54:34.521Z] EGRESS BLOCKED: Evil.COM on test-001. Reason: test
+[2026-06-21T16:54:34.997Z] SUSPENDED by Scout. Reason: ransomware_pattern detected by penetration test harness
+[2026-06-21T16:54:34.997Z] SESSION BLOCKED: pentest-kill-switch-emergency-shutdown. Reason: containment after ransomware_pattern
+[2026-06-21T16:54:34.998Z] SUSPENDED by Scout. Reason: ransomware_pattern detected by penetration test harness
+[2026-06-21T16:54:34.998Z] SESSION BLOCKED: pentest-kill-switch-session-containment. Reason: containment after ransomware_pattern
+[2026-06-21T16:54:35.041Z] SESSION BLOCKED: sess-playbook-1. Reason: prompt-injection containment
+[2026-06-21T16:54:38.788Z] TOOL POLICY: allowlist enforcement enabled

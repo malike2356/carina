@@ -1,19 +1,23 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { applyBrandDocument } from '@/components/shell/BrandProvider';
 import { appearanceToCSS, normalizeAppearance, type AppearanceSettings } from '@/lib/appearance';
-import { DEFAULT_THEME, THEMES, type ThemeTokens, isThemeName } from '@/lib/themes';
+import type { ResolvedBrand } from '@/lib/brand';
+import {
+  applyThemePreference,
+  readCookieThemePreference,
+  readStoredThemePreference,
+  type ThemePreference,
+} from '@/lib/theme-runtime';
+import { DEFAULT_THEME } from '@/lib/themes';
 
-const PUBLIC_PATHS = new Set(['/', '/login', '/register']);
-
-function applyTheme(themeName: string, tokens: ThemeTokens) {
+function applyBrandTokens(colorTokens: Record<string, string> | undefined) {
+  if (!colorTokens || typeof document === 'undefined') return;
   const root = document.documentElement;
-  Object.entries(tokens).forEach(([key, value]) => {
+  Object.entries(colorTokens).forEach(([key, value]) => {
     root.style.setProperty(key, value);
   });
-  root.style.colorScheme = themeName === 'light' ? 'light' : 'dark';
-  root.setAttribute('data-theme', themeName);
 }
 
 function applyAppearance(appearance: AppearanceSettings) {
@@ -27,41 +31,65 @@ function applyAppearance(appearance: AppearanceSettings) {
 }
 
 function applyDefaults() {
-  applyTheme(DEFAULT_THEME, THEMES[DEFAULT_THEME].tokens);
+  applyThemePreference({ themeId: DEFAULT_THEME, mode: 'dark' });
   applyAppearance(normalizeAppearance(null));
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+function resolvePreferenceFromApi(data: {
+  theme?: unknown;
+  appearance?: unknown;
+  resolvedBrand?: unknown;
+} | null | undefined): ThemePreference | null {
+  if (!data) return null;
+  const appearance =
+    typeof data.appearance === 'object' && data.appearance !== null
+      ? (data.appearance as { themeMode?: unknown })
+      : null;
+  if (typeof data.theme !== 'string' && !appearance?.themeMode) return null;
+  return {
+    themeId: typeof data.theme === 'string' ? data.theme : DEFAULT_THEME,
+    mode: appearance?.themeMode === 'light' ? 'light' : 'dark',
+  };
+}
 
+export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
-    if (PUBLIC_PATHS.has(pathname)) {
+    const stored = readStoredThemePreference() ?? readCookieThemePreference();
+    if (stored) {
+      applyThemePreference(stored);
+    } else {
       applyDefaults();
-      return;
     }
 
     fetch('/api/workspace/settings')
-      .then(async (response) => {
-        if (!response.ok) {
-          applyDefaults();
-          return null;
-        }
-        return response.json();
-      })
+      .then(async (response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (!data) return;
-        const themeName = isThemeName(data.data?.theme) ? data.data.theme : DEFAULT_THEME;
-        applyTheme(themeName, THEMES[themeName].tokens);
-        applyAppearance(normalizeAppearance(data.data?.appearance));
+        const preference = resolvePreferenceFromApi(data?.data);
+        if (preference) {
+          applyThemePreference(preference);
+        }
+        if (data?.data?.appearance) {
+          applyAppearance(normalizeAppearance(data.data.appearance));
+        }
+        const resolvedBrand = data?.data?.resolvedBrand as ResolvedBrand | undefined;
+        if (resolvedBrand?.productName) {
+          applyBrandTokens(resolvedBrand.colorTokens);
+          applyBrandDocument(resolvedBrand);
+        }
       })
       .catch(() => {
-        applyDefaults();
+        if (!stored) applyDefaults();
       });
 
     function handleSetTheme(event: Event) {
-      const themeName = (event as CustomEvent<string>).detail;
-      const nextTheme = isThemeName(themeName) ? themeName : DEFAULT_THEME;
-      applyTheme(nextTheme, THEMES[nextTheme].tokens);
+      const detail = (event as CustomEvent<ThemePreference | string>).detail;
+      if (typeof detail === 'string') {
+        applyThemePreference({ themeId: detail, mode: 'dark' });
+        return;
+      }
+      if (detail && typeof detail === 'object' && 'themeId' in detail) {
+        applyThemePreference(detail);
+      }
     }
 
     function handleSetAppearance(event: Event) {
@@ -74,7 +102,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('set-theme', handleSetTheme);
       document.removeEventListener('set-appearance', handleSetAppearance);
     };
-  }, [pathname]);
+  }, []);
 
   return <>{children}</>;
 }

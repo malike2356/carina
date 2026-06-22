@@ -1,3 +1,7 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** `scout-score.ts`, `score-job.ts`, migration 002-scout-scores.
+
 # Scout 02; Score Engine: Real Scoring with Trends
 
 **Gap:** 12; Scout Product

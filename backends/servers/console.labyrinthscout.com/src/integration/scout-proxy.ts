@@ -24,8 +24,9 @@ export function _resetProxyDeps(): void {
 
 export function detectAgent(userAgent: string | undefined): string {
   if (!userAgent) return 'unknown';
-  if (userAgent.startsWith('OpenClaw/')) return 'openclaw';
-  if (userAgent.startsWith('Hermes-Agent/')) return 'hermes';
+  // Known third-party user-agent prefixes map to neutral adapter types.
+  if (userAgent.startsWith('OpenClaw/')) return 'goal-result';
+  if (userAgent.startsWith('Hermes-Agent/')) return 'compat-agent';
   if (userAgent.includes('LangChain')) return 'langchain';
   if (userAgent.includes('OpenAI')) return 'openai';
   return 'unknown';

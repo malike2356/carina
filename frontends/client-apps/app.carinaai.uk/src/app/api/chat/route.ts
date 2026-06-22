@@ -8,7 +8,7 @@ import {
   isDatabaseSchemaError,
   databaseSchemaErrorMessage,
 } from '@/lib/chat-errors';
-import { coreProxyEnabled, resolveCoreUrl } from '@/lib/core-proxy';
+import { coreProxyEnabled, requiresWorkspaceByokKeys, resolveCoreUrl } from '@/lib/core-proxy';
 import {
   assertWithinQuota,
   QuotaExceededError,
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   }
 
   const providerKeys = await getDecryptedWorkspaceKeys(workspace.id);
-  if (providerKeys.length === 0) {
+  if (providerKeys.length === 0 && requiresWorkspaceByokKeys()) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start(controller) {

@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- First-run wizard polish: animated progress bars, branded ASCII header
+- `carina setup` re-entry point for re-running onboarding
+- Completion hint shown after install: `source <(carina completion bash)`
+
 # Gap 07 - Prompt 07: CLI Onboarding Polish
 
 **Agent:** Claude Code (fallback: Codex)

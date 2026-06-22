@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `gateway/channel-docking.ts` with dock, undock, and dockable channel listing
+- `/dock list|to|back|status` commands; router preserves docked reply delivery target
+- Docking status in system prompt via `formatLinkedIdentitiesBlock()`
+
 # Gap 19 - Prompt 03: Channel Docking -- Move Reply Route Between Channels
 
 **Gap:** 19 Identity Links & Channel Docking

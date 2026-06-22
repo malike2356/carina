@@ -1,3 +1,14 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `src/cli/completions/bash.ts` - bash _carina_complete function
+- `src/cli/completions/zsh.ts` - zsh #compdef _carina
+- `src/cli/completions/fish.ts` - fish complete lines
+- `src/cli/completions/powershell.ts` - PowerShell Register-ArgumentCompleter
+- `src/cli/completions/dynamic.ts` - live session/skill/model ID fetcher
+- `src/cli/completions/generate.ts` - orchestrator
+- `src/cli/commands/completion/index.ts` - `carina completion <shell> [--install]`
+
 # Gap 07 - Prompt 05: Shell Completions
 
 **Agent:** Codex (fallback: Claude Code)

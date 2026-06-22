@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `device-trust.ts` challenge nonce signing with replay protection
+- `publicKey` on paired devices/nodes; optional signature verification on hello
+- Token-only auth remains supported during migration
+
 # Gap 20 - Prompt 04: Device Trust -- Challenge Nonce Signing v3 & Attestation
 
 **Gap:** 20 Node System & Device Architecture

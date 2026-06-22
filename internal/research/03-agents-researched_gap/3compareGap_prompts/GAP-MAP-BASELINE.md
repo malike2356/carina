@@ -106,7 +106,7 @@ Prompts **06-09** are implemented in `core.carinaai.uk/` (docs + tests). Prompts
 |---|---|---|---|---|---|---|
 | Core chat + ops dashboard | control UI | Hermes Desktop | full workspace | **already in Carina** | `packages/web/`, route matrix | - |
 | Sessions, skills, models, config, logs pages | partial | desktop app | yes | **partial** | Core pages exist; depth vs Hermes/Odysseus uneven (UCG-03) | 05, 09 |
-| Deep Research UI + saved reports | n/a | research-ready | yes | **partial** | Productized in 07 (history, cite, continue); cookbook depth still thin | 07 |
+| Deep Research UI + saved reports | n/a | research-ready | yes | **partial** | Productized in 07 (history, cite, continue); playbook depth still thin | 07 |
 | Model Compare (blind side-by-side) | n/a | n/a | yes | **partial** | Workspace flow polished in 07; blind UX may still differ from Odysseus | 07 |
 | Writing-first document editor | canvas | n/a | yes | **partial** | Import from research in 07; structured editor UX still backend-heavy | 07 |
 | Email inbox (IMAP triage, drafts, tags) | n/a | email channel | yes | **partial** | Triage UI improved in 08 (unread, reply); not full Odysseus parity | 08 |
@@ -115,7 +115,7 @@ Prompts **06-09** are implemented in `core.carinaai.uk/` (docs + tests). Prompts
 | Taskflows / scheduled workspace actions | n/a | cron delivery | todos + calendar | **partial** | `/scheduled` surface in 08; create/edit flows still CLI-first | 08 |
 | Gallery / image editor | n/a | image gen | yes | **partial** | Upload + gallery in 09; no full Odysseus-level editor | 09 |
 | Themes + presets | n/a | personalities | yes | **partial** | Disk persistence, presets API, pins in 09 | 09 |
-| Cookbook / local model serving | n/a | n/a | yes | **partial** | `/cookbook` route; hardware-aware recommendations thinner than Odysseus | 07 |
+| Playbook / local model serving | n/a | n/a | yes | **partial** | `/playbook` route; hardware-aware recommendations thinner than Odysseus | 07 |
 | PWA / mobile web polish | companion | n/a | mobile editor | **partial** | `mobile.html`, service worker; HOC-06 partial | 02 |
 | i18n (10-20 locales) | strong | docs | n/a | **partial** | en + es backend; not OpenClaw/Hermes scale (DGR-I02) | - |
 

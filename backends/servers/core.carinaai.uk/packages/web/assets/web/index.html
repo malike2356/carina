@@ -2621,7 +2621,9 @@
     setSidebarOpen(isSidebarOpen());
     renderSessionList();
     loadSessionMessages(getSessionId());
-    fetchProvider();
+    if (!window.location.pathname.startsWith('/login')) {
+      fetchProvider();
+    }
     loadWebContext();
 
     if ('serviceWorker' in navigator) {

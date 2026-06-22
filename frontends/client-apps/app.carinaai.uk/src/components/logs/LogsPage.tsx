@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Filter, Pause, Play, RefreshCw, Search, SignalHigh, Trash2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { readJsonResponse } from '@/lib/read-json-response';
 import { cn } from '@/lib/utils';
 
 type LogLevel = 'info' | 'warn' | 'error';
@@ -50,7 +51,7 @@ export function LogsPage() {
       const params = new URLSearchParams({ limit: '150' });
       if (source !== 'all') params.set('source', source);
       const res = await fetch(`/api/ops/logs?${params.toString()}`, { cache: 'no-store' });
-      const data = await res.json();
+      const data = await readJsonResponse<{ logs?: LogLine[]; error?: string }>(res, 'Logs API');
       if (!res.ok) throw new Error(data.error ?? 'Unable to load logs');
       setLogs((data.logs ?? []) as LogLine[]);
     } catch (err) {

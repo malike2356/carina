@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Server-side `camera_capture`, `screen_record`, `location_get`, `location_watch`, `location_watch_stop` tools
+- Protocol command handling in `ws-transport.ts` for headless node hosts
+- Note: native iOS/Android capability handlers remain a mobile client follow-up
+
 # Gap 20 - Prompt 03: Camera Capture, Screen Recording & Location Services
 
 **Gap:** 20 Node System & Device Architecture

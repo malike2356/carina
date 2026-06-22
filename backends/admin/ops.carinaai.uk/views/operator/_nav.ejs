@@ -1,0 +1,9 @@
+<% const path = typeof activePath !== 'undefined' ? activePath : ''; %>
+<nav class="ops-subnav" aria-label="Operator sections">
+  <a href="/operator" class="ops-subnav-link<%= path === '/operator' ? ' active' : '' %>">Overview</a>
+  <a href="/operator/learning/pending" class="ops-subnav-link<%= path.startsWith('/operator/learning/pending') ? ' active' : '' %>">Pending review</a>
+  <a href="/operator/learning/improvements" class="ops-subnav-link<%= path.startsWith('/operator/learning/improvements') ? ' active' : '' %>">Improvements</a>
+  <a href="/operator/status" class="ops-subnav-link<%= path === '/operator/status' ? ' active' : '' %>">Status</a>
+  <a href="/operator/capabilities" class="ops-subnav-link<%= path === '/operator/capabilities' ? ' active' : '' %>">Capabilities</a>
+  <a href="/operator/security" class="ops-subnav-link<%= path === '/operator/security' ? ' active' : '' %>">Security</a>
+</nav>

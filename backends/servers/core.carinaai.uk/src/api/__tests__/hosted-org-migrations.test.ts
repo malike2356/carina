@@ -23,5 +23,8 @@ describe('hosted org migrations', () => {
     expect(combined).toContain('CREATE TABLE IF NOT EXISTS org_invites');
     expect(combined).toContain('carina_ops_starter');
     expect(combined).toContain('org_id UUID REFERENCES organizations(id)');
+    expect(combined).toContain('CREATE TABLE IF NOT EXISTS partner_accounts');
+    expect(combined).toContain('CREATE TABLE IF NOT EXISTS custom_domains');
+    expect(combined).toContain('organizations ADD COLUMN IF NOT EXISTS brand JSONB');
   });
 });

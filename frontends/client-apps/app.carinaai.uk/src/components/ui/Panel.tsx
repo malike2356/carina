@@ -14,7 +14,7 @@ interface PanelProps {
   className?: string;
 }
 
-export function Panel({ title, icon, onClose, children, width = 360, className }: PanelProps) {
+export function Panel({ title, icon, onClose, children, width = 380, className }: PanelProps) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
@@ -28,7 +28,7 @@ export function Panel({ title, icon, onClose, children, width = 360, className }
       <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} aria-hidden />
       <div
         className={cn(
-          'fixed right-0 top-0 z-50 flex h-full flex-col bg-surface border-l border-border shadow-2xl panel-slide-in',
+          'fixed left-1/2 top-16 z-50 flex max-h-[calc(100vh-5rem)] -translate-x-1/2 flex-col rounded-2xl border border-border bg-surface shadow-2xl',
           className,
         )}
         style={{ width }}

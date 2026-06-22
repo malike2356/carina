@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { resolveCarinaHome } from '../config/paths.js';
+import type { BrandConfig } from '../product/brand.js';
+import { normalizeBrandConfig } from '../product/brand.js';
 import { listAvailablePacks } from '../skills/index.js';
 
 export type TenantChannelConfig = {
@@ -14,6 +16,7 @@ export type TenantWorkspaceConfig = {
   tenantId: string;
   activeSkillPacks: string[];
   channels: TenantChannelConfig;
+  brand?: BrandConfig;
   updatedAt: string;
   updatedBy?: string;
 };
@@ -50,6 +53,7 @@ export function loadTenantWorkspaceConfig(tenantId: string): TenantWorkspaceConf
       ...raw,
       tenantId,
       channels: { ...defaultConfig(tenantId).channels, ...raw.channels },
+      brand: raw.brand ? normalizeBrandConfig(raw.brand) : undefined,
     };
   } catch {
     return defaultConfig(tenantId);
@@ -58,7 +62,7 @@ export function loadTenantWorkspaceConfig(tenantId: string): TenantWorkspaceConf
 
 export function saveTenantWorkspaceConfig(
   tenantId: string,
-  patch: Partial<Pick<TenantWorkspaceConfig, 'activeSkillPacks' | 'channels'>>,
+  patch: Partial<Pick<TenantWorkspaceConfig, 'activeSkillPacks' | 'channels' | 'brand'>>,
   actor = 'system',
 ): TenantWorkspaceConfig {
   fs.mkdirSync(configDir(), { recursive: true, mode: 0o700 });
@@ -73,6 +77,9 @@ export function saveTenantWorkspaceConfig(
     ...current,
     activeSkillPacks: packs,
     channels: { ...current.channels, ...patch.channels },
+    brand: patch.brand !== undefined
+      ? normalizeBrandConfig({ ...current.brand, ...patch.brand })
+      : current.brand,
     updatedAt: new Date().toISOString(),
     updatedBy: actor,
   };

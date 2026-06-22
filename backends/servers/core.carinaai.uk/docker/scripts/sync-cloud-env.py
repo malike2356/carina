@@ -33,7 +33,8 @@ def main() -> None:
     if not ENV_PATH.exists() and src is not None:
         ENV_PATH.write_text(src.read_text())
     if not ENV_PATH.exists():
-        raise SystemExit(f'missing {ENV_PATH}; copy from app.carinaai.uk/.env first')
+        raise SystemExit(
+            f'missing {ENV_PATH}; copy from app.carinaai.uk/.env first')
 
     lines = ENV_PATH.read_text().splitlines()
     out: list[str] = []

@@ -3,38 +3,71 @@
   <div class="ops-page-head">
     <div>
       <div class="ops-page-title">Operator Tools</div>
-      <div class="ops-page-sub">Curator, learning pipeline, capabilities audit, and security posture summaries.</div>
+      <div class="ops-page-sub">Curator, learning pipeline, capabilities audit, and security posture.</div>
     </div>
   </div>
 
-  <div class="ops-metrics" id="operator-metrics">
-    <div class="ops-metric"><div class="ops-metric-label">Active skills</div><div class="ops-metric-value" id="op-active">-</div></div>
-    <div class="ops-metric"><div class="ops-metric-label">Draft skills</div><div class="ops-metric-value warn" id="op-draft">-</div></div>
-    <div class="ops-metric"><div class="ops-metric-label">Learning (24h)</div><div class="ops-metric-value" id="op-events">-</div></div>
-    <div class="ops-metric"><div class="ops-metric-label">Promotions (7d)</div><div class="ops-metric-value ok" id="op-promotions">-</div></div>
+  <%- include('_nav') %>
+
+  <div class="ops-metrics" style="margin-top:16px;">
+    <div class="ops-metric"><div class="ops-metric-label">Active skills</div><div class="ops-metric-value ok"><%= status.curator.active %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Draft skills</div><div class="ops-metric-value warn"><%= status.curator.draft %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Learning (24h)</div><div class="ops-metric-value"><%= status.learning.events_last_24h %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Promotions (7d)</div><div class="ops-metric-value ok"><%= status.learning.promotions_last_7d %></div></div>
   </div>
 
-  <div class="ops-surface">
+  <div class="ops-surface" style="margin-top:16px;">
     <div class="ops-section">
-      <div class="ops-section-title">Live endpoints</div>
-      <p class="ops-section-sub">Read-only JSON APIs used by this page. Run curator and learning commands on the gateway host for writes.</p>
-      <div class="ops-link-grid" style="margin-top:12px;">
-        <a class="ops-link-row" href="/operator/status" target="_blank" rel="noopener"><div class="ops-link-row-title">Status</div><div class="ops-link-row-sub">Curator counts, kanban, learning metrics</div></a>
-        <a class="ops-link-row" href="/operator/learning/pending" target="_blank" rel="noopener"><div class="ops-link-row-title">Learning pending</div><div class="ops-link-row-sub">Draft skills and recent corrections</div></a>
-        <a class="ops-link-row" href="/operator/learning/improvements" target="_blank" rel="noopener"><div class="ops-link-row-title">Improvements</div><div class="ops-link-row-sub">Skill created, refined, rolled back events</div></a>
-        <a class="ops-link-row" href="/operator/capabilities" target="_blank" rel="noopener"><div class="ops-link-row-title">Capabilities audit</div><div class="ops-link-row-sub">Tools, skills, channels inventory</div></a>
-        <a class="ops-link-row" href="/operator/security" target="_blank" rel="noopener"><div class="ops-link-row-title">Security posture</div><div class="ops-link-row-sub">Scout + Carina trust state</div></a>
+      <div class="ops-section-title">Pending draft review</div>
+      <p class="ops-section-sub">
+        <% if (status.learning.last_curator_run_at) { %>
+          Last curator run: <%= new Date(status.learning.last_curator_run_at).toLocaleString() %>.
+        <% } else { %>
+          Curator has not run yet on this host.
+        <% } %>
+        <a href="/operator/learning/pending" class="ops-link-green">Open review queue</a>
+      </p>
+    </div>
+
+    <% if (!drafts.length) { %>
+      <div class="ops-empty">No drafts waiting for review.</div>
+    <% } else { %>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>Skill</th>
+              <th>Description</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const d of drafts.slice(0, 8)) { %>
+              <tr>
+                <td><a href="/skills/<%= d.skill_id %>" class="ops-link"><%= d.skill_name %></a></td>
+                <td class="ops-cell-truncate"><%= d.description %></td>
+                <td><%= new Date(d.updated_at).toLocaleString() %></td>
+                <td><a href="/operator/learning/pending" class="ops-link-green">Review</a></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
+    <% } %>
+  </div>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <div class="ops-section">
+      <div class="ops-section-title">Sections</div>
+      <p class="ops-section-sub">Use the sections below for operator dashboards. Machine-readable JSON lives under <code class="ops-code-inline">/operator/api/*</code>.</p>
+    </div>
+    <div class="ops-link-grid" style="margin-top:4px;">
+      <a class="ops-link-row" href="/operator/learning/pending"><div class="ops-link-row-title">Pending review</div><div class="ops-link-row-sub">Promote or archive draft skills</div></a>
+      <a class="ops-link-row" href="/operator/learning/improvements"><div class="ops-link-row-title">Improvements</div><div class="ops-link-row-sub">Created, refined, and rolled-back events</div></a>
+      <a class="ops-link-row" href="/operator/status"><div class="ops-link-row-title">Status</div><div class="ops-link-row-sub">Curator counts, kanban, learning metrics</div></a>
+      <a class="ops-link-row" href="/operator/capabilities"><div class="ops-link-row-title">Capabilities audit</div><div class="ops-link-row-sub">Tools, skills, channels inventory</div></a>
+      <a class="ops-link-row" href="/operator/security"><div class="ops-link-row-title">Security posture</div><div class="ops-link-row-sub">Scout + Carina trust state</div></a>
     </div>
   </div>
 </div>
-
-<script>
-fetch('/operator/status').then(function(r){ return r.json(); }).then(function(d){
-  if (!d.ok) return;
-  document.getElementById('op-active').textContent = d.curator?.active ?? '-';
-  document.getElementById('op-draft').textContent = d.curator?.draft ?? '-';
-  document.getElementById('op-events').textContent = d.learning?.events_last_24h ?? '-';
-  document.getElementById('op-promotions').textContent = d.learning?.promotions_last_7d ?? '-';
-}).catch(function(){});
-</script>

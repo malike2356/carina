@@ -127,7 +127,7 @@ export default function DocumentEditorPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-page-title={title}>
       <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
         <Link href="/documents" className="text-text-muted hover:text-text-primary">
           <ArrowLeft className="h-4 w-4" />

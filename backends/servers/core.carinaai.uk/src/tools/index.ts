@@ -68,6 +68,7 @@ import { imagesGalleryTool } from './images-gallery.js';
 import { secretsAuditTool } from './secrets-audit-tool.js';
 import { OPERATOR_UTILITY_TOOLS } from './operator-utils.js';
 import { phoneControlTool } from './phone-control.js';
+import { NODE_TOOLS } from './node-tools.js';
 import { createCyberTools } from './cyber/index.js';
 import { blogTools } from './blog.js';
 
@@ -78,6 +79,9 @@ registry.register(patchTool);
 registry.register(searchFilesTool);
 registry.register(shellExecTool);
 registry.register(phoneControlTool);
+for (const tool of NODE_TOOLS) {
+  registry.register(tool, { toolset: 'node' });
+}
 registry.register(processTool);
 registry.register(httpTool);
 registry.register(emailSendTool);

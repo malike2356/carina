@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, MessageSquare } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { formatSessionTimeAgo } from '@/lib/relative-time';
+import { useHydrated } from '@/hooks/useHydrated';
 
 interface Session {
   id: string;
@@ -9,20 +12,18 @@ interface Session {
   lastMessageAt: Date | string | null;
 }
 
-function timeAgo(date: Date | string | null): string {
-  if (!date) return 'just now';
-  const diff = Date.now() - new Date(date).getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return 'just now';
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m} min ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} hr ago`;
-  const d = Math.floor(h / 24);
-  return `${d} day${d !== 1 ? 's' : ''} ago`;
-}
-
 const SESSION_COLORS = ['#3b82f6', '#9b59f5', '#f59e0b', '#16c97e', '#00d4ff', '#ec4899'];
+
+function SessionTimeAgo({ date }: { date: Date | string | null }) {
+  const hydrated = useHydrated();
+  const [label, setLabel] = useState('...');
+
+  useEffect(() => {
+    setLabel(formatSessionTimeAgo(date));
+  }, [date]);
+
+  return <>{hydrated ? label : '...'}</>;
+}
 
 export function SessionResumeCard({ session, index }: { session: Session; index: number }) {
   const color = SESSION_COLORS[index % SESSION_COLORS.length];
@@ -47,7 +48,7 @@ export function SessionResumeCard({ session, index }: { session: Session; index:
         </p>
       </div>
       <span className="text-xs whitespace-nowrap shrink-0" style={{ color: '#6b8aaa' }}>
-        {timeAgo(session.lastMessageAt)}
+        <SessionTimeAgo date={session.lastMessageAt} />
       </span>
       <ChevronRight size={16} style={{ color: '#4a6a8a' }} className="shrink-0" />
     </Link>

@@ -1,5 +1,6 @@
-const CACHE_NAME = 'carina-cloud-v1';
-const PRECACHE_URLS = ['/', '/login', '/register', '/offline', '/manifest.webmanifest', '/icon.svg'];
+const CACHE_NAME = 'carina-cloud-v5';
+const PRECACHE_URLS = ['/offline', '/manifest.webmanifest', '/icon.svg'];
+const IMMUTABLE_PREFIXES = ['/_next/static/', '/_next/image'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -9,12 +10,14 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.map((key) => (key === CACHE_NAME ? Promise.resolve() : caches.delete(key)))).then(() =>
-        self.clients.claim(),
-      ),
-    ),
+    caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).then(() => self.clients.claim()),
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -23,29 +26,22 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (IMMUTABLE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => (await caches.match(request)) ?? (await caches.match('/offline')) ?? (await caches.match('/')) ?? Response.error()),
-    );
+    event.respondWith(fetch(request));
     return;
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => cached ?? Response.error());
-    }),
+    fetch(request).catch(async () => (await caches.match(request)) ?? Response.error()),
   );
 });

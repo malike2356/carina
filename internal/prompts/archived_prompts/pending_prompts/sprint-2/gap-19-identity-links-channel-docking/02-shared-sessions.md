@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Async session map keys via `buildGatewaySessionMapKeyAsync()` and `canonical:` external keys
+- `session-identity-prefs.ts` for sharing prefs and reply routing metadata
+- `/identity share on|off` command; linked identities block in `carina.ts` prompt assembly
+
 # Gap 19 - Prompt 02: Cross-Channel Shared Sessions
 
 **Gap:** 19 Identity Links & Channel Docking

@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
+/* Matches themes/ops.carinaai.uk ops.carinaai.css dark tokens */
 @theme {
-  --color-carina-bg: #0f0f0f;
-  --color-carina-card: #1a1a1a;
-  --color-carina-border: #2a2a2a;
-  --color-carina-text: #e0e0e0;
-  --color-carina-green: #22c55e;
-  --color-carina-cyan: #06b6d4;
+  --color-carina-bg: #0f0f1a;
+  --color-carina-card: #1a1a2e;
+  --color-carina-border: #303052;
+  --color-carina-text: #e2e2f5;
+  --color-carina-green: #00c864;
+  --color-carina-cyan: #64b5f6;
 }

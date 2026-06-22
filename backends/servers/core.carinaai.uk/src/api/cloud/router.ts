@@ -399,6 +399,30 @@ cloudRouter.get('/launcher/system/health', authMiddleware, async (_req, res) => 
   });
 });
 
+cloudRouter.get('/launcher/session/active', authMiddleware, async (req: CloudRequest, res) => {
+  const limit = 1;
+  try {
+    const result = await pool.query(
+      `SELECT id, last_activity_at FROM cloud_projects WHERE org_id = $1
+       ORDER BY last_activity_at DESC NULLS LAST LIMIT $2`,
+      [req.cloudOrg!.orgId, limit],
+    );
+    const row = result.rows[0];
+    if (!row?.last_activity_at) {
+      res.json({ session: null });
+      return;
+    }
+    const age = Date.now() - new Date(row.last_activity_at).getTime();
+    if (age > 30 * 60 * 1000) {
+      res.json({ session: null });
+      return;
+    }
+    res.json({ session: { id: String(row.id) } });
+  } catch {
+    res.json({ session: null });
+  }
+});
+
 function formatAgo(date: Date | null | undefined): string {
   if (!date) return 'just now';
   const diff = Date.now() - new Date(date).getTime();

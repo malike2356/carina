@@ -428,10 +428,14 @@ aiPlatformRouter.post('/agents/:id/status', async (req, res) => {
   res.redirect('/ai-platform/agents?saved=1');
 });
 
-aiPlatformRouter.get('/sessions', async (req, res) => {
-  const saved = req.query.saved === '1';
-  const [sessions, agents] = await Promise.all([listSessions(), listAgents()]);
-  renderPage(res, 'sessions', { title: 'Sessions', sessions, agents, saved });
+aiPlatformRouter.get('/sessions', async (req, res, next) => {
+  try {
+    const saved = req.query.saved === '1';
+    const [sessions, agents] = await Promise.all([listSessions(), listAgents()]);
+    renderPage(res, 'sessions', { title: 'Sessions', sessions, agents, saved });
+  } catch (err) {
+    next(err);
+  }
 });
 
 aiPlatformRouter.post('/sessions', async (req, res) => {

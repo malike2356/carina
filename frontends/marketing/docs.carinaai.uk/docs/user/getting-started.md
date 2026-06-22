@@ -28,6 +28,8 @@ Never commit `.env` or `~/.carina/.env`. API keys in git are a common breach vec
 
 ## Install (global)
 
+See the dedicated [Install](/docs/user/install) page for curl, npm, Docker, and source paths.
+
 ```bash
 npm install -g carina-agent
 carina

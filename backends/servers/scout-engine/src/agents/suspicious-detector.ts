@@ -70,8 +70,15 @@ const SUSPICIOUS_PATTERNS = [
       const dangerousTools = ['metasploit', 'msfconsole', 'msfvenom', 'exploit', 'payload'];
       if (!event.toolName || !dangerousTools.some(t => event.toolName!.toLowerCase().includes(t))) return false;
 
-      const hour = new Date(event.timestamp).getHours();
-      return hour >= 22 || hour <= 5; // 10 PM to 5 AM
+      const settings = await db('workspace_settings')
+        .where({ workspace_id: event.workspaceId })
+        .first();
+      const timezone = settings?.timezone
+        ?? process.env.SCOUT_DEFAULT_TIMEZONE
+        ?? 'UTC';
+      const { localHourFromTimestamp, isDangerousLocalHour } = await import('../lib/workspace-time.js');
+      const hour = localHourFromTimestamp(event.timestamp, timezone);
+      return isDangerousLocalHour(hour);
     },
     severity: 'high' as const,
   },

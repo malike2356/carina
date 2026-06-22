@@ -1,5 +1,9 @@
 # Carina Security Gold Standard; Master Plan
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** 13 core security modules (~96 source files in `backends/servers/core.carinaai.uk/src/security/`), 79 tiered cyber tools, Scout SOC visibility, tiered tool gating, and production de-referencing. See `ADDENDUM-BUILD-STATUS.md` in this folder for the file index.
+
 > **REUSE RULE:** See `REUSE-RULES.md` (one level up). Competitor names appear here for context only. All implementation must use Carina's own voice, naming, and presentation. No competitor brand names in shipped code.
 
 

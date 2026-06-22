@@ -1,6 +1,7 @@
 import type { AlertAdapter, AlertChannel, SecurityEvent } from './types.js';
 import { config } from '../config/index.js';
 import { findPlaybook } from '../actions/playbook-registry.js';
+import { firstEnvValue } from '../lib/env-fallback.js';
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   alert_test: 'Test alert',
@@ -210,13 +211,11 @@ function buildActionGuidance(event: SecurityEvent): string {
 export class TelegramAdapter implements AlertAdapter {
   async send(event: SecurityEvent, channel: AlertChannel): Promise<void> {
     const token =
-      process.env.SCOUT_TELEGRAM_BOT_TOKEN ??
-      process.env.TELEGRAM_BOT_TOKEN ??
-      channel.config.bot_token;
+      firstEnvValue('SCOUT_TELEGRAM_BOT_TOKEN', 'TELEGRAM_BOT_TOKEN')
+      ?? channel.config.bot_token?.trim();
     const chatId =
-      process.env.SCOUT_TELEGRAM_CHAT_ID ??
-      process.env.TELEGRAM_CHAT_ID ??
-      channel.config.chat_id;
+      firstEnvValue('SCOUT_TELEGRAM_CHAT_ID', 'TELEGRAM_CHAT_ID')
+      ?? channel.config.chat_id?.trim();
 
     if (!token || !chatId) {
       throw new Error('Telegram adapter: missing bot_token or chat_id');

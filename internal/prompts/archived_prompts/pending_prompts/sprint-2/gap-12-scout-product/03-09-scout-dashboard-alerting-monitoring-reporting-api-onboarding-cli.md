@@ -1,3 +1,7 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** Dashboard SPA, alerting pipeline, agent monitoring with workspace timezone (`workspace-time.ts`), reporting engine, API auth/rate-limit/OpenAPI, `onboard.html` wizard, Carina CLI (`scout-product-cli.ts`, `scout-engine-api.ts`).
+
 # Scout 03-09; Dashboard, Alerting, Agent Monitoring, Reporting, API, Onboarding, CLI
 
 **Gap:** 12; Scout Product

@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { pool, query } from './db.js';
+import { query } from './db.js';
+import { generateApiKey, hashPassword } from './tenant-provisioning.js';
+
+const OPS_PLATFORM_USER_EMAIL = 'ops-platform@internal.carina';
+const OPS_PLATFORM_ORG_SLUG = 'ops-platform';
 
 export interface AiPlatformOrg {
   id: string;
@@ -249,6 +253,114 @@ async function tableExists(name: string): Promise<boolean> {
     [name],
   );
   return !!res.rows[0]?.reg;
+}
+
+async function columnExists(table: string, column: string): Promise<boolean> {
+  const res = await query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+     ) AS exists`,
+    [table, column],
+  );
+  return Boolean(res.rows[0]?.exists);
+}
+
+let hostedOrgScope: boolean | undefined;
+async function usesHostedOrgScope(): Promise<boolean> {
+  if (hostedOrgScope === undefined) {
+    hostedOrgScope = (await tableExists('public.organizations'))
+      && (await columnExists('ai_platform_models', 'org_id'));
+  }
+  return hostedOrgScope;
+}
+
+let hostedUsageDaily: boolean | undefined;
+async function usesHostedUsageDaily(): Promise<boolean> {
+  if (hostedUsageDaily === undefined) {
+    hostedUsageDaily = await columnExists('ai_platform_usage_daily', 'request_count');
+  }
+  return hostedUsageDaily;
+}
+
+let hostedSessions: boolean | undefined;
+async function usesHostedSessions(): Promise<boolean> {
+  if (hostedSessions === undefined) {
+    hostedSessions = await columnExists('ai_platform_sessions', 'last_activity_at');
+  }
+  return hostedSessions;
+}
+
+let cachedHostedOrgId: string | null | undefined;
+
+/** Core-hosted schema stores org-scoped rows in organizations, not ai_platform_orgs. */
+export async function resolveHostedOrgId(): Promise<string | null> {
+  if (cachedHostedOrgId !== undefined) return cachedHostedOrgId;
+  if (!(await usesHostedOrgScope())) {
+    cachedHostedOrgId = null;
+    return null;
+  }
+
+  const existing = await query<{ id: string }>(
+    `SELECT id FROM organizations ORDER BY created_at ASC NULLS LAST LIMIT 1`,
+  );
+  if (existing.rows[0]) {
+    cachedHostedOrgId = String(existing.rows[0].id);
+    return cachedHostedOrgId;
+  }
+
+  if (!(await tableExists('public.hosted_users'))) {
+    cachedHostedOrgId = null;
+    return null;
+  }
+
+  const slugRow = await query<{ id: string }>(
+    `SELECT id FROM organizations WHERE slug = $1 LIMIT 1`,
+    [OPS_PLATFORM_ORG_SLUG],
+  );
+  if (slugRow.rows[0]) {
+    cachedHostedOrgId = String(slugRow.rows[0].id);
+    return cachedHostedOrgId;
+  }
+
+  let userId: string;
+  const userRow = await query<{ id: string }>(
+    `SELECT id FROM hosted_users WHERE email = $1 LIMIT 1`,
+    [OPS_PLATFORM_USER_EMAIL],
+  );
+  if (userRow.rows[0]) {
+    userId = String(userRow.rows[0].id);
+  } else {
+    const apiKey = generateApiKey();
+    const schemaName = `ops_${crypto.randomBytes(4).toString('hex')}`;
+    const inserted = await query<{ id: string }>(
+      `INSERT INTO hosted_users (
+         email, password_hash, api_key, schema_name, tier,
+         display_name, provisioning_type, access_status, updated_at
+       )
+       VALUES ($1, $2, $3, $4, 'free', 'Ops Platform', 'manual', 'active', NOW())
+       RETURNING id`,
+      [OPS_PLATFORM_USER_EMAIL, hashPassword(crypto.randomBytes(24).toString('hex')), apiKey, schemaName],
+    );
+    userId = String(inserted.rows[0]!.id);
+    const safeSchema = schemaName.replace(/[^a-z0-9_]/gi, '');
+    await query(`CREATE SCHEMA IF NOT EXISTS "${safeSchema}"`);
+  }
+
+  const orgInsert = await query<{ id: string }>(
+    `INSERT INTO organizations (name, slug, owner_user_id, plan, status)
+     VALUES ('Ops Platform', $1, $2, 'free', 'active')
+     RETURNING id`,
+    [OPS_PLATFORM_ORG_SLUG, userId],
+  );
+  cachedHostedOrgId = String(orgInsert.rows[0]!.id);
+  return cachedHostedOrgId;
+}
+
+export async function _resetAiPlatformHostedCacheForTests(): Promise<void> {
+  hostedOrgScope = undefined;
+  hostedUsageDaily = undefined;
+  cachedHostedOrgId = undefined;
 }
 
 export async function aiPlatformTablesReady(): Promise<boolean> {
@@ -521,6 +633,36 @@ export async function updateOrg(
 }
 
 export async function seedDefaultModelsIfMissing(): Promise<void> {
+  const hostedOrgId = await resolveHostedOrgId();
+  if (hostedOrgId) {
+    const count = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM ai_platform_models WHERE org_id = $1`,
+      [hostedOrgId],
+    );
+    if (Number(count.rows[0]?.count ?? 0) > 0) return;
+
+    for (const m of DEFAULT_MODELS) {
+      await query(
+        `INSERT INTO ai_platform_models
+         (id, org_id, provider, model, tier, is_default, status, input_price, output_price, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          uuidv4(),
+          hostedOrgId,
+          m.provider,
+          m.model,
+          m.tier,
+          m.isDefault,
+          m.status,
+          m.inputPrice,
+          m.outputPrice,
+          m.notes,
+        ],
+      );
+    }
+    return;
+  }
+
   const count = await query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM ai_platform_models`);
   if (Number(count.rows[0]?.count ?? 0) > 0) return;
 
@@ -553,13 +695,14 @@ export async function createWorkbenchRun(input: {
   status?: string;
 }): Promise<WorkbenchRun> {
   const id = uuidv4();
+  const orgId = (await resolveHostedOrgId()) ?? input.orgId;
   await query(
     `INSERT INTO ai_platform_workbench_runs
      (id, org_id, title, prompt, provider, model, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
     [
       id,
-      input.orgId,
+      orgId,
       input.title?.trim() || 'Untitled run',
       input.prompt,
       input.provider,
@@ -712,20 +855,47 @@ export async function updateAgent(
 }
 
 export async function listSessions(limit = 50): Promise<PlatformSession[]> {
+  if (await usesHostedSessions()) {
+    const orgId = await resolveHostedOrgId();
+    const res = orgId
+      ? await query(
+        `SELECT id, agent_id, title, status, last_activity_at, created_at, metadata_json
+         FROM ai_platform_sessions
+         WHERE org_id = $1
+         ORDER BY last_activity_at DESC
+         LIMIT $2`,
+        [orgId, limit],
+      )
+      : await query(
+        `SELECT id, agent_id, title, status, last_activity_at, created_at, metadata_json
+         FROM ai_platform_sessions
+         ORDER BY last_activity_at DESC
+         LIMIT $1`,
+        [limit],
+      );
+    return res.rows.map((row) => mapSessionRow(row));
+  }
+
   const res = await query(
     `SELECT * FROM ai_platform_sessions ORDER BY started_at DESC LIMIT $1`,
     [limit],
   );
-  return res.rows.map((row) => ({
+  return res.rows.map((row) => mapSessionRow(row));
+}
+
+function mapSessionRow(row: Record<string, unknown>): PlatformSession {
+  const metadata = (row.metadata_json ?? {}) as Record<string, unknown>;
+  const summaryFromMeta = metadata.summary != null ? String(metadata.summary) : null;
+  return {
     id: String(row.id),
     agentId: row.agent_id != null ? String(row.agent_id) : null,
     title: String(row.title),
     status: String(row.status),
-    startedAt: row.started_at as Date,
-    endedAt: row.ended_at as Date | null,
-    summary: row.summary != null ? String(row.summary) : null,
-    metadataJson: (row.metadata_json ?? {}) as Record<string, unknown>,
-  }));
+    startedAt: (row.last_activity_at ?? row.started_at ?? row.created_at) as Date,
+    endedAt: (row.ended_at as Date | null) ?? null,
+    summary: row.summary != null ? String(row.summary) : summaryFromMeta,
+    metadataJson: metadata,
+  };
 }
 
 export async function createSession(input: {
@@ -735,23 +905,29 @@ export async function createSession(input: {
   summary?: string;
 }): Promise<PlatformSession> {
   const id = uuidv4();
-  await query(
-    `INSERT INTO ai_platform_sessions (id, agent_id, title, status, summary)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [id, input.agentId ?? null, input.title, input.status ?? 'open', input.summary ?? null],
-  );
+  if (await usesHostedSessions()) {
+    const orgId = await resolveHostedOrgId();
+    if (!orgId) {
+      throw new Error('No hosted organization found for platform sessions');
+    }
+    const metadataJson = input.summary?.trim()
+      ? { summary: input.summary.trim() }
+      : {};
+    await query(
+      `INSERT INTO ai_platform_sessions (id, org_id, agent_id, title, channel, status, metadata_json)
+       VALUES ($1, $2, $3, $4, 'ops', $5, $6)`,
+      [id, orgId, input.agentId ?? null, input.title, input.status ?? 'open', JSON.stringify(metadataJson)],
+    );
+  } else {
+    await query(
+      `INSERT INTO ai_platform_sessions (id, agent_id, title, status, summary)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [id, input.agentId ?? null, input.title, input.status ?? 'open', input.summary ?? null],
+    );
+  }
+
   const created = await query(`SELECT * FROM ai_platform_sessions WHERE id = $1`, [id]);
-  const row = created.rows[0];
-  return {
-    id: String(row.id),
-    agentId: row.agent_id != null ? String(row.agent_id) : null,
-    title: String(row.title),
-    status: String(row.status),
-    startedAt: row.started_at as Date,
-    endedAt: row.ended_at as Date | null,
-    summary: row.summary != null ? String(row.summary) : null,
-    metadataJson: (row.metadata_json ?? {}) as Record<string, unknown>,
-  };
+  return mapSessionRow(created.rows[0]);
 }
 
 export async function listEnvironments(): Promise<PlatformEnvironment[]> {
@@ -1008,6 +1184,47 @@ export async function recordUsageDaily(input: {
 }
 
 export async function getUsageSummary(days = 30): Promise<UsageSummary> {
+  if (await usesHostedUsageDaily()) {
+    const orgId = await resolveHostedOrgId();
+    if (!orgId) {
+      return {
+        requests: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        cacheHits: 0,
+        batchJobs: 0,
+        estimatedCost: 0,
+        hasData: false,
+      };
+    }
+    const res = await query<{
+      requests: string;
+      tokens_in: string;
+      tokens_out: string;
+      estimated_cost: string;
+    }>(
+      `SELECT
+         COALESCE(SUM(request_count), 0)::text AS requests,
+         COALESCE(SUM(tokens_in), 0)::text AS tokens_in,
+         COALESCE(SUM(tokens_out), 0)::text AS tokens_out,
+         COALESCE(SUM(cost_estimate), 0)::text AS estimated_cost
+       FROM ai_platform_usage_daily
+       WHERE org_id = $1 AND usage_date >= CURRENT_DATE - $2::int`,
+      [orgId, days],
+    );
+    const row = res.rows[0];
+    const requests = Number(row?.requests ?? 0);
+    return {
+      requests,
+      tokensIn: Number(row?.tokens_in ?? 0),
+      tokensOut: Number(row?.tokens_out ?? 0),
+      cacheHits: 0,
+      batchJobs: 0,
+      estimatedCost: Number(row?.estimated_cost ?? 0),
+      hasData: requests > 0,
+    };
+  }
+
   const res = await query<{
     requests: string;
     tokens_in: string;
@@ -1041,6 +1258,10 @@ export async function getUsageSummary(days = 30): Promise<UsageSummary> {
 }
 
 export async function getUsageByProviderModel(days = 30): Promise<UsageDailyRow[]> {
+  if (await usesHostedUsageDaily()) {
+    return [];
+  }
+
   const res = await query(
     `SELECT provider, model,
             SUM(requests)::int AS requests,
@@ -1070,6 +1291,29 @@ export async function getUsageByProviderModel(days = 30): Promise<UsageDailyRow[
 }
 
 export async function getUsageDailyRows(days = 30): Promise<UsageDailyRow[]> {
+  if (await usesHostedUsageDaily()) {
+    const orgId = await resolveHostedOrgId();
+    if (!orgId) return [];
+    const res = await query(
+      `SELECT * FROM ai_platform_usage_daily
+       WHERE org_id = $1 AND usage_date >= CURRENT_DATE - $2::int
+       ORDER BY usage_date DESC`,
+      [orgId, days],
+    );
+    return res.rows.map((row) => ({
+      id: String(row.id),
+      usageDate: String(row.usage_date).slice(0, 10),
+      provider: 'all',
+      model: 'all',
+      requests: Number(row.request_count ?? 0),
+      tokensIn: Number(row.tokens_in),
+      tokensOut: Number(row.tokens_out),
+      cacheHits: 0,
+      batchJobs: 0,
+      estimatedCost: Number(row.cost_estimate ?? 0),
+    }));
+  }
+
   const res = await query(
     `SELECT * FROM ai_platform_usage_daily
      WHERE usage_date >= CURRENT_DATE - $1::int
@@ -1112,6 +1356,18 @@ export async function getPlatformCounts(): Promise<PlatformCounts> {
 }
 
 export async function getSpendThisMonth(): Promise<number> {
+  if (await usesHostedUsageDaily()) {
+    const orgId = await resolveHostedOrgId();
+    if (!orgId) return 0;
+    const res = await query<{ total: string }>(
+      `SELECT COALESCE(SUM(cost_estimate), 0)::text AS total
+       FROM ai_platform_usage_daily
+       WHERE org_id = $1 AND usage_date >= date_trunc('month', CURRENT_DATE)::date`,
+      [orgId],
+    );
+    return Number(res.rows[0]?.total ?? 0);
+  }
+
   const res = await query<{ total: string }>(
     `SELECT COALESCE(SUM(estimated_cost), 0)::text AS total
      FROM ai_platform_usage_daily

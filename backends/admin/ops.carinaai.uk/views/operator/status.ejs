@@ -1,0 +1,47 @@
+<% title = 'Operator status' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Operator status</div>
+      <div class="ops-page-sub">Curator inventory, learning metrics, and kanban card counts.</div>
+    </div>
+    <a href="/operator/status" class="ops-btn ops-btn-ghost">Refresh</a>
+  </div>
+
+  <%- include('_nav') %>
+
+  <p class="ops-status-line" style="margin-top:12px;">Generated <%= new Date(status.generated_at).toLocaleString() %></p>
+
+  <div class="ops-metrics">
+    <div class="ops-metric"><div class="ops-metric-label">Active skills</div><div class="ops-metric-value ok"><%= status.curator.active %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Draft skills</div><div class="ops-metric-value warn"><%= status.curator.draft %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Archived</div><div class="ops-metric-value"><%= status.curator.archived %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Pruned</div><div class="ops-metric-value muted"><%= status.curator.pruned %></div></div>
+  </div>
+
+  <div class="ops-metrics" style="margin-top:12px;">
+    <div class="ops-metric"><div class="ops-metric-label">Learning (24h)</div><div class="ops-metric-value"><%= status.learning.events_last_24h %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Drafts pending</div><div class="ops-metric-value warn"><%= status.learning.drafts_pending %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Promotions (7d)</div><div class="ops-metric-value ok"><%= status.learning.promotions_last_7d %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Last curator run</div><div class="ops-metric-value" style="font-size:13px;"><%= status.learning.last_curator_run_at ? new Date(status.learning.last_curator_run_at).toLocaleString() : 'Never' %></div></div>
+  </div>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <div class="ops-section">
+      <div class="ops-section-title">Kanban columns</div>
+      <p class="ops-section-sub">Operator board card counts by column.</p>
+    </div>
+    <% const kanbanEntries = Object.entries(status.kanban || {}); %>
+    <% if (!kanbanEntries.length) { %>
+      <div class="ops-empty">No kanban cards on the board.</div>
+    <% } else { %>
+      <dl class="ops-kv-grid" style="padding:0 16px 16px;">
+        <% for (const [column, count] of kanbanEntries) { %>
+          <div><dt><%= column %></dt><dd><%= count %></dd></div>
+        <% } %>
+      </dl>
+    <% } %>
+  </div>
+
+  <p class="ops-inline-note" style="margin-top:12px;"><%= status.note %></p>
+</div>

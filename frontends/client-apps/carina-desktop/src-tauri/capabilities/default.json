@@ -23,6 +23,7 @@
     "deep-link:default",
     "fs:default",
     "process:default",
-    "updater:default"
+    "updater:default",
+    "sql:default"
   ]
 }

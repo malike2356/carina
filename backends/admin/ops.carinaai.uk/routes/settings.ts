@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { SCOUT_BASE, SCOUT_CONSOLE_BASE, scoutGet, scoutConsoleGetDetailed, scoutConsolePut, scoutConsolePost } from '../lib/scout.js';
 import { CARINA_BASE, carinaGet, carinaJson, carinaOpsTokenSet, carinaPut } from '../lib/carina.js';
 import { autoPairCarinaFromLocalCore, testCarinaConnection } from '../lib/carina-pairing.js';
-import { coreEnvReadable, resolveCoreEnvPath } from '../lib/core-env.js';
+import { coreEnvReadable, coreEnvSourceLabel } from '../lib/core-env.js';
 import { OPS_ENV_PATH, setEnvVar } from '../lib/env.js';
 
 export const settingsRouter = Router();
@@ -68,7 +68,7 @@ settingsRouter.get('/', async (req, res) => {
     carinaPaired: carinaOpsTokenSet(),
     carinaConnected,
     coreEnvReadable: coreEnvReadable(),
-    coreEnvPath: resolveCoreEnvPath(),
+    coreEnvPath: coreEnvSourceLabel(),
     carinaAutoPairOk: req.query['carina_auto_pair_ok'] === '1',
     carinaAutoPairErr: typeof req.query['carina_auto_pair_err'] === 'string'
       ? req.query['carina_auto_pair_err']

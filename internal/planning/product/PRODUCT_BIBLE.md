@@ -1887,7 +1887,8 @@ Test organization: *.test.ts files co-located with source files.
 - **Commitments**: Agent commitment tracking for accountability.
 - **Compliance Reports**: SOC2, ISO27001, EU AI Act readiness reports.
 - **Context Firewall**: Per-session security firewall for context-level protection.
-- **Playbook**: Hardware-aware model discovery and serve guidance (`carina playbook`, workspace `/playbook`).
+- **Playbook**: Hardware-aware model discovery and serve guidance (`carina playbook`, workspace `/playbook`). Situational paths, scoring, and domain plays when the full playbook engine is enabled.
+- **Cookbook** (internal): Hardware/model catalog module at `src/cookbook/` consumed by Playbook. Not user-facing; deprecated as product language.
 - **Cost Tracker**: Token usage and cost tracking per provider/session.
 - **Credential Pool**: Multi-key rotation for high-throughput API usage.
 - **Credential Vault**: Encrypted credential storage with rotation.

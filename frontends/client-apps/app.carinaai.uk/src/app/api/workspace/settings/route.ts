@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { workspaceSettings } from '@/db/schema';
 import { normalizeAppearance } from '@/lib/appearance';
+import { mergeBrandSettings, normalizeBrandConfig, resolveWorkspaceBrand } from '@/lib/brand';
 import { normalizeBrainSettings, parseBrainSettingsPatch } from '@/lib/brain-settings';
 import {
   canUseTerminal,
@@ -29,11 +30,18 @@ export async function GET() {
   const owner = await isWorkspaceOwner(workspace.id, session.user.id);
   const members = owner ? await listWorkspaceMembers(workspace.id) : [];
   const terminalAllowed = await canUseTerminal(workspace.id, session.user.id);
+  const workspaceBrand = normalizeBrandConfig(settings?.brand ?? {});
+  const resolvedBrand = resolveWorkspaceBrand({
+    workspaceBrand,
+    userColorTokens: settings?.customTheme,
+  });
 
   return NextResponse.json({
     data: settings
       ? {
           ...settings,
+          brand: workspaceBrand,
+          resolvedBrand,
           ...normalizeBrainSettings(settings),
           isOwner: owner,
           canUseTerminal: terminalAllowed,
@@ -41,7 +49,9 @@ export async function GET() {
         }
       : {
           workspaceId: workspace.id,
-          theme: 'dark',
+          theme: 'default',
+          brand: {},
+          resolvedBrand: resolveWorkspaceBrand({}),
           terminalEnabled: true,
           isOwner: owner,
           canUseTerminal: terminalAllowed,
@@ -68,6 +78,7 @@ export async function PATCH(request: Request) {
     terminalEnabled?: boolean;
     memberUserId?: string;
     memberTerminal?: boolean;
+    brand?: unknown;
   };
   const updates: Partial<typeof workspaceSettings.$inferInsert> = { updatedAt: new Date() };
   const brainPatch = parseBrainSettingsPatch(body);
@@ -116,6 +127,17 @@ export async function PATCH(request: Request) {
       ...(typeof body.appearance === 'object' && body.appearance !== null ? body.appearance : {}),
     });
   }
+  if (body.brand !== undefined) {
+    if (!await isWorkspaceOwner(workspace.id, session.user.id)) {
+      return NextResponse.json({ error: 'Only the workspace owner can change brand settings' }, { status: 403 });
+    }
+    const [current] = await db
+      .select({ brand: workspaceSettings.brand })
+      .from(workspaceSettings)
+      .where(eq(workspaceSettings.workspaceId, workspace.id))
+      .limit(1);
+    updates.brand = mergeBrandSettings(current?.brand, body.brand);
+  }
 
   await db
     .insert(workspaceSettings)
@@ -131,6 +153,17 @@ export async function PATCH(request: Request) {
   const response = NextResponse.json({ data: { ok: true } });
   if (updates.theme) {
     response.cookies.set('carina_theme', updates.theme, {
+      maxAge: 60 * 60 * 24 * 365,
+      path: '/',
+      sameSite: 'lax',
+    });
+  }
+  const appearancePatch =
+    typeof body.appearance === 'object' && body.appearance !== null
+      ? (body.appearance as { themeMode?: unknown })
+      : null;
+  if (appearancePatch?.themeMode === 'light' || appearancePatch?.themeMode === 'dark') {
+    response.cookies.set('carina_theme_mode', appearancePatch.themeMode, {
       maxAge: 60 * 60 * 24 * 365,
       path: '/',
       sameSite: 'lax',

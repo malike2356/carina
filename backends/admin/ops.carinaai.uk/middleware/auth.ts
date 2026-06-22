@@ -18,6 +18,10 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
     next();
     return;
   }
+  if (req.path.startsWith('/api/') || req.get('accept')?.includes('application/json')) {
+    res.status(403).json({ ok: false, error: 'Superadmin access required.' });
+    return;
+  }
   res.status(403).render('error', { title: 'Forbidden', message: 'Superadmin access required.' });
 }
 

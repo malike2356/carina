@@ -101,6 +101,12 @@ export {
   listConfiguredSsoProviders,
   DEFAULT_SSO_PROVIDERS,
 } from './sso.js';
+export {
+  buildScoutEvidencePayload,
+  scoutComplianceSyncEnabled,
+  scoutControlsForCarinaId,
+  syncComplianceReportToScout,
+} from './scout-sync.js';
 export { _resetComplianceStoreForTests } from './collector.js';
 export type {
   ComplianceDashboard,

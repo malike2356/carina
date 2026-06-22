@@ -18,6 +18,7 @@ import { NAV_ITEMS, ROUTES } from '../../lib/router-paths.js';
 import WorkspaceSwitcher from '../workspace/WorkspaceSwitcher.js';
 import ScoutWidget from '../scout/ScoutWidget.js';
 import UsagePanel from '../billing/UsagePanel.js';
+import SyncStatusBar from './SyncStatusBar.js';
 import { getWorkspaces } from '../../lib/gateway-client.js';
 import { $workspaces, $activeWorkspace } from '../../store/carina.js';
 
@@ -34,9 +35,10 @@ interface Props {
   onSelectSession: (sessionId: string) => void;
   onCreateSession: () => void;
   onRefreshWorkspaces?: () => void;
+  onSyncNow?: () => void;
 }
 
-export default function AppSidebar({ mode, onSelectSession, onCreateSession, onRefreshWorkspaces }: Props) {
+export default function AppSidebar({ mode, onSelectSession, onCreateSession, onRefreshWorkspaces, onSyncNow }: Props) {
   const sessions = useStore($sessions);
   const currentId = useStore($currentSessionId);
   const status = useStore($gatewayStatus);
@@ -162,6 +164,7 @@ export default function AppSidebar({ mode, onSelectSession, onCreateSession, onR
       </nav>
 
       <div className="p-2 border-t border-zinc-800 space-y-2">
+        <SyncStatusBar compact={collapsed} onSyncNow={onSyncNow} />
         <ScoutWidget
           score={trustScore}
           events={securityEvents}

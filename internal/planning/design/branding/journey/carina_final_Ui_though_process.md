@@ -259,9 +259,9 @@ Trust Verification.
 
 ## Section 6
 
-Cookbook
+Playbook
 
-Use Cookbook screenshot.
+Use Playbook screenshot.
 
 Headline:
 

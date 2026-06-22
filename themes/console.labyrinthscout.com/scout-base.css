@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import './scout-vars.css';
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.dark body {
+  font-family: var(--sans);
+  color: var(--text);
+  line-height: 1.55;
+  min-height: 100vh;
+}
+
+.dark a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+.dark a:hover {
+  color: var(--green);
+}
+
+.dark code {
+  font-family: var(--mono);
+  background: color-mix(in srgb, var(--background) 75%, black);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  padding: 2px 7px;
+  font-size: 0.82em;
+  color: var(--cyan);
+}

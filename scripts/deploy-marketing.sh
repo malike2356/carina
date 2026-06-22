@@ -43,9 +43,9 @@ build_carina_docs() {
   (
     cd "${REPO_ROOT}/marketing/docs/docs.carinaai.uk"
     CARINA_DOCS_MARKETING=1 pnpm build
-    rm -rf "${REPO_ROOT}/marketing/sites/carinaai.uk/docs"
-    cp -a build "${REPO_ROOT}/marketing/sites/carinaai.uk/docs"
-    mirror_docs_clean_urls "${REPO_ROOT}/marketing/sites/carinaai.uk/docs"
+    rm -rf "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
+    cp -a build "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
+    mirror_docs_clean_urls "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
   )
 }
 
@@ -54,9 +54,9 @@ build_scout_docs() {
   (
     cd "${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
     VP_BASE=/docs/ pnpm docs:build
-    rm -rf "${REPO_ROOT}/marketing/sites/labyrinthscout.com/docs"
-    cp -a docs/.vitepress/dist "${REPO_ROOT}/marketing/sites/labyrinthscout.com/docs"
-    mirror_docs_clean_urls "${REPO_ROOT}/marketing/sites/labyrinthscout.com/docs"
+    rm -rf "${REPO_ROOT}/frontends/marketing/labyrinthscout.com/docs"
+    cp -a docs/.vitepress/dist "${REPO_ROOT}/frontends/marketing/labyrinthscout.com/docs"
+    mirror_docs_clean_urls "${REPO_ROOT}/frontends/marketing/labyrinthscout.com/docs"
   )
 }
 
@@ -90,17 +90,19 @@ main() {
   case "$target" in
     carina)
       build_carina_docs
-      deploy_site "carinaai.uk" "${REPO_ROOT}/marketing/sites/carinaai.uk" "/www/wwwroot/carinaai.uk"
+      deploy_site "carinaai.uk" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
+      deploy_site "carinaai.uk-docker" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
       ;;
     scout)
       build_scout_docs
-      deploy_site "labyrinthscout.com" "${REPO_ROOT}/marketing/sites/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
+      deploy_site "labyrinthscout.com" "${REPO_ROOT}/frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
     all)
       build_carina_docs
       build_scout_docs
-      deploy_site "carinaai.uk" "${REPO_ROOT}/marketing/sites/carinaai.uk" "/www/wwwroot/carinaai.uk"
-      deploy_site "labyrinthscout.com" "${REPO_ROOT}/marketing/sites/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
+      deploy_site "carinaai.uk" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
+      deploy_site "carinaai.uk-docker" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
+      deploy_site "labyrinthscout.com" "${REPO_ROOT}/frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
     *)
       die "Usage: bash scripts/deploy-marketing.sh [carina|scout|all]"

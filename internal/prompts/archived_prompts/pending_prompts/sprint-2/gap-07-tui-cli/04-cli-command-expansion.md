@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- 49 registered CLI commands across all command groups
+- `completion-metadata.ts` with full command/alias/flag definitions
+- All commands registered in `src/cli/registry.ts`
+
 # Gap 07 - Prompt 04: CLI Command Expansion
 
 **Agent:** Claude Code (fallback: Codex)

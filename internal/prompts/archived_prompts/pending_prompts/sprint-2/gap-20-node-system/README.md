@@ -1,3 +1,7 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** Node protocol, canvas host, peripheral tools, device trust challenge flow. Server-side complete; mobile Canvas and native camera/screen/location handlers are follow-up client work.
+
 # Gap 20 - Node System & Device Architecture
 
 **Gap:** 20

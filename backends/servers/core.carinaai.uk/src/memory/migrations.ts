@@ -6,6 +6,7 @@ import { PROFILE_ISOLATION_MIGRATION } from '../profiles/isolation-persistence.j
 import { SCOUT_INVESTIGATIONS_MIGRATION } from '../integrations/scout-investigations-persistence.js';
 import { USER_MODEL_MIGRATION } from './user-model-store.js';
 import { STANDING_ORDERS_MIGRATION } from '../agents/standing-orders-types.js';
+import { IDENTITY_LINKS_MIGRATION } from '../gateway/identity-links-types.js';
 
 const TABLES = `
 CREATE EXTENSION IF NOT EXISTS vector;
@@ -686,6 +687,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(STANDING_ORDERS_MIGRATION);
   } catch {
     // standing orders table may already exist
+  }
+  try {
+    await client.query(IDENTITY_LINKS_MIGRATION);
+  } catch {
+    // identity links table may already exist
   }
   try {
     await client.query(SCOUT_INVESTIGATIONS_MIGRATION);

@@ -1,5 +1,9 @@
 # Prompt 05: Offline Sync for Memory and Sessions
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** See `archived_prompts/pending_prompts/sprint-2/gap-04-desktop/07-offline-sync.md`.
+
 
 ## Post-build (MANDATORY)
 

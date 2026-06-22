@@ -44,6 +44,7 @@ import {
 import { getTokenTracker, maybeTokenSpendAlert } from './token-tracker.js';
 import { getSteerHandler } from './steer-handler.js';
 import { buildStandingOrdersSection } from './standing-orders-store.js';
+import { buildLinkedIdentitiesSection } from '../gateway/session-identity-prefs.js';
 import {
   clearThinkingRequestExtras,
   setThinkingRequestExtras,
@@ -275,6 +276,8 @@ export class CarinaAgent {
       pushPromptTier(tiers, 'context', ...context);
       const standingOrders = await buildStandingOrdersSection('*');
       if (standingOrders) pushPromptTier(tiers, 'context', standingOrders);
+      const linkedIdentities = await buildLinkedIdentitiesSection(this.sessionId);
+      if (linkedIdentities) pushPromptTier(tiers, 'context', linkedIdentities);
       pushPromptTier(tiers, 'context', buildSurfaceContext(this.platform));
       if (isCasualMessage(userMessage)) {
         pushPromptTier(tiers, 'context', buildCasualMessageContext());

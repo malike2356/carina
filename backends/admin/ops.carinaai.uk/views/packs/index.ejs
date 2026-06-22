@@ -36,7 +36,7 @@
         <span class="ops-inline-note">Uncheck all for general-purpose mode (no optional packs).</span>
       </div>
     </form>
-  <% } else if (paired && !available.length) { %>
+  <% } else if (paired && !error && !available.length) { %>
     <div class="ops-empty">No bundled skill packs reported by core.</div>
   <% } %>
 

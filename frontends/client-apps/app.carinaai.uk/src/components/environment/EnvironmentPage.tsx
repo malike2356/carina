@@ -34,7 +34,21 @@ type EnvironmentSummary = {
 type EnvResponse = {
   environment?: EnvironmentSummary;
   error?: string;
+  warning?: string;
+  source?: string;
 };
+
+async function readApiJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text.trim()) {
+    throw new Error(`Server returned an empty response (HTTP ${res.status}).`);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Server returned invalid JSON (HTTP ${res.status}).`);
+  }
+}
 
 function severityClass(severity: 'ok' | 'warn' | 'fail'): string {
   if (severity === 'fail') return 'text-danger';
@@ -52,16 +66,21 @@ export function EnvironmentPage() {
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState('');
 
+  const [warning, setWarning] = useState('');
+
   async function load() {
     setLoading(true);
     setError('');
+    setWarning('');
     try {
       const res = await fetch('/api/env', { cache: 'no-store' });
-      const data = (await res.json()) as EnvResponse;
+      const data = await readApiJson<EnvResponse>(res);
       if (!res.ok) throw new Error(data.error ?? 'Unable to load environment summary');
       setEnvironment(data.environment ?? null);
+      setWarning(data.warning ?? '');
     } catch (err) {
       setEnvironment(null);
+      setWarning('');
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
@@ -86,7 +105,7 @@ export function EnvironmentPage() {
     setError('');
     try {
       const res = await fetch('/api/env/reload', { method: 'POST' });
-      const data = (await res.json()) as EnvResponse & { ok?: boolean };
+      const data = await readApiJson<EnvResponse & { ok?: boolean }>(res);
       if (!res.ok) throw new Error(data.error ?? 'Unable to reload environment');
       await load();
     } catch (err) {
@@ -126,6 +145,7 @@ export function EnvironmentPage() {
             </button>
           </div>
         </div>
+        {warning ? <p className="mt-2 text-xs text-amber-400">{warning}</p> : null}
         {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
       </header>
 

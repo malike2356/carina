@@ -63,8 +63,10 @@ Names of features, panels, modes, and capabilities that users see in UI or docs.
 | OpenClaw | ClawHub | CarinaHub (done) |
 | OpenClaw | Doctor --fix | `carina doctor` (keep command, rewrite all output) |
 | OpenClaw | Live Canvas | Artifact Canvas / Canvas |
-| Odysseus | Cookbook | Playbooks (or evaluate a Carina name) |
+| Odysseus | Cookbook | Playbook |
 | Odysseus | Deep Research | Research mode |
+
+**Playbook** is the Carina user-facing term for hardware-aware model discovery and situational decision paths. **Cookbook** (`src/cookbook/`) is internal implementation only; never ship it in UI, docs, or CLI help.
 
 ---
 

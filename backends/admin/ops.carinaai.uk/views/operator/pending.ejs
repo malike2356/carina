@@ -1,0 +1,101 @@
+<% title = 'Learning pending review' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Learning pending review</div>
+      <div class="ops-page-sub">Draft skills from the learning pipeline. Review, edit, promote to active, or archive.</div>
+    </div>
+  </div>
+
+  <%- include('_nav') %>
+
+  <% if (typeof flash === 'string' && flash === 'promoted') { %>
+    <div class="ops-flash success">Draft promoted to active.</div>
+  <% } %>
+  <% if (typeof flash === 'string' && flash === 'archived') { %>
+    <div class="ops-flash warn">Draft archived.</div>
+  <% } %>
+  <% if (typeof flash === 'string' && flash === 'missing') { %>
+    <div class="ops-flash error">Draft not found or already processed.</div>
+  <% } %>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <div class="ops-section">
+      <div class="ops-section-title">Draft skills (<%= drafts.length %>)</div>
+      <p class="ops-section-sub">Auto-writer drafts wait here until an operator promotes them or the curator archives unused drafts after 14 days.</p>
+    </div>
+
+    <% if (!drafts.length) { %>
+      <div class="ops-empty">No draft skills pending review.</div>
+    <% } else { %>
+      <div class="ops-draft-list">
+        <% for (const d of drafts) { %>
+          <article class="ops-draft-card">
+            <div class="ops-draft-head">
+              <div>
+                <div class="ops-draft-name"><%= d.skill_name %></div>
+                <div class="ops-draft-meta">
+                  Updated <%= new Date(d.updated_at).toLocaleString() %>
+                  <span class="ops-pill draft">draft</span>
+                </div>
+              </div>
+              <div class="ops-draft-actions">
+                <a href="/skills/<%= d.skill_id %>" class="ops-btn ops-btn-ghost">Edit</a>
+                <form method="post" action="/operator/learning/pending/<%= d.skill_id %>/promote" style="display:inline;">
+                  <button type="submit" class="ops-btn ops-btn-green" onclick="return confirm('Promote <%= d.skill_name %> to active?')">Promote</button>
+                </form>
+                <form method="post" action="/operator/learning/pending/<%= d.skill_id %>/archive" style="display:inline;">
+                  <button type="submit" class="ops-btn ops-btn-ghost" onclick="return confirm('Archive draft <%= d.skill_name %>?')">Archive</button>
+                </form>
+              </div>
+            </div>
+            <p class="ops-draft-desc"><%= d.description %></p>
+            <dl class="ops-kv-grid ops-draft-stats">
+              <div><dt>Usage</dt><dd><%= d.usage_count %></dd></div>
+              <div><dt>Success</dt><dd><%= d.success_count %></dd></div>
+              <div><dt>Failure</dt><dd><%= d.failure_count %></dd></div>
+              <div><dt>Skill ID</dt><dd><code class="ops-code-inline"><%= d.skill_id %></code></dd></div>
+            </dl>
+          </article>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <div class="ops-section">
+      <div class="ops-section-title">Recent corrections</div>
+      <p class="ops-section-sub">Conflict resolutions, refinements, and preference learning from the last 30 events.</p>
+    </div>
+    <% if (!recent_corrections.length) { %>
+      <div class="ops-empty">No recent corrections.</div>
+    <% } else { %>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Event</th>
+              <th>Skill</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const e of recent_corrections) { %>
+              <tr>
+                <td><%= new Date(e.created_at).toLocaleString() %></td>
+                <td><span class="ops-pill neutral"><%= e.event_type.replace(/_/g, ' ') %></span></td>
+                <td>
+                  <% if (e.skill_id) { %>
+                    <a href="/skills/<%= e.skill_id %>" class="ops-link"><%= e.skill_name || e.skill_id.slice(0, 8) %></a>
+                  <% } else { %>
+                    <span class="ops-muted-inline"><%= e.skill_name || '-' %></span>
+                  <% } %>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>

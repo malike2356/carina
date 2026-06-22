@@ -68,3 +68,9 @@ Summary for agents:
 - **Deploy ops:** run `pnpm build` in ops first; production uses `docker/Dockerfile.runtime` (pre-built `dist/`)
 - **Deploy Scout console:** build Docker image from `$APPS_ROOT` (monorepo context), not from inside `console.labyrinthscout.com/` alone
 - **Env:** set `SCOUT_ACCOUNT_PUBLIC_URL` in ops `.env` for Scout password setup links
+
+## Terminology: Playbook vs Cookbook
+
+**Playbook** is the user-facing product term: situational decision engine, hardware-aware model discovery, workspace `/playbook`, CLI `carina playbook`.
+
+**Cookbook** is an internal implementation label only (`src/cookbook/`, `cookbook-api.ts`). Do not use it in operator-facing copy, docs, or UI. `carina cookbook` may remain as a deprecated CLI alias with a brief notice pointing to `carina playbook`.

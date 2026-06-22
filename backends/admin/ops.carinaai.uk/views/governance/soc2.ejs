@@ -5,8 +5,25 @@
     <div class="ops-page-title">SOC2 Compliance</div>
     <div class="ops-page-sub">Trust Service Criteria posture across Security, Availability, Confidentiality, Processing Integrity, and Privacy.</div>
   </div>
-  <button onclick="loadSoc2()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+  <div style="display:flex;gap:8px;">
+    <form method="post" action="/governance/soc2/sync" style="margin:0;">
+      <input type="hidden" name="refresh" value="1">
+      <button type="submit" class="ops-btn" style="padding:5px 12px;">Sync evidence</button>
+    </form>
+    <button onclick="loadSoc2()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+  </div>
 </div>
+
+<% if (typeof query !== 'undefined' && query.synced === '1') { %>
+  <div class="ops-flash ok" style="margin-bottom:12px;">
+    Synced <%= query.inserted || '0' %> evidence row(s) across <%= query.controls || '0' %> Scout control(s).
+  </div>
+<% } %>
+<% if (typeof query !== 'undefined' && query.sync_error) { %>
+  <div class="ops-flash error" style="margin-bottom:12px;">
+    Sync failed: <%= query.sync_error %>
+  </div>
+<% } %>
 
 <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
   <div class="ops-card" style="text-align:center;">
@@ -59,7 +76,7 @@ function loadSoc2() {
       document.getElementById('soc2-body').innerHTML = controls.slice(0, 100).map(function(c) {
         var clr = c.covered ? 'ops-badge-green' : 'ops-badge-amber';
         return '<tr><td style="font-family:monospace;font-size:10px;color:var(--cyan);">' + esc(c.controlId || c.id || c.control_id || '-') + '</td>' +
-          '<td>' + esc(c.category || '-') + '</td>' +
+          '<td>' + esc(c.criteriaGroup || c.category || '-') + '</td>' +
           '<td>' + esc((c.name || c.description || c.title || '-').slice(0, 70)) + '</td>' +
           '<td><span class="ops-badge ' + clr + '">' + esc(c.covered ? 'pass' : 'pending') + '</span></td>' +
           '<td style="color:var(--muted);font-size:10px;">' + esc(c.evidenceCount != null ? String(c.evidenceCount) + ' evidence item(s)' : '-') + '</td></tr>';

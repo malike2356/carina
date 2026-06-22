@@ -11,11 +11,81 @@ import {
   ScoutCliConfigError,
 } from './scout-findings-cli.js';
 
+import {
+  formatScoutProductCliError,
+  runScoutAgentsCommand,
+  runScoutAlertsCommand,
+  runScoutComplianceCommand,
+  runScoutFindingDetailCommand,
+  runScoutScoreCommand,
+  runScoutTargetsCommand,
+} from './scout-product-cli.js';
+
 export async function runScoutCommand(args: string[]): Promise<void> {
   loadLocalEnv();
   const action = args[0] ?? 'status';
   const scoutUrl = process.env.SCOUT_API_URL ?? process.env.SCOUT_BASE_URL ?? process.env.LABYRINTH_URL ?? process.env.LABYRINTH_SCOUT_URL ?? 'http://localhost:4444';
   const enabled = process.env.LABYRINTH_ENABLED === 'true' || process.env.SCOUT_ENABLED === 'true';
+
+  if (action === 'score') {
+    try {
+      await runScoutScoreCommand(args.slice(1));
+    } catch (err) {
+      console.error(chalk.red(formatScoutProductCliError(err)));
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (action === 'targets') {
+    try {
+      await runScoutTargetsCommand(args.slice(1));
+    } catch (err) {
+      console.error(chalk.red(formatScoutProductCliError(err)));
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (action === 'findings' && args[1] && !args[1].startsWith('--')) {
+    try {
+      await runScoutFindingDetailCommand(args.slice(1));
+    } catch (err) {
+      console.error(chalk.red(formatScoutProductCliError(err)));
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (action === 'agents') {
+    try {
+      await runScoutAgentsCommand(args.slice(1));
+    } catch (err) {
+      console.error(chalk.red(formatScoutProductCliError(err)));
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (action === 'alerts') {
+    try {
+      await runScoutAlertsCommand(args.slice(1));
+    } catch (err) {
+      console.error(chalk.red(formatScoutProductCliError(err)));
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (action === 'compliance') {
+    try {
+      await runScoutComplianceCommand(args.slice(1));
+    } catch (err) {
+      console.error(chalk.red(formatScoutProductCliError(err)));
+      process.exit(1);
+    }
+    return;
+  }
 
   if (action === 'pull') {
     try {
@@ -132,7 +202,7 @@ export async function runScoutCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina scout <status|connect|pull|investigate|watch|deep-scan|report|enable|test|pair>');
+  console.error('Usage: carina scout <status|connect|pull|investigate|watch|deep-scan|report|score|targets|findings|agents|alerts|compliance|enable|test|pair>');
   process.exit(1);
 }
 

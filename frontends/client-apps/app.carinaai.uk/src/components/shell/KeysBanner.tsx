@@ -17,11 +17,12 @@ export function KeysBanner() {
       return;
     }
 
-    fetch('/api/keys')
+    fetch('/api/chat/health')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        const keys = Array.isArray(data?.data) ? data.data : [];
-        setVisible(keys.length === 0);
+        if (!data) return;
+        const needsByok = !data.hasKeys && !data.proxyEnabled;
+        setVisible(Boolean(needsByok));
       })
       .catch(() => {})
       .finally(() => setLoading(false));

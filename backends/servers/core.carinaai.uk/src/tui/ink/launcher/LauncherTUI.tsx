@@ -5,6 +5,7 @@ import { LauncherFooter } from './LauncherFooter.js';
 import { StatusColumn } from './StatusColumn.js';
 import { QuickActionsColumn } from './QuickActionsColumn.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
+import { loadTuiLauncherData } from './launcher-data.js';
 
 interface Props {
   version: string;
@@ -28,12 +29,6 @@ interface RecentProject {
   lastActivityAgo: string;
 }
 
-function formatUptime(secs: number): string {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  return `${h}h ${m}m`;
-}
-
 export function LauncherTUI({ version, onLaunchChat }: Props) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
@@ -52,20 +47,16 @@ export function LauncherTUI({ version, onLaunchChat }: Props) {
   const [projects, setProjects] = useState<RecentProject[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setStatus({
-        model:    'claude-sonnet-4-6',
-        memory:   'local',
-        scout:    'not paired',
-        channels: '0 active',
-        skills:   '0 loaded',
-        latency:  '< 200ms',
-        sessions: '0 running',
-        uptime:   formatUptime(process.uptime()),
-      });
-      setProjects([]);
-    }, 200);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    void loadTuiLauncherData(true).then((data) => {
+      if (cancelled) return;
+      setStatus(data.status);
+      setProjects(data.projects);
+    }).catch(() => {
+      if (cancelled) return;
+      setStatus((prev) => ({ ...prev, model: 'unavailable' }));
+    });
+    return () => { cancelled = true; };
   }, []);
 
   useInput((input, key) => {

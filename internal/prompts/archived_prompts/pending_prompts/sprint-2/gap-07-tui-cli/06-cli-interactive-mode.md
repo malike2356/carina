@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `carina` with no args drops into interactive REPL mode
+- Multi-turn conversation loop with session persistence
+- `/exit`, `/clear`, `/model`, `/help` slash commands inside REPL
+
 # Gap 07 - Prompt 06: CLI Interactive Mode
 
 **Agent:** Claude Code (fallback: Cursor)

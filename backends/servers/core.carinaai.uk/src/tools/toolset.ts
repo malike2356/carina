@@ -216,6 +216,18 @@ export const TOOLSET_MAP: Record<string, string[]> = {
     'disk-usage',
     'hex-encode',
   ],
+  node: [
+    'node_canvas_render',
+    'canvas_push',
+    'node_camera_capture',
+    'camera_capture',
+    'node_location_get',
+    'location_get',
+    'location_watch',
+    'location_watch_stop',
+    'node_screen_record',
+    'screen_record',
+  ],
 };
 
 export const TOOLSET_NAMES = [
@@ -238,6 +250,7 @@ export const TOOLSET_NAMES = [
   'content',
   'ops',
   'utilities',
+  'node',
 ] as const;
 
 export function resolveToolset(toolsets: string[]): string[] {

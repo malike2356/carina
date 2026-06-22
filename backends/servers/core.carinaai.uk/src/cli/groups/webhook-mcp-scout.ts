@@ -421,5 +421,78 @@ export const scoutGroup: CommandGroup = {
         await runSecurityCommand(['audit', ...(ctx.json ? ['--json'] : [])]);
       },
     },
+    {
+      name: 'score',
+      description: 'Show Scout Score from Scout Engine API',
+      options: ['--json', '--days <n>'],
+      handler: async (ctx: GroupContext) => {
+        const { runScoutScoreCommand, formatScoutProductCliError } = await import('../commands/scout-product-cli.js');
+        try {
+          await runScoutScoreCommand(ctx.positional.length ? ctx.positional : ['current', ...ctx.rawArgs.filter((a) => a.startsWith('--'))]);
+        } catch (err) {
+          console.error(chalk.red(formatScoutProductCliError(err)));
+          process.exit(1);
+        }
+      },
+    },
+    {
+      name: 'targets',
+      description: 'Manage Scout scan targets',
+      usage: 'carina scout targets <list|add|scan> [args]',
+      options: ['--json', '--schedule <cadence>', '--fast'],
+      handler: async (ctx: GroupContext) => {
+        const { runScoutTargetsCommand, formatScoutProductCliError } = await import('../commands/scout-product-cli.js');
+        try {
+          await runScoutTargetsCommand([...ctx.positional, ...ctx.rawArgs.filter((a) => a.startsWith('--'))]);
+        } catch (err) {
+          console.error(chalk.red(formatScoutProductCliError(err)));
+          process.exit(1);
+        }
+      },
+    },
+    {
+      name: 'agents',
+      description: 'List connected Scout-monitored agents',
+      options: ['--json'],
+      handler: async (ctx: GroupContext) => {
+        const { runScoutAgentsCommand, formatScoutProductCliError } = await import('../commands/scout-product-cli.js');
+        try {
+          await runScoutAgentsCommand(ctx.rawArgs.filter((a) => a !== 'agents'));
+        } catch (err) {
+          console.error(chalk.red(formatScoutProductCliError(err)));
+          process.exit(1);
+        }
+      },
+    },
+    {
+      name: 'alerts',
+      description: 'List or test Scout alert rules',
+      usage: 'carina scout alerts <list|test> [rule-id]',
+      options: ['--json'],
+      handler: async (ctx: GroupContext) => {
+        const { runScoutAlertsCommand, formatScoutProductCliError } = await import('../commands/scout-product-cli.js');
+        try {
+          await runScoutAlertsCommand([...ctx.positional, ...ctx.rawArgs.filter((a) => a.startsWith('--'))]);
+        } catch (err) {
+          console.error(chalk.red(formatScoutProductCliError(err)));
+          process.exit(1);
+        }
+      },
+    },
+    {
+      name: 'compliance',
+      description: 'Show or export Scout compliance score',
+      usage: 'carina scout compliance [export]',
+      options: ['--json'],
+      handler: async (ctx: GroupContext) => {
+        const { runScoutComplianceCommand, formatScoutProductCliError } = await import('../commands/scout-product-cli.js');
+        try {
+          await runScoutComplianceCommand([...ctx.positional, ...ctx.rawArgs.filter((a) => a.startsWith('--'))]);
+        } catch (err) {
+          console.error(chalk.red(formatScoutProductCliError(err)));
+          process.exit(1);
+        }
+      },
+    },
   ],
 };

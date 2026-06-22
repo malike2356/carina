@@ -12,6 +12,11 @@ export function safeCallbackUrl(raw: unknown, fallback = '/'): string {
 
 export function loginRedirectTarget(callbackUrl: unknown, uiVersion: string): string {
   const target = safeCallbackUrl(callbackUrl);
-  if (target === '/') return `/?v=${encodeURIComponent(uiVersion)}`;
+  if (target === '/') return hrefWithUiVersion('/', uiVersion);
   return target;
+}
+
+export function hrefWithUiVersion(href: string, uiVersion: string): string {
+  if (!uiVersion) return href;
+  return href + (href.includes('?') ? '&' : '?') + `v=${encodeURIComponent(uiVersion)}`;
 }

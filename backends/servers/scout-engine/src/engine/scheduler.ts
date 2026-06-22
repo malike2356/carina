@@ -95,7 +95,10 @@ export async function scheduleNextScan(targetId: string): Promise<void> {
 }
 
 /** Trigger an immediate scan for a target (manual trigger) */
-export async function triggerManualScan(targetId: string): Promise<string> {
+export async function triggerManualScan(
+  targetId: string,
+  options: { fastMode?: boolean } = {},
+): Promise<string> {
   const target = await db('targets').where({ id: targetId }).first();
   if (!target) throw new Error('Target not found');
   if (!target.enabled) throw new Error('Target is disabled');
@@ -108,13 +111,13 @@ export async function triggerManualScan(targetId: string): Promise<string> {
     })
     .returning('*');
 
-  // Fire and forget
   runScan({
     scanRunId: scanRun.id,
     targetId: target.id,
     workspaceId: target.workspace_id,
     targetValue: target.value,
     targetType: target.type,
+    fastMode: options.fastMode,
   }).catch(err => {
     console.error(`[Scheduler] Manual scan failed for target ${target.id}:`, err.message);
     db('scan_runs').where({ id: scanRun.id }).update({

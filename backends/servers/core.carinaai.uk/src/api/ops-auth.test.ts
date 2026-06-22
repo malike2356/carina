@@ -15,4 +15,12 @@ describe('ops-auth', () => {
     ).toBe(true);
     delete process.env.CARINA_OPS_TOKEN;
   });
+
+  it('accepts x-internal-key ops tokens', () => {
+    process.env.CARINA_OPS_TOKEN = 'secret-token';
+    expect(
+      authorizeOps({ headers: { 'x-internal-key': 'secret-token' } }),
+    ).toBe(true);
+    delete process.env.CARINA_OPS_TOKEN;
+  });
 });

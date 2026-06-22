@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `node-protocol.ts` capability types, hello/command/response messages
+- Enhanced `ws-server.ts`, `node-ws-hub.ts`, `node-host-server.ts` with protocol dispatch
+- Node agent tools and `carina nodes` CLI commands
+
 # Gap 20 - Prompt 01: Node WebSocket Protocol & Capability Advertisement
 
 **Gap:** 20 Node System & Device Architecture

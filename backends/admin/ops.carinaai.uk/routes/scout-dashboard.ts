@@ -7,6 +7,7 @@ import {
   scoutHeaders,
   scoutConsoleGetDetailed,
   scoutConsolePost,
+  resolveScoutProxyBase,
 } from '../lib/scout.js';
 
 export const scoutDashboardRouter = Router();
@@ -85,19 +86,6 @@ function appendOperatorInstanceId(url: string): string {
   if (!instanceId || url.includes('instance_id=')) return url;
   const sep = url.includes('?') ? '&' : '?';
   return `${url}${sep}instance_id=${encodeURIComponent(instanceId)}`;
-}
-
-function scoutProxyBase(pathname: string): string {
-  if (
-    pathname === '/api/admin/status'
-    || pathname === '/api/events'
-    || pathname === '/api/stream'
-    || pathname.startsWith('/api/kill')
-    || pathname.startsWith('/api/resume')
-  ) {
-    return SCOUT_BASE;
-  }
-  return SCOUT_CONSOLE_BASE;
 }
 
 function dashboardOriginalPath(req: import('express').Request): string {
@@ -324,7 +312,7 @@ scoutDashboardRouter.post('/accounts/:id/reset-api-key', async (req, res) => {
 
 async function proxyToScout(req: import('express').Request, res: import('express').Response): Promise<void> {
   const suffix = req.url.startsWith('/') ? req.url : `/${req.url}`;
-  const base = scoutProxyBase(suffix);
+  const base = resolveScoutProxyBase(suffix, SCOUT_BASE, SCOUT_CONSOLE_BASE);
   const targetUrl = appendOperatorInstanceId(appendOperatorAccountId(`${base}${suffix}`));
   const headers = new Headers(scoutHeaders());
   const incoming = req.headers['content-type'];

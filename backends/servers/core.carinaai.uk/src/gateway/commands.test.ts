@@ -1,5 +1,30 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleGatewayCommand, handleGatewayCommandAsync } from './commands.js';
+import {
+  clearSessionIdentityForTests,
+  ensureSessionIdentity,
+} from './session-identity-prefs.js';
+
+vi.mock('./identity-resolver.js', () => ({
+  identityLinksEnabled: () => true,
+  getIdentityResolver: () => ({
+    resolve: vi.fn().mockResolvedValue('usr_test'),
+    getIdentities: vi.fn().mockResolvedValue([
+      {
+        channel: 'telegram',
+        channelUserId: 'tg-1',
+        displayName: '@alice',
+        isPrimary: true,
+      },
+    ]),
+    link: vi.fn().mockResolvedValue(undefined),
+    resolveToChannel: vi.fn().mockResolvedValue(null),
+  }),
+}));
+
+afterEach(() => {
+  clearSessionIdentityForTests();
+});
 
 describe('gateway help command', () => {
   it('includes the capabilities docs link', () => {
@@ -56,5 +81,38 @@ describe('gateway help command', () => {
     const off = await handleGatewayCommandAsync('/plan off', ctx);
     expect(off.handled).toBe(true);
     if (off.handled) expect(off.reply).toContain('Plan mode OFF');
+  });
+
+  it('handles /identity share off', async () => {
+    ensureSessionIdentity('sess-id', 'usr_test', {
+      channel: 'telegram',
+      conversationId: 'chat-1',
+    });
+    const result = await handleGatewayCommandAsync('/identity share off', {
+      sessionId: 'sess-id',
+      channel: 'telegram',
+      channelUserId: 'tg-1',
+    });
+    expect(result.handled).toBe(true);
+    if (result.handled) {
+      expect(result.reply).toContain('disabled');
+    }
+  });
+
+  it('lists linked identities via /link', async () => {
+    ensureSessionIdentity('sess-link', 'usr_test', {
+      channel: 'telegram',
+      conversationId: 'chat-1',
+    });
+    const result = await handleGatewayCommandAsync('/link', {
+      sessionId: 'sess-link',
+      channel: 'telegram',
+      channelUserId: 'tg-1',
+    });
+    expect(result.handled).toBe(true);
+    if (result.handled) {
+      expect(result.reply).toContain('Linked identities');
+      expect(result.reply).toContain('telegram');
+    }
   });
 });

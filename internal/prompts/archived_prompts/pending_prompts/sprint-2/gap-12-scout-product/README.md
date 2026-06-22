@@ -1,7 +1,11 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** Scout engine core, score engine, dashboard, alerting, agent monitoring, reporting, REST API (auth, rate limit, OpenAPI), onboarding wizard, Carina CLI product subcommands, workspace timezone fix for dangerous_hours.
+
 # Gap 12; Scout: The Product Users Want & Need
 
 **Date:** 2026-06-19
-**Status:** Prompts written. Implementation pending.
+**Status:** COMPLETED 2026-06-21
 **Scope:** Everything Scout needs to become a product users seek out, subscribe to, and refuse to leave.
 
 ---

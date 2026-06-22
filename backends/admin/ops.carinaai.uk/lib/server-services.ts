@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import { existsSync } from 'fs';
 import { promisify } from 'util';
 
 const exec = promisify(execFile);
@@ -11,21 +12,59 @@ export interface ServiceInfo {
   status: ServiceStatus;
   detail?: string;
   containerId?: string;
+  project?: string;
 }
 
 const ALLOWED_SYSTEMD = ['php8.3-fpm'] as const;
+const DEFAULT_DOCKER_PROJECTS = ['corecarinaaiuk', 'scout'] as const;
 
-async function nsenter(args: string[]): Promise<string> {
-  const { stdout } = await exec('nsenter', [
-    '--target',
-    '1',
-    '--mount',
-    '--uts',
-    '--ipc',
-    '--pid',
-    '--',
-    ...args,
-  ]);
+function execMessage(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const withMeta = err as { message?: string; stderr?: string | Buffer; stdout?: string | Buffer };
+    const stderr = withMeta.stderr ? String(withMeta.stderr).trim() : '';
+    const stdout = withMeta.stdout ? String(withMeta.stdout).trim() : '';
+    if (stderr) return stderr;
+    if (stdout) return stdout;
+    if (withMeta.message) return withMeta.message;
+  }
+  return err instanceof Error ? err.message : 'Command failed';
+}
+
+function normalizeContainerName(name: string): string {
+  return name.replace(/^\//, '');
+}
+
+function getAllowedDockerProjects(): string[] {
+  const raw = process.env.OPS_DOCKER_PROJECTS ?? process.env.CARINA_DOCKER_PROJECTS ?? '';
+  const projects = raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return projects.length ? projects : [...DEFAULT_DOCKER_PROJECTS];
+}
+
+function isAllowedDockerContainer(name: string, project: string, allowedProjects: string[]): boolean {
+  if (allowedProjects.includes(project)) return true;
+  return allowedProjects.some((prefix) => name === prefix || name.startsWith(`${prefix}-`));
+}
+
+async function runOnHost(command: string, args: string[]): Promise<string> {
+  if (existsSync('/.dockerenv')) {
+    const { stdout } = await exec('nsenter', [
+      '--target',
+      '1',
+      '--mount',
+      '--uts',
+      '--ipc',
+      '--pid',
+      '--',
+      command,
+      ...args,
+    ]);
+    return stdout;
+  }
+
+  const { stdout } = await exec(command, args);
   return stdout;
 }
 
@@ -34,7 +73,7 @@ export async function getSystemdStatus(service: string): Promise<ServiceInfo> {
     return { name: service, type: 'systemd', status: 'unknown', detail: 'Not in allowlist' };
   }
   try {
-    const out = await nsenter(['systemctl', 'is-active', service]);
+    const out = await runOnHost('systemctl', ['is-active', service]);
     const active = out.trim();
     const status: ServiceStatus =
       active === 'active'
@@ -54,7 +93,11 @@ export async function restartSystemd(service: string): Promise<void> {
   if (!(ALLOWED_SYSTEMD as readonly string[]).includes(service)) {
     throw new Error('Service not in allowlist');
   }
-  await nsenter(['systemctl', 'restart', service]);
+  try {
+    await runOnHost('systemctl', ['restart', service]);
+  } catch (err) {
+    throw new Error(execMessage(err));
+  }
 }
 
 interface DockerContainer {
@@ -63,15 +106,17 @@ interface DockerContainer {
   Image: string;
   State: string;
   Status: string;
+  Project: string;
 }
 
 export async function getDockerContainers(): Promise<ServiceInfo[]> {
+  const allowedProjects = getAllowedDockerProjects();
   try {
     const { stdout } = await exec('docker', [
       'ps',
       '-a',
       '--format',
-      '{"ID":"{{.ID}}","Names":"{{.Names}}","Image":"{{.Image}}","State":"{{.State}}","Status":"{{.Status}}"}',
+      '{"ID":"{{.ID}}","Names":"{{.Names}}","Image":"{{.Image}}","State":"{{.State}}","Status":"{{.Status}}","Project":"{{.Label \\"com.docker.compose.project\\"}}"}',
     ]);
     const lines = stdout.trim().split('\n').filter(Boolean);
     return lines
@@ -90,12 +135,18 @@ export async function getDockerContainers(): Promise<ServiceInfo[]> {
               : c.State === 'dead'
                 ? 'failed'
                 : 'unknown';
+        const project = c.Project?.trim() ?? '';
+        const name = normalizeContainerName(c.Names);
+        if (!isAllowedDockerContainer(name, project, allowedProjects)) {
+          return null;
+        }
         return {
-          name: c.Names,
+          name,
           type: 'docker',
           status,
           detail: c.Image,
           containerId: c.ID,
+          project: project || undefined,
         };
       })
       .filter((x): x is ServiceInfo => x !== null);
@@ -105,10 +156,21 @@ export async function getDockerContainers(): Promise<ServiceInfo[]> {
 }
 
 export async function restartDockerContainer(nameOrId: string): Promise<void> {
+  const target = normalizeContainerName(nameOrId);
+  const allowedProjects = getAllowedDockerProjects();
   const containers = await getDockerContainers();
-  const found = containers.find((c) => c.name === nameOrId || c.containerId === nameOrId);
-  if (!found) throw new Error('Container not found or not managed by this host');
-  await exec('docker', ['restart', nameOrId]);
+  const found = containers.find(
+    (c) => (c.name === target || c.containerId === target || c.containerId?.startsWith(target))
+      && isAllowedDockerContainer(c.name, c.project ?? '', allowedProjects),
+  );
+  if (!found) {
+    throw new Error('Container not found or not visible to this ops host');
+  }
+  try {
+    await exec('docker', ['restart', found.containerId ?? found.name]);
+  } catch (err) {
+    throw new Error(execMessage(err));
+  }
 }
 
 export const ALLOWED_SYSTEMD_SERVICES = ALLOWED_SYSTEMD;

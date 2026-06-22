@@ -81,7 +81,8 @@
       }
 
       setStatus('', 'Connecting...');
-      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const secure = window.isSecureContext || location.protocol === 'https:';
+      const proto = secure ? 'wss:' : 'ws:';
       ws = new WebSocket(`${proto}//${location.host}/ws/tui?token=${encodeURIComponent(wsToken)}`);
 
       ws.onopen = () => {

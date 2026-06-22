@@ -9,9 +9,11 @@ import {
   type ChatMessage,
   type ToolCall,
 } from '../store/chat.js';
-import { openChatStream } from '../lib/gateway-client.js';
+import { openChatStream, isGatewayOnline } from '../lib/gateway-client.js';
 import { parseStreamEvent } from '../lib/stream-events.js';
 import { saveLocalMessages } from '../lib/session-store.js';
+import { runSync } from '../lib/offline/sync-service.js';
+import { $gatewayStatus } from '../store/connection.js';
 import { notifyApprovalNeeded, notifyError, notifyTaskComplete } from '../lib/notifications.js';
 
 function assistantMessageId(turnId: string): string {
@@ -206,6 +208,9 @@ function applyStreamEvent(
     saveLocalMessages(sessionId, $messages.get());
     const completed = $messages.get().find((m) => m.id === assistantMessageId(turnId));
     void notifyTaskComplete(completed?.content?.slice(0, 80) || 'Response ready');
+    if (isGatewayOnline($gatewayStatus.get())) {
+      void runSync(true);
+    }
   }
 }
 

@@ -82,6 +82,21 @@ Clears session memory for the given external session id.
 
 Set `CORS_ORIGIN` to your front-end origin in production. Default `*` is suitable for local development only.
 
+## Embedding and TLS
+
+When embedding the web chat in another site:
+
+- Serve the parent page over HTTPS
+- Set `CORS_ORIGIN` to the parent origin (not `*`)
+- Use a Content-Security Policy that allows your Carina origin for `connect-src` and `frame-src` if iframe embedding
+- Pass a stable `sessionId` in API calls so users keep continuity
+
+For production, terminate TLS at nginx or Caddy and proxy to `WEB_PORT` on localhost. See [Gateway hardening](/docs/user/security/gateway-hardening).
+
+## Authentication
+
+Hosted Carina Cloud uses better-auth sessions. Self-hosted deployments should protect `/api/*` routes when exposed beyond localhost; pair devices with scoped tokens instead of sharing master API keys.
+
 ## Disabling the web UI
 
 ```bash

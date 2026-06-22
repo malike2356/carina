@@ -8,38 +8,55 @@ if (path.basename(__opsDir) === 'dist') {
   __opsDir = path.dirname(__opsDir);
 }
 
-export function resolveCoreEnvPath(): string {
-  if (process.env.CARINA_CORE_ENV_PATH?.trim()) {
-    return process.env.CARINA_CORE_ENV_PATH.trim();
-  }
+export function coreEnvCandidates(): string[] {
+  const fromEnv = process.env.CARINA_CORE_ENV_PATH?.trim();
   const candidates = [
-    path.resolve(__opsDir, '../../servers/core.carinaai.uk/.env'),
+    ...(fromEnv ? [fromEnv] : []),
+    '/run/carina/core.env',
+    path.resolve(__opsDir, '../core.carinaai.uk/.env.docker.runtime'),
+    path.resolve(__opsDir, '../../core.carinaai.uk/.env.docker.runtime'),
     path.resolve(__opsDir, '../core.carinaai.uk/.env'),
+    path.resolve(__opsDir, '../../servers/core.carinaai.uk/.env'),
+    path.resolve(__opsDir, '../../core.carinaai.uk/.env'),
   ];
-  for (const candidate of candidates) {
+  return [...new Set(candidates)];
+}
+
+export function resolveCoreEnvPath(): string {
+  for (const candidate of coreEnvCandidates()) {
     if (fs.existsSync(candidate)) return candidate;
   }
-  return candidates[0];
+  return path.resolve(__opsDir, '../core.carinaai.uk/.env');
 }
 
 export function readEnvValue(envPath: string, key: string): string | null {
   if (!fs.existsSync(envPath)) return null;
   const content = fs.readFileSync(envPath, 'utf8');
   const match = content.match(new RegExp(`^${key}=(.*)$`, 'm'));
-  const value = match?.[1]?.trim() ?? '';
+  const value = match?.[1]?.trim().replace(/^["']|["']$/g, '') ?? '';
   return value || null;
 }
 
 export function readCoreOpsToken(): string | null {
-  return readEnvValue(resolveCoreEnvPath(), 'CARINA_OPS_TOKEN');
+  for (const candidate of coreEnvCandidates()) {
+    const token = readEnvValue(candidate, 'CARINA_OPS_TOKEN');
+    if (token) return token;
+  }
+  return process.env.CARINA_OPS_TOKEN?.trim() || null;
 }
 
 export function coreEnvReadable(): boolean {
-  try {
-    const envPath = resolveCoreEnvPath();
-    fs.accessSync(envPath, fs.constants.R_OK);
-    return Boolean(readCoreOpsToken());
-  } catch {
-    return false;
+  return Boolean(readCoreOpsToken());
+}
+
+export function coreEnvSourceLabel(): string {
+  for (const candidate of coreEnvCandidates()) {
+    if (readEnvValue(candidate, 'CARINA_OPS_TOKEN')) {
+      return candidate;
+    }
   }
+  if (process.env.CARINA_OPS_TOKEN?.trim()) {
+    return 'container environment (.env.ops.runtime)';
+  }
+  return resolveCoreEnvPath();
 }

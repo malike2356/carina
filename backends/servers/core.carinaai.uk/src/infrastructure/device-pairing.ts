@@ -13,6 +13,7 @@ export type PairedDevice = {
   name: string;
   platform: string;
   tokenHash: string;
+  publicKey?: string;
   pairedAt: string;
   lastSeenAt: string;
   scopes: string[];
@@ -106,6 +107,7 @@ export type ClaimPairingInput = {
   name: string;
   platform: string;
   scopes?: string[];
+  publicKey?: string;
 };
 
 export type ClaimPairingResult = {
@@ -133,6 +135,7 @@ export function claimPairing(input: ClaimPairingInput): ClaimPairingResult {
     name: input.name.trim() || 'Paired device',
     platform: input.platform.trim() || 'unknown',
     tokenHash: hashToken(token),
+    publicKey: input.publicKey?.trim() || undefined,
     pairedAt: new Date().toISOString(),
     lastSeenAt: new Date().toISOString(),
     scopes: parseDeviceScopes(input.scopes),
@@ -151,6 +154,20 @@ export function claimPairing(input: ClaimPairingInput): ClaimPairingResult {
 
 export function listPairedDevices(): PairedDevice[] {
   return loadStore().devices;
+}
+
+export function getPairedDeviceById(deviceId: string): PairedDevice | undefined {
+  return loadStore().devices.find((device) => device.id === deviceId);
+}
+
+export function registerDevicePublicKey(deviceId: string, publicKey: string): boolean {
+  const store = loadStore();
+  const device = store.devices.find((entry) => entry.id === deviceId);
+  if (!device) return false;
+  device.publicKey = publicKey.trim();
+  device.lastSeenAt = new Date().toISOString();
+  saveStore(store);
+  return true;
 }
 
 export function revokePairedDevice(deviceId: string): boolean {

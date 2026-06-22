@@ -1,8 +1,10 @@
 import { useCallback, useEffect } from 'react';
 import { formatMessageWithAttachments, type Attachment } from '../lib/composer-types.js';
 import { useStore } from '@nanostores/react';
-import { createSession, listSessions } from '../lib/gateway-client.js';
+import { createSession, isGatewayOnline, listSessions } from '../lib/gateway-client.js';
 import { loadLocalMessages, saveLocalMessages } from '../lib/session-store.js';
+import { noteOfflineMessage, noteOfflineSession } from '../lib/offline/sync-service.js';
+import { $gatewayStatus } from '../store/connection.js';
 import {
   $currentSessionId,
   $sessions,
@@ -52,9 +54,13 @@ export function useSessionActions() {
   }, []);
 
   const createNewSession = useCallback(async () => {
+    const gatewayStatus = $gatewayStatus.get();
     const session = await createSession();
     const existing = $sessions.get();
     $sessions.set([session, ...existing.filter((s) => s.sessionId !== session.sessionId)]);
+    if (!isGatewayOnline(gatewayStatus)) {
+      noteOfflineSession(session);
+    }
     selectSession(session.sessionId);
   }, [selectSession]);
 
@@ -75,6 +81,11 @@ export function useSessionActions() {
     saveLocalMessages(sessionId, nextMessages);
 
     $currentTurnId.set(turnId);
+    const online = isGatewayOnline($gatewayStatus.get());
+    if (!online) {
+      noteOfflineMessage(sessionId, formatted.trim(), turnId);
+      return;
+    }
     $streamRequest.set({
       sessionId,
       message: formatted.trim(),

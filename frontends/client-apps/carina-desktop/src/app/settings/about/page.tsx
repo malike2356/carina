@@ -1,8 +1,16 @@
-import { getHealth } from '../../../lib/gateway-client.js';
+import { getHealth, isGatewayOnline } from '../../../lib/gateway-client.js';
 import { saveTextWithDialog } from '../../../lib/fs-dialogs.js';
 import { checkForUpdates } from '../../../lib/updater.js';
+import { useStore } from '@nanostores/react';
+import { $syncStatus, $lastSyncAt, $pendingChanges } from '../../../store/sync.js';
+import { $gatewayStatus } from '../../../store/connection.js';
+import { runSync } from '../../../lib/offline/sync-service.js';
 
 export default function AboutSettingsPage() {
+  const syncStatus = useStore($syncStatus);
+  const lastSyncAt = useStore($lastSyncAt);
+  const pendingChanges = useStore($pendingChanges);
+  const gatewayStatus = useStore($gatewayStatus);
   async function exportDiagnostics() {
     const health = await getHealth();
     await saveTextWithDialog(
@@ -32,6 +40,21 @@ export default function AboutSettingsPage() {
         <h2 className="text-lg font-semibold text-zinc-100">Carina Desktop</h2>
         <p className="text-sm text-zinc-400 mt-1">Version 0.1.0</p>
         <p className="text-xs text-zinc-600 mt-2">Build: local development</p>
+      </section>
+      <section className="space-y-2">
+        <h3 className="text-sm font-medium text-zinc-200">Offline sync</h3>
+        <p className="text-xs text-zinc-500">
+          Status: {syncStatus}
+          {lastSyncAt ? ` (last sync ${new Date(lastSyncAt).toLocaleString()})` : ''}
+          {pendingChanges > 0 ? `; ${pendingChanges} pending change(s)` : ''}
+        </p>
+        <button
+          type="button"
+          onClick={() => void runSync(isGatewayOnline(gatewayStatus))}
+          className="text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300"
+        >
+          Sync now
+        </button>
       </section>
       <section className="space-y-2">
         <button type="button" onClick={() => void handleCheckUpdates()} className="text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300">

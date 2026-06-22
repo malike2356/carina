@@ -1,5 +1,5 @@
 import { carinaGet, carinaOpsTokenSet } from './carina.js';
-import { readCoreOpsToken, resolveCoreEnvPath } from './core-env.js';
+import { coreEnvSourceLabel, readCoreOpsToken } from './core-env.js';
 import { OPS_ENV_PATH, setEnvVar } from './env.js';
 
 export type CarinaPairResult = {
@@ -39,19 +39,26 @@ export async function autoPairCarinaFromLocalCore(): Promise<CarinaPairResult> {
   if (await testCarinaConnection()) {
     return { ok: true, alreadyPaired: true };
   }
+
   const token = readCoreOpsToken();
   if (!token) {
     return {
       ok: false,
-      error: `No CARINA_OPS_TOKEN found in ${resolveCoreEnvPath()}. Paste the token manually below.`,
+      error: `No CARINA_OPS_TOKEN found (${coreEnvSourceLabel()}). Paste the token manually below.`,
     };
   }
-  setEnvVar(OPS_ENV_PATH, 'CARINA_OPS_TOKEN', token);
+
+  try {
+    setEnvVar(OPS_ENV_PATH, 'CARINA_OPS_TOKEN', token);
+  } catch {
+    process.env.CARINA_OPS_TOKEN = token;
+  }
+
   const live = await testCarinaConnection();
   if (!live) {
     return {
       ok: false,
-      error: 'Read token from core .env but Carina rejected the connection. Check CARINA_API_URL points at core.carinaai.uk.',
+      error: 'Token loaded but Carina rejected the connection. Check CARINA_API_URL and that core accepts this token.',
     };
   }
   return { ok: true, auto: true };

@@ -10,7 +10,8 @@ const CHARS_PER_CHUNK = 2000;
 const ARCHIVE_DIRS = ['docs', 'architecture'];
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ARCHIVE_ROOT = path.resolve(__dirname, '../../archive/property-saas-spec');
+const CORE_PACKAGE_ROOT = path.resolve(__dirname, '../../..');
+const ARCHIVE_ROOT = path.join(CORE_PACKAGE_ROOT, 'archive/property-saas-spec');
 
 function parseArgs(): { pack: string; skillsOnly: boolean } {
   const args = process.argv.slice(2);
@@ -27,6 +28,28 @@ function parseArgs(): { pack: string; skillsOnly: boolean } {
   }
 
   return { pack, skillsOnly };
+}
+
+async function discoverBrainKnowledgeDirs(brainRoot: string): Promise<string[]> {
+  const dirs: string[] = [];
+  let entries;
+  try {
+    entries = await fs.readdir(brainRoot, { withFileTypes: true });
+  } catch {
+    return dirs;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const knowledgeDir = path.join(brainRoot, entry.name, 'knowledge');
+    try {
+      await fs.access(knowledgeDir);
+      dirs.push(knowledgeDir);
+    } catch {
+      // no knowledge tree for this domain pack
+    }
+  }
+  return dirs;
 }
 
 async function walkMdFiles(dir: string): Promise<string[]> {
@@ -123,8 +146,13 @@ export async function runIngestion(): Promise<void> {
   const { pack, skillsOnly } = parseArgs();
   await initDb();
 
-  const skillsLoaded = await loadPackSkills(pack);
-  console.log(`Loaded ${skillsLoaded} pre-built skills for pack: ${pack}`);
+  try {
+    const skillsLoaded = await loadPackSkills(pack);
+    console.log(`Loaded ${skillsLoaded} pre-built skills for pack: ${pack}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`Skipping pack skills for ${pack}: ${message}`);
+  }
 
   if (skillsOnly) {
     console.log('Skills-only mode; skipping RAG ingest.');
@@ -137,6 +165,23 @@ export async function runIngestion(): Promise<void> {
     const files = await walkMdFiles(dir);
     for (const file of files) {
       total += await ingestFile(file, pack);
+    }
+  }
+
+  if (total === 0) {
+    const brainRoot = path.join(CORE_PACKAGE_ROOT, 'brain');
+    const knowledgeDirs = await discoverBrainKnowledgeDirs(brainRoot);
+    if (knowledgeDirs.length === 0) {
+      console.warn('No archive markdown and no brain knowledge directories found.');
+    } else {
+      console.log(`Ingesting brain knowledge from ${knowledgeDirs.length} domain pack(s)...`);
+      for (const dir of knowledgeDirs) {
+        const inserted = await ingestPackDirectory(pack, dir);
+        total += inserted;
+        if (inserted > 0) {
+          console.log(`Ingested ${inserted} chunks from ${path.basename(path.dirname(dir))}`);
+        }
+      }
     }
   }
 

@@ -1,3 +1,7 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** `scan-runner.ts`, `scheduler.ts`, `finding-processor.ts`, tool registry, migrations 001-engine-core.
+
 # Scout 01; Engine Core: Continuous Scanning Engine
 
 **Gap:** 12; Scout Product

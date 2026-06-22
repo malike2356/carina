@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { BrandMark } from '@/components/shell/BrandMark';
+import { useBrand } from '@/components/shell/BrandProvider';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +12,7 @@ import { Label } from '@/components/ui/label';
 export default function RegisterPage() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const brand = useBrand();
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,7 +34,8 @@ export default function RegisterPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6">
       <div>
-        <h1 className="text-2xl font-semibold">Create your Carina Cloud account</h1>
+        <BrandMark className="mb-4" nameClassName="text-lg font-semibold text-text-primary" size={36} />
+        <h1 className="text-2xl font-semibold">Create your {brand.productName} account</h1>
         <p className="text-sm text-text-secondary">Free tier includes 50k tokens per day with BYOK.</p>
       </div>
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-border bg-surface p-6">

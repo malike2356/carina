@@ -45,34 +45,67 @@ function buildBreadcrumbs(
   return crumbs;
 }
 
-serverPanelRouter.get('/files', async (req, res) => {
-  const roots = getAllowedRootsPublic();
-  const pathParam = typeof req.query.path === 'string' ? req.query.path : null;
-  let entries = null;
-  let currentPath: string | null = null;
-  let breadcrumbs: { name: string; path: string }[] = [];
-  let error: string | null = null;
+function parentBrowsePath(
+  currentPath: string | null,
+  breadcrumbs: { name: string; path: string }[],
+): string | null {
+  if (!currentPath) return null;
+  if (breadcrumbs.length > 1) return breadcrumbs[breadcrumbs.length - 2]?.path ?? null;
+  return '';
+}
 
-  if (pathParam) {
-    try {
-      const safe = resolveSafe(pathParam);
-      currentPath = safe;
-      entries = await listDir(safe);
-      breadcrumbs = buildBreadcrumbs(safe, roots);
-    } catch (e) {
-      error = e instanceof Error ? e.message : 'Access denied';
-    }
+async function getBrowseState(pathParam: string | null) {
+  const roots = getAllowedRootsPublic();
+  if (!pathParam) {
+    return {
+      roots,
+      currentPath: null as string | null,
+      entries: null as Awaited<ReturnType<typeof listDir>> | null,
+      breadcrumbs: [] as { name: string; path: string }[],
+      parentPath: null as string | null,
+      error: null as string | null,
+    };
   }
+
+  try {
+    const safe = resolveSafe(pathParam);
+    const entries = await listDir(safe);
+    const breadcrumbs = buildBreadcrumbs(safe, roots);
+    return {
+      roots,
+      currentPath: safe,
+      entries,
+      breadcrumbs,
+      parentPath: parentBrowsePath(safe, breadcrumbs),
+      error: null,
+    };
+  } catch (e) {
+    return {
+      roots,
+      currentPath: null,
+      entries: null,
+      breadcrumbs: [],
+      parentPath: null,
+      error: e instanceof Error ? e.message : 'Access denied',
+    };
+  }
+}
+
+serverPanelRouter.get('/files', async (req, res) => {
+  const pathParam = typeof req.query.path === 'string' ? req.query.path : null;
+  const state = await getBrowseState(pathParam);
 
   res.render('server/files', {
     title: 'Server Files',
-    roots,
-    currentPath,
-    entries,
-    breadcrumbs,
-    error,
+    ...state,
     flash: req.query.saved === '1' ? 'Saved.' : null,
   });
+});
+
+serverPanelRouter.get('/api/files/list', async (req, res) => {
+  const pathParam = typeof req.query.path === 'string' ? req.query.path : null;
+  const state = await getBrowseState(pathParam);
+  res.json({ ok: !state.error, ...state });
 });
 
 serverPanelRouter.get('/files/read', async (req, res) => {

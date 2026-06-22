@@ -48,11 +48,11 @@ Five feature blocks alternating left/right:
 
     <div class="feature-block">
       <div class="feature-media">
-        <img src="/img/cookbook-demo.gif" alt="Carina Cookbook: hardware detection and one-click model serve"
-          onerror="this.parentNode.innerHTML='<div class=feature-placeholder>Cookbook: hardware-aware model serving</div>'">
+        <img src="/img/playbook-demo.gif" alt="Carina Playbook: hardware detection and one-click model serve"
+          onerror="this.parentNode.innerHTML='<div class=feature-placeholder>Playbook: hardware-aware model serving</div>'">
       </div>
       <div class="feature-copy">
-        <span class="feature-tag">Cookbook</span>
+        <span class="feature-tag">Playbook</span>
         <h2>Local models. Hardware-aware.</h2>
         <p>Carina detects your GPU, estimates VRAM, and recommends which models fit. One click to pull and serve via Ollama. No guesswork.</p>
       </div>
@@ -162,7 +162,7 @@ In the <head> of carinaai.uk/index.html, ensure:
 #### 6. GIF placeholders
 
 GIFs do not exist yet. The onerror handlers display styled placeholder text. Record and add GIFs as a follow-up task:
-- img/cookbook-demo.gif - screen recording of /cookbook with hardware detection and model pull
+- img/playbook-demo.gif - screen recording of /playbook with hardware detection and model pull
 - img/security-demo.gif - Scout dashboard showing an injection block
 - img/workspace-demo.gif - workspace hub navigation
 - img/channels-demo.gif - Carina responding across multiple platforms

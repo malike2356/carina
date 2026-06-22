@@ -6,6 +6,8 @@ Provider and channel catalog sizes: [Capability inventory](/docs/capabilities).
 
 Carina reads environment variables from `~/.carina/.env` (global CLI) or a project `.env` when running from source. Copy `core.carinaai.uk/.env.example` as a template.
 
+For provider selection, failover, and custom endpoints, see [Model providers](/docs/user/configuration/model-providers).
+
 ## Core
 
 | Variable | Required | Default | Description |

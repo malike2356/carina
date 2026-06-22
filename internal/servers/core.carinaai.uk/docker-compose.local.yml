@@ -1,0 +1,31 @@
+# docker-compose.local.yml - LOCAL DEV ONLY. Not for production.
+# Usage: docker compose -f docker-compose.prod.yml -f docker-compose.local.yml up
+# Overrides: removes nginx+certbot, exposes app ports directly, uses repo paths.
+
+services:
+  carina-web:
+    ports:
+      - "3000:3000"
+
+  carina-hub:
+    ports:
+      - "3001:3001"
+
+  carina-ops:
+    ports:
+      - "4001:4001"
+    environment:
+      CARINA_CORE_ENV_PATH: ""
+      SCOUT_CONSOLE_PUBLIC_DIR: ""
+
+  carina-cloud:
+    ports:
+      - "4100:4100"
+
+  nginx:
+    profiles:
+      - disabled
+
+  certbot:
+    profiles:
+      - disabled

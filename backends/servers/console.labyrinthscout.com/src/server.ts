@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
+import { Redis } from 'ioredis';
 import chalk from 'chalk';
 import { config } from './config/index.js';
 import { initDb, pool } from './db.js';
@@ -76,6 +78,15 @@ const PUBLIC = path.join(ROOT, 'public');
 
 const app = express();
 
+const sessionRedis = new Redis(config.redis.url, {
+  lazyConnect: true,
+  enableReadyCheck: false,
+  maxRetriesPerRequest: null,
+});
+sessionRedis.on('error', (err: Error) => {
+  console.warn('[scout:session-redis]', err.message);
+});
+
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '64kb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -85,6 +96,7 @@ app.use(
     secret: config.auth.sessionSecret,
     resave: false,
     saveUninitialized: false,
+    store: new RedisStore({ client: sessionRedis, prefix: 'scout:sess:' }),
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
@@ -244,6 +256,7 @@ async function shutdown(signal: string): Promise<void> {
   console.log(chalk.gray(`\n[scout] ${signal} received, shutting down...`));
   const redis = getRedis();
   if (redis) redis.disconnect();
+  sessionRedis.disconnect();
   await pool.end().catch(() => undefined);
   process.exit(0);
 }

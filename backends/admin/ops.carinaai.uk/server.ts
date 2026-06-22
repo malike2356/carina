@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import express from 'express';
+import express, { type Request, type Response, type NextFunction } from 'express';
 import session from 'express-session';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
@@ -15,7 +15,7 @@ import { chatRouter } from './routes/chat.js';
 import { projectsRouter } from './routes/projects.js';
 import { securityRouter } from './routes/security.js';
 import { settingsRouter } from './routes/settings.js';
-import { operatorRouter } from './routes/operator.js';
+import { operatorRouter, operatorApiRouter } from './routes/operator.js';
 import { agentToolsRouter } from './routes/agent-tools.js';
 import { tenantsRouter } from './routes/tenants.js';
 import { subscriptionsRouter } from './routes/subscriptions.js';
@@ -28,10 +28,12 @@ import { tuiRouter } from './routes/tui.js';
 import { incidentBlogRouter } from './routes/incident-blog.js';
 import { scoutApiProxyRouter, scoutDashboardRouter } from './routes/scout-dashboard.js';
 import { governanceRouter } from './routes/governance.js';
+import { hrefWithUiVersion } from './lib/callback-url.js';
 import { CARINA_BASE } from './lib/carina.js';
 import { attachPtyBridge } from './lib/pty-bridge.js';
 import { ensureHostedSchema } from './lib/tenants.js';
 import { ensureAiPlatformSchema } from './lib/ai-platform.js';
+import { ensureStandingOrdersSchema } from './lib/standing-orders-schema.js';
 import { ensureAgentToolConfigSchema } from './lib/tool-config.js';
 import { autoPairCarinaFromLocalCore } from './lib/carina-pairing.js';
 import { bootstrapFirstUser } from './lib/bootstrap-users.js';
@@ -116,9 +118,11 @@ app.use(
 );
 
 app.use((req, res, next) => {
+  const uiVersion = process.env.UI_VERSION ?? '20260622h';
   res.locals.carinaApiUrl = CARINA_BASE;
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
-  res.locals.uiVersion = process.env.UI_VERSION ?? '20260621e';
+  res.locals.uiVersion = uiVersion;
+  res.locals.withV = (href: string) => hrefWithUiVersion(href, uiVersion);
   res.locals.activePath = req.path;
   res.locals.session = req.session;
   next();
@@ -147,6 +151,7 @@ app.use('/control-center', controlCenterRouter);
 app.use('/mcp', mcpRouter);
 app.use('/settings', settingsRouter);
 app.use('/operator', operatorRouter);
+app.use('/operator/api', operatorApiRouter);
 app.use('/tui', tuiRouter);
 app.use('/ai-platform', aiPlatformRouter);
 app.use('/admin/agent-tools', agentToolsRouter);
@@ -163,6 +168,13 @@ app.use('/scout', requireAdmin, scoutDashboardRouter);
 
 app.use((_req, res) => {
   res.status(404).render('error', { message: 'Page not found' });
+});
+
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('[ops] unhandled error:', err);
+  if (res.headersSent) return;
+  const message = err instanceof Error ? err.message : 'Internal server error';
+  res.status(500).render('error', { message });
 });
 
 const listenHost = process.env.BIND_HOST ?? (process.env.NODE_ENV === 'production' ? '127.0.0.1' : '0.0.0.0');
@@ -191,6 +203,12 @@ server.listen(PORT, listenHost, () => {
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`  AI platform schema: skipped (${msg})`));
+    });
+  void ensureStandingOrdersSchema()
+    .then(() => console.log(chalk.gray('  Standing orders schema: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  Standing orders schema: skipped (${msg})`));
     });
   void ensureAgentToolConfigSchema()
     .then(() => console.log(chalk.gray('  Agent tool config: ready')))

@@ -3,10 +3,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { TerminalWorkspace } from '@/components/terminal/TerminalWorkspace';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
+import { useClockTime, useGreeting, useRelativeTimeLabel } from '@/hooks/useRelativeTimeLabel';
 
 interface Session {
   id: string;
@@ -27,43 +28,17 @@ interface Props {
 }
 
 function useTimeAgo(date: Date | string | null): string {
-  const compute = () => {
-    if (!date) return 'never';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 5) return 'just now';
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
-  const [label, setLabel] = useState(compute);
-  useEffect(() => {
-    const id = setInterval(() => setLabel(compute()), 15000);
-    return () => clearInterval(id);
-  });
-  return label;
+  return useRelativeTimeLabel(date);
 }
 
 function LiveClock() {
-  const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-  );
-  useEffect(() => {
-    const id = setInterval(
-      () => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
-      10000,
-    );
-    return () => clearInterval(id);
-  }, []);
+  const time = useClockTime();
   return <>{time}</>;
 }
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
+function LastActivityLabel({ date }: { date: Date | string | null }) {
+  const ago = useRelativeTimeLabel(date);
+  return <span style={{ color: '#16c97e' }}>{ago}</span>;
 }
 
 type NavItem =
@@ -241,13 +216,9 @@ function StatusRow({ icon, color, label, value, ok }: { icon: React.ReactNode; c
   );
 }
 
-function LastActivityLabel({ date }: { date: Date | string | null }) {
-  const ago = useTimeAgo(date);
-  return <span style={{ color: '#16c97e' }}>{ago}</span>;
-}
-
 export function LauncherExpanded({ userName, userEmail: _userEmail, sessions, totalSessions, latestSessionId, memoryCount, skillCount, keyCount, taskCount }: Props) {
   const router = useRouter();
+  const greeting = useGreeting();
   const { canUseTerminal } = useTerminalAccess();
   const navItems = useMemo(
     () => NAV_ITEMS.filter((item) => item.type === 'section' || item.href !== '/terminal' || canUseTerminal),
@@ -375,7 +346,7 @@ export function LauncherExpanded({ userName, userEmail: _userEmail, sessions, to
             {/* Welcome row */}
             <div className="flex items-center justify-between shrink-0">
               <div>
-                <span className="font-semibold" style={{ fontSize: 'clamp(12px, 1.1vw, 14px)', color: '#e8f0f8' }}>{getGreeting()}, {firstName}</span>
+                <span className="font-semibold" style={{ fontSize: 'clamp(12px, 1.1vw, 14px)', color: '#e8f0f8' }}>{greeting}, {firstName}</span>
                 <span className="ml-2" style={{ fontSize: 'clamp(10px, 0.85vw, 12px)', color: '#4a6a8a' }}>{totalSessions} conversation{totalSessions !== 1 ? 's' : ''}</span>
               </div>
               {lastActivity && (

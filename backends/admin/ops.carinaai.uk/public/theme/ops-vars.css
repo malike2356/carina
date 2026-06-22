@@ -1,0 +1,30 @@
+@import './ops.carinaai.css';
+
+/*
+ * Ops shell aliases map legacy variable names onto shared theme tokens.
+ */
+.dark {
+  --void: var(--background);
+  --navy: var(--sidebar);
+  --panel: var(--card);
+  /* Do not alias --border onto itself; theme token comes from ops.carinaai.css */
+  --border-strong: color-mix(in srgb, var(--foreground) 14%, var(--border));
+  --border-subtle: color-mix(in srgb, var(--border) 55%, transparent);
+  --text: var(--muted-foreground);
+  --muted: var(--muted-foreground);
+  --heading: var(--foreground);
+  --green: #00c864;
+  --cyan: var(--chart-3);
+  --amber: #d4af37;
+  --red: var(--destructive);
+  --purple: var(--primary);
+  --green-dim: color-mix(in srgb, var(--green) 10%, transparent);
+  --fs-base: 16px;
+  --fs-sm: 14px;
+  --fs-xs: 13px;
+  --fs-2xs: 12px;
+  --fs-label: 12px;
+  --fs-table: 15px;
+  --fs-title: 24px;
+  --fs-nav: 13px;
+}

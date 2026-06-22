@@ -1,0 +1,54 @@
+<% title = 'Learning improvements' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Learning improvements</div>
+      <div class="ops-page-sub">Skills created, refined, merged, or rolled back by the learning pipeline.</div>
+    </div>
+  </div>
+
+  <%- include('_nav') %>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <% if (!improvements.length) { %>
+      <div class="ops-empty">No improvement events recorded yet.</div>
+    <% } else { %>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>When</th>
+              <th>Event</th>
+              <th>Skill</th>
+              <th>Version</th>
+              <th>Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const row of improvements) { %>
+              <tr>
+                <td><%= new Date(row.created_at).toLocaleString() %></td>
+                <td><span class="ops-pill <%= row.event_type.includes('rollback') ? 'warn' : 'ok' %>"><%= row.event_type.replace(/_/g, ' ') %></span></td>
+                <td>
+                  <% if (row.skill_id) { %>
+                    <a href="/skills/<%= row.skill_id %>" class="ops-link"><%= row.skill_name || row.skill_id.slice(0, 8) %></a>
+                  <% } else { %>
+                    <%= row.skill_name || '-' %>
+                  <% } %>
+                </td>
+                <td><%= row.version == null ? '-' : row.version %></td>
+                <td class="ops-cell-truncate">
+                  <% if (row.summary && Object.keys(row.summary).length) { %>
+                    <code class="ops-code-inline"><%= JSON.stringify(row.summary).slice(0, 120) %></code>
+                  <% } else { %>
+                    <span class="ops-muted-inline">-</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</div>

@@ -7,9 +7,10 @@
     "scout": "dist/cli.js"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "node scripts/sync-theme.mjs && tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
+    "build": "node scripts/sync-theme.mjs && tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
+    "theme:sync": "node scripts/sync-theme.mjs",
     "docs:build": "vitepress build docs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -25,6 +26,7 @@
     "archiver": "^8.0.0",
     "bcryptjs": ">=2.4.3 <3.0.0",
     "chalk": "^5.3.0",
+    "connect-redis": "^7.1.1",
     "dotenv": "^16.4.5",
     "express": ">=5.0.1 <6.0.0",
     "express-session": "^1.18.0",

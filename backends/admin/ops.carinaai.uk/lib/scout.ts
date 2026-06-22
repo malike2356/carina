@@ -88,6 +88,11 @@ export async function scoutPost(path: string, body: unknown): Promise<unknown> {
   return result.ok ? result.data : null;
 }
 
+export async function scoutConsoleGet(path: string): Promise<unknown> {
+  const result = await scoutRequest(SCOUT_CONSOLE_URL, 'GET', path);
+  return result.ok ? result.data : null;
+}
+
 export async function scoutPut(path: string, body: unknown): Promise<ScoutResponse> {
   return scoutRequest(SCOUT_ENGINE_URL, 'PUT', path, body);
 }

@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Ink-based interactive chat TUI at `src/tui/ink/`
+- Real-time streaming message display with Carina branding
+- Keyboard shortcut handling (Ctrl+C, Ctrl+D, arrow history)
+
 # Gap 6, Prompt 01: Ink Chat TUI
 
 > **REUSE RULE:** See `REUSE-RULES.md` in this directory. Implement the behavior described below in Carina's own voice. No competitor product names, labels, CLI output, or UI copy may appear verbatim in shipped code.

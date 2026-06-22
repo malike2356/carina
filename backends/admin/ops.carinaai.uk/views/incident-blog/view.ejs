@@ -1,40 +1,66 @@
-<% title = 'Incident Blog' %>
+<% title = incident.title %>
+<% function statusBadge(status) {
+  if (status === 'draft') return 'ops-badge-amber';
+  if (status === 'approved') return 'ops-badge-cyan';
+  if (status === 'published') return 'ops-badge-green';
+  return 'ops-badge-gray';
+} %>
 <div class="ops-page">
-<style>
-  .blog-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1rem; }
-  .blog-meta { color:#8b8b8b; font-size:.9rem; }
-  .blog-body { margin: 1rem 0; padding: 1rem; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; }
-  .actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem; }
-  .button-inline { display:inline-flex; align-items:center; justify-content:center; background:#2a2a2a; color:#fff; border:1px solid #3a3a3a; border-radius:6px; padding:.45rem .7rem; font-size:.82rem; cursor:pointer; text-decoration:none; }
-  .button-inline.primary { background:#16c97e; color:#06090f; border-color:#16c97e; }
-  .button-inline.warn { background:#f59e0b; color:#06090f; border-color:#f59e0b; }
-  .button-inline.danger { background:#e63946; color:#fff; border-color:#e63946; }
-</style>
-<div class="blog-card">
-  <h1 class="text-2xl font-bold text-white mb-2"><%= incident.title %></h1>
-  <div class="blog-meta">
-    <div><strong>Status:</strong> <%= incident.status %></div>
-    <div><strong>Category:</strong> <%= incident.category %></div>
-    <div><strong>Company:</strong> <%= incident.company %></div>
-    <div><strong>Damage:</strong> <span style="color:#e63946"><%= incident.damage %></span></div>
-    <div><strong>Date:</strong> <%= incident.dateOccurred %></div>
-    <div><strong>Slug:</strong> <%= incident.slug %></div>
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title"><%= incident.title %></div>
+      <div class="ops-page-sub"><a href="/admin/incident-blog" class="ops-link">Back to incident blog</a></div>
+    </div>
+    <span class="ops-badge <%= statusBadge(incident.status) %>"><%= incident.status %></span>
   </div>
-  <div class="blog-body">
-    <%- incident.body_html || incident.bodyHtml %>
+
+  <% const flash = new URLSearchParams(locals.query || ''); %>
+  <% if (flash.get('ok')) { %><div class="ops-flash success">Action completed.</div><% } %>
+  <% if (flash.get('err')) { %><div class="ops-flash error"><%= flash.get('err') %></div><% } %>
+
+  <div class="ops-surface" style="margin-bottom:16px;">
+    <div class="ops-surface-body">
+      <dl class="ops-kv-grid">
+        <div><dt>Category</dt><dd><%= incident.category %></dd></div>
+        <div><dt>Company</dt><dd><%= incident.company %></dd></div>
+        <div><dt>Damage</dt><dd style="color:var(--red);"><%= incident.damage %></dd></div>
+        <div><dt>Date</dt><dd><%= incident.dateOccurred %></dd></div>
+        <div><dt>Slug</dt><dd class="mono" style="font-family:'JetBrains Mono',monospace;font-size:12px;"><%= incident.slug %></dd></div>
+      </dl>
+    </div>
   </div>
-  <div class="blog-meta">
-    <div><strong>Scout fix:</strong> <span style="color:#16c97e"><%- incident.scout_fix_html || incident.scoutFixHtml %></span></div>
-    <% if (incident.rejection_reason) { %>
-      <div><strong>Rejection:</strong> <%= incident.rejection_reason %></div>
-    <% } %>
+
+  <div class="ops-surface" style="margin-bottom:16px;">
+    <div class="ops-surface-body">
+      <div class="ops-section-title">Incident body</div>
+      <div class="ops-rich-body"><%- incident.body_html || incident.bodyHtml %></div>
+      <div class="ops-section-title" style="margin-top:20px;">Scout fix</div>
+      <div class="ops-rich-body" style="border-color:color-mix(in srgb, var(--green) 25%, var(--border-subtle));">
+        <%- incident.scout_fix_html || incident.scoutFixHtml %>
+      </div>
+      <% if (incident.rejection_reason) { %>
+        <div class="ops-flash warn" style="margin-top:16px;margin-bottom:0;">
+          <strong>Rejection reason:</strong> <%= incident.rejection_reason %>
+        </div>
+      <% } %>
+    </div>
   </div>
-  <div class="actions">
-    <a class="button-inline" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve"><button class="button-inline warn" type="submit">Approve</button></form>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish"><button class="button-inline primary" type="submit">Publish</button></form>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject"><input type="hidden" name="reason" value="Needs revision"><button class="button-inline" type="submit">Reject</button></form>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete"><button class="button-inline danger" type="submit">Delete</button></form>
+
+  <div class="ops-actions">
+    <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve" class="inline">
+      <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Approve</button>
+    </form>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish" class="inline">
+      <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Publish</button>
+    </form>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject" class="inline">
+      <input type="hidden" name="reason" value="Needs revision">
+      <button class="ops-btn ops-btn-ghost ops-btn-sm" type="submit">Reject</button>
+    </form>
+    <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete" class="inline"
+      onsubmit="return confirm('Delete this incident permanently?')">
+      <button class="ops-btn ops-btn-ghost ops-btn-sm ops-btn-danger" type="submit">Delete</button>
+    </form>
   </div>
-</div>
 </div>

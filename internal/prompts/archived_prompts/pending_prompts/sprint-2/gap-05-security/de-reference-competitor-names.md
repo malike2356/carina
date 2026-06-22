@@ -1,10 +1,17 @@
 # Production Code De-Referencing; Remove All Competitor Names
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Scout console adapters renamed: `external-agent-adapter.ts`, `goal-result-adapter.ts` (legacy alias support in registry)
+- Scout proxy maps third-party user-agents to neutral types (`compat-agent`, `goal-result`)
+- Cross-agent skill hubs renamed: `external-skills-hub`, `goal-result-skills-hub` (legacy hub id aliases)
+- SDK adapters, benchmark baselines, migration discovery, and admin env vars were already neutralized prior to this session
+
 > **REUSE RULE:** See `REUSE-RULES.md` in this directory. Implement the behavior described below in Carina's own voice. No competitor product names, labels, CLI output, or UI copy may appear verbatim in shipped code.
 
 
 **Gap:** 05; Security  
-**Status:** Prompt ready  
 **Agent (primary):** Claude Code  
 **Agent (fallback):** Cursor  
 **Estimated effort:** 2 days

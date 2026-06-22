@@ -3,7 +3,7 @@
   <div class="ops-page-head">
     <div>
       <div class="ops-page-title">Services</div>
-      <div class="ops-page-sub">Docker containers and host systemd units. Status refreshes every 10 seconds.</div>
+      <div class="ops-page-sub">Scoped Carina stack containers and host systemd units. Status refreshes every 10 seconds.</div>
     </div>
   </div>
 
@@ -77,17 +77,20 @@ async function restart(name, type, btn) {
   try {
     const r = await fetch('/server/api/services/restart', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ name: name, type: type }),
     });
-    const data = await r.json();
-    if (!data.ok) throw new Error(data.error);
-    btn.textContent = 'Restart';
-    btn.disabled = false;
+    const data = await r.json().catch(function() { return { ok: false, error: 'Unexpected response' }; });
+    if (!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    btn.textContent = 'Restarted';
+    setTimeout(function() { btn.textContent = 'Restart'; btn.disabled = false; }, 1500);
     refreshStatuses();
   } catch (e) {
     btn.textContent = 'Failed';
+    btn.title = e && e.message ? e.message : 'Restart failed';
     btn.disabled = false;
+    alert(btn.title);
   }
 }
 

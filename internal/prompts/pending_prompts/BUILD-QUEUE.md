@@ -140,9 +140,11 @@ docking (03) both reference it.
 
 | Order | File | Agent | Status |
 |-------|------|-------|--------|
-| 5.1 | `sprint-2/gap-19-identity-links-channel-docking/01-identity-links.md` | Claude Code | pending |
-| 5.2 | `sprint-2/gap-19-identity-links-channel-docking/02-shared-sessions.md` [after 5.1] | Claude Code | pending |
-| 5.3 | `sprint-2/gap-19-identity-links-channel-docking/03-channel-docking.md` [after 5.1] | Claude Code | pending |
+| 5.1 | `sprint-2/gap-19-identity-links-channel-docking/01-identity-links.md` | Claude Code | DONE |
+| 5.2 | `sprint-2/gap-19-identity-links-channel-docking/02-shared-sessions.md` [after 5.1] | Claude Code | DONE |
+| 5.3 | `sprint-2/gap-19-identity-links-channel-docking/03-channel-docking.md` [after 5.1] | Claude Code | DONE |
+
+Note: archived under `internal/prompts/archived_prompts/pending_prompts/sprint-2/`.
 
 ---
 
@@ -153,10 +155,12 @@ camera/device prompts (03, 04) extend.
 
 | Order | File | Agent | Status |
 |-------|------|-------|--------|
-| 6.1 | `sprint-2/gap-20-node-system/01-node-protocol.md` | Claude Code | pending |
-| 6.2 | `sprint-2/gap-20-node-system/02-canvas-host.md` [after 6.1] | Cursor | pending |
-| 6.3 | `sprint-2/gap-20-node-system/03-camera-screen-location.md` [after 6.1] | Codex | pending |
-| 6.4 | `sprint-2/gap-20-node-system/04-device-trust.md` [after 6.1] | Claude Code | pending |
+| 6.1 | `sprint-2/gap-20-node-system/01-node-protocol.md` | Claude Code | DONE |
+| 6.2 | `sprint-2/gap-20-node-system/02-canvas-host.md` [after 6.1] | Cursor | DONE |
+| 6.3 | `sprint-2/gap-20-node-system/03-camera-screen-location.md` [after 6.1] | Codex | DONE |
+| 6.4 | `sprint-2/gap-20-node-system/04-device-trust.md` [after 6.1] | Claude Code | DONE |
+
+Note: archived under `internal/prompts/archived_prompts/pending_prompts/sprint-2/`. Mobile Canvas/native capability clients are follow-up work outside this server block.
 
 ---
 
@@ -166,9 +170,11 @@ Scout engine core (01) is a prerequisite for scoring (02) and everything else.
 
 | Order | File | Agent | Status |
 |-------|------|-------|--------|
-| 7.1 | `sprint-2/gap-12-scout-product/01-scout-engine-core.md` | Claude Code | pending |
-| 7.2 | `sprint-2/gap-12-scout-product/02-scout-score-engine.md` [after 7.1] | Claude Code | pending |
-| 7.3 | `sprint-2/gap-12-scout-product/03-09-scout-dashboard-alerting-monitoring-reporting-api-onboarding-cli.md` [after 7.2] | Claude Code + Cursor | pending |
+| 7.1 | `sprint-2/gap-12-scout-product/01-scout-engine-core.md` | Claude Code | DONE |
+| 7.2 | `sprint-2/gap-12-scout-product/02-scout-score-engine.md` [after 7.1] | Claude Code | DONE |
+| 7.3 | `sprint-2/gap-12-scout-product/03-09-scout-dashboard-alerting-monitoring-reporting-api-onboarding-cli.md` [after 7.2] | Claude Code + Cursor | DONE |
+
+Note: archived under `internal/prompts/archived_prompts/pending_prompts/sprint-2/`. Block 7 closed timezone bug, API auth/OpenAPI, onboarding wizard, and CLI product subcommands.
 
 ---
 
@@ -180,13 +186,15 @@ requires all surfaces.
 
 | Order | File | Agent | Status |
 |-------|------|-------|--------|
-| 8.1 | `sprint-2/gap-16-launcher/01-web-launcher-primary-state.md` | Cursor | pending |
-| 8.2 | `sprint-2/gap-16-launcher/02-web-launcher-sidebar-state.md` [after 8.1] | Cursor | pending |
-| 8.3 | `sprint-2/gap-16-launcher/03-web-launcher-expanded-state.md` [after 8.1] | Cursor | pending |
-| 8.4 | `sprint-2/gap-16-launcher/04-desktop-launcher.md` [parallel with 8.1] | Cursor | pending |
-| 8.5 | `sprint-2/gap-16-launcher/05-mobile-launcher.md` [parallel with 8.1] | Codex | pending |
-| 8.6 | `sprint-2/gap-16-launcher/06-tui-launcher.md` [parallel with 8.1] | Claude Code | pending |
-| 8.7 | `sprint-2/gap-16-launcher/07-data-wiring.md` [after 8.1-8.6] | Claude Code | pending |
+| 8.1 | `sprint-2/gap-16-launcher/01-web-launcher-primary-state.md` | Cursor | DONE |
+| 8.2 | `sprint-2/gap-16-launcher/02-web-launcher-sidebar-state.md` [after 8.1] | Cursor | DONE |
+| 8.3 | `sprint-2/gap-16-launcher/03-web-launcher-expanded-state.md` [after 8.1] | Cursor | DONE |
+| 8.4 | `sprint-2/gap-16-launcher/04-desktop-launcher.md` [parallel with 8.1] | Cursor | DONE |
+| 8.5 | `sprint-2/gap-16-launcher/05-mobile-launcher.md` [parallel with 8.1] | Codex | DONE |
+| 8.6 | `sprint-2/gap-16-launcher/06-tui-launcher.md` [parallel with 8.1] | Claude Code | DONE |
+| 8.7 | `sprint-2/gap-16-launcher/07-data-wiring.md` [after 8.1-8.6] | Claude Code | DONE |
+
+Note: archived under `internal/prompts/archived_prompts/pending_prompts/sprint-2/`. Web launcher uses primary/sidebar/expanded state machine; desktop cold-starts at `/launcher`; mobile skips launcher when active session; TUI loads real entrance data.
 
 ---
 
@@ -197,10 +205,12 @@ within the gap.
 
 | Order | File | Agent | Status |
 |-------|------|-------|--------|
-| 9.1 | `sprint-2/gap-32-navigation-and-wayfinding/01-web-launcher-primary-state.md` | Cursor | pending |
-| 9.2 | `sprint-2/gap-32-navigation-and-wayfinding/02-web-launcher-sidebar-state.md` [after 9.1] | Cursor | pending |
-| 9.3 | `sprint-2/gap-32-navigation-and-wayfinding/03-web-launcher-expanded-state.md` [after 9.1] | Cursor | pending |
-| 9.4 | `sprint-2/gap-32-navigation-and-wayfinding/07-data-wiring.md` [after 9.1-9.3] | Claude Code | pending |
+| 9.1 | `sprint-2/gap-32-navigation-and-wayfinding/01-navigation-config.md` | Cursor | DONE |
+| 9.2 | `sprint-2/gap-32-navigation-and-wayfinding/02-breadcrumb-and-page-header.md` [after 9.1] | Cursor | DONE |
+| 9.3 | `sprint-2/gap-32-navigation-and-wayfinding/03-sidebar-nav-groups.md` [after 9.1] | Cursor | DONE |
+| 9.4 | `sprint-2/gap-32-navigation-and-wayfinding/04-command-palette-and-settings-hub.md` [after 9.1-9.3] | Claude Code | DONE |
+
+Note: archived under `internal/prompts/archived_prompts/pending_prompts/sprint-2/`. Full route inventory in workspace-nav.ts; sidebar nav groups, breadcrumbs, command palette, and settings back links.
 
 ---
 
@@ -208,12 +218,14 @@ within the gap.
 
 | Order | Gap | Agent | Status |
 |-------|-----|-------|--------|
-| D1 | `sprint-2/gap-25-install-onboarding-docs/` (all prompts in numbered order) | Claude Code | pending |
-| D2 | `sprint-2/gap-26-channel-docs/` | Claude Code | pending |
-| D3 | `sprint-2/gap-27-architecture-docs/` | Claude Code | pending |
-| D4 | `sprint-2/gap-28-plugin-automation-docs/` | Claude Code | pending |
-| D5 | `sprint-2/gap-29-operations-health-docs/` | Claude Code | pending |
-| D6 | `sprint-2/gap-30-model-providers-security-docs/` | Claude Code | pending |
+| D1 | `sprint-2/gap-25-install-onboarding-docs/` (all prompts in numbered order) | Claude Code | DONE |
+| D2 | `sprint-2/gap-26-channel-docs/` | Claude Code | DONE |
+| D3 | `sprint-2/gap-27-architecture-docs/` | Claude Code | DONE |
+| D4 | `sprint-2/gap-28-plugin-automation-docs/` | Claude Code | DONE |
+| D5 | `sprint-2/gap-29-operations-health-docs/` | Claude Code | DONE |
+| D6 | `sprint-2/gap-30-model-providers-security-docs/` | Claude Code | DONE |
+
+Note: archived under `internal/prompts/archived_prompts/pending_prompts/sprint-2/`. 27 new doc pages in `frontends/marketing/docs.carinaai.uk/`; sidebar expanded for install, gateways, architecture, plugins, ops, and security.
 
 ---
 
@@ -222,29 +234,41 @@ within the gap.
 Each gap is internally ordered (01 before 02, etc.) but gaps do not block each
 other. Run in parallel across agents.
 
-Note on gap-03-mobile: camera-vision.ts and motion-activity.ts exist in the
-codebase. Verify exactly what the prompt adds before starting. Also includes the
-one remaining item from gap-09 (Porcupine hardware wake word on iOS/Android).
+Note on gap-03-mobile: FULLY BUILT 2026-06-22. All four prompts archived. Native layer in `frontends/client-apps/carinaMobile/` (background WS, camera/motion, SMS/call/notification relay, companion pairing). Porcupine voice wake shipped separately via `withVoiceWake.js`.
 
 | Gap | Internal order | Agent | Status |
 |-----|----------------|-------|--------|
-| `sprint-2/gap-02-carina-hub/` | 01 then 02 then 03, then 04+05 parallel | Cursor + Claude Code | pending |
-| `sprint-2/gap-03-mobile/` | 01 then 02+03 parallel then 04 | Codex + Cursor | pending |
-| `sprint-2/gap-04-desktop/` | 01 through 06 sequential | Cursor | pending |
-| `sprint-2/gap-05-security/` | see gap-05-security/README.md - 20+ sub-prompts | Claude Code + Codex | pending |
-| `sprint-2/gap-06-webui/` | 01+02 done; start at 03 (i18n), then 04-08 | Cursor + Claude Code | pending |
-| `sprint-2/gap-07-tui-cli/` | shell completions only (rest built) - start at 05 | Codex | pending |
-| `sprint-2/gap-08-enterprise-security/` | 01 then 02-06 in pairs | Claude Code + Codex | pending |
-| `sprint-1/gap-10-incident-blog/` | 01 then 03 parallel, then 02+04, then 05 | Claude Code | pending |
+| `sprint-2/gap-02-carina-hub/` | 01 then 02 then 03, then 04+05 parallel | Cursor + Claude Code | DONE (verified built) |
+| `sprint-2/gap-03-mobile/` | 01-04 | Codex + Cursor | DONE (archived 2026-06-22) |
+| `sprint-2/gap-04-desktop/` | 01 through 06 sequential | Cursor | DONE (offline sync shipped 2026-06-21; see 07-offline-sync.md) |
+| `sprint-2/gap-05-security/` | see gap-05-security/README.md | Claude Code + Codex | DONE (verified built; archived 2026-06-21) |
+| `sprint-2/gap-06-webui/` | 01+02 done; start at 03 (i18n), then 04-08 | Cursor + Claude Code | partial (08 window system DONE; archive other built prompts) |
+| `sprint-2/gap-07-tui-cli/` | shell completions only (rest built) - start at 05 | Codex | DONE (verified built) |
+| `sprint-2/gap-08-enterprise-security/` | 01 then 02-06 in pairs | Claude Code + Codex | DONE (archived 2026-06-21) |
+| `sprint-1/gap-10-incident-blog/` | 01 then 03 parallel, then 02+04, then 05 | Claude Code | partial (core store/tools/ops API built; verify dual-interface + newsletter) |
 
-Note on gap-06-webui: prompts 01 (PTY bridge) and 02 (admin pages) are built.
-Env vars editor page also exists at app.carinaai.uk/src/app/(workspace)/env.
-Start at prompt 03 (i18n) and verify prompts 04-08 before building.
+Note on gap-06-webui: prompts 01 (PTY bridge), 02 (admin pages), 03 (i18n),
+04 (canvas), 05 (chat enhancements), 06 (PWA), 07 (Odysseus UX), and 08 (window
+system) are built in `frontends/client-apps/app.carinaai.uk/`. Remaining prompt
+files in pending may still need archival. Future phases from prompt 08 (background
+effects, host status panel, Ctrl+1-9 focus) are optional follow-ups.
 
 Note on gap-07-tui-cli: Ink TUI, approval flow, operator enhancements, CLI
-commands, interactive mode are all built. Shell completions (bash/zsh/fish/
-powershell) also exist at src/cli/completions/. Read prompt 05 carefully before
-building - it may also be done.
+commands, interactive mode, and shell completions (`src/cli/completions/`,
+`carina completion <shell>`) are all built.
+
+Note on gap-05-security: all 13 core modules, 72 cyber tools, tiered gating,
+Scout SOC visibility, and de-referencing are built under
+`backends/servers/core.carinaai.uk/src/security/` and related paths. Prompt
+folder archived to `internal/prompts/archived_prompts/pending_prompts/sprint-2/gap-05-security/`.
+Optional follow-ups from cyber-tools README: blue-team/SOC tool batch (~20-25 prompts).
+
+Note on gap-08-enterprise-security: operational layer shipped in
+`backends/servers/core.carinaai.uk/src/enterprise/security/` (SSO federation,
+immutable audit, residency, DR, zero-trust, SOC2 packager). Prompt folder archived.
+
+Block 11 session (2026-06-21): shipped web UI i18n (`src/i18n/`, 12 locales,
+`LanguageSwitcher`, sidebar/chat/settings wired, RTL for Arabic).
 
 ---
 

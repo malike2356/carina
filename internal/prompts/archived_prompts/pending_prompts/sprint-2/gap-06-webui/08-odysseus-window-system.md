@@ -1,5 +1,14 @@
 # Gap 6.8; Odysseus Window System for Carina Web UI
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Window manager core: `lib/window-manager/` (drag, resize, edge dock, context store)
+- `WindowShell`, `WorkspaceWindows`, `WindowDockBar`, `WindowWorkspaceShell`
+- 12+ tool windows (panels + route tools) with sidebar toggle on chat/launcher
+- Embedded panel mode for Memory, Skills, Notes; keyboard shortcuts Ctrl+W / Ctrl+Shift+W
+- CSS in `globals.css` (dock margins, animations, mobile fullscreen sheets)
+
 > **REUSE RULE:** See `../REUSE-RULES.md`. File name references the behavioral source only. All implementation must use Carina's own voice, naming, CLI output, and UI copy. No competitor brand names in any shipped file.
 
 

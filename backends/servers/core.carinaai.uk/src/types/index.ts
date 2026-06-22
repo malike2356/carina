@@ -25,6 +25,8 @@ export interface CarinaMessage {
   chatId?: string;
   chatTitle?: string;
   senderName?: string;
+  channelUserId?: string;
+  canonicalUserId?: string;
   messageId?: string;
   replyToMessageId?: string;
 }

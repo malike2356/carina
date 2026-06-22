@@ -9,6 +9,21 @@ export const auditSearchRouter: IRouter = Router();
 const VALID_EVENT_TYPES = new Set<string>(AUDIT_EVENT_TYPES);
 const VALID_SEVERITIES = new Set<string>(AUDIT_SEVERITIES);
 
+// GET /api/audit?limit=N  (convenience alias used by the public console dashboard)
+auditSearchRouter.get('/', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const limit = parseInt(String(req.query.limit ?? '50'), 10);
+    const result = await searchAuditLog({
+      per_page: isNaN(limit) || limit < 1 ? 50 : Math.min(limit, 500),
+    });
+    res.json({ events: result.events, total: result.total });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[scout:audit] List failed:', msg);
+    res.status(500).json({ error: 'Audit list failed' });
+  }
+});
+
 // GET /api/audit/search
 // Query params: tenant_id, event_type, severity, from, to, query, page, per_page
 auditSearchRouter.get('/search', async (req: Request, res: Response): Promise<void> => {

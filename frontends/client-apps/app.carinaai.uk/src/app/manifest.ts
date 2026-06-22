@@ -1,18 +1,21 @@
 import type { MetadataRoute } from 'next';
+import { getPublicBrand } from '@/lib/server-brand';
 
 export default function manifest(): MetadataRoute.Manifest {
+  const brand = getPublicBrand();
+  const accent = brand.colorTokens['--accent'] ?? '#16c97e';
   return {
-    name: 'Carina Cloud',
-    short_name: 'Carina',
-    description: 'Hosted Carina workspace for chat, research, documents, email, and more.',
+    name: brand.publicSiteTitle,
+    short_name: brand.shortName,
+    description: `Hosted ${brand.productName} workspace for chat, research, documents, email, and more.`,
     start_url: '/',
     scope: '/',
     display: 'standalone',
     background_color: '#0d0d0f',
-    theme_color: '#16c97e',
+    theme_color: accent,
     icons: [
       {
-        src: '/icon.svg',
+        src: brand.faviconUrl ?? '/icon.svg',
         sizes: 'any',
         type: 'image/svg+xml',
       },

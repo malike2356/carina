@@ -37,6 +37,7 @@ incidentBlogRouter.get('/', async (req, res) => {
         subscriberCount: subscribers.data!.subscribers.length,
       },
       filters: { status: status ?? '', category: category ?? '' },
+      query: req.query,
     });
   } catch (err) {
     res.status(500).render('error', { message: err instanceof Error ? err.message : String(err) });
@@ -75,6 +76,7 @@ incidentBlogRouter.get('/:id([0-9a-fA-F-]{36})', async (req, res) => {
     res.render('incident-blog/view', {
       title: String(payload.data.incident.title ?? 'Incident'),
       incident: payload.data.incident,
+      query: req.query,
     });
   } catch (err) {
     res.status(500).render('error', { message: err instanceof Error ? err.message : String(err) });

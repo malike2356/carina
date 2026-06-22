@@ -83,3 +83,4 @@ HESTIACP_CREDENTIALS.txt
 # Media and credentials - not for source control
 instructions/media/
 product/planning/media/
+env

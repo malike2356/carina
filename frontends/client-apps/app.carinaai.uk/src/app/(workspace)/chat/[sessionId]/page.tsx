@@ -1,5 +1,5 @@
-import { notFound, redirect } from 'next/navigation';
-import { and, eq } from 'drizzle-orm';
+import { redirect } from 'next/navigation';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatSessions } from '@/db/schema';
 import { getSessionMessages } from '@/lib/chat-sessions';
@@ -30,7 +30,16 @@ export default async function ChatPage({ params, searchParams }: Props) {
     )
     .limit(1);
 
-  if (!chatSession) notFound();
+  if (!chatSession) {
+    const lastActivity = sql<Date>`coalesce(${chatSessions.lastMessageAt}, ${chatSessions.createdAt})`;
+    const [latest] = await db
+      .select({ id: chatSessions.id })
+      .from(chatSessions)
+      .where(and(eq(chatSessions.workspaceId, workspace.id), eq(chatSessions.archived, false)))
+      .orderBy(desc(lastActivity))
+      .limit(1);
+    redirect(latest ? `/chat/${latest.id}` : '/chat');
+  }
 
   const messages = await getSessionMessages(sessionId, workspace.id);
 

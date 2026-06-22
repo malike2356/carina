@@ -3,8 +3,17 @@
 import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useShortcut } from '@/hooks/useShortcut';
+import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
 
-const THEME_ORDER = ['dark', 'light', 'midnight', 'forest'] as const;
+import { MULTI_THEME_IDS } from '@/lib/themes';
+import {
+  normalizeThemeId,
+  persistThemePreference,
+  readCookieThemePreference,
+  readStoredThemePreference,
+} from '@/lib/theme-runtime';
+
+const THEME_ORDER = MULTI_THEME_IDS;
 
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -13,6 +22,29 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function GlobalShortcuts() {
   const router = useRouter();
+  const windowManager = useOptionalWindowManager();
+
+  useShortcut({
+    keys: ['Ctrl', 'W'],
+    handler: useCallback(() => {
+      if (!windowManager?.focusedId) return;
+      windowManager.closeWindow(windowManager.focusedId);
+    }, [windowManager]),
+  });
+
+  useShortcut({
+    keys: ['Ctrl', 'Shift', 'W'],
+    handler: useCallback(() => {
+      windowManager?.closeAllWindows();
+    }, [windowManager]),
+  });
+
+  useShortcut({
+    keys: ['Ctrl', ','],
+    handler: useCallback(() => {
+      router.push('/settings');
+    }, [router]),
+  });
 
   useShortcut({
     keys: ['Ctrl', 'M'],
@@ -38,15 +70,13 @@ export function GlobalShortcuts() {
   useShortcut({
     keys: ['Ctrl', 'Shift', 'T'],
     handler: useCallback(() => {
-      const current = document.documentElement.getAttribute('data-theme') ?? 'dark';
-      const index = THEME_ORDER.indexOf(current as (typeof THEME_ORDER)[number]);
-      const next = THEME_ORDER[(index + 1) % THEME_ORDER.length];
-      document.dispatchEvent(new CustomEvent('set-theme', { detail: next }));
-      void fetch('/api/workspace/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ theme: next }),
-      });
+      const stored =
+        readStoredThemePreference() ??
+        readCookieThemePreference() ?? { themeId: 'default', mode: 'dark' as const };
+      const index = THEME_ORDER.indexOf(normalizeThemeId(stored.themeId));
+      const nextTheme = THEME_ORDER[(index + 1) % THEME_ORDER.length] ?? 'default';
+      const next = { ...stored, themeId: nextTheme };
+      void persistThemePreference(next, { syncApi: true });
     }, []),
   });
 

@@ -10,8 +10,7 @@ interface Props {
 export function MobileProjectList({ projects }: Props) {
   const open = async (id: string) => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/(tabs)/chat`);
-    void id;
+    router.push(`/(tabs)/chat?project=${encodeURIComponent(id)}`);
   };
 
   if (projects.length === 0) {

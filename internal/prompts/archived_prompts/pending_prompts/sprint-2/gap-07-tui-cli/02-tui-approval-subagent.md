@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Approval overlay component in Ink TUI
+- Subagent task status panel with live updates
+- Tool-call confirmation prompt (approve/reject/always)
+
 # Gap 07 - Prompt 02: TUI Approval UI and Subagent Overlay
 
 **Agent:** Claude Code (fallback: Cursor)

@@ -120,18 +120,14 @@ export async function bootstrapIdentityLinksFromPeers(
   peers: Array<{ channel: string; channelUserId: string }>,
 ): Promise<number> {
   if (!identityLinksEnabled()) return 0;
-  const resolverInstance = getIdentityResolver();
   let created = 0;
   for (const peer of peers) {
-    const before = await resolverInstance.resolveToChannel(
-      (await pool.query<{ user_id: string }>(
-        `SELECT user_id FROM identity_links WHERE channel = $1 AND channel_user_id = $2`,
-        [peer.channel, peer.channelUserId],
-      )).rows[0]?.user_id ?? '',
-      peer.channel,
+    const { rows } = await pool.query<{ user_id: string }>(
+      `SELECT user_id FROM identity_links WHERE channel = $1 AND channel_user_id = $2`,
+      [peer.channel, peer.channelUserId],
     );
-    if (!before) {
-      await resolverInstance.resolve(peer.channel, peer.channelUserId);
+    if (!rows[0]) {
+      await getIdentityResolver().resolve(peer.channel, peer.channelUserId);
       created += 1;
     }
   }

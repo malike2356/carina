@@ -1,33 +1,42 @@
 <% title = 'Incident Subscribers' %>
 <div class="ops-page">
-<style>
-  .blog-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1rem; }
-  .blog-table { width: 100%; border-collapse: collapse; }
-  .blog-table th, .blog-table td { padding: 0.7rem 0.5rem; border-bottom: 1px solid #2a2a2a; text-align: left; vertical-align: top; }
-</style>
-<div class="blog-card">
-  <h1 class="text-2xl font-bold text-white mb-4">Incident Subscribers</h1>
-  <table class="blog-table">
-    <thead>
-      <tr>
-        <th>Email</th>
-        <th>Confirmed</th>
-        <th>Subscribed</th>
-        <th>Unsubscribed</th>
-        <th>Last sent</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% for (const subscriber of subscribers) { %>
-        <tr>
-          <td><%= subscriber.email %></td>
-          <td><%= subscriber.confirmed ? 'Yes' : 'No' %></td>
-          <td><%= subscriber.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleString() : '' %></td>
-          <td><%= subscriber.unsubscribedAt ? new Date(subscriber.unsubscribedAt).toLocaleString() : '' %></td>
-          <td><%= subscriber.lastSentAt ? new Date(subscriber.lastSentAt).toLocaleString() : '' %></td>
-        </tr>
-      <% } %>
-    </tbody>
-  </table>
-</div>
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Incident subscribers</div>
+      <div class="ops-page-sub"><a href="/admin/incident-blog" class="ops-link">Back to incident blog</a></div>
+    </div>
+  </div>
+
+  <div class="ops-surface ops-table-wrap">
+    <% if (!subscribers.length) { %>
+      <div class="ops-empty">No subscribers yet.</div>
+    <% } else { %>
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Confirmed</th>
+            <th>Subscribed</th>
+            <th>Unsubscribed</th>
+            <th>Last sent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const subscriber of subscribers) { %>
+            <tr>
+              <td style="font-weight:500;color:var(--heading);"><%= subscriber.email %></td>
+              <td>
+                <span class="ops-badge <%= subscriber.confirmed ? 'ops-badge-green' : 'ops-badge-gray' %>">
+                  <%= subscriber.confirmed ? 'Yes' : 'No' %>
+                </span>
+              </td>
+              <td style="color:var(--muted);font-size:12px;"><%= subscriber.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleString() : '' %></td>
+              <td style="color:var(--muted);font-size:12px;"><%= subscriber.unsubscribedAt ? new Date(subscriber.unsubscribedAt).toLocaleString() : '' %></td>
+              <td style="color:var(--muted);font-size:12px;"><%= subscriber.lastSentAt ? new Date(subscriber.lastSentAt).toLocaleString() : '' %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
 </div>

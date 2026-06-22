@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
 import { PlanCard } from '@/components/billing/PlanCard';
 import { UsageMeter } from '@/components/billing/UsageMeter';
 
@@ -10,12 +11,14 @@ export function BillingClient({
   monthlyUsed,
   limit,
   period,
+  embedded = false,
 }: {
   plan: string;
   dailyUsed: number;
   monthlyUsed: number;
   limit: number | null;
   period: 'day' | 'month' | 'unlimited';
+  embedded?: boolean;
 }) {
   const [pending, setPending] = useState<string | null>(null);
 
@@ -34,38 +37,48 @@ export function BillingClient({
   const used = period === 'day' ? dailyUsed : monthlyUsed;
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-xl border border-border bg-surface p-6">
-        <h2 className="mb-4 text-lg font-semibold">Usage</h2>
+    <div className={cn(embedded ? 'space-y-4' : 'space-y-8')}>
+      <div className={cn('rounded-xl border border-border bg-surface', embedded ? 'p-4' : 'p-6')}>
+        {!embedded ? <h2 className="mb-4 text-lg font-semibold">Usage</h2> : null}
         <UsageMeter
           label={period === 'day' ? 'Daily tokens' : period === 'month' ? 'Monthly tokens' : 'Tokens'}
           used={used}
           limit={limit}
         />
       </div>
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+      <div
+        className={cn(
+          'grid gap-4',
+          embedded ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
+        )}
+      >
         <PlanCard
           name="Free"
-          price="GBP 0"
+          priceAmount="GBP 0"
           description="50k tokens per day, BYOK only, 1 user."
           active={plan === 'free'}
+          compact={embedded}
         />
         <PlanCard
           name="Starter"
-          price="GBP 19 / month"
+          priceAmount="GBP 19"
+          pricePeriod="per month"
           description="500k tokens per month, BYOK, no Scout."
           active={plan === 'starter'}
           onUpgrade={() => upgrade('starter')}
+          compact={embedded}
         />
         <PlanCard
           name="Team"
-          price="GBP 79 / month"
+          priceAmount="GBP 79"
+          pricePeriod="per month"
           description="Unlimited tokens, BYOK, optional Scout pairing."
           active={plan === 'team'}
           onUpgrade={() => upgrade('team')}
+          compact={embedded}
         />
       </div>
-      {pending && <p className="text-sm text-text-muted">Redirecting to Stripe checkout...</p>}
+      {pending ? <p className="text-sm text-text-muted">Redirecting to Stripe checkout...</p> : null}
     </div>
   );
 }

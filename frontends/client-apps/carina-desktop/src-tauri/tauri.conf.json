@@ -53,6 +53,9 @@
         "https://releases.carinaai.uk/desktop/{{target}}/{{current_version}}"
       ],
       "pubkey": ""
+    },
+    "sql": {
+      "preload": ["sqlite:carina-cache.db"]
     }
   }
 }

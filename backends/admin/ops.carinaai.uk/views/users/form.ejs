@@ -1,48 +1,48 @@
-<div class="max-w-lg">
-  <div class="mb-6">
-    <h2 class="text-xl font-semibold text-white"><%= title %></h2>
-    <a href="/users" class="text-sm text-gray-400 hover:text-gray-200">Back to users</a>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title"><%= title %></div>
+      <div class="ops-page-sub"><a href="/users" class="ops-link">Back to users</a></div>
+    </div>
   </div>
 
   <% if (error) { %>
-    <div class="mb-4 p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm"><%= error %></div>
+    <div class="ops-flash error"><%= error %></div>
   <% } %>
 
-  <form method="post" action="/users/<%= user ? user.id + '/edit' : 'new' %>"
-        class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6 space-y-4">
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="name">Full name</label>
-      <input type="text" id="name" name="name" required
-             value="<%= user ? user.name : '' %>"
-             class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white focus:border-[#22c55e] outline-none">
-    </div>
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="email">Email</label>
-      <input type="email" id="email" name="email" required
-             value="<%= user ? user.email : '' %>"
-             class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white focus:border-[#22c55e] outline-none">
-    </div>
-    <% if (!user) { %>
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="password">Password</label>
-      <input type="password" id="password" name="password" required minlength="8"
-             class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white focus:border-[#22c55e] outline-none">
-      <p class="text-xs text-gray-500 mt-1">Minimum 8 characters. User can change after first login.</p>
-    </div>
-    <% } %>
-    <div>
-      <label class="block text-sm text-gray-400 mb-1" for="role">Role</label>
-      <select id="role" name="role"
-              class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white focus:border-[#22c55e] outline-none">
-        <option value="admin" <%= (!user || user.role === 'admin') ? 'selected' : '' %>>Admin - full ops access</option>
-        <option value="superadmin" <%= (user && user.role === 'superadmin') ? 'selected' : '' %>>Superadmin - admin + user management</option>
-        <option value="viewer" <%= (user && user.role === 'viewer') ? 'selected' : '' %>>Viewer - read only</option>
-      </select>
-    </div>
-    <div class="pt-2">
-      <button type="submit" class="px-6 py-2 bg-[#22c55e] text-black text-sm font-medium rounded hover:opacity-90">
-        <%= user ? 'Save changes' : 'Create user' %>
-      </button>
+  <form method="post" action="/users/<%= user ? user.id + '/edit' : 'new' %>" class="ops-surface" style="max-width:560px;">
+    <div class="ops-section">
+      <div class="ops-form-grid">
+        <label class="ops-field">
+          <span class="ops-field-label">Full name</span>
+          <input type="text" id="name" name="name" required value="<%= user ? user.name : '' %>" class="ops-input">
+        </label>
+        <label class="ops-field">
+          <span class="ops-field-label">Email</span>
+          <input type="email" id="email" name="email" required value="<%= user ? user.email : '' %>" class="ops-input">
+        </label>
+        <% if (!user) { %>
+          <label class="ops-field" style="grid-column:1/-1;">
+            <span class="ops-field-label">Password</span>
+            <input type="password" id="password" name="password" required minlength="8" class="ops-input">
+            <span class="ops-inline-note">Minimum 8 characters. User can change after first login.</span>
+          </label>
+        <% } %>
+        <label class="ops-field" style="grid-column:1/-1;">
+          <span class="ops-field-label">Role</span>
+          <select id="role" name="role" class="ops-input">
+            <option value="admin" <%= (!user || user.role === 'admin') ? 'selected' : '' %>>Admin - full ops access</option>
+            <option value="superadmin" <%= (user && user.role === 'superadmin') ? 'selected' : '' %>>Superadmin - admin + user management</option>
+            <option value="viewer" <%= (user && user.role === 'viewer') ? 'selected' : '' %>>Viewer - read only</option>
+          </select>
+        </label>
+      </div>
+      <div class="ops-actions" style="margin-top:18px;">
+        <button type="submit" class="ops-btn ops-btn-green">
+          <%= user ? 'Save changes' : 'Create user' %>
+        </button>
+        <a href="/users" class="ops-btn ops-btn-ghost">Cancel</a>
+      </div>
     </div>
   </form>
 </div>

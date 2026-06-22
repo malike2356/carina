@@ -5,11 +5,11 @@
       <div class="ops-page-title">Hosted tenants</div>
       <div class="ops-page-sub">Provision Carina users, manage plans, billing, usage, and skill packs.</div>
     </div>
-    <div class="ops-actions" style="margin-top:0;">
+    <div class="ops-head-actions">
       <% if (ready) { %>
         <a href="/tenants/new" class="ops-btn ops-btn-green">Create tenant</a>
       <% } %>
-      <a href="<%= hostedAppUrl %>" target="_blank" rel="noopener" class="ops-link">Open <%= hostedAppUrl %></a>
+      <a href="<%= hostedAppUrl %>" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-ghost">Open Carina Cloud</a>
     </div>
   </div>
 
@@ -51,7 +51,10 @@
 
   <div class="ops-surface ops-table-wrap">
     <% if (!tenants.length) { %>
-      <div class="ops-empty">No tenants yet. <a href="/tenants/new" class="ops-link">Create your first tenant</a></div>
+      <div class="ops-empty">
+        No tenants yet.
+        <a href="/tenants/new" class="ops-btn ops-btn-green" style="margin-top:12px;display:inline-flex;">Create your first tenant</a>
+      </div>
     <% } else { %>
       <table class="ops-table">
         <thead>

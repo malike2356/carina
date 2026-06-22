@@ -32,6 +32,7 @@ interface NotesPanelProps {
   activeSessionId?: string | null;
   pinnedNoteIds?: Set<string>;
   onPinToggle?: (noteId: string, label: string, content: string) => void;
+  embedded?: boolean;
 }
 
 type View = 'list' | 'edit' | 'new';
@@ -41,6 +42,7 @@ export function NotesPanel({
   activeSessionId,
   pinnedNoteIds = new Set(),
   onPinToggle,
+  embedded = true,
 }: NotesPanelProps) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,8 +157,8 @@ export function NotesPanel({
   const regularNotes = notes.filter((note) => !note.pinned && !note.archived);
   const archivedNotes = notes.filter((note) => note.archived);
 
-  return (
-    <Panel title="Notes" icon={<FileText className="h-4 w-4" />} onClose={onClose} width={400}>
+  const body = (
+    <>
       {view === 'list' && (
         <div className="flex flex-col">
           <div className="flex items-center gap-2 px-4 py-3">
@@ -322,6 +324,16 @@ export function NotesPanel({
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex h-full min-h-0 flex-col overflow-hidden">{body}</div>;
+  }
+
+  return (
+    <Panel title="Notes" icon={<FileText className="h-4 w-4" />} onClose={onClose} width={400}>
+      {body}
     </Panel>
   );
 }

@@ -14,6 +14,7 @@ type TerminalStatus = 'loading' | 'connecting' | 'connected' | 'error';
 
 type BridgeResponse = {
   data?: {
+    token?: string;
     wsUrl?: string;
     expiresInSeconds?: number;
   };
@@ -55,14 +56,45 @@ function statusLabel(status: TerminalStatus): string {
   return 'Loading';
 }
 
+function buildTerminalWebSocketPath(token: string): string {
+  const secure = window.isSecureContext || window.location.protocol === 'https:';
+  const protocol = secure ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/api/terminal/ws?token=${encodeURIComponent(token)}`;
+}
+
+function resolveBridgeSocketUrl(data: BridgeResponse['data']): string {
+  const raw = data?.wsUrl?.trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(raw, window.location.origin);
+    const secure = window.isSecureContext || window.location.protocol === 'https:';
+    if (secure) {
+      if (url.protocol === 'ws:') url.protocol = 'wss:';
+      if (url.protocol === 'http:') url.protocol = 'https:';
+    } else if (url.protocol === 'wss:') {
+      url.protocol = 'ws:';
+    }
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+function resolveTerminalSocketUrl(data: BridgeResponse['data'], token: string): string {
+  const fromBridge = resolveBridgeSocketUrl(data);
+  if (fromBridge) return fromBridge;
+  return buildTerminalWebSocketPath(token);
+}
+
 export function Terminal({ mode = 'page', onClose }: Props) {
   const access = useTerminalAccess();
-  const { capabilities } = useCloudCapabilities();
+  const { capabilities, loading: capsLoading } = useCloudCapabilities();
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const connectingRef = useRef(false);
   const [status, setStatus] = useState<TerminalStatus>('loading');
   const [error, setError] = useState('');
   const [detail, setDetail] = useState('Preparing terminal session.');
@@ -78,8 +110,8 @@ export function Terminal({ mode = 'page', onClose }: Props) {
   }, [isDrawer]);
 
   useEffect(() => {
-    if (access.loading) return;
-    if (capabilities && !capabilities.terminal) {
+    if (access.loading || capsLoading) return;
+    if (!capabilities?.terminal) {
       setStatus('error');
       setError('Terminal requires a core connection.');
       setDetail(
@@ -98,6 +130,8 @@ export function Terminal({ mode = 'page', onClose }: Props) {
     let observer: ResizeObserver | null = null;
 
     async function connect() {
+      if (connectingRef.current) return;
+      connectingRef.current = true;
       setStatus('loading');
       setError('');
       setDetail('Requesting bridge token.');
@@ -109,14 +143,22 @@ export function Terminal({ mode = 'page', onClose }: Props) {
           throw new Error(bridge.error ?? 'Unable to prepare terminal bridge');
         }
 
-        const wsUrl = bridge.data?.wsUrl;
-        if (!wsUrl) {
-          throw new Error('Terminal bridge url missing');
+        const bridgeToken = bridge.data?.token?.trim() ?? '';
+        const bridgeSocketUrl = resolveBridgeSocketUrl(bridge.data);
+        if (!bridgeToken && !bridgeSocketUrl) {
+          throw new Error('Terminal bridge token missing');
         }
         if (cancelled) return;
 
         const container = containerRef.current;
         if (!container) return;
+
+        xtermRef.current?.dispose();
+        xtermRef.current = null;
+        fitRef.current = null;
+        wsRef.current?.close();
+        wsRef.current = null;
+        container.replaceChildren();
 
         const term = new XTerm({
           cursorBlink: true,
@@ -136,7 +178,7 @@ export function Terminal({ mode = 'page', onClose }: Props) {
         term.writeln('\x1b[1;36mCarina terminal ready\x1b[0m');
         term.writeln('\x1b[2mConnecting to PTY bridge...\x1b[0m');
 
-        const ws = new WebSocket(wsUrl);
+        const ws = new WebSocket(resolveTerminalSocketUrl(bridge.data, bridgeToken));
         xtermRef.current = term;
         fitRef.current = fit;
         wsRef.current = ws;
@@ -210,8 +252,11 @@ export function Terminal({ mode = 'page', onClose }: Props) {
       } catch (err) {
         if (cancelled) return;
         setStatus('error');
-        setError(err instanceof Error ? err.message : String(err));
+        const message = err instanceof Error ? err.message : String(err);
+        setError(message.includes('WebSocket') ? 'Terminal requires a secure (wss) connection. Refresh and try again.' : message);
         setDetail('Retry to open another PTY bridge session.');
+      } finally {
+        connectingRef.current = false;
       }
     }
 
@@ -230,7 +275,7 @@ export function Terminal({ mode = 'page', onClose }: Props) {
       xtermRef.current = null;
       fitRef.current = null;
     };
-  }, [access.canUseTerminal, access.loading, capabilities, reconnectTick]);
+  }, [access.canUseTerminal, access.loading, capsLoading, capabilities?.terminal, reconnectTick]);
 
   if (access.loading) {
     return (

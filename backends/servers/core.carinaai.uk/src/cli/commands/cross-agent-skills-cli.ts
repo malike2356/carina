@@ -64,7 +64,7 @@ export async function runCrossAgentSkillsCommand(action: string, args: string[] 
     }
     const search = new CrossEcosystemSearch();
     const result = await search.search(query, {
-      sources: flags.hub ? [String(flags.hub)] : flags.all ? undefined : ['carina-hub', 'hermes-hub', 'openclaw-hub'],
+      sources: flags.hub ? [String(flags.hub)] : flags.all ? undefined : ['carina-hub', 'external-skills-hub', 'goal-result-skills-hub'],
       limit: flags.all ? 20 : 10,
       noCache: Boolean(flags.noCache),
     });

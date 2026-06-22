@@ -1,0 +1,11 @@
+# docker-compose.local.yml - LOCAL DEV ONLY.
+# Usage: docker compose -f docker-compose.prod.yml -f docker-compose.local.yml up
+
+services:
+  labyrinth-scout:
+    ports:
+      - "4444:4444"
+
+  scout-engine:
+    ports:
+      - "4455:4455"

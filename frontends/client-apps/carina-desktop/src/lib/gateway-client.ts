@@ -73,6 +73,69 @@ export async function listSessions(): Promise<SessionInfo[]> {
   }
 }
 
+export type MemorySessionPayload = {
+  session_id: string;
+  title: string;
+  last_active: string;
+  preview?: string;
+};
+
+export type MemoryRecordPayload = {
+  id: string;
+  category?: string;
+  content: string;
+  priority?: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export function toSessionInfoFromMemory(entry: MemorySessionPayload): SessionInfo {
+  return {
+    sessionId: entry.session_id,
+    agentId: 'main',
+    createdAt: entry.last_active,
+    updatedAt: entry.last_active,
+    messageCount: 0,
+    title: entry.title || entry.preview || entry.session_id.slice(0, 12),
+  };
+}
+
+export async function fetchMemorySessions(limit = 50): Promise<MemorySessionPayload[]> {
+  const data = await get<{ sessions?: MemorySessionPayload[] }>(`/api/memory/sessions?limit=${limit}`);
+  return data.sessions ?? [];
+}
+
+export async function fetchMemoryRecords(page = 1): Promise<MemoryRecordPayload[]> {
+  const data = await get<{ entries?: MemoryRecordPayload[]; records?: MemoryRecordPayload[] }>(`/api/memory?page=${page}`);
+  const records = data.entries ?? data.records ?? [];
+  if (records.length >= 20) {
+    const next = await fetchMemoryRecords(page + 1).catch(() => [] as MemoryRecordPayload[]);
+    return [...records, ...next];
+  }
+  return records;
+}
+
+export async function scrollSessionMessages(
+  sessionId: string,
+  options?: { limit?: number; cursor?: string; direction?: 'older' | 'newer' },
+): Promise<{
+  sessionId: string;
+  messages: Array<{ id: string; role: string; content: string; createdAt: string }>;
+  hasOlder: boolean;
+  hasNewer: boolean;
+}> {
+  const params = new URLSearchParams({
+    limit: String(options?.limit ?? 50),
+    direction: options?.direction ?? 'older',
+  });
+  if (options?.cursor) params.set('cursor', options.cursor);
+  return get(`/api/memory/sessions/${encodeURIComponent(sessionId)}/scroll?${params.toString()}`);
+}
+
+export function isGatewayOnline(status: HealthStatus['status']): boolean {
+  return status === 'ok' || status === 'degraded';
+}
+
 export async function getSession(sessionId: string): Promise<SessionInfo> {
   try {
     return await get<SessionInfo>(`/api/sessions/${sessionId}`);

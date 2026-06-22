@@ -90,6 +90,17 @@ describe('workspace-chrome', () => {
     expect(hosted).not.toContain('private instance');
   });
 
+  it('renders custom brand logo and product name in hosted sidebar', () => {
+    const sidebar = workspaceSidebarHtml('chat', 'hosted', {
+      productName: 'Nova Cloud',
+      shortName: 'Nova',
+      logoUrl: 'https://cdn.example/logo.png',
+      colorTokens: { '--accent': '#3366ff' },
+    });
+    expect(sidebar).toContain('https://cdn.example/logo.png');
+    expect(sidebar).toContain('Nova Cloud');
+  });
+
   it('orders research and compare before email in nav', () => {
     const researchIdx = WORKSPACE_NAV_ITEMS.findIndex((item) => item.id === 'research');
     const compareIdx = WORKSPACE_NAV_ITEMS.findIndex((item) => item.id === 'compare');

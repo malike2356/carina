@@ -1,15 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title + ' - ' : '' %>Carina Ops</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme/index.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
   <link rel="stylesheet" href="/styles.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
-  <link rel="stylesheet" href="/ops-shell.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
+  <link rel="stylesheet" href="/ops-shell.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '6' %>">
 </head>
 <body class="ops-app">
   <aside id="sidebar" class="ops-sidebar">
@@ -33,10 +31,6 @@
     </div>
 
     <div class="nav-pinned">
-      <% const withV = function(href) {
-        if (!uiVersion) return href;
-        return href + (href.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(uiVersion);
-      }; %>
       <% var ap = activePath || ''; %>
       <% function navOpen(paths) {
         for (var pi = 0; pi < paths.length; pi++) {

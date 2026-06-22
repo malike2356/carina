@@ -65,12 +65,13 @@
 
       <div class="ops-section-divider"></div>
       <div class="ops-section-title">Connect to Carina agent</div>
-      <p class="ops-section-sub">On this server, ops can read the existing core token automatically.</p>
-
-      <% if (coreEnvReadable) { %>
+      <% if (carinaConnected) { %>
+        <p class="ops-flash success">Carina agent is connected.</p>
+      <% } else if (coreEnvReadable) { %>
+        <p class="ops-section-sub">Ops can read the core token from this server automatically.</p>
         <form method="post" action="/settings/carina-auto-pair" class="ops-actions">
           <button type="submit" class="ops-btn ops-btn-green">Connect automatically</button>
-          <span class="ops-inline-note">Uses token from <code class="ops-code"><%= coreEnvPath %></code></span>
+          <span class="ops-inline-note">Token source: <code class="ops-code"><%= coreEnvPath %></code></span>
         </form>
       <% } else { %>
         <p class="ops-flash warn">Auto-connect unavailable. Paste the ops token manually below.</p>
@@ -105,6 +106,9 @@
 
       <div class="ops-section-divider"></div>
       <div class="ops-section-title">Connect to Labyrinth Scout</div>
+      <% if (scoutConnected) { %>
+        <p class="ops-flash success">Labyrinth Scout is connected. Engine and console APIs respond with your saved API key.</p>
+      <% } else { %>
       <p class="ops-section-sub">Paste your Scout API key from <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="ops-link">console.labyrinthscout.com</a>.</p>
       <form method="post" action="/settings/scout-pairing">
         <div class="ops-field">
@@ -115,6 +119,7 @@
           <button type="submit" class="ops-btn ops-btn-green">Pair with Scout</button>
         </div>
       </form>
+      <% } %>
     </section>
     </div>
 

@@ -41,9 +41,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 interface SkillsPanelProps {
   onClose: () => void;
+  embedded?: boolean;
 }
 
-export function SkillsPanel({ onClose }: SkillsPanelProps) {
+export function SkillsPanel({ onClose, embedded = true }: SkillsPanelProps) {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -142,13 +143,8 @@ export function SkillsPanel({ onClose }: SkillsPanelProps) {
   }, {});
   const enabledCount = skills.filter((skill) => skill.enabled).length;
 
-  return (
-    <Panel
-      title={`Skills (${enabledCount}/${skills.length} active)`}
-      icon={<Zap className="h-4 w-4" />}
-      onClose={onClose}
-      width={400}
-    >
+  const body = (
+    <>
       <div className="flex items-center gap-1 border-b border-border px-4 pb-0 pt-3">
         {(['list', 'add'] as const).map((tab) => (
           <button
@@ -388,6 +384,21 @@ export function SkillsPanel({ onClose }: SkillsPanelProps) {
           </button>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex h-full min-h-0 flex-col overflow-hidden">{body}</div>;
+  }
+
+  return (
+    <Panel
+      title={`Skills (${enabledCount}/${skills.length} active)`}
+      icon={<Zap className="h-4 w-4" />}
+      onClose={onClose}
+      width={400}
+    >
+      {body}
     </Panel>
   );
 }

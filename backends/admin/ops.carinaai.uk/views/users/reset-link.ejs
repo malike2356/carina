@@ -1,21 +1,34 @@
-<div class="max-w-lg">
-  <div class="mb-6">
-    <h2 class="text-xl font-semibold text-white">Password Reset Link</h2>
-    <a href="/users" class="text-sm text-gray-400 hover:text-gray-200">Back to users</a>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Password reset link</div>
+      <div class="ops-page-sub"><a href="/users" class="ops-inline-link">Back to users</a></div>
+    </div>
   </div>
 
-  <div class="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-6">
-    <p class="text-sm text-gray-300 mb-4">
-      Send this link to <strong class="text-white"><%= user.name %></strong> (<%= user.email %>).
-      It expires in <strong class="text-white">24 hours</strong> and can only be used once.
-    </p>
-    <div class="bg-[#0f0f0f] border border-[#333] rounded p-3 font-mono text-sm text-green-400 break-all select-all mb-4">
-      <%= resetUrl %>
+  <div class="ops-surface" style="max-width:640px;border-color:rgba(0,200,100,0.35);">
+    <div class="ops-section">
+      <div class="ops-section-title">One-time setup link</div>
+      <p class="ops-section-sub">
+        Send this link to <strong><%= user.name %></strong> (<%= user.email %>).
+        It expires in <strong>24 hours</strong> and can only be used once.
+      </p>
+      <input type="text" readonly value="<%= resetUrl %>" class="ops-input mono" style="margin-bottom:14px;" onclick="this.select()">
+      <div class="ops-actions" style="margin-top:0;">
+        <button type="button" id="copy-reset-link" class="ops-btn ops-btn-green">Copy link</button>
+      </div>
+      <p class="ops-inline-note" style="margin-top:14px;">Do not share this link publicly. It grants access to set a new password for this account.</p>
     </div>
-    <button onclick="navigator.clipboard.writeText('<%= resetUrl %>').then(() => this.textContent = 'Copied!')"
-            class="px-4 py-2 bg-[#22c55e] text-black text-sm font-medium rounded hover:opacity-90">
-      Copy link
-    </button>
-    <p class="text-xs text-gray-500 mt-4">Do not share this link publicly. It grants full access to set a new password for this account.</p>
   </div>
 </div>
+
+<script>
+document.getElementById('copy-reset-link').addEventListener('click', function() {
+  var url = <%= JSON.stringify(resetUrl) %>;
+  navigator.clipboard.writeText(url).then(function() {
+    var btn = document.getElementById('copy-reset-link');
+    btn.textContent = 'Copied';
+    setTimeout(function() { btn.textContent = 'Copy link'; }, 2000);
+  });
+});
+</script>

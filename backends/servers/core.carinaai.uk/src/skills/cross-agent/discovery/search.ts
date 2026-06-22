@@ -1,11 +1,11 @@
 import { ingestSkill } from '../pipeline.js';
 import type { CarinaSkill } from '../types.js';
 import { carinaHubConnector } from './sources/carina-hub.js';
+import { externalSkillsHubConnector } from './sources/external-skills-hub.js';
 import { githubSkillsConnector } from './sources/github-skills.js';
-import { hermesHubConnector } from './sources/hermes-hub.js';
+import { goalResultSkillsHubConnector } from './sources/goal-result-skills-hub.js';
 import { mcpRegistryConnector } from './sources/mcp-registry.js';
 import { npmPackagesConnector } from './sources/npm-packages.js';
-import { openclawHubConnector } from './sources/openclaw-hub.js';
 import { pypiPackagesConnector } from './sources/pypi-packages.js';
 import { DETAIL_TTL_MS, HEALTH_TTL_MS, searchCache, SEARCH_TTL_MS } from './cache.js';
 import type { SearchOptions, SkillSearchResult, SourceConnector } from './types.js';
@@ -22,13 +22,16 @@ export class CrossEcosystemSearch {
   constructor() {
     this.connectors = new Map<string, SourceConnector>([
       [carinaHubConnector.name, carinaHubConnector],
-      [hermesHubConnector.name, hermesHubConnector],
-      [openclawHubConnector.name, openclawHubConnector],
+      [externalSkillsHubConnector.name, externalSkillsHubConnector],
+      [goalResultSkillsHubConnector.name, goalResultSkillsHubConnector],
       [mcpRegistryConnector.name, mcpRegistryConnector],
       [githubSkillsConnector.name, githubSkillsConnector],
       [npmPackagesConnector.name, npmPackagesConnector],
       [pypiPackagesConnector.name, pypiPackagesConnector],
     ]);
+    // Legacy hub ids from earlier CLI releases.
+    this.connectors.set('hermes-hub', externalSkillsHubConnector);
+    this.connectors.set('openclaw-hub', goalResultSkillsHubConnector);
   }
 
   registerConnector(connector: SourceConnector): void {

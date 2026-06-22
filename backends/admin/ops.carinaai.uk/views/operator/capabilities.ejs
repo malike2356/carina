@@ -1,0 +1,61 @@
+<% title = 'Capabilities audit' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Capabilities audit</div>
+      <div class="ops-page-sub">Tools, skills, and channels inventory from the gateway host.</div>
+    </div>
+    <a href="/operator/capabilities" class="ops-btn ops-btn-ghost">Refresh</a>
+  </div>
+
+  <%- include('_nav') %>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <% if (payload.source === 'fallback') { %>
+      <div class="ops-flash warn"><%= payload.note %></div>
+      <% if (payload.error) { %>
+        <p class="ops-inline-note" style="padding:0 16px 8px;"><code class="ops-code-inline"><%= payload.error %></code></p>
+      <% } %>
+      <dl class="ops-kv-grid" style="padding:0 16px 16px;">
+        <div><dt>Tools (est.)</dt><dd><%= payload.targets?.tools ?? '-' %></dd></div>
+        <div><dt>Skills (est.)</dt><dd><%= payload.targets?.skills ?? '-' %></dd></div>
+        <div><dt>Channels (est.)</dt><dd><%= payload.targets?.channels ?? '-' %></dd></div>
+      </dl>
+    <% } else { %>
+      <div class="ops-flash success">Live audit from carina capabilities audit --json</div>
+      <% const audit = payload.audit || {}; %>
+      <% const sections = [
+        ['tools', audit.tools],
+        ['skills', audit.skills],
+        ['channels', audit.channels],
+        ['providers', audit.providers],
+      ]; %>
+      <% for (const [label, items] of sections) { %>
+        <% if (Array.isArray(items) && items.length) { %>
+          <div class="ops-section" style="padding:0 16px;">
+            <div class="ops-section-title"><%= label %> (<%= items.length %>)</div>
+          </div>
+          <div class="ops-table-wrap">
+            <table class="ops-table">
+              <thead><tr><th>Name</th><th>Details</th></tr></thead>
+              <tbody>
+                <% for (const item of items.slice(0, 40)) { %>
+                  <tr>
+                    <td><%= item.name || item.id || item.label || '-' %></td>
+                    <td class="ops-cell-truncate"><code class="ops-code-inline"><%= JSON.stringify(item).slice(0, 160) %></code></td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <% if (items.length > 40) { %>
+            <p class="ops-inline-note" style="padding:0 16px 12px;">Showing first 40 of <%= items.length %>.</p>
+          <% } %>
+        <% } %>
+      <% } %>
+      <% if (!sections.some(([, items]) => Array.isArray(items) && items.length)) { %>
+        <pre class="ops-json-preview"><%= JSON.stringify(audit, null, 2).slice(0, 8000) %></pre>
+      <% } %>
+    <% } %>
+  </div>
+</div>

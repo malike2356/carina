@@ -5,15 +5,21 @@
     <div class="ops-page-title">Policy Packs</div>
     <div class="ops-page-sub">Pre-built security policy bundles available for deployment.</div>
   </div>
-  <button onclick="loadPolicyPacks()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+  <button onclick="loadPolicyPacks()" class="ops-btn ops-btn-green ops-btn-sm">Refresh</button>
 </div>
 
-<div id="pp-loading" class="ops-loading" style="margin-bottom:16px;">Loading policy packs...</div>
-<div id="pp-grid" style="display:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:20px;"></div>
-<div id="pp-empty" class="ops-empty" style="display:none;">No policy packs available.</div>
+<div class="ops-surface">
+  <div id="pp-loading" class="ops-loading">Loading policy packs...</div>
+  <div id="pp-list" class="ops-pack-list" style="display:none;"></div>
+  <div id="pp-empty" class="ops-empty" style="display:none;">No policy packs available.</div>
+</div>
 
 <script>
 function loadPolicyPacks() {
+  document.getElementById('pp-loading').style.display = '';
+  document.getElementById('pp-list').style.display = 'none';
+  document.getElementById('pp-empty').style.display = 'none';
+
   fetch('/scout-api/api/policy-packs', { credentials: 'same-origin' })
     .then(function(r) { return r.json(); })
     .then(function(d) {
@@ -21,18 +27,20 @@ function loadPolicyPacks() {
       if (!Array.isArray(packs)) packs = [];
       document.getElementById('pp-loading').style.display = 'none';
       if (!packs.length) { document.getElementById('pp-empty').style.display = ''; return; }
-      var grid = document.getElementById('pp-grid');
-      grid.style.display = '';
-      grid.innerHTML = packs.map(function(p) {
+      var list = document.getElementById('pp-list');
+      list.style.display = '';
+      list.innerHTML = packs.map(function(p) {
         var active = p.active || p.enabled;
-        return '<div class="ops-card" style="border-color:' + (active ? 'rgba(0,200,100,0.2)' : 'var(--border)') + ';">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
-          '<span style="font-size:12px;font-weight:600;color:var(--heading);">' + esc(p.name || p.id) + '</span>' +
-          '<span class="ops-badge ' + (active ? 'ops-badge-green' : 'ops-badge-gray') + '">' + (active ? 'Active' : 'Inactive') + '</span></div>' +
-          '<div style="font-size:10px;color:var(--muted);margin-bottom:10px;">' + esc(p.description || '') + '</div>' +
-          '<div style="display:flex;gap:8px;">' +
-          (active ? '<button onclick="togglePack(\'' + esc(p.id) + '\',false)" class="ops-btn ops-btn-amber" style="padding:3px 8px;font-size:9px;">Deactivate</button>' :
-            '<button onclick="togglePack(\'' + esc(p.id) + '\',true)" class="ops-btn ops-btn-green" style="padding:3px 8px;font-size:9px;">Activate</button>') +
+        return '<div class="ops-pack-row' + (active ? ' is-active' : '') + '">' +
+          '<div class="ops-pack-body">' +
+          '<div class="ops-pack-name">' + esc(p.name || p.id) + '</div>' +
+          '<div class="ops-pack-desc">' + esc(p.description || 'No description provided.') + '</div>' +
+          '</div>' +
+          '<div class="ops-pack-side">' +
+          '<span class="ops-badge ' + (active ? 'ops-badge-green' : 'ops-badge-gray') + '">' + (active ? 'Active' : 'Inactive') + '</span>' +
+          (active
+            ? '<button onclick="togglePack(\'' + esc(p.id) + '\',false)" class="ops-btn ops-btn-amber ops-btn-sm">Deactivate</button>'
+            : '<button onclick="togglePack(\'' + esc(p.id) + '\',true)" class="ops-btn ops-btn-green ops-btn-sm">Activate</button>') +
           '</div></div>';
       }).join('');
     })

@@ -1,5 +1,14 @@
 # Web UI Upgrade 03; OpenClaw Internationalization (i18n)
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `frontends/client-apps/app.carinaai.uk/src/i18n/` (registry, merge, load-messages, translate hook)
+- 12 locale files (`en`, `es`, `fr`, `de`, `ja`, `ko`, `zh`, `ar`, `pt`, `it`, `nl`, `pl`)
+- `LanguageSwitcher` in Settings > Appearance; `I18nShell` in root layout
+- Sidebar nav, chat input, and session labels wired to `useTranslation()`
+- RTL CSS for Arabic in `globals.css`
+
 > **REUSE RULE:** See `../REUSE-RULES.md`. File name references the behavioral source only. All implementation must use Carina's own voice, naming, CLI output, and UI copy. No competitor brand names in any shipped file.
 
 

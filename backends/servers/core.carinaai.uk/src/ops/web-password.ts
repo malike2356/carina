@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { setEnvVarInFile } from './env-file.js';
+import { readEnvVarFromFile, setEnvVarInFile } from './env-file.js';
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -11,8 +11,14 @@ export type WebPasswordStatus = {
 
 let lastUpdateMeta: { at: string; actor: string } | null = null;
 
+export function resolveWebPasswordHash(): string {
+  return readEnvVarFromFile('CARINA_WEB_PASSWORD')
+    ?? process.env.CARINA_WEB_PASSWORD
+    ?? '';
+}
+
 export function getWebPasswordStatus(): WebPasswordStatus {
-  const current = process.env.CARINA_WEB_PASSWORD ?? '';
+  const current = resolveWebPasswordHash();
   return {
     set: current.length > 0,
     updatedAt: lastUpdateMeta?.at ?? null,

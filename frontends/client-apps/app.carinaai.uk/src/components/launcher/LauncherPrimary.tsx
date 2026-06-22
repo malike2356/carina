@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { SessionResumeCard } from './SessionResumeCard';
 import { LauncherStatusBar } from './LauncherStatusBar';
+import { useGreeting } from '@/hooks/useRelativeTimeLabel';
 
 interface Session {
   id: string;
@@ -18,20 +19,20 @@ interface Props {
   totalSessions: number;
   latestSessionId: string | null;
   scoutPaired: boolean;
+  onContinue?: () => void;
+  onExpand?: () => void;
 }
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-export function LauncherPrimary({ userName, sessions, totalSessions, latestSessionId, scoutPaired }: Props) {
+export function LauncherPrimary({ userName, sessions, totalSessions, latestSessionId, scoutPaired, onContinue, onExpand }: Props) {
   const router = useRouter();
+  const greeting = useGreeting();
   const firstName = userName.split(' ')[0] || 'there';
 
   const handleContinue = () => {
+    if (onContinue) {
+      onContinue();
+      return;
+    }
     if (latestSessionId) {
       router.push(`/chat/${latestSessionId}`);
     } else {
@@ -60,7 +61,13 @@ export function LauncherPrimary({ userName, sessions, totalSessions, latestSessi
       {/* Two-column body */}
       <div className="grid flex-1 overflow-hidden" style={{ gridTemplateColumns: '380px 1fr' }}>
         {/* Left panel */}
-        <div className="flex flex-col justify-center gap-10 p-12 border-r" style={{ borderColor: '#1a2b45' }}>
+        <button
+          type="button"
+          onClick={onExpand}
+          className="flex flex-col justify-center gap-10 p-12 border-r text-left cursor-pointer border-none"
+          style={{ borderColor: '#1a2b45', background: 'transparent' }}
+          aria-label="Expand launcher sidebar"
+        >
           <div className="flex flex-col items-start gap-2.5">
             <Image
               src="/carina_logo_1.png"
@@ -80,13 +87,13 @@ export function LauncherPrimary({ userName, sessions, totalSessions, latestSessi
 
           <div>
             <h2 className="text-2xl font-semibold mb-1.5" style={{ color: '#e8f0f8' }}>
-              {getGreeting()}, {firstName}.
+              {greeting}, {firstName}.
             </h2>
             <p className="text-sm" style={{ color: '#6b8aaa' }}>
               {totalSessions} conversation{totalSessions !== 1 ? 's' : ''} in your workspace.
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Right panel */}
         <div className="flex items-center justify-center p-12 overflow-y-auto">

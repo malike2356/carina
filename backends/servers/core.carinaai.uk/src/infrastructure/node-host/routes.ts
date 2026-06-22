@@ -9,6 +9,7 @@ import { buildNodePairQrPayload, encodeQrPayload, formatPairingQrTerminal } from
 import { evaluateNodeShellCommand } from '../../security/node-command-policy.js';
 import { evaluateNodeFilePath } from '../../security/node-file-policy.js';
 import { pushNodeCommand } from './node-ws-hub.js';
+import { mountCanvasRoutes } from './canvas-routes.js';
 import {
   addPendingPairing,
   claimApprovedNodePairing,
@@ -57,6 +58,7 @@ const pairLimiter = rateLimit({
 
 export function mountNodeHostRoutes(app: Express): void {
   if (!nodeHostRoutesEnabled()) return;
+  mountCanvasRoutes(app);
 
   app.post('/api/nodes/pair/request', pairLimiter, (req: Request, res: Response) => {
     const name = String(req.body?.name ?? os.hostname()).trim();

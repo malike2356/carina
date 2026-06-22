@@ -37,9 +37,10 @@ const TYPE_LABELS: Record<string, string> = {
 
 interface MemoryPanelProps {
   onClose: () => void;
+  embedded?: boolean;
 }
 
-export function MemoryPanel({ onClose }: MemoryPanelProps) {
+export function MemoryPanel({ onClose, embedded = true }: MemoryPanelProps) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -153,8 +154,8 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
     { id: 'import' as const, label: 'Import' },
   ];
 
-  return (
-    <Panel title="Memory" icon={<Brain className="h-4 w-4" />} onClose={onClose} width={380}>
+  const body = (
+    <>
       <div className="flex gap-1 border-b border-border px-4 pb-0 pt-3">
         {tabs.map((tab) => (
           <button
@@ -420,6 +421,16 @@ export function MemoryPanel({ onClose }: MemoryPanelProps) {
           </button>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return <div className="flex h-full min-h-0 flex-col overflow-hidden">{body}</div>;
+  }
+
+  return (
+    <Panel title="Memory" icon={<Brain className="h-4 w-4" />} onClose={onClose} width={380}>
+      {body}
     </Panel>
   );
 }

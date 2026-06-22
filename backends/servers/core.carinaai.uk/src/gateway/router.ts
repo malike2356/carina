@@ -23,8 +23,9 @@ import { buildGatewaySessionMapKey, buildGatewaySessionMapKeyAsync } from './cha
 import {
   clearSessionIdentity,
   ensureSessionIdentity,
+  getSessionIdentityState,
 } from './session-identity-prefs.js';
-import { identityLinksEnabled } from './identity-resolver.js';
+import { getIdentityResolver, identityLinksEnabled } from './identity-resolver.js';
 import { buildSurfaceSessionMapKey, resolveSurfaceExternalUserId, type ClientSurface } from '../surfaces/index.js';
 import {
   applyAgentRuntimeEnv,
@@ -137,6 +138,17 @@ export class GatewayRouter {
     };
   }
 
+  private async touchSessionIdentity(sessionId: string, inbound: ChannelMessage): Promise<string | undefined> {
+    if (!identityLinksEnabled()) return undefined;
+    const canonicalUserId = await getIdentityResolver().resolve(
+      inbound.channel,
+      inbound.externalUserId,
+      inbound.senderName,
+    );
+    ensureSessionIdentity(sessionId, canonicalUserId, inbound);
+    return canonicalUserId;
+  }
+
   async getChannelSession(agentId: string, inbound: ChannelMessage): Promise<string> {
     const mapKey = identityLinksEnabled()
       ? await buildGatewaySessionMapKeyAsync(agentId, inbound)
@@ -146,56 +158,24 @@ export class GatewayRouter {
     if (redis) {
       const existing = await redis.get(mapKey);
       if (existing) {
-        if (identityLinksEnabled()) {
-          const { getIdentityResolver } = await import('./identity-resolver.js');
-          const canonicalUserId = await getIdentityResolver().resolve(
-            inbound.channel,
-            inbound.externalUserId,
-            inbound.senderName,
-          );
-          ensureSessionIdentity(existing, canonicalUserId, inbound);
-        }
+        await this.touchSessionIdentity(existing, inbound);
         return existing;
       }
       const sessionId = allocateGatewaySession();
       await redis.set(mapKey, sessionId);
-      if (identityLinksEnabled()) {
-        const { getIdentityResolver } = await import('./identity-resolver.js');
-        const canonicalUserId = await getIdentityResolver().resolve(
-          inbound.channel,
-          inbound.externalUserId,
-          inbound.senderName,
-        );
-        ensureSessionIdentity(sessionId, canonicalUserId, inbound);
-      }
+      await this.touchSessionIdentity(sessionId, inbound);
       return sessionId;
     }
 
     const cached = memoryFallback.get(mapKey);
     if (cached) {
-      if (identityLinksEnabled()) {
-        const { getIdentityResolver } = await import('./identity-resolver.js');
-        const canonicalUserId = await getIdentityResolver().resolve(
-          inbound.channel,
-          inbound.externalUserId,
-          inbound.senderName,
-        );
-        ensureSessionIdentity(cached, canonicalUserId, inbound);
-      }
+      await this.touchSessionIdentity(cached, inbound);
       return cached;
     }
 
     const sessionId = allocateGatewaySession();
     memoryFallback.set(mapKey, sessionId);
-    if (identityLinksEnabled()) {
-      const { getIdentityResolver } = await import('./identity-resolver.js');
-      const canonicalUserId = await getIdentityResolver().resolve(
-        inbound.channel,
-        inbound.externalUserId,
-        inbound.senderName,
-      );
-      ensureSessionIdentity(sessionId, canonicalUserId, inbound);
-    }
+    await this.touchSessionIdentity(sessionId, inbound);
     return sessionId;
   }
 
@@ -400,6 +380,10 @@ export class GatewayRouter {
     const gatewayCtx: GatewayCommandContext = {
       sessionId: message.sessionId,
       channel: message.source,
+      channelUserId: message.channelUserId,
+      displayName: message.senderName,
+      canonicalUserId: getSessionIdentityState(message.sessionId)?.canonicalUserId
+        ?? message.canonicalUserId,
       activeProvider: this.getSessionActiveProvider(message.sessionId),
       commandQueue: this.commandQueue,
     };
@@ -410,6 +394,9 @@ export class GatewayRouter {
       || message.content.trim().startsWith('/research')
       || message.content.trim().startsWith('/compare')
       || message.content.trim().startsWith('/standing-orders')
+      || trimmed.startsWith('/link')
+      || trimmed.startsWith('/identity')
+      || trimmed.startsWith('/dock')
       || trimmed === '/status';
     const cmd = needsAsyncCommand
       ? await handleGatewayCommandAsync(message.content, gatewayCtx)
@@ -568,23 +555,17 @@ export class GatewayRouter {
       );
     }
 
-    bindSessionDelivery(sessionId, {
-      channel: inbound.channel,
-      conversationId: inbound.conversationId,
-      threadId: inbound.threadId,
-    });
+    bindSessionDelivery(sessionId, this.resolveSessionDelivery(sessionId, inbound));
 
     const text = buildInboundText(inbound);
     const trimmedInbound = text.trim();
     if (trimmedInbound === '/new' || trimmedInbound === '/reset') {
-      const mapKey = buildGatewaySessionMapKey(agentId, inbound);
+      const mapKey = identityLinksEnabled()
+        ? await buildGatewaySessionMapKeyAsync(agentId, inbound)
+        : buildGatewaySessionMapKey(agentId, inbound);
       const newSessionId = await this.rotateMappedSession(mapKey, sessionId);
       await this.bindAgentToSession(newSessionId, route.agent);
-      bindSessionDelivery(newSessionId, {
-        channel: inbound.channel,
-        conversationId: inbound.conversationId,
-        threadId: inbound.threadId,
-      });
+      bindSessionDelivery(newSessionId, this.resolveSessionDelivery(newSessionId, inbound));
       yield `New conversation started (${newSessionId.slice(0, 8)}). Provider: ${this.getSessionActiveProvider(newSessionId)}. Try /status anytime.`;
       return;
     }
@@ -594,6 +575,7 @@ export class GatewayRouter {
       return;
     }
 
+    const identityState = getSessionIdentityState(sessionId);
     const carinaMsg: CarinaMessage = {
       id: inbound.id,
       sessionId,
@@ -606,11 +588,32 @@ export class GatewayRouter {
       chatId: inbound.conversationId,
       chatTitle: inbound.chatTitle,
       senderName: inbound.senderName,
+      channelUserId: inbound.externalUserId,
+      canonicalUserId: identityState?.canonicalUserId,
       messageId: inbound.id,
       replyToMessageId: inbound.replyTo,
     };
 
     yield* this.handle(carinaMsg);
+  }
+
+  private resolveSessionDelivery(
+    sessionId: string,
+    inbound: ChannelMessage,
+  ): { channel: ChannelName; conversationId: string; threadId?: string } {
+    const identityState = getSessionIdentityState(sessionId);
+    if (identityState?.dockedFrom) {
+      return {
+        channel: identityState.replyChannel as ChannelName,
+        conversationId: identityState.replyConversationId,
+        threadId: identityState.replyThreadId,
+      };
+    }
+    return {
+      channel: inbound.channel,
+      conversationId: inbound.conversationId,
+      threadId: inbound.threadId,
+    };
   }
 
   async startCliSession(externalUserId = resolveSurfaceExternalUserId('cli')): Promise<{

@@ -62,7 +62,12 @@ targetsRouter.post('/', async (req: Request, res: Response) => {
       })
       .returning('*');
 
-    res.status(201).json({ target });
+    let scanRunId: string | undefined;
+    if (req.body.onboarding === true || req.body.start_fast_scan === true) {
+      scanRunId = await triggerManualScan(target.id, { fastMode: true });
+    }
+
+    res.status(201).json({ target, scan_run_id: scanRunId });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -119,8 +124,9 @@ targetsRouter.delete('/:id', async (req: Request, res: Response) => {
 // ════════════════════════════════════════════
 targetsRouter.post('/:id/scan', async (req: Request, res: Response) => {
   try {
-    const scanRunId = await triggerManualScan(req.params.id);
-    res.json({ scan_run_id: scanRunId, status: 'started' });
+    const fastMode = req.body?.fast_mode === true || req.query.fast_mode === 'true';
+    const scanRunId = await triggerManualScan(req.params.id, { fastMode });
+    res.json({ scan_run_id: scanRunId, status: 'started', fast_mode: fastMode });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -7,6 +7,7 @@ set -euo pipefail
 VPS_HOST="80.190.81.208"
 VPS_USER="malike"
 DEPLOY_DIR="/home/malike/apps/app.carinaai.uk"
+CORE_DIR="/home/malike/apps/core.carinaai.uk"
 SERVICE="carina-cloud"
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
@@ -18,6 +19,8 @@ check_ssh() {
 }
 
 build_local() {
+  log "Syncing multi-theme CSS..."
+  pnpm theme:sync || die "theme:sync failed."
   log "Building Next.js app..."
   pnpm build || die "Build failed. Run 'pnpm install' first if needed."
 }
@@ -53,11 +56,32 @@ deploy() {
     docker/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/docker/"
   rsync -az \
     scripts/migrate.mjs "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/migrate.mjs"
+  rsync -az \
+    scripts/run-server.mjs "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/run-server.mjs"
 
-  log "Applying database migrations inside the Docker Postgres service..."
+  log "Syncing ws dependency for terminal WebSocket proxy..."
+  WS_PKG="$(find node_modules/.pnpm -path '*/node_modules/ws/package.json' 2>/dev/null | head -1 || true)"
+  if [[ -z "${WS_PKG}" ]]; then
+    die "ws package not found locally. Run pnpm install in app.carinaai.uk first."
+  fi
+  WS_SRC="$(dirname "${WS_PKG}")"
+  rsync -az "${WS_SRC}/" "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/node_modules/ws/"
+
+  log "Applying database migrations (idempotent)..."
   ssh "${VPS_USER}@${VPS_HOST}" 'bash -s' <<'EOF'
 set -euo pipefail
 cd /home/malike/apps/app.carinaai.uk
+
+psql() { docker exec -i corecarinaaiuk-postgres-1 psql -U carina -d carina_cloud "$@"; }
+
+# Create tracking table if missing
+psql -v ON_ERROR_STOP=1 -c "
+  CREATE TABLE IF NOT EXISTS __deploy_migrations (
+    filename TEXT PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+"
+
 for f in \
   src/db/migrations/0000_oval_earthquake.sql \
   src/db/migrations/0001_pink_screwball.sql \
@@ -69,8 +93,15 @@ for f in \
   src/db/migrations/0007_terminal_enabled_default.sql \
   src/db/migrations/0008_terminal_rbac.sql
 do
-  echo "Applying ${f}"
-  cat "${f}" | docker exec -i corecarinaaiuk-postgres-1 psql -U carina -d carina_cloud -v ON_ERROR_STOP=1
+  name=$(basename "${f}")
+  already=$(psql -t -A -c "SELECT 1 FROM __deploy_migrations WHERE filename='${name}'")
+  if [[ "${already}" == "1" ]]; then
+    echo "  skip ${name} (already applied)"
+    continue
+  fi
+  echo "  apply ${name}"
+  cat "${f}" | psql -v ON_ERROR_STOP=1
+  psql -v ON_ERROR_STOP=1 -c "INSERT INTO __deploy_migrations(filename) VALUES('${name}')"
 done
 EOF
 
@@ -93,7 +124,7 @@ if [[ -f /home/malike/secrets/app.carinaai.uk.env ]]; then
 fi
 source ${DEPLOY_DIR}/.env
 set +a
-exec /usr/bin/node ${DEPLOY_DIR}/server.js
+exec /usr/bin/node ${DEPLOY_DIR}/run-server.mjs
 EOF
 chmod +x ${DEPLOY_DIR}/start.sh"
 
@@ -115,16 +146,30 @@ chmod +x ${DEPLOY_DIR}/start.sh"
     fi
 REMOTE
 
-  log "Restarting ${SERVICE}..."
-  ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl restart ${SERVICE}"
+  log "Rebuilding docker carina-cloud (public HTTPS upstream via docker nginx)..."
+  ssh "${VPS_USER}@${VPS_HOST}" bash <<EOF
+set -euo pipefail
+cd "${CORE_DIR}"
+export CARINA_CLOUD_CONTEXT="${DEPLOY_DIR}"
+docker compose -f docker-compose.prod.yml build carina-cloud
+docker compose -f docker-compose.prod.yml up -d --no-deps carina-cloud
+EOF
+
+  log "Restarting ${SERVICE} (supervisor fallback on 127.0.0.1:4100)..."
+  ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl stop ${SERVICE} || true; fuser -k 4100/tcp 4102/tcp 2>/dev/null || true; sleep 1; sudo supervisorctl start ${SERVICE}"
 
   sleep 3
 
   STATUS=$(ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl status ${SERVICE}")
   log "Status: ${STATUS}"
 
-  if echo "${STATUS}" | grep -q "RUNNING"; then
+  THEME_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" https://app.carinaai.uk/themes/theme-bridge.css || true)
+  log "Public theme CSS: https://app.carinaai.uk/themes/theme-bridge.css -> HTTP ${THEME_HTTP}"
+
+  if echo "${STATUS}" | grep -q "RUNNING" && [[ "${THEME_HTTP}" == "200" ]]; then
     log "Deploy complete. Carina Cloud is live at https://app.carinaai.uk"
+  elif echo "${STATUS}" | grep -q "RUNNING"; then
+    die "Service is running but theme static files are not reachable (HTTP ${THEME_HTTP}). Check docker nginx -> carina-cloud."
   else
     die "Service did not start cleanly. Check: ssh ${VPS_USER}@${VPS_HOST} 'tail -30 /var/log/supervisor/${SERVICE}.err.log'"
   fi

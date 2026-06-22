@@ -1,6 +1,9 @@
 // scout-engine/src/api/index.ts
 // Full Scout REST API; composes sub-routers for targets, scans, findings, and more
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
+import { join } from 'path';
+import { createRequire } from 'module';
+import swaggerUi from 'swagger-ui-express';
 import { db } from '../db/index.js';
 import { targetsRouter } from './targets.js';
 import { scansRouter } from './scans.js';
@@ -10,40 +13,60 @@ import { createDefaultRules, getMatchingRules, checkAlertCooldown } from '../ale
 import { deliverAlert } from '../alerts/delivery.js';
 import { ingestAgentEvent, registerAgent } from '../agents/event-ingest.js';
 import { generateReport } from '../reports/generator.js';
+import {
+  authMiddleware,
+  createApiRateLimiter,
+  DEFAULT_WORKSPACE_ID,
+  issueWorkspaceToken,
+  validateApiKey,
+} from './auth-middleware.js';
 import crypto from 'crypto';
 
 export const apiRouter = Router();
 
-// ════════════════════════════════════════════
-// Auth middleware; applied to all routes
-// ════════════════════════════════════════════
-const DEFAULT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
-
-function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const apiKey = req.headers['x-scout-key'] as string;
-  let workspaceId = (req.headers['x-workspace-id'] as string) || (req.query.workspace_id as string);
-
-  if (!apiKey && !workspaceId) {
-    console.warn('[Auth] No auth provided, using default workspace');
-  }
-
-  // Map 'default' or empty to the actual default workspace UUID
-  if (!workspaceId || workspaceId === 'default') {
-    workspaceId = DEFAULT_WORKSPACE_ID;
-  }
-
-  (req as any).workspaceId = workspaceId;
-  next();
-}
-
-apiRouter.use(authMiddleware);
-
-// ════════════════════════════════════════════
-// Health check (no auth needed in practice, but middleware sets workspace)
-// ════════════════════════════════════════════
 apiRouter.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
 });
+
+apiRouter.post('/auth/token', (req, res) => {
+  const apiKey = String(req.body?.api_key ?? '');
+  if (!validateApiKey(apiKey)) {
+    res.status(401).json({ error: 'Invalid API key' });
+    return;
+  }
+  const workspaceId = String(req.body?.workspace_id ?? DEFAULT_WORKSPACE_ID);
+  res.json({
+    token: issueWorkspaceToken(workspaceId, apiKey),
+    workspace_id: workspaceId,
+    expires_in: 86400,
+  });
+});
+
+apiRouter.post('/auth/login', (req, res) => {
+  const apiKey = String(req.body?.api_key ?? req.body?.password ?? '');
+  if (!validateApiKey(apiKey)) {
+    res.status(401).json({ error: 'Invalid credentials' });
+    return;
+  }
+  const workspaceId = String(req.body?.workspace_id ?? DEFAULT_WORKSPACE_ID);
+  res.json({
+    token: issueWorkspaceToken(workspaceId, apiKey),
+    workspace_id: workspaceId,
+    expires_in: 86400,
+  });
+});
+
+const require = createRequire(import.meta.url);
+const YAML = require('yamljs') as { load: (path: string) => Record<string, unknown> };
+const openapiPath = join(import.meta.dirname ?? __dirname, 'openapi.yaml');
+const openapiSpec = YAML.load(openapiPath);
+apiRouter.use('/docs/ui', swaggerUi.serve, swaggerUi.setup(openapiSpec));
+apiRouter.get('/docs', (_req, res) => {
+  res.json(openapiSpec);
+});
+
+apiRouter.use(createApiRateLimiter());
+apiRouter.use(authMiddleware);
 
 // ════════════════════════════════════════════
 // Workspace

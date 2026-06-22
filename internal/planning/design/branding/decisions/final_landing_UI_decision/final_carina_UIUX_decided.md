@@ -250,7 +250,7 @@ Kanban.
 
 Model Comparison.
 
-Hardware-aware model recommendations via the Cookbook: Carina detects your GPU, VRAM, CPU, and storage and recommends models that actually fit. No guesswork. No wasted downloads.
+Hardware-aware model recommendations via Playbook: Carina detects your GPU, VRAM, CPU, and storage and recommends models that actually fit. No guesswork. No wasted downloads.
 
 Everything connected.
 

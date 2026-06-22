@@ -150,6 +150,28 @@ const HOSTED_ADMIN_PATCHES = [
      ON product_audit_log (org_id, created_at DESC)`,
   `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_flags JSONB NOT NULL DEFAULT '{}'`,
   `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS onboarding_dismissed BOOLEAN NOT NULL DEFAULT FALSE`,
+  `CREATE TABLE IF NOT EXISTS partner_accounts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    brand JSONB NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'archived')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS partner_id UUID REFERENCES partner_accounts(id)`,
+  `ALTER TABLE organizations ADD COLUMN IF NOT EXISTS brand JSONB NOT NULL DEFAULT '{}'`,
+  `CREATE TABLE IF NOT EXISTS custom_domains (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    hostname TEXT UNIQUE NOT NULL,
+    partner_id UUID REFERENCES partner_accounts(id) ON DELETE SET NULL,
+    org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    verified_at TIMESTAMPTZ,
+    tls_status TEXT NOT NULL DEFAULT 'pending' CHECK (tls_status IN ('pending', 'active', 'failed')),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_custom_domains_hostname ON custom_domains (hostname)`,
+  `CREATE INDEX IF NOT EXISTS idx_organizations_partner ON organizations (partner_id)`,
 ];
 
 export async function runHostedMigrations(client: pg.PoolClient): Promise<void> {

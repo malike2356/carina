@@ -15,6 +15,7 @@ import type { ContextPin } from './types';
 import { clearChatDraft, readChatDraft, writeChatDraft } from '@/lib/chat-draft';
 import { getInputHistory } from '@/lib/chat-history';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useTranslation } from '@/i18n/translate';
 
 export interface ChatSendOptions {
   mode: 'chat' | 'agent';
@@ -75,6 +76,10 @@ export function ChatInputBar({
   const [historyIdx, setHistoryIdx] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const voice = useVoiceInput();
+  const { t } = useTranslation();
+  const inputPlaceholder =
+    placeholder ??
+    (busy ? 'Responding... Press Escape to stop' : t('chat.placeholder'));
 
   const trimmed = value.trim();
   const showSlashPopup = trimmed.startsWith('/') && trimmed.length <= 30 && !disabled && !busy;
@@ -262,7 +267,7 @@ export function ChatInputBar({
           value={value}
           onChange={(event) => { setValue(event.target.value); setHistoryIdx(-1); }}
           onKeyDown={onKeyDown}
-          placeholder={placeholder ?? (busy ? 'Responding... Press Escape to stop' : mode === 'agent' ? 'Give Carina a task...' : 'Message Carina... (/ for commands)')}
+          placeholder={inputPlaceholder}
           disabled={(disabled && !busy) || voice.isRecording || voice.isProcessing}
           data-chat-input="true"
           rows={1}
@@ -381,7 +386,7 @@ export function ChatInputBar({
                   type="button"
                   onClick={submit}
                   disabled={!value.trim()}
-                  aria-label="Send message"
+                  aria-label={t('chat.send')}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-black transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Send className="h-3.5 w-3.5" />

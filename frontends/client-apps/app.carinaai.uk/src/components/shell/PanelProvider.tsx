@@ -1,33 +1,29 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { MemoryPanel } from '@/components/panels/MemoryPanel';
-import { NotesPanel } from '@/components/panels/NotesPanel';
-import { Terminal } from '@/components/terminal/Terminal';
-import { SkillsPanel } from '@/components/panels/SkillsPanel';
 
-type PanelType = 'memory' | 'skills' | 'notes' | 'terminal' | null;
 interface ContextPin {
   noteId: string;
   label: string;
   content: string;
 }
 
+interface ContextPinsContextValue {
+  pinnedNoteIds: Set<string>;
+  onPinToggle: (noteId: string, label: string, content: string) => void;
+}
+
+const ContextPinsContext = createContext<ContextPinsContextValue | null>(null);
+
+export function useContextPins() {
+  return useContext(ContextPinsContext);
+}
+
 export function PanelProvider({ children }: { children: React.ReactNode }) {
-  const [activePanel, setActivePanel] = useState<PanelType>(null);
   const [contextPins, setContextPins] = useState<ContextPin[]>([]);
   const params = useParams<{ sessionId?: string }>();
   const sessionId = params?.sessionId ?? null;
-
-  useEffect(() => {
-    function handler(e: Event) {
-      const detail = (e as CustomEvent).detail as PanelType;
-      setActivePanel((prev) => (prev === detail ? null : detail));
-    }
-    document.addEventListener('open-panel', handler);
-    return () => document.removeEventListener('open-panel', handler);
-  }, []);
 
   useEffect(() => {
     if (!sessionId) {
@@ -95,75 +91,13 @@ export function PanelProvider({ children }: { children: React.ReactNode }) {
     [contextPins, sessionId],
   );
 
-  const pinnedNoteIds = new Set(contextPins.map((pin) => pin.noteId));
-
-  return (
-    <>
-      {children}
-      {activePanel === 'memory' && <MemoryPanel onClose={() => setActivePanel(null)} />}
-      {activePanel === 'skills' && <SkillsPanel onClose={() => setActivePanel(null)} />}
-      {activePanel === 'notes' && (
-        <NotesPanel
-          onClose={() => setActivePanel(null)}
-          activeSessionId={sessionId}
-          pinnedNoteIds={pinnedNoteIds}
-          onPinToggle={toggleContextPin}
-        />
-      )}
-      {activePanel === 'terminal' && (
-        <TerminalDrawer onClose={() => setActivePanel(null)} />
-      )}
-    </>
+  const value = useMemo(
+    () => ({
+      pinnedNoteIds: new Set(contextPins.map((pin) => pin.noteId)),
+      onPinToggle: toggleContextPin,
+    }),
+    [contextPins, toggleContextPin],
   );
-}
 
-function TerminalDrawer({ onClose }: { onClose: () => void }) {
-  const [height, setHeight] = useState(380);
-  const [dragging, setDragging] = useState(false);
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem('carina-terminal-drawer-height');
-    const parsed = stored ? Number(stored) : NaN;
-    if (Number.isFinite(parsed) && parsed >= 240 && parsed <= window.innerHeight - 120) {
-      setHeight(parsed);
-    }
-  }, []);
-
-  useEffect(() => {
-    function onMove(event: PointerEvent) {
-      if (!dragging) return;
-      const next = Math.max(240, Math.min(window.innerHeight - 96, window.innerHeight - event.clientY));
-      setHeight(next);
-      window.localStorage.setItem('carina-terminal-drawer-height', String(next));
-    }
-
-    function onUp() {
-      setDragging(false);
-    }
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-  }, [dragging]);
-
-  return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-base"
-      style={{ height }}
-    >
-      <div
-        className="flex h-2 cursor-row-resize items-center justify-center border-b border-border bg-surface"
-        onPointerDown={() => setDragging(true)}
-        title="Drag to resize terminal"
-      >
-        <span className="h-1 w-14 rounded-full bg-border" />
-      </div>
-      <div className="h-[calc(100%-0.5rem)]">
-        <Terminal mode="drawer" onClose={onClose} />
-      </div>
-    </div>
-  );
+  return <ContextPinsContext.Provider value={value}>{children}</ContextPinsContext.Provider>;
 }

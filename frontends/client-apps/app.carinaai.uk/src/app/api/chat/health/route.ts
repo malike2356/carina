@@ -30,11 +30,14 @@ export async function GET() {
     }
   }
 
+  const chatReady = hasKeys || (proxyEnabled && proxyReachable === true);
+
   return NextResponse.json({
-    ok: hasKeys && (!proxyEnabled || proxyReachable === true),
+    ok: chatReady,
     hasKeys,
     proxyEnabled,
     proxyReachable,
+    chatMode: proxyEnabled ? 'core-proxy' : 'byok-direct',
     capabilities: getCloudCapabilities(),
   });
 }

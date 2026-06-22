@@ -1,19 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scout Auditor View</title>
+  <link rel="stylesheet" href="/theme/index.css?v=3">
   <style>
-    :root { --bg:#0b1020; --panel:#141b2f; --text:#dbe4ff; --muted:#8b9bb8; --green:#00c896; --amber:#d4af37; --red:#ff4466; --border:#24304d; }
-    * { box-sizing:border-box; }
-    body { margin:0; font-family:'Courier New',monospace; background:var(--bg); color:var(--text); }
-    .wrap { max-width:900px; margin:2rem auto; padding:0 1rem; }
-    h1 { font-size:1.1rem; letter-spacing:.12em; text-transform:uppercase; }
+    body { font-family: var(--mono); }
+    .wrap { max-width:900px; margin:2rem auto; padding:0 1rem; position:relative; z-index:1; }
+    h1 { font-size:1.1rem; letter-spacing:.12em; text-transform:uppercase; color: var(--bright); }
     .panel { background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:1rem; margin-top:1rem; }
     .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:.75rem; }
-    .metric .label { color:var(--muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; }
-    .metric .value { font-size:1.4rem; margin-top:.2rem; }
+    .metric .label { color:var(--text2); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; }
+    .metric .value { font-size:1.4rem; margin-top:.2rem; color: var(--bright); }
     table { width:100%; border-collapse:collapse; margin-top:1rem; font-size:.85rem; }
     th,td { border-bottom:1px solid var(--border); padding:.45rem .35rem; text-align:left; }
     .ok { color:var(--green); }
@@ -21,7 +20,7 @@
     .error { color:var(--red); padding:1rem 0; }
   </style>
 </head>
-<body>
+<body class="hub-body">
   <div class="wrap">
     <h1>Scout SOC2 Auditor View</h1>
     <div id="app"><div class="panel">Loading compliance data...</div></div>

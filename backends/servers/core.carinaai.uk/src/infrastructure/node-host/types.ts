@@ -6,6 +6,7 @@ export type PairedNode = {
   hostname: string;
   platform: string;
   tokenHash: string;
+  publicKey?: string;
   pairingCodeHash?: string;
   status: 'online' | 'offline';
   pairedAt: string;

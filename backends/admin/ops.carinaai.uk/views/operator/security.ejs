@@ -1,0 +1,57 @@
+<% title = 'Operator security' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Security posture</div>
+      <div class="ops-page-sub">Scout platform posture and Carina gateway trust state.</div>
+    </div>
+    <a href="/operator/security" class="ops-btn ops-btn-ghost">Refresh</a>
+  </div>
+
+  <%- include('_nav') %>
+
+  <p class="ops-status-line" style="margin-top:12px;">Generated <%= new Date(payload.generated_at).toLocaleString() %></p>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <div class="ops-section">
+      <div class="ops-section-title">Labyrinth Scout</div>
+    </div>
+    <% const scout = payload.scout || {}; %>
+    <% if (scout.note && !scout.ok) { %>
+      <div class="ops-flash warn"><%= scout.note %></div>
+    <% } else { %>
+      <dl class="ops-kv-grid" style="padding:0 16px 16px;">
+        <% for (const [key, val] of Object.entries(scout).slice(0, 12)) { %>
+          <% if (typeof val !== 'object') { %>
+            <div><dt><%= key.replace(/_/g, ' ') %></dt><dd><%= val %></dd></div>
+          <% } %>
+        <% } %>
+      </dl>
+    <% } %>
+  </div>
+
+  <div class="ops-surface" style="margin-top:16px;">
+    <div class="ops-section">
+      <div class="ops-section-title">Carina trust</div>
+    </div>
+    <% const carina = payload.carina || {}; %>
+    <% if (carina.note && !carina.generatedAt) { %>
+      <div class="ops-flash warn"><%= carina.note %></div>
+    <% } else { %>
+      <dl class="ops-kv-grid" style="padding:0 16px 16px;">
+        <% for (const [key, val] of Object.entries(carina).slice(0, 16)) { %>
+          <% if (val != null && typeof val !== 'object') { %>
+            <div><dt><%= key.replace(/_/g, ' ') %></dt><dd><%= val %></dd></div>
+          <% } %>
+        <% } %>
+      </dl>
+      <% const nested = Object.entries(carina).filter(([, v]) => v && typeof v === 'object'); %>
+      <% if (nested.length) { %>
+        <details class="ops-details" style="padding:0 16px 16px;">
+          <summary>Raw trust payload</summary>
+          <pre class="ops-json-preview"><%= JSON.stringify(carina, null, 2).slice(0, 6000) %></pre>
+        </details>
+      <% } %>
+    <% } %>
+  </div>
+</div>

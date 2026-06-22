@@ -26,6 +26,8 @@ import { DEFAULT_THEME, isThemeName } from '@/lib/themes';
 import { groupShortcuts } from '@/lib/shortcuts';
 import { SETTINGS_SECTION_LINKS, type SettingsSectionId } from '@/lib/workspace-nav';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
+import { LanguageSwitcher } from '@/components/settings/LanguageSwitcher';
+import { useTranslation } from '@/i18n/translate';
 import { cn } from '@/lib/utils';
 
 type Section = SettingsSectionId;
@@ -49,6 +51,20 @@ const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   sound: false,
   taskDigest: true,
 };
+
+function LanguageSection() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h2 className="mb-1 text-sm font-medium text-text-secondary">{t('settings.language')}</h2>
+        <p className="text-xs text-text-muted">{t('settings.languageDescription')}</p>
+      </div>
+      <LanguageSwitcher />
+    </div>
+  );
+}
 
 function Toggle({
   value,
@@ -356,6 +372,10 @@ export default function SettingsPage() {
                     void saveSettings({ theme });
                   }}
                 />
+              </section>
+
+              <section className="border-t border-border pt-6">
+                <LanguageSection />
               </section>
 
               <section className="border-t border-border pt-6">

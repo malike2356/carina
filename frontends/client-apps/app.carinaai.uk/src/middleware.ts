@@ -59,6 +59,6 @@ export const config = {
     '/settings/:path*',
     '/billing/:path*',
     '/security/:path*',
-    '/:path*',
+    '/((?!themes/|_next/|favicon\\.svg|manifest\\.webmanifest|sw\\.js).*)',
   ],
 };

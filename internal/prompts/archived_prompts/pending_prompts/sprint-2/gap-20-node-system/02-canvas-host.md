@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `canvas-host.ts` artifact store and node render dispatch
+- `/__carina__/canvas/:artifactId` route via `canvas-routes.ts`
+- `canvas_push` and `node_canvas_render` agent tools
+
 # Gap 20 - Prompt 02: Canvas Host & A2UI Rendering Pipeline
 
 **Gap:** 20 Node System & Device Architecture

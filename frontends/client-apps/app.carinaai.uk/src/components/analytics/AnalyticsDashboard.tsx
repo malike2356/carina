@@ -182,7 +182,7 @@ function SignalBars({ buckets }: { buckets: Record<string, number> }) {
   );
 }
 
-export function AnalyticsDashboard() {
+export function AnalyticsDashboard({ embedded = false }: { embedded?: boolean }) {
   const [days, setDays] = useState<(typeof RANGE_OPTIONS)[number]>(30);
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -258,15 +258,28 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="border-b border-border px-6 py-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-semibold text-text-primary">Analytics</h1>
-            <p className="text-xs text-text-muted">
-              Workspace usage, spend, session health, and platform signals.
-            </p>
+      <header className={cn('border-b border-border', embedded ? 'px-3 py-2' : 'px-6 py-4')}>
+        {!embedded ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg font-semibold text-text-primary">Analytics</h1>
+              <p className="text-xs text-text-muted">
+                Workspace usage, spend, session health, and platform signals.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setRefreshing(true); void load(days); }}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                {refreshing ? 'Refreshing' : 'Refresh'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportJson} disabled={!data}>
+                <Download className="h-3.5 w-3.5" />
+                Export
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+        ) : (
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => { setRefreshing(true); void load(days); }}>
               <RefreshCw className="h-3.5 w-3.5" />
               {refreshing ? 'Refreshing' : 'Refresh'}
@@ -276,8 +289,8 @@ export function AnalyticsDashboard() {
               Export
             </Button>
           </div>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        )}
+        <div className={cn('flex flex-wrap items-center gap-2', !embedded && 'mt-3')}>
           {RANGE_OPTIONS.map((option) => (
             <button
               key={option}
@@ -300,7 +313,7 @@ export function AnalyticsDashboard() {
         {error ? <p className="mt-2 text-xs text-danger">{error}</p> : null}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className={cn('min-h-0 flex-1 overflow-y-auto', embedded ? 'p-3' : 'p-4')}>
         {loading && !data ? (
           <EmptyState
             title="Loading analytics"
@@ -308,13 +321,13 @@ export function AnalyticsDashboard() {
           />
         ) : data ? (
           <div className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className={cn('grid gap-3', embedded ? 'grid-cols-1 sm:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-4')}>
               {summaryCards.map((card) => (
                 <MetricCard key={card.title} {...card} />
               ))}
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className={cn('grid gap-4', embedded ? 'grid-cols-1' : 'xl:grid-cols-2')}>
               <SectionCard
                 title="Usage over time"
                 subtitle="Messages and tokens recorded in the selected window."
@@ -334,7 +347,7 @@ export function AnalyticsDashboard() {
               </SectionCard>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className={cn('grid gap-4', embedded ? 'grid-cols-1' : 'xl:grid-cols-2')}>
               <SectionCard
                 title="Spend by provider"
                 subtitle="Provider mix in the selected window."

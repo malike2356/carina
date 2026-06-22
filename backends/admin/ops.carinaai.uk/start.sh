@@ -18,12 +18,24 @@ fi
 export NODE_ENV="${NODE_ENV:-production}"
 export PORT="${PORT:-4001}"
 
+if [[ "${CARINA_API_URL:-}" == *"carina-web"* ]]; then
+  export CARINA_API_URL="https://core.carinaai.uk"
+fi
+
+if [[ -z "${CARINA_API_URL:-}" ]]; then
+  export CARINA_API_URL="https://core.carinaai.uk"
+fi
+
 if [[ -z "${CARINA_CORE_ROOT:-}" ]]; then
   if [[ -d "${ROOT}/../core.carinaai.uk" ]]; then
     export CARINA_CORE_ROOT="${ROOT}/../core.carinaai.uk"
   elif [[ -d "/home/malike/apps/core.carinaai.uk" ]]; then
     export CARINA_CORE_ROOT="/home/malike/apps/core.carinaai.uk"
   fi
+fi
+
+if [[ -z "${CARINA_BIN:-}" && -n "${CARINA_CORE_ROOT:-}" ]]; then
+  export CARINA_BIN="${CARINA_CORE_ROOT}/dist/bin/carina.js"
 fi
 
 if [[ -z "${CARINA_OPS_TOKEN:-}" && -z "${CARINA_WEB_PASSWORD:-}" && -f "${ROOT}/../core.carinaai.uk/.env" ]]; then

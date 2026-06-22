@@ -131,6 +131,15 @@ describe('ops-routes', () => {
     expect(body.environment.settings.every((item) => typeof item.value === 'string')).toBe(true);
   });
 
+  it('accepts x-internal-key for environment summary', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/environment`, {
+      headers: { 'x-internal-key': 'test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as { environment: { envPath: string } };
+    expect(body.environment.envPath).toContain('.env');
+  });
+
   it('updates core web password for ops', async () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/ops/web-password`, {
       method: 'PUT',

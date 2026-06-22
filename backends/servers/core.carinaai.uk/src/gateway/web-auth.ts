@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import { resolveWebPasswordHash } from '../ops/web-password.js';
 import { getUserProfile } from '../api/hosted-auth.js';
 import { isControlAuthorized, pairedDeviceFromRequest } from '../infrastructure/control-auth.js';
 import { deviceHasScope } from '../infrastructure/device-scopes.js';
@@ -177,7 +178,7 @@ export function redirectIfHostedAuthed(req: Request, res: Response, next: NextFu
 }
 
 export async function checkWebPassword(password: string): Promise<boolean> {
-  const expected = process.env.CARINA_WEB_PASSWORD ?? '';
+  const expected = resolveWebPasswordHash();
   if (!expected) return false;
   if (expected.startsWith('$2')) {
     return bcrypt.compare(password, expected);

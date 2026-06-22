@@ -28,7 +28,10 @@
 <script>
 function loadFindings() {
   fetch('/scout-api/api/findings', { credentials: 'same-origin' })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('HTTP ' + r.status)); });
+      return r.json();
+    })
     .then(function(d) {
       var items = d.findings || d || [];
       if (!Array.isArray(items)) items = [];

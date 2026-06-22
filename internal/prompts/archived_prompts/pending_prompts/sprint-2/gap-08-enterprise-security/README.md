@@ -1,5 +1,13 @@
 # Gap 08: Enterprise Security; Operational Security Layer
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `src/enterprise/security/` module: SSO, immutable audit (Merkle), data residency/geo-fence, DR drills, zero-trust policies, SOC2 evidence packager
+- CLI: `carina enterprise security <status|sso|audit|residency|dr|zero-trust|soc2>`
+- Tests: `enterprise-security.test.ts` (9 tests)
+- Env templates in `.env.example` for enterprise security configuration
+
 **Build Time:** 8 weeks
 **Depends On:** gap-01 (Docker), gap-05 (Security)
 **Status:** PROMPTS WRITTEN; Ready for development

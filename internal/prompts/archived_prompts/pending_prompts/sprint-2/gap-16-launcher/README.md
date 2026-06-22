@@ -1,3 +1,7 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:** Web launcher state machine (primary/sidebar/expanded), Next.js launcher API routes, desktop cold-start launcher, mobile session redirect + live status, TUI real data wiring.
+
 # gap-16: Carina Launcher
 
 

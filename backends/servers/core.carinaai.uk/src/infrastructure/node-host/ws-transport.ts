@@ -1,6 +1,7 @@
 import type { NodeCommand } from './types.js';
 import type { NodeHostLocalConfig } from './types.js';
 import { executeCommand } from './execute-command.js';
+import { NodeCapability } from './node-protocol.js';
 import type WsWebSocket from 'ws';
 
 export type NodeTransportMode = 'poll' | 'ws' | 'auto';
@@ -20,6 +21,47 @@ async function handleCommand(
     await onCommand(cmd);
   }
   return executeCommand(cmd, { containerMode });
+}
+
+async function handleProtocolCommand(
+  msg: {
+    id?: string;
+    capability?: string;
+    method?: string;
+    params?: Record<string, unknown>;
+  },
+  containerMode: boolean,
+): Promise<{ type: 'response'; id: string; ok: boolean; payload?: unknown; error?: string }> {
+  const id = String(msg.id ?? '');
+  const capability = String(msg.capability ?? '');
+  const method = String(msg.method ?? '');
+  const params = msg.params ?? {};
+
+  if (capability === NodeCapability.FILE_SYSTEM && method === 'shell') {
+    const command = String(params.command ?? '').trim();
+    if (!command) {
+      return { type: 'response', id, ok: false, error: 'command is required' };
+    }
+    const cmd: NodeCommand = {
+      id,
+      nodeId: 'local',
+      type: 'shell',
+      payload: { command },
+      createdAt: new Date().toISOString(),
+    };
+    const outcome = await executeCommand(cmd, { containerMode });
+    if (outcome.error) {
+      return { type: 'response', id, ok: false, error: outcome.error };
+    }
+    return { type: 'response', id, ok: true, payload: outcome.result };
+  }
+
+  return {
+    type: 'response',
+    id,
+    ok: false,
+    error: `Capability ${capability}.${method} is not implemented on this node host`,
+  };
 }
 
 export type NodeDaemonWsOptions = {
@@ -60,15 +102,25 @@ export async function runNodeWsDaemon(options: NodeDaemonWsOptions): Promise<voi
         }
         const onMessage = async (data: unknown) => {
           const raw = String(data);
-          let msg: { type?: string; command?: NodeCommand };
+          let msg: {
+            type?: string;
+            command?: NodeCommand;
+            id?: string;
+            capability?: string;
+            method?: string;
+            params?: Record<string, unknown>;
+          };
           try {
-            msg = JSON.parse(raw) as { type?: string; command?: NodeCommand };
+            msg = JSON.parse(raw) as typeof msg;
           } catch {
             return;
           }
           if (msg.type === 'command' && msg.command) {
             const outcome = await handleCommand(msg.command, options.onCommand, Boolean(options.containerMode));
             socket?.send(JSON.stringify({ type: 'complete', id: msg.command.id, ...outcome }));
+          } else if (msg.type === 'command' && msg.id && msg.capability && msg.method) {
+            const outcome = await handleProtocolCommand(msg, options.containerMode);
+            socket?.send(JSON.stringify(outcome));
           }
           if (msg.type === 'pong') {
             // heartbeat ok

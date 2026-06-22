@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { ChannelName } from './channels/channel-adapter.interface.js';
 import type { SessionIdentityState } from './identity-links-types.js';
+import { getIdentityResolver, identityLinksEnabled } from './identity-resolver.js';
 
 const CODE_TTL_MS = 5 * 60 * 1000;
 
@@ -23,7 +24,7 @@ export function generateLinkCode(params: {
   channelUserId: string;
   displayName?: string;
 }): string {
-  const code = randomBytes(4).toString('hex');
+  const code = randomBytes(4).toString('hex').toLowerCase();
   codes.set(code, {
     code,
     userId: params.userId,
@@ -42,10 +43,10 @@ export function claimLinkCode(
   const entry = codes.get(code.trim().toLowerCase());
   if (!entry) return { error: 'Invalid or expired link code.' };
   if (Date.now() > entry.expiresAt) {
-    codes.delete(code);
+    codes.delete(entry.code);
     return { error: 'Link code expired. Generate a new one on the other channel.' };
   }
-  codes.delete(code);
+  codes.delete(entry.code);
   return { userId: entry.userId };
 }
 
@@ -150,4 +151,20 @@ export function formatLinkedIdentitiesBlock(
   }
   lines.push('');
   return lines.join('\n');
+}
+
+export async function buildLinkedIdentitiesSection(sessionId: string): Promise<string> {
+  if (!identityLinksEnabled()) return '';
+  const state = getSessionIdentityState(sessionId);
+  if (!state) return '';
+  const identities = await getIdentityResolver().getIdentities(state.canonicalUserId);
+  return formatLinkedIdentitiesBlock(
+    identities.map((row) => ({
+      channel: row.channel,
+      displayName: row.displayName,
+      channelUserId: row.channelUserId,
+    })),
+    state.replyChannel,
+    { originChannel: state.originChannel, dockedFrom: state.dockedFrom },
+  );
 }

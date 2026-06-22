@@ -5,6 +5,7 @@ import { $gatewayStatus, startHealthPolling } from './store/connection.js';
 import { $currentSessionId } from './store/session.js';
 import { $killSwitchActive, $killSwitchReason } from './store/carina.js';
 import AppSidebar, { type SidebarMode } from './components/layout/AppSidebar.js';
+import LauncherPage from './app/launcher/page.js';
 import ChatPage from './app/chat/ChatPage.js';
 import WorkspacePage from './app/workspace/page.js';
 import SettingsLayout from './app/settings/layout.js';
@@ -29,6 +30,7 @@ import { useTraySync } from './hooks/use-tray-sync.js';
 import { useUpdater } from './hooks/use-updater.js';
 import UpdateBanner from './components/layout/UpdateBanner.js';
 import { startCarinaPolling } from './lib/carina-poller.js';
+import { useOfflineSync } from './hooks/use-offline-sync.js';
 
 const SIDEBAR_MODE_KEY = 'carina_sidebar_mode';
 
@@ -50,7 +52,9 @@ function Shell() {
 
   useChatStream();
   useTraySync(gatewayStatus === 'down');
+  const { syncNow } = useOfflineSync();
   const updater = useUpdater();
+  const offline = gatewayStatus === 'down';
 
   useEffect(() => {
     startHealthPolling();
@@ -77,10 +81,10 @@ function Shell() {
   }, [createNewSession, navigate, selectSession]);
 
   useEffect(() => {
-    if (!currentSessionId && gatewayStatus === 'ok' && location.pathname === ROUTES.chat) {
-      void createNewSession();
+    if (!currentSessionId && !offline && location.pathname === ROUTES.chat) {
+      navigate(ROUTES.launcher, { replace: true });
     }
-  }, [currentSessionId, gatewayStatus, createNewSession, location.pathname]);
+  }, [currentSessionId, offline, location.pathname, navigate]);
 
   const ensureSession = useCallback(() => {
     void createNewSession();
@@ -125,6 +129,9 @@ function Shell() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [navigate]);
 
+  if (location.pathname === ROUTES.launcher) {
+    return <LauncherPage />;
+  }
   if (location.pathname === ROUTES.canvas || location.pathname.endsWith('/canvas')) {
     return <CanvasPage />;
   }
@@ -142,6 +149,11 @@ function Shell() {
           onDismiss={updater.dismiss}
         />
       )}
+      {offline && (
+        <div className="bg-amber-950 border-b border-amber-800 px-4 py-2 text-sm text-amber-100">
+          Gateway offline. Cached sessions and memories remain available; new messages queue until reconnect.
+        </div>
+      )}
       {killSwitchActive && (
         <div className="bg-red-950 border-b border-red-800 px-4 py-2 text-sm text-red-200">
           KILL SWITCH ACTIVE: {killSwitchReason || 'Carina is suspended by Scout'}
@@ -152,15 +164,11 @@ function Shell() {
           mode={sidebarMode}
           onSelectSession={selectSession}
           onCreateSession={() => void createNewSession()}
+          onSyncNow={() => void syncNow()}
         />
         <main className="flex-1 flex flex-col overflow-hidden">
-          {gatewayStatus === 'down' ? (
-            <div className="flex-1 flex items-center justify-center text-zinc-500">
-              Gateway offline - start Carina with: pnpm cli
-            </div>
-          ) : (
-            <Routes>
-              <Route path={ROUTES.chat} element={<ChatPage onNeedSession={ensureSession} />} />
+          <Routes>
+            <Route path={ROUTES.chat} element={<ChatPage onNeedSession={ensureSession} />} />
               <Route path={ROUTES.workspace} element={<WorkspacePage />} />
               <Route path={ROUTES.agents} element={<Navigate to={`${ROUTES.workspace}?tab=agents`} replace />} />
               <Route path={ROUTES.artifacts} element={<Navigate to={`${ROUTES.workspace}?tab=artifacts`} replace />} />
@@ -177,8 +185,7 @@ function Shell() {
                 <Route path="about" element={<AboutSettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to={ROUTES.chat} replace />} />
-            </Routes>
-          )}
+          </Routes>
         </main>
       </div>
     </div>

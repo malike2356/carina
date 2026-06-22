@@ -933,3 +933,8 @@
 2026-06-21T08:46:29.757Z	exit=0	ls
 2026-06-21T08:46:29.786Z	exit=127	bogus-command
 2026-06-21T08:46:29.823Z	exit=0	sleep 5
+2026-06-21T16:54:32.353Z	exit=0	echo ok
+2026-06-21T16:54:32.378Z	exit=0	echo hello
+2026-06-21T16:54:32.389Z	exit=0	ls
+2026-06-21T16:54:32.406Z	exit=127	bogus-command
+2026-06-21T16:54:32.415Z	exit=0	sleep 5

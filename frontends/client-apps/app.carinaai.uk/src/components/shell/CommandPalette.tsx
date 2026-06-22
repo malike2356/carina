@@ -3,21 +3,40 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BarChart3,
+  BookOpen,
+  Brain,
   CalendarClock,
+  CalendarDays,
+  CheckSquare,
+  Clock,
   CreditCard,
   Database,
-  Files,
+  FileText,
+  FolderOpen,
+  Key,
+  LayoutDashboard,
+  Mail,
   MessageSquare,
   Plus,
+  ScrollText,
   Search,
   Server,
   Settings,
+  Shield,
+  Smartphone,
+  Sparkles,
+  StickyNote,
   Terminal,
+  UserCircle,
+  Webhook,
+  Wrench,
   X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
 import { useCloudCapabilities } from '@/hooks/useCloudCapabilities';
+import { hasCloudCapability, routeRequiresCoreProxy } from '@/lib/cloud-capabilities';
+import { NAV_GROUPS, NAV_ROUTES } from '@/lib/workspace-nav';
 import { cn } from '@/lib/utils';
 
 interface SessionResult {
@@ -38,6 +57,7 @@ type ActionItem = {
   type: 'action';
   id: string;
   label: string;
+  group?: string;
   shortcut?: string;
   icon: React.ReactNode;
   action: () => void;
@@ -58,6 +78,41 @@ type MessageItem = {
 };
 
 type ResultItem = ActionItem | SessionItem | MessageItem;
+
+const PALETTE_ICON_MAP: Record<string, React.ElementType> = {
+  BarChart3,
+  BookOpen,
+  Brain,
+  CalendarClock,
+  CalendarDays,
+  CheckSquare,
+  Clock,
+  CreditCard,
+  Database,
+  FileText,
+  FolderOpen,
+  Key,
+  LayoutDashboard,
+  Mail,
+  ScrollText,
+  Search,
+  Server,
+  Settings,
+  Shield,
+  Smartphone,
+  Sparkles,
+  StickyNote,
+  Terminal,
+  UserCircle,
+  Webhook,
+  Wrench,
+};
+
+function NavIcon({ name }: { name: string }) {
+  const Icon = PALETTE_ICON_MAP[name];
+  if (!Icon) return <Search className="h-4 w-4" />;
+  return <Icon className="h-4 w-4" />;
+}
 
 function highlight(text: string, query: string): React.ReactNode {
   if (!query) return text;
@@ -83,6 +138,8 @@ function truncateAround(text: string, query: string, contextLength = 60): string
   const end = Math.min(text.length, index + query.length + contextLength);
   return `${start > 0 ? '...' : ''}${text.slice(start, end)}${end < text.length ? '...' : ''}`;
 }
+
+const GROUP_ORDER = ['Chat', 'Workspace', 'Intelligence', 'Tools', 'Account'];
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -153,123 +210,97 @@ export function CommandPalette() {
   }, [open, query]);
 
   const staticActions: ActionItem[] = useMemo(() => {
-    const actions: ActionItem[] = [
-    {
-      type: 'action',
-      id: 'new-chat',
-      label: 'New chat',
-      shortcut: 'Ctrl+Alt+N',
-      icon: <Plus className="h-4 w-4" />,
-      action: async () => {
-        close();
-        const response = await fetch('/api/sessions', { method: 'POST' });
-        const data = await response.json();
-        if (data.data?.id) router.push(`/chat/${data.data.id}`);
+    const nonNavActions: ActionItem[] = [
+      {
+        type: 'action',
+        id: 'new-chat',
+        label: 'New chat',
+        group: 'Chat',
+        shortcut: 'Ctrl+Alt+N',
+        icon: <Plus className="h-4 w-4" />,
+        action: async () => {
+          close();
+          const response = await fetch('/api/sessions', { method: 'POST' });
+          const data = await response.json();
+          if (data.data?.id) router.push(`/chat/${data.data.id}`);
+        },
       },
-    },
-    {
-      type: 'action',
-      id: 'settings',
-      label: 'Open settings',
-      icon: <Settings className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/settings');
+      {
+        type: 'action',
+        id: 'memory-panel',
+        label: 'Open memory panel',
+        group: 'Intelligence',
+        icon: <Brain className="h-4 w-4" />,
+        action: () => {
+          close();
+          document.dispatchEvent(new CustomEvent('open-panel', { detail: 'memory' }));
+        },
       },
-    },
-    {
-      type: 'action',
-      id: 'billing',
-      label: 'Billing and plan',
-      icon: <CreditCard className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/billing');
+      {
+        type: 'action',
+        id: 'skills-panel',
+        label: 'Open skills panel',
+        group: 'Intelligence',
+        icon: <Sparkles className="h-4 w-4" />,
+        action: () => {
+          close();
+          document.dispatchEvent(new CustomEvent('open-panel', { detail: 'skills' }));
+        },
       },
-    },
-    {
-      type: 'action',
-      id: 'analytics',
-      label: 'Open analytics',
-      icon: <BarChart3 className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/analytics');
+      {
+        type: 'action',
+        id: 'notes-panel',
+        label: 'Open notes panel',
+        group: 'Intelligence',
+        icon: <StickyNote className="h-4 w-4" />,
+        action: () => {
+          close();
+          document.dispatchEvent(new CustomEvent('open-panel', { detail: 'notes' }));
+        },
       },
-    },
-    {
-      type: 'action',
-      id: 'mcp',
-      label: 'Open MCP servers',
-      icon: <Server className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/mcp');
-      },
-    },
-    {
-      type: 'action',
-      id: 'terminal',
-      label: 'Open terminal',
-      icon: <Terminal className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/terminal');
-      },
-    },
-    {
-      type: 'action',
-      id: 'files',
-      label: 'Open files',
-      icon: <Files className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/files');
-      },
-    },
-    {
-      type: 'action',
-      id: 'env',
-      label: 'Open environment',
-      icon: <Database className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/env');
-      },
-    },
-    {
-      type: 'action',
-      id: 'cron',
-      label: 'Open cron',
-      icon: <CalendarClock className="h-4 w-4" />,
-      action: () => {
-        close();
-        router.push('/cron');
-      },
-    },
-    {
-      type: 'action',
-      id: 'memory',
-      label: 'Open memory panel',
-      icon: <span className="h-4 w-4 text-center text-xs">M</span>,
-      action: () => {
-        close();
-        document.dispatchEvent(new CustomEvent('open-panel', { detail: 'memory' }));
-      },
-    },
     ];
-    const coreOnly = new Set(['mcp', 'terminal', 'files', 'cron', 'env']);
-    return actions.filter((item) => {
-      if (item.id === 'terminal' && !canUseTerminal) return false;
-      if (capabilities?.chatMode === 'byok-direct' && coreOnly.has(item.id)) {
-        return false;
-      }
-      return true;
-    });
+
+    const navActions: ActionItem[] = NAV_ROUTES
+      .filter((route) => {
+        if (route.terminalGated && !canUseTerminal) return false;
+        const capabilityKey = routeRequiresCoreProxy(route.href);
+        if (capabilityKey && capabilities && !hasCloudCapability(capabilities, capabilityKey)) {
+          return false;
+        }
+        return true;
+      })
+      .map((route): ActionItem => {
+        const label = route.parent
+          ? `${NAV_ROUTES.find((r) => r.href === route.parent)?.label ?? 'Settings'} / ${route.label}`
+          : route.label;
+        const groupDef = NAV_GROUPS.find((g) => g.id === route.group);
+
+        return {
+          type: 'action',
+          id: `nav-${route.href}`,
+          label,
+          group: groupDef?.label ?? route.group,
+          icon: <NavIcon name={route.iconName} />,
+          action: () => {
+            close();
+            router.push(route.href);
+          },
+        };
+      });
+
+    return [...nonNavActions, ...navActions];
   }, [canUseTerminal, capabilities, close, router]);
 
+  const matchingActions = useMemo(() => {
+    if (query.length < 2) return staticActions;
+    const q = query.toLowerCase();
+    return staticActions.filter((a) => a.label.toLowerCase().includes(q));
+  }, [query, staticActions]);
+
+  const actionItems = query.length < 2 ? staticActions : matchingActions;
+
   const allItems: ResultItem[] = [
-    ...(query.length < 2 ? staticActions : []),
+    ...actionItems,
     ...results.sessions.map((session): SessionItem => ({
       type: 'session',
       id: session.id,
@@ -283,6 +314,14 @@ export function CommandPalette() {
       role: message.role,
     })),
   ];
+
+  const actionIndexMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    actionItems.forEach((item, index) => {
+      map[item.id] = index;
+    });
+    return map;
+  }, [actionItems]);
 
   function navigate(item: ResultItem) {
     if (item.type === 'action') {
@@ -319,6 +358,16 @@ export function CommandPalette() {
 
   if (!open) return null;
 
+  const groupedActions: Record<string, ActionItem[]> = {};
+  for (const item of actionItems) {
+    const g = item.group ?? 'Other';
+    if (!groupedActions[g]) groupedActions[g] = [];
+    groupedActions[g].push(item);
+  }
+
+  let sessionOffset = actionItems.length;
+  let messageOffset = actionItems.length + results.sessions.length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-[15vh]">
       <div className="absolute inset-0" onClick={close} aria-hidden />
@@ -351,12 +400,46 @@ export function CommandPalette() {
             <p className="py-8 text-center text-sm text-text-muted">No results</p>
           )}
 
-          {query.length < 2 && staticActions.length > 0 && (
+          {actionItems.length > 0 && query.length < 2 && (
+            <div>
+              {GROUP_ORDER.filter((g) => groupedActions[g]?.length).map((groupLabel) => (
+                <div key={groupLabel}>
+                  <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                    {groupLabel}
+                  </p>
+                  {(groupedActions[groupLabel] ?? []).map((item) => {
+                    const itemIndex = actionIndexMap[item.id] ?? 0;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => navigate(item)}
+                        className={cn(
+                          'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
+                          cursor === itemIndex
+                            ? 'bg-elevated text-text-primary'
+                            : 'text-text-secondary hover:bg-elevated',
+                        )}
+                      >
+                        <span className="text-text-muted">{item.icon}</span>
+                        {item.label}
+                        {item.shortcut && (
+                          <span className="ml-auto text-[10px] text-text-muted">{item.shortcut}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {actionItems.length > 0 && query.length >= 2 && (
             <div>
               <p className="px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                 Actions
               </p>
-              {staticActions.map((item, index) => (
+              {actionItems.map((item, index) => (
                 <button
                   key={item.id}
                   type="button"
@@ -368,7 +451,6 @@ export function CommandPalette() {
                 >
                   <span className="text-text-muted">{item.icon}</span>
                   {item.label}
-                  {item.shortcut && <span className="ml-auto text-[10px] text-text-muted">{item.shortcut}</span>}
                 </button>
               ))}
             </div>
@@ -380,7 +462,7 @@ export function CommandPalette() {
                 Sessions
               </p>
               {results.sessions.map((session, index) => {
-                const itemIndex = (query.length < 2 ? staticActions.length : 0) + index;
+                const itemIndex = sessionOffset + index;
                 return (
                   <button
                     key={session.id}
@@ -407,8 +489,7 @@ export function CommandPalette() {
                 Messages
               </p>
               {results.messages.map((message, index) => {
-                const itemIndex =
-                  (query.length < 2 ? staticActions.length : 0) + results.sessions.length + index;
+                const itemIndex = messageOffset + index;
                 const preview = truncateAround(message.content, query);
                 return (
                   <button

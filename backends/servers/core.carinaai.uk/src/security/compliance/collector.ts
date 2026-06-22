@@ -58,6 +58,24 @@ export class ComplianceCollector {
 
     await saveComplianceReport(report);
     await updateLastCollection(frameworkId, now);
+
+    if (frameworkId === 'soc2') {
+      try {
+        const { scoutComplianceSyncEnabled, syncComplianceReportToScout } = await import('./scout-sync.js');
+        if (scoutComplianceSyncEnabled()) {
+          const syncResult = await syncComplianceReportToScout(report);
+          if (syncResult.inserted > 0) {
+            console.log(
+              `[compliance] synced ${syncResult.inserted} evidence row(s) to Scout (${syncResult.controlsTouched.length} controls)`,
+            );
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`[compliance] Scout evidence sync skipped: ${message}`);
+      }
+    }
+
     return report;
   }
 

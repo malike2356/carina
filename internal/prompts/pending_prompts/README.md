@@ -25,6 +25,8 @@ Reuse rule: Carina keeps its own voice. Treat Hermes, OpenClaw, and Odysseus as 
 
 **Also archived (2026-06-22):** `sprint-2/gap-03-mobile/` (all 4 prompts; native mobile layer complete).
 
+**Also active (2026-06-22):** `sprint-3/` white-label prompt pack for reseller, branding, billing, deploy, and tenant isolation work.
+
 ---
 
 ## Agent Reference

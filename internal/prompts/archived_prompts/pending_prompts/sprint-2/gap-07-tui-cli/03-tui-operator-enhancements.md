@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Operator readline TUI enhancements in `src/tui/`
+- Status bar showing active model, token count, session ID
+- `/operator` commands for switching models and config at runtime
+
 # Gap 07 - Prompt 03: Operator TUI Enhancements
 
 **Agent:** Claude Code

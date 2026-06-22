@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch server.ts",
+    "dev": "node scripts/sync-theme.mjs && tsx watch server.ts",
     "start": "node dist/server.js",
-    "build": "tsc",
+    "build": "node scripts/sync-theme.mjs && tsc",
     "test": "vitest run",
-    "css": "tailwindcss --input tailwind.css --output public/styles.css --content 'views/**/*.ejs'",
+    "theme:sync": "node scripts/sync-theme.mjs",
+    "css": "node scripts/sync-theme.mjs && tailwindcss --input tailwind.css --output public/styles.css --content 'views/**/*.ejs'",
     "css:watch": "tailwindcss --input tailwind.css --output public/styles.css --content 'views/**/*.ejs' --watch"
   },
   "dependencies": {

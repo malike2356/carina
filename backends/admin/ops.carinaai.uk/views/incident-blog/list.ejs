@@ -1,90 +1,103 @@
 <% title = 'Incident Blog' %>
+<% const flash = new URLSearchParams(locals.query || ''); %>
+<% function statusBadge(status) {
+  if (status === 'draft') return 'ops-badge-amber';
+  if (status === 'approved') return 'ops-badge-cyan';
+  if (status === 'published') return 'ops-badge-green';
+  return 'ops-badge-gray';
+} %>
 <div class="ops-page">
-<style>
-  .blog-shell { display: grid; gap: 1rem; }
-  .blog-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; }
-  .blog-stat { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.9rem; }
-  .blog-stat .value { font-size: 1.4rem; font-weight: 700; color: #fff; }
-  .blog-stat .label { font-size: 0.72rem; color: #8b8b8b; text-transform: uppercase; letter-spacing: 0.08em; }
-  .blog-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1rem; }
-  .blog-table { width: 100%; border-collapse: collapse; }
-  .blog-table th, .blog-table td { padding: 0.7rem 0.5rem; border-bottom: 1px solid #2a2a2a; text-align: left; vertical-align: top; }
-  .pill { display: inline-flex; padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
-  .draft { background: rgba(245,158,11,0.16); color: #f59e0b; }
-  .approved { background: rgba(59,130,246,0.16); color: #60a5fa; }
-  .published { background: rgba(22,201,126,0.16); color: #16c97e; }
-  .rejected { background: rgba(77,96,112,0.16); color: #8a9bb0; }
-  .actions { display:flex; flex-wrap:wrap; gap:.5rem; }
-  .actions form { display:inline; }
-  .button-inline {
-    display:inline-flex; align-items:center; justify-content:center;
-    background:#2a2a2a; color:#fff; border:1px solid #3a3a3a;
-    border-radius:6px; padding:.45rem .7rem; font-size:.82rem; cursor:pointer;
-  }
-  .button-inline.primary { background:#16c97e; color:#06090f; border-color:#16c97e; }
-  .button-inline.warn { background:#f59e0b; color:#06090f; border-color:#f59e0b; }
-  .button-inline.danger { background:#e63946; color:#fff; border-color:#e63946; }
-  .toolbar { display:flex; flex-wrap:wrap; gap:.5rem; margin: 0 0 1rem; }
-  .toolbar a { color:#16c97e; text-decoration:none; }
-</style>
-<div class="blog-shell">
-  <div class="blog-card">
-    <div class="toolbar">
-      <a href="/admin/incident-blog/new">Create New</a>
-      <a href="/admin/incident-blog/subscribers/list">Subscribers</a>
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Incident Blog</div>
+      <div class="ops-page-sub">Draft, approve, and publish security incident records for the public blog.</div>
     </div>
-    <div class="blog-stats">
-      <div class="blog-stat"><div class="value"><%= stats.draftCount %></div><div class="label">Drafts</div></div>
-      <div class="blog-stat"><div class="value"><%= stats.approvedCount %></div><div class="label">Approved</div></div>
-      <div class="blog-stat"><div class="value"><%= stats.publishedCount %></div><div class="label">Published</div></div>
-      <div class="blog-stat"><div class="value"><%= stats.rejectedCount %></div><div class="label">Rejected</div></div>
-      <div class="blog-stat"><div class="value"><%= stats.subscriberCount %></div><div class="label">Subscribers</div></div>
+    <div class="ops-head-actions">
+      <a href="/admin/incident-blog/new" class="ops-btn ops-btn-green ops-btn-sm">Create new</a>
+      <a href="/admin/incident-blog/subscribers/list" class="ops-btn ops-btn-ghost ops-btn-sm">Subscribers</a>
     </div>
   </div>
 
-  <div class="blog-card">
-    <form class="toolbar" method="get" action="/admin/incident-blog">
-      <input type="text" name="status" value="<%= filters.status %>" placeholder="status">
-      <input type="text" name="category" value="<%= filters.category %>" placeholder="category">
-      <button class="button-inline primary" type="submit">Filter</button>
-    </form>
-    <div class="actions" style="margin-bottom:1rem;">
-      <form method="post" action="/admin/incident-blog/research-run"><button class="button-inline warn" type="submit">Run Research</button></form>
-      <form method="post" action="/admin/incident-blog/newsletter/send"><button class="button-inline warn" type="submit">Send Newsletter</button></form>
-      <form method="post" action="/admin/incident-blog/generate-page"><button class="button-inline primary" type="submit">Regenerate Page</button></form>
-    </div>
-    <table class="blog-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Company</th>
-          <th>Damage</th>
-          <th>Status</th>
-          <th>Date</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% for (const incident of incidents) { %>
-          <tr>
-            <td><%= incident.title %></td>
-            <td><%= incident.company %></td>
-            <td><span style="color:#e63946"><%= incident.damage %></span></td>
-            <td><span class="pill <%= incident.status %>"><%= incident.status %></span></td>
-            <td><%= incident.dateOccurred %></td>
-            <td>
-              <div class="actions">
-                <a class="button-inline" href="/admin/incident-blog/<%= incident.id %>">View</a>
-                <a class="button-inline" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
-                <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve"><button class="button-inline warn" type="submit">Approve</button></form>
-                <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish"><button class="button-inline primary" type="submit">Publish</button></form>
-                <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject"><input type="hidden" name="reason" value="Duplicate or needs review"><button class="button-inline" type="submit">Reject</button></form>
-              </div>
-            </td>
-          </tr>
-        <% } %>
-      </tbody>
-    </table>
+  <% if (flash.get('ok')) { %><div class="ops-flash success">Action completed.</div><% } %>
+  <% if (flash.get('err')) { %><div class="ops-flash error"><%= flash.get('err') %></div><% } %>
+
+  <div class="ops-metrics" style="margin-bottom:16px;">
+    <div class="ops-metric"><div class="ops-metric-label">Drafts</div><div class="ops-metric-value"><%= stats.draftCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Approved</div><div class="ops-metric-value ok"><%= stats.approvedCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Published</div><div class="ops-metric-value ok"><%= stats.publishedCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Rejected</div><div class="ops-metric-value muted"><%= stats.rejectedCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Subscribers</div><div class="ops-metric-value"><%= stats.subscriberCount %></div></div>
   </div>
-</div>
+
+  <div class="ops-surface ops-table-wrap">
+    <div class="ops-surface-body">
+      <form class="ops-filter-bar" method="get" action="/admin/incident-blog">
+        <label class="ops-field">
+          <span class="ops-field-label">Status</span>
+          <input type="text" name="status" value="<%= filters.status %>" placeholder="draft, published..." class="ops-input">
+        </label>
+        <label class="ops-field">
+          <span class="ops-field-label">Category</span>
+          <input type="text" name="category" value="<%= filters.category %>" placeholder="financial, security..." class="ops-input">
+        </label>
+        <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Filter</button>
+      </form>
+
+      <div class="ops-actions" style="margin-bottom:16px;">
+        <form method="post" action="/admin/incident-blog/research-run" class="inline">
+          <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Run research</button>
+        </form>
+        <form method="post" action="/admin/incident-blog/newsletter/send" class="inline">
+          <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Send newsletter</button>
+        </form>
+        <form method="post" action="/admin/incident-blog/generate-page" class="inline">
+          <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Regenerate page</button>
+        </form>
+      </div>
+
+      <% if (!incidents.length) { %>
+        <div class="ops-empty">No incidents yet. <a href="/admin/incident-blog/new" class="ops-link">Create the first record</a>.</div>
+      <% } else { %>
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Company</th>
+              <th>Damage</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const incident of incidents) { %>
+              <tr>
+                <td style="font-weight:600;color:var(--heading);"><%= incident.title %></td>
+                <td><%= incident.company %></td>
+                <td style="color:var(--red);"><%= incident.damage %></td>
+                <td><span class="ops-badge <%= statusBadge(incident.status) %>"><%= incident.status %></span></td>
+                <td style="color:var(--muted);font-size:12px;"><%= incident.dateOccurred %></td>
+                <td>
+                  <div class="ops-row-actions">
+                    <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/admin/incident-blog/<%= incident.id %>">View</a>
+                    <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
+                    <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve" class="inline">
+                      <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Approve</button>
+                    </form>
+                    <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish" class="inline">
+                      <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Publish</button>
+                    </form>
+                    <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject" class="inline">
+                      <input type="hidden" name="reason" value="Duplicate or needs review">
+                      <button class="ops-btn ops-btn-ghost ops-btn-sm" type="submit">Reject</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
 </div>

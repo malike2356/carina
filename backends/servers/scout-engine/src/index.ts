@@ -32,13 +32,17 @@ app.get('/', (_req, res) => {
     service: 'Scout Engine',
     version: '1.0.0',
     status: 'running',
-    docs: '/api/docs',
+    docs: '/api/v1/docs/ui',
   });
 });
 
 // Dashboard (SPA fallback)
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(dashboardPath, 'index.html'));
+});
+
+app.get('/onboard', (_req, res) => {
+  res.sendFile(path.join(dashboardPath, 'onboard.html'));
 });
 
 // Start server

@@ -76,6 +76,7 @@ import {
   formatStreamSseEvent,
   streamEvent,
 } from '#core/telemetry/stream-events.js';
+import { resolveWebPasswordHash } from '#core/ops/web-password.js';
 import {
   checkWebPassword,
   redirectIfHostedAuthed,
@@ -830,7 +831,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
         res.redirect('/hosted-login');
         return;
       }
-      if (!(process.env.CARINA_WEB_PASSWORD ?? '').trim()) {
+      if (!resolveWebPasswordHash().trim()) {
         res.redirect('/login?error=unset');
         return;
       }

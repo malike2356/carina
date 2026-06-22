@@ -44,6 +44,17 @@ import {
   standingOrdersEnabled,
 } from '../agents/standing-orders-store.js';
 import type { QueueMode } from '../agents/command-queue-types.js';
+import type { CommandQueue } from '../agents/command-queue.js';
+import {
+  claimLinkCode,
+  generateLinkCode,
+  getCrossChannelSharing,
+  getSessionIdentityState,
+  setCrossChannelSharing,
+} from './session-identity-prefs.js';
+import { getIdentityResolver, identityLinksEnabled } from './identity-resolver.js';
+import { getChannelDocking } from './channel-docking.js';
+import type { ChannelName } from './channels/channel-adapter.interface.js';
 
 export type CommandResult =
   | {
@@ -57,12 +68,45 @@ export type CommandResult =
 export interface GatewayCommandContext {
   sessionId?: string;
   channel?: string;
+  channelUserId?: string;
+  displayName?: string;
+  canonicalUserId?: string;
   activeProvider?: string;
   activeModel?: string;
   commandQueue?: CommandQueue;
 }
 
 const PLAIN_TEXT_CHANNELS = new Set(['telegram', 'sms', 'signal', 'irc']);
+
+type CommandIdentity = {
+  canonicalUserId: string;
+  channel: ChannelName;
+  channelUserId: string;
+  displayName?: string;
+};
+
+async function resolveCommandIdentity(
+  context: GatewayCommandContext,
+): Promise<CommandIdentity | { error: string }> {
+  if (!identityLinksEnabled()) {
+    return { error: 'Identity links are disabled (CARINA_IDENTITY_LINKS_ENABLED=false).' };
+  }
+  const state = context.sessionId ? getSessionIdentityState(context.sessionId) : undefined;
+  const channel = (context.channel ?? state?.originChannel) as ChannelName | undefined;
+  const channelUserId = context.channelUserId;
+  if (!channel || !channelUserId) {
+    return { error: 'Identity commands require an active channel session with a user id.' };
+  }
+  const canonicalUserId = state?.canonicalUserId
+    ?? context.canonicalUserId
+    ?? await getIdentityResolver().resolve(channel, channelUserId, context.displayName);
+  return {
+    canonicalUserId,
+    channel,
+    channelUserId,
+    displayName: context.displayName,
+  };
+}
 
 async function formatMemoriesList(): Promise<string> {
   const memories = await listRecentMemories(20);
@@ -370,6 +414,182 @@ export async function handleGatewayCommandAsync(
     return { handled: true, reply: `Deleted memory ${match.id.slice(0, 8)}...` };
   }
 
+  if (trimmed === '/link' || trimmed.startsWith('/link ')) {
+    const linkMatch = trimmed.match(/^\/link(?:\s+(code|claim)\s*(.*))?$/i);
+    const identity = await resolveCommandIdentity(context);
+    if ('error' in identity) {
+      return { handled: true, reply: identity.error };
+    }
+    const resolver = getIdentityResolver();
+    const sub = (linkMatch?.[1] ?? '').toLowerCase();
+    const rest = (linkMatch?.[2] ?? '').trim();
+
+    if (sub === 'code') {
+      const code = generateLinkCode({
+        userId: identity.canonicalUserId,
+        channel: identity.channel,
+        channelUserId: identity.channelUserId,
+        displayName: identity.displayName,
+      });
+      return {
+        handled: true,
+        reply: [
+          `Link code: ${code}`,
+          'Valid for 5 minutes.',
+          `On your other channel, send: /link claim ${code}`,
+        ].join('\n'),
+      };
+    }
+
+    if (sub === 'claim') {
+      const code = rest.split(/\s+/)[0];
+      if (!code) {
+        return { handled: true, reply: 'Usage: /link claim <code>' };
+      }
+      const claimed = claimLinkCode(code, {
+        channel: identity.channel,
+        channelUserId: identity.channelUserId,
+        displayName: identity.displayName,
+      });
+      if ('error' in claimed) {
+        return { handled: true, reply: claimed.error };
+      }
+      await resolver.link(
+        claimed.userId,
+        identity.channel,
+        identity.channelUserId,
+        identity.displayName,
+      );
+      const identities = await resolver.getIdentities(claimed.userId);
+      const channels = identities.map((row) => row.channel).join(', ');
+      return {
+        handled: true,
+        reply: [
+          'Channels linked.',
+          `Canonical user: ${claimed.userId.slice(0, 12)}...`,
+          `Linked channels: ${channels || identity.channel}`,
+          getCrossChannelSharing(claimed.userId)
+            ? 'Cross-channel session sharing is on (default). Use /identity share off to keep sessions per channel.'
+            : 'Cross-channel sharing is off. Use /identity share on to share one session across linked channels.',
+        ].join('\n'),
+      };
+    }
+
+    const identities = await resolver.getIdentities(identity.canonicalUserId);
+    if (identities.length === 0) {
+      return { handled: true, reply: 'No linked identities yet for this channel user.' };
+    }
+    const lines = identities.map((row) => {
+      const label = row.displayName ?? row.channelUserId;
+      const primary = row.isPrimary ? ' (primary)' : '';
+      return `- ${row.channel}: ${label}${primary}`;
+    });
+    return {
+      handled: true,
+      reply: [
+        `Canonical user: ${identity.canonicalUserId.slice(0, 12)}...`,
+        'Linked identities:',
+        ...lines,
+        '',
+        'Commands:',
+        '/link code - generate a link code on this channel',
+        '/link claim <code> - attach this channel to the same user (run on the other channel)',
+        '/identity share on|off - toggle shared sessions across linked channels',
+        '/dock list|to <channel>|back|status - move reply stream between channels',
+      ].join('\n'),
+    };
+  }
+
+  const identityShareMatch = trimmed.match(/^\/identity\s+share\s+(on|off)$/i);
+  if (identityShareMatch) {
+    const identity = await resolveCommandIdentity(context);
+    if ('error' in identity) {
+      return { handled: true, reply: identity.error };
+    }
+    const enabled = identityShareMatch[1].toLowerCase() === 'on';
+    setCrossChannelSharing(identity.canonicalUserId, enabled);
+    return {
+      handled: true,
+      reply: enabled
+        ? 'Cross-channel session sharing enabled. Linked channels share one conversation thread.'
+        : 'Cross-channel session sharing disabled. Each channel keeps its own session even when linked.',
+    };
+  }
+
+  if (trimmed === '/dock' || trimmed.startsWith('/dock ')) {
+    const dockMatch = trimmed.match(/^\/dock(?:\s+(list|to|back|status)\s*(.*))?$/i);
+    const identity = await resolveCommandIdentity(context);
+    if ('error' in identity) {
+      return { handled: true, reply: identity.error };
+    }
+    if (!context.sessionId) {
+      return { handled: true, reply: 'Docking requires an active session. Send a message first, then use /dock.' };
+    }
+    const docking = getChannelDocking();
+    const sub = (dockMatch?.[1] ?? 'status').toLowerCase();
+    const rest = (dockMatch?.[2] ?? '').trim();
+    const state = getSessionIdentityState(context.sessionId);
+
+    if (sub === 'list') {
+      const channels = await docking.listDockableChannels(
+        identity.canonicalUserId,
+        identity.channel,
+      );
+      if (channels.length === 0) {
+        return {
+          handled: true,
+          reply: 'No other linked channels available. Use /link to connect another channel first.',
+        };
+      }
+      return {
+        handled: true,
+        reply: [
+          'Dockable channels:',
+          ...channels.map((channel) => `- ${channel}`),
+          '',
+          'Use /dock to <channel> to move replies there.',
+        ].join('\n'),
+      };
+    }
+
+    if (sub === 'to') {
+      const target = rest.split(/\s+/)[0]?.toLowerCase();
+      if (!target) {
+        return { handled: true, reply: 'Usage: /dock to <channel>' };
+      }
+      const result = await docking.dock(context.sessionId, identity.canonicalUserId, target as ChannelName);
+      if (!result.success) {
+        return { handled: true, reply: result.error };
+      }
+      return {
+        handled: true,
+        reply: `Replies now go to ${result.dockedTo}. Use /dock back to return to ${result.dockedFrom}.`,
+      };
+    }
+
+    if (sub === 'back') {
+      const result = await docking.undock(context.sessionId);
+      if (!result.success) {
+        return { handled: true, reply: result.error };
+      }
+      return {
+        handled: true,
+        reply: `Replies returned to ${result.dockedTo}.`,
+      };
+    }
+
+    const replyChannel = state?.replyChannel ?? identity.channel;
+    const docked = state?.dockedFrom ? `yes (from ${state.dockedFrom})` : 'no';
+    return {
+      handled: true,
+      reply: [
+        `Reply channel: ${replyChannel}`,
+        `Docked: ${docked}`,
+        state?.originChannel ? `Session origin: ${state.originChannel}` : '',
+      ].filter(Boolean).join('\n'),
+    };
+  }
+
   return handleGatewayCommand(trimmed, {}, context);
 }
 
@@ -427,6 +647,9 @@ export function handleGatewayCommand(
       '/queue status - show queue depth and mode',
       '/queue config - show queue configuration',
       '/standing-orders add|list|remove|toggle|expire - persistent directives',
+      '/link [code|claim <code>] - link identities across channels',
+      '/identity share on|off - toggle shared sessions across linked channels',
+      '/dock list|to <channel>|back|status - move reply stream between channels',
       '/clear-cache [tool] - clear cached tool results',
       '/clear - clear session memory (same thread)',
       `Docs - full capabilities: ${config.product.marketingUrl}/docs/capabilities`,

@@ -38,3 +38,16 @@ describe('scout base URL', () => {
     expect(SCOUT_CONSOLE_BASE).toBe('http://10.0.0.10:4444');
   });
 });
+
+describe('resolveScoutProxyBase', () => {
+  it('routes /api/admin to engine and killswitch to console', async () => {
+    const { resolveScoutProxyBase } = await import('./scout.js');
+    const engine = 'http://engine:4455';
+    const console = 'http://console:4444';
+    expect(resolveScoutProxyBase('/api/killswitch/status', engine, console)).toBe(console);
+    expect(resolveScoutProxyBase('/api/killswitch/trigger', engine, console)).toBe(console);
+    expect(resolveScoutProxyBase('/api/admin/status', engine, console)).toBe(engine);
+    expect(resolveScoutProxyBase('/api/kill/instance-1', engine, console)).toBe(console);
+    expect(resolveScoutProxyBase('/api/events', engine, console)).toBe(console);
+  });
+});

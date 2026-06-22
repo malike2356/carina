@@ -1,21 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <!-- __SCOUT_KEY_INJECTION__ -->
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Labyrinth Scout</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme/index.css?v=3">
   <style>
-:root{
-  --void:#020409;--navy:#050c1a;--lift:#0a1628;
-  --border:rgba(0,200,150,.12);
-  --green:#00c896;--red:#ff2244;--amber:#d4af37;--cyan:#00d4ff;--purple:#9b59ff;
-  --text:#8bafc0;--bright:#cce8f4;
-}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:var(--void)}
-body{font-family:Inter,system-ui,sans-serif;color:var(--bright);animation:crtBoot 1.4s ease-out forwards}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);color:var(--bright);animation:crtBoot 1.4s ease-out forwards}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
   background-image:linear-gradient(rgba(0,200,150,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,150,.025) 1px,transparent 1px);
   background-size:40px 40px;transition:background-image .3s}
@@ -340,7 +334,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .toast.ok{border-color:var(--green);color:var(--green)}
   </style>
 </head>
-<body>
+<body class="console-body">
 <div class="app">
   <header class="hdr">
     <span class="hdr-brand">VERLOX FLEET OPS</span>

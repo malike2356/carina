@@ -27,6 +27,10 @@ services:
       CARINA_SUPERVISOR_OPS: "false"
       LABYRINTH_URL: http://labyrinth-scout:4444
       LABYRINTH_LLM_ROUTER_URL: http://carina-web:3000
+      LABYRINTH_ENABLED: ${LABYRINTH_ENABLED:-true}
+      LABYRINTH_API_KEY: ${LABYRINTH_API_KEY:-${SCOUT_API_KEY:-}}
+      LABYRINTH_INSTANCE_ID: ${LABYRINTH_INSTANCE_ID:-carina-local}
+      LABYRINTH_INSTANCE_NAME: ${LABYRINTH_INSTANCE_NAME:-Carina Local}
     healthcheck:
       test: ["CMD", "/usr/local/bin/carina-healthcheck"]
       interval: 15s
@@ -83,17 +87,31 @@ services:
       PORT: "4001"
       BIND_HOST: 0.0.0.0
       CARINA_API_URL: http://carina-web:3000
-      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina
+      CARINA_OPS_IN_DOCKER: "true"
+      # Use carina-postgres (not postgres): scout-postgres is also aliased as postgres on the scout network.
+      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@carina-postgres:5432/carina
+      SCOUT_COMPLIANCE_DB_URL: postgresql://scout:${SCOUT_DB_PASSWORD:-secret}@scout-postgres:5432/scout
       SCOUT_CONSOLE_URL: http://scout-console:4444
       SCOUT_URL: http://scout-console:4444
       SCOUT_ADMIN_API_URL: http://scout-engine:4455
       SCOUT_ENGINE_URL: http://scout-engine:4455
-      # Ops panel path overrides so it does not fall back to host-specific paths.
-      # CARINA_CORE_ROOT and SCOUT_CONSOLE_PUBLIC_DIR are only needed for the PTY bridge
-      # and Scout static proxy features; if those features are unused, leave them unset.
-      CARINA_CORE_ENV_PATH: ${CARINA_CORE_ENV_PATH:-}
+      CARINA_CORE_ENV_PATH: ${CARINA_CORE_ENV_PATH:-/run/carina/core.env}
       SCOUT_CONSOLE_PUBLIC_DIR: ${SCOUT_CONSOLE_PUBLIC_DIR:-}
       CARINA_WORKSPACE_ROOT: ${CARINA_WORKSPACE_ROOT:-/tmp/carina-workspaces}
+      # Browser TUI (/tui, /ws/tui) spawns carina tui from the mounted host core tree.
+      CARINA_CORE_ROOT: /host/core
+      CARINA_BIN: /host/core/dist/bin/carina.js
+      CARINA_HOME: /run/carina/carina-home
+    pid: host
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CARINA_OPS_DOTENV:-../ops.carinaai.uk/.env}:/app/.env:rw
+      - ${CARINA_CORE_ENV_MOUNT:-.env.docker.runtime}:/run/carina/core.env:ro
+      - ${CARINA_CORE_HOST_MOUNT:-.}:/host/core:ro
+      # Host core node_modules is often a symlink into this cache directory.
+      - ${CARINA_CORE_RUNTIME_CACHE:-/home/malike/.cache/carina-core-runtime}:/home/malike/.cache/carina-core-runtime:ro
+      - ${CARINA_HOME_HOST_MOUNT:-/home/malike/.carina}:/run/carina/carina-home:rw
     expose:
       - "4001"
     depends_on:
@@ -183,7 +201,9 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - carina
+      carina:
+        aliases:
+          - carina-postgres
     restart: unless-stopped
 
   redis:

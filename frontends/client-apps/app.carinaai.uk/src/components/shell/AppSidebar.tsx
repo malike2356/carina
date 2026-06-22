@@ -5,21 +5,41 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Archive,
+  BarChart3,
+  BookOpen,
   Brain,
+  CalendarClock,
   CalendarDays,
+  CheckSquare,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
+  CreditCard,
+  Database,
   FileText,
+  FolderOpen,
+  Key,
+  LayoutDashboard,
+  LayoutGrid,
+  Mail,
   MessageSquare,
   MoreHorizontal,
   Plus,
+  ScrollText,
   Search,
-  SearchIcon,
+  Server,
   Settings,
+  Shield,
+  Smartphone,
   Sparkles,
-  Trash2,
+  StickyNote,
   Terminal as TerminalIcon,
+  Trash2,
+  User,
+  UserCircle,
+  Webhook,
+  Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { IconButton } from '@/components/ui/IconButton';
@@ -28,7 +48,25 @@ import { useAppearance } from '@/hooks/useAppearance';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
 import { useCloudCapabilities } from '@/hooks/useCloudCapabilities';
 import { hasCloudCapability, routeRequiresCoreProxy } from '@/lib/cloud-capabilities';
-import { SIDEBAR_TOOLS, type SidebarPanelId } from '@/lib/workspace-nav';
+import {
+  NAV_GROUPS,
+  NAV_PANELS,
+  NAV_ROUTES,
+  type NavGroup,
+  type NavGroupId,
+  type NavPanel,
+  type NavRoute,
+} from '@/lib/workspace-nav';
+import { useTranslation, type TranslationKey } from '@/i18n/translate';
+import {
+  GROUP_LABEL_KEYS,
+  PANEL_LABEL_KEYS,
+  ROUTE_LABEL_KEYS,
+} from '@/i18n/nav-keys';
+import { hrefToWindowId, preferWindowOverlay } from '@/lib/window-manager/definitions';
+import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
+import { ThemeSwitcher } from '@/components/shell/ThemeSwitcher';
+import { BrandMark } from '@/components/shell/BrandMark';
 
 interface Session {
   id: string;
@@ -42,23 +80,73 @@ interface AppSidebarProps {
   userName: string;
 }
 
-const PANEL_ICONS: Record<SidebarPanelId, React.ReactNode> = {
-  memory: <Brain className="h-3.5 w-3.5" />,
-  skills: <Sparkles className="h-3.5 w-3.5" />,
-  notes: <FileText className="h-3.5 w-3.5" />,
+const NAV_ICON_MAP: Record<string, React.ElementType> = {
+  BarChart3,
+  BookOpen,
+  Brain,
+  CalendarClock,
+  CalendarDays,
+  CheckSquare,
+  Clock,
+  CreditCard,
+  Database,
+  FileText,
+  FolderOpen,
+  Key,
+  LayoutDashboard,
+  LayoutGrid,
+  Mail,
+  ScrollText,
+  Search,
+  Server,
+  Settings,
+  Shield,
+  Smartphone,
+  Sparkles,
+  StickyNote,
+  Terminal: TerminalIcon,
+  User,
+  UserCircle,
+  Webhook,
+  Wrench,
 };
 
-const ROUTE_ICONS: Record<string, React.ReactNode> = {
-  '/documents': <FileText className="h-3.5 w-3.5" />,
-  '/calendar': <CalendarDays className="h-3.5 w-3.5" />,
-  '/research': <SearchIcon className="h-3.5 w-3.5" />,
-  '/tasks': <Clock className="h-3.5 w-3.5" />,
-  '/terminal': <TerminalIcon className="h-3.5 w-3.5" />,
-};
+function NavIcon({ name, className }: { name: string; className?: string }) {
+  const Icon = NAV_ICON_MAP[name];
+  if (!Icon) return null;
+  return <Icon className={className ?? 'h-3.5 w-3.5'} />;
+}
 
-function toolIcon(tool: (typeof SIDEBAR_TOOLS)[number]): React.ReactNode {
-  if (tool.kind === 'panel') return PANEL_ICONS[tool.id];
-  return ROUTE_ICONS[tool.href] ?? <FileText className="h-3.5 w-3.5" />;
+function useLocalizedNav() {
+  const { t } = useTranslation();
+
+  return {
+    routeLabel(route: NavRoute) {
+      const key = ROUTE_LABEL_KEYS[route.href];
+      return key ? t(key as TranslationKey) : route.label;
+    },
+    panelLabel(panel: NavPanel) {
+      const key = PANEL_LABEL_KEYS[panel.id];
+      return key ? t(key as TranslationKey) : panel.label;
+    },
+    groupLabel(group: NavGroup) {
+      const key = GROUP_LABEL_KEYS[group.id];
+      return key ? t(key as TranslationKey) : group.label;
+    },
+  };
+}
+
+function isRouteVisible(
+  route: NavRoute,
+  canUseTerminal: boolean,
+  capabilities: ReturnType<typeof useCloudCapabilities>['capabilities'],
+): boolean {
+  if (route.terminalGated && !canUseTerminal) return false;
+  const capabilityKey = routeRequiresCoreProxy(route.href);
+  if (capabilityKey && capabilities && !hasCloudCapability(capabilities, capabilityKey)) {
+    return false;
+  }
+  return true;
 }
 
 export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
@@ -70,15 +158,37 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   const router = useRouter();
   const { canUseTerminal } = useTerminalAccess();
   const { capabilities } = useCloudCapabilities();
+  const { routeLabel, panelLabel, groupLabel } = useLocalizedNav();
+  const { t } = useTranslation();
 
-  const sidebarTools = SIDEBAR_TOOLS.filter((tool) => {
-    if (tool.kind === 'route' && tool.terminalGated && !canUseTerminal) return false;
-    if (tool.kind === 'route' && capabilities) {
-      const capabilityKey = routeRequiresCoreProxy(tool.href);
-      if (capabilityKey && !hasCloudCapability(capabilities, capabilityKey)) return false;
+  const DEFAULT_OPEN_GROUPS: Record<NavGroupId, boolean> = {
+    workspace: true,
+    intelligence: true,
+    tools: false,
+    account: false,
+  };
+  const [openGroups, setOpenGroups] = useState<Record<NavGroupId, boolean>>(DEFAULT_OPEN_GROUPS);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('carina.nav-groups');
+      if (stored) setOpenGroups(JSON.parse(stored) as Record<NavGroupId, boolean>);
+    } catch {
+      // ignore
     }
-    return true;
-  });
+  }, []);
+
+  function toggleGroup(groupId: NavGroupId) {
+    setOpenGroups((current) => {
+      const next = { ...current, [groupId]: !current[groupId] };
+      try {
+        localStorage.setItem('carina.nav-groups', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (!userToggled.current) setCollapsed(appearance.sidebarCollapsed);
@@ -118,10 +228,10 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
 
   if (collapsed) {
     return (
-      <aside className="flex w-12 flex-col items-center gap-3 border-r border-border bg-surface py-3">
-        <Tooltip text="Expand sidebar" side="right">
+      <aside className="flex w-12 flex-col items-center gap-1.5 border-r border-border bg-surface py-3">
+        <Tooltip text={t('sidebar.expand')} side="right">
           <IconButton
-            label="Expand sidebar"
+            label={t('sidebar.expand')}
             onClick={() => {
               userToggled.current = true;
               setCollapsed(false);
@@ -130,25 +240,48 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
             <ChevronRight className="h-4 w-4" />
           </IconButton>
         </Tooltip>
-        <Tooltip text="New chat" side="right">
-          <IconButton label="New chat" onClick={newChat}>
+        <Tooltip text={t('sidebar.newChat')} side="right">
+          <IconButton label={t('sidebar.newChat')} onClick={newChat}>
             <Plus className="h-4 w-4" />
           </IconButton>
         </Tooltip>
-        <Tooltip text="Search (Ctrl+K)" side="right">
+        <Tooltip text={t('sidebar.searchShortcut')} side="right">
           <IconButton
-            label="Search"
+            label={t('sidebar.search')}
             onClick={() => document.dispatchEvent(new CustomEvent('open-search'))}
           >
             <Search className="h-4 w-4" />
           </IconButton>
         </Tooltip>
-        {sidebarTools.map((tool) => (
-          <CollapsedToolIcon key={tool.label} tool={tool} router={router} />
-        ))}
+
+        <div className="my-1 w-6 border-t border-border" />
+
+        {NAV_GROUPS.map((group) => {
+          const groupRoutes = NAV_ROUTES.filter((r) => r.group === group.id);
+          const isGroupActive = groupRoutes.some(
+            (r) => pathname === r.href || (r.href !== '/' && pathname.startsWith(`${r.href}/`)),
+          );
+          return (
+            <Tooltip key={group.id} text={groupLabel(group)} side="right">
+              <IconButton
+                label={groupLabel(group)}
+                onClick={() => {
+                  userToggled.current = true;
+                  setCollapsed(false);
+                  setOpenGroups((current) => ({ ...current, [group.id]: true }));
+                }}
+                className={isGroupActive ? 'text-accent' : ''}
+              >
+                <NavIcon name={group.iconName} className="h-4 w-4" />
+              </IconButton>
+            </Tooltip>
+          );
+        })}
+
         <div className="flex-1" />
-        <Tooltip text="Settings" side="right">
-          <IconButton label="Settings" onClick={() => router.push('/settings')}>
+
+        <Tooltip text={t('nav.settings')} side="right">
+          <IconButton label={t('nav.settings')} onClick={() => router.push('/settings')}>
             <Settings className="h-4 w-4" />
           </IconButton>
         </Tooltip>
@@ -166,12 +299,12 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
       <div className="flex items-center justify-between px-3 py-3">
         <Link
           href="/dashboard"
-          className="text-sm font-semibold text-text-primary hover:text-accent transition-colors"
+          className="transition-colors hover:text-accent"
         >
-          Carina
+          <BrandMark />
         </Link>
         <IconButton
-          label="Collapse sidebar"
+          label={t('sidebar.collapse')}
           onClick={() => {
             userToggled.current = true;
             setCollapsed(true);
@@ -181,50 +314,59 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
         </IconButton>
       </div>
 
-      <div className="px-2 pb-2 flex gap-1">
+      <div className="flex gap-1 px-2 pb-2">
         <button
+          type="button"
           onClick={newChat}
-          className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-secondary hover:bg-elevated hover:text-text-primary transition-colors"
+          className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-elevated hover:text-text-primary"
         >
           <Plus className="h-3.5 w-3.5" />
-          New chat
+          {t('sidebar.newChat')}
         </button>
         <IconButton
-          label="Search (Ctrl+K)"
+          label={t('sidebar.searchShortcut')}
           onClick={() => document.dispatchEvent(new CustomEvent('open-search'))}
         >
           <Search className="h-4 w-4" />
         </IconButton>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2">
+      <div className="min-h-0 flex-1 overflow-y-auto px-2">
         <SessionList sessions={sessions} currentPath={pathname} />
       </div>
 
-      <div className="border-t border-border px-2 py-2">
-        <div className="mb-1 flex items-center justify-between px-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Tools</p>
-          <Link
-            href="/settings"
-            className="text-[10px] text-text-muted transition-colors hover:text-accent"
-          >
-            More
-          </Link>
-        </div>
-        {sidebarTools.map((tool) => (
-          <SidebarToolRow key={tool.label} tool={tool} />
+      <div className="max-h-[45vh] overflow-y-auto border-t border-border px-2 py-2">
+        {NAV_GROUPS.map((group) => (
+          <NavGroupSection
+            key={group.id}
+            group={group}
+            groupLabel={groupLabel(group)}
+            routes={NAV_ROUTES.filter((r) => r.group === group.id && !r.parent)}
+            panels={NAV_PANELS.filter((p) => p.group === group.id)}
+            isOpen={openGroups[group.id] ?? true}
+            onToggle={() => toggleGroup(group.id)}
+            pathname={pathname}
+            canUseTerminal={canUseTerminal}
+            capabilities={capabilities}
+            routeLabel={routeLabel}
+            panelLabel={panelLabel}
+          />
         ))}
       </div>
 
-      <div className="border-t border-border px-3 py-3 flex items-center gap-2">
+      <div className="border-t border-border px-3 py-2">
+        <ThemeSwitcher className="w-full" variant="compact" />
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-border px-3 py-3">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-dim text-accent text-xs font-medium">
           {initials}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-text-primary">{userName || userEmail}</p>
           <p className="truncate text-[10px] text-text-muted">{userEmail}</p>
         </div>
-        <IconButton label="Settings" onClick={() => router.push('/settings')}>
+        <IconButton label={t('nav.settings')} onClick={() => router.push('/settings')}>
           <Settings className="h-3.5 w-3.5" />
         </IconButton>
       </div>
@@ -232,64 +374,154 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   );
 }
 
-function CollapsedToolIcon({
-  tool,
-  router,
+function NavGroupSection({
+  group,
+  groupLabel,
+  routes,
+  panels,
+  isOpen,
+  onToggle,
+  pathname,
+  canUseTerminal,
+  capabilities,
+  routeLabel,
+  panelLabel,
 }: {
-  tool: (typeof SIDEBAR_TOOLS)[number];
-  router: ReturnType<typeof useRouter>;
+  group: NavGroup;
+  groupLabel: string;
+  routes: NavRoute[];
+  panels: NavPanel[];
+  isOpen: boolean;
+  onToggle: () => void;
+  pathname: string;
+  canUseTerminal: boolean;
+  capabilities: ReturnType<typeof useCloudCapabilities>['capabilities'];
+  routeLabel: (route: NavRoute) => string;
+  panelLabel: (panel: NavPanel) => string;
 }) {
-  const icon = toolIcon(tool);
-  if (tool.kind === 'panel') {
-    return (
-      <Tooltip text={tool.label} side="right">
-        <IconButton
-          label={tool.label}
-          onClick={() =>
-            document.dispatchEvent(new CustomEvent('open-panel', { detail: tool.id }))
-          }
-        >
-          {icon}
-        </IconButton>
-      </Tooltip>
-    );
-  }
+  const visibleRoutes = routes.filter((r) => isRouteVisible(r, canUseTerminal, capabilities));
+  if (visibleRoutes.length === 0 && panels.length === 0) return null;
+
+  const groupIsActive = visibleRoutes.some(
+    (r) => pathname === r.href || pathname.startsWith(`${r.href}/`),
+  );
+
   return (
-    <Tooltip text={tool.label} side="right">
-      <IconButton label={tool.label} onClick={() => router.push(tool.href)}>
-        {icon}
-      </IconButton>
-    </Tooltip>
+    <div className="mb-1">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-text-muted transition-colors hover:text-text-secondary"
+      >
+        <span className={groupIsActive ? 'text-accent' : ''}>{groupLabel}</span>
+        <ChevronDown className={cn('h-3 w-3 transition-transform', isOpen ? '' : '-rotate-90')} />
+      </button>
+
+      {isOpen && (
+        <div>
+          {visibleRoutes.map((route) => (
+            <NavRouteRow
+              key={route.href}
+              route={route}
+              pathname={pathname}
+              label={routeLabel(route)}
+            />
+          ))}
+          {panels.map((panel) => (
+            <NavPanelRow key={panel.id} panel={panel} label={panelLabel(panel)} />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-function SidebarToolRow({ tool }: { tool: (typeof SIDEBAR_TOOLS)[number] }) {
-  const icon = toolIcon(tool);
-  const className =
-    'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-secondary hover:bg-elevated hover:text-text-primary transition-colors';
+function NavRouteRow({
+  route,
+  pathname,
+  label,
+}: {
+  route: NavRoute;
+  pathname: string;
+  label: string;
+}) {
+  const isActive =
+    pathname === route.href ||
+    (route.href !== '/' && pathname.startsWith(`${route.href}/`));
+  const windowManager = useOptionalWindowManager();
+  const windowId = hrefToWindowId(route.href);
+  const useWindows = preferWindowOverlay(pathname) && windowId && windowManager;
+  const isWindowOpen = windowId && windowManager ? windowManager.isOpen(windowId) : false;
 
-  if (tool.kind === 'panel') {
+  if (useWindows && windowId && windowManager) {
     return (
       <button
         type="button"
-        className={className}
-        onClick={() =>
-          document.dispatchEvent(new CustomEvent('open-panel', { detail: tool.id }))
-        }
+        onClick={() => windowManager.toggleWindow(windowId)}
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors text-left',
+          isActive || isWindowOpen
+            ? 'bg-elevated font-medium text-text-primary'
+            : 'text-text-secondary hover:bg-elevated hover:text-text-primary',
+        )}
       >
-        {icon} {tool.label}
+        <span className={isActive || isWindowOpen ? 'text-accent' : 'text-text-muted'}>
+          <NavIcon name={route.iconName} />
+        </span>
+        <span className="flex-1 truncate">{label}</span>
+        {isWindowOpen ? <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden /> : null}
       </button>
     );
   }
 
   return (
-    <Link href={tool.href} className={className}>
-      {icon} {tool.label}
+    <Link
+      href={route.href}
+      className={cn(
+        'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
+        isActive
+          ? 'bg-elevated font-medium text-text-primary'
+          : 'text-text-secondary hover:bg-elevated hover:text-text-primary',
+      )}
+    >
+      <span className={isActive ? 'text-accent' : 'text-text-muted'}>
+        <NavIcon name={route.iconName} />
+      </span>
+      {label}
     </Link>
   );
 }
 
+function NavPanelRow({ panel, label }: { panel: NavPanel; label: string }) {
+  const pathname = usePathname();
+  const windowManager = useOptionalWindowManager();
+  const windowId = panel.id;
+  const useWindows = preferWindowOverlay(pathname) && windowManager;
+  const isWindowOpen = windowManager?.isOpen(windowId) ?? false;
+
+  return (
+    <button
+      type="button"
+      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-elevated hover:text-text-primary"
+      onClick={() => {
+        if (useWindows) {
+          windowManager.toggleWindow(windowId);
+          return;
+        }
+        document.dispatchEvent(new CustomEvent('open-panel', { detail: panel.id }));
+      }}
+    >
+      <span className={isWindowOpen ? 'text-accent' : 'text-text-muted'}>
+        <NavIcon name={panel.iconName} />
+      </span>
+      <span className="flex-1 truncate text-left">{label}</span>
+      {isWindowOpen ? <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden /> : null}
+    </button>
+  );
+}
+
 function SessionList({ sessions, currentPath }: { sessions: Session[]; currentPath: string }) {
+  const { t } = useTranslation();
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(today.getTime() - 86400000);
@@ -320,22 +552,30 @@ function SessionList({ sessions, currentPath }: { sessions: Session[]; currentPa
   return (
     <div className="space-y-1 py-1">
       {pinned.length > 0 && (
-        <SessionGroup label="Pinned" sessions={pinned} currentPath={currentPath} />
+        <SessionGroup label={t('sidebar.pinned')} sessions={pinned} currentPath={currentPath} />
       )}
       {todaySessions.length > 0 && (
-        <SessionGroup label="Today" sessions={todaySessions} currentPath={currentPath} />
+        <SessionGroup label={t('sidebar.today')} sessions={todaySessions} currentPath={currentPath} />
       )}
       {yesterdaySessions.length > 0 && (
-        <SessionGroup label="Yesterday" sessions={yesterdaySessions} currentPath={currentPath} />
+        <SessionGroup
+          label={t('sidebar.yesterday')}
+          sessions={yesterdaySessions}
+          currentPath={currentPath}
+        />
       )}
       {last7Sessions.length > 0 && (
-        <SessionGroup label="Last 7 days" sessions={last7Sessions} currentPath={currentPath} />
+        <SessionGroup
+          label={t('sidebar.last7Days')}
+          sessions={last7Sessions}
+          currentPath={currentPath}
+        />
       )}
       {older.length > 0 && (
-        <SessionGroup label="Older" sessions={older} currentPath={currentPath} />
+        <SessionGroup label={t('sidebar.older')} sessions={older} currentPath={currentPath} />
       )}
       {sessions.length === 0 && (
-        <p className="px-2 py-4 text-center text-xs text-text-muted">No chats yet</p>
+        <p className="px-2 py-4 text-center text-xs text-text-muted">{t('sidebar.noChats')}</p>
       )}
     </div>
   );
@@ -365,6 +605,7 @@ function SessionGroup({
 function SessionItem({ session, active }: { session: Session; active: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
+  const { t } = useTranslation();
 
   async function archive() {
     await fetch(`/api/sessions/${session.id}`, {
@@ -384,7 +625,7 @@ function SessionItem({ session, active }: { session: Session; active: boolean })
   return (
     <div
       className={cn(
-        'group relative flex items-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors cursor-pointer',
+        'group relative flex cursor-pointer items-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors',
         active
           ? 'bg-elevated text-text-primary'
           : 'text-text-secondary hover:bg-elevated hover:text-text-primary',
@@ -393,23 +634,25 @@ function SessionItem({ session, active }: { session: Session; active: boolean })
     >
       <MessageSquare className="h-3 w-3 shrink-0 text-text-muted" />
       <span className="flex-1 truncate">{session.title}</span>
-      <div className="hidden group-hover:flex items-center" onClick={(e) => e.stopPropagation()}>
-        <IconButton label="Session options" size="sm" onClick={() => setMenuOpen(!menuOpen)}>
+      <div className="hidden items-center group-hover:flex" onClick={(e) => e.stopPropagation()}>
+        <IconButton label={t('sidebar.sessionOptions')} size="sm" onClick={() => setMenuOpen(!menuOpen)}>
           <MoreHorizontal className="h-3 w-3" />
         </IconButton>
         {menuOpen && (
           <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-border bg-overlay shadow-lg">
             <button
+              type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-elevated hover:text-text-primary"
               onClick={archive}
             >
-              <Archive className="h-3 w-3" /> Archive
+              <Archive className="h-3 w-3" /> {t('sidebar.archive')}
             </button>
             <button
+              type="button"
               className="flex w-full items-center gap-2 px-3 py-2 text-xs text-danger hover:bg-elevated"
               onClick={deleteSession}
             >
-              <Trash2 className="h-3 w-3" /> Delete
+              <Trash2 className="h-3 w-3" /> {t('sidebar.delete')}
             </button>
           </div>
         )}

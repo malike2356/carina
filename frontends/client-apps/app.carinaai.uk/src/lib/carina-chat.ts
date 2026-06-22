@@ -4,7 +4,7 @@ import { userMemories, workspaceSkills } from '@/db/schema';
 import { getWorkspaceBrainSettings } from '@/lib/brain-settings';
 import { ChatStreamError } from '@/lib/chat-errors';
 import { buildCloudSystemPrompt } from '@/lib/cloud-identity';
-import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
+import { coreProxyEnabled, requiresWorkspaceByokKeys, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 import { sanitizeCarinaProse } from '@/lib/writing-style';
 
 const PROVIDER_ENDPOINTS: Record<string, { url: string; model: string }> = {
@@ -265,7 +265,7 @@ export async function* streamCarinaChat(input: {
   provider?: string;
   model?: string;
 }): AsyncGenerator<CarinaChatStreamEvent> {
-  if (input.providerKeys.length === 0) {
+  if (input.providerKeys.length === 0 && requiresWorkspaceByokKeys()) {
     throw new ChatStreamError(
       'Add at least one provider key in Settings before chatting.',
       'NO_BYOK_KEYS',

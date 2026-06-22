@@ -11,7 +11,7 @@ import {
 } from '../lib/ops-users.js';
 
 export const authRouter = Router();
-const uiVersion = process.env.UI_VERSION ?? '20260621e';
+const uiVersion = process.env.UI_VERSION ?? '20260622g';
 
 function callbackFromRequest(req: { query?: Record<string, unknown>; body?: Record<string, unknown> }): string | undefined {
   const fromBody = req.body?.callbackUrl;
@@ -41,7 +41,17 @@ authRouter.post('/login', redirectIfAuthed, async (req, res) => {
     return;
   }
 
-  const user = await findUserByEmail(email);
+  let user;
+  try {
+    user = await findUserByEmail(email);
+  } catch (err) {
+    console.error('[auth.login] database error:', err);
+    res.status(503).render('login', {
+      error: 'Ops database is temporarily unavailable. Try again in a minute.',
+      callbackUrl,
+    });
+    return;
+  }
   if (!user || !(await verifyPassword(user, password))) {
     res.status(401).render('login', {
       error: 'Invalid email or password.',

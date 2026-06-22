@@ -1,15 +1,36 @@
+import fs from 'node:fs';
+import { readCoreOpsToken } from './core-env.js';
+
 const defaultCarinaUrl = 'https://core.carinaai.uk';
 
-export const CARINA_BASE = process.env.CARINA_API_URL ?? defaultCarinaUrl;
+function opsRunsInDocker(): boolean {
+  if (process.env.CARINA_OPS_IN_DOCKER === 'true') return true;
+  try {
+    return fs.existsSync('/.dockerenv');
+  } catch {
+    return false;
+  }
+}
+
+export function resolveCarinaApiUrl(): string {
+  const raw = process.env.CARINA_API_URL?.trim();
+  if (!raw) return defaultCarinaUrl;
+  const isDockerInternal = /:\/\/carina-web(?::|\/|$)/.test(raw);
+  if (isDockerInternal && !opsRunsInDocker()) {
+    return defaultCarinaUrl;
+  }
+  return raw;
+}
+
+export const CARINA_BASE = resolveCarinaApiUrl();
 
 function carinaUrl(): string {
   return CARINA_BASE;
 }
 
 function carinaOpsToken(): string {
-  // CARINA_OPS_TOKEN is the dedicated inter-service bearer token shared with core.
-  // Falling back to CARINA_WEB_PASSWORD is kept for compatibility only.
-  return process.env.CARINA_OPS_TOKEN ?? process.env.CARINA_WEB_PASSWORD ?? '';
+  // Prefer the mounted core.env token so Docker ops stays in sync with carina-web.
+  return readCoreOpsToken() ?? process.env.CARINA_WEB_PASSWORD ?? '';
 }
 
 export function carinaOpsTokenSet(): boolean {

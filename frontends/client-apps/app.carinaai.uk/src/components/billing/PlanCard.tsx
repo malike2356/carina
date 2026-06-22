@@ -6,29 +6,51 @@ import { cn } from '@/lib/utils';
 
 export function PlanCard({
   name,
-  price,
+  priceAmount,
+  pricePeriod,
   description,
   active,
   onUpgrade,
+  compact = false,
 }: {
   name: string;
-  price: string;
+  priceAmount: string;
+  pricePeriod?: string;
   description: string;
   active?: boolean;
   onUpgrade?: () => void;
+  compact?: boolean;
 }) {
   return (
     <Card className={cn('flex h-full flex-col', active && 'border-accent ring-1 ring-accent/40')}>
-      <CardHeader className="pb-4">
-        <CardTitle>{name}</CardTitle>
-        <p className="text-2xl font-semibold tracking-tight">{price}</p>
+      <CardHeader className={cn(compact ? 'gap-1 p-4 pb-2' : 'pb-4')}>
+        <CardTitle className={compact ? 'text-base' : undefined}>{name}</CardTitle>
+        <div className={cn('font-semibold leading-tight', compact ? 'text-lg' : 'text-2xl')}>
+          <span className="whitespace-nowrap">{priceAmount}</span>
+          {pricePeriod ? (
+            <span
+              className={cn(
+                'text-text-muted',
+                compact ? 'ml-1.5 text-sm font-normal' : 'ml-2 text-base font-normal',
+              )}
+            >
+              {pricePeriod}
+            </span>
+          ) : null}
+        </div>
       </CardHeader>
-      <CardContent className="mt-auto space-y-4">
-        <p className="text-sm text-text-secondary">{description}</p>
+      <CardContent className={cn('mt-auto space-y-3', compact && 'px-4 pb-4 pt-0')}>
+        <p className={cn('text-text-secondary', compact ? 'text-xs leading-relaxed' : 'text-sm')}>
+          {description}
+        </p>
         {active ? (
-          <p className="text-sm font-medium text-text-primary">Current plan</p>
+          <p className={cn('font-medium text-text-primary', compact ? 'text-xs' : 'text-sm')}>
+            Current plan
+          </p>
         ) : (
-          <Button onClick={onUpgrade} className="w-full">Upgrade</Button>
+          <Button onClick={onUpgrade} className="w-full" size={compact ? 'sm' : 'default'}>
+            Upgrade
+          </Button>
         )}
       </CardContent>
     </Card>

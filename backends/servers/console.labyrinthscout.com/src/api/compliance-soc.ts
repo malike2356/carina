@@ -11,6 +11,10 @@ import { calculateScoutScore, getComplianceScore } from '../compliance/scoring.j
 import { getSecurityScore } from '../compliance/security-score.js';
 import { upsertDigestSubscription } from '../compliance/digest.js';
 import { buildTrustCenterPayload } from '../compliance/trust-center.js';
+import {
+  ingestCarinaEvidence,
+  type CarinaEvidenceSyncPayload,
+} from '../compliance/evidence-ingest.js';
 import type { RequestWithScoutAuth } from '../types/request.js';
 
 export const complianceSocRouter: IRouter = Router();
@@ -48,6 +52,27 @@ complianceSocRouter.get('/score', async (_req: Request, res: Response): Promise<
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[compliance:score] failed:', msg);
     res.status(500).json({ error: 'Failed to compute compliance score', detail: msg });
+  }
+});
+
+complianceSocRouter.post('/evidence/sync', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const payload = req.body as CarinaEvidenceSyncPayload;
+    if (!payload || !Array.isArray(payload.controls)) {
+      res.status(400).json({ error: 'Invalid payload: controls[] required' });
+      return;
+    }
+    const result = await ingestCarinaEvidence({
+      framework: payload.framework ?? 'soc2',
+      generatedAt: payload.generatedAt ?? new Date().toISOString(),
+      source: payload.source ?? 'carina-core',
+      controls: payload.controls,
+    });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[compliance:evidence-sync] failed:', msg);
+    res.status(500).json({ error: 'Failed to ingest compliance evidence', detail: msg });
   }
 });
 

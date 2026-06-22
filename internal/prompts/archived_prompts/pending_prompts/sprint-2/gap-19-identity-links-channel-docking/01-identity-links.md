@@ -1,3 +1,10 @@
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- `identity_links` Postgres table and migration in `memory/migrations.ts`
+- `gateway/identity-links-types.ts`, `gateway/identity-resolver.ts`
+- `/link`, `/link code`, `/link claim` in `gateway/commands.ts`
+
 # Gap 19 - Prompt 01: Identity Links Data Model & Resolution
 
 **Gap:** 19 Identity Links & Channel Docking

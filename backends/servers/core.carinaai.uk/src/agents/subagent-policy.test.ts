@@ -7,7 +7,7 @@ import {
 } from './subagent-policy.js';
 
 describe('subagent-policy', () => {
-  it('blocks Hermes-style tools including send-message', () => {
+  it('blocks delegation-style tools including send-message', () => {
     expect(isSubagentBlockedTool('delegate-task')).toBe(true);
     expect(isSubagentBlockedTool('memory')).toBe(true);
     expect(isSubagentBlockedTool('send-message')).toBe(true);

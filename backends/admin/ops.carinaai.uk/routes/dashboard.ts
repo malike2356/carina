@@ -4,7 +4,7 @@ import { fetchTenantSummary, hostedTablesReady } from '../lib/tenants.js';
 import { CARINA_BASE } from '../lib/carina.js';
 
 export const dashboardRouter = Router();
-const uiVersion = process.env.UI_VERSION ?? '20260620';
+const uiVersion = process.env.UI_VERSION ?? '20260622g';
 
 dashboardRouter.get('/', async (req, res) => {
   if (req.query.v !== uiVersion) {

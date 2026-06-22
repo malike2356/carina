@@ -10,13 +10,15 @@ services:
       context: ..
       dockerfile: console.labyrinthscout.com/Dockerfile
     container_name: scout-console
+    env_file:
+      - .env
     expose:
       - "4444"
     environment:
       NODE_ENV: production
       SCOUT_PORT: ${SCOUT_PORT:-4444}
-      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@postgres:5432/scout
-      REDIS_URL: redis://redis:6379
+      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@scout-postgres:5432/scout
+      REDIS_URL: redis://scout-redis:6379
       SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
       SCOUT_SESSION_SECRET: ${SCOUT_SESSION_SECRET:?set SCOUT_SESSION_SECRET}
       SCOUT_DASHBOARD_PASSWORD: ${SCOUT_DASHBOARD_PASSWORD:-}
@@ -29,8 +31,8 @@ services:
       LABYRINTH_LLM_ROUTER_URL: ${CARINA_API_URL:-http://carina-web:3000}
       CARINA_API_URL: ${CARINA_API_URL:-}
       CARINA_OPS_TOKEN: ${CARINA_OPS_TOKEN:-}
-      SCOUT_TELEGRAM_BOT_TOKEN: ${SCOUT_TELEGRAM_BOT_TOKEN:-}
-      SCOUT_TELEGRAM_CHAT_ID: ${SCOUT_TELEGRAM_CHAT_ID:-}
+      # Telegram: use TELEGRAM_* from env_file (.env). Do not set empty SCOUT_TELEGRAM_* here;
+      # blank compose overrides block fallback to TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID.
       SCOUT_RESEND_API_KEY: ${SCOUT_RESEND_API_KEY:-}
       SCOUT_ALERT_FROM_EMAIL: ${SCOUT_ALERT_FROM_EMAIL:-}
       SCOUT_ALERT_TO_EMAIL: ${SCOUT_ALERT_TO_EMAIL:-}
@@ -60,8 +62,8 @@ services:
     environment:
       NODE_ENV: production
       SCOUT_PORT: ${SCOUT_ENGINE_PORT:-4455}
-      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@postgres:5432/scout
-      REDIS_URL: redis://redis:6379
+      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@scout-postgres:5432/scout
+      REDIS_URL: redis://scout-redis:6379
       SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
       SCOUT_CONSOLE_URL: http://labyrinth-scout:4444
     depends_on:
@@ -91,7 +93,9 @@ services:
       timeout: 5s
       retries: 10
     networks:
-      - scout
+      scout:
+        aliases:
+          - scout-postgres
     restart: unless-stopped
 
   redis:
@@ -105,7 +109,9 @@ services:
       timeout: 3s
       retries: 5
     networks:
-      - scout
+      scout:
+        aliases:
+          - scout-redis
     restart: unless-stopped
 
 volumes:

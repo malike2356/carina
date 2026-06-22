@@ -175,6 +175,16 @@ export function rotateNodeToken(id: string): { node: PairedNode; token: string }
   return { node, token };
 }
 
+export function registerNodePublicKey(id: string, publicKey: string): boolean {
+  const store = loadStore();
+  const node = store.nodes.find((entry) => entry.id === id);
+  if (!node) return false;
+  node.publicKey = publicKey.trim();
+  node.lastSeenAt = new Date().toISOString();
+  saveStore(store);
+  return true;
+}
+
 export function enqueueNodeCommand(
   nodeId: string,
   type: NodeCommand['type'],

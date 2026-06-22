@@ -53,6 +53,40 @@ export async function runComplianceCommand(args: string[]): Promise<void> {
     return;
   }
 
+  if (action === 'sync-scout') {
+    const framework = parseFrameworkFlag(args) ?? 'soc2';
+    const {
+      collectFramework,
+      loadLatestReport,
+      parseFrameworkArg,
+    } = await import('../../security/compliance/index.js');
+    const { syncComplianceReportToScout } = await import('../../security/compliance/scout-sync.js');
+    const parsed = parseFrameworkArg(framework);
+    if (parsed === 'all') {
+      console.error('Usage: carina compliance sync-scout [--framework soc2|iso|gdpr] [--refresh] [--json]');
+      process.exit(1);
+    }
+    const report = args.includes('--refresh')
+      ? await collectFramework(parsed)
+      : await loadLatestReport(parsed);
+    if (!report || Array.isArray(report)) {
+      console.error(`No cached ${parsed} compliance report. Run: carina compliance collect --framework ${parsed}`);
+      process.exit(1);
+    }
+    const syncResult = await syncComplianceReportToScout(report);
+    if (json) {
+      console.log(JSON.stringify(syncResult, null, 2));
+    } else {
+      console.log(
+        `Scout evidence sync: inserted=${syncResult.inserted}, skipped=${syncResult.skipped}, controls=${syncResult.controlsTouched.join(', ') || 'none'}`,
+      );
+      if (syncResult.errors.length) {
+        console.warn(syncResult.errors.join('\n'));
+      }
+    }
+    return;
+  }
+
   if (action === 'report') {
     const framework = parseFrameworkFlag(args) ?? 'all';
     const { generateComplianceReport } = await import('../../security/compliance/index.js');
@@ -132,6 +166,6 @@ export async function runComplianceCommand(args: string[]): Promise<void> {
     return;
   }
 
-  console.error('Usage: carina compliance <status|collect|report|gaps|dsar|breach> [--framework soc2|iso|gdpr|all] [--refresh] [--json] [--fail-on=warn|fail] [--output=path.md]');
+  console.error('Usage: carina compliance <status|collect|sync-scout|report|gaps|dsar|breach> [--framework soc2|iso|gdpr|all] [--refresh] [--json] [--fail-on=warn|fail] [--output=path.md]');
   process.exit(1);
 }

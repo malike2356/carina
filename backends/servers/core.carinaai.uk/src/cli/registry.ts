@@ -174,6 +174,14 @@ export function buildCommands(): CliCommand[] {
       usage: 'carina node-host <status|pair|pair-wait|configure|start|stop|restart|install|uninstall|audit> [args]',
     }),
 
+    cmd('nodes', 'Connected node devices (list, capabilities, raw commands)', async (args) => {
+      const { runNodesCommand } = await import('./commands/nodes-cli.js');
+      await runNodesCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina nodes <list|capabilities|command> [args]',
+    }),
+
     cmd('cron', 'Scheduled job management', async (args) => {
       const { runCronCommand } = await import('./commands/cron.js');
       if ((args[0] ?? 'list') === 'workflow') {
@@ -369,7 +377,7 @@ export function buildCommands(): CliCommand[] {
     }, { usage: 'carina playbook [list|search|inspect|serve] [args]' }),
 
     cmd('cookbook', 'Deprecated alias for playbook', async (args) => {
-      console.warn('Note: carina cookbook is deprecated. Use: carina playbook');
+      console.warn('Note: carina cookbook is now carina playbook. Use: carina playbook');
       const { runCookbookCommand, runCookbookDefault } = await import('./commands/cookbook-cli.js');
       if (args.length === 0) {
         await runCookbookDefault();
@@ -625,7 +633,7 @@ export function buildCommands(): CliCommand[] {
     cmd('enterprise', 'Enterprise support model (MIT kernel + paid layers)', async (args) => {
       const { runEnterpriseCommand } = await import('./commands/enterprise-cli.js');
       await runEnterpriseCommand(args);
-    }, { usage: 'carina enterprise <status|tiers|offer> [--json]' }),
+    }, { usage: 'carina enterprise <status|tiers|offer|security> [--json]' }),
 
     cmd('contacts', 'Contact directory', async (args) => {
       const { runContactsCommand } = await import('./commands/contacts-cli.js');

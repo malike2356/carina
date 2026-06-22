@@ -1,15 +1,12 @@
 import { Router } from 'express';
 import { spawn } from 'child_process';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { query } from '../lib/db.js';
 import { ORDER_BY_CREATED_RECENT } from '../lib/list-sort.js';
+import { resolveCarinaCliCommand } from '../lib/pty-bridge-core.js';
 
 export const ragRouter = Router();
 
 const PAGE_SIZE = 50;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 
 ragRouter.get('/', async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -80,15 +77,30 @@ ragRouter.get('/ingest', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  const child = spawn('pnpm', ['ingest'], {
-    cwd: PROJECT_ROOT,
-    shell: true,
-    env: { ...process.env },
-  });
-
   const send = (line: string) => {
     res.write(`data: ${JSON.stringify({ line })}\n\n`);
   };
+
+  const pack = String(req.query.pack ?? 'property-uk').trim() || 'property-uk';
+  const dbUrl = process.env.CARINA_DB_URL ?? process.env.DATABASE_URL;
+  let child;
+  try {
+    const { file, args, cwd } = resolveCarinaCliCommand(['ingest', pack]);
+    child = spawn(file, args, {
+      cwd,
+      env: {
+        ...process.env,
+        DOTENV_CONFIG_QUIET: 'true',
+        ...(dbUrl ? { DATABASE_URL: dbUrl } : {}),
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    send(`Failed to start ingest: ${message}`);
+    res.write('data: [DONE]\n\n');
+    res.end();
+    return;
+  }
 
   child.stdout.on('data', (buf) => {
     for (const line of buf.toString().split('\n')) {

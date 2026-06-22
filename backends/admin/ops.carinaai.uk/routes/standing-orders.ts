@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import { query, tableExists } from '../lib/db.js';
+import { query } from '../lib/db.js';
+import { ensureStandingOrdersSchema, standingOrdersTableReady } from '../lib/standing-orders-schema.js';
 
 export const standingOrdersRouter = Router();
 
@@ -14,9 +15,18 @@ type OrderRow = {
   created_at: string;
 };
 
+standingOrdersRouter.use(async (_req, _res, next) => {
+  try {
+    await ensureStandingOrdersSchema();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
 standingOrdersRouter.get('/', async (_req, res) => {
   try {
-    const ready = await tableExists('standing_orders');
+    const ready = await standingOrdersTableReady();
     const orders = ready
       ? (await query<OrderRow>(
         `SELECT id, agent_id, directive, priority, enabled, source, created_at
