@@ -1,5 +1,16 @@
 # Gap 03 - Prompt 03: SMS, Call Log, and Notification Relay
 
+**Status: COMPLETED 2026-06-22**
+
+**What was built:**
+- Android SMS relay: `SmsReceiver.kt`, `SmsRelayManager.kt`, `SmsRelayModule.kt`
+- Android call log relay: `CallLogRelay.kt`, `CallLogCheckWorker.kt`, `CallLogRelayScheduler.kt`
+- iOS notification relay: `NotificationRelayManager.swift`, `NotificationRelayModule.swift`, `CarinaNotificationService/NotificationService.swift`
+- JS layer: `src/lib/message-relay.ts`, `src/lib/relay-redaction.ts`, `src/hooks/useRelaySettings.ts`, `app/privacy-relay.tsx`
+- Expo plugins: `plugins/withSmsRelay.js`, wired in `app.config.ts`
+- Navigation: Message relay entry in `app/(tabs)/more/index.tsx`
+- Tests: `message-relay.test.ts`, `relay-redaction.test.ts`
+
 **Agent:** Codex (fallback: Cursor)
 **Estimated hours:** 5-6 hrs
 **Depends on:** 01-background-connection.md done (connection service running)

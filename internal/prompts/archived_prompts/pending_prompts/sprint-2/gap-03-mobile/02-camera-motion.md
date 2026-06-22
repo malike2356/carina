@@ -1,5 +1,15 @@
 # Gap 04 - Prompt 02: Camera Vision and Activity Recognition
 
+**Status: COMPLETED 2026-06-22**
+
+**What was built:**
+- Android native modules: `CarinaVisionModule.kt`, `CarinaMotionModule.kt`, `CarinaActivityReceiver.kt`, `CarinaMotionBridge.kt`
+- iOS native modules: `CarinaVisionModule.swift/.m`, `CarinaMotionModule.swift/.m`
+- TypeScript bridges: `src/lib/camera-vision.ts`, `src/lib/motion-activity.ts`
+- React hooks: `src/hooks/useVisionCapture.ts`, `src/hooks/useActivityMonitor.ts`
+- Expo config plugin templates under `plugins/carina-connection/`; permissions in `app.config.ts` and `AndroidManifest.xml`
+- Tests: `camera-vision.test.ts`, `motion-activity.test.ts` (77 tests pass in carinaMobile)
+
 **Gap:** 04 - Native Mobile
 **Prompt:** 02 of 04
 **Primary agent:** Codex

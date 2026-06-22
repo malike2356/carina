@@ -1,5 +1,8 @@
 # Gap 04 - Native Mobile Layer
 
+**Status: COMPLETED 2026-06-22**
+
+**What was built:** Full native mobile layer for `frontends/client-apps/carinaMobile/`: persistent WebSocket connection (01), camera vision + activity recognition (02), SMS/call/notification relay with privacy controls (03), and companion pairing UI (04). All four prompts archived; 77 Vitest tests pass.
 
 ## Post-build (MANDATORY)
 
@@ -25,17 +28,17 @@ This gap closes that native layer with four focused prompts.
 
 ## Prompt Index
 
-| File | Title | Agent | Hours |
-|------|-------|-------|-------|
-| 01-background-connection.md | Persistent WebSocket Service | Codex / Claude Code | 6-8 |
-| 02-camera-motion.md | Camera Vision and Activity Recognition | Codex / Claude Code | 5-7 |
-| 03-sms-notifications.md | SMS, Call Log, and Notification Relay | Codex / Claude Code | 5-6 |
-| 04-companion-pairing.md | Companion Pairing Frontend | Claude Code / Cursor | 2-3 |
+| File | Title | Agent | Hours | Status |
+|------|-------|-------|-------|--------|
+| 01-background-connection.md | Persistent WebSocket Service | Codex / Claude Code | 6-8 | COMPLETED 2026-06-21 |
+| 02-camera-motion.md | Camera Vision and Activity Recognition | Codex / Claude Code | 5-7 | COMPLETED 2026-06-22 |
+| 03-sms-notifications.md | SMS, Call Log, and Notification Relay | Codex / Claude Code | 5-6 | COMPLETED 2026-06-22 |
+| 04-companion-pairing.md | Companion Pairing Frontend | Claude Code / Cursor | 2-3 | COMPLETED 2026-06-22 |
 
 ## Execution Order
 
-Run these prompts in order: 01 establishes the connection layer that 02 and 03 build
-on top of. Prompt 04 is independent and can run in parallel with 02 or 03.
+Run prompts 02 and 03 in parallel (both build on the connection layer from 01).
+Prompt 04 is independent and can run in parallel with 02 or 03.
 
 ## Key Constraint
 

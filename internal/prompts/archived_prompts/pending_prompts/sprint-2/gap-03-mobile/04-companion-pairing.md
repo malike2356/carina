@@ -1,5 +1,14 @@
 # Gap 03 - Prompt 04: Companion Pairing (Mobile Frontend)
 
+**Status: COMPLETED 2026-06-22**
+
+**What was built:**
+- Pairing screens: `app/pair-scan.tsx`, `app/pair-success.tsx`, `app/paired-devices.tsx`
+- API client: `src/api/pairing.ts` with device token persistence via `device-token-store`
+- Helpers: `src/lib/pairing-url.ts`, `src/lib/camera-permission.ts`, `src/hooks/useDeepLinks.ts`
+- Navigation: Paired devices and pair scan links in `app/(tabs)/more/index.tsx`
+- Tests: `pairing.test.ts`, `pairing-url.test.ts`, `gateway-auth.test.ts`
+
 **Agent:** Codex (fallback: Cursor)
 **Estimated hours:** 2-3 hrs (backend is COMPLETE)
 **Depends on:** 01-background-connection.md done

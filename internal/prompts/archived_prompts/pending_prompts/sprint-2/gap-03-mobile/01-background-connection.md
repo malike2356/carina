@@ -1,5 +1,16 @@
 # Gap 04 - Prompt 01: Persistent Background WebSocket Service
 
+**Status: COMPLETED 2026-06-21**
+
+**What was built:**
+- Android foreground service: `CarinaConnectionService.kt` (OkHttp WebSocket, backoff, network callback, battery-aware ping, boot persistence)
+- Android RN module: `CarinaConnectionModule.kt`, `CarinaConnectionPackage.kt`, `BootReceiver.kt`
+- iOS background connection: `CarinaBackgroundConnection.swift` + `.m` bridge (URLSession WebSocket, BGTaskScheduler)
+- TypeScript bridge: `src/lib/connection-service.ts`, `src/lib/gateway-ws-url.ts`
+- Hook wiring: `src/hooks/useConnectionStatus.ts` (native service on device builds, HTTP polling fallback in Expo Go)
+- Expo config plugin: `plugins/withCarinaConnection.js` + `plugins/carina-connection/` templates
+- Tests: `connection-service.test.ts`, `gateway-ws-url.test.ts` (77 tests pass in carinaMobile)
+
 **Gap:** 04 - Native Mobile
 **Prompt:** 01 of 04
 **Primary agent:** Codex

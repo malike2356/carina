@@ -22,6 +22,7 @@ archived_prompts/pending_prompts/sprint-2/gap-17-ops-user-management/01-build.md
 | `sprint-2/gap-13-docker-migration/01-nginx-container.md` | COMPLETED |
 | `sprint-2/gap-13-docker-migration/02-carina-stack.md` | COMPLETED |
 | `sprint-2/gap-13-docker-migration/03-scout-stack.md` | COMPLETED |
+| `sprint-2/gap-03-mobile/` | COMPLETED 2026-06-22 (all 4 prompts) |
 
 Gap 13 prompts 04 and 05 remain in `pending_prompts/sprint-2/gap-13-docker-migration/` until executed.
 

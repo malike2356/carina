@@ -23,6 +23,8 @@ Reuse rule: Carina keeps its own voice. Treat Hermes, OpenClaw, and Odysseus as 
 
 **Already archived (2026-06-21):** `sprint-2/01-deployment-and-docker/`, `sprint-2/gap-01-docker/`, `sprint-2/gap-17-ops-user-management/`, and `sprint-2/gap-13-docker-migration/` prompts 01-03.
 
+**Also archived (2026-06-22):** `sprint-2/gap-03-mobile/` (all 4 prompts; native mobile layer complete).
+
 ---
 
 ## Agent Reference
@@ -87,19 +89,9 @@ gap-02-carina-hub/
 
 ---
 
-### Gap 03 - Mobile (4 prompts)
+### Gap 03 - Mobile (4 prompts) - COMPLETED 2026-06-22
 
-```
-gap-03-mobile/
-├── README.md
-├── 01-background-connection.md    Android foreground service + iOS BGTask
-├── 02-camera-motion.md            Camera frame capture + activity recognition
-├── 03-sms-notifications.md        SMS/call relay (Android) + notification extension (iOS)
-└── 04-companion-pairing.md        QR scanner + pairing API client (frontend only - backend done)
-```
-
-**Agent:** Codex (01-03 native) / Cursor (04 React Native)
-**Key context:** 121 files exist. Pairing backend (`src/pairing/pairing.ts`) is complete. Prompts 01-02 extend existing RN app. Prompts 03-04 are entirely new screens/native modules.
+Archived at `archived_prompts/pending_prompts/sprint-2/gap-03-mobile/`. All four prompts shipped in `frontends/client-apps/carinaMobile/` (background connection, camera/motion, SMS/call/notification relay, companion pairing UI).
 
 ---
 
