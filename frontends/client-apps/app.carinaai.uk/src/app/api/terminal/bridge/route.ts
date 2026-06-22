@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { resolveAppTerminalWebSocketUrl, resolveOpsPtyWebSocketUrl } from '@/lib/core-proxy';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 export const runtime = 'nodejs';
@@ -23,15 +24,7 @@ function signBridgeToken(payload: Record<string, unknown>): string {
   return `${header}.${body}.${signature}`;
 }
 
-function resolveCoreWsUrl(): string {
-  const coreUrl = process.env.CARINA_CORE_URL?.trim()
-    || (process.env.NODE_ENV === 'production' ? 'http://carina-web:3000' : 'http://localhost:3000');
-  const url = new URL('/api/terminal/ws', coreUrl);
-  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  return url.toString();
-}
-
-export async function GET(): Promise<Response> {
+export async function GET(request: Request): Promise<Response> {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -48,9 +41,11 @@ export async function GET(): Promise<Response> {
     return NextResponse.json({ error: 'Terminal bridge secret is not configured.' }, { status: 503 });
   }
 
+  const wsBase = resolveAppTerminalWebSocketUrl(request);
   return NextResponse.json({
     data: {
-      wsUrl: `${resolveCoreWsUrl()}?token=${encodeURIComponent(token)}`,
+      token,
+      wsUrl: `${wsBase}?token=${encodeURIComponent(token)}`,
       expiresInSeconds: 300,
     },
   });
