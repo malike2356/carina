@@ -278,5 +278,5 @@ OpenClaw:
 - [x] Artifact/canvas content renders inline in chat messages
 - [x] Markdown fenced blocks with `artifact`, `canvas`, or `diagram` language trigger canvas viewer
 - [x] Responsive canvas sizing with device pixel ratio support
-- [ ] Dedicated side-panel canvas mode with resizable split (window system covers panel docking)
-- [ ] `/app/canvas` deep-link route for standalone artifact view
+- [ ] Dedicated side-panel canvas mode with resizable split (deferred; standalone deep link shipped)
+- [x] `/canvas` and `/app/canvas` deep-link routes for standalone artifact view

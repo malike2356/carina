@@ -89,8 +89,8 @@ Currently the operator dashboard at `/dashboard` uses a separate login (`/dashbo
 - [x] `console.labyrinthscout.com/dashboard/login` returns 301 redirect to ops scout login
 - [x] Operator dashboard on `ops.carinaai.uk/scout` loads with scout API proxy
 - [x] No customer-facing nav links to `ops.carinaai.uk` in console customer SPA pages
-- [ ] Network-level IP allowlist/VPN for ops (login-only protection remains; Step 4 not fully deployed)
-- [ ] Legacy `public/dashboard.html` still on console server (redirect-only; files not deleted)
+- [x] Network-level IP allowlist for ops via `OPS_ALLOWED_IPS` (`middleware/ip-allowlist.ts`)
+- [x] Legacy `public/dashboard.html` replaced with redirect stub; embed route redirects to ops
 
 ## Files involved
 

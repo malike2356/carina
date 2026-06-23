@@ -305,4 +305,4 @@ Carina (reuse):
 - [x] Terminal page accessible from workspace sidebar
 - [x] Session token auth on WebSocket upgrade
 - [x] Auto-reconnect on disconnect
-- [ ] Full TUI embed via `/api/pty` on core `packages/web/web-server.ts` (cloud terminal uses app bridge instead)
+- [x] Core PTY WebSocket at `/api/terminal/ws` via `packages/web/src/web-server.ts` and `src/api/terminal-ws.ts`

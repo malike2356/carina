@@ -148,14 +148,7 @@ function serveGovernance(_req: express.Request, res: express.Response): void {
 }
 
 function serveDashboardEmbed(_req: express.Request, res: express.Response): void {
-  try {
-    const html = fs.readFileSync(path.join(PUBLIC, 'dashboard.html'), 'utf8');
-    res.type('html').send(html);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[scout] Dashboard embed serve failed:', msg);
-    res.status(500).send('Dashboard embed unavailable');
-  }
+  res.redirect(301, OPS_SCOUT_URL);
 }
 
 function servePublicPage(file: string) {

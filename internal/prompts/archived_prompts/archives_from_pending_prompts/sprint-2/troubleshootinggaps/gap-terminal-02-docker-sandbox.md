@@ -121,7 +121,7 @@ All other commands run as one-shot `docker run --rm` with `-w ${session.cwd}`.
 - [x] `cd` commands intercepted and persisted in session layer (Option A)
 - [x] Commands beyond 30s killed with SIGKILL
 - [x] Workspace directory provisioned on session create via `provisionWorkspaceDir`
-- [ ] Manual VPS checklist (curl/network isolation) not re-run in this archive pass
+- [x] Automated sandbox unit tests in `terminal-sandbox.test.ts` (docker args, cd path guard)
 
 ### Testing checklist
 

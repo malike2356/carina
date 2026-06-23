@@ -533,5 +533,5 @@ Carina (reuse):
 - [x] Companion pairing settings page with device list and revoke
 - [x] Command palette (Cmd+K) for cross-surface navigation
 - [x] Keyboard shortcuts for sidebar, panels, and chat actions
-- [ ] Dedicated `/pairing` page (pairing lives under `/settings/pairing`)
-- [ ] Slash-command popover in composer (desktop app has this; web uses command palette)
+- [x] Dedicated `/pairing` page (redirects to `/settings/pairing`)
+- [x] Slash-command popover in composer (`ChatInputBar.tsx`)

@@ -156,7 +156,7 @@ workspaces.
 - [x] Workspace member with terminal permission granted: 200
 - [x] Any request with `x-carina-operator-token`: 403 regardless of settings
 - [x] Terminal commands appended to `terminal_audit_log`
-- [ ] Per-member terminal permission toggles in settings UI (schema/API ready; UI coverage partial)
+- [x] Per-member terminal permission toggles in settings UI (`settings/page.tsx` + workspace settings PATCH)
 
 ## Audit logging
 

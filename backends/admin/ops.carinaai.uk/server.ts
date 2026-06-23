@@ -6,6 +6,7 @@ import session from 'express-session';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
 import { requireAdmin } from './middleware/auth.js';
+import { requireAllowedIp } from './middleware/ip-allowlist.js';
 import { authRouter } from './routes/auth.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { memoriesRouter } from './routes/memories.js';
@@ -52,6 +53,7 @@ const PORT = Number(process.env.PORT ?? process.env.OPS_PORT ?? defaultPort);
 const viewsPath = path.join(__opsDir, 'views');
 
 app.set('trust proxy', 1);
+app.use(requireAllowedIp);
 app.set('view engine', 'ejs');
 app.set('views', viewsPath);
 
@@ -118,7 +120,7 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  const uiVersion = process.env.UI_VERSION ?? '20260622k';
+  const uiVersion = process.env.UI_VERSION ?? '20260623a';
   res.locals.carinaApiUrl = CARINA_BASE;
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
   res.locals.uiVersion = uiVersion;

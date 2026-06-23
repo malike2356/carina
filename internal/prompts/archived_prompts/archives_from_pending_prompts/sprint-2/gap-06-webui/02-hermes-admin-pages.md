@@ -464,4 +464,4 @@ Feature-gate admin pages behind workspace admin role or `features.adminPages` co
 - [x] File browser (`/files`)
 - [x] System health (`/system`)
 - [x] Profiles page (`/profiles`)
-- [ ] Environment variables page (`/env`) not shipped
+- [x] Environment variables page (`/env`)

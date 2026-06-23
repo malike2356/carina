@@ -3,6 +3,12 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { promisify } from 'node:util';
+import {
+  WORKSPACE_CONTAINER_ROOT,
+  buildDockerRunArgs,
+  parseCdTarget,
+  resolveContainerPath,
+} from './terminal-sandbox';
 
 const execFileAsync = promisify(execFile);
 
@@ -27,7 +33,6 @@ export interface TerminalSession {
 
 const sessions = new Map<string, TerminalSession>();
 const COMMAND_TIMEOUT_MS = 30_000;
-const WORKSPACE_CONTAINER_ROOT = '/workspace';
 const WORKSPACE_HOST_ROOT = process.env.CARINA_WORKSPACE_ROOT ?? '/tmp/carina-workspaces';
 const SANDBOX_IMAGE = process.env.CARINA_SANDBOX_IMAGE ?? 'carina-sandbox:latest';
 const SANDBOX_MODE = process.env.CARINA_TERMINAL_SANDBOX ?? 'auto';
@@ -65,22 +70,6 @@ export function provisionWorkspaceDir(workspaceId: string): string {
   const dir = workspaceHostDir(workspaceId);
   fs.mkdirSync(dir, { recursive: true, mode: 0o755 });
   return dir;
-}
-
-function resolveContainerPath(currentCwd: string, target: string | undefined): string {
-  const base = currentCwd.startsWith('/') ? currentCwd : WORKSPACE_CONTAINER_ROOT;
-  const raw = (target ?? '').trim();
-  if (!raw || raw === '~') return WORKSPACE_CONTAINER_ROOT;
-  if (raw === '-') return base;
-
-  let next = raw.startsWith('/')
-    ? path.posix.normalize(raw)
-    : path.posix.normalize(path.posix.join(base, raw));
-
-  if (!next.startsWith(WORKSPACE_CONTAINER_ROOT)) {
-    throw new Error(`cd: path outside workspace: ${raw}`);
-  }
-  return next;
 }
 
 async function detectDocker(): Promise<boolean> {
@@ -170,19 +159,12 @@ async function runInContainer(
   containerCwd: string,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const hostDir = provisionWorkspaceDir(workspaceId);
-  const args = [
-    'run', '--rm',
-    '--network', 'none',
-    '--memory', '128m',
-    '--cpus', '0.5',
-    '--read-only',
-    '--tmpfs', '/tmp:size=32m,mode=1777',
-    '-v', `${hostDir}:${WORKSPACE_CONTAINER_ROOT}:rw`,
-    '-w', containerCwd,
-    '--user', '1001:1001',
-    SANDBOX_IMAGE,
-    'sh', '-c', command,
-  ];
+  const args = buildDockerRunArgs({
+    hostDir,
+    containerCwd,
+    command,
+    image: SANDBOX_IMAGE,
+  });
 
   try {
     const { stdout, stderr } = await execFileAsync('docker', args, {
@@ -276,10 +258,10 @@ export async function appendTerminalCommand(
   session.transcript.push({ kind: 'input', text: `$ ${input}`, at: now() });
   session.updatedAt = now();
 
-  const cdMatch = /^cd(?:\s+(.*))?$/.exec(input);
-  if (cdMatch) {
+  const cdTarget = parseCdTarget(input);
+  if (cdTarget !== null) {
     try {
-      session.cwd = resolveContainerPath(session.cwd, cdMatch[1]);
+      session.cwd = resolveContainerPath(session.cwd, cdTarget);
       session.transcript.push({ kind: 'system', text: `cwd: ${session.cwd}`, at: now() });
       session.lastExitCode = 0;
       session.updatedAt = now();
