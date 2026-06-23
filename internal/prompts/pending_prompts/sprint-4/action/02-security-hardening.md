@@ -15,7 +15,7 @@ When all "Done When" criteria below are satisfied:
 
 1. Add `**Status: COMPLETED YYYY-MM-DD**` at the top of this file.
 2. Add a "**What was built:**" bullet list.
-3. Move this file to `internal/prompts/archived_prompts/pending_prompts/sprint-7/infra/`.
+3. Move this file to `internal/prompts/archived_prompts/archives_from_pending_prompts/sprint-7/infra/`.
 
 ---
 

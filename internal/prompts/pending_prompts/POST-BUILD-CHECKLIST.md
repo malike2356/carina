@@ -36,27 +36,27 @@ Move the completed prompt file from:
 
 to:
 
-`carina/internal/prompts/archived_prompts/pending_prompts/`
+`carina/internal/prompts/archived_prompts/archives_from_pending_prompts/`
 
 Keep the same relative path. Example:
 
 | From | To |
 |------|-----|
-| `pending_prompts/sprint-2/gap-31-ops-server-panel/01-file-browser.md` | `archived_prompts/pending_prompts/sprint-2/gap-31-ops-server-panel/01-file-browser.md` |
+| `pending_prompts/sprint-4/action/01-deploy-scripts.md` | `archived_prompts/archives_from_pending_prompts/sprint-4/action/01-deploy-scripts.md` |
 
-When every prompt in a gap folder is COMPLETED, move the entire gap directory (including its `README.md`) to `archived_prompts/pending_prompts/` and remove the empty folder from `pending_prompts/`.
+When every prompt in a gap folder is COMPLETED, move the entire gap directory (including its `README.md`) to `archived_prompts/archives_from_pending_prompts/` and remove the empty folder from `pending_prompts/`.
 
 Use `git mv` when the repo is under git so history is preserved.
 
 ### 3. Update indexes
 
-If the gap `README.md` or `pending_prompts/README.md` lists this prompt as pending, update that line to point at the archived path or mark it COMPLETED.
+If the gap `README.md` or `sprint-4/action/README.md` lists this prompt as pending, update that line to point at the archived path or mark it COMPLETED.
 
 ### 4. Do not re-open archived work
 
 Before starting any prompt, check:
 
-- `archived_prompts/pending_prompts/` for a COMPLETED copy
+- `archived_prompts/archives_from_pending_prompts/` for a COMPLETED copy
 - `ADDENDUM-BUILD-STATUS.md` files in the gap folder
 - `AUDIT-STATE-2026-06-20.md` for codebase vs plan drift
 

@@ -13,7 +13,7 @@
 
 When all "Done When" criteria are satisfied:
 1. Add `**Status: COMPLETED YYYY-MM-DD**` at the top of this file.
-2. Move to `internal/prompts/archived_prompts/pending_prompts/sprint-4/i/`.
+2. Move to `internal/prompts/archived_prompts/archives_from_pending_prompts/sprint-4/i/`.
 
 ---
 
