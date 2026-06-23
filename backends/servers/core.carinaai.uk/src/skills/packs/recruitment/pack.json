@@ -1,0 +1,9 @@
+{
+  "name": "recruitment",
+  "version": "1.0.0",
+  "description": "End-to-end recruiting pipeline: source candidates, screen for fit, draft outreach, and schedule interviews",
+  "author": "VERLOX Ltd",
+  "category": "hr",
+  "optional": true,
+  "skillCount": 1
+}

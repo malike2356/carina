@@ -1,5 +1,5 @@
 import { EnvironmentPage } from '@/components/environment/EnvironmentPage';
 
-export default function WorkspaceEnvironmentPage() {
+export default function WorkspaceEnvPage() {
   return <EnvironmentPage />;
 }

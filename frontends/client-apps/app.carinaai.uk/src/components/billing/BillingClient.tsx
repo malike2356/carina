@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { PlanCard } from '@/components/billing/PlanCard';
 import { UsageMeter } from '@/components/billing/UsageMeter';
+import type { BrandedPlanOption } from '@/lib/billing-presentment';
 
 export function BillingClient({
   plan,
@@ -12,6 +13,8 @@ export function BillingClient({
   limit,
   period,
   embedded = false,
+  productName,
+  brandedPlans,
 }: {
   plan: string;
   dailyUsed: number;
@@ -19,6 +22,8 @@ export function BillingClient({
   limit: number | null;
   period: 'day' | 'month' | 'unlimited';
   embedded?: boolean;
+  productName?: string;
+  brandedPlans?: BrandedPlanOption[];
 }) {
   const [pending, setPending] = useState<string | null>(null);
 
@@ -35,11 +40,40 @@ export function BillingClient({
   }
 
   const used = period === 'day' ? dailyUsed : monthlyUsed;
+  const plans = brandedPlans ?? [
+    {
+      id: 'free' as const,
+      name: productName ? `${productName} Free` : 'Free',
+      priceAmount: 'GBP 0',
+      description: '50k tokens per day, BYOK only, 1 user.',
+      active: plan === 'free',
+    },
+    {
+      id: 'starter' as const,
+      name: productName ? `${productName} Starter` : 'Starter',
+      priceAmount: 'GBP 19',
+      pricePeriod: 'per month',
+      description: '500k tokens per month, BYOK, no Scout.',
+      active: plan === 'starter',
+    },
+    {
+      id: 'team' as const,
+      name: productName ? `${productName} Team` : 'Team',
+      priceAmount: 'GBP 79',
+      pricePeriod: 'per month',
+      description: 'Unlimited tokens, BYOK, optional Scout pairing.',
+      active: plan === 'team',
+    },
+  ];
 
   return (
     <div className={cn(embedded ? 'space-y-4' : 'space-y-8')}>
       <div className={cn('rounded-xl border border-border bg-surface', embedded ? 'p-4' : 'p-6')}>
-        {!embedded ? <h2 className="mb-4 text-lg font-semibold">Usage</h2> : null}
+        {!embedded ? (
+          <h2 className="mb-4 text-lg font-semibold">
+            {productName ? `${productName} usage` : 'Usage'}
+          </h2>
+        ) : null}
         <UsageMeter
           label={period === 'day' ? 'Daily tokens' : period === 'month' ? 'Monthly tokens' : 'Tokens'}
           used={used}
@@ -52,31 +86,22 @@ export function BillingClient({
           embedded ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3',
         )}
       >
-        <PlanCard
-          name="Free"
-          priceAmount="GBP 0"
-          description="50k tokens per day, BYOK only, 1 user."
-          active={plan === 'free'}
-          compact={embedded}
-        />
-        <PlanCard
-          name="Starter"
-          priceAmount="GBP 19"
-          pricePeriod="per month"
-          description="500k tokens per month, BYOK, no Scout."
-          active={plan === 'starter'}
-          onUpgrade={() => upgrade('starter')}
-          compact={embedded}
-        />
-        <PlanCard
-          name="Team"
-          priceAmount="GBP 79"
-          pricePeriod="per month"
-          description="Unlimited tokens, BYOK, optional Scout pairing."
-          active={plan === 'team'}
-          onUpgrade={() => upgrade('team')}
-          compact={embedded}
-        />
+        {plans.map((option) => (
+          <PlanCard
+            key={option.id}
+            name={option.name}
+            priceAmount={option.priceAmount}
+            pricePeriod={option.pricePeriod}
+            description={option.description}
+            active={option.active}
+            onUpgrade={
+              option.id === 'free'
+                ? undefined
+                : () => upgrade(option.id as 'starter' | 'team')
+            }
+            compact={embedded}
+          />
+        ))}
       </div>
       {pending ? <p className="text-sm text-text-muted">Redirecting to Stripe checkout...</p> : null}
     </div>

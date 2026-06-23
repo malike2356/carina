@@ -3,6 +3,39 @@ import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
 import { requireHostedSession, requireOrgMember } from '../gateway/web-auth.js';
 import { orgContext } from '../hosted/org-context.js';
+import {
+  createCustomDomainForOrg,
+  deleteCustomDomainForOrg,
+  dnsVerificationRecordName,
+  listCustomDomainsForOrg,
+  setCanonicalCustomDomain,
+  verificationTxtValue,
+  verifyCustomDomainDns,
+} from '../hosted/custom-domain-service.js';
+import { getPartnerBillingSummary } from '../hosted/partner-billing.js';
+import {
+  createClientOrganizationForPartner,
+  createPartnerAccount,
+  getPartnerForOrg,
+  getPartnerOwnedByOrg,
+  listClientOrganizations,
+} from '../hosted/partner-service.js';
+import {
+  getPartnerPackCatalog,
+  savePartnerPackCatalog,
+} from '../hosted/partner-pack-catalog.js';
+import {
+  applyVerticalTemplate,
+  buildPackStorefront,
+  toggleStorefrontPack,
+} from '../skills/hub/pack-storefront.js';
+import {
+  normalizePackCatalogRecord,
+  type PackCatalogRecord,
+} from '../skills/hub/pack-ownership.js';
+import { loadTenantWorkspaceConfig, saveTenantWorkspaceConfig } from '../hosted/tenant-workspace-config.js';
+import { listAvailablePacks } from '../skills/index.js';
+import { normalizeWhiteLabelTier } from '../billing/white-label-plans.js';
 import { getOrgPlan, requireFeature, requireOpsPlan } from '../hosted/plan-gates.js';
 import { getOrgProfile } from '../hosted/org-service.js';
 import {
@@ -674,6 +707,231 @@ export function mountCarinaOpsRoutes(app: Express): void {
   router.get('/telemetry/channels', requireOrgMember('usage.read'), async (_req, res) => {
     const { buildChannelHealthSnapshot } = await import('../ops/observability/channel-health.js');
     res.json(buildChannelHealthSnapshot());
+  });
+
+  router.get('/domains', requireOrgMember('org.settings.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const domains = await listCustomDomainsForOrg(ctx.orgId);
+    res.json({
+      domains: domains.map((domain) => ({
+        ...domain,
+        verificationRecord: dnsVerificationRecordName(domain.hostname),
+        verificationValue: verificationTxtValue(domain.verificationToken),
+      })),
+    });
+  });
+
+  router.post('/domains', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const hostname = String(req.body?.hostname ?? '').trim();
+    if (!hostname) {
+      res.status(400).json({ error: 'hostname is required' });
+      return;
+    }
+    try {
+      const domain = await createCustomDomainForOrg(ctx.orgId, hostname);
+      res.status(201).json({
+        domain,
+        verificationRecord: dnsVerificationRecordName(domain.hostname),
+        verificationValue: verificationTxtValue(domain.verificationToken),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create custom domain';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  router.post('/domains/:id/verify', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    try {
+      const domain = await verifyCustomDomainDns(String(req.params.id), ctx.orgId);
+      res.json({ domain });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Verification failed';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  router.post('/domains/:id/canonical', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const domain = await setCanonicalCustomDomain(ctx.orgId, String(req.params.id));
+    if (!domain) {
+      res.status(404).json({ error: 'Verified custom domain not found' });
+      return;
+    }
+    res.json({ domain });
+  });
+
+  router.delete('/domains/:id', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const deleted = await deleteCustomDomainForOrg(ctx.orgId, String(req.params.id));
+    if (!deleted) {
+      res.status(404).json({ error: 'Custom domain not found' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  router.get('/partner/account', requireOrgMember('billing.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const owned = await getPartnerOwnedByOrg(ctx.orgId);
+    const client = owned ? null : await getPartnerForOrg(ctx.orgId);
+    const partner = owned ?? client;
+    if (!partner) {
+      res.json({ partner: null });
+      return;
+    }
+    res.json({ partner, role: owned ? 'owner' : 'client' });
+  });
+
+  router.get('/partner/summary', requireOrgMember('billing.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const partner = await getPartnerOwnedByOrg(ctx.orgId);
+    if (!partner) {
+      res.status(404).json({ error: 'Partner account not found for this organization' });
+      return;
+    }
+    const days = Number(req.query.days ?? 30);
+    const summary = await getPartnerBillingSummary(partner.id, Number.isFinite(days) ? days : 30);
+    res.json({ summary });
+  });
+
+  router.get('/partner/clients', requireOrgMember('billing.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const partner = await getPartnerOwnedByOrg(ctx.orgId);
+    if (!partner) {
+      res.status(404).json({ error: 'Partner account not found for this organization' });
+      return;
+    }
+    const clients = await listClientOrganizations(partner.id);
+    res.json({ clients, maxClientWorkspaces: partner.maxClientOrgs });
+  });
+
+  router.post('/partner/clients', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const partner = await getPartnerOwnedByOrg(ctx.orgId);
+    if (!partner) {
+      res.status(404).json({ error: 'Partner account not found for this organization' });
+      return;
+    }
+    const email = String(req.body?.email ?? '').trim().toLowerCase();
+    const name = String(req.body?.name ?? '').trim();
+    if (!email) {
+      res.status(400).json({ error: 'email is required' });
+      return;
+    }
+    const userResult = await pool.query<{ id: string }>(
+      `SELECT id FROM hosted_users WHERE email = $1 LIMIT 1`,
+      [email],
+    );
+    if ((userResult.rowCount ?? 0) === 0) {
+      res.status(400).json({ error: 'Hosted user not found for client email' });
+      return;
+    }
+    try {
+      const created = await createClientOrganizationForPartner({
+        partnerId: partner.id,
+        name,
+        ownerUserId: String(userResult.rows[0].id),
+        email,
+      });
+      res.status(201).json({ client: created });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create client workspace';
+      res.status(400).json({ error: message });
+    }
+  });
+
+  router.post('/partner/account', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const existing = await getPartnerOwnedByOrg(ctx.orgId);
+    if (existing) {
+      res.json({ partner: existing });
+      return;
+    }
+    const name = String(req.body?.name ?? '').trim();
+    const tier = normalizeWhiteLabelTier(req.body?.commercialTier);
+    const partner = await createPartnerAccount({
+      name: name || 'Partner account',
+      commercialTier: tier,
+      ownerOrgId: ctx.orgId,
+      brand: req.body?.brand,
+    });
+    res.status(201).json({ partner });
+  });
+
+  router.get('/packs/storefront', requireOrgMember('org.settings.read'), async (req, res) => {
+    const ctx = orgContext(req);
+    const org = await getOrgProfile(ctx.orgId);
+    const tenantConfig = org?.slug ? loadTenantWorkspaceConfig(org.slug) : { activeSkillPacks: [] };
+    const partner = (await getPartnerOwnedByOrg(ctx.orgId)) ?? (await getPartnerForOrg(ctx.orgId));
+    const partnerPacks = partner ? await getPartnerPackCatalog(partner.id) : [];
+    const activePacks = Array.isArray(req.query.activePacks)
+      ? req.query.activePacks.map(String)
+      : tenantConfig.activeSkillPacks;
+    const storefront = buildPackStorefront({
+      activePacks,
+      productName: partner?.brand?.productName ?? org?.brand?.productName,
+      marketplaceEnabled: config.hosted.enabled,
+      context: {
+        partnerId: partner?.id ?? null,
+        workspaceId: ctx.orgId,
+      },
+      partnerPacks,
+    });
+    res.json(storefront);
+  });
+
+  router.put('/packs/catalog', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const partner = await getPartnerOwnedByOrg(ctx.orgId);
+    if (!partner) {
+      res.status(403).json({ error: 'Partner owner account required' });
+      return;
+    }
+    const raw = Array.isArray(req.body?.catalog) ? req.body.catalog : [];
+    const catalog = raw
+      .map((entry: unknown) => normalizePackCatalogRecord(entry))
+      .filter((entry: PackCatalogRecord | null): entry is PackCatalogRecord => entry !== null);
+    const saved = await savePartnerPackCatalog(partner.id, catalog);
+    res.json({ catalog: saved });
+  });
+
+  router.post('/packs/templates/:templateId/install', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const org = await getOrgProfile(ctx.orgId);
+    if (!org?.slug) {
+      res.status(400).json({ error: 'Organization slug missing' });
+      return;
+    }
+    const current = loadTenantWorkspaceConfig(org.slug).activeSkillPacks;
+    const known = listAvailablePacks().map((pack) => pack.name);
+    const result = applyVerticalTemplate(current, String(req.params.templateId), known);
+    if (result.invalid.length > 0) {
+      res.status(400).json({ error: 'Unknown packs in template', invalid: result.invalid });
+      return;
+    }
+    const saved = saveTenantWorkspaceConfig(org.slug, { activeSkillPacks: result.packs }, ctx.userId);
+    res.json({ activePacks: saved.activeSkillPacks });
+  });
+
+  router.post('/packs/:slug/toggle', requireOrgMember('org.settings.write'), async (req, res) => {
+    const ctx = orgContext(req);
+    const org = await getOrgProfile(ctx.orgId);
+    if (!org?.slug) {
+      res.status(400).json({ error: 'Organization slug missing' });
+      return;
+    }
+    const enabled = req.body?.enabled !== false;
+    const current = loadTenantWorkspaceConfig(org.slug).activeSkillPacks;
+    const known = listAvailablePacks().map((pack) => pack.name);
+    const result = toggleStorefrontPack(current, String(req.params.slug), enabled, known);
+    if (result.invalid.length > 0) {
+      res.status(400).json({ error: 'Unknown pack', invalid: result.invalid });
+      return;
+    }
+    const saved = saveTenantWorkspaceConfig(org.slug, { activeSkillPacks: result.packs }, ctx.userId);
+    res.json({ activePacks: saved.activeSkillPacks });
   });
 
   app.use('/api/carina-ops', router);

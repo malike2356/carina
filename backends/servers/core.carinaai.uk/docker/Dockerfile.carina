@@ -20,8 +20,12 @@ ENV NODE_ENV=production
 ENV CARINA_SPLIT_GATEWAY=false
 ENV CARINA_SUPERVISOR_HUB=false
 ENV CARINA_SUPERVISOR_OPS=false
-RUN apk add --no-cache tini wget curl logrotate python3 py3-pip ffmpeg \
-  && pip3 install --break-system-packages supervisor edge-tts
+RUN apk add --no-cache tini wget curl logrotate python3 py3-pip ffmpeg gcompat \
+  && pip3 install --break-system-packages supervisor edge-tts faster-whisper \
+  && edge-tts --version \
+  && echo "edge-tts installed at $(which edge-tts)" \
+  && python3 -c "from faster_whisper import WhisperModel; print('faster-whisper ok')" \
+  && echo "local whisper available"
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./

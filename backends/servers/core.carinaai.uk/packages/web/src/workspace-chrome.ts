@@ -1,4 +1,5 @@
 import type { ProductMode } from '#core/product/types.js';
+import { platformBrandDefaults } from '#core/product/brand.js';
 import { hostedShellConfig, privateShellConfig } from '#core/product/shell-config.js';
 
 export type WorkspaceBrandOptions = {
@@ -103,16 +104,27 @@ function workspaceBrandingDefaults(mode: ProductMode): {
   sectionLabel: string;
 } {
   if (mode === 'hosted') {
+    const platform = platformBrandDefaults('hosted');
     return {
-      productName: 'Carina Cloud',
-      shortName: 'Carina',
+      productName: platform.productName ?? 'Carina Cloud',
+      shortName: platform.shortName ?? 'Carina',
       workspaceName: 'Cloud Workspace',
       sectionLabel: 'Apps',
     };
   }
+  if (mode === 'ops') {
+    const platform = platformBrandDefaults('ops');
+    return {
+      productName: platform.productName ?? 'Carina Ops',
+      shortName: platform.shortName ?? 'Ops',
+      workspaceName: 'Ops Console',
+      sectionLabel: 'Console',
+    };
+  }
+  const platform = platformBrandDefaults('private');
   return {
-    productName: 'Carina',
-    shortName: 'Carina',
+    productName: platform.productName ?? 'Carina',
+    shortName: platform.shortName ?? 'Carina',
     workspaceName: 'Instance Workspace',
     sectionLabel: 'Engine',
   };
@@ -426,13 +438,17 @@ export function injectWorkspaceHub(html: string, mode: ProductMode = 'private'):
   return out.replace('<!--CARINA_WORKSPACE_HUB-->', workspaceHubCardsHtml(mode));
 }
 
-export function injectChatShellBranding(html: string, mode: ProductMode): string {
-  const branding = workspaceBrandingForMode(mode);
+export function injectChatShellBranding(
+  html: string,
+  mode: ProductMode,
+  brandOverride?: WorkspaceBrandOptions,
+): string {
+  const branding = workspaceBrandingForMode(mode, brandOverride);
   let out = html;
-  const title = mode === 'hosted' ? 'Carina Cloud' : 'Carina Agent';
+  const title = branding.productName;
   out = out.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
   out = out.replace(
-    '<span class="name">Carina</span>',
+    /<span class="name">Carina<\/span>/g,
     `<span class="name" id="product-brand-name">${branding.productName}</span>`,
   );
   if (!out.includes('data-product-mode=')) {

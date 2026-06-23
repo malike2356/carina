@@ -1,4 +1,5 @@
 import { pool } from '../memory/db.js';
+import { normalizeBrandConfig } from '../product/brand.js';
 import { seedDefaultModelsForOrg } from './ai-platform-migrate.js';
 import { provisionCloudOrg } from './cloud-provisioner.js';
 import { writeProductAudit } from './product-audit.js';
@@ -93,10 +94,12 @@ export async function getPrimaryOrgForUser(userId: string): Promise<OrgMembershi
 export async function getOrgProfile(orgId: string): Promise<{
   id: string;
   name: string;
+  slug: string;
   plan: string;
+  brand: ReturnType<typeof normalizeBrandConfig>;
 } | null> {
   const result = await pool.query(
-    'SELECT id, name, plan FROM organizations WHERE id = $1',
+    'SELECT id, name, slug, plan, brand FROM organizations WHERE id = $1',
     [orgId],
   );
   if ((result.rowCount ?? 0) === 0) return null;
@@ -104,6 +107,8 @@ export async function getOrgProfile(orgId: string): Promise<{
   return {
     id: String(row.id),
     name: String(row.name),
+    slug: String(row.slug),
     plan: String(row.plan),
+    brand: normalizeBrandConfig(row.brand),
   };
 }

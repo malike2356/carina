@@ -6,6 +6,7 @@ import { ChatStreamError } from '@/lib/chat-errors';
 import { buildCloudSystemPrompt } from '@/lib/cloud-identity';
 import { coreProxyEnabled, requiresWorkspaceByokKeys, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 import { sanitizeCarinaProse } from '@/lib/writing-style';
+import { getWorkspaceProfile } from '@/lib/workspace-profiles';
 
 const PROVIDER_ENDPOINTS: Record<string, { url: string; model: string }> = {
   deepseek: { url: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat' },
@@ -189,10 +190,15 @@ function consumeCoreSseLines(buffer: string): { remainder: string; events: Carin
   return { remainder, events };
 }
 
-async function buildSystemPrompt(workspaceId: string, activePacks: string[] = []): Promise<string> {
+async function buildSystemPrompt(
+  workspaceId: string,
+  activePacks: string[] = [],
+  profileId?: string | null,
+): Promise<string> {
   const brain = await getWorkspaceBrainSettings(workspaceId);
 
-  const [memories, disabledSkills, enabledSkills] = await Promise.all([
+  const [profile, memories, disabledSkills, enabledSkills] = await Promise.all([
+    profileId ? getWorkspaceProfile(workspaceId, profileId) : Promise.resolve(null),
     brain.injectMemoriesInChat
       ? db
           .select({ content: userMemories.content, type: userMemories.type })
@@ -222,6 +228,11 @@ async function buildSystemPrompt(workspaceId: string, activePacks: string[] = []
           .map((memory) => `- [${memory.type}] ${memory.content}`)
           .join('\n')}`
       : '';
+
+  if (profile?.systemPrompt?.trim()) {
+    return `${profile.systemPrompt.trim()}${memoryBlock}`;
+  }
+
   const disabledSkillIds = disabledSkills.map((skill) => skill.skillId);
   const disabledBlock =
     disabledSkillIds.length > 0
@@ -264,6 +275,7 @@ export async function* streamCarinaChat(input: {
   skillPacks: string[];
   provider?: string;
   model?: string;
+  profileId?: string | null;
 }): AsyncGenerator<CarinaChatStreamEvent> {
   if (input.providerKeys.length === 0 && requiresWorkspaceByokKeys()) {
     throw new ChatStreamError(
@@ -277,7 +289,7 @@ export async function* streamCarinaChat(input: {
     return;
   }
 
-  const systemPrompt = await buildSystemPrompt(input.workspaceId, input.skillPacks);
+  const systemPrompt = await buildSystemPrompt(input.workspaceId, input.skillPacks, input.profileId);
 
   if (coreProxyEnabled()) {
     const coreUrl = resolveCoreUrl();

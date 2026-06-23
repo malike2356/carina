@@ -8,6 +8,7 @@
     "start": "node dist/server.js",
     "build": "node scripts/sync-theme.mjs && tsc",
     "test": "vitest run",
+    "test:white-label": "vitest run lib/server-services.test.ts",
     "theme:sync": "node scripts/sync-theme.mjs",
     "css": "node scripts/sync-theme.mjs && tailwindcss --input tailwind.css --output public/styles.css --content 'views/**/*.ejs'",
     "css:watch": "tailwindcss --input tailwind.css --output public/styles.css --content 'views/**/*.ejs' --watch"

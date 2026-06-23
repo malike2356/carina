@@ -26,7 +26,7 @@ const zh: LocaleMessages = {
     delete: '删除',
   },
   chat: {
-    placeholder: '给 Carina 发消息...',
+    placeholder: '给 {agentName} 发消息...',
     send: '发送',
     retry: '重试',
   },

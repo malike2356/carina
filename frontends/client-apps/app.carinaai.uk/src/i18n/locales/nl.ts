@@ -26,7 +26,7 @@ const nl: LocaleMessages = {
     delete: 'Verwijderen',
   },
   chat: {
-    placeholder: 'Bericht aan Carina...',
+    placeholder: 'Bericht aan {agentName}...',
     send: 'Versturen',
     retry: 'Opnieuw proberen',
   },

@@ -1,30 +1,43 @@
 <% title = incident ? 'Edit incident' : 'Create incident' %>
-<div class="ops-page">
+<% const flash = new URLSearchParams(locals.query || ''); %>
+<div class="ops-page ops-incident-blog">
   <div class="ops-page-head">
     <div>
       <div class="ops-page-title"><%= title %></div>
-      <div class="ops-page-sub"><a href="/admin/incident-blog" class="ops-link">Back to incident blog</a></div>
+      <div class="ops-page-sub">
+        <% if (incident) { %>
+          <a href="/admin/incident-blog/<%= incident.id %>" class="ops-link">Back to review</a>
+        <% } else { %>
+          Add a first-class incident article you found manually. Saved as draft until you approve and publish.
+        <% } %>
+      </div>
     </div>
+    <% if (!incident) { %>
+      <a href="/admin/incident-blog" class="ops-btn ops-btn-ghost ops-btn-sm">Cancel</a>
+    <% } %>
   </div>
 
+  <% if (flash.get('err')) { %>
+    <div class="ops-flash error"><%= flash.get('err') %></div>
+  <% } %>
   <% if (locals.error) { %>
     <div class="ops-flash error"><%= error %></div>
   <% } %>
 
-  <form method="post" action="<%= action %>" class="ops-surface">
+  <form method="post" action="<%= action %>" class="ops-surface ops-incident-form">
     <div class="ops-surface-body">
       <div class="ops-form-grid">
-        <label class="ops-field" style="grid-column:1/-1;">
+        <label class="ops-field ops-field-wide">
           <span class="ops-field-label">Title</span>
           <input name="title" value="<%= incident ? incident.title : '' %>" class="ops-input" required>
         </label>
         <label class="ops-field">
           <span class="ops-field-label">Slug</span>
-          <input name="slug" value="<%= incident ? incident.slug : '' %>" class="ops-input">
+          <input name="slug" value="<%= incident ? incident.slug : '' %>" class="ops-input" placeholder="auto-generated if empty">
         </label>
         <label class="ops-field">
           <span class="ops-field-label">Category</span>
-          <select name="category" class="ops-input">
+          <select name="category" class="ops-select">
             <% for (const category of ['financial','security','brand','legal']) { %>
               <option value="<%= category %>" <%= incident && incident.category === category ? 'selected' : '' %>><%= category %></option>
             <% } %>
@@ -32,7 +45,7 @@
         </label>
         <label class="ops-field">
           <span class="ops-field-label">Status</span>
-          <select name="status" class="ops-input">
+          <select name="status" class="ops-select">
             <% for (const status of ['draft','approved','published','rejected']) { %>
               <option value="<%= status %>" <%= incident && incident.status === status ? 'selected' : (!incident && status === 'draft' ? 'selected' : '') %>><%= status %></option>
             <% } %>
@@ -40,32 +53,32 @@
         </label>
         <label class="ops-field">
           <span class="ops-field-label">Company</span>
-          <input name="company" value="<%= incident ? incident.company : '' %>" class="ops-input">
+          <input name="company" value="<%= incident ? incident.company : '' %>" class="ops-input" required>
         </label>
         <label class="ops-field">
           <span class="ops-field-label">Damage</span>
-          <input name="damage" value="<%= incident ? incident.damage : '' %>" class="ops-input">
+          <input name="damage" value="<%= incident ? incident.damage : '' %>" class="ops-input" placeholder="e.g. $812 settlement" required>
         </label>
         <label class="ops-field">
           <span class="ops-field-label">Date occurred</span>
-          <input name="dateOccurred" value="<%= incident ? incident.date_occurred || incident.dateOccurred : '' %>" class="ops-input">
+          <input name="dateOccurred" value="<%= incident ? incident.date_occurred || incident.dateOccurred : '' %>" class="ops-input" placeholder="June 2026">
         </label>
-        <label class="ops-field" style="grid-column:1/-1;">
+        <label class="ops-field ops-field-wide">
           <span class="ops-field-label">Body HTML</span>
-          <textarea name="bodyHtml" class="ops-input" style="min-height:160px;"><%= incident ? incident.body_html || incident.bodyHtml : '' %></textarea>
+          <textarea name="bodyHtml" class="ops-input ops-textarea" rows="8"><%= incident ? incident.body_html || incident.bodyHtml : '' %></textarea>
         </label>
-        <label class="ops-field" style="grid-column:1/-1;">
+        <label class="ops-field ops-field-wide">
           <span class="ops-field-label">Scout fix HTML</span>
-          <textarea name="scoutFixHtml" class="ops-input" style="min-height:120px;"><%= incident ? incident.scout_fix_html || incident.scoutFixHtml : '' %></textarea>
+          <textarea name="scoutFixHtml" class="ops-input ops-textarea" rows="5"><%= incident ? incident.scout_fix_html || incident.scoutFixHtml : '' %></textarea>
         </label>
-        <div class="ops-field" style="grid-column:1/-1;">
+        <div class="ops-field ops-field-wide">
           <span class="ops-field-label">Sources</span>
-          <div id="source-rows">
+          <div id="source-rows" class="ops-incident-source-rows">
             <% const sources = incident && incident.sources && incident.sources.length ? incident.sources : [{ label: '', url: '' }]; %>
             <% for (const source of sources) { %>
               <div class="ops-source-row">
                 <input name="source_label" placeholder="Label" value="<%= source.label %>" class="ops-input">
-                <input name="source_url" placeholder="URL" value="<%= source.url %>" class="ops-input">
+                <input name="source_url" placeholder="https://..." value="<%= source.url %>" class="ops-input">
                 <button type="button" data-remove-source class="ops-btn ops-btn-ghost ops-btn-sm">Remove</button>
               </div>
             <% } %>
@@ -73,9 +86,9 @@
           <button type="button" class="ops-btn ops-btn-ghost ops-btn-sm" id="add-source" style="margin-top:8px;">Add source</button>
         </div>
       </div>
-      <div class="ops-actions" style="margin-top:18px;">
-        <button class="ops-btn ops-btn-green" type="submit">Save</button>
-        <a class="ops-btn ops-btn-ghost" href="/admin/incident-blog">Cancel</a>
+      <div class="ops-incident-detail-actions" style="margin-top:20px;">
+        <button class="ops-btn ops-btn-green" type="submit">Save incident</button>
+        <a class="ops-btn ops-btn-ghost" href="<%= incident ? '/admin/incident-blog/' + incident.id : '/admin/incident-blog' %>">Cancel</a>
       </div>
     </div>
   </form>
@@ -97,7 +110,7 @@
     add.addEventListener('click', () => {
       const row = document.createElement('div');
       row.className = 'ops-source-row';
-      row.innerHTML = '<input name="source_label" placeholder="Label" class="ops-input"><input name="source_url" placeholder="URL" class="ops-input"><button type="button" data-remove-source class="ops-btn ops-btn-ghost ops-btn-sm">Remove</button>';
+      row.innerHTML = '<input name="source_label" placeholder="Label" class="ops-input"><input name="source_url" placeholder="https://..." class="ops-input"><button type="button" data-remove-source class="ops-btn ops-btn-ghost ops-btn-sm">Remove</button>';
       rows.appendChild(row);
       const remove = row.querySelector('[data-remove-source]');
       if (remove) wireRemove(remove);

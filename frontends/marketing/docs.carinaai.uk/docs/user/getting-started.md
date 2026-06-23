@@ -8,6 +8,8 @@ See [Capability inventory](/docs/capabilities) for the full list of tools, provi
 
 Use the hosted app at **[app.carinaai.uk](https://app.carinaai.uk)** if you want a browser workspace with BYOK keys and optional Pro security (Labyrinth Scout). Full guide: [Carina Cloud](/docs/user/carina-cloud).
 
+**Agencies and resellers:** start with the [White-label getting started](/docs/user/white-label/getting-started) path for branding, domains, client handoff, and partner tiers.
+
 If you are running a team and need BYOK vaults, audit retention, usage controls, or model routing, upgrade to **Carina Ops** from the app billing page.
 
 ## Prerequisites (self-hosted)

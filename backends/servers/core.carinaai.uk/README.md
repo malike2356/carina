@@ -30,6 +30,10 @@ carina setup
 
 Domain packs are optional; enable with `carina packs enable property-uk` or install from Hub.
 
+## White-label operators
+
+Agencies and resellers can brand the cloud workspace, bind custom domains, and provision client workspaces. Customer-facing guide: [docs.carinaai.uk white-label getting started](https://docs.carinaai.uk/docs/user/white-label/getting-started). Deploy isolation for multi-tenant hosts: `scripts/deploy-white-label-stack.sh`.
+
 ## 7 Pillars of Engineering
 
 1. **Security first** -- Security is not a feature. It is the foundation every decision sits on.

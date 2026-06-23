@@ -176,3 +176,59 @@ CREATE UNIQUE INDEX IF NOT EXISTS "workspace_members_workspace_user_uniq"
 CREATE INDEX IF NOT EXISTS "workspace_members_workspace_id_idx" ON "workspace_members" USING btree ("workspace_id");
 CREATE INDEX IF NOT EXISTS "terminal_audit_log_workspace_id_idx" ON "terminal_audit_log" USING btree ("workspace_id");
 CREATE INDEX IF NOT EXISTS "terminal_audit_log_executed_at_idx" ON "terminal_audit_log" USING btree ("executed_at");
+
+-- 0009: white-label brand + core org link
+ALTER TABLE "workspaces" ADD COLUMN IF NOT EXISTS "core_org_id" uuid;
+ALTER TABLE "workspace_settings" ADD COLUMN IF NOT EXISTS "brand" jsonb DEFAULT '{}'::jsonb NOT NULL;
+
+-- 0010: custom domains
+CREATE TABLE IF NOT EXISTS "custom_domains" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "workspace_id" uuid NOT NULL,
+  "hostname" text NOT NULL,
+  "verification_token" text NOT NULL,
+  "verified_at" timestamp,
+  "tls_status" varchar(20) DEFAULT 'pending' NOT NULL,
+  "is_canonical" boolean DEFAULT false NOT NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'custom_domains_hostname_unique'
+  ) THEN
+    ALTER TABLE "custom_domains" ADD CONSTRAINT "custom_domains_hostname_unique" UNIQUE ("hostname");
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  ALTER TABLE "custom_domains" ADD CONSTRAINT "custom_domains_workspace_id_workspaces_id_fk"
+    FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "custom_domains_workspace_id_idx" ON "custom_domains" USING btree ("workspace_id");
+CREATE INDEX IF NOT EXISTS "custom_domains_hostname_idx" ON "custom_domains" USING btree ("hostname");
+
+-- 0011: partner pack catalog on workspace settings
+ALTER TABLE "workspace_settings" ADD COLUMN IF NOT EXISTS "pack_catalog" jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+-- 0012: workspace profiles and session profile binding
+CREATE TABLE IF NOT EXISTS "workspace_profiles" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "workspace_id" uuid NOT NULL REFERENCES "workspaces"("id") ON DELETE cascade,
+  "slug" varchar(64) NOT NULL,
+  "name" text NOT NULL,
+  "description" text,
+  "system_prompt" text,
+  "provider" varchar(50),
+  "model" varchar(120),
+  "is_builtin" boolean NOT NULL DEFAULT false,
+  "builtin_id" varchar(64),
+  "created_at" timestamp DEFAULT now() NOT NULL,
+  "updated_at" timestamp DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "workspace_profiles_workspace_slug_idx" ON "workspace_profiles" ("workspace_id", "slug");
+CREATE INDEX IF NOT EXISTS "workspace_profiles_workspace_id_idx" ON "workspace_profiles" ("workspace_id");
+ALTER TABLE "chat_sessions" ADD COLUMN IF NOT EXISTS "profile_id" uuid REFERENCES "workspace_profiles"("id") ON DELETE set null;
+CREATE INDEX IF NOT EXISTS "chat_sessions_profile_id_idx" ON "chat_sessions" ("profile_id");

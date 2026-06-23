@@ -26,7 +26,7 @@ const it: LocaleMessages = {
     delete: 'Elimina',
   },
   chat: {
-    placeholder: 'Messaggio a Carina...',
+    placeholder: 'Messaggio a {agentName}...',
     send: 'Invia',
     retry: 'Riprova',
   },

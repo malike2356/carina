@@ -165,4 +165,5 @@ export const OPS_PAGE_FILES: Record<string, string> = {
   billing: 'billing.html',
   upgrade: 'upgrade.html',
   onboarding: 'onboarding.html',
+  partner: 'partner.html',
 };

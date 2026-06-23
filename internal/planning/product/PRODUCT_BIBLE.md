@@ -1876,6 +1876,7 @@ Test organization: *.test.ts files co-located with source files.
 
 ### C
 
+- **Customer brand**: Tenant or reseller product name, logo, and support identity shown to end users. See `internal/planning/strategy/BRAND_GLOSSARY.md` and `src/product/brand-glossary.ts`.
 - **CalDAV**: Calendar integration via caldav-client.ts.
 - **Carina Cloud**: Hosted SaaS at app.carinaai.uk with free tier.
 - **Carina Core**: The agent kernel in core.carinaai.uk (760 source files).
@@ -2028,6 +2029,7 @@ Test organization: *.test.ts files co-located with source files.
 
 ### P
 
+- **Platform brand**: Canonical Carina naming on kernel, ops, CLI, and developer surfaces. Distinct from customer brand; see `internal/planning/strategy/BRAND_GLOSSARY.md`.
 - **Pairing**: Connecting Carina instances to Scout accounts (5 env vars, 2 methods).
 - **Perplexity**: Research-focused LLM provider.
 - **Platform Knowledge**: Agent runtime knowledge in platform-knowledge.md.

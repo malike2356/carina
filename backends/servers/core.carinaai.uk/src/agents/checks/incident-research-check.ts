@@ -16,6 +16,6 @@ export async function checkIncidentResearch(): Promise<CheckResult> {
   return {
     name: 'incident-research',
     urgent: false,
-    summary: `INCIDENT RESEARCH SLOT -- Sunday check.\n\n${buildResearchPrompt()}\n\nEXISTING INCIDENTS:\n${existingSummary || 'None yet.'}`,
+    summary: `INCIDENT RESEARCH SLOT -- Sunday check.\n\n${buildResearchPrompt(existingSummary || 'None yet.')}`,
   };
 }

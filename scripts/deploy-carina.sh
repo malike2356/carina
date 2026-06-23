@@ -20,6 +20,7 @@ CLOUD_LOCAL="${REPO_ROOT}/frontends/client-apps/app.carinaai.uk"
 SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/backends/servers/console.labyrinthscout.com"
 SCOUT_ENGINE_LOCAL="${REPO_ROOT}/backends/servers/scout-engine"
 CARINA_MARKETING_LOCAL="${REPO_ROOT}/frontends/marketing/carinaai.uk"
+DOCS_SUBDOMAIN_LOCAL="${REPO_ROOT}/frontends/marketing/docs.carinaai.uk"
 SCOUT_MARKETING_LOCAL="${REPO_ROOT}/frontends/marketing/labyrinthscout.com"
 VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
@@ -35,16 +36,17 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev
 log "Syncing core.carinaai.uk..."
 rsync -az --delete \
   --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
+  --exclude='docs/.vitepress/dist/' \
   "${CORE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/"
 
 log "Syncing ops.carinaai.uk (Docker build context)..."
 rsync -az --delete \
-  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
+  --exclude='.env' --exclude='node_modules' --exclude='.pnpm-store' --exclude='.git' --exclude='dist' \
   "${OPS_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/ops.carinaai.uk/"
 
 log "Syncing app.carinaai.uk (Docker build context)..."
 rsync -az --delete \
-  --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='.next' \
+  --exclude='.env' --exclude='node_modules' --exclude='.pnpm-store' --exclude='.git' --exclude='.next' \
   "${CLOUD_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/app.carinaai.uk/"
 
 log "Syncing console.labyrinthscout.com (Docker build context)..."
@@ -70,6 +72,17 @@ rsync -az --delete \
   --delete-excluded \
   --exclude='.git' \
   "${SCOUT_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/labyrinthscout.com-static/"
+
+log "Building docs.carinaai.uk (Docusaurus, baseUrl /)..."
+(
+  cd "${DOCS_SUBDOMAIN_LOCAL}"
+  pnpm build
+)
+
+log "Syncing docs.carinaai.uk static build..."
+ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/docs/.vitepress/dist'"
+rsync -az --delete \
+  "${DOCS_SUBDOMAIN_LOCAL}/build/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/docs/.vitepress/dist/"
 
 log "Running Docker production deploy on VPS..."
 ssh "${VPS_USER}@${VPS_HOST}" bash -s -- "${APPS_ROOT}" <<'REMOTE'

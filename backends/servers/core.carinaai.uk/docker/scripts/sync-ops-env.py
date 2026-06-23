@@ -22,6 +22,20 @@ SCOUT_ENV_CANDIDATES = [
 
 OPERATOR_KEYS = ('SCOUT_OPERATOR_ACCOUNT_ID', 'SCOUT_OPERATOR_INSTANCE_ID')
 
+SCOUT_PAIRING_KEYS = ('SCOUT_API_KEY',)
+
+# Terminal bridge JWT must use the same secret in carina-cloud and carina-ops.
+BRIDGE_SECRET_KEYS = (
+    'CARINA_TERMINAL_BRIDGE_SECRET',
+    'CARINA_INTERNAL_KEY',
+    'CARINA_OPS_TOKEN',
+)
+
+CLOUD_RUNTIME_CANDIDATES = [
+    ROOT / '.env.cloud.runtime',
+    Path('/home/malike/apps/core.carinaai.uk/.env.cloud.runtime'),
+]
+
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
 DB_HOST = os.environ.get('DB_HOST', 'postgres')
@@ -49,6 +63,28 @@ def parse_env_file(path: Path) -> dict[str, str]:
         key, _, value = stripped.partition('=')
         values[key.strip()] = value.strip()
     return values
+
+
+def cloud_bridge_secret_values() -> dict[str, str]:
+    for candidate in CLOUD_RUNTIME_CANDIDATES:
+        values = parse_env_file(candidate)
+        if any(values.get(key) for key in BRIDGE_SECRET_KEYS):
+            return values
+    return {}
+
+
+def upsert_env_line(lines: list[str], key: str, value: str) -> list[str]:
+    replaced = False
+    out: list[str] = []
+    for line in lines:
+        if line.startswith(f'{key}='):
+            out.append(f'{key}={value}')
+            replaced = True
+            continue
+        out.append(line)
+    if not replaced:
+        out.append(f'{key}={value}')
+    return out
 
 
 def scout_operator_values() -> dict[str, str]:
@@ -83,12 +119,20 @@ def main() -> None:
         if key not in seen:
             out.append(f'{key}={value}')
     scout_vars = scout_operator_values()
-    for key in OPERATOR_KEYS:
-        if key in seen:
-            continue
+    for key in (*OPERATOR_KEYS, *SCOUT_PAIRING_KEYS):
         value = scout_vars.get(key)
-        if value:
-            out.append(f'{key}={value}')
+        if not value or value == 'undefined':
+            continue
+        out = upsert_env_line(out, key, value)
+        seen.add(key)
+    cloud_vars = cloud_bridge_secret_values()
+    for key in BRIDGE_SECRET_KEYS:
+        cloud_value = cloud_vars.get(key)
+        if not cloud_value:
+            continue
+        current = next((line.split('=', 1)[1] for line in out if line.startswith(f'{key}=')), '')
+        if not current:
+            out = upsert_env_line(out, key, cloud_value)
             seen.add(key)
     ENV_PATH.write_text('\n'.join(out) + '\n')
     print(f'updated {ENV_PATH.name} for docker networking')

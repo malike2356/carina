@@ -1,0 +1,32 @@
+<% const totalCount = Number(total ?? 0); %>
+<% const currentPage = Number(page ?? 1); %>
+<% const pages = Math.max(1, Number(totalPages ?? 1)); %>
+<% if (totalCount > 0 && typeof pageLink === 'function') { %>
+  <nav class="ops-incident-pagination" aria-label="Incident list pages">
+    <% if (currentPage > 1) { %>
+      <a href="/admin/incident-blog<%= pageLink(currentPage - 1) %>" class="ops-btn ops-btn-ghost ops-btn-sm">Previous</a>
+    <% } else { %>
+      <span class="ops-btn ops-btn-ghost ops-btn-sm is-disabled" aria-hidden="true">Previous</span>
+    <% } %>
+
+    <div class="ops-incident-page-list">
+      <% for (let p = 1; p <= pages; p += 1) { %>
+        <% if (p === currentPage) { %>
+          <span class="ops-incident-page is-active" aria-current="page"><%= p %></span>
+        <% } else { %>
+          <a class="ops-incident-page" href="/admin/incident-blog<%= pageLink(p) %>"><%= p %></a>
+        <% } %>
+      <% } %>
+    </div>
+
+    <% if (currentPage < pages) { %>
+      <a href="/admin/incident-blog<%= pageLink(currentPage + 1) %>" class="ops-btn ops-btn-ghost ops-btn-sm">Next</a>
+    <% } else { %>
+      <span class="ops-btn ops-btn-ghost ops-btn-sm is-disabled" aria-hidden="true">Next</span>
+    <% } %>
+
+    <span class="ops-incident-pagination-meta">
+      Page <%= currentPage %> of <%= pages %> · <%= totalCount %> incident<%= totalCount === 1 ? '' : 's' %>
+    </span>
+  </nav>
+<% } %>

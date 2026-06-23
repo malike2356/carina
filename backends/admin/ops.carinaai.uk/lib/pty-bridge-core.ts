@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +32,62 @@ export interface CarinaSpawnCommand {
   cwd: string;
 }
 
+function resolveDockerWebContainerId(): string | null {
+  const explicit = process.env.CARINA_PTY_DOCKER_CONTAINER?.trim();
+  if (explicit) return explicit;
+
+  const service = process.env.CARINA_PTY_DOCKER_SERVICE?.trim() || 'carina-web';
+  try {
+    const out = execSync(
+      `docker ps -q -f label=com.docker.compose.service=${service} -f status=running`,
+      { encoding: 'utf8', timeout: 5000 },
+    ).trim();
+    return out.split('\n').map((line) => line.trim()).find(Boolean) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveDockerPtySpawn(cliArgs: string[]): CarinaSpawnCommand | null {
+  if (process.env.CARINA_OPS_IN_DOCKER !== 'true') return null;
+  if (process.env.CARINA_PTY_DOCKER_DISABLED === 'true') return null;
+
+  const container = resolveDockerWebContainerId();
+  if (!container) return null;
+
+  const workdir = process.env.CARINA_PTY_DOCKER_WORKDIR?.trim() || '/app';
+  const bin = process.env.CARINA_PTY_DOCKER_BIN?.trim() || 'dist/bin/carina.js';
+
+  return {
+    file: 'docker',
+    args: [
+      'exec',
+      '-i',
+      '-e',
+      'TERM=xterm-256color',
+      '-e',
+      'COLORTERM=truecolor',
+      '-e',
+      'FORCE_COLOR=3',
+      '-e',
+      'CARINA_OPS_PTY=1',
+      '-e',
+      'CARINA_TUI_SIMPLE=true',
+      '-w',
+      workdir,
+      container,
+      'node',
+      bin,
+      ...cliArgs,
+    ],
+    cwd: '/tmp',
+  };
+}
+
 export function resolveCarinaCliCommand(cliArgs: string[]): CarinaSpawnCommand {
+  const dockerSpawn = resolveDockerPtySpawn(cliArgs);
+  if (dockerSpawn) return dockerSpawn;
+
   const coreRoot = resolveDefaultCoreRoot();
 
   if (process.env.CARINA_BIN?.trim()) {

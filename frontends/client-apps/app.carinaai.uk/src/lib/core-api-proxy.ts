@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 
+const FORWARD_REQUEST_HEADERS = ['accept', 'accept-language', 'content-type', 'cookie'] as const;
+
 function proxyHeaders(request: Request): Headers {
   const token = resolveCoreProxyToken();
-  const headers = new Headers(request.headers);
-  headers.delete('host');
+  const headers = new Headers();
+  for (const name of FORWARD_REQUEST_HEADERS) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
   if (token) {
     headers.set('authorization', `Bearer ${token}`);
     headers.set('x-internal-key', token);
@@ -47,11 +52,15 @@ export async function proxyToCoreApi(request: Request, pathname: string): Promis
     const body = await response.arrayBuffer();
     const headers = sanitizeProxyResponseHeaders(response.headers);
 
-    if (!response.ok && body.byteLength === 0) {
-      return NextResponse.json(
-        { error: `Core request failed (${response.status}).` },
-        { status: response.status },
-      );
+    if (!response.ok) {
+      const contentType = response.headers.get('content-type') ?? '';
+      const isJson = contentType.includes('application/json') && body.byteLength > 0;
+      if (!isJson) {
+        return NextResponse.json(
+          { error: `Core request failed (${response.status}).` },
+          { status: response.status },
+        );
+      }
     }
 
     return new Response(body, {
@@ -59,7 +68,8 @@ export async function proxyToCoreApi(request: Request, pathname: string): Promis
       statusText: response.statusText,
       headers,
     });
-  } catch {
+  } catch (error) {
+    console.error('[core-api-proxy] upstream fetch failed:', error);
     return NextResponse.json(
       { error: 'Could not reach the Carina core backend. Try again shortly.' },
       { status: 502 },

@@ -27,7 +27,11 @@ const LEGACY_MODE_MAP: Record<string, ThemeMode> = {
 };
 
 const THEME_SHEET_ID = 'carina-theme-sheet';
-const THEME_VERSION = '1';
+const THEME_STYLE_ID = 'carina-theme-vars';
+const THEME_VERSION = '2';
+
+let activeThemeHref: string | null = null;
+let activeThemeLoad: Promise<void> | null = null;
 
 export function normalizeThemeId(value: unknown): string {
   if (typeof value !== 'string' || !value.trim()) return DEFAULT_MULTI_THEME;
@@ -79,7 +83,7 @@ export function readCookieThemePreference(): ThemePreference | null {
   };
 }
 
-export function applyThemePreference(preference: ThemePreference): void {
+function applyThemeDomState(preference: ThemePreference): void {
   if (typeof document === 'undefined') return;
   const themeId = normalizeThemeId(preference.themeId);
   const mode = normalizeThemeMode(preference.mode, themeId);
@@ -89,7 +93,19 @@ export function applyThemePreference(preference: ThemePreference): void {
   root.style.colorScheme = mode;
   root.setAttribute('data-theme', themeId);
   root.setAttribute('data-theme-mode', mode);
+}
 
+function ensureThemeStyleElement(): HTMLStyleElement {
+  let style = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = document.createElement('style');
+    style.id = THEME_STYLE_ID;
+    document.head.appendChild(style);
+  }
+  return style;
+}
+
+function syncThemeLinkHref(href: string): void {
   let link = document.getElementById(THEME_SHEET_ID) as HTMLLinkElement | null;
   if (!link) {
     link = document.createElement('link');
@@ -97,10 +113,51 @@ export function applyThemePreference(preference: ThemePreference): void {
     link.rel = 'stylesheet';
     document.head.appendChild(link);
   }
-  const href = themeStylesheetHref(themeId);
   if (link.getAttribute('href') !== href) {
     link.href = href;
   }
+}
+
+export async function loadThemeStylesheet(themeId: string): Promise<void> {
+  if (typeof document === 'undefined') return;
+  const href = themeStylesheetHref(themeId);
+  if (activeThemeHref === href && document.getElementById(THEME_STYLE_ID)?.textContent) {
+    return;
+  }
+
+  if (activeThemeLoad) {
+    await activeThemeLoad;
+    if (activeThemeHref === href) return;
+  }
+
+  activeThemeLoad = (async () => {
+    const response = await fetch(href, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Failed to load theme stylesheet (${response.status})`);
+    }
+    const css = await response.text();
+    ensureThemeStyleElement().textContent = css;
+    syncThemeLinkHref(href);
+    activeThemeHref = href;
+  })();
+
+  try {
+    await activeThemeLoad;
+  } finally {
+    activeThemeLoad = null;
+  }
+}
+
+export function applyThemePreference(preference: ThemePreference): void {
+  applyThemeDomState(preference);
+  void loadThemeStylesheet(preference.themeId).catch(() => {
+    syncThemeLinkHref(themeStylesheetHref(preference.themeId));
+  });
+}
+
+export async function applyThemePreferenceAsync(preference: ThemePreference): Promise<void> {
+  applyThemeDomState(preference);
+  await loadThemeStylesheet(preference.themeId);
 }
 
 export function storeThemePreference(preference: ThemePreference): void {
@@ -128,7 +185,7 @@ export async function persistThemePreference(
     mode: normalizeThemeMode(preference.mode, preference.themeId),
   };
   storeThemePreference(normalized);
-  applyThemePreference(normalized);
+  await applyThemePreferenceAsync(normalized);
   document.dispatchEvent(new CustomEvent('set-theme', { detail: normalized }));
 
   if (!options.syncApi) return;
@@ -136,7 +193,10 @@ export async function persistThemePreference(
     await fetch('/api/workspace/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ theme: normalized.themeId }),
+      body: JSON.stringify({
+        theme: normalized.themeId,
+        appearance: { themeMode: normalized.mode },
+      }),
     });
   } catch {
     // offline or logged out

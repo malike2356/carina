@@ -1,25 +1,25 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-base: #0f1117;
-  --color-surface: #161921;
-  --color-elevated: #1e2130;
-  --color-overlay: #252838;
-  --color-border: #2a2d3e;
-  --color-border-focus: #22c55e;
-  --color-border-muted: #1e2130;
-  --color-text-primary: #f0f2f5;
-  --color-text-secondary: #8b92a5;
-  --color-text-muted: #4a5068;
-  --color-accent: #22c55e;
-  --color-accent-dim: #166534;
-  --color-accent-hover: #16a34a;
-  --color-danger: #ef4444;
-  --color-danger-dim: #7f1d1d;
-  --color-bubble-user: #1e3a2f;
-  --color-bubble-assistant: #1a1d2e;
-  --color-code-bg: #0d1117;
-  --color-code-text: #e6edf3;
+  --color-base: var(--background, #0f1117);
+  --color-surface: var(--card, #161921);
+  --color-elevated: var(--popover, var(--card, #1e2130));
+  --color-overlay: var(--popover, var(--card, #252838));
+  --color-border: var(--border, #2a2d3e);
+  --color-border-focus: var(--ring, var(--primary, #22c55e));
+  --color-border-muted: var(--border, #1e2130);
+  --color-text-primary: var(--foreground, #f0f2f5);
+  --color-text-secondary: var(--muted-foreground, #8b92a5);
+  --color-text-muted: var(--muted-foreground, #4a5068);
+  --color-accent: var(--primary, #22c55e);
+  --color-accent-dim: color-mix(in srgb, var(--primary, #22c55e) 18%, transparent);
+  --color-accent-hover: var(--primary, #16a34a);
+  --color-danger: var(--destructive, #ef4444);
+  --color-danger-dim: color-mix(in srgb, var(--destructive, #ef4444) 18%, transparent);
+  --color-bubble-user: color-mix(in srgb, var(--primary, #22c55e) 16%, var(--card, #1a1d2e));
+  --color-bubble-assistant: color-mix(in srgb, var(--muted, #262626) 70%, var(--card, #1a1d2e));
+  --color-code-bg: color-mix(in srgb, var(--background, #0d1117) 88%, black);
+  --color-code-text: var(--foreground, #e6edf3);
 }
 
 :root {
@@ -185,4 +185,14 @@ a {
     max-height: none !important;
     border-radius: 0;
   }
+}
+
+html[data-voice-input-active] .theme-switcher-floating {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Radial orbital timeline (launcher embed) */
+.launcher-orbit-timeline .backdrop-blur-lg {
+  backdrop-filter: blur(16px);
 }

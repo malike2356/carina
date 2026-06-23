@@ -351,6 +351,28 @@ export class HoneypotManager {
     return result.rows.map(mapRow);
   }
 
+  async listRecentHoneypots(instanceId?: string, limit = 200): Promise<Honeypot[]> {
+    const capped = Math.min(Math.max(limit, 1), 200);
+    if (instanceId?.trim()) {
+      const result = await this.db.query<HoneypotRow>(
+        `SELECT * FROM honeypots
+         WHERE instance_id = $1
+         ORDER BY created_at DESC
+         LIMIT $2`,
+        [instanceId.trim(), capped],
+      );
+      return result.rows.map(mapRow);
+    }
+
+    const result = await this.db.query<HoneypotRow>(
+      `SELECT * FROM honeypots
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [capped],
+    );
+    return result.rows.map(mapRow);
+  }
+
   async getHoneypot(id: string): Promise<Honeypot | null> {
     const result = await this.db.query<HoneypotRow>(
       `SELECT * FROM honeypots WHERE id = $1`,

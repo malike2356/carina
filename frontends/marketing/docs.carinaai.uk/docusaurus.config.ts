@@ -4,10 +4,11 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 /** Set CARINA_DOCS_MARKETING=1 when building for carinaai.uk/docs embed */
 const marketingEmbed = process.env.CARINA_DOCS_MARKETING === '1';
+const docsBrandTitle = process.env.CARINA_DOCS_BRAND_TITLE?.trim() || 'Carina Docs';
 const docPath = (slug: string) => (marketingEmbed ? `/${slug}` : `/docs/${slug}`);
 
 const config: Config = {
-  title: 'Carina Docs',
+  title: docsBrandTitle,
   tagline: 'One Memory. One Agent. Everywhere. User guides and developer reference.',
   favicon: 'img/favicon.ico',
 
@@ -107,6 +108,7 @@ const config: Config = {
             {label: 'Getting started', to: docPath('user/getting-started')},
             {label: 'Skill packs', to: docPath('user/skill-packs/overview')},
             {label: 'Carina Cloud', to: docPath('user/carina-cloud')},
+            {label: 'White-label guide', to: docPath('user/white-label/getting-started')},
             {label: 'Configuration', to: docPath('user/configuration')},
           ],
         },

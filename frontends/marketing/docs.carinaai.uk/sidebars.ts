@@ -110,6 +110,20 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'White-label',
+      items: [
+        'user/white-label/getting-started',
+        'user/white-label/branding',
+        'user/white-label/custom-domains',
+        'user/white-label/skill-packs',
+        'user/white-label/billing-and-plans',
+        'user/white-label/partner-reseller',
+        'user/white-label/customer-handoff',
+        'user/white-label/support-and-troubleshooting',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Integrations',
       items: ['user/integrations/propreneur-dogfood'],
     },

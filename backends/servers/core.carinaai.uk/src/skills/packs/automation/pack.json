@@ -1,0 +1,9 @@
+{
+  "name": "automation",
+  "version": "1.0.0",
+  "description": "n8n workflow design from natural language and knowledge-base RAG over local note vaults",
+  "author": "VERLOX Ltd",
+  "category": "automation",
+  "optional": true,
+  "skillCount": 2
+}

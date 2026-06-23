@@ -184,3 +184,70 @@ describe('GET /api/quarantine/tools', () => {
     expect(res.body.quarantined).toEqual([]);
   });
 });
+
+describe('GET /api/quarantine/list', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    queryMock.mockReset();
+    publishMock.mockReset();
+    mockRedis = createMockRedis();
+    queryMock.mockResolvedValue({ rows: [{ count: '2' }] });
+  });
+
+  it('lists active tool and session quarantines', async () => {
+    const now = Date.now();
+    mockRedis.store.set(`scout:quarantine:${INSTANCE}:shell-exec`, {
+      value: 'suspicious output',
+      expiresAt: now + 60_000,
+    });
+    mockRedis.store.set('scout:shield:sess-1', {
+      value: JSON.stringify({
+        sessionId: 'sess-1',
+        mode: 'quarantine',
+        reason: 'repeated injection',
+        changedAt: '2026-06-22T10:00:00.000Z',
+        changedBy: 'auto-remediation',
+      }),
+      expiresAt: now + 60_000,
+    });
+
+    const app = await makeApp();
+    const res = await request(app)
+      .get('/api/quarantine/list')
+      .set('X-Scout-Key', VALID_KEY);
+
+    expect(res.status).toBe(200);
+    expect(res.body.released_7d).toBe(2);
+    expect(res.body.quarantined).toHaveLength(2);
+    expect(res.body.quarantined.some((entry: { type: string }) => entry.type === 'tool')).toBe(true);
+    expect(res.body.quarantined.some((entry: { type: string }) => entry.type === 'session')).toBe(true);
+  });
+});
+
+describe('POST /api/quarantine/release', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    queryMock.mockReset();
+    publishMock.mockReset();
+    mockRedis = createMockRedis();
+    queryMock.mockResolvedValue({ rows: [] });
+  });
+
+  it('releases a tool quarantine by id', async () => {
+    const now = Date.now();
+    mockRedis.store.set(`scout:quarantine:${INSTANCE}:shell-exec`, {
+      value: 'test',
+      expiresAt: now + 60_000,
+    });
+
+    const app = await makeApp();
+    const res = await request(app)
+      .post('/api/quarantine/release')
+      .set('X-Scout-Key', VALID_KEY)
+      .send({ id: `tool:${INSTANCE}:shell-exec` });
+
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(mockRedis.store.has(`scout:quarantine:${INSTANCE}:shell-exec`)).toBe(false);
+  });
+});

@@ -4,36 +4,40 @@ import { useEffect, useMemo, useState } from 'react';
 import { Moon, Palette, Sun, X } from 'lucide-react';
 import { MULTI_THEMES } from '@/lib/themes';
 import {
-  applyThemePreference,
   persistThemePreference,
-  readCookieThemePreference,
-  readStoredThemePreference,
   type ThemeMode,
   type ThemePreference,
 } from '@/lib/theme-runtime';
 import { cn } from '@/lib/utils';
 
+const DEFAULT_THEME_PREFERENCE: ThemePreference = {
+  themeId: 'default',
+  mode: 'dark',
+};
+
 interface ThemeSwitcherProps {
   className?: string;
   variant?: 'compact' | 'panel';
+  /** Open the menu above the trigger (use for bottom-fixed or sidebar footers). */
+  dropUp?: boolean;
   syncApi?: boolean;
+  initialPreference?: ThemePreference;
   onChange?: (preference: ThemePreference) => void;
 }
 
-function readCurrentPreference(): ThemePreference {
-  return (
-    readStoredThemePreference() ??
-    readCookieThemePreference() ?? {
-      themeId: 'default',
-      mode: 'dark',
-    }
-  );
-}
-
-export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, onChange }: ThemeSwitcherProps) {
+export function ThemeSwitcher({
+  className,
+  variant = 'compact',
+  dropUp = false,
+  syncApi = true,
+  initialPreference,
+  onChange,
+}: ThemeSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [preference, setPreference] = useState<ThemePreference>(readCurrentPreference);
+  const [preference, setPreference] = useState<ThemePreference>(
+    initialPreference ?? DEFAULT_THEME_PREFERENCE,
+  );
 
   useEffect(() => {
     function onThemeChange(event: Event) {
@@ -62,7 +66,6 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
   async function selectTheme(themeId: string) {
     const next = { ...preference, themeId };
     setPreference(next);
-    applyThemePreference(next);
     onChange?.(next);
     await persistThemePreference(next, { syncApi });
   }
@@ -70,7 +73,6 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
   async function selectMode(mode: ThemeMode) {
     const next = { ...preference, mode };
     setPreference(next);
-    applyThemePreference(next);
     onChange?.(next);
     await persistThemePreference(next, { syncApi });
   }
@@ -78,13 +80,20 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
   const currentLabel =
     MULTI_THEMES.find((theme) => theme.id === preference.themeId)?.label ?? preference.themeId;
 
+  const panelSurface =
+    'border-[color:var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)] shadow-2xl ring-1 ring-[color:var(--border)]';
+  const fieldSurface =
+    'border-[color:var(--border)] bg-[var(--muted)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]';
+
   return (
     <div className={cn('relative', className)}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          'inline-flex items-center gap-2 rounded-md border border-border bg-surface text-text-secondary transition-colors hover:bg-elevated hover:text-text-primary',
+          'inline-flex items-center gap-2 rounded-md border transition-colors',
+          'border-[color:var(--border)] bg-[var(--card)] text-[var(--foreground)]',
+          'hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]',
           variant === 'compact' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm',
         )}
         aria-expanded={open}
@@ -97,21 +106,30 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
       {open ? (
         <div
           className={cn(
-            'absolute z-50 mt-2 rounded-lg border border-border bg-overlay shadow-xl',
-            variant === 'compact' ? 'right-0 w-72' : 'left-0 w-full max-w-xl',
+            'absolute z-50 rounded-lg',
+            panelSurface,
+            dropUp ? 'bottom-full mb-2' : 'top-full mt-2',
+            variant === 'compact' || dropUp ? 'right-0 w-72' : 'left-0 w-full max-w-xl',
           )}
         >
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <div className="flex items-center gap-2 border-b border-[color:var(--border)] px-3 py-2">
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search themes"
-              className="flex-1 rounded-md border border-border bg-base px-2.5 py-1.5 text-xs outline-none focus:border-border-focus"
+              className={cn(
+                'flex-1 rounded-md px-2.5 py-1.5 text-xs outline-none focus:border-[color:var(--ring)]',
+                fieldSurface,
+              )}
             />
             <button
               type="button"
               onClick={() => void selectMode(preference.mode === 'dark' ? 'light' : 'dark')}
-              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-[11px] text-text-secondary hover:bg-elevated"
+              className={cn(
+                'inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium',
+                fieldSurface,
+                'hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]',
+              )}
               title="Toggle light or dark mode"
             >
               {preference.mode === 'dark' ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
@@ -120,14 +138,19 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-md p-1 text-text-muted hover:bg-elevated hover:text-text-primary"
+              className="rounded-md p-1 text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]"
               aria-label="Close theme switcher"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <div className="max-h-72 overflow-y-auto p-2">
+          <div
+            className={cn(
+              'overflow-y-auto p-2',
+              dropUp ? 'max-h-[min(18rem,calc(100dvh-6rem))]' : 'max-h-72',
+            )}
+          >
             <div className="grid gap-1">
               {filteredThemes.map((theme) => {
                 const active = theme.id === preference.themeId;
@@ -139,17 +162,26 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
                     className={cn(
                       'flex items-center justify-between rounded-md px-2.5 py-2 text-left text-xs transition-colors',
                       active
-                        ? 'bg-accent-dim text-text-primary'
-                        : 'text-text-secondary hover:bg-elevated hover:text-text-primary',
+                        ? 'bg-[var(--accent)] text-[var(--accent-foreground)]'
+                        : 'text-[var(--foreground)] hover:bg-[var(--accent)] hover:text-[var(--accent-foreground)]',
                     )}
                   >
                     <span>{theme.label}</span>
-                    <span className="font-mono text-[10px] text-text-muted">{theme.id}</span>
+                    <span
+                      className={cn(
+                        'font-mono text-[10px]',
+                        active ? 'text-[var(--accent-foreground)]/80' : 'text-[var(--muted-foreground)]',
+                      )}
+                    >
+                      {theme.id}
+                    </span>
                   </button>
                 );
               })}
               {!filteredThemes.length ? (
-                <p className="px-2 py-4 text-center text-xs text-text-muted">No themes match your search.</p>
+                <p className="px-2 py-4 text-center text-xs text-[var(--muted-foreground)]">
+                  No themes match your search.
+                </p>
               ) : null}
             </div>
           </div>
@@ -159,10 +191,34 @@ export function ThemeSwitcher({ className, variant = 'compact', syncApi = true, 
   );
 }
 
-export function ThemeSwitcherFloating({ syncApi = false }: { syncApi?: boolean }) {
+export function ThemeSwitcherFloating({
+  syncApi = false,
+  position = 'bottom-right',
+  inset = 'default',
+  initialPreference,
+}: {
+  syncApi?: boolean;
+  position?: 'bottom-right' | 'top-right';
+  /** Lift above fixed footers such as the chat composer. */
+  inset?: 'default' | 'above-composer';
+  initialPreference?: ThemePreference;
+}) {
+  const dropUp = position === 'bottom-right';
+  const positionClass =
+    position === 'top-right'
+      ? 'fixed top-3 right-3 sm:top-4 sm:right-4'
+      : inset === 'above-composer'
+        ? 'fixed bottom-48 right-4 sm:bottom-44'
+        : 'fixed bottom-4 right-4';
+
   return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <ThemeSwitcher variant="panel" syncApi={syncApi} />
+    <div className={cn('theme-switcher-floating', positionClass, 'z-30')}>
+      <ThemeSwitcher
+        variant="compact"
+        dropUp={dropUp}
+        syncApi={syncApi}
+        initialPreference={initialPreference}
+      />
     </div>
   );
 }

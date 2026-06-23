@@ -32,7 +32,7 @@ export default function LoginPage() {
       const message = result.error.message ?? 'Sign in failed';
       setError(
         message.includes('Invalid email or password')
-          ? 'Invalid email or password. Use the password from when you registered on app.carinaai.uk, or create a new account.'
+          ? `Invalid email or password. Use the password from when you registered on ${brand.productName}, or create a new account.`
           : message,
       );
       setPending(false);
@@ -63,11 +63,18 @@ export default function LoginPage() {
         </Button>
       </form>
       <p className="text-sm text-text-secondary">
-        No account on app.carinaai.uk yet?{' '}
+        No account yet?{' '}
         <Link href="/register" className="font-medium text-accent">
           Create one here
         </Link>
-        . Accounts are separate from local dev.
+        {brand.supportEmail ? (
+          <>
+            . Need help? Contact{' '}
+            <a href={`mailto:${brand.supportEmail}`} className="text-accent hover:underline">
+              {brand.supportName ?? brand.supportEmail}
+            </a>
+          </>
+        ) : null}
       </p>
     </main>
   );

@@ -27,10 +27,12 @@ describe('isCasualMessage', () => {
 });
 
 describe('buildConversationDisciplineBlock', () => {
-  it('covers casual and group chat rules', () => {
+  it('covers casual, group chat, and response delivery rules', () => {
     const block = buildConversationDisciplineBlock();
     expect(block).toContain('Casual messages:');
     expect(block).toContain('Group chats:');
+    expect(block).toContain('Response delivery:');
+    expect(block).toContain('Lead with the answer');
     expect(block).toContain('NO_RESPONSE_NEEDED');
   });
 });

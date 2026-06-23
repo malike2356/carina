@@ -1,5 +1,7 @@
+import { resolveAgentDisplayName } from '../product/brand-compat.js';
+
 export function getCarinaAgentName(): string {
-  return (process.env.CARINA_AGENT_NAME ?? 'Carina').trim() || 'Carina';
+  return resolveAgentDisplayName();
 }
 
 /** Default agent identity fallback (ASP-12); adapted for Carina / VERLOX. */

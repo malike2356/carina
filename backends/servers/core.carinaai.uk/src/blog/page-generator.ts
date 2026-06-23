@@ -1,61 +1,33 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ensureIncidentBlogSchema, getPublishedIncidents } from './store.js';
-import type { BlogIncident, IncidentCategory } from './types.js';
+import { ensureIncidentBlogSchema, ensurePublishedIncidentSeed, getPublishedIncidents } from './store.js';
+import type { BlogIncident } from './types.js';
+import {
+  archiveYearHref,
+  categoryLabel,
+  excerptFromHtml,
+  groupIncidentsByYear,
+  incidentHref,
+  INCIDENTS_PER_PAGE,
+  listPageHref,
+  paginateIncidents,
+  sortPublishedIncidents,
+} from './page-utils.js';
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const OUTPUT_PATH = path.join(root, '..', 'labyrinthscout.com', 'incidents', 'index.html');
-const TEMP_PATH = `${OUTPUT_PATH}.tmp`;
+const coreRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const DEFAULT_OUTPUT_BASES = [
+  path.join(coreRoot, 'labyrinthscout.com', 'incidents'),
+  path.join(coreRoot, '..', '..', 'frontends', 'marketing', 'labyrinthscout.com', 'incidents'),
+];
 
-const CATEGORY_META: Record<IncidentCategory, {
-  eyebrowClass: string;
-  icon: string;
-  label: string;
-  h2: string;
-  intro: string;
-  commentStart: string;
-  commentEnd: string;
-}> = {
-  financial: {
-    eyebrowClass: 'eyebrow-red',
-    icon: 'ti-currency-dollar',
-    label: 'Financial damage',
-    h2: 'The bills that arrived without warning.',
-    intro: 'AI agents run 24/7. They loop, retry, and chain calls without human awareness. Without budget controls, they are an open meter with no circuit breaker.',
-    commentStart: '<!-- CATEGORY 1: FINANCIAL -->',
-    commentEnd: '<!-- CATEGORY 2: SECURITY -->',
-  },
-  security: {
-    eyebrowClass: 'eyebrow-red',
-    icon: 'ti-lock-open',
-    label: 'Security failures',
-    h2: 'Agents with access are agents with attack surface.',
-    intro: 'Shell access, file system access, and network egress are necessary for capable agents. Without governance they become the attack surface.',
-    commentStart: '<!-- CATEGORY 2: SECURITY -->',
-    commentEnd: '<!-- CATEGORY 3: BRAND DAMAGE -->',
-  },
-  brand: {
-    eyebrowClass: 'eyebrow-amber',
-    icon: 'ti-brand-x',
-    label: 'Brand damage',
-    h2: 'Public-facing AI requires one bad prompt to go viral.',
-    intro: 'Every unguarded public AI is one adversarial user away from a 24-hour news cycle. Content policy enforcement and human-in-the-loop review for binding outputs are not optional at scale.',
-    commentStart: '<!-- CATEGORY 3: BRAND DAMAGE -->',
-    commentEnd: '<!-- CATEGORY 4: LEGAL LIABILITY -->',
-  },
-  legal: {
-    eyebrowClass: 'eyebrow-amber',
-    icon: 'ti-gavel',
-    label: 'Legal and compliance liability',
-    h2: 'Courts hold companies responsible for what their AI says.',
-    intro: 'The "chatbot did it" defense has failed in court. GDPR fines for unmonitored AI-driven data exfiltration reach 4% of global annual turnover. Precedents are being set now.',
-    commentStart: '<!-- CATEGORY 4: LEGAL LIABILITY -->',
-    commentEnd: '<!-- SCOUT ANSWER TABLE -->',
-  },
-};
-
-const CATEGORY_ORDER: IncidentCategory[] = ['financial', 'security', 'brand', 'legal'];
+function resolveOutputBases(): string[] {
+  const envBase = process.env.INCIDENT_BLOG_OUTPUT_DIR?.trim();
+  const bases = envBase
+    ? [path.join(envBase, 'incidents'), ...DEFAULT_OUTPUT_BASES]
+    : DEFAULT_OUTPUT_BASES;
+  return [...new Set(bases.map((entry) => path.resolve(entry)))];
+}
 
 function escapeHtml(value: string): string {
   return value
@@ -65,88 +37,8 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function renderIncident(incident: BlogIncident): string {
-  const sources = incident.sources.length
-    ? incident.sources
-        .map((s) => `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.label)}</a>`)
-        .join(' | ')
-    : 'No source linked';
+function sharedStyles(): string {
   return `
-    <article class="ir-incident" id="${escapeHtml(incident.slug)}">
-      <header class="ir-incident-header">
-        <div>
-          <span class="ir-incident-company">${escapeHtml(incident.company)}</span>
-          <span class="ir-incident-damage">${escapeHtml(incident.damage)}</span>
-        </div>
-        <span class="ir-incident-date">${escapeHtml(incident.dateOccurred)}</span>
-      </header>
-      <p class="ir-incident-body">${incident.bodyHtml}</p>
-      <footer class="ir-incident-footer">
-        <span class="ir-incident-source">Source: ${sources}</span>
-        <span class="ir-scout-fix">Scout fix: ${incident.scoutFixHtml}</span>
-      </footer>
-    </article>`;
-}
-
-function renderCategorySection(meta: typeof CATEGORY_META[IncidentCategory], incidents: BlogIncident[]): string {
-  return `
-${meta.commentStart}
-<div class="container">
-  <section class="ir-category">
-    <div class="ir-category-eyebrow ${meta.eyebrowClass}">
-      <i class="ti ${meta.icon}"></i>
-      ${meta.label}
-    </div>
-    <h2>${meta.h2}</h2>
-    <p class="ir-category-intro">${meta.intro}</p>
-    ${incidents.map(renderIncident).join('\n')}
-  </section>
-</div>
-${meta.commentEnd}`;
-}
-
-function renderPage(incidents: BlogIncident[]): string {
-  const count = incidents.length;
-  const byCategory = new Map<IncidentCategory, BlogIncident[]>();
-  for (const cat of CATEGORY_ORDER) byCategory.set(cat, []);
-  for (const incident of incidents) {
-    const bucket = byCategory.get(incident.category);
-    if (bucket) bucket.push(incident);
-  }
-
-  const categorySections = CATEGORY_ORDER
-    .filter((cat) => (byCategory.get(cat)?.length ?? 0) > 0)
-    .map((cat) => renderCategorySection(CATEGORY_META[cat], byCategory.get(cat) ?? []))
-    .join('\n');
-
-  const emptyPlaceholder = count === 0 ? `
-<div class="container">
-  <section class="ir-category">
-    <div class="ir-category-eyebrow eyebrow-red"><i class="ti ti-clock"></i> Pending</div>
-    <h2>No published incidents yet.</h2>
-    <p class="ir-category-intro">Publish an incident from Carina or the admin panel and it will appear here.</p>
-  </section>
-</div>` : '';
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#06090f">
-  <title>The AI Agent Incident Record - Labyrinth Scout</title>
-  <meta name="description" content="${count} documented incidents where AI agents without oversight caused real financial, security, and brand damage. Sourced, dated, and linked.">
-  <meta property="og:title" content="The AI Agent Incident Record">
-  <meta property="og:description" content="$500M in one month. 13-hour cloud outage. rm -rf on production. These are not predictions. They happened.">
-  <meta property="og:url" content="https://labyrinthscout.com/incidents/">
-  <meta property="og:type" content="article">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  <link rel="icon" href="/assets/pwa/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="/assets/pwa/favicon.ico" sizes="any">
-  <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --bg: #06090f; --bg-lift: #0c1118; --bg-card: #111722;
@@ -155,204 +47,152 @@ function renderPage(incidents: BlogIncident[]): string {
       --red: #e63946; --amber-warn: #f59e0b;
       --text-primary: #f0f4f8; --text-mid: #8a9bb0; --text-dim: #4d6070;
       --ff-sans: 'Inter', system-ui, sans-serif;
-      --r: 6px; --r-md: 10px; --r-lg: 16px;
+      --r: 6px; --r-md: 10px; --r-lg: 14px;
       --transition: 200ms cubic-bezier(0.4,0,0.2,1);
     }
     html { scroll-behavior: smooth; overflow-x: clip; }
-    body { font-family: var(--ff-sans); background: var(--bg); color: var(--text-primary); line-height: 1.65; overflow-x: clip; }
-    .container { max-width: 860px; margin: 0 auto; padding: 0 1.5rem; }
-    nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: 60px; background: rgba(6,9,15,0.90); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); }
-    .nav-inner { height: 100%; display: flex; align-items: center; justify-content: space-between; max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
-    .nav-logo { font-size: 1.05rem; font-weight: 600; color: var(--text-primary); text-decoration: none; }
-    .nav-logo span { color: var(--green); }
-    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
-    .nav-right a { font-size: 0.8125rem; color: var(--text-mid); text-decoration: none; transition: color var(--transition); }
-    .nav-right a:hover { color: var(--text-primary); }
-    .nav-right .nav-cta { background: var(--green); color: #06090f; padding: 0.4rem 1rem; border-radius: var(--r); font-weight: 600; }
-    .nav-right .nav-cta:hover { opacity: 0.88; color: #06090f; }
-    @media (max-width: 600px) { .nav-right { gap: 1rem; } .nav-right a:not(.nav-cta) { display: none; } }
-    .ir-hero { padding: 8rem 0 4rem; border-bottom: 1px solid var(--border); }
-    .ir-eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--red); font-weight: 600; padding: 0.3rem 0.75rem; border: 1px solid rgba(230,57,70,0.25); border-radius: 999px; background: rgba(230,57,70,0.06); margin-bottom: 1.75rem; }
-    .ir-hero h1 { font-size: clamp(2rem, 4.5vw, 3rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; color: var(--text-primary); margin-bottom: 1.25rem; }
-    .ir-hero h1 span { color: var(--red); }
-    .ir-hero-sub { font-size: 1rem; color: var(--text-mid); max-width: 560px; line-height: 1.7; margin-bottom: 2rem; }
-    .ir-source-note { font-size: 0.75rem; color: var(--text-dim); max-width: 600px; line-height: 1.6; padding: 0.85rem 1.1rem; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--bg-card); }
-    .ir-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: var(--r-lg); border: 1px solid var(--border); overflow: hidden; margin: 3rem 0; }
-    @media (max-width: 700px) { .ir-stats { grid-template-columns: repeat(2, 1fr); } }
-    .ir-stat { padding: 1.35rem 1.25rem; border-right: 1px solid var(--border); background: var(--bg-card); }
-    .ir-stat:last-child { border-right: none; }
-    @media (max-width: 700px) { .ir-stat:nth-child(2) { border-right: none; } .ir-stat:nth-child(3) { border-top: 1px solid var(--border); } .ir-stat:nth-child(4) { border-right: none; border-top: 1px solid var(--border); } }
-    .ir-stat-value { font-size: 1.65rem; font-weight: 700; letter-spacing: -0.03em; color: var(--red); line-height: 1; margin-bottom: 0.3rem; }
-    .ir-stat-label { font-size: 0.73rem; color: var(--text-dim); line-height: 1.4; }
-    .ir-category { padding: 3.5rem 0; border-bottom: 1px solid var(--border); }
-    .ir-category-eyebrow { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.67rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 999px; margin-bottom: 1.25rem; }
-    .eyebrow-red { color: var(--red); border: 1px solid rgba(230,57,70,0.25); background: rgba(230,57,70,0.06); }
-    .eyebrow-amber { color: var(--amber-warn); border: 1px solid rgba(245,158,11,0.25); background: rgba(245,158,11,0.06); }
-    .eyebrow-green { color: var(--green); border: 1px solid rgba(22,201,126,0.25); background: rgba(22,201,126,0.06); }
-    .ir-category h2 { font-size: 1.55rem; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; color: var(--text-primary); margin-bottom: 0.6rem; }
-    .ir-category-intro { font-size: 0.9rem; color: var(--text-mid); max-width: 540px; line-height: 1.65; margin-bottom: 2rem; }
-    .ir-incident { border-radius: var(--r-lg); background: var(--bg-card); border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1rem; transition: border-color var(--transition); }
-    .ir-incident:hover { border-color: var(--border-mid); }
-    .ir-incident:last-child { margin-bottom: 0; }
-    .ir-incident-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.85rem; }
-    .ir-incident-company { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); display: block; margin-bottom: 0.25rem; }
-    .ir-incident-damage { font-size: 1.15rem; font-weight: 700; color: var(--red); letter-spacing: -0.02em; line-height: 1.1; display: block; }
-    .ir-incident-date { font-size: 0.72rem; color: var(--text-dim); white-space: nowrap; flex-shrink: 0; margin-top: 0.15rem; }
-    .ir-incident-body { font-size: 0.88rem; color: var(--text-mid); line-height: 1.65; margin-bottom: 1rem; }
-    .ir-incident-footer { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding-top: 0.85rem; border-top: 1px solid var(--border); }
-    .ir-incident-source { font-size: 0.72rem; color: var(--text-dim); flex: 1; min-width: 160px; }
-    .ir-incident-source a { color: var(--text-dim); text-decoration: none; transition: color var(--transition); }
-    .ir-incident-source a:hover { color: var(--text-mid); }
-    .ir-scout-fix { font-size: 0.72rem; color: var(--green); font-weight: 500; display: flex; align-items: flex-start; gap: 0.3rem; flex: 1; min-width: 160px; }
-    .ir-scout-fix::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; margin-top: 0.35rem; }
-    .ir-answer-section { padding: 3.5rem 0; border-top: 1px solid rgba(22,201,126,0.15); border-bottom: 1px solid var(--border); }
-    .ir-answer-table { width: 100%; border-collapse: collapse; border-radius: var(--r-lg); overflow: hidden; margin-top: 2rem; font-size: 0.82rem; }
-    .ir-answer-table th { padding: 0.85rem 1rem; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; }
-    .ir-answer-table th:first-child { background: rgba(255,255,255,0.03); color: var(--text-dim); border: 1px solid var(--border); border-right: none; width: 30%; }
-    .ir-answer-table th:nth-child(2) { background: rgba(230,57,70,0.06); color: var(--red); border: 1px solid rgba(230,57,70,0.15); border-right: none; width: 32%; }
-    .ir-answer-table th:last-child { background: rgba(22,201,126,0.08); color: var(--green); border: 1px solid rgba(22,201,126,0.2); width: 38%; }
-    .ir-answer-table td { padding: 0.75rem 1rem; border-left: 1px solid; border-right: 1px solid; vertical-align: top; line-height: 1.5; }
-    .ir-answer-table tr:not(:last-child) td { border-bottom: 1px solid; }
-    .ir-answer-table tr:last-child td { border-bottom: 1px solid; }
-    .ir-answer-table td:first-child { color: var(--text-mid); border-color: var(--border); background: rgba(255,255,255,0.01); }
-    .ir-answer-table td:nth-child(2) { color: rgba(230,57,70,0.85); font-size: 0.78rem; border-color: rgba(230,57,70,0.12); background: rgba(230,57,70,0.03); }
-    .ir-answer-table td:last-child { color: var(--text-primary); font-weight: 500; border-color: rgba(22,201,126,0.12); background: rgba(22,201,126,0.03); font-size: 0.78rem; }
-    .ir-answer-table tr:last-child td:first-child { border-bottom-color: var(--border); }
-    .ir-answer-table tr:last-child td:nth-child(2) { border-bottom-color: rgba(230,57,70,0.12); }
-    .ir-answer-table tr:last-child td:last-child { border-bottom-color: rgba(22,201,126,0.12); }
-    @media (max-width: 640px) { .ir-answer-table { display: block; overflow-x: auto; } }
-    .ir-subscribe { padding: 3rem 0; border-bottom: 1px solid var(--border); text-align: center; }
-    .ir-subscribe h3 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 0.5rem; }
-    .ir-subscribe p { font-size: 0.88rem; color: var(--text-mid); margin-bottom: 1.5rem; }
-    .ir-subscribe-form { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; max-width: 460px; margin: 0 auto; }
-    .ir-subscribe-form input[type="email"] { flex: 1; min-width: 200px; padding: 0.75rem 1rem; border-radius: var(--r-md); border: 1px solid var(--border-mid); background: var(--bg-lift); color: var(--text-primary); font-family: var(--ff-sans); font-size: 0.88rem; }
+    body { font-family: var(--ff-sans); background: var(--bg); color: var(--text-primary); line-height: 1.6; overflow-x: clip; }
+    .container { max-width: 760px; margin: 0 auto; padding: 0 1.25rem; }
+    .ir-site-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 200; height: 56px; background: rgba(6,9,15,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+    .ir-site-nav .nav-inner { height: 100%; display: flex; align-items: center; justify-content: space-between; max-width: 960px; margin: 0 auto; padding: 0 1.25rem; }
+    .ir-site-nav .nav-logo { font-size: 1rem; font-weight: 600; color: var(--text-primary); text-decoration: none; letter-spacing: -0.01em; }
+    .ir-site-nav .nav-logo span { color: var(--green); }
+    .ir-site-nav .nav-links { display: flex; align-items: center; gap: 1.25rem; }
+    .ir-site-nav .nav-links a { font-size: 0.8125rem; color: var(--text-mid); text-decoration: none; transition: color var(--transition); }
+    .ir-site-nav .nav-links a:hover, .ir-site-nav .nav-links a.is-active { color: var(--text-primary); }
+    .ir-site-nav .nav-links a.nav-cta { background: var(--green); color: #06090f; padding: 0.38rem 0.9rem; border-radius: var(--r); font-weight: 600; }
+    .ir-site-nav .nav-links a.nav-cta:hover { opacity: 0.9; color: #06090f; }
+    @media (max-width: 720px) { .ir-site-nav .nav-links a.nav-hide-sm { display: none; } }
+    .ir-hero-slim { padding: 5.5rem 0 1.75rem; border-bottom: 1px solid var(--border); }
+    .ir-hero-compact { padding: 5.5rem 0 1.5rem; border-bottom: 1px solid var(--border); }
+    .ir-kicker { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 0.65rem; }
+    .ir-hero-slim h1, .ir-hero-compact h1 { font-size: clamp(1.75rem, 3.5vw, 2.35rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.65rem; }
+    .ir-hero-lead { font-size: 0.95rem; color: var(--text-mid); max-width: 540px; line-height: 1.65; }
+    .ir-hero-stats { display: flex; flex-wrap: wrap; gap: 1rem 1.5rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+    .ir-hero-stat { min-width: 120px; }
+    .ir-hero-stat-value { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); letter-spacing: -0.02em; }
+    .ir-hero-stat-label { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.15rem; max-width: 160px; line-height: 1.4; }
+    .ir-main { padding: 1.75rem 0 3rem; }
+    .ir-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1rem; margin-bottom: 1.25rem; }
+    .ir-toolbar h2 { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); }
+    .ir-toolbar-meta { font-size: 0.78rem; color: var(--text-dim); }
+    .ir-archive-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; }
+    .ir-archive-bar-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-right: 0.25rem; }
+    .ir-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-mid); font-size: 0.78rem; text-decoration: none; transition: border-color var(--transition), color var(--transition); }
+    .ir-chip:hover { border-color: var(--border-mid); color: var(--text-primary); }
+    .ir-chip.is-active { border-color: rgba(22,201,126,0.35); color: var(--green); background: rgba(22,201,126,0.06); }
+    .ir-feed { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--bg-card); }
+    .ir-entry { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.1rem; text-decoration: none; color: inherit; border-bottom: 1px solid var(--border); transition: background var(--transition); }
+    .ir-entry:last-child { border-bottom: none; }
+    .ir-entry:hover { background: rgba(255,255,255,0.02); }
+    .ir-entry-main { flex: 1; min-width: 0; }
+    .ir-entry-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.65rem; margin-bottom: 0.35rem; font-size: 0.72rem; color: var(--text-dim); }
+    .ir-badge { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 999px; border: 1px solid var(--border-mid); color: var(--text-mid); }
+    .ir-badge.financial, .ir-badge.security { color: #f08a93; border-color: rgba(230,57,70,0.22); }
+    .ir-badge.brand, .ir-badge.legal { color: #d4a056; border-color: rgba(245,158,11,0.22); }
+    .ir-entry-title { font-size: 0.98rem; font-weight: 600; letter-spacing: -0.015em; line-height: 1.35; color: var(--text-primary); margin-bottom: 0.2rem; }
+    .ir-entry-damage { font-size: 0.82rem; color: var(--text-mid); line-height: 1.45; }
+    .ir-entry-arrow { flex-shrink: 0; color: var(--text-dim); font-size: 1rem; transition: color var(--transition), transform var(--transition); }
+    .ir-entry:hover .ir-entry-arrow { color: var(--green); transform: translateX(2px); }
+    .ir-empty { padding: 2rem 1.1rem; color: var(--text-mid); font-size: 0.9rem; }
+    .ir-pagination-wrap { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+    .ir-pagination-label { font-size: 0.78rem; color: var(--text-dim); }
+    .ir-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+    .ir-page-link, .ir-page-current { min-width: 2rem; text-align: center; padding: 0.4rem 0.65rem; border-radius: var(--r); font-size: 0.8rem; text-decoration: none; border: 1px solid transparent; }
+    .ir-page-link { color: var(--text-mid); border-color: var(--border); background: var(--bg-card); transition: border-color var(--transition), color var(--transition); }
+    .ir-page-link:hover { color: var(--text-primary); border-color: var(--border-mid); }
+    .ir-page-current { color: var(--text-primary); background: rgba(22,201,126,0.08); border-color: rgba(22,201,126,0.25); font-weight: 600; }
+    .ir-breadcrumb { padding-top: 5.5rem; font-size: 0.78rem; color: var(--text-dim); }
+    .ir-breadcrumb a { color: var(--text-mid); text-decoration: none; }
+    .ir-breadcrumb a:hover { color: var(--green); }
+    .ir-article { padding: 1.25rem 0 2.5rem; }
+    .ir-article-header { margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .ir-article-company { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim); display: block; margin: 0.5rem 0 0.35rem; }
+    .ir-article-title { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; margin-bottom: 0.45rem; }
+    .ir-article-damage { font-size: 1rem; font-weight: 600; color: #f08a93; margin-bottom: 0.5rem; }
+    .ir-article-meta { font-size: 0.78rem; color: var(--text-dim); }
+    .ir-article-body { font-size: 0.94rem; color: var(--text-mid); line-height: 1.75; margin-bottom: 1.25rem; }
+    .ir-article-body p { margin-bottom: 0.85rem; }
+    .ir-article-scout { border-radius: var(--r-lg); border: 1px solid rgba(22,201,126,0.18); background: rgba(22,201,126,0.04); padding: 0.95rem 1rem; margin-bottom: 1rem; }
+    .ir-article-scout-label { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--green); margin-bottom: 0.35rem; }
+    .ir-article-scout-body { font-size: 0.86rem; color: var(--text-primary); line-height: 1.6; }
+    .ir-article-sources { font-size: 0.78rem; color: var(--text-dim); }
+    .ir-article-sources a { color: var(--text-mid); text-decoration: none; }
+    .ir-article-sources a:hover { color: var(--green); }
+    .ir-article-nav { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1.25rem; }
+    .ir-subscribe-compact { margin-top: 2.5rem; padding: 1.25rem 0; border-top: 1px solid var(--border); }
+    .ir-subscribe-compact h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
+    .ir-subscribe-compact p { font-size: 0.82rem; color: var(--text-mid); margin-bottom: 0.85rem; }
+    .ir-subscribe-form { display: flex; gap: 0.65rem; flex-wrap: wrap; max-width: 420px; }
+    .ir-subscribe-form input[type="email"] { flex: 1; min-width: 180px; padding: 0.65rem 0.85rem; border-radius: var(--r-md); border: 1px solid var(--border-mid); background: var(--bg-lift); color: var(--text-primary); font-family: var(--ff-sans); font-size: 0.85rem; }
     .ir-subscribe-form input[type="email"]:focus { outline: none; border-color: var(--green); }
-    .ir-subscribe-message { min-height: 1.4em; font-size: 0.82rem; color: var(--text-mid); margin-top: 0.75rem; }
-    .ir-cta { padding: 5rem 0; text-align: center; }
-    .ir-cta h2 { font-size: clamp(1.75rem, 3.5vw, 2.5rem); font-weight: 700; letter-spacing: -0.025em; line-height: 1.1; margin-bottom: 1rem; }
-    .ir-cta p { font-size: 0.95rem; color: var(--text-mid); max-width: 420px; margin: 0 auto 2.25rem; line-height: 1.7; }
-    .ir-cta-actions { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; }
-    .btn-primary { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--green); color: #06090f; padding: 0.75rem 1.5rem; border-radius: var(--r-md); font-size: 0.9rem; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: var(--ff-sans); transition: opacity var(--transition), transform var(--transition); }
-    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); color: #06090f; }
-    .btn-secondary { display: inline-flex; align-items: center; gap: 0.5rem; background: transparent; color: var(--text-mid); padding: 0.75rem 1.5rem; border-radius: var(--r-md); font-size: 0.9rem; font-weight: 500; text-decoration: none; border: 1px solid var(--border-mid); transition: color var(--transition), border-color var(--transition); }
+    .ir-subscribe-message { min-height: 1.2em; font-size: 0.78rem; color: var(--text-mid); margin-top: 0.55rem; }
+    .btn-primary, .btn-secondary { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.65rem 1.1rem; border-radius: var(--r-md); font-size: 0.85rem; font-weight: 600; text-decoration: none; font-family: var(--ff-sans); transition: opacity var(--transition), color var(--transition), border-color var(--transition); }
+    .btn-primary { background: var(--green); color: #06090f; border: none; cursor: pointer; }
+    .btn-primary:hover { opacity: 0.9; color: #06090f; }
+    .btn-secondary { background: transparent; color: var(--text-mid); border: 1px solid var(--border-mid); }
     .btn-secondary:hover { color: var(--text-primary); border-color: var(--green); }
-    .ir-methodology { padding: 2rem 0; border-top: 1px solid var(--border); }
-    .ir-methodology p { font-size: 0.73rem; color: var(--text-dim); line-height: 1.7; max-width: 680px; }
-    .ir-methodology strong { color: var(--text-mid); }
-    .ir-footer { border-top: 1px solid var(--border); padding: 1.5rem 0 2.5rem; }
-    .ir-footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; font-size: 0.75rem; color: var(--text-dim); }
-    .ir-footer-links { display: flex; gap: 1.5rem; }
-    .ir-footer-links a { color: var(--text-dim); text-decoration: none; transition: color var(--transition); }
+    .ir-footer { border-top: 1px solid var(--border); padding: 1.25rem 0 2rem; margin-top: 1rem; }
+    .ir-footer-inner { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; font-size: 0.72rem; color: var(--text-dim); }
+    .ir-footer-links { display: flex; gap: 1rem; }
+    .ir-footer-links a { color: var(--text-dim); text-decoration: none; }
     .ir-footer-links a:hover { color: var(--text-mid); }
-  </style>
-</head>
-<body>
+    .ir-method-note { margin-top: 1rem; font-size: 0.72rem; color: var(--text-dim); line-height: 1.55; }
+  `;
+}
 
-<nav>
+function renderNav(active: 'incidents' | 'archive' = 'incidents'): string {
+  const incidentsClass = active === 'incidents' ? ' class="is-active"' : '';
+  const archiveClass = active === 'archive' ? ' class="is-active"' : '';
+  return `
+<nav class="ir-site-nav" aria-label="Site">
   <div class="nav-inner">
-    <a href="/" class="nav-logo">Scout<span>.</span></a>
-    <div class="nav-right">
+    <a href="/" class="nav-logo" title="Back to Labyrinth Scout home">Scout<span>.</span></a>
+    <div class="nav-links">
       <a href="/">Home</a>
-      <a href="/#governance">Governance</a>
-      <a href="/#pricing">Pricing</a>
-      <a href="https://carinaai.uk">Carina</a>
+      <a href="/incidents/"${incidentsClass}>Incidents</a>
+      <a href="/incidents/archive/"${archiveClass}>Archive</a>
+      <a href="/#pricing" class="nav-hide-sm">Pricing</a>
+      <a href="https://carinaai.uk" class="nav-hide-sm">Carina</a>
       <a href="/#pricing" class="nav-cta">Get Scout</a>
     </div>
   </div>
-</nav>
+</nav>`;
+}
 
-<div class="ir-hero">
-  <div class="container">
-    <div class="ir-eyebrow"><i class="ti ti-alert-triangle"></i> Documented damage</div>
-    <h1>The AI Agent<br><span>Incident Record.</span></h1>
-    <p class="ir-hero-sub">${count} documented incidents where AI agents operating without oversight caused real financial, security, and brand damage. Every claim is sourced. Every source is linked. No hyperbole required.</p>
-    <div class="ir-source-note">Sources: The Guardian, Bloomberg, Ars Technica, Forbes, BBC, Docker, OWASP, Axios. The $500M and Uber budget claims originate from a single Axios article citing unnamed sources and should be treated as reported, not independently verified. Full methodology at the bottom of this page.</div>
-  </div>
-</div>
-
-<div class="container">
-  <div class="ir-stats">
-    <div class="ir-stat"><div class="ir-stat-value">$500M+</div><div class="ir-stat-label">single-incident financial loss, reported May 2026</div></div>
-    <div class="ir-stat"><div class="ir-stat-value">13 hrs</div><div class="ir-stat-label">AWS downtime from one AI coding agent, 2025</div></div>
-    <div class="ir-stat"><div class="ir-stat-value">1,000+</div><div class="ir-stat-label">incidents in the public AI Incident Database</div></div>
-    <div class="ir-stat"><div class="ir-stat-value">#1</div><div class="ir-stat-label">Prompt Injection -- OWASP LLM Top 10, two editions running</div></div>
-  </div>
-</div>
-
-${count === 0 ? emptyPlaceholder : categorySections}
-
-<!-- SCOUT ANSWER TABLE -->
-<div class="container">
-  <section class="ir-answer-section">
-    <div class="ir-category-eyebrow eyebrow-green"><i class="ti ti-shield-bolt"></i> The Scout answer</div>
-    <h2 style="font-size:1.55rem;font-weight:700;letter-spacing:-0.025em;line-height:1.1;color:var(--text-primary);margin-bottom:0.6rem;">What Scout would have done.</h2>
-    <p style="font-size:0.88rem;color:var(--text-mid);max-width:520px;line-height:1.65;">Every incident above was preventable with controls Scout provides. This is not retrofitting. It is exactly what Scout was designed to enforce.</p>
-    <table class="ir-answer-table">
-      <thead>
-        <tr>
-          <th>Incident</th>
-          <th>Why it happened</th>
-          <th>Scout prevention</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>$500M Claude bill</td><td>No spending caps, no agent budget controls</td><td>Per-agent quotas, real-time usage dashboard, threshold alerts</td></tr>
-        <tr><td>13-hour AWS outage</td><td>Agent ran with full human-level permissions, no approval gate</td><td>Dangerous operation detection, approval gates, permission scoping</td></tr>
-        <tr><td>rm -rf filesystem destruction</td><td>Unchecked shell execution, no command classification</td><td>Command flagging intercepts DANGER operations before execution</td></tr>
-        <tr><td>Samsung source code leak</td><td>No egress filtering, data sent to external provider</td><td>Egress filtering keeps data inside your infrastructure</td></tr>
-        <tr><td>Air Canada hallucinated policy</td><td>No output validation, no human-in-loop for binding outputs</td><td>Output validation, human-in-loop flag for commitment-generating responses</td></tr>
-        <tr><td>DPD and Chevy brand meltdowns</td><td>No content policy enforcement on public-facing AI</td><td>Prompt guard, content policy, operator-defined output rules</td></tr>
-        <tr><td>Bing Chat prompt injection</td><td>Injection bypassed system prompt, no gateway-level defense</td><td>Prompt guard middleware intercepts injection at the gateway</td></tr>
-        <tr><td>GDPR silent breach exposure</td><td>No egress control, no audit trail for breach notification</td><td>Egress filtering plus full audit log provides breach evidence and compliance posture</td></tr>
-      </tbody>
-    </table>
-  </section>
-</div>
-
-<div class="container">
-  <section class="ir-subscribe">
-    <h3>Get the weekly incident report.</h3>
-    <p>New AI agent incidents, documented and sourced, every week. One email. No spam.</p>
-    <form class="ir-subscribe-form" id="subscribe-form">
-      <input type="email" id="subscribe-email" name="email" placeholder="your@email.com" required>
-      <button type="submit" class="btn-primary">Subscribe</button>
-    </form>
-    <p class="ir-subscribe-message" id="subscribe-message"></p>
-  </section>
-</div>
-
-<div class="container">
-  <section class="ir-cta">
-    <h2>Nobody was watching.<br>Scout is the watching.</h2>
-    <p>From £49/mo. Pre-wired for Carina. Connects to any agent stack via API. One config value to enable.</p>
-    <div class="ir-cta-actions">
-      <a href="https://labyrinthscout.com/#pricing" class="btn-primary"><i class="ti ti-shield-lock"></i> See Scout pricing</a>
-      <a href="https://carinaai.uk" class="btn-secondary"><i class="ti ti-sparkles"></i> Start with Carina free</a>
-    </div>
-  </section>
-</div>
-
-<div class="container">
-  <div class="ir-methodology">
-    <p><strong>Methodology.</strong> All incidents verified via published press sources (Ars Technica, BBC, Bloomberg, Business Insider, Docker, Forbes, The Guardian, NPR, The Register, Tom's Hardware). Academic papers verified via arXiv. OWASP data verified via genai.owasp.org. The $500M and Uber budget claims originate from a single Axios article citing unnamed sources; both are presented as reported rather than independently verified. Reddit and developer forum posts were reviewed for pattern evidence but are not cited as primary sources for individual incidents. AI Incident Database: incidentdatabase.ai. GDPR citation: Regulation (EU) 2016/679, Articles 33 and 83. Page generated ${new Date().toISOString().slice(0, 10)}.</p>
-  </div>
-</div>
-
+function renderFooter(): string {
+  return `
 <footer class="ir-footer">
   <div class="container">
     <div class="ir-footer-inner">
       <span>Labyrinth Scout. A VERLOX product.</span>
       <div class="ir-footer-links">
         <a href="https://labyrinthscout.com">Home</a>
-        <a href="https://labyrinthscout.com/#pricing">Pricing</a>
+        <a href="https://labyrinthscout.com/incidents/">Incidents</a>
+        <a href="https://labyrinthscout.com/incidents/archive/">Archive</a>
         <a href="https://carinaai.uk">Carina</a>
-        <a href="https://docs.carinaai.uk">Docs</a>
       </div>
       <span>Research compiled June 2026.</span>
     </div>
   </div>
-</footer>
+</footer>`;
+}
 
+function renderSubscribeBlock(): string {
+  return `
+<section class="ir-subscribe-compact">
+  <h3>Weekly incident report</h3>
+  <p>New sourced incidents by email. One message per week.</p>
+  <form class="ir-subscribe-form" id="subscribe-form">
+    <input type="email" id="subscribe-email" name="email" placeholder="your@email.com" required>
+    <button type="submit" class="btn-primary">Subscribe</button>
+  </form>
+  <p class="ir-subscribe-message" id="subscribe-message"></p>
+</section>`;
+}
+
+function renderSubscribeScript(): string {
+  return `
 <script>
   (function () {
     var form = document.getElementById('subscribe-form');
@@ -383,26 +223,363 @@ ${count === 0 ? emptyPlaceholder : categorySections}
       }
     });
   })();
-</script>
+</script>`;
+}
 
+function renderPageShell(title: string, description: string, canonical: string, body: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06090f">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
+  <link rel="canonical" href="${escapeHtml(canonical)}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  <meta property="og:url" content="${escapeHtml(canonical)}">
+  <meta property="og:type" content="article">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="icon" href="/assets/pwa/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/pwa/favicon.ico" sizes="any">
+  <style>${sharedStyles()}</style>
+</head>
+<body>
+${body}
+${renderSubscribeScript()}
 </body>
 </html>`;
 }
 
-export async function generateIncidentPage(): Promise<{ path: string; incidentCount: number }> {
-  await ensureIncidentBlogSchema();
-  const incidents = await getPublishedIncidents();
+function renderBlogCard(incident: BlogIncident): string {
+  return `
+<a class="ir-entry" href="${incidentHref(incident.slug)}">
+  <div class="ir-entry-main">
+    <div class="ir-entry-meta">
+      <span class="ir-badge ${incident.category}">${categoryLabel(incident.category)}</span>
+      <span>${escapeHtml(incident.dateOccurred)}</span>
+    </div>
+    <div class="ir-entry-title">${escapeHtml(incident.title)}</div>
+    <div class="ir-entry-damage">${escapeHtml(incident.damage)}</div>
+  </div>
+  <span class="ir-entry-arrow" aria-hidden="true">→</span>
+</a>`;
+}
+
+function renderPagination(currentPage: number, totalPages: number): string {
+  if (totalPages <= 1) return '';
+  const links: string[] = [];
+  if (currentPage > 1) {
+    links.push(`<a class="ir-page-link" href="${listPageHref(currentPage - 1)}">Prev</a>`);
+  }
+  for (let page = 1; page <= totalPages; page += 1) {
+    if (page === currentPage) {
+      links.push(`<span class="ir-page-current">${page}</span>`);
+    } else {
+      links.push(`<a class="ir-page-link" href="${listPageHref(page)}">${page}</a>`);
+    }
+  }
+  if (currentPage < totalPages) {
+    links.push(`<a class="ir-page-link" href="${listPageHref(currentPage + 1)}">Next</a>`);
+  }
+  return `
+<div class="ir-pagination-wrap">
+  <div class="ir-pagination-label">Page ${currentPage} of ${totalPages}</div>
+  <div class="ir-pagination" role="navigation" aria-label="Incident pages">${links.join('')}</div>
+</div>`;
+}
+
+function renderArchiveBar(grouped: Map<string, BlogIncident[]>, activeYear?: string): string {
+  const years = [...grouped.keys()].sort((a, b) => Number(b) - Number(a));
+  if (!years.length) return '';
+  const chips = years.slice(0, 6).map((year) => {
+    const active = activeYear === year ? ' is-active' : '';
+    return `<a class="ir-chip${active}" href="${archiveYearHref(year)}">${year} <span>${grouped.get(year)?.length ?? 0}</span></a>`;
+  }).join('');
+  return `
+<div class="ir-archive-bar">
+  <span class="ir-archive-bar-label">Archive</span>
+  ${chips}
+  <a class="ir-chip" href="/incidents/archive/">All years</a>
+</div>`;
+}
+
+function renderHero(count: number): string {
+  return `
+<section class="ir-hero-slim">
+  <div class="container">
+    <div class="ir-kicker">Documented damage</div>
+    <h1>The AI Agent Incident Record</h1>
+    <p class="ir-hero-lead">${count} sourced incidents where ungoverned AI agents caused financial, security, brand, or legal harm.</p>
+    <div class="ir-hero-stats">
+      <div class="ir-hero-stat"><div class="ir-hero-stat-value">${count}</div><div class="ir-hero-stat-label">incidents in this record</div></div>
+      <div class="ir-hero-stat"><div class="ir-hero-stat-value">$500M+</div><div class="ir-hero-stat-label">largest reported single-incident loss</div></div>
+      <div class="ir-hero-stat"><div class="ir-hero-stat-value">13 hrs</div><div class="ir-hero-stat-label">AWS outage from one coding agent</div></div>
+    </div>
+  </div>
+</section>`;
+}
+
+function renderCompactHeader(title: string, subtitle: string): string {
+  return `
+<section class="ir-hero-compact">
+  <div class="container">
+    <div class="ir-kicker">Incident Record</div>
+    <h1>${escapeHtml(title)}</h1>
+    <p class="ir-hero-lead">${escapeHtml(subtitle)}</p>
+  </div>
+</section>`;
+}
+
+function renderListPage(options: {
+  incidents: BlogIncident[];
+  allIncidents: BlogIncident[];
+  page: number;
+  totalPages: number;
+}): string {
+  const { incidents, allIncidents, page, totalPages } = options;
+  const grouped = groupIncidentsByYear(allIncidents);
+  const count = allIncidents.length;
+  const start = count ? (page - 1) * INCIDENTS_PER_PAGE + 1 : 0;
+  const end = count ? start + incidents.length - 1 : 0;
+  const feed = incidents.length
+    ? incidents.map(renderBlogCard).join('')
+    : `<div class="ir-empty">No published incidents yet. Publish from the ops panel, then regenerate the page.</div>`;
+
+  const body = `
+${renderNav()}
+${page === 1 ? renderHero(count) : renderCompactHeader(`Page ${page}`, `Older entries from the incident record.`)}
+<div class="container">
+  <main class="ir-main">
+    ${renderArchiveBar(grouped)}
+    <div class="ir-toolbar">
+      <h2>${page === 1 ? 'Latest incidents' : `Incidents ${start}${end > start ? `–${end}` : ''}`}</h2>
+      <div class="ir-toolbar-meta">${count} total</div>
+    </div>
+    <div class="ir-feed">${feed}</div>
+    ${renderPagination(page, totalPages)}
+    ${page === 1 ? renderSubscribeBlock() : ''}
+    <p class="ir-method-note">All incidents are verified against published press sources. Methodology and sourcing appear on each incident page.</p>
+  </main>
+</div>
+${renderFooter()}`;
+
+  const canonical = page === 1
+    ? 'https://labyrinthscout.com/incidents/'
+    : `https://labyrinthscout.com/incidents/page/${page}/`;
+  const title = page === 1
+    ? 'The AI Agent Incident Record - Labyrinth Scout'
+    : `Incident Record · Page ${page} - Labyrinth Scout`;
+  const description = page === 1
+    ? `${count} documented AI agent incidents with sources, damage figures, and Scout prevention guidance.`
+    : `Page ${page} of the AI Agent Incident Record. ${count} sourced incidents in total.`;
+
+  return renderPageShell(title, description, canonical, body);
+}
+
+function renderArchiveIndex(grouped: Map<string, BlogIncident[]>, total: number): string {
+  const years = [...grouped.keys()].sort((a, b) => Number(b) - Number(a));
+  const items = years.map((year) => `
+<li style="margin-bottom:0.85rem;">
+  <a href="${archiveYearHref(year)}" style="color:var(--text-primary);text-decoration:none;font-weight:600;">${year}</a>
+  <span style="color:var(--text-dim);font-size:0.82rem;"> · ${grouped.get(year)?.length ?? 0} incidents</span>
+</li>`).join('');
+
+  const body = `
+${renderNav('archive')}
+${renderCompactHeader('Archive', `${total} incidents organized by year.`)}
+<div class="container">
+  <main class="ir-main">
+    ${renderArchiveBar(grouped)}
+    <ul style="list-style:none;padding:0;">${items || '<li class="ir-empty">No published incidents yet.</li>'}</ul>
+    <p style="margin-top:1.25rem;"><a href="/incidents/" class="btn-secondary">Back to latest incidents</a></p>
+  </main>
+</div>
+${renderFooter()}`;
+
+  return renderPageShell(
+    'Incident Archive - Labyrinth Scout',
+    `Browse ${total} AI agent incidents by year.`,
+    'https://labyrinthscout.com/incidents/archive/',
+    body,
+  );
+}
+
+function renderArchiveYearPage(year: string, incidents: BlogIncident[], grouped: Map<string, BlogIncident[]>): string {
+  const body = `
+${renderNav('archive')}
+${renderCompactHeader(`${year} archive`, `${incidents.length} incidents from ${year}.`)}
+<div class="container">
+  <main class="ir-main">
+    ${renderArchiveBar(grouped, year)}
+    <div class="ir-feed">${incidents.map(renderBlogCard).join('')}</div>
+    <p style="margin-top:1.25rem;"><a href="/incidents/archive/" class="btn-secondary">All archives</a></p>
+  </main>
+</div>
+${renderFooter()}`;
+
+  return renderPageShell(
+    `${year} Incident Archive - Labyrinth Scout`,
+    `${incidents.length} AI agent incidents from ${year}.`,
+    `https://labyrinthscout.com/incidents/archive/${year}/`,
+    body,
+  );
+}
+
+function renderIncidentDetailPage(incident: BlogIncident, allIncidents: BlogIncident[]): string {
+  const sorted = sortPublishedIncidents(allIncidents);
+  const index = sorted.findIndex((row) => row.slug === incident.slug);
+  const prev = index >= 0 ? sorted[index + 1] : undefined;
+  const next = index > 0 ? sorted[index - 1] : undefined;
+  const sources = incident.sources.length
+    ? incident.sources.map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.label)}</a>`).join(' · ')
+    : 'No source linked';
+
+  const body = `
+${renderNav()}
+<div class="container">
+  <div class="ir-breadcrumb"><a href="/incidents/">Incidents</a> / <a href="/incidents/archive/">Archive</a> / ${escapeHtml(incident.title)}</div>
+  <article class="ir-article">
+    <header class="ir-article-header">
+      <span class="ir-badge ${incident.category}">${categoryLabel(incident.category)}</span>
+      <span class="ir-article-company">${escapeHtml(incident.company)}</span>
+      <h1 class="ir-article-title">${escapeHtml(incident.title)}</h1>
+      <div class="ir-article-damage">${escapeHtml(incident.damage)}</div>
+      <div class="ir-article-meta">${escapeHtml(incident.dateOccurred)}</div>
+    </header>
+    <div class="ir-article-body">${incident.bodyHtml}</div>
+    <div class="ir-article-scout">
+      <div class="ir-article-scout-label">Scout fix</div>
+      <div class="ir-article-scout-body">${incident.scoutFixHtml}</div>
+    </div>
+    <div class="ir-article-sources"><strong>Sources:</strong> ${sources}</div>
+    <div class="ir-article-nav">
+      ${prev ? `<a href="${incidentHref(prev.slug)}" class="btn-secondary">← ${escapeHtml(prev.title)}</a>` : '<span></span>'}
+      ${next ? `<a href="${incidentHref(next.slug)}" class="btn-secondary">${escapeHtml(next.title)} →</a>` : '<span></span>'}
+    </div>
+    <p style="margin-top:1.25rem;"><a href="/incidents/" class="btn-secondary">Back to incident list</a></p>
+  </article>
+</div>
+<div class="container">
+  ${renderSubscribeBlock()}
+  ${renderFooter()}
+</div>`;
+
+  return renderPageShell(
+    `${incident.title} - Labyrinth Scout`,
+    excerptFromHtml(incident.bodyHtml, 160),
+    `https://labyrinthscout.com/incidents/${incident.slug}/`,
+    body,
+  );
+}
+
+async function writeFileAtomic(filePath: string, contents: string): Promise<void> {
+  const tempPath = `${filePath}.tmp`;
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(tempPath, contents, 'utf8');
+  await fs.rename(tempPath, filePath);
+}
+
+async function removeIfExists(targetPath: string): Promise<void> {
   try {
-    const current = await fs.readFile(OUTPUT_PATH, 'utf8');
-    if (incidents.length === 0 && current) {
-      return { path: OUTPUT_PATH, incidentCount: 0 };
+    await fs.rm(targetPath, { recursive: true, force: true });
+  } catch {
+    // ignore missing paths
+  }
+}
+
+async function writeSiteTree(baseDir: string, incidents: BlogIncident[]): Promise<number> {
+  const sorted = sortPublishedIncidents(incidents);
+  const pages = paginateIncidents(sorted, INCIDENTS_PER_PAGE);
+  const grouped = groupIncidentsByYear(sorted);
+  const totalPages = Math.max(pages.length, 1);
+  const validSlugs = new Set(sorted.map((row) => row.slug));
+
+  await writeFileAtomic(path.join(baseDir, 'index.html'), renderListPage({
+    incidents: pages[0] ?? [],
+    allIncidents: sorted,
+    page: 1,
+    totalPages,
+  }));
+
+  for (let page = 2; page <= totalPages; page += 1) {
+    await writeFileAtomic(
+      path.join(baseDir, 'page', String(page), 'index.html'),
+      renderListPage({
+        incidents: pages[page - 1] ?? [],
+        allIncidents: sorted,
+        page,
+        totalPages,
+      }),
+    );
+  }
+
+  for (let page = totalPages + 1; page <= 50; page += 1) {
+    await removeIfExists(path.join(baseDir, 'page', String(page)));
+  }
+
+  await writeFileAtomic(path.join(baseDir, 'archive', 'index.html'), renderArchiveIndex(grouped, sorted.length));
+  for (const [year, rows] of grouped.entries()) {
+    await writeFileAtomic(path.join(baseDir, 'archive', year, 'index.html'), renderArchiveYearPage(year, rows, grouped));
+  }
+
+  const archiveDir = path.join(baseDir, 'archive');
+  try {
+    const entries = await fs.readdir(archiveDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name === 'index.html') continue;
+      if (!grouped.has(entry.name)) {
+        await removeIfExists(path.join(archiveDir, entry.name));
+      }
     }
   } catch {
-    // output file missing, proceed to write
+    // archive dir may not exist yet on first run
   }
-  const html = renderPage(incidents);
-  await fs.mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
-  await fs.writeFile(TEMP_PATH, html, 'utf8');
-  await fs.rename(TEMP_PATH, OUTPUT_PATH);
-  return { path: OUTPUT_PATH, incidentCount: incidents.length };
+
+  for (const incident of sorted) {
+    await writeFileAtomic(
+      path.join(baseDir, incident.slug, 'index.html'),
+      renderIncidentDetailPage(incident, sorted),
+    );
+  }
+
+  try {
+    const entries = await fs.readdir(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (['page', 'archive'].includes(entry.name)) continue;
+      if (!validSlugs.has(entry.name)) {
+        await removeIfExists(path.join(baseDir, entry.name));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return sorted.length;
+}
+
+export async function generateIncidentPage(): Promise<{ path: string; incidentCount: number; pages: number }> {
+  await ensureIncidentBlogSchema();
+  await ensurePublishedIncidentSeed();
+  const incidents = await getPublishedIncidents();
+  const outputBases = resolveOutputBases();
+  let lastPath = outputBases[0] ?? DEFAULT_OUTPUT_BASES[0];
+  let writtenCount = 0;
+
+  for (const baseDir of outputBases) {
+    try {
+      writtenCount = await writeSiteTree(baseDir, incidents);
+      lastPath = baseDir;
+    } catch (err) {
+      console.warn('[blog] page generation skipped for', baseDir, err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  const pages = Math.max(paginateIncidents(sortPublishedIncidents(incidents), INCIDENTS_PER_PAGE).length, 1);
+  return { path: lastPath, incidentCount: writtenCount, pages };
 }

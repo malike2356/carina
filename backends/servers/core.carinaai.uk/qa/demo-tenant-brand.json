@@ -1,0 +1,39 @@
+{
+  "description": "Sample reseller + two client workspaces for white-label smoke tests (no secrets).",
+  "reseller": {
+    "productName": "Agency Cloud",
+    "supportEmail": "ops@agency.example",
+    "supportName": "Agency Support"
+  },
+  "tenants": [
+    {
+      "id": "tenant-acme",
+      "workspace": {
+        "productName": "Acme Agents",
+        "shortName": "Acme",
+        "supportEmail": "help@acme.example"
+      },
+      "customDomain": "agents.acme.example"
+    },
+    {
+      "id": "tenant-nova",
+      "workspace": {
+        "productName": "Nova Workspace",
+        "shortName": "Nova",
+        "supportEmail": "help@nova.example"
+      },
+      "customDomain": "app.nova.example"
+    }
+  ],
+  "platformDefaults": {
+    "hosted": {
+      "productName": "Carina Cloud",
+      "shortName": "Carina"
+    },
+    "private": {
+      "productName": "Carina",
+      "shortName": "Carina"
+    }
+  },
+  "whiteLabelStack": "demo-agents"
+}

@@ -18,6 +18,12 @@ export interface ServiceInfo {
 const ALLOWED_SYSTEMD = ['php8.3-fpm'] as const;
 const DEFAULT_DOCKER_PROJECTS = ['corecarinaaiuk', 'scout'] as const;
 
+export type DockerScopeInfo = {
+  allowedProjects: string[];
+  whiteLabelStack?: string;
+  source: 'explicit' | 'white-label' | 'default';
+};
+
 function execMessage(err: unknown): string {
   if (err && typeof err === 'object') {
     const withMeta = err as { message?: string; stderr?: string | Buffer; stdout?: string | Buffer };
@@ -34,16 +40,38 @@ function normalizeContainerName(name: string): string {
   return name.replace(/^\//, '');
 }
 
-function getAllowedDockerProjects(): string[] {
+export function getDockerScopeInfo(): DockerScopeInfo {
   const raw = process.env.OPS_DOCKER_PROJECTS ?? process.env.CARINA_DOCKER_PROJECTS ?? '';
   const projects = raw
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
-  return projects.length ? projects : [...DEFAULT_DOCKER_PROJECTS];
+  if (projects.length) {
+    return { allowedProjects: projects, source: 'explicit' };
+  }
+  const whiteLabelStack = process.env.CARINA_WHITE_LABEL_STACK?.trim();
+  if (whiteLabelStack) {
+    return {
+      allowedProjects: [whiteLabelStack],
+      whiteLabelStack,
+      source: 'white-label',
+    };
+  }
+  return {
+    allowedProjects: [...DEFAULT_DOCKER_PROJECTS],
+    source: 'default',
+  };
 }
 
-function isAllowedDockerContainer(name: string, project: string, allowedProjects: string[]): boolean {
+export function getAllowedDockerProjects(): string[] {
+  return getDockerScopeInfo().allowedProjects;
+}
+
+export function isAllowedDockerContainer(
+  name: string,
+  project: string,
+  allowedProjects: string[] = getAllowedDockerProjects(),
+): boolean {
   if (allowedProjects.includes(project)) return true;
   return allowedProjects.some((prefix) => name === prefix || name.startsWith(`${prefix}-`));
 }

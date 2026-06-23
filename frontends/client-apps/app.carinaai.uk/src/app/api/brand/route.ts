@@ -1,8 +1,20 @@
 import { NextResponse } from 'next/server';
-import { getPublicBrand } from '@/lib/server-brand';
+import { getRequestHostname } from '@/lib/server-brand';
+import { resolveHostBrandContext } from '@/lib/host-resolver';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  return NextResponse.json({ data: getPublicBrand() });
+  const hostname = await getRequestHostname();
+  const context = await resolveHostBrandContext(hostname);
+  return NextResponse.json({
+    data: {
+      hostname: context.hostname,
+      isCanonical: context.isCanonical,
+      isCustomDomain: context.isCustomDomain,
+      canonicalHost: context.canonicalHost,
+      workspaceId: context.workspaceId,
+      brand: context.resolvedBrand,
+    },
+  });
 }

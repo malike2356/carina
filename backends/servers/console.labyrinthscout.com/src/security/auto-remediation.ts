@@ -49,6 +49,60 @@ export function resetRemediationRules(): void {
   rules = [...DEFAULT_REMEDIATION_RULES];
 }
 
+export interface RemediationLogEntry {
+  id: string;
+  action: string;
+  target: string;
+  result: 'success' | 'failed';
+  instance_id: string | null;
+  created_at: string;
+  case?: string;
+  actions?: string[];
+}
+
+export async function listRecentRemediationLog(limit = 80): Promise<RemediationLogEntry[]> {
+  const result = await pool.query<{
+    id: string;
+    event_type: string;
+    description: string;
+    session_id: string | null;
+    instance_id: string | null;
+    metadata: Record<string, unknown> | string | null;
+    created_at: Date;
+  }>(
+    `SELECT id, event_type, description, session_id, instance_id, metadata, created_at
+     FROM security_events
+     WHERE source = 'auto-remediation'
+     ORDER BY created_at DESC
+     LIMIT $1`,
+    [limit],
+  );
+
+  return result.rows.map((row) => {
+    const meta = typeof row.metadata === 'object' && row.metadata !== null
+      ? row.metadata as Record<string, unknown>
+      : {};
+    const caseId = typeof meta.case === 'string'
+      ? meta.case
+      : row.event_type.replace(/^auto_remediation_/, '');
+    const actions = Array.isArray(meta.actions)
+      ? meta.actions.filter((item): item is string => typeof item === 'string')
+      : [];
+    const action = actions[0] ?? caseId ?? row.event_type;
+
+    return {
+      id: row.id,
+      action,
+      target: row.session_id ?? '-',
+      result: 'success',
+      instance_id: row.instance_id,
+      created_at: new Date(row.created_at).toISOString(),
+      case: caseId,
+      actions,
+    };
+  });
+}
+
 async function logRemediation(
   caseId: RemediationCase,
   actions: string[],

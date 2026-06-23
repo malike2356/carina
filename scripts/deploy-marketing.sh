@@ -41,7 +41,7 @@ mirror_docs_clean_urls() {
 build_carina_docs() {
   log "Building Carina docs for carinaai.uk/docs (Docusaurus)..."
   (
-    cd "${REPO_ROOT}/marketing/docs/docs.carinaai.uk"
+    cd "${REPO_ROOT}/frontends/marketing/docs.carinaai.uk"
     CARINA_DOCS_MARKETING=1 pnpm build
     rm -rf "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
     cp -a build "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"

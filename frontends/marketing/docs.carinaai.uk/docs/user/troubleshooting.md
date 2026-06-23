@@ -474,6 +474,14 @@ Scout is an optional security control plane: prompt injection detection, kill sw
 
 ---
 
+## White-label and branded deployments
+
+For agencies running Carina under a custom product name or domain, see the dedicated guide: [White-label support and troubleshooting](/docs/user/white-label/support-and-troubleshooting).
+
+Common topics covered there: brand not updating, custom domain TXT verification, pack visibility, scoped Docker ops, and client handoff boundaries.
+
+---
+
 ## Still stuck?
 
 - [GitHub Issues](https://github.com/malike2356/carina-agent/issues): bug reports and feature requests.

@@ -51,24 +51,31 @@ function scoutDashboardInjection(): string {
     '<script>',
     'window.__SCOUT_KEY = \'\';',
     'window.__SCOUT_API_BASE = \'/scout-api\';',
+    'window.__SCOUT_STREAM_URL = \'/scout/stream\';',
     'window.__SCOUT_ACCOUNT_ID = ' + accountJs + ';',
     '(function(){',
     '  const prefix = window.__SCOUT_API_BASE;',
     '  if (!prefix) return;',
+    '  const appendAccount = function(url) {',
+    '    if (!window.__SCOUT_ACCOUNT_ID || url.indexOf(\'account_id=\') !== -1) return url;',
+    '    return url + (url.indexOf(\'?\') >= 0 ? \'&\' : \'?\') + \'account_id=\' + encodeURIComponent(window.__SCOUT_ACCOUNT_ID);',
+    '  };',
     '  const rewrite = function(url) {',
-    '    if (typeof url !== \'string\' || !url.startsWith(\'/api/\')) return url;',
-    '    var next = prefix + url;',
-    '    if (window.__SCOUT_ACCOUNT_ID && next.indexOf(\'account_id=\') === -1) {',
-    '      next += (next.indexOf(\'?\') >= 0 ? \'&\' : \'?\') + \'account_id=\' + encodeURIComponent(window.__SCOUT_ACCOUNT_ID);',
-    '    }',
-    '    return next;',
+    '    var target = url;',
+    '    if (url && typeof url === \'object\' && \'url\' in url) target = url.url;',
+    '    if (typeof target !== \'string\' || !target.startsWith(\'/api/\')) return url;',
+    '    return appendAccount(prefix + target);',
     '  };',
     '  const orig = window.fetch.bind(window);',
-    '  window.fetch = function(url, init) { return orig(rewrite(url), init); };',
-    '  if (window.EventSource) {',
-    '    const OrigES = window.EventSource;',
-    '    window.EventSource = function(url, opts) { return new OrigES(rewrite(url), opts); };',
-    '  }',
+    '  window.fetch = function(input, init) {',
+    '    var opts = Object.assign({ credentials: \'same-origin\' }, init || {});',
+    '    if (typeof input === \'string\') return orig(rewrite(input), opts);',
+    '    if (input instanceof Request) {',
+    '      var next = rewrite(input.url);',
+    '      if (next !== input.url) input = new Request(next, input);',
+    '    }',
+    '    return orig(input, opts);',
+    '  };',
     '})();',
     '</script>',
   ].join('');
@@ -198,6 +205,51 @@ scoutDashboardRouter.get('/console', (_req, res) => {
 
 scoutDashboardRouter.get('/summary', (req, res) => {
   void renderScoutSummary(res);
+});
+
+async function proxyScoutConsoleStream(req: import('express').Request, res: import('express').Response): Promise<void> {
+  const targetUrl = appendOperatorAccountId(`${SCOUT_CONSOLE_BASE}/api/stream`);
+  const scoutKey = scoutHeaders()['X-Scout-Key'];
+  const headers: Record<string, string> = {};
+  if (scoutKey) headers['X-Scout-Key'] = scoutKey;
+
+  const abort = new AbortController();
+  req.on('close', () => abort.abort());
+
+  try {
+    const upstream = await fetch(targetUrl, { headers, signal: abort.signal });
+
+    res.status(upstream.status);
+    const contentType = upstream.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
+    if (!upstream.ok || !upstream.body) {
+      if (!contentType) res.setHeader('Content-Type', 'text/event-stream');
+      res.write(`data: ${JSON.stringify({ type: 'offline', error: 'Scout stream unavailable' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    res.flushHeaders?.();
+    Readable.fromWeb(upstream.body as import('stream/web').ReadableStream).pipe(res);
+  } catch (err) {
+    if (abort.signal.aborted) return;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[ops] Scout dashboard stream proxy failed:', msg);
+    if (!res.headersSent) {
+      res.status(502);
+      res.setHeader('Content-Type', 'text/event-stream');
+    }
+    res.write(`data: ${JSON.stringify({ type: 'offline', error: msg })}\n\n`);
+    res.end();
+  }
+}
+
+scoutDashboardRouter.get('/stream', (req, res) => {
+  void proxyScoutConsoleStream(req, res);
 });
 
 scoutDashboardRouter.use((req, res, next) => {

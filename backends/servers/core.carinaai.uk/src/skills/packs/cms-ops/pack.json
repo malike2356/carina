@@ -1,0 +1,9 @@
+{
+  "name": "cms-ops",
+  "version": "1.0.0",
+  "description": "WordPress drafting, tagging, SEO optimization, and publish scheduling via WordPress MCP",
+  "author": "VERLOX Ltd",
+  "category": "cms",
+  "optional": true,
+  "skillCount": 1
+}

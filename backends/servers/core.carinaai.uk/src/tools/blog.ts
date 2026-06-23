@@ -124,7 +124,10 @@ async function runAction(action: BlogAction, params: Record<string, unknown>): P
   }
 
   if (action === 'research-run') {
-    return runResearchDiscovery(String(params.query ?? 'AI agent incident 2026'));
+    return runResearchDiscovery({
+      query: String(params.query ?? '').trim() || undefined,
+      triggeredBy: 'carina-conversation',
+    });
   }
 
   if (action === 'research-status') {

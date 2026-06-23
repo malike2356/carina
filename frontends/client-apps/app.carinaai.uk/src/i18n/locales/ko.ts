@@ -26,7 +26,7 @@ const ko: LocaleMessages = {
     delete: '삭제',
   },
   chat: {
-    placeholder: 'Carina에게 메시지...',
+    placeholder: '{agentName}에게 메시지...',
     send: '보내기',
     retry: '다시 시도',
   },

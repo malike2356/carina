@@ -36,6 +36,7 @@ Carina core is MIT licensed. Self-hosted Carina has no license fee. Carina Cloud
 ## Plan details
 
 - Carina Cloud: [carinaai.uk/cloud](https://carinaai.uk/cloud) and [Carina Cloud guide](/docs/user/carina-cloud)
+- White-label partner packaging: [White-label custom domains](/docs/user/white-label-custom-domains) and partner tiers (Starter, Agency, Enterprise)
 - Carina Enterprise: [carinaai.uk/enterprise](https://carinaai.uk/enterprise) and [Enterprise guide](/docs/user/enterprise)
 - Scout plans: [labyrinthscout.com#pricing](https://labyrinthscout.com#pricing)
 - Carina Ops plans: [Carina Ops plans](/docs/user/carina-ops/plans)

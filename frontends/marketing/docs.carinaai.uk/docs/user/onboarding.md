@@ -46,6 +46,8 @@ With no active session, the TUI shows the launcher first; press `c` to start cha
 
 On [app.carinaai.uk](https://app.carinaai.uk), sign up, add at least one BYOK key under **Settings > API keys**, then use the [launcher](/docs/user/carina-cloud) to resume work or start a new chat.
 
+**Agencies and resellers:** follow the [White-label getting started](/docs/user/white-label/getting-started) path for brand settings, client handoff, and partner tiers. The in-app setup checklist on the launcher mirrors those steps.
+
 Scout pairing (optional): **Settings > Security** or the security dashboard.
 
 ## Troubleshooting

@@ -3,7 +3,8 @@ import { config } from '../config/index.js';
 import { llm } from '../brain/llm.js';
 import { getUserProfile } from '../api/hosted-auth.js';
 import { scoutServiceUrl } from '../billing/tenant-scout.js';
-import { resolveProductMode, resolveProductSurface } from '../product/surface.js';
+import { resolveBrandedProductSurface } from '../product/brand-compat.js';
+import { resolveProductMode } from '../product/surface.js';
 import { getActivePackNames } from '../skills/index.js';
 import { activateProfile, getActiveProfileName, listProfiles } from '../profiles/manager.js';
 import { describeNamedProfileScope } from '../profiles/scope.js';
@@ -56,7 +57,7 @@ export async function buildWebContext(req: Request): Promise<WebContextResponse>
   const packs = getActivePackNames();
   const activeSkillPack = config.carina.activePack || packs[0] || null;
   const scoutAvailable = Boolean(config.labyrinth.apiKey && scoutServiceUrl());
-  const surface = resolveProductSurface(req.hostname);
+  const surface = resolveBrandedProductSurface(req.hostname);
   const mode = resolveProductMode(req.hostname);
   let security: WebContextResponse['security'];
   try {

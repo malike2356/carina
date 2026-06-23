@@ -26,7 +26,7 @@ const pt: LocaleMessages = {
     delete: 'Excluir',
   },
   chat: {
-    placeholder: 'Mensagem para Carina...',
+    placeholder: 'Mensagem para {agentName}...',
     send: 'Enviar',
     retry: 'Tentar novamente',
   },

@@ -23,12 +23,15 @@ export const researchBasicsSkills: PackSkillInput[] = [
   },
   {
     name: 'comprehensive-investigation',
-    description: 'Systematic deep-dive research methodology',
-    trigger: ['investigate', 'deep dive', 'research thoroughly', 'comprehensive analysis'],
-    steps: `1. Define the question and success criteria.
-2. Enumerate sources: web, files, past sessions, APIs.
-3. Triangulate findings; note contradictions and confidence levels.
-4. Synthesise with cited sources and open questions.`,
+    description: 'Systematic deep-dive research methodology with sub-question decomposition',
+    trigger: ['investigate', 'deep dive', 'research thoroughly', 'comprehensive analysis', 'deep research'],
+    steps: `1. Define the question and success criteria with the user.
+2. Decompose the query into 3-5 concrete sub-questions that together cover the full scope.
+3. For each sub-question: run targeted web-search or http-request. Prefer primary sources (official docs, academic papers, primary news) over aggregators and summaries.
+4. Read each source in full; do not rely solely on preview snippets.
+5. Enumerate any additional sources: local files via file-read, past session context via session-search, and relevant third-party APIs.
+6. Synthesise a structured report organised by sub-question, with inline citations ([Source: <url or title>]) for every factual claim.
+7. Close with a "Confidence and gaps" section: note where sources disagreed, where coverage was thin, and any claims that could not be independently verified.`,
     toolsUsed: ['web-search', 'http-request', 'session-search', 'file-read'],
   },
   {

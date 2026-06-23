@@ -1,5 +1,6 @@
 export type IncidentCategory = 'financial' | 'security' | 'brand' | 'legal';
 export type IncidentStatus = 'draft' | 'approved' | 'published' | 'rejected';
+export type IncidentListSort = 'newest' | 'incident_date' | 'updated';
 
 export interface IncidentSource {
   label: string;

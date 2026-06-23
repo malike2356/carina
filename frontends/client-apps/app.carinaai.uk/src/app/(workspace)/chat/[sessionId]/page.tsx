@@ -62,6 +62,7 @@ export default async function ChatPage({ params, searchParams }: Props) {
           createdAt: m.createdAt.toISOString(),
         }))}
       workspacePlan={workspace.plan}
+      profileId={chatSession.profileId}
       researchJobId={researchJob ?? null}
       documentId={documentId ?? null}
     />

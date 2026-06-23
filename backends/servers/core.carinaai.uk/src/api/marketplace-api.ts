@@ -1,10 +1,29 @@
 import { Router, type IRouter } from 'express';
+import { config } from '../config/index.js';
 import { queryMarketplaceCatalog } from '../skills/hub/marketplace-catalog.js';
+import { buildPackStorefront } from '../skills/hub/pack-storefront.js';
 import type { MarketplaceEntryKind } from '../skills/hub/marketplace-types.js';
 import { listWorkshopDrafts, workshopReviewEnabled } from '../skills/workshop-store.js';
 import { scanSkillSecurity } from '../skills/skill-security.js';
 
 export const marketplaceApiRouter: IRouter = Router();
+
+marketplaceApiRouter.get('/storefront', async (req, res) => {
+  try {
+    const activePacks = typeof req.query.activePacks === 'string'
+      ? req.query.activePacks.split(',').map((value) => value.trim()).filter(Boolean)
+      : config.carina.activePacks;
+    const productName = typeof req.query.productName === 'string' ? req.query.productName : undefined;
+    const storefront = buildPackStorefront({
+      activePacks,
+      productName,
+      marketplaceEnabled: config.hosted.enabled,
+    });
+    res.json(storefront);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
 
 marketplaceApiRouter.get('/catalog', async (req, res) => {
   try {

@@ -1,4 +1,6 @@
 import { config } from '../config/index.js';
+import type { TenantEmailIdentity } from './brand-email.js';
+import { appendEmailFooter } from './brand-email.js';
 
 export interface UsageWarningEmailInput {
   orgName: string;
@@ -7,19 +9,24 @@ export interface UsageWarningEmailInput {
   used: number;
   limit: number;
   unit?: 'credits' | 'tokens';
+  identity?: TenantEmailIdentity;
+  billingUrl?: string;
 }
 
 export function renderUsageWarningEmailText(input: UsageWarningEmailInput): string {
+  const productName = input.identity?.productName ?? 'Carina Ops';
   const unitLabel = input.unit === 'tokens' ? 'tokens' : 'credits';
   const percentUsed = input.limit > 0 ? Math.round((input.used / input.limit) * 100) : 0;
-  return [
-    `Your Carina Ops workspace "${input.orgName}" has reached ${input.threshold}% of its monthly ${unitLabel} allowance.`,
+  const billingUrl = input.billingUrl ?? `${config.product.coreUrl}/ops/billing`;
+  const body = [
+    `Your ${productName} workspace "${input.orgName}" has reached ${input.threshold}% of its monthly ${unitLabel} allowance.`,
     '',
     `Usage this month: ${input.used.toLocaleString()} / ${input.limit.toLocaleString()} ${unitLabel} (${percentUsed}%).`,
     '',
     'Review usage, top up credits, or upgrade your plan on the billing page:',
-    `${config.product.coreUrl}/ops/billing`,
+    billingUrl,
   ].join('\n');
+  return appendEmailFooter(body, input.identity?.footer);
 }
 
 export async function sendUsageWarningEmail(input: UsageWarningEmailInput): Promise<boolean> {
@@ -27,14 +34,16 @@ export async function sendUsageWarningEmail(input: UsageWarningEmailInput): Prom
     console.warn('[carina-ops] RESEND_API_KEY not set; usage warning email skipped');
     return false;
   }
+  const productName = input.identity?.productName ?? 'Carina Ops';
   const unitLabel = input.unit === 'tokens' ? 'token' : 'credit';
   const { Resend } = await import('resend');
   const resend = new Resend(config.resend.apiKey);
   await resend.emails.send({
-    from: config.resend.from,
+    from: input.identity?.from ?? config.resend.from,
     to: input.ownerEmail,
-    subject: `Carina Ops: ${input.orgName} has reached ${input.threshold}% of its monthly ${unitLabel} allowance`,
+    subject: `${productName}: ${input.orgName} has reached ${input.threshold}% of its monthly ${unitLabel} allowance`,
     text: renderUsageWarningEmailText(input),
+    reply_to: input.identity?.replyTo ?? undefined,
   });
   return true;
 }

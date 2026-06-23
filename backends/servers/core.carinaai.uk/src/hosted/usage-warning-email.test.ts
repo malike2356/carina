@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 vi.mock('../config/index.js', () => ({
   config: {
     resend: { apiKey: 're_test', from: 'hello@carinaai.uk' },
+    hosted: { appHost: 'app.carinaai.uk' },
     product: {
       domain: 'carinaai.uk',
       coreUrl: 'https://core.carinaai.uk',
@@ -39,6 +40,20 @@ vi.mock('../api/hosted-billing.js', () => ({
 vi.mock('./plan-gates.js', () => ({
   getOrgPlan: vi.fn(async () => 'carina_ops_starter'),
 }));
+
+vi.mock('./brand-email.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./brand-email.js')>();
+  return {
+    ...actual,
+    resolveEmailIdentityForOrg: vi.fn(async () => ({
+      from: 'Carina Ops <hello@carinaai.uk>',
+      productName: 'Carina Ops',
+      replyTo: null,
+      footer: null,
+      appHost: 'app.carinaai.uk',
+    })),
+  };
+});
 
 vi.mock('../billing/credit-ledger.js', () => ({
   getMonthlyBalance: vi.fn(async () => ({

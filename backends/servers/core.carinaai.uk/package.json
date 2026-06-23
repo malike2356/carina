@@ -84,6 +84,7 @@
     "validate:windows": "vitest run src/windows/ src/tools/shell-exec.windows.test.ts",
     "benchmark:regression": "vitest run src/benchmark/benchmark.test.ts",
     "test:smoke": "bash scripts/smoke-install.sh",
+    "test:white-label": "vitest run src/product/white-label-smoke.test.ts src/product/brand-compat.test.ts && node scripts/white-label-copy-guard.mjs",
     "test:identity-smoke": "vitest run src/product/identity-smoke.test.ts",
     "capability:check": "tsx scripts/capability-inventory-check.ts",
     "test:pack-contents": "bash scripts/test-pack-contents.sh",

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  Activity,
   Archive,
   BarChart3,
   BookOpen,
@@ -19,12 +20,14 @@ import {
   Database,
   FileText,
   FolderOpen,
+  Home,
   Key,
   LayoutDashboard,
   LayoutGrid,
   Mail,
   MessageSquare,
   MoreHorizontal,
+  Package,
   Plus,
   ScrollText,
   Search,
@@ -65,7 +68,6 @@ import {
 } from '@/i18n/nav-keys';
 import { hrefToWindowId, preferWindowOverlay } from '@/lib/window-manager/definitions';
 import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
-import { ThemeSwitcher } from '@/components/shell/ThemeSwitcher';
 import { BrandMark } from '@/components/shell/BrandMark';
 
 interface Session {
@@ -81,6 +83,7 @@ interface AppSidebarProps {
 }
 
 const NAV_ICON_MAP: Record<string, React.ElementType> = {
+  Activity,
   BarChart3,
   BookOpen,
   Brain,
@@ -92,10 +95,12 @@ const NAV_ICON_MAP: Record<string, React.ElementType> = {
   Database,
   FileText,
   FolderOpen,
+  Home,
   Key,
   LayoutDashboard,
   LayoutGrid,
   Mail,
+  Package,
   ScrollText,
   Search,
   Server,
@@ -298,7 +303,7 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
     <aside className="flex w-56 flex-col border-r border-border bg-surface">
       <div className="flex items-center justify-between px-3 py-3">
         <Link
-          href="/dashboard"
+          href="/launcher"
           className="transition-colors hover:text-accent"
         >
           <BrandMark />
@@ -352,10 +357,6 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
             panelLabel={panelLabel}
           />
         ))}
-      </div>
-
-      <div className="border-t border-border px-3 py-2">
-        <ThemeSwitcher className="w-full" variant="compact" />
       </div>
 
       <div className="flex items-center gap-2 border-t border-border px-3 py-3">

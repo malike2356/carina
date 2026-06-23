@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronUp, Mic, MicOff, Search, Send, Square, Terminal } from 'lucide-react';
+import { ChevronUp, Mic, MicOff, Search, Send, Square, Terminal, Wrench, X } from 'lucide-react';
 import { IconButton } from '@/components/ui/IconButton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/utils';
 import { AttachPanel } from './AttachPanel';
+import { ToolsPanel, CHAT_TOOLS } from './ToolsPanel';
+import type { ChatTool } from './ToolsPanel';
 import { ContextChips } from './ContextChips';
 import { ModelSelectorPopover } from './ModelSelectorPopover';
 import { ModeSwitcher } from './ModeSwitcher';
@@ -15,7 +17,7 @@ import type { ContextPin } from './types';
 import { clearChatDraft, readChatDraft, writeChatDraft } from '@/lib/chat-draft';
 import { getInputHistory } from '@/lib/chat-history';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
-import { useTranslation } from '@/i18n/translate';
+import { useBrandedTranslation } from '@/i18n/translate';
 
 export interface ChatSendOptions {
   mode: 'chat' | 'agent';
@@ -71,12 +73,14 @@ export function ChatInputBar({
   const [provider, setProvider] = useState('');
   const [model, setModel] = useState('');
   const [showAttach, setShowAttach] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<ChatTool | null>(null);
   const [webSearch, setWebSearch] = useState(false);
   const [slashIdx, setSlashIdx] = useState(-1);
   const [historyIdx, setHistoryIdx] = useState(-1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const voice = useVoiceInput();
-  const { t } = useTranslation();
+  const { t } = useBrandedTranslation();
   const inputPlaceholder =
     placeholder ??
     (busy ? 'Responding... Press Escape to stop' : t('chat.placeholder'));
@@ -128,6 +132,15 @@ export function ChatInputBar({
   useEffect(() => {
     setSlashIdx(-1);
   }, [value]);
+
+  useEffect(() => {
+    const active = voice.isRecording || voice.isProcessing;
+    document.documentElement.toggleAttribute('data-voice-input-active', active);
+    document.dispatchEvent(new CustomEvent('carina:voice-input', { detail: { active } }));
+    return () => {
+      document.documentElement.removeAttribute('data-voice-input-active');
+    };
+  }, [voice.isRecording, voice.isProcessing]);
 
   async function toggleVoiceInput() {
     if (voice.isProcessing) return;
@@ -304,6 +317,38 @@ export function ChatInputBar({
               )}
             </div>
 
+            <div className="relative">
+              <Tooltip text="Tools" side="top">
+                <IconButton
+                  label="Tools"
+                  disabled={disabled}
+                  onClick={() => { setShowTools(!showTools); setShowAttach(false); }}
+                  className={selectedTool ? 'text-accent' : ''}
+                >
+                  <Wrench className="h-4 w-4" />
+                </IconButton>
+              </Tooltip>
+              {showTools && (
+                <ToolsPanel
+                  onClose={() => setShowTools(false)}
+                  onSelectTool={(tool) => setSelectedTool(tool)}
+                  selectedToolId={selectedTool?.id ?? null}
+                />
+              )}
+            </div>
+
+            {selectedTool && (
+              <button
+                type="button"
+                onClick={() => setSelectedTool(null)}
+                className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-xs font-medium text-accent transition-colors hover:bg-accent/20"
+              >
+                {CHAT_TOOLS.find((t) => t.id === selectedTool.id)?.icon}
+                {selectedTool.shortName}
+                <X className="h-3 w-3" />
+              </button>
+            )}
+
             {webSearchAvailable && (
               <Tooltip text={webSearch ? 'Web search on' : 'Web search off'} side="top">
                 <IconButton
@@ -320,18 +365,35 @@ export function ChatInputBar({
             <Tooltip
               text={
                 voice.isProcessing
-                  ? 'Transcribing audio...'
+                  ? t('chat.voiceTranscribing')
                   : voice.isRecording
-                    ? 'Stop and transcribe'
-                    : voice.voiceReady
-                      ? 'Voice input'
-                      : voice.voiceBlockedReason || 'Checking microphone support...'
+                    ? voice.liveDictationAvailable
+                      ? t('chat.voiceStopLive')
+                      : t('chat.voiceStopServer')
+                    : voice.transcriptionHealthLoading
+                      ? t('chat.voiceChecking')
+                      : voice.voiceReady
+                        ? voice.liveDictationAvailable
+                          ? t('chat.voiceStartLive')
+                          : t('chat.voiceStartServer')
+                        : voice.voiceBlockedReason || 'Checking microphone support...'
               }
               side="top"
             >
               <IconButton
-                label={voice.isRecording ? 'Stop voice input' : 'Voice input'}
-                disabled={disabled || voice.isProcessing || Boolean(voice.voiceBlockedReason)}
+                label={
+                  voice.isRecording
+                    ? voice.liveDictationAvailable
+                      ? t('chat.voiceStopLive')
+                      : t('chat.voiceStopServer')
+                    : t('chat.voice')
+                }
+                disabled={
+                  disabled
+                  || voice.isProcessing
+                  || voice.transcriptionHealthLoading
+                  || Boolean(voice.voiceBlockedReason)
+                }
                 onClick={() => void toggleVoiceInput()}
                 className={cn(
                   voice.voiceReady && !disabled && !voice.isRecording && 'text-accent hover:text-accent',
@@ -398,11 +460,18 @@ export function ChatInputBar({
       </div>
 
       <p className="mt-1 text-center text-[10px] text-text-muted">
-        {busy
-          ? 'Escape to stop · Shift+Enter for new line'
-          : 'Enter to send · Shift+Enter for new line · / for commands · Up arrow recalls history'}
+        {busy ? t('chat.composerHintBusy') : t('chat.composerHint')}
+        {!voice.transcriptionHealthLoading && voice.voiceBlockedReason && !busy ? (
+          <span className="mt-0.5 block text-text-muted/80">{voice.voiceBlockedReason}</span>
+        ) : voice.voiceReady && !busy && !voice.error ? (
+          <span className="mt-0.5 block text-text-muted/80">
+            {voice.liveDictationAvailable
+              ? t('chat.voiceLiveDictation')
+              : t('chat.voiceServerReady')}
+          </span>
+        ) : null}
         {voice.error ? (
-          <span className="block mt-0.5 text-danger">{voice.error}</span>
+          <span className="mt-0.5 block text-danger">{voice.error}</span>
         ) : null}
       </p>
     </div>

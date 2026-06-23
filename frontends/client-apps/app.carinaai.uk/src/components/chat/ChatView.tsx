@@ -8,6 +8,7 @@ import { ContextWarning } from './ContextWarning';
 import { DeletedMessage } from './DeletedMessage';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { SessionHeader } from './SessionHeader';
+import { ProfileSwitcher } from './ProfileSwitcher';
 import { ToolCallBlock } from './ToolCallBlock';
 import { ChatMessage, ContextPin, LiveToolCall } from './types';
 import { UserMessage } from './UserMessage';
@@ -25,6 +26,7 @@ interface ChatViewProps {
   sessionTitle: string;
   initialMessages: ChatMessage[];
   workspacePlan: string;
+  profileId?: string | null;
   researchJobId?: string | null;
   documentId?: string | null;
 }
@@ -34,6 +36,7 @@ export function ChatView({
   sessionTitle,
   initialMessages,
   workspacePlan: _workspacePlan,
+  profileId,
   researchJobId,
   documentId,
 }: ChatViewProps) {
@@ -50,6 +53,7 @@ export function ChatView({
   const [deletedMessages, setDeletedMessages] = useState<Map<string, ChatMessage>>(
     () => new Map(),
   );
+  const [activeProfileId, setActiveProfileId] = useState(profileId ?? '');
   const [webSearchAvailable, setWebSearchAvailable] = useState(false);
   const [agentModeAvailable, setAgentModeAvailable] = useState(false);
 
@@ -370,6 +374,7 @@ export function ChatView({
         provider: options.provider,
         model: options.model,
         webSearch: options.webSearch,
+        profileId: activeProfileId || undefined,
       }),
     }).catch((err: unknown) => {
       if (err instanceof DOMException && err.name === 'AbortError') return null;
@@ -656,13 +661,20 @@ export function ChatView({
         model={currentModel}
         onRename={renameSession}
         actions={
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-2">
+            <ProfileSwitcher
+              sessionId={sessionId}
+              activeProfileId={activeProfileId}
+              onProfileChange={(profile) => setActiveProfileId(profile?.id ?? '')}
+            />
+            <div className="flex items-center gap-0.5">
             <IconButton label="Copy session as Markdown" size="sm" onClick={() => void exportMarkdown('copy')}>
               <Copy className="h-3 w-3" />
             </IconButton>
             <IconButton label="Download session as Markdown" size="sm" onClick={() => void exportMarkdown('download')}>
               <Download className="h-3 w-3" />
             </IconButton>
+            </div>
           </div>
         }
       />

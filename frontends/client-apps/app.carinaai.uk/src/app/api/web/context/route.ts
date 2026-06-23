@@ -10,8 +10,12 @@ async function ensureAuthed(): Promise<boolean> {
 }
 
 export async function GET(request: Request): Promise<Response> {
-  if (!(await ensureAuthed())) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    if (!(await ensureAuthed())) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return proxyToCoreApi(request, '/api/web/context');
+  } catch {
+    return Response.json({ error: 'Context unavailable.' }, { status: 500 });
   }
-  return proxyToCoreApi(request, '/api/web/context');
 }

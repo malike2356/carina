@@ -7,6 +7,7 @@ import {
   getIncident,
   getLastResearchRun,
   listIncidents,
+  listResearchRuns,
   listSubscribers,
   publishIncident,
   rejectIncident,
@@ -15,6 +16,7 @@ import {
 import { generateIncidentPage } from '../../blog/page-generator.js';
 import { sendIncidentNewsletter } from '../../blog/newsletter-send.js';
 import { runResearchDiscovery } from '../../blog/research-runner.js';
+import { runWebSearch } from '../../tools/web-search-provider.js';
 import { loadLocalEnv } from '../config/env.js';
 import type { IncidentCategory, IncidentStatus } from '../../blog/types.js';
 
@@ -246,12 +248,21 @@ export async function runBlogCommand(args: string[]): Promise<void> {
   }
 
   if (action === 'research-run') {
-    output(await runResearchDiscovery(flagValue(args, '--query') ?? 'AI agent incident 2026'));
+    output(await runResearchDiscovery({
+      query: flagValue(args, '--query') ?? undefined,
+      triggeredBy: 'cli',
+    }));
     return;
   }
 
-  if (action === 'research-status' || action === 'research-log') {
+  if (action === 'research-status') {
     output(await getLastResearchRun());
+    return;
+  }
+
+  if (action === 'research-log') {
+    const limit = parseMaybeNumber(flagValue(args, '--limit')) ?? 20;
+    output(await listResearchRuns(limit));
     return;
   }
 
@@ -261,8 +272,8 @@ export async function runBlogCommand(args: string[]): Promise<void> {
       console.error('Usage: carina blog search-source --query "<text>"');
       process.exit(1);
     }
-    const hits = await runResearchDiscovery(query);
-    output(hits);
+    const limit = parseMaybeNumber(flagValue(args, '--limit')) ?? 5;
+    output(await runWebSearch(query, limit));
     return;
   }
 

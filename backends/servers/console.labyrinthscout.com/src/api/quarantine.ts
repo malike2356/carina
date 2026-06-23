@@ -5,6 +5,7 @@ import { getRedis } from '../redis.js';
 import { publishControlMessage } from '../lib/instance-control.js';
 import { broadcastEvent, refreshAndBroadcastStats } from '../api/sse.js';
 import type { SecurityEventRow } from '../types.js';
+import { listQuarantineEntries, releaseQuarantineEntry } from '../security/quarantine-list.js';
 
 export const quarantineRouter: IRouter = Router();
 
@@ -66,6 +67,33 @@ async function insertQuarantineEvent(
   broadcastEvent(event);
   void refreshAndBroadcastStats();
 }
+
+quarantineRouter.get('/list', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await listQuarantineEntries();
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[scout:quarantine] list failed:', msg);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+quarantineRouter.post('/release', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const id = typeof req.body?.id === 'string' ? req.body.id : '';
+    const result = await releaseQuarantineEntry(id);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error ?? 'Release failed' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[scout:quarantine] release failed:', msg);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 quarantineRouter.post('/tools', async (req: Request, res: Response): Promise<void> => {
   try {

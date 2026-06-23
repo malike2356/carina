@@ -155,6 +155,7 @@ export const chatSessions = pgTable(
     mode: varchar('mode', { length: 20 }).notNull().default('chat'),
     pinned: boolean('pinned').notNull().default(false),
     archived: boolean('archived').notNull().default(false),
+    profileId: uuid('profile_id'),
     lastMessageAt: timestamp('last_message_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -162,6 +163,31 @@ export const chatSessions = pgTable(
   (t) => [
     index('chat_sessions_workspace_id_idx').on(t.workspaceId),
     index('chat_sessions_last_message_at_idx').on(t.lastMessageAt),
+    index('chat_sessions_profile_id_idx').on(t.profileId),
+  ],
+);
+
+export const workspaceProfiles = pgTable(
+  'workspace_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    slug: varchar('slug', { length: 64 }).notNull(),
+    name: text('name').notNull(),
+    description: text('description'),
+    systemPrompt: text('system_prompt'),
+    provider: varchar('provider', { length: 50 }),
+    model: varchar('model', { length: 120 }),
+    isBuiltin: boolean('is_builtin').notNull().default(false),
+    builtinId: varchar('builtin_id', { length: 64 }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('workspace_profiles_workspace_id_idx').on(t.workspaceId),
+    index('workspace_profiles_workspace_slug_idx').on(t.workspaceId, t.slug),
   ],
 );
 
@@ -468,6 +494,7 @@ export const workspaceSettings = pgTable('workspace_settings', {
   customTheme: jsonb('custom_theme'),
   appearance: jsonb('appearance'),
   brand: jsonb('brand').notNull().default({}),
+  packCatalog: jsonb('pack_catalog').notNull().default([]),
   showSessionHeader: boolean('show_session_header').notNull().default(true),
   showWelcomeMessage: boolean('show_welcome_message').notNull().default(true),
   showThinkingProcess: boolean('show_thinking_process').notNull().default(true),
@@ -493,6 +520,26 @@ export const workspaceSettings = pgTable('workspace_settings', {
   terminalEnabled: boolean('terminal_enabled').notNull().default(true),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
+
+export const customDomains = pgTable(
+  'custom_domains',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    hostname: text('hostname').notNull().unique(),
+    verificationToken: text('verification_token').notNull(),
+    verifiedAt: timestamp('verified_at'),
+    tlsStatus: varchar('tls_status', { length: 20 }).notNull().default('pending'),
+    isCanonical: boolean('is_canonical').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('custom_domains_workspace_id_idx').on(t.workspaceId),
+    index('custom_domains_hostname_idx').on(t.hostname),
+  ],
+);
 
 export const workspaceMembers = pgTable(
   'workspace_members',
@@ -540,6 +587,7 @@ export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;
 export type ByokKey = typeof byokKeys.$inferSelect;
 export type ChatSession = typeof chatSessions.$inferSelect;
+export type WorkspaceProfile = typeof workspaceProfiles.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type UserMemory = typeof userMemories.$inferSelect;
 export type UserNote = typeof userNotes.$inferSelect;

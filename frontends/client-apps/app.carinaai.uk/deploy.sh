@@ -51,6 +51,8 @@ deploy() {
   rsync -az \
     src/db/migrations/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/db/migrations/"
   rsync -az \
+    src/lib/support/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/lib/support/"
+  rsync -az \
     scripts/vps-schema-patch.sql "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/vps-schema-patch.sql"
   rsync -az \
     docker/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/docker/"
@@ -91,7 +93,11 @@ for f in \
   src/db/migrations/0005_calendar.sql \
   src/db/migrations/0006_brain_settings.sql \
   src/db/migrations/0007_terminal_enabled_default.sql \
-  src/db/migrations/0008_terminal_rbac.sql
+  src/db/migrations/0008_terminal_rbac.sql \
+  src/db/migrations/0009_white_label_brand.sql \
+  src/db/migrations/0010_custom_domains.sql \
+  src/db/migrations/0011_pack_catalog.sql \
+  src/db/migrations/0012_workspace_profiles.sql
 do
   name=$(basename "${f}")
   already=$(psql -t -A -c "SELECT 1 FROM __deploy_migrations WHERE filename='${name}'")

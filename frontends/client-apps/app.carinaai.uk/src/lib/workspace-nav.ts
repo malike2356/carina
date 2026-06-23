@@ -36,11 +36,11 @@ export const NAV_GROUPS: NavGroup[] = [
 
 export const NAV_ROUTES: NavRoute[] = [
   {
-    href: '/dashboard',
-    label: 'Dashboard',
-    description: 'Overview of your workspace activity.',
+    href: '/launcher',
+    label: 'Launcher',
+    description: 'Carina home screen with workspace orbit and quick actions.',
     group: 'workspace',
-    iconName: 'LayoutDashboard',
+    iconName: 'Home',
   },
   {
     href: '/documents',
@@ -106,6 +106,13 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'BookOpen',
   },
   {
+    href: '/packs',
+    label: 'Skill packs',
+    description: 'Vertical templates and branded pack marketplace.',
+    group: 'intelligence',
+    iconName: 'Package',
+  },
+  {
     href: '/terminal',
     label: 'Terminal',
     description: 'Sandboxed shell access for this workspace.',
@@ -133,6 +140,13 @@ export const NAV_ROUTES: NavRoute[] = [
     description: 'Runtime variables and configuration.',
     group: 'tools',
     iconName: 'Database',
+  },
+  {
+    href: '/system',
+    label: 'System health',
+    description: 'Subsystem status and workspace health summary.',
+    group: 'tools',
+    iconName: 'Activity',
   },
   {
     href: '/settings',
@@ -196,7 +210,7 @@ export const NAV_ROUTES: NavRoute[] = [
   {
     href: '/profiles',
     label: 'Profiles',
-    description: 'Workspace personas and provider defaults.',
+    description: 'Workspace identity, operator context, and profile scope.',
     group: 'account',
     iconName: 'UserCircle',
   },
@@ -282,6 +296,7 @@ export type SettingsToolLink = {
 export type SettingsSectionId =
   | 'join'
   | 'appearance'
+  | 'brand'
   | 'chat'
   | 'brain'
   | 'shortcuts'
@@ -297,6 +312,9 @@ export const SETTINGS_SECTION_LINKS: Record<
     { label: 'Device pairing', description: 'Link phones and tablets with a QR code.', href: '/settings/pairing' },
     { label: 'Calendar sync', description: 'Connect Google Calendar or other providers.', href: '/settings/calendar' },
   ],
+  brand: [
+    { label: 'Workspace brand', description: 'Logo, colors, and white-label identity.', href: '/settings#brand' },
+  ],
   chat: [
     { label: 'Open notes', description: 'Quick notes panel alongside chat.', panel: 'notes' },
     { label: 'Files', description: 'Upload and browse workspace files.', href: '/files' },
@@ -306,6 +324,7 @@ export const SETTINGS_SECTION_LINKS: Record<
   brain: [
     { label: 'Open memory', description: 'Review and edit saved memories.', panel: 'memory' },
     { label: 'Open skills', description: 'Manage learned skill notes.', panel: 'skills' },
+    { label: 'Skill packs', description: 'Vertical templates and branded pack marketplace.', href: '/packs' },
     { label: 'Library', description: 'Memory library and knowledge store.', href: '/library' },
   ],
   account: [

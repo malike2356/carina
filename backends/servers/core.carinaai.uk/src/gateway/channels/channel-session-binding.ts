@@ -1,7 +1,7 @@
 import type { ChannelMessage } from './channel-adapter.interface.js';
 import { buildSessionExternalKey } from './channel-routing.js';
 import { buildSurfaceSessionMapKey, operatorSessionEnabled } from '../../surfaces/index.js';
-import { getIdentityResolver, identityLinksEnabled } from './identity-resolver.js';
+import { getIdentityResolver, identityLinksEnabled } from '../identity-resolver.js';
 import { buildLinkedSessionExternalKey } from './session-identity-prefs.js';
 
 export { operatorSessionEnabled };

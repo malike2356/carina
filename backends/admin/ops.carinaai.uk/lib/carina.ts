@@ -48,11 +48,20 @@ export function carinaHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function carinaGet(path: string): Promise<Response> {
+export async function carinaGet(path: string, timeoutMs = 5000): Promise<Response> {
   return fetch(`${carinaUrl()}${path}`, {
     headers: carinaHeaders(),
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
+}
+
+export async function carinaReachable(): Promise<boolean> {
+  try {
+    const response = await carinaGet('/api/ops/health', 4000);
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function carinaPut(path: string, body: unknown): Promise<Response> {
@@ -73,12 +82,12 @@ export async function carinaPatch(path: string, body: unknown): Promise<Response
   });
 }
 
-export async function carinaPost(path: string, body: unknown): Promise<Response> {
+export async function carinaPost(path: string, body: unknown, timeoutMs = 15000): Promise<Response> {
   return fetch(`${carinaUrl()}${path}`, {
     method: 'POST',
     headers: carinaHeaders(),
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
 }
 

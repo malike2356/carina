@@ -10,6 +10,8 @@ Carina Cloud is **not** the same product as **Labyrinth Scout**. Scout adds the 
 
 For team features (BYOK vault, workbench, audit, deployments), upgrade to **Carina Ops** plans on the same app host.
 
+        White-label operators can brand the cloud workspace, bind custom domains, and provision client workspaces. Customer guide: [white-label getting started](https://docs.carinaai.uk/docs/user/white-label/getting-started).
+
 ---
 
 ## Quick start (one click)
@@ -62,6 +64,12 @@ Today you can:
 - Export audit and usage CSV on Ops Team (see [Carina Ops plans](/docs/user/carina-ops/plans))
 
 Document any production migration with your operator before moving off Cloud.
+
+---
+
+## White-label custom domains
+
+Partners and workspace owners can map a verified customer hostname to Carina Cloud. See [White-label custom domains](/docs/user/white-label-custom-domains) for DNS verification, nginx TLS, and email sender identity.
 
 ---
 

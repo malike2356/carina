@@ -7,6 +7,7 @@ import type {
   BlogIncident,
   BlogSubscriber,
   IncidentCategory,
+  IncidentListSort,
   IncidentStatus,
   ResearchRun,
 } from './types.js';
@@ -81,7 +82,7 @@ function incidentBlockToRow(block: string, category: IncidentCategory): CreateIn
   const damageMatch = block.match(/<span class="ir-incident-damage">([\s\S]*?)<\/span>/i);
   const dateMatch = block.match(/<span class="ir-incident-date">([\s\S]*?)<\/span>/i);
   const bodyMatch = block.match(/<p class="ir-incident-body">([\s\S]*?)<\/p>/i);
-  const scoutFixMatch = block.match(/<span class="ir-scout-fix">[\s\S]*?Scout fix:\s*([\s\S]*?)<\/span>/i);
+  const scoutFixMatch = block.match(/Scout fix:\s*([\s\S]*?)(?:<\/span>|<\/footer>|$)/i);
   const sources = [...block.matchAll(/<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)]
     .map((match) => ({ label: stripTags(match[2] ?? ''), url: match[1] ?? '' }))
     .filter((entry) => entry.label && entry.url);
@@ -101,13 +102,29 @@ function incidentBlockToRow(block: string, category: IncidentCategory): CreateIn
   };
 }
 
-async function seedFromStaticIncidentPage(): Promise<void> {
-  const existing = await pool.query(`SELECT COUNT(*)::text AS count FROM incident_blog`);
-  if (Number(existing.rows[0]?.count ?? 0) > 0) return;
+async function seedFromStaticIncidentPage(force = false): Promise<void> {
+  if (!force) {
+    const existing = await pool.query(`SELECT COUNT(*)::text AS count FROM incident_blog`);
+    if (Number(existing.rows[0]?.count ?? 0) > 0) return;
+  } else {
+    const published = await pool.query(`SELECT COUNT(*)::text AS count FROM incident_blog WHERE status = 'published'`);
+    if (Number(published.rows[0]?.count ?? 0) > 0) return;
+  }
 
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-  const pagePath = path.join(root, 'labyrinthscout.com', 'incidents', 'index.html');
-  const html = await fs.readFile(pagePath, 'utf8').catch(() => '');
+  const candidates = [
+    path.join(root, 'labyrinthscout.com', 'incidents', 'index.legacy.html'),
+    path.join(root, 'labyrinthscout.com', 'incidents', 'index.html'),
+    path.join(root, '..', '..', 'frontends', 'marketing', 'labyrinthscout.com', 'incidents', 'index.html'),
+    '/var/www/labyrinthscout.com/incidents/index.legacy.html',
+    '/var/www/labyrinthscout.com/incidents/index.html',
+  ];
+  let html = '';
+  for (const pagePath of candidates) {
+    html = await fs.readFile(pagePath, 'utf8').catch(() => '');
+    if (html.includes('CATEGORY 1: FINANCIAL')) break;
+    html = '';
+  }
   if (!html) return;
 
   const sections: Array<{ category: IncidentCategory; start: string; end: string }> = [
@@ -122,7 +139,7 @@ async function seedFromStaticIncidentPage(): Promise<void> {
     const end = html.indexOf(section.end);
     if (start < 0 || end < 0 || end <= start) continue;
     const chunk = html.slice(start, end);
-    const blocks = [...chunk.matchAll(/<(?:div|article) class="ir-incident"[^>]*>([\s\S]*?<(?:div|footer) class="ir-incident-footer">[\s\S]*?<\/(?:div|footer)>\s*<\/(?:div|article)>)(?=\s*<(?:div|article) class="ir-incident">|\s*<\/section>)/gi)];
+    const blocks = [...chunk.matchAll(/<article class="ir-incident"[^>]*>([\s\S]*?)<\/article>/gi)];
     for (const match of blocks) {
       const input = incidentBlockToRow(match[1] ?? '', section.category);
       if (!input) continue;
@@ -182,6 +199,16 @@ export interface UpdateIncidentInput {
 
 async function ensureIncidentBlogReady(): Promise<void> {
   await ensureIncidentBlogSchema();
+}
+
+export async function ensurePublishedIncidentSeed(): Promise<number> {
+  await ensureIncidentBlogSchema();
+  const before = await pool.query(`SELECT COUNT(*)::text AS count FROM incident_blog WHERE status = 'published'`);
+  const beforeCount = Number(before.rows[0]?.count ?? 0);
+  if (beforeCount > 0) return beforeCount;
+  await seedFromStaticIncidentPage(true);
+  const after = await pool.query(`SELECT COUNT(*)::text AS count FROM incident_blog WHERE status = 'published'`);
+  return Number(after.rows[0]?.count ?? 0);
 }
 
 export async function ensureIncidentBlogSchema(): Promise<void> {
@@ -273,20 +300,17 @@ export async function createIncident(input: CreateIncidentInput): Promise<BlogIn
 export async function getIncident(idOrSlug: string): Promise<BlogIncident | null> {
   await ensureIncidentBlogReady();
   const result = await pool.query(
-    `SELECT * FROM incident_blog WHERE id = $1 OR slug = $1 LIMIT 1`,
+    `SELECT * FROM incident_blog WHERE id::text = $1 OR slug = $1 LIMIT 1`,
     [idOrSlug],
   );
   if (result.rows.length === 0) return null;
   return rowToIncident(result.rows[0]);
 }
 
-export async function listIncidents(opts: {
+function incidentListFilter(opts: {
   status?: IncidentStatus;
   category?: IncidentCategory;
-  limit?: number;
-  offset?: number;
-} = {}): Promise<BlogIncident[]> {
-  await ensureIncidentBlogReady();
+}): { where: string; params: unknown[]; nextIdx: number } {
   const clauses: string[] = [];
   const params: unknown[] = [];
   let idx = 1;
@@ -299,10 +323,80 @@ export async function listIncidents(opts: {
     params.push(opts.category);
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return { where, params, nextIdx: idx };
+}
+
+function incidentListOrderBy(sort: IncidentListSort = 'newest'): string {
+  if (sort === 'incident_date') {
+    return 'date_occurred DESC NULLS LAST, created_at DESC';
+  }
+  if (sort === 'updated') {
+    return 'updated_at DESC NULLS LAST, created_at DESC';
+  }
+  return 'created_at DESC';
+}
+
+export function parseIncidentListSort(value: unknown): IncidentListSort {
+  const raw = String(value ?? '').trim();
+  if (raw === 'incident_date' || raw === 'updated') return raw;
+  return 'newest';
+}
+
+export async function countIncidents(opts: {
+  status?: IncidentStatus;
+  category?: IncidentCategory;
+} = {}): Promise<number> {
+  await ensureIncidentBlogReady();
+  const { where, params } = incidentListFilter(opts);
+  const result = await pool.query(
+    `SELECT COUNT(*)::text AS count FROM incident_blog ${where}`,
+    params,
+  );
+  return Number(result.rows[0]?.count ?? 0);
+}
+
+export async function getIncidentStatusStats(): Promise<{
+  draftCount: number;
+  approvedCount: number;
+  publishedCount: number;
+  rejectedCount: number;
+}> {
+  await ensureIncidentBlogReady();
+  const result = await pool.query(
+    `SELECT status, COUNT(*)::text AS count FROM incident_blog GROUP BY status`,
+  );
+  const stats = {
+    draftCount: 0,
+    approvedCount: 0,
+    publishedCount: 0,
+    rejectedCount: 0,
+  };
+  for (const row of result.rows) {
+    const count = Number(row.count ?? 0);
+    const status = String(row.status);
+    if (status === 'draft') stats.draftCount = count;
+    else if (status === 'approved') stats.approvedCount = count;
+    else if (status === 'published') stats.publishedCount = count;
+    else if (status === 'rejected') stats.rejectedCount = count;
+  }
+  return stats;
+}
+
+export async function listIncidents(opts: {
+  status?: IncidentStatus;
+  category?: IncidentCategory;
+  limit?: number;
+  offset?: number;
+  sort?: IncidentListSort;
+} = {}): Promise<BlogIncident[]> {
+  await ensureIncidentBlogReady();
+  const { where, params, nextIdx } = incidentListFilter(opts);
+  let idx = nextIdx;
   params.push(opts.limit ?? 100);
   params.push(opts.offset ?? 0);
+  const orderBy = incidentListOrderBy(opts.sort);
   const result = await pool.query(
-    `SELECT * FROM incident_blog ${where} ORDER BY COALESCE(published_at, updated_at, created_at) DESC LIMIT $${idx++} OFFSET $${idx++}`,
+    `SELECT * FROM incident_blog ${where} ORDER BY ${orderBy} LIMIT $${idx++} OFFSET $${idx++}`,
     params,
   );
   return result.rows.map(rowToIncident);
@@ -341,7 +435,7 @@ export async function updateIncident(id: string, data: UpdateIncidentInput): Pro
   if (fields.length === 0) return getIncident(id);
   params.push(id);
   const result = await pool.query(
-    `UPDATE incident_blog SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`,
+    `UPDATE incident_blog SET ${fields.join(', ')}, updated_at = NOW() WHERE id::text = $${idx} RETURNING *`,
     params,
   );
   if (result.rows.length === 0) return null;
@@ -357,7 +451,7 @@ export async function updateIncident(id: string, data: UpdateIncidentInput): Pro
 export async function deleteIncident(id: string): Promise<boolean> {
   await ensureIncidentBlogReady();
   const current = await getIncident(id);
-  const result = await pool.query(`DELETE FROM incident_blog WHERE id = $1`, [id]);
+  const result = await pool.query(`DELETE FROM incident_blog WHERE id::text = $1`, [id]);
   const deleted = (result.rowCount ?? 0) > 0;
   if (deleted && current?.status === 'published') {
     await generateIncidentPage().catch((err) => {
@@ -389,10 +483,21 @@ export async function rejectIncident(id: string, reason?: string): Promise<BlogI
   });
 }
 
+export async function rejectAllDrafts(reason = 'Cleared from draft queue'): Promise<number> {
+  await ensureIncidentBlogReady();
+  const result = await pool.query(
+    `UPDATE incident_blog
+     SET status = 'rejected', rejection_reason = $1, updated_at = NOW()
+     WHERE status = 'draft'`,
+    [reason],
+  );
+  return result.rowCount ?? 0;
+}
+
 export async function markNewsletterSent(id: string): Promise<void> {
   await ensureIncidentBlogReady();
   await pool.query(
-    `UPDATE incident_blog SET newsletter_sent = TRUE, newsletter_sent_at = NOW(), updated_at = NOW() WHERE id = $1`,
+    `UPDATE incident_blog SET newsletter_sent = TRUE, newsletter_sent_at = NOW(), updated_at = NOW() WHERE id::text = $1`,
     [id],
   );
 }
@@ -411,15 +516,37 @@ export async function getUnsentNewsletterIncidents(): Promise<BlogIncident[]> {
   return result.rows.map(rowToIncident);
 }
 
-export async function subscribe(email: string, source = 'incidents-page'): Promise<BlogSubscriber> {
+export type SubscribeOutcome = 'already_confirmed' | 'pending' | 'confirmation_sent';
+
+export interface SubscribeResult {
+  subscriber: BlogSubscriber;
+  outcome: SubscribeOutcome;
+}
+
+export async function getSubscriberByEmail(email: string): Promise<BlogSubscriber | null> {
   await ensureIncidentBlogReady();
   const normalized = email.trim().toLowerCase();
-  const confirmToken = randomUUID();
-  const existing = await pool.query(
+  const result = await pool.query(
     `SELECT * FROM incident_blog_subscribers WHERE email = $1 LIMIT 1`,
     [normalized],
   );
-  if (existing.rows[0]) {
+  if (result.rows.length === 0) return null;
+  return rowToSubscriber(result.rows[0]);
+}
+
+export async function subscribe(email: string, source = 'incidents-page'): Promise<SubscribeResult> {
+  await ensureIncidentBlogReady();
+  const normalized = email.trim().toLowerCase();
+  const existing = await getSubscriberByEmail(normalized);
+  if (existing?.confirmed && !existing.unsubscribedAt) {
+    return { subscriber: existing, outcome: 'already_confirmed' };
+  }
+  if (existing && !existing.confirmed && !existing.unsubscribedAt) {
+    return { subscriber: existing, outcome: 'pending' };
+  }
+
+  const confirmToken = randomUUID();
+  if (existing) {
     await pool.query(
       `UPDATE incident_blog_subscribers
        SET confirm_token = $2, confirmed = FALSE, unsubscribed_at = NULL, source = $3
@@ -434,7 +561,7 @@ export async function subscribe(email: string, source = 'incidents-page'): Promi
     );
   }
   const result = await pool.query(`SELECT * FROM incident_blog_subscribers WHERE email = $1`, [normalized]);
-  return rowToSubscriber(result.rows[0]);
+  return { subscriber: rowToSubscriber(result.rows[0]), outcome: 'confirmation_sent' };
 }
 
 export async function confirmSubscriber(token: string): Promise<boolean> {
@@ -495,13 +622,7 @@ export async function recordResearchRun(result: {
   );
 }
 
-export async function getLastResearchRun(): Promise<ResearchRun | null> {
-  await ensureIncidentBlogReady();
-  const result = await pool.query(
-    `SELECT * FROM incident_research_runs ORDER BY run_at DESC LIMIT 1`,
-  );
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0] as Record<string, unknown>;
+function rowToResearchRun(row: Record<string, unknown>): ResearchRun {
   return {
     id: String(row.id),
     runAt: new Date(String(row.run_at)),
@@ -511,6 +632,25 @@ export async function getLastResearchRun(): Promise<ResearchRun | null> {
     skippedCount: Number(row.skipped_count ?? 0),
     errorLog: row.error_log ? String(row.error_log) : null,
   };
+}
+
+export async function getLastResearchRun(): Promise<ResearchRun | null> {
+  await ensureIncidentBlogReady();
+  const result = await pool.query(
+    `SELECT * FROM incident_research_runs ORDER BY run_at DESC LIMIT 1`,
+  );
+  if (result.rows.length === 0) return null;
+  return rowToResearchRun(result.rows[0] as Record<string, unknown>);
+}
+
+export async function listResearchRuns(limit = 20): Promise<ResearchRun[]> {
+  await ensureIncidentBlogReady();
+  const capped = Math.min(100, Math.max(1, limit));
+  const result = await pool.query(
+    `SELECT * FROM incident_research_runs ORDER BY run_at DESC LIMIT $1`,
+    [capped],
+  );
+  return result.rows.map((row) => rowToResearchRun(row as Record<string, unknown>));
 }
 
 void ensureIncidentBlogSchema().catch(() => undefined);

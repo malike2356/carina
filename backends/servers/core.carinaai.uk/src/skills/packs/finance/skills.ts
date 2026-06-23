@@ -51,4 +51,16 @@ export const financeSkills: PackSkillInput[] = [
 4. Suggest investigation priorities for material variances.`,
     toolsUsed: ['file-read', 'code-exec'],
   },
+  {
+    name: 'stripe-ops',
+    description: 'Look up Stripe customers and subscriptions, run revenue queries, and issue refunds with mandatory confirmation',
+    trigger: ['stripe customer', 'stripe subscription', 'stripe refund', 'stripe revenue', 'stripe charge', 'stripe dispute', 'mrr', 'stripe balance'],
+    steps: `1. Identify the intent: customer lookup, subscription inspection, refund, or revenue query.
+2. CUSTOMER LOOKUP: Search by email, name, or customer ID via http-request to the Stripe API. Present customer ID, email, name, and creation date. If multiple matches exist, list them and ask the user to confirm.
+3. SUBSCRIPTION: Retrieve full subscription details including status, current period, plan/price, quantity, and scheduled changes. Summarize clearly.
+4. REFUND: Before issuing any refund: (a) retrieve and display the original charge details, (b) state the exact refund amount and currency, (c) ask the user to explicitly confirm with the phrasing "Please confirm you want to refund [amount] [currency] on charge [id]." Only after explicit confirmation, call the Stripe API to issue the refund. Log charge ID, refund ID, and amount in the response.
+5. REVENUE QUERIES: Answer questions about recent payments, balance, MRR approximations, or disputes by fetching data from the Stripe API. State the time range and any limitations.
+6. GUARDRAILS: Never perform write operations without explicit confirmation in the same turn. Never expose API keys. If a Stripe API call fails, report the error and suggest next steps. Always summarize the action and result after any mutation.`,
+    toolsUsed: ['http-request'],
+  },
 ];

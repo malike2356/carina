@@ -5,7 +5,7 @@ import { getRouter } from './router.js';
 import { channelRegistry } from './channels/channel-registry.js';
 import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
 import { formatForPlatform } from './formatting.js';
-import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective, cleanTextForTelegramSpeech } from './telegram-audio.js';
+import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective, buildVoiceScript } from './telegram-audio.js';
 import { BlockStreamAssembler } from './block-stream-assembler.js';
 
 const TELEGRAM_MAX = 4096;
@@ -176,7 +176,7 @@ export async function startTelegram(): Promise<void> {
 
       if (speakRequested) {
         const fullReply = await streamToTelegram(bot, chatId, generator, adapter);
-        const speechText = cleanTextForTelegramSpeech(fullReply);
+        const speechText = await buildVoiceScript(fullReply);
         if (speechText) {
           const voice = await sendSpokenReply(bot, chatId, speechText);
           if (!voice.ok) {

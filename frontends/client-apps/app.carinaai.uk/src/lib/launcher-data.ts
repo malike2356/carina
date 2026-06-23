@@ -27,6 +27,7 @@ export interface LauncherData {
   taskCount: number;
   scoutPaired: boolean;
   version: string;
+  activeSkillPacks: string;
 }
 
 async function loadOptionalLauncherValue<T>(
@@ -106,6 +107,7 @@ export async function loadLauncherData(userId: string, userName: string, userEma
     taskCount: firstCount(tasksRes),
     scoutPaired: scoutKeys.some((k) => k.provider === 'labyrinth-scout'),
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? '1.0.0',
+    activeSkillPacks: workspace.activeSkillPacks,
   };
 }
 

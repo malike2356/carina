@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FitAddon } from '@xterm/addon-fit';
 import { Terminal as XTerm } from 'xterm';
+import 'xterm/css/xterm.css';
 import { ChevronDown, ExternalLink, RefreshCw, Terminal as TerminalIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
@@ -99,6 +100,7 @@ export function Terminal({ mode = 'page', onClose }: Props) {
   const [error, setError] = useState('');
   const [detail, setDetail] = useState('Preparing terminal session.');
   const [reconnectTick, setReconnectTick] = useState(0);
+  const [paneReady, setPaneReady] = useState(false);
 
   const isDrawer = mode === 'drawer';
 
@@ -135,6 +137,7 @@ export function Terminal({ mode = 'page', onClose }: Props) {
       setStatus('loading');
       setError('');
       setDetail('Requesting bridge token.');
+      setPaneReady(false);
 
       try {
         const bridgeRes = await fetch('/api/terminal/bridge', { cache: 'no-store' });
@@ -161,37 +164,58 @@ export function Terminal({ mode = 'page', onClose }: Props) {
         container.replaceChildren();
 
         const term = new XTerm({
-          cursorBlink: true,
+          cursorBlink: false,
+          cursorStyle: 'bar',
           convertEol: true,
           scrollback: 5000,
           fontFamily: '"JetBrains Mono","Cascadia Code","Fira Code","SFMono-Regular",monospace',
           fontSize: 14,
           lineHeight: 1.25,
           theme: TERMINAL_THEME,
-          allowTransparency: true,
         });
         const fit = new FitAddon();
         term.loadAddon(fit);
         term.open(container);
-        term.focus();
-        fit.fit();
-        term.writeln('\x1b[1;36mCarina terminal ready\x1b[0m');
-        term.writeln('\x1b[2mConnecting to PTY bridge...\x1b[0m');
 
         const ws = new WebSocket(resolveTerminalSocketUrl(bridge.data, bridgeToken));
         xtermRef.current = term;
         fitRef.current = fit;
         wsRef.current = ws;
+        let ptyStarted = false;
+        let resizeReady = false;
+
+        const fitToContainer = () => {
+          if (!containerRef.current) return;
+          fit.fit();
+        };
 
         const sendResize = () => {
-          if (ws.readyState !== WebSocket.OPEN) return;
+          if (ws.readyState !== WebSocket.OPEN || !resizeReady) return;
+          fitToContainer();
           ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+        };
+
+        const beginPtyOutput = (data: string) => {
+          if (!ptyStarted) {
+            ptyStarted = true;
+            resizeReady = true;
+            fitToContainer();
+            term.reset();
+            term.options.cursorBlink = true;
+            setPaneReady(true);
+            term.focus();
+          }
+          term.write(data);
         };
 
         ws.onopen = () => {
           setStatus('connecting');
           setDetail('Socket open, waiting for shell.');
-          sendResize();
+          requestAnimationFrame(() => {
+            fitToContainer();
+            resizeReady = true;
+            sendResize();
+          });
         };
 
         ws.onmessage = (event) => {
@@ -204,13 +228,10 @@ export function Terminal({ mode = 'page', onClose }: Props) {
             if (msg.type === 'connected') {
               setStatus('connected');
               setDetail(`Session ${msg.sessionId}`);
-              if (msg.cols > 0 && msg.rows > 0) {
-                term.resize(msg.cols, msg.rows);
-              }
               return;
             }
             if (msg.type === 'output') {
-              term.write(msg.data);
+              beginPtyOutput(msg.data);
               return;
             }
             if (msg.type === 'exit') {
@@ -239,16 +260,21 @@ export function Terminal({ mode = 'page', onClose }: Props) {
           }
         });
 
-        term.onResize(() => sendResize());
+        term.onResize(() => {
+          if (!ptyStarted) return;
+          if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+          resizeTimerRef.current = setTimeout(() => sendResize(), 80);
+        });
 
         observer = new ResizeObserver(() => {
-          fit.fit();
-          sendResize();
+          if (!ptyStarted) return;
+          if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
+          resizeTimerRef.current = setTimeout(() => {
+            fitToContainer();
+            sendResize();
+          }, 80);
         });
         observer.observe(container);
-
-        setStatus('connected');
-        setDetail('Shell connected.');
       } catch (err) {
         if (cancelled) return;
         setStatus('error');
@@ -347,11 +373,18 @@ export function Terminal({ mode = 'page', onClose }: Props) {
           )}
         </div>
       </div>
-      <div
-        ref={containerRef}
-        className="min-h-0 flex-1 bg-[#0b0f0d]"
-        style={isDrawer ? { height: '100%' } : undefined}
-      />
+      <div className="relative min-h-0 flex-1 bg-[#0b0f0d]">
+        {!paneReady && status !== 'error' ? (
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-text-muted">
+            {status === 'connected' ? 'Starting shell...' : 'Connecting to PTY bridge...'}
+          </div>
+        ) : null}
+        <div
+          ref={containerRef}
+          className={cn('h-full w-full', !paneReady && 'invisible')}
+          style={isDrawer ? { height: '100%' } : undefined}
+        />
+      </div>
       {error ? (
         <div className="border-t border-border bg-surface px-3 py-2 text-xs text-danger">
           {error}

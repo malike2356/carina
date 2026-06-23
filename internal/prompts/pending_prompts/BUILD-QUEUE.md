@@ -245,7 +245,7 @@ Note on gap-03-mobile: FULLY BUILT 2026-06-22. All four prompts archived. Native
 | `sprint-2/gap-06-webui/` | 01+02 done; start at 03 (i18n), then 04-08 | Cursor + Claude Code | partial (08 window system DONE; archive other built prompts) |
 | `sprint-2/gap-07-tui-cli/` | shell completions only (rest built) - start at 05 | Codex | DONE (verified built) |
 | `sprint-2/gap-08-enterprise-security/` | 01 then 02-06 in pairs | Claude Code + Codex | DONE (archived 2026-06-21) |
-| `sprint-1/gap-10-incident-blog/` | 01 then 03 parallel, then 02+04, then 05 | Claude Code | partial (core store/tools/ops API built; verify dual-interface + newsletter) |
+| `sprint-1/gap-10-incident-blog/` | 01 then 03 parallel, then 02+04, then 05 | Claude Code | DONE (archived 2026-06-23) |
 
 Note on gap-06-webui: prompts 01 (PTY bridge), 02 (admin pages), 03 (i18n),
 04 (canvas), 05 (chat enhancements), 06 (PWA), 07 (Odysseus UX), and 08 (window

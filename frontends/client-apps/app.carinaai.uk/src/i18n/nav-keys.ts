@@ -1,7 +1,7 @@
 import type { NavGroupId } from '@/lib/workspace-nav';
 
 export const ROUTE_LABEL_KEYS: Record<string, string> = {
-  '/dashboard': 'nav.dashboard',
+  '/launcher': 'nav.launcher',
   '/documents': 'nav.documents',
   '/calendar': 'nav.calendar',
   '/tasks': 'nav.tasks',

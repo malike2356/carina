@@ -1,0 +1,9 @@
+{
+  "name": "marketing-ops",
+  "version": "1.0.0",
+  "description": "LinkedIn post scheduling, outreach drafting, Mailchimp campaign audits, and Google Ads bid reviews",
+  "author": "VERLOX Ltd",
+  "category": "marketing",
+  "optional": true,
+  "skillCount": 4
+}

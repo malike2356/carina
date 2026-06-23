@@ -172,6 +172,15 @@ const HOSTED_ADMIN_PATCHES = [
   )`,
   `CREATE INDEX IF NOT EXISTS idx_custom_domains_hostname ON custom_domains (hostname)`,
   `CREATE INDEX IF NOT EXISTS idx_organizations_partner ON organizations (partner_id)`,
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS commercial_tier TEXT NOT NULL DEFAULT 'starter'`,
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS owner_org_id UUID REFERENCES organizations(id)`,
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`,
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS max_client_orgs INTEGER NOT NULL DEFAULT 10`,
+  `ALTER TABLE partner_accounts DROP CONSTRAINT IF EXISTS partner_accounts_commercial_tier_check`,
+  `ALTER TABLE partner_accounts ADD CONSTRAINT partner_accounts_commercial_tier_check CHECK (commercial_tier IN ('starter', 'agency', 'enterprise'))`,
+  `ALTER TABLE custom_domains ADD COLUMN IF NOT EXISTS verification_token TEXT`,
+  `ALTER TABLE custom_domains ADD COLUMN IF NOT EXISTS is_canonical BOOLEAN NOT NULL DEFAULT FALSE`,
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS pack_catalog JSONB NOT NULL DEFAULT '[]'`,
 ];
 
 export async function runHostedMigrations(client: pg.PoolClient): Promise<void> {

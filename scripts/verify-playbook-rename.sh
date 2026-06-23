@@ -50,22 +50,16 @@ else
   fail "Missing cookbook.html redirect stub"
 fi
 
-# 4. CLI: carina playbook registered; cookbook alias prints deprecation notice
+# 4. CLI registry: playbook primary, cookbook deprecated (isolated CARINA_HOME avoids local config drift)
 cd "$CORE"
-PLAYBOOK_HELP="$(pnpm exec tsx bin/carina.ts playbook --help 2>&1 || true)"
-if [[ "$PLAYBOOK_HELP" == *"carina playbook"* ]]; then
-  pass "carina playbook --help works"
+VERIFY_HOME="${TMPDIR:-/tmp}/carina-playbook-verify-$$"
+mkdir -p "$VERIFY_HOME"
+if CARINA_HOME="$VERIFY_HOME" pnpm exec vitest run src/cli/registry.test.ts src/cli/playbook-rename.test.ts --reporter=dot 2>&1; then
+  pass "playbook/cookbook CLI registry tests pass"
 else
-  fail "carina playbook --help missing expected usage text"
+  fail "playbook/cookbook CLI registry tests failed"
 fi
-
-COOKBOOK_OUT="$(pnpm exec tsx bin/carina.ts cookbook 2>&1 || true)"
-if [[ "$COOKBOOK_OUT" == *"carina cookbook is now carina playbook"* ]] \
-  || [[ "$COOKBOOK_OUT" == *"carina cookbook is deprecated"* ]]; then
-  pass "carina cookbook prints deprecation notice"
-else
-  fail "carina cookbook missing deprecation notice (got: ${COOKBOOK_OUT:0:120}...)"
-fi
+rm -rf "$VERIFY_HOME"
 
 if [[ "$FAIL" -eq 0 ]]; then
   log "All playbook rename checks passed."

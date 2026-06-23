@@ -52,10 +52,32 @@ describe('pty-bridge auth', () => {
 });
 
 describe('resolveCarinaSpawnCommand', () => {
+  const originalDocker = process.env.CARINA_OPS_IN_DOCKER;
+  const originalService = process.env.CARINA_PTY_DOCKER_SERVICE;
+
+  afterEach(() => {
+    if (originalDocker === undefined) delete process.env.CARINA_OPS_IN_DOCKER;
+    else process.env.CARINA_OPS_IN_DOCKER = originalDocker;
+    if (originalService === undefined) delete process.env.CARINA_PTY_DOCKER_SERVICE;
+    else process.env.CARINA_PTY_DOCKER_SERVICE = originalService;
+    delete process.env.CARINA_PTY_DOCKER_CONTAINER;
+    delete process.env.CARINA_PTY_DOCKER_DISABLED;
+  });
+
   it('resolves carina tui command from core workspace', () => {
+    delete process.env.CARINA_OPS_IN_DOCKER;
     const cmd = resolveCarinaSpawnCommand();
     expect(cmd.file).toBeTruthy();
     expect(cmd.args.join(' ')).toContain('tui');
     expect(cmd.cwd).toContain('core.carinaai.uk');
+  });
+
+  it('prefers docker exec into carina-web when ops runs in docker', () => {
+    process.env.CARINA_OPS_IN_DOCKER = 'true';
+    process.env.CARINA_PTY_DOCKER_CONTAINER = 'carina-web-test';
+    const cmd = resolveCarinaSpawnCommand();
+    expect(cmd.file).toBe('docker');
+    expect(cmd.args).toContain('carina-web-test');
+    expect(cmd.args.join(' ')).toContain('tui --simple');
   });
 });

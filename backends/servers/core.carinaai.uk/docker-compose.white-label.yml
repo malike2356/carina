@@ -1,0 +1,60 @@
+# White-label tenant stack overlay for docker-compose.prod.yml
+#
+# Usage:
+#   export CARINA_WHITE_LABEL_STACK=acme-agents
+#   ./scripts/deploy-white-label-stack.sh up -d
+#
+# Ops scoping:
+#   OPS_DOCKER_PROJECTS=acme-agents
+#   # or
+#   CARINA_WHITE_LABEL_STACK=acme-agents
+
+name: ${CARINA_WHITE_LABEL_STACK:?set CARINA_WHITE_LABEL_STACK}
+
+services:
+  carina-web:
+    networks:
+      - tenant
+      - proxy
+
+  carina-hub:
+    networks:
+      - tenant
+
+  carina-cloud:
+    networks:
+      - tenant
+
+  carina-ops:
+    environment:
+      CARINA_WHITE_LABEL_STACK: ${CARINA_WHITE_LABEL_STACK}
+      OPS_DOCKER_PROJECTS: ${CARINA_WHITE_LABEL_STACK}
+    networks:
+      - tenant
+      - proxy
+
+  postgres:
+    networks:
+      tenant:
+        aliases:
+          - ${CARINA_WHITE_LABEL_STACK}-postgres
+
+  redis:
+    networks:
+      - tenant
+
+  nginx:
+    networks:
+      - tenant
+      - proxy
+
+networks:
+  carina:
+    name: ${CARINA_WHITE_LABEL_STACK}_carina
+    driver: bridge
+  tenant:
+    name: ${CARINA_WHITE_LABEL_STACK}_net
+    driver: bridge
+  proxy:
+    external: true
+    name: proxy

@@ -2,6 +2,7 @@ import { pool } from '../memory/db.js';
 import { orgOrTenantWhere, queryForOrg } from '../hosted/scoped-query.js';
 import { checkOrgUsageQuota } from '../api/hosted-billing.js';
 import { sendUsageWarningEmail } from './usage-warning-email.js';
+import { resolveEmailIdentityForOrg } from './brand-email.js';
 import { BILLING_PLANS, type BillingPlanId } from '../billing/plans.js';
 import { getMonthlyBalance, getModelMixForMonth } from '../billing/credit-ledger.js';
 import { getAllowedModelClasses } from '../billing/credit-gate.js';
@@ -89,6 +90,7 @@ export async function maybeNotifyUsageWarning(
   const owner = await getOrgOwnerContact(orgId);
   if (!owner) return;
 
+  const identity = await resolveEmailIdentityForOrg(orgId);
   const sent = await sendUsageWarningEmail({
     orgName: owner.orgName,
     ownerEmail: owner.ownerEmail,
@@ -96,6 +98,8 @@ export async function maybeNotifyUsageWarning(
     used: quota.used,
     limit: quota.limit,
     unit: quota.unit ?? quotaOverride?.unit ?? 'credits',
+    identity,
+    billingUrl: `https://${identity.appHost}/ops/billing`,
   });
   if (sent) {
     state.lastEmailedThreshold = threshold;

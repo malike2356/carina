@@ -4,6 +4,7 @@ import { db } from '@/db';
 import { workspaceSettings } from '@/db/schema';
 import { normalizeAppearance } from '@/lib/appearance';
 import { mergeBrandSettings, normalizeBrandConfig, resolveWorkspaceBrand } from '@/lib/brand';
+import { stripPlatformEquivalentBrand } from '@/lib/brand-compat';
 import { normalizeBrainSettings, parseBrainSettingsPatch } from '@/lib/brain-settings';
 import {
   canUseTerminal,
@@ -136,7 +137,10 @@ export async function PATCH(request: Request) {
       .from(workspaceSettings)
       .where(eq(workspaceSettings.workspaceId, workspace.id))
       .limit(1);
-    updates.brand = mergeBrandSettings(current?.brand, body.brand);
+    updates.brand = mergeBrandSettings(
+      current?.brand,
+      stripPlatformEquivalentBrand(body.brand, 'hosted'),
+    );
   }
 
   await db

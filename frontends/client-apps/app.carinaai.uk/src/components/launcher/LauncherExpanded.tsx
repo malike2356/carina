@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { authClient } from '@/lib/auth-client';
-import { TerminalWorkspace } from '@/components/terminal/TerminalWorkspace';
+import { LauncherOrbitalTimeline } from '@/components/launcher/LauncherOrbitalTimeline';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
+import { WorkspaceOnboardingCard } from '@/components/settings/WorkspaceOnboardingCard';
 import { useClockTime, useGreeting, useRelativeTimeLabel } from '@/hooks/useRelativeTimeLabel';
 
 interface Session {
@@ -25,6 +27,7 @@ interface Props {
   skillCount: number;
   keyCount: number;
   taskCount: number;
+  activeSkillPacks?: string;
 }
 
 function useTimeAgo(date: Date | string | null): string {
@@ -216,7 +219,18 @@ function StatusRow({ icon, color, label, value, ok }: { icon: React.ReactNode; c
   );
 }
 
-export function LauncherExpanded({ userName, userEmail: _userEmail, sessions, totalSessions, latestSessionId, memoryCount, skillCount, keyCount, taskCount }: Props) {
+export function LauncherExpanded({
+  userName,
+  userEmail: _userEmail,
+  sessions,
+  totalSessions,
+  latestSessionId,
+  memoryCount,
+  skillCount,
+  keyCount,
+  taskCount,
+  activeSkillPacks = '',
+}: Props) {
   const router = useRouter();
   const greeting = useGreeting();
   const { canUseTerminal } = useTerminalAccess();
@@ -267,56 +281,64 @@ export function LauncherExpanded({ userName, userEmail: _userEmail, sessions, to
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
 
-        {/* Left sidebar */}
-        <div className="flex flex-col w-[168px] shrink-0 border-r overflow-y-auto" style={{ background: '#07101f', borderColor: '#1a2b45' }}>
-          <div className="flex justify-center pt-5 pb-4 border-b" style={{ borderColor: '#1a2b45' }}>
-            <Image src="/carina_logo_1.png" alt="Carina" width={44} height={44} className="object-contain" priority />
+        {/* Left sidebar (icon rail) */}
+        <div className="flex flex-col w-[56px] shrink-0 border-r overflow-y-auto overflow-x-hidden" style={{ background: '#07101f', borderColor: '#1a2b45' }}>
+          <div className="flex justify-center pt-4 pb-3 border-b" style={{ borderColor: '#1a2b45' }}>
+            <Tooltip text="Carina" side="right">
+              <Image src="/carina_logo_1.png" alt="Carina" width={32} height={32} className="object-contain" priority />
+            </Tooltip>
           </div>
-          <nav className="flex flex-col gap-0.5 p-2 flex-1">
+          <nav className="flex flex-col gap-0.5 p-1.5 flex-1">
             {navItems.map((item, i) => {
               if (item.type === 'section') {
+                if (i === 0) return null;
                 return (
-                  <div key={`sec-${i}`} className="px-2 pt-3 pb-1 text-[8.5px] font-bold tracking-[0.16em]" style={{ color: '#1e3a52' }}>
-                    {item.label}
-                  </div>
+                  <div
+                    key={`sec-${i}`}
+                    className="mx-auto my-1.5 w-5 border-t"
+                    style={{ borderColor: '#1a2b45' }}
+                    aria-hidden="true"
+                  />
                 );
               }
               const navItem = item as Extract<NavItem, { href: string }>;
               return (
-                <Link
-                  key={navItem.label}
-                  href={navItem.href}
-                  className="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[11.5px] font-medium transition-colors"
-                  style={navItem.active
-                    ? { color: '#00d4ff', background: 'rgba(0,212,255,0.08)', borderLeft: '2px solid #00d4ff', paddingLeft: '6px' }
-                    : { color: '#6b8aaa', borderLeft: '2px solid transparent', paddingLeft: '6px' }
-                  }
-                >
-                  <span style={{ color: navItem.active ? '#00d4ff' : '#3a5a7a' }}>{navItem.icon}</span>
-                  {navItem.label}
-                </Link>
+                <Tooltip key={navItem.label} text={navItem.label} side="right">
+                  <Link
+                    href={navItem.href}
+                    aria-label={navItem.label}
+                    className="flex items-center justify-center w-10 h-9 mx-auto rounded-md transition-colors"
+                    style={navItem.active
+                      ? { color: '#00d4ff', background: 'rgba(0,212,255,0.08)', boxShadow: 'inset 2px 0 0 #00d4ff' }
+                      : { color: '#6b8aaa' }
+                    }
+                  >
+                    <span style={{ color: navItem.active ? '#00d4ff' : '#3a5a7a' }}>{navItem.icon}</span>
+                  </Link>
+                </Tooltip>
               );
             })}
           </nav>
-          <div className="p-3 border-t" style={{ borderColor: '#1a2b45' }}>
-            <div className="flex flex-col items-center gap-1.5">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: 'linear-gradient(135deg, #7c3aed, #00d4ff)', color: '#fff' }}>{initials}</div>
-              <div className="text-center">
-                <div className="text-[11px] font-semibold" style={{ color: '#ccdce8' }}>{firstName}</div>
-                <div className="text-[9.5px]" style={{ color: '#3a5a7a' }}>Pro Operator</div>
+          <div className="p-2 border-t flex justify-center" style={{ borderColor: '#1a2b45' }}>
+            <Tooltip text={`${firstName} - Pro Operator`} side="right">
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold cursor-default"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #00d4ff)', color: '#fff' }}
+              >
+                {initials}
               </div>
-            </div>
+            </Tooltip>
           </div>
         </div>
 
         {/* Center */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
 
-          {/* Top: orbital (left) + terminal (right) */}
+          {/* Top: orbital diagram (left) + orbital timeline (right) */}
           <div className="flex min-h-0" style={{ flex: '3 1 0' }}>
 
             {/* Left half: orbital + wordmark */}
-            <div className={canUseTerminal ? 'flex flex-col flex-1 min-w-0 min-h-0 border-r' : 'flex flex-col flex-1 min-w-0 min-h-0'} style={{ borderColor: '#1a2b45' }}>
+            <div className="flex flex-col flex-1 min-w-0 min-h-0 border-r" style={{ borderColor: '#1a2b45' }}>
               <div className="flex-1 min-h-0 flex items-center justify-center" style={{ padding: '8px 8px 0' }}>
                 <OrbitalDiagram keyCount={keyCount} memoryCount={memoryCount} skillCount={skillCount} />
               </div>
@@ -326,17 +348,21 @@ export function LauncherExpanded({ userName, userEmail: _userEmail, sessions, to
               </div>
             </div>
 
-            {canUseTerminal ? (
-              <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
-                <div className="shrink-0 px-3 h-9 flex items-center border-b" style={{ borderColor: '#1a2b45' }}>
-                  <span className="text-[11px] font-bold tracking-[0.14em] uppercase" style={{ color: '#8aa4be' }}>TERMINAL</span>
-                  <span className="ml-2 text-[11px]" style={{ color: '#6b8aaa' }}>Power user mode</span>
-                </div>
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <TerminalWorkspace raw />
-                </div>
+            <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
+              <div className="shrink-0 px-3 h-9 flex items-center border-b" style={{ borderColor: '#1a2b45' }}>
+                <span className="text-[11px] font-bold tracking-[0.14em] uppercase" style={{ color: '#8aa4be' }}>WORKSPACE ORBIT</span>
+                <span className="ml-2 text-[11px]" style={{ color: '#6b8aaa' }}>Click nodes to explore</span>
               </div>
-            ) : null}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <LauncherOrbitalTimeline
+                  memoryCount={memoryCount}
+                  skillCount={skillCount}
+                  keyCount={keyCount}
+                  totalSessions={totalSessions}
+                  taskCount={taskCount}
+                />
+              </div>
+            </div>
 
           </div>
 
@@ -356,6 +382,11 @@ export function LauncherExpanded({ userName, userEmail: _userEmail, sessions, to
                 </div>
               )}
             </div>
+
+            <WorkspaceOnboardingCard
+              keyCount={keyCount}
+              activeSkillPacks={activeSkillPacks}
+            />
 
             {/* Session grid - flex-1 so it takes remaining space */}
             <div className="flex-1 min-h-0 grid gap-2" style={{ gridTemplateColumns: '1fr 1fr', gridAutoRows: '1fr' }}>

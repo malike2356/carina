@@ -23,6 +23,10 @@ SCOUT_PAIRING_KEYS = (
     'LABYRINTH_INSTANCE_NAME',
 )
 
+OPS_PRODUCT_KEYS = (
+    'CARINA_OPS_PRODUCT_ENABLED',
+)
+
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
 DB_HOST = os.environ.get('DB_HOST', 'postgres')
@@ -93,12 +97,21 @@ def main() -> None:
 
     pairing = scout_pairing_values()
     for key in SCOUT_PAIRING_KEYS:
-        if key in seen:
-            continue
         value = pairing.get(key)
-        if value:
-            out.append(f'{key}={value}')
-            seen.add(key)
+        if not value and key != 'LABYRINTH_ENABLED':
+            continue
+        if key == 'LABYRINTH_ENABLED' and not value:
+            value = 'true'
+        if key in seen:
+            out = [line for line in out if not line.startswith(f'{key}=')]
+        out.append(f'{key}={value}')
+        seen.add(key)
+
+    for key in OPS_PRODUCT_KEYS:
+        if key in seen:
+            out = [line for line in out if not line.startswith(f'{key}=')]
+        out.append(f'{key}=true')
+        seen.add(key)
 
     ENV_PATH.write_text('\n'.join(out) + '\n')
     print(f'updated {ENV_PATH.name} for docker networking')

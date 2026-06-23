@@ -1,0 +1,9 @@
+{
+  "name": "meeting-ops",
+  "version": "1.0.0",
+  "description": "Calendar slot finding, conflict detection, Zoom meeting recaps, and daily competitive intel sweeps",
+  "author": "VERLOX Ltd",
+  "category": "productivity",
+  "optional": true,
+  "skillCount": 3
+}

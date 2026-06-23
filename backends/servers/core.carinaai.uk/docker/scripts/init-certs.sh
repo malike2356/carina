@@ -11,6 +11,7 @@ DOMAINS=(
   "carinaai.uk"
   "www.carinaai.uk"
   "app.carinaai.uk"
+  "doc.carinaai.uk"
   "docs.carinaai.uk"
   "hub.carinaai.uk"
   "skills.carinaai.uk"

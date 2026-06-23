@@ -28,7 +28,7 @@ export default function RegisterPage() {
       setPending(false);
       return;
     }
-    window.location.href = '/dashboard';
+    window.location.href = '/launcher';
   }
 
   return (

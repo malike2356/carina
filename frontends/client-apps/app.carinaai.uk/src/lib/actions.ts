@@ -78,7 +78,7 @@ export async function updateWorkspaceSettings(formData: FormData) {
     .where(eq(workspaces.id, workspace.id));
 
   revalidatePath('/settings');
-  revalidatePath('/dashboard');
+  revalidatePath('/launcher');
 }
 
 export async function pairScout(formData: FormData) {

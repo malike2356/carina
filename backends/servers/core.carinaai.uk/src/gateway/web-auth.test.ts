@@ -22,6 +22,7 @@ describe('web-auth', () => {
     expect(isOpsMachineApiPath('/api/health', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/ops/skill-packs', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/ops/skill-packs', 'PUT')).toBe(true);
+    expect(isOpsMachineApiPath('/api/carina-ops/admin/margins', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/chat/stream', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/security/dashboard', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/security/dashboard/stream', 'GET')).toBe(true);

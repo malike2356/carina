@@ -118,7 +118,7 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  const uiVersion = process.env.UI_VERSION ?? '20260622h';
+  const uiVersion = process.env.UI_VERSION ?? '20260622k';
   res.locals.carinaApiUrl = CARINA_BASE;
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
   res.locals.uiVersion = uiVersion;
@@ -166,7 +166,12 @@ app.use('/dashboard', requireAdmin, scoutDashboardRouter);
 app.use('/scout-api', requireAdmin, scoutApiProxyRouter);
 app.use('/scout', requireAdmin, scoutDashboardRouter);
 
-app.use((_req, res) => {
+app.use((req, res) => {
+  const path = (req.originalUrl ?? req.url ?? '').split('?')[0] ?? '';
+  if (path.startsWith('/scout-api') || path.startsWith('/api/')) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   res.status(404).render('error', { message: 'Page not found' });
 });
 

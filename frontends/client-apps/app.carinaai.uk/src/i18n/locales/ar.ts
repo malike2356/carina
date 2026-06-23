@@ -26,7 +26,7 @@ const ar: LocaleMessages = {
     delete: 'حذف',
   },
   chat: {
-    placeholder: 'رسالة إلى Carina...',
+    placeholder: 'رسالة إلى {agentName}...',
     send: 'إرسال',
     retry: 'إعادة المحاولة',
   },

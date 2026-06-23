@@ -12,7 +12,7 @@ dotenv.config({ path: path.join(appRoot, '.env') });
 const connectionString =
   process.env.CARINA_DB_URL
   ?? (process.env.NODE_ENV === 'production'
-    ? 'postgresql://carina:secret@carina-postgres:5432/carina'
+    ? 'postgresql://carina:secret@postgres:5432/carina'
     : 'postgresql://carina:secret@localhost:5433/carina');
 
 export const pool = new pg.Pool({ connectionString });

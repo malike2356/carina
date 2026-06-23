@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { BillingClient } from '@/components/billing/BillingClient';
+import type { BrandedPlanOption } from '@/lib/billing-presentment';
 
 interface BillingSummary {
   plan: string;
+  productName?: string;
   dailyUsed: number;
   monthlyUsed: number;
   limit: number | null;
   period: 'day' | 'month' | 'unlimited';
+  brandedPlans?: BrandedPlanOption[];
 }
 
 export function BillingWindowContent() {
@@ -46,6 +49,8 @@ export function BillingWindowContent() {
         monthlyUsed={data.monthlyUsed}
         limit={data.limit}
         period={data.period}
+        productName={data.productName}
+        brandedPlans={data.brandedPlans}
       />
     </div>
   );

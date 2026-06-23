@@ -5,7 +5,16 @@
   if (status === 'published') return 'ops-badge-green';
   return 'ops-badge-gray';
 } %>
-<div class="ops-page">
+<% const flash = new URLSearchParams(locals.query || ''); %>
+<% const sources = Array.isArray(incident.sources) ? incident.sources : []; %>
+<% function escapeSrcdoc(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;');
+} %>
+<% const bodyHtml = incident.body_html || incident.bodyHtml || ''; %>
+<% const scoutFixHtml = incident.scout_fix_html || incident.scoutFixHtml || ''; %>
+<div class="ops-page ops-incident-blog">
   <div class="ops-page-head">
     <div>
       <div class="ops-page-title"><%= incident.title %></div>
@@ -14,50 +23,88 @@
     <span class="ops-badge <%= statusBadge(incident.status) %>"><%= incident.status %></span>
   </div>
 
-  <% const flash = new URLSearchParams(locals.query || ''); %>
-  <% if (flash.get('ok')) { %><div class="ops-flash success">Action completed.</div><% } %>
+  <% if (flash.get('ok') === 'create') { %><div class="ops-flash success">Incident created. Approve and publish when ready, or keep editing.</div><% } %>
+  <% if (flash.get('ok') === 'edit') { %><div class="ops-flash success">Incident saved.</div><% } %>
+  <% if (flash.get('ok') === 'approve') { %><div class="ops-flash success">Incident approved.</div><% } %>
+  <% if (flash.get('ok') === 'publish') { %><div class="ops-flash success">Incident published and page regenerated.</div><% } %>
+  <% if (flash.get('ok') === 'reject') { %><div class="ops-flash warn">Incident rejected.</div><% } %>
   <% if (flash.get('err')) { %><div class="ops-flash error"><%= flash.get('err') %></div><% } %>
 
-  <div class="ops-surface" style="margin-bottom:16px;">
-    <div class="ops-surface-body">
-      <dl class="ops-kv-grid">
-        <div><dt>Category</dt><dd><%= incident.category %></dd></div>
-        <div><dt>Company</dt><dd><%= incident.company %></dd></div>
-        <div><dt>Damage</dt><dd style="color:var(--red);"><%= incident.damage %></dd></div>
-        <div><dt>Date</dt><dd><%= incident.dateOccurred %></dd></div>
-        <div><dt>Slug</dt><dd class="mono" style="font-family:'JetBrains Mono',monospace;font-size:12px;"><%= incident.slug %></dd></div>
-      </dl>
-    </div>
-  </div>
-
-  <div class="ops-surface" style="margin-bottom:16px;">
-    <div class="ops-surface-body">
-      <div class="ops-section-title">Incident body</div>
-      <div class="ops-rich-body"><%- incident.body_html || incident.bodyHtml %></div>
-      <div class="ops-section-title" style="margin-top:20px;">Scout fix</div>
-      <div class="ops-rich-body" style="border-color:color-mix(in srgb, var(--green) 25%, var(--border-subtle));">
-        <%- incident.scout_fix_html || incident.scoutFixHtml %>
+  <div class="ops-incident-detail-grid">
+    <div class="ops-surface ops-incident-detail-meta">
+      <div class="ops-surface-body">
+        <div class="ops-section-title">Summary</div>
+        <dl class="ops-kv-grid ops-incident-kv">
+          <div><dt>Company</dt><dd><%= incident.company %></dd></div>
+          <div><dt>Category</dt><dd class="capitalize"><%= incident.category %></dd></div>
+          <div><dt>Date</dt><dd><%= incident.dateOccurred || incident.date_occurred %></dd></div>
+          <div><dt>Damage</dt><dd class="ops-incident-damage"><%= incident.damage %></dd></div>
+          <div><dt>Slug</dt><dd class="mono"><%= incident.slug %></dd></div>
+        </dl>
+        <% if (sources.length) { %>
+          <div class="ops-section-title" style="margin-top:20px;">Sources</div>
+          <ul class="ops-incident-sources">
+            <% for (const source of sources) { %>
+              <li><a href="<%= source.url %>" target="_blank" rel="noopener noreferrer"><%= source.label || source.url %></a></li>
+            <% } %>
+          </ul>
+        <% } %>
       </div>
-      <% if (incident.rejection_reason) { %>
-        <div class="ops-flash warn" style="margin-top:16px;margin-bottom:0;">
-          <strong>Rejection reason:</strong> <%= incident.rejection_reason %>
-        </div>
-      <% } %>
+    </div>
+
+    <div class="ops-surface ops-incident-detail-body">
+      <div class="ops-surface-body">
+        <div class="ops-section-title">Incident body</div>
+        <iframe
+          class="ops-rich-preview"
+          title="Incident body preview"
+          sandbox=""
+          loading="lazy"
+          srcdoc="<%= escapeSrcdoc(bodyHtml) %>"
+        ></iframe>
+        <div class="ops-section-title" style="margin-top:24px;">Scout fix</div>
+        <iframe
+          class="ops-rich-preview ops-incident-scout-fix"
+          title="Scout fix preview"
+          sandbox=""
+          loading="lazy"
+          srcdoc="<%= escapeSrcdoc(scoutFixHtml) %>"
+        ></iframe>
+        <% if (incident.rejectionReason || incident.rejection_reason) { %>
+          <div class="ops-flash warn" style="margin-top:16px;margin-bottom:0;">
+            <strong>Rejection reason:</strong> <%= incident.rejectionReason || incident.rejection_reason %>
+          </div>
+        <% } %>
+      </div>
     </div>
   </div>
 
-  <div class="ops-actions">
+  <% if (incident.status !== 'rejected' && incident.status !== 'published') { %>
+    <div class="ops-surface ops-incident-reject-panel">
+      <div class="ops-surface-body">
+        <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject" class="ops-incident-reject-form">
+          <label class="ops-field ops-field-wide">
+            <span class="ops-field-label">Reject reason (optional)</span>
+            <input name="reason" class="ops-input" placeholder="Why this incident is not suitable for publication">
+          </label>
+          <button class="ops-btn ops-btn-ghost ops-btn-sm" type="submit">Reject incident</button>
+        </form>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="ops-incident-detail-actions">
     <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve" class="inline">
-      <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Approve</button>
-    </form>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish" class="inline">
-      <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Publish</button>
-    </form>
-    <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject" class="inline">
-      <input type="hidden" name="reason" value="Needs revision">
-      <button class="ops-btn ops-btn-ghost ops-btn-sm" type="submit">Reject</button>
-    </form>
+    <% if (incident.status === 'draft' || incident.status === 'approved') { %>
+      <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve" class="inline">
+        <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Approve</button>
+      </form>
+    <% } %>
+    <% if (incident.status === 'approved' || incident.status === 'draft') { %>
+      <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish" class="inline">
+        <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Publish</button>
+      </form>
+    <% } %>
     <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete" class="inline"
       onsubmit="return confirm('Delete this incident permanently?')">
       <button class="ops-btn ops-btn-ghost ops-btn-sm ops-btn-danger" type="submit">Delete</button>

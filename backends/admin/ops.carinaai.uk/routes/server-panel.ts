@@ -9,10 +9,12 @@ import {
   resolveLogSafe,
   resolveSafe,
   writeFile,
+  type FsRoot,
 } from '../lib/server-fs.js';
 import {
   ALLOWED_SYSTEMD_SERVICES,
   getDockerContainers,
+  getDockerScopeInfo,
   getSystemdStatus,
   restartDockerContainer,
   restartSystemd,
@@ -26,15 +28,15 @@ serverPanelRouter.get('/', (_req, res) => {
 
 function buildBreadcrumbs(
   absPath: string,
-  roots: string[],
+  roots: FsRoot[],
 ): { name: string; path: string }[] {
   const crumbs: { name: string; path: string }[] = [];
   for (const root of roots) {
-    if (absPath === root || absPath.startsWith(`${root}/`)) {
-      const rel = absPath.slice(root.length);
-      crumbs.push({ name: root.split('/').at(-1) ?? root, path: root });
+    if (absPath === root.path || absPath.startsWith(`${root.path}/`)) {
+      crumbs.push({ name: root.label, path: root.path });
+      const rel = absPath.slice(root.path.length);
       const parts = rel.split('/').filter(Boolean);
-      let built = root;
+      let built = root.path;
       for (const part of parts) {
         built = `${built}/${part}`;
         crumbs.push({ name: part, path: built });
@@ -141,6 +143,7 @@ serverPanelRouter.get('/services', async (_req, res) => {
     title: 'Server Services',
     dockerContainers,
     systemdServices: systemdResults,
+    dockerScope: getDockerScopeInfo(),
   });
 });
 
@@ -149,7 +152,11 @@ serverPanelRouter.get('/api/services', async (_req, res) => {
     getDockerContainers(),
     ...ALLOWED_SYSTEMD_SERVICES.map((s) => getSystemdStatus(s)),
   ]);
-  res.json({ docker: dockerContainers, systemd: systemdResults });
+  res.json({
+    docker: dockerContainers,
+    systemd: systemdResults,
+    scope: getDockerScopeInfo(),
+  });
 });
 
 serverPanelRouter.post('/api/services/restart', requireSuperAdmin, async (req, res) => {

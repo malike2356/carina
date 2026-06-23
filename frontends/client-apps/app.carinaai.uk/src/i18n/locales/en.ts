@@ -1,5 +1,6 @@
 const en = {
   nav: {
+    launcher: 'Launcher',
     dashboard: 'Dashboard',
     documents: 'Documents',
     calendar: 'Calendar',
@@ -51,7 +52,7 @@ const en = {
     delete: 'Delete',
   },
   chat: {
-    placeholder: 'Message Carina...',
+    placeholder: 'Message {agentName}...',
     send: 'Send',
     attach: 'Attach file',
     voice: 'Voice input',
@@ -61,17 +62,32 @@ const en = {
     deleteMessage: 'Delete message',
     messageDeleted: 'This message was deleted',
     thinking: 'Thinking...',
-    approvalRequest: 'Carina wants to run: {command}',
+    approvalRequest: '{agentName} wants to run: {command}',
     approve: 'Approve',
     deny: 'Deny',
     contextWarning: 'Context window {percent}% full',
-    heartbeat: 'Carina is checking in...',
+    heartbeat: '{agentName} is checking in...',
     heartbeatOk: 'All clear',
     offline: 'You are offline. Messages will be sent when reconnected.',
-    empty: 'Start a conversation with Carina',
+    empty: 'Start a conversation with {agentName}',
     error: 'Failed to send message. Retry?',
     retry: 'Retry',
     exportChat: 'Export chat',
+    composerHint:
+      'Enter to send · Shift+Enter for new line · / for commands · Up arrow recalls history',
+    composerHintBusy: 'Escape to stop · Shift+Enter for new line',
+    voiceLiveDictation: 'Live dictation (browser) · no API key required',
+    voiceServerTranscription:
+      'Server transcription requires an OpenAI or Groq key in Settings, or use Chrome or Edge for live dictation',
+    voiceServerReady: 'Server transcription ready',
+    voiceUnavailable:
+      'Voice input unavailable. Use Chrome or Edge for live dictation, or add an OpenAI or Groq key in Settings.',
+    voiceChecking: 'Checking voice support...',
+    voiceStopLive: 'Stop live dictation',
+    voiceStartLive: 'Live dictation',
+    voiceStopServer: 'Stop and transcribe',
+    voiceStartServer: 'Voice input (server transcription)',
+    voiceTranscribing: 'Transcribing audio...',
   },
   settings: {
     language: 'Language',

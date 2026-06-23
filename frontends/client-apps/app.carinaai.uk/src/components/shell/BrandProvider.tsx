@@ -7,8 +7,14 @@ const DEFAULT_BRAND = resolveBrand({ mode: 'hosted' });
 
 const BrandContext = createContext<ResolvedBrand>(DEFAULT_BRAND);
 
-export function BrandProvider({ children }: { children: ReactNode }) {
-  const [brand, setBrand] = useState<ResolvedBrand>(DEFAULT_BRAND);
+export function BrandProvider({
+  children,
+  initialBrand,
+}: {
+  children: ReactNode;
+  initialBrand?: ResolvedBrand;
+}) {
+  const [brand, setBrand] = useState<ResolvedBrand>(initialBrand ?? DEFAULT_BRAND);
 
   useEffect(() => {
     let cancelled = false;

@@ -83,7 +83,7 @@ export async function getOrgMarginSummary(orgId: string): Promise<OrgMarginSumma
             COALESCE(SUM(l.provider_cost_usd), 0)::TEXT AS provider_cost
      FROM organizations o
      LEFT JOIN ops_credit_ledger l
-       ON l.org_id = o.id
+       ON l.org_id = o.id::text
       AND l.created_at >= date_trunc('month', NOW())
       AND l.event_type IN ('usage', 'byok_usage')
      WHERE o.id = $1
@@ -116,7 +116,7 @@ export async function getPlatformMarginSummary(): Promise<PlatformMarginSummary>
             COALESCE(SUM(l.provider_cost_usd), 0)::TEXT AS provider_cost
      FROM organizations o
      LEFT JOIN ops_credit_ledger l
-       ON l.org_id = o.id
+       ON l.org_id = o.id::text
       AND l.created_at >= date_trunc('month', NOW())
       AND l.event_type IN ('usage', 'byok_usage')
      WHERE o.plan IN ('carina_ops_starter', 'carina_ops_team', 'free')

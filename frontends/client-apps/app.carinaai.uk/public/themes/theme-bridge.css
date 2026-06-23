@@ -1,12 +1,13 @@
 /*
  * Maps shadcn theme tokens (from /themes/multi/*.css) onto Carina app tokens.
+ * Loaded after the active theme sheet so switches take effect immediately.
  */
 :root,
 .dark {
   --bg-base: var(--background);
   --bg-surface: var(--card);
   --bg-elevated: var(--popover, var(--card));
-  --bg-overlay: var(--secondary, var(--card));
+  --bg-overlay: var(--popover, var(--card));
   --border-subtle: var(--border);
   --border-focus: var(--ring, var(--primary));
   --border-muted: var(--border);
@@ -24,4 +25,25 @@
   --code-text: var(--foreground);
   --surface: var(--card);
   --elevated: var(--popover, var(--card));
+
+  /* Tailwind v4 utilities (bg-base, text-text-primary, border-border, etc.) */
+  --color-base: var(--background);
+  --color-surface: var(--card);
+  --color-elevated: var(--popover, var(--card));
+  --color-overlay: var(--popover, var(--card));
+  --color-border: var(--border);
+  --color-border-focus: var(--ring, var(--primary));
+  --color-border-muted: var(--border);
+  --color-text-primary: var(--foreground);
+  --color-text-secondary: var(--muted-foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-accent: var(--primary);
+  --color-accent-dim: color-mix(in srgb, var(--primary) 18%, transparent);
+  --color-accent-hover: var(--primary);
+  --color-danger: var(--destructive);
+  --color-danger-dim: color-mix(in srgb, var(--destructive) 18%, transparent);
+  --color-bubble-user: color-mix(in srgb, var(--primary) 16%, var(--card));
+  --color-bubble-assistant: color-mix(in srgb, var(--muted) 70%, var(--card));
+  --color-code-bg: color-mix(in srgb, var(--background) 88%, black);
+  --color-code-text: var(--foreground);
 }

@@ -79,6 +79,26 @@ const LEGACY_PACK_LOADERS: Record<string, LegacyPackLoader> = {
     const { capabilitiesOpsSkills } = await import('./packs/capabilities-ops/skills.js');
     return { skills: capabilitiesOpsSkills, systemSuffix: '' };
   },
+  'marketing-ops': async () => {
+    const { marketingOpsSkills } = await import('./packs/marketing-ops/skills.js');
+    return { skills: marketingOpsSkills, systemSuffix: '' };
+  },
+  'meeting-ops': async () => {
+    const { meetingOpsSkills } = await import('./packs/meeting-ops/skills.js');
+    return { skills: meetingOpsSkills, systemSuffix: '' };
+  },
+  automation: async () => {
+    const { automationSkills } = await import('./packs/automation/skills.js');
+    return { skills: automationSkills, systemSuffix: '' };
+  },
+  recruitment: async () => {
+    const { recruitmentSkills } = await import('./packs/recruitment/skills.js');
+    return { skills: recruitmentSkills, systemSuffix: '' };
+  },
+  'cms-ops': async () => {
+    const { cmsOpsSkills } = await import('./packs/cms-ops/skills.js');
+    return { skills: cmsOpsSkills, systemSuffix: '' };
+  },
 };
 
 const packCache = new Map<string, PackDefinition>();

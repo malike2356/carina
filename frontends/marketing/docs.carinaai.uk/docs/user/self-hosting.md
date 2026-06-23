@@ -4,7 +4,7 @@
 What ships in the npm package vs what you must configure: [Capability inventory](/docs/capabilities).
 :::
 
-Run Carina on your own infrastructure. **Docker is optional** — bare metal Node.js works with a single command.
+Run Carina on your own infrastructure. **Docker is optional**; bare metal Node.js works with a single command.
 Docker is only required if you need the Cloud/Scout multi-service orchestration stack.
 
 ---
@@ -21,7 +21,7 @@ cp .env.example .env   # fill in your provider keys
 pnpm dev               # agent is live
 ```
 
-That's it. The agent starts with SQLite by default — no Postgres, no Redis, no Docker. Chat immediately.
+That's it. The agent starts with SQLite by default; no Postgres, no Redis, no Docker. Chat immediately.
 
 For production persistence, add a database:
 
@@ -43,7 +43,7 @@ carina setup
 
 Configure `~/.carina/.env` (wizard or manual) and start with `carina` or `carina web`.
 
-## Docker (optional — for Cloud/Scout multi-service)
+## Docker (optional; for Cloud/Scout multi-service)
 
 Docker is only needed when you want the full multi-service stack: Postgres with pgvector, Redis, nginx TLS termination, Skills Hub, and Scout integration. Single-user self-hosted Carina does not need it.
 
@@ -56,11 +56,11 @@ docker compose -f docker-compose.prod.yml up -d
 
 Services:
 
-- `carina-web` — Agent + web gateway on port 3000 (internal)
-- `carina-hub` — Skills Hub on port 3001 (internal)
-- `postgres` — pgvector/pgvector:0.8.0-pg16
-- `redis` — Session and pub/sub
-- `nginx` — TLS termination, static docs, public site
+- `carina-web`; Agent + web gateway on port 3000 (internal)
+- `carina-hub`; Skills Hub on port 3001 (internal)
+- `postgres`; pgvector/pgvector:0.8.0-pg16
+- `redis`; Session and pub/sub
+- `nginx`; TLS termination, static docs, public site
 
 Post-deploy, ingest the property pack:
 
@@ -100,7 +100,7 @@ Production nginx: `docker/nginx/carina-prod.conf`. Terminate TLS at nginx, proxy
 
 ## Health checks
 
-- `GET /api/providers` — should return configured providers
+- `GET /api/providers`; should return configured providers
 - CLI startup: `Memory store ready` when Postgres is reachable
 - Scout: dashboard shows instance heartbeat within 90 seconds
 

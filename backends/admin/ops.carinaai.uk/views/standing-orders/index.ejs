@@ -1,56 +1,78 @@
-<section class="panel">
-  <header class="panel-header">
-    <h1>Standing Orders</h1>
-    <p class="muted">Persistent agent directives injected into every turn.</p>
-  </header>
+<% title = 'Standing Orders' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Standing Orders</div>
+      <div class="ops-page-sub">Persistent agent directives injected into every turn.</div>
+    </div>
+  </div>
 
   <% if (!ready) { %>
-    <p class="muted">Standing orders table not found. Run core DB migrations first.</p>
+    <div class="ops-flash warn">Standing orders table not found. Run core DB migrations first.</div>
   <% } else { %>
 
-  <form method="post" action="<%= withV('/standing-orders/add') %>" class="stack gap-sm" style="margin-bottom: 1.5rem;">
-    <label>
-      Agent ID
-      <input type="text" name="agent_id" value="*" placeholder="* for all agents">
-    </label>
-    <label>
-      Directive
-      <textarea name="directive" rows="3" required maxlength="2000" placeholder="Always respond in plain text"></textarea>
-    </label>
-    <button type="submit" class="btn btn-primary">Add standing order</button>
-  </form>
+  <div class="ops-split ops-surface">
+    <section class="ops-section">
+      <div class="ops-section-title">Add standing order</div>
+      <form method="post" action="<%= withV('/standing-orders/add') %>">
+        <div class="ops-field">
+          <label class="ops-label" for="so-agent-id">Agent ID</label>
+          <input id="so-agent-id" type="text" name="agent_id" value="*" placeholder="* for all agents" class="ops-input mono" />
+          <div class="ops-inline-note">Use <code class="ops-code">*</code> to apply the directive to every agent.</div>
+        </div>
+        <div class="ops-field">
+          <label class="ops-label" for="so-directive">Directive</label>
+          <textarea id="so-directive" name="directive" rows="4" required maxlength="2000" placeholder="Always respond in plain text" class="ops-textarea"></textarea>
+        </div>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Add standing order</button>
+        </div>
+      </form>
+    </section>
 
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Agent</th>
-        <th>Directive</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
+    <section class="ops-section ops-table-wrap">
+      <div class="ops-section-title">Configured orders</div>
       <% if (orders.length === 0) { %>
-        <tr><td colspan="5" class="muted">No standing orders yet.</td></tr>
+        <div class="ops-empty">No standing orders yet.</div>
+      <% } else { %>
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Agent</th>
+              <th>Directive</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% orders.forEach(function(order) { %>
+              <tr>
+                <td><code class="ops-code"><%= order.id.slice(0, 8) %></code></td>
+                <td><%= order.agent_id %></td>
+                <td style="max-width:420px;white-space:pre-wrap;"><%= order.directive %></td>
+                <td>
+                  <span class="ops-badge <%= order.enabled ? 'ops-badge-green' : 'ops-badge-gray' %>">
+                    <%= order.enabled ? 'Enabled' : 'Disabled' %>
+                  </span>
+                </td>
+                <td>
+                  <div class="ops-actions" style="margin:0;">
+                    <form method="post" action="<%= withV('/standing-orders/' + order.id + '/toggle') %>">
+                      <button type="submit" class="ops-btn-ghost" style="padding:5px 10px;">Toggle</button>
+                    </form>
+                    <form method="post" action="<%= withV('/standing-orders/' + order.id + '/delete') %>" onsubmit="return confirm('Delete this standing order?')">
+                      <button type="submit" class="ops-btn ops-btn-red" style="padding:5px 10px;">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
       <% } %>
-      <% orders.forEach(function(order) { %>
-        <tr>
-          <td><code><%= order.id.slice(0, 8) %></code></td>
-          <td><%= order.agent_id %></td>
-          <td><%= order.directive %></td>
-          <td><%= order.enabled ? 'enabled' : 'disabled' %></td>
-          <td class="actions">
-            <form method="post" action="<%= withV('/standing-orders/' + order.id + '/toggle') %>" style="display:inline">
-              <button type="submit" class="btn btn-sm">Toggle</button>
-            </form>
-            <form method="post" action="<%= withV('/standing-orders/' + order.id + '/delete') %>" style="display:inline" onsubmit="return confirm('Delete this order?')">
-              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-            </form>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+    </section>
+  </div>
+
   <% } %>
-</section>
+</div>

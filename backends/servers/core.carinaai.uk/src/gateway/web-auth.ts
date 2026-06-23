@@ -18,6 +18,7 @@ const OPS_API_PATHS = new Set([
 export function isOpsMachineApiPath(path: string, method: string): boolean {
   if (OPS_API_PATHS.has(path)) return true;
   if (path.startsWith('/api/ops/')) return true;
+  if (path.startsWith('/api/carina-ops/admin/')) return true;
   if (path.startsWith('/api/security/')) return true;
   if (path.startsWith('/api/mcp')) return true;
   return path === '/api/chat/stream' && method === 'GET';

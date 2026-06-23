@@ -4,6 +4,29 @@ function normaliseHost(hostname: string): string {
   return hostname.split(':')[0].trim().toLowerCase();
 }
 
+export { normaliseHost };
+
+const CONTROL_PLANE_HOSTS = new Set(
+  (process.env.CARINA_CONTROL_PLANE_HOSTS
+    ?? `core.${config.product.domain},ops.${config.product.domain}`)
+    .split(',')
+    .map((h) => normaliseHost(h))
+    .filter(Boolean),
+);
+
+export function canonicalAppHost(): string {
+  return normaliseHost(process.env.CARINA_HOSTED_APP_HOST ?? config.hosted.appHost);
+}
+
+export function isCanonicalAppHost(hostname: string): boolean {
+  return normaliseHost(hostname) === canonicalAppHost();
+}
+
+export function isControlPlaneHost(hostname: string): boolean {
+  const host = normaliseHost(hostname);
+  return isOperatorHost(host) || CONTROL_PLANE_HOSTS.has(host);
+}
+
 export function operatorHosts(): string[] {
   const raw = process.env.CARINA_OPERATOR_HOSTS
     ?? config.hosted.operatorHosts.join(',');

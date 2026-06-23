@@ -26,7 +26,7 @@ const ja: LocaleMessages = {
     delete: '削除',
   },
   chat: {
-    placeholder: 'Carinaにメッセージ...',
+    placeholder: '{agentName}にメッセージ...',
     send: '送信',
     retry: '再試行',
   },

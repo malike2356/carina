@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import type { LauncherData } from '@/lib/launcher-data';
+import { WorkspaceOnboardingCard } from '@/components/settings/WorkspaceOnboardingCard';
 import { LauncherExpanded } from './LauncherExpanded';
 import { LauncherPrimary } from './LauncherPrimary';
 import { LauncherWithSidebar, type LauncherNavPath } from './LauncherSidebar';
@@ -22,6 +23,10 @@ function LauncherHomeContent({
 }) {
   return (
     <div className="w-full max-w-[440px] flex flex-col gap-5">
+      <WorkspaceOnboardingCard
+        keyCount={data.keyCount}
+        activeSkillPacks={data.activeSkillPacks}
+      />
       <p className="text-[10px] font-semibold tracking-[0.14em] uppercase m-0" style={{ color: '#4a6a8a' }}>
         PICK UP WHERE YOU LEFT OFF
       </p>
@@ -109,6 +114,7 @@ export function LauncherShell(data: Props) {
         skillCount={data.skillCount}
         keyCount={data.keyCount}
         taskCount={data.taskCount}
+        activeSkillPacks={data.activeSkillPacks}
       />
     );
   }

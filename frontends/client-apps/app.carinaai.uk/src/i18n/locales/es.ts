@@ -34,7 +34,7 @@ const es: LocaleMessages = {
     delete: 'Eliminar',
   },
   chat: {
-    placeholder: 'Mensaje a Carina...',
+    placeholder: 'Mensaje a {agentName}...',
     send: 'Enviar',
     voice: 'Entrada de voz',
     stopGeneration: 'Detener generacion',

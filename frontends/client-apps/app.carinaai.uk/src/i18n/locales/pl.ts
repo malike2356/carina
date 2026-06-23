@@ -26,7 +26,7 @@ const pl: LocaleMessages = {
     delete: 'Usun',
   },
   chat: {
-    placeholder: 'Wiadomosc do Carina...',
+    placeholder: 'Wiadomosc do {agentName}...',
     send: 'Wyslij',
     retry: 'Sprobuj ponownie',
   },

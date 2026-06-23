@@ -4,18 +4,23 @@ import {
   createIncident,
   confirmSubscriber,
   deleteIncident,
+  countIncidents,
   getIncident,
+  getIncidentStatusStats,
   getLastResearchRun,
   listIncidents,
   listSubscribers,
+  parseIncidentListSort,
   subscribe,
   unsubscribe,
   publishIncident,
   rejectIncident,
+  rejectAllDrafts,
   updateIncident,
 } from '../blog/store.js';
 import { generateIncidentPage } from '../blog/page-generator.js';
 import { sendIncidentNewsletter } from '../blog/newsletter-send.js';
+import { sendSubscribeConfirmationEmail } from '../blog/subscribe-email.js';
 import { authorizeOps } from '../ops/ops-auth.js';
 import { runResearchDiscovery } from '../blog/research-runner.js';
 
@@ -36,12 +41,38 @@ incidentBlogRouter.post('/subscribe', async (req: Request, res: Response) => {
     return;
   }
   try {
-    const subscriber = await subscribe(email, String(req.body?.source ?? 'incidents-page'));
+    const result = await subscribe(email, String(req.body?.source ?? 'incidents-page'));
+    if (result.outcome === 'already_confirmed') {
+      res.json({
+        ok: true,
+        subscribed: true,
+        email: result.subscriber.email,
+        message: 'Already subscribed.',
+      });
+      return;
+    }
+    if (result.outcome === 'pending') {
+      res.json({
+        ok: true,
+        subscribed: true,
+        email: result.subscriber.email,
+        message: 'Check your email to confirm your subscription.',
+        confirmToken: process.env.NODE_ENV === 'production' ? undefined : result.subscriber.confirmToken,
+      });
+      return;
+    }
+    const token = result.subscriber.confirmToken;
+    if (!token) {
+      res.status(500).json({ error: 'Subscription token missing' });
+      return;
+    }
+    await sendSubscribeConfirmationEmail(result.subscriber.email, token);
     res.json({
       ok: true,
-      email: subscriber.email,
+      subscribed: true,
+      email: result.subscriber.email,
       message: 'Check your email to confirm your subscription.',
-      confirmToken: process.env.NODE_ENV === 'production' ? undefined : subscriber.confirmToken,
+      confirmToken: process.env.NODE_ENV === 'production' ? undefined : token,
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
@@ -98,8 +129,32 @@ incidentBlogRouter.get('/admin/incidents', async (req: Request, res: Response) =
   if (!requireOps(req, res)) return;
   const status = req.query.status ? String(req.query.status) as never : undefined;
   const category = req.query.category ? String(req.query.category) as never : undefined;
-  const incidents = await listIncidents({ status, category, limit: 200 });
-  res.json({ incidents });
+  const sort = parseIncidentListSort(req.query.sort);
+  const pageParam = req.query.page;
+  const limitParam = req.query.limit;
+  const page = pageParam ? Math.max(1, Number(pageParam) || 1) : undefined;
+  const limit = limitParam
+    ? Math.min(100, Math.max(1, Number(limitParam) || 20))
+    : (page ? 20 : 200);
+  const offset = page ? (page - 1) * limit : 0;
+  const [incidents, total, stats] = await Promise.all([
+    listIncidents({ status, category, limit, offset, sort }),
+    countIncidents({ status, category }),
+    getIncidentStatusStats(),
+  ]);
+  const effectivePage = page ?? 1;
+  res.json({
+    incidents,
+    stats,
+    pagination: page
+      ? {
+          page: effectivePage,
+          limit,
+          total,
+          totalPages: Math.max(1, Math.ceil(total / limit)),
+        }
+      : undefined,
+  });
 });
 
 incidentBlogRouter.get('/admin/incidents/:id', async (req: Request, res: Response) => {
@@ -159,30 +214,72 @@ incidentBlogRouter.put('/admin/incidents/:id', handleUpdateIncident);
 
 incidentBlogRouter.post('/admin/incidents/:id/approve', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
-  const incident = await approveIncident(String(req.params.id), String(req.body?.approvedBy ?? 'ops'));
-  res.json({ incident });
+  try {
+    const incident = await approveIncident(String(req.params.id), String(req.body?.approvedBy ?? 'ops'));
+    if (!incident) {
+      res.status(404).json({ error: 'Incident not found' });
+      return;
+    }
+    res.json({ incident });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 incidentBlogRouter.post('/admin/incidents/:id/publish', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
-  const incident = await publishIncident(String(req.params.id));
-  res.json({ incident });
+  try {
+    const incident = await publishIncident(String(req.params.id));
+    if (!incident) {
+      res.status(404).json({ error: 'Incident not found' });
+      return;
+    }
+    res.json({ incident });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 incidentBlogRouter.post('/admin/incidents/:id/reject', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
-  const incident = await rejectIncident(String(req.params.id), String(req.body?.reason ?? ''));
-  res.json({ incident });
+  try {
+    const incident = await rejectIncident(String(req.params.id), String(req.body?.reason ?? ''));
+    if (!incident) {
+      res.status(404).json({ error: 'Incident not found' });
+      return;
+    }
+    res.json({ incident });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 incidentBlogRouter.delete('/admin/incidents/:id', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
-  res.json({ deleted: await deleteIncident(String(req.params.id)) });
+  try {
+    const deleted = await deleteIncident(String(req.params.id));
+    if (!deleted) {
+      res.status(404).json({ error: 'Incident not found' });
+      return;
+    }
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 incidentBlogRouter.post('/admin/incidents/:id/delete', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
-  res.json({ deleted: await deleteIncident(String(req.params.id)) });
+  try {
+    const deleted = await deleteIncident(String(req.params.id));
+    if (!deleted) {
+      res.status(404).json({ error: 'Incident not found' });
+      return;
+    }
+    res.json({ deleted: true });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 incidentBlogRouter.get('/admin/subscribers', async (req: Request, res: Response) => {
@@ -205,8 +302,18 @@ incidentBlogRouter.post('/admin/generate-page', async (req: Request, res: Respon
 
 incidentBlogRouter.post('/admin/research-run', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
-  const result = await runResearchDiscovery(String(req.body?.query ?? 'AI agent incident 2026'));
+  const query = String(req.body?.query ?? '').trim();
+  const result = await runResearchDiscovery({
+    query: query || undefined,
+    triggeredBy: 'admin-ui',
+  });
   res.json({ ok: true, ...result });
+});
+
+incidentBlogRouter.post('/admin/reject-drafts', async (req: Request, res: Response) => {
+  if (!requireOps(req, res)) return;
+  const count = await rejectAllDrafts(String(req.body?.reason ?? 'Cleared from draft queue'));
+  res.json({ ok: true, rejected: count });
 });
 
 incidentBlogRouter.get('/admin/research-status', async (req: Request, res: Response) => {

@@ -36,4 +36,17 @@ export const emailExtendedSkills: PackSkillInput[] = [
     steps: '1. Parse inbound context.\n2. Use send-message channel=email or email-send.\n3. Keep thread subject.',
     toolsUsed: ['send-message', 'email-send'],
   },
+  {
+    name: 'email-outreach-ops',
+    description: 'Send intro outreach emails, monitor inbox for replies, and auto-draft follow-ups for early-stage teams',
+    trigger: ['send intro email', 'outreach ops', 'email campaign send', 'check email replies', 'auto reply email', 'email outreach'],
+    steps: `1. Determine intent: send intro, check inbox for responses, or draft an auto-reply.
+2. SEND INTRO: Ask for recipient name, company, goal, and any personal context. Draft a concise intro email (3-5 sentences max). Confirm before sending via email-send.
+3. CHECK INBOX: Use email-list to fetch recent inbound messages. Summarize replies by sender and sentiment (positive, neutral, negative, no-reply).
+4. AUTO-REPLY: For a given inbound message (by ID or pasted content), draft a reply that matches the original thread context. Confirm before sending.
+5. Keep responses concise and execution-focused. Do not invent product claims or customer facts.
+6. After sending any email, confirm with one short status line including recipient, subject, and send time.
+7. If any required input is missing, ask one targeted question before proceeding.`,
+    toolsUsed: ['email-send', 'email-list'],
+  },
 ];

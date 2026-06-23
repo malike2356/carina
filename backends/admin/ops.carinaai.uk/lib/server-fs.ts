@@ -2,17 +2,90 @@ import fs from 'fs/promises';
 import path from 'path';
 
 function getAllowedRoots(): string[] {
+  return getAllowedRootsDetailed().map((root) => root.path);
+}
+
+export interface FsRoot {
+  id: string;
+  label: string;
+  path: string;
+  description: string;
+}
+
+function rootFromPath(rootPath: string, index: number): FsRoot {
+  const resolved = path.resolve(rootPath);
+  const known: Record<string, Omit<FsRoot, 'path'>> = {
+    [path.resolve('/home/malike/apps')]: {
+      id: 'apps',
+      label: 'Applications',
+      description: 'Live deploy trees for core, ops, cloud, and Scout',
+    },
+    [path.resolve('/opt/apps')]: {
+      id: 'opt-apps',
+      label: 'Opt apps',
+      description: 'Optional application deployments under /opt/apps',
+    },
+    [path.resolve('/etc/nginx/conf.d')]: {
+      id: 'nginx',
+      label: 'Nginx conf.d',
+      description: 'Reverse proxy vhosts and TLS routing',
+    },
+    [path.resolve('/etc/carina')]: {
+      id: 'carina',
+      label: 'Carina host',
+      description: 'Host certificates, SSL params, and Carina paths',
+    },
+  };
+  const match = known[resolved];
+  if (match) {
+    return { ...match, path: resolved };
+  }
+  const base = path.basename(resolved) || resolved;
+  return {
+    id: `root-${index}`,
+    label: base,
+    path: resolved,
+    description: resolved,
+  };
+}
+
+export function getAllowedRootsDetailed(): FsRoot[] {
   const env = process.env.CARINA_SERVER_FS_ROOTS;
-  if (env) return env.split(',').map((s) => s.trim()).filter(Boolean);
+  if (env) {
+    return env.split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry, index) => {
+        if (entry.includes('|')) {
+          const [label, rootPath] = entry.split('|').map((part) => part.trim());
+          return {
+            id: `root-${index}`,
+            label: label || path.basename(rootPath) || rootPath,
+            path: path.resolve(rootPath),
+            description: rootPath,
+          };
+        }
+        return rootFromPath(entry, index);
+      });
+  }
+
   const appsRoot = process.env.APPS_ROOT?.trim();
-  const defaults = [
+  const candidates = [
     appsRoot,
     '/home/malike/apps',
-    '/opt/apps',
     '/etc/nginx/conf.d',
     '/etc/carina',
   ].filter(Boolean) as string[];
-  return [...new Set(defaults)];
+
+  const seen = new Set<string>();
+  const roots: FsRoot[] = [];
+  for (const candidate of candidates) {
+    const resolved = path.resolve(candidate);
+    if (seen.has(resolved)) continue;
+    seen.add(resolved);
+    roots.push(rootFromPath(resolved, roots.length));
+  }
+  return roots;
 }
 
 export function resolveSafe(requestedPath: string): string {
@@ -114,8 +187,8 @@ function detectLanguage(filePath: string): string {
   return map[ext] ?? 'plaintext';
 }
 
-export function getAllowedRootsPublic(): string[] {
-  return getAllowedRoots();
+export function getAllowedRootsPublic(): FsRoot[] {
+  return getAllowedRootsDetailed();
 }
 
 function getLogRoots(): string[] {

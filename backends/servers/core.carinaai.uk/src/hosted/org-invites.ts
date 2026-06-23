@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { pool } from '../memory/db.js';
 import { writeProductAudit } from './product-audit.js';
 import { buildInviteUrl, sendInviteEmail } from './invite-email.js';
+import { resolveEmailIdentityForOrg } from './brand-email.js';
 import type { OrgInviteRow, OrgRole } from './org-types.js';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -79,13 +80,15 @@ export async function createInvite(
   const inviteId = String(result.rows[0].id);
   const orgName = await getOrgName(orgId);
   const inviterEmail = await getInviterEmail(invitedBy);
-  const inviteUrl = buildInviteUrl(rawToken);
+  const identity = await resolveEmailIdentityForOrg(orgId);
+  const inviteUrl = buildInviteUrl(rawToken, identity.appHost);
   const emailSent = await sendInviteEmail({
     to: normalizedEmail,
     orgName,
     role,
     inviteUrl,
     inviterEmail,
+    identity,
   });
 
   const emailAudit = hashEmailForAudit(normalizedEmail);

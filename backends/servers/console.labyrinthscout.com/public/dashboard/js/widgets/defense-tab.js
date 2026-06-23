@@ -575,6 +575,7 @@
 
     activeView = view;
     var overview = document.getElementById('view-overview');
+    var killswitch = document.getElementById('view-killswitch');
     var defense = document.getElementById('view-defense');
     var actions = document.getElementById('view-actions');
     var governance = document.getElementById('view-governance');
@@ -586,11 +587,16 @@
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (overview) overview.hidden = view !== 'overview';
+    if (killswitch) killswitch.hidden = view !== 'killswitch';
     if (defense) defense.hidden = view !== 'defense';
     if (actions) actions.hidden = view !== 'actions';
     if (governance) governance.hidden = view !== 'governance';
     if (fleet) fleet.hidden = view !== 'fleet';
     if (attackSurface) attackSurface.hidden = view !== 'attack-surface';
+    if (view === 'killswitch' && window.DashboardKillSwitch) {
+      window.DashboardKillSwitch.mountKillSwitchTab();
+      void window.DashboardKillSwitch.refreshAgentCount();
+    }
     if (view === 'defense') void loadDefense();
     if (view === 'actions') {
       if (window.DashboardPendingActions) void window.DashboardPendingActions.load();

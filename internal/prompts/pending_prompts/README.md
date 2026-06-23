@@ -218,21 +218,9 @@ gap-09-performance-parity/
 
 ---
 
-### Gap 10 - Incident Blog (5 prompts)
+### Gap 10 - Incident Blog (5 prompts) -- COMPLETED 2026-06-23
 
-```
-gap-10-incident-blog/
-├── README.md                              Dual-control architecture, what exists, execution order
-├── 01-db-schema-and-carina-tools.md       DB schema (incidents + subscribers), store, CLI commands, tool defs
-├── 02-dual-interface.md                   Admin UI (Express/EJS) + Carina conversation interface
-├── 03-research-pipeline.md                Carina check-in slot + manual triggers from both interfaces
-├── 04-subscribe-and-newsletter.md         Carina API endpoints + newsletter send from both sides
-└── 05-page-generator-and-integration.md   Static HTML generator + publish hooks
-```
-
-**Agent:** Claude Code (all prompts)
-**Key context:** Incidents page already exists at labyrinthscout.com/incidents/. Carina check-in system, API surface, Resend sender, and admin panel all exist. Blog store shared by both interfaces. Full dual control -- human and AI can both manage everything.
-**Strategic value:** Positions Scout as the authoritative publication on AI agent incidents. Weekly automated research. Dual-control moderation. Newsletter subscriber growth. Fear driver fed automatically.
+Archived at `archived_prompts/pending_prompts/sprint-1/gap-10-incident-blog/`. Dual-control incident blog: store, tools, ops admin UI, research pipeline, subscribe/newsletter, page generator.
 
 ---
 
@@ -357,8 +345,7 @@ gap-05-security/MIGRATION-IMPLEMENTATION.md       Hermes/OpenClaw user migration
 gap-07-tui-cli/GOLD-STANDARD-TUI-CLI.md           Hermes-level CLI benchmark spec
 gap-07-tui-cli/GOLD-STANDARD-ONBOARDING-AESTHETICS.md  Odysseus onboarding quality target
 00-PRE-WORK-ALIGNMENT.md                           Full codebase audit before starting
-gap-10-incident-blog/README.md                     Incident blog architecture and context
-gap-10-incident-blog/01-db-schema-and-carina-tools.md  Blog data layer and CLI specification
+gap-10-incident-blog/README.md                     COMPLETED; archived at archived_prompts/pending_prompts/sprint-1/gap-10-incident-blog/
 gap-13-docker-migration/README.md                  Full Docker migration status (01-03 done, 04-05 pending)
 gap-14-deploy-pipeline/README.md                   CI/CD pipeline alignment and AWS portability
 internal/servers/core.carinaai.uk/docker/DEPLOY.md  Authoritative deploy runbook (always up to date)

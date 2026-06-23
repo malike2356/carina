@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   ExternalLink,
   Search,
@@ -166,7 +167,10 @@ export function SkillsPanel({ onClose, embedded = true }: SkillsPanelProps) {
       {activeTab === 'list' && (
         <div className="flex flex-col">
           <p className="px-4 pt-3 text-[11px] leading-relaxed text-text-muted">
-            Cloud skills are memory helpers and custom prompt notes. They are not live integrations or agent tools.
+            Cloud skills are memory helpers and custom prompt notes. They are not live integrations or agent tools.{' '}
+            <Link href="/packs" className="text-accent hover:underline">
+              Browse domain skill packs
+            </Link>
           </p>
           <div className="space-y-2 px-4 py-3">
             <div className="flex items-center gap-2 rounded-md border border-border bg-elevated px-3 py-2">

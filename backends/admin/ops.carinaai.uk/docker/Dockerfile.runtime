@@ -2,10 +2,14 @@
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache tini docker-cli util-linux
+RUN apk add --no-cache tini docker-cli util-linux python3 make g++
 COPY package.json ./
 COPY dist ./dist
 COPY node_modules ./node_modules
+# Host node_modules may ship glibc-built native addons; rebuild node-pty for Alpine.
+RUN PTY_DIR="$(find node_modules -path '*/node-pty/package.json' -print -quit | xargs dirname)" \
+  && test -n "$PTY_DIR" \
+  && (cd "$PTY_DIR" && npm run install)
 COPY views ./views
 COPY public ./public
 EXPOSE 4001

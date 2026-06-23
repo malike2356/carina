@@ -10,6 +10,8 @@ import {
 } from 'react';
 import { loadMessages } from './load-messages';
 import type { Translations } from './locales/en';
+import { useBrand } from '@/components/shell/BrandProvider';
+import { resolveAgentDisplayName } from '@/lib/brand-compat';
 import {
   detectLocale,
   isLocaleCode,
@@ -104,6 +106,21 @@ export function useTranslation() {
 
 export function useOptionalTranslation() {
   return useContext(I18nContext);
+}
+
+export function useBrandedTranslation() {
+  const ctx = useTranslation();
+  const brand = useBrand();
+  const agentName = resolveAgentDisplayName(brand.productName, brand.shortName);
+
+  const t = useCallback(
+    (key: TranslationKey, params?: Record<string, string | number>) => {
+      return ctx.t(key, { agentName, ...params });
+    },
+    [ctx, agentName],
+  );
+
+  return { ...ctx, t, agentName };
 }
 
 export { LANGUAGES };

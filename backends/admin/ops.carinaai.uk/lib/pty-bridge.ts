@@ -78,8 +78,8 @@ async function handlePtyConnection(ws: WebSocket, req: import('node:http').Incom
   }
 
   const sessionId = randomUUID();
-  const cols = 220;
-  const rows = 50;
+  const fallbackCols = 80;
+  const fallbackRows = 24;
 
   let spawnCmd;
   try {
@@ -103,49 +103,79 @@ async function handlePtyConnection(ws: WebSocket, req: import('node:http').Incom
 
   const ptyHome = resolvePtyUserHome();
   const carinaHome = resolvePtyCarinaHome();
-  const ptyProcess = pty.spawn(spawnCmd.file, spawnCmd.args, {
-    name: 'xterm-256color',
-    cols,
-    rows,
-    cwd: spawnCmd.cwd,
-    env: {
-      ...process.env,
-      HOME: ptyHome,
-      TERM: 'xterm-256color',
-      COLORTERM: 'truecolor',
-      FORCE_COLOR: '3',
-      CARINA_HOME: carinaHome,
-      CARINA_OPS_PTY: '1',
-      CARINA_TUI_SIMPLE: 'true',
-      DOTENV_CONFIG_QUIET: 'true',
-    } as Record<string, string>,
-  });
+  let ptyProcess: PTYSession['ptyProcess'] | null = null;
+  let spawned = false;
+  const pendingInput: string[] = [];
+  let fallbackTimer: ReturnType<typeof setTimeout>;
 
-  sessions.set(sessionId, { ptyProcess, ws, cols, rows });
+  const spawnAtSize = (cols: number, rows: number) => {
+    if (spawned) return;
+    spawned = true;
+    clearTimeout(fallbackTimer);
 
-  ptyProcess.onData((data) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'output', data }));
+    ptyProcess = pty.spawn(spawnCmd.file, spawnCmd.args, {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd: spawnCmd.cwd,
+      env: {
+        ...process.env,
+        HOME: ptyHome,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+        FORCE_COLOR: '3',
+        CARINA_HOME: carinaHome,
+        CARINA_OPS_PTY: '1',
+        CARINA_TUI_SIMPLE: 'true',
+        DOTENV_CONFIG_QUIET: 'true',
+      } as Record<string, string>,
+    });
+
+    sessions.set(sessionId, { ptyProcess, ws, cols, rows });
+
+    ptyProcess.onData((data) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'output', data }));
+      }
+    });
+
+    ptyProcess.onExit(({ exitCode }) => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'exit', exitCode }));
+        ws.close();
+      }
+      sessions.delete(sessionId);
+    });
+
+    for (const data of pendingInput) {
+      ptyProcess.write(data);
     }
-  });
+    pendingInput.length = 0;
 
-  ptyProcess.onExit(({ exitCode }) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'exit', exitCode }));
-      ws.close();
-    }
-    sessions.delete(sessionId);
-  });
+    ws.send(JSON.stringify({ type: 'connected', sessionId, cols, rows }));
+  };
+
+  fallbackTimer = setTimeout(() => {
+    spawnAtSize(fallbackCols, fallbackRows);
+  }, 3000);
 
   ws.on('message', (raw) => {
     try {
       const msg = JSON.parse(raw.toString()) as { type?: string; data?: string; cols?: number; rows?: number };
       if (msg.type === 'input' && typeof msg.data === 'string') {
-        ptyProcess.write(msg.data);
+        if (ptyProcess) {
+          ptyProcess.write(msg.data);
+        } else {
+          pendingInput.push(msg.data);
+        }
       } else if (msg.type === 'resize' && typeof msg.cols === 'number' && typeof msg.rows === 'number') {
         const nextCols = Math.max(2, Math.floor(msg.cols));
         const nextRows = Math.max(2, Math.floor(msg.rows));
-        ptyProcess.resize(nextCols, nextRows);
+        if (!spawned) {
+          spawnAtSize(nextCols, nextRows);
+          return;
+        }
+        ptyProcess?.resize(nextCols, nextRows);
         const session = sessions.get(sessionId);
         if (session) {
           session.cols = nextCols;
@@ -158,9 +188,8 @@ async function handlePtyConnection(ws: WebSocket, req: import('node:http').Incom
   });
 
   ws.on('close', () => {
-    ptyProcess.kill();
+    clearTimeout(fallbackTimer);
+    ptyProcess?.kill();
     sessions.delete(sessionId);
   });
-
-  ws.send(JSON.stringify({ type: 'connected', sessionId, cols, rows }));
 }

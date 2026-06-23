@@ -1,0 +1,39 @@
+# White-label custom domains for Carina Cloud
+#
+# 1. Verify the domain in Carina Ops or app workspace settings.
+# 2. Issue a certificate with certbot for each verified hostname.
+# 3. Copy the server block below into conf.d/carina-cloud-custom-domains.conf
+#    and replace CUSTOMER_HOSTNAME with the verified domain.
+#
+# Example:
+#   certbot certonly --webroot -w /var/www/certbot -d workspace.client.example
+#
+# The app container still serves all customer domains. Nginx only terminates TLS
+# and forwards Host unchanged so brand resolution stays in the application layer.
+
+server {
+  listen 443 ssl;
+  http2 on;
+  server_name CUSTOMER_HOSTNAME;
+
+  ssl_certificate     /etc/nginx/ssl/live/CUSTOMER_HOSTNAME/fullchain.pem;
+  ssl_certificate_key /etc/nginx/ssl/live/CUSTOMER_HOSTNAME/privkey.pem;
+  include /etc/nginx/conf.d/ssl-params.conf;
+  ssl_dhparam         /etc/nginx/ssl/ssl-dhparams.pem;
+
+  proxy_read_timeout  300s;
+  proxy_send_timeout  300s;
+
+  location / {
+    proxy_pass         http://carina_cloud;
+    proxy_http_version 1.1;
+    proxy_set_header   Upgrade           $http_upgrade;
+    proxy_set_header   Connection        "upgrade";
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Real-IP         $remote_addr;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    proxy_buffering    off;
+    proxy_cache        off;
+  }
+}

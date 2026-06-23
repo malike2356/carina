@@ -3,24 +3,32 @@
   <div class="ops-page-head">
     <div>
       <div class="ops-page-title">File Browser</div>
-      <div class="ops-page-sub">Browse allowed server roots. Superadmins can edit files in the panel.</div>
+      <div class="ops-page-sub">Browse allowed VPS roots, preview files, and edit configs (superadmin save).</div>
     </div>
     <div id="files-flash" class="ops-flash success" style="<%= flash ? '' : 'display:none;' %>"><%= flash || '' %></div>
   </div>
 
   <div class="server-files-layout">
-    <section class="server-files-browser">
+    <section class="server-files-browser ops-surface">
       <div class="server-files-toolbar">
         <div class="server-files-nav">
-          <button type="button" id="files-back-btn" class="ops-btn-ghost sm" title="Back" disabled>Back</button>
-          <button type="button" id="files-up-btn" class="ops-btn-ghost sm" title="Up one folder" disabled>Up</button>
-          <button type="button" id="files-home-btn" class="ops-btn-ghost sm" title="All roots">Roots</button>
+          <button type="button" id="files-back-btn" class="ops-btn-ghost ops-btn-sm" title="Back" disabled>Back</button>
+          <button type="button" id="files-up-btn" class="ops-btn-ghost ops-btn-sm" title="Up one folder" disabled>Up</button>
+          <button type="button" id="files-home-btn" class="ops-btn-ghost ops-btn-sm" title="All roots">Roots</button>
+          <button type="button" id="files-refresh-btn" class="ops-btn-ghost ops-btn-sm" title="Refresh listing">Refresh</button>
         </div>
         <nav id="files-breadcrumbs" class="server-files-breadcrumbs" aria-label="Path"></nav>
+        <label class="server-files-search">
+          <span class="sr-only">Filter entries</span>
+          <input type="search" id="files-filter" placeholder="Filter name..." autocomplete="off" />
+        </label>
       </div>
 
       <div id="files-error" class="ops-flash error" style="display:none;"></div>
-      <div id="files-loading" class="server-files-loading" style="display:none;">Loading...</div>
+      <div id="files-loading" class="server-files-loading" style="display:none;">Loading directory...</div>
+      <div id="files-count" class="server-files-count"></div>
+
+      <div id="files-roots-grid" class="server-files-roots-grid" style="display:none;"></div>
 
       <div class="server-files-table-wrap">
         <table class="ops-table server-files-table">
@@ -36,17 +44,21 @@
       </div>
     </section>
 
-    <section class="server-files-editor">
+    <section class="server-files-editor ops-surface">
       <div class="server-files-editor-toolbar">
-        <div>
+        <div class="server-files-editor-meta">
           <div class="server-files-editor-label">Editor</div>
-          <div id="editor-filename" class="editor-filename">Select a file to preview</div>
+          <div id="editor-filename" class="server-files-editor-path">Select a file to preview</div>
+          <div id="editor-meta" class="server-files-editor-hint"></div>
         </div>
-        <% if (locals.session && session.role === 'superadmin') { %>
-          <button type="button" id="save-btn" class="ops-btn ops-btn-green" disabled>Save</button>
-        <% } %>
+        <div class="server-files-editor-actions">
+          <button type="button" id="copy-path-btn" class="ops-btn-ghost ops-btn-sm" disabled>Copy path</button>
+          <% if (locals.session && session.role === 'superadmin') { %>
+            <button type="button" id="save-btn" class="ops-btn ops-btn-green ops-btn-sm" disabled>Save</button>
+          <% } %>
+        </div>
       </div>
-      <div id="editor-mount"></div>
+      <div id="editor-mount" class="server-files-editor-mount"></div>
       <input type="hidden" id="current-file-path" value="">
     </section>
   </div>
@@ -78,22 +90,30 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     parentPath: boot.parentPath ?? null,
     error: boot.error || null,
     selectedFile: null,
+    filter: '',
   };
 
   var tableBody = document.getElementById('files-table-body');
+  var rootsGrid = document.getElementById('files-roots-grid');
+  var tableWrap = document.querySelector('.server-files-table-wrap');
   var breadcrumbsEl = document.getElementById('files-breadcrumbs');
   var errorEl = document.getElementById('files-error');
   var loadingEl = document.getElementById('files-loading');
+  var countEl = document.getElementById('files-count');
+  var filterEl = document.getElementById('files-filter');
   var backBtn = document.getElementById('files-back-btn');
   var upBtn = document.getElementById('files-up-btn');
   var homeBtn = document.getElementById('files-home-btn');
+  var refreshBtn = document.getElementById('files-refresh-btn');
+  var copyPathBtn = document.getElementById('copy-path-btn');
   var historyDepth = 0;
 
   function formatSize(bytes) {
     if (bytes == null) return '';
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
   }
 
   function formatDate(ms) {
@@ -105,12 +125,10 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     return '<svg class="entry-icon folder" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.5"/></svg>';
   }
 
-  function fileIcon() {
-    return '<svg class="entry-icon file" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" stroke="currentColor" stroke-width="1.5"/><path d="M14 2v6h6" stroke="currentColor" stroke-width="1.5"/></svg>';
-  }
-
-  function rootIcon() {
-    return '<svg class="entry-icon root" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
+  function fileIcon(name) {
+    var ext = (name.split('.').pop() || '').toLowerCase();
+    var badge = ext ? ext.slice(0, 4) : 'file';
+    return '<span class="entry-icon file-badge" aria-hidden="true">' + esc(badge) + '</span>';
   }
 
   function browseUrl(pathValue) {
@@ -124,19 +142,24 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     homeBtn.disabled = !state.currentPath;
   }
 
+  function matchesFilter(name) {
+    if (!state.filter) return true;
+    return name.toLowerCase().includes(state.filter.toLowerCase());
+  }
+
   function renderBreadcrumbs() {
     if (!state.currentPath) {
-      breadcrumbsEl.innerHTML = '<span class="crumb-current">Allowed roots</span>';
+      breadcrumbsEl.innerHTML = '<span class="crumb-current">Choose a root</span>';
       return;
     }
 
-    var html = '<a href="' + browseUrl('') + '" class="crumb-link" data-path="">Roots</a>';
+    var html = '<a href="#" class="crumb-link" data-path="">Roots</a>';
     state.breadcrumbs.forEach(function(crumb, index) {
       html += '<span class="crumb-sep">/</span>';
       if (index === state.breadcrumbs.length - 1) {
         html += '<span class="crumb-current">' + esc(crumb.name) + '</span>';
       } else {
-        html += '<a href="' + browseUrl(crumb.path) + '" class="crumb-link" data-path="' + escAttr(crumb.path) + '">' + esc(crumb.name) + '</a>';
+        html += '<a href="#" class="crumb-link" data-path="' + escAttr(crumb.path) + '">' + esc(crumb.name) + '</a>';
       }
     });
     breadcrumbsEl.innerHTML = html;
@@ -144,8 +167,36 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     breadcrumbsEl.querySelectorAll('.crumb-link').forEach(function(link) {
       link.addEventListener('click', function(e) {
         e.preventDefault();
-        var path = link.getAttribute('data-path') || '';
-        navigateTo(path || null, true);
+        navigateTo(link.getAttribute('data-path') || null, true);
+      });
+    });
+  }
+
+  function renderRoots() {
+    rootsGrid.style.display = '';
+    tableWrap.style.display = 'none';
+    countEl.textContent = state.roots.length + ' root' + (state.roots.length === 1 ? '' : 's');
+
+    if (!state.roots.length) {
+      rootsGrid.innerHTML = '<div class="ops-empty">No allowed roots configured. Set CARINA_SERVER_FS_ROOTS on the ops container.</div>';
+      return;
+    }
+
+    rootsGrid.innerHTML = state.roots.map(function(root) {
+      var item = typeof root === 'string'
+        ? { label: root.split('/').filter(Boolean).pop() || root, path: root, description: root }
+        : root;
+      return '<button type="button" class="server-files-root-card" data-path="' + escAttr(item.path) + '">' +
+        '<span class="server-files-root-icon">' + folderIcon() + '</span>' +
+        '<span class="server-files-root-title">' + esc(item.label || item.path) + '</span>' +
+        '<span class="server-files-root-desc">' + esc(item.description || item.path) + '</span>' +
+        '<code class="server-files-root-path">' + esc(item.path) + '</code>' +
+        '</button>';
+    }).join('');
+
+    rootsGrid.querySelectorAll('.server-files-root-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        navigateTo(card.getAttribute('data-path'), true);
       });
     });
   }
@@ -155,55 +206,59 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
       errorEl.textContent = state.error;
       errorEl.style.display = '';
       tableBody.innerHTML = '';
+      rootsGrid.style.display = 'none';
+      tableWrap.style.display = '';
       return;
     }
     errorEl.style.display = 'none';
 
     if (!state.currentPath) {
-      if (!state.roots.length) {
-        tableBody.innerHTML = '<tr><td colspan="3" class="ops-empty">No allowed roots configured.</td></tr>';
-        return;
-      }
-      tableBody.innerHTML = state.roots.map(function(root) {
-        var label = root.split('/').filter(Boolean).pop() || root;
-        return '<tr class="entry-row folder-row" data-path="' + escAttr(root) + '">' +
-          '<td class="entry-name">' + rootIcon() + '<span>' + esc(label) + '</span><code class="entry-path">' + esc(root) + '</code></td>' +
-          '<td class="col-size muted-cell">Root</td>' +
-          '<td class="col-modified muted-cell"></td></tr>';
-      }).join('');
-      bindRowClicks();
+      renderRoots();
       return;
     }
+
+    rootsGrid.style.display = 'none';
+    tableWrap.style.display = '';
 
     var rows = [];
     if (state.parentPath !== null) {
       var upTarget = state.parentPath === '' ? null : state.parentPath;
-      rows.push('<tr class="entry-row up-row" data-path="' + escAttr(upTarget || '') + '">' +
-        '<td class="entry-name">' + folderIcon() + '<span>..</span><code class="entry-path">Parent folder</code></td>' +
-        '<td class="col-size muted-cell"></td><td class="col-modified muted-cell"></td></tr>');
+      rows.push({ kind: 'up', name: '..', path: upTarget || '', mtime: null, size: null });
     }
 
     (state.entries || []).forEach(function(entry) {
-      if (entry.type === 'dir') {
-        rows.push('<tr class="entry-row folder-row" data-path="' + escAttr(entry.path) + '">' +
-          '<td class="entry-name">' + folderIcon() + '<span>' + esc(entry.name) + '</span></td>' +
-          '<td class="col-size muted-cell">Folder</td>' +
-          '<td class="col-modified muted-cell">' + formatDate(entry.mtime) + '</td></tr>');
-      } else {
-        var selected = state.selectedFile === entry.path ? ' is-selected' : '';
-        rows.push('<tr class="entry-row file-row' + selected + '" data-path="' + escAttr(entry.path) + '" data-file="1">' +
-          '<td class="entry-name">' + fileIcon() + '<span>' + esc(entry.name) + '</span></td>' +
-          '<td class="col-size muted-cell">' + formatSize(entry.size) + '</td>' +
-          '<td class="col-modified muted-cell">' + formatDate(entry.mtime) + '</td></tr>');
-      }
+      if (!matchesFilter(entry.name)) return;
+      rows.push(entry);
     });
 
+    var folders = rows.filter(function(r) { return r.type === 'dir' || r.kind === 'up'; }).length;
+    var files = rows.filter(function(r) { return r.type === 'file'; }).length;
+    countEl.textContent = folders + ' folder' + (folders === 1 ? '' : 's') + ', ' + files + ' file' + (files === 1 ? '' : 's');
+
     if (!rows.length) {
-      tableBody.innerHTML = '<tr><td colspan="3" class="ops-empty">This folder is empty.</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="3" class="ops-empty">No entries match this filter.</td></tr>';
       return;
     }
 
-    tableBody.innerHTML = rows.join('');
+    tableBody.innerHTML = rows.map(function(entry) {
+      if (entry.kind === 'up') {
+        return '<tr class="entry-row up-row" data-path="' + escAttr(entry.path) + '">' +
+          '<td class="entry-name">' + folderIcon() + '<span>..</span><span class="entry-sub">Parent folder</span></td>' +
+          '<td class="col-size muted-cell"></td><td class="col-modified muted-cell"></td></tr>';
+      }
+      if (entry.type === 'dir') {
+        return '<tr class="entry-row folder-row" data-path="' + escAttr(entry.path) + '">' +
+          '<td class="entry-name">' + folderIcon() + '<span>' + esc(entry.name) + '</span></td>' +
+          '<td class="col-size muted-cell">Folder</td>' +
+          '<td class="col-modified muted-cell">' + formatDate(entry.mtime) + '</td></tr>';
+      }
+      var selected = state.selectedFile === entry.path ? ' is-selected' : '';
+      return '<tr class="entry-row file-row' + selected + '" data-path="' + escAttr(entry.path) + '" data-file="1">' +
+        '<td class="entry-name">' + fileIcon(entry.name) + '<span>' + esc(entry.name) + '</span></td>' +
+        '<td class="col-size muted-cell">' + formatSize(entry.size) + '</td>' +
+        '<td class="col-modified muted-cell">' + formatDate(entry.mtime) + '</td></tr>';
+    }).join('');
+
     bindRowClicks();
   }
 
@@ -234,8 +289,7 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     state.error = next.error || null;
 
     if (pushHistory) {
-      var url = browseUrl(state.currentPath || '');
-      window.history.pushState({ path: state.currentPath || '' }, '', url);
+      window.history.pushState({ path: state.currentPath || '' }, '', browseUrl(state.currentPath || ''));
       historyDepth += 1;
     }
 
@@ -268,6 +322,11 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
   backBtn.addEventListener('click', function() { window.history.back(); });
   upBtn.addEventListener('click', navigateUp);
   homeBtn.addEventListener('click', function() { navigateTo(null, true); });
+  refreshBtn.addEventListener('click', function() { navigateTo(state.currentPath, false); });
+  filterEl.addEventListener('input', function() {
+    state.filter = filterEl.value.trim();
+    renderTable();
+  });
 
   window.addEventListener('popstate', function(event) {
     historyDepth = Math.max(0, historyDepth - 1);
@@ -289,17 +348,24 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     state.selectedFile = filePath;
     renderTable();
     if (!window._monacoEditor) return;
+
+    document.getElementById('editor-filename').textContent = filePath;
+    document.getElementById('editor-meta').textContent = 'Loading...';
+    copyPathBtn.disabled = true;
+
     const r = await fetch('/server/files/read?path=' + encodeURIComponent(filePath), { credentials: 'same-origin' });
     const data = await r.json();
     if (!data.ok) {
       monaco.editor.setModelLanguage(window._monacoEditor.getModel(), 'plaintext');
       window._monacoEditor.setValue('Error: ' + data.error);
+      document.getElementById('editor-meta').textContent = 'Read failed';
       return;
     }
     monaco.editor.setModelLanguage(window._monacoEditor.getModel(), data.language);
     window._monacoEditor.setValue(data.content);
     document.getElementById('current-file-path').value = data.path;
-    document.getElementById('editor-filename').textContent = data.path;
+    document.getElementById('editor-meta').textContent = data.language + ' · ' + data.content.split('\n').length + ' lines';
+    copyPathBtn.disabled = false;
     var saveBtn = document.getElementById('save-btn');
     if (saveBtn) saveBtn.disabled = false;
   }
@@ -328,25 +394,34 @@ window.__FILES_BOOT__ = <%- JSON.stringify({
     }
   }
 
+  copyPathBtn.addEventListener('click', async function() {
+    var path = document.getElementById('current-file-path').value;
+    if (!path) return;
+    try {
+      await navigator.clipboard.writeText(path);
+      copyPathBtn.textContent = 'Copied';
+      setTimeout(function() { copyPathBtn.textContent = 'Copy path'; }, 1000);
+    } catch {
+      alert(path);
+    }
+  });
+
   renderBreadcrumbs();
   renderTable();
   updateNavButtons();
-  if (state.currentPath) {
-    window.history.replaceState({ path: state.currentPath }, '', browseUrl(state.currentPath));
-  } else {
-    window.history.replaceState({ path: '' }, '', browseUrl(''));
-  }
+  window.history.replaceState({ path: state.currentPath || '' }, '', browseUrl(state.currentPath || ''));
 
   require(['vs/editor/editor.main'], function () {
     window._monacoEditor = monaco.editor.create(document.getElementById('editor-mount'), {
-      value: '',
+      value: '// Select a file from the browser panel to preview or edit.\n',
       language: 'plaintext',
       theme: 'vs-dark',
       automaticLayout: true,
-      minimap: { enabled: false },
+      minimap: { enabled: true },
       fontSize: 13,
       lineNumbers: 'on',
       scrollBeyondLastLine: false,
+      wordWrap: 'on',
     });
     var saveBtn = document.getElementById('save-btn');
     if (saveBtn) saveBtn.addEventListener('click', saveFile);

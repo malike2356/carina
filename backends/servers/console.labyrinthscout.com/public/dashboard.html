@@ -5,7 +5,10 @@
   <!-- __SCOUT_KEY_INJECTION__ -->
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Labyrinth Scout</title>
-  <link rel="stylesheet" href="/theme/index.css?v=3">
+  <link rel="stylesheet" href="/theme/index.css?v=4">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="/dashboard/css/kill-switch-panel.css?v=2">
+  <link rel="stylesheet" href="/dashboard/css/governance-widgets.css?v=1">
   <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden}
@@ -216,7 +219,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .response-terminal-strip .panel-lbl{padding:.22rem .5rem;font-size:.58rem;margin:0}
 #response-terminal-panel{padding:0 .5rem .35rem}
 
-.dash-toolbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-bottom:1px solid var(--border);padding:.28rem 0 .38rem;flex-wrap:wrap}
+.dash-toolbar{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:.5rem;border-bottom:1px solid var(--border);padding:.35rem 0 .45rem;flex-wrap:wrap;min-height:46px}
 .dash-tabs{display:flex;gap:.25rem;flex-wrap:wrap}
 .dash-tab{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.1em;padding:.38rem .72rem;border:1px solid transparent;background:transparent;color:var(--text);cursor:pointer;border-radius:3px;text-transform:uppercase}
 .dash-tab:hover{color:var(--bright);border-color:var(--border)}
@@ -296,13 +299,6 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 .op-metric .value{font-family:'JetBrains Mono',monospace;font-size:1.15rem;color:var(--bright)}
 .op-metric .detail{font-size:.58rem;color:rgba(139,175,192,.6)}
 .op-grid{display:grid;gap:.45rem}
-.gov-tab-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.65rem;flex-wrap:wrap}
-.gov-tab-head span{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.12em;color:var(--amber);text-transform:uppercase}
-.gov-tab-score-banner{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:1rem 1.1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.65rem}
-.gov-tab-card{background:var(--navy);border:1px solid var(--border);border-radius:4px;padding:.75rem .85rem;margin-bottom:.65rem}
-.gov-tab-card h3{font-family:'JetBrains Mono',monospace;font-size:.6rem;letter-spacing:.12em;color:var(--text);margin:0 0 .45rem;text-transform:uppercase}
-.gov-tab-grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
-@media(max-width:900px){.gov-tab-grid{grid-template-columns:1fr}}
 .fleet-summary-bar{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.65rem}
 .fleet-summary-pill{font-family:'JetBrains Mono',monospace;font-size:.64rem;padding:.22rem .55rem;border:1px solid var(--border);border-radius:3px;color:var(--text)}
 .fleet-summary-pill.active{color:var(--green);border-color:rgba(0,200,150,.35)}
@@ -347,7 +343,6 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <span id="pending-action-count" class="badge-count" style="display:none" title="Pending actions require your review">0</span>
     <span class="hdr-admin">admin: operator</span>
     <span class="hdr-admin">updated: <span id="last-updated">-</span></span>
-    <button class="global-kill" id="global-kill-button">KILL SWITCH</button>
     <span class="kill-status" id="kill-status"></span>
     <span class="hdr-clock" id="hdr-clock"></span>
     <button class="global-kill" style="background:rgba(139,175,192,.1);border-color:rgba(139,175,192,.3);color:var(--text);margin-left:.5rem" onclick="logoutDashboard()">LOGOUT</button>
@@ -356,12 +351,14 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
   <nav class="dash-toolbar" aria-label="Dashboard navigation">
     <div class="dash-tabs" role="tablist">
       <button type="button" class="dash-tab dash-tab-active" data-view="overview" aria-selected="true">Overview</button>
+      <button type="button" class="dash-tab" data-view="killswitch" aria-selected="false">Kill Switch</button>
       <button type="button" class="dash-tab" data-view="defense" aria-selected="false">Defense</button>
       <button type="button" class="dash-tab" data-view="actions" aria-selected="false">Actions<span id="pending-tab-badge" class="badge-count" style="display:none">0</span></button>
       <button type="button" class="dash-tab" data-view="governance" aria-selected="false">Governance</button>
       <button type="button" class="dash-tab" data-view="fleet" aria-selected="false">Fleet</button>
       <button type="button" class="dash-tab" data-view="attack-surface" aria-selected="false">Attack Surface</button>
     </div>
+    <div class="dash-kill-dock" id="toolbar-kill-slot" title="Global kill switch"></div>
     <div class="dash-actions" aria-label="Threat response actions">
       <button type="button" class="act-btn act-red" id="act-kill" title="Kill active instance">Kill</button>
       <button type="button" class="act-btn act-amber" id="act-honeypot" title="Deploy honeypot">Honeypot</button>
@@ -469,6 +466,8 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 
   </div>
 
+  <div id="view-killswitch" class="dash-view scroll-view" hidden></div>
+
   <div id="view-defense" class="dash-view scroll-view" hidden>
     <div id="defense-tab-root">
       <div class="spec-panel">
@@ -528,17 +527,33 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
     <div id="gov-tab-loading" class="spec-empty">Loading governance posture...</div>
     <div id="gov-tab-content" hidden>
       <div id="gov-tab-score-banner" class="gov-tab-score-banner score-at-risk">
-        <div><div id="gov-tab-score" style="font-family:'JetBrains Mono',monospace;font-size:2.5rem;font-weight:700">-</div><div style="font-size:.62rem;color:var(--text);letter-spacing:.12em">GOVERNANCE SCORE</div></div>
-        <div><div id="gov-tab-label" style="font-family:'JetBrains Mono',monospace;font-size:.72rem">-</div><div id="gov-tab-subline" style="font-size:.72rem;color:var(--text);margin-top:.25rem">-</div></div>
+        <div class="gov-score-block">
+          <div id="gov-tab-score" class="gov-score-num">-</div>
+          <div class="gov-score-caption">GOVERNANCE SCORE</div>
+        </div>
+        <div class="gov-score-block">
+          <div id="gov-tab-label" class="gov-score-status">-</div>
+          <div id="gov-tab-subline" class="gov-score-sub">-</div>
+        </div>
       </div>
       <div class="gov-tab-grid">
-        <div class="gov-tab-card tier-limited" id="gov-tab-eu-card"><h3>EU AI Act</h3><div id="gov-tab-eu-tier" style="font-size:1.1rem;margin-bottom:.35rem">-</div><ul id="gov-tab-eu-reasoning" style="font-size:.72rem;color:var(--text);margin-left:1rem"></ul><div id="gov-tab-eu-articles" style="font-size:.62rem;color:rgba(139,175,192,.6);margin-top:.35rem"></div></div>
-        <div class="gov-tab-card"><h3>UK DSIT</h3><div id="gov-tab-uk-alignment" style="font-size:1.1rem;margin-bottom:.35rem">-</div><div id="gov-tab-uk-met" style="font-size:.72rem;color:var(--text)"></div><div id="gov-tab-uk-partial" style="font-size:.72rem;color:rgba(139,175,192,.55)"></div></div>
+        <div class="gov-tab-card tier-limited" id="gov-tab-eu-card">
+          <h3>EU AI Act</h3>
+          <div id="gov-tab-eu-tier" class="gov-tier-value">-</div>
+          <ul id="gov-tab-eu-reasoning" class="gov-reasoning"></ul>
+          <div id="gov-tab-eu-articles" class="gov-articles"></div>
+        </div>
+        <div class="gov-tab-card">
+          <h3>UK DSIT</h3>
+          <div id="gov-tab-uk-alignment" class="gov-tier-value">-</div>
+          <div id="gov-tab-uk-met" class="gov-reasoning"></div>
+          <div id="gov-tab-uk-partial" class="gov-articles"></div>
+        </div>
       </div>
       <div id="gov-tab-framework-grid" class="gov-tab-grid" style="margin-top:.65rem"></div>
       <div class="gov-tab-grid" style="margin-top:.65rem">
-        <div class="gov-tab-card"><h3>Governed agents</h3><div id="gov-tab-agents-summary" style="font-size:.72rem;color:var(--text);margin-bottom:.35rem">-</div><table class="as-table"><thead><tr><th>Agent</th><th>Status</th><th>Identified</th><th>Incidents</th></tr></thead><tbody id="gov-tab-agents-tbody"></tbody></table></div>
-        <div class="gov-tab-card"><h3>Human oversight</h3><div id="gov-tab-oversight-body" style="font-size:.72rem;color:var(--text)">-</div></div>
+        <div class="gov-tab-card"><h3>Governed agents</h3><div id="gov-tab-agents-summary" class="gov-reasoning" style="margin-left:0;margin-bottom:.35rem">-</div><table class="as-table"><thead><tr><th>Agent</th><th>Status</th><th>Identified</th><th>Incidents</th></tr></thead><tbody id="gov-tab-agents-tbody"></tbody></table></div>
+        <div class="gov-tab-card"><h3>Human oversight</h3><div id="gov-tab-oversight-body">-</div></div>
         <div class="gov-tab-card"><h3>Attestations</h3><div id="gov-tab-attest-list"></div></div>
         <div class="gov-tab-card"><h3>Action items</h3><div id="gov-tab-action-items"></div></div>
         <div class="gov-tab-card gov-tab-fw-card" style="grid-column:1/-1"><h3>Governance template</h3><div id="gov-tab-template-body" class="spec-empty">Loading template...</div></div>
@@ -590,7 +605,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 <!-- Kill modal -->
 <div class="kill-overlay" id="kill-overlay" hidden>
   <div class="kill-box">
-    <div class="kill-title">KILL SWITCH</div>
+    <div class="kill-title" id="kill-modal-title">KILL SWITCH</div>
     <p class="kill-desc" id="kill-desc">This will immediately suspend the agent. All tool calls will be blocked. This action is logged.</p>
     <label class="kill-label">Type KILL to confirm</label>
     <input class="kill-input" id="kill-confirm" autocomplete="off" spellcheck="false" placeholder="KILL">
@@ -605,7 +620,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 
 <!-- HONEYPOT MODAL -->
 <div id="honeypot-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1500;display:none;align-items:center;justify-content:center">
-  <div style="background:#0d1826;border:1px solid #8bc;border-radius:6px;padding:1.5rem 2rem;min-width:340px;font-family:'JetBrains Mono',monospace">
+  <div style="background:var(--navy);border:1px solid #8bc;border-radius:6px;padding:1.5rem 2rem;min-width:340px;font-family:'JetBrains Mono',monospace">
     <h3 style="color:#8bc;font-size:.85rem;margin:0 0 .5rem">DEPLOY HONEYPOT</h3>
     <p style="color:rgba(139,175,192,.7);font-size:.65rem;margin:0 0 1rem;line-height:1.5">
       Deploy a decoy credential or file that alerts when accessed.<br>
@@ -623,7 +638,7 @@ body.grid-pulse::before{background-image:linear-gradient(rgba(255,34,68,.07) 1px
 
 <!-- MEMORY MODAL -->
 <div id="memory-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1500;display:none;align-items:center;justify-content:center">
-  <div style="background:#0d1826;border:1px solid #e6c07b;border-radius:6px;padding:1.5rem 2rem;min-width:400px;max-width:560px;font-family:'JetBrains Mono',monospace">
+  <div style="background:var(--navy);border:1px solid #e6c07b;border-radius:6px;padding:1.5rem 2rem;min-width:400px;max-width:560px;font-family:'JetBrains Mono',monospace">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
       <h3 style="color:#e6c07b;font-size:.85rem;margin:0">SESSION MEMORY</h3>
       <button onclick="closeMemoryModal()" style="background:none;border:none;color:rgba(139,175,192,.5);font-size:.9rem;cursor:pointer;padding:0 .25rem">x</button>
@@ -1118,7 +1133,7 @@ function drawHeatmap() {
       const v = (heatmap[tool] || [])[h] || 0;
       const intensity = v / maxVal;
       if (intensity === 0) {
-        ctx.fillStyle = '#050c1a';
+        ctx.fillStyle = '#1c2534';
       } else {
         const g = Math.round(12 + intensity * 188);
         const b = Math.round(26 + intensity * 118);
@@ -1309,7 +1324,7 @@ function drawGauge() {
   // Pivot
   ctx.beginPath();
   ctx.arc(cx, cy, arcW * 0.22, 0, Math.PI * 2);
-  ctx.fillStyle = '#050c1a';
+  ctx.fillStyle = '#1c2534';
   ctx.fill();
   ctx.strokeStyle = '#00c896';
   ctx.lineWidth = 1.5;
@@ -2263,7 +2278,11 @@ async function triggerAlertTest() {
 let killTargetName = '';
 function openKill(id, name) {
   killTargetId = id; killTargetName = name;
-  document.getElementById('kill-desc').textContent = `This will immediately suspend "${name}". All tool calls will be blocked.`;
+  const isGlobal = id === '__global__';
+  document.getElementById('kill-desc').textContent = isGlobal
+    ? `This will immediately stop all governed agents (${name}). Workflows pause, tool calls block, and egress is cut. This action is logged and requires server disarm to resume.`
+    : `This will immediately suspend "${name}". All tool calls will be blocked.`;
+  document.getElementById('kill-modal-title').textContent = isGlobal ? 'GLOBAL KILL SWITCH' : 'KILL SWITCH';
   document.getElementById('kill-confirm').value = '';
   document.getElementById('kill-reason').value = '';
   document.getElementById('kill-submit').disabled = true;
@@ -2277,15 +2296,33 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeKill();
 
 async function executeKill() {
   const reason = document.getElementById('kill-reason').value.trim() || 'Manual kill switch';
+  const isGlobal = killTargetId === '__global__';
   closeKill();
   try {
-    const r = await fetch(`/api/kill/${encodeURIComponent(killTargetId)}`, {
-      method: 'POST', headers: H(), body: JSON.stringify({ reason })
-    });
+    const r = isGlobal
+      ? await fetch('/api/killswitch/trigger', {
+        method: 'POST',
+        headers: H(),
+        body: JSON.stringify({ password: 'dashboard-operator', reason }),
+      })
+      : await fetch(`/api/kill/${encodeURIComponent(killTargetId)}`, {
+        method: 'POST', headers: H(), body: JSON.stringify({ reason }),
+      });
     const d = await r.json();
-    if (d.ok || d.status === 'suspended') {
-      toast(`Kill switch activated: ${killTargetName}`, 'critical');
-      if (window.DashboardKillSwitch) window.DashboardKillSwitch.renderKillStatus(d);
+    const ok = isGlobal
+      ? (r.ok && d.triggered !== false)
+      : (d.ok || d.status === 'suspended');
+    if (ok) {
+      const label = isGlobal ? 'Global kill switch triggered' : `Kill switch activated: ${killTargetName}`;
+      toast(label, 'critical');
+      if (window.DashboardKillSwitch) {
+        const statusText = isGlobal
+          ? (d.agents_stopped != null ? `${d.agents_stopped} agent(s) stopped` : 'All agents suspended')
+          : (d.confirmation || killTargetName);
+        window.DashboardKillSwitch.fireKillEffect(statusText, { persist: isGlobal });
+        window.DashboardKillSwitch.renderKillStatus(isGlobal ? { triggered: true, reason, ...d } : d);
+        void window.DashboardKillSwitch.refreshAgentCount();
+      }
       flashRadar();
       loadStatus();
     } else {
@@ -2352,9 +2389,17 @@ function toast(msg, type='info') {
 
 // ── SSE ───────────────────────────────────────────────────────────────────────
 let evtSource = null;
+function scoutStreamUrl() {
+  if (window.__SCOUT_STREAM_URL) return window.__SCOUT_STREAM_URL;
+  var path = (BASE || '') + '/api/stream';
+  if (window.__SCOUT_ACCOUNT_ID) {
+    path += (path.indexOf('?') >= 0 ? '&' : '?') + 'account_id=' + encodeURIComponent(window.__SCOUT_ACCOUNT_ID);
+  }
+  return path;
+}
 function connectSSE() {
   if (evtSource) { try { evtSource.close(); } catch {} }
-  evtSource = new EventSource('/api/stream');
+  evtSource = new EventSource(scoutStreamUrl());
 
   evtSource.onopen = () => {
     document.getElementById('live-dot').classList.add('on');
@@ -2503,7 +2548,7 @@ window.addEventListener('resize', () => {
 // CSS-only tooltips fail inside overflow:hidden panels. Use a floating div instead.
 const tipEl = document.createElement('div');
 tipEl.style.cssText = `
-  position:fixed;display:none;background:#050c1a;border:1px solid rgba(0,200,150,.4);
+  position:fixed;display:none;background:var(--navy);border:1px solid rgba(0,200,150,.4);
   color:#cce8f4;font-family:'JetBrains Mono',monospace;font-size:.68rem;
   padding:.3rem .65rem;border-radius:3px;white-space:nowrap;z-index:9998;
   pointer-events:none;letter-spacing:.04em;box-shadow:0 4px 20px rgba(0,0,0,.6);
@@ -2534,6 +2579,7 @@ document.addEventListener('mouseout', e => {
 <script src="/dashboard/js/widgets/usage-analytics.js"></script>
 <script src="/dashboard/js/widgets/audit-log.js"></script>
 <script src="/dashboard/js/widgets/live-feed.js"></script>
+<script src="/dashboard/js/partials/kill-switch-markup.js"></script>
 <script src="/dashboard/js/widgets/kill-switch.js"></script>
 
 <script src="/dashboard/js/widgets/posture-summary.js"></script>
@@ -2563,7 +2609,7 @@ document.addEventListener('mouseout', e => {
   wire('act-kill', function () {
     var id = primaryInstanceId();
     if (id) openKill(id, id);
-    else document.getElementById('global-kill-button')?.click();
+    else if (window.DashboardKillSwitch) void window.DashboardKillSwitch.openGlobalKillSwitch();
   });
   wire('act-honeypot', function () {
     var id = primaryInstanceId();

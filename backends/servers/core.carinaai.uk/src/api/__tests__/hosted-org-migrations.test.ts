@@ -26,5 +26,9 @@ describe('hosted org migrations', () => {
     expect(combined).toContain('CREATE TABLE IF NOT EXISTS partner_accounts');
     expect(combined).toContain('CREATE TABLE IF NOT EXISTS custom_domains');
     expect(combined).toContain('organizations ADD COLUMN IF NOT EXISTS brand JSONB');
+    expect(combined).toContain('verification_token TEXT');
+    expect(combined).toContain('is_canonical BOOLEAN');
+    expect(combined).toContain('commercial_tier TEXT');
+    expect(combined).toContain('owner_org_id UUID REFERENCES organizations(id)');
   });
 });

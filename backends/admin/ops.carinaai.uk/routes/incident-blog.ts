@@ -3,41 +3,122 @@ import { carinaGet, carinaJson, carinaPost, carinaPut } from '../lib/carina.js';
 
 export const incidentBlogRouter = Router();
 
+const DEFAULT_PAGE_SIZE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest added' },
+  { value: 'incident_date', label: 'Incident date' },
+  { value: 'updated', label: 'Last updated' },
+] as const;
+
+function parseSort(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  return SORT_OPTIONS.some((option) => option.value === raw) ? raw : 'newest';
+}
+
 function parseQuery(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
+function parsePage(value: unknown): number {
+  const page = Number(value);
+  return Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+}
+
+function parseLimit(value: unknown): number {
+  const limit = Number(value);
+  return PAGE_SIZE_OPTIONS.includes(limit as typeof PAGE_SIZE_OPTIONS[number])
+    ? limit
+    : DEFAULT_PAGE_SIZE;
+}
+
+function buildIncidentBlogQuery(opts: {
+  page?: number;
+  limit?: number;
+  status?: string;
+  category?: string;
+  sort?: string;
+}): string {
+  const params = new URLSearchParams();
+  if (opts.page && opts.page > 1) params.set('page', String(opts.page));
+  if (opts.limit) params.set('limit', String(opts.limit));
+  if (opts.status) params.set('status', opts.status);
+  if (opts.category) params.set('category', opts.category);
+  if (opts.sort && opts.sort !== 'newest') params.set('sort', opts.sort);
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
 incidentBlogRouter.get('/', async (req, res) => {
   try {
-    const params = new URLSearchParams();
     const status = parseQuery(req.query.status);
     const category = parseQuery(req.query.category);
+    const sort = parseSort(req.query.sort);
+    const page = parsePage(req.query.page);
+    const limit = parseLimit(req.query.limit);
+    const params = new URLSearchParams();
+    params.set('page', String(page));
+    params.set('limit', String(limit));
+    params.set('sort', sort);
     if (status) params.set('status', status);
     if (category) params.set('category', category);
-    const response = await carinaGet(`/api/incident-blog/admin/incidents${params.toString() ? `?${params}` : ''}`);
-    const incidents = await carinaJson<{ incidents: Array<Record<string, unknown>> }>(response);
+    const response = await carinaGet(`/api/incident-blog/admin/incidents?${params}`);
+    const incidents = await carinaJson<{
+      incidents: Array<Record<string, unknown>>;
+      stats?: {
+        draftCount: number;
+        approvedCount: number;
+        publishedCount: number;
+        rejectedCount: number;
+      };
+      pagination?: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(response);
     const subscribersResponse = await carinaGet('/api/incident-blog/admin/subscribers');
     const subscribers = await carinaJson<{ subscribers: Array<Record<string, unknown>> }>(subscribersResponse);
+    const researchResponse = await carinaGet('/api/incident-blog/admin/research-status');
+    const researchPayload = await carinaJson<{ run: Record<string, unknown> | null }>(researchResponse);
     if (!incidents.ok || !subscribers.ok) {
       throw new Error(incidents.error ?? subscribers.error ?? 'Failed to load incident blog data');
     }
-    const draftCount = incidents.data!.incidents.filter((item) => item.status === 'draft').length;
-    const approvedCount = incidents.data!.incidents.filter((item) => item.status === 'approved').length;
-    const publishedCount = incidents.data!.incidents.filter((item) => item.status === 'published').length;
-    const rejectedCount = incidents.data!.incidents.filter((item) => item.status === 'rejected').length;
+    const apiStats = incidents.data?.stats;
+    const pagination = incidents.data?.pagination ?? {
+      page,
+      limit,
+      total: incidents.data!.incidents.length,
+      totalPages: 1,
+    };
     res.render('incident-blog/list', {
       title: 'Incident Blog',
       incidents: incidents.data!.incidents,
       subscribers: subscribers.data!.subscribers,
       stats: {
-        draftCount,
-        approvedCount,
-        publishedCount,
-        rejectedCount,
+        draftCount: apiStats?.draftCount ?? 0,
+        approvedCount: apiStats?.approvedCount ?? 0,
+        publishedCount: apiStats?.publishedCount ?? 0,
+        rejectedCount: apiStats?.rejectedCount ?? 0,
         subscriberCount: subscribers.data!.subscribers.length,
       },
-      filters: { status: status ?? '', category: category ?? '' },
+      filters: { status: status ?? '', category: category ?? '', sort },
+      page: pagination.page,
+      totalPages: pagination.totalPages,
+      total: pagination.total,
+      limit: pagination.limit ?? limit,
+      pageSizeOptions: PAGE_SIZE_OPTIONS,
+      sortOptions: SORT_OPTIONS,
+      pageLink: (targetPage: number) => buildIncidentBlogQuery({
+        page: targetPage,
+        limit,
+        status: status ?? '',
+        category: category ?? '',
+        sort,
+      }),
       query: req.query,
+      lastResearchRun: researchPayload.ok ? researchPayload.data?.run ?? null : null,
     });
   } catch (err) {
     res.status(500).render('error', { message: err instanceof Error ? err.message : String(err) });
@@ -95,6 +176,7 @@ incidentBlogRouter.get('/:id([0-9a-fA-F-]{36})/edit', async (req, res) => {
       title: 'Edit Incident',
       incident: payload.data.incident,
       action: `/admin/incident-blog/${encodeURIComponent(req.params.id)}/edit`,
+      query: req.query,
     });
   } catch (err) {
     res.status(500).render('error', { message: err instanceof Error ? err.message : String(err) });
@@ -117,7 +199,8 @@ incidentBlogRouter.post('/create', async (req, res) => {
     });
     const payload = await carinaJson<{ incident: Record<string, unknown> }>(response);
     if (!payload.ok || !payload.data) throw new Error(payload.error ?? 'Create failed');
-    res.redirect('/admin/incident-blog?ok=create');
+    const id = String(payload.data.incident.id ?? '');
+    res.redirect(`/admin/incident-blog/${encodeURIComponent(id)}?ok=create`);
   } catch (err) {
     res.redirect('/admin/incident-blog?err=' + encodeURIComponent(err instanceof Error ? err.message : String(err)));
   }
@@ -203,10 +286,42 @@ incidentBlogRouter.post('/generate-page', async (_req, res) => {
 
 incidentBlogRouter.post('/research-run', async (req, res) => {
   const response = await carinaPost('/api/incident-blog/admin/research-run', {
-    query: req.body.query ?? 'AI agent incident 2026',
+    query: req.body.query ?? '',
+  }, 120000);
+  const payload = await carinaJson<{
+    ok?: boolean;
+    drafted?: number;
+    skipped?: number;
+    candidates?: number;
+    errors?: string[];
+    error?: string;
+  }>(response);
+  if (!payload.ok) {
+    res.redirect('/admin/incident-blog?err=' + encodeURIComponent(payload.error ?? 'Research failed'));
+    return;
+  }
+  const params = new URLSearchParams({
+    ok: 'research',
+    drafted: String(payload.data?.drafted ?? 0),
+    skipped: String(payload.data?.skipped ?? 0),
+    candidates: String(payload.data?.candidates ?? 0),
   });
-  const payload = await carinaJson(response);
-  res.redirect('/admin/incident-blog?ok=research' + (payload.ok ? '' : `&err=${encodeURIComponent(payload.error ?? 'Research failed')}`));
+  if (payload.data?.errors?.length) {
+    params.set('err', payload.data.errors[0] ?? '');
+  }
+  res.redirect('/admin/incident-blog?' + params.toString());
+});
+
+incidentBlogRouter.post('/reject-drafts', async (_req, res) => {
+  const response = await carinaPost('/api/incident-blog/admin/reject-drafts', {
+    reason: 'Cleared from draft queue',
+  });
+  const payload = await carinaJson<{ ok?: boolean; rejected?: number; error?: string }>(response);
+  if (!payload.ok) {
+    res.redirect('/admin/incident-blog?err=' + encodeURIComponent(payload.error ?? 'Unable to clear drafts'));
+    return;
+  }
+  res.redirect('/admin/incident-blog?ok=reject-drafts&count=' + String(payload.data?.rejected ?? 0));
 });
 
 function parseSources(body: Record<string, unknown>): Array<{ label: string; url: string }> {

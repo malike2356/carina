@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { workspaces } from '@/db/schema';
+import { seedBuiltinWorkspaceProfiles } from '@/lib/workspace-profiles';
 
 export async function getWorkspaceForUser(userId: string) {
   const [workspace] = await db
@@ -21,5 +22,6 @@ export async function ensureWorkspaceForUser(userId: string, name: string) {
       name: `${name.split(' ')[0] ?? 'My'} workspace`,
     })
     .returning();
+  await seedBuiltinWorkspaceProfiles(created.id);
   return created;
 }

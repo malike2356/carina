@@ -126,3 +126,7 @@ carina serve
 Future scoped packages may split web assets separately, but do not document `@verlox/carina-core` or `@verlox/carina-web` as the current public install path until those packages are published.
 
 Legacy aliases `carina packs install` and `carina hub publish` remain available.
+
+## White-label operators
+
+If you resell Carina under your own brand, use the cloud app brand settings and the [white-label docs](https://docs.carinaai.uk/docs/user/white-label/getting-started). Kernel CLI commands stay Carina-branded; customer-facing copy lives in the cloud control plane.

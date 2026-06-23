@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  injectChatShellBranding,
   injectWorkspaceChrome,
   workspaceHubCardsHtml,
   workspaceSidebarHtml,
@@ -122,5 +123,16 @@ describe('workspace-chrome', () => {
     expect(hosted).toContain('carina-ws-bottom-nav');
     expect(priv).toContain('carina-ws-bottom-nav');
     expect(hosted).toContain('bnav-icon');
+  });
+
+  it('injects customer product name into chat shell title and brand span', () => {
+    const html = injectChatShellBranding(
+      '<html><head><title>Carina</title></head><body><span class="name">Carina</span></body></html>',
+      'hosted',
+      { productName: 'Nova Cloud', shortName: 'Nova' },
+    );
+    expect(html).toContain('<title>Nova Cloud</title>');
+    expect(html).toContain('id="product-brand-name">Nova Cloud</span>');
+    expect(html).toContain('data-product-mode="hosted"');
   });
 });

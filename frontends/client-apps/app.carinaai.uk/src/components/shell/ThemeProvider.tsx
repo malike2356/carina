@@ -5,9 +5,10 @@ import { applyBrandDocument } from '@/components/shell/BrandProvider';
 import { appearanceToCSS, normalizeAppearance, type AppearanceSettings } from '@/lib/appearance';
 import type { ResolvedBrand } from '@/lib/brand';
 import {
-  applyThemePreference,
+  applyThemePreferenceAsync,
   readCookieThemePreference,
   readStoredThemePreference,
+  storeThemePreference,
   type ThemePreference,
 } from '@/lib/theme-runtime';
 import { DEFAULT_THEME } from '@/lib/themes';
@@ -31,7 +32,7 @@ function applyAppearance(appearance: AppearanceSettings) {
 }
 
 function applyDefaults() {
-  applyThemePreference({ themeId: DEFAULT_THEME, mode: 'dark' });
+  void applyThemePreferenceAsync({ themeId: DEFAULT_THEME, mode: 'dark' });
   applyAppearance(normalizeAppearance(null));
 }
 
@@ -55,19 +56,24 @@ function resolvePreferenceFromApi(data: {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = readStoredThemePreference() ?? readCookieThemePreference();
-    if (stored) {
-      applyThemePreference(stored);
-    } else {
-      applyDefaults();
-    }
 
-    fetch('/api/workspace/settings')
-      .then(async (response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        const preference = resolvePreferenceFromApi(data?.data);
-        if (preference) {
-          applyThemePreference(preference);
+    async function bootstrapTheme() {
+      if (stored) {
+        await applyThemePreferenceAsync(stored);
+      } else {
+        applyDefaults();
+      }
+
+      try {
+        const response = await fetch('/api/workspace/settings');
+        const data = response.ok ? await response.json() : null;
+        const apiPreference = resolvePreferenceFromApi(data?.data);
+
+        if (apiPreference && !stored) {
+          await applyThemePreferenceAsync(apiPreference);
+          storeThemePreference(apiPreference);
         }
+
         if (data?.data?.appearance) {
           applyAppearance(normalizeAppearance(data.data.appearance));
         }
@@ -76,19 +82,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           applyBrandTokens(resolvedBrand.colorTokens);
           applyBrandDocument(resolvedBrand);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!stored) applyDefaults();
-      });
+      }
+    }
 
-    function handleSetTheme(event: Event) {
+    void bootstrapTheme();
+
+    async function handleSetTheme(event: Event) {
       const detail = (event as CustomEvent<ThemePreference | string>).detail;
       if (typeof detail === 'string') {
-        applyThemePreference({ themeId: detail, mode: 'dark' });
+        await applyThemePreferenceAsync({ themeId: detail, mode: 'dark' });
         return;
       }
       if (detail && typeof detail === 'object' && 'themeId' in detail) {
-        applyThemePreference(detail);
+        await applyThemePreferenceAsync(detail);
       }
     }
 

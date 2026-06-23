@@ -3,18 +3,25 @@
   <div class="ops-page-head">
     <div>
       <div class="ops-page-title">Services</div>
-      <div class="ops-page-sub">Scoped Carina stack containers and host systemd units. Status refreshes every 10 seconds.</div>
+      <div class="ops-page-sub">
+        Scoped Carina stack containers and host systemd units. Status refreshes every 10 seconds.
+        <% if (locals.dockerScope) { %>
+          Scope: <%= dockerScope.allowedProjects.join(', ') %>
+          <% if (dockerScope.whiteLabelStack) { %>(white-label stack <%= dockerScope.whiteLabelStack %>)<% } %>
+        <% } %>
+      </div>
     </div>
   </div>
 
   <section class="server-section">
     <h2 class="server-section-title">Docker Containers</h2>
     <table class="ops-table">
-      <thead><tr><th>Name</th><th>Status</th><th>Image</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Project</th><th>Status</th><th>Image</th><th></th></tr></thead>
       <tbody id="docker-rows">
         <% dockerContainers.forEach(function(svc) { %>
           <tr>
             <td><code><%= svc.name %></code></td>
+            <td class="muted-cell"><code><%= svc.project || 'n/a' %></code></td>
             <td><span class="status-badge status-<%= svc.status %>" data-service-name="<%= svc.name %>" data-service-type="docker"><%= svc.status %></span></td>
             <td class="muted-cell"><%= svc.detail || '' %></td>
             <td>
@@ -25,7 +32,7 @@
           </tr>
         <% }); %>
         <% if (!dockerContainers.length) { %>
-          <tr><td colspan="4" class="muted-cell">No containers found (is Docker socket mounted?)</td></tr>
+          <tr><td colspan="5" class="muted-cell">No containers found (is Docker socket mounted?)</td></tr>
         <% } %>
       </tbody>
     </table>

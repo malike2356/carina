@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type VoiceInputStatus = 'idle' | 'recording' | 'processing';
+export type VoiceTranscriptionMode = 'live' | 'server';
 
 const BAR_COUNT = 32;
+const SPEECH_FINALIZE_MS = 350;
 
 function pickRecorderMime(): string {
   if (typeof MediaRecorder === 'undefined') return 'audio/webm';
@@ -20,6 +22,18 @@ function formatElapsed(ms: number): string {
   const mins = Math.floor(secs / 60);
   const rem = secs % 60;
   return `${mins}:${String(rem).padStart(2, '0')}`;
+}
+
+function resolveVoiceBlockedReason(input: {
+  micBlockedReason: string;
+  liveDictationAvailable: boolean;
+  serverTranscriptionAvailable: boolean;
+  transcriptionHealthLoading: boolean;
+}): string {
+  if (input.micBlockedReason) return input.micBlockedReason;
+  if (input.transcriptionHealthLoading) return '';
+  if (input.liveDictationAvailable || input.serverTranscriptionAvailable) return '';
+  return 'Voice input is unavailable. Use Chrome or Edge for live dictation, or add an OpenAI or Groq key in Settings.';
 }
 
 export function useVoiceInput() {
@@ -38,7 +52,13 @@ export function useVoiceInput() {
   const timerRef = useRef<number | null>(null);
   const speechRef = useRef<SpeechRecognition | null>(null);
   const speechBaseRef = useRef('');
+  const livePreviewRef = useRef('');
   const recordingRef = useRef(false);
+  const [micReady, setMicReady] = useState(false);
+  const [micBlockedReason, setMicBlockedReason] = useState('');
+  const [liveDictationAvailable, setLiveDictationAvailable] = useState(false);
+  const [serverTranscriptionAvailable, setServerTranscriptionAvailable] = useState(false);
+  const [transcriptionHealthLoading, setTranscriptionHealthLoading] = useState(true);
   const [voiceReady, setVoiceReady] = useState(false);
   const [voiceBlockedReason, setVoiceBlockedReason] = useState('');
 
@@ -46,24 +66,64 @@ export function useVoiceInput() {
     if (typeof window === 'undefined') return;
 
     if (!window.isSecureContext) {
-      setVoiceBlockedReason('Voice input requires HTTPS.');
-      setVoiceReady(false);
+      setMicBlockedReason('Voice input requires HTTPS.');
+      setMicReady(false);
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      setVoiceBlockedReason('Microphone is not available in this browser.');
-      setVoiceReady(false);
+      setMicBlockedReason('Microphone is not available in this browser.');
+      setMicReady(false);
       return;
     }
     if (typeof MediaRecorder === 'undefined') {
-      setVoiceBlockedReason('Audio recording is not supported in this browser.');
-      setVoiceReady(false);
+      setMicBlockedReason('Audio recording is not supported in this browser.');
+      setMicReady(false);
       return;
     }
 
-    setVoiceBlockedReason('');
-    setVoiceReady(true);
+    const hasLiveDictation = Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+    setLiveDictationAvailable(hasLiveDictation);
+    setMicBlockedReason('');
+    setMicReady(true);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/transcribe/health', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((payload: { data?: { serverTranscription?: boolean } }) => {
+        if (cancelled) return;
+        setServerTranscriptionAvailable(Boolean(payload.data?.serverTranscription));
+      })
+      .catch(() => {
+        if (!cancelled) setServerTranscriptionAvailable(false);
+      })
+      .finally(() => {
+        if (!cancelled) setTranscriptionHealthLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const blocked = resolveVoiceBlockedReason({
+      micBlockedReason,
+      liveDictationAvailable,
+      serverTranscriptionAvailable,
+      transcriptionHealthLoading,
+    });
+    setVoiceBlockedReason(blocked);
+    setVoiceReady(micReady && !blocked && !transcriptionHealthLoading);
+  }, [
+    liveDictationAvailable,
+    micBlockedReason,
+    micReady,
+    serverTranscriptionAvailable,
+    transcriptionHealthLoading,
+  ]);
 
   const stopVisualizer = useCallback(() => {
     if (rafRef.current !== null) {
@@ -103,8 +163,12 @@ export function useVoiceInput() {
 
   useEffect(() => {
     const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionImpl) return;
+    if (!SpeechRecognitionImpl) {
+      setLiveDictationAvailable(false);
+      return;
+    }
 
+    setLiveDictationAvailable(true);
     const speech = new SpeechRecognitionImpl();
     speech.continuous = true;
     speech.interimResults = true;
@@ -122,7 +186,10 @@ export function useVoiceInput() {
         speechBaseRef.current = `${speechBaseRef.current} ${finalText}`.trim();
       }
       const preview = `${speechBaseRef.current} ${interim}`.trim();
-      if (preview) setLivePreview(preview);
+      if (preview) {
+        livePreviewRef.current = preview;
+        setLivePreview(preview);
+      }
     };
 
     speech.onend = () => {
@@ -168,6 +235,7 @@ export function useVoiceInput() {
     setError('');
     setLivePreview('');
     speechBaseRef.current = '';
+    livePreviewRef.current = '';
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -224,24 +292,68 @@ export function useVoiceInput() {
     setStatus('idle');
     setElapsedMs(0);
     setLivePreview('');
+    livePreviewRef.current = '';
+    speechBaseRef.current = '';
     setLevels(Array(BAR_COUNT).fill(0.08));
   }, [cleanupStream]);
+
+  const resetAfterCapture = useCallback(() => {
+    setLivePreview('');
+    livePreviewRef.current = '';
+    speechBaseRef.current = '';
+    setStatus('idle');
+    setElapsedMs(0);
+    setLevels(Array(BAR_COUNT).fill(0.08));
+  }, []);
+
+  const collectBrowserTranscript = useCallback(() => {
+    return (livePreviewRef.current || speechBaseRef.current).trim();
+  }, []);
+
+  const waitForSpeechFinalize = useCallback(async () => {
+    if (!speechRef.current) return;
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, SPEECH_FINALIZE_MS);
+    });
+  }, []);
+
+  const transcribeViaServer = useCallback(
+    async (blob: Blob, mimeType: string): Promise<string> => {
+      const res = await fetch('/api/transcribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': mimeType,
+          'X-Transcribe-Lang': (navigator.language || 'en').slice(0, 2),
+        },
+        body: blob,
+      });
+      const data = (await res.json()) as { data?: { text?: string }; error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? 'Transcription failed');
+      }
+      const text = String(data.data?.text ?? '').trim();
+      if (!text) throw new Error('Empty transcription');
+      return text;
+    },
+    [],
+  );
 
   const stopRecording = useCallback(async (): Promise<string> => {
     if (status !== 'recording') return '';
 
     const recorder = recorderRef.current;
     const mimeType = recorder?.mimeType || pickRecorderMime();
+    const useLiveDictation = Boolean(speechRef.current);
     stopVisualizer();
     stopSpeechPreview();
 
     if (!recorder) {
       cleanupStream();
-      setStatus('idle');
-      return livePreview.trim();
+      await waitForSpeechFinalize();
+      const browserOnly = collectBrowserTranscript();
+      resetAfterCapture();
+      return browserOnly;
     }
-
-    setStatus('processing');
 
     const blob = await new Promise<Blob>((resolve) => {
       recorder.onstop = () => {
@@ -258,59 +370,74 @@ export function useVoiceInput() {
     });
 
     chunksRef.current = [];
+    await waitForSpeechFinalize();
+    const browserText = collectBrowserTranscript();
+
+    if (useLiveDictation && browserText) {
+      setError('');
+      resetAfterCapture();
+      return browserText;
+    }
 
     if (blob.size === 0) {
-      setStatus('idle');
-      setElapsedMs(0);
-      setLevels(Array(BAR_COUNT).fill(0.08));
-      return livePreview.trim();
-    }
-
-    try {
-      const res = await fetch('/api/transcribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': mimeType,
-          'X-Transcribe-Lang': (navigator.language || 'en').slice(0, 2),
-        },
-        body: blob,
-      });
-      const data = (await res.json()) as { data?: { text?: string }; error?: string };
-      if (!res.ok) {
-        throw new Error(data.error ?? 'Transcription failed');
-      }
-      const text = String(data.data?.text ?? '').trim();
-      if (text) {
-        setLivePreview('');
-        setStatus('idle');
-        setElapsedMs(0);
-        setLevels(Array(BAR_COUNT).fill(0.08));
-        return text;
-      }
-      throw new Error('Empty transcription');
-    } catch (err) {
-      const fallback = livePreview.trim() || speechBaseRef.current.trim();
-      if (fallback) {
-        setError('');
-        setLivePreview('');
-        setStatus('idle');
-        setElapsedMs(0);
-        setLevels(Array(BAR_COUNT).fill(0.08));
-        return fallback;
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
-      setStatus('idle');
-      setElapsedMs(0);
-      setLevels(Array(BAR_COUNT).fill(0.08));
+      resetAfterCapture();
+      if (browserText) return browserText;
+      setError('No speech detected');
       return '';
     }
-  }, [cleanupStream, livePreview, status, stopSpeechPreview, stopVisualizer]);
+
+    if (!serverTranscriptionAvailable) {
+      resetAfterCapture();
+      if (browserText) return browserText;
+      setError('No speech detected');
+      return '';
+    }
+
+    setStatus('processing');
+
+    try {
+      const text = await transcribeViaServer(blob, mimeType);
+      setError('');
+      resetAfterCapture();
+      return text;
+    } catch (err) {
+      if (browserText) {
+        setError('');
+        resetAfterCapture();
+        return browserText;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(
+        useLiveDictation
+          ? msg
+          : 'Server transcription failed. Add an OpenAI or Groq key in Settings, or use Chrome or Edge for live dictation.',
+      );
+      resetAfterCapture();
+      return '';
+    }
+  }, [
+    cleanupStream,
+    collectBrowserTranscript,
+    resetAfterCapture,
+    serverTranscriptionAvailable,
+    status,
+    stopSpeechPreview,
+    stopVisualizer,
+    transcribeViaServer,
+    waitForSpeechFinalize,
+  ]);
+
+  const transcriptionMode: VoiceTranscriptionMode =
+    liveDictationAvailable ? 'live' : serverTranscriptionAvailable ? 'server' : 'server';
 
   return {
     voiceAvailable: voiceReady,
     voiceReady,
     voiceBlockedReason,
+    liveDictationAvailable,
+    serverTranscriptionAvailable,
+    transcriptionHealthLoading,
+    transcriptionMode,
     status,
     levels,
     elapsedMs,

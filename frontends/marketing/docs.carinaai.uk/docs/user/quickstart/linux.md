@@ -58,7 +58,7 @@ Edit `.env` and add at least one provider API key.
 pnpm dev
 ```
 
-The agent starts on `http://localhost:3000` with SQLite by default. No Docker needed — single-user self-hosted Carina is one command away. See [self-hosting](/docs/user/self-hosting) for production persistence and the optional Docker multi-service stack.
+The agent starts on `http://localhost:3000` with SQLite by default. No Docker needed; single-user self-hosted Carina is one command away. See [self-hosting](/docs/user/self-hosting) for production persistence and the optional Docker multi-service stack.
 
 ---
 
@@ -73,7 +73,7 @@ pnpm test
 ## Production notes
 
 - For persistence, add a Postgres `DATABASE_URL` and Redis `REDIS_URL` to `.env`
-- Docker Compose optional — only needed for Cloud/Scout multi-service orchestration
+- Docker Compose optional; only needed for Cloud/Scout multi-service orchestration
 - See [self-hosting](/docs/user/self-hosting) for full production setup
 
 ## Next

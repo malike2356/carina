@@ -8,7 +8,15 @@ import {
   resolveWorkspaceBrand,
   type ResolvedBrand,
 } from '@/lib/brand';
+import { canonicalAppHost } from '@/lib/custom-domains';
+import { resolveHostBrandContext } from '@/lib/host-resolver';
 import { getSession, requireWorkspace } from '@/lib/session';
+
+export async function getRequestHostname(): Promise<string> {
+  const headerStore = await headers();
+  const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? canonicalAppHost();
+  return host.split(':')[0].trim().toLowerCase();
+}
 
 export function getPublicBrand(): ResolvedBrand {
   return resolveBrand({ mode: 'hosted' });
@@ -29,6 +37,12 @@ export async function getWorkspaceResolvedBrand(userId: string): Promise<Resolve
 }
 
 export async function getBrandForCurrentRequest(): Promise<ResolvedBrand> {
+  const hostname = await getRequestHostname();
+  const hostContext = await resolveHostBrandContext(hostname);
+  if (hostContext.isCustomDomain) {
+    return hostContext.resolvedBrand;
+  }
+
   const session = await getSession();
   if (session?.user?.id) {
     try {
@@ -38,10 +52,4 @@ export async function getBrandForCurrentRequest(): Promise<ResolvedBrand> {
     }
   }
   return getPublicBrand();
-}
-
-export async function getRequestHostname(): Promise<string> {
-  const headerStore = await headers();
-  const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? '';
-  return host.split(':')[0].trim().toLowerCase();
 }

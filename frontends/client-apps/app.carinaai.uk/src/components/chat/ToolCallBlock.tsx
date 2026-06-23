@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CheckCircle, ChevronDown, ChevronRight, Clock, Wrench, XCircle } from 'lucide-react';
 import { CopyButton } from './CopyButton';
+import { AgentPlanBlock, isAgentPlan } from './AgentPlanBlock';
 import type { ToolCall } from './types';
 
 function formatJson(value: unknown): string {
@@ -76,13 +77,17 @@ export function ToolCallBlock({ toolCall, status = toolCall.status ?? 'done' }: 
                 <span className="text-[10px] uppercase tracking-wider text-text-muted">Output</span>
                 <CopyButton text={outputStr} size="sm" />
               </div>
-              <pre
-                className={`max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[11px] ${
-                  status === 'error' ? 'bg-danger-dim text-danger' : 'bg-code-bg text-code-text'
-                }`}
-              >
-                {outputStr}
-              </pre>
+              {isAgentPlan(toolCall.output) ? (
+                <AgentPlanBlock plan={toolCall.output} />
+              ) : (
+                <pre
+                  className={`max-h-48 overflow-x-auto whitespace-pre-wrap break-words rounded p-2 text-[11px] ${
+                    status === 'error' ? 'bg-danger-dim text-danger' : 'bg-code-bg text-code-text'
+                  }`}
+                >
+                  {outputStr}
+                </pre>
+              )}
             </div>
           )}
         </div>

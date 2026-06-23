@@ -179,7 +179,12 @@ export default function LibraryPage() {
     <div className="flex h-full flex-col bg-base">
       <div className="border-b border-border px-6 py-4">
         <h1 className="text-lg font-semibold text-text-primary">Library</h1>
-        <p className="mt-0.5 text-xs text-text-muted">All your conversations in one place</p>
+        <p className="mt-0.5 text-xs text-text-muted">
+          All your conversations in one place.{' '}
+          <Link href="/packs" className="text-accent hover:underline">
+            Browse skill packs
+          </Link>
+        </p>
       </div>
 
       <div className="flex items-center gap-4 border-b border-border px-6">

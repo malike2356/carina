@@ -57,6 +57,20 @@
       "when": 1781586000000,
       "tag": "0009_white_label_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781587000000,
+      "tag": "0010_custom_domains",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781588000000,
+      "tag": "0012_workspace_profiles",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ReactNode, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Bell,
   Brain,
@@ -10,9 +11,11 @@ import {
   Link2,
   MessageSquare,
   Monitor,
+  Palette,
   Shield,
   User,
 } from 'lucide-react';
+import { BrandSettings } from '@/components/settings/BrandSettings';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { SettingsToolLinks } from '@/components/settings/SettingsToolLinks';
 import { Kbd } from '@/components/ui/Kbd';
@@ -22,6 +25,7 @@ import {
   normalizeAppearance,
 } from '@/lib/appearance';
 import { BRAIN_SETTINGS_DEFAULTS, type BrainSettings } from '@/lib/brain-settings-types';
+import { normalizeBrandConfig, type BrandConfig } from '@/lib/brand';
 import { DEFAULT_THEME, isThemeName } from '@/lib/themes';
 import { groupShortcuts } from '@/lib/shortcuts';
 import { SETTINGS_SECTION_LINKS, type SettingsSectionId } from '@/lib/workspace-nav';
@@ -36,6 +40,7 @@ interface WorkspaceSettingsData {
   theme: string;
   appearance: AppearanceSettings;
   brain: BrainSettings;
+  brand: BrandConfig;
 }
 
 type NotificationSettings = {
@@ -135,12 +140,17 @@ function RadioGroup<T extends string>({
 }
 
 export default function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<Section>('appearance');
+  const searchParams = useSearchParams();
+  const initialSection = searchParams.get('section');
+  const [activeSection, setActiveSection] = useState<Section>(
+    initialSection === 'brand' ? 'brand' : 'appearance',
+  );
   const { canUseTerminal } = useTerminalAccess();
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettingsData>({
     theme: DEFAULT_THEME,
     appearance: APPEARANCE_DEFAULTS,
     brain: BRAIN_SETTINGS_DEFAULTS,
+    brand: {},
   });
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(
     DEFAULT_NOTIFICATION_SETTINGS,
@@ -171,6 +181,7 @@ export default function SettingsPage() {
         setWorkspaceSettings({
           theme: isThemeName(data.data.theme) ? data.data.theme : DEFAULT_THEME,
           appearance: normalizeAppearance(data.data.appearance),
+          brand: normalizeBrandConfig(data.data.brand ?? {}),
           brain: {
             autoExtractMemories:
               data.data.autoExtractMemories ?? BRAIN_SETTINGS_DEFAULTS.autoExtractMemories,
@@ -253,6 +264,12 @@ export default function SettingsPage() {
         brain: { ...current.brain, ...brainPatch } as BrainSettings,
       }));
     }
+    if (payload.brand && typeof payload.brand === 'object') {
+      setWorkspaceSettings((current) => ({
+        ...current,
+        brand: normalizeBrandConfig(payload.brand),
+      }));
+    }
 
     await fetch('/api/workspace/settings', {
       method: 'PATCH',
@@ -294,6 +311,7 @@ export default function SettingsPage() {
   const navItems: Array<{ id: Section; label: string; icon: ReactNode }> = [
     { id: 'join', label: 'Join', icon: <Link2 className="h-4 w-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Monitor className="h-4 w-4" /> },
+    { id: 'brand', label: 'Brand', icon: <Palette className="h-4 w-4" /> },
     { id: 'chat', label: 'Chat', icon: <MessageSquare className="h-4 w-4" /> },
     { id: 'brain', label: 'Brain', icon: <Brain className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
@@ -360,7 +378,7 @@ export default function SettingsPage() {
             <div className="space-y-8">
               <div>
                 <h1 className="mb-1 text-base font-semibold text-text-primary">Appearance</h1>
-                <p className="text-xs text-text-muted">Customise how Carina looks and feels.</p>
+                <p className="text-xs text-text-muted">Customise theme and layout for your workspace shell.</p>
               </div>
 
               <section>
@@ -447,6 +465,20 @@ export default function SettingsPage() {
                 </div>
               </section>
             </div>
+          )}
+
+          {activeSection === 'brand' && (
+            <BrandSettings
+              brand={workspaceSettings.brand}
+              isOwner={isOwner}
+              onSave={async (patch) => {
+                setWorkspaceSettings((current) => ({
+                  ...current,
+                  brand: normalizeBrandConfig({ ...current.brand, ...patch }),
+                }));
+                await saveSettings({ brand: patch });
+              }}
+            />
           )}
 
           {activeSection === 'brain' && (

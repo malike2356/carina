@@ -234,3 +234,14 @@ export function resolveCreditUsdRate(planId: BillingPlanId): number {
   const gbpUsd = Number(process.env.CREDIT_GBP_USD_RATE ?? DEFAULT_CREDIT_GBP_USD);
   return (plan.monthlyPriceGbp * gbpUsd) / plan.includedCredits;
 }
+
+export {
+  WHITE_LABEL_COMMERCIAL_PLANS,
+  brandedPlanLabel,
+  commercialTierForBillingPlan,
+  commercialTierForWorkspacePlan,
+  normalizeWhiteLabelTier,
+  workspacePlanLabel,
+  type WhiteLabelCommercialPlan,
+  type WhiteLabelCommercialTier,
+} from './white-label-plans.js';

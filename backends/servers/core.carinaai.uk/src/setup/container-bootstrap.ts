@@ -83,6 +83,13 @@ export async function runContainerBootstrap(homeDir?: string): Promise<void> {
   loadCarinaEnv();
   await seedWorkspaceFromProfile(resolveCarinaHome());
   await ensureAgentsConfig(resolveCarinaHome());
+  try {
+    const { ensureSupportFilesystemProfile } = await import('../agents/support-profile.js');
+    await ensureSupportFilesystemProfile();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[carina] Support profile seed skipped: ${msg}`);
+  }
 
   console.log(`[carina] Container bootstrap ready (CARINA_HOME=${resolveCarinaHome()})`);
 }

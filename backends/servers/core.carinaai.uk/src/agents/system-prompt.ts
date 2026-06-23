@@ -7,6 +7,7 @@ import { buildTurnDisciplineBlock } from './turn-discipline.js';
 import { buildConversationDisciplineBlock } from './conversation-discipline.js';
 import { buildPlatformFormattingContext } from '../gateway/platform-formatting-hints.js';
 import { buildMandatoryToolsBlock } from '../tools/mandatory-tools.js';
+import { resolveAgentDisplayName } from '../product/brand-compat.js';
 import { buildCarinaIdentityBlock } from './identity-defaults.js';
 import { loadSystemPromptFileOverlay } from './system-prompt-files.js';
 import type { PromptTierParts } from './prompt-tiers.js';
@@ -16,7 +17,7 @@ import { buildFeatureGuideContext } from '../product/feature-guide.js';
 void preloadPlatformKnowledge();
 
 export function getAgentName(): string {
-  return (process.env.CARINA_AGENT_NAME ?? 'Carina').trim() || 'Carina';
+  return resolveAgentDisplayName();
 }
 
 export function buildToolPersistenceBlock(): string {
@@ -178,9 +179,35 @@ function buildWorkspaceFeaturesContext(): string {
 function buildBlogManagementBlock(): string {
   return [
     'BLOG MANAGEMENT',
-    'The incident blog is a shared workspace product. Use the blog tools when the operator asks about incidents, drafts, subscribers, research, newsletter sends, or page regeneration.',
-    'Treat publish and newsletter send as real-world side effects. Confirm before doing them.',
-    'When explaining the blog, keep the answer user-facing: what it does, how to use it, and what the result means. Do not expose internal routes, schemas, or implementation details.',
+    '',
+    'You manage the AI Incident Blog at labyrinthscout.com/incidents/. All incidents are sourced, verified, and human-approved before publishing. You share control of the blog with the admin panel at ops.carinaai.uk; both interfaces read/write the same database.',
+    '',
+    'When the operator discusses the blog, use these tools:',
+    '',
+    '- blog-review to show all drafts awaiting approval',
+    '- blog-list to show all incidents with filters (--status, --category)',
+    '- blog-show <slug> to show full details of one incident',
+    '- blog-approve <slug> to approve a draft for publishing',
+    '- blog-reject <slug> <reason> to reject a draft',
+    '- blog-publish <slug> to publish an approved incident to the live page',
+    '- blog-edit <slug> to modify any field',
+    '- blog-create to manually create a new incident',
+    '- blog-generate-page to rebuild the static incidents HTML',
+    '- blog-newsletter-send to send the weekly newsletter',
+    '- blog-research-run to trigger the research pipeline now',
+    '- blog-research-status to see the last research run',
+    '- blog-subscriber-list to see all subscribers',
+    '',
+    'Rules:',
+    '1. Never publish or send a newsletter without explicit operator approval.',
+    '2. When reviewing, present a summary. Highlight new, suspicious, or duplicate-looking drafts.',
+    '3. When approving, confirm: "Approve \'Title\' -- $X damage. Confirm?"',
+    '4. When rejecting, always record the reason.',
+    '5. After publishing, ask about newsletter: "Published. Send newsletter to N subscribers?"',
+    '6. After newsletter: report exact counts. "Sent to N. M skipped. X incidents included."',
+    '7. Research produces drafts only. Never auto-approve research findings.',
+    '8. Always cite sources. Credibility is the product.',
+    '9. When explaining the blog to the operator, keep answers user-facing. Do not expose internal routes, schemas, or implementation details.',
   ].join('\n');
 }
 

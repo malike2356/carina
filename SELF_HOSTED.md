@@ -1,6 +1,6 @@
 # Self-hosting Carina
 
-**Docker is optional.** Single-user self-hosted Carina works with a single command — no Docker, Postgres, or Redis required.
+**Docker is optional.** Single-user self-hosted Carina works with a single command; no Docker, Postgres, or Redis required.
 
 ## Quickest path (bare metal)
 
@@ -18,9 +18,9 @@ Uses SQLite by default. Add `DATABASE_URL` and `REDIS_URL` to `.env` for product
 
 Docker Compose is only required for:
 
-- **Cloud Carina** — multi-tenant hosted platform
-- **Carina + Scout** — the full security monitoring stack
-- **Multi-service orchestration** — Postgres+pgvector, Redis, nginx TLS, Skills Hub
+- **Cloud Carina**; multi-tenant hosted platform
+- **Carina + Scout**; the full security monitoring stack
+- **Multi-service orchestration**; Postgres+pgvector, Redis, nginx TLS, Skills Hub
 
 For a single user running Carina on their own machine, bare metal is the recommended path.
 

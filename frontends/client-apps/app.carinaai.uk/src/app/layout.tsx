@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const preference = await resolveServerThemePreference();
+  const brand = await getBrandForCurrentRequest();
 
   return (
     <html
@@ -37,15 +38,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       suppressHydrationWarning
     >
       <head>
-        <link rel="stylesheet" href={serverThemeStylesheetHref(preference.themeId)} />
-        <link rel="stylesheet" href="/themes/theme-bridge.css?v=1" />
+        <link
+          id="carina-theme-sheet"
+          rel="stylesheet"
+          href={serverThemeStylesheetHref(preference.themeId)}
+        />
+        <link rel="stylesheet" href="/themes/theme-bridge.css?v=3" />
       </head>
       <body className="bg-base text-text-primary antialiased" suppressHydrationWarning>
         <I18nShell>
-          <BrandProvider>
+          <BrandProvider initialBrand={brand}>
             <ThemeProvider>{children}</ThemeProvider>
           </BrandProvider>
-          <ThemeSwitcherHost />
+          <ThemeSwitcherHost initialPreference={preference} />
           <PwaBootstrap />
         </I18nShell>
       </body>

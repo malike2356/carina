@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import {
   applyRemediation,
   getRemediationRules,
+  listRecentRemediationLog,
   rollbackRemediation,
   type RemediationCase,
 } from '../security/auto-remediation.js';
@@ -15,6 +16,18 @@ const VALID_CASES = new Set<RemediationCase>([
 
 autoRemediationRouter.get('/rules', (_req, res) => {
   res.json({ rules: getRemediationRules() });
+});
+
+autoRemediationRouter.get('/log', async (req, res) => {
+  try {
+    const rawLimit = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : 80;
+    const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 200) : 80;
+    const actions = await listRecentRemediationLog(limit);
+    res.json({ actions, log: actions });
+  } catch (err) {
+    console.error('[scout:auto-remediation] log failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 autoRemediationRouter.post('/apply', async (req: Request, res: Response): Promise<void> => {

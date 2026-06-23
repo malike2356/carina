@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { eq, and } from 'drizzle-orm';
+import { db } from '@/db';
+import { chatSessions } from '@/db/schema';
 import { getDecryptedWorkspaceKeys } from '@/lib/keys';
 import { streamCarinaChat } from '@/lib/carina-chat';
 import {
@@ -54,6 +57,7 @@ export async function POST(req: Request) {
     provider?: string;
     model?: string;
     mode?: 'chat' | 'agent';
+    profileId?: string;
   };
 
   const message = String(body.message ?? '').trim();
@@ -93,6 +97,19 @@ export async function POST(req: Request) {
   }
 
   const sessionId = await getOrCreateSession(workspace.id, body.sessionId ?? null);
+
+  if (body.profileId) {
+    await db
+      .update(chatSessions)
+      .set({ profileId: body.profileId, updatedAt: new Date() })
+      .where(and(eq(chatSessions.id, sessionId), eq(chatSessions.workspaceId, workspace.id)));
+  }
+
+  const [chatSession] = await db
+    .select({ profileId: chatSessions.profileId })
+    .from(chatSessions)
+    .where(and(eq(chatSessions.id, sessionId), eq(chatSessions.workspaceId, workspace.id)))
+    .limit(1);
 
   const existingMessages = await getSessionMessages(sessionId, workspace.id);
   const isFirstMessage = existingMessages.length === 0;
@@ -134,6 +151,7 @@ export async function POST(req: Request) {
           skillPacks,
           provider: body.provider,
           model: body.model,
+          profileId: chatSession?.profileId ?? body.profileId ?? null,
         })) {
           outputText = appendStreamText(outputText, chunk);
           enqueue(JSON.stringify(chunk));

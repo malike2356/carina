@@ -2,9 +2,10 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
 <div class="ops-chat-page">
-  <div id="carina-offline-banner" class="ops-flash warn hidden" style="margin:0;border-radius:0;border-left:none;border-top:3px solid var(--amber);">
+  <div id="carina-offline-banner" class="ops-flash warn<%= coreReachable ? ' hidden' : '' %>" style="margin:0;border-radius:0;border-left:none;border-top:3px solid var(--amber);">
     Carina core is not responding at <code class="ops-code"><%= carinaApiUrl %></code>.
-    On the VPS restart with: <code class="ops-code">bash ~/apps/core.carinaai.uk/start.sh</code>
+    On the VPS restart the Docker stack:
+    <code class="ops-code">cd ~/apps/core.carinaai.uk && docker compose -f docker-compose.prod.yml restart carina-web carina-ops</code>
   </div>
 
   <div class="ops-chat-layout">
@@ -76,7 +77,10 @@
 
   function showOffline() {
     offlineBanner.classList.remove('hidden');
-    disableInput();
+  }
+
+  function hideOffline() {
+    offlineBanner.classList.add('hidden');
   }
 
   function scrollToBottom() {
@@ -104,10 +108,16 @@
 
   async function loadProvider() {
     try {
-      const r = await fetch('/chat/provider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const r = await fetch('/chat/health', { cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (r.status === 401) {
+        window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+        return null;
+      }
       if (!r.ok) throw new Error('offline');
       const d = await r.json();
+      if (!d.ok) throw new Error('offline');
       providerBadge.textContent = 'Provider: ' + (d.active || 'unknown');
+      hideOffline();
       return d.active;
     } catch {
       providerBadge.textContent = 'Provider: offline';
@@ -116,54 +126,103 @@
     }
   }
 
+  function applyStreamPayload(full, payload, msgDiv) {
+    if (payload === '[DONE]') return { done: true, full };
+    try {
+      const chunk = JSON.parse(payload);
+      if (typeof chunk === 'string') {
+        full += chunk;
+      } else if (chunk.error) {
+        if (chunk.error.includes('Session expired')) {
+          window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+          return { done: true, full, redirect: true };
+        }
+        full = 'Error: ' + chunk.error;
+      } else if (chunk.content && typeof chunk.content === 'string') {
+        full += chunk.content;
+      } else if (chunk.type === 'meta' && chunk.meta?.provider) {
+        providerBadge.textContent = 'Provider: ' + chunk.meta.provider;
+      } else {
+        full += String(chunk);
+      }
+    } catch {
+      full += payload;
+    }
+    msgDiv.textContent = full;
+    scrollToBottom();
+    return { done: false, full };
+  }
+
+  async function streamChat(text, msgDiv, provider) {
+    const response = await fetch('/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ message: text, sessionId: SESSION_ID }),
+      redirect: 'manual',
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302) {
+      window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+      return provider;
+    }
+    if (!response.ok || !response.body) {
+      throw new Error('stream failed');
+    }
+    if (!contentType.includes('text/event-stream')) {
+      throw new Error('unexpected response type');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let full = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const dataLine = part.split('\n').find((line) => line.startsWith('data: '));
+        if (!dataLine) continue;
+        const result = applyStreamPayload(full, dataLine.slice(6), msgDiv);
+        full = result.full;
+        if (result.redirect) return provider;
+        if (result.done) {
+          if (full && typeof marked !== 'undefined') {
+            msgDiv.innerHTML = marked.parse(full);
+          }
+          metaInfo.textContent = 'Provider: ' + (provider || '?') + ' · ~' + Math.ceil(full.length / 4) + ' tokens (est.)';
+          hideOffline();
+          return provider;
+        }
+      }
+    }
+
+    if (full && typeof marked !== 'undefined') {
+      msgDiv.innerHTML = marked.parse(full);
+    }
+    return provider;
+  }
+
   async function sendMessage(text) {
     if (!text.trim()) return;
     appendMessage('user', text);
     clearInput();
     disableInput();
 
-    const provider = await loadProvider();
+    let provider = await loadProvider();
     const msgDiv = appendMessage('assistant', '');
-    let full = '';
 
-    const url = new URL('/chat/stream', window.location.origin);
-    url.searchParams.set('message', text);
-    url.searchParams.set('sessionId', SESSION_ID);
-
-    const es = new EventSource(url.toString());
-    es.onmessage = (e) => {
-      if (e.data === '[DONE]') {
-        es.close();
-        if (full && typeof marked !== 'undefined') {
-          msgDiv.innerHTML = marked.parse(full);
-        }
-        metaInfo.textContent = 'Provider: ' + (provider || '?') + ' · ~' + Math.ceil(full.length / 4) + ' tokens (est.)';
-        enableInput();
-        return;
-      }
-      try {
-        const chunk = JSON.parse(e.data);
-        if (typeof chunk === 'string') {
-          full += chunk;
-        } else if (chunk.error) {
-          full = 'Error: ' + chunk.error;
-        } else {
-          full += String(chunk);
-        }
-      } catch {
-        full += e.data;
-      }
-      msgDiv.textContent = full;
-      scrollToBottom();
-    };
-    es.onerror = () => {
-      es.close();
-      if (!full) {
-        msgDiv.textContent = 'Connection error.';
-        showOffline();
-      }
-      enableInput();
-    };
+    try {
+      await streamChat(text, msgDiv, provider);
+    } catch {
+      msgDiv.textContent = 'Connection error.';
+      showOffline();
+    }
+    enableInput();
   }
 
   function clearInput() {
