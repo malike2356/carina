@@ -44,7 +44,12 @@ const components: Components = {
     const isBlock = Boolean(className);
 
     if (isBlock && ['artifact', 'canvas', 'diagram'].includes(language)) {
-      return <ArtifactCanvas content={code} />;
+      return (
+        <ArtifactCanvas
+          content={code}
+          language={language as 'artifact' | 'canvas' | 'diagram'}
+        />
+      );
     }
 
     if (!isBlock) {

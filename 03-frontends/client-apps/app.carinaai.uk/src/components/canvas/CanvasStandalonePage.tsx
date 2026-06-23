@@ -2,13 +2,22 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { ArtifactCanvas } from '@/components/chat/ArtifactCanvas';
 import { MarkdownContent } from '@/components/chat/MarkdownContent';
+import { readCanvasPopout, type CanvasPanelPayload } from '@/lib/canvas-panel';
 
 function CanvasBody() {
   const params = useSearchParams();
+  const [popout, setPopout] = useState<CanvasPanelPayload | null>(null);
+
+  useEffect(() => {
+    setPopout(readCanvasPopout());
+  }, []);
+
   const raw = params.get('content') ?? params.get('artifact') ?? '';
-  const content = raw.trim();
+  const content = (popout?.content ?? raw).trim();
+  const language = popout?.language ?? 'artifact';
 
   if (!content) {
     return (
@@ -24,7 +33,7 @@ function CanvasBody() {
   if (looksJson) {
     return (
       <div className="h-[calc(100vh-4rem)] p-4">
-        <ArtifactCanvas content={content} />
+        <ArtifactCanvas content={content} language={language} showPanelAction={false} />
       </div>
     );
   }

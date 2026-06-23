@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useShortcut } from '@/hooks/useShortcut';
+import { useOptionalCanvasPanel } from '@/lib/canvas-panel';
 import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
 
 import { MULTI_THEME_IDS } from '@/lib/themes';
@@ -23,6 +24,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 export function GlobalShortcuts() {
   const router = useRouter();
   const windowManager = useOptionalWindowManager();
+  const canvasPanel = useOptionalCanvasPanel();
 
   useShortcut({
     keys: ['Ctrl', 'W'],
@@ -122,6 +124,14 @@ export function GlobalShortcuts() {
     handler: useCallback(() => {
       document.dispatchEvent(new CustomEvent('open-panel', { detail: 'terminal' }));
     }, []),
+  });
+
+  useShortcut({
+    keys: ['Escape'],
+    handler: useCallback(() => {
+      if (!canvasPanel?.state.open) return;
+      canvasPanel.closePanel();
+    }, [canvasPanel]),
   });
 
   return <SequenceShortcuts />;

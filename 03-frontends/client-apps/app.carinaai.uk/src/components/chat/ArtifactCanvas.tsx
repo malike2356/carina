@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { forwardRef, useEffect, useMemo, useRef } from 'react';
+import { PanelRightOpen } from 'lucide-react';
+import {
+  dispatchOpenCanvasPanel,
+  type CanvasPanelLanguage,
+} from '@/lib/canvas-panel';
+import { cn } from '@/lib/utils';
 
 type ArtifactNode = {
   id: string;
@@ -51,10 +57,29 @@ function nodePosition(
   };
 }
 
-export function ArtifactCanvas({ content }: { content: string }) {
+type ArtifactCanvasProps = {
+  content: string;
+  language?: CanvasPanelLanguage;
+  showPanelAction?: boolean;
+  className?: string;
+};
+
+export const ArtifactCanvas = forwardRef<HTMLCanvasElement, ArtifactCanvasProps>(function ArtifactCanvas(
+  { content, language = 'artifact', showPanelAction = true, className },
+  forwardedRef,
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const spec = useMemo(() => parseArtifactSpec(content), [content]);
+
+  useEffect(() => {
+    if (!forwardedRef) return;
+    if (typeof forwardedRef === 'function') {
+      forwardedRef(canvasRef.current);
+      return () => forwardedRef(null);
+    }
+    forwardedRef.current = canvasRef.current;
+  }, [forwardedRef]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -138,11 +163,31 @@ export function ArtifactCanvas({ content }: { content: string }) {
   }, [content, spec]);
 
   return (
-    <div ref={containerRef} className="my-3 overflow-hidden rounded-lg border border-border bg-surface">
-      <canvas ref={canvasRef} className="block h-full w-full" />
+    <div
+      ref={containerRef}
+      className={cn(
+        'overflow-hidden rounded-lg border border-border bg-surface',
+        showPanelAction ? 'my-3' : 'h-full',
+        className,
+      )}
+    >
+      {showPanelAction ? (
+        <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+          <span className="text-[10px] uppercase tracking-wide text-text-muted">{language}</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-text-muted transition-colors hover:bg-elevated hover:text-text-secondary"
+            onClick={() => dispatchOpenCanvasPanel({ content, language, title: spec?.title })}
+          >
+            <PanelRightOpen className="h-3.5 w-3.5" />
+            Open in panel
+          </button>
+        </div>
+      ) : null}
+      <canvas ref={canvasRef} className="block h-full min-h-[180px] w-full" />
     </div>
   );
-}
+});
 
 function drawItems(ctx: CanvasRenderingContext2D, items: ArtifactSpec['items'], width: number, height: number) {
   if (!items?.length) return;
