@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # deploy-marketing.sh - Deploy static marketing sites to Contabo VPS
 # Run from the carina repo root: bash scripts/deploy-marketing.sh [carina|scout|all]
+#
+# carinaai.uk production uses Docker nginx + core.carinaai.uk/public_website/.
+# This script recreates nginx after the docker rsync (reload-marketing-nginx.sh).
+# See core.carinaai.uk/docker/DEPLOY.md if https://carinaai.uk/ returns 403.
 
 set -euo pipefail
 
@@ -83,6 +87,13 @@ deploy_site() {
   fi
 }
 
+reload_carina_marketing_nginx() {
+  local apps_root="${DEPLOY_APPS_ROOT:-/home/malike/apps/core.carinaai.uk}"
+  log "Recreating Docker nginx (refresh public_website bind mount; avoids carinaai.uk 403)..."
+  ssh -o IdentitiesOnly=yes -i "${SSH_KEY}" "${SSH_TARGET}" \
+    "cd '${apps_root}' && bash docker/scripts/reload-marketing-nginx.sh"
+}
+
 main() {
   local target="${1:-all}"
   check_ssh
@@ -92,6 +103,7 @@ main() {
       build_carina_docs
       deploy_site "carinaai.uk" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
       deploy_site "carinaai.uk-docker" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
+      reload_carina_marketing_nginx
       ;;
     scout)
       build_scout_docs
@@ -102,6 +114,7 @@ main() {
       build_scout_docs
       deploy_site "carinaai.uk" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
       deploy_site "carinaai.uk-docker" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
+      reload_carina_marketing_nginx
       deploy_site "labyrinthscout.com" "${REPO_ROOT}/frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
     *)

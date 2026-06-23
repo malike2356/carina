@@ -9,6 +9,7 @@
 #
 # Both Carina (core, ops, cloud) and Scout (console, engine) are synced and restarted.
 # Nginx runs inside Docker and proxies all domains via the 'proxy' external network.
+# Marketing rsync to public_website/ triggers reload-marketing-nginx.sh (avoids carinaai.uk 403).
 
 set -euo pipefail
 
@@ -114,6 +115,7 @@ python3 docker/scripts/sync-ops-env.py
 python3 docker/scripts/sync-cloud-env.py
 bash docker/scripts/stop-bare-metal-carina.sh
 bash docker/scripts/deploy-prod.sh
+bash docker/scripts/reload-marketing-nginx.sh
 
 # Scout stack
 cd "$APPS_ROOT/console.labyrinthscout.com"

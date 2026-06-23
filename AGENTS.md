@@ -69,6 +69,18 @@ Summary for agents:
 - **Deploy Scout console:** build Docker image from `$APPS_ROOT` (monorepo context), not from inside `console.labyrinthscout.com/` alone
 - **Env:** set `SCOUT_ACCOUNT_PUBLIC_URL` in ops `.env` for Scout password setup links
 
+## Production: carinaai.uk marketing site (Docker nginx)
+
+`https://carinaai.uk/` is served by the **Docker `nginx` container**, not host aaPanel nginx. Live files: `core.carinaai.uk/public_website/` (bind mount).
+
+**After rsync or any change under `public_website/`, recreate nginx** or the site can 403 while `index.html` exists on the host (stale Docker bind mount inode):
+
+```bash
+cd core.carinaai.uk && bash docker/scripts/reload-marketing-nginx.sh
+```
+
+`scripts/deploy-marketing.sh` and `scripts/deploy-carina.sh` run this automatically. Read `core.carinaai.uk/docker/DEPLOY.md` and `public_website/README-DEPLOY.md` before manual marketing deploys.
+
 ## Terminology: Playbook vs Cookbook
 
 **Playbook** is the user-facing product term: situational decision engine, hardware-aware model discovery, workspace `/playbook`, CLI `carina playbook`.
