@@ -6,8 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Activity,
   Archive,
+  BarChart2,
   BarChart3,
   BookOpen,
+  Bot,
   Brain,
   CalendarClock,
   CalendarDays,
@@ -20,10 +22,13 @@ import {
   Database,
   FileText,
   FolderOpen,
+  Hash,
   Home,
   Key,
   LayoutDashboard,
   LayoutGrid,
+  LayoutList,
+  LifeBuoy,
   Mail,
   MessageSquare,
   MoreHorizontal,
@@ -41,6 +46,7 @@ import {
   Trash2,
   User,
   UserCircle,
+  Waypoints,
   Webhook,
   Wrench,
 } from 'lucide-react';
@@ -55,11 +61,15 @@ import {
   NAV_GROUPS,
   NAV_PANELS,
   NAV_ROUTES,
+  filterNavForSurface,
+  filterNavGroupsForSurface,
+  filterNavPanelsForSurface,
   type NavGroup,
   type NavGroupId,
   type NavPanel,
   type NavRoute,
 } from '@/lib/workspace-nav';
+import { useProductSurface } from '@/hooks/useProductSurface';
 import { useTranslation, type TranslationKey } from '@/i18n/translate';
 import {
   GROUP_LABEL_KEYS,
@@ -69,6 +79,7 @@ import {
 import { hrefToWindowId, preferWindowOverlay } from '@/lib/window-manager/definitions';
 import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
 import { BrandMark } from '@/components/shell/BrandMark';
+import { ThemeSwitcher } from '@/components/shell/ThemeSwitcher';
 
 interface Session {
   id: string;
@@ -84,8 +95,10 @@ interface AppSidebarProps {
 
 const NAV_ICON_MAP: Record<string, React.ElementType> = {
   Activity,
+  BarChart2,
   BarChart3,
   BookOpen,
+  Bot,
   Brain,
   CalendarClock,
   CalendarDays,
@@ -95,12 +108,17 @@ const NAV_ICON_MAP: Record<string, React.ElementType> = {
   Database,
   FileText,
   FolderOpen,
+  Hash,
   Home,
   Key,
   LayoutDashboard,
   LayoutGrid,
+  LayoutList,
+  LifeBuoy,
   Mail,
+  MessageSquare,
   Package,
+  Plus,
   ScrollText,
   Search,
   Server,
@@ -112,6 +130,7 @@ const NAV_ICON_MAP: Record<string, React.ElementType> = {
   Terminal: TerminalIcon,
   User,
   UserCircle,
+  Waypoints,
   Webhook,
   Wrench,
 };
@@ -143,10 +162,12 @@ function useLocalizedNav() {
 
 function isRouteVisible(
   route: NavRoute,
-  canUseTerminal: boolean,
+  terminalAccess: { canUseTerminal: boolean; loading: boolean },
   capabilities: ReturnType<typeof useCloudCapabilities>['capabilities'],
 ): boolean {
-  if (route.terminalGated && !canUseTerminal) return false;
+  if (route.terminalGated && !terminalAccess.loading && !terminalAccess.canUseTerminal) {
+    return false;
+  }
   const capabilityKey = routeRequiresCoreProxy(route.href);
   if (capabilityKey && capabilities && !hasCloudCapability(capabilities, capabilityKey)) {
     return false;
@@ -161,15 +182,22 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   const appearance = useAppearance();
   const pathname = usePathname();
   const router = useRouter();
-  const { canUseTerminal } = useTerminalAccess();
+  const { canUseTerminal, loading: terminalAccessLoading } = useTerminalAccess();
   const { capabilities } = useCloudCapabilities();
   const { routeLabel, panelLabel, groupLabel } = useLocalizedNav();
   const { t } = useTranslation();
+  const productSurface = useProductSurface();
+  const isAivaProduct = productSurface === 'aiva';
+  const navGroups = filterNavGroupsForSurface(productSurface, NAV_GROUPS);
+  const navRoutes = filterNavForSurface(productSurface, NAV_ROUTES);
+  const navPanels = filterNavPanelsForSurface(productSurface, NAV_PANELS);
+  const homeHref = isAivaProduct ? '/aiva/workers' : '/launcher';
 
   const DEFAULT_OPEN_GROUPS: Record<NavGroupId, boolean> = {
     workspace: true,
     intelligence: true,
-    tools: false,
+    aiva: true,
+    tools: !isAivaProduct,
     account: false,
   };
   const [openGroups, setOpenGroups] = useState<Record<NavGroupId, boolean>>(DEFAULT_OPEN_GROUPS);
@@ -221,7 +249,7 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
     fetchSessions();
     document.addEventListener('refresh-sessions', fetchSessions);
     return () => document.removeEventListener('refresh-sessions', fetchSessions);
-  }, [pathname]);
+  }, []);
 
   async function newChat() {
     const res = await fetch('/api/sessions', { method: 'POST' });
@@ -245,11 +273,13 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
             <ChevronRight className="h-4 w-4" />
           </IconButton>
         </Tooltip>
-        <Tooltip text={t('sidebar.newChat')} side="right">
-          <IconButton label={t('sidebar.newChat')} onClick={newChat}>
-            <Plus className="h-4 w-4" />
-          </IconButton>
-        </Tooltip>
+        {!isAivaProduct ? (
+          <Tooltip text={t('sidebar.newChat')} side="right">
+            <IconButton label={t('sidebar.newChat')} onClick={newChat}>
+              <Plus className="h-4 w-4" />
+            </IconButton>
+          </Tooltip>
+        ) : null}
         <Tooltip text={t('sidebar.searchShortcut')} side="right">
           <IconButton
             label={t('sidebar.search')}
@@ -261,8 +291,8 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
 
         <div className="my-1 w-6 border-t border-border" />
 
-        {NAV_GROUPS.map((group) => {
-          const groupRoutes = NAV_ROUTES.filter((r) => r.group === group.id);
+        {navGroups.map((group) => {
+          const groupRoutes = navRoutes.filter((r) => r.group === group.id);
           const isGroupActive = groupRoutes.some(
             (r) => pathname === r.href || (r.href !== '/' && pathname.startsWith(`${r.href}/`)),
           );
@@ -303,7 +333,7 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
     <aside className="flex w-56 flex-col border-r border-border bg-surface">
       <div className="flex items-center justify-between px-3 py-3">
         <Link
-          href="/launcher"
+          href={homeHref}
           className="transition-colors hover:text-accent"
         >
           <BrandMark />
@@ -320,14 +350,16 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
       </div>
 
       <div className="flex gap-1 px-2 pb-2">
-        <button
-          type="button"
-          onClick={newChat}
-          className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-elevated hover:text-text-primary"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          {t('sidebar.newChat')}
-        </button>
+        {!isAivaProduct ? (
+          <button
+            type="button"
+            onClick={newChat}
+            className="flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-elevated hover:text-text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            {t('sidebar.newChat')}
+          </button>
+        ) : null}
         <IconButton
           label={t('sidebar.searchShortcut')}
           onClick={() => document.dispatchEvent(new CustomEvent('open-search'))}
@@ -336,27 +368,35 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
         </IconButton>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2">
-        <SessionList sessions={sessions} currentPath={pathname} />
-      </div>
+      {!isAivaProduct ? (
+        <div className="min-h-0 flex-1 overflow-y-auto px-2">
+          <SessionList sessions={sessions} currentPath={pathname} />
+        </div>
+      ) : (
+        <div className="flex-1" />
+      )}
 
       <div className="max-h-[45vh] overflow-y-auto border-t border-border px-2 py-2">
-        {NAV_GROUPS.map((group) => (
+        {navGroups.map((group) => (
           <NavGroupSection
             key={group.id}
             group={group}
             groupLabel={groupLabel(group)}
-            routes={NAV_ROUTES.filter((r) => r.group === group.id && !r.parent)}
-            panels={NAV_PANELS.filter((p) => p.group === group.id)}
+            routes={navRoutes.filter((r) => r.group === group.id && !r.parent)}
+            panels={navPanels.filter((p) => p.group === group.id)}
             isOpen={openGroups[group.id] ?? true}
             onToggle={() => toggleGroup(group.id)}
             pathname={pathname}
-            canUseTerminal={canUseTerminal}
+            terminalAccess={{ canUseTerminal, loading: terminalAccessLoading }}
             capabilities={capabilities}
             routeLabel={routeLabel}
             panelLabel={panelLabel}
           />
         ))}
+      </div>
+
+      <div className="border-t border-border px-3 py-2">
+        <ThemeSwitcher variant="compact" dropUp syncApi />
       </div>
 
       <div className="flex items-center gap-2 border-t border-border px-3 py-3">
@@ -383,7 +423,7 @@ function NavGroupSection({
   isOpen,
   onToggle,
   pathname,
-  canUseTerminal,
+  terminalAccess,
   capabilities,
   routeLabel,
   panelLabel,
@@ -395,12 +435,12 @@ function NavGroupSection({
   isOpen: boolean;
   onToggle: () => void;
   pathname: string;
-  canUseTerminal: boolean;
+  terminalAccess: { canUseTerminal: boolean; loading: boolean };
   capabilities: ReturnType<typeof useCloudCapabilities>['capabilities'];
   routeLabel: (route: NavRoute) => string;
   panelLabel: (panel: NavPanel) => string;
 }) {
-  const visibleRoutes = routes.filter((r) => isRouteVisible(r, canUseTerminal, capabilities));
+  const visibleRoutes = routes.filter((r) => isRouteVisible(r, terminalAccess, capabilities));
   if (visibleRoutes.length === 0 && panels.length === 0) return null;
 
   const groupIsActive = visibleRoutes.some(
@@ -435,6 +475,12 @@ function NavGroupSection({
       )}
     </div>
   );
+}
+
+function navLinkPrefetch(href: string): boolean {
+  return !href.startsWith('/aiva')
+    && !href.startsWith('/conversations')
+    && !href.startsWith('/billing/aiva');
 }
 
 function NavRouteRow({
@@ -478,6 +524,7 @@ function NavRouteRow({
   return (
     <Link
       href={route.href}
+      prefetch={navLinkPrefetch(route.href)}
       className={cn(
         'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors',
         isActive

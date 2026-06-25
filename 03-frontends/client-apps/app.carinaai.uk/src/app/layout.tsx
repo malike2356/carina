@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import { BrandProvider } from '@/components/shell/BrandProvider';
+import { ProductSurfaceProvider } from '@/components/shell/ProductSurfaceProvider';
 import { ThemeProvider } from '@/components/shell/ThemeProvider';
-import { ThemeSwitcherHost } from '@/components/shell/ThemeSwitcherHost';
 import { I18nShell } from '@/components/shell/I18nShell';
 import { PwaBootstrap } from '@/components/shell/PwaBootstrap';
-import { getBrandForCurrentRequest } from '@/lib/server-brand';
+import { CookieConsent } from '@/components/CookieConsent';
+import { SentryConsentLoader } from '@/components/SentryConsentLoader';
+import { getBrandForCurrentRequest, getRequestHostname } from '@/lib/server-brand';
+import { resolveHostBrandContext } from '@/lib/host-resolver';
 import {
   htmlColorScheme,
   resolveServerThemePreference,
@@ -13,10 +16,15 @@ import {
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
-  const brand = await getBrandForCurrentRequest();
+  const hostname = await getRequestHostname();
+  const hostContext = await resolveHostBrandContext(hostname);
+  const brand = hostContext.resolvedBrand;
+  const isAiva = hostContext.isAivaProduct;
   return {
     title: brand.publicSiteTitle,
-    description: `Hosted ${brand.productName} workspace with BYOK keys and browser chat.`,
+    description: isAiva
+      ? 'Hire and manage AI employees for your business. Powered by Carina.'
+      : `Hosted ${brand.productName} workspace with BYOK keys and browser chat.`,
     manifest: '/manifest.webmanifest',
     icons: {
       icon: brand.faviconUrl ?? '/favicon.svg',
@@ -26,6 +34,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const preference = await resolveServerThemePreference();
+  const hostname = await getRequestHostname();
+  const hostContext = await resolveHostBrandContext(hostname);
   const brand = await getBrandForCurrentRequest();
 
   return (
@@ -47,11 +57,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="bg-base text-text-primary antialiased" suppressHydrationWarning>
         <I18nShell>
-          <BrandProvider initialBrand={brand}>
-            <ThemeProvider>{children}</ThemeProvider>
-          </BrandProvider>
-          <ThemeSwitcherHost initialPreference={preference} />
+          <ProductSurfaceProvider surface={hostContext.productSurface}>
+            <BrandProvider initialBrand={brand}>
+              <ThemeProvider>{children}</ThemeProvider>
+            </BrandProvider>
+          </ProductSurfaceProvider>
           <PwaBootstrap />
+          <SentryConsentLoader />
+          <CookieConsent />
         </I18nShell>
       </body>
     </html>

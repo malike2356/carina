@@ -9,6 +9,7 @@ import {
   type ThemePreference,
 } from '@/lib/theme-runtime';
 import { cn } from '@/lib/utils';
+import { useIsAivaProduct } from '@/hooks/useProductSurface';
 
 const DEFAULT_THEME_PREFERENCE: ThemePreference = {
   themeId: 'default',
@@ -38,6 +39,7 @@ export function ThemeSwitcher({
   const [preference, setPreference] = useState<ThemePreference>(
     initialPreference ?? DEFAULT_THEME_PREFERENCE,
   );
+  const isAivaProduct = useIsAivaProduct();
 
   useEffect(() => {
     function onThemeChange(event: Event) {
@@ -151,6 +153,11 @@ export function ThemeSwitcher({
               dropUp ? 'max-h-[min(18rem,calc(100dvh-6rem))]' : 'max-h-72',
             )}
           >
+            {isAivaProduct ? (
+              <p className="mb-2 px-1 text-[11px] text-[var(--muted-foreground)]">
+                Aiva defaults to light mode. Your preference is saved.
+              </p>
+            ) : null}
             <div className="grid gap-1">
               {filteredThemes.map((theme) => {
                 const active = theme.id === preference.themeId;

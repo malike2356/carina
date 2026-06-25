@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { DEFAULT_MULTI_THEME } from '@/lib/multi-theme-catalog.generated';
 import {
   normalizeThemeId,
@@ -7,13 +7,31 @@ import {
   type ThemeMode,
 } from '@/lib/theme-runtime';
 
+const AIVA_DEFAULT_THEME = 'modern-minimal';
+const AIVA_DEFAULT_MODE: ThemeMode = 'light';
+
 export async function resolveServerThemePreference(): Promise<{ themeId: string; mode: ThemeMode }> {
   const cookieStore = await cookies();
   const themeRaw = cookieStore.get('carina_theme')?.value;
   const modeRaw = cookieStore.get('carina_theme_mode')?.value;
-  const themeId = normalizeThemeId(themeRaw ?? DEFAULT_MULTI_THEME);
-  const mode = normalizeThemeMode(modeRaw, themeRaw);
-  return { themeId, mode };
+
+  if (themeRaw || modeRaw) {
+    return {
+      themeId: normalizeThemeId(themeRaw ?? DEFAULT_MULTI_THEME),
+      mode: normalizeThemeMode(modeRaw, themeRaw),
+    };
+  }
+
+  const host = (await headers()).get('host') ?? '';
+  const isAiva = host.includes('app.carinaai.uk') || host.includes('aiva.carinaai.uk');
+  if (isAiva) {
+    return { themeId: AIVA_DEFAULT_THEME, mode: AIVA_DEFAULT_MODE };
+  }
+
+  return {
+    themeId: normalizeThemeId(DEFAULT_MULTI_THEME),
+    mode: normalizeThemeMode(undefined, undefined),
+  };
 }
 
 export async function resolveServerThemeName(): Promise<string> {
