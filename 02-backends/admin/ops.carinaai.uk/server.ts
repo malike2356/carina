@@ -41,6 +41,8 @@ import { bootstrapFirstUser } from './lib/bootstrap-users.js';
 import { usersRouter } from './routes/users.js';
 import { serverPanelRouter } from './routes/server-panel.js';
 import { standingOrdersRouter } from './routes/standing-orders.js';
+import { pricingRouter } from './routes/pricing.js';
+import { ensurePricingTable } from './lib/pricing-store.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 // tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
@@ -137,6 +139,9 @@ app.get('/health', (_req, res) => {
 app.use(authRouter);
 
 app.use(requireAdmin);
+app.get('/trust', (_req, res) => {
+  res.redirect(302, hrefWithUiVersion('/governance/trust', res.locals.uiVersion as string));
+});
 app.use('/', dashboardRouter);
 app.use('/security', securityRouter);
 app.use('/channels', channelsRouter);
@@ -160,6 +165,7 @@ app.use('/admin/agent-tools', agentToolsRouter);
 app.use('/agent-tools', agentToolsRouter);
 app.use('/standing-orders', standingOrdersRouter);
 
+app.use('/pricing', pricingRouter);
 app.use('/governance', governanceRouter);
 app.use('/users', usersRouter);
 app.use('/server', serverPanelRouter);
@@ -222,6 +228,12 @@ server.listen(PORT, listenHost, () => {
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`  Agent tool config: skipped (${msg})`));
+    });
+  void ensurePricingTable()
+    .then(() => console.log(chalk.gray('  Platform pricing: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  Platform pricing: skipped (${msg})`));
     });
   void autoPairCarinaFromLocalCore()
     .then((result) => {

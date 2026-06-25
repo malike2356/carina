@@ -10,6 +10,7 @@ import { IDENTITY_LINKS_MIGRATION } from '../gateway/identity-links-types.js';
 
 const TABLES = `
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS episodic_memories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -517,6 +518,326 @@ ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS urgency TEXT DEFAULT 'normal
 ALTER TABLE inbound_emails ADD COLUMN IF NOT EXISTS triage_status TEXT DEFAULT 'inbox';
 `;
 
+const AI_WORKERS_MIGRATION = `
+CREATE TABLE IF NOT EXISTS ai_workers (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id    TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  role_description TEXT NOT NULL,
+  template_id     TEXT,
+  persona_prompt  TEXT NOT NULL,
+  skill_packs     TEXT[] NOT NULL DEFAULT '{}',
+  channels        TEXT[] NOT NULL DEFAULT '{}',
+  language        TEXT NOT NULL DEFAULT 'en-GB',
+  status          TEXT NOT NULL DEFAULT 'active',
+  escalation_threshold INTEGER NOT NULL DEFAULT 60,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS ai_worker_channels (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id   UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  channel     TEXT NOT NULL,
+  identifier  TEXT NOT NULL,
+  connected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_worker_channels_lookup ON ai_worker_channels(channel, identifier);
+CREATE TABLE IF NOT EXISTS ai_worker_activity (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id       UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  action_type     TEXT NOT NULL,
+  summary         TEXT NOT NULL,
+  input_text      TEXT,
+  output_text     TEXT,
+  escalated       BOOLEAN NOT NULL DEFAULT FALSE,
+  attestation_tx  TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_worker_activity_worker ON ai_worker_activity(worker_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS ai_worker_escalations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id       UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id    TEXT NOT NULL,
+  channel         TEXT NOT NULL,
+  channel_id      TEXT NOT NULL,
+  original_input  TEXT NOT NULL,
+  worker_draft    TEXT,
+  holding_message TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'open',
+  assigned_to     TEXT,
+  resolved_at     TIMESTAMPTZ,
+  resolution_text TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_escalations_open ON ai_worker_escalations(workspace_id, status, created_at DESC);
+CREATE TABLE IF NOT EXISTS ai_worker_automations (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id       UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id    TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  cron_expression TEXT NOT NULL,
+  schedule_label  TEXT NOT NULL,
+  trigger_type    TEXT NOT NULL DEFAULT 'cron',
+  trigger_event   TEXT,
+  enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+  last_run_at     TIMESTAMPTZ,
+  next_run_at     TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_worker_automations_worker ON ai_worker_automations(worker_id, enabled);
+`;
+
+const AIVA_SUBSCRIPTIONS_MIGRATION = `
+CREATE TABLE IF NOT EXISTS aiva_subscriptions (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id    TEXT NOT NULL UNIQUE,
+  plan_tier       TEXT NOT NULL DEFAULT 'trial',
+  status          TEXT NOT NULL DEFAULT 'trialing',
+  trial_ends_at   TIMESTAMPTZ,
+  aiva_slot_limit INTEGER NOT NULL DEFAULT 1,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_aiva_subscriptions_workspace ON aiva_subscriptions(workspace_id);
+`;
+
+const AIVA_EMAIL_MIGRATION = `
+CREATE TABLE IF NOT EXISTS aiva_workspace_contacts (
+  workspace_id TEXT PRIMARY KEY,
+  owner_email TEXT NOT NULL,
+  owner_name TEXT NOT NULL DEFAULT '',
+  email_unsubscribe_token UUID NOT NULL DEFAULT gen_random_uuid(),
+  email_marketing_opt_out BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS grace_period_ends_at TIMESTAMPTZ;
+ALTER TABLE ai_worker_automations ADD COLUMN IF NOT EXISTS consecutive_failures INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE ai_worker_automations ADD COLUMN IF NOT EXISTS last_error TEXT;
+ALTER TABLE ai_worker_automations ADD COLUMN IF NOT EXISTS last_run_status TEXT;
+ALTER TABLE ai_worker_automations ADD COLUMN IF NOT EXISTS last_run_error TEXT;
+CREATE TABLE IF NOT EXISTS pending_workspace_deletions (
+  workspace_id TEXT PRIMARY KEY,
+  delete_after TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ai_worker_activity ADD COLUMN IF NOT EXISTS pii_erased_at TIMESTAMPTZ;
+ALTER TABLE ai_worker_activity ADD COLUMN IF NOT EXISTS channel TEXT;
+ALTER TABLE ai_worker_activity ADD COLUMN IF NOT EXISTS contact_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_worker_activity_thread ON ai_worker_activity(worker_id, channel, contact_id, created_at);
+ALTER TABLE aiva_workspace_contacts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+`;
+
+const AIVA_USAGE_MIGRATION = `
+CREATE TABLE IF NOT EXISTS aiva_usage (
+  workspace_id TEXT NOT NULL,
+  month TEXT NOT NULL,
+  message_count INTEGER NOT NULL DEFAULT 0,
+  automation_count INTEGER NOT NULL DEFAULT 0,
+  escalation_count INTEGER NOT NULL DEFAULT 0,
+  warning_sent_at TIMESTAMPTZ,
+  limit_reached_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (workspace_id, month)
+);
+CREATE INDEX IF NOT EXISTS idx_aiva_usage_workspace_month ON aiva_usage(workspace_id, month DESC);
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS stripe_price_id TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS pending_downgrade_conflict BOOLEAN NOT NULL DEFAULT false;
+`;
+
+const AIVA_BILLING_MIGRATION = `
+CREATE TABLE IF NOT EXISTS aiva_invoices (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id    TEXT NOT NULL,
+  stripe_invoice_id TEXT NOT NULL UNIQUE,
+  amount_paid     INTEGER NOT NULL DEFAULT 0,
+  currency        TEXT NOT NULL DEFAULT 'gbp',
+  status          TEXT NOT NULL DEFAULT 'open',
+  invoice_pdf_url TEXT,
+  period_start    TIMESTAMPTZ,
+  period_end      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_aiva_invoices_workspace ON aiva_invoices(workspace_id);
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS current_period_start TIMESTAMPTZ;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS current_period_end TIMESTAMPTZ;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS billing_interval TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS cancel_at_period_end BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS payment_failed_at TIMESTAMPTZ;
+`;
+
+const AIVA_ADMIN_MIGRATION = `
+CREATE TABLE IF NOT EXISTS admin_operators (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email           TEXT NOT NULL UNIQUE,
+  password_hash   TEXT NOT NULL,
+  name            TEXT NOT NULL DEFAULT '',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE admin_operators ADD COLUMN IF NOT EXISTS totp_secret TEXT;
+ALTER TABLE admin_operators ADD COLUMN IF NOT EXISTS totp_enabled BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE admin_operators ADD COLUMN IF NOT EXISTS totp_verified_at TIMESTAMPTZ;
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_user_id   UUID NOT NULL REFERENCES admin_operators(id),
+  action          TEXT NOT NULL,
+  target_type     TEXT NOT NULL,
+  target_id       TEXT NOT NULL,
+  metadata        JSONB NOT NULL DEFAULT '{}',
+  ip_address      INET,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin ON admin_audit_log(admin_user_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS va_team_members (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name            TEXT NOT NULL,
+  email           TEXT NOT NULL UNIQUE,
+  available       BOOLEAN NOT NULL DEFAULT true,
+  current_load    INTEGER NOT NULL DEFAULT 0,
+  max_load        INTEGER NOT NULL DEFAULT 5,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE ai_worker_escalations ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'normal';
+ALTER TABLE ai_worker_escalations ADD COLUMN IF NOT EXISTS first_response_at TIMESTAMPTZ;
+ALTER TABLE ai_worker_escalations ADD COLUMN IF NOT EXISTS sla_first_response_target TIMESTAMPTZ;
+ALTER TABLE ai_worker_escalations ADD COLUMN IF NOT EXISTS sla_resolution_target TIMESTAMPTZ;
+ALTER TABLE ai_worker_escalations ADD COLUMN IF NOT EXISTS conversation_context JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE channel_threads ADD COLUMN IF NOT EXISTS va_override BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS monthly_amount_pence INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE aiva_workspace_contacts ADD COLUMN IF NOT EXISTS admin_notes TEXT NOT NULL DEFAULT '';
+ALTER TABLE aiva_invoices ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
+UPDATE aiva_subscriptions SET monthly_amount_pence = CASE plan_tier
+  WHEN 'starter' THEN 4900
+  WHEN 'team' THEN 9900
+  WHEN 'business' THEN 29900
+  ELSE 0
+END WHERE monthly_amount_pence = 0;
+CREATE TABLE IF NOT EXISTS scout_signal_cache (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id    UUID NOT NULL,
+  event_type  TEXT NOT NULL,
+  severity    TEXT NOT NULL DEFAULT 'info',
+  summary     TEXT NOT NULL DEFAULT '',
+  metadata    JSONB NOT NULL DEFAULT '{}',
+  scout_tx    TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_scout_signal_cache_agent ON scout_signal_cache(agent_id, created_at DESC);
+CREATE TABLE IF NOT EXISTS workspace_branding (
+  workspace_id              TEXT PRIMARY KEY,
+  logo_url                  TEXT,
+  primary_color             TEXT NOT NULL DEFAULT '#1a5f7a',
+  company_name              TEXT,
+  custom_domain             TEXT,
+  custom_domain_verified    BOOLEAN NOT NULL DEFAULT false,
+  hide_verlox_attribution   BOOLEAN NOT NULL DEFAULT false,
+  created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS aiva_knowledge_base (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id     UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id  TEXT NOT NULL,
+  type          TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  content       TEXT NOT NULL,
+  char_count    INTEGER NOT NULL DEFAULT 0,
+  enabled       BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_aiva_knowledge_worker ON aiva_knowledge_base(worker_id, enabled);
+CREATE TABLE IF NOT EXISTS aiva_scout_governance (
+  workspace_id                TEXT PRIMARY KEY,
+  volume_spike_threshold      INTEGER NOT NULL DEFAULT 50,
+  escalation_rate_threshold   NUMERIC(4,2) NOT NULL DEFAULT 0.30,
+  escalation_burst_window     INTEGER NOT NULL DEFAULT 5,
+  escalation_burst_count      INTEGER NOT NULL DEFAULT 3,
+  ignore_signal_types         TEXT[] NOT NULL DEFAULT '{}',
+  updated_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+`;
+
+const AMBIENT_AGENT_MIGRATION = `
+CREATE TABLE IF NOT EXISTS ambient_channel_settings (
+  channel_id TEXT PRIMARY KEY,
+  channel_name TEXT NOT NULL DEFAULT '',
+  passive_reading_enabled BOOLEAN NOT NULL DEFAULT true,
+  ambient_checks_enabled BOOLEAN NOT NULL DEFAULT true,
+  quiet_until TIMESTAMPTZ,
+  response_mode TEXT NOT NULL DEFAULT 'thread',
+  broadcast_on_complete BOOLEAN NOT NULL DEFAULT false,
+  mention_required BOOLEAN NOT NULL DEFAULT true,
+  dismissed_check_ids JSONB NOT NULL DEFAULT '[]',
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS channel_agent_bindings (
+  channel_id TEXT PRIMARY KEY,
+  channel_name TEXT NOT NULL DEFAULT '',
+  agent_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_channel_agent_bindings_agent
+  ON channel_agent_bindings (agent_id);
+`;
+
+const CHANNEL_CONTEXT_FACTS_MIGRATION = `
+CREATE TABLE IF NOT EXISTS channel_context_facts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  scope TEXT NOT NULL,
+  scope_name TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL,
+  content TEXT NOT NULL,
+  fact_type TEXT NOT NULL,
+  confidence REAL NOT NULL DEFAULT 0.5,
+  metadata JSONB NOT NULL DEFAULT '{}',
+  extracted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_channel_context_facts_scope
+  ON channel_context_facts (scope, extracted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_channel_context_facts_type
+  ON channel_context_facts (fact_type, extracted_at DESC);
+`;
+
+const CHANNEL_INFRASTRUCTURE_MIGRATION = `
+ALTER TABLE ai_worker_channels ADD COLUMN IF NOT EXISTS workspace_id TEXT;
+ALTER TABLE ai_worker_channels ADD COLUMN IF NOT EXISTS credentials JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE ai_worker_channels ADD COLUMN IF NOT EXISTS enabled BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE ai_worker_channels ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE ai_worker_channels ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+UPDATE ai_worker_channels c SET workspace_id = w.workspace_id FROM ai_workers w WHERE c.worker_id = w.id AND (c.workspace_id IS NULL OR c.workspace_id = '');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_worker_channels_channel_identifier ON ai_worker_channels(channel, identifier);
+CREATE INDEX IF NOT EXISTS idx_ai_worker_channels_worker_enabled ON ai_worker_channels(worker_id) WHERE enabled = true;
+CREATE TABLE IF NOT EXISTS channel_threads (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id TEXT NOT NULL,
+  channel TEXT NOT NULL,
+  contact_id TEXT NOT NULL,
+  thread_metadata JSONB NOT NULL DEFAULT '{}',
+  last_message_at TIMESTAMPTZ,
+  message_count INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_channel_threads_worker ON channel_threads(worker_id, channel, contact_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_threads_unique ON channel_threads(worker_id, channel, contact_id);
+CREATE TABLE IF NOT EXISTS widget_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id TEXT NOT NULL,
+  session_token TEXT NOT NULL UNIQUE DEFAULT encode(gen_random_bytes(32), 'hex'),
+  contact_id TEXT NOT NULL DEFAULT encode(gen_random_bytes(16), 'hex'),
+  last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_widget_sessions_token ON widget_sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_widget_sessions_worker ON widget_sessions(worker_id, last_active_at DESC);
+`;
+
 /** Idempotent org-scoped billing columns for databases that predate hosted SaaS migrations. */
 const ORG_SCOPED_COLUMNS_MIGRATION = `
 ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS org_id UUID;
@@ -591,6 +912,22 @@ CREATE TABLE IF NOT EXISTS mcp_servers (
 );
 CREATE INDEX IF NOT EXISTS mcp_servers_enabled_idx ON mcp_servers(enabled);
 CREATE INDEX IF NOT EXISTS mcp_servers_last_ping_idx ON mcp_servers(last_ping DESC);
+`;
+
+const PLATFORM_PRICING_MIGRATION = `
+CREATE TABLE IF NOT EXISTS platform_pricing (
+  id         TEXT PRIMARY KEY,
+  label      TEXT NOT NULL,
+  monthly_gbp INTEGER,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+INSERT INTO platform_pricing (id, label, monthly_gbp) VALUES
+  ('aiva_starter',  'Aiva Starter',  49),
+  ('aiva_team',     'Aiva Team',     99),
+  ('aiva_business', 'Aiva Business', 299),
+  ('scout_monitor', 'Scout Monitor', 49),
+  ('scout_govern',  'Scout Govern',  79)
+ON CONFLICT (id) DO NOTHING;
 `;
 
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
@@ -697,5 +1034,55 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(SCOUT_INVESTIGATIONS_MIGRATION);
   } catch {
     // scout investigations table may already exist
+  }
+  try {
+    await client.query(AI_WORKERS_MIGRATION);
+  } catch {
+    // ai workers tables may already exist
+  }
+  try {
+    await client.query(AIVA_SUBSCRIPTIONS_MIGRATION);
+  } catch {
+    // aiva subscriptions table may already exist
+  }
+  try {
+    await client.query(AIVA_EMAIL_MIGRATION);
+  } catch {
+    // aiva email tables may already exist
+  }
+  try {
+    await client.query(CHANNEL_INFRASTRUCTURE_MIGRATION);
+  } catch {
+    // channel infrastructure tables may already exist
+  }
+  try {
+    await client.query(AIVA_USAGE_MIGRATION);
+  } catch {
+    // aiva usage tables may already exist
+  }
+  try {
+    await client.query(AIVA_BILLING_MIGRATION);
+  } catch {
+    // aiva billing tables may already exist
+  }
+  try {
+    await client.query(AIVA_ADMIN_MIGRATION);
+  } catch {
+    // aiva admin tables may already exist
+  }
+  try {
+    await client.query(CHANNEL_CONTEXT_FACTS_MIGRATION);
+  } catch {
+    // channel context facts table may already exist
+  }
+  try {
+    await client.query(AMBIENT_AGENT_MIGRATION);
+  } catch {
+    // ambient agent tables may already exist
+  }
+  try {
+    await client.query(PLATFORM_PRICING_MIGRATION);
+  } catch {
+    // platform pricing table may already exist
   }
 }

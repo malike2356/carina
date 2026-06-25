@@ -7,7 +7,7 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/theme/index.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
   <link rel="stylesheet" href="/styles.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '1' %>">
-  <link rel="stylesheet" href="/ops-shell.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '7' %>">
+  <link rel="stylesheet" href="/ops-shell.css?v=<%= typeof uiVersion !== 'undefined' ? uiVersion : '10' %>">
 </head>
 <body class="ops-app">
   <aside id="sidebar" class="ops-sidebar">
@@ -44,17 +44,19 @@
         <span>Scout</span>
         <span id="scout-dot" class="status-dot"></span>
       </a>
+      <a href="<%= withV('/trust') %>" class="nav-link trust-pinned<%= ap === '/trust' || ap === '/governance/trust' ? ' active' : '' %>">Blockchain Trust</a>
     </div>
 
     <div class="nav-scroll">
       <div class="nav-body">
 
-        <details class="nav-group"<%= navOpen(['/tenants', '/subscriptions', '/operator', '/scout/accounts']) ? ' open' : '' %>>
+        <details class="nav-group"<%= navOpen(['/tenants', '/subscriptions', '/operator', '/scout/accounts', '/pricing']) ? ' open' : '' %>>
           <summary>Fleet</summary>
           <div class="nav-group-body">
             <a href="<%= withV('/tenants') %>" class="nav-link<%= ap.startsWith('/tenants') ? ' active' : '' %>">All Tenants</a>
             <a href="<%= withV('/scout/accounts') %>" class="nav-link<%= ap.startsWith('/scout/accounts') ? ' active' : '' %>">Scout Accounts</a>
             <a href="<%= withV('/subscriptions') %>" class="nav-link<%= ap.startsWith('/subscriptions') ? ' active' : '' %>">Subscriptions</a>
+            <a href="<%= withV('/pricing') %>" class="nav-link<%= ap.startsWith('/pricing') ? ' active' : '' %>">Platform Pricing</a>
             <a href="<%= withV('/operator') %>" class="nav-link<%= ap.startsWith('/operator') ? ' active' : '' %>">Operator Tools</a>
           </div>
         </details>
@@ -100,7 +102,7 @@
           <div class="nav-group-body">
             <a href="<%= withV('/governance') %>" class="nav-link<%= ap === '/governance' ? ' active' : '' %>">Overview</a>
             <a href="<%= withV('/governance/soc2') %>" class="nav-link<%= ap === '/governance/soc2' ? ' active' : '' %>">SOC2</a>
-            <a href="<%= withV('/governance/trust') %>" class="nav-link<%= ap === '/governance/trust' ? ' active' : '' %>">Trust Verify</a>
+            <a href="<%= withV('/trust') %>" class="nav-link<%= ap === '/governance/trust' || ap === '/trust' ? ' active' : '' %>">Blockchain Trust</a>
             <a href="<%= withV('/governance/posture') %>" class="nav-link<%= ap === '/governance/posture' ? ' active' : '' %>">Security Posture</a>
             <a href="<%= withV('/governance/audit') %>" class="nav-link<%= ap === '/governance/audit' ? ' active' : '' %>">Audit Logs</a>
           </div>
