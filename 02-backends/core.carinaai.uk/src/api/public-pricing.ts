@@ -1,7 +1,7 @@
-import { Router, type Request, type Response } from 'express';
+import { Router, type IRouter, type Request, type Response } from 'express';
 import { pool } from '../memory/db.js';
 
-export const publicPricingRouter = Router();
+export const publicPricingRouter: IRouter = Router();
 
 const FALLBACK: Record<string, number | null> = {
   aiva_starter: 49,
