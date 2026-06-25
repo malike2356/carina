@@ -4,7 +4,7 @@ set -e
 echo "Installing Carina..."
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js is required. Install it from nodejs.org then re-run this script."
+  echo "Node.js 22+ is required. Install from https://nodejs.org then re-run."
   exit 1
 fi
 
@@ -21,8 +21,9 @@ echo "Carina installed."
 echo ""
 echo "  carina          start chat (first-run setup if needed)"
 echo "  carina setup    configure API keys"
-echo "  carina onboard  guided setup + doctor"
+echo "  carina onboard  guided setup and health check"
 echo "  carina doctor   check install health"
 echo ""
-echo "Docker (standalone): docker compose -f docker-compose.standalone.yml up -d"
-echo "Hosted option (no install): https://app.carinaai.uk"
+echo "Full docs: https://docs.carinaai.uk"
+echo "Docker stack: https://docs.carinaai.uk/docs/user/self-hosting"
+echo "Managed Aiva (no install): https://aiva.carinaai.uk"
