@@ -229,3 +229,74 @@ it('transcribePath reads local files for telegram voice flow', function (): void
 
     @unlink($path);
 });
+
+it('rejects unsupported audio extension before calling Whisper', function (): void {
+    [$tenant, $user] = transcriptionTenant();
+    tenancy()->initialize($tenant);
+
+    $conversation = CarinaConversation::query()->create([
+        'tenant_id' => (string) $tenant->getTenantKey(),
+        'user_id' => $user->id,
+        'title' => 'Format check',
+    ]);
+
+    $badPath = storage_path('app/temp/bad_format_'.uniqid().'.exe');
+    file_put_contents($badPath, str_repeat('x', 512));
+
+    $result = app(TranscriptionToolHandler::class)->handle(
+        'transcribe_audio',
+        ['file_url' => $badPath],
+        $user,
+        $conversation,
+    );
+
+    expect($result->success)->toBeFalse()
+        ->and($result->summary)->toContain('Unsupported audio format');
+
+    @unlink($badPath);
+    tenancy()->end();
+});
+
+it('transcribes fixture ogg sample via local path', function (): void {
+    [$tenant, $user] = transcriptionTenant();
+    tenancy()->initialize($tenant);
+
+    $fixture = base_path('tests/fixtures/carina/sample-voice-note.ogg');
+    expect(is_readable($fixture))->toBeTrue();
+
+    $this->mock(AiRuntimeResolutionService::class, function ($mock): void {
+        $mock->shouldReceive('resolve')->andReturn(new AiRuntimeBundle(
+            [
+                'openai' => [
+                    'api_key' => 'sk-test',
+                    'base_url' => 'https://api.openai.com/v1',
+                    'model' => 'whisper-1',
+                ],
+            ],
+            ['openai']
+        ));
+    });
+
+    Http::fake([
+        'api.openai.com/*' => Http::response(['text' => 'Viewing notes for 14 Oak Street'], 200),
+    ]);
+
+    $conversation = CarinaConversation::query()->create([
+        'tenant_id' => (string) $tenant->getTenantKey(),
+        'user_id' => $user->id,
+        'title' => 'Fixture transcription',
+    ]);
+
+    $result = app(TranscriptionToolHandler::class)->handle(
+        'transcribe_audio',
+        ['file_url' => $fixture],
+        $user,
+        $conversation,
+    );
+
+    expect($result->success)->toBeTrue()
+        ->and($result->data['transcript'])->toBe('Viewing notes for 14 Oak Street')
+        ->and($result->data['file'])->toBe('sample-voice-note.ogg');
+
+    tenancy()->end();
+});

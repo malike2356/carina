@@ -71,7 +71,7 @@ it('uses Brave when Tavily throws an exception', function (): void {
     });
 });
 
-it('returns empty string when both Tavily and Brave fail', function (): void {
+it('returns unavailable notice when both Tavily and Brave fail', function (): void {
     Http::preventStrayRequests();
     Http::fake([
         'https://api.tavily.com/search' => Http::response([], 500),
@@ -80,7 +80,7 @@ it('returns empty string when both Tavily and Brave fail', function (): void {
 
     $out = app(TavilyWebSearchService::class)->augmentForUserMessage('latest stamp duty');
 
-    expect($out)->toBe('');
+    expect($out)->toBe(TavilyWebSearchService::UNAVAILABLE_NOTICE);
     Http::assertSentCount(2);
 });
 

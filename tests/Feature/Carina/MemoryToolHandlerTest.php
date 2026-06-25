@@ -192,6 +192,36 @@ it('memory block is omitted when no memories exist', function (): void {
     tenancy()->end();
 });
 
+it('recalls memory stored in a previous conversation', function (): void {
+    [$tenant, $user, $conversation] = memoryToolTenant();
+    tenancy()->initialize($tenant);
+
+    app(CarinaModuleToolDispatcher::class)->dispatch(
+        'remember',
+        ['key' => 'portfolio-city', 'value' => 'Portsmouth'],
+        $user,
+        $conversation,
+    );
+
+    $otherConversation = CarinaConversation::query()->create([
+        'tenant_id' => (string) $tenant->getTenantKey(),
+        'user_id' => $user->id,
+        'title' => 'Later thread',
+    ]);
+
+    $result = app(CarinaModuleToolDispatcher::class)->dispatch(
+        'recall',
+        ['query' => 'which city is my portfolio focused on?'],
+        $user,
+        $otherConversation,
+    );
+
+    expect($result->success)->toBeTrue()
+        ->and(collect($result->data['memories'] ?? [])->pluck('key')->all())->toContain('portfolio-city');
+
+    tenancy()->end();
+});
+
 it('registers remember and recall in the Carina tool registry', function (): void {
     $names = array_map(fn ($tool) => $tool->name(), app(CarinaToolRegistry::class)->all());
 

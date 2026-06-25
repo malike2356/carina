@@ -194,6 +194,8 @@ TXT,
             'groq' => env('AI_SPEECH_GROQ_MODEL', 'whisper-large-v3-turbo'),
         ],
         'timeout_seconds' => (int) env('AI_SPEECH_TRANSCRIPTION_TIMEOUT', 120),
+        'max_file_bytes' => (int) env('AI_SPEECH_MAX_FILE_BYTES', 25 * 1024 * 1024),
+        'allowed_extensions' => ['ogg', 'mp3', 'wav', 'm4a', 'webm', 'mpeg', 'mpga'],
     ],
 
     'carina_security' => [
