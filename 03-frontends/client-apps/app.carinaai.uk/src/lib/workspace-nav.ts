@@ -1,6 +1,9 @@
+import { CYBER_TOOL_COUNT } from '@/lib/cyber-tools-core';
+import { isCloudOnlyRoute } from '@/lib/product-surface';
+
 export type SidebarPanelId = 'memory' | 'skills' | 'notes';
 
-export type NavGroupId = 'workspace' | 'intelligence' | 'tools' | 'account';
+export type NavGroupId = 'workspace' | 'intelligence' | 'aiva' | 'tools' | 'account';
 
 export interface NavRoute {
   href: string;
@@ -9,6 +12,7 @@ export interface NavRoute {
   group: NavGroupId;
   parent?: string;
   terminalGated?: boolean;
+  planRequired?: 'team' | 'business';
   iconName: string;
 }
 
@@ -30,6 +34,7 @@ export interface NavGroup {
 export const NAV_GROUPS: NavGroup[] = [
   { id: 'workspace', label: 'Workspace', iconName: 'LayoutGrid' },
   { id: 'intelligence', label: 'Intelligence', iconName: 'Brain' },
+  { id: 'aiva', label: 'Aiva', iconName: 'Bot' },
   { id: 'tools', label: 'Tools', iconName: 'Wrench' },
   { id: 'account', label: 'Account', iconName: 'User' },
 ];
@@ -57,11 +62,26 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'CalendarDays',
   },
   {
+    href: '/channels',
+    label: 'Channels',
+    description: 'Messaging, productivity tools, and device connections.',
+    group: 'workspace',
+    iconName: 'Waypoints',
+  },
+  {
     href: '/tasks',
     label: 'Tasks',
     description: 'Your task list and project tracking.',
     group: 'workspace',
     iconName: 'CheckSquare',
+  },
+  {
+    href: '/slack',
+    label: 'Slack',
+    description: 'Connect Aiva workers to Slack workspaces.',
+    group: 'workspace',
+    iconName: 'Hash',
+    parent: '/channels',
   },
   {
     href: '/research',
@@ -106,11 +126,61 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'BookOpen',
   },
   {
+    href: '/support/chat',
+    label: 'Product support',
+    description: 'Chat with the built-in Support profile for Carina and Scout help.',
+    group: 'intelligence',
+    iconName: 'LifeBuoy',
+  },
+  {
     href: '/packs',
     label: 'Skill packs',
     description: 'Vertical templates and branded pack marketplace.',
     group: 'intelligence',
     iconName: 'Package',
+  },
+  {
+    href: '/knowledge',
+    label: 'Knowledge',
+    description: 'Upload documents, paste text, or fetch URLs to grow the RAG knowledge base.',
+    group: 'intelligence',
+    iconName: 'Database',
+  },
+  {
+    href: '/aiva/workers',
+    label: 'Your Aivas',
+    description: 'Manage your hired Aiva workers.',
+    group: 'aiva',
+    iconName: 'Bot',
+  },
+  {
+    href: '/aiva',
+    label: 'Hire',
+    description: 'Hire a new Aiva for your workspace.',
+    group: 'aiva',
+    iconName: 'Plus',
+  },
+  {
+    href: '/conversations',
+    label: 'Conversations',
+    description: 'Inbox across all your Aivas.',
+    group: 'aiva',
+    iconName: 'MessageSquare',
+  },
+  {
+    href: '/aiva/escalations',
+    label: 'VA queue',
+    description: 'Open human escalations across your Aivas (Team plan).',
+    group: 'aiva',
+    iconName: 'LifeBuoy',
+    planRequired: 'team',
+  },
+  {
+    href: '/analytics',
+    label: 'Analytics',
+    description: 'Message volume, channels, and escalations across your Aivas.',
+    group: 'aiva',
+    iconName: 'BarChart2',
   },
   {
     href: '/terminal',
@@ -164,9 +234,17 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'Key',
   },
   {
+    href: '/settings/channels',
+    label: 'Channels and integrations',
+    description: 'Connect messaging, tools, and devices with your credentials.',
+    group: 'account',
+    parent: '/settings',
+    iconName: 'Waypoints',
+  },
+  {
     href: '/settings/calendar',
     label: 'Calendar sync',
-    description: 'Connect Google Calendar or other providers.',
+    description: 'Connect Google Calendar or CalDAV providers.',
     group: 'account',
     parent: '/settings',
     iconName: 'CalendarDays',
@@ -180,6 +258,29 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'Smartphone',
   },
   {
+    href: '/developer',
+    label: 'Developer',
+    description: 'Partner API keys and gateway usage.',
+    group: 'account',
+    iconName: 'Code2',
+  },
+  {
+    href: '/developer/keys',
+    label: 'API keys',
+    description: 'Create and revoke partner gateway API keys.',
+    group: 'account',
+    parent: '/developer',
+    iconName: 'KeyRound',
+  },
+  {
+    href: '/developer/usage',
+    label: 'Usage',
+    description: 'Gateway event volume and estimated fees.',
+    group: 'account',
+    parent: '/developer',
+    iconName: 'BarChart2',
+  },
+  {
     href: '/billing',
     label: 'Billing and plan',
     description: 'View your current plan and usage.',
@@ -189,9 +290,16 @@ export const NAV_ROUTES: NavRoute[] = [
   {
     href: '/security',
     label: 'Security',
-    description: 'Password, sessions, and workspace trust.',
+    description: 'Threat dashboard, compliance, and workspace trust.',
     group: 'account',
     iconName: 'Shield',
+  },
+  {
+    href: '/security/tools',
+    label: 'Security tools',
+    description: `Cheatsheet of all ${CYBER_TOOL_COUNT} security tools, trigger phrases, and binary health.`,
+    group: 'account',
+    iconName: 'Terminal',
   },
   {
     href: '/analytics',
@@ -271,6 +379,39 @@ export function getActiveRoute(pathname: string): NavRoute | null {
   return prefix[0] ?? null;
 }
 
+export function filterNavForSurface(
+  surface: 'cloud' | 'aiva',
+  routes: NavRoute[],
+): NavRoute[] {
+  if (surface !== 'aiva') return routes;
+  return routes
+    .filter((route) => {
+      if (route.group !== 'aiva' && route.group !== 'account') return false;
+      if (route.group === 'account' && route.href === '/analytics') return false;
+      if (isCloudOnlyRoute(route.href)) return false;
+      return true;
+    })
+    .map((route) =>
+      route.href === '/billing' ? { ...route, href: '/billing/aiva' } : route,
+    );
+}
+
+export function filterNavGroupsForSurface(
+  surface: 'cloud' | 'aiva',
+  groups: NavGroup[],
+): NavGroup[] {
+  if (surface !== 'aiva') return groups;
+  return groups.filter((group) => group.id === 'aiva' || group.id === 'account');
+}
+
+export function filterNavPanelsForSurface(
+  surface: 'cloud' | 'aiva',
+  panels: NavPanel[],
+): NavPanel[] {
+  if (surface !== 'aiva') return [];
+  return panels.filter((panel) => panel.group === 'aiva');
+}
+
 export type SidebarTool =
   | { kind: 'panel'; id: SidebarPanelId; label: string }
   | { kind: 'route'; href: string; label: string; terminalGated?: boolean };
@@ -280,6 +421,7 @@ export const SIDEBAR_TOOLS: SidebarTool[] = [
   { kind: 'panel', id: 'skills', label: 'Skills' },
   { kind: 'panel', id: 'notes', label: 'Notes' },
   { kind: 'route', href: '/documents', label: 'Documents' },
+  { kind: 'route', href: '/channels', label: 'Channels' },
   { kind: 'route', href: '/calendar', label: 'Calendar' },
   { kind: 'route', href: '/research', label: 'Research' },
   { kind: 'route', href: '/tasks', label: 'Tasks' },
@@ -309,16 +451,25 @@ export const SETTINGS_SECTION_LINKS: Record<
   SettingsToolLink[]
 > = {
   join: [
+    {
+      label: 'Channels and integrations',
+      description: 'Slack, WhatsApp, Telegram, Trello, calendar, and more.',
+      href: '/settings/channels',
+    },
     { label: 'Device pairing', description: 'Link phones and tablets with a QR code.', href: '/settings/pairing' },
     { label: 'Calendar sync', description: 'Connect Google Calendar or other providers.', href: '/settings/calendar' },
+    { label: 'Slack integration', description: 'Bot token and team ID for Aiva Slack channels.', href: '/channels/slack' },
   ],
   brand: [
     { label: 'Workspace brand', description: 'Logo, colors, and white-label identity.', href: '/settings#brand' },
+    { label: 'Widget branding', description: 'Business plan widget logo, colors, and domain.', href: '/settings/branding' },
+    { label: 'Scout rules', description: 'Custom Scout governance thresholds.', href: '/settings/governance' },
   ],
   chat: [
     { label: 'Open notes', description: 'Quick notes panel alongside chat.', panel: 'notes' },
     { label: 'Files', description: 'Upload and browse workspace files.', href: '/files' },
     { label: 'Email', description: 'Inbound email and message triage.', href: '/email' },
+    { label: 'Channels', description: 'Messaging, tools, and device connections.', href: '/channels' },
     { label: 'Cron jobs', description: 'Scheduled automations and recurring tasks.', href: '/cron' },
   ],
   brain: [
@@ -326,13 +477,19 @@ export const SETTINGS_SECTION_LINKS: Record<
     { label: 'Open skills', description: 'Manage learned skill notes.', panel: 'skills' },
     { label: 'Skill packs', description: 'Vertical templates and branded pack marketplace.', href: '/packs' },
     { label: 'Library', description: 'Memory library and knowledge store.', href: '/library' },
+    {
+      label: 'Channels and integrations',
+      description: 'Slack, WhatsApp, Telegram, Trello, and more.',
+      href: '/settings/channels',
+    },
   ],
   account: [
     { label: 'Profiles', description: 'Workspace personas and provider defaults.', href: '/profiles' },
     { label: 'Billing and plan', description: 'View your current plan and invoices.', href: '/billing' },
   ],
   security: [
-    { label: 'Security overview', description: 'Password, sessions, and workspace trust.', href: '/security' },
+    { label: 'Privacy settings', description: 'Export data, cookies, and account deletion.', href: '/settings/privacy' },
+    { label: 'Security overview', description: 'Threat dashboard, RASP, and workspace trust.', href: '/security' },
     { label: 'Webhooks', description: 'Outbound HTTP event subscriptions.', href: '/webhooks' },
     { label: 'MCP servers', description: 'Model Context Protocol tool connections.', href: '/mcp' },
     { label: 'Terminal', description: 'Sandboxed shell access for this workspace.', href: '/terminal', terminalGated: true },

@@ -1085,4 +1085,15 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   } catch {
     // platform pricing table may already exist
   }
+  try {
+    await client.query(RAG_WORKSPACE_MIGRATION);
+  } catch {
+    // workspace_id column may already exist
+  }
 }
+
+const RAG_WORKSPACE_MIGRATION = `
+ALTER TABLE rag_chunks ADD COLUMN IF NOT EXISTS workspace_id uuid;
+CREATE INDEX IF NOT EXISTS rag_chunks_workspace_idx ON rag_chunks(workspace_id);
+CREATE INDEX IF NOT EXISTS rag_chunks_source_idx ON rag_chunks(source);
+`;

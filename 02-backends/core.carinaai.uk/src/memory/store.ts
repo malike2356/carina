@@ -97,3 +97,85 @@ export async function insertRagChunk(
     [source, pack, content, vectorSql, JSON.stringify(metadata)],
   );
 }
+
+export async function insertRagChunkWithWorkspace(
+  source: string,
+  pack: string,
+  content: string,
+  embedding: number[],
+  workspaceId: string | null,
+  metadata: Record<string, unknown> = {},
+): Promise<void> {
+  const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
+  await pool.query(
+    `INSERT INTO rag_chunks (source, pack, content, embedding, workspace_id, metadata)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [source, pack, content, vectorSql, workspaceId, JSON.stringify(metadata)],
+  );
+}
+
+export interface RagSource {
+  source: string;
+  pack: string;
+  ingestedAt: string;
+  chunkCount: number;
+}
+
+export async function listRagSources(
+  workspaceId: string | null,
+  pack: string | null,
+  limit: number,
+  offset: number,
+): Promise<{ sources: RagSource[]; total: number }> {
+  const rows = await pool.query(
+    `SELECT source, pack,
+            MIN(created_at) AS ingested_at,
+            COUNT(*)::int AS chunk_count
+     FROM rag_chunks
+     WHERE ($1::uuid IS NULL OR workspace_id = $1)
+       AND ($2::text IS NULL OR pack = $2)
+     GROUP BY source, pack
+     ORDER BY MIN(created_at) DESC
+     LIMIT $3 OFFSET $4`,
+    [workspaceId, pack, limit, offset],
+  );
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*)::int AS total
+     FROM (
+       SELECT 1 FROM rag_chunks
+       WHERE ($1::uuid IS NULL OR workspace_id = $1)
+         AND ($2::text IS NULL OR pack = $2)
+       GROUP BY source, pack
+     ) sub`,
+    [workspaceId, pack],
+  );
+
+  return {
+    sources: rows.rows.map((r) => ({
+      source: String(r.source),
+      pack: String(r.pack),
+      ingestedAt: String(r.ingested_at),
+      chunkCount: Number(r.chunk_count),
+    })),
+    total: Number((countResult.rows[0] as { total: number }).total),
+  };
+}
+
+export async function deleteRagSource(
+  source: string,
+  workspaceId: string | null,
+): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM rag_chunks
+     WHERE source = $1
+       AND ($2::uuid IS NULL OR workspace_id = $2)`,
+    [source, workspaceId],
+  );
+  return result.rowCount ?? 0;
+}
+
+export async function getRagStatus(): Promise<{ totalChunks: number }> {
+  const r = await pool.query('SELECT COUNT(*)::int AS total FROM rag_chunks');
+  return { totalChunks: Number((r.rows[0] as { total: number }).total) };
+}
