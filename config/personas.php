@@ -89,7 +89,7 @@ return [
 
     'mentor' => [
         'name' => 'Property Mentor',
-        'label' => 'Academy',
+        'label' => 'Studio',
         'slug' => 'mentor',
         'hidden_modules' => [
             'rooms', 'hmo_compliance', 'shared_bills', 'deal_sourcing',

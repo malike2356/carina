@@ -27,7 +27,7 @@ return [
     'price_investor' => env('STRIPE_PRICE_INVESTOR'),
     'price_operator' => env('STRIPE_PRICE_OPERATOR'),
     'price_operator_per_room' => env('STRIPE_PRICE_OPERATOR_PER_ROOM'),
-    'price_academy' => env('STRIPE_PRICE_ACADEMY'),
+    'price_studio' => env('STRIPE_PRICE_STUDIO'),
 
     'default_trial_days' => (int) env('BILLING_DEFAULT_TRIAL_DAYS', 14),
 
@@ -275,14 +275,14 @@ return [
             'stripe_price_per_room_key' => 'price_operator_per_room',
         ],
         [
-            'slug' => 'academy',
-            'name' => 'Academy',
-            'display_name' => 'Academy',
+            'slug' => 'studio',
+            'name' => 'Studio',
+            'display_name' => 'Studio',
             'price' => '199.00',
             'currency' => 'GBP',
             'interval' => 'month',
             'sort_order' => 20,
-            'stripe_price_key' => 'price_academy',
+            'stripe_price_key' => 'price_studio',
             'module_set' => 'mentor',
             'limits' => [
                 'properties' => null,

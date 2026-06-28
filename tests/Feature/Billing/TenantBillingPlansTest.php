@@ -41,8 +41,8 @@ it('lists billing plans on the tenant host', function () {
 
     $response->assertOk();
     $slugs = collect($response->json('data'))->pluck('slug')->all();
-    expect($slugs)->toContain('investor', 'operator', 'academy')
-        ->and($slugs)->not->toContain('solo', 'starter_payg', 'mentor_network');
+    expect($slugs)->toContain('investor', 'operator', 'studio')
+        ->and($slugs)->not->toContain('solo', 'starter_payg', 'mentor_network', 'academy');
 });
 
 it('persists a subscription row when a stripe subscription webhook is processed', function () {

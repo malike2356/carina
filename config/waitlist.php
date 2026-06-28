@@ -53,6 +53,6 @@ return [
         'marketing_phone' => 5,
         'marketing_message' => 5,
         'marketing_plan_operator' => 15,
-        'marketing_plan_academy' => 20,
+        'marketing_plan_studio' => 20,
     ],
 ];

@@ -11,14 +11,14 @@ it('maps marketing payloads to waitlist entry data', function (): void {
         'email' => 'alex@example.test',
         'phone' => '',
         'role' => 'property_mentor',
-        'plan' => 'academy',
+        'plan' => 'studio',
         'message' => '',
         'source' => 'pricing_compare',
     ]);
 
     expect($data['name'])->toBe('Alex Mentor')
         ->and($data['user_type'])->toBe('mentor')
-        ->and($data['interests']['interested_plan'])->toBe('academy')
+        ->and($data['interests']['interested_plan'])->toBe('studio')
         ->and($data['interests']['source'])->toBe('pricing_compare');
 });
 

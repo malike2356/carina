@@ -106,7 +106,7 @@ it('records signup honeypot as a high security event', function (): void {
     expect(Tenant::query()->where('owner_email', 'like', '%@spam.test')->exists())->toBeFalse();
 });
 
-it('maps legacy mentor network plan to academy', function (): void {
+it('maps legacy mentor network plan to studio', function (): void {
     $email = 'mentor-'.uniqid().'@example.test';
 
     $this->postJson('/api/v1/signup', [
@@ -118,5 +118,5 @@ it('maps legacy mentor network plan to academy', function (): void {
         'plan' => 'mentor_network',
     ])->assertCreated();
 
-    expect(Tenant::query()->where('owner_email', $email)->value('plan'))->toBe('academy');
+    expect(Tenant::query()->where('owner_email', $email)->value('plan'))->toBe('studio');
 });

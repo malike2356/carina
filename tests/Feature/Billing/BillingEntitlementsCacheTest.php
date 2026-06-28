@@ -15,7 +15,7 @@ beforeEach(function () {
 it('serves stale billing summary until the entitlements cache is cleared', function () {
     $tenant = createCentralTenant(['trial_ends_at' => now()->subDay()]);
     $operatorId = SubscriptionPlan::on('central')->where('slug', 'operator')->value('id');
-    $mentorId = SubscriptionPlan::on('central')->where('slug', 'academy')->value('id');
+    $mentorId = SubscriptionPlan::on('central')->where('slug', 'studio')->value('id');
 
     Subscription::on('central')->create([
         'tenant_id' => $tenant->id,
@@ -34,7 +34,7 @@ it('serves stale billing summary until the entitlements cache is cleared', funct
 
     Subscription::on('central')->where('tenant_id', $tenant->id)->update([
         'plan_id' => $mentorId,
-        'plan' => 'academy',
+        'plan' => 'studio',
     ]);
 
     $stale = $svc->getBillingSummary($tenant->id);
@@ -43,13 +43,13 @@ it('serves stale billing summary until the entitlements cache is cleared', funct
     $svc->forgetBillingEntitlementsCache($tenant->id);
 
     $fresh = $svc->getBillingSummary($tenant->id);
-    expect($fresh['plan_slug'])->toBe('academy');
+    expect($fresh['plan_slug'])->toBe('studio');
 });
 
 it('clears billing entitlements cache when subscription updated event fires', function () {
     $tenant = createCentralTenant(['trial_ends_at' => now()->subDay()]);
     $operatorId = SubscriptionPlan::on('central')->where('slug', 'operator')->value('id');
-    $mentorId = SubscriptionPlan::on('central')->where('slug', 'academy')->value('id');
+    $mentorId = SubscriptionPlan::on('central')->where('slug', 'studio')->value('id');
 
     $sub = Subscription::on('central')->create([
         'tenant_id' => $tenant->id,
@@ -63,8 +63,8 @@ it('clears billing entitlements cache when subscription updated event fires', fu
     $svc = app(SubscriptionServiceInterface::class);
     expect($svc->getBillingSummary($tenant->id)['plan_slug'])->toBe('operator');
 
-    $sub->update(['plan_id' => $mentorId, 'plan' => 'academy']);
+    $sub->update(['plan_id' => $mentorId, 'plan' => 'studio']);
     SubscriptionUpdated::dispatch($sub->fresh());
 
-    expect($svc->getBillingSummary($tenant->id)['plan_slug'])->toBe('academy');
+    expect($svc->getBillingSummary($tenant->id)['plan_slug'])->toBe('studio');
 });
