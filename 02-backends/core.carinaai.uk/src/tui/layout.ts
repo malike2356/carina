@@ -1,4 +1,5 @@
 import type { TerminalSize } from './terminal.js';
+import { resolveLayoutMode } from './responsive-frame.js';
 
 export type TuiView = 'sessions' | 'tasks' | 'processes' | 'tools' | 'logs' | 'chat';
 
@@ -25,7 +26,7 @@ export interface LayoutFrame {
 
 export function computeLayout(size: TerminalSize): LayoutFrame {
   const width = size.cols;
-  const narrow = width < 72;
+  const narrow = resolveLayoutMode(width, size.rows) === 'compact';
   const tabRow = 1;
   const statusY = size.rows;
   const inputY = size.rows - 1;

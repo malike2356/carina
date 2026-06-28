@@ -1,7 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { applyBrandDocument } from '@/components/shell/BrandProvider';
+import { applyBrandDocument, useWorkspaceBootstrap } from '@/components/shell/BrandProvider';
 import { appearanceToCSS, normalizeAppearance, type AppearanceSettings } from '@/lib/appearance';
 import type { ResolvedBrand } from '@/lib/brand';
 import {
@@ -54,41 +54,44 @@ function resolvePreferenceFromApi(data: {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const { workspaceBootstrap, workspaceLoaded } = useWorkspaceBootstrap();
+
   useEffect(() => {
     const stored = readStoredThemePreference() ?? readCookieThemePreference();
+    if (stored) {
+      void applyThemePreferenceAsync(stored);
+    } else {
+      applyDefaults();
+    }
+  }, []);
 
-    async function bootstrapTheme() {
-      if (stored) {
-        await applyThemePreferenceAsync(stored);
-      } else {
-        applyDefaults();
+  useEffect(() => {
+    if (!workspaceLoaded) return;
+
+    const stored = readStoredThemePreference() ?? readCookieThemePreference();
+
+    async function applyWorkspaceTheme() {
+      const apiPreference = resolvePreferenceFromApi(workspaceBootstrap);
+
+      if (apiPreference && !stored) {
+        await applyThemePreferenceAsync(apiPreference);
+        storeThemePreference(apiPreference);
       }
 
-      try {
-        const response = await fetch('/api/workspace/settings');
-        const data = response.ok ? await response.json() : null;
-        const apiPreference = resolvePreferenceFromApi(data?.data);
-
-        if (apiPreference && !stored) {
-          await applyThemePreferenceAsync(apiPreference);
-          storeThemePreference(apiPreference);
-        }
-
-        if (data?.data?.appearance) {
-          applyAppearance(normalizeAppearance(data.data.appearance));
-        }
-        const resolvedBrand = data?.data?.resolvedBrand as ResolvedBrand | undefined;
-        if (resolvedBrand?.productName) {
-          applyBrandTokens(resolvedBrand.colorTokens);
-          applyBrandDocument(resolvedBrand);
-        }
-      } catch {
-        if (!stored) applyDefaults();
+      if (workspaceBootstrap?.appearance) {
+        applyAppearance(normalizeAppearance(workspaceBootstrap.appearance));
+      }
+      const resolvedBrand = workspaceBootstrap?.resolvedBrand as ResolvedBrand | undefined;
+      if (resolvedBrand?.productName) {
+        applyBrandTokens(resolvedBrand.colorTokens);
+        applyBrandDocument(resolvedBrand);
       }
     }
 
-    void bootstrapTheme();
+    void applyWorkspaceTheme();
+  }, [workspaceBootstrap, workspaceLoaded]);
 
+  useEffect(() => {
     async function handleSetTheme(event: Event) {
       const detail = (event as CustomEvent<ThemePreference | string>).detail;
       if (typeof detail === 'string') {

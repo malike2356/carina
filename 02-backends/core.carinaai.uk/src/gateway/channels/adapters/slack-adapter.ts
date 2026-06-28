@@ -3,6 +3,18 @@ import { config } from '../../../config/index.js';
 import { getRouter } from '../../router.js';
 import { formatForChannel } from '../channel-formatter.js';
 import { shouldAcceptGroupInbound } from '../channel-group-policy.js';
+import {
+  getChannelIngestionService,
+  isSlackAmbientEnabled,
+  isChannelAllowedForPassiveReading,
+  type AmbientChannelMessage,
+} from '../../../agents/ambient/index.js';
+import { getAmbientChannelSettings } from '../../../agents/ambient/ambient-channel-settings.js';
+import {
+  handleAmbientSlashCommand,
+  handleCarinaChannelConfigCommand,
+} from '../../../agents/ambient/ambient-slack-commands.js';
+import { fetchSlackThreadContext } from '../../../agents/ambient/slack-thread-context.js';
 import type {
   ChannelMessage,
   IChannelAdapter,
@@ -16,11 +28,22 @@ type SlackApp = {
     chat?: {
       postMessage: (payload: Record<string, unknown>) => Promise<unknown>;
     };
+    reactions?: {
+      add: (payload: Record<string, unknown>) => Promise<unknown>;
+    };
+    conversations?: {
+      replies: (payload: { channel: string; ts: string; limit?: number }) => Promise<{
+        messages?: Array<{ user?: string; text?: string; ts?: string }>;
+      }>;
+    };
   };
 };
 
+type SlackEventRecord = Record<string, unknown>;
+
 export class SlackAdapter implements IChannelAdapter {
   readonly name = 'slack' as const;
+  private botUserId?: string;
 
   constructor(
     readonly enabled: boolean,
@@ -28,8 +51,47 @@ export class SlackAdapter implements IChannelAdapter {
   ) {}
 
   parseInbound(raw: unknown): ChannelMessage | null {
+    return this.parseSlackEvent(raw, 'respond');
+  }
+
+  async parsePassiveInbound(raw: unknown): Promise<AmbientChannelMessage | null> {
     const payload = raw as Record<string, unknown>;
-    const event = (payload.event ?? payload) as Record<string, unknown>;
+    const event = (payload.event ?? payload) as SlackEventRecord;
+    if (event.subtype === 'bot_message' || event.bot_id) return null;
+
+    const text = String(event.text ?? '').trim();
+    const channelId = String(event.channel ?? '');
+    const userId = String(event.user ?? '');
+    if (!text || !channelId || !userId) return null;
+
+    const channelType = String(event.channel_type ?? '');
+    const isDirect = channelType === 'im' || channelId.startsWith('D');
+    const isMention = this.isBotMention(text);
+    if (isDirect || isMention) return null;
+
+    const channelName = String(event.channel_name ?? channelId);
+    if (!(await isChannelAllowedForPassiveReading(channelId, channelName))) return null;
+
+    return {
+      channelId,
+      channelName,
+      userId,
+      userName: String(event.username ?? userId),
+      text: cleanSlackText(text),
+      timestamp: event.ts
+        ? new Date(Number(event.ts) * 1000).toISOString()
+        : new Date().toISOString(),
+      threadTs: event.thread_ts ? String(event.thread_ts) : undefined,
+      isPinned: Boolean(event.pinned_to),
+      hasFiles: Array.isArray(event.files) && event.files.length > 0,
+      reactions: [],
+      permalink: buildSlackPermalink(channelId, String(event.ts ?? '')),
+    };
+  }
+
+  private parseSlackEvent(raw: unknown, mode: 'respond' | 'passive'): ChannelMessage | null {
+    const payload = raw as Record<string, unknown>;
+    const event = (payload.event ?? payload) as SlackEventRecord;
     const text = String(event.text ?? payload.text ?? '').trim();
     const channel = String(event.channel ?? payload.channel_id ?? payload.channel ?? '');
     const user = String(event.user ?? payload.user_id ?? payload.user ?? '');
@@ -37,7 +99,7 @@ export class SlackAdapter implements IChannelAdapter {
 
     const channelType = String(event.channel_type ?? '');
     const isDirect = channelType === 'im' || channel.startsWith('D');
-    const isMention = /^<@[^>]+>/.test(text) || /@carina\b/i.test(text);
+    const isMention = this.isBotMention(text);
     const isCommand = String(payload.command ?? '').startsWith('/carina') || text.startsWith('/carina');
 
     const message: ChannelMessage = {
@@ -52,14 +114,18 @@ export class SlackAdapter implements IChannelAdapter {
       isMention,
       isCommand,
       threadId: String(event.thread_ts ?? event.ts ?? ''),
+      chatTitle: String(event.channel_name ?? ''),
       raw,
     };
 
-    if (!shouldAcceptGroupInbound(message).accept) {
-      return null;
-    }
-
+    if (mode === 'passive') return null;
+    if (!shouldAcceptGroupInbound(message).accept) return null;
     return message;
+  }
+
+  private isBotMention(text: string): boolean {
+    if (this.botUserId && text.includes(`<@${this.botUserId}>`)) return true;
+    return /^<@[^>]+>/.test(text) || /@carina\b/i.test(text);
   }
 
   async sendMessage(conversationId: string, text: string, options: SendOptions = {}): Promise<void> {
@@ -106,19 +172,117 @@ export class SlackAdapter implements IChannelAdapter {
     }) as unknown as SlackApp;
     const boltApp = app as SlackApp & {
       message?: (handler: (args: Record<string, unknown>) => Promise<void>) => void;
+      event?: (name: string, handler: (args: Record<string, unknown>) => Promise<void>) => void;
       command?: (name: string, handler: (args: Record<string, unknown>) => Promise<void>) => void;
     };
-    boltApp.message?.(async ({ message, say }) => {
-      const inbound = this.parseInbound({ event: message });
+
+    try {
+      const auth = await (app as { client?: { auth?: { test: () => Promise<{ user_id?: string }> } } })
+        .client?.auth?.test();
+      this.botUserId = auth?.user_id;
+    } catch {
+      this.botUserId = undefined;
+    }
+
+    const handleRespond = async (payload: Record<string, unknown>, say: unknown) => {
+      const inbound = this.parseInbound(payload);
       if (!inbound) return;
-      const reply = await collectResponse(getRouter().handleInbound('slack', { event: message }));
-      await (say as (payload: Record<string, unknown>) => Promise<unknown>)({
+
+      const event = (payload.event ?? payload) as SlackEventRecord;
+      const channelSettings = await getAmbientChannelSettings(
+        inbound.conversationId,
+        inbound.chatTitle ?? inbound.conversationId,
+      );
+
+      if (!inbound.isDirect && channelSettings.mentionRequired && !inbound.isMention && !inbound.isCommand) {
+        return;
+      }
+
+      await this.markWorking(inbound.conversationId, inbound.threadId);
+
+      if (!inbound.isDirect && event.thread_ts) {
+        const threadContext = await fetchSlackThreadContext(
+          this.app?.client?.conversations,
+          inbound.conversationId,
+          String(event.thread_ts),
+        );
+        if (threadContext) {
+          payload._carinaThreadContext = threadContext;
+        }
+      }
+
+      const reply = await collectResponse(getRouter().handleInbound('slack', payload));
+      const sayFn = say as (p: Record<string, unknown>) => Promise<unknown>;
+
+      if (inbound.isDirect || channelSettings.responseMode === 'channel') {
+        await sayFn({ text: reply || '(no response)' });
+        return;
+      }
+
+      if (channelSettings.responseMode === 'ephemeral') {
+        await sayFn({
+          text: reply || '(no response)',
+          thread_ts: inbound.threadId,
+          response_type: 'ephemeral',
+        });
+        return;
+      }
+
+      await sayFn({
         text: reply || '(no response)',
-        thread_ts: inbound.threadId || undefined,
+        thread_ts: inbound.threadId,
+        reply_broadcast: channelSettings.broadcastOnComplete || undefined,
+      });
+    };
+
+    boltApp.message?.(async ({ message, say, event }) => {
+      const envelope = { event: message ?? event };
+      if (isSlackAmbientEnabled()) {
+        const passive = await this.parsePassiveInbound(envelope);
+        if (passive) {
+          getChannelIngestionService().ingest(passive);
+          return;
+        }
+      }
+      await handleRespond(envelope, say);
+    });
+
+    boltApp.event?.('app_mention', async ({ event, say }) => {
+      await handleRespond({ event }, say);
+    });
+
+    boltApp.command?.('/ambient', async ({ command, ack, respond }) => {
+      await (ack as () => Promise<void>)();
+      const reply = await handleAmbientSlashCommand({
+        channelId: String((command as Record<string, unknown>).channel_id ?? ''),
+        channelName: String((command as Record<string, unknown>).channel_name ?? ''),
+        text: String((command as Record<string, unknown>).text ?? ''),
+        userId: String((command as Record<string, unknown>).user_id ?? ''),
+      });
+      await (respond as (payload: Record<string, unknown>) => Promise<unknown>)({
+        text: reply,
+        response_type: 'ephemeral',
       });
     });
+
     boltApp.command?.('/carina', async ({ command, ack, respond }) => {
       await (ack as () => Promise<void>)();
+      const cmd = command as Record<string, unknown>;
+      const text = String(cmd.text ?? '');
+
+      if (text.startsWith('channel-config')) {
+        const reply = await handleCarinaChannelConfigCommand({
+          channelId: String(cmd.channel_id ?? ''),
+          channelName: String(cmd.channel_name ?? ''),
+          text,
+        });
+        await (respond as (payload: Record<string, unknown>) => Promise<unknown>)({
+          text: reply,
+          response_type: 'ephemeral',
+        });
+        return;
+      }
+
       const inbound = this.parseInbound(command);
       if (!inbound) return;
       const reply = await collectResponse(getRouter().handleInbound('slack', command));
@@ -128,8 +292,22 @@ export class SlackAdapter implements IChannelAdapter {
         thread_ts: inbound.threadId || undefined,
       });
     });
+
     this.app = app;
     await app.start?.(config.slack.port);
+  }
+
+  private async markWorking(channelId: string, threadTs?: string): Promise<void> {
+    if (!threadTs || !this.app?.client?.reactions?.add) return;
+    try {
+      await this.app.client.reactions.add({
+        channel: channelId,
+        timestamp: threadTs,
+        name: 'eyes',
+      });
+    } catch {
+      // reaction failures should not block the response
+    }
   }
 }
 
@@ -148,6 +326,11 @@ function cleanSlackText(text: string): string {
 
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function buildSlackPermalink(channelId: string, ts: string): string {
+  const normalized = ts.replace('.', '');
+  return `https://slack.com/archives/${channelId}/p${normalized}`;
 }
 
 async function collectResponse(generator: AsyncGenerator<string>): Promise<string> {

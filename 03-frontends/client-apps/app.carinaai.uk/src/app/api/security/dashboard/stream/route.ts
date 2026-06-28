@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   buildDevSecurityDashboardStub,
-  fetchSecurityDashboardFromCore,
+  fetchSecurityDashboardStreamFromCore,
   securityDashboardCoreConfigured,
 } from '@/lib/security-dashboard-core';
 import { getSession } from '@/lib/session';
@@ -14,6 +14,24 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  if (securityDashboardCoreConfigured()) {
+    try {
+      const upstream = await fetchSecurityDashboardStreamFromCore();
+      return new NextResponse(upstream.body, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-transform',
+          Connection: 'keep-alive',
+        },
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : String(err) },
+        { status: 502 },
+      );
+    }
+  }
+
   let timer: ReturnType<typeof setInterval> | null = null;
   const encoder = new TextEncoder();
 
@@ -21,9 +39,7 @@ export async function GET() {
     async start(controller) {
       const push = async () => {
         try {
-          const data = securityDashboardCoreConfigured()
-            ? await fetchSecurityDashboardFromCore()
-            : buildDevSecurityDashboardStub();
+          const data = buildDevSecurityDashboardStub();
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         } catch (err) {
           controller.enqueue(

@@ -12,6 +12,8 @@ export async function GET() {
       hostname: context.hostname,
       isCanonical: context.isCanonical,
       isCustomDomain: context.isCustomDomain,
+      isAivaProduct: context.isAivaProduct,
+      productSurface: context.productSurface,
       canonicalHost: context.canonicalHost,
       workspaceId: context.workspaceId,
       brand: context.resolvedBrand,

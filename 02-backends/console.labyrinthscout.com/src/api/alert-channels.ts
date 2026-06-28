@@ -22,7 +22,7 @@ function parseSeverity(value: unknown): AlertSeverity {
 }
 
 function parseChannelType(value: string): AlertChannelType | null {
-  if (value === 'telegram' || value === 'email' || value === 'slack') return value;
+  if (value === 'telegram' || value === 'email' || value === 'slack' || value === 'whatsapp') return value;
   return null;
 }
 
@@ -55,7 +55,7 @@ alertChannelsRouter.put('/platform', requireScoutPro, async (req: Request, res: 
 alertChannelsRouter.put('/:type', async (req: Request, res: Response): Promise<void> => {
   const type = parseChannelType(String(req.params.type ?? ''));
   if (!type) {
-    res.status(400).json({ error: 'type must be telegram, email, or slack' });
+    res.status(400).json({ error: 'type must be telegram, email, slack, or whatsapp' });
     return;
   }
 
@@ -73,6 +73,12 @@ alertChannelsRouter.put('/:type', async (req: Request, res: Response): Promise<v
   }
   if (type === 'slack') {
     if (typeof body.webhook_url === 'string') config.webhook_url = body.webhook_url;
+  }
+  if (type === 'whatsapp') {
+    if (typeof body.account_sid === 'string') config.account_sid = body.account_sid;
+    if (typeof body.auth_token === 'string') config.auth_token = body.auth_token;
+    if (typeof body.from_number === 'string') config.from_number = body.from_number;
+    if (typeof body.to_number === 'string') config.to_number = body.to_number;
   }
 
   try {

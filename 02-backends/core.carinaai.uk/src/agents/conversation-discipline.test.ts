@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCasualMessageContext,
   buildConversationDisciplineBlock,
+  buildPlatformProjectAwarenessBlock,
   extractUserMessageForClassification,
   isCasualMessage,
 } from './conversation-discipline.js';
@@ -26,14 +27,24 @@ describe('isCasualMessage', () => {
   });
 });
 
+describe('buildPlatformProjectAwarenessBlock', () => {
+  it('summarises active projects and repo layout', () => {
+    const block = buildPlatformProjectAwarenessBlock();
+    expect(block).toContain('01-devends');
+    expect(block).toContain('Aiva');
+    expect(block).toContain('xeclone/iLaud');
+  });
+});
+
 describe('buildConversationDisciplineBlock', () => {
-  it('covers casual, group chat, and response delivery rules', () => {
+  it('covers casual, group chat, response delivery, and project awareness', () => {
     const block = buildConversationDisciplineBlock();
     expect(block).toContain('Casual messages:');
     expect(block).toContain('Group chats:');
     expect(block).toContain('Response delivery:');
     expect(block).toContain('Lead with the answer');
     expect(block).toContain('NO_RESPONSE_NEEDED');
+    expect(block).toContain('Platform project awareness');
   });
 });
 

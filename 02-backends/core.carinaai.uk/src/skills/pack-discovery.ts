@@ -17,6 +17,7 @@ export const PACK_NPM_PACKAGES: Record<string, string> = {
   'property-uk': '@verlox/pack-property',
   healthcare: '@verlox/pack-health',
   'borehole-africa': '@verlox/pack-borehole-africa',
+  'research-analysis': '@verlox/pack-research-analysis',
 };
 
 export const NPM_PACKAGE_TO_SLUG: Record<string, string> = Object.fromEntries(
@@ -69,7 +70,8 @@ function normalizeLoadedModule(mod: Record<string, unknown>): LoadedPackModule {
       : undefined)
     ?? mod.propertyUkSkills
     ?? mod.healthcareSkills
-    ?? mod.boreholeAfricaSkills) as LoadedPackModule['skills'] | undefined;
+    ?? mod.boreholeAfricaSkills
+    ?? mod.researchAnalysisSkills) as LoadedPackModule['skills'] | undefined;
 
   const systemSuffix = String(
     mod.systemSuffix

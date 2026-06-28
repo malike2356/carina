@@ -74,7 +74,7 @@ docker compose -f docker-compose.prod.yml ps
 | Path on VPS | Role |
 |-------------|------|
 | `core.carinaai.uk/public_website/` | Bind-mounted into nginx as `/var/www/public_website` (live marketing site) |
-| `frontends/marketing/carinaai.uk/` | Git source; deploy with `bash scripts/deploy-marketing.sh carina` |
+| `03-frontends/marketing/carinaai.uk/` | Git source; deploy with `bash scripts/deploy-marketing.sh carina` |
 
 ### Stale bind mount (403 Forbidden)
 
@@ -101,13 +101,43 @@ bash docker/scripts/reload-marketing-nginx.sh
 
 See `public_website/README-DEPLOY.md` for a short copy agents can read in-tree.
 
+See also `docker/docs/INFRASTRUCTURE.md` for Phase 1 ops (backups, PgBouncer, staging, security).
+
+## Atomic deploy and rollback (Docker)
+
+Tagged releases avoid half-built containers during deploy. State lives in `.deploy/` on the VPS.
+
+```bash
+cd /home/YOU/apps/core.carinaai.uk
+
+# Full app stack (default from deploy-prod.sh step 3)
+bash docker/scripts/deploy-atomic.sh
+
+# One service
+bash docker/scripts/deploy-atomic.sh carina-web
+
+# Rollback to previous tagged image
+bash docker/scripts/deploy-atomic.sh --rollback carina-web
+
+# Skip atomic path (debug only)
+CARINA_SKIP_ATOMIC_DEPLOY=1 bash docker/scripts/deploy-prod.sh
+```
+
+Compose files: `docker-compose.prod.yml` + `docker-compose.deploy.yml`
+
+Release images: `carina-release/<service>:<YYYYMMDD-HHMMSS>` (last 3 kept per service)
+
+Laptop full deploy: `bash scripts/deploy-carina.sh` from repo root.
+
+Aiva hire static page (after Action 07): `bash scripts/deploy-aiva-static.sh`
+
 ## Move server
 
 See [docs/DEPLOYMENT-GUIDE.md section 10](../../../../docs/DEPLOYMENT-GUIDE.md#10-move-to-a-new-server).
 
 ## Local dev with Docker (no SSL, ports exposed directly)
 
-From `internal/servers/core.carinaai.uk/`:
+From `02-backends/core.carinaai.uk/`:
 
 ```bash
 docker compose -f docker-compose.prod.yml -f docker-compose.local.yml up
@@ -116,7 +146,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.local.yml up
 Scout stack (separate directory):
 
 ```bash
-cd internal/servers/console.labyrinthscout.com
+cd 02-backends/console.labyrinthscout.com
 docker compose -f docker-compose.prod.yml -f docker-compose.local.yml up
 ```
 

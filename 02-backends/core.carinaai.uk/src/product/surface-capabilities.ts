@@ -1,5 +1,6 @@
 import { config } from '../config/index.js';
 import { resolveEdgeTtsBin } from '../utils/tts.js';
+import { isImageGenerationConfigured } from '../gateway/images-provider.js';
 
 export type CarinaSurface =
   | 'cli'
@@ -36,6 +37,7 @@ export interface SurfaceRuntimeSnapshot {
   activeSkillPacks: string[];
   configuredChannels: string[];
   ttsAvailable: boolean;
+  imageGenerationAvailable: boolean;
 }
 
 const DEFAULT_IDENTITY =
@@ -77,6 +79,7 @@ export function collectSurfaceRuntimeSnapshot(): SurfaceRuntimeSnapshot {
     activeSkillPacks,
     configuredChannels,
     ttsAvailable,
+    imageGenerationAvailable: isImageGenerationConfigured(),
   };
 }
 
@@ -108,6 +111,7 @@ const BASE_CAPABILITIES: CapabilityDef[] = [
   { id: 'web-search', label: 'Web search', surfaces: ['cli', 'tui', 'web-private', 'web-hosted', 'cloud-core-proxy', 'telegram', 'mobile', 'desktop'] },
   { id: 'memory', label: 'Persistent memory', surfaces: ['cli', 'tui', 'web-private', 'web-hosted', 'cloud-byok', 'cloud-core-proxy', 'mobile', 'desktop'] },
   { id: 'voice', label: 'Voice replies', surfaces: ['cli', 'tui', 'web-private', 'web-hosted', 'telegram', 'mobile', 'desktop'] },
+  { id: 'images', label: 'Images', surfaces: ['cli', 'tui', 'web-private', 'web-hosted', 'cloud-core-proxy', 'telegram', 'mobile', 'desktop'] },
   { id: 'tools', label: 'Agent tools', surfaces: ['cli', 'tui', 'web-private', 'web-hosted', 'cloud-byok', 'cloud-core-proxy', 'mobile', 'desktop'] },
   { id: 'scheduled', label: 'Scheduled jobs', surfaces: ['cli', 'tui', 'web-private', 'web-hosted', 'cloud-core-proxy'], webOnly: true },
   { id: 'documents', label: 'Documents editor', surfaces: ['web-private', 'web-hosted', 'cloud-core-proxy'], webOnly: true },
@@ -153,6 +157,14 @@ function runtimeGate(
       return runtime.ttsAvailable
         ? { available: true }
         : { available: false, reason: 'Text-to-speech is not configured.' };
+    case 'images':
+      if (!runtime.imageGenerationAvailable) {
+        return { available: false, reason: 'Image generation needs OPENAI_API_KEY and the media toolset.' };
+      }
+      if (surface === 'cloud-byok') {
+        return { available: false, reason: 'Image generation needs core proxy on Carina Cloud.' };
+      }
+      return { available: true };
     case 'tools':
       if (surface === 'cloud-byok') {
         return { available: false, reason: 'Tool execution needs core proxy on Carina Cloud.' };

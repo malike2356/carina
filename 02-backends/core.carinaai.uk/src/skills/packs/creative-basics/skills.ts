@@ -46,11 +46,12 @@ export const creativeBasicsSkills: PackSkillInput[] = [
   {
     name: 'ascii-art',
     description: 'Generate ASCII art banners and text art',
-    trigger: ['ascii art', 'banner', 'figlet', 'text art'],
-    steps: `1. Probe for figlet/cowsay/jp2a via shell-exec (which figlet).
-2. If available, use the CLI for styled output.
-3. If not, generate ASCII art directly as monospace text.
-4. Return the result without requiring external tools.`,
+    trigger: ['ascii art', 'ascii banner', 'figlet', 'text art'],
+    steps: `1. Only when the operator asked for ASCII or monospace text art, not a raster image.
+2. Probe for figlet/cowsay/jp2a via shell-exec (which figlet).
+3. If available, use the CLI for styled output.
+4. If not, generate ASCII art directly as monospace text.
+5. For photo or graphic banners, use image-generation instead.`,
     toolsUsed: ['shell-exec', 'file-write'],
   },
   {

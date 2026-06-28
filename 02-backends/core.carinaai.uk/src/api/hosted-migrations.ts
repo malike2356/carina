@@ -181,6 +181,100 @@ const HOSTED_ADMIN_PATCHES = [
   `ALTER TABLE custom_domains ADD COLUMN IF NOT EXISTS verification_token TEXT`,
   `ALTER TABLE custom_domains ADD COLUMN IF NOT EXISTS is_canonical BOOLEAN NOT NULL DEFAULT FALSE`,
   `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS pack_catalog JSONB NOT NULL DEFAULT '[]'`,
+  // Platform event metering - tollbooth infrastructure (TB-001)
+  // Valid event_type values: message, tool_call, skill_invocation, memory_read,
+  // memory_write, scout_audit, webhook_delivery, channel_connect
+  `CREATE TABLE IF NOT EXISTS platform_events (
+    id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id         UUID        REFERENCES organizations(id) ON DELETE SET NULL,
+    partner_id     UUID        REFERENCES partner_accounts(id) ON DELETE SET NULL,
+    event_type     TEXT        NOT NULL,
+    model          TEXT,
+    provider       TEXT,
+    tokens_in      INTEGER     NOT NULL DEFAULT 0,
+    tokens_out     INTEGER     NOT NULL DEFAULT 0,
+    tool_calls     INTEGER     NOT NULL DEFAULT 0,
+    skill_calls    INTEGER     NOT NULL DEFAULT 0,
+    memory_ops     INTEGER     NOT NULL DEFAULT 0,
+    latency_ms     INTEGER,
+    scout_verified BOOLEAN     NOT NULL DEFAULT false,
+    fee_pence      INTEGER     NOT NULL DEFAULT 0,
+    metadata       JSONB,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_platform_events_org
+     ON platform_events (org_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_platform_events_partner
+     ON platform_events (partner_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_platform_events_type
+     ON platform_events (event_type, created_at DESC)`,
+
+  // TB-002: partner API keys
+  // Valid scopes: 'session' | 'memory' | 'skills' | 'analytics' | 'admin'
+  `CREATE TABLE IF NOT EXISTS partner_api_keys (
+    id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    partner_id          UUID        NOT NULL REFERENCES partner_accounts(id) ON DELETE CASCADE,
+    label               TEXT        NOT NULL,
+    key_prefix          TEXT        NOT NULL,
+    key_hash            TEXT        NOT NULL UNIQUE,
+    scopes              TEXT[]      NOT NULL DEFAULT '{}',
+    rate_limit_rpm      INTEGER     NOT NULL DEFAULT 60,
+    monthly_cap_events  INTEGER     NOT NULL DEFAULT 100000,
+    revenue_share_bps   INTEGER     NOT NULL DEFAULT 50,
+    status              TEXT        NOT NULL DEFAULT 'active'
+                        CHECK (status IN ('active', 'revoked')),
+    last_used_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    revoked_at          TIMESTAMPTZ
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_partner_api_keys_partner
+     ON partner_api_keys (partner_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_partner_api_keys_prefix
+     ON partner_api_keys (key_prefix)`,
+
+  // TB-004: Stripe metered billing columns on partner_accounts
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT`,
+  `ALTER TABLE partner_accounts ADD COLUMN IF NOT EXISTS stripe_metered_item_id TEXT`,
+
+  // TB-006: Author earnings ledger (Stripe Connect payout automation is future work)
+  `CREATE TABLE IF NOT EXISTS author_earnings (
+    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    author_email  TEXT        NOT NULL,
+    pack_name     TEXT        NOT NULL,
+    billing_month TEXT        NOT NULL,
+    installs      INTEGER     NOT NULL DEFAULT 0,
+    gross_pence   INTEGER     NOT NULL DEFAULT 0,
+    author_pence  INTEGER     NOT NULL DEFAULT 0,
+    carina_pence  INTEGER     NOT NULL DEFAULT 0,
+    payout_status TEXT        NOT NULL DEFAULT 'pending'
+                  CHECK (payout_status IN ('pending', 'paid', 'held')),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_author_earnings_month
+     ON author_earnings (author_email, pack_name, billing_month)`,
+
+  // TB-007: Platform health checks and SLA credits
+  `CREATE TABLE IF NOT EXISTS platform_health_checks (
+    id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    checked_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    endpoint    TEXT        NOT NULL,
+    status_code INTEGER,
+    latency_ms  INTEGER,
+    healthy     BOOLEAN     NOT NULL,
+    error       TEXT
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_health_checks_time
+     ON platform_health_checks (checked_at DESC)`,
+  `CREATE TABLE IF NOT EXISTS sla_credits (
+    id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    partner_id       UUID        REFERENCES partner_accounts(id),
+    billing_month    TEXT        NOT NULL,
+    downtime_minutes INTEGER     NOT NULL,
+    credit_pence     INTEGER     NOT NULL,
+    stripe_credit_id TEXT,
+    applied_at       TIMESTAMPTZ,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`,
 ];
 
 export async function runHostedMigrations(client: pg.PoolClient): Promise<void> {

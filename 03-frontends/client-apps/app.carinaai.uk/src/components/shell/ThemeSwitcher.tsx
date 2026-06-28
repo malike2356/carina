@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Moon, Palette, Sun, X } from 'lucide-react';
 import { MULTI_THEMES } from '@/lib/themes';
 import {
@@ -21,6 +21,9 @@ interface ThemeSwitcherProps {
   variant?: 'compact' | 'panel';
   /** Open the menu above the trigger (use for bottom-fixed or sidebar footers). */
   dropUp?: boolean;
+  /** Open the menu to the right of the trigger (sidebar footers; avoids left-edge clipping). */
+  menuPlacement?: 'default' | 'sidebar';
+  showLabel?: boolean;
   syncApi?: boolean;
   initialPreference?: ThemePreference;
   onChange?: (preference: ThemePreference) => void;
@@ -30,10 +33,13 @@ export function ThemeSwitcher({
   className,
   variant = 'compact',
   dropUp = false,
+  menuPlacement = 'default',
+  showLabel = true,
   syncApi = true,
   initialPreference,
   onChange,
 }: ThemeSwitcherProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [preference, setPreference] = useState<ThemePreference>(
@@ -55,6 +61,26 @@ export function ThemeSwitcher({
     document.addEventListener('set-theme', onThemeChange);
     return () => document.removeEventListener('set-theme', onThemeChange);
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   const filteredThemes = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -87,8 +113,23 @@ export function ThemeSwitcher({
   const fieldSurface =
     'border-[color:var(--border)] bg-[var(--muted)] text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]';
 
+  const menuPositionClass =
+    menuPlacement === 'sidebar' || dropUp
+      ? 'bottom-full right-0 mb-2 w-72'
+      : variant === 'compact'
+        ? 'right-0 top-full mt-2 w-72'
+        : 'left-0 top-full mt-2 w-full max-w-xl';
+
   return (
-    <div className={cn('relative', className)}>
+    <div
+      ref={rootRef}
+      className={cn(
+        'relative',
+        menuPlacement === 'sidebar' && 'z-40',
+        menuPlacement === 'sidebar' && 'ml-auto w-fit',
+        className,
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -101,17 +142,29 @@ export function ThemeSwitcher({
         aria-expanded={open}
         aria-haspopup="dialog"
       >
-        <Palette className="h-3.5 w-3.5" />
-        <span className="truncate">{currentLabel}</span>
+        {menuPlacement === 'sidebar' ? (
+          <>
+            {preference.mode === 'dark' ? (
+              <Moon className="h-3.5 w-3.5" />
+            ) : (
+              <Sun className="h-3.5 w-3.5" />
+            )}
+            {showLabel ? <span className="truncate">Appearance</span> : null}
+          </>
+        ) : (
+          <>
+            <Palette className="h-3.5 w-3.5" />
+            {showLabel ? <span className="truncate">{currentLabel}</span> : null}
+          </>
+        )}
       </button>
 
       {open ? (
         <div
           className={cn(
-            'absolute z-50 rounded-lg',
+            'absolute z-[120] rounded-lg',
             panelSurface,
-            dropUp ? 'bottom-full mb-2' : 'top-full mt-2',
-            variant === 'compact' || dropUp ? 'right-0 w-72' : 'left-0 w-full max-w-xl',
+            menuPositionClass,
           )}
         >
           <div className="flex items-center gap-2 border-b border-[color:var(--border)] px-3 py-2">
@@ -150,7 +203,9 @@ export function ThemeSwitcher({
           <div
             className={cn(
               'overflow-y-auto p-2',
-              dropUp ? 'max-h-[min(18rem,calc(100dvh-6rem))]' : 'max-h-72',
+              dropUp || menuPlacement === 'sidebar'
+                ? 'max-h-[min(18rem,calc(100dvh-6rem))]'
+                : 'max-h-72',
             )}
           >
             {isAivaProduct ? (

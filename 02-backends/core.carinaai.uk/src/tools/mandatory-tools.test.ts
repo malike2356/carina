@@ -31,6 +31,14 @@ describe('mandatory-tools', () => {
     expect(tools).toContain('memory');
   });
 
+  it('matches image and banner requests to image-generation', () => {
+    const tools = primaryMandatoryTools('Generate a welcome banner for a new VERLOX staff member.');
+    expect(tools).toContain('image-generation');
+    const hint = buildMandatoryToolHint('Generate a welcome banner for a new VERLOX staff member.');
+    expect(hint).toContain('image-generation');
+    expect(hint).toContain('Do not substitute');
+  });
+
   it('buildMandatoryToolHint returns structured guidance', () => {
     const hint = buildMandatoryToolHint('what time is it in London?');
     expect(hint).toContain('Mandatory tool routing');

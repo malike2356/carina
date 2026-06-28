@@ -51,3 +51,19 @@ declare module '@verlox/carina-scout' {
   export function _resetScoutWarnFlag(): void;
   export const SCOUT_INSTALL_HINT: string;
 }
+
+declare module 'pdf-parse' {
+  interface PdfParseResult {
+    text: string;
+    numpages?: number;
+    info?: Record<string, unknown>;
+  }
+  function pdfParse(buffer: Buffer): Promise<PdfParseResult>;
+  export default pdfParse;
+}
+
+declare module 'mammoth' {
+  export function extractRawText(input: {
+    buffer: Buffer;
+  }): Promise<{ value: string; messages: unknown[] }>;
+}

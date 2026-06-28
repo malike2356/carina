@@ -98,6 +98,10 @@ import { memoryInjectionEnabled, memoryInjectionIncludesSemantic } from '../memo
 import { applyContextBudget } from '../memory/context-budget.js';
 import { wrapCompactedContext } from '../memory/memory-discipline.js';
 import { memoryTool } from '../tools/memory.js';
+import {
+  buildImagePromptFromRequest,
+  isImageGenerationRequest,
+} from './image-generation-interceptor.js';
 import { getPendingClarification, clearPendingClarification } from '../tools/clarify.js';
 import { beginParentTurn, endParentTurn, isSubagentSession } from './delegation-context.js';
 import { loadWorkspaceContext, workspaceContextHasIdentity } from '../workspace/context-files.js';
@@ -127,6 +131,8 @@ import {
 } from '../brain/prompt-cache.js';
 import type { ProviderOverride } from '../brain/llm.js';
 import type { AgentOptions, Message, Tool, ToolCall } from '../types/index.js';
+import { emitPlatformEvent } from '../billing/platform-event-emitter.js';
+import { getPartnerIdForOrg } from '../hosted/partner-service.js';
 
 const STOP_WORDS = new Set([
   'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had',
@@ -665,6 +671,38 @@ export class CarinaAgent {
     }
 
     const tools = await this.resolveTools(safeUserMessage);
+
+    // Deterministic image interceptor: explicit generate/create image requests call
+    // image-generation before the LLM so we never substitute ASCII art or prose.
+    const imageTool = tools.find((t) => t.name === 'image-generation')
+      ?? getSessionTool(this.sessionId, 'image-generation');
+    if (imageTool && isImageGenerationRequest(safeUserMessage)) {
+      const toolCallId = `auto-image-${Date.now()}`;
+      const prompt = buildImagePromptFromRequest(safeUserMessage);
+      const size = /\bbanner\b/i.test(safeUserMessage) ? '1792x1024' : '1024x1024';
+      yield { type: 'tool', content: '\n[generating image...]\n' };
+      const imageResult = await imageTool.execute({ prompt, size, quality: 'standard' });
+      messages.push({
+        role: 'assistant',
+        content: '',
+        toolCalls: [{
+          type: 'tool_call',
+          toolName: 'image-generation',
+          toolCallId,
+          params: { prompt, size, quality: 'standard' },
+        }],
+        timestamp: new Date(),
+      });
+      messages.push({
+        role: 'tool_result',
+        content: '',
+        toolCallId,
+        toolName: 'image-generation',
+        result: imageResult,
+        timestamp: new Date(),
+      });
+    }
+
     const agentId = this.agentId ?? process.env.CARINA_ACTIVE_AGENT ?? 'main';
     const turnPolicy = resolveTurnPolicy({
       agentId,
@@ -859,6 +897,18 @@ export class CarinaAgent {
           credits,
           providerCostUsd: estimateCost(response.provider, response.tokensUsed),
         });
+        void getPartnerIdForOrg(orgId).then((partnerId) =>
+          emitPlatformEvent({
+            orgId,
+            partnerId,
+            eventType: 'message',
+            model: modelName,
+            provider: response.provider,
+            tokensIn: response.tokensIn,
+            tokensOut: response.tokensOut,
+            scoutVerified: false,
+          }),
+        ).catch(() => {});
       }
 
       const textBuffer = response.content;

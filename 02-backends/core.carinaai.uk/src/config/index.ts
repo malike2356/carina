@@ -186,6 +186,26 @@ export const config = {
       .map((v) => v.trim())
       .filter(Boolean),
   },
+  ambient: {
+    enabled: process.env.CARINA_AMBIENT_MODE_ENABLED === 'true',
+    signalThreshold: intEnv('CARINA_AMBIENT_SIGNAL_THRESHOLD', 40),
+    checkIntervalMs: intEnv('CARINA_AMBIENT_CHECK_INTERVAL_MS', 2 * 60 * 60 * 1000),
+    crossChannel: process.env.CARINA_AMBIENT_CROSS_CHANNEL === 'true',
+    llmExtraction: process.env.CARINA_AMBIENT_LLM_EXTRACTION === 'true',
+    slack: {
+      passiveReading: process.env.CARINA_SLACK_AMBIENT_ENABLED !== 'false',
+      allowedChannels: (process.env.CARINA_SLACK_AMBIENT_CHANNELS ?? '')
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean),
+      excludeChannels: (process.env.CARINA_SLACK_AMBIENT_EXCLUDE_CHANNELS ?? '')
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean),
+      batchIntervalMs: intEnv('CARINA_SLACK_AMBIENT_BATCH_INTERVAL_MS', 60_000),
+      maxMessagesPerBatch: intEnv('CARINA_SLACK_AMBIENT_MAX_MESSAGES_PER_BATCH', 50),
+    },
+  },
   twilio: {
     accountSid: process.env.TWILIO_ACCOUNT_SID ?? '',
     authToken: process.env.TWILIO_AUTH_TOKEN ?? '',

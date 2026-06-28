@@ -60,7 +60,7 @@ describe('route matrix', () => {
     expect(classifyRoute('/kanban')).toBe('private');
     expect(classifyRoute('/email')).toBe('private');
     expect(classifyRoute('/prompt-packs')).toBe('private');
-    expect(classifyRoute('/trello')).toBe('private');
+    expect(classifyRoute('/trello')).toBe('shared');
   });
 
   it('classifies shared workspace routes', () => {
@@ -68,6 +68,7 @@ describe('route matrix', () => {
     expect(classifyRoute('/notes')).toBe('shared');
     expect(classifyRoute('/webhooks')).toBe('shared');
     expect(classifyRoute('/scheduled')).toBe('shared');
+    expect(isRouteAllowedForMode('hosted', '/trello')).toBe(true);
   });
 
   it('allows shared routes on both surfaces', () => {

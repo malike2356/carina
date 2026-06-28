@@ -10,6 +10,9 @@ describe('web-auth', () => {
     expect(isPublicHostedPath('/api/cloud/auth/login')).toBe(true);
     expect(isPublicHostedPath('/api/cloud/auth/register')).toBe(true);
     expect(isPublicHostedPath('/webhooks/telegram')).toBe(true);
+    expect(isPublicHostedPath('/api/channels/webhook/slack')).toBe(true);
+    expect(isPublicHostedPath('/api/channels/webhook/telegram/00000000-0000-4000-8000-000000000001')).toBe(true);
+    expect(isPublicHostedPath('/api/widget/00000000-0000-4000-8000-000000000001/config')).toBe(true);
     expect(isPublicHostedPath('/health')).toBe(true);
     expect(isPublicHostedPath('/i18n.js')).toBe(true);
     expect(isPublicHostedPath('/manifest.json')).toBe(true);
@@ -28,6 +31,7 @@ describe('web-auth', () => {
     expect(isOpsMachineApiPath('/api/security/dashboard/stream', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/mcp', 'GET')).toBe(true);
     expect(isOpsMachineApiPath('/api/mcp/filesystem/test', 'POST')).toBe(true);
+    expect(isOpsMachineApiPath('/api/transcribe', 'POST')).toBe(true);
     expect(isOpsMachineApiPath('/api/chat/send', 'POST')).toBe(false);
     expect(isOpsMachineApiPath('/', 'GET')).toBe(false);
   });
@@ -39,6 +43,11 @@ describe('web-auth', () => {
   it('keeps ops console paths protected', () => {
     expect(isPublicHostedPath('/ops')).toBe(false);
     expect(isPublicHostedPath('/ops/workbench')).toBe(false);
+  });
+
+  it('keeps tenant Aiva management APIs protected from hosted session bypass', () => {
+    expect(isPublicHostedPath('/api/aiva/workers')).toBe(false);
+    expect(isPublicHostedPath('/api/channels')).toBe(false);
   });
 
   it('allows ops static assets without listing every file', () => {

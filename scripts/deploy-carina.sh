@@ -15,14 +15,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-CORE_LOCAL="${REPO_ROOT}/backends/servers/core.carinaai.uk"
-OPS_LOCAL="${REPO_ROOT}/backends/admin/ops.carinaai.uk"
-CLOUD_LOCAL="${REPO_ROOT}/frontends/client-apps/app.carinaai.uk"
-SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/backends/servers/console.labyrinthscout.com"
-SCOUT_ENGINE_LOCAL="${REPO_ROOT}/backends/servers/scout-engine"
-CARINA_MARKETING_LOCAL="${REPO_ROOT}/frontends/marketing/carinaai.uk"
-DOCS_SUBDOMAIN_LOCAL="${REPO_ROOT}/frontends/marketing/docs.carinaai.uk"
-SCOUT_MARKETING_LOCAL="${REPO_ROOT}/frontends/marketing/labyrinthscout.com"
+CORE_LOCAL="${REPO_ROOT}/02-backends/core.carinaai.uk"
+OPS_LOCAL="${REPO_ROOT}/02-backends/admin/ops.carinaai.uk"
+CLOUD_LOCAL="${REPO_ROOT}/03-frontends/client-apps/app.carinaai.uk"
+ADMIN_LOCAL="${REPO_ROOT}/03-frontends/client-apps/admin.carinaai.uk"
+SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/02-backends/console.labyrinthscout.com"
+SCOUT_ENGINE_LOCAL="${REPO_ROOT}/02-backends/scout-engine"
+CARINA_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/carinaai.uk"
+DOCS_SUBDOMAIN_LOCAL="${REPO_ROOT}/03-frontends/marketing/docs.carinaai.uk"
+SCOUT_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com"
 VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
 APPS_ROOT="${APPS_ROOT:-/home/malike/apps}"
@@ -37,18 +38,27 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev
 log "Syncing core.carinaai.uk..."
 rsync -az --delete \
   --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
+  --exclude='docker/pgbouncer/pgbouncer.ini' \
+  --exclude='docker/pgbouncer/userlist.txt' \
   --exclude='docs/.vitepress/dist/' \
   "${CORE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/"
 
+log "Building ops.carinaai.uk..."
+(
+  cd "${OPS_LOCAL}"
+  pnpm build
+)
+
 log "Syncing ops.carinaai.uk (Docker build context)..."
 rsync -az --delete \
-  --exclude='.env' --exclude='node_modules' --exclude='.pnpm-store' --exclude='.git' --exclude='dist' \
+  --exclude='.env' --exclude='node_modules' --exclude='.pnpm-store' --exclude='.git' \
   "${OPS_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/ops.carinaai.uk/"
 
-log "Syncing app.carinaai.uk (Docker build context)..."
-rsync -az --delete \
-  --exclude='.env' --exclude='node_modules' --exclude='.pnpm-store' --exclude='.git' --exclude='.next' \
-  "${CLOUD_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/app.carinaai.uk/"
+log "Deploying app.carinaai.uk (standalone build + migrations)..."
+bash "${CLOUD_LOCAL}/deploy.sh"
+
+log "Deploying admin.carinaai.uk..."
+bash "${ADMIN_LOCAL}/deploy.sh"
 
 log "Syncing console.labyrinthscout.com (Docker build context)..."
 rsync -az --delete \
@@ -66,6 +76,11 @@ rsync -az --delete \
   --delete-excluded \
   --exclude='.git' \
   "${CARINA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/public_website/"
+
+log "Deploying install.carinaai.uk..."
+ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/public_website/install'"
+rsync -az \
+  "${CORE_LOCAL}/install.sh" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/public_website/install/install.sh"
 
 log "Syncing labyrinthscout.com marketing site..."
 ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/labyrinthscout.com-static'"
@@ -99,15 +114,36 @@ export CARINA_OPS_CONTEXT="$APPS_ROOT/ops.carinaai.uk"
 export CARINA_OPS_DOCKERFILE=docker/Dockerfile.runtime
 export CARINA_CLOUD_CONTEXT="$APPS_ROOT/app.carinaai.uk"
 export CARINA_CLOUD_DOCKERFILE=docker/Dockerfile.runtime
-export CARINA_SSL_DIR=/etc/carina/ssl
+export CARINA_ADMIN_CONTEXT="$APPS_ROOT/admin.carinaai.uk"
+export CARINA_ADMIN_DOCKERFILE=docker/Dockerfile.runtime
+export CARINA_SSL_DIR=/etc/letsencrypt
 
 test -f .env.docker.runtime || cp .env .env.docker.runtime 2>/dev/null || true
 test -f "$APPS_ROOT/ops.carinaai.uk/.env" && cp "$APPS_ROOT/ops.carinaai.uk/.env" .env.ops.runtime || true
 test -f "$APPS_ROOT/app.carinaai.uk/.env" && cp "$APPS_ROOT/app.carinaai.uk/.env" .env.cloud.runtime || true
+test -f "$APPS_ROOT/admin.carinaai.uk/.env" && cp "$APPS_ROOT/admin.carinaai.uk/.env" .env.admin.runtime || true
 SECRETS_DIR="$(dirname "$APPS_ROOT")/secrets"
 if [[ -f "$SECRETS_DIR/app.carinaai.uk.env" ]]; then
   grep -E '^(DATABASE_URL|VAULT_SECRET|BETTER_AUTH|STRIPE_|CARINA_|NEXT_PUBLIC_)' \
     "$SECRETS_DIR/app.carinaai.uk.env" >> .env.cloud.runtime 2>/dev/null || true
+fi
+if [[ -f "$SECRETS_DIR/core.carinaai.uk.env" ]]; then
+  while IFS= read -r line; do
+    [[ "$line" =~ ^# ]] && continue
+    [[ "$line" != *"="* ]] && continue
+    key="${line%%=*}"
+    if ! grep -qE "^${key}=" .env.docker.runtime 2>/dev/null; then
+      echo "$line" >> .env.docker.runtime
+    fi
+  done < <(grep -E '^(AI_WORKERS_ENABLED|CHANNEL_CREDENTIAL_KEY|WHATSAPP_|SLACK_|POSTMARK_|TELEGRAM_BOT_TOKEN|TELEGRAM_WEBHOOK)' \
+    "$SECRETS_DIR/core.carinaai.uk.env")
+fi
+if [[ -f "$SECRETS_DIR/app.carinaai.uk.env" ]]; then
+  for key in CARINA_OPS_TOKEN CARINA_INTERNAL_KEY; do
+    if ! grep -qE "^${key}=.+" .env.docker.runtime 2>/dev/null; then
+      grep "^${key}=" "$SECRETS_DIR/app.carinaai.uk.env" >> .env.docker.runtime 2>/dev/null || true
+    fi
+  done
 fi
 
 python3 docker/scripts/sync-docker-env.py

@@ -47,18 +47,24 @@ export function Banner({
   const workspace = workspaceName ?? ctx.workspace;
   const providerLabel = provider ?? ctx.provider;
 
+  const logo = (
+    <Text bold>{CARINA_LOGO}</Text>
+  );
+
   return (
-    <Box flexDirection="column" paddingX={2} paddingY={1}>
-      <Box flexDirection="column" alignItems="center">
+    <Box flexDirection="column" paddingX={2} paddingY={2}>
+      <Box flexDirection="column" alignItems="center" width="100%">
         {skin.bannerGradient ? (
-          <Gradient name={skin.bannerGradient as 'rainbow'}>
-            <Text>{CARINA_LOGO.split('\n').slice(0, 3).join('\n')}</Text>
+          <Gradient name={skin.bannerGradient as 'atlas'}>
+            {logo}
           </Gradient>
         ) : (
-          <Text color={skin.bannerColor}>{CARINA_LOGO.split('\n').slice(0, 3).join('\n')}</Text>
+          <Text color={skin.bannerColor} bold>
+            {CARINA_LOGO}
+          </Text>
         )}
-        <Box marginTop={1}>
-          <Text bold color={skin.accent}>{`C A R I N A${' '.repeat(18)}`}</Text>
+        <Box marginTop={1} flexDirection="row" gap={1}>
+          <Text bold color={skin.accent}>C A R I N A</Text>
           <Text dimColor>{`v${version}`}</Text>
         </Box>
       </Box>

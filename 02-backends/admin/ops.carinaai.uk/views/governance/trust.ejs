@@ -1,133 +1,115 @@
-<% title = 'Trust Verify' %>
+<% title = 'Blockchain Trust' %>
 <div class="ops-page">
 <div class="ops-page-head">
   <div>
-    <div class="ops-page-title">Trust Verify</div>
-    <div class="ops-page-sub">On-chain attestations, ERC-8126 verifications, and paired instance status.</div>
+    <div class="ops-page-title">Blockchain Trust</div>
+    <div class="ops-page-sub">On-chain identity (ERC-8004), security verification (ERC-8126), Scout attestations, and Aiva activity receipts.</div>
   </div>
-  <button onclick="loadTrust()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+  <div class="ops-toolbar-actions">
+    <a href="<%= publicTrustUrl %>" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-ghost ops-btn-sm">Public trust page</a>
+    <button type="button" onclick="loadTrustHub()" class="ops-btn ops-btn-green ops-btn-sm">Refresh</button>
+  </div>
 </div>
 
-<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
-  <div class="ops-card"><div class="ops-card-label">Active Instances</div><div class="ops-card-val green" id="tr-verified">-</div></div>
-  <div class="ops-card"><div class="ops-card-label">Offline / Pending</div><div class="ops-card-val amber" id="tr-pending">-</div></div>
-  <div class="ops-card"><div class="ops-card-label">Trust Events (24h)</div><div class="ops-card-val red" id="tr-failed">-</div></div>
+<div id="tr-hub-error" class="ops-empty" style="display:none;margin-bottom:14px;color:var(--amber);"></div>
+
+<div class="ops-score-layout" style="margin-bottom:16px;">
+  <div id="tr-hero" class="ops-score-hero">
+    <div class="ops-score-ring-wrap">
+      <svg class="ops-score-ring" viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="ops-score-ring-bg" cx="60" cy="60" r="52"></circle>
+        <circle id="tr-ring-fill" class="ops-score-ring-fill" cx="60" cy="60" r="52"></circle>
+      </svg>
+      <div class="ops-score-ring-center">
+        <div id="tr-risk-score" class="ops-score-num">-</div>
+        <div class="ops-score-denom">risk</div>
+      </div>
+    </div>
+    <div class="ops-score-meta">
+      <span id="tr-risk-tier" class="ops-badge ops-badge-gray">Loading...</span>
+      <div id="tr-chain-line" class="ops-score-status">Fetching Scout trust API...</div>
+      <div id="tr-updated" class="ops-score-updated"></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;flex:1;">
+    <div class="ops-card">
+      <div class="ops-card-label">ERC-8004 identity</div>
+      <div id="tr-erc8004" class="ops-card-val" style="font-size:13px;">-</div>
+      <div id="tr-agent-id" class="ops-inline-note" style="margin-top:6px;">-</div>
+    </div>
+    <div class="ops-card">
+      <div class="ops-card-label">ERC-8126 verification</div>
+      <div id="tr-erc8126" class="ops-card-val" style="font-size:13px;">-</div>
+      <div id="tr-wav-wv" class="ops-inline-note" style="margin-top:6px;">-</div>
+    </div>
+    <div class="ops-card">
+      <div class="ops-card-label">Agents protected</div>
+      <div id="tr-agents" class="ops-card-val green">-</div>
+    </div>
+    <div class="ops-card">
+      <div class="ops-card-label">Injection blocks (24h)</div>
+      <div id="tr-injection" class="ops-card-val cyan">-</div>
+    </div>
+  </div>
+</div>
+
+<div class="ops-actions" style="margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+  <a href="<%= publicTrustUrl %>" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-cyan ops-btn-sm">Open public dashboard</a>
+  <a href="/scout-api/api/trust/compliance-report?format=pdf" class="ops-btn ops-btn-ghost ops-btn-sm">Download compliance PDF</a>
+  <a href="<%= scoutTrustDocsUrl %>" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-ghost ops-btn-sm">Trust operator docs</a>
+  <a href="/scout-api/api/public/trust" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-ghost ops-btn-sm">Raw public API JSON</a>
+  <span id="tr-verify-link-wrap"></span>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+  <div class="ops-card">
+    <div class="ops-section-title">Recent attestations</div>
+    <div id="tr-attest-loading" class="ops-loading">Loading...</div>
+    <div id="tr-attest-list" style="display:none;"></div>
+    <div id="tr-attest-empty" class="ops-empty" style="display:none;">No attestations yet. Run weekly attestation from Scout console.</div>
+  </div>
+  <div class="ops-card">
+    <div class="ops-section-title">Aiva activity receipts</div>
+    <div id="tr-aiva-loading" class="ops-loading">Loading Carina attestation coverage...</div>
+    <div id="tr-aiva-stats" style="display:none;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+        <div><div class="ops-card-label">Coverage</div><div id="tr-aiva-coverage" class="ops-card-val green">-</div></div>
+        <div><div class="ops-card-label">Confirmed</div><div id="tr-aiva-confirmed" class="ops-card-val">-</div></div>
+        <div><div class="ops-card-label">Pending / failed</div><div id="tr-aiva-pending" class="ops-card-val amber">-</div></div>
+      </div>
+      <div id="tr-aiva-flag" class="ops-inline-note" style="margin-bottom:10px;"></div>
+      <table class="ops-table" id="tr-aiva-table" style="display:none;">
+        <thead><tr><th>Aiva</th><th>Workspace</th><th>Coverage</th></tr></thead>
+        <tbody id="tr-aiva-body"></tbody>
+      </table>
+    </div>
+    <div id="tr-aiva-empty" class="ops-empty" style="display:none;">Carina attestation summary unavailable. Check CARINA_API_URL and ops token pairing.</div>
+  </div>
 </div>
 
 <div class="ops-card" style="margin-bottom:16px;">
-  <div class="ops-section-title">Paired Instances</div>
-  <div id="tr-inst-loading" class="ops-loading">Loading instance status...</div>
-  <table class="ops-table" id="tr-inst-table" style="display:none;">
-    <thead><tr><th>Instance</th><th>Status</th><th>Last Heartbeat</th><th>Agent ID</th></tr></thead>
-    <tbody id="tr-inst-body"></tbody>
+  <div class="ops-section-title">On-chain history (Scout DB)</div>
+  <div id="tr-loading" class="ops-loading">Loading trust history...</div>
+  <table class="ops-table" id="tr-table" style="display:none;">
+    <thead><tr><th>When</th><th>Type</th><th>Score</th><th>Transaction</th><th>Status</th></tr></thead>
+    <tbody id="tr-body"></tbody>
   </table>
-  <div id="tr-inst-empty" class="ops-empty" style="display:none;">No paired instances.</div>
+  <div id="tr-empty" class="ops-empty" style="display:none;">No on-chain history recorded yet.</div>
 </div>
 
 <div class="ops-card">
-  <div class="ops-section-title">Trust History</div>
-  <div id="tr-loading" class="ops-loading">Loading trust history...</div>
-  <table class="ops-table" id="tr-table" style="display:none;">
-    <thead><tr><th>When</th><th>Type</th><th>Score</th><th>Chain</th><th>Status</th></tr></thead>
-    <tbody id="tr-body"></tbody>
-  </table>
-  <div id="tr-empty" class="ops-empty" style="display:none;">No attestations or verifications recorded yet.</div>
+  <div class="ops-section-title">Operator commands (Scout console host)</div>
+  <pre class="ops-code-block" style="font-size:11px;line-height:1.6;margin:0;white-space:pre-wrap;">cd carina/02-backends/console.labyrinthscout.com
+pnpm trust:register          # ERC-8004 on Base Sepolia
+pnpm trust:verify            # ERC-8126 verification
+pnpm trust:attest            # Weekly labyrinth-scout.v1 attestation
+
+Public verify: curl -s https://console.labyrinthscout.com/api/public/trust | jq '{risk_score, chain}'</pre>
 </div>
 
 <script>
-function loadTrust() {
-  document.getElementById('tr-loading').style.display = '';
-  document.getElementById('tr-table').style.display = 'none';
-  document.getElementById('tr-empty').style.display = 'none';
-  document.getElementById('tr-inst-loading').style.display = '';
-  document.getElementById('tr-inst-table').style.display = 'none';
-  document.getElementById('tr-inst-empty').style.display = 'none';
-
-  Promise.all([
-    fetch('/scout-api/api/trust/history', { credentials: 'same-origin' }).then(function(r) {
-      if (!r.ok) throw new Error('history ' + r.status);
-      return r.json();
-    }),
-    fetch('/scout-api/api/admin/status', { credentials: 'same-origin' }).then(function(r) {
-      if (!r.ok) throw new Error('status ' + r.status);
-      return r.json();
-    }),
-    fetch('/scout-api/api/public/trust', { credentials: 'same-origin' }).then(function(r) {
-      return r.ok ? r.json() : null;
-    }).catch(function() { return null; }),
-  ]).then(function(results) {
-    var history = results[0] || {};
-    var status = results[1] || {};
-    var trust = results[2] || {};
-    var instances = status.instances || [];
-    var active = instances.filter(function(i) { return i.status === 'active' || i.status === 'online'; }).length;
-    var pending = instances.length - active;
-    var stats = status.stats || {};
-    var events24h = (stats.critical || 0) + (stats.warning || 0) + (stats.breach || 0);
-
-    document.getElementById('tr-verified').textContent = active;
-    document.getElementById('tr-pending').textContent = pending;
-    document.getElementById('tr-failed').textContent = events24h;
-
-    document.getElementById('tr-inst-loading').style.display = 'none';
-    if (!instances.length) {
-      document.getElementById('tr-inst-empty').style.display = '';
-    } else {
-      document.getElementById('tr-inst-table').style.display = '';
-      document.getElementById('tr-inst-body').innerHTML = instances.map(function(i) {
-        var clr = i.status === 'active' || i.status === 'online' ? 'ops-badge-green' : 'ops-badge-amber';
-        var hb = i.last_heartbeat;
-        return '<tr><td>' + esc(i.name || i.id || '-') + '</td>' +
-          '<td><span class="ops-badge ' + clr + '">' + esc(i.status || '-') + '</span></td>' +
-          '<td>' + (hb ? new Date(hb).toLocaleString() : '-') + '</td>' +
-          '<td style="font-family:monospace;font-size:10px;">' + esc(history.agent_id || trust.identity && trust.identity.agent_id || '-') + '</td></tr>';
-      }).join('');
-    }
-
-    var rows = [];
-    (history.attestations || []).forEach(function(a) {
-      rows.push({
-        at: a.submitted_at,
-        type: a.kind || 'attestation',
-        score: a.score,
-        chain: a.tx_hash ? String(a.tx_hash).slice(0, 10) + '...' : '-',
-        verified: true,
-      });
-    });
-    (history.verifications || []).forEach(function(v) {
-      rows.push({
-        at: v.submitted_at,
-        type: v.kind || 'erc8126',
-        score: v.unified_risk_score,
-        chain: v.response_tx_hash ? String(v.response_tx_hash).slice(0, 10) + '...' : '-',
-        verified: Boolean(v.response_tx_hash),
-      });
-    });
-    rows.sort(function(a, b) {
-      return new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime();
-    });
-
-    document.getElementById('tr-loading').style.display = 'none';
-    if (!rows.length) {
-      document.getElementById('tr-empty').style.display = '';
-      return;
-    }
-    document.getElementById('tr-table').style.display = '';
-    document.getElementById('tr-body').innerHTML = rows.slice(0, 80).map(function(h) {
-      return '<tr><td>' + (h.at ? new Date(h.at).toLocaleString() : '-') + '</td>' +
-        '<td>' + esc(h.type || '-') + '</td>' +
-        '<td>' + esc(h.score != null ? h.score : '-') + '</td>' +
-        '<td style="font-family:monospace;font-size:10px;">' + esc(h.chain || '-') + '</td>' +
-        '<td><span class="ops-badge ' + (h.verified ? 'ops-badge-green' : 'ops-badge-amber') + '">' +
-        (h.verified ? 'verified' : 'pending') + '</span></td></tr>';
-    }).join('');
-  }).catch(function() {
-    document.getElementById('tr-loading').style.display = 'none';
-    document.getElementById('tr-inst-loading').style.display = 'none';
-    document.getElementById('tr-empty').style.display = '';
-    document.getElementById('tr-empty').textContent = 'Trust data unavailable. Check SCOUT_API_KEY in ops.';
-  });
-}
+var PUBLIC_TRUST_URL = <%- JSON.stringify(publicTrustUrl) %>;
 
 function esc(s) {
   return String(s).replace(/[&<>"']/g, function(c) {
@@ -135,6 +117,274 @@ function esc(s) {
   });
 }
 
-loadTrust();
+function riskHeroClass(score) {
+  if (score <= 25) return '';
+  if (score <= 50) return 'is-warn';
+  return 'is-risk';
+}
+
+function setRing(score) {
+  var ring = document.getElementById('tr-ring-fill');
+  if (!ring || !Number.isFinite(score)) return;
+  var pct = Math.max(0, Math.min(100, score)) / 100;
+  var circumference = 2 * Math.PI * 52;
+  ring.style.strokeDasharray = String(circumference);
+  ring.style.strokeDashoffset = String(circumference * (1 - pct));
+  var hero = document.getElementById('tr-hero');
+  if (hero) {
+    hero.classList.remove('is-warn', 'is-risk');
+    var heroClass = riskHeroClass(score);
+    if (heroClass) hero.classList.add(heroClass);
+  }
+}
+
+function renderAttestations(items) {
+  var list = document.getElementById('tr-attest-list');
+  var loading = document.getElementById('tr-attest-loading');
+  var empty = document.getElementById('tr-attest-empty');
+  loading.style.display = 'none';
+  if (!items || !items.length) {
+    empty.style.display = '';
+    return;
+  }
+  list.style.display = '';
+  list.innerHTML = items.slice(0, 6).map(function(item) {
+    var proof = item.on_chain && item.on_chain.explorer_url
+      ? '<a href="' + esc(item.on_chain.explorer_url) + '" target="_blank" rel="noopener noreferrer" class="ops-link">' +
+        esc((item.on_chain.tx_hash || '').slice(0, 14) + '...') + '</a>'
+      : '<span class="ops-inline-note">hash ' + esc(item.hash_preview || '-') + '</span>';
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;">' +
+      '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+      '<strong style="color:var(--heading);">' + esc(item.title || item.type || 'Attestation') + '</strong>' +
+      proof + '</div>' +
+      '<div style="color:var(--muted);margin-top:4px;">' + esc(item.summary || '') + '</div></div>';
+  }).join('');
+}
+
+function renderPublicTrust(trust) {
+  if (!trust) return;
+  var score = Number(trust.risk_score);
+  document.getElementById('tr-risk-score').textContent = Number.isFinite(score) ? String(score) : '-';
+  setRing(Number.isFinite(score) ? score : 0);
+  document.getElementById('tr-risk-tier').textContent = trust.risk_tier_label || trust.risk_tier || 'Unknown';
+  document.getElementById('tr-risk-tier').className = 'ops-badge ' + (
+    score <= 25 ? 'ops-badge-green' : score <= 50 ? 'ops-badge-amber' : 'ops-badge-red'
+  );
+
+  var chain = trust.chain || {};
+  document.getElementById('tr-erc8004').textContent = chain.erc8004_label || chain.erc8004_status || '-';
+  document.getElementById('tr-erc8126').textContent = chain.erc8126_label || chain.erc8126_status || '-';
+  document.getElementById('tr-chain-line').textContent =
+    (chain.erc8004_status || 'unknown') + ' identity; ' + (chain.erc8126_status || 'unknown') + ' verification';
+
+  if (trust.identity) {
+    var agentLabel = trust.identity.registered && trust.identity.agent_id
+      ? '#' + trust.identity.agent_id
+      : (trust.identity.status || 'Not registered');
+    var agentHtml = agentLabel;
+    if (trust.identity.register_tx_url) {
+      agentHtml = '<a href="' + esc(trust.identity.register_tx_url) + '" target="_blank" rel="noopener noreferrer" class="ops-link">' +
+        esc(agentLabel) + '</a>';
+    }
+    document.getElementById('tr-agent-id').innerHTML = 'Agent ID: ' + agentHtml;
+    if (trust.identity.agent_id) {
+      document.getElementById('tr-verify-link-wrap').innerHTML =
+        '<a href="/scout-api/api/public/trust/verify/' + encodeURIComponent(trust.identity.agent_id) +
+        '?max_risk=40" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-ghost ops-btn-sm">Trust-gate API test</a>';
+    }
+  }
+
+  if (trust.verification && trust.verification.scores) {
+    var wav = trust.verification.scores.wav;
+    var wv = trust.verification.scores.wv;
+    document.getElementById('tr-wav-wv').textContent =
+      'WAV ' + (wav && wav.applicable ? wav.risk_score : 'n/a') +
+      '; WV ' + (wv && wv.applicable ? wv.risk_score : 'n/a');
+  }
+
+  var mon = trust.monitoring || {};
+  var met = trust.metrics || {};
+  document.getElementById('tr-agents').textContent = String(mon.agents_protected != null ? mon.agents_protected : '-');
+  document.getElementById('tr-injection').textContent = String(met.injection_blocks_24h != null ? met.injection_blocks_24h : '-');
+  document.getElementById('tr-updated').textContent = trust.generated_at
+    ? 'Updated ' + new Date(trust.generated_at).toLocaleString()
+    : '';
+
+  renderAttestations(trust.attestations || []);
+}
+
+function renderAivaSummary(data) {
+  var loading = document.getElementById('tr-aiva-loading');
+  var stats = document.getElementById('tr-aiva-stats');
+  var empty = document.getElementById('tr-aiva-empty');
+  loading.style.display = 'none';
+  if (!data || !data.attestation) {
+    empty.style.display = '';
+    return;
+  }
+  stats.style.display = '';
+  var att = data.attestation;
+  var coverage = Number(att.coveragePercent);
+  document.getElementById('tr-aiva-coverage').textContent =
+    Number.isFinite(coverage) ? coverage.toFixed(1) + '%' : '-';
+  document.getElementById('tr-aiva-confirmed').textContent =
+    String(att.confirmed != null ? att.confirmed : '-') + ' / ' + String(att.totalRecords != null ? att.totalRecords : '-');
+  document.getElementById('tr-aiva-pending').textContent =
+    String((att.pending || 0) + (att.failed || 0));
+  var flags = [];
+  flags.push(data.chainAttestEnabled ? 'AIVA_CHAIN_ATTEST_ENABLED' : 'chain attest off');
+  flags.push(data.labyrinthEnabled ? 'LABYRINTH_ENABLED' : 'Scout disabled');
+  document.getElementById('tr-aiva-flag').textContent = flags.join(' · ');
+
+  var workers = att.byWorker || [];
+  if (!workers.length) return;
+  document.getElementById('tr-aiva-table').style.display = '';
+  document.getElementById('tr-aiva-body').innerHTML = workers.slice(0, 12).map(function(w) {
+    var pct = w.coverage != null ? Math.round(w.coverage * 100) : 0;
+    var clr = pct >= 90 ? 'ops-badge-green' : pct >= 70 ? 'ops-badge-amber' : 'ops-badge-red';
+    return '<tr><td>' + esc(w.workerName || w.workerId) + '</td>' +
+      '<td style="font-size:10px;color:var(--muted);">' + esc(w.workspaceName || w.workspaceId) + '</td>' +
+      '<td><span class="ops-badge ' + clr + '">' + pct + '%</span></td></tr>';
+  }).join('');
+}
+
+function safeFetchJson(url) {
+  return fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    .then(function(r) {
+      if (!r.ok) return null;
+      return r.json().catch(function() { return null; });
+    })
+    .catch(function() { return null; });
+}
+
+function hideTrustLoading() {
+  ['tr-attest-loading', 'tr-aiva-loading', 'tr-loading'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
+function renderTrustHistory(history) {
+  var rows = [];
+  var payload = history && typeof history === 'object' ? history : {};
+  var attestations = Array.isArray(payload.attestations) ? payload.attestations : [];
+  var verifications = Array.isArray(payload.verifications) ? payload.verifications : [];
+
+  attestations.forEach(function(a) {
+    rows.push({
+      at: a.submitted_at,
+      type: a.kind || 'attestation',
+      score: a.score,
+      tx: a.tx_hash,
+      explorer: a.explorer_url,
+      verified: Boolean(a.tx_hash),
+    });
+  });
+  verifications.forEach(function(v) {
+    rows.push({
+      at: v.submitted_at,
+      type: v.kind || 'erc8126',
+      score: v.unified_risk_score,
+      tx: v.response_tx_hash,
+      explorer: v.response_explorer_url,
+      verified: Boolean(v.response_tx_hash),
+    });
+  });
+  rows.sort(function(a, b) {
+    return new Date(b.at || 0).getTime() - new Date(a.at || 0).getTime();
+  });
+
+  document.getElementById('tr-loading').style.display = 'none';
+  if (!rows.length) {
+    document.getElementById('tr-empty').style.display = '';
+    return;
+  }
+  document.getElementById('tr-table').style.display = '';
+  document.getElementById('tr-body').innerHTML = rows.slice(0, 50).map(function(h) {
+    var txCell = h.explorer
+      ? '<a href="' + esc(h.explorer) + '" target="_blank" rel="noopener noreferrer" class="ops-link">' +
+        esc(String(h.tx || '').slice(0, 16) + '...') + '</a>'
+      : esc(h.tx ? String(h.tx).slice(0, 16) + '...' : '-');
+    return '<tr><td>' + (h.at ? new Date(h.at).toLocaleString() : '-') + '</td>' +
+      '<td>' + esc(h.type || '-') + '</td>' +
+      '<td>' + esc(h.score != null ? h.score : '-') + '</td>' +
+      '<td style="font-family:monospace;font-size:10px;">' + txCell + '</td>' +
+      '<td><span class="ops-badge ' + (h.verified ? 'ops-badge-green' : 'ops-badge-amber') + '">' +
+      (h.verified ? 'on-chain' : 'pending') + '</span></td></tr>';
+  }).join('');
+}
+
+function loadTrustHub() {
+  document.getElementById('tr-hub-error').style.display = 'none';
+  document.getElementById('tr-attest-loading').style.display = '';
+  document.getElementById('tr-attest-list').style.display = 'none';
+  document.getElementById('tr-attest-empty').style.display = 'none';
+  document.getElementById('tr-aiva-loading').style.display = '';
+  document.getElementById('tr-aiva-stats').style.display = 'none';
+  document.getElementById('tr-aiva-empty').style.display = 'none';
+  document.getElementById('tr-aiva-table').style.display = 'none';
+  document.getElementById('tr-loading').style.display = '';
+  document.getElementById('tr-table').style.display = 'none';
+  document.getElementById('tr-empty').style.display = 'none';
+
+  var errors = [];
+
+  Promise.all([
+    safeFetchJson('/scout-api/api/public/trust'),
+    safeFetchJson('/scout-api/api/trust/history'),
+    safeFetchJson('/governance/trust/aiva-summary'),
+  ]).then(function(results) {
+    var trust = results[0];
+    var history = results[1];
+    var aiva = results[2];
+
+    if (!trust) {
+      errors.push('Scout public trust API unavailable. Check SCOUT_API_KEY and Scout console URL in ops .env.');
+    } else {
+      try {
+        renderPublicTrust(trust);
+      } catch (renderErr) {
+        var renderMsg = renderErr && renderErr.message ? renderErr.message : String(renderErr);
+        errors.push('Trust dashboard render failed: ' + renderMsg);
+      }
+    }
+
+    try {
+      renderAivaSummary(aiva);
+      if (!aiva) {
+        errors.push('Aiva attestation summary unavailable. Check CARINA_DB_URL on ops.');
+      }
+    } catch (aivaErr) {
+      document.getElementById('tr-aiva-loading').style.display = 'none';
+      document.getElementById('tr-aiva-empty').style.display = '';
+      errors.push('Aiva attestation summary failed to render.');
+    }
+
+    try {
+      renderTrustHistory(history);
+      if (!history) {
+        errors.push('Scout trust history unavailable. Confirm SCOUT_API_KEY has Scout Pro access.');
+      }
+    } catch (historyErr) {
+      document.getElementById('tr-loading').style.display = 'none';
+      document.getElementById('tr-empty').style.display = '';
+      errors.push('Trust history failed to render.');
+    }
+
+    hideTrustLoading();
+
+    if (errors.length) {
+      var err = document.getElementById('tr-hub-error');
+      err.style.display = '';
+      err.textContent = errors.join(' ');
+    }
+  }).catch(function() {
+    hideTrustLoading();
+    document.getElementById('tr-hub-error').style.display = '';
+    document.getElementById('tr-hub-error').textContent = 'Failed to load trust hub data.';
+  });
+}
+
+loadTrustHub();
 </script>
 </div>

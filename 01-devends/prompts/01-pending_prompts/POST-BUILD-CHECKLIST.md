@@ -32,11 +32,11 @@ If this was the last open prompt in the gap folder, apply the same status line t
 
 Move the completed prompt file from:
 
-`carina/internal/prompts/pending_prompts/`
+`carina/01-devends/prompts/01-pending_prompts/`
 
 to:
 
-`carina/internal/prompts/archived_prompts/archives_from_pending_prompts/`
+`carina/01-devends/prompts/02-archived_prompts/archives_from_pending_prompts/`
 
 Keep the same relative path. Example:
 

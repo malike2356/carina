@@ -38,6 +38,7 @@ describe('alert-channels decryptConfig', () => {
       telegram: { botToken: 'bot-token', chatId: '12345' },
       email: { resendApiKey: '', from: '', to: '' },
       slack: { webhookUrl: '' },
+      whatsapp: { accountSid: '', authToken: '', from: '', to: '' },
     });
     expect(seeds).toEqual([
       {
@@ -57,6 +58,7 @@ describe('alert-channels decryptConfig', () => {
       telegram: { botToken: 'bot-token', chatId: '' },
       email: { resendApiKey: '', from: '', to: '' },
       slack: { webhookUrl: '' },
+      whatsapp: { accountSid: '', authToken: '', from: '', to: '' },
     });
     expect(seeds).toEqual([]);
   });

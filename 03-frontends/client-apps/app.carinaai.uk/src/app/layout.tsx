@@ -3,6 +3,7 @@ import { BrandProvider } from '@/components/shell/BrandProvider';
 import { ProductSurfaceProvider } from '@/components/shell/ProductSurfaceProvider';
 import { ThemeProvider } from '@/components/shell/ThemeProvider';
 import { I18nShell } from '@/components/shell/I18nShell';
+import { AivaServiceWorkerKillScript } from '@/components/shell/AivaServiceWorkerKillScript';
 import { PwaBootstrap } from '@/components/shell/PwaBootstrap';
 import { CookieConsent } from '@/components/CookieConsent';
 import { SentryConsentLoader } from '@/components/SentryConsentLoader';
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description: isAiva
       ? 'Hire and manage AI employees for your business. Powered by Carina.'
       : `Hosted ${brand.productName} workspace with BYOK keys and browser chat.`,
-    manifest: '/manifest.webmanifest',
+    manifest: isAiva ? undefined : '/manifest.webmanifest',
     icons: {
       icon: brand.faviconUrl ?? '/favicon.svg',
     },
@@ -48,6 +49,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       suppressHydrationWarning
     >
       <head>
+        {hostContext.isAivaProduct ? <AivaServiceWorkerKillScript /> : null}
         <link
           id="carina-theme-sheet"
           rel="stylesheet"

@@ -6,10 +6,14 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 export function startScoutPushPoller(): void {
   if (timer) return;
-  void pollScoutAlertsForAllTenants();
-  timer = setInterval(() => {
-    void pollScoutAlertsForAllTenants();
-  }, POLL_MS);
+  const run = () => {
+    void pollScoutAlertsForAllTenants().catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[mobile-push] scout poll failed:', msg);
+    });
+  };
+  run();
+  timer = setInterval(run, POLL_MS);
 }
 
 export function stopScoutPushPoller(): void {

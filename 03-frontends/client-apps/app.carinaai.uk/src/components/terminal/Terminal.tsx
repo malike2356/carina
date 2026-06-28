@@ -7,7 +7,6 @@ import 'xterm/css/xterm.css';
 import { ChevronDown, ExternalLink, RefreshCw, Terminal as TerminalIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
-import { useCloudCapabilities } from '@/hooks/useCloudCapabilities';
 import { cn } from '@/lib/utils';
 
 type TerminalMode = 'page' | 'drawer';
@@ -89,7 +88,6 @@ function resolveTerminalSocketUrl(data: BridgeResponse['data'], token: string): 
 
 export function Terminal({ mode = 'page', onClose }: Props) {
   const access = useTerminalAccess();
-  const { capabilities, loading: capsLoading } = useCloudCapabilities();
   const containerRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -112,15 +110,7 @@ export function Terminal({ mode = 'page', onClose }: Props) {
   }, [isDrawer]);
 
   useEffect(() => {
-    if (access.loading || capsLoading) return;
-    if (!capabilities?.terminal) {
-      setStatus('error');
-      setError('Terminal requires a core connection.');
-      setDetail(
-        'Advanced tools (terminal, cron, MCP) need a connection to your Carina core instance. Configure core proxy in Settings.',
-      );
-      return;
-    }
+    if (access.loading) return;
     if (!access.canUseTerminal) {
       setStatus('error');
       setError('Terminal is not enabled for this workspace.');
@@ -143,6 +133,11 @@ export function Terminal({ mode = 'page', onClose }: Props) {
         const bridgeRes = await fetch('/api/terminal/bridge', { cache: 'no-store' });
         const bridge = await bridgeRes.json() as BridgeResponse;
         if (!bridgeRes.ok) {
+          if (bridgeRes.status === 503) {
+            throw new Error(
+              bridge.error ?? 'Terminal bridge secret is not configured on the server.',
+            );
+          }
           throw new Error(bridge.error ?? 'Unable to prepare terminal bridge');
         }
 
@@ -301,7 +296,7 @@ export function Terminal({ mode = 'page', onClose }: Props) {
       xtermRef.current = null;
       fitRef.current = null;
     };
-  }, [access.canUseTerminal, access.loading, capsLoading, capabilities?.terminal, reconnectTick]);
+  }, [access.canUseTerminal, access.loading, reconnectTick]);
 
   if (access.loading) {
     return (

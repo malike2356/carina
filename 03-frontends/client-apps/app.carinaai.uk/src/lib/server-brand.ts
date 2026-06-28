@@ -39,7 +39,7 @@ export async function getWorkspaceResolvedBrand(userId: string): Promise<Resolve
 export async function getBrandForCurrentRequest(): Promise<ResolvedBrand> {
   const hostname = await getRequestHostname();
   const hostContext = await resolveHostBrandContext(hostname);
-  if (hostContext.isCustomDomain) {
+  if (hostContext.isAivaProduct || hostContext.isCustomDomain) {
     return hostContext.resolvedBrand;
   }
 

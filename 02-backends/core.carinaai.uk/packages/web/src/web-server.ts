@@ -1,4 +1,5 @@
-import { createRequire } from 'node:module';
+import { isCorsOriginAllowed, resolveAllowedCorsOrigins } from '#core/health/cors-origins.js';
+import { buildProductionHealthPayload } from '#core/health/production-health.js';
 import fsSync from 'node:fs';
 import fs from 'fs/promises';
 import path from 'path';
@@ -46,7 +47,9 @@ import { workspacePresetsApiRouter } from '#core/api/workspace-presets-api.js';
 import { isWebTotpEnabled } from '#core/auth/web-totp-store.js';
 import { compareApiRouter } from '#core/api/compare-api.js';
 import { researchApiRouter } from '#core/api/research-api.js';
+import { cyberToolsApiRouter } from '#core/api/cyber-tools-api.js';
 import { internalResearchApiRouter } from '#core/api/internal-research-api.js';
+import { internalTransactionalApiRouter } from '#core/api/internal-transactional-api.js';
 import { calendarApiRouter } from '#core/api/calendar-api.js';
 import { scheduledApiRouter } from '#core/api/scheduled-api.js';
 import { trelloApiRouter } from '#core/api/trello-api.js';
@@ -91,6 +94,7 @@ import {
 } from '#core/security/auth-rate-limit.js';
 import { OPS_PAGE_FILES, requireOpsPlanGate } from '#core/hosted/plan-gates.js';
 import { mountCarinaOpsRoutes } from '#core/api/carina-ops-routes.js';
+import { mountGatewayRoutes } from '#core/api/gateway-routes.js';
 import { enforceHostedQuota, resolveExternalId } from '#core/gateway/hosted-chat.js';
 import { isHostedRequest } from '#core/gateway/hosted-domain.js';
 import { mountHostedContextRoute, mountHostedWebRoutes } from '#core/api/hosted-web.js';
@@ -269,6 +273,11 @@ async function resolveTenantId(req: Request): Promise<string | undefined> {
 
 function setupChatRoutes(app: Express): void {
   const healthHandler = async (_req: Request, res: Response) => {
+    if (process.env.HOSTED_MODE === 'true' || process.env.NODE_ENV === 'production') {
+      const payload = await buildProductionHealthPayload();
+      res.status(payload.status === 'ok' ? 200 : 503).json(payload);
+      return;
+    }
     const device = pairedDeviceFromRequest(_req);
     res.json({
       ok: true,
@@ -424,7 +433,10 @@ function setupChatRoutes(app: Express): void {
     const contentType = Array.isArray(req.headers['content-type'])
       ? req.headers['content-type'][0]
       : req.headers['content-type'];
-    const language = String(req.query.language ?? '').trim() || undefined;
+    const languageHeader = Array.isArray(req.headers['x-transcribe-lang'])
+      ? req.headers['x-transcribe-lang'][0]
+      : req.headers['x-transcribe-lang'];
+    const language = String(req.query.language ?? languageHeader ?? '').trim() || undefined;
     const result = await transcribeUploadedAudio(audio, contentType, language);
     if ('error' in result) {
       res.status(400).json(result);
@@ -620,10 +632,14 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   }
 
   app.use((_req, res, next) => {
-    const allowedOrigin = process.env.CORS_ORIGIN ?? '*';
-    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-internal-key');
+    const allowed = resolveAllowedCorsOrigins();
+    const origin = _req.headers.origin;
+    if (isCorsOriginAllowed(origin, allowed)) {
+      res.setHeader('Access-Control-Allow-Origin', origin || allowed[0] || 'https://app.carinaai.uk');
+    }
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,x-internal-key,X-Transcribe-Lang,X-Admin-Token,X-Workspace-Id');
     if (_req.method === 'OPTIONS') { res.sendStatus(204); return; }
     next();
   });
@@ -687,7 +703,9 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   app.use('/api/workspace/presets', workspacePresetsApiRouter);
   app.use('/api/compare', compareApiRouter);
   app.use('/api/research', researchApiRouter);
+  app.use('/api/tools', cyberToolsApiRouter);
   app.use('/api/internal/research', internalResearchApiRouter);
+  app.use('/api/internal/transactional', internalTransactionalApiRouter);
   app.use('/api/calendar', calendarApiRouter);
   app.use('/api/scheduled', scheduledApiRouter);
   app.use('/api/trello', trelloApiRouter);
@@ -714,6 +732,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     } else {
       console.warn(chalk.yellow('Hosted billing routes skipped: STRIPE_SECRET_KEY not configured'));
     }
+    mountGatewayRoutes(app);
     mountCarinaOpsRoutes(app);
     if (config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY) {
       mountHostedBillingRoutes(app);
@@ -1372,8 +1391,12 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   void startChannelListeners();
   logChannelStatus();
 
+  const { setupExpressErrorHandler, captureException } = await import('#core/observability/sentry.js');
+  await setupExpressErrorHandler(app);
+
   // Catch-all error handler - must be last
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    void captureException(err);
     console.error('[web error]', err.message, err.stack?.split('\n')[1]);
     if (!res.headersSent) {
       res.status(500).json({ error: err.message });

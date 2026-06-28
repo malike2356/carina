@@ -162,7 +162,9 @@ export async function pollScoutAlertsForAllTenants(): Promise<void> {
     );
   } catch (err) {
     if (isMissingRelationError(err)) return;
-    throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[mobile-push] scout poll skipped:', msg);
+    return;
   }
   for (const row of result.rows) {
     const tenantId = String(row.tenant_id);

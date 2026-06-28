@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { opsToken } from '../ops/ops-config.js';
+import { authorizeOps } from '../ops/ops-auth.js';
 import { validateDeviceToken } from './device-pairing.js';
 import {
   controlScopesForRoute,
@@ -28,6 +29,7 @@ function sessionOrOpsAuthorized(req: Request, token: string): boolean {
 
 export function isControlAuthorizedForScope(req: Request, route: ControlRoute = 'general'): boolean {
   if (req.session?.webAuthed || req.session?.hostedAccountId) return true;
+  if (authorizeOps(req)) return true;
   const token = bearerToken(req);
   if (!token) return false;
   if (sessionOrOpsAuthorized(req, token)) return true;

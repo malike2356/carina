@@ -18,6 +18,7 @@ import { providerTransportType } from '../brain/provider-registry.js';
 import { listCheckpoints, latestCheckpoint, restoreCheckpoint } from '../tools/checkpoint-store.js';
 import { registry } from '../tools/index.js';
 import { buildEntranceSnapshot, printEntrance } from '../cli/entrance.js';
+import { closePtyPromptInterface, isOpsPtyMode, promptLine } from './pty-prompt.js';
 
 export interface TuiOptions {
   memoryReady?: boolean;
@@ -58,6 +59,20 @@ function printBanner(personalityName: string): void {
     toolCount: registry.list().length,
   }));
   console.log(chalk.gray(`  personality: ${personalityName}\n`));
+}
+
+async function readUserLine(): Promise<string> {
+  if (isOpsPtyMode()) {
+    return promptLine(chalk.green('you> '));
+  }
+  return input({ message: chalk.green('you>') });
+}
+
+async function readConfirmLine(message: string): Promise<string> {
+  if (isOpsPtyMode()) {
+    return promptLine(message);
+  }
+  return input({ message });
 }
 
 export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
@@ -104,36 +119,38 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
   console.log(chalk.gray(`  session: ${sessionId}\n`));
 
   let running = true;
-  while (running) {
-    const line = await input({ message: chalk.green('you>') });
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+  try {
+    while (running) {
+      const line = await readUserLine();
+      const trimmed = line.trim();
+      if (!trimmed) continue;
 
-    if (trimmed === '/quit' || trimmed === '/exit') {
-      running = false;
-      break;
-    }
-
-    if (trimmed === '/help') {
-      for (const helpLine of HELP_LINES) {
-        console.log(chalk.gray(`  ${helpLine}`));
+      if (trimmed === '/quit' || trimmed === '/exit') {
+        running = false;
+        break;
       }
-      if (process.env.CARINA_OPS_PTY === '1') {
-        for (const helpLine of OPS_SHELL_HELP) {
+
+      if (trimmed === '/help') {
+        for (const helpLine of HELP_LINES) {
           console.log(chalk.gray(`  ${helpLine}`));
         }
+        if (process.env.CARINA_OPS_PTY === '1') {
+          for (const helpLine of OPS_SHELL_HELP) {
+            console.log(chalk.gray(`  ${helpLine}`));
+          }
+        }
+        continue;
       }
-      continue;
-    }
 
-    if (trimmed === '/provider') {
+      if (trimmed === '/provider') {
       const configured = llm.list();
       const routableDefs = PROVIDER_DEFINITIONS.filter((d) =>
         ROUTABLE_PROVIDER_NAMES.includes(d.name as never),
       );
-      const choice = await select({
-        message: 'Select provider',
-        choices: routableDefs.map((def) => {
+      let choice: string;
+      if (isOpsPtyMode()) {
+        console.log(chalk.gray('Available providers (enter name):'));
+        for (const def of routableDefs) {
           const ok = configured.includes(def.name);
           const meta = [
             providerCostLabel(def.tags.cost),
@@ -142,17 +159,39 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
             providerTransportType(def),
           ].join(' · ');
           const tags = describeProviderTags(def);
-          const label = ok
-            ? `${def.name}  ${def.displayName}  [${meta}]  ${tags}`
-            : `${def.name}  ${def.displayName}  [${meta}]  ${tags}  (missing key)`;
-          return {
-            name: label,
-            value: def.name,
-            disabled: ok ? false : 'missing key',
-          };
-        }),
-      });
-      llm.use(String(choice));
+          const line = `${def.name}  ${def.displayName}  [${meta}]  ${tags}`;
+          console.log(ok ? chalk.yellow(`  ${line}`) : chalk.gray(`  ${line}  (missing key)`));
+        }
+        choice = (await promptLine('Provider name> ')).trim();
+        if (!choice) continue;
+        if (!configured.includes(choice)) {
+          console.log(chalk.red('Provider not configured or unknown.'));
+          continue;
+        }
+      } else {
+        choice = String(await select({
+          message: 'Select provider',
+          choices: routableDefs.map((def) => {
+            const ok = configured.includes(def.name);
+            const meta = [
+              providerCostLabel(def.tags.cost),
+              def.authType,
+              def.status,
+              providerTransportType(def),
+            ].join(' · ');
+            const tags = describeProviderTags(def);
+            const label = ok
+              ? `${def.name}  ${def.displayName}  [${meta}]  ${tags}`
+              : `${def.name}  ${def.displayName}  [${meta}]  ${tags}  (missing key)`;
+            return {
+              name: label,
+              value: def.name,
+              disabled: ok ? false : 'missing key',
+            };
+          }),
+        }));
+      }
+      llm.use(choice);
       console.log(chalk.yellow(`Switched to ${choice}`));
       continue;
     }
@@ -206,7 +245,7 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
         console.log(chalk.yellow('No checkpoints to restore.'));
         continue;
       }
-      const confirm = await input({ message: `Restore latest (${latest.checkpoint_id.slice(0, 8)})? [y/N]` });
+      const confirm = await readConfirmLine(`Restore latest (${latest.checkpoint_id.slice(0, 8)})? [y/N] `);
       if (!/^y(es)?$/i.test(confirm.trim())) continue;
       try {
         const result = await restoreCheckpoint(latest.checkpoint_id);
@@ -246,6 +285,11 @@ export async function runSimpleTui(options: TuiOptions = {}): Promise<void> {
     }
     console.log('\n');
   }
+  } finally {
+    if (isOpsPtyMode()) {
+      await closePtyPromptInterface();
+    }
+  }
 
   await saveLastSurfaceSession('tui', {
     sessionId,
@@ -281,9 +325,14 @@ export async function runTui(options: TuiOptions = {}): Promise<void> {
     return;
   }
 
-  const { runInkTui } = await import('./ink/index.js');
+  const { startInkTUI } = await import('./ink/start.js');
+  const { readPackageInfo } = await import('../cli/registry.js');
   if (options.gatewayToken) {
     process.env.CARINA_GATEWAY_TOKEN = options.gatewayToken;
   }
-  await runInkTui({ sessionId: options.sessionId, gatewayUrl: options.gatewayUrl });
+  await startInkTUI({
+    sessionId: options.sessionId,
+    gatewayUrl: options.gatewayUrl,
+    version: readPackageInfo().version,
+  });
 }

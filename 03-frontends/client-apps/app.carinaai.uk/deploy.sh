@@ -4,6 +4,9 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
+
 VPS_HOST="80.190.81.208"
 VPS_USER="malike"
 DEPLOY_DIR="/home/malike/apps/app.carinaai.uk"
@@ -20,9 +23,9 @@ check_ssh() {
 
 build_local() {
   log "Syncing multi-theme CSS..."
-  pnpm theme:sync || die "theme:sync failed."
+  node scripts/sync-multi-themes.mjs || die "theme:sync failed."
   log "Building Next.js app..."
-  pnpm build || die "Build failed. Run 'pnpm install' first if needed."
+  ./node_modules/.bin/next build || die "Build failed. Run 'pnpm install' first if needed."
 }
 
 deploy() {
@@ -52,6 +55,8 @@ deploy() {
     src/db/migrations/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/db/migrations/"
   rsync -az \
     src/lib/support/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/lib/support/"
+  rsync -az \
+    src/lib/builtin-profiles/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/src/lib/builtin-profiles/"
   rsync -az \
     scripts/vps-schema-patch.sql "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/vps-schema-patch.sql"
   rsync -az \
@@ -97,7 +102,10 @@ for f in \
   src/db/migrations/0009_white_label_brand.sql \
   src/db/migrations/0010_custom_domains.sql \
   src/db/migrations/0011_pack_catalog.sql \
-  src/db/migrations/0012_workspace_profiles.sql
+  src/db/migrations/0012_workspace_profiles.sql \
+  src/db/migrations/0013_onboarding_aiva.sql \
+  src/db/migrations/0014_gdpr_privacy.sql \
+  src/db/migrations/0015_workspace_sso.sql
 do
   name=$(basename "${f}")
   already=$(psql -t -A -c "SELECT 1 FROM __deploy_migrations WHERE filename='${name}'")
@@ -157,27 +165,31 @@ REMOTE
 set -euo pipefail
 cd "${CORE_DIR}"
 export CARINA_CLOUD_CONTEXT="${DEPLOY_DIR}"
-docker compose -f docker-compose.prod.yml build carina-cloud
-docker compose -f docker-compose.prod.yml up -d --no-deps carina-cloud
+# Use deploy compose so carina-web/hub/ops keep tagged release images (not bootstrap rebuilds).
+docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml build carina-cloud
+docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-deps carina-cloud
 EOF
 
-  log "Restarting ${SERVICE} (supervisor fallback on 127.0.0.1:4100)..."
-  ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl stop ${SERVICE} || true; fuser -k 4100/tcp 4102/tcp 2>/dev/null || true; sleep 1; sudo supervisorctl start ${SERVICE}"
+  log "Stopping bare-metal supervisor fallback (docker carina-cloud is canonical)..."
+  ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl stop ${SERVICE} 2>/dev/null || true"
 
   sleep 3
 
-  STATUS=$(ssh "${VPS_USER}@${VPS_HOST}" "sudo supervisorctl status ${SERVICE}")
-  log "Status: ${STATUS}"
-
-  THEME_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" https://app.carinaai.uk/themes/theme-bridge.css || true)
+  THEME_HTTP=""
+  APP_HEALTH=""
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    THEME_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" https://app.carinaai.uk/themes/theme-bridge.css || true)
+    APP_HEALTH=$(curl -sS -o /dev/null -w "%{http_code}" https://app.carinaai.uk/api/health || true)
+    [[ "${THEME_HTTP}" == "200" && "${APP_HEALTH}" == "200" ]] && break
+    sleep 3
+  done
   log "Public theme CSS: https://app.carinaai.uk/themes/theme-bridge.css -> HTTP ${THEME_HTTP}"
+  log "App health: https://app.carinaai.uk/api/health -> HTTP ${APP_HEALTH}"
 
-  if echo "${STATUS}" | grep -q "RUNNING" && [[ "${THEME_HTTP}" == "200" ]]; then
-    log "Deploy complete. Carina Cloud is live at https://app.carinaai.uk"
-  elif echo "${STATUS}" | grep -q "RUNNING"; then
-    die "Service is running but theme static files are not reachable (HTTP ${THEME_HTTP}). Check docker nginx -> carina-cloud."
+  if [[ "${THEME_HTTP}" == "200" && "${APP_HEALTH}" == "200" ]]; then
+    log "Deploy complete. Carina Cloud is live at https://app.carinaai.uk (docker carina-cloud)"
   else
-    die "Service did not start cleanly. Check: ssh ${VPS_USER}@${VPS_HOST} 'tail -30 /var/log/supervisor/${SERVICE}.err.log'"
+    die "Docker carina-cloud is not healthy (theme HTTP ${THEME_HTTP}, health HTTP ${APP_HEALTH}). Check: ssh ${VPS_USER}@${VPS_HOST} 'docker compose -f ${CORE_DIR}/docker-compose.prod.yml logs --tail=50 carina-cloud'"
   fi
 }
 

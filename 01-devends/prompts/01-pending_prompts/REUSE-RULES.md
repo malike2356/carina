@@ -130,7 +130,7 @@ The skin/theme engine uses these Carina-native names. Not Hermes's names.
 - **Calm:** No exclamation marks. "Carina is ready." not "Carina is ready!"
 - **Honest:** State what actually happened. "Skill paused (0 uses in 30 days)" not "Skill optimized."
 - **No jargon leakage:** Never use competitor product names in shipped text.
-- **British-leaning neutral:** Carina targets UK property market users. Not US startup casual.
+- **British-leaning neutral:** Carina targets UK market users. Not US startup casual.
 
 ---
 

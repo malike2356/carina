@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Labyrinth Scout | Enterprise Console</title>
   <link rel="stylesheet" href="/theme/index.css?v=4">
-<link rel="stylesheet" href="/console-app.css?v=2">
+<link rel="stylesheet" href="/console-app.css?v=3">
 </head>
 <body class="console-body">
 <div class="layout">
@@ -24,6 +24,11 @@
       </div>
     </div>
     <div class="user-line">Session: <span id="userEmail">-</span></div>
+  </div>
+
+  <div class="sidebar-radar">
+    <div class="radar-label">Threat Radar</div>
+    <canvas id="radarCanvas" width="154" height="154"></canvas>
   </div>
 
   <nav class="sidebar-nav">
@@ -118,7 +123,7 @@
     </div>
     <div class="nav-item" data-page="trust">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1a5 5 0 100 10A5 5 0 008 1zM3 13l-2 2M13 13l2 2"/><circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none"/></svg>
-      Trust Verify
+      Blockchain Trust
     </div>
     <div class="nav-item" data-page="posture">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="1" width="14" height="14" rx="1"/><path d="M4 8h2l2-4 2 8 2-4h2"/></svg>
@@ -139,8 +144,6 @@
   </nav>
 
   <div class="sidebar-footer">
-    <div class="radar-label">Threat Radar</div>
-    <canvas id="radarCanvas" width="154" height="154"></canvas>
     <button class="logout-btn" onclick="doLogout()">Sign Out</button>
   </div>
 </aside>
@@ -444,11 +447,21 @@
       <div id="governanceContent"><div class="loading">Loading...</div></div>
     </div>
 
-    <!-- TRUST VERIFY -->
+    <!-- BLOCKCHAIN TRUST -->
     <div class="page" id="page-trust">
       <div id="trustKeyWarn"></div>
-      <div class="panel"><div class="panel-head"><span class="panel-title">Trust History</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th>Time</th><th>Event</th><th>Score</th><th>Chain</th><th>Verified</th></tr></thead>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-head"><span class="panel-title">Trust hub</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;font-size:14px;">
+          <a class="btn-ghost" href="https://carinaai.uk/trust" target="_blank" rel="noopener noreferrer">Public trust page</a>
+          <a class="btn-ghost" href="/api/public/trust" target="_blank" rel="noopener noreferrer">Public API JSON</a>
+          <a class="btn-ghost" href="/api/trust/compliance-report?format=pdf">Compliance PDF</a>
+          <a class="btn-ghost" href="/docs/trust/platform.html" target="_blank" rel="noopener noreferrer">Operator docs</a>
+        </div>
+      </div>
+      <div id="trustPublicSnapshot" class="panel" style="margin-bottom:12px"><div class="loading">Loading public trust snapshot...</div></div>
+      <div class="panel"><div class="panel-head"><span class="panel-title">On-chain history</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Score</th><th>Chain</th><th>Verified</th></tr></thead>
         <tbody id="trustTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
       </div>
     </div>
@@ -493,8 +506,9 @@
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 (function() {
+  var loginNext = '/account/login?next=' + encodeURIComponent(location.pathname + location.search);
   fetch('/account/api/me', { credentials: 'include' })
-    .then(function(r) { if (!r.ok) { location.href = '/account/login'; return null; } return r.json(); })
+    .then(function(r) { if (!r.ok) { location.href = loginNext; return null; } return r.json(); })
     .then(function(me) {
       if (!me) return;
       var e = me.email || me.username || 'user';
@@ -502,7 +516,7 @@
       document.getElementById('settingsEmail').textContent = e;
       boot();
     })
-    .catch(function() { location.href = '/account/login'; });
+    .catch(function() { location.href = loginNext; });
 })();
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -522,6 +536,15 @@ function apiA(path) {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtT(ts) { if (!ts) return '-'; var d=new Date(ts); return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 function fmtD(ts) { if (!ts) return '-'; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' ' + fmtT(ts); }
+function instanceIsLive(inst) {
+  if (!inst) return false;
+  if (inst.status === 'suspended') return false;
+  if (inst.status === 'active' || inst.status === 'online') return true;
+  if (typeof inst.secondsAgo === 'number') return inst.secondsAgo <= 90;
+  var seenAt = inst.last_heartbeat || inst.last_seen_at;
+  if (!seenAt) return false;
+  return (Date.now() - new Date(seenAt).getTime()) < 90000;
+}
 function sev(s) {
   var m = {critical:'br',high:'br',breach:'br',medium:'ba',warning:'ba',low:'bc',info:'bx',ok:'bg',active:'bg',armed:'br',disarmed:'bg',triggered:'br'};
   return '<span class="badge ' + (m[(s||'info').toLowerCase()] || 'bx') + '">' + esc(s||'info') + '</span>';
@@ -544,7 +567,7 @@ var pageLabels = {
   policy:'POLICY', 'policy-packs':'POLICY PACKS', 'auto-remediation':'AUTO-REMEDIATION',
   tripwires:'TRIPWIRES', honeypots:'HONEYPOTS', deception:'DECEPTION', killswitch:'KILL SWITCH',
   quarantine:'QUARANTINE', egress:'EGRESS CONTROL', soc2:'SOC2 COMPLIANCE', governance:'GOVERNANCE',
-  trust:'TRUST VERIFY', posture:'SECURITY POSTURE', audit:'AUDIT LOGS', settings:'SETTINGS'
+  trust:'BLOCKCHAIN TRUST', posture:'SECURITY POSTURE', audit:'AUDIT LOGS', settings:'SETTINGS'
 };
 function nav(page) {
   document.querySelectorAll('.nav-item').forEach(function(el) { el.classList.toggle('active', el.dataset.page === page); });
@@ -735,9 +758,7 @@ function boot() {
 function loadOverview() {
   apiA('/account/api/instances').then(function(data){
     var list=Array.isArray(data)?data:(data.instances||[]); var n=list.length;
-    window.__scoutAgentsOnline = list.filter(function(a){
-      return a.status === 'online' || (a.last_seen_at && (Date.now() - new Date(a.last_seen_at).getTime()) < 120000);
-    });
+    window.__scoutAgentsOnline = list.filter(function(a){ return instanceIsLive(a); });
     document.getElementById('tileAgents').textContent=n;
     document.getElementById('tileAgentsSub').textContent=n+' registered';
     document.getElementById('agentDot').className='s-dot '+(n>0?'live':'');
@@ -911,8 +932,8 @@ function loadAgents() {
     var list=Array.isArray(data)?data:(data.instances||[]);
     if(!list.length){tb.innerHTML='<tr><td colspan="5" class="empty">No agents registered</td></tr>';return;}
     tb.innerHTML=list.map(function(a){
-      var live=a.status==='online'||(a.last_seen_at&&(Date.now()-new Date(a.last_seen_at).getTime())<120000);
-      return '<tr><td>'+esc(a.name||a.id||'-')+'</td><td>'+esc(a.model||a.agent_type||'-')+'</td><td>'+(live?'<span class="badge bg">Online</span>':'<span class="badge bx">Offline</span>')+'</td><td>'+fmtD(a.last_seen_at||a.last_heartbeat)+'</td><td>'+(a.event_count||'-')+'</td></tr>';
+      var live = instanceIsLive(a);
+      return '<tr><td>'+esc(a.name||a.id||'-')+'</td><td>'+esc(a.model||a.agent_type||'-')+'</td><td>'+(live?'<span class="badge bg">Online</span>':'<span class="badge bx">Offline</span>')+'</td><td>'+fmtD(a.last_heartbeat||a.last_seen_at)+'</td><td>'+(a.event_count||'-')+'</td></tr>';
     }).join('');
   }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
 }
@@ -1224,14 +1245,36 @@ function loadGovernance() {
 function loadTrust() {
   keyWarn('trustKeyWarn');
   var tb=document.getElementById('trustTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
-  Promise.all([apiK('/api/trust/history'), apiK('/api/trust/compliance-report')]).then(function(res){
-    var hist=res[0].history||res[0]||[], comp=res[1];
-    if(!Array.isArray(hist))hist=[];
-    if(!hist.length){tb.innerHTML='<tr><td colspan="5" class="empty">No trust history'+(SCOUT_KEY?'':' - key required')+'</td></tr>';return;}
-    tb.innerHTML=hist.map(function(h){
-      return '<tr><td>'+fmtD(h.created_at||h.timestamp)+'</td><td>'+esc(h.event||h.type||'-')+'</td><td>'+esc(h.score??'-')+'</td><td>'+esc(h.chain_id||h.wallet||'-')+'</td><td>'+(h.verified?'<span class="badge bg">Verified</span>':'<span class="badge bx">Unverified</span>')+'</td></tr>';
+  var snap=document.getElementById('trustPublicSnapshot');
+  if(snap) snap.innerHTML='<div class="loading">Loading public trust snapshot...</div>';
+  Promise.all([
+    fetch('/api/public/trust').then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
+    apiK('/api/trust/history'),
+  ]).then(function(res){
+    var pub=res[0], hist=res[1]||{};
+    if(snap && pub){
+      var id=pub.identity||{}, chain=pub.chain||{};
+      snap.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:10px 12px;font-size:15px;">'+
+        '<div><div style="color:var(--text3);font-size:13px">Risk score</div><div style="font-size:22px;font-weight:700;color:var(--green)">'+esc(pub.risk_score)+'</div><div>'+esc(pub.risk_tier_label||'')+'</div></div>'+
+        '<div><div style="color:var(--text3);font-size:13px">ERC-8004</div><div>'+esc(chain.erc8004_label||chain.erc8004_status||'-')+'</div><div style="font-size:13px;color:var(--text3)">Agent #'+(id.agent_id?esc(id.agent_id):'-')+'</div></div>'+
+        '<div><div style="color:var(--text3);font-size:13px">ERC-8126</div><div>'+esc(chain.erc8126_label||chain.erc8126_status||'-')+'</div></div>'+
+        '<div><div style="color:var(--text3);font-size:13px">Agents protected</div><div>'+esc((pub.monitoring&&pub.monitoring.agents_protected)||0)+'</div></div>'+
+        '</div>';
+    } else if(snap){ snap.innerHTML='<div class="empty">Public trust API unavailable</div>'; }
+    var rows=[];
+    (hist.attestations||[]).forEach(function(a){
+      rows.push({at:a.submitted_at,type:a.namespace||a.kind||'attestation',score:a.score,tx:a.tx_hash,explorer:a.explorer_url,verified:!!a.tx_hash});
+    });
+    (hist.verifications||[]).forEach(function(v){
+      rows.push({at:v.submitted_at,type:v.kind||'erc8126',score:v.unified_risk_score,tx:v.response_tx_hash,explorer:v.response_explorer_url,verified:!!v.response_tx_hash});
+    });
+    rows.sort(function(a,b){ return new Date(b.at||0)-new Date(a.at||0); });
+    if(!rows.length){tb.innerHTML='<tr><td colspan="5" class="empty">No on-chain history'+(SCOUT_KEY?'':' - key required')+'</td></tr>';return;}
+    tb.innerHTML=rows.map(function(h){
+      var chainCell=h.explorer?'<a href="'+esc(h.explorer)+'" target="_blank" rel="noopener noreferrer">'+esc(String(h.tx||'').slice(0,12)+'...')+'</a>':esc(h.tx||'-');
+      return '<tr><td>'+fmtD(h.at)+'</td><td>'+esc(h.type||'-')+'</td><td>'+esc(h.score??'-')+'</td><td>'+chainCell+'</td><td>'+(h.verified?'<span class="badge bg">on-chain</span>':'<span class="badge bx">pending</span>')+'</td></tr>';
     }).join('');
-  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>'; if(snap) snap.innerHTML='<div class="empty">Failed to load</div>';});
 }
 
 // ── Security Posture ──────────────────────────────────────────────────────────

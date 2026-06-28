@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FileText, Plus, RefreshCw } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { CoreSurfaceBanner } from '@/components/shell/CoreSurfaceBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
@@ -32,6 +32,7 @@ export default function DocumentsPage() {
   const [rows, setRows] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
 
   async function load() {
@@ -58,12 +59,26 @@ export default function DocumentsPage() {
     if (data.data?.id) router.push(`/documents/${data.data.id}`);
   }
 
+  async function deleteDocument(id: string, title: string) {
+    const label = title.trim() || 'Untitled';
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+
+    setDeletingId(id);
+    const res = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+    setDeletingId(null);
+    if (!res.ok) {
+      alert('Could not delete document');
+      return;
+    }
+    setRows((current) => current.filter((row) => row.id !== id));
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Documents</h1>
-          <p className="text-xs text-text-muted">You write; Carina assists with formatting and checks.</p>
+          <p className="text-xs text-text-muted">Type freely; ask Carina inline to continue or polish your draft.</p>
         </div>
         <div className="flex items-center gap-2">
           <IconButton label="Refresh" onClick={load}>
@@ -92,7 +107,7 @@ export default function DocumentsPage() {
           <EmptyState
             icon={<FileText className="h-8 w-8" />}
             title="No documents yet"
-            subtitle="Create a document and type freely. Ask Carina to fix formatting, spelling, or fact-check a selection."
+            subtitle="Create a document and type freely. Use the inline Carina bar to write the next paragraph or expand your ideas."
             action={
               <button
                 type="button"
@@ -106,19 +121,32 @@ export default function DocumentsPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map((doc) => (
-              <Link
+              <div
                 key={doc.id}
-                href={`/documents/${doc.id}`}
-                className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent/40 hover:bg-elevated"
+                className="group relative rounded-lg border border-border bg-surface transition-colors hover:border-accent/40 hover:bg-elevated"
               >
-                <h2 className="truncate text-sm font-medium text-text-primary">{doc.title}</h2>
-                <p className="mt-1 line-clamp-2 text-xs text-text-muted">
-                  {doc.content.trim() || 'Empty document'}
-                </p>
-                <p className="mt-3 text-[10px] text-text-muted">
-                  {wordCount(doc.content)} words · Updated {formatDate(doc.updatedAt)}
-                </p>
-              </Link>
+                <Link href={`/documents/${doc.id}`} className="block p-4 pr-10">
+                  <h2 className="truncate text-sm font-medium text-text-primary">{doc.title}</h2>
+                  <p className="mt-1 line-clamp-2 text-xs text-text-muted">
+                    {doc.content.trim() || 'Empty document'}
+                  </p>
+                  <p className="mt-3 text-[10px] text-text-muted">
+                    {wordCount(doc.content)} words · Updated {formatDate(doc.updatedAt)}
+                  </p>
+                </Link>
+                <IconButton
+                  label="Delete document"
+                  className="absolute right-2 top-2 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                  disabled={deletingId === doc.id}
+                  onClick={() => void deleteDocument(doc.id, doc.title)}
+                >
+                  {deletingId === doc.id ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 text-danger" />
+                  )}
+                </IconButton>
+              </div>
             ))}
           </div>
         )}

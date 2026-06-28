@@ -30,6 +30,7 @@ export async function GET() {
     }
   }
 
+  const chatMode = hasKeys ? 'byok-direct' : proxyEnabled ? 'core-proxy' : 'byok-direct';
   const chatReady = hasKeys || (proxyEnabled && proxyReachable === true);
 
   return NextResponse.json({
@@ -37,7 +38,7 @@ export async function GET() {
     hasKeys,
     proxyEnabled,
     proxyReachable,
-    chatMode: proxyEnabled ? 'core-proxy' : 'byok-direct',
+    chatMode,
     capabilities: getCloudCapabilities(),
   });
 }

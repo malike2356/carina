@@ -1,0 +1,171 @@
+# Staging stack (same VPS, isolated DB and containers).
+# Usage:
+#   cp .env.staging.example .env.staging.runtime
+#   bash docker/scripts/deploy-staging.sh
+#
+# Joins the external `proxy` network so production nginx can route staging.* domains.
+
+name: carina-staging
+
+services:
+  postgres-staging:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_USER: carina
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-staging_secret}
+      POSTGRES_DB: carina_staging
+    volumes:
+      - pgdata-staging:/var/lib/postgresql/data
+      - ${POSTGRES_WAL_HOST_DIR:-./.local/wal-staging}:/wal_archive
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /wal_archive/%f && cp %p /wal_archive/%f
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carina"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - carina-staging
+    restart: unless-stopped
+
+  pgbouncer-staging:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    volumes:
+      - ./docker/pgbouncer/pgbouncer.staging.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+    expose:
+      - "6432"
+    networks:
+      carina-staging:
+        aliases:
+          - pgbouncer-staging
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U carina -d carina_staging"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  carina-web-staging:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.carina
+    env_file:
+      - .env.staging.runtime
+    environment:
+      NODE_ENV: staging
+      HOSTED_MODE: "true"
+      WEB_ENABLED: "true"
+      DATABASE_URL: postgresql://carina:${DB_PASSWORD:-staging_secret}@postgres-staging:5432/carina_staging
+      REDIS_URL: redis://redis-staging:6379
+    depends_on:
+      postgres-staging:
+        condition: service_healthy
+      pgbouncer-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_healthy
+    expose:
+      - "3000"
+    networks:
+      carina-staging:
+        aliases:
+          - carina-staging-web
+      proxy:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/carina-healthcheck"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+
+  carina-cloud-staging:
+    build:
+      context: ${CARINA_CLOUD_CONTEXT:-../../03-frontends/client-apps/app.carinaai.uk}
+      dockerfile: ${CARINA_CLOUD_DOCKERFILE:-docker/Dockerfile.runtime}
+    env_file:
+      - .env.staging.cloud.runtime
+    environment:
+      NODE_ENV: staging
+      PORT: "4100"
+      HOSTNAME: "0.0.0.0"
+      CARINA_CORE_URL: http://carina-staging-web:3000
+      CARINA_USE_CORE_PROXY: "true"
+    depends_on:
+      carina-web-staging:
+        condition: service_started
+    expose:
+      - "4100"
+    networks:
+      carina-staging:
+        aliases:
+          - carina-staging-cloud
+      proxy:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4100/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  carina-admin-staging:
+    build:
+      context: ${CARINA_ADMIN_CONTEXT:-../../03-frontends/client-apps/admin.carinaai.uk}
+      dockerfile: ${CARINA_ADMIN_DOCKERFILE:-docker/Dockerfile.runtime}
+    env_file:
+      - .env.staging.admin.runtime
+    environment:
+      NODE_ENV: staging
+      PORT: "4200"
+      HOSTNAME: "0.0.0.0"
+      ADMIN_CORE_URL: http://carina-staging-web:3000
+    depends_on:
+      carina-web-staging:
+        condition: service_started
+    expose:
+      - "4200"
+    networks:
+      carina-staging:
+        aliases:
+          - carina-staging-admin
+      proxy:
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4200/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  redis-staging:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - carina-staging
+    restart: unless-stopped
+
+volumes:
+  pgdata-staging:
+
+networks:
+  carina-staging:
+    driver: bridge
+  proxy:
+    external: true
+    name: proxy

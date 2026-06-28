@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { syncSoc2Evidence } from '../lib/compliance-sync.js';
+import { getAivaTrustSummary } from '../lib/aiva-trust-summary.js';
 
 export const governanceRouter = Router();
 
@@ -36,7 +37,21 @@ governanceRouter.post('/soc2/sync', async (req, res) => {
 });
 
 governanceRouter.get('/trust', (_req, res) => {
-  res.render('governance/trust', { title: 'Trust Verify' });
+  res.render('governance/trust', {
+    title: 'Blockchain Trust',
+    publicTrustUrl: process.env.PUBLIC_TRUST_URL?.trim() || 'https://carinaai.uk/trust',
+    scoutTrustDocsUrl: process.env.SCOUT_TRUST_DOCS_URL?.trim()
+      || 'https://console.labyrinthscout.com/docs/trust/platform.html',
+  });
+});
+
+governanceRouter.get('/trust/aiva-summary', async (_req, res) => {
+  try {
+    res.json(await getAivaTrustSummary());
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(502).json({ error: message || 'Failed to load Aiva trust summary' });
+  }
 });
 
 governanceRouter.get('/posture', (_req, res) => {

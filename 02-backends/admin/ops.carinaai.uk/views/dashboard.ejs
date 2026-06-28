@@ -24,6 +24,11 @@
   <div class="ops-metric"><div class="ops-metric-label">Messages today</div><div class="ops-metric-value"><%= tenantSummary ? tenantSummary.messagesToday : '-' %></div></div>
   <div class="ops-metric"><div class="ops-metric-label">Monthly tokens</div><div class="ops-metric-value"><%= tenantSummary ? tenantSummary.monthlyTokens.toLocaleString() : '-' %></div></div>
   <div class="ops-metric"><div class="ops-metric-label">Scout score</div><div class="ops-metric-value" id="scout-score-val">-</div><div class="ops-inline-note" id="scout-score-sub">Loading...</div></div>
+  <a href="/trust" class="ops-metric" style="text-decoration:none;color:inherit;">
+    <div class="ops-metric-label">Blockchain trust</div>
+    <div class="ops-metric-value" id="trust-risk-val">-</div>
+    <div class="ops-inline-note" id="trust-risk-sub">Open hub</div>
+  </a>
   <div class="ops-metric"><div class="ops-metric-label">Memories</div><div class="ops-metric-value"><%= stats.totalMemories %></div></div>
   <div class="ops-metric"><div class="ops-metric-label">Threats (24h)</div><div class="ops-metric-value warn" id="dash-threats">-</div></div>
 </div>
@@ -132,6 +137,22 @@ fetch('/scout-api/api/score', { credentials: 'same-origin' })
     document.getElementById('scout-score-sub').textContent = s >= 80 ? 'Healthy' : s >= 60 ? 'Fair' : s > 0 ? 'Needs attention' : 'No data';
   })
   .catch(function() { document.getElementById('scout-score-sub').textContent = 'Scout offline'; });
+
+fetch('/scout-api/api/public/trust', { credentials: 'same-origin' })
+  .then(function(r) { return r.ok ? r.json() : null; })
+  .then(function(d) {
+    if (!d || d.risk_score == null) {
+      document.getElementById('trust-risk-sub').textContent = 'No trust data';
+      return;
+    }
+    var el = document.getElementById('trust-risk-val');
+    el.textContent = d.risk_score;
+    el.style.color = d.risk_score <= 25 ? 'var(--green)' : d.risk_score <= 50 ? 'var(--amber)' : 'var(--red)';
+    document.getElementById('trust-risk-sub').textContent = d.risk_tier_label || 'View hub';
+  })
+  .catch(function() {
+    document.getElementById('trust-risk-sub').textContent = 'Scout offline';
+  });
 
 // Threat feed
 fetch('/security/events', { credentials: 'same-origin' })

@@ -46,7 +46,7 @@ export const trelloTool: Tool = {
   needsConfirmation: (params) => WRITE_ACTIONS.has(String(params.action ?? '')),
   execute: async (params) => {
     const p = params as Record<string, string>;
-    if (!isTrelloConfigured()) {
+    if (!(await isTrelloConfigured())) {
       return trelloConfigHint();
     }
     switch (p.action) {

@@ -1,0 +1,37 @@
+{
+  "$schema": "internal",
+  "updated": "2026-06-25",
+  "notes": "Operator checklist for what ships at GTM vs after. Env flags are documentation only; nginx geo blocks are edited in repo when enabling.",
+  "phases": {
+    "gtm_launch": {
+      "label": "GTM launch (now)",
+      "description": "Public hire funnel, billing, channels, admin TOTP, staging. No nginx IP geo blocking.",
+      "env_defaults": {
+        "NGINX_ADMIN_IP_ALLOWLIST": "false",
+        "NGINX_STAGING_IP_ALLOWLIST": "false"
+      }
+    },
+    "post_gtm_security": {
+      "label": "After GTM setup",
+      "description": "Turn on once app.carinaai.uk / admin.hireaiva.co.uk GTM is live and team has stable access patterns.",
+      "items": [
+        {
+          "id": "nginx_admin_ip_allowlist",
+          "title": "Admin IP allowlist (admin.carinaai.uk)",
+          "enabled": false,
+          "env_flag": "NGINX_ADMIN_IP_ALLOWLIST",
+          "nginx": "docker/nginx/admin.carinaai.uk.conf",
+          "docs": "docker/docs/ADMIN-IP-ALLOWLIST.md"
+        },
+        {
+          "id": "nginx_staging_ip_allowlist",
+          "title": "Staging IP allowlist (staging.*.carinaai.uk)",
+          "enabled": false,
+          "env_flag": "NGINX_STAGING_IP_ALLOWLIST",
+          "nginx": "docker/nginx/staging.carinaai.uk.conf",
+          "docs": "docker/docs/ADMIN-IP-ALLOWLIST.md"
+        }
+      ]
+    }
+  }
+}

@@ -32,6 +32,7 @@ import { tripwiresRouter } from './api/tripwires.js';
 import { statsRouter } from './api/stats.js';
 import { adminRouter } from './api/admin.js';
 import { getPlatformDashboardUrl, syncConfiguredAlertChannels } from './lib/alert-channels.js';
+import './connectors/register-all.js';
 import { anomaliesRouter } from './api/anomalies.js';
 import { honeypotsRouter } from './api/honeypots.js';
 import { rateControlRouter } from './api/rate-control.js';
@@ -165,6 +166,8 @@ app.get('/favicon.ico', (_req, res) => {
 app.get('/', servePublicPage('index.html'));
 app.get('/checkout', servePublicPage('checkout.html'));
 app.get('/checkout.html', redirectHtml('/checkout'));
+app.get('/onboard', servePublicPage('onboard.html'));
+app.get('/onboard.html', redirectHtml('/onboard'));
 
 const OPS_SCOUT_URL = process.env.OPS_SCOUT_URL ?? 'https://ops.carinaai.uk/scout';
 const OPS_LOGIN_URL = process.env.OPS_LOGIN_URL ?? 'https://ops.carinaai.uk/login';

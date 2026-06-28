@@ -1,140 +1,90 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Scout Onboarding</title>
-  <link rel="stylesheet" href="/theme/index.css?v=4">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Scout setup</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/hub.css?v=5">
   <style>
-    body { padding: 2rem; }
-    .card { max-width: 720px; margin: 0 auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
-    h1 { margin-top: 0; color: var(--foreground); }
-    label { display: block; margin-bottom: 0.5rem; color: var(--muted-foreground); }
-    input, button { font: inherit; }
-    input { width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: var(--background); color: var(--foreground); box-sizing: border-box; }
-    button { margin-top: 1rem; background: var(--amber); color: var(--background); border: 0; padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .step { display: none; }
-    .step.active { display: block; }
-    .progress { height: 8px; background: var(--secondary); border-radius: 999px; overflow: hidden; margin: 1rem 0; }
-    .progress > div { height: 100%; width: 0; background: var(--amber); transition: width 0.3s ease; }
-    .muted { color: var(--muted-foreground); }
-    ul { padding-left: 1.2rem; }
-    .score { font-size: 3rem; font-weight: 700; color: var(--amber); }
+    .onboard-shell { width: min(640px, 100%); margin: 0 auto; padding: 72px 22px; }
+    .onboard-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 32px;
+    }
+    .onboard-card h1 { margin: 0 0 12px; font-size: 32px; line-height: 1.1; }
+    .onboard-card p { color: var(--muted); margin: 0 0 16px; font-size: 16px; line-height: 1.6; }
+    .onboard-card .error { color: #f87171; }
+    .onboard-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
   </style>
 </head>
 <body class="hub-body">
-  <div class="card">
-    <h1>Scout Onboarding</h1>
-    <p class="muted">Add your first target, run a fast scan, and get an initial Scout Score.</p>
+  <main class="onboard-shell">
+    <nav class="hub-nav" aria-label="Console navigation">
+      <a class="hub-brand" href="/">LABYRINTH SCOUT</a>
+      <div class="hub-nav-links">
+        <a href="/account/login">Sign in</a>
+      </div>
+    </nav>
 
-    <section id="step-1" class="step active">
-      <label for="domain">Domain or URL to monitor</label>
-      <input id="domain" placeholder="example.com" />
-      <label for="api-key" style="margin-top: 1rem;">Scout API key (optional if auth disabled locally)</label>
-      <input id="api-key" placeholder="X-Scout-Key" />
-      <button id="start-btn">Start Scanning</button>
+    <section class="onboard-card" id="onboard-panel">
+      <h1>Verifying payment</h1>
+      <p>Please wait while we confirm your subscription.</p>
     </section>
-
-    <section id="step-2" class="step">
-      <h2>Scanning...</h2>
-      <div class="progress"><div id="progress-bar"></div></div>
-      <p id="scan-status" class="muted">Starting fast scan (10 tools)...</p>
-    </section>
-
-    <section id="step-3" class="step">
-      <h2>Your Scout Score</h2>
-      <div class="score" id="score-value">--</div>
-      <p id="score-trend" class="muted"></p>
-      <h3>What to do first</h3>
-      <ul id="actions-list"></ul>
-      <p><a href="/dashboard">Go to Dashboard</a></p>
-    </section>
-  </div>
-
+  </main>
   <script>
-    const apiBase = '/api/v1';
-    let scanRunId = '';
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('session') || params.get('session_id') || '';
+    const panel = document.getElementById('onboard-panel');
 
-    function showStep(id) {
-      document.querySelectorAll('.step').forEach((el) => el.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
+    function showSuccess() {
+      panel.innerHTML = `
+        <h1>Your account is ready</h1>
+        <p>Check your email for your Scout API key and setup instructions.</p>
+        <div class="onboard-actions">
+          <a class="hub-btn hub-btn-primary" href="/account/login">Sign in to Scout</a>
+          <a class="hub-btn hub-btn-secondary" href="/">Back to home</a>
+        </div>
+      `;
     }
 
-    function headers() {
-      const key = document.getElementById('api-key').value.trim();
-      const h = { 'Content-Type': 'application/json' };
-      if (key) h['X-Scout-Key'] = key;
-      return h;
+    function showFailure(message) {
+      panel.innerHTML = `
+        <h1>Payment verification failed</h1>
+        <p class="error">${message}</p>
+        <div class="onboard-actions">
+          <a class="hub-btn hub-btn-primary" href="/checkout">Try checkout again</a>
+          <a class="hub-btn hub-btn-secondary" href="mailto:contact@verlox.uk">Email support</a>
+        </div>
+      `;
     }
 
-    async function pollScan() {
-      const res = await fetch(`${apiBase}/scans/${scanRunId}`, { headers: headers() });
-      const data = await res.json();
-      const scan = data.scan;
-      const totalTools = 10;
-      const done = (data.tool_executions || []).filter((t) => t.status === 'completed' || t.status === 'failed').length;
-      document.getElementById('progress-bar').style.width = `${Math.min(100, Math.round((done / totalTools) * 100))}%`;
-      document.getElementById('scan-status').textContent = `Status: ${scan.status}. Tools completed: ${done}/${totalTools}`;
-      if (scan.status === 'completed' || scan.status === 'failed') {
-        await showResults();
+    async function activate() {
+      if (!sessionId) {
+        showFailure('Missing checkout session. Return to checkout and try again.');
         return;
       }
-      setTimeout(pollScan, 3000);
-    }
-
-    async function showResults() {
-      const scoreRes = await fetch(`${apiBase}/scout-score`, { headers: headers() });
-      const scoreData = await scoreRes.json();
-      document.getElementById('score-value').textContent = String(scoreData.score ?? '--');
-      document.getElementById('score-trend').textContent = scoreData.trend
-        ? `Trend: ${scoreData.trend.direction} (${scoreData.trend.change >= 0 ? '+' : ''}${scoreData.trend.change})`
-        : '';
-
-      const findingsRes = await fetch(`${apiBase}/findings?severity=critical&limit=5`, { headers: headers() });
-      const findingsData = await findingsRes.json();
-      const list = document.getElementById('actions-list');
-      list.innerHTML = '';
-      const findings = findingsData.findings || [];
-      if (findings.length === 0) {
-        list.innerHTML = '<li>Review open findings in the dashboard and register additional targets.</li>';
-      } else {
-        for (const finding of findings.slice(0, 3)) {
-          const li = document.createElement('li');
-          li.textContent = `Patch or investigate: ${finding.title} (${finding.severity})`;
-          list.appendChild(li);
-        }
-      }
-      showStep('step-3');
-    }
-
-    document.getElementById('start-btn').addEventListener('click', async () => {
-      const domain = document.getElementById('domain').value.trim();
-      if (!domain) return;
-      showStep('step-2');
-      const createRes = await fetch(`${apiBase}/targets`, {
-        method: 'POST',
-        headers: headers(),
-        body: JSON.stringify({
-          name: domain,
-          type: domain.startsWith('http') ? 'url' : 'domain',
-          value: domain.replace(/^https?:\/\//, ''),
-          schedule: 'weekly',
-          onboarding: true,
-        }),
-      });
-      const createData = await createRes.json();
-      scanRunId = createData.scan_run_id;
-      if (!scanRunId && createData.target?.id) {
-        const scanRes = await fetch(`${apiBase}/targets/${createData.target.id}/scan`, {
+      try {
+        const res = await fetch('/account/activate-session', {
           method: 'POST',
-          headers: headers(),
-          body: JSON.stringify({ fast_mode: true }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId }),
         });
-        const scanData = await scanRes.json();
-        scanRunId = scanData.scan_run_id;
+        const body = await res.json().catch(() => ({}));
+        if (res.ok && body.ok) {
+          showSuccess();
+          return;
+        }
+        const detail = body.error ? ` ${body.error}` : '';
+        showFailure(`We could not verify your payment.${detail} Email contact@verlox.uk with your session ID: ${sessionId}`);
+      } catch (_err) {
+        showFailure(`We could not verify your payment. Email contact@verlox.uk with your session ID: ${sessionId}`);
       }
-      pollScan();
-    });
+    }
+
+    void activate();
   </script>
 </body>
 </html>

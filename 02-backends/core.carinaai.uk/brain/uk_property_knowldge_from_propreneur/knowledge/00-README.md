@@ -2,7 +2,7 @@
 
 **Purpose:** Carina AI training corpus, help documentation, and system reference for the Propreneur property investment management platform.
 
-**Last updated:** 2026-05-20 (added `152-promo-codes-vs-referral-codes.md` for Carina billing/referral guidance)
+**Last updated:** 2026-06-05 (compliance module knowledge docs 94-105, 189)
 
 ## Directory Structure
 
@@ -14,7 +14,24 @@
 | `04-deals.md` | Deal engine / deal analysis module |
 | `05-crm.md` | Contact management (CRM) |
 | `06-pipeline.md` | Deal pipeline / kanban board |
-| `07-compliance.md` | Compliance (certificates, AML, complaints, requirements, regulatory profile, PDF export) |
+| `07-compliance.md` | Compliance hub (certificates, AML, complaints, requirements, regulatory profile, PDF export; index to module docs below) |
+| `94-compliance-audit-framework.md` | Compliance audit lifecycle (plans, findings, remedial actions) |
+| `95-staff-compliance-training.md` | Staff mandatory training, MLR 2017 reg 24, RAG and certificate expiry |
+| `96-tenancy-agreement-compliance.md` | TenancyAgreement legal compliance (deposit, Section 8/21, right to rent) |
+| `97-regulation-registry.md` | UK regulation registry and twelve seeded regulations |
+| `98-hmo-licensing-workflow.md` | HMO licensing workflow, Article 4, renewal, overcrowding |
+| `98-rra-2025-compliance-centre.md` | RRA 2025 hub: PRS database, ombudsman, Decent Homes, pre-tenancy payments |
+| `98-property-inspection-evidence.md` | Property inspections, defects, tenant notice service log |
+| `99-hhsrs-hazard-assessment.md` | HHSRS 29 hazards, scoring formula, Category 1 and 2 |
+| `100-fire-risk-assessment-full.md` | Fire risk assessments (FSO), defects, evacuation strategy |
+| `102-enforcement-action-defence.md` | Enforcement defence centre, penalties, RRO, tribunal |
+| `104-rent-review-section-13.md` | Section 13 rent reviews and First-tier Tribunal |
+| `105-selective-licensing.md` | Selective licensing schemes vs HMO licensing |
+| `189-asbestos-water-safety.md` | Asbestos duty to manage, legionella L8, water hygiene logs |
+| `165-hmo-licensing-uk.md` | HMO licensing Carina primer |
+| `166-hmo-fire-safety-carina.md` | HMO routine fire safety logs |
+| `167-rra-2025-hmo-guide.md` | Renters Rights Act 2025 HMO operator guide |
+| `117-compliance-deep.md` | Compliance module feature overview (legacy deep doc) |
 | `08-carina.md` | Carina AI assistant - architecture, providers, RAG, platform agentic + security (53-55), conversation insight extraction (56) |
 | `09-auth.md` | Tenant authentication, password reset, security |
 | `10-tenancy.md` | Multi-tenancy system (stancl/tenancy v3.10) |

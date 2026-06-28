@@ -112,6 +112,20 @@ export async function loadPackSkills(packName: string): Promise<number> {
     await saveSkill(skill);
     loaded++;
   }
+
+  if (packName === 'property-uk') {
+    const brain = await import('./brain-knowledge-skills.js');
+    if (brain.isBrainKnowledgeSkillsEnabled()) {
+      const brainSkills = await brain.loadGeneratedBrainKnowledgeSkills();
+      if (brainSkills.length > 0) {
+        const names = activeSkillNamesCache.get(packName) ?? new Set<string>();
+        for (const skill of brainSkills) names.add(skill.name);
+        activeSkillNamesCache.set(packName, names);
+        loaded += await brain.loadBrainKnowledgeSkillsIntoStore();
+      }
+    }
+  }
+
   return loaded;
 }
 

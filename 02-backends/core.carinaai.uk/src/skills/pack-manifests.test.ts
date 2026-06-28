@@ -10,7 +10,7 @@ const EXTRACTED_PACKS_DIR = path.resolve(
   '../../packages/packs',
 );
 
-const EXTRACTED_PACKS = ['property-uk', 'healthcare', 'borehole-africa'];
+const EXTRACTED_PACKS = ['property-uk', 'healthcare', 'borehole-africa', 'research-analysis'];
 
 const NEWLY_PUBLISHED = [
   'data-science',

@@ -3,31 +3,35 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>Checkout - Labyrinth Scout</title>
+    <title>Subscribe to Scout</title>
     <link rel="stylesheet" href="/pricing/pricing.css">
   </head>
   <body>
     <main class="shell">
       <nav class="nav"><a class="brand" href="/pricing">Carina<span style="color: var(--amber)">.</span></a></nav>
       <p class="eyebrow">Checkout</p>
-      <h1>Start in Carina. Add Scout when the workflow needs control.</h1>
-      <p class="lead">Carina is the workspace. Scout is the production layer that keeps client data, audit logs, and operator actions inside a controlled boundary.</p>
+      <h1>Subscribe to Scout</h1>
+      <p class="lead">Create your Scout account, then continue to secure payment.</p>
       <form class="form" id="checkout-form">
+        <h2 style="font-size: 28px; margin-bottom: 4px;">Create your Scout account</h2>
+        <p class="notice" style="margin-top: 0;">Enter your email and choose a password. We will create your account and take you to payment.</p>
         <div class="field">
           <label for="plan">Plan</label>
           <select id="plan" name="plan" disabled>
             <option>Loading plans...</option>
           </select>
         </div>
-        <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" required></div>
-        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" required></div>
-        <button class="btn" type="submit">Continue to Stripe</button>
+        <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="email"></div>
+        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" required autocomplete="new-password"></div>
+        <button class="btn" type="submit">Continue to payment</button>
+        <p class="notice">After payment, you will receive a setup link by email.</p>
         <p class="notice" id="message"></p>
       </form>
     </main>
     <script>
+      const SCOUT_CONSOLE = 'https://console.labyrinthscout.com';
       const planAliases = {
-        scout_govern: 'scout_monitor',
+        scout_govern: 'scout_pro',
         scout_standard: 'scout_pro',
       };
 
@@ -56,7 +60,7 @@
         } catch (_err) {
           planSelect.innerHTML = [
             '<option value="scout_monitor">Scout Monitor - £49/month (visibility)</option>',
-            '<option value="scout_pro">Scout Govern - £79/month (full control)</option>',
+            '<option value="scout_pro">Scout Govern - £79/month (control)</option>',
           ].join('');
           planSelect.value = defaultPlan === 'scout_monitor' ? 'scout_monitor' : 'scout_pro';
         } finally {
@@ -69,24 +73,30 @@
       document.getElementById('checkout-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
+        const selectedPlan = String(form.get('plan') || 'scout_pro');
         message.textContent = 'Creating checkout session...';
-        const res = await fetch('/api/billing/checkout/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            plan: form.get('plan'),
-            email: form.get('email'),
-            password: form.get('password'),
-            successUrl: `${window.location.origin}/billing/success`,
-            cancelUrl: `${window.location.origin}/checkout?plan=${form.get('plan')}`
-          })
-        });
-        const body = await res.json();
-        if (!res.ok) {
-          message.textContent = body.error || 'Checkout failed';
-          return;
+        message.style.color = '';
+        try {
+          const res = await fetch('/api/billing/checkout/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              plan: selectedPlan,
+              email: form.get('email'),
+              password: form.get('password'),
+              successUrl: `${SCOUT_CONSOLE}/onboard?session={CHECKOUT_SESSION_ID}`,
+              cancelUrl: `${window.location.origin}/checkout?plan=${selectedPlan}`,
+            }),
+          });
+          const body = await res.json();
+          if (!res.ok) {
+            message.textContent = body.error || 'Checkout failed';
+            return;
+          }
+          window.location.href = body.url;
+        } catch (_err) {
+          message.textContent = 'Something went wrong. Try again or email contact@verlox.uk.';
         }
-        window.location.href = body.url;
       });
     </script>
   </body>

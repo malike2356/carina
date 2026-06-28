@@ -1,10 +1,17 @@
+import { redirect } from 'next/navigation';
 import { BillingClient } from '@/components/billing/BillingClient';
-import { getBrandForCurrentRequest } from '@/lib/server-brand';
+import { getBrandForCurrentRequest, getRequestHostname } from '@/lib/server-brand';
 import { buildBrandedPlanOptions } from '@/lib/billing-presentment';
+import { isAivaProductHost } from '@/lib/product-surface';
 import { getUsageTotals } from '@/lib/quota';
 import { requireSession, requireWorkspace } from '@/lib/session';
 
 export default async function BillingPage() {
+  const hostname = await getRequestHostname();
+  if (isAivaProductHost(hostname)) {
+    redirect('/billing/aiva');
+  }
+
   const session = await requireSession();
   const workspace = await requireWorkspace(session.user.id);
   const usage = await getUsageTotals(workspace);

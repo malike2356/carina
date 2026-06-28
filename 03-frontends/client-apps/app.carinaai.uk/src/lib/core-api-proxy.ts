@@ -3,7 +3,7 @@ import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/c
 
 const FORWARD_REQUEST_HEADERS = ['accept', 'accept-language', 'content-type', 'cookie'] as const;
 
-function proxyHeaders(request: Request): Headers {
+function proxyHeaders(request: Request, extra?: Record<string, string>): Headers {
   const token = resolveCoreProxyToken();
   const headers = new Headers();
   for (const name of FORWARD_REQUEST_HEADERS) {
@@ -13,6 +13,11 @@ function proxyHeaders(request: Request): Headers {
   if (token) {
     headers.set('authorization', `Bearer ${token}`);
     headers.set('x-internal-key', token);
+  }
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      headers.set(key, value);
+    }
   }
   return headers;
 }
@@ -25,10 +30,17 @@ function sanitizeProxyResponseHeaders(headers: Headers): Headers {
   return next;
 }
 
-export async function proxyToCoreApi(request: Request, pathname: string): Promise<Response> {
+export async function proxyToCoreApi(
+  request: Request,
+  pathname: string,
+  extraHeaders?: Record<string, string>,
+): Promise<Response> {
   if (!coreProxyEnabled()) {
     return NextResponse.json(
-      { error: 'Core proxy is not configured.' },
+      {
+        error:
+          'Core proxy not configured. Set CARINA_USE_CORE_PROXY=true and CARINA_OPS_TOKEN.',
+      },
       { status: 503 },
     );
   }
@@ -39,7 +51,7 @@ export async function proxyToCoreApi(request: Request, pathname: string): Promis
 
   const init: RequestInit = {
     method: request.method,
-    headers: proxyHeaders(request),
+    headers: proxyHeaders(request, extraHeaders),
     redirect: 'manual',
   };
 

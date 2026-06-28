@@ -74,7 +74,7 @@ export const config = {
     sandboxEnabled: optional('SCOUT_SANDBOX_ENABLED', 'false') === 'true',
   },
   carina: {
-    apiUrl: optional('CARINA_API_URL'),
+    apiUrl: optional('CARINA_API_URL', 'https://core.carinaai.uk').replace(/\/+$/, ''),
     opsToken: optional('CARINA_OPS_TOKEN'),
   },
   alerts: {

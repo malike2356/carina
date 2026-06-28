@@ -36,6 +36,10 @@ if [[ -f .env.ops.runtime ]]; then
 fi
 if [[ -f .env.cloud.runtime ]]; then
   python3 docker/scripts/sync-cloud-env.py
+elif [[ -f .env.docker.runtime ]]; then
+  echo "WARN: .env.cloud.runtime missing; creating from sync-cloud-env defaults." >&2
+  touch .env.cloud.runtime
+  python3 docker/scripts/sync-cloud-env.py
 fi
 
 if [[ -d /home/malike/apps/ops.carinaai.uk ]]; then
@@ -55,7 +59,7 @@ if [[ ! -f "${SSL_DIR}/ssl-dhparams.pem" ]]; then
 fi
 
 echo "[1/4] Starting database services..."
-docker compose -f "${COMPOSE_FILE}" up -d postgres redis
+docker compose -f "${COMPOSE_FILE}" up -d postgres redis pgbouncer
 
 echo "[2/4] Ensuring TLS certificates..."
 if [[ ! -f "${CERT_PATH}" ]]; then
@@ -68,15 +72,24 @@ else
   echo "  Using existing certificate at ${CERT_PATH}"
 fi
 
-echo "[3/4] Starting application stack..."
-docker compose -f "${COMPOSE_FILE}" up -d --build
+echo "[3/4] Starting application stack (atomic tagged deploy)..."
+if [[ "${CARINA_SKIP_ATOMIC_DEPLOY:-0}" == "1" ]]; then
+  if [[ "${CARINA_REBUILD_AGENT:-0}" == "1" ]]; then
+    docker compose -f "${COMPOSE_FILE}" up -d --build
+  else
+    docker compose -f "${COMPOSE_FILE}" build carina-ops carina-cloud
+    docker compose -f "${COMPOSE_FILE}" up -d
+  fi
+else
+  bash "${ROOT_DIR}/docker/scripts/deploy-atomic.sh"
+fi
 
 echo "[4/4] Waiting for carina-web health..."
 for _ in $(seq 1 30); do
   if docker compose -f "${COMPOSE_FILE}" exec -T carina-web supervisorctl -c /app/docker/supervisor/supervisord.conf status carina-core 2>/dev/null | grep -q RUNNING; then
     if docker compose -f "${COMPOSE_FILE}" exec -T carina-web /usr/local/bin/carina-healthcheck; then
       echo "carina-web is healthy"
-      docker compose -f "${COMPOSE_FILE}" exec -T carina-web supervisorctl -c /app/docker/supervisor/supervisord.conf status
+      docker compose -f "${COMPOSE_FILE}" exec -T carina-web supervisorctl -c /app/docker/supervisor/supervisord.conf status || true
       break
     fi
   fi

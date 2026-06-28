@@ -1,6 +1,6 @@
 # Carina AI Assistant
 
-**Last updated:** 2026-05-15
+**Last updated:** 2026-06-24
 
 ## Overview
 Carina is the embedded AI assistant inside Propreneur - chat interface providing investment analysis, property insights, deal evaluation, and UK property knowledge. Multi-provider architecture with priority-based fallback chain.
@@ -107,3 +107,35 @@ Voice input via MediaRecorder → `CarinaSpeechTranscriptionService` → OpenAI/
 - `78-carina-agentic-architecture.md` - agent tool detail
 - `59-carina-propreneur-full-codex.md` - system intelligence
 - `config/ai.php` - provider and persona config
+- `carina/01-devends/planning/operations/BRAIN_SYNC.md` - sync this knowledge tree to Carina standalone (property-uk pack)
+
+## Carina in Propreneur vs Aiva workers (standalone)
+
+Two products, one knowledge family. **Propreneur Carina** is the in-app agent with tenant tools and CRM writes. **Carina Aiva** is the fleet worker on Telegram/WhatsApp with optional read access to Propreneur via HTTP bridge.
+
+| Capability | Propreneur `/carina` | Carina Aiva worker |
+|------------|----------------------|-------------------|
+| Runtime | `CarinaAgentService` (PHP) | Carina core (Node) |
+| CRM / pipeline writes | Yes (confirmation gates) | Propose only; admin approves in review queue |
+| Calculators, tenant tools | Yes | No |
+| Telegram / WhatsApp delivery | Via Carina Remote (optional) | Native channel adapters |
+| Daily portfolio brief | Propreneur scheduled digest (optional) | `AIVA_DAILY_SUMMARY_ENABLED` + bridge |
+| Email ingestion owner | **Settings → Email ingestion** (IMAP) | Carina IMAP only if PP does not poll same mailbox |
+| Property RAG | `rag:ingest-brain-knowledge` | property-uk pack (synced brain mirror) |
+| Scout audit on tools | Platform + tenant security stack | Scout fleet (`LABYRINTH_ENABLED`) |
+
+**Bridge (read-only, Phase 1):** When `aiva_external_bridge` is on for the tenant and the Aiva is bound (tenant slug + Carina Remote API key), Carina calls:
+
+| Method | Path |
+|--------|------|
+| GET | `/api/aiva-bridge/portfolio` |
+| GET | `/api/aiva-bridge/properties/{id}` |
+| GET | `/api/aiva-bridge/properties/{id}/compliance` |
+| GET | `/api/aiva-bridge/deals` |
+| GET | `/api/aiva-bridge/email-activity?hours=24` |
+
+**Operator guide:** `carina/01-devends/planning/operations/CARINA_PROPRENEUR_COMPLEMENT_GUIDE.md`  
+**Pilot checklist:** `carina/01-devends/planning/operations/PILOT_AIVA_BRIDGE_ONBOARDING_CHECKLIST.md`  
+**Bridge detail:** `brain/knowledge/132-aiva-propreneur-bridge-phase1.md`
+
+Both surfaces share this `brain/knowledge/` corpus after sync; they do not share one agent engine. Do not deprecate in-app Carina in favour of Aiva.

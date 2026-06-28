@@ -40,6 +40,7 @@
   --color-accent: var(--primary);
   --color-accent-dim: color-mix(in srgb, var(--primary) 18%, transparent);
   --color-accent-hover: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-danger: var(--destructive);
   --color-danger-dim: color-mix(in srgb, var(--destructive) 18%, transparent);
   --color-bubble-user: color-mix(in srgb, var(--primary) 16%, var(--card));

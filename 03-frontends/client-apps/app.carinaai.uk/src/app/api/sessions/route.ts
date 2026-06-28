@@ -3,7 +3,8 @@ import { and, desc, eq, ilike, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatMessages, chatSessions } from '@/db/schema';
 import { getSession, requireWorkspace } from '@/lib/session';
-import { getOrCreateSession } from '@/lib/chat-sessions';
+import { createChatSession, getOrCreateSession } from '@/lib/chat-sessions';
+import { getWorkspaceProfile } from '@/lib/workspace-profiles';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,10 +55,28 @@ export async function GET(request: Request) {
   return NextResponse.json({ data: sessions, page, hasMore: sessions.length === limit });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const workspace = await requireWorkspace(session.user.id);
+
+  const body = (await request.json().catch(() => ({}))) as { profileId?: string };
+  const profileId = String(body.profileId ?? '').trim();
+
+  if (profileId) {
+    const profile = await getWorkspaceProfile(workspace.id, profileId);
+    if (!profile) {
+      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+    }
+    const id = await createChatSession(workspace.id, {
+      title: profile.name,
+      profileId: profile.id,
+      provider: profile.provider,
+      model: profile.model,
+    });
+    return NextResponse.json({ data: { id } });
+  }
+
   const id = await getOrCreateSession(workspace.id, null);
   return NextResponse.json({ data: { id } });
 }

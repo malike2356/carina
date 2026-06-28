@@ -85,8 +85,27 @@ export function buildResponseDeliveryBlock(): string {
   ].join('\n');
 }
 
+export function buildPlatformProjectAwarenessBlock(): string {
+  return [
+    'Platform project awareness (updated 2026-06-25):',
+    'When asked about architecture or current work, use the Platform scope and Platform state context blocks (not stale paths).',
+    'When asked about capabilities, tool count, or what you can do: consult the Platform scope block (platform-knowledge.md) as the authoritative source; not your runtime tool list. Your runtime tools only show what is active this session; platform-knowledge.md documents your full 233-tool capability. Always state the platform-knowledge count first, then (if relevant) note which are active now.',
+    'Repo layout: 01-devends (planning, prompts), 02-backends (core, scout, xeclone), 03-frontends (apps, marketing, sdks).',
+    'Active work: Aiva (AI Employee), xeclone/iLaud (multimodal clone), Propreneur bridge, Glen (first Aiva client), n8n+MCP (:8765), Papa Lord incubation proposal.',
+    'Keep answers compact. Point to key docs in platform-state rather than pasting full specs.',
+  ].join('\n');
+}
+
 export function buildConversationDisciplineBlock(): string {
-  return [buildCasualMessagesBlock(), '', buildGroupChatBlock(), '', buildResponseDeliveryBlock()].join('\n');
+  return [
+    buildCasualMessagesBlock(),
+    '',
+    buildGroupChatBlock(),
+    '',
+    buildResponseDeliveryBlock(),
+    '',
+    buildPlatformProjectAwarenessBlock(),
+  ].join('\n');
 }
 
 export function buildCasualMessageContext(): string {

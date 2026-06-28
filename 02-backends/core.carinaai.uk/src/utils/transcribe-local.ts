@@ -4,14 +4,28 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
 const PYTHON_SCRIPT = `
-import sys, json, os
+import sys, json, os, subprocess
+
+def prepare_audio(path):
+    ext = os.path.splitext(path)[1].lower()
+    if ext == '.wav':
+        return path
+    wav_path = path + '.prep.wav'
+    result = subprocess.run(
+        ['ffmpeg', '-y', '-i', path, '-ar', '16000', '-ac', '1', wav_path],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode == 0 and os.path.isfile(wav_path) and os.path.getsize(wav_path) > 44:
+        return wav_path
+    return path
 
 def main():
     if len(sys.argv) < 2:
         print(json.dumps({"error": "no audio path provided"}))
         return
 
-    audio_path = sys.argv[1]
+    audio_path = prepare_audio(sys.argv[1])
     language = sys.argv[2] if len(sys.argv) > 2 else None
 
     try:
@@ -25,7 +39,13 @@ def main():
         model_dir = os.path.join(cache_dir, "whisper-models")
         os.makedirs(model_dir, exist_ok=True)
         model = WhisperModel("tiny", device="cpu", compute_type="int8", download_root=model_dir)
-        segments, _ = model.transcribe(audio_path, language=language, beam_size=5)
+        segments, _ = model.transcribe(
+            audio_path,
+            language=language,
+            beam_size=5,
+            vad_filter=False,
+            condition_on_previous_text=False,
+        )
         text = " ".join(s.text.strip() for s in segments).strip()
         if not text:
             print(json.dumps({"error": "empty transcription"}))

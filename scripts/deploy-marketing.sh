@@ -45,22 +45,22 @@ mirror_docs_clean_urls() {
 build_carina_docs() {
   log "Building Carina docs for carinaai.uk/docs (Docusaurus)..."
   (
-    cd "${REPO_ROOT}/frontends/marketing/docs.carinaai.uk"
+    cd "${REPO_ROOT}/03-frontends/marketing/docs.carinaai.uk"
     CARINA_DOCS_MARKETING=1 pnpm build
-    rm -rf "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
-    cp -a build "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
-    mirror_docs_clean_urls "${REPO_ROOT}/frontends/marketing/carinaai.uk/docs"
+    rm -rf "${REPO_ROOT}/03-frontends/marketing/carinaai.uk/docs"
+    cp -a build "${REPO_ROOT}/03-frontends/marketing/carinaai.uk/docs"
+    mirror_docs_clean_urls "${REPO_ROOT}/03-frontends/marketing/carinaai.uk/docs"
   )
 }
 
 build_scout_docs() {
   log "Building Scout docs (base /docs/)..."
   (
-    cd "${REPO_ROOT}/internal/servers/console.labyrinthscout.com"
+    cd "${REPO_ROOT}/02-backends/console.labyrinthscout.com"
     VP_BASE=/docs/ pnpm docs:build
-    rm -rf "${REPO_ROOT}/frontends/marketing/labyrinthscout.com/docs"
-    cp -a docs/.vitepress/dist "${REPO_ROOT}/frontends/marketing/labyrinthscout.com/docs"
-    mirror_docs_clean_urls "${REPO_ROOT}/frontends/marketing/labyrinthscout.com/docs"
+    rm -rf "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com/docs"
+    cp -a docs/.vitepress/dist "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com/docs"
+    mirror_docs_clean_urls "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com/docs"
   )
 }
 
@@ -101,21 +101,21 @@ main() {
   case "$target" in
     carina)
       build_carina_docs
-      deploy_site "carinaai.uk" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
-      deploy_site "carinaai.uk-docker" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
+      deploy_site "carinaai.uk" "${REPO_ROOT}/03-frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
+      deploy_site "carinaai.uk-docker" "${REPO_ROOT}/03-frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
       reload_carina_marketing_nginx
       ;;
     scout)
       build_scout_docs
-      deploy_site "labyrinthscout.com" "${REPO_ROOT}/frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
+      deploy_site "labyrinthscout.com" "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
     all)
       build_carina_docs
       build_scout_docs
-      deploy_site "carinaai.uk" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
-      deploy_site "carinaai.uk-docker" "${REPO_ROOT}/frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
+      deploy_site "carinaai.uk" "${REPO_ROOT}/03-frontends/marketing/carinaai.uk" "/www/wwwroot/carinaai.uk"
+      deploy_site "carinaai.uk-docker" "${REPO_ROOT}/03-frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
       reload_carina_marketing_nginx
-      deploy_site "labyrinthscout.com" "${REPO_ROOT}/frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
+      deploy_site "labyrinthscout.com" "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
     *)
       die "Usage: bash scripts/deploy-marketing.sh [carina|scout|all]"

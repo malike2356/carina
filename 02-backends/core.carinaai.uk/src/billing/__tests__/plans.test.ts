@@ -12,8 +12,13 @@ describe('billing plans', () => {
     expect(normalizePlanId('unknown-plan')).toBe('free');
   });
 
-  it('normalizePlanId maps legacy Scout governance plans to Monitor', () => {
-    expect(normalizePlanId('scout_govern')).toBe('scout_monitor');
+  it('normalizePlanId maps scout_govern to Scout Govern (scout_pro)', () => {
+    expect(normalizePlanId('scout_govern')).toBe('scout_pro');
+  });
+
+  it('resolveStripePriceId maps scout_govern to STRIPE_PRICE_SCOUT_GOVERN', () => {
+    process.env.STRIPE_PRICE_SCOUT_GOVERN = 'price_govern_test';
+    expect(resolveStripePriceId('scout_govern')).toBe('price_govern_test');
   });
 
   it('resolveStripePriceId reads Carina Ops env vars', () => {

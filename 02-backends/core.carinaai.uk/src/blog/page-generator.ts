@@ -357,7 +357,7 @@ ${page === 1 ? renderHero(count) : renderCompactHeader(`Page ${page}`, `Older en
   <main class="ir-main">
     ${renderArchiveBar(grouped)}
     <div class="ir-toolbar">
-      <h2>${page === 1 ? 'Latest incidents' : `Incidents ${start}${end > start ? `–${end}` : ''}`}</h2>
+      <h2>${page === 1 ? 'Latest incidents' : `Incidents ${start}${end > start ? `-${end}` : ''}`}</h2>
       <div class="ir-toolbar-meta">${count} total</div>
     </div>
     <div class="ir-feed">${feed}</div>

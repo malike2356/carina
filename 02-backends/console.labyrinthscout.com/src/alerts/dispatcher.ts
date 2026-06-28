@@ -14,6 +14,7 @@ import { loadDispatchChannels } from '../lib/alert-channels.js';
 import { getAccountSubscriptionPlan, isScoutProPlan } from '../lib/subscription-plan.js';
 import { shouldSuppress } from './throttle.js';
 import { scheduleEscalation } from './escalation.js';
+import { getConnectorRouter } from '../connectors/router.js';
 
 const ADAPTERS: Record<string, AlertAdapter> = {
   telegram: new TelegramAdapter(),
@@ -83,7 +84,10 @@ function parseChannel(row: AlertChannelRow): AlertChannel | null {
 }
 
 export const alertDispatcher = {
-  async dispatch(event: SecurityEvent, opts?: { accountId?: string }): Promise<void> {
+  async dispatch(
+    event: SecurityEvent,
+    opts?: { accountId?: string; metadata?: Record<string, unknown> },
+  ): Promise<void> {
     if (opts?.accountId) {
       const plan = await getAccountSubscriptionPlan(opts.accountId);
       if (!isScoutProPlan(plan)) {
@@ -126,6 +130,17 @@ export const alertDispatcher = {
         );
       }
     });
+
+    if (opts?.accountId) {
+      const connectorRouter = getConnectorRouter();
+      const metadata = opts.metadata ?? {};
+      const pushAlert = NEVER_THROTTLE_EVENT_TYPES.has(event.event_type);
+      void connectorRouter
+        .pushFromSecurityEvent(event, opts.accountId, metadata, { pushAlert })
+        .catch((err) => {
+          console.error('[AlertDispatcher] Connector routing error:', err);
+        });
+    }
   },
 };
 

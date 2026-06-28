@@ -1,0 +1,38 @@
+{
+  "name": "research-analysis",
+  "version": "1.1.0",
+  "description": "Statistical analysis for research - descriptive and inferential statistics with APA formatting. Supports SPSS, PSPP, Jamovi, and Python-based analysis.",
+  "author": "VERLOX",
+  "category": "academic",
+  "optional": true,
+  "skillCount": 5,
+  "tags": ["statistics", "research", "spss", "analysis", "academic"],
+  "tier": "free",
+  "requires": {
+    "python": ">=3.10",
+    "pip": ["pyreadstat>=1.2", "pandas>=2.0", "scipy>=1.11", "statsmodels>=0.14", "numpy>=1.24"]
+  },
+  "optionalRequirements": {
+    "commands": ["pspp", "Rscript"],
+    "services": ["jamovi (jmvconnect)"]
+  },
+  "tools": [
+    "stats_describe",
+    "stats_compare_groups",
+    "stats_correlation",
+    "stats_regression",
+    "stats_chi_square",
+    "stats_normality",
+    "stats_posthoc",
+    "pspp_analyze",
+    "jamovi_analyze",
+    "r_analyze",
+    "sav_read",
+    "sav_write",
+    "spss_syntax_generate",
+    "spss_output_parse",
+    "spv_read",
+    "apa_format"
+  ],
+  "homepage": "https://carinaai.uk/docs/user/skill-packs/research-analysis"
+}

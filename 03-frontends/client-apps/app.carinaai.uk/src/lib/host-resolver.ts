@@ -6,12 +6,15 @@ import {
   isCanonicalAppHost,
   normaliseCustomDomainHostname,
 } from '@/lib/custom-domains';
+import { isAivaProductHost, type ProductSurface } from '@/lib/product-surface';
 import { normalizeBrandConfig, resolveWorkspaceBrand, type ResolvedBrand } from '@/lib/brand';
 
 export type HostBrandContext = {
   hostname: string;
   isCanonical: boolean;
   isCustomDomain: boolean;
+  isAivaProduct: boolean;
+  productSurface: ProductSurface;
   workspaceId: string | null;
   canonicalHost: string;
   resolvedBrand: ResolvedBrand;
@@ -32,11 +35,26 @@ export async function resolveHostBrandContext(hostname: string): Promise<HostBra
   const host = normaliseCustomDomainHostname(hostname);
   const canonicalHost = canonicalAppHost();
 
+  if (isAivaProductHost(host)) {
+    return {
+      hostname: host,
+      isCanonical: true,
+      isCustomDomain: false,
+      isAivaProduct: true,
+      productSurface: 'aiva',
+      workspaceId: null,
+      canonicalHost: host,
+      resolvedBrand: resolveWorkspaceBrand({ mode: 'aiva' }),
+    };
+  }
+
   if (isCanonicalAppHost(host)) {
     return {
       hostname: host,
       isCanonical: true,
       isCustomDomain: false,
+      isAivaProduct: false,
+      productSurface: 'cloud',
       workspaceId: null,
       canonicalHost,
       resolvedBrand: resolveWorkspaceBrand({ mode: 'hosted' }),
@@ -49,6 +67,8 @@ export async function resolveHostBrandContext(hostname: string): Promise<HostBra
       hostname: host,
       isCanonical: false,
       isCustomDomain: false,
+      isAivaProduct: false,
+      productSurface: 'cloud',
       workspaceId: null,
       canonicalHost,
       resolvedBrand: resolveWorkspaceBrand({ mode: 'hosted' }),
@@ -70,6 +90,8 @@ export async function resolveHostBrandContext(hostname: string): Promise<HostBra
     hostname: host,
     isCanonical: domain.isCanonical,
     isCustomDomain: true,
+    isAivaProduct: false,
+    productSurface: 'cloud',
     workspaceId: domain.workspaceId,
     canonicalHost: domain.isCanonical ? domain.hostname : canonicalHost,
     resolvedBrand,

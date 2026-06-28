@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Panel } from '@/components/ui/Panel';
 import { Spinner } from '@/components/ui/Spinner';
+import { CarinaEditor } from '@/components/editor';
 import { cn } from '@/lib/utils';
 
 interface Memory {
@@ -244,19 +245,13 @@ export function MemoryPanel({ onClose, embedded = true }: MemoryPanelProps) {
                     <div className="min-w-0 flex-1">
                       {editingId === memory.id ? (
                         <div className="flex flex-col gap-1.5">
-                          <textarea
+                          <CarinaEditor
                             value={editDraft}
-                            onChange={(event) => setEditDraft(event.target.value)}
-                            autoFocus
-                            rows={3}
-                            className="w-full resize-none rounded border border-border-focus bg-elevated px-2 py-1.5 text-xs text-text-primary focus:outline-none"
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' && !event.shiftKey) {
-                                event.preventDefault();
-                                void commitEdit(memory.id);
-                              }
-                              if (event.key === 'Escape') setEditingId(null);
-                            }}
+                            onChange={setEditDraft}
+                            variant="compact"
+                            minHeight="5rem"
+                            showEngineSwitch={false}
+                            showToolbar={false}
                           />
                           <div className="flex gap-1">
                             <button
@@ -356,9 +351,9 @@ export function MemoryPanel({ onClose, embedded = true }: MemoryPanelProps) {
                 {newType === 'contact' && '- a person or organisation'}
               </span>
             </label>
-            <textarea
+            <CarinaEditor
               value={newContent}
-              onChange={(event) => setNewContent(event.target.value)}
+              onChange={setNewContent}
               placeholder={
                 newType === 'fact'
                   ? 'e.g. I focus on buy-to-let properties in South Manchester'
@@ -368,12 +363,9 @@ export function MemoryPanel({ onClose, embedded = true }: MemoryPanelProps) {
                       ? 'e.g. Never quote a rental yield below 5% as acceptable'
                       : 'e.g. Sarah Chen - tenant in Flat 2, lease ends March 2027'
               }
-              rows={4}
-              autoFocus
-              className="w-full resize-none rounded-lg border border-border bg-elevated px-3 py-2.5 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-focus"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && event.metaKey) void addMemory();
-              }}
+              variant="compact"
+              minHeight="6rem"
+              showEngineSwitch={false}
             />
             <p className="mt-1 text-[10px] text-text-muted">Cmd+Enter to save</p>
           </div>
@@ -396,15 +388,15 @@ export function MemoryPanel({ onClose, embedded = true }: MemoryPanelProps) {
               Paste text with one memory per line. Each line becomes a separate fact.
               You can also paste from a .txt or .md file.
             </p>
-            <textarea
+            <CarinaEditor
               value={importText}
-              onChange={(event) => setImportText(event.target.value)}
+              onChange={setImportText}
               placeholder={
                 'I prefer direct, concise answers\nMy target market is first-time buyers\nI work with solicitor: John Bramley at Bramley & Co'
               }
-              rows={8}
-              autoFocus
-              className="w-full resize-none rounded-lg border border-border bg-elevated px-3 py-2.5 font-mono text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-focus"
+              variant="compact"
+              minHeight="10rem"
+              showToolbar={false}
             />
             <p className="mt-1 text-[10px] text-text-muted">
               {importText.split('\n').filter((line) => line.trim().length > 3).length} memories to import

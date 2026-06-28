@@ -6,6 +6,7 @@ import { CREDIT_TOPUP_PACKS, type CreditTopupPackId } from '../plans.js';
 import { InvoiceGenerator } from '../invoice-generator.js';
 import { StripeService } from '../stripe-service.js';
 import { SubscriptionManager } from '../subscription-manager.js';
+import { handleAivaWebhookEvent, isAivaStripeEvent } from './aiva-stripe-events.js';
 
 export class StripeWebhookHandler {
   constructor(
@@ -18,6 +19,11 @@ export class StripeWebhookHandler {
     const existing = await pool.query('SELECT id FROM stripe_events WHERE id = $1', [event.id]);
     if ((existing.rowCount ?? 0) > 0) return;
     await pool.query('INSERT INTO stripe_events (id, type, received_at) VALUES ($1, $2, NOW())', [event.id, event.type]);
+
+    if (await isAivaStripeEvent(event)) {
+      await handleAivaWebhookEvent(event);
+      return;
+    }
 
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -33,7 +39,8 @@ export class StripeWebhookHandler {
       return;
     }
     if (event.type === 'customer.subscription.deleted') {
-      await this.subscriptions.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+      const subscription = event.data.object as Stripe.Subscription;
+      await this.subscriptions.handleSubscriptionDeleted(subscription);
       return;
     }
     if (event.type === 'invoice.payment_failed') {
@@ -51,7 +58,9 @@ export class StripeWebhookHandler {
       return;
     }
     if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
-      await this.invoices.recordStripeInvoice(event.data.object as Stripe.Invoice);
+      const invoice = event.data.object as Stripe.Invoice;
+      await this.invoices.recordStripeInvoice(invoice);
+      return;
     }
   }
 

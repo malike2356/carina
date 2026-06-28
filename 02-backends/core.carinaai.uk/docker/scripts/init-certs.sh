@@ -11,12 +11,16 @@ DOMAINS=(
   "carinaai.uk"
   "www.carinaai.uk"
   "app.carinaai.uk"
+  "aiva.carinaai.uk"
   "doc.carinaai.uk"
   "docs.carinaai.uk"
   "hub.carinaai.uk"
   "skills.carinaai.uk"
   "install.carinaai.uk"
   "ops.carinaai.uk"
+  "hireaiva.co.uk"
+  "www.hireaiva.co.uk"
+  "admin.hireaiva.co.uk"
 )
 
 cd "${ROOT_DIR}"

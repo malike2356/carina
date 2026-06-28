@@ -150,3 +150,13 @@ export async function createClientOrganizationForPartner(input: {
 export function newPartnerApiKey(): string {
   return `prt_${crypto.randomBytes(24).toString('hex')}`;
 }
+
+export async function getPartnerIdForOrg(orgId: string): Promise<string | null> {
+  const result = await pool.query(
+    'SELECT partner_id FROM organizations WHERE id = $1 LIMIT 1',
+    [orgId],
+  );
+  if ((result.rowCount ?? 0) === 0) return null;
+  const row = result.rows[0] as { partner_id?: string | null };
+  return row.partner_id ? String(row.partner_id) : null;
+}

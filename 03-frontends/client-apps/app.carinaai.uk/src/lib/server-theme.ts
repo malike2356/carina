@@ -6,6 +6,7 @@ import {
   themeStylesheetHref,
   type ThemeMode,
 } from '@/lib/theme-runtime';
+import { isAivaProductHost } from '@/lib/product-surface';
 
 const AIVA_DEFAULT_THEME = 'modern-minimal';
 const AIVA_DEFAULT_MODE: ThemeMode = 'light';
@@ -23,8 +24,7 @@ export async function resolveServerThemePreference(): Promise<{ themeId: string;
   }
 
   const host = (await headers()).get('host') ?? '';
-  const isAiva = host.includes('app.carinaai.uk') || host.includes('aiva.carinaai.uk');
-  if (isAiva) {
+  if (isAivaProductHost(host)) {
     return { themeId: AIVA_DEFAULT_THEME, mode: AIVA_DEFAULT_MODE };
   }
 

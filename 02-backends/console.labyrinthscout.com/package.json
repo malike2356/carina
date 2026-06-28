@@ -9,11 +9,12 @@
   "scripts": {
     "dev": "node scripts/sync-theme.mjs && tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "node scripts/sync-theme.mjs && tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
+    "build": "node scripts/sync-theme.mjs && node scripts/sync-docs.mjs && tsc && mkdir -p dist/security dist/deception && cp src/security/injection-patterns.json dist/security/ && cp src/deception/decoy-tokens.json dist/deception/",
     "theme:sync": "node scripts/sync-theme.mjs",
     "docs:build": "vitepress build docs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:connectors:live": "SCOUT_CONNECTOR_LIVE_TESTS=true vitest run src/connectors/__tests__/live",
     "doctor": "tsx scripts/doctor.ts",
     "trust:register": "tsx scripts/register-trust-identity.ts",
     "trust:register:mainnet": "tsx scripts/register-trust-identity-mainnet.ts",

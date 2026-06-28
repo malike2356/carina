@@ -24,6 +24,7 @@ export class BillingApi {
   ) {
     this.router.use(express.json());
     this.router.post('/checkout/session', (req, res) => void this.createCheckout(req, res));
+    this.router.post('/checkout/activate-session', (req, res) => void this.activateCheckoutSession(req, res));
     this.router.get('/plans', (_req, res) => res.json({ plans: Object.values(BILLING_PLANS) }));
     this.router.get('/subscription', this.auth, (req, res) => void this.getSubscription(req as BillingRequest, res));
     this.router.post('/cancel', this.auth, (req, res) => void this.cancel(req as BillingRequest, res));
@@ -62,14 +63,67 @@ export class BillingApi {
       if (!jwt) throw new Error('Login failed');
       return { userId: jwt.userId, apiKey: login.apiKey };
     });
-    const session = await this.stripeService.createCheckoutSession({
-      tenantId: registered.userId,
-      email,
-      plan,
-      successUrl,
-      cancelUrl,
-    });
-    res.status(201).json({ id: session.id, url: session.url });
+    try {
+      const session = await this.stripeService.createCheckoutSession({
+        tenantId: registered.userId,
+        email,
+        plan,
+        successUrl,
+        cancelUrl,
+      });
+      res.status(201).json({ id: session.id, url: session.url });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('STRIPE_SECRET_KEY') || msg.includes('Missing required env var')) {
+        res.status(503).json({
+          error: 'Checkout is not yet available. Email contact@verlox.uk to subscribe.',
+        });
+        return;
+      }
+      if (msg.includes('Missing required env var: STRIPE_PRICE')) {
+        res.status(503).json({
+          error: 'Checkout is not yet available. Email contact@verlox.uk to subscribe.',
+        });
+        return;
+      }
+      console.error('[carina:billing] checkout session failed:', msg);
+      res.status(500).json({ error: 'Checkout failed' });
+    }
+  }
+
+  private async activateCheckoutSession(req: Request, res: Response): Promise<void> {
+    const sessionId = String(req.body?.sessionId ?? req.body?.session_id ?? '').trim();
+    if (!sessionId) {
+      res.status(400).json({ error: 'sessionId required' });
+      return;
+    }
+    try {
+      const session = await this.stripeService.getCheckoutSession(sessionId);
+      if (session.payment_status !== 'paid') {
+        res.status(400).json({ error: 'Payment not completed' });
+        return;
+      }
+      const tenantId = session.metadata?.tenantId;
+      if (!tenantId) {
+        res.status(400).json({ error: 'Invalid checkout session' });
+        return;
+      }
+      const existing = await this.subscriptions.getSubscription(tenantId);
+      if (!existing || existing.status !== 'active') {
+        await this.subscriptions.syncFromCheckoutSession(session);
+      }
+      res.json({ ok: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('STRIPE_SECRET_KEY') || msg.includes('Missing required env var')) {
+        res.status(503).json({
+          error: 'Checkout is not yet available. Email contact@verlox.uk to subscribe.',
+        });
+        return;
+      }
+      console.error('[carina:billing] activate session failed:', msg);
+      res.status(500).json({ error: 'Could not verify payment' });
+    }
   }
 
   private async getSubscription(req: BillingRequest, res: Response): Promise<void> {

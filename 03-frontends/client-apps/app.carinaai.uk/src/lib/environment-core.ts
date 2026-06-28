@@ -1,4 +1,4 @@
-import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
+import { resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 
 export type EnvironmentSetting = {
   key: string;
@@ -49,8 +49,9 @@ async function readJsonResponse<T>(response: Response, label: string): Promise<T
   }
 }
 
+/** True when cloud can call core /api/ops/* (token + core URL). Does not require CARINA_USE_CORE_PROXY. */
 export function environmentCoreConfigured(): boolean {
-  return coreProxyEnabled();
+  return Boolean(resolveCoreProxyToken()) && Boolean(resolveCoreUrl());
 }
 
 export async function fetchEnvironmentFromCore(): Promise<EnvironmentSummary> {

@@ -1,0 +1,1494 @@
+{
+  "generatedAt": "2026-06-24T23:18:35.055Z",
+  "entries": [
+    {
+      "sourceFile": "00-README.md",
+      "skillName": "readme",
+      "title": "Propreneur v2.0 Knowledge Base",
+      "description": "**Purpose:** Carina AI training corpus, help documentation, and system reference for the Propreneur property investment management platform.",
+      "tags": [
+        "kb-00",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "01-architecture.md",
+      "skillName": "architecture",
+      "title": "Application Architecture",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-01",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "02-dashboard.md",
+      "skillName": "dashboard",
+      "title": "Dashboard (Command Centre)",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-02",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "03-properties.md",
+      "skillName": "properties",
+      "title": "Properties (Portfolio Hub)",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "multi_property",
+        "kb-03",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "04-deals.md",
+      "skillName": "deals",
+      "title": "Deal Engine (Deal Analysis)",
+      "description": "**Last updated:** 2026-05-25 (property-first index + slide-over)",
+      "tags": [
+        "deal_engine",
+        "kb-04",
+        "carina",
+        "deals"
+      ]
+    },
+    {
+      "sourceFile": "05-crm.md",
+      "skillName": "crm",
+      "title": "CRM (Contact Management)",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "crm",
+        "kb-05"
+      ]
+    },
+    {
+      "sourceFile": "06-pipeline.md",
+      "skillName": "pipeline",
+      "title": "Pipeline (Kanban Deal Board)",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "pipeline",
+        "kb-06"
+      ]
+    },
+    {
+      "sourceFile": "07-compliance.md",
+      "skillName": "compliance",
+      "title": "Compliance Tracking",
+      "description": "**Last updated:** 2026-06-05 (sidebar navigation, property compliance panel, badge counts)",
+      "tags": [
+        "compliance",
+        "billingmodule::compliance",
+        "kb-07",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "08-carina.md",
+      "skillName": "carina",
+      "title": "Carina AI Assistant",
+      "description": "**Last updated:** 2026-06-24",
+      "tags": [
+        "carina_ai",
+        "carina_agent",
+        "kb-08",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "09-auth.md",
+      "skillName": "auth",
+      "title": "Authentication & Security",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-09"
+      ]
+    },
+    {
+      "sourceFile": "10-tenancy.md",
+      "skillName": "tenancy",
+      "title": "Multi-Tenancy System",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-10",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "100-fire-risk-assessment-full.md",
+      "skillName": "fire-risk-assessment-full",
+      "title": "Fire risk assessment (full FRA) - UK HMO",
+      "description": "Tags: `hmo`, `fire_safety`, `compliance`, `fra`, `carina`",
+      "tags": [
+        "kb-100",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "100-propreneur-v2-feature-catalogue.md",
+      "skillName": "propreneur-v2-feature-catalogue",
+      "title": "Propreneur v2 - Feature Catalogue",
+      "description": "> Living document. Append new features as they ship.",
+      "tags": [
+        "kb-100",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "101-ops-console-filament-panel.md",
+      "skillName": "ops-console-filament-panel",
+      "title": "Ops Console - Filament Platform Monitoring Panel",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-101",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "102-enforcement-action-defence.md",
+      "skillName": "enforcement-action-defence",
+      "title": "Enforcement Action Defence Centre",
+      "description": "**Last updated:** 2026-07-01 (prompt 10)",
+      "tags": [
+        "kb-102",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "102-propreneur-v2-complete-guide.md",
+      "skillName": "propreneur-v2-complete-guide",
+      "title": "Propreneur v2: The Complete User Guide",
+      "description": "---",
+      "tags": [
+        "kb-102",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "103-property-inspection-evidence.md",
+      "skillName": "property-inspection-evidence",
+      "title": "Property inspection and evidence management",
+      "description": "**Last updated:** 2026-06-05",
+      "tags": [
+        "kb-103",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "103-workspace-api-access-policy.md",
+      "skillName": "workspace-api-access-policy",
+      "title": "Workspace API access policy",
+      "description": "**Status:** Product policy (documented 2026-05-17)",
+      "tags": [
+        "kb-103",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "104-lead-funnel.md",
+      "skillName": "lead-funnel",
+      "title": "Lead Funnel",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-104",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "104-rent-review-section-13.md",
+      "skillName": "rent-review-section-13",
+      "title": "Rent review and Section 13 (RentReview model)",
+      "description": "Propreneur v2 tracks **periodic tenancy rent increases** under Section 13 of the Housing Act 1988, contractual review clauses, and voluntary rent agreements.",
+      "tags": [
+        "kb-104",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "105-accounting-finance.md",
+      "skillName": "accounting-finance",
+      "title": "Accounting & Finance",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-105"
+      ]
+    },
+    {
+      "sourceFile": "105-selective-licensing.md",
+      "skillName": "selective-licensing",
+      "title": "Selective licensing (England)",
+      "description": "Selective licensing is a power under the Housing Act 2004 (Part 3, Chapter 5). A local housing authority can designate an area where **all private rented properties** must be licensed, not only HMOs. The aim is to tackle poor property condi",
+      "tags": [
+        "kb-105",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "106-asbestos-water-safety.md",
+      "skillName": "asbestos-water-safety",
+      "title": "Asbestos register and water safety (Legionella)",
+      "description": "Tags: `asbestos`, `legionella`, `water_safety`, `compliance`, `coshh`, `carina`",
+      "tags": [
+        "kb-106",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "106-mentoring-os.md",
+      "skillName": "mentoring-os",
+      "title": "Mentoring OS",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-106"
+      ]
+    },
+    {
+      "sourceFile": "107-community-learning.md",
+      "skillName": "community-learning",
+      "title": "Community & Learning",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-107",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "108-investor-portal.md",
+      "skillName": "investor-portal",
+      "title": "Investor Portal",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-108"
+      ]
+    },
+    {
+      "sourceFile": "109-carina-agent.md",
+      "skillName": "carina-agent",
+      "title": "Carina Agent",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-109",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "11-database.md",
+      "skillName": "database",
+      "title": "Database Schema",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-11",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "110-deal-calculators.md",
+      "skillName": "deal-calculators",
+      "title": "Deal Calculators",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-110",
+        "carina",
+        "deals"
+      ]
+    },
+    {
+      "sourceFile": "111-sourcing.md",
+      "skillName": "sourcing",
+      "title": "Deal Sourcing",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-111"
+      ]
+    },
+    {
+      "sourceFile": "112-speed-to-lead.md",
+      "skillName": "speed-to-lead",
+      "title": "Speed to Lead",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-112",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "113-staff-payroll.md",
+      "skillName": "staff-payroll",
+      "title": "Staff & Payroll (Phase 1 + Phase 2 HMRC)",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-113"
+      ]
+    },
+    {
+      "sourceFile": "114-pipeline-automation.md",
+      "skillName": "pipeline-automation",
+      "title": "Pipeline Automation",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-114"
+      ]
+    },
+    {
+      "sourceFile": "115-refurbishment.md",
+      "skillName": "refurbishment",
+      "title": "Refurbishment",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-115"
+      ]
+    },
+    {
+      "sourceFile": "116-workspace-automation.md",
+      "skillName": "workspace-automation",
+      "title": "Workspace Automation",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-116"
+      ]
+    },
+    {
+      "sourceFile": "117-compliance-deep.md",
+      "skillName": "compliance-deep",
+      "title": "Compliance (Deep)",
+      "description": "**Last updated:** 2026-06-05",
+      "tags": [
+        "kb-117",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "118-property-assets-maintenance.md",
+      "skillName": "property-assets-maintenance",
+      "title": "Property Assets & Maintenance",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-118"
+      ]
+    },
+    {
+      "sourceFile": "119-works-orders.md",
+      "skillName": "works-orders",
+      "title": "Works Orders",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-119"
+      ]
+    },
+    {
+      "sourceFile": "12-ui-components.md",
+      "skillName": "ui-components",
+      "title": "UI Components & Layout",
+      "description": "**Last updated:** 2026-05-16",
+      "tags": [
+        "kb-12",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "120-projects-tasks.md",
+      "skillName": "projects-tasks",
+      "title": "Project Management module",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-120",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "121-comms-engagement.md",
+      "skillName": "comms-engagement",
+      "title": "Comms & Engagement",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-121",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "122-integrations.md",
+      "skillName": "integrations",
+      "title": "Accounting Integrations - Xero, FreeAgent, Sage, Zoho, QuickBooks",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-122"
+      ]
+    },
+    {
+      "sourceFile": "123-tenant-ai-settings.md",
+      "skillName": "tenant-ai-settings",
+      "title": "Tenant AI Settings",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-123",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "124-carina-conversation-insights.md",
+      "skillName": "carina-conversation-insights",
+      "title": "Carina Conversation Insights",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-124",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "125-subscriptions-billing.md",
+      "skillName": "subscriptions-billing",
+      "title": "Subscriptions, Billing, Trials, and Promo Codes",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-125",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "126-security-activity.md",
+      "skillName": "security-activity",
+      "title": "Security & Activity",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-126"
+      ]
+    },
+    {
+      "sourceFile": "127-backup-restore.md",
+      "skillName": "backup-restore",
+      "title": "Backup & Restore",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-127"
+      ]
+    },
+    {
+      "sourceFile": "128-referrals-waitlist.md",
+      "skillName": "referrals-waitlist",
+      "title": "Referrals & Waitlist",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-128",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "129-mobile-api.md",
+      "skillName": "mobile-api",
+      "title": "Mobile API",
+      "description": "**Last updated:** 2026-05-25 (mobile-wrapper sync)",
+      "tags": [
+        "kb-129",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "13-routes.md",
+      "skillName": "routes",
+      "title": "Route Structure",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-13",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "130-carina-provider-policy.md",
+      "skillName": "carina-provider-policy",
+      "title": "Carina provider policy (in-app vs Aiva)",
+      "description": "**Last updated:** 2026-06-24",
+      "tags": [
+        "kb-130",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "130-onboarding-journey.md",
+      "skillName": "onboarding-journey",
+      "title": "Onboarding Journey",
+      "description": "**Last updated:** 2026-05-17",
+      "tags": [
+        "kb-130",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "131-carina-voice-and-webhooks.md",
+      "skillName": "carina-voice-and-webhooks",
+      "title": "Carina voice, webhooks, and cross-system events",
+      "description": "**Last updated:** 2026-06-24",
+      "tags": [
+        "kb-131",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "131-legal-pages-cms.md",
+      "skillName": "legal-pages-cms",
+      "title": "Legal pages CMS (platform and workspace)",
+      "description": "**Shipped:** 2026-05-17 (prompt `139-legal-pages-cms.md`)",
+      "tags": [
+        "kb-131"
+      ]
+    },
+    {
+      "sourceFile": "132-aiva-propreneur-bridge-phase1.md",
+      "skillName": "aiva-propreneur-bridge-phase1",
+      "title": "Aiva Propreneur bridge (Phase 1 closeout)",
+      "description": "**Last updated:** 2026-06-24",
+      "tags": [
+        "kb-132",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "14-fixes.md",
+      "skillName": "fixes",
+      "title": "Bug Fixes & Build Log",
+      "description": "**Last updated:** 2026-05-16",
+      "tags": [
+        "kb-14",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "140-tenant-business-page-cms.md",
+      "skillName": "tenant-business-page-cms",
+      "title": "Tenant Business Page / Micro-Site CMS",
+      "description": "Business Edition workspaces can publish a public landing page at `{slug}.propreneur.co.uk/site` (local: `{slug}.propreneur.test/site`) without a separate website builder.",
+      "tags": [
+        "business_page_cms",
+        "platformfeaturecatalogue",
+        "kb-140"
+      ]
+    },
+    {
+      "sourceFile": "141-vcal-external-calendar-sync.md",
+      "skillName": "vcal-external-calendar-sync",
+      "title": "viCal - External Calendar Sync (Google Calendar & Outlook)",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "vcal_calendar_sync",
+        "kb-141"
+      ]
+    },
+    {
+      "sourceFile": "142-platform-email-outbound-log.md",
+      "skillName": "platform-email-outbound-log",
+      "title": "Platform Email - SMTP Settings, Welcome Emails, Setup Links, and Outbound Log",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-142"
+      ]
+    },
+    {
+      "sourceFile": "143-academy-module.md",
+      "skillName": "academy-module",
+      "title": "Academy Module",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-143",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "144-carina-remote-api.md",
+      "skillName": "carina-remote-api",
+      "title": "Carina Remote API",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-144",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "145-deal-offers.md",
+      "skillName": "deal-offers",
+      "title": "Deal Offers",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-145",
+        "carina",
+        "deals"
+      ]
+    },
+    {
+      "sourceFile": "146-deal-market-intelligence.md",
+      "skillName": "deal-market-intelligence",
+      "title": "Deal Market Intelligence (Market Timing + AirDNA)",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-146",
+        "carina",
+        "deals"
+      ]
+    },
+    {
+      "sourceFile": "147-ai-lead-qualifier-chatbot.md",
+      "skillName": "ai-lead-qualifier-chatbot",
+      "title": "AI Lead Qualifier Chatbot",
+      "description": "**Status:** Planned - not yet built",
+      "tags": [
+        "ai_lead_qualification",
+        "kb-147",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "147-bank-transactions.md",
+      "skillName": "bank-transactions",
+      "title": "Bank Transactions and Reconciliation",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-147",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "148-tenancy-rent-payments.md",
+      "skillName": "tenancy-rent-payments",
+      "title": "Tenancy Rent Payments",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-148",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "149-cash-accounts-and-business-holdings.md",
+      "skillName": "cash-accounts-and-business-holdings",
+      "title": "Cash Accounts and Business Holdings (Asset Manager)",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-149",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "15-platform-admin.md",
+      "skillName": "platform-admin",
+      "title": "Platform Admin Panel",
+      "description": "**Last updated:** 2026-06-15",
+      "tags": [
+        "kb-15",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "150-hr-payroll-phase2-hmrc.md",
+      "skillName": "hr-payroll-phase2-hmrc",
+      "title": "HR Payroll Phase 2 - HMRC PAYE and Pensions",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "hr_payroll_hmrc",
+        "hr_payroll",
+        "kb-150",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "151-mentor-assistant.md",
+      "skillName": "mentor-assistant",
+      "title": "Mentor Assistant (Carina for Mentoring)",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-151",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "152-promo-codes-vs-referral-codes.md",
+      "skillName": "promo-codes-vs-referral-codes",
+      "title": "Promo codes vs referral codes vs Stripe coupons",
+      "description": "**Last updated:** 2026-05-20",
+      "tags": [
+        "kb-152",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "153-blog-content-carina-ingestion.md",
+      "skillName": "blog-content-carina-ingestion",
+      "title": "153 - Blog Content Carina Ingestion",
+      "description": "**Source:** Xelox Properties blog post library (`xeloxproperties/blogPosts/`)",
+      "tags": [
+        "kb-153",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "154-academy-module.md",
+      "skillName": "academy-module",
+      "title": "154 - Academy Module",
+      "description": "The Academy module provides tenant-scoped, self-paced learning tracks for property investors. Each workspace can host its own set of learning tracks (topics) and lessons (articles). Users read lessons at their own pace; the module records w",
+      "tags": [
+        "kb-154",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "155-academy-content-seeder.md",
+      "skillName": "academy-content-seeder",
+      "title": "Academy Content Seeder",
+      "description": "The Academy content seeder populates all academy tracks and lessons from 274 built-in blog post markdown files. It is idempotent and safe to run multiple times - it uses `updateOrCreate` on slug, so re-running it updates existing records an",
+      "tags": [
+        "kb-155"
+      ]
+    },
+    {
+      "sourceFile": "156-nexio-room-model.md",
+      "skillName": "nexio-room-model",
+      "title": "Nexio Room Model -- Phase 1",
+      "description": "The Room model is the data spine for all HMO-specific features in Propreneur Nexio. Every HMO-mode feature (compliance engine, shared bills, per-room tenancies, Section 8 toolkit, Carina HMO context) connects to a Room record.",
+      "tags": [
+        "kb-156",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "157-nexio-hmo-compliance-engine.md",
+      "skillName": "nexio-hmo-compliance-engine",
+      "title": "Nexio HMO Compliance Engine -- Phase 2",
+      "description": "Phase 2 of Propreneur Nexio adds a compliance score, HMO licence tracking fields, renewal reminders, and a dashboard widget for HMO operators. It builds on the Room model (Phase 1, `brain/knowledge/156-nexio-room-model.md`).",
+      "tags": [
+        "kb-157",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "158-nexio-fire-safety-and-awaabs-law.md",
+      "skillName": "nexio-fire-safety-and-awaabs-law",
+      "title": "Nexio Fire Safety Logs and Awaab's Law -- Phase 2b",
+      "description": "Builds on `brain/knowledge/157-nexio-hmo-compliance-engine.md`.",
+      "tags": [
+        "kb-158"
+      ]
+    },
+    {
+      "sourceFile": "159-nexio-room-size-and-communal-compliance.md",
+      "skillName": "nexio-room-size-and-communal-compliance",
+      "title": "Nexio Room Size and Communal Compliance -- Phase 2c",
+      "description": "Builds on `157-nexio-hmo-compliance-engine.md` and `158-nexio-fire-safety-and-awaabs-law.md`.",
+      "tags": [
+        "kb-159",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "160-nexio-shared-bills-engine.md",
+      "skillName": "nexio-shared-bills-engine",
+      "title": "Nexio Shared Bills Engine - Phase 3a",
+      "description": "Builds on Phase 2 compliance (`157`-`159`). Addresses bills-inclusive HMO rent and utility allocation.",
+      "tags": [
+        "kb-160"
+      ]
+    },
+    {
+      "sourceFile": "161-nexio-legal-toolkit-notices.md",
+      "skillName": "nexio-legal-toolkit-notices",
+      "title": "Nexio Legal Toolkit - Notices (Phase 3b)",
+      "description": "Builds on `160-nexio-shared-bills-engine.md`. Implements RRA 2025-aware possession and tenancy notices.",
+      "tags": [
+        "kb-161"
+      ]
+    },
+    {
+      "sourceFile": "162-nexio-persona-config.md",
+      "skillName": "nexio-persona-config",
+      "title": "Nexio persona config (Phase 4)",
+      "description": "Config-driven workspace modes on the central `tenants.persona` column. Modes filter sidebar navigation, dashboard reporting widgets, and Carina baseline context without deleting data.",
+      "tags": [
+        "kb-162",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "163-nexio-hmo-onboarding-wizard.md",
+      "skillName": "nexio-hmo-onboarding-wizard",
+      "title": "Nexio HMO onboarding wizard (Phase 4)",
+      "description": "Six-step wizard for workspaces with central `tenants.persona = hmo`. Replaces the generic workspace onboarding flow for those tenants.",
+      "tags": [
+        "kb-163",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "164-nexio-hmo-dashboard-widgets.md",
+      "skillName": "nexio-hmo-dashboard-widgets",
+      "title": "Nexio HMO dashboard widgets (Phase 4)",
+      "description": "Persona-driven dashboard widgets for HMO operators. Wired via `config/personas.php` and `DashboardWidgetService::visibleWidgetsQuery()`.",
+      "tags": [
+        "kb-164",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "165-hmo-licensing-uk.md",
+      "skillName": "hmo-licensing-uk",
+      "title": "HMO Licensing - UK (Carina / Nexio)",
+      "description": "Tags: `hmo`, `licensing`, `compliance`",
+      "tags": [
+        "kb-165",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "166-hmo-fire-safety-carina.md",
+      "skillName": "hmo-fire-safety-carina",
+      "title": "HMO Fire Safety - UK (Carina / Nexio)",
+      "description": "Tags: `hmo`, `fire_safety`, `compliance`",
+      "tags": [
+        "kb-166",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "167-rra-2025-hmo-guide.md",
+      "skillName": "rra-2025-hmo-guide",
+      "title": "Renters' Rights Act 2025 - HMO Operator Guide",
+      "description": "Tags: `hmo`, `rra_2025`, `awaabs_law`, `legal`",
+      "tags": [
+        "kb-167",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "168-council-tax-hmo.md",
+      "skillName": "council-tax-hmo",
+      "title": "Council Tax - HMOs (UK)",
+      "description": "Tags: `hmo`, `council_tax`, `finance`",
+      "tags": [
+        "kb-168",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "169-deposit-protection-hmo.md",
+      "skillName": "deposit-protection-hmo",
+      "title": "Deposit Protection - HMO / Per-Room Tenancies (UK)",
+      "description": "Tags: `hmo`, `deposit`, `compliance`, `rra_2025`",
+      "tags": [
+        "kb-169",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "170-nexio-carina-hmo-training.md",
+      "skillName": "nexio-carina-hmo-training",
+      "title": "Nexio - Carina HMO Training (Phase 4)",
+      "description": "| Tool | Purpose |",
+      "tags": [
+        "kb-170",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "171-propreneur-let-btl-guide.md",
+      "skillName": "propreneur-let-btl-guide",
+      "title": "Propreneur Let - BTL Landlord Guide (Carina)",
+      "description": "Tags: `btl`, `rra_2025`, `landlord`",
+      "tags": [
+        "kb-171",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "172-propreneur-pulse-sourcing-guide.md",
+      "skillName": "propreneur-pulse-sourcing-guide",
+      "title": "Propreneur Pulse - Deal Sourcing Guide (Carina)",
+      "description": "Tags: `deal_sourcing`, `calculators`, `sourcing_strategy`",
+      "tags": [
+        "kb-172",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "173-propreneur-academy-mentor-guide.md",
+      "skillName": "propreneur-academy-mentor-guide",
+      "title": "Propreneur Academy - Mentor Guide (Carina)",
+      "description": "Tags: `mentoring`, `community_learning`, `academy`",
+      "tags": [
+        "kb-173",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "175-nexio-phase5-lightweight-modes.md",
+      "skillName": "nexio-phase5-lightweight-modes",
+      "title": "Nexio Phase 5 - Lightweight Mode Launches",
+      "description": "Phase 5 exposes three existing platform modes via persona config (no new feature builds).",
+      "tags": [
+        "kb-175",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "176-nexio-ai-certificate-scanning.md",
+      "skillName": "nexio-ai-certificate-scanning",
+      "title": "Nexio - AI Certificate Scanning (Phase 6)",
+      "description": "Landlords photograph UK compliance certificates (CP12, EICR, EPC, etc.). Vision AI extracts dates and reference numbers for operator confirmation - nothing is auto-saved without review.",
+      "tags": [
+        "kb-176",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "177-nexio-room-listings-tenant-portal.md",
+      "skillName": "nexio-room-listings-tenant-portal",
+      "title": "Nexio - Room Listings + Tenant Portal (Phase 6)",
+      "description": "- Table: `room_listings` (room, property, title, description, rent, photos JSON, status draft/active/filled/archived)",
+      "tags": [
+        "kb-177",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "178-propreneur-lodge-sa-guide.md",
+      "skillName": "propreneur-lodge-sa-guide",
+      "title": "Propreneur Lodge - SA operator guide (Carina)",
+      "description": "Persona: `lodge` · `carina_persona`: `sa_operator` · Tags: `sa`, `council_article4`, `short_term_letting`, `fire_safety_sa`",
+      "tags": [
+        "kb-178",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "179-propreneur-steward-block-guide.md",
+      "skillName": "propreneur-steward-block-guide",
+      "title": "Propreneur Steward - block management guide (Carina)",
+      "description": "Persona: `steward` · `carina_persona`: `block_manager` · Tags: `block_management`, `service_charge`, `leasehold`, `s20_consultation`",
+      "tags": [
+        "kb-179",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "180-propreneur-agency-letting-agent-guide.md",
+      "skillName": "propreneur-agency-letting-agent-guide",
+      "title": "Propreneur Agency - letting agent guide (Carina)",
+      "description": "Persona: `agency` · `carina_persona`: `letting_agent` · Tags: `letting_agent`, `cmp`, `arla`, `rra_2025`",
+      "tags": [
+        "kb-180",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "181-propreneur-forge-developer-guide.md",
+      "skillName": "propreneur-forge-developer-guide",
+      "title": "Propreneur Forge - developer / refurb guide (Carina)",
+      "description": "Persona: `forge` · `carina_persona`: `developer` · Tags: `development`, `planning_permission`, `cil_levy`, `building_regs`",
+      "tags": [
+        "kb-181",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "182-propreneur-bridge-r2r-guide.md",
+      "skillName": "propreneur-bridge-r2r-guide",
+      "title": "Propreneur Bridge - rent-to-rent guide (Carina)",
+      "description": "Persona: `bridge` · `carina_persona`: `r2r_operator` · Tags: `r2r`, `guaranteed_rent`, `management_agreement`, `r2r_legal_structure`",
+      "tags": [
+        "kb-182",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "183-propreneur-hall-student-lettings-guide.md",
+      "skillName": "propreneur-hall-student-lettings-guide",
+      "title": "Propreneur Hall - student lettings guide (Carina)",
+      "description": "Persona: `hall` · `carina_persona`: `student_lettings` · Tags: `student_lettings`, `guarantor_agreements`, `student_loans`, `academic_calendar`",
+      "tags": [
+        "kb-183",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "184-nexio-phase7-remaining-modes.md",
+      "skillName": "nexio-phase7-remaining-modes",
+      "title": "Nexio Phase 7 - Remaining persona modes",
+      "description": "Six lightweight modes wired via `config/personas.php` + marketing landings + Carina knowledge.",
+      "tags": [
+        "kb-184",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "185-nexio-per-room-pricing.md",
+      "skillName": "nexio-per-room-pricing",
+      "title": "Nexio per-room pricing (Prompt 218)",
+      "description": "Competitor benchmark: COHO ~£3-6/room/month. We use **included rooms on the plan** plus **£/room/mo** for additional rooms (not a separate base SKU in v1 - surcharge stacks on the plan’s listed base price).",
+      "tags": [
+        "kb-185"
+      ]
+    },
+    {
+      "sourceFile": "186-nexio-deposit-r2r-hmo.md",
+      "skillName": "nexio-deposit-r2r-hmo",
+      "title": "Nexio - Per-room deposit protection + Right to Rent (Prompt 219)",
+      "description": "Columns on `property_tenancies`:",
+      "tags": [
+        "kb-186",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "187-carina-wealth-persona.md",
+      "skillName": "carina-wealth-persona",
+      "title": "Carina - Propreneur Wealth persona",
+      "description": "Propreneur Wealth is the workspace mode for high-net-worth property investors who need a **portfolio command centre**: total net worth, asset allocation, property performance, tenant overview, and compliance health. Typical users hold resid",
+      "tags": [
+        "kb-187",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "187-nexio-occupancy-void-analytics.md",
+      "skillName": "nexio-occupancy-void-analytics",
+      "title": "Nexio: Occupancy board + void analytics (Prompt 220)",
+      "description": "| Route | Controller | Purpose |",
+      "tags": [
+        "kb-187"
+      ]
+    },
+    {
+      "sourceFile": "188-nexio-room-rent-bank-matching.md",
+      "skillName": "nexio-room-rent-bank-matching",
+      "title": "Nexio: Per-room bank rent matching (Prompt 221)",
+      "description": "`App\\Services\\Properties\\HmoRentMatchingService` - scores incoming credits against occupied HMO rooms (active tenancies).",
+      "tags": [
+        "kb-188"
+      ]
+    },
+    {
+      "sourceFile": "189-asbestos-water-safety.md",
+      "skillName": "asbestos-water-safety",
+      "title": "Asbestos and water safety (Legionella)",
+      "description": "**Last updated:** 2026-06-05",
+      "tags": [
+        "kb-189",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "190-platform-tenant-crm-accounts.md",
+      "skillName": "platform-tenant-crm-accounts",
+      "title": "Platform tenant CRM (Accounts)",
+      "description": "**Last updated:** 2026-06-15",
+      "tags": [
+        "kb-190",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "31-comms-and-engagement-engine.md",
+      "skillName": "comms-and-engagement-engine",
+      "title": "Communications & engagement engine (Module 4)",
+      "description": "This filename is the canonical **instructions** cross-reference for the Communications Hub.",
+      "tags": [
+        "kb-31"
+      ]
+    },
+    {
+      "sourceFile": "57-platform-admin-revenue-tracking.md",
+      "skillName": "platform-admin-revenue-tracking",
+      "title": "Platform admin revenue tracking",
+      "description": "**Prompt:** `brain/prompts/57-platform-admin-revenue-tracking.md`",
+      "tags": [
+        "kb-57"
+      ]
+    },
+    {
+      "sourceFile": "66-asset-manager-and-net-worth-dashboard.md",
+      "skillName": "asset-manager-and-net-worth-dashboard",
+      "title": "Asset Manager and Net Worth Dashboard",
+      "description": "The Asset Manager module (`asset_manager`) gives UK property entrepreneurs a single portfolio view: net worth, allocation, liabilities, income streams, maintenance, documents, and compliance per asset. It complements the Properties module; ",
+      "tags": [
+        "kb-66",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "67-persona-driven-onboarding-and-feature-hub.md",
+      "skillName": "persona-driven-onboarding-and-feature-hub",
+      "title": "Persona-driven onboarding and Feature Hub",
+      "description": "1. **Subscription gate** - `BillingModule` + feature flags + Stripe plan (`TenantNavModuleAccess::mapForTenant()`). Controls what the tenant has paid for.",
+      "tags": [
+        "kb-67",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "70-carina-workspace-files.md",
+      "skillName": "carina-workspace-files",
+      "title": "Carina Workspace Files",
+      "description": "Carina loads three workspace files at the start of every session. These files give Carina persistent context about you and your portfolio, so you do not need to re-explain your strategy in every conversation.",
+      "tags": [
+        "kb-70",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "71-contact-network-graph.md",
+      "skillName": "contact-network-graph",
+      "title": "Contact network graph and dossier intelligence",
+      "description": "Workspace-wide typed relationships between CRM contacts, optional deal sourcer links, and dossier overlap signals across property tenancies. Nothing is auto-linked; staff record relationships explicitly and dossier matches are awareness-onl",
+      "tags": [
+        "kb-71",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "71-workspace-audit-logging.md",
+      "skillName": "workspace-audit-logging",
+      "title": "Workspace audit logging (tenant)",
+      "description": "**Scope:** Immutable tenant audit trail for workspace admins - not the central “remote access” audit hub (see `15-platform-admin.md` for platform-side audit exports).",
+      "tags": [
+        "kb-71"
+      ]
+    },
+    {
+      "sourceFile": "72-gdpr-data-subject-rights.md",
+      "skillName": "gdpr-data-subject-rights",
+      "title": "GDPR and data subject rights (tenant workspace)",
+      "description": "**Scope:** Per-tenant GDPR tooling for workspace users and admins. This is separate from **platform remote access** GDPR acknowledgements when staff open a tenant session (see `15-platform-admin.md` and central remote-access views).",
+      "tags": [
+        "kb-72",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "72-project-management-module.md",
+      "skillName": "project-management-module",
+      "title": "Project Management module (Prompt 103)",
+      "description": "**Module flag:** `project_management`",
+      "tags": [
+        "kb-72",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "73-workspace-localization-and-staff.md",
+      "skillName": "workspace-localization-and-staff",
+      "title": "Workspace localization, staff HR, investor portal web, waitlist",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-73"
+      ]
+    },
+    {
+      "sourceFile": "74-api-docs-and-openapi.md",
+      "skillName": "api-docs-and-openapi",
+      "title": "API documentation and OpenAPI",
+      "description": "Propreneur v2 exposes a machine-readable OpenAPI 3.1 spec generated from registered Laravel routes (no controller annotations).",
+      "tags": [
+        "kb-74"
+      ]
+    },
+    {
+      "sourceFile": "75-staff-payroll-phase1-legacy.md",
+      "skillName": "staff-payroll-phase1-legacy",
+      "title": "Staff directory and payroll (phase 1)",
+      "description": "**Module flag:** `hr_payroll`",
+      "tags": [
+        "kb-75",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "77-property-asset-maintenance-and-refurb-projects.md",
+      "skillName": "property-asset-maintenance-and-refurb-projects",
+      "title": "Property asset register, maintenance and refurbishment projects",
+      "description": "Updated: 2026-05-15",
+      "tags": [
+        "kb-77",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "81-tenant-invoicing-and-receipts.md",
+      "skillName": "tenant-invoicing-and-receipts",
+      "title": "Tenant invoicing and receipts (v2)",
+      "description": "Workspace users with the **Accounting** module can raise **sales invoices**, email PDFs to clients, record **payments** (generating **receipts**), optionally create a **draft journal** for bank vs sales GL lines, and run **overdue** mainten",
+      "tags": [
+        "kb-81",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "82-stripe-billing-staging-sign-off.md",
+      "skillName": "stripe-billing-staging-sign-off",
+      "title": "Xelox Staging Stripe Sign-Off Checklist",
+      "description": "Ops checklist to verify Stripe billing is wired correctly for the Xelox tenant before",
+      "tags": [
+        "kb-82"
+      ]
+    },
+    {
+      "sourceFile": "83-service-accommodation-strategy.md",
+      "skillName": "service-accommodation-strategy",
+      "title": "Service Accommodation (SA) Strategy Guide",
+      "description": "Carina should use this document to answer questions about short-term letting, Airbnb investment, and SA vs BTL comparisons. All data and frameworks below are derived from professional SA operators with 60+ combined years in hospitality and ",
+      "tags": [
+        "kb-83",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "84-commercial-property-investment.md",
+      "skillName": "commercial-property-investment",
+      "title": "Commercial Property Investment",
+      "description": "Carina should use this document to answer questions about commercial property investment strategies, commercial leases, motivated seller identification, and value-add approaches in the UK commercial market.",
+      "tags": [
+        "kb-84",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "85-property-investor-strategy-insights.md",
+      "skillName": "property-investor-strategy-insights",
+      "title": "Property Investor Strategic Insights",
+      "description": "Carina should use this document to provide business advisory and tactical guidance to Propreneur users. This is complementary to the strategy guides in `83-service-accommodation-strategy.md` and `84-commercial-property-investment.md` - it c",
+      "tags": [
+        "kb-85",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "86-property-investment-beginner-foundations.md",
+      "skillName": "property-investment-beginner-foundations",
+      "title": "86 - Property Investment Beginner Foundations",
+      "description": "Plain-English explanations of every core concept a complete beginner needs before doing their first deal. Written for Carina to use when answering basic questions and for beginners who have never invested in property before.",
+      "tags": [
+        "kb-86",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "86-wealth-creation-principles.md",
+      "skillName": "wealth-creation-principles",
+      "title": "Wealth Creation Principles",
+      "description": "Carina should use this document when advising users on broader financial strategy, wealth building, and the long-term mindset beyond specific property investment tactics. These principles apply across asset classes and complement the proper",
+      "tags": [
+        "kb-86",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "87-first-deal-buying-process-uk.md",
+      "skillName": "first-deal-buying-process-uk",
+      "title": "87 - First Deal: The UK Property Buying Process",
+      "description": "A complete step-by-step guide to buying an investment property in the UK. Written for beginners who have never been through a purchase. Covers all 14 stages, who is involved at each stage, realistic costs, timeline, and what can go wrong.",
+      "tags": [
+        "kb-87",
+        "deals"
+      ]
+    },
+    {
+      "sourceFile": "87-property-business-structures-development.md",
+      "skillName": "property-business-structures-development",
+      "title": "Property Business Structures, Tax, and Development",
+      "description": "Carina should use this document to advise users on choosing the right business structure, tax planning, and property development fundamentals. These principles complement the investment strategy guides elsewhere in the knowledge base.",
+      "tags": [
+        "kb-87",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "88-uk-property-finance-for-investors.md",
+      "skillName": "uk-property-finance-for-investors",
+      "title": "88 - UK Property Finance for Investors",
+      "description": "A complete reference on every financing route available to UK property investors. Covers buy-to-let mortgages, bridging finance, HMO mortgages, commercial mortgages, development finance, joint ventures, equity release, and no-money-down str",
+      "tags": [
+        "kb-88",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "89-commercial-to-residential-development.md",
+      "skillName": "commercial-to-residential-development",
+      "title": "89 - Small-Scale Commercial-to-Residential Property Development",
+      "description": "A complete guide to small-scale commercial-to-residential property development in the UK. Covers permitted development rights, deal stacking, funding, professional team, exit strategies, and typical profit margins. Written for Carina to exp",
+      "tags": [
+        "kb-89",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "90-property-business-structures-uk.md",
+      "skillName": "property-business-structures-uk",
+      "title": "90 - UK Property Business Structures",
+      "description": "A complete guide to the business structures available to UK property investors. Covers own name vs limited company, group structures, Family Investment Companies, and when each is appropriate. Written for Carina to guide investors in unders",
+      "tags": [
+        "kb-90",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "91-uk-property-compliance-and-hmrc.md",
+      "skillName": "uk-property-compliance-and-hmrc",
+      "title": "91 - UK Property Investor Compliance and HMRC",
+      "description": "A practical guide to the compliance obligations that UK property investors must meet. Covers HMRC filing, Making Tax Digital, company secretarial obligations, director loan tax, and HMRC's Connect system. Written for Carina to help investor",
+      "tags": [
+        "kb-91",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "92-bmv-motivated-seller-and-100-finance.md",
+      "skillName": "bmv-motivated-seller-and-100-finance",
+      "title": "BMV: Motivated Seller Psychology, Sourcing, and 100% Finance via Same-Day Remortgage",
+      "description": "**Source:** PIN Virtual Property Exhibition, 16 May 2026. Speaker: Simon Zutshi (founder, Property Investors Network; founder, Crowd Property; author, \"Property Magic\").",
+      "tags": [
+        "kb-92",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "93-uk-landlord-exit-wave-2026.md",
+      "skillName": "uk-landlord-exit-wave-2026",
+      "title": "UK Landlord Exit Wave 2026 - Opportunity for Buyers",
+      "description": "**Source:** PIN Virtual Property Exhibition, 16 May 2026. Speaker: Simon Zutshi (PIN founder).",
+      "tags": [
+        "kb-93",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "94-compliance-audit-framework.md",
+      "skillName": "compliance-audit-framework",
+      "title": "Compliance audit framework",
+      "description": "The compliance audit framework supports scheduled property and business audits conducted by or on behalf of the workspace. It is separate from the system activity audit trail (`audit_logs`, `audit_log_hashes`, `audit_retention_policies`), w",
+      "tags": [
+        "kb-94",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "95-staff-compliance-training.md",
+      "skillName": "staff-compliance-training",
+      "title": "Staff compliance training (workspace mandatory training)",
+      "description": "The staff compliance training module tracks **mandatory regulatory training** for workspace users: AML and financial crime awareness, fire safety, HMO management rules, GDPR, health and safety, and general compliance topics. It records enro",
+      "tags": [
+        "kb-95",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "96-tenancy-agreement-compliance.md",
+      "skillName": "tenancy-agreement-compliance",
+      "title": "Tenancy agreement compliance (TenancyAgreement model)",
+      "description": "Propreneur v2 tracks **legal compliance lifecycle** of a tenancy agreement separately from day-to-day **occupancy** records.",
+      "tags": [
+        "kb-96",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "97-regulation-registry.md",
+      "skillName": "regulation-registry",
+      "title": "Regulation Registry",
+      "description": "**Last updated:** 2026-07-01 (prompt 4 - v1 parity gap)",
+      "tags": [
+        "compliance",
+        "billingmodule::compliance",
+        "kb-97",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "98-hmo-licensing-workflow.md",
+      "skillName": "hmo-licensing-workflow",
+      "title": "98 - HMO Licensing Workflow",
+      "description": "Guide for tracking HMO licence applications, council conditions, renewals, Article 4 directions, and overcrowding prevention in Propreneur v2. Distinct from HMO compliance scoring (room sizes, fire doors, communal areas). Written for Carina",
+      "tags": [
+        "kb-98",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "98-rra-2025-compliance-centre.md",
+      "skillName": "rra-2025-compliance-centre",
+      "title": "RRA 2025 Compliance Centre (Propreneur module)",
+      "description": "Tags: `rra_2025`, `compliance`, `decent_homes`, `prs_database`, `landlord_obligations`",
+      "tags": [
+        "kb-98",
+        "carina",
+        "compliance"
+      ]
+    },
+    {
+      "sourceFile": "99-hhsrs-hazard-assessment.md",
+      "skillName": "hhsrs-hazard-assessment",
+      "title": "HHSRS hazard assessment module",
+      "description": "Propreneur v2 implements the UK **Housing Health and Safety Rating System (HHSRS)** for private rented dwellings. Introduced by the Housing Act 2004, HHSRS lets local authorities assess health and safety risks from housing deficiencies. Lan",
+      "tags": [
+        "kb-99",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "99-tech-stack-comparison.md",
+      "skillName": "tech-stack-comparison",
+      "title": "v1.0 vs v2.0 Tech Stack Comparison",
+      "description": "**Last updated:** 2026-05-15",
+      "tags": [
+        "kb-99",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "99-template-knowledge-entry.md",
+      "skillName": "template-knowledge-entry",
+      "title": "Module Name - Last updated: YYYY-MM-DD",
+      "description": "Brief description of the module purpose and scope.",
+      "tags": [
+        "{feature_flag_key}",
+        "kb-99",
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "manual-approve-promote-2.md",
+      "skillName": "manual-approve-promote-2",
+      "title": "Manual approve promote",
+      "description": "**Type:** qa pair",
+      "tags": [
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "manual-approve-promote-3.md",
+      "skillName": "manual-approve-promote-3",
+      "title": "Manual approve promote",
+      "description": "**Type:** qa pair",
+      "tags": [
+        "carina"
+      ]
+    },
+    {
+      "sourceFile": "manual-approve-promote-4.md",
+      "skillName": "manual-approve-promote-4",
+      "title": "Manual approve promote",
+      "description": "**Type:** qa pair",
+      "tags": [
+        "carina"
+      ]
+    }
+  ]
+}

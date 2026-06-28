@@ -9,6 +9,7 @@ RUN pnpm install --frozen-lockfile --dangerously-allow-all-builds 2>/dev/null \
 FROM deps AS build
 COPY console.labyrinthscout.com/package.json console.labyrinthscout.com/pnpm-lock.yaml console.labyrinthscout.com/tsconfig.json ./
 COPY console.labyrinthscout.com/scripts ./scripts
+COPY console.labyrinthscout.com/docs ./docs
 COPY console.labyrinthscout.com/src ./src
 COPY console.labyrinthscout.com/public ./public
 RUN pnpm build

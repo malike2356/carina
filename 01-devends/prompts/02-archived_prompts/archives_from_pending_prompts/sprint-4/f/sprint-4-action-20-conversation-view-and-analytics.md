@@ -1,3 +1,11 @@
+**Status: COMPLETED 2026-06-24**
+
+**What was built:**
+- `conversations-router.ts` + `thread-builder.ts`: list, thread, export-pdf, workspace 403, status filters
+- `aiva-analytics-router.ts` + `aiva-analytics-queries.ts` mounted at `/api/analytics` and `/api/aiva/analytics`
+- `ConversationList`, `ConversationThread`, `MessageRow` components; full-height split inbox at `/conversations`
+- `AivaAnalyticsDashboard` with recharts at `/analytics` (Aiva surface); six `/api/analytics/*` Next.js proxies
+
 # Sprint 4 - Prompt 20: Conversation View and Analytics
 
 **Sprint:** 4
@@ -12,17 +20,17 @@
 
 When all "Done When" criteria are satisfied:
 1. Add `**Status: COMPLETED YYYY-MM-DD**` at the top of this file.
-2. Move to `internal/prompts/archived_prompts/archives_from_pending_prompts/sprint-4/action/`.
+2. Move to `01-devends/prompts/02-archived_prompts/archives_from_pending_prompts/sprint-4/action/`.
 
 ---
 
 ## Read First
 
-1. `frontends/client-apps/app.carinaai.uk/src/lib/workspace-nav.ts` - `NAV_GROUPS` and `NAV_ROUTES`; you will add two new routes here
-2. `frontends/client-apps/app.carinaai.uk/src/lib/aiva-detail-tabs.ts` - `AIVA_CORE_TABS`; you will NOT modify this file (analytics tab is per-Aiva, via the extension pattern documented there)
-3. `frontends/client-apps/app.carinaai.uk/src/lib/utils.ts` or equivalent - look for `maskIdentifier` helper; reuse it; if missing, check `src/lib/format.ts`
-4. `backends/servers/core.carinaai.uk/src/db/schema.sql` or the most recent migration - find `activity_logs` or `conversations` table structure to know exact column names
-5. `backends/servers/core.carinaai.uk/src/server.ts` - where to mount the new routers
+1. `03-frontends/client-apps/app.carinaai.uk/src/lib/workspace-nav.ts` - `NAV_GROUPS` and `NAV_ROUTES`; you will add two new routes here
+2. `03-frontends/client-apps/app.carinaai.uk/src/lib/aiva-detail-tabs.ts` - `AIVA_CORE_TABS`; you will NOT modify this file (analytics tab is per-Aiva, via the extension pattern documented there)
+3. `03-frontends/client-apps/app.carinaai.uk/src/lib/utils.ts` or equivalent - look for `maskIdentifier` helper; reuse it; if missing, check `src/lib/format.ts`
+4. `02-backends/core.carinaai.uk/src/db/schema.sql` or the most recent migration - find `activity_logs` or `conversations` table structure to know exact column names
+5. `02-backends/core.carinaai.uk/src/server.ts` - where to mount the new routers
 
 ---
 
@@ -204,7 +212,7 @@ GET /api/analytics/aiva-breakdown?period=
 
 ## Step 4: Next.js API proxy routes
 
-Create in `frontends/client-apps/app.carinaai.uk/src/app/api/`:
+Create in `03-frontends/client-apps/app.carinaai.uk/src/app/api/`:
 
 ```
 conversations/route.ts                   -- GET proxy
@@ -885,42 +893,42 @@ function AivaBreakdownTable({ period }) {
 ## Done When
 
 **Backend:**
-- [ ] `GET /api/conversations` returns paginated list with correct masking logic for all four channel types
-- [ ] `GET /api/conversations/:id/thread` returns messages with correct role enum values including 'va' and 'system'
-- [ ] System events have `actionType` and `summary` fields; summaries are human-readable strings
-- [ ] `attestationTx` is present on aiva messages where attestation exists; null otherwise
-- [ ] `GET /api/conversations/:id/export-pdf` returns JSON download with correct Content-Disposition header
-- [ ] All six analytics routes return correct structure with prev-period values
-- [ ] Heatmap route converts PostgreSQL `EXTRACT DOW` (0=Sunday) to ISO ordering (0=Monday) in app layer
-- [ ] All routes enforce workspace_id scope; cross-tenant access returns 403
-- [ ] All nine Next.js proxy routes forward auth header and query string correctly
+- [x] `GET /api/conversations` returns paginated list with correct masking logic for all four channel types
+- [x] `GET /api/conversations/:id/thread` returns messages with correct role enum values including 'va' and 'system'
+- [x] System events have `actionType` and `summary` fields; summaries are human-readable strings
+- [x] `attestationTx` is present on aiva messages where attestation exists; null otherwise
+- [x] `GET /api/conversations/:id/export-pdf` returns JSON download with correct Content-Disposition header
+- [x] All six analytics routes return correct structure with prev-period values
+- [x] Heatmap route converts PostgreSQL `EXTRACT DOW` (0=Sunday) to ISO ordering (0=Monday) in app layer
+- [x] All routes enforce workspace_id scope; cross-tenant access returns 403
+- [x] All nine Next.js proxy routes forward auth header and query string correctly
 
 **Conversations page:**
-- [ ] Sidebar shows "Conversations" and "Analytics" entries under the Aiva nav group
-- [ ] Page splits into 320px left panel + flex-1 right panel; full viewport height (minus topbar)
-- [ ] Left panel: search input, Aiva filter dropdown, channel filter dropdown
-- [ ] ConversationCard: channel icon, masked contact ID, time-ago, message preview, worker badge, escalation badge
-- [ ] Selected card has left accent border and bg-elevated; cursor-pointer on all cards
-- [ ] Empty state shown in right panel when nothing is selected
-- [ ] Thread header: channel icon, masked contact ID, worker + channel label, date, Export button
-- [ ] User messages: right-aligned, bg-accent-dim
-- [ ] Aiva messages: left-aligned, bg-elevated, avatar initial, attestation state below bubble
-- [ ] VA messages: left-aligned, amber tint, "VERLOX Team" label above content
-- [ ] System events: centered dashed divider with label and timestamp; escalation events use amber color
-- [ ] Timestamps appear only at message cluster boundaries (> 5 min gap or role change)
+- [x] Sidebar shows "Conversations" and "Analytics" entries under the Aiva nav group
+- [x] Page splits into 320px left panel + flex-1 right panel; full viewport height (minus topbar)
+- [x] Left panel: search input, Aiva filter dropdown, channel filter dropdown
+- [x] ConversationCard: channel icon, masked contact ID, time-ago, message preview, worker badge, escalation badge
+- [x] Selected card has left accent border and bg-elevated; cursor-pointer on all cards
+- [x] Empty state shown in right panel when nothing is selected
+- [x] Thread header: channel icon, masked contact ID, worker + channel label, date, Export button
+- [x] User messages: right-aligned, bg-accent-dim
+- [x] Aiva messages: left-aligned, bg-elevated, avatar initial, attestation state below bubble
+- [x] VA messages: left-aligned, amber tint, "VERLOX Team" label above content
+- [x] System events: centered dashed divider with label and timestamp; escalation events use amber color
+- [x] Timestamps appear only at message cluster boundaries (> 5 min gap or role change)
 
 **Analytics page:**
-- [ ] Period selector (7d/30d/90d) renders as pill tabs; changes all charts simultaneously
-- [ ] Four stat cards: correct labels, formatted values, trend arrows with green/red color
-- [ ] Volume: recharts LineChart, accent-color line, correct X-axis date formatting per period
-- [ ] Channel breakdown: horizontal recharts BarChart with per-channel colors
-- [ ] Escalation trend: recharts AreaChart with amber color and gradient fill
-- [ ] Activity heatmap: 7x24 CSS grid, day labels left, hour labels top, intensity from low to full opacity
-- [ ] Heatmap cell tooltips show correct day, hour, and count
-- [ ] Heatmap legend shown below grid
-- [ ] Per-Aiva table: sorted by message count descending; human-readable avg response
-- [ ] `isAnimationActive={false}` on all recharts chart components
+- [x] Period selector (7d/30d/90d) renders as pill tabs; changes all charts simultaneously
+- [x] Four stat cards: correct labels, formatted values, trend arrows with green/red color
+- [x] Volume: recharts LineChart, accent-color line, correct X-axis date formatting per period
+- [x] Channel breakdown: horizontal recharts BarChart with per-channel colors
+- [x] Escalation trend: recharts AreaChart with amber color and gradient fill
+- [x] Activity heatmap: 7x24 CSS grid, day labels left, hour labels top, intensity from low to full opacity
+- [x] Heatmap cell tooltips show correct day, hour, and count
+- [x] Heatmap legend shown below grid
+- [x] Per-Aiva table: sorted by message count descending; human-readable avg response
+- [x] `isAnimationActive={false}` on all recharts chart components
 
 **General:**
-- [ ] No em dashes in any copy, labels, comments, or error messages
-- [ ] No emojis anywhere; use lucide-react icons only
+- [x] No em dashes in any copy, labels, comments, or error messages
+- [x] No emojis anywhere; use lucide-react icons only

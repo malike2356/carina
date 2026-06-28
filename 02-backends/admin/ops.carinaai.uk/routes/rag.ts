@@ -1,17 +1,30 @@
 import { Router } from 'express';
 import { spawn } from 'child_process';
 import { query } from '../lib/db.js';
-import { ORDER_BY_CREATED_RECENT } from '../lib/list-sort.js';
+import {
+  buildPageWindow,
+  buildRagQuery,
+  nextSortDir,
+  parsePageSize,
+  parseRagEmbedded,
+  parseRagSort,
+  parseSortDir,
+  ragOrderBy,
+  ragSortArrow,
+  type RagSortColumn,
+} from '../lib/list-sort.js';
 import { resolveCarinaCliCommand } from '../lib/pty-bridge-core.js';
 
 export const ragRouter = Router();
 
-const PAGE_SIZE = 50;
-
 ragRouter.get('/', async (req, res) => {
-  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSize = parsePageSize(req.query.limit);
   const pack = String(req.query.pack ?? 'all');
   const search = String(req.query.q ?? '').trim();
+  const embedded = parseRagEmbedded(req.query.embedded);
+  const sortBy = parseRagSort(req.query.sort);
+  const sortDir = parseSortDir(req.query.dir);
+  let page = Math.max(1, Number(req.query.page) || 1);
 
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -22,11 +35,26 @@ ragRouter.get('/', async (req, res) => {
     params.push(pack);
   }
   if (search) {
-    conditions.push(`source ILIKE $${paramIndex++}`);
+    conditions.push(`(source ILIKE $${paramIndex} OR content ILIKE $${paramIndex})`);
     params.push(`%${search}%`);
+    paramIndex += 1;
+  }
+  if (embedded === 'yes') {
+    conditions.push('embedding IS NOT NULL');
+  } else if (embedded === 'no') {
+    conditions.push('embedding IS NULL');
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const queryState = { page, q: search, pack, embedded, sort: sortBy, dir: sortDir, limit: pageSize };
+  const sortLink = (column: RagSortColumn) =>
+    buildRagQuery({
+      ...queryState,
+      page: 1,
+      sort: column,
+      dir: nextSortDir(sortBy, sortDir, column),
+    });
+  const pageLink = (targetPage: number) => buildRagQuery({ ...queryState, page: targetPage });
 
   try {
     const packsResult = await query<{ pack: string }>(
@@ -37,8 +65,10 @@ ragRouter.get('/', async (req, res) => {
       params,
     );
     const total = Number(countResult.rows[0]?.count ?? 0);
-    const offset = (page - 1) * PAGE_SIZE;
-    const listParams = [...params, PAGE_SIZE, offset];
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    page = Math.min(page, totalPages);
+    const offset = (page - 1) * pageSize;
+    const listParams = [...params, pageSize, offset];
 
     const rows = await query<{
       id: string;
@@ -51,19 +81,27 @@ ragRouter.get('/', async (req, res) => {
       `SELECT id, pack, source, content, embedding, created_at
        FROM rag_chunks
        ${where}
-       ORDER BY ${ORDER_BY_CREATED_RECENT}
+       ORDER BY ${ragOrderBy(sortBy, sortDir)}
        LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
       listParams,
     );
 
     res.render('rag', {
       chunks: rows.rows,
-      packs: packsResult.rows.map((r) => r.pack),
+      packs: packsResult.rows.map((row) => row.pack),
       pack,
       search,
+      embedded,
+      sortBy,
+      sortDir,
       page,
-      totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+      pageSize,
+      totalPages,
       total,
+      pageWindow: buildPageWindow(page, totalPages),
+      sortArrow: ragSortArrow,
+      sortLink,
+      pageLink,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -19,6 +19,21 @@
     .checkout-card li { margin: 10px 0; color: #c8d8e2; }
     .checkout-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
     .checkout-note { margin-top: 24px; color: var(--muted); }
+    .checkout-form { display: none; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .checkout-form.is-open { display: grid; gap: 12px; }
+    .checkout-form label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .checkout-form input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #0a1419;
+      color: var(--text);
+      font: inherit;
+    }
+    .checkout-form .form-error { color: #f87171; font-size: 13px; margin: 0; min-height: 1.2em; }
+    .checkout-form .form-note { color: var(--muted); font-size: 13px; margin: 0; }
     @media (max-width: 760px) { .checkout-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -41,9 +56,9 @@
     </section>
 
     <section class="checkout-grid" aria-label="Scout plans">
-      <article class="checkout-card">
+      <article class="checkout-card" data-plan="scout_monitor">
         <h2>Scout Monitor</h2>
-        <p>Visibility for workflows that are already in production and need the early warning layer first.</p>
+        <p>£49/month. Visibility for workflows that are already in production and need the early warning layer first.</p>
         <ul>
           <li>Live security dashboard</li>
           <li>Prompt injection detection</li>
@@ -51,13 +66,26 @@
         </ul>
         <div class="checkout-actions">
           <a class="hub-btn hub-btn-secondary" href="/pricing">Review plans</a>
-          <a class="hub-btn hub-btn-primary" href="mailto:contact@verlox.uk?subject=Scout%20Monitor">Contact sales</a>
+          <button type="button" class="hub-btn hub-btn-primary checkout-toggle" data-plan="scout_monitor">Get Scout Monitor</button>
         </div>
+        <form class="checkout-form" data-plan="scout_monitor" novalidate>
+          <p class="form-note">Enter your email and password. We will create your Scout account and take you to payment.</p>
+          <div>
+            <label for="email-monitor">Email</label>
+            <input id="email-monitor" name="email" type="email" required autocomplete="email">
+          </div>
+          <div>
+            <label for="password-monitor">Password</label>
+            <input id="password-monitor" name="password" type="password" minlength="8" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="hub-btn hub-btn-primary">Continue to payment</button>
+          <p class="form-error" role="alert"></p>
+        </form>
       </article>
 
-      <article class="checkout-card">
+      <article class="checkout-card" data-plan="scout_pro">
         <h2>Scout Govern</h2>
-        <p>The production tier for workflows that need kill switch control, alerts, and incident-grade evidence.</p>
+        <p>£79/month. The production tier for workflows that need kill switch control, alerts, and incident-grade evidence.</p>
         <ul>
           <li>Kill switch and tool quarantine</li>
           <li>Multi-channel alerts</li>
@@ -65,12 +93,81 @@
         </ul>
         <div class="checkout-actions">
           <a class="hub-btn hub-btn-secondary" href="/account/login">Sign in</a>
-          <a class="hub-btn hub-btn-primary" href="mailto:contact@verlox.uk?subject=Scout%20Govern">Buy Scout Govern</a>
+          <button type="button" class="hub-btn hub-btn-primary checkout-toggle" data-plan="scout_pro">Get Scout Govern</button>
         </div>
+        <form class="checkout-form" data-plan="scout_pro" novalidate>
+          <p class="form-note">Enter your email and password. We will create your Scout account and take you to payment.</p>
+          <div>
+            <label for="email-govern">Email</label>
+            <input id="email-govern" name="email" type="email" required autocomplete="email">
+          </div>
+          <div>
+            <label for="password-govern">Password</label>
+            <input id="password-govern" name="password" type="password" minlength="8" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="hub-btn hub-btn-primary">Continue to payment</button>
+          <p class="form-error" role="alert"></p>
+        </form>
       </article>
     </section>
 
-    <p class="checkout-note">If you are already using Carina, this is the step that moves the deployment into governed production.</p>
+    <p class="checkout-note">After payment, you will receive a setup link by email. If you are already using Carina, this is the step that moves the deployment into governed production.</p>
   </main>
+  <script>
+    const CORE_API = 'https://core.carinaai.uk';
+    const SUCCESS_URL = `${window.location.origin}/onboard?session={CHECKOUT_SESSION_ID}`;
+    const CANCEL_URL = `${window.location.origin}/checkout`;
+
+    document.querySelectorAll('.checkout-toggle').forEach((button) => {
+      button.addEventListener('click', () => {
+        const plan = button.getAttribute('data-plan');
+        document.querySelectorAll('.checkout-form').forEach((form) => {
+          form.classList.toggle('is-open', form.getAttribute('data-plan') === plan);
+        });
+      });
+    });
+
+    document.querySelectorAll('.checkout-form').forEach((form) => {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const plan = form.getAttribute('data-plan');
+        const errorEl = form.querySelector('.form-error');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const email = form.querySelector('input[name="email"]').value.trim();
+        const password = form.querySelector('input[name="password"]').value;
+        errorEl.textContent = '';
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Loading...';
+        try {
+          const res = await fetch(`${CORE_API}/api/billing/checkout/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              password,
+              plan,
+              successUrl: SUCCESS_URL,
+              cancelUrl: CANCEL_URL,
+            }),
+          });
+          const body = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            errorEl.textContent = body.error || 'Something went wrong. Try again or email contact@verlox.uk.';
+            return;
+          }
+          if (!body.url) {
+            errorEl.textContent = 'Something went wrong. Try again or email contact@verlox.uk.';
+            return;
+          }
+          window.location.href = body.url;
+        } catch (_err) {
+          errorEl.textContent = 'Something went wrong. Try again or email contact@verlox.uk.';
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Continue to payment';
+        }
+      });
+    });
+  </script>
 </body>
 </html>

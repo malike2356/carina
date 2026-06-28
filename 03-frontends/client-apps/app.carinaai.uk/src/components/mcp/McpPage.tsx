@@ -12,6 +12,7 @@ import {
   CircleCheck,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CarinaEditor } from '@/components/editor';
 import { Button } from '@/components/ui/button';
 import { IconButton } from '@/components/ui/IconButton';
 import { cn } from '@/lib/utils';
@@ -460,20 +461,26 @@ export function McpPage() {
                       </label>
                       <label className="space-y-1 block">
                         <span className="text-[11px] uppercase tracking-wide text-text-muted">Args</span>
-                        <textarea
+                        <CarinaEditor
                           value={form.argsText}
-                          onChange={(event) => setForm((current) => ({ ...current, argsText: event.target.value }))}
-                          className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+                          onChange={(argsText) => setForm((current) => ({ ...current, argsText }))}
                           placeholder={"-y\n@mcp/server-filesystem"}
+                          variant="compact"
+                          minHeight="6rem"
+                          showEngineSwitch={false}
+                          showToolbar={false}
                         />
                       </label>
                       <label className="space-y-1 block">
                         <span className="text-[11px] uppercase tracking-wide text-text-muted">Environment</span>
-                        <textarea
+                        <CarinaEditor
                           value={form.envText}
-                          onChange={(event) => setForm((current) => ({ ...current, envText: event.target.value }))}
-                          className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+                          onChange={(envText) => setForm((current) => ({ ...current, envText }))}
                           placeholder={"TOKEN=...\nROOT=/workspace"}
+                          variant="compact"
+                          minHeight="6rem"
+                          showEngineSwitch={false}
+                          showToolbar={false}
                         />
                       </label>
                     </>

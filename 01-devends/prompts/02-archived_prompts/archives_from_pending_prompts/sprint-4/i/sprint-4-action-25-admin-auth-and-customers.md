@@ -1,5 +1,9 @@
 # Sprint 4 - Prompt 25: Admin App Scaffold, Auth, and Customer Management
 
+**Status: COMPLETED 2026-06-23**
+
+**What was built:** `admin.carinaai.uk` scaffold (auth, shell, VA queue badge), customers list with filters, customer detail with override panel, audit log with filters and CSV export; core `admin-workspace-queries.ts`, `admin-audit-queries.ts`, workspace override routes.
+
 **Sprint:** 4
 **Prompt number:** 25
 **Primary agent:** Claude Code (backend) + Cursor (frontend)
@@ -12,7 +16,7 @@
 
 When all "Done When" criteria are satisfied:
 1. Add `**Status: COMPLETED YYYY-MM-DD**` at the top of this file.
-2. Move to `internal/prompts/archived_prompts/archives_from_pending_prompts/sprint-4/action/`.
+2. Move to `01-devends/prompts/02-archived_prompts/archives_from_pending_prompts/sprint-4/action/`.
 
 ---
 
@@ -20,14 +24,14 @@ When all "Done When" criteria are satisfied:
 
 Read every file listed before writing a single line of code:
 
-1. `frontends/client-apps/app.carinaai.uk/package.json` - match Next.js, Tailwind, iron-session, lucide-react versions exactly
-2. `frontends/client-apps/app.carinaai.uk/tailwind.config.ts` - design tokens to copy into admin app
-3. `frontends/client-apps/app.carinaai.uk/src/middleware.ts` - auth middleware pattern to replicate
-4. `frontends/client-apps/app.carinaai.uk/src/lib/session.ts` - session utilities pattern; do not import from workspace app
-5. `backends/servers/core.carinaai.uk/src/aiva/aiva-api.ts` - existing Aiva routes; admin routes extend this file
-6. `backends/servers/core.carinaai.uk/src/billing/aiva-billing.ts` - billing functions called by override routes
-7. `backends/servers/core.carinaai.uk/src/billing/stripe-service.ts` - Stripe client for credit actions
-8. `backends/servers/core.carinaai.uk/src/db/` - DB client and migration pattern
+1. `03-frontends/client-apps/app.carinaai.uk/package.json` - match Next.js, Tailwind, iron-session, lucide-react versions exactly
+2. `03-frontends/client-apps/app.carinaai.uk/tailwind.config.ts` - design tokens to copy into admin app
+3. `03-frontends/client-apps/app.carinaai.uk/src/middleware.ts` - auth middleware pattern to replicate
+4. `03-frontends/client-apps/app.carinaai.uk/src/lib/session.ts` - session utilities pattern; do not import from workspace app
+5. `02-backends/core.carinaai.uk/src/aiva/aiva-api.ts` - existing Aiva routes; admin routes extend this file
+6. `02-backends/core.carinaai.uk/src/billing/aiva-billing.ts` - billing functions called by override routes
+7. `02-backends/core.carinaai.uk/src/billing/stripe-service.ts` - Stripe client for credit actions
+8. `02-backends/core.carinaai.uk/src/db/` - DB client and migration pattern
 
 ---
 
@@ -46,7 +50,7 @@ audit log page. Prompts 26 and 27 add Fleet, VA Queue, and Revenue pages to the 
 
 ## Step 1: Database migration - 009-aiva-admin.sql
 
-Create `backends/servers/core.carinaai.uk/src/db/migrations/009-aiva-admin.sql`:
+Create `02-backends/core.carinaai.uk/src/db/migrations/009-aiva-admin.sql`:
 
 ```sql
 -- Admin flag on existing users table
@@ -131,7 +135,7 @@ Run this migration via the existing migration runner before building any backend
 
 ## Step 2: Admin app scaffold
 
-Create a new Next.js app at `frontends/client-apps/admin.carinaai.uk/`.
+Create a new Next.js app at `03-frontends/client-apps/admin.carinaai.uk/`.
 
 ```bash
 npx create-next-app@[same version as app.carinaai.uk] admin.carinaai.uk \
@@ -408,7 +412,7 @@ flag on the users table.
 ```typescript
 // Helper to call core from admin Next.js API routes
 async function coreAdminFetch(path: string, init?: RequestInit) {
-  const session = await getAdminSession();  // reads iron-session
+  const session = await getAdminSession(); // reads iron-session
   const res = await fetch(`${process.env.ADMIN_CORE_URL}${path}`, {
     ...init,
     headers: {
@@ -1050,7 +1054,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
   const humanAction = ACTION_LABEL_MAP[entry.action] ?? entry.action;
   const targetLink = entry.targetType === 'workspace'
     ? `/customers/${entry.targetId}`
-    : `/customers?aivaId=${entry.targetId}`;  // workspace derived from metadata
+    : `/customers?aivaId=${entry.targetId}`; // workspace derived from metadata
 
   return (
     <>

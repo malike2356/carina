@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
-import Gradient from 'ink-gradient';
 import {
   CARINA_LOGO,
   SETUP_DURATION,
@@ -42,9 +41,7 @@ export function WelcomeStep({ onNext }: { onNext: () => void }) {
         <Text dimColor>{WELCOME_MARK}</Text>
       </Box>
       <Box marginTop={1}>
-        <Gradient name="rainbow">
-          <Text>{CARINA_LOGO}</Text>
-        </Gradient>
+        <Text bold color="cyan">{CARINA_LOGO}</Text>
       </Box>
       <Box marginTop={1}>
         <Text bold color="#e6edf3">{TAGLINE.slice(0, taglineChars)}</Text>

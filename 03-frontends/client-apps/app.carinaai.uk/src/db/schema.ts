@@ -19,6 +19,9 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
+  termsAcceptedAt: timestamp('terms_accepted_at'),
+  termsVersion: text('terms_version'),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -79,6 +82,8 @@ export const workspaces = pgTable(
     stripeCustomerId: text('stripe_customer_id'),
     stripeSubscriptionId: text('stripe_subscription_id'),
     currentPeriodEnd: timestamp('current_period_end'),
+    onboardingCompletedAt: timestamp('onboarding_completed_at'),
+    deletedAt: timestamp('deleted_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
@@ -560,6 +565,44 @@ export const workspaceMembers = pgTable(
     index('workspace_members_user_id_idx').on(t.userId),
   ],
 );
+
+export const ssoProviderTypeEnum = pgEnum('sso_provider_type', ['oidc', 'saml']);
+
+export const workspaceSsoProviders = pgTable(
+  'workspace_sso_providers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    providerType: ssoProviderTypeEnum('provider_type').notNull().default('oidc'),
+    displayName: text('display_name').notNull(),
+    domain: varchar('domain', { length: 255 }).notNull(),
+    issuer: text('issuer'),
+    clientId: text('client_id'),
+    clientSecretEnc: text('client_secret_enc'),
+    clientSecretIv: text('client_secret_iv'),
+    clientSecretTag: text('client_secret_tag'),
+    samlEntityId: text('saml_entity_id'),
+    samlSsoUrl: text('saml_sso_url'),
+    samlCertificateEnc: text('saml_certificate_enc'),
+    samlCertificateIv: text('saml_certificate_iv'),
+    samlCertificateTag: text('saml_certificate_tag'),
+    defaultRole: varchar('default_role', { length: 30 }).notNull().default('member'),
+    ssoRequired: boolean('sso_required').notNull().default(false),
+    enabled: boolean('enabled').notNull().default(true),
+    createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('workspace_sso_providers_workspace_id_idx').on(t.workspaceId),
+    index('workspace_sso_providers_domain_idx').on(t.domain),
+  ],
+);
+
+export type WorkspaceSsoProvider = typeof workspaceSsoProviders.$inferSelect;
+export type SsoProviderType = (typeof ssoProviderTypeEnum.enumValues)[number];
 
 export const terminalAuditLog = pgTable(
   'terminal_audit_log',

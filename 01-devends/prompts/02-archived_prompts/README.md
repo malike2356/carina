@@ -1,7 +1,9 @@
 # archived_prompts
 
 Completed and superseded prompt work for the Carina/Verlox platform.
-All prompts here have been built, merged, or deliberately retired.
+
+**Note (2026-06-25):** All 29 sprint-4 action prompts are archived as COMPLETED. VPS operator
+steps for prompt 02: `core.carinaai.uk/docker/docs/VPS-SECURITY-CLOSEOUT.md`.
 
 ---
 
@@ -77,7 +79,8 @@ archived_prompts/
 |- sprint-1/                Sprint 1 archived prompts (incident blog gap).
 |
 |- sprint-2/                Sprint 2 archived prompts (gap-01 through gap-33,
-|                           superseded early drafts, troubleshooting gaps).
+|                           gap-31 scout partnership connectors, superseded
+|                           early drafts, troubleshooting gaps).
 |
 |- sprint-3/                Sprint 3 archived prompts (white-label, branding, custom
 |                           domains, billing/reseller, packs, Docker/ops scoping,

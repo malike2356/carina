@@ -266,7 +266,10 @@ eventsRouter.post('/', async (req: RequestWithScoutAuth, res: Response): Promise
       const accountId =
         req.scoutAuth?.kind === 'account' ? req.scoutAuth.accountId : undefined;
       void alertDispatcher
-        .dispatch(securityEvent, { accountId })
+        .dispatch(securityEvent, {
+          accountId,
+          metadata: (inserted.metadata ?? {}) as Record<string, unknown>,
+        })
         .catch((err) => {
           console.error('[events] Alert dispatch error:', err);
         });

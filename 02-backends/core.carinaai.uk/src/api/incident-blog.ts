@@ -9,6 +9,7 @@ import {
   getIncidentStatusStats,
   getLastResearchRun,
   listIncidents,
+  listResearchRuns,
   listSubscribers,
   parseIncidentListSort,
   subscribe,
@@ -52,12 +53,18 @@ incidentBlogRouter.post('/subscribe', async (req: Request, res: Response) => {
       return;
     }
     if (result.outcome === 'pending') {
+      const token = result.subscriber.confirmToken;
+      if (!token) {
+        res.status(500).json({ error: 'Subscription token missing' });
+        return;
+      }
+      await sendSubscribeConfirmationEmail(result.subscriber.email, token);
       res.json({
         ok: true,
         subscribed: true,
         email: result.subscriber.email,
         message: 'Check your email to confirm your subscription.',
-        confirmToken: process.env.NODE_ENV === 'production' ? undefined : result.subscriber.confirmToken,
+        confirmToken: process.env.NODE_ENV === 'production' ? undefined : token,
       });
       return;
     }
@@ -319,4 +326,22 @@ incidentBlogRouter.post('/admin/reject-drafts', async (req: Request, res: Respon
 incidentBlogRouter.get('/admin/research-status', async (req: Request, res: Response) => {
   if (!requireOps(req, res)) return;
   res.json({ run: await getLastResearchRun() });
+});
+
+incidentBlogRouter.get('/admin/research-log', async (req: Request, res: Response) => {
+  if (!requireOps(req, res)) return;
+  const limitParam = req.query.limit;
+  const limit = limitParam ? Math.min(100, Math.max(1, Number(limitParam) || 20)) : 20;
+  const runs = await listResearchRuns(limit);
+  res.json({
+    runs: runs.map((run) => ({
+      id: run.id,
+      runAt: run.runAt,
+      triggeredBy: run.triggeredBy,
+      foundCount: run.foundCount,
+      draftedCount: run.draftedCount,
+      skippedCount: run.skippedCount,
+      errorLog: run.errorLog,
+    })),
+  });
 });

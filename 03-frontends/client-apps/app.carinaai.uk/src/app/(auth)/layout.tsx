@@ -152,10 +152,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         }
         .auth-split-form input[type="email"],
         .auth-split-form input[type="password"],
-        .auth-split-form input[type="text"] {
+        .auth-split-form input[type="text"],
+        .auth-split-form input:not([type="checkbox"]):not([type="hidden"]):not([type="submit"]) {
           background: #f7fafc;
           border-color: #d1dde6;
           color: #0d1f2d;
+        }
+        .auth-split-form .bg-elevated {
+          background: #f7fafc !important;
         }
         .auth-split-form input:focus {
           border-color: #1a5f7a;
@@ -217,31 +221,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           margin: 0 !important;
         }
 
-        /* Mobile: hide brand panel, full width form */
+        /* Mobile: hide brand panel, full width light form */
         @media (max-width: 767px) {
           .auth-split-brand { display: none; }
-          .auth-split-form { background: #0d1f2d; padding: 2rem 1.25rem 4rem; }
-          .auth-split-form,
-          .auth-split-form * { color-scheme: dark; }
-          .auth-split-form h1 { color: #f0f4f7; }
-          .auth-split-form p, .auth-split-form label { color: #7a9ab0; }
-          .auth-split-form input[type="email"],
-          .auth-split-form input[type="password"],
-          .auth-split-form input[type="text"] {
-            background: #142536;
-            border-color: #253f52;
-            color: #f0f4f7;
-          }
-          .auth-split-form form { background: #142536 !important; border-color: #253f52 !important; }
-          .auth-split-form button[type="submit"] { background: #f5a623; color: #0d1f2d; }
-          .auth-split-form button[type="submit"]:hover { background: #e09415; }
-          .auth-split-form a, .auth-split-form .text-accent { color: #f5a623 !important; }
-          .auth-split-form .text-text-primary { color: #f0f4f7 !important; }
-          .auth-split-form .text-text-secondary { color: #7a9ab0 !important; }
-          .auth-split-form .bg-surface { background: #142536 !important; }
-          .auth-split-form .border-border { border-color: #253f52 !important; }
-          .auth-split-help { color: #3d6478; }
-          .auth-split-help a { color: #f5a623; }
+          .auth-split-form { padding: 2rem 1.25rem 4rem; }
         }
       `}</style>
     </div>

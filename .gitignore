@@ -79,6 +79,14 @@ product/archive/archive/
 platform_admin/node_modules/
 /carinaai.uk/
 HESTIACP_CREDENTIALS.txt
+media-HESTIACP_CREDENTIALS.txt
+env_actual_details_sample.md
+
+# iLaud personal data - conversations, notes, tokens, identity docs
+02-backends/xeclone/iLaud/content/
+
+# Expo local cache
+03-frontends/client-apps/carinaMobile/.expo/
 
 # Media and credentials - not for source control
 instructions/media/

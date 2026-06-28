@@ -3,12 +3,13 @@ import type { AlertSeverity } from '../alerts/types.js';
 import { decryptSecret, encryptSecret, maskSecret } from './secret-crypto.js';
 import { getPlatformSetting, setPlatformSetting } from './platform-settings.js';
 
-export type AlertChannelType = 'telegram' | 'email' | 'slack';
+export type AlertChannelType = 'telegram' | 'email' | 'slack' | 'whatsapp';
 
 const SECRET_KEYS: Record<AlertChannelType, string[]> = {
   telegram: ['bot_token'],
   email: ['resend_api_key'],
   slack: ['webhook_url'],
+  whatsapp: ['account_sid', 'auth_token'],
 };
 
 export interface AlertChannelRow {
@@ -40,10 +41,11 @@ export interface AlertChannelEnvSource {
   telegram: { botToken?: string; chatId?: string };
   email: { resendApiKey?: string; from?: string; to?: string };
   slack: { webhookUrl?: string };
+  whatsapp: { accountSid?: string; authToken?: string; from?: string; to?: string };
 }
 
 function isChannelType(value: string): value is AlertChannelType {
-  return value === 'telegram' || value === 'email' || value === 'slack';
+  return value === 'telegram' || value === 'email' || value === 'slack' || value === 'whatsapp';
 }
 
 function isMaskedSecret(value: string): boolean {
@@ -63,6 +65,12 @@ export function readAlertChannelEnv(): AlertChannelEnvSource {
     },
     slack: {
       webhookUrl: process.env.SCOUT_SLACK_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL,
+    },
+    whatsapp: {
+      accountSid: process.env.SCOUT_TWILIO_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID,
+      authToken: process.env.SCOUT_TWILIO_AUTH_TOKEN || process.env.TWILIO_AUTH_TOKEN,
+      from: process.env.SCOUT_TWILIO_WHATSAPP_FROM || process.env.TWILIO_WHATSAPP_FROM,
+      to: process.env.SCOUT_ALERT_WHATSAPP_TO || process.env.ALERT_WHATSAPP_TO,
     },
   };
 }
@@ -102,6 +110,25 @@ export function getConfiguredAlertChannelSeeds(source: AlertChannelEnvSource = r
       enabled: true,
       config: {
         webhook_url: source.slack.webhookUrl,
+      },
+    });
+  }
+
+  if (
+    source.whatsapp.accountSid &&
+    source.whatsapp.authToken &&
+    source.whatsapp.from &&
+    source.whatsapp.to
+  ) {
+    seeds.push({
+      channel_type: 'whatsapp',
+      severity_threshold: 'warning',
+      enabled: true,
+      config: {
+        account_sid: source.whatsapp.accountSid,
+        auth_token: source.whatsapp.authToken,
+        from_number: source.whatsapp.from,
+        to_number: source.whatsapp.to,
       },
     });
   }
@@ -168,7 +195,7 @@ export async function listAlertChannels(): Promise<AlertChannelPublic[]> {
   const result = await pool.query<AlertChannelRow>(
     `SELECT id, channel_type, severity_threshold, enabled, config, created_at::text
      FROM alert_channels
-     WHERE channel_type IN ('telegram', 'email', 'slack')
+     WHERE channel_type IN ('telegram', 'email', 'slack', 'whatsapp')
      ORDER BY channel_type`,
   );
   return result.rows.map((row) =>
@@ -256,7 +283,7 @@ export async function loadDispatchChannels(severity: AlertSeverity): Promise<
   const result = await pool.query<AlertChannelRow>(
     `SELECT id, channel_type, severity_threshold, enabled, config
      FROM alert_channels
-     WHERE enabled = TRUE AND channel_type IN ('telegram', 'email', 'slack')`,
+     WHERE enabled = TRUE AND channel_type IN ('telegram', 'email', 'slack', 'whatsapp')`,
   );
   return result.rows
     .filter((row) => isChannelType(row.channel_type))

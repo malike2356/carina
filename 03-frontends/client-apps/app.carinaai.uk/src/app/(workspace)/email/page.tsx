@@ -13,6 +13,7 @@ import { CoreSurfaceBanner } from '@/components/shell/CoreSurfaceBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
 import { Spinner } from '@/components/ui/Spinner';
+import { CarinaEditor } from '@/components/editor';
 import { cn } from '@/lib/utils';
 
 type FilterTab = 'inbox' | 'high' | 'archived' | 'spam';
@@ -243,12 +244,12 @@ export default function EmailPage() {
                       </button>
                     )}
                   </div>
-                  <textarea
+                  <CarinaEditor
                     value={draftText}
-                    onChange={(e) => setDraftText(e.target.value)}
-                    rows={8}
-                    className="w-full resize-y rounded-md border border-border bg-elevated px-2 py-2 text-xs text-text-primary outline-none"
+                    onChange={setDraftText}
                     placeholder="Generate a draft or write your own reply."
+                    variant="compact"
+                    minHeight="12rem"
                   />
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button

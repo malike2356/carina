@@ -1,3 +1,6 @@
+import { buildChannelContextSection } from '../agents/ambient/channel-context-prompt.js';
+import { buildThreadContextSuffix } from '../agents/ambient/slack-thread-context.js';
+import { config } from '../config/index.js';
 import { allocateGatewaySession } from '../memory/session-scope.js';
 import { cancelAllStreamsForSession } from '../telemetry/stream-session.js';
 import { applyPendingInvalidation, thawSession } from '../brain/prompt-cache.js';
@@ -492,6 +495,17 @@ export class GatewayRouter {
     message: CarinaMessage,
     options?: { turnId?: string },
   ): AsyncGenerator<string> {
+    const { isAiWorkersEnabled, resolveWorkerForMessage, applyWorkerToSession, processWorkerInbound, processWorkerOutbound } = await import('../workers/aiva-message-handler.js');
+    const { clearWorkerSessionContext } = await import('../workers/worker-session-context.js');
+
+    let workerCtx = isAiWorkersEnabled() ? await resolveWorkerForMessage(message) : null;
+    let restorePacks: (() => void) | undefined;
+
+    if (workerCtx) {
+      restorePacks = applyWorkerToSession(this, message.sessionId, workerCtx);
+      void processWorkerInbound(workerCtx, message).catch(() => {});
+    }
+
     const agent = this.getAgent(message.sessionId, message.source);
     if (message.tenantId) {
       agent.setTenantId(message.tenantId);
@@ -501,27 +515,42 @@ export class GatewayRouter {
       ? `${buildGroupContext(message)}\n\nMessage:\n${message.content}`
       : message.content;
     const groupChunks: string[] = [];
-    for await (const event of agent.turn(content)) {
-      if (
-        event.type === 'text' ||
-        event.type === 'tool' ||
-        event.type === 'status'
-      ) {
-        if (message.chatType === 'group') {
-          groupChunks.push(event.content);
-          continue;
-        }
-        yield event.content;
-      }
-    }
-    if (message.chatType === 'group') {
-      const full = groupChunks.join('');
-      if (full.trim() !== 'NO_RESPONSE_NEEDED') {
-        yield full;
-        if (message.chatId && message.messageId && full.trim()) {
-          recordGroupResponse(message.chatId, message.messageId);
+    const workerChunks: string[] = [];
+    try {
+      for await (const event of agent.turn(content)) {
+        if (
+          event.type === 'text' ||
+          event.type === 'tool' ||
+          event.type === 'status'
+        ) {
+          if (workerCtx) {
+            workerChunks.push(event.content);
+            continue;
+          }
+          if (message.chatType === 'group') {
+            groupChunks.push(event.content);
+            continue;
+          }
+          yield event.content;
         }
       }
+      if (workerCtx && workerChunks.length > 0) {
+        const full = workerChunks.join('');
+        const processed = await processWorkerOutbound(workerCtx, message, full);
+        yield processed.reply;
+      }
+      if (message.chatType === 'group') {
+        const full = groupChunks.join('');
+        if (full.trim() !== 'NO_RESPONSE_NEEDED') {
+          yield full;
+          if (message.chatId && message.messageId && full.trim()) {
+            recordGroupResponse(message.chatId, message.messageId);
+          }
+        }
+      }
+    } finally {
+      if (restorePacks) restorePacks();
+      if (workerCtx) clearWorkerSessionContext(message.sessionId);
     }
   }
 
@@ -558,6 +587,29 @@ export class GatewayRouter {
     bindSessionDelivery(sessionId, this.resolveSessionDelivery(sessionId, inbound));
 
     const text = buildInboundText(inbound);
+
+    if (
+      config.ambient.enabled
+      && !inbound.isDirect
+      && inbound.isMention
+      && inbound.channel === 'slack'
+    ) {
+      const runtime = this.sessionRuntime.get(sessionId);
+      const channelContext = await buildChannelContextSection(
+        inbound.conversationId,
+        inbound.chatTitle ?? inbound.conversationId,
+        text,
+      );
+      const rawPayload = inbound.raw as Record<string, unknown> | undefined;
+      const threadSuffix = rawPayload?._carinaThreadContext
+        ? buildThreadContextSuffix(String(rawPayload._carinaThreadContext))
+        : '';
+      const combined = [runtime?.workspaceContext, channelContext, threadSuffix].filter(Boolean).join('\n');
+      if (combined && runtime) {
+        this.setSessionSystemPromptSuffix(sessionId, combined);
+      }
+    }
+
     const trimmedInbound = text.trim();
     if (trimmedInbound === '/new' || trimmedInbound === '/reset') {
       const mapKey = identityLinksEnabled()
@@ -692,14 +744,33 @@ function buildInboundText(message: ChannelMessage): string {
 
 let routerInstance: GatewayRouter | null = null;
 
-export function initRouter(memoryReady: boolean): GatewayRouter {
-  routerInstance = new GatewayRouter(memoryReady);
+/** Shared across src/ (tsx dev) and dist/ (#core from @verlox/carina-web). */
+const ROUTER_GLOBAL = Symbol.for('carina.gateway.router');
+
+function storeRouter(router: GatewayRouter): void {
+  routerInstance = router;
+  (globalThis as Record<symbol, GatewayRouter>)[ROUTER_GLOBAL] = router;
+}
+
+function resolveRouter(): GatewayRouter | null {
+  const fromGlobal = (globalThis as Record<symbol, GatewayRouter | undefined>)[ROUTER_GLOBAL];
+  if (fromGlobal) {
+    routerInstance = fromGlobal;
+    return fromGlobal;
+  }
   return routerInstance;
 }
 
+export function initRouter(memoryReady: boolean): GatewayRouter {
+  const router = new GatewayRouter(memoryReady);
+  storeRouter(router);
+  return router;
+}
+
 export function getRouter(): GatewayRouter {
-  if (!routerInstance) {
+  const router = resolveRouter();
+  if (!router) {
     throw new Error('Gateway router not initialised. Call initRouter() first.');
   }
-  return routerInstance;
+  return router;
 }

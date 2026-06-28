@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CarinaEditor } from '@/components/editor';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -501,12 +502,12 @@ export function CronPage() {
                 <p className="text-[11px] text-text-muted">
                   Next run preview: {describeSchedule(form.schedule)}
                 </p>
-                <textarea
+                <CarinaEditor
                   value={form.prompt}
-                  onChange={(event) => setForm((current) => ({ ...current, prompt: event.target.value }))}
+                  onChange={(prompt) => setForm((current) => ({ ...current, prompt }))}
                   placeholder="Instructions for the job"
-                  rows={5}
-                  className="w-full rounded-md border border-border bg-elevated px-3 py-2 text-sm text-text-primary outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  variant="compact"
+                  minHeight="8rem"
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input

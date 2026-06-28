@@ -1,10 +1,10 @@
 import crypto from 'crypto';
-import { Resend } from 'resend';
 import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
 import { createOrgForUser, getOrgProfile, getPrimaryOrgForUser } from '../hosted/org-service.js';
 import { runHostedMigrations } from './hosted-migrations.js';
 import { checkAuthRateLimit, clearAuthFailures, recordAuthFailure } from '../security/auth-rate-limit.js';
+import { sendPasswordResetEmail, sendWelcomeEmail } from '../email/email-triggers.js';
 
 let hostedReady = false;
 
@@ -98,7 +98,12 @@ export async function registerUser(
   const userId = String(result.rows[0].id);
   const safe = schemaName.replace(/[^a-z0-9_]/gi, '');
   await pool.query(`CREATE SCHEMA IF NOT EXISTS "${safe}"`);
-  await createOrgForUser(userId, email);
+  const org = await createOrgForUser(userId, email);
+  void sendWelcomeEmail({
+    workspaceId: org.orgId,
+    email,
+    name: email.split('@')[0] ?? '',
+  }).catch((err) => console.error('[hosted-auth] welcome email failed:', err));
   return { apiKey, userId };
 }
 
@@ -270,13 +275,11 @@ export async function requestPasswordReset(email: string, origin?: string): Prom
 
   const base = origin ?? `https://${config.hosted.appHost}`;
   const resetUrl = `${base}/hosted-reset?token=${rawToken}`;
-  const resend = new Resend(config.resend.apiKey);
-  await resend.emails.send({
-    from: config.resend.from,
-    to: email,
-    subject: 'Carina password reset',
-    text: `You requested a password reset.\n\nClick the link below to set a new password (valid for 1 hour):\n\n${resetUrl}\n\nIf you did not request this, ignore this email.`,
-  });
+  void sendPasswordResetEmail({
+    email,
+    resetUrl,
+    expiresInMinutes: 60,
+  }).catch((err) => console.error('[hosted-auth] password reset email failed:', err));
 }
 
 export async function confirmPasswordReset(

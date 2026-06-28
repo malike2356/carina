@@ -1,6 +1,6 @@
 # Compliance (Deep)
 
-**Last updated:** 2026-05-17
+**Last updated:** 2026-06-05
 
 ## Overview
 Comprehensive compliance management for property businesses. Track certificates and obligations (gas safety, EPC, EICR, HMO licences, insurance), AML checks and training, complaint cases, regulatory registrations, and full GDPR compliance - data subject rights, consent logs, breach recording, retention policies, and privacy policies.
@@ -38,6 +38,20 @@ Complaints move through: open, investigating, resolved, closed, or escalated. Ea
 
 ### GDPR data subject requests
 Handle requests for data access, erasure, rectification, portability, or processing restriction. Track from received through processing to completed or rejected. Erasure requests trigger anonymisation of related lead funnel data.
+
+### Carina compliance awareness
+Carina (tenant AI) can answer compliance status questions using live workspace data when the compliance module is enabled.
+
+**Service:** `App\Services\Carina\CarinaComplianceContextService` builds a structured appendix appended to Carina's baseline context via `CarinaBaselineContextService`. Counts come from `ComplianceDashboardService::getSnapshot()`; no personal tenant data is included in the context block.
+
+**Section headers:** `[COMPLIANCE SNAPSHOT]`, `[URGENT ITEMS]`, `[HHSRS CAT 1]`, `[ENFORCEMENT]`, `[FINANCIAL PENALTIES]`, `[HMO LICENCES EXPIRING]`.
+
+**Slash commands:**
+- `/compliance-status` - live dashboard snapshot in plain language
+- `/compliance-urgent` - red items and nearest deadlines across all compliance modules
+- `/hmo-check [property address]` - HMO licence, fire safety, and HHSRS status for one property
+
+**Stale context:** `carina_conversations.compliance_snapshot_hash` and `compliance_context_version` track when compliance data changed since the thread started; hash refreshes after each Carina message.
 
 ### Consent management
 Log when and where consent was captured (including IP address). Track withdrawal with timestamp. Consents can be given or withdrawn; the full history is preserved.

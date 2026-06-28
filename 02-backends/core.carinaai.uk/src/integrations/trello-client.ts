@@ -1,4 +1,9 @@
 import { config } from '../config/index.js';
+import {
+  resolveTrelloCredentials,
+  trelloConfigHint,
+  isTrelloConfigured,
+} from './trello-credentials.js';
 
 export type TrelloBoard = {
   id: string;
@@ -25,34 +30,36 @@ function trelloBase(): string {
   return config.trello.baseUrl.replace(/\/$/, '');
 }
 
-function authQuery(): string {
-  return `key=${encodeURIComponent(config.trello.apiKey)}&token=${encodeURIComponent(config.trello.token)}`;
+function authQuery(credentials: { apiKey: string; token: string }): string {
+  return `key=${encodeURIComponent(credentials.apiKey)}&token=${encodeURIComponent(credentials.token)}`;
 }
 
-function urlWithAuth(path: string): string {
+function urlWithAuth(path: string, credentials: { apiKey: string; token: string }): string {
   const sep = path.includes('?') ? '&' : '?';
-  return `${trelloBase()}${path}${sep}${authQuery()}`;
+  return `${trelloBase()}${path}${sep}${authQuery(credentials)}`;
 }
 
-function assertConfigured(): void {
-  if (!config.trello.apiKey || !config.trello.token) {
-    throw new Error('Trello is not configured. Set TRELLO_API_KEY and TRELLO_TOKEN. Get them at https://trello.com/app-key');
+async function requireCredentials(): Promise<{ apiKey: string; token: string }> {
+  const credentials = await resolveTrelloCredentials();
+  if (!credentials) {
+    throw new Error(trelloConfigHint());
   }
+  return credentials;
 }
 
 async function trelloJson<T>(path: string): Promise<T> {
-  assertConfigured();
-  const res = await fetch(urlWithAuth(path), { signal: AbortSignal.timeout(10_000) });
+  const credentials = await requireCredentials();
+  const res = await fetch(urlWithAuth(path, credentials), { signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`Trello HTTP ${res.status} on ${path}`);
   return res.json() as Promise<T>;
 }
 
 async function trelloWrite<T>(path: string, method: 'POST' | 'PUT', body: Record<string, string>): Promise<T> {
-  assertConfigured();
+  const credentials = await requireCredentials();
   const p = new URLSearchParams({
     ...body,
-    key: config.trello.apiKey,
-    token: config.trello.token,
+    key: credentials.apiKey,
+    token: credentials.token,
   });
   const res = await fetch(`${trelloBase()}${path}`, {
     method,
@@ -63,13 +70,7 @@ async function trelloWrite<T>(path: string, method: 'POST' | 'PUT', body: Record
   return res.json() as Promise<T>;
 }
 
-export function isTrelloConfigured(): boolean {
-  return Boolean(config.trello.apiKey && config.trello.token);
-}
-
-export function trelloConfigHint(): string {
-  return 'Trello is not configured. Set TRELLO_API_KEY and TRELLO_TOKEN. Get them at https://trello.com/app-key';
-}
+export { isTrelloConfigured, trelloConfigHint };
 
 export async function listTrelloBoards(): Promise<TrelloBoard[]> {
   return trelloJson<TrelloBoard[]>('/members/me/boards?fields=id,name,url');

@@ -1,4 +1,4 @@
-export { reportEvent, reportToolCall, reportHeartbeat } from './scout-client.js';
+export { reportEvent, reportEventWithGovernance, reportToolCall, reportHeartbeat } from './scout-client.js';
 export {
   recordToolCall,
   flushMetricsToScout,

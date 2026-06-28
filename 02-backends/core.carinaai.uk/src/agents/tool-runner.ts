@@ -81,6 +81,15 @@ export async function executeToolCall(
     return { error: `Unknown tool: ${call.toolName}` };
   }
 
+  const { isToolAllowedForWorker, recordUnauthorizedToolAttempt, recordToolFailure, holdingMessage } = await import('../workers/aiva-message-handler.js');
+  if (!isToolAllowedForWorker(call.toolName, sessionId)) {
+    void recordUnauthorizedToolAttempt(sessionId, call.toolName).catch(() => {});
+    return {
+      error: holdingMessage(),
+      code: 'AIVA_TOOL_BLOCKED',
+    };
+  }
+
   const tierBlock = enforceCyberToolTier(call.toolName);
   if (tierBlock) {
     return { error: tierBlock.error, code: tierBlock.code };
@@ -348,6 +357,7 @@ export async function executeToolCall(
     }
     return result;
   } catch (err) {
+    recordToolFailure(sessionId, call.toolName);
     getTrajectoryRecorder().recordStep(sessionId, {
       type: 'error',
       toolName: call.toolName,

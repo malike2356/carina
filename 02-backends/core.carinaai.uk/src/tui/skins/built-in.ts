@@ -8,7 +8,7 @@ export const DEFAULT_SKIN: CarinaThemeSkin = {
   successColor: 'green',
   errorColor: 'red',
   warningColor: 'yellow',
-  bannerGradient: 'rainbow',
+  bannerGradient: null,
   bannerColor: 'cyan',
   spinner: { frames: ['|', '/', '-', '\\'], color: 'cyan' },
   responsePrefix: 'Carina',

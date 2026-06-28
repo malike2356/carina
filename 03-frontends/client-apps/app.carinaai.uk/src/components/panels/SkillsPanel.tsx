@@ -13,6 +13,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CarinaEditor } from '@/components/editor';
 import { IconButton } from '@/components/ui/IconButton';
 import { Panel } from '@/components/ui/Panel';
 import { Spinner } from '@/components/ui/Spinner';
@@ -314,12 +315,13 @@ export function SkillsPanel({ onClose, embedded = true }: SkillsPanelProps) {
 
           <div>
             <label className="mb-1.5 block text-xs font-medium text-text-secondary">Description</label>
-            <textarea
+            <CarinaEditor
               value={addDesc}
-              onChange={(event) => setAddDesc(event.target.value)}
+              onChange={setAddDesc}
               placeholder="What does this skill cover? The model may use this as a prompt hint when relevant."
-              rows={3}
-              className="w-full resize-none rounded-md border border-border bg-elevated px-3 py-2 text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-focus"
+              variant="compact"
+              minHeight="5rem"
+              showEngineSwitch={false}
             />
           </div>
 

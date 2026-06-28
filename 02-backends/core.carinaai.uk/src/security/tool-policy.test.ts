@@ -88,6 +88,13 @@ describe('ToolPolicyEnforcer session rate override', () => {
     );
   });
 
+  it('accepts profile-scoped session ids for rate limit keys', async () => {
+    const enforcer = new ToolPolicyEnforcer(createMockRedis(1, 1), reportFn, undefined, 'test-001');
+    await expect(
+      enforcer.enforce('web-search', {}, 'profile:alpha:7f85a214-c7cd-4299-9cc3-f3f2bb7de496'),
+    ).resolves.toBe(true);
+  });
+
   it('enforces allowlist when operator enables it', async () => {
     const { _processControlMessage, _resetSandboxPolicies } = await import('./kill-switch-listener.js');
     _resetSandboxPolicies();

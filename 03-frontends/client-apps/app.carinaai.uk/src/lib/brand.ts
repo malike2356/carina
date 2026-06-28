@@ -50,7 +50,7 @@ export interface ResolvedBrand {
   sources: BrandSourceMap;
 }
 
-export type AppBrandMode = 'hosted' | 'private' | 'ops';
+export type AppBrandMode = 'hosted' | 'private' | 'ops' | 'aiva';
 
 export interface BrandResolutionInput {
   mode?: AppBrandMode;
@@ -85,6 +85,14 @@ export const PLATFORM_BRAND_DEFAULTS: Record<AppBrandMode, BrandConfig> = {
     supportEmail: process.env.CARINA_SUPPORT_EMAIL?.trim() || 'hello@carinaai.uk',
     supportName: 'Carina Ops',
     senderName: 'Carina Ops',
+  },
+  aiva: {
+    productName: 'Aiva',
+    shortName: 'Aiva',
+    publicSiteTitle: 'Aiva',
+    supportEmail: process.env.CARINA_SUPPORT_EMAIL?.trim() || 'hello@carinaai.uk',
+    supportName: 'Aiva Support',
+    senderName: 'Aiva',
   },
 };
 

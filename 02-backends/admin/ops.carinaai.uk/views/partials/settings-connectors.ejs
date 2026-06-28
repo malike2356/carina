@@ -1,0 +1,370 @@
+  <div id="settings-panel-connectors" class="settings-panel hidden ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <section class="ops-section" id="connectors-section">
+      <div class="ops-section-title">SIEM and vendor connectors</div>
+      <p class="ops-section-sub">
+        Push Scout security findings to SentinelOne, CrowdStrike, Jira, PagerDuty, and other vendor tools.
+        Requires a Scout Pro account. Pair Scout under Connections first.
+      </p>
+
+      <div class="ops-field">
+        <label class="ops-label" for="connector-account-select">Scout account</label>
+        <div class="ops-actions" style="margin-top:0;align-items:center;">
+          <select id="connector-account-select" class="ops-select" style="flex:1;min-width:220px;">
+            <option value="">Select account...</option>
+          </select>
+          <a href="/scout/accounts" class="ops-btn-ghost">Manage accounts</a>
+        </div>
+        <p id="connector-account-hint" class="ops-inline-note" style="margin-top:8px;">
+          Choose the Scout customer account whose connectors you want to configure.
+        </p>
+      </div>
+
+      <p id="connectors-status" class="ops-status-line">Load an account to view connectors.</p>
+      <div id="connectors-list" class="connectors-list"></div>
+    </section>
+  </div>
+
+  <script>
+  (function connectorsPanel() {
+    const statusEl = document.getElementById('connectors-status');
+    const listEl = document.getElementById('connectors-list');
+    const accountSelect = document.getElementById('connector-account-select');
+    const accountHint = document.getElementById('connector-account-hint');
+    if (!statusEl || !listEl || !accountSelect) return;
+
+    const CATEGORY_ORDER = ['siem', 'edr', 'cloud', 'supply-chain', 'ticketing', 'soar'];
+    const CATEGORY_LABELS = {
+      siem: 'SIEM',
+      edr: 'EDR',
+      cloud: 'Cloud security',
+      'supply-chain': 'Supply chain',
+      ticketing: 'Ticketing',
+      soar: 'SOAR',
+    };
+
+    let available = [];
+    let configuredById = {};
+    let selectedAccountId = localStorage.getItem('ops.connectorAccountId') || '';
+
+    function setStatus(msg, ok) {
+      statusEl.textContent = msg;
+      statusEl.className = 'ops-status-line ' + (ok === true ? 'ok' : ok === false ? 'warn' : '');
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function inputType(field) {
+      if (field.type === 'password') return 'password';
+      if (field.type === 'url') return 'url';
+      if (field.type === 'number') return 'number';
+      return 'text';
+    }
+
+    function renderField(connectorId, field, config, secretsSet) {
+      const key = field.key;
+      const saved = config[key] || '';
+      const hasSecret = secretsSet && secretsSet[key];
+      if (field.type === 'select') {
+        const options = (field.options || []).map((opt) => {
+          const selected = (saved || field.default || '') === opt.value ? ' selected' : '';
+          return '<option value="' + escapeHtml(opt.value) + '"' + selected + '>' + escapeHtml(opt.label) + '</option>';
+        }).join('');
+        return (
+          '<div class="ops-field">' +
+            '<label class="ops-label" for="conn-' + connectorId + '-' + key + '">' + escapeHtml(field.label) + '</label>' +
+            '<select id="conn-' + connectorId + '-' + key + '" class="ops-select" data-connector-field="' + escapeHtml(key) + '">' +
+              options +
+            '</select>' +
+            (field.help ? '<p class="ops-inline-note">' + escapeHtml(field.help) + '</p>' : '') +
+          '</div>'
+        );
+      }
+
+      const placeholder = field.type === 'password' && hasSecret
+        ? saved + ' (saved; leave blank to keep)'
+        : (field.placeholder || '');
+      return (
+        '<div class="ops-field">' +
+          '<label class="ops-label" for="conn-' + connectorId + '-' + key + '">' + escapeHtml(field.label) + '</label>' +
+          '<input id="conn-' + connectorId + '-' + key + '" type="' + inputType(field) + '" ' +
+            'class="ops-input' + (field.type === 'password' || field.type === 'url' ? ' mono' : '') + '" ' +
+            'data-connector-field="' + escapeHtml(key) + '" ' +
+            'value="' + (field.type === 'password' ? '' : escapeHtml(saved || field.default || '')) + '" ' +
+            'placeholder="' + escapeHtml(placeholder) + '" />' +
+          (field.help ? '<p class="ops-inline-note">' + escapeHtml(field.help) + '</p>' : '') +
+        '</div>'
+      );
+    }
+
+    function collectConfig(card, schema) {
+      const config = {};
+      schema.forEach((field) => {
+        const el = card.querySelector('[data-connector-field="' + field.key + '"]');
+        if (!el) return;
+        config[field.key] = el.value.trim();
+      });
+      return config;
+    }
+
+    function setCardResult(card, msg, ok) {
+      const el = card.querySelector('[data-connector-result]');
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'connector-result ' + (ok === true ? 'ok' : ok === false ? 'warn' : '');
+    }
+
+    function renderConnectorCard(definition, configured) {
+      const cfg = configured || {
+        enabled: false,
+        config: {},
+        secrets_set: {},
+        last_health: null,
+      };
+      const fields = (definition.configSchema || []).map((field) =>
+        renderField(definition.id, field, cfg.config || {}, cfg.secrets_set || {}),
+      ).join('');
+
+      const enabledClass = cfg.enabled ? 'enabled' : 'disabled';
+      const healthNote = cfg.last_health
+        ? 'Last health check: ' + new Date(cfg.last_health).toLocaleString()
+        : 'No health check yet';
+
+      return (
+        '<article class="connector-card" data-connector-id="' + escapeHtml(definition.id) + '">' +
+          '<div class="connector-card-head">' +
+            '<div>' +
+              '<div class="connector-card-title">' + escapeHtml(definition.name) + '</div>' +
+              '<div class="connector-card-meta">' + escapeHtml(definition.description || '') + '</div>' +
+            '</div>' +
+            '<div class="connector-card-badges">' +
+              '<span class="connector-badge">' + escapeHtml(definition.category) + '</span>' +
+              '<span class="connector-badge ' + enabledClass + '">' + (cfg.enabled ? 'Enabled' : 'Disabled') + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="connector-card-fields">' + fields + '</div>' +
+          '<p class="ops-inline-note">' + escapeHtml(healthNote) + '</p>' +
+          '<div class="ops-actions connector-card-actions">' +
+            '<button type="button" class="ops-btn ops-btn-green" data-connector-save>Save and enable</button>' +
+            '<button type="button" class="ops-btn-ghost" data-connector-disable>Disable</button>' +
+            '<button type="button" class="ops-btn-ghost" data-connector-health>Health check</button>' +
+            '<button type="button" class="ops-btn ops-btn-amber" data-connector-test>Test push</button>' +
+          '</div>' +
+          '<p class="connector-result" data-connector-result></p>' +
+        '</article>'
+      );
+    }
+
+    function renderConnectors() {
+      if (!available.length) {
+        listEl.innerHTML = '<div class="ops-empty">No connector definitions available.</div>';
+        return;
+      }
+
+      const grouped = {};
+      available.forEach((def) => {
+        const cat = def.category || 'siem';
+        if (!grouped[cat]) grouped[cat] = [];
+        grouped[cat].push(def);
+      });
+
+      let html = '';
+      CATEGORY_ORDER.forEach((cat) => {
+        const items = grouped[cat];
+        if (!items || !items.length) return;
+        html += '<div class="connector-group">';
+        html += '<div class="ops-section-title" style="margin-top:18px;">' + escapeHtml(CATEGORY_LABELS[cat] || cat) + '</div>';
+        items.forEach((def) => {
+          html += renderConnectorCard(def, configuredById[def.id]);
+        });
+        html += '</div>';
+      });
+      listEl.innerHTML = html;
+
+      listEl.querySelectorAll('.connector-card').forEach((card) => {
+        const connectorId = card.getAttribute('data-connector-id');
+        const definition = available.find((d) => d.id === connectorId);
+        if (!definition) return;
+
+        card.querySelector('[data-connector-save]')?.addEventListener('click', async () => {
+          if (!selectedAccountId) {
+            setCardResult(card, 'Select a Scout account first.', false);
+            return;
+          }
+          setCardResult(card, 'Saving...', null);
+          try {
+            const r = await fetch('/settings/connectors/' + encodeURIComponent(connectorId) + '/enable', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                account_id: selectedAccountId,
+                config: collectConfig(card, definition.configSchema || []),
+              }),
+            });
+            const d = await r.json();
+            if (d.ok) {
+              setCardResult(card, 'Connector saved and enabled.', true);
+              await loadConnectors();
+            } else {
+              setCardResult(card, d.error || 'Save failed', false);
+            }
+          } catch {
+            setCardResult(card, 'Save request failed', false);
+          }
+        });
+
+        card.querySelector('[data-connector-disable]')?.addEventListener('click', async () => {
+          if (!selectedAccountId) {
+            setCardResult(card, 'Select a Scout account first.', false);
+            return;
+          }
+          setCardResult(card, 'Disabling...', null);
+          try {
+            const r = await fetch('/settings/connectors/' + encodeURIComponent(connectorId) + '/disable', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ account_id: selectedAccountId }),
+            });
+            const d = await r.json();
+            if (d.ok) {
+              setCardResult(card, 'Connector disabled.', true);
+              await loadConnectors();
+            } else {
+              setCardResult(card, d.error || 'Disable failed', false);
+            }
+          } catch {
+            setCardResult(card, 'Disable request failed', false);
+          }
+        });
+
+        card.querySelector('[data-connector-health]')?.addEventListener('click', async () => {
+          if (!selectedAccountId) {
+            setCardResult(card, 'Select a Scout account first.', false);
+            return;
+          }
+          setCardResult(card, 'Running health check...', null);
+          try {
+            const r = await fetch(
+              '/settings/connectors/' + encodeURIComponent(connectorId) + '/health?account_id=' + encodeURIComponent(selectedAccountId),
+            );
+            const d = await r.json();
+            if (d.ok && d.health) {
+              const note = d.health.ok
+                ? 'Healthy (' + d.health.latencyMs + ' ms)'
+                : 'Unhealthy: ' + (d.health.error || 'unknown error');
+              setCardResult(card, note, d.health.ok);
+              await loadConnectors();
+            } else {
+              setCardResult(card, d.error || 'Health check failed', false);
+            }
+          } catch {
+            setCardResult(card, 'Health check request failed', false);
+          }
+        });
+
+        card.querySelector('[data-connector-test]')?.addEventListener('click', async () => {
+          if (!selectedAccountId) {
+            setCardResult(card, 'Select a Scout account first.', false);
+            return;
+          }
+          setCardResult(card, 'Sending test finding...', null);
+          try {
+            const r = await fetch('/settings/connectors/' + encodeURIComponent(connectorId) + '/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ account_id: selectedAccountId }),
+            });
+            const d = await r.json();
+            if (d.ok && d.result) {
+              const vendorId = d.result.vendorId || 'unknown';
+              setCardResult(card, 'Test push ok. Vendor ID: ' + vendorId, true);
+            } else {
+              setCardResult(card, d.error || 'Test push failed', false);
+            }
+          } catch {
+            setCardResult(card, 'Test request failed', false);
+          }
+        });
+      });
+    }
+
+    async function loadAccounts() {
+      try {
+        const r = await fetch('/settings/connectors/accounts');
+        const d = await r.json();
+        if (!d.ok) {
+          setStatus(d.error || 'Failed to load Scout accounts', false);
+          return;
+        }
+        const accounts = d.accounts || [];
+        accountSelect.innerHTML = '<option value="">Select account...</option>';
+        accounts.forEach((acct) => {
+          const opt = document.createElement('option');
+          opt.value = acct.id;
+          const plan = acct.subscriptionPlan || 'unknown';
+          opt.textContent = (acct.email || acct.id) + ' (' + plan + ')';
+          accountSelect.appendChild(opt);
+        });
+        if (selectedAccountId && accounts.some((a) => a.id === selectedAccountId)) {
+          accountSelect.value = selectedAccountId;
+        } else if (accounts.length === 1) {
+          selectedAccountId = accounts[0].id;
+          accountSelect.value = selectedAccountId;
+          localStorage.setItem('ops.connectorAccountId', selectedAccountId);
+        }
+        if (accounts.length === 0) {
+          accountHint.textContent = 'No Scout accounts yet. Provision one from checkout or Scout Accounts.';
+        }
+        if (selectedAccountId) {
+          await loadConnectors();
+        }
+      } catch {
+        setStatus('Could not load Scout accounts', false);
+      }
+    }
+
+    async function loadConnectors() {
+      if (!selectedAccountId) {
+        setStatus('Select a Scout account to configure connectors.', null);
+        listEl.innerHTML = '';
+        return;
+      }
+      setStatus('Loading connectors...', null);
+      try {
+        const r = await fetch('/settings/connectors?account_id=' + encodeURIComponent(selectedAccountId));
+        const d = await r.json();
+        if (!d.ok) {
+          setStatus(d.error || 'Failed to load connectors', false);
+          return;
+        }
+        available = d.available || [];
+        configuredById = {};
+        (d.configured || []).forEach((row) => {
+          configuredById[row.connector_id] = row;
+        });
+        const enabled = (d.configured || []).filter((row) => row.enabled).length;
+        setStatus(enabled + ' connector(s) enabled for this account.', true);
+        renderConnectors();
+      } catch {
+        setStatus('Could not load connectors', false);
+      }
+    }
+
+    accountSelect.addEventListener('change', () => {
+      selectedAccountId = accountSelect.value;
+      if (selectedAccountId) {
+        localStorage.setItem('ops.connectorAccountId', selectedAccountId);
+      } else {
+        localStorage.removeItem('ops.connectorAccountId');
+      }
+      void loadConnectors();
+    });
+
+    void loadAccounts();
+  })();
+  </script>

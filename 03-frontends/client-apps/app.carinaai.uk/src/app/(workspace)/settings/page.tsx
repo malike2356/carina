@@ -16,6 +16,7 @@ import {
   User,
 } from 'lucide-react';
 import { BrandSettings } from '@/components/settings/BrandSettings';
+import { SsoSettings } from '@/components/settings/SsoSettings';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { SettingsToolLinks } from '@/components/settings/SettingsToolLinks';
 import { Kbd } from '@/components/ui/Kbd';
@@ -141,10 +142,16 @@ function RadioGroup<T extends string>({
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
-  const initialSection = searchParams.get('section');
-  const [activeSection, setActiveSection] = useState<Section>(
-    initialSection === 'brand' ? 'brand' : 'appearance',
-  );
+  const sectionParam = searchParams.get('section');
+  const validSections = new Set<Section>([
+    'join', 'appearance', 'brand', 'chat', 'brain', 'shortcuts', 'account', 'notifications', 'security',
+  ]);
+  const [activeSection, setActiveSection] = useState<Section>(() => {
+    if (sectionParam && validSections.has(sectionParam as Section)) {
+      return sectionParam as Section;
+    }
+    return 'appearance';
+  });
   const { canUseTerminal } = useTerminalAccess();
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettingsData>({
     theme: DEFAULT_THEME,
@@ -367,7 +374,7 @@ export default function SettingsPage() {
               <div>
                 <h1 className="mb-1 text-base font-semibold text-text-primary">Join</h1>
                 <p className="text-xs text-text-muted">
-                  Connect devices and external calendars to this workspace.
+                  Connect channels, calendars, Trello, and devices to this workspace.
                 </p>
               </div>
               <SettingsToolLinks items={SETTINGS_SECTION_LINKS.join} />
@@ -468,17 +475,26 @@ export default function SettingsPage() {
           )}
 
           {activeSection === 'brand' && (
-            <BrandSettings
-              brand={workspaceSettings.brand}
-              isOwner={isOwner}
-              onSave={async (patch) => {
-                setWorkspaceSettings((current) => ({
-                  ...current,
-                  brand: normalizeBrandConfig({ ...current.brand, ...patch }),
-                }));
-                await saveSettings({ brand: patch });
-              }}
-            />
+            <div className="space-y-6">
+              <div>
+                <h1 className="mb-1 text-base font-semibold text-text-primary">Brand</h1>
+                <p className="text-xs text-text-muted">
+                  Workspace identity and Business plan widget white-label options.
+                </p>
+              </div>
+              <BrandSettings
+                brand={workspaceSettings.brand}
+                isOwner={isOwner}
+                onSave={async (patch) => {
+                  setWorkspaceSettings((current) => ({
+                    ...current,
+                    brand: normalizeBrandConfig({ ...current.brand, ...patch }),
+                  }));
+                  await saveSettings({ brand: patch });
+                }}
+              />
+              <SettingsToolLinks items={SETTINGS_SECTION_LINKS.brand} />
+            </div>
           )}
 
           {activeSection === 'brain' && (
@@ -607,6 +623,23 @@ export default function SettingsPage() {
                 <h1 className="mb-1 text-base font-semibold text-text-primary">Account</h1>
                 <p className="text-xs text-text-muted">Manage your account and billing.</p>
               </div>
+              <div className="rounded-lg border border-border bg-surface p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-text-primary">Password</p>
+                    <p className="mt-0.5 text-xs text-text-muted">
+                      Change your sign-in password or send a reset link to your email.
+                    </p>
+                  </div>
+                  <Link
+                    href="/settings/password"
+                    className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+                  >
+                    Manage
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
               <SettingsToolLinks items={SETTINGS_SECTION_LINKS.account} />
             </div>
           )}
@@ -691,6 +724,8 @@ export default function SettingsPage() {
                 items={SETTINGS_SECTION_LINKS.security}
                 canUseTerminal={canUseTerminal}
               />
+
+              <SsoSettings isOwner={isOwner} />
 
               {isOwner ? (
                 <div className="rounded-lg border border-border bg-surface p-4">

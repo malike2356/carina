@@ -20,7 +20,7 @@ import en from '@/i18n/locales/en';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const demoFixturePath = path.resolve(
   __dirname,
-  '../../../../../backends/servers/core.carinaai.uk/qa/demo-tenant-brand.json',
+  '../../../../../02-backends/core.carinaai.uk/qa/demo-tenant-brand.json',
 );
 const demoFixture = JSON.parse(fs.readFileSync(demoFixturePath, 'utf8')) as {
   reseller: { productName: string };

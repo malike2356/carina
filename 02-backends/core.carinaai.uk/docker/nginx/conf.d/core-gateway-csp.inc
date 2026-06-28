@@ -1,0 +1,3 @@
+# Gateway web UI at core.carinaai.uk (login, chat, static assets).
+# Allows same-origin scripts/styles, inline login page styles, and CDN deps in index.html.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss://core.carinaai.uk https://core.carinaai.uk; manifest-src 'self'; worker-src 'self' blob:; frame-ancestors 'none';" always;

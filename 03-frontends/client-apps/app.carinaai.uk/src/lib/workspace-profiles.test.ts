@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
   BUILTIN_WORKSPACE_PROFILE_IDS,
+  loadBuiltinProfilePrompt,
   loadSupportSystemPrompt,
 } from './workspace-profiles';
 
 describe('workspace-profiles', () => {
   it('registers the support builtin profile id', () => {
     expect(BUILTIN_WORKSPACE_PROFILE_IDS.support).toBe('support');
+    expect(BUILTIN_WORKSPACE_PROFILE_IDS.research).toBe('research');
   });
 
-  it('loads the bundled support system prompt', () => {
-    const prompt = loadSupportSystemPrompt();
-    expect(prompt).toContain('You are Carina, the built-in support assistant');
-    expect(prompt).toContain('Labyrinth Scout');
-    expect(prompt).toContain('Product knowledge reference');
+  it('loads bundled built-in profile prompts', () => {
+    const supportPrompt = loadSupportSystemPrompt();
+    expect(supportPrompt).toContain('What is Carina AI?');
+
+    const researchPrompt = loadBuiltinProfilePrompt('builtin-profiles/research.md');
+    expect(researchPrompt).toContain('Research Assistant mode');
   });
 });

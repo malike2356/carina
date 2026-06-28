@@ -1,0 +1,18 @@
+# Tagged release images for atomic deploy + rollback.
+# Used with: docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml
+#
+# deploy-atomic.sh sets CARINA_WEB_TAG, CARINA_HUB_TAG, CARINA_OPS_TAG, CARINA_CLOUD_TAG
+# before build/up. Rollback re-exports a previous tag from .deploy/*.history.
+
+services:
+  carina-web:
+    image: carina-release/carina-web:${CARINA_WEB_TAG:-bootstrap}
+
+  carina-hub:
+    image: carina-release/carina-hub:${CARINA_HUB_TAG:-bootstrap}
+
+  carina-ops:
+    image: carina-release/carina-ops:${CARINA_OPS_TAG:-bootstrap}
+
+  carina-cloud:
+    image: carina-release/carina-cloud:${CARINA_CLOUD_TAG:-bootstrap}

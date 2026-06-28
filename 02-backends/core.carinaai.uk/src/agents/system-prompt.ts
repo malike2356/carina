@@ -196,6 +196,7 @@ function buildBlogManagementBlock(): string {
     '- blog-newsletter-send to send the weekly newsletter',
     '- blog-research-run to trigger the research pipeline now',
     '- blog-research-status to see the last research run',
+    '- blog-research-log to list recent research runs',
     '- blog-subscriber-list to see all subscribers',
     '',
     'Rules:',

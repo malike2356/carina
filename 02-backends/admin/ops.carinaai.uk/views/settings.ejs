@@ -46,6 +46,7 @@
     <button type="button" data-settings-tab="connections" class="settings-tab ops-tab active">Connections</button>
     <button type="button" data-settings-tab="passwords" class="settings-tab ops-tab">Passwords</button>
     <button type="button" data-settings-tab="alerts" class="settings-tab ops-tab">Alerts</button>
+    <button type="button" data-settings-tab="connectors" class="settings-tab ops-tab">Connectors</button>
   </nav>
 
   <div id="settings-panel-connections" class="settings-panel ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
@@ -223,7 +224,7 @@
   <div id="settings-panel-alerts" class="settings-panel hidden ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
     <section class="ops-section" id="alert-channels-section">
       <div class="ops-section-title">Alert channels</div>
-      <p class="ops-section-sub">Route Scout security events to Telegram, email, or Slack. Pair Scout under Connections first.</p>
+      <p class="ops-section-sub">Route Scout security events to Telegram, WhatsApp, email, or Slack. Pair Scout under Connections first.</p>
       <p id="alert-channels-status" class="ops-status-line">Loading channels...</p>
 
       <div class="ops-field">
@@ -261,6 +262,17 @@
           <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
           <button type="button" data-save-channel="slack" class="ops-btn ops-btn-green">Save Slack</button>
         </div>
+
+        <div class="ops-section" data-channel="whatsapp">
+          <div class="ops-section-title">WhatsApp (Twilio)</div>
+          <div class="ops-field"><label class="ops-label">Account SID</label><input data-field="account_sid" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Auth token</label><input data-field="auth_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">From number</label><input data-field="from_number" type="text" placeholder="whatsapp:+14155238886" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">To number</label><input data-field="to_number" type="text" placeholder="+447700900123" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning" selected>warning</option><option value="critical">critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="whatsapp" class="ops-btn ops-btn-green">Save WhatsApp</button>
+        </div>
       </div>
 
       <div class="ops-actions" style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
@@ -275,6 +287,8 @@
       </div>
     </section>
   </div>
+
+  <%- include('partials/settings-connectors') %>
 
 </div>
 
@@ -301,7 +315,7 @@
     });
 
     const hash = (location.hash || '#connections').replace('#', '');
-    const valid = ['connections', 'passwords', 'alerts'];
+    const valid = ['connections', 'passwords', 'alerts', 'connectors'];
     showTab(valid.includes(hash) ? hash : 'connections');
   })();
 
@@ -365,7 +379,7 @@
       const channels = d.channels || [];
       const dash = document.getElementById('alert-dashboard-url');
       if (dash && d.dashboard_url) dash.value = d.dashboard_url;
-      ['telegram', 'email', 'slack'].forEach((type) => {
+      ['telegram', 'email', 'slack', 'whatsapp'].forEach((type) => {
         const ch = channels.find((c) => c.channel_type === type);
         channelByType[type] = ch || null;
         fillChannelForm(type, ch);

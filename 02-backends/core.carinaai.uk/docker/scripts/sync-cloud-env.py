@@ -15,8 +15,9 @@ SRC_CANDIDATES = [
 
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
-DB_HOST = os.environ.get('DB_HOST', 'postgres')
-DB_PORT = os.environ.get('DB_PORT', '5432')
+PGBOUNCER_ENABLED = os.environ.get('PGBOUNCER_ENABLED', '1')
+DB_HOST = os.environ.get('DB_HOST', 'pgbouncer' if PGBOUNCER_ENABLED == '1' else 'postgres')
+DB_PORT = os.environ.get('DB_PORT', '6432' if PGBOUNCER_ENABLED == '1' else '5432')
 
 DOCKER_DEFAULTS = {
     'PORT': '4100',
@@ -26,6 +27,32 @@ DOCKER_DEFAULTS = {
     'SKILLS_HUB_INTERNAL_URL': 'http://carina-hub:3001',
     'DATABASE_URL': f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/carina_cloud',
 }
+
+CORE_PAIRING_KEYS = ('CARINA_OPS_TOKEN', 'CARINA_INTERNAL_KEY')
+
+
+def parse_env_file(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for line in path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith('#') or '=' not in stripped:
+            continue
+        key, _, value = stripped.partition('=')
+        values[key.strip()] = value.strip()
+    return values
+
+
+def core_pairing_values() -> dict[str, str]:
+    """Share ops/internal secrets from core docker env into cloud runtime."""
+    docker = parse_env_file(ROOT / '.env.docker.runtime')
+    out: dict[str, str] = {}
+    for key in CORE_PAIRING_KEYS:
+        value = docker.get(key, '').strip()
+        if value:
+            out[key] = value
+    return out
 
 
 def main() -> None:
@@ -49,6 +76,9 @@ def main() -> None:
     for key, value in DOCKER_DEFAULTS.items():
         if key not in seen:
             out.append(f'{key}={value}')
+    for key, value in core_pairing_values().items():
+        out = [line for line in out if not line.startswith(f'{key}=')]
+        out.append(f'{key}={value}')
     ENV_PATH.write_text('\n'.join(out) + '\n')
     print(f'updated {ENV_PATH.name} for docker networking')
 

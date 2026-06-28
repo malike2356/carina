@@ -232,3 +232,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "workspace_profiles_workspace_slug_idx" ON "wo
 CREATE INDEX IF NOT EXISTS "workspace_profiles_workspace_id_idx" ON "workspace_profiles" ("workspace_id");
 ALTER TABLE "chat_sessions" ADD COLUMN IF NOT EXISTS "profile_id" uuid REFERENCES "workspace_profiles"("id") ON DELETE set null;
 CREATE INDEX IF NOT EXISTS "chat_sessions_profile_id_idx" ON "chat_sessions" ("profile_id");
+
+-- 0013: workspace onboarding completion timestamp
+ALTER TABLE "workspaces" ADD COLUMN IF NOT EXISTS "onboarding_completed_at" TIMESTAMPTZ;
+
+-- 0014: GDPR / account deletion timestamps
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "terms_accepted_at" timestamp;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "terms_version" text;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;
+ALTER TABLE "workspaces" ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;

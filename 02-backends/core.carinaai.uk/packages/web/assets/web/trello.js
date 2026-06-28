@@ -11,6 +11,13 @@
   const createBtn = document.getElementById('create-card-btn');
   const commentBtn = document.getElementById('comment-btn');
   const archiveBtn = document.getElementById('archive-btn');
+  const setupPanel = document.getElementById('setup-panel');
+  const workspaceEl = document.getElementById('workspace');
+  const setupApiKeyEl = document.getElementById('setup-api-key');
+  const setupTokenEl = document.getElementById('setup-token');
+  const setupSaveBtn = document.getElementById('setup-save-btn');
+  const setupClearBtn = document.getElementById('setup-clear-btn');
+  const setupMsgEl = document.getElementById('setup-msg');
 
   const state = {
     boards: [],
@@ -54,6 +61,67 @@
       throw new Error(data.error || `HTTP ${res.status}`);
     }
     return data;
+  }
+
+  function setSetupVisible(show) {
+    if (setupPanel) setupPanel.hidden = !show;
+    if (workspaceEl) workspaceEl.hidden = show;
+  }
+
+  function setSetupMessage(text, error) {
+    if (!setupMsgEl) return;
+    setupMsgEl.textContent = text;
+    setupMsgEl.className = error ? 'small error' : 'small';
+  }
+
+  async function loadSettings() {
+    const data = await api('/api/trello/settings');
+    if (!data.configured) {
+      setSetupVisible(true);
+      setStatus('Connect Trello to load boards.', false);
+      return false;
+    }
+    setSetupVisible(false);
+    const source = data.source === 'env' ? ' (from server env)' : '';
+    setStatus('Connected' + (data.apiKeyMask ? ' as ' + data.apiKeyMask : '') + source + '.', false);
+    return true;
+  }
+
+  async function saveSettings() {
+    const apiKey = setupApiKeyEl.value.trim();
+    const token = setupTokenEl.value.trim();
+    if (!apiKey || !token) {
+      setSetupMessage('API key and token are required.', true);
+      return;
+    }
+    setupSaveBtn.disabled = true;
+    try {
+      await api('/api/trello/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ apiKey, token }),
+      });
+      setupApiKeyEl.value = '';
+      setupTokenEl.value = '';
+      setSetupMessage('Credentials saved.', false);
+      await bootstrap();
+    } catch (err) {
+      setSetupMessage(err.message, true);
+    } finally {
+      setupSaveBtn.disabled = false;
+    }
+  }
+
+  async function clearSettings() {
+    setupClearBtn.disabled = true;
+    try {
+      await api('/api/trello/settings', { method: 'DELETE' });
+      setSetupMessage('Saved credentials removed. Env vars may still apply.', false);
+      await bootstrap();
+    } catch (err) {
+      setSetupMessage(err.message, true);
+    } finally {
+      setupClearBtn.disabled = false;
+    }
   }
 
   function renderBoards() {
@@ -278,5 +346,18 @@
     }
   });
 
-  loadBoards().catch((err) => setStatus(err.message, true));
+  if (setupSaveBtn) setupSaveBtn.addEventListener('click', () => { saveSettings().catch((err) => setSetupMessage(err.message, true)); });
+  if (setupClearBtn) setupClearBtn.addEventListener('click', () => { clearSettings().catch((err) => setSetupMessage(err.message, true)); });
+
+  async function bootstrap() {
+    try {
+      const ready = await loadSettings();
+      if (ready) await loadBoards();
+    } catch (err) {
+      setStatus(err.message, true);
+      setSetupVisible(true);
+    }
+  }
+
+  bootstrap();
 })();

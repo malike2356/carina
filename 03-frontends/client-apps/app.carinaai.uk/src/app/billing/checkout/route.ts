@@ -34,15 +34,22 @@ export async function POST(req: Request) {
       .where(eq(workspaces.id, workspace.id));
   }
 
+  const checkoutMetadata = {
+    workspaceId: workspace.id,
+    userId: session.user.id,
+    plan: body.plan,
+    planName: body.plan === 'team' ? 'Carina Team' : 'Carina Starter',
+  };
+
   const checkout = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: stripePriceId(body.plan), quantity: 1 }],
     success_url: `${appUrl}/billing?checkout=success`,
     cancel_url: `${appUrl}/billing?checkout=cancel`,
-    metadata: {
-      workspaceId: workspace.id,
-      plan: body.plan,
+    metadata: checkoutMetadata,
+    subscription_data: {
+      metadata: checkoutMetadata,
     },
   });
 

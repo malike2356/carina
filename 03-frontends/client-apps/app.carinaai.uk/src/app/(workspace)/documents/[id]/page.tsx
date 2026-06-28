@@ -9,15 +9,21 @@ import {
   Download,
   Loader2,
   MessageSquare,
+  PenLine,
   Sparkles,
+  Trash2,
   Wand2,
 } from 'lucide-react';
 import { CoreSurfaceBanner } from '@/components/shell/CoreSurfaceBanner';
 import { IconButton } from '@/components/ui/IconButton';
 import { MarkdownContent } from '@/components/chat/MarkdownContent';
+import { CarinaEditor, type CarinaEditorHandle } from '@/components/editor';
 import { cn } from '@/lib/utils';
 
 type AssistAction = 'format' | 'spellcheck' | 'factcheck';
+type AssistMode = 'insert' | 'replace';
+
+const DEFAULT_INLINE_PROMPT = 'write the next paragraph';
 
 export default function DocumentEditorPage() {
   const params = useParams<{ id: string }>();
@@ -28,8 +34,11 @@ export default function DocumentEditorPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [assisting, setAssisting] = useState<AssistAction | null>(null);
+  const [assistBusy, setAssistBusy] = useState<string | null>(null);
+  const [inlinePrompt, setInlinePrompt] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef = useRef<CarinaEditorHandle>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,33 +88,78 @@ export default function DocumentEditorPage() {
     scheduleSave(title, value);
   }
 
-  async function runAssist(action: AssistAction) {
-    setAssisting(action);
+  function applyAssistResult(
+    result: string,
+    mode: AssistMode,
+    selection: string,
+  ) {
+    if (mode === 'insert') {
+      editorRef.current?.insertText(result);
+      return;
+    }
+
+    if (selection) {
+      editorRef.current?.replaceSelection(result);
+      return;
+    }
+
+    setContent(result);
+    scheduleSave(title, result);
+  }
+
+  async function requestAssist(body: Record<string, unknown>, busyLabel: string) {
+    setAssistBusy(busyLabel);
     const selection =
-      typeof window !== 'undefined' ? window.getSelection()?.toString().trim() : '';
+      editorRef.current?.getSelection().trim() ||
+      (typeof window !== 'undefined' ? window.getSelection()?.toString().trim() : '') ||
+      '';
+
     const res = await fetch(`/api/documents/${params.id}/assist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action,
-        selection: selection || undefined,
-        content: selection ? undefined : content,
+        ...body,
+        selection: body.selection ?? (selection || undefined),
+        content,
       }),
     });
-    const data = await res.json();
-    setAssisting(null);
+    const data = (await res.json()) as {
+      content?: string;
+      mode?: AssistMode;
+      error?: string;
+    };
+    setAssistBusy(null);
+
     if (!res.ok) {
       alert(data.error || 'Assist failed');
       return;
     }
-    if (selection) {
-      const nextContent = content.replace(selection, data.content);
-      setContent(nextContent);
-      scheduleSave(title, nextContent);
-    } else {
-      setContent(data.content);
-      scheduleSave(title, data.content);
-    }
+
+    if (!data.content) return;
+    applyAssistResult(
+      data.content,
+      data.mode ?? (body.mode as AssistMode) ?? 'replace',
+      String(body.selection ?? selection ?? ''),
+    );
+  }
+
+  async function runAssist(action: AssistAction) {
+    await requestAssist({ action }, action);
+  }
+
+  async function runInlineCommand(prompt = inlinePrompt) {
+    const instruction = prompt.trim();
+    if (!instruction) return;
+    const selection = editorRef.current?.getSelection().trim() ?? '';
+    await requestAssist(
+      {
+        instruction,
+        mode: selection ? 'replace' : 'insert',
+        selection: selection || undefined,
+      },
+      'inline',
+    );
+    setInlinePrompt('');
   }
 
   function exportMarkdown() {
@@ -116,6 +170,20 @@ export default function DocumentEditorPage() {
     anchor.download = `${title.replace(/\s+/g, '-').toLowerCase() || 'document'}.md`;
     anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function deleteDocument() {
+    const label = title.trim() || 'Untitled';
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+
+    setDeleting(true);
+    const res = await fetch(`/api/documents/${params.id}`, { method: 'DELETE' });
+    setDeleting(false);
+    if (!res.ok) {
+      alert('Could not delete document');
+      return;
+    }
+    router.push('/documents');
   }
 
   if (loading) {
@@ -162,6 +230,17 @@ export default function DocumentEditorPage() {
         >
           <MessageSquare className="h-4 w-4" />
         </IconButton>
+        <IconButton
+          label="Delete document"
+          disabled={deleting}
+          onClick={() => void deleteDocument()}
+        >
+          {deleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4 text-danger" />
+          )}
+        </IconButton>
       </header>
 
       <div className="flex flex-1 min-h-0">
@@ -188,17 +267,57 @@ export default function DocumentEditorPage() {
               Preview
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <CoreSurfaceBanner surface="documents" />
-            {preview ? (
-              <MarkdownContent content={content || '_Empty document_'} />
-            ) : (
-              <textarea
-                value={content}
-                onChange={(e) => handleContentChange(e.target.value)}
-                className="h-full min-h-[60vh] w-full resize-none bg-transparent text-sm leading-relaxed text-text-primary outline-none"
-                placeholder="Start typing. Carina will not ghost-write unless you ask for assist actions."
-              />
+          <div className="flex flex-1 flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto p-4">
+              <CoreSurfaceBanner surface="documents" />
+              {preview ? (
+                <MarkdownContent content={content || '_Empty document_'} />
+              ) : (
+                <CarinaEditor
+                  ref={editorRef}
+                  value={content}
+                  onChange={handleContentChange}
+                  showEngineSwitch
+                  placeholder="Start typing. Ask Carina inline below to continue or expand your draft."
+                  minHeight="50vh"
+                />
+              )}
+            </div>
+            {!preview && (
+              <form
+                className="shrink-0 border-t border-border px-4 py-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void runInlineCommand();
+                }}
+              >
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-elevated px-2 py-1.5 focus-within:border-accent/50">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" />
+                  <span className="shrink-0 text-xs text-text-muted">Carina,</span>
+                  <input
+                    value={inlinePrompt}
+                    onChange={(event) => setInlinePrompt(event.target.value)}
+                    onFocus={() => editorRef.current?.focus()}
+                    disabled={assistBusy !== null}
+                    placeholder={DEFAULT_INLINE_PROMPT}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+                  />
+                  <button
+                    type="submit"
+                    disabled={assistBusy !== null || !inlinePrompt.trim()}
+                    className="shrink-0 rounded-md bg-accent px-2.5 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-40"
+                  >
+                    {assistBusy === 'inline' ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      'Run'
+                    )}
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[10px] text-text-muted">
+                  Enter to run. Inserts at your cursor, or replaces selected text.
+                </p>
+              </form>
             )}
           </div>
         </div>
@@ -209,9 +328,22 @@ export default function DocumentEditorPage() {
             AI assist
           </p>
           <p className="mb-4 text-[11px] text-text-muted">
-            Select text for targeted fixes, or run on the whole document.
+            Use the inline bar to draft new text, or pick a quick action below.
           </p>
           <div className="space-y-2">
+            <button
+              type="button"
+              disabled={assistBusy !== null}
+              onClick={() => void runInlineCommand(DEFAULT_INLINE_PROMPT)}
+              className="flex w-full items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-left text-xs text-text-primary hover:bg-accent/10 disabled:opacity-50"
+            >
+              {assistBusy === 'inline' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <PenLine className="h-3.5 w-3.5 text-accent" />
+              )}
+              Write next paragraph
+            </button>
             {(
               [
                 ['format', 'Fix formatting', Wand2],
@@ -222,11 +354,11 @@ export default function DocumentEditorPage() {
               <button
                 key={action}
                 type="button"
-                disabled={assisting !== null}
-                onClick={() => runAssist(action)}
+                disabled={assistBusy !== null}
+                onClick={() => void runAssist(action)}
                 className="flex w-full items-center gap-2 rounded-md border border-border px-3 py-2 text-left text-xs text-text-secondary hover:bg-elevated hover:text-text-primary disabled:opacity-50"
               >
-                {assisting === action ? (
+                {assistBusy === action ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Icon className="h-3.5 w-3.5 text-accent" />

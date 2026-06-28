@@ -8,6 +8,7 @@ import {
   selectToolsByEmbedding,
   shouldUseEmbeddingToolSelect,
 } from './tool-embedding-select.js';
+import { primaryMandatoryTools } from './mandatory-tools.js';
 import { getModelMetadata } from '../brain/model-metadata.js';
 import { filterToolsForPlanMode } from '../security/plan-mode-allowlist.js';
 import { resolvePlanMode } from '../security/plan-mode-state.js';
@@ -76,10 +77,12 @@ export async function resolveSessionTools(opts: {
       model,
     })
   ) {
+    const mandatoryTools = primaryMandatoryTools(opts.userMessage);
+    const alwaysInclude = [...new Set([...ALWAYS_ON_TOOLS, ...mandatoryTools])];
     tools = await selectToolsByEmbedding({
       tools,
       query: opts.userMessage,
-      alwaysInclude: [...ALWAYS_ON_TOOLS],
+      alwaysInclude,
     });
     embeddingFiltered = true;
   }

@@ -37,6 +37,18 @@ export const mediaExtendedSkills: PackSkillInput[] = [
     toolsUsed: ['text-to-speech', 'file-write'],
   },
   {
+    name: 'comfyui-local',
+    description: 'Generate images via local ComfyUI when GPU VRAM is sufficient',
+    trigger: ['comfyui', 'local image', 'flux local', 'sd local', 'self-hosted image'],
+    steps: [
+      '1. Check IMAGE_GEN_PROVIDER or auto resolution; ComfyUI needs COMFYUI_URL and COMFYUI_WORKFLOW_PATH.',
+      '2. Hardware gate: SD/SDXL needs >= 6 GB VRAM; Flux needs >= 12 GB VRAM on the ComfyUI host.',
+      '3. If VRAM is insufficient or ComfyUI is unreachable, use Fal (FAL_KEY) or Replicate instead.',
+      '4. Call image-generation with the user prompt; confirm output path from MEDIA: line.',
+    ].join('\n'),
+    toolsUsed: ['image-generation'],
+  },
+  {
     name: 'media-qc',
     description: 'Quality-check media assets before publish',
     trigger: ['media qc', 'asset review', 'thumbnail check'],

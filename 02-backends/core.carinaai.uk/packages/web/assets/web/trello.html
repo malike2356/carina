@@ -37,6 +37,13 @@
     .small { font-size: 0.78rem; color: #8b949e; }
     .error { color: #f85149; }
     .empty { padding: 12px; border: 1px dashed #30363d; border-radius: 8px; color: #8b949e; }
+    .setup { border: 1px solid #30363d; border-radius: 10px; background: #161b22; padding: 16px; margin-bottom: 14px; }
+    .setup h2 { margin: 0 0 8px; font-size: 1rem; }
+    .setup label { display: block; font-size: 0.8rem; color: #8b949e; margin: 10px 0 4px; }
+    .setup input { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: inherit; }
+    .setup-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .setup-actions button { width: auto; min-width: 120px; }
+    .setup[hidden] { display: none !important; }
     @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -50,7 +57,21 @@
       </div>
     </div>
 
-    <div class="layout">
+    <section id="setup-panel" class="setup" hidden>
+      <h2>Connect Trello</h2>
+      <p class="muted">Add your API key and token from <a href="https://trello.com/app-key" target="_blank" rel="noopener">trello.com/app-key</a>. Credentials are encrypted at rest.</p>
+      <label for="setup-api-key">API key</label>
+      <input id="setup-api-key" type="text" autocomplete="off" placeholder="Trello API key">
+      <label for="setup-token">Token</label>
+      <input id="setup-token" type="password" autocomplete="off" placeholder="Trello member token">
+      <div class="setup-actions">
+        <button id="setup-save-btn" type="button">Save credentials</button>
+        <button id="setup-clear-btn" type="button" class="secondary">Remove saved credentials</button>
+      </div>
+      <p id="setup-msg" class="small"></p>
+    </section>
+
+    <div id="workspace" class="layout">
       <section class="panel">
         <h2>Boards</h2>
         <div class="body">

@@ -4,6 +4,7 @@ import { runFreeScanSchemaMigration } from './migrations/add-free-scan-schema.js
 import { runComplianceVisibilityMigration } from './migrations/add-compliance-visibility.js';
 import { runPendingApprovalsMigration } from './migrations/add-pending-approvals.js';
 import { runFindActSchemaMigration } from './migrations/add-find-act-schema.js';
+import { runConnectorSchemaMigration } from './migrations/add-connector-schema.js';
 
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await client.query(`
@@ -560,6 +561,7 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
   await runFreeScanSchemaMigration(client);
   await runComplianceVisibilityMigration(client);
   await runFindActSchemaMigration(client);
+  await runConnectorSchemaMigration(client);
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS critical_event_attestations (

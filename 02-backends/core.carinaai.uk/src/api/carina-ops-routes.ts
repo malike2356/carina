@@ -112,6 +112,16 @@ import {
 import { getPlatformMarginSummary } from '../billing/margin-report.js';
 import { requireOpsAuth } from '../ops/ops-auth.js';
 import { redactSecrets } from '../hosted/redact.js';
+import {
+  createPartnerApiKey,
+  listPartnerApiKeys,
+  revokePartnerApiKey,
+  type PartnerApiKeyScope,
+} from '../hosted/partner-api-key-service.js';
+import { emitPlatformEvent } from '../billing/platform-event-emitter.js';
+import { reportAllPartnerUsage, reportMonthlyUsage } from '../billing/metered-billing.js';
+import { hubPool } from '../skills/hub/migrations.js';
+import { runHealthProbe, calculateSlaReport } from '../ops/health-probe.js';
 
 async function overviewHandler(req: Request, res: Response): Promise<void> {
   const ctx = req.orgContext!;
@@ -213,6 +223,578 @@ export function mountCarinaOpsRoutes(app: Express): void {
   }, async (_req, res) => {
     const summary = await getPlatformMarginSummary();
     res.json(safeJsonBody(summary));
+  });
+
+  router.post('/internal/partners/:partnerId/keys', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const { partnerId } = req.params;
+    const label = String(req.body?.label ?? '').trim();
+    if (!label) {
+      res.status(400).json({ error: 'label is required' });
+      return;
+    }
+    const key = await createPartnerApiKey({
+      partnerId,
+      label,
+      scopes: Array.isArray(req.body?.scopes) ? req.body.scopes : undefined,
+      rateLimitRpm: typeof req.body?.rateLimitRpm === 'number' ? req.body.rateLimitRpm : undefined,
+      monthlyCapEvents: typeof req.body?.monthlyCapEvents === 'number' ? req.body.monthlyCapEvents : undefined,
+      revenueShareBps: typeof req.body?.revenueShareBps === 'number' ? req.body.revenueShareBps : undefined,
+    });
+    res.status(201).json({ key });
+  });
+
+  router.get('/internal/partners/:partnerId/keys', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const keys = await listPartnerApiKeys(req.params.partnerId);
+    res.json({ keys });
+  });
+
+  router.delete('/internal/partners/:partnerId/keys/:keyId', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const revoked = await revokePartnerApiKey(req.params.keyId, req.params.partnerId);
+    if (!revoked) {
+      res.status(404).json({ error: 'Key not found or already revoked' });
+      return;
+    }
+    res.json({ revoked: true });
+  });
+
+  router.post('/internal/billing/calculate-author-earnings', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const now = new Date();
+    const monthParam = String(req.body?.billingMonth ?? '').trim();
+    const billingMonth = monthParam || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    try {
+      // Query hub DB for premium packs with installs this month
+      const packsResult = await hubPool.query(
+        `SELECT name, install_count, author_email, author_share_bps, price_gbp_cents
+         FROM skill_packs
+         WHERE price_gbp_cents > 0 AND install_count > 0 AND author_email IS NOT NULL`,
+      );
+
+      let upserted = 0;
+      for (const row of packsResult.rows as Record<string, unknown>[]) {
+        const installs = Number(row.install_count ?? 0);
+        const priceGbpCents = Number(row.price_gbp_cents ?? 0);
+        const authorShareBps = Number(row.author_share_bps ?? 7000);
+        const grossPence = installs * priceGbpCents;
+        const authorPence = Math.floor(grossPence * authorShareBps / 10000);
+        const carinaPence = grossPence - authorPence;
+
+        await pool.query(
+          `INSERT INTO author_earnings
+             (author_email, pack_name, billing_month, installs, gross_pence, author_pence, carina_pence)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)
+           ON CONFLICT (author_email, pack_name, billing_month)
+           DO UPDATE SET
+             installs = EXCLUDED.installs,
+             gross_pence = EXCLUDED.gross_pence,
+             author_pence = EXCLUDED.author_pence,
+             carina_pence = EXCLUDED.carina_pence`,
+          [row.author_email, row.name, billingMonth, installs, grossPence, authorPence, carinaPence],
+        );
+        upserted++;
+      }
+
+      res.json({ billingMonth, packsProcessed: upserted });
+    } catch (err) {
+      res.status(500).json({ error: 'earnings_failed', message: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/internal/billing/report-usage', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const partnerId = typeof req.body?.partnerId === 'string' ? req.body.partnerId.trim() : '';
+    try {
+      if (partnerId) {
+        await reportMonthlyUsage(partnerId);
+        res.json({ reported: true, partnerId });
+      } else {
+        await reportAllPartnerUsage();
+        res.json({ reported: true, scope: 'all' });
+      }
+    } catch (err) {
+      res.status(500).json({ error: 'report_failed', message: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.post('/internal/ops/health-probe', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (_req, res) => {
+    try {
+      await runHealthProbe();
+      res.json({ probed: true });
+    } catch (err) {
+      res.status(500).json({ error: 'probe_failed', message: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  router.get('/internal/ops/sla-report', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const month = String(req.query.month ?? '').trim() || new Date().toISOString().slice(0, 7);
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ error: 'month must be YYYY-MM' });
+      return;
+    }
+    try {
+      const report = await calculateSlaReport(month);
+      res.json(report);
+    } catch (err) {
+      res.status(500).json({ error: 'sla_report_failed', message: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ---- Partner self-service API key routes (ops-token + X-Core-Org-Id) ----
+  // Called from app.carinaai.uk via proxyToCoreApi: ops token authenticates the caller,
+  // X-Core-Org-Id carries the workspace's coreOrgId stored in the app DB.
+
+  const VALID_SCOPES: PartnerApiKeyScope[] = ['session', 'memory', 'skills', 'analytics'];
+
+  function resolveOrgIdFromHeader(req: Request, res: Response): string | null {
+    const raw = req.headers['x-core-org-id'];
+    const orgId = Array.isArray(raw) ? raw[0] : raw;
+    if (!orgId || !/^[0-9a-f-]{36}$/i.test(orgId)) {
+      res.status(400).json({ error: 'x-core-org-id header is required and must be a valid UUID' });
+      return null;
+    }
+    return orgId;
+  }
+
+  router.get('/partner/api-keys', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const orgId = resolveOrgIdFromHeader(req, res);
+    if (!orgId) return;
+    const partner = await getPartnerOwnedByOrg(orgId);
+    if (!partner) { res.status(403).json({ error: 'not_a_partner' }); return; }
+    const keys = await listPartnerApiKeys(partner.id);
+    res.json({ keys });
+  });
+
+  router.post('/partner/api-keys', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const orgId = resolveOrgIdFromHeader(req, res);
+    if (!orgId) return;
+    const partner = await getPartnerOwnedByOrg(orgId);
+    if (!partner) { res.status(403).json({ error: 'not_a_partner' }); return; }
+
+    const label = String(req.body?.label ?? '').trim();
+    if (!label) { res.status(400).json({ error: 'label is required' }); return; }
+
+    const rawScopes: string[] = Array.isArray(req.body?.scopes) ? req.body.scopes : ['session'];
+    const scopes = rawScopes.filter((s): s is PartnerApiKeyScope => VALID_SCOPES.includes(s as PartnerApiKeyScope));
+    if (scopes.length === 0) { res.status(400).json({ error: 'at least one valid scope required: session, memory, skills, analytics' }); return; }
+
+    const rateLimitRpm = Number(req.body?.rateLimitRpm ?? 60);
+    if (!Number.isInteger(rateLimitRpm) || rateLimitRpm < 1 || rateLimitRpm > 600) {
+      res.status(400).json({ error: 'rateLimitRpm must be an integer between 1 and 600' }); return;
+    }
+    const monthlyCapEvents = Number(req.body?.monthlyCapEvents ?? 100000);
+
+    const result = await createPartnerApiKey({ partnerId: partner.id, label, scopes, rateLimitRpm, monthlyCapEvents });
+    void emitPlatformEvent({ orgId, partnerId: partner.id, eventType: 'webhook_delivery', metadata: { action: 'api_key_created', keyId: result.id, label } }).catch(() => {});
+    res.status(201).json({ key: result });
+  });
+
+  router.delete('/partner/api-keys/:keyId', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const orgId = resolveOrgIdFromHeader(req, res);
+    if (!orgId) return;
+    const partner = await getPartnerOwnedByOrg(orgId);
+    if (!partner) { res.status(403).json({ error: 'not_a_partner' }); return; }
+    const revoked = await revokePartnerApiKey(String(req.params.keyId), partner.id);
+    if (!revoked) { res.status(404).json({ error: 'Key not found or already revoked' }); return; }
+    res.status(204).end();
+  });
+
+  // ---- Partner self-service usage routes (ops-token + X-Core-Org-Id) ----
+
+  function parseUsageDateRange(
+    req: Request,
+    res: Response,
+    maxDays: number,
+  ): { fromDate: Date; toDate: Date } | null {
+    const from = String(req.query.from ?? '').trim();
+    const to = String(req.query.to ?? '').trim();
+    if (!from || !to) { res.status(400).json({ error: 'from and to query params are required' }); return null; }
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) { res.status(400).json({ error: 'from and to must be valid ISO dates' }); return null; }
+    if ((toDate.getTime() - fromDate.getTime()) / 86_400_000 > maxDays) {
+      res.status(400).json({ error: `Maximum date range is ${maxDays} days` }); return null;
+    }
+    return { fromDate, toDate };
+  }
+
+  router.get('/partner/usage', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const orgId = resolveOrgIdFromHeader(req, res);
+    if (!orgId) return;
+    const partner = await getPartnerOwnedByOrg(orgId);
+    if (!partner) { res.status(403).json({ error: 'not_a_partner' }); return; }
+
+    const range = parseUsageDateRange(req, res, 90);
+    if (!range) return;
+    const { fromDate, toDate } = range;
+    const partnerId = partner.id;
+    const groupBy = String(req.query.groupBy ?? 'day');
+    const orgIdParam = String(req.query.orgId ?? '').trim();
+
+    let filteredOrgId: string | null = null;
+    if (orgIdParam) {
+      const check = await pool.query(
+        `SELECT id FROM organizations WHERE id = $1 AND partner_id = $2 LIMIT 1`,
+        [orgIdParam, partnerId],
+      );
+      if ((check.rowCount ?? 0) === 0) { res.status(403).json({ error: 'org_not_found' }); return; }
+      filteredOrgId = orgIdParam;
+    }
+
+    const baseWhere = filteredOrgId
+      ? `WHERE e.partner_id = $1 AND e.created_at >= $2 AND e.created_at < $3 AND e.org_id = $4`
+      : `WHERE e.partner_id = $1 AND e.created_at >= $2 AND e.created_at < $3`;
+    const params: unknown[] = filteredOrgId
+      ? [partnerId, fromDate, toDate, filteredOrgId]
+      : [partnerId, fromDate, toDate];
+
+    let seriesRows: Record<string, unknown>[] = [];
+    if (groupBy === 'model') {
+      const r = await pool.query(
+        `SELECT e.model AS group_key, COUNT(*) AS events,
+                SUM(e.tokens_in) AS tokens_in, SUM(e.tokens_out) AS tokens_out,
+                SUM(e.tool_calls) AS tool_calls, SUM(e.skill_calls) AS skill_calls
+         FROM platform_events e ${baseWhere}
+         GROUP BY 1 ORDER BY events DESC`,
+        params,
+      );
+      seriesRows = r.rows as Record<string, unknown>[];
+    } else if (groupBy === 'event_type') {
+      const r = await pool.query(
+        `SELECT e.event_type AS group_key, COUNT(*) AS events,
+                SUM(e.tokens_in) AS tokens_in, SUM(e.tokens_out) AS tokens_out,
+                SUM(e.tool_calls) AS tool_calls, SUM(e.skill_calls) AS skill_calls
+         FROM platform_events e ${baseWhere}
+         GROUP BY 1 ORDER BY events DESC`,
+        params,
+      );
+      seriesRows = r.rows as Record<string, unknown>[];
+    } else {
+      const r = await pool.query(
+        `SELECT DATE_TRUNC('day', e.created_at) AS day, COUNT(*) AS events,
+                SUM(e.tokens_in) AS tokens_in, SUM(e.tokens_out) AS tokens_out,
+                SUM(e.tool_calls) AS tool_calls, SUM(e.skill_calls) AS skill_calls
+         FROM platform_events e ${baseWhere}
+         GROUP BY 1 ORDER BY 1`,
+        params,
+      );
+      seriesRows = r.rows as Record<string, unknown>[];
+    }
+
+    const totals = seriesRows.reduce<{ events: number; tokensIn: number; tokensOut: number; toolCalls: number; skillCalls: number }>(
+      (acc, row) => {
+        acc.events += Number(row.events ?? 0);
+        acc.tokensIn += Number(row.tokens_in ?? 0);
+        acc.tokensOut += Number(row.tokens_out ?? 0);
+        acc.toolCalls += Number(row.tool_calls ?? 0);
+        acc.skillCalls += Number(row.skill_calls ?? 0);
+        return acc;
+      },
+      { events: 0, tokensIn: 0, tokensOut: 0, toolCalls: 0, skillCalls: 0 },
+    );
+
+    const estimatedFeePence = Math.max(0, totals.events - 50_000) * 0.1;
+
+    res.json({
+      from: fromDate.toISOString().slice(0, 10),
+      to: toDate.toISOString().slice(0, 10),
+      partnerId,
+      groupBy,
+      totals: { ...totals, estimatedFeePence },
+      series: seriesRows.map((row) => ({
+        ...(groupBy === 'day'
+          ? { date: new Date(String(row.day)).toISOString().slice(0, 10) }
+          : { key: row.group_key }),
+        events: Number(row.events ?? 0),
+        tokensIn: Number(row.tokens_in ?? 0),
+        tokensOut: Number(row.tokens_out ?? 0),
+        toolCalls: Number(row.tool_calls ?? 0),
+        skillCalls: Number(row.skill_calls ?? 0),
+      })),
+    });
+  });
+
+  router.get('/partner/usage/export', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const orgId = resolveOrgIdFromHeader(req, res);
+    if (!orgId) return;
+    const partner = await getPartnerOwnedByOrg(orgId);
+    if (!partner) { res.status(403).json({ error: 'not_a_partner' }); return; }
+
+    const range = parseUsageDateRange(req, res, 31);
+    if (!range) return;
+    const { fromDate, toDate } = range;
+    const partnerId = partner.id;
+    const format = String(req.query.format ?? 'csv').toLowerCase();
+    if (format !== 'csv' && format !== 'ndjson') {
+      res.status(400).json({ error: 'format must be csv or ndjson' }); return;
+    }
+
+    const result = await pool.query(
+      `SELECT id, event_type, org_id, model, provider,
+              tokens_in, tokens_out, tool_calls, skill_calls,
+              scout_verified, fee_pence, created_at
+       FROM platform_events
+       WHERE partner_id = $1 AND created_at >= $2 AND created_at < $3
+       ORDER BY created_at ASC`,
+      [partnerId, fromDate, toDate],
+    );
+
+    const rows = result.rows as Record<string, unknown>[];
+    const dateLabel = `${fromDate.toISOString().slice(0, 10)}_${toDate.toISOString().slice(0, 10)}`;
+
+    void emitPlatformEvent({
+      partnerId,
+      orgId,
+      eventType: 'memory_read',
+      metadata: { action: 'compliance_export', format, rows: rows.length },
+    }).catch(() => {});
+
+    if (format === 'csv') {
+      const header = 'id,event_type,org_id,model,provider,tokens_in,tokens_out,tool_calls,skill_calls,scout_verified,fee_pence,created_at';
+      const csvRows = rows.map((r) =>
+        [r.id, r.event_type, r.org_id ?? '', r.model ?? '', r.provider ?? '',
+          r.tokens_in, r.tokens_out, r.tool_calls, r.skill_calls,
+          r.scout_verified, r.fee_pence,
+          r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at ?? ''),
+        ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','),
+      );
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=carina_events_${dateLabel}.csv`);
+      res.send([header, ...csvRows].join('\n'));
+      return;
+    }
+
+    res.setHeader('Content-Type', 'application/x-ndjson');
+    res.setHeader('Content-Disposition', `attachment; filename=carina_events_${dateLabel}.ndjson`);
+    res.send(rows.map((r) => JSON.stringify(r)).join('\n'));
+  });
+
+  // ---- Marketplace submission proxy routes (core -> hub) ----
+
+  async function proxyToHub(
+    req: Request,
+    res: Response,
+    hubPath: string,
+    options?: { method?: string; body?: unknown },
+  ): Promise<void> {
+    const hubBaseUrl = config.hub.url.replace(/\/$/, '');
+    const url = `${hubBaseUrl}${hubPath}`;
+    const method = options?.method ?? req.method;
+    const incoming = new URL(req.url, 'http://localhost');
+    const fullUrl = `${url}?${incoming.searchParams.toString()}`.replace(/\?$/, '');
+    try {
+      const fetchInit: RequestInit = {
+        method,
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${config.hub.publishApiKey}`,
+        },
+      };
+      if (method !== 'GET' && method !== 'HEAD') {
+        fetchInit.body = JSON.stringify(options?.body ?? req.body);
+      }
+      const upstream = await fetch(fullUrl, fetchInit);
+      const body = await upstream.text();
+      res.status(upstream.status).set('content-type', upstream.headers.get('content-type') ?? 'application/json').send(body);
+    } catch {
+      res.status(502).json({ error: 'hub_unreachable' });
+    }
+  }
+
+  router.get('/internal/marketplace/submissions', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    await proxyToHub(req, res, '/api/submissions');
+  });
+
+  router.get('/internal/marketplace/submissions/:id', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    await proxyToHub(req, res, `/api/submissions/${encodeURIComponent(req.params.id)}`);
+  });
+
+  router.patch('/internal/marketplace/submissions/:id', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    await proxyToHub(req, res, `/api/submissions/${encodeURIComponent(req.params.id)}`, { method: 'PATCH' });
+  });
+
+  router.post('/internal/marketplace/submissions/:id/publish', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    await proxyToHub(req, res, `/api/submissions/${encodeURIComponent(req.params.id)}/publish`, { method: 'POST' });
+  });
+
+  // ---- Partner admin ops routes ----
+
+  router.get('/internal/partners', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const status = String(req.query.status ?? '').trim() || null;
+    const search = String(req.query.search ?? '').trim() || null;
+    const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit ?? '25'), 10)));
+    const offset = (page - 1) * limit;
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (status) { params.push(status); conditions.push(`p.status = $${params.length}`); }
+    if (search) { params.push(`%${search}%`); conditions.push(`(p.name ILIKE $${params.length} OR p.slug ILIKE $${params.length})`); }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    params.push(limit, offset);
+
+    const rows = await pool.query(
+      `SELECT p.id, p.name, p.slug, p.status, p.commercial_tier,
+              p.created_at, p.updated_at,
+              COUNT(DISTINCT k.id) FILTER (WHERE k.status = 'active') AS key_count,
+              COUNT(DISTINCT e.id) FILTER (WHERE e.created_at >= date_trunc('month', NOW())) AS events_this_month,
+              COUNT(DISTINCT o.id) AS client_org_count
+       FROM partner_accounts p
+       LEFT JOIN partner_api_keys k ON k.partner_id = p.id
+       LEFT JOIN platform_events e ON e.partner_id = p.id
+       LEFT JOIN organizations o ON o.partner_id = p.id
+       ${whereClause}
+       GROUP BY p.id
+       ORDER BY p.created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+
+    const countParams = conditions.length > 0 ? params.slice(0, -2) : [];
+    const countResult = await pool.query(
+      `SELECT COUNT(*) AS total FROM partner_accounts p ${whereClause}`,
+      countParams,
+    );
+    const total = parseInt(String((countResult.rows[0] as Record<string, string>).total ?? '0'), 10);
+
+    res.json({
+      partners: rows.rows.map((r) => {
+        const row = r as Record<string, unknown>;
+        return {
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          status: row.status,
+          commercialTier: row.commercial_tier,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          keyCount: Number(row.key_count ?? 0),
+          eventsThisMonth: Number(row.events_this_month ?? 0),
+          clientOrgCount: Number(row.client_org_count ?? 0),
+        };
+      }),
+      total,
+      page,
+      limit,
+    });
+  });
+
+  router.get('/internal/partners/:partnerId/detail', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const { partnerId } = req.params;
+    const [partnerRows, apiKeys, clientOrgsRows, usageRows, slaCreditsRows] = await Promise.all([
+      pool.query(
+        `SELECT id, name, slug, status, commercial_tier, stripe_customer_id,
+                stripe_subscription_id, created_at, updated_at
+         FROM partner_accounts WHERE id = $1 LIMIT 1`,
+        [partnerId],
+      ),
+      listPartnerApiKeys(partnerId),
+      pool.query(
+        `SELECT id, name, slug, plan, status, created_at
+         FROM organizations WHERE partner_id = $1 ORDER BY created_at DESC`,
+        [partnerId],
+      ),
+      pool.query(
+        `SELECT COUNT(*) AS events,
+                COALESCE(SUM(tokens_in), 0) AS tokens_in,
+                COALESCE(SUM(tokens_out), 0) AS tokens_out,
+                COALESCE(SUM(tool_calls), 0) AS tool_calls,
+                COALESCE(SUM(skill_calls), 0) AS skill_calls
+         FROM platform_events
+         WHERE partner_id = $1 AND created_at >= date_trunc('month', NOW())`,
+        [partnerId],
+      ),
+      pool.query(
+        `SELECT * FROM sla_credits WHERE partner_id = $1 ORDER BY created_at DESC LIMIT 12`,
+        [partnerId],
+      ),
+    ]);
+
+    if ((partnerRows.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Partner not found' }); return; }
+
+    const p = partnerRows.rows[0] as Record<string, unknown>;
+    const u = usageRows.rows[0] as Record<string, unknown>;
+    const eventsCount = Number(u.events ?? 0);
+    const estimatedFeePence = Math.max(0, eventsCount - 50_000) * 0.1;
+
+    res.json({
+      partner: {
+        id: p.id, name: p.name, slug: p.slug, status: p.status,
+        commercialTier: p.commercial_tier,
+        stripeCustomerId: p.stripe_customer_id,
+        stripeSubscriptionId: p.stripe_subscription_id,
+        createdAt: p.created_at, updatedAt: p.updated_at,
+      },
+      apiKeys,
+      clientOrgs: clientOrgsRows.rows,
+      usageThisMonth: {
+        events: eventsCount,
+        tokensIn: Number(u.tokens_in ?? 0),
+        tokensOut: Number(u.tokens_out ?? 0),
+        toolCalls: Number(u.tool_calls ?? 0),
+        skillCalls: Number(u.skill_calls ?? 0),
+        estimatedFeePence,
+      },
+      slaCredits: slaCreditsRows.rows,
+    });
+  });
+
+  router.patch('/internal/partners/:partnerId/status', (req, res, next) => {
+    requireOpsAuth(req, res, next);
+  }, async (req, res) => {
+    const { partnerId } = req.params;
+    const newStatus = String(req.body?.status ?? '').trim();
+    if (!['active', 'suspended', 'archived'].includes(newStatus)) {
+      res.status(400).json({ error: 'status must be active, suspended, or archived' }); return;
+    }
+    const result = await pool.query(
+      `UPDATE partner_accounts SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+      [newStatus, partnerId],
+    );
+    if ((result.rowCount ?? 0) === 0) { res.status(404).json({ error: 'Partner not found' }); return; }
+    void emitPlatformEvent({
+      partnerId,
+      eventType: 'webhook_delivery',
+      metadata: { action: 'partner_status_changed', newStatus },
+    }).catch(() => {});
+    const row = result.rows[0] as Record<string, unknown>;
+    res.json({ partner: row });
   });
 
   router.use(requireHostedSession);

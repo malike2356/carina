@@ -22,6 +22,7 @@ import { IconButton } from '@/components/ui/IconButton';
 import { Spinner } from '@/components/ui/Spinner';
 import { Button } from '@/components/ui/button';
 import { MarkdownContent } from '@/components/chat/MarkdownContent';
+import { CarinaEditor } from '@/components/editor';
 import { cn } from '@/lib/utils';
 
 type ResearchStatus = 'queued' | 'running' | 'completed' | 'failed';
@@ -221,13 +222,13 @@ export default function ResearchPage() {
 
         {showForm && (
           <form onSubmit={(event) => void submitResearch(event)} className="space-y-3 border-b border-border bg-surface p-4">
-            <textarea
+            <CarinaEditor
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={setQuery}
               placeholder="What do you want to research?"
-              rows={4}
-              autoFocus
-              className="w-full resize-none rounded-md border border-border bg-elevated px-3 py-2 text-xs leading-5 text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent"
+              variant="compact"
+              minHeight="6rem"
+              showEngineSwitch={false}
             />
 
             <div>

@@ -1,5 +1,9 @@
 # Sprint 4 - Prompt 27: VA Queue and Revenue Dashboard
 
+**Status: COMPLETED 2026-06-23**
+
+**What was built:** VA Queue kanban (SLA overview bar, priority/SLA badges, quick assign, detail panel with SLA tracker, scout signals, inline resolve); team tab (load bars, availability toggle, add/remove with 409 handling); SLA report (KPI cards, bar chart, by-member and by-priority tables); Revenue dashboard (6 stat cards, 3-line MRR chart, tier breakdown bar, at-risk panels, invoice table with refund modal and Stripe error display). Backend: workspace names, scout signals on detail, resolve decrements VA load; team proxy routes.
+
 **Sprint:** 4
 **Prompt number:** 27
 **Primary agent:** Claude Code (backend) + Cursor (frontend)
@@ -12,7 +16,7 @@
 
 When all "Done When" criteria are satisfied:
 1. Add `**Status: COMPLETED YYYY-MM-DD**` at the top of this file.
-2. Move to `internal/prompts/archived_prompts/archives_from_pending_prompts/sprint-4/action/`.
+2. Move to `01-devends/prompts/02-archived_prompts/archives_from_pending_prompts/sprint-4/action/`.
 
 ---
 
@@ -20,15 +24,15 @@ When all "Done When" criteria are satisfied:
 
 Read every file listed before writing a single line of code:
 
-1. `frontends/client-apps/admin.carinaai.uk/src/app/(admin)/layout.tsx` - admin shell; you are adding pages inside it
-2. `frontends/client-apps/admin.carinaai.uk/src/lib/admin-api.ts` - helper for calling core
-3. `frontends/client-apps/admin.carinaai.uk/src/app/(admin)/fleet/page.tsx` - pattern for slide-in panels and tab bars
-4. `backends/servers/core.carinaai.uk/src/aiva/aiva-api.ts` - where the escalation handler lives; you will modify it
-5. `backends/servers/core.carinaai.uk/src/admin/admin-router.ts` - add all new routes here
-6. `backends/servers/core.carinaai.uk/src/admin/admin-auth.ts` - apply to all new routes
-7. `backends/servers/core.carinaai.uk/src/billing/aiva-billing.ts` - `getAivaPricingConfig()` and `recordInvoice()`
-8. `backends/servers/core.carinaai.uk/src/billing/stripe-service.ts` - Stripe client for refund actions
-9. `backends/servers/core.carinaai.uk/src/db/migrations/009-aiva-admin.sql` - `aiva_escalations` and `va_team_members` tables; do not recreate them
+1. `03-frontends/client-apps/admin.carinaai.uk/src/app/(admin)/layout.tsx` - admin shell; you are adding pages inside it
+2. `03-frontends/client-apps/admin.carinaai.uk/src/lib/admin-api.ts` - helper for calling core
+3. `03-frontends/client-apps/admin.carinaai.uk/src/app/(admin)/fleet/page.tsx` - pattern for slide-in panels and tab bars
+4. `02-backends/core.carinaai.uk/src/aiva/aiva-api.ts` - where the escalation handler lives; you will modify it
+5. `02-backends/core.carinaai.uk/src/admin/admin-router.ts` - add all new routes here
+6. `02-backends/core.carinaai.uk/src/admin/admin-auth.ts` - apply to all new routes
+7. `02-backends/core.carinaai.uk/src/billing/aiva-billing.ts` - `getAivaPricingConfig()` and `recordInvoice()`
+8. `02-backends/core.carinaai.uk/src/billing/stripe-service.ts` - Stripe client for refund actions
+9. `02-backends/core.carinaai.uk/src/db/migrations/009-aiva-admin.sql` - `aiva_escalations` and `va_team_members` tables; do not recreate them
 10. `package.json` of the admin app - check if `recharts` is already installed before adding it
 
 ---

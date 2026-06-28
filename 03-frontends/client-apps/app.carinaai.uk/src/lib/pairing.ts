@@ -11,10 +11,15 @@ export interface PairingDevice {
 }
 
 function pairingHeaders(): HeadersInit {
-  return {
+  const token = resolveCoreProxyToken();
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'x-internal-key': resolveCoreProxyToken(),
   };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+    headers['x-internal-key'] = token;
+  }
+  return headers;
 }
 
 async function corePairingFetch(path: string, init?: RequestInit): Promise<Response> {

@@ -1,5 +1,8 @@
 import type { Memory, Role } from '../../types/index.js';
 
+/** Optional scope metadata used by channel-resident ambient memory (see channel_context_facts). */
+export type MemoryScope = 'global' | `channel:${string}` | `user:${string}`;
+
 export interface MemoryBackend {
   readonly name: string;
   readonly displayName: string;

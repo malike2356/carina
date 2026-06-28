@@ -10,12 +10,22 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 };
 
+const DISMISS_KEY = 'carina-pwa-install-dismissed';
+
 export function InstallPromptBanner() {
   const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
+    if (sessionStorage.getItem(DISMISS_KEY) === '1') {
+      setHidden(true);
+      return;
+    }
+
     function onBeforeInstallPrompt(e: Event) {
+      if (sessionStorage.getItem(DISMISS_KEY) === '1') {
+        return;
+      }
       e.preventDefault();
       setEvent(e as BeforeInstallPromptEvent);
     }
@@ -23,6 +33,12 @@ export function InstallPromptBanner() {
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
   }, []);
+
+  function dismiss() {
+    sessionStorage.setItem(DISMISS_KEY, '1');
+    setHidden(true);
+    setEvent(null);
+  }
 
   if (!event || hidden) return null;
   const installEvent = event;
@@ -43,7 +59,7 @@ export function InstallPromptBanner() {
             Add the workspace to your device for faster access and offline loading.
           </p>
         </div>
-        <IconButton label="Dismiss" size="sm" onClick={() => setHidden(true)}>
+        <IconButton label="Dismiss" size="sm" onClick={dismiss}>
           <X className="h-3 w-3" />
         </IconButton>
       </div>
@@ -51,7 +67,7 @@ export function InstallPromptBanner() {
         <Button onClick={() => void install()} size="sm">
           Install
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setHidden(true)}>
+        <Button variant="outline" size="sm" onClick={dismiss}>
           Not now
         </Button>
       </div>

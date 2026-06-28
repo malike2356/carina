@@ -10,6 +10,7 @@ import { KeysBanner } from '@/components/shell/KeysBanner';
 import { Breadcrumb } from '@/components/shell/Breadcrumb';
 import { CanvasSidePanel } from '@/components/canvas/CanvasSidePanel';
 import { CanvasPanelProvider } from '@/lib/canvas-panel';
+import { AppProviders } from '@/components/shell/AppProviders';
 
 type WorkspaceLayoutClientProps = {
   children: ReactNode;
@@ -19,7 +20,8 @@ type WorkspaceLayoutClientProps = {
 
 export function WorkspaceLayoutClient({ children, userEmail, userName }: WorkspaceLayoutClientProps) {
   return (
-    <CanvasPanelProvider>
+    <AppProviders>
+      <CanvasPanelProvider>
       <div className="flex h-screen overflow-hidden bg-base text-text-primary carina-workspace-shell">
         <AppSidebar userEmail={userEmail} userName={userName} />
         <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -27,7 +29,7 @@ export function WorkspaceLayoutClient({ children, userEmail, userName }: Workspa
           <Breadcrumb />
           <PanelProvider>
             <div className="flex min-h-0 flex-1 overflow-hidden">
-              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">{children}</div>
               <CanvasSidePanel />
             </div>
           </PanelProvider>
@@ -37,5 +39,6 @@ export function WorkspaceLayoutClient({ children, userEmail, userName }: Workspa
         <ShortcutsPanel />
       </div>
     </CanvasPanelProvider>
+    </AppProviders>
   );
 }

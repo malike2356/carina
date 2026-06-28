@@ -27,6 +27,8 @@ interface ChatViewProps {
   initialMessages: ChatMessage[];
   workspacePlan: string;
   profileId?: string | null;
+  initialProvider?: string;
+  initialModel?: string;
   researchJobId?: string | null;
   documentId?: string | null;
 }
@@ -37,6 +39,8 @@ export function ChatView({
   initialMessages,
   workspacePlan: _workspacePlan,
   profileId,
+  initialProvider = '',
+  initialModel = '',
   researchJobId,
   documentId,
 }: ChatViewProps) {
@@ -767,6 +771,8 @@ export function ChatView({
           onRetry={() => void retry()}
           onUndo={() => void undo()}
           onNewSession={() => void startNewSession()}
+          initialProvider={initialProvider}
+          initialModel={initialModel}
         />
       </div>
     </div>

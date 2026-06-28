@@ -37,7 +37,8 @@ import { useRouter } from 'next/navigation';
 import { useTerminalAccess } from '@/hooks/useTerminalAccess';
 import { useCloudCapabilities } from '@/hooks/useCloudCapabilities';
 import { hasCloudCapability, routeRequiresCoreProxy } from '@/lib/cloud-capabilities';
-import { NAV_GROUPS, NAV_ROUTES } from '@/lib/workspace-nav';
+import { useProductSurface } from '@/hooks/useProductSurface';
+import { filterNavForSurface, NAV_GROUPS, NAV_ROUTES } from '@/lib/workspace-nav';
 import { cn } from '@/lib/utils';
 
 interface SessionResult {
@@ -153,8 +154,10 @@ export function CommandPalette() {
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const { canUseTerminal } = useTerminalAccess();
+  const { canUseTerminal, loading: terminalAccessLoading } = useTerminalAccess();
   const { capabilities } = useCloudCapabilities();
+  const productSurface = useProductSurface();
+  const isAivaProduct = productSurface === 'aiva';
 
   const close = useCallback(() => {
     setOpen(false);
@@ -212,59 +215,61 @@ export function CommandPalette() {
   }, [open, query]);
 
   const staticActions: ActionItem[] = useMemo(() => {
-    const nonNavActions: ActionItem[] = [
-      {
-        type: 'action',
-        id: 'new-chat',
-        label: 'New chat',
-        group: 'Chat',
-        shortcut: 'Ctrl+Alt+N',
-        icon: <Plus className="h-4 w-4" />,
-        action: async () => {
-          close();
-          const response = await fetch('/api/sessions', { method: 'POST' });
-          const data = await response.json();
-          if (data.data?.id) router.push(`/chat/${data.data.id}`);
-        },
-      },
-      {
-        type: 'action',
-        id: 'memory-panel',
-        label: 'Open memory panel',
-        group: 'Intelligence',
-        icon: <Brain className="h-4 w-4" />,
-        action: () => {
-          close();
-          document.dispatchEvent(new CustomEvent('open-panel', { detail: 'memory' }));
-        },
-      },
-      {
-        type: 'action',
-        id: 'skills-panel',
-        label: 'Open skills panel',
-        group: 'Intelligence',
-        icon: <Sparkles className="h-4 w-4" />,
-        action: () => {
-          close();
-          document.dispatchEvent(new CustomEvent('open-panel', { detail: 'skills' }));
-        },
-      },
-      {
-        type: 'action',
-        id: 'notes-panel',
-        label: 'Open notes panel',
-        group: 'Intelligence',
-        icon: <StickyNote className="h-4 w-4" />,
-        action: () => {
-          close();
-          document.dispatchEvent(new CustomEvent('open-panel', { detail: 'notes' }));
-        },
-      },
-    ];
+    const nonNavActions: ActionItem[] = isAivaProduct
+      ? []
+      : [
+          {
+            type: 'action',
+            id: 'new-chat',
+            label: 'New chat',
+            group: 'Chat',
+            shortcut: 'Ctrl+Alt+N',
+            icon: <Plus className="h-4 w-4" />,
+            action: async () => {
+              close();
+              const response = await fetch('/api/sessions', { method: 'POST' });
+              const data = await response.json();
+              if (data.data?.id) router.push(`/chat/${data.data.id}`);
+            },
+          },
+          {
+            type: 'action',
+            id: 'memory-panel',
+            label: 'Open memory panel',
+            group: 'Intelligence',
+            icon: <Brain className="h-4 w-4" />,
+            action: () => {
+              close();
+              document.dispatchEvent(new CustomEvent('open-panel', { detail: 'memory' }));
+            },
+          },
+          {
+            type: 'action',
+            id: 'skills-panel',
+            label: 'Open skills panel',
+            group: 'Intelligence',
+            icon: <Sparkles className="h-4 w-4" />,
+            action: () => {
+              close();
+              document.dispatchEvent(new CustomEvent('open-panel', { detail: 'skills' }));
+            },
+          },
+          {
+            type: 'action',
+            id: 'notes-panel',
+            label: 'Open notes panel',
+            group: 'Intelligence',
+            icon: <StickyNote className="h-4 w-4" />,
+            action: () => {
+              close();
+              document.dispatchEvent(new CustomEvent('open-panel', { detail: 'notes' }));
+            },
+          },
+        ];
 
-    const navActions: ActionItem[] = NAV_ROUTES
+    const navActions: ActionItem[] = filterNavForSurface(productSurface, NAV_ROUTES)
       .filter((route) => {
-        if (route.terminalGated && !canUseTerminal) return false;
+        if (route.terminalGated && !terminalAccessLoading && !canUseTerminal) return false;
         const capabilityKey = routeRequiresCoreProxy(route.href);
         if (capabilityKey && capabilities && !hasCloudCapability(capabilities, capabilityKey)) {
           return false;
@@ -291,7 +296,7 @@ export function CommandPalette() {
       });
 
     return [...nonNavActions, ...navActions];
-  }, [canUseTerminal, capabilities, close, router]);
+  }, [canUseTerminal, terminalAccessLoading, capabilities, close, isAivaProduct, productSurface, router]);
 
   const matchingActions = useMemo(() => {
     if (query.length < 2) return staticActions;
@@ -303,18 +308,18 @@ export function CommandPalette() {
 
   const allItems: ResultItem[] = [
     ...actionItems,
-    ...results.sessions.map((session): SessionItem => ({
+    ...(isAivaProduct ? [] : results.sessions.map((session): SessionItem => ({
       type: 'session',
       id: session.id,
       title: session.title,
-    })),
-    ...results.messages.map((message): MessageItem => ({
+    }))),
+    ...(isAivaProduct ? [] : results.messages.map((message): MessageItem => ({
       type: 'message',
       id: message.id,
       sessionId: message.sessionId,
       content: message.content,
       role: message.role,
-    })),
+    }))),
   ];
 
   const actionIndexMap = useMemo(() => {

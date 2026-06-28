@@ -109,4 +109,9 @@ export async function initHubDb(): Promise<void> {
     'utf8',
   );
   await hubPool.query(marketplaceSql);
+  const submissionsSql = await fs.readFile(
+    path.join(__dirname, 'migrations/004-submissions.sql'),
+    'utf8',
+  );
+  await hubPool.query(submissionsSql);
 }

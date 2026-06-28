@@ -1,8 +1,9 @@
 # Platform Admin Panel
 
-**Last updated:** 2026-05-17
+**Last updated:** 2026-06-15
 
 ## Overview
+
 Central admin panel for platform operators. All routes under `/admin/*` on the central domain. Built with Laravel Blade and Filament v3 (selected resources).
 
 ## Admin Routes
@@ -14,6 +15,7 @@ Central admin panel for platform operators. All routes under `/admin/*` on the c
 | AI Usage | `/admin/ai/usage` | Cross-tenant usage dashboard, CSV export |
 | Carina | `/admin/carina` | Conversations, agent tools, knowledge training (upload/OCR/ZIP/RAG queue), speech transcribe |
 | Users | `/admin/saas-tenancy` | Tenant CRUD, provision databases |
+| Accounts | `/admin/accounts` | Workspace lifecycle, health, follow-ups, ops digest (alias `/admin/tenant-crm`; see `190-platform-tenant-crm-accounts.md`) |
 | Central Users | `/admin/*` (various) | Platform user manager, impersonation |
 | Roles | `/admin/roles` | Platform role CRUD (Spatie) |
 | Feature Flags | `/admin/feature-flags` | Toggle flags, per-tenant overrides, sync catalogue |

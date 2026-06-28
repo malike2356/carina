@@ -17,21 +17,40 @@ function titleCase(slug) {
     .join(' ');
 }
 
-if (!fs.existsSync(THEME_SRC)) {
-  console.error(`Theme source not found: ${THEME_SRC}`);
-  process.exit(1);
+function collectThemeEntries(dir) {
+  const entries = [];
+  for (const file of fs.readdirSync(dir).sort()) {
+    if (!file.endsWith('.css') && !file.endsWith('.csss')) continue;
+    const normalized = file.endsWith('.csss') ? file.replace(/\.csss$/, '.css') : file;
+    const id = normalized.replace(/\.css$/, '');
+    if (entries.some((entry) => entry.id === id)) continue;
+    entries.push({ id, label: titleCase(id), file: normalized });
+  }
+  return entries;
 }
 
 fs.mkdirSync(THEME_DST, { recursive: true });
 
-const entries = [];
-for (const file of fs.readdirSync(THEME_SRC).sort()) {
-  if (!file.endsWith('.css') && !file.endsWith('.csss')) continue;
-  const normalized = file.endsWith('.csss') ? file.replace(/\.csss$/, '.css') : file;
-  const id = normalized.replace(/\.css$/, '');
-  if (entries.some((entry) => entry.id === id)) continue;
-  fs.copyFileSync(path.join(THEME_SRC, file), path.join(THEME_DST, normalized));
-  entries.push({ id, label: titleCase(id), file: normalized });
+let entries = [];
+if (fs.existsSync(THEME_SRC)) {
+  for (const file of fs.readdirSync(THEME_SRC).sort()) {
+    if (!file.endsWith('.css') && !file.endsWith('.csss')) continue;
+    const normalized = file.endsWith('.csss') ? file.replace(/\.csss$/, '.css') : file;
+    const id = normalized.replace(/\.css$/, '');
+    if (entries.some((entry) => entry.id === id)) continue;
+    fs.copyFileSync(path.join(THEME_SRC, file), path.join(THEME_DST, normalized));
+    entries.push({ id, label: titleCase(id), file: normalized });
+  }
+} else if (fs.existsSync(THEME_DST)) {
+  entries = collectThemeEntries(THEME_DST);
+  if (entries.length === 0) {
+    console.error(`Theme source not found: ${THEME_SRC}`);
+    process.exit(1);
+  }
+  console.warn(`Theme source not found (${THEME_SRC}); using existing public/themes/multi/`);
+} else {
+  console.error(`Theme source not found: ${THEME_SRC}`);
+  process.exit(1);
 }
 
 const bridgeSrc = path.join(APP_ROOT, 'public', 'themes', 'theme-bridge.css');

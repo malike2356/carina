@@ -8,7 +8,8 @@ export type MandatoryToolCategory =
   | 'live_facts'
   | 'api_data'
   | 'memory_instruction'
-  | 'memory_recall';
+  | 'memory_recall'
+  | 'image_generation';
 
 export type MandatoryToolRule = {
   id: MandatoryToolCategory;
@@ -143,6 +144,22 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
       /\bwhat\s+do\s+you\s+remember\b/i,
       /\bshow\s+(your\s+)?memory\b/i,
       /\blist\s+(your\s+)?memory\b/i,
+    ],
+  },
+  {
+    id: 'image_generation',
+    label: 'Image and visual asset generation',
+    tools: ['image-generation'],
+    guidance:
+      'Call image-generation with a detailed prompt. Do not substitute ASCII art, text boxes, or prose descriptions for a requested image or visual banner.',
+    patterns: [
+      /\bgenerate\s+(an?\s+)?(image|picture|photo|graphic|illustration|banner|poster|logo|visual)\b/i,
+      /\bcreate\s+(an?\s+)?(image|picture|photo|graphic|illustration|banner|poster|logo|visual)\b/i,
+      /\bmake\s+(me\s+)?(an?\s+)?(image|picture|banner|graphic|poster|logo)\b/i,
+      /\bwelcome\s+banner\b/i,
+      /\bmarketing\s+(banner|graphic|image)\b/i,
+      /\bimage\s+generation\b/i,
+      /\bdall-?e\b/i,
     ],
   },
 ];

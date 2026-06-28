@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Code2,
   CreditCard,
   Database,
   FileText,
@@ -25,10 +26,12 @@ import {
   Hash,
   Home,
   Key,
+  KeyRound,
   LayoutDashboard,
   LayoutGrid,
   LayoutList,
   LifeBuoy,
+  LogOut,
   Mail,
   MessageSquare,
   MoreHorizontal,
@@ -80,6 +83,7 @@ import { hrefToWindowId, preferWindowOverlay } from '@/lib/window-manager/defini
 import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
 import { BrandMark } from '@/components/shell/BrandMark';
 import { ThemeSwitcher } from '@/components/shell/ThemeSwitcher';
+import { authClient } from '@/lib/auth-client';
 
 interface Session {
   id: string;
@@ -104,6 +108,7 @@ const NAV_ICON_MAP: Record<string, React.ElementType> = {
   CalendarDays,
   CheckSquare,
   Clock,
+  Code2,
   CreditCard,
   Database,
   FileText,
@@ -111,6 +116,7 @@ const NAV_ICON_MAP: Record<string, React.ElementType> = {
   Hash,
   Home,
   Key,
+  KeyRound,
   LayoutDashboard,
   LayoutGrid,
   LayoutList,
@@ -257,6 +263,11 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
     if (data.data?.id) router.push(`/chat/${data.data.id}`);
   }
 
+  async function signOut() {
+    await authClient.signOut();
+    window.location.href = '/login';
+  }
+
   const initials = (userName || userEmail).slice(0, 2).toUpperCase();
 
   if (collapsed) {
@@ -315,9 +326,15 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
 
         <div className="flex-1" />
 
+        <ThemeSwitcher variant="compact" dropUp showLabel={false} syncApi />
         <Tooltip text={t('nav.settings')} side="right">
           <IconButton label={t('nav.settings')} onClick={() => router.push('/settings')}>
             <Settings className="h-4 w-4" />
+          </IconButton>
+        </Tooltip>
+        <Tooltip text={t('sidebar.signOut')} side="right">
+          <IconButton label={t('sidebar.signOut')} onClick={signOut}>
+            <LogOut className="h-4 w-4" />
           </IconButton>
         </Tooltip>
         <Tooltip text={userEmail} side="right">
@@ -395,8 +412,8 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
         ))}
       </div>
 
-      <div className="border-t border-border px-3 py-2">
-        <ThemeSwitcher variant="compact" dropUp syncApi />
+      <div className="relative z-40 flex justify-end overflow-visible border-t border-border px-3 py-2">
+        <ThemeSwitcher variant="compact" menuPlacement="sidebar" showLabel syncApi />
       </div>
 
       <div className="flex items-center gap-2 border-t border-border px-3 py-3">
@@ -409,6 +426,9 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
         </div>
         <IconButton label={t('nav.settings')} onClick={() => router.push('/settings')}>
           <Settings className="h-3.5 w-3.5" />
+        </IconButton>
+        <IconButton label={t('sidebar.signOut')} onClick={signOut}>
+          <LogOut className="h-3.5 w-3.5" />
         </IconButton>
       </div>
     </aside>

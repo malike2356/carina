@@ -63,7 +63,7 @@ export function CanvasSidePanel() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `${state.title.replace(/\s+/g, '-').toLowerCase() || 'artifact'}.png`;
+      anchor.download = `${(state.title?.replace(/\s+/g, '-').toLowerCase()) || 'artifact'}.png`;
       anchor.click();
       URL.revokeObjectURL(url);
     });

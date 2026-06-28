@@ -1,0 +1,4 @@
+# Copy to userlist.txt on the VPS and set the SCRAM secret from the Postgres role.
+# Example: select rolpassword from pg_authid where rolname = 'carina';
+# Never commit real passwords or production SCRAM secrets.
+"carina" "SCRAM-SHA-256$4096:REPLACE_WITH_SALT$REPLACE_WITH_STORED_KEY:REPLACE_WITH_SERVER_KEY"

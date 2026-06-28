@@ -8,6 +8,7 @@ import {
   getPublishedIncidents,
   getUnsentNewsletterIncidents,
   listIncidents,
+  listResearchRuns,
   listSubscribers,
   markNewsletterSent,
   publishIncident,
@@ -135,7 +136,8 @@ async function runAction(action: BlogAction, params: Record<string, unknown>): P
   }
 
   if (action === 'research-log') {
-    return getLastResearchRun();
+    const limit = Math.min(100, Math.max(1, Number(params.limit ?? 20) || 20));
+    return listResearchRuns(limit);
   }
 
   if (action === 'generate-page') {
@@ -283,9 +285,11 @@ export const blogTools: Tool[] = [
     type: 'object',
     properties: {},
   }),
-  blogTool('blog-research-log', 'Show the latest incident research log.', 'research-log', {
+  blogTool('blog-research-log', 'Show incident research run history.', 'research-log', {
     type: 'object',
-    properties: {},
+    properties: {
+      limit: { type: 'number', description: 'Maximum runs to return (1-100, default 20).' },
+    },
   }),
   blogTool('blog-generate-page', 'Regenerate the public incidents page.', 'generate-page', {
     type: 'object',

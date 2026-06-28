@@ -4,7 +4,10 @@ import {
   getWorkspaceCalendarConnection,
   resolveConnectionCredentials,
   resolveEnvCalDavCredentials,
+  resolveGoogleConnectionCredentials,
+  resolvePlatformGoogleClient,
 } from '@/lib/calendar-connection';
+import { testGoogleCalendarConnection } from '@/lib/google-calendar-client';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -15,10 +18,46 @@ export async function POST(request: Request) {
 
   const workspace = await requireWorkspace(session.user.id);
   const body = (await request.json()) as {
+    provider?: 'caldav' | 'google';
     url?: string;
     username?: string;
     password?: string;
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    calendarId?: string;
   };
+
+  if (body.provider === 'google') {
+    const connection = await getWorkspaceCalendarConnection(workspace.id);
+    const stored = connection?.provider === 'google'
+      ? resolveGoogleConnectionCredentials(connection, workspace.id)
+      : null;
+    const platform = resolvePlatformGoogleClient();
+
+    const creds = {
+      clientId: body.clientId?.trim() || stored?.clientId || platform?.clientId || '',
+      clientSecret: body.clientSecret?.trim() || stored?.clientSecret || platform?.clientSecret || '',
+      refreshToken: body.refreshToken?.trim() || stored?.refreshToken || '',
+      calendarId: body.calendarId?.trim() || stored?.calendarId || 'primary',
+    };
+
+    if (!creds.clientId || !creds.clientSecret || !creds.refreshToken) {
+      return NextResponse.json({ error: 'Google client ID, secret, and refresh token are required' }, { status: 400 });
+    }
+
+    const result = await testGoogleCalendarConnection(creds);
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 502 });
+    }
+    return NextResponse.json({
+      data: {
+        ok: true,
+        calendarId: result.calendarId,
+        eventCount: result.eventCount,
+      },
+    });
+  }
 
   const connection = await getWorkspaceCalendarConnection(workspace.id);
   const creds =

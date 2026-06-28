@@ -1,6 +1,17 @@
 export function coreProxyEnabled(): boolean {
-  if (process.env.CARINA_USE_CORE_PROXY !== 'true') return false;
-  return Boolean(resolveCoreProxyToken());
+  const token = resolveCoreProxyToken();
+  if (!token) return false;
+  const flag = process.env.CARINA_USE_CORE_PROXY?.trim().toLowerCase();
+  if (flag === 'false') return false;
+  if (flag === 'true') return true;
+  // Docker production: token + internal core hostname implies proxy is intended
+  if (process.env.NODE_ENV === 'production') {
+    const coreUrl = process.env.CARINA_CORE_URL?.trim() ?? '';
+    if (coreUrl.includes('carina-web') || coreUrl.includes('carina-staging-web')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export function resolveCoreProxyToken(): string {
@@ -119,7 +130,12 @@ export function resolveOpsPtyWebSocketUrl(): string | null {
   }
 }
 
-/** BYOK keys are required only when chat does not route through core. */
+/** BYOK keys are required when chat cannot fall back to the core agent proxy. */
 export function requiresWorkspaceByokKeys(): boolean {
   return !coreProxyEnabled();
+}
+
+/** Workspace keys in Settings take precedence over the core proxy for chat. */
+export function shouldRouteChatThroughCore(hasWorkspaceByokKeys: boolean): boolean {
+  return coreProxyEnabled() && !hasWorkspaceByokKeys;
 }

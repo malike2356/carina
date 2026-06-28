@@ -49,6 +49,8 @@ interface ChatInputBarProps {
   onRetry?: () => void;
   onUndo?: () => void;
   onNewSession?: () => void;
+  initialProvider?: string;
+  initialModel?: string;
 }
 
 export function ChatInputBar({
@@ -66,6 +68,8 @@ export function ChatInputBar({
   onRetry,
   onUndo,
   onNewSession,
+  initialProvider = '',
+  initialModel = '',
 }: ChatInputBarProps) {
   const router = useRouter();
   const [value, setValue] = useState('');
@@ -90,6 +94,11 @@ export function ChatInputBar({
   const inputPlaceholder =
     placeholder ??
     (busy ? 'Responding... Press Escape to stop' : t('chat.placeholder'));
+
+  useEffect(() => {
+    setProvider(initialProvider);
+    setModel(initialModel);
+  }, [initialProvider, initialModel, sessionId]);
 
   const trimmed = value.trim();
   const showSlashPopup = trimmed.startsWith('/') && trimmed.length <= 30 && !disabled && !busy;

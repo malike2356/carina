@@ -89,6 +89,22 @@ export async function fetchSecurityDashboardFromCore(): Promise<SecurityDashboar
   return response.json() as Promise<SecurityDashboardData>;
 }
 
+export async function fetchSecurityDashboardStreamFromCore(
+  signal?: AbortSignal,
+): Promise<Response> {
+  const coreUrl = resolveCoreUrl().replace(/\/$/, '');
+  const response = await fetch(`${coreUrl}/api/security/dashboard/stream`, {
+    headers: coreAuthHeaders(),
+    cache: 'no-store',
+    signal,
+  });
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || `Core dashboard stream failed (${response.status})`);
+  }
+  return response;
+}
+
 export function buildDevSecurityDashboardStub(): SecurityDashboardData {
   const now = new Date().toISOString();
   return {

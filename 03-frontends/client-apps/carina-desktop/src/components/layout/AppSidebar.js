@@ -9,6 +9,7 @@ import { NAV_ITEMS, ROUTES } from '../../lib/router-paths.js';
 import WorkspaceSwitcher from '../workspace/WorkspaceSwitcher.js';
 import ScoutWidget from '../scout/ScoutWidget.js';
 import UsagePanel from '../billing/UsagePanel.js';
+import SyncStatusBar from './SyncStatusBar.js';
 import { getWorkspaces } from '../../lib/gateway-client.js';
 import { $workspaces, $activeWorkspace } from '../../store/carina.js';
 const MODE_WIDTH = {
@@ -16,7 +17,7 @@ const MODE_WIDTH = {
     normal: 'w-64',
     wide: 'w-80',
 };
-export default function AppSidebar({ mode, onSelectSession, onCreateSession, onRefreshWorkspaces }) {
+export default function AppSidebar({ mode, onSelectSession, onCreateSession, onRefreshWorkspaces, onSyncNow }) {
     const sessions = useStore($sessions);
     const currentId = useStore($currentSessionId);
     const status = useStore($gatewayStatus);
@@ -61,5 +62,5 @@ export default function AppSidebar({ mode, onSelectSession, onCreateSession, onR
                             navigate(ROUTES.chat);
                         }, className: `w-full text-left ${collapsed ? 'px-1 py-2 text-center' : 'px-3 py-2'} rounded text-sm truncate ${s.sessionId === currentId
                             ? 'bg-zinc-700 text-zinc-100'
-                            : 'text-zinc-400 hover:bg-zinc-800'}`, children: collapsed ? (s.title ?? s.sessionId).slice(0, 1) : (s.title ?? s.sessionId.slice(0, 12)) }, s.sessionId)))] }), _jsxs("div", { className: "p-2 border-t border-zinc-800 space-y-2", children: [_jsx(ScoutWidget, { score: trustScore, events: securityEvents, killSwitchActive: killSwitchActive, killSwitchReason: killSwitchReason, scoutConnected: scoutConnected, scoutUrl: scoutUrl, expanded: scoutExpanded || mode === 'wide', compact: collapsed, onToggle: () => setScoutExpanded((value) => !value), onOpenReport: () => navigate(ROUTES.scout) }), _jsx(UsagePanel, { planName: plan?.name ?? 'Free', creditsRemaining: usage?.creditsRemaining ?? 0, tokensUsed: usage?.tokensUsed ?? 0, tokenLimit: usage?.tokenLimit ?? 100_000, messagesSent: usage?.messagesSent ?? 0, sessions: billingSessions, expanded: usageExpanded || mode === 'wide', compact: collapsed, onToggle: () => setUsageExpanded((value) => !value), onUpgrade: () => window.open('https://app.carinaai.uk/billing', '_blank') })] })] }));
+                            : 'text-zinc-400 hover:bg-zinc-800'}`, children: collapsed ? (s.title ?? s.sessionId).slice(0, 1) : (s.title ?? s.sessionId.slice(0, 12)) }, s.sessionId)))] }), _jsxs("div", { className: "p-2 border-t border-zinc-800 space-y-2", children: [_jsx(SyncStatusBar, { compact: collapsed, onSyncNow: onSyncNow }), _jsx(ScoutWidget, { score: trustScore, events: securityEvents, killSwitchActive: killSwitchActive, killSwitchReason: killSwitchReason, scoutConnected: scoutConnected, scoutUrl: scoutUrl, expanded: scoutExpanded || mode === 'wide', compact: collapsed, onToggle: () => setScoutExpanded((value) => !value), onOpenReport: () => navigate(ROUTES.scout) }), _jsx(UsagePanel, { planName: plan?.name ?? 'Free', creditsRemaining: usage?.creditsRemaining ?? 0, tokensUsed: usage?.tokensUsed ?? 0, tokenLimit: usage?.tokenLimit ?? 100_000, messagesSent: usage?.messagesSent ?? 0, sessions: billingSessions, expanded: usageExpanded || mode === 'wide', compact: collapsed, onToggle: () => setUsageExpanded((value) => !value), onUpgrade: () => window.open('https://app.carinaai.uk/billing', '_blank') })] })] }));
 }

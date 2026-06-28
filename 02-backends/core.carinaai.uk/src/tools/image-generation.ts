@@ -5,8 +5,9 @@ import {
   generateImage,
   isImageGenerationConfigured,
   parseSizeDimensions,
-  resolveOpenAiSize,
+  resolveActiveImageGenProvider,
 } from '../gateway/images-provider.js';
+import { resolveOpenAiSize } from '../gateway/image-providers/shared.js';
 
 const LEGACY_OUTPUT_DIR = 'data/generated-images';
 
@@ -15,7 +16,7 @@ export const imageGenerationTool: Tool = {
   dangerous: true,
   requiresConfirmation: true,
   description:
-    'Generate an image from a text prompt using OpenAI DALL-E. Returns a local file path to the generated image and saves it to the gallery.',
+    'Generate an image from a text prompt. Uses the configured image backend (FAL Flux by default, or OpenAI, Replicate, ComfyUI). Returns a local file path and saves to the gallery.',
   parameters: {
     type: 'object',
     properties: {
@@ -37,17 +38,20 @@ export const imageGenerationTool: Tool = {
     const prompt = String(params.prompt ?? '').trim();
     if (!prompt) return { error: 'prompt is required' };
     if (!isImageGenerationConfigured()) {
-      return { error: 'OPENAI_API_KEY required for image generation' };
+      return {
+        error: 'No image provider configured. Set FAL_KEY (recommended), OPENAI_API_KEY, REPLICATE_API_TOKEN, or COMFYUI_URL + COMFYUI_WORKFLOW_PATH.',
+      };
     }
 
     const size = String(params.size ?? '1024x1024') as '1024x1024' | '1792x1024' | '1024x1792';
     const dims = parseSizeDimensions(size);
 
     try {
+      const provider = resolveActiveImageGenProvider();
       const generated = await generateImage({
         tenantId: '__operator__',
         prompt,
-        model: 'dall-e-3',
+        model: provider?.defaultModel(),
         width: dims.width,
         height: dims.height,
       });
@@ -67,6 +71,8 @@ export const imageGenerationTool: Tool = {
         format: 'png',
         prompt,
         size,
+        provider: provider?.name ?? 'unknown',
+        model: generated.model,
         quality: String(params.quality ?? 'standard'),
         message: `MEDIA: ${legacyPath}`,
       };

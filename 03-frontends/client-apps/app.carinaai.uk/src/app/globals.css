@@ -14,6 +14,7 @@
   --color-accent: var(--primary, #22c55e);
   --color-accent-dim: color-mix(in srgb, var(--primary, #22c55e) 18%, transparent);
   --color-accent-hover: var(--primary, #16a34a);
+  --color-primary-foreground: var(--primary-foreground, #fafafa);
   --color-danger: var(--destructive, #ef4444);
   --color-danger-dim: color-mix(in srgb, var(--destructive, #ef4444) 18%, transparent);
   --color-bubble-user: color-mix(in srgb, var(--primary, #22c55e) 16%, var(--card, #1a1d2e));

@@ -2,12 +2,18 @@ import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 
-const TAB_PATHS: Record<string, string> = {
+const TAB_PATHS = {
   chat: '/(tabs)/chat',
   tasks: '/(tabs)/tasks',
   trust: '/(tabs)/trust',
   more: '/(tabs)/more',
-};
+} as const;
+
+type TabPathKey = keyof typeof TAB_PATHS;
+
+function isTabPathKey(path: string): path is TabPathKey {
+  return path in TAB_PATHS;
+}
 
 function routeFromUrl(url: string): void {
   const parsed = Linking.parse(url);
@@ -39,11 +45,11 @@ function routeFromUrl(url: string): void {
     return;
   }
 
-  const tab = TAB_PATHS[path];
-  if (tab) {
+  if (isTabPathKey(path)) {
+    const tab = TAB_PATHS[path];
     const sessionId = parsed.queryParams?.sessionId;
     if (typeof sessionId === 'string' && path === 'chat') {
-      router.push({ pathname: tab, params: { sessionId } });
+      router.push({ pathname: '/(tabs)/chat', params: { sessionId } });
       return;
     }
     router.push(tab);

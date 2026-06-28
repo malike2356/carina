@@ -1,1 +1,7 @@
 HESTIACP_CREDENTIALS.txt
+brain/**/.generated-skills/
+.env.staging.runtime
+.env.staging.cloud.runtime
+.env.staging.admin.runtime
+.env.admin.runtime
+.local/

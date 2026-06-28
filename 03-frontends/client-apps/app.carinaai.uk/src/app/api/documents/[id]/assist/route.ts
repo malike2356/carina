@@ -7,6 +7,7 @@ import { getSession, requireWorkspace } from '@/lib/session';
 import { completeWorkspacePrompt } from '@/lib/workspace-llm';
 
 type RouteContext = { params: Promise<{ id: string }> };
+type AssistMode = 'insert' | 'replace';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,66 @@ const ASSIST_PROMPTS: Record<string, string> = {
   spellcheck: 'Fix spelling and grammar only. Return the full corrected text with no commentary.',
   factcheck:
     'Fact-check the text. Return the text with brief inline notes for uncertain claims in [brackets]. Do not invent sources.',
+  write_next:
+    'Write the next paragraph continuing naturally from where the document ends. Match the existing tone, tense, and style. Return only the new paragraph(s) to insert.',
 };
+
+const INSERT_SYSTEM =
+  'Return only the new text to insert at the cursor. No preamble, commentary, or markdown fences unless the document already uses markdown.';
+
+const REPLACE_SYSTEM =
+  'Return only the corrected text. Do not add commentary or markdown fences.';
+
+function resolveAssistRequest(body: {
+  action?: string;
+  instruction?: string;
+  mode?: string;
+  selection?: string;
+  content?: string;
+}): { instruction: string; mode: AssistMode } | null {
+  const customInstruction = String(body.instruction ?? '').trim();
+  if (customInstruction) {
+    const mode: AssistMode =
+      body.mode === 'insert' || body.mode === 'replace'
+        ? body.mode
+        : body.selection?.trim()
+          ? 'replace'
+          : 'insert';
+    return { instruction: customInstruction, mode };
+  }
+
+  const action = String(body.action ?? '').trim();
+  const preset = ASSIST_PROMPTS[action];
+  if (!preset) return null;
+
+  return {
+    instruction: preset,
+    mode: action === 'write_next' ? 'insert' : 'replace',
+  };
+}
+
+function buildUserPrompt(
+  instruction: string,
+  mode: AssistMode,
+  source: {
+    selection?: string;
+    content: string;
+    title: string;
+  },
+): string {
+  const docBody = source.content.slice(0, 12000);
+
+  if (mode === 'insert') {
+    const docContext = docBody.trim() || `(Document title: ${source.title})`;
+    return `${instruction}\n\nDocument so far:\n${docContext}`;
+  }
+
+  if (source.selection?.trim()) {
+    return `${instruction}\n\nSelected text:\n${source.selection}\n\nFull document:\n${docBody}`;
+  }
+
+  return `${instruction}\n\nText:\n${docBody}`;
+}
 
 export async function POST(request: Request, context: RouteContext) {
   const session = await getSession();
@@ -33,17 +93,23 @@ export async function POST(request: Request, context: RouteContext) {
 
   const body = (await request.json()) as {
     action?: string;
+    instruction?: string;
+    mode?: string;
     selection?: string;
     content?: string;
   };
-  const action = String(body.action ?? '').trim();
-  const instruction = ASSIST_PROMPTS[action];
-  if (!instruction) {
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+
+  const resolved = resolveAssistRequest(body);
+  if (!resolved) {
+    return NextResponse.json({ error: 'Invalid action or instruction' }, { status: 400 });
   }
 
-  const source = body.selection?.trim() || body.content?.trim() || doc.content;
-  if (!source.trim()) {
+  const { instruction, mode } = resolved;
+  const selection = body.selection?.trim();
+  const content = body.content?.trim() ?? doc.content;
+  const sourceText = selection || content;
+
+  if (mode === 'replace' && !sourceText.trim()) {
     return NextResponse.json({ error: 'Nothing to assist' }, { status: 400 });
   }
 
@@ -55,10 +121,14 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     const result = await completeWorkspacePrompt(
       keys,
-      'Return only the corrected text. Do not add commentary or markdown fences.',
-      `${instruction}\n\nText:\n${source.slice(0, 12000)}`,
+      mode === 'insert' ? INSERT_SYSTEM : REPLACE_SYSTEM,
+      buildUserPrompt(instruction, mode, {
+        selection,
+        content,
+        title: doc.title,
+      }),
     );
-    return NextResponse.json({ content: result });
+    return NextResponse.json({ content: result, mode });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 502 });

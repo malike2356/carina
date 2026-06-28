@@ -14,9 +14,27 @@ export async function getOrCreateSession(
       .limit(1);
     if (existing.length > 0) return sessionId;
   }
+  return createChatSession(workspaceId);
+}
+
+export async function createChatSession(
+  workspaceId: string,
+  options?: {
+    title?: string;
+    profileId?: string | null;
+    provider?: string | null;
+    model?: string | null;
+  },
+): Promise<string> {
   const [created] = await db
     .insert(chatSessions)
-    .values({ workspaceId, title: 'New chat' })
+    .values({
+      workspaceId,
+      title: options?.title ?? 'New chat',
+      profileId: options?.profileId ?? null,
+      provider: options?.provider?.trim() || '',
+      model: options?.model?.trim() || '',
+    })
     .returning({ id: chatSessions.id });
   return created.id;
 }

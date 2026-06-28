@@ -13,21 +13,23 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CORE_PACKAGE_ROOT = path.resolve(__dirname, '../../..');
 const ARCHIVE_ROOT = path.join(CORE_PACKAGE_ROOT, 'archive/property-saas-spec');
 
-function parseArgs(): { pack: string; skillsOnly: boolean } {
+function parseArgs(): { pack: string; skillsOnly: boolean; dir: string | null } {
   const args = process.argv.slice(2);
   let pack = 'property-uk';
   let skillsOnly = false;
+  let dir: string | null = null;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--pack' && args[i + 1]) {
       pack = args[++i];
-    }
-    if (args[i] === '--skills-only') {
+    } else if (args[i] === '--dir' && args[i + 1]) {
+      dir = path.resolve(args[++i]);
+    } else if (args[i] === '--skills-only') {
       skillsOnly = true;
     }
   }
 
-  return { pack, skillsOnly };
+  return { pack, skillsOnly, dir };
 }
 
 async function discoverBrainKnowledgeDirs(brainRoot: string): Promise<string[]> {
@@ -143,7 +145,7 @@ export async function ingestPackDirectory(pack: string, dir: string): Promise<nu
 }
 
 export async function runIngestion(): Promise<void> {
-  const { pack, skillsOnly } = parseArgs();
+  const { pack, skillsOnly, dir } = parseArgs();
   await initDb();
 
   try {
@@ -160,6 +162,19 @@ export async function runIngestion(): Promise<void> {
   }
 
   let total = 0;
+
+  if (dir) {
+    try {
+      await fs.access(dir);
+    } catch {
+      console.error(`Directory not found: ${dir}`);
+      process.exit(1);
+    }
+    total += await ingestPackDirectory(pack, dir);
+    console.log(`Ingestion complete. ${total} RAG chunks inserted from ${dir}.`);
+    return;
+  }
+
   for (const subdir of ARCHIVE_DIRS) {
     const dir = path.join(ARCHIVE_ROOT, subdir);
     const files = await walkMdFiles(dir);

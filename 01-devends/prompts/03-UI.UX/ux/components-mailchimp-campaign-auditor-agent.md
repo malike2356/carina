@@ -20,7 +20,7 @@ Pipeline:
 2. For each campaign, retrieve the full send report: opens (unique & total), clicks (unique & total, by URL), unsubscribes, bounces (hard & soft), and abuse complaints.
 3. Fetch the campaign's recipient list/audience and retrieve segment-level breakdowns. For each segment, pull open rate, click rate, and unsubscribe rate. If the campaign was not segmented, break down by merge-field groups (e.g., location, signup source) when available.
 4. Compare each metric against the audience's historical rolling averages (last 10 campaigns). Flag any metric that deviates by more than 1 standard deviation in the negative direction as "underperforming" or positive direction as "outperforming".
-5. Generate a structured audit report in Markdown containing: campaign name, send date, overall metrics, per-segment metrics table, flagged anomalies, and a ranked list of 3–5 concrete, actionable fixes for the next send. Fixes must reference specific data (e.g., "Segment 'Inactive 90d' had 4.2% open rate vs 18% audience avg — consider a re-engagement subject line or exclude from next blast").
+5. Generate a structured audit report in Markdown containing: campaign name, send date, overall metrics, per-segment metrics table, flagged anomalies, and a ranked list of 3-5 concrete, actionable fixes for the next send. Fixes must reference specific data (e.g., "Segment 'Inactive 90d' had 4.2% open rate vs 18% audience avg; consider a re-engagement subject line or exclude from next blast").
 6. Output the report as a JSON object: { "campaign_id", "campaign_name", "send_time", "overall_metrics", "segment_metrics", "anomalies", "recommendations" }.
 
 Guardrails:

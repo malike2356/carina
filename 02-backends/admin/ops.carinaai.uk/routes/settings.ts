@@ -9,6 +9,25 @@ import { OPS_ENV_PATH, setEnvVar } from '../lib/env.js';
 
 export const settingsRouter = Router();
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function requireScoutApiKey(res: import('express').Response): boolean {
+  if (!process.env.SCOUT_API_KEY) {
+    res.status(400).json({ ok: false, error: 'SCOUT_API_KEY not set. Pair with Scout first.' });
+    return false;
+  }
+  return true;
+}
+
+function parseAccountId(value: unknown): string | null {
+  const id = typeof value === 'string' ? value.trim() : '';
+  return UUID_RE.test(id) ? id : null;
+}
+
+function connectorAccountQuery(accountId: string): string {
+  return `?account_id=${encodeURIComponent(accountId)}`;
+}
+
 const SCOUT_HTPASSWD =
   process.env.SCOUT_HTPASSWD_FILE ?? '/etc/carina/scout/.htpasswd';
 const SCOUT_HTPASSWD_USER = process.env.SCOUT_HTPASSWD_USER ?? 'admin';
@@ -264,7 +283,7 @@ settingsRouter.get('/alert-channels', async (_req, res) => {
 
 settingsRouter.put('/alert-channels/:type', async (req, res) => {
   const type = String(req.params.type ?? '');
-  if (!['telegram', 'email', 'slack'].includes(type)) {
+  if (!['telegram', 'email', 'slack', 'whatsapp'].includes(type)) {
     res.status(400).json({ ok: false, error: 'Invalid channel type' });
     return;
   }
@@ -302,6 +321,111 @@ settingsRouter.post('/alert-test', async (req, res) => {
   const result = await scoutConsolePost('/api/admin/alert-test', { severity });
   if (!result.ok) {
     res.json({ ok: false, error: result.error ?? 'Alert test failed or Scout unreachable' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.get('/connectors/accounts', async (_req, res) => {
+  if (!requireScoutApiKey(res)) return;
+  const result = await scoutConsoleGetDetailed('/api/admin/accounts');
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Scout unreachable' });
+    return;
+  }
+  const accounts =
+    result.data && typeof result.data === 'object' && 'accounts' in result.data
+      ? (result.data as { accounts: Array<Record<string, unknown>> }).accounts
+      : [];
+  res.json({ ok: true, accounts });
+});
+
+settingsRouter.get('/connectors', async (req, res) => {
+  if (!requireScoutApiKey(res)) return;
+  const accountId = parseAccountId(req.query.account_id);
+  const path = accountId
+    ? `/api/admin/connectors${connectorAccountQuery(accountId)}`
+    : '/api/admin/connectors';
+  const result = await scoutConsoleGetDetailed(path);
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Scout unreachable' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.post('/connectors/:id/enable', async (req, res) => {
+  if (!requireScoutApiKey(res)) return;
+  const connectorId = String(req.params.id ?? '').trim();
+  const accountId = parseAccountId(req.body?.account_id);
+  if (!accountId) {
+    res.status(400).json({ ok: false, error: 'account_id required' });
+    return;
+  }
+  const config =
+    req.body?.config && typeof req.body.config === 'object' && !Array.isArray(req.body.config)
+      ? req.body.config
+      : {};
+  const result = await scoutConsolePost(`/api/admin/connectors/${connectorId}/enable`, {
+    account_id: accountId,
+    config,
+  });
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Enable failed' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.post('/connectors/:id/disable', async (req, res) => {
+  if (!requireScoutApiKey(res)) return;
+  const connectorId = String(req.params.id ?? '').trim();
+  const accountId = parseAccountId(req.body?.account_id);
+  if (!accountId) {
+    res.status(400).json({ ok: false, error: 'account_id required' });
+    return;
+  }
+  const result = await scoutConsolePost(`/api/admin/connectors/${connectorId}/disable`, {
+    account_id: accountId,
+  });
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Disable failed' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.get('/connectors/:id/health', async (req, res) => {
+  if (!requireScoutApiKey(res)) return;
+  const connectorId = String(req.params.id ?? '').trim();
+  const accountId = parseAccountId(req.query.account_id);
+  if (!accountId) {
+    res.status(400).json({ ok: false, error: 'account_id required' });
+    return;
+  }
+  const result = await scoutConsoleGetDetailed(
+    `/api/admin/connectors/${connectorId}/health${connectorAccountQuery(accountId)}`,
+  );
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Health check failed' });
+    return;
+  }
+  res.json({ ok: true, ...(result.data as Record<string, unknown>) });
+});
+
+settingsRouter.post('/connectors/:id/test', async (req, res) => {
+  if (!requireScoutApiKey(res)) return;
+  const connectorId = String(req.params.id ?? '').trim();
+  const accountId = parseAccountId(req.body?.account_id);
+  if (!accountId) {
+    res.status(400).json({ ok: false, error: 'account_id required' });
+    return;
+  }
+  const result = await scoutConsolePost(`/api/admin/connectors/${connectorId}/test`, {
+    account_id: accountId,
+  });
+  if (!result.ok) {
+    res.status(result.status || 502).json({ ok: false, error: result.error ?? 'Test push failed' });
     return;
   }
   res.json({ ok: true, ...(result.data as Record<string, unknown>) });

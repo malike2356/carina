@@ -134,6 +134,40 @@ accountRouter.post('/login', async (req: Request, res: Response): Promise<void> 
   }
 });
 
+accountRouter.post('/activate-session', async (req: Request, res: Response): Promise<void> => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const sessionId = typeof body.sessionId === 'string'
+    ? body.sessionId.trim()
+    : typeof body.session_id === 'string'
+      ? body.session_id.trim()
+      : '';
+  if (!sessionId) {
+    res.status(400).json({ error: 'sessionId required' });
+    return;
+  }
+
+  const coreUrl = config.carina.apiUrl;
+  try {
+    const upstream = await fetch(`${coreUrl}/api/billing/checkout/activate-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    const payload = (await upstream.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (!upstream.ok) {
+      res.status(upstream.status).json({
+        error: payload.error || 'Could not verify payment',
+      });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[scout:account] activate-session failed:', msg);
+    res.status(502).json({ error: 'Could not reach billing service' });
+  }
+});
+
 accountRouter.post('/logout', (req: Request, res: Response): void => {
   req.session.destroy(() => {
     res.json({ ok: true });

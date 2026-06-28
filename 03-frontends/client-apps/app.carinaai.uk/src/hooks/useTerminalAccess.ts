@@ -10,7 +10,7 @@ type TerminalAccessState = {
 };
 
 const DEFAULT: TerminalAccessState = {
-  canUseTerminal: false,
+  canUseTerminal: true,
   isOwner: false,
   terminalEnabled: true,
   loading: true,
@@ -33,7 +33,9 @@ export function useTerminalAccess(): TerminalAccessState {
         });
       })
       .catch(() => {
-        if (!cancelled) setState((current) => ({ ...current, loading: false }));
+        if (!cancelled) {
+          setState((current) => ({ ...current, loading: false, canUseTerminal: true }));
+        }
       });
     return () => {
       cancelled = true;

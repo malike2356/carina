@@ -58,6 +58,13 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Integrations',
+      items: [
+        'user/integrations/trello',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Gateways',
       items: [
         'user/gateways/cli',
@@ -86,6 +93,7 @@ const sidebars: SidebarsConfig = {
       label: 'Security',
       items: [
         'user/security/defence-in-depth',
+        'user/security/enterprise-sso',
         'user/security/labyrinth-scout',
         'user/security/sandbox-isolation',
         'user/security/gateway-hardening',
@@ -125,7 +133,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Integrations',
-      items: ['user/integrations/propreneur-dogfood'],
+      items: ['user/integrations/propreneur-dogfood', 'user/integrations/propreneur-bridge'],
     },
   ],
 

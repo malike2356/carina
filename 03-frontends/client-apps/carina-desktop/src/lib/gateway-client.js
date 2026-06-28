@@ -45,6 +45,41 @@ export async function listSessions() {
         return listLocalSessions();
     }
 }
+export function toSessionInfoFromMemory(entry) {
+    return {
+        sessionId: entry.session_id,
+        agentId: 'main',
+        createdAt: entry.last_active,
+        updatedAt: entry.last_active,
+        messageCount: 0,
+        title: entry.title || entry.preview || entry.session_id.slice(0, 12),
+    };
+}
+export async function fetchMemorySessions(limit = 50) {
+    const data = await get(`/api/memory/sessions?limit=${limit}`);
+    return data.sessions ?? [];
+}
+export async function fetchMemoryRecords(page = 1) {
+    const data = await get(`/api/memory?page=${page}`);
+    const records = data.entries ?? data.records ?? [];
+    if (records.length >= 20) {
+        const next = await fetchMemoryRecords(page + 1).catch(() => []);
+        return [...records, ...next];
+    }
+    return records;
+}
+export async function scrollSessionMessages(sessionId, options) {
+    const params = new URLSearchParams({
+        limit: String(options?.limit ?? 50),
+        direction: options?.direction ?? 'older',
+    });
+    if (options?.cursor)
+        params.set('cursor', options.cursor);
+    return get(`/api/memory/sessions/${encodeURIComponent(sessionId)}/scroll?${params.toString()}`);
+}
+export function isGatewayOnline(status) {
+    return status === 'ok' || status === 'degraded';
+}
 export async function getSession(sessionId) {
     try {
         return await get(`/api/sessions/${sessionId}`);

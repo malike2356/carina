@@ -5,6 +5,7 @@ const SHARED_WORKSPACE_NAV: ShellNavLink[] = [
   { id: 'notes', href: '/notes', label: 'Notes', description: 'Notes, tasks, and reminders' },
   { id: 'calendar', href: '/calendar', label: 'Calendar', description: 'Reminders and CalDAV events' },
   { id: 'scheduled', href: '/scheduled', label: 'Scheduled', description: 'Cron jobs and TaskFlows' },
+  { id: 'trello', href: '/trello', label: 'Trello', description: 'Boards and cards' },
   { id: 'documents', href: '/documents', label: 'Documents', description: 'Markdown and CSV editor' },
   { id: 'images', href: '/images', label: 'Images', description: 'Generate and browse images' },
   {
@@ -29,7 +30,6 @@ const SHARED_WORKSPACE_NAV: ShellNavLink[] = [
 const PRIVATE_OPERATOR_NAV: ShellNavLink[] = [
   { id: 'email', href: '/email', label: 'Email', description: 'Inbound triage and archive' },
   { id: 'kanban', href: '/kanban', label: 'Kanban', description: 'Operator work board' },
-  { id: 'trello', href: '/trello', label: 'Trello', description: 'Boards and cards' },
 ];
 
 export function hostedShellConfig(): {

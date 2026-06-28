@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, Filter, Pause, Play, RefreshCw, Search, SignalHigh, Trash2 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { useCloudCapabilities } from '@/hooks/useCloudCapabilities';
 import { readJsonResponse } from '@/lib/read-json-response';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ function formatTime(value: string): string {
 }
 
 export function LogsPage() {
+  const { capabilities, loading: capsLoading } = useCloudCapabilities();
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [streaming, setStreaming] = useState(false);
@@ -63,11 +65,12 @@ export function LogsPage() {
   }
 
   useEffect(() => {
+    if (capsLoading || !capabilities?.logs) return;
     void load();
-  }, [source]);
+  }, [source, capsLoading, capabilities?.logs]);
 
   useEffect(() => {
-    if (!streaming) {
+    if (!streaming || !capabilities?.logs) {
       streamRef.current?.close();
       streamRef.current = null;
       return;
@@ -93,7 +96,7 @@ export function LogsPage() {
       es.close();
       streamRef.current = null;
     };
-  }, [streaming, source]);
+  }, [streaming, source, capabilities?.logs]);
 
   useEffect(() => {
     if (!follow) return;
@@ -120,6 +123,17 @@ export function LogsPage() {
     a.download = `carina-logs-${new Date().toISOString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  if (!capsLoading && !capabilities?.logs) {
+    return (
+      <div className="flex h-full min-h-0 flex-col p-6">
+        <EmptyState
+          title="Logs need a core connection"
+          subtitle="Gateway and audit logs are served from the Carina core backend. Enable core proxy on the cloud app, then redeploy carina-cloud."
+        />
+      </div>
+    );
   }
 
   return (

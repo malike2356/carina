@@ -7,6 +7,8 @@ import { TelegramAdapter } from './channels/adapters/telegram-adapter.js';
 import { formatForPlatform } from './formatting.js';
 import { sendSpokenReply, wantsSpokenReply, stripSpeakDirective, buildVoiceScript } from './telegram-audio.js';
 import { BlockStreamAssembler } from './block-stream-assembler.js';
+import './channels/slash-commands/index.js';
+import { interceptSlashCommand } from './channels/slash-commands/interceptor.js';
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
@@ -24,7 +26,10 @@ I am an autonomous AI agent by VERLOX Ltd. I can search the web, read and write 
 
 Commands:
 /help - show commands
-/clear - reset session memory
+/new - start a fresh conversation
+/status - system health and active tools
+/tools - show active tools and catalogue link
+/stop - cancel the current task
 /model [provider] [model] - switch LLM provider
 /speak [message] - get a voice reply (or add "respond in voice" / [speak] to any message)`;
 
@@ -167,6 +172,19 @@ export async function startTelegram(): Promise<void> {
     const isGroup = msg.chat.type === 'group' || msg.chat.type === 'supergroup';
 
     if (handleTelegramCommand(bot, chatId, text)) return;
+
+    if (text.startsWith('/')) {
+      const parsed = adapter.parseInbound(msg);
+      if (parsed) {
+        const slashResult = await interceptSlashCommand(parsed);
+        if (slashResult.handled) {
+          for (const chunk of adapter.formatForChannel(slashResult.response ?? '')) {
+            await bot.sendMessage(chatId, chunk);
+          }
+          return;
+        }
+      }
+    }
 
     await bot.sendChatAction(chatId, speakRequested ? 'record_voice' : 'typing');
 

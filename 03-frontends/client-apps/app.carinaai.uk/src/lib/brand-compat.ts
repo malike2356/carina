@@ -5,6 +5,7 @@ export const LEGACY_PLATFORM_PRODUCT_NAMES: Record<AppBrandMode, string> = {
   hosted: 'Carina Cloud',
   private: 'Carina',
   ops: 'Carina Ops',
+  aiva: 'Aiva',
 };
 
 export function canonicalPlatformProductName(mode: AppBrandMode = 'hosted'): string {

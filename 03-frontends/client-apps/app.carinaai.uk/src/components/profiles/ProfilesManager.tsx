@@ -1,13 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Copy,
   CreditCard,
+  Pencil,
+  Plus,
   RefreshCw,
   Settings,
   Shield,
+  Trash2,
   UserCog,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
@@ -97,12 +102,15 @@ function HostedQuickLink({
 }
 
 export function ProfilesManager() {
+  const router = useRouter();
   const [context, setContext] = useState<WebContextResponse | null>(null);
   const [workspaceMeta, setWorkspaceMeta] = useState<WorkspaceSettingsResponse['data'] | null>(null);
   const [workspaceProfiles, setWorkspaceProfiles] = useState<WorkspaceProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [switching, setSwitching] = useState('');
+  const [openingChatProfileId, setOpeningChatProfileId] = useState('');
+  const [cloningProfileId, setCloningProfileId] = useState('');
 
   async function load() {
     setLoading(true);
@@ -140,19 +148,6 @@ export function ProfilesManager() {
     }
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const profiles = useMemo(() => context?.profiles ?? [], [context]);
-  const activeProfile = context?.activeProfile ?? 'default';
-  const canSwitch = Boolean(context && context.mode === 'private' && profiles.length > 1);
-  const isHosted = context?.mode === 'hosted';
-  const hostedUser = context?.hosted?.user ?? null;
-  const org = hostedUser?.org ?? null;
-  const skillPacks = context?.activeSkillPacks ?? [];
-  const memberCount = workspaceMeta?.members?.length ?? 0;
-
   async function activate(name: string) {
     if (!context || name === context.activeProfile) return;
     const ok = window.confirm(
@@ -180,6 +175,78 @@ export function ProfilesManager() {
     }
   }
 
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const profiles = useMemo(() => context?.profiles ?? [], [context]);
+  const activeProfile = context?.activeProfile ?? 'default';
+  const canSwitch = Boolean(context && context.mode === 'private' && profiles.length > 1);
+  const isHosted = context?.mode === 'hosted';
+  const hostedUser = context?.hosted?.user ?? null;
+  const org = hostedUser?.org ?? null;
+  const skillPacks = context?.activeSkillPacks ?? [];
+  const memberCount = workspaceMeta?.members?.length ?? 0;
+
+  async function cloneProfile(profile: WorkspaceProfileRow) {
+    setCloningProfileId(profile.id);
+    setError('');
+    try {
+      const res = await fetch('/api/workspace/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clone', profileId: profile.id }),
+      });
+      const data = (await res.json()) as { data?: { id?: string }; error?: string };
+      if (!res.ok || !data.data?.id) {
+        throw new Error(data.error ?? 'Unable to clone profile');
+      }
+      router.push(`/profiles/${data.data.id}/edit`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCloningProfileId('');
+    }
+  }
+
+  async function deleteProfile(profile: WorkspaceProfileRow) {
+    const ok = window.confirm(`Delete profile "${profile.name}"? This cannot be undone.`);
+    if (!ok) return;
+
+    setError('');
+    try {
+      const res = await fetch(`/api/workspace/profiles/${profile.id}`, { method: 'DELETE' });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        throw new Error(data.error ?? 'Unable to delete profile');
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function openChatWithProfile(profileId: string) {
+    setOpeningChatProfileId(profileId);
+    setError('');
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ profileId }),
+      });
+      const data = (await res.json()) as { data?: { id?: string }; error?: string };
+      if (!res.ok || !data.data?.id) {
+        throw new Error(data.error ?? 'Unable to open chat');
+      }
+      router.push(`/chat/${data.data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setOpeningChatProfileId('');
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="border-b border-border px-6 py-4">
@@ -193,6 +260,14 @@ export function ProfilesManager() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {isHosted ? (
+              <Button size="sm" asChild>
+                <Link href="/profiles/new">
+                  <Plus className="h-3.5 w-3.5" />
+                  New profile
+                </Link>
+              </Button>
+            ) : null}
             <Button variant="outline" size="sm" onClick={() => void load()}>
               <RefreshCw className="h-3.5 w-3.5" />
               Refresh
@@ -317,7 +392,7 @@ export function ProfilesManager() {
             </h2>
             <p className="mt-1 text-xs text-text-muted">
               {isHosted
-                ? 'Choose a persona for new chat sessions. Built-in profiles ship with the workspace.'
+                ? 'Built-in personas ship with the workspace. Add custom profiles beside them.'
                 : 'Switch only when you need a different workspace scope.'}
             </p>
           </div>
@@ -331,6 +406,14 @@ export function ProfilesManager() {
                   <EmptyState
                     title="No profiles yet"
                     subtitle="Built-in profiles are created automatically for your workspace."
+                    action={
+                      <Button size="sm" asChild>
+                        <Link href="/profiles/new">
+                          <Plus className="h-3.5 w-3.5" />
+                          New profile
+                        </Link>
+                      </Button>
+                    }
                   />
                 ) : (
                   workspaceProfiles.map((profile) => (
@@ -348,12 +431,44 @@ export function ProfilesManager() {
                                 : 'Uses the default workspace prompt.')}
                           </p>
                         </div>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href="/chat">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void openChatWithProfile(profile.id)}
+                            disabled={openingChatProfileId === profile.id}
+                          >
                             <UserCog className="h-3.5 w-3.5" />
-                            Use in chat
-                          </Link>
-                        </Button>
+                            {openingChatProfileId === profile.id ? 'Opening...' : 'Use in chat'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => void cloneProfile(profile)}
+                            disabled={cloningProfileId === profile.id}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            {cloningProfileId === profile.id ? 'Cloning...' : 'Clone'}
+                          </Button>
+                          {!profile.isBuiltin ? (
+                            <>
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href={`/profiles/${profile.id}/edit`}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  Edit
+                                </Link>
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void deleteProfile(profile)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete
+                              </Button>
+                            </>
+                          ) : null}
+                        </div>
                       </CardContent>
                     </Card>
                   ))

@@ -114,3 +114,22 @@ Tenant model (`app/Models/Central/Tenant`) columns: `id`, `slug`, `company_name`
 | `config/listings.php` | Listing import drivers, automation, licensed feeds |
 | `config/lead_funnel.php` | Meta/LinkedIn/TikTok credentials, scoring thresholds |
 | `config/vcal.php` | viCal defaults |
+
+## Brain knowledge sync (Propreneur and Carina standalone)
+
+`brain/knowledge/*.md` is the **canonical** tenant-facing Carina RAG corpus for Propreneur. Standalone Carina (Aiva, property-uk pack) consumes a **mirror** synced from this tree; do not edit the mirror by hand.
+
+**After changing any file under `brain/knowledge/`:**
+
+1. **Propreneur in-app RAG** (from `propreneur-v2/`):
+   ```bash
+   php artisan rag:ingest-brain-knowledge
+   php artisan carina:verify --tenant=xelox
+   ```
+2. **Carina standalone mirror + property-uk ingest** (from `carina/02-backends/core.carinaai.uk/`):
+   ```bash
+   pnpm brain:sync-and-ingest
+   ```
+
+Optional path overrides: `BRAIN_KNOWLEDGE_PATH`, `BRAIN_MASTERBRAIN_PATH` in `.env` (see `config/paths.php`).  
+Full runbook: `carina/01-devends/planning/operations/BRAIN_SYNC.md`.

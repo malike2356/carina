@@ -33,3 +33,74 @@ describe('resolveAppTerminalWebSocketUrl', () => {
     expect(resolveAppTerminalWebSocketUrl(request)).toBe('wss://app.carinaai.uk/api/terminal/ws');
   });
 });
+
+describe('coreProxyEnabled', () => {
+  const previous = {
+    NODE_ENV: process.env.NODE_ENV,
+    CARINA_USE_CORE_PROXY: process.env.CARINA_USE_CORE_PROXY,
+    CARINA_OPS_TOKEN: process.env.CARINA_OPS_TOKEN,
+    CARINA_INTERNAL_KEY: process.env.CARINA_INTERNAL_KEY,
+    CARINA_CORE_URL: process.env.CARINA_CORE_URL,
+  };
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+
+  it('is false without a token', async () => {
+    delete process.env.CARINA_OPS_TOKEN;
+    delete process.env.CARINA_INTERNAL_KEY;
+    process.env.CARINA_USE_CORE_PROXY = 'true';
+    const { coreProxyEnabled } = await import('./core-proxy.js');
+    expect(coreProxyEnabled()).toBe(false);
+  });
+
+  it('is true when flag is true and token is set', async () => {
+    process.env.CARINA_USE_CORE_PROXY = 'true';
+    process.env.CARINA_OPS_TOKEN = 'ops-secret';
+    const { coreProxyEnabled } = await import('./core-proxy.js');
+    expect(coreProxyEnabled()).toBe(true);
+  });
+
+  it('is true in docker prod when token is set even if flag is unset', async () => {
+    delete process.env.CARINA_USE_CORE_PROXY;
+    process.env.NODE_ENV = 'production';
+    process.env.CARINA_CORE_URL = 'http://carina-web:3000';
+    process.env.CARINA_OPS_TOKEN = 'ops-secret';
+    const { coreProxyEnabled } = await import('./core-proxy.js');
+    expect(coreProxyEnabled()).toBe(true);
+  });
+
+  it('respects explicit false even with token in docker prod', async () => {
+    process.env.CARINA_USE_CORE_PROXY = 'false';
+    process.env.NODE_ENV = 'production';
+    process.env.CARINA_CORE_URL = 'http://carina-web:3000';
+    process.env.CARINA_OPS_TOKEN = 'ops-secret';
+    const { coreProxyEnabled } = await import('./core-proxy.js');
+    expect(coreProxyEnabled()).toBe(false);
+  });
+});
+
+describe('shouldRouteChatThroughCore', () => {
+  const saved = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...saved };
+    vi.resetModules();
+  });
+
+  it('prefers BYOK when workspace keys exist even if core proxy is on', async () => {
+    process.env.CARINA_USE_CORE_PROXY = 'true';
+    process.env.CARINA_OPS_TOKEN = 'ops-secret';
+    const { shouldRouteChatThroughCore } = await import('./core-proxy.js');
+    expect(shouldRouteChatThroughCore(true)).toBe(false);
+    expect(shouldRouteChatThroughCore(false)).toBe(true);
+  });
+});

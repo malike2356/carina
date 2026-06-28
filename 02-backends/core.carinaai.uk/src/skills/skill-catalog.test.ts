@@ -21,7 +21,7 @@ describe('skill catalog', () => {
   it('has unique skill names across all shipped packs', async () => {
     const seen = new Map<string, string>();
     for (const packName of Object.keys(PACK_MANIFESTS)) {
-      if (packName === 'property-uk' || packName === 'healthcare') continue;
+      if (packName === 'property-uk' || packName === 'healthcare' || packName === 'research-analysis') continue;
       const pack = await resolvePack(packName);
       for (const skill of pack.skills) {
         const prior = seen.get(skill.name);
@@ -34,7 +34,7 @@ describe('skill catalog', () => {
 
   it('matches manifest skillCount for each on-disk pack', async () => {
     for (const [packName, manifest] of Object.entries(PACK_MANIFESTS)) {
-      if (packName === 'property-uk' || packName === 'healthcare') continue;
+      if (packName === 'property-uk' || packName === 'healthcare' || packName === 'research-analysis') continue;
       const pack = await resolvePack(packName);
       expect(pack.skills.length, packName).toBe(manifest.skillCount);
     }

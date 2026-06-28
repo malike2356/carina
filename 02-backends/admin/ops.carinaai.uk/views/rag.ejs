@@ -28,14 +28,29 @@
   </div>
 
   <form method="get" class="ops-filter-bar">
+    <input type="hidden" name="sort" value="<%= sortBy %>">
+    <input type="hidden" name="dir" value="<%= sortDir %>">
     <select name="pack" class="ops-select" style="width:auto;min-width:160px;">
       <option value="all" <%= pack === 'all' ? 'selected' : '' %>>All packs</option>
       <% for (const p of packs) { %>
         <option value="<%= p %>" <%= pack === p ? 'selected' : '' %>><%= p %></option>
       <% } %>
     </select>
-    <input type="search" name="q" value="<%= search %>" placeholder="Search source..." class="ops-input" style="flex:1;min-width:200px;">
-    <button type="submit" class="ops-btn-ghost">Filter</button>
+    <select name="embedded" class="ops-select" style="width:auto;min-width:150px;">
+      <option value="all" <%= embedded === 'all' ? 'selected' : '' %>>All embeddings</option>
+      <option value="yes" <%= embedded === 'yes' ? 'selected' : '' %>>Embedded only</option>
+      <option value="no" <%= embedded === 'no' ? 'selected' : '' %>>Missing embedding</option>
+    </select>
+    <input type="search" name="q" value="<%= search %>" placeholder="Search source or content..." class="ops-input" style="flex:1;min-width:200px;">
+    <select name="limit" class="ops-select" style="width:auto;min-width:110px;">
+      <option value="25" <%= pageSize === 25 ? 'selected' : '' %>>25 / page</option>
+      <option value="50" <%= pageSize === 50 ? 'selected' : '' %>>50 / page</option>
+      <option value="100" <%= pageSize === 100 ? 'selected' : '' %>>100 / page</option>
+    </select>
+    <button type="submit" class="ops-btn ops-btn-green">Apply</button>
+    <% if (search || pack !== 'all' || embedded !== 'all') { %>
+      <a href="/rag" class="ops-btn ops-btn-ghost">Clear</a>
+    <% } %>
   </form>
 
   <pre id="ingest-log" class="ops-log-pre hidden"></pre>
@@ -44,11 +59,27 @@
     <table class="ops-table">
       <thead>
         <tr>
-          <th>Time</th>
-          <th>Pack</th>
-          <th>Source</th>
+          <th>
+            <a href="/rag<%= sortLink('time') %>" class="ops-table-sort<%= sortBy === 'time' ? ' is-active' : '' %>">
+              Time<%- sortArrow(sortBy, sortDir, 'time') %>
+            </a>
+          </th>
+          <th>
+            <a href="/rag<%= sortLink('pack') %>" class="ops-table-sort<%= sortBy === 'pack' ? ' is-active' : '' %>">
+              Pack<%- sortArrow(sortBy, sortDir, 'pack') %>
+            </a>
+          </th>
+          <th>
+            <a href="/rag<%= sortLink('source') %>" class="ops-table-sort<%= sortBy === 'source' ? ' is-active' : '' %>">
+              Source<%- sortArrow(sortBy, sortDir, 'source') %>
+            </a>
+          </th>
           <th>Preview</th>
-          <th>Embedding</th>
+          <th>
+            <a href="/rag<%= sortLink('embedding') %>" class="ops-table-sort<%= sortBy === 'embedding' ? ' is-active' : '' %>">
+              Embedding<%- sortArrow(sortBy, sortDir, 'embedding') %>
+            </a>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -60,12 +91,45 @@
             <td style="color:var(--muted);white-space:nowrap;"><%= new Date(c.created_at).toLocaleString() %></td>
             <td><span class="ops-badge ops-badge-cyan"><%= c.pack %></span></td>
             <td><code class="ops-code" style="max-width:220px;display:inline-block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;"><%= c.source %></code></td>
-            <td style="color:var(--text);max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= c.content.slice(0, 150) %></td>
+            <td style="color:var(--text);max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<%= c.content.slice(0, 500).replace(/"/g, '&quot;') %>"><%= c.content.slice(0, 150) %></td>
             <td style="color:<%= c.embedding != null ? 'var(--green)' : 'var(--muted)' %>;"><%= c.embedding != null ? 'yes' : 'no' %></td>
           </tr>
         <% } %>
       </tbody>
     </table>
+
+    <% if (total > 0) { %>
+      <nav class="ops-incident-pagination" aria-label="RAG chunk pages">
+        <% if (page > 1) { %>
+          <a href="/rag<%= pageLink(page - 1) %>" class="ops-btn ops-btn-ghost ops-btn-sm">Previous</a>
+        <% } else { %>
+          <span class="ops-btn ops-btn-ghost ops-btn-sm is-disabled" aria-hidden="true">Previous</span>
+        <% } %>
+
+        <div class="ops-incident-page-list">
+          <% for (const item of pageWindow) { %>
+            <% if (item === 'ellipsis') { %>
+              <span class="ops-incident-page is-ellipsis" aria-hidden="true">...</span>
+            <% } else if (item === page) { %>
+              <span class="ops-incident-page is-active" aria-current="page"><%= item %></span>
+            <% } else { %>
+              <a class="ops-incident-page" href="/rag<%= pageLink(item) %>"><%= item %></a>
+            <% } %>
+          <% } %>
+        </div>
+
+        <% if (page < totalPages) { %>
+          <a href="/rag<%= pageLink(page + 1) %>" class="ops-btn ops-btn-ghost ops-btn-sm">Next</a>
+        <% } else { %>
+          <span class="ops-btn ops-btn-ghost ops-btn-sm is-disabled" aria-hidden="true">Next</span>
+        <% } %>
+
+        <span class="ops-incident-pagination-meta">
+          Page <%= page %> of <%= totalPages %> · <%= total.toLocaleString() %> chunk<%= total === 1 ? '' : 's' %>
+          <% if (search || pack !== 'all' || embedded !== 'all') { %> · filtered<% } %>
+        </span>
+      </nav>
+    <% } %>
   </div>
 
   <p class="ops-inline-note" style="margin-top:12px;">Read-only view. Re-ingest runs the core ingest pipeline and streams output above.</p>

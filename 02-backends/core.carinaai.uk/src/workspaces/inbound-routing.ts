@@ -6,6 +6,7 @@ import {
   threadOwnershipEnabled,
 } from '../gateway/channels/thread-ownership.js';
 import { resolveInboundThreadId } from '../gateway/channels/channel-routing.js';
+import { resolveChannelAgentBinding } from '../agents/ambient/channel-agent-bindings.js';
 import { loadAgentsConfig } from './agent-registry.js';
 import { resolveAgentRoute } from './agent-routing.js';
 import type { AgentsConfig, RoutingContext, RoutingResult } from './types.js';
@@ -69,6 +70,15 @@ export async function resolveInboundAgentRoute(
 ): Promise<RoutingResult> {
   const ownershipRoute = resolveOwnershipRoute(inbound, config);
   const ctx = await enrichRoutingContext(inbound);
+
+  const boundAgentId = await resolveChannelAgentBinding(inbound.conversationId);
+  if (boundAgentId) {
+    const agent = config.agents.find((a) => a.id === boundAgentId);
+    if (agent) {
+      return { agent, tier: 'channel', source: 'binding' };
+    }
+  }
+
   const bindingRoute = resolveAgentRoute(ctx, config);
 
   if (ownershipRoute) {

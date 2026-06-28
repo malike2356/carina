@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CarinaEditor, type CarinaEditorHandle } from '@/components/editor';
 import { IconButton } from '@/components/ui/IconButton';
 import { Panel } from '@/components/ui/Panel';
 import { Spinner } from '@/components/ui/Spinner';
@@ -53,7 +54,7 @@ export function NotesPanel({
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [saving, setSaving] = useState(false);
-  const contentRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<CarinaEditorHandle>(null);
 
   async function load() {
     setLoading(true);
@@ -82,7 +83,7 @@ export function NotesPanel({
     setEditTitle('');
     setEditContent('');
     setView('new');
-    window.setTimeout(() => contentRef.current?.focus(), 50);
+    window.setTimeout(() => editorRef.current?.focus(), 50);
   }
 
   function openEdit(note: Note) {
@@ -90,7 +91,7 @@ export function NotesPanel({
     setEditTitle(note.title);
     setEditContent(note.content);
     setView('edit');
-    window.setTimeout(() => contentRef.current?.focus(), 50);
+    window.setTimeout(() => editorRef.current?.focus(), 50);
   }
 
   async function saveNote() {
@@ -299,20 +300,16 @@ export function NotesPanel({
               placeholder="Title (optional)"
               className="w-full rounded-md border border-border bg-elevated px-3 py-2 text-sm font-medium text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-focus"
             />
-            <textarea
-              ref={contentRef}
+            <CarinaEditor
+              ref={editorRef}
               value={editContent}
-              onChange={(event) => setEditContent(event.target.value)}
+              onChange={setEditContent}
               placeholder="Write in markdown..."
-              className="min-h-64 flex-1 resize-none rounded-md border border-border bg-elevated px-3 py-2.5 font-mono text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-border-focus"
-              onKeyDown={(event) => {
-                if (event.key === 's' && (event.metaKey || event.ctrlKey)) {
-                  event.preventDefault();
-                  void saveNote();
-                }
-              }}
+              minHeight="16rem"
+              variant="compact"
+              className="min-h-64 flex-1"
             />
-            <p className="text-[10px] text-text-muted">Ctrl+S to save - Markdown supported</p>
+            <p className="text-[10px] text-text-muted">Markdown supported. Use MDX or Rich toggle above the editor.</p>
             <button
               type="button"
               onClick={() => void saveNote()}

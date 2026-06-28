@@ -4,41 +4,149 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { BrandMark } from '@/components/shell/BrandMark';
 import { useBrand } from '@/components/shell/BrandProvider';
+import { useIsAivaProduct } from '@/hooks/useProductSurface';
 import { authClient } from '@/lib/auth-client';
+import { resolveAivaPostAuthPath } from '@/lib/aiva-post-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-function getCallbackUrl(): string {
-  if (typeof window === 'undefined') return '/launcher';
+const CONSUMER_EMAIL_DOMAINS = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'hotmail.com',
+  'outlook.com',
+  'live.com',
+  'icloud.com',
+  'me.com',
+  'protonmail.com',
+  'proton.me',
+]);
+
+function getCallbackUrl(isAivaProduct: boolean): string {
+  if (typeof window === 'undefined') {
+    return isAivaProduct ? resolveAivaPostAuthPath('/aiva') : '/launcher';
+  }
   const value = new URLSearchParams(window.location.search).get('callbackUrl');
-  return value && value.startsWith('/') ? value : '/launcher';
+  if (isAivaProduct) return resolveAivaPostAuthPath(value);
+  if (value && value.startsWith('/')) return value;
+  return '/launcher';
+}
+
+interface SsoDiscovery {
+  ssoAvailable: boolean;
+  providerId?: string;
+  providerType?: 'oidc' | 'saml';
+  domain?: string;
+  ssoRequired?: boolean;
 }
 
 export default function LoginPage() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const [email, setEmail] = useState('');
+  const [ssoDiscovery, setSsoDiscovery] = useState<SsoDiscovery | null>(null);
+  const [ssoChecking, setSsoChecking] = useState(false);
+  const [ownerPasswordMode, setOwnerPasswordMode] = useState(false);
   const brand = useBrand();
+  const isAivaProduct = useIsAivaProduct();
+  const returnTo = getCallbackUrl(isAivaProduct);
+
+  async function checkSsoForEmail(value: string) {
+    const trimmed = value.trim();
+    const domain = trimmed.split('@')[1]?.toLowerCase();
+    if (!trimmed.includes('@') || !domain || CONSUMER_EMAIL_DOMAINS.has(domain)) {
+      setSsoDiscovery(null);
+      return;
+    }
+    setSsoChecking(true);
+    try {
+      const res = await fetch('/api/auth/sso/resolve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      if (!res.ok) {
+        setSsoDiscovery(null);
+        return;
+      }
+      const data = await res.json() as SsoDiscovery;
+      setSsoDiscovery(data.ssoAvailable ? data : null);
+      if (!data.ssoRequired) setOwnerPasswordMode(false);
+    } catch {
+      setSsoDiscovery(null);
+    } finally {
+      setSsoChecking(false);
+    }
+  }
+
+  async function maybeDiscoverSso(emailValue: string) {
+    const domain = emailValue.trim().split('@')[1]?.toLowerCase();
+    if (!domain || CONSUMER_EMAIL_DOMAINS.has(domain)) {
+      setSsoDiscovery(null);
+      return;
+    }
+    await checkSsoForEmail(emailValue);
+  }
+
+  function startSso() {
+    if (!ssoDiscovery?.providerId) return;
+    const base = ssoDiscovery.providerType === 'saml'
+      ? '/api/auth/sso/saml/authorize'
+      : '/api/auth/sso/authorize';
+    const url = new URL(base, window.location.origin);
+    url.searchParams.set('providerId', ssoDiscovery.providerId);
+    url.searchParams.set('returnTo', returnTo);
+    window.location.href = url.toString();
+  }
+
+  const passwordBlocked = Boolean(ssoDiscovery?.ssoRequired) && !ownerPasswordMode;
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (passwordBlocked) {
+      setError('This domain requires SSO. Use Continue with SSO, or use owner password fallback below.');
+      return;
+    }
     setPending(true);
     setError('');
     const formData = new FormData(e.currentTarget);
-    const email = String(formData.get('email'));
+    const formEmail = String(formData.get('email'));
     const password = String(formData.get('password'));
-    const result = await authClient.signIn.email({ email, password });
+    await maybeDiscoverSso(formEmail);
+    const result = await authClient.signIn.email({ email: formEmail, password });
     if (result.error) {
       const message = result.error.message ?? 'Sign in failed';
       setError(
-        message.includes('Invalid email or password')
+        message.toLowerCase().includes('too many')
+          || message.includes('429')
+          ? 'Too many sign-in attempts. Wait one minute, then try again.'
+          : message.includes('Invalid email or password')
           ? `Invalid email or password. Use the password from when you registered on ${brand.productName}, or create a new account.`
           : message,
       );
       setPending(false);
       return;
     }
-    window.location.href = getCallbackUrl();
+
+    if (isAivaProduct) {
+      try {
+        const boot = await fetch('/api/workspace/onboarding-resume', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (boot.ok) {
+          const data = (await boot.json()) as { redirectTo?: string };
+          window.location.href = data.redirectTo ?? returnTo;
+          return;
+        }
+      } catch {
+        // Fall back to the default post-auth path.
+      }
+    }
+
+    window.location.href = returnTo;
   }
 
   return (
@@ -46,21 +154,65 @@ export default function LoginPage() {
       <div>
         <BrandMark className="mb-4" nameClassName="text-lg font-semibold text-text-primary" size={36} />
         <h1 className="text-2xl font-semibold">Sign in to {brand.productName}</h1>
-        <p className="text-sm text-text-secondary">Browser workspace with BYOK inference keys.</p>
+        <p className="text-sm text-text-secondary">
+          {isAivaProduct
+            ? 'Sign in to manage your AI employees.'
+            : 'Browser workspace with BYOK inference keys.'}
+        </p>
       </div>
       <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-border bg-surface p-6">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" name="email" type="email" required />
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" required />
-        </div>
+
+        {ssoDiscovery?.ssoAvailable ? (
+          <div className="space-y-2 rounded-md border border-border bg-base p-3">
+            <p className="text-xs text-text-secondary">
+              SSO is available for <span className="font-medium text-text-primary">{ssoDiscovery.domain}</span>.
+              {ssoDiscovery.ssoRequired ? ' Password sign-in is disabled for members on this domain.' : ''}
+            </p>
+            <Button type="button" className="w-full" onClick={startSso}>
+              Continue with SSO
+            </Button>
+          </div>
+        ) : null}
+
+        {ssoChecking ? <p className="text-xs text-text-muted">Checking SSO...</p> : null}
+
+        {!passwordBlocked ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="password">Password</Label>
+              <Link href="/forgot-password" className="text-xs font-medium text-accent hover:underline">
+                Forgot password?
+              </Link>
+            </div>
+            <Input id="password" name="password" type="password" required={!ssoDiscovery?.ssoAvailable} />
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="text-xs text-accent hover:underline"
+            onClick={() => setOwnerPasswordMode(true)}
+          >
+            Workspace owner? Sign in with password
+          </button>
+        )}
+
         {error && <p className="text-sm text-danger">{error}</p>}
-        <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? 'Signing in...' : 'Sign in'}
-        </Button>
+        {!passwordBlocked ? (
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? 'Signing in...' : 'Sign in'}
+          </Button>
+        ) : null}
       </form>
       <p className="text-sm text-text-secondary">
         No account yet?{' '}

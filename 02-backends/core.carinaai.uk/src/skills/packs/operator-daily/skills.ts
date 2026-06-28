@@ -35,7 +35,16 @@ export const operatorDailySkills: PackSkillInput[] = [
   {
     name: 'image-gallery-workflow',
     description: 'Generate images and manage the persistent /images gallery',
-    trigger: ['gallery', 'save this image', 'list generated images', 'delete image'],
+    trigger: [
+      'gallery',
+      'save this image',
+      'list generated images',
+      'delete image',
+      'generate image',
+      'welcome banner',
+      'create banner',
+      'marketing graphic',
+    ],
     steps: `1. image-generation creates and persists to the gallery automatically.
 2. images-gallery list with pagination; get for metadata.
 3. images-gallery delete only when user confirms.

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Check, ExternalLink, RefreshCw, Save, TestTube2, Trash2, Webhook } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { CarinaEditor } from '@/components/editor';
 import { IconButton } from '@/components/ui/IconButton';
 import { cn } from '@/lib/utils';
 
@@ -377,13 +378,13 @@ export function WebhooksManager() {
               <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-text-muted">
                 Description
               </span>
-              <textarea
+              <CarinaEditor
                 value={form.description}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, description: event.target.value }))
-                }
-                className="min-h-20 w-full rounded-md border border-border bg-base px-3 py-2 text-sm outline-none"
+                onChange={(description) => setForm((current) => ({ ...current, description }))}
                 placeholder="Send completed cron jobs to the reporting endpoint."
+                variant="compact"
+                minHeight="5rem"
+                showEngineSwitch={false}
               />
             </label>
 

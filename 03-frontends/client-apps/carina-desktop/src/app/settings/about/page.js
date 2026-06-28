@@ -1,8 +1,16 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { getHealth } from '../../../lib/gateway-client.js';
+import { getHealth, isGatewayOnline } from '../../../lib/gateway-client.js';
 import { saveTextWithDialog } from '../../../lib/fs-dialogs.js';
 import { checkForUpdates } from '../../../lib/updater.js';
+import { useStore } from '@nanostores/react';
+import { $syncStatus, $lastSyncAt, $pendingChanges } from '../../../store/sync.js';
+import { $gatewayStatus } from '../../../store/connection.js';
+import { runSync } from '../../../lib/offline/sync-service.js';
 export default function AboutSettingsPage() {
+    const syncStatus = useStore($syncStatus);
+    const lastSyncAt = useStore($lastSyncAt);
+    const pendingChanges = useStore($pendingChanges);
+    const gatewayStatus = useStore($gatewayStatus);
     async function exportDiagnostics() {
         const health = await getHealth();
         await saveTextWithDialog('carina-desktop-diagnostics.json', JSON.stringify({
@@ -21,5 +29,5 @@ export default function AboutSettingsPage() {
             window.alert(`Update available: ${update.version}`);
         }
     }
-    return (_jsxs("div", { className: "space-y-6 max-w-2xl", children: [_jsxs("section", { children: [_jsx("h2", { className: "text-lg font-semibold text-zinc-100", children: "Carina Desktop" }), _jsx("p", { className: "text-sm text-zinc-400 mt-1", children: "Version 0.1.0" }), _jsx("p", { className: "text-xs text-zinc-600 mt-2", children: "Build: local development" })] }), _jsxs("section", { className: "space-y-2", children: [_jsx("button", { type: "button", onClick: () => void handleCheckUpdates(), className: "text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300", children: "Check for updates" }), _jsx("button", { type: "button", onClick: () => void exportDiagnostics(), className: "block text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300", children: "Export diagnostics" })] }), _jsxs("section", { children: [_jsx("h3", { className: "text-sm font-medium text-zinc-200", children: "License" }), _jsx("p", { className: "text-xs text-zinc-500 mt-1", children: "Carina agent is MIT licensed. See LICENSE in the repository root." })] }), _jsxs("section", { children: [_jsx("h3", { className: "text-sm font-medium text-zinc-200", children: "Recent changes" }), _jsx("ul", { className: "mt-2 space-y-1 text-xs text-zinc-500", children: _jsx("li", { children: "0.1.0 - Desktop scaffold, chat engine, composer, pages" }) })] })] }));
+    return (_jsxs("div", { className: "space-y-6 max-w-2xl", children: [_jsxs("section", { children: [_jsx("h2", { className: "text-lg font-semibold text-zinc-100", children: "Carina Desktop" }), _jsx("p", { className: "text-sm text-zinc-400 mt-1", children: "Version 0.1.0" }), _jsx("p", { className: "text-xs text-zinc-600 mt-2", children: "Build: local development" })] }), _jsxs("section", { className: "space-y-2", children: [_jsx("h3", { className: "text-sm font-medium text-zinc-200", children: "Offline sync" }), _jsxs("p", { className: "text-xs text-zinc-500", children: ["Status: ", syncStatus, lastSyncAt ? ` (last sync ${new Date(lastSyncAt).toLocaleString()})` : '', pendingChanges > 0 ? `; ${pendingChanges} pending change(s)` : ''] }), _jsx("button", { type: "button", onClick: () => void runSync(isGatewayOnline(gatewayStatus)), className: "text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300", children: "Sync now" })] }), _jsxs("section", { className: "space-y-2", children: [_jsx("button", { type: "button", onClick: () => void handleCheckUpdates(), className: "text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300", children: "Check for updates" }), _jsx("button", { type: "button", onClick: () => void exportDiagnostics(), className: "block text-xs border border-zinc-700 rounded px-3 py-1.5 text-zinc-300", children: "Export diagnostics" })] }), _jsxs("section", { children: [_jsx("h3", { className: "text-sm font-medium text-zinc-200", children: "License" }), _jsx("p", { className: "text-xs text-zinc-500 mt-1", children: "Carina agent is MIT licensed. See LICENSE in the repository root." })] }), _jsxs("section", { children: [_jsx("h3", { className: "text-sm font-medium text-zinc-200", children: "Recent changes" }), _jsx("ul", { className: "mt-2 space-y-1 text-xs text-zinc-500", children: _jsx("li", { children: "0.1.0 - Desktop scaffold, chat engine, composer, pages" }) })] })] }));
 }

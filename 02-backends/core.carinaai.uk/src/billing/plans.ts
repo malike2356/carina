@@ -152,7 +152,7 @@ export const CHECKOUT_PLANS: BillingPlanId[] = [
 export function normalizePlanId(value: unknown): BillingPlanId {
   if (value === 'carina_ops_starter' || value === 'carina_ops_team') return value;
   if (value === 'scout_monitor' || value === 'scout_pro' || value === 'enterprise') return value;
-  if (value === 'scout_govern') return 'scout_monitor';
+  if (value === 'scout_govern') return 'scout_pro';
   if (value === 'scout_standard') return 'scout_pro';
   return 'free';
 }

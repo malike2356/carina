@@ -19,6 +19,8 @@ vi.mock('./images-provider.js', () => ({
   isInpaintSupported: () => false,
   isBackgroundRemovalConfigured: () => false,
   listConfiguredImageModels: () => ['dall-e-3'],
+  resolveActiveImageGenProvider: () => ({ name: 'fal', defaultModel: () => 'fal-ai/flux-2/klein/9b' }),
+  describeImageGenSetup: () => ({ active: 'fal', available: ['fal'], providers: [] }),
 }));
 
 async function mountImagesRouter(authed: boolean): Promise<{

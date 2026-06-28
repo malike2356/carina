@@ -18,6 +18,8 @@ import {
   isInpaintSupported,
   listConfiguredImageModels,
   removeImageBackground,
+  describeImageGenSetup,
+  resolveActiveImageGenProvider,
 } from './images-provider.js';
 
 export const imagesApiRouter: ExpressRouter = Router();
@@ -59,9 +61,12 @@ function providerErrorStatus(err: unknown): number {
 imagesApiRouter.use(imagesAuth);
 
 imagesApiRouter.get('/models', (_req: ImagesRequest, res: Response) => {
+  const active = resolveActiveImageGenProvider();
   res.json({
     models: listConfiguredImageModels(),
     generationConfigured: isImageGenerationConfigured(),
+    activeProvider: active?.name ?? null,
+    providers: describeImageGenSetup(),
     inpaintSupported: isInpaintSupported(),
     backgroundRemovalConfigured: isBackgroundRemovalConfigured(),
   });

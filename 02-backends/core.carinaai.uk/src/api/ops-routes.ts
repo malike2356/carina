@@ -10,6 +10,7 @@ import {
 import { listAvailablePacks } from '../skills/index.js';
 import { getWebPasswordStatus, setWebPassword } from '../ops/web-password.js';
 import { buildEnvironmentSummary } from '../ops/environment-summary.js';
+import { queryAttestationReport } from '../admin/admin-fleet-queries.js';
 import { mountObservabilityRoutes } from './observability-routes.js';
 
 export function mountOpsRoutes(app: Express): void {
@@ -29,6 +30,19 @@ export function mountOpsRoutes(app: Express): void {
 
   app.get('/api/ops/health', (_req: Request, res: Response) => {
     res.json({ ok: true, service: 'carina-ops' });
+  });
+
+  app.get('/api/ops/trust/summary', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const attestation = await queryAttestationReport();
+    res.json({
+      chainAttestEnabled: process.env.AIVA_CHAIN_ATTEST_ENABLED !== 'false',
+      labyrinthEnabled: process.env.LABYRINTH_ENABLED === 'true',
+      attestation,
+    });
   });
 
   app.get('/api/ops/environment', async (req: Request, res: Response) => {

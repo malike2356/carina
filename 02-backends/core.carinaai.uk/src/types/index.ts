@@ -130,3 +130,134 @@ export interface AgentOptions {
   forceConfirm?: boolean;
   abortSignal?: AbortSignal;
 }
+
+export interface Worker {
+  id: string;
+  workspaceId: string;
+  name: string;
+  roleDescription: string;
+  templateId: string | null;
+  personaPrompt: string;
+  skillPacks: string[];
+  channels: string[];
+  language: string;
+  status: 'active' | 'paused' | 'dismissed';
+  escalationThreshold: number;
+  propreneurTenantSlug?: string | null;
+  propreneurBridgeKeyRef?: string | null;
+  workerConfig?: WorkerConfig;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WorkerSummaryConfig {
+  enabled?: boolean;
+  deliveryTime?: string;
+  /** Cron expression (Europe/London); defaults to AIVA_DAILY_SUMMARY_CRON or 0 7 * * * */
+  summarySchedule?: string;
+  deliveryChannel?: string;
+  includeAudio?: boolean;
+  sections?: string[];
+}
+
+export interface WorkerWidgetConfig {
+  welcomeMessage?: string;
+  accentColor?: string;
+}
+
+export interface WorkerConfig {
+  summary?: WorkerSummaryConfig;
+  widget?: WorkerWidgetConfig;
+}
+
+export interface ActivityEntry {
+  id: string;
+  workerId: string;
+  actionType: 'message_received' | 'message_sent' | 'task_completed' | 'escalated' | 'skill_used' | 'automation_run' | 'summary_sent' | 'va_reply';
+  summary: string;
+  inputText?: string;
+  outputText?: string;
+  escalated: boolean;
+  attestationTx?: string | null;
+  channel?: string;
+  contactId?: string;
+  createdAt: Date;
+}
+
+export interface AuditEntry extends ActivityEntry {
+  attestationTx: string | null;
+}
+
+export interface Escalation {
+  id: string;
+  workerId: string;
+  workspaceId: string;
+  channel: string;
+  channelId: string;
+  originalInput: string;
+  workerDraft?: string;
+  holdingMessage: string;
+  status: 'open' | 'assigned' | 'resolved';
+  assignedTo?: string;
+  resolvedAt?: Date;
+  resolutionText?: string;
+  createdAt: Date;
+}
+
+export interface WorkerAutomation {
+  id: string;
+  workerId: string;
+  workspaceId: string;
+  name: string;
+  description: string;
+  cronExpression: string;
+  scheduleLabel: string;
+  triggerType: 'cron' | 'event';
+  triggerEvent?: string;
+  enabled: boolean;
+  lastRunAt?: Date;
+  nextRunAt?: Date;
+  createdAt: Date;
+}
+
+export interface CreateWorkerParams {
+  name: string;
+  roleDescription: string;
+  templateId?: string | null;
+  personaPrompt: string;
+  skillPacks: string[];
+  channels: string[];
+  language?: string;
+  escalationThreshold?: number;
+}
+
+export interface UpdateWorkerParams {
+  name?: string;
+  roleDescription?: string;
+  personaPrompt?: string;
+  language?: string;
+  skillPacks?: string[];
+  channels?: string[];
+}
+
+export interface CreateEscalationParams {
+  workerId: string;
+  workspaceId: string;
+  channel: string;
+  channelId: string;
+  originalInput: string;
+  workerDraft?: string;
+  holdingMessage: string;
+}
+
+export interface CreateAutomationParams {
+  name: string;
+  description: string;
+  cronExpression: string;
+  scheduleLabel: string;
+}
+
+export interface WorkerContext {
+  worker: Worker;
+  personaPrompt: string;
+}

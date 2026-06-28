@@ -47,7 +47,7 @@ const SHARED_PREFIXES = [
   '/webhooks',
 ];
 
-const PRIVATE_WORKSPACE_ONLY = ['/email', '/kanban', '/workspace', '/prompt-packs', '/trello'];
+const PRIVATE_WORKSPACE_ONLY = ['/email', '/kanban', '/workspace', '/prompt-packs'];
 
 const OPS_BEARER_ANY_HOST = new Set([
   '/api/health',

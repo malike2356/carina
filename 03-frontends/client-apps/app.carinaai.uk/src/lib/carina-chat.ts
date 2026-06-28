@@ -4,7 +4,12 @@ import { userMemories, workspaceSkills } from '@/db/schema';
 import { getWorkspaceBrainSettings } from '@/lib/brain-settings';
 import { ChatStreamError } from '@/lib/chat-errors';
 import { buildCloudSystemPrompt } from '@/lib/cloud-identity';
-import { coreProxyEnabled, requiresWorkspaceByokKeys, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
+import {
+  requiresWorkspaceByokKeys,
+  resolveCoreProxyToken,
+  resolveCoreUrl,
+  shouldRouteChatThroughCore,
+} from '@/lib/core-proxy';
 import { sanitizeCarinaProse } from '@/lib/writing-style';
 import { getWorkspaceProfile } from '@/lib/workspace-profiles';
 
@@ -291,7 +296,7 @@ export async function* streamCarinaChat(input: {
 
   const systemPrompt = await buildSystemPrompt(input.workspaceId, input.skillPacks, input.profileId);
 
-  if (coreProxyEnabled()) {
+  if (shouldRouteChatThroughCore(input.providerKeys.length > 0)) {
     const coreUrl = resolveCoreUrl();
     const token = resolveCoreProxyToken();
     const url = new URL('/api/chat/stream', coreUrl);

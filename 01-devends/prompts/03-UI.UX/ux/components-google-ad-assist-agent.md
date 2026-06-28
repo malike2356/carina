@@ -17,12 +17,12 @@ When triggered, execute this pipeline:
 
 1. **Pull campaign data.** Use the `google-ads` MCP server's `get_campaigns` tool to retrieve all ENABLED campaigns. For each campaign, use `get_campaign_performance` to fetch the last 14 days of metrics: impressions, clicks, conversions, cost, avg CPC, and conversion value.
 
-2. **Compute baseline metrics.** For each campaign and its ad groups, calculate current CAC (cost / conversions), ROAS (conversion value / cost), CTR, and conversion rate. Flag any campaign with fewer than 10 conversions in the window as "low-data" — do not propose bid changes for these; instead, note them for manual review.
+2. **Compute baseline metrics.** For each campaign and its ad groups, calculate current CAC (cost / conversions), ROAS (conversion value / cost), CTR, and conversion rate. Flag any campaign with fewer than 10 conversions in the window as "low-data"; do not propose bid changes for these; instead, note them for manual review.
 
 3. **Generate bid adjustment proposals.** For each eligible campaign/ad group, compare current CPC against target CAC thresholds. Apply these rules:
-   - If CAC is >20% above target: propose bid decrease of 10–15%.
+   - If CAC is >20% above target: propose bid decrease of 10-15%.
    - If CAC is within ±20% of target and conversion volume is healthy: propose no change.
-   - If CAC is >20% below target and impression share is below 80%: propose bid increase of 10–15% to capture volume.
+   - If CAC is >20% below target and impression share is below 80%: propose bid increase of 10-15% to capture volume.
    Use `get_bid_recommendations` from the `google-ads` MCP server when available to cross-check your proposals against Google's suggested bids.
 
 4. **Project impact.** For each proposed change, estimate new daily spend, projected conversions, and projected CAC assuming linear elasticity. Clearly label projections as estimates.

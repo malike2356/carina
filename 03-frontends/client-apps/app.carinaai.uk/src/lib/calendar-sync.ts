@@ -6,20 +6,27 @@ import {
   getWorkspaceCalendarConnection,
   resolveConnectionCredentials,
   resolveEnvCalDavCredentials,
+  resolveGoogleConnectionCredentials,
 } from '@/lib/calendar-connection';
+import { fetchGoogleCalendarEventsInRange } from '@/lib/google-calendar-client';
 import { resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
+
+type RemoteEvent = {
+  uid: string;
+  summary: string;
+  description?: string;
+  dtStart: Date;
+  dtEnd?: Date;
+  allDay: boolean;
+};
 
 export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
   imported: number;
   error?: string;
 }> {
   const connection = await getWorkspaceCalendarConnection(workspaceId);
-  const creds =
-    (connection?.enabled ? resolveConnectionCredentials(connection, workspaceId) : null) ??
-    resolveEnvCalDavCredentials();
-
-  if (!creds) {
-    return { imported: 0, error: 'No CalDAV connection configured.' };
+  if (!connection?.enabled) {
+    return { imported: 0, error: 'No calendar connection configured.' };
   }
 
   const now = new Date();
@@ -27,9 +34,9 @@ export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
   const end = new Date(now.getFullYear(), now.getMonth() + 4, 0, 23, 59, 59, 999);
 
   try {
-    const coreResult = await syncViaCoreIfAvailable(creds, start, end);
-    const remote = coreResult ?? (await fetchCalDavEventsInRange(creds, start, end));
+    const remote = await fetchRemoteEvents(connection, workspaceId, start, end);
     let imported = 0;
+    const source = connection.provider === 'google' ? 'google' : 'caldav';
 
     for (const event of remote.events) {
       const externalUid = event.uid;
@@ -52,7 +59,7 @@ export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
         startsAt: event.dtStart,
         endsAt: event.dtEnd ?? null,
         allDay: event.allDay,
-        source: 'caldav' as const,
+        source,
         updatedAt: new Date(),
       };
 
@@ -64,38 +71,49 @@ export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
       imported += 1;
     }
 
-    if (connection) {
-      await db
-        .update(calendarConnections)
-        .set({ lastSyncAt: new Date(), lastSyncError: null, updatedAt: new Date() })
-        .where(eq(calendarConnections.id, connection.id));
-    }
+    await db
+      .update(calendarConnections)
+      .set({ lastSyncAt: new Date(), lastSyncError: null, updatedAt: new Date() })
+      .where(eq(calendarConnections.id, connection.id));
 
     return { imported };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    if (connection) {
-      await db
-        .update(calendarConnections)
-        .set({ lastSyncError: message, updatedAt: new Date() })
-        .where(eq(calendarConnections.id, connection.id));
-    }
+    await db
+      .update(calendarConnections)
+      .set({ lastSyncError: message, updatedAt: new Date() })
+      .where(eq(calendarConnections.id, connection.id));
     return { imported: 0, error: message };
   }
+}
+
+async function fetchRemoteEvents(
+  connection: typeof calendarConnections.$inferSelect,
+  workspaceId: string,
+  start: Date,
+  end: Date,
+): Promise<{ events: RemoteEvent[] }> {
+  if (connection.provider === 'google') {
+    const creds = resolveGoogleConnectionCredentials(connection, workspaceId);
+    if (!creds) throw new Error('Google Calendar credentials are incomplete.');
+    const result = await fetchGoogleCalendarEventsInRange(creds, start, end);
+    return { events: result.events };
+  }
+
+  const creds =
+    resolveConnectionCredentials(connection, workspaceId) ?? resolveEnvCalDavCredentials();
+  if (!creds) throw new Error('No CalDAV connection configured.');
+
+  const coreResult = await syncViaCoreIfAvailable(creds, start, end);
+  const remote = coreResult ?? (await fetchCalDavEventsInRange(creds, start, end));
+  return { events: remote.events };
 }
 
 async function syncViaCoreIfAvailable(
   creds: { url: string; username: string; password: string },
   start: Date,
   end: Date,
-): Promise<{ events: Array<{
-  uid: string;
-  summary: string;
-  description?: string;
-  dtStart: Date;
-  dtEnd?: Date;
-  allDay: boolean;
-}> } | null> {
+): Promise<{ events: RemoteEvent[] } | null> {
   const key = resolveCoreProxyToken();
   if (!key) return null;
 

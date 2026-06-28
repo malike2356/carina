@@ -13,6 +13,8 @@ import { SudoIndicator } from './components/approval/SudoIndicator.js';
 import { AgentOverlay } from './components/agents/AgentOverlay.js';
 import { ScoutOverlay } from './components/scout/ScoutOverlay.js';
 import { HelpHint } from './components/HelpHint.js';
+import { useTerminalSize } from './hooks/useTerminalSize.js';
+import { computeResponsiveFrame } from '../responsive-frame.js';
 import { GatewayClient, type SessionInfo } from './transport/json-rpc.js';
 import { useMessages } from './hooks/useMessages.js';
 import { useSession } from './hooks/useSession.js';
@@ -39,6 +41,8 @@ const SUDO_DURATION_MS = 5 * 60 * 1000;
 
 export function App({ gatewayUrl = 'local', sessionId, version = '0.0.0' }: AppProps) {
   const { exit } = useApp();
+  const { columns, rows } = useTerminalSize();
+  const frame = useMemo(() => computeResponsiveFrame(columns, rows), [columns, rows]);
   const client = useMemo(() => new GatewayClient(gatewayUrl), [gatewayUrl]);
   const { session, setSession, sessions, loadSessions, switchProvider } = useSession(client, sessionId);
   const {
@@ -315,7 +319,7 @@ export function App({ gatewayUrl = 'local', sessionId, version = '0.0.0' }: AppP
   }, [handleSend, injectSystemReply]);
 
   return (
-    <Box flexDirection="column" flexGrow={1}>
+    <Box flexDirection="column" flexGrow={1} width={frame.columns} height={frame.rows} overflow="hidden">
       {showBanner && session && (
         <Banner
           version={version}

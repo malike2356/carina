@@ -4,6 +4,7 @@ ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS failure_count INTEGER DEFAU
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS failure_limit INTEGER DEFAULT 3;
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS model_provider TEXT;
 ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS model_name TEXT;
+ALTER TABLE scheduled_tasks ADD COLUMN IF NOT EXISTS profile_name TEXT DEFAULT 'default';
 CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_profile_status
   ON scheduled_tasks (profile_name, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_scheduled_task_runs_completed

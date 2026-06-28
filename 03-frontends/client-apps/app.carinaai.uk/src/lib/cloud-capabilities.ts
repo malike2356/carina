@@ -1,4 +1,4 @@
-import { coreProxyEnabled } from '@/lib/core-proxy';
+import { coreProxyEnabled, resolveCoreProxyToken } from '@/lib/core-proxy';
 
 export type CloudCapabilityKey =
   | 'chatMode'
@@ -20,6 +20,7 @@ export type CloudCapabilities = ReturnType<typeof getCloudCapabilities>;
 /** What Carina Cloud actually does today (BYOK chat). Core parity roadmap still in development. */
 export function getCloudCapabilities() {
   const coreProxy = coreProxyEnabled();
+  const opsBridge = Boolean(resolveCoreProxyToken());
   const scoutEnabled =
     process.env.SCOUT_ENABLED === 'true' || process.env.LABYRINTH_ENABLED === 'true';
   return {
@@ -28,7 +29,8 @@ export function getCloudCapabilities() {
     webSearch: coreProxy,
     /** Shell / tool loops only on core proxy. */
     agentTools: coreProxy,
-    terminal: coreProxy,
+    /** Browser PTY uses app bridge + ops container; needs ops token, not full core proxy. */
+    terminal: opsBridge,
     mcp: coreProxy,
     cron: coreProxy,
     files: coreProxy,
@@ -72,7 +74,6 @@ export const CLOUD_SKILLS = [
 ] as const;
 
 const ROUTE_CAPABILITY: Record<string, CloudCapabilityKey> = {
-  '/terminal': 'terminal',
   '/mcp': 'mcp',
   '/cron': 'cron',
   '/files': 'files',

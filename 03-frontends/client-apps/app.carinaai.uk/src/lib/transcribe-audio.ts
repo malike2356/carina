@@ -2,7 +2,7 @@ import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { resolveCoreUrl } from '@/lib/core-proxy';
+import { resolveCoreUrl, resolveCoreProxyToken } from '@/lib/core-proxy';
 import { probeLocalWhisperAvailable, transcribeAudioLocal } from '@/lib/transcribe-local';
 
 const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
@@ -206,16 +206,25 @@ async function transcribeViaCore(
   language: string,
 ): Promise<{ text: string; provider: string } | { error: string }> {
   const coreUrl = resolveCoreUrl().replace(/\/$/, '');
+  const headers: Record<string, string> = {
+    'Content-Type': mimeType,
+    'X-Transcribe-Lang': language,
+  };
+  const token = resolveCoreProxyToken();
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
+    headers['x-internal-key'] = token;
+  }
   try {
-    const res = await fetch(`${coreUrl}/api/transcribe`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': mimeType,
-        'X-Transcribe-Lang': language,
+    const res = await fetch(
+      `${coreUrl}/api/transcribe?language=${encodeURIComponent(language)}`,
+      {
+        method: 'POST',
+        headers,
+        body: new Uint8Array(audio),
+        signal: AbortSignal.timeout(120_000),
       },
-      body: new Uint8Array(audio),
-      signal: AbortSignal.timeout(120_000),
-    });
+    );
     const payload = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
     if (!res.ok) return { error: payload.error ?? `core returned HTTP ${res.status}` };
     const text = String(payload.text ?? '').trim();

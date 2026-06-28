@@ -115,7 +115,8 @@ export function getLoadedPolicy(): ToolPolicy {
 }
 
 function validateSessionId(sessionId: string): void {
-  if (!/^[a-zA-Z0-9-_]{1,128}$/.test(sessionId)) {
+  // Profile-scoped sessions use `profile:<name>:<id>`; operator sessions use `op:<name>`.
+  if (!/^[a-zA-Z0-9._:-]{1,192}$/.test(sessionId)) {
     throw new Error('Invalid sessionId for rate limit key');
   }
 }

@@ -6,6 +6,7 @@ import { getRedis } from '../redis.js';
 import { baselineLearner } from '../security/anomaly-detector.js';
 import { alertDispatcher, toSecurityEvent } from '../alerts/dispatcher.js';
 import { alertChannelsRouter } from './alert-channels.js';
+import { connectorsRouter } from './connectors.js';
 import { requireScoutPro } from '../middleware/plan-gate.js';
 import { requireOperatorKeyOnly } from '../middleware/operator-auth.js';
 import { loadDispatchChannels } from '../lib/alert-channels.js';
@@ -23,6 +24,7 @@ import type { RequestWithScoutAuth } from '../types/request.js';
 export const adminRouter: IRouter = Router();
 
 adminRouter.use('/alert-channels', alertChannelsRouter);
+adminRouter.use('/connectors', connectorsRouter);
 adminRouter.use('/platform-settings', platformSettingsRouter);
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

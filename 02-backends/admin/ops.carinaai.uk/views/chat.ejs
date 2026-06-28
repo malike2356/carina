@@ -96,8 +96,11 @@
     content.className = role === 'assistant' ? 'chat-md' : '';
     if (role === 'user') {
       content.textContent = text;
+    } else if (text) {
+      content.innerHTML = '...';
     } else {
-      content.innerHTML = text ? '...' : '';
+      content.dataset.thinking = '1';
+      content.innerHTML = thinkingIndicatorHtml();
     }
     inner.appendChild(content);
     wrap.appendChild(inner);
@@ -126,29 +129,65 @@
     }
   }
 
+  function thinkingIndicatorHtml() {
+    return '<span class="ops-thinking" aria-label="Carina is thinking" role="status">' +
+      '<span class="ops-thinking-dot"></span>' +
+      '<span class="ops-thinking-dot"></span>' +
+      '<span class="ops-thinking-dot"></span>' +
+      '</span>';
+  }
+
+  function renderAssistantMessage(msgDiv, full, streaming) {
+    if (!full.trim() && msgDiv.dataset.thinking === '1') {
+      msgDiv.innerHTML = thinkingIndicatorHtml();
+      return;
+    }
+    msgDiv.dataset.thinking = '0';
+    if (streaming || typeof marked === 'undefined') {
+      msgDiv.textContent = full;
+      return;
+    }
+    msgDiv.innerHTML = marked.parse(full);
+  }
+
   function applyStreamPayload(full, payload, msgDiv) {
     if (payload === '[DONE]') return { done: true, full };
     try {
       const chunk = JSON.parse(payload);
       if (typeof chunk === 'string') {
         full += chunk;
+      } else if (chunk.type === 'status') {
+        if (chunk.content === 'thinking' && !full.trim()) {
+          msgDiv.dataset.thinking = '1';
+          renderAssistantMessage(msgDiv, full, true);
+          scrollToBottom();
+          return { done: false, full };
+        }
+        return { done: false, full };
+      } else if (chunk.type === 'meta') {
+        if (chunk.meta?.provider) {
+          providerBadge.textContent = 'Provider: ' + chunk.meta.provider;
+        }
+        return { done: false, full };
+      } else if (chunk.type === 'error') {
+        const msg = chunk.content || chunk.error?.message || 'Request failed';
+        full = 'Error: ' + msg;
       } else if (chunk.error) {
-        if (chunk.error.includes('Session expired')) {
+        const errText = typeof chunk.error === 'string' ? chunk.error : chunk.error.message;
+        if (errText && errText.includes('Session expired')) {
           window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
           return { done: true, full, redirect: true };
         }
-        full = 'Error: ' + chunk.error;
+        full = 'Error: ' + (errText || 'Request failed');
       } else if (chunk.content && typeof chunk.content === 'string') {
         full += chunk.content;
-      } else if (chunk.type === 'meta' && chunk.meta?.provider) {
-        providerBadge.textContent = 'Provider: ' + chunk.meta.provider;
-      } else {
-        full += String(chunk);
+      } else if (chunk.type === 'done') {
+        return { done: true, full };
       }
     } catch {
-      full += payload;
+      if (payload.trim()) full += payload;
     }
-    msgDiv.textContent = full;
+    renderAssistantMessage(msgDiv, full, true);
     scrollToBottom();
     return { done: false, full };
   }
@@ -191,9 +230,7 @@
         full = result.full;
         if (result.redirect) return provider;
         if (result.done) {
-          if (full && typeof marked !== 'undefined') {
-            msgDiv.innerHTML = marked.parse(full);
-          }
+          renderAssistantMessage(msgDiv, full, false);
           metaInfo.textContent = 'Provider: ' + (provider || '?') + ' · ~' + Math.ceil(full.length / 4) + ' tokens (est.)';
           hideOffline();
           return provider;
@@ -201,9 +238,7 @@
       }
     }
 
-    if (full && typeof marked !== 'undefined') {
-      msgDiv.innerHTML = marked.parse(full);
-    }
+    renderAssistantMessage(msgDiv, full, false);
     return provider;
   }
 

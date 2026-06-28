@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Box, useApp, useInput } from 'ink';
 import { LauncherHeader } from './LauncherHeader.js';
 import { LauncherFooter } from './LauncherFooter.js';
 import { StatusColumn } from './StatusColumn.js';
 import { QuickActionsColumn } from './QuickActionsColumn.js';
 import { useTerminalSize } from '../hooks/useTerminalSize.js';
 import { loadTuiLauncherData } from './launcher-data.js';
+import { computeResponsiveFrame } from '../../responsive-frame.js';
 
 interface Props {
   version: string;
@@ -32,19 +33,21 @@ interface RecentProject {
 export function LauncherTUI({ version, onLaunchChat }: Props) {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
+  const frame = useMemo(() => computeResponsiveFrame(columns, rows), [columns, rows]);
   const [command, setCommand] = useState('');
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [status, setStatus] = useState<StatusData>({
-    model:    'loading...',
-    memory:   'loading...',
-    scout:    'loading...',
+    model: 'loading...',
+    memory: 'loading...',
+    scout: 'loading...',
     channels: 'loading...',
-    skills:   'loading...',
-    latency:  'loading...',
+    skills: 'loading...',
+    latency: 'loading...',
     sessions: 'loading...',
-    uptime:   'loading...',
+    uptime: 'loading...',
   });
   const [projects, setProjects] = useState<RecentProject[]>([]);
+  const maxActionIndex = frame.mode === 'compact' ? 3 : 6;
 
   useEffect(() => {
     let cancelled = false;
@@ -59,51 +62,56 @@ export function LauncherTUI({ version, onLaunchChat }: Props) {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    setSelectedIdx((index) => Math.min(index, maxActionIndex));
+  }, [maxActionIndex]);
+
   useInput((input, key) => {
     if (key.escape || (key.ctrl && input === 'c')) { exit(); return; }
-    if (key.upArrow)   { setSelectedIdx(i => Math.max(0, i - 1)); return; }
-    if (key.downArrow) { setSelectedIdx(i => Math.min(6, i + 1)); return; }
+    if (key.upArrow) { setSelectedIdx((index) => Math.max(0, index - 1)); return; }
+    if (key.downArrow) { setSelectedIdx((index) => Math.min(maxActionIndex, index + 1)); return; }
     if (key.return) {
-      const cmd = command.trim().toLowerCase() || input;
+      const selected = ['c', 'o', 'm', 's', 'k', '/', '?'][selectedIdx] ?? 'c';
+      const cmd = command.trim().toLowerCase() || selected;
       if (cmd === 'q' || cmd === 'quit' || cmd === 'exit') { exit(); return; }
-      if (cmd === 'c' || cmd === 'chat' || cmd === '') { exit(); onLaunchChat(); return; }
+      if (cmd === 'c' || cmd === 'chat' || cmd === 'o' || cmd === '') { exit(); onLaunchChat(); return; }
       if (cmd === 'n') { exit(); onLaunchChat(); return; }
       setCommand('');
       return;
     }
-    if (key.backspace || key.delete) { setCommand(c => c.slice(0, -1)); return; }
+    if (key.backspace || key.delete) { setCommand((value) => value.slice(0, -1)); return; }
     if (!key.ctrl && !key.meta && input && input.length === 1) {
       if (input === 'q') { exit(); return; }
       if (input === 'c') { exit(); onLaunchChat(); return; }
-      setCommand(c => c + input);
+      setCommand((value) => value + input);
     }
   });
 
-  if (columns < 80) {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Text color="cyan" bold>CARINA LAUNCHER</Text>
-        <Text color="gray">Terminal too narrow (need 80+ columns).</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text><Text color="cyan">[c]</Text> Start chat</Text>
-          <Text><Text color="cyan">[q]</Text> Quit</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  const leftWidth = Math.floor(columns * 0.35);
-  const rightWidth = columns - leftWidth - 3;
-
   return (
-    <Box flexDirection="column" width={columns} height={rows}>
-      <LauncherHeader width={columns} version={version} />
-      <Box flexDirection="row" flexGrow={1}>
-        <StatusColumn width={leftWidth} status={status} />
-        <Box borderStyle="single" borderColor="gray" borderLeft={true} borderRight={false} borderTop={false} borderBottom={false} />
-        <QuickActionsColumn width={rightWidth} projects={projects} selectedIdx={selectedIdx} />
+    <Box flexDirection="column" width={frame.columns} height={frame.rows} overflow="hidden">
+      <LauncherHeader frame={frame} version={version} />
+      <Box flexDirection="column" flexGrow={1} height={frame.bodyHeight} overflow="hidden">
+        {frame.twoColumn ? (
+          <Box flexDirection="row" flexGrow={1} height={frame.bodyHeight}>
+            <StatusColumn frame={frame} status={status} />
+            <Box
+              borderStyle="single"
+              borderColor="gray"
+              borderLeft
+              borderRight={false}
+              borderTop={false}
+              borderBottom={false}
+            />
+            <QuickActionsColumn frame={frame} projects={projects} selectedIdx={selectedIdx} />
+          </Box>
+        ) : (
+          <Box flexDirection="column" flexGrow={1} height={frame.bodyHeight} overflow="hidden">
+            <StatusColumn frame={frame} status={status} />
+            <QuickActionsColumn frame={frame} projects={projects} selectedIdx={selectedIdx} />
+          </Box>
+        )}
       </Box>
-      <LauncherFooter width={columns} command={command} />
+      <LauncherFooter frame={frame} command={command} />
     </Box>
   );
 }

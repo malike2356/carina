@@ -13,14 +13,17 @@ describe('environment-core', () => {
     vi.unstubAllEnvs();
   });
 
-  it('reports unconfigured when core proxy is disabled', () => {
-    vi.stubEnv('CARINA_USE_CORE_PROXY', 'false');
+  it('reports unconfigured when ops token is missing', () => {
+    vi.stubEnv('CARINA_USE_CORE_PROXY', 'true');
+    delete process.env.CARINA_OPS_TOKEN;
+    delete process.env.CARINA_INTERNAL_KEY;
     expect(environmentCoreConfigured()).toBe(false);
   });
 
-  it('reports configured when core proxy token is present', () => {
-    vi.stubEnv('CARINA_USE_CORE_PROXY', 'true');
+  it('reports configured when ops token is present', () => {
+    vi.stubEnv('CARINA_USE_CORE_PROXY', 'false');
     vi.stubEnv('CARINA_OPS_TOKEN', 'test-token');
+    vi.stubEnv('CARINA_CORE_URL', 'http://carina-web:3000');
     expect(environmentCoreConfigured()).toBe(true);
   });
 

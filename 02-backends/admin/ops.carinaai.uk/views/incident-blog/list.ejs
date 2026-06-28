@@ -6,9 +6,35 @@
   if (status === 'published') return 'ops-badge-green';
   return 'ops-badge-gray';
 } %>
+<% function categoryBadge(category) {
+  if (category === 'financial') return 'ops-badge-amber';
+  if (category === 'security') return 'ops-badge-red';
+  if (category === 'brand') return 'ops-badge-cyan';
+  if (category === 'legal') return 'ops-badge-gray';
+  return 'ops-badge-gray';
+} %>
 <% function truncate(value, max) {
   const text = String(value ?? '');
   return text.length > max ? text.slice(0, max - 1) + '…' : text;
+} %>
+<% function sanitizeOutcome(value) {
+  const cleaned = String(value ?? '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\[[^\]]+\]/g, ' ')
+    .replace(/[#*_`>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned;
+} %>
+<% function displayOutcome(incident) {
+  const cleaned = sanitizeOutcome(incident.damage);
+  const junkPatterns = /^(menu|report this post|share|subscribe|read more|sign in)/i;
+  if (!cleaned || junkPatterns.test(cleaned) || cleaned.includes('Report this post')) {
+    if (incident.status === 'draft') return 'Draft: outcome needs review';
+    return 'Outcome not set';
+  }
+  return truncate(cleaned, 88);
 } %>
 <% function flashMessage() {
   const ok = flash.get('ok');
@@ -145,50 +171,88 @@
           <a href="/admin/incident-blog/new" class="ops-btn ops-btn-green ops-btn-sm">Create incident</a>
         </div>
       <% } else { %>
-        <%- include('_pagination') %>
-        <div class="ops-incident-list">
-          <% for (const incident of incidents) { %>
-            <article class="ops-incident-card">
-              <div class="ops-incident-card-head">
-                <div class="ops-incident-card-main">
-                  <div class="ops-incident-card-title"><%= truncate(incident.title, 96) %></div>
-                  <div class="ops-incident-card-meta">
-                    <span><%= truncate(incident.company, 48) %></span>
-                    <span class="ops-incident-card-dot">·</span>
-                    <span><%= incident.dateOccurred %></span>
-                    <span class="ops-incident-card-dot">·</span>
-                    <span class="ops-incident-card-category"><%= incident.category %></span>
-                  </div>
-                </div>
-                <span class="ops-badge <%= statusBadge(incident.status) %>"><%= incident.status %></span>
-              </div>
-              <div class="ops-incident-card-damage"><%= truncate(incident.damage, 120) %></div>
-              <div class="ops-incident-card-actions">
-                <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/admin/incident-blog/<%= incident.id %>">Review</a>
-                <a class="ops-btn ops-btn-ghost ops-btn-sm" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
-                <% if (incident.status === 'draft' || incident.status === 'approved') { %>
-                  <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve" class="inline">
-                    <button class="ops-btn ops-btn-amber ops-btn-sm" type="submit">Approve</button>
-                  </form>
-                <% } %>
-                <% if (incident.status === 'approved' || incident.status === 'draft') { %>
-                  <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish" class="inline">
-                    <button class="ops-btn ops-btn-green ops-btn-sm" type="submit">Publish</button>
-                  </form>
-                <% } %>
-                <% if (incident.status !== 'rejected' && incident.status !== 'published') { %>
-                  <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject" class="inline">
-                    <input type="hidden" name="reason" value="Not suitable for publication">
-                    <button class="ops-btn ops-btn-ghost ops-btn-sm" type="submit">Reject</button>
-                  </form>
-                <% } %>
-                <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete" class="inline"
-                  onsubmit="return confirm('Delete this incident permanently?')">
-                  <button class="ops-btn ops-btn-ghost ops-btn-sm ops-btn-danger" type="submit">Delete</button>
-                </form>
-              </div>
-            </article>
+        <div class="ops-incident-list-meta">
+          <span><%= total %> incident<%= total === 1 ? '' : 's' %></span>
+          <% if (filters.status || filters.category) { %>
+            <span class="ops-incident-list-meta-sep">·</span>
+            <span>Filtered view</span>
           <% } %>
+        </div>
+        <div class="ops-table-wrap ops-incident-table-wrap">
+          <table class="ops-table ops-incident-table">
+            <colgroup>
+              <col class="ops-incident-col-title">
+              <col class="ops-incident-col-company">
+              <col class="ops-incident-col-date">
+              <col class="ops-incident-col-category">
+              <col class="ops-incident-col-status">
+              <col class="ops-incident-col-outcome">
+              <col class="ops-incident-col-actions">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Incident</th>
+                <th>Company</th>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Outcome</th>
+                <th class="ops-incident-actions-head">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% for (const incident of incidents) { %>
+                <tr>
+                  <td class="ops-incident-title-cell">
+                    <a href="/admin/incident-blog/<%= incident.id %>" class="ops-incident-title-link"><%= truncate(incident.title, 72) %></a>
+                  </td>
+                  <td class="ops-incident-company-cell"><%= truncate(incident.company, 40) %></td>
+                  <td class="ops-incident-date-cell"><%= incident.dateOccurred %></td>
+                  <td>
+                    <span class="ops-badge <%= categoryBadge(incident.category) %> capitalize"><%= incident.category %></span>
+                  </td>
+                  <td>
+                    <span class="ops-badge <%= statusBadge(incident.status) %> capitalize"><%= incident.status %></span>
+                  </td>
+                  <td class="ops-incident-damage-cell<%= incident.status === 'draft' && displayOutcome(incident).indexOf('needs review') >= 0 ? ' is-draft-warning' : '' %>" title="<%= sanitizeOutcome(incident.damage) || 'No outcome text' %>">
+                    <span class="ops-incident-damage-text"><%= displayOutcome(incident) %></span>
+                  </td>
+                  <td class="ops-incident-actions-cell">
+                    <div class="ops-incident-row-actions">
+                      <a class="ops-link" href="/admin/incident-blog/<%= incident.id %>">Review</a>
+                      <span class="ops-incident-action-sep" aria-hidden="true">·</span>
+                      <a class="ops-link" href="/admin/incident-blog/<%= incident.id %>/edit">Edit</a>
+                      <details class="ops-incident-more">
+                        <summary class="ops-incident-menu-trigger" aria-label="More actions">⋯</summary>
+                        <div class="ops-incident-more-menu">
+                          <% if (incident.status === 'draft' || incident.status === 'approved') { %>
+                            <form method="post" action="/admin/incident-blog/<%= incident.id %>/approve">
+                              <button type="submit" class="ops-incident-more-item">Approve</button>
+                            </form>
+                          <% } %>
+                          <% if (incident.status === 'approved' || incident.status === 'draft') { %>
+                            <form method="post" action="/admin/incident-blog/<%= incident.id %>/publish">
+                              <button type="submit" class="ops-incident-more-item ok">Publish</button>
+                            </form>
+                          <% } %>
+                          <% if (incident.status !== 'rejected' && incident.status !== 'published') { %>
+                            <form method="post" action="/admin/incident-blog/<%= incident.id %>/reject">
+                              <input type="hidden" name="reason" value="Not suitable for publication">
+                              <button type="submit" class="ops-incident-more-item">Reject</button>
+                            </form>
+                          <% } %>
+                          <form method="post" action="/admin/incident-blog/<%= incident.id %>/delete"
+                            onsubmit="return confirm('Delete this incident permanently?')">
+                            <button type="submit" class="ops-incident-more-item danger">Delete</button>
+                          </form>
+                        </div>
+                      </details>
+                    </div>
+                  </td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
         </div>
         <%- include('_pagination') %>
       <% } %>

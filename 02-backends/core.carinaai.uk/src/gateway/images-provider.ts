@@ -4,8 +4,16 @@ import { v4 as uuidv4 } from 'uuid';
 import OpenAI from 'openai';
 import { config } from '../config/index.js';
 import { createImageRecord, getDefaultImagesDir } from './images-store.js';
+import {
+  isAnyImageGenProviderConfigured,
+  resolveActiveImageGenProvider,
+  listAvailableImageGenProviders,
+  describeImageGenSetup,
+} from './image-providers/index.js';
+import { parseSizeDimensions, resolveOpenAiSize } from './image-providers/shared.js';
+import type { OpenAiSize } from './image-providers/shared.js';
 
-export type ImageModelId = 'dall-e-3' | 'sd-xl' | 'flux';
+export type ImageModelId = 'gpt-image-1' | 'dall-e-3' | 'sd-xl' | 'flux' | 'fal' | 'replicate' | 'comfyui';
 
 export interface GenerateImageInput {
   tenantId: string;
@@ -31,10 +39,11 @@ export interface InpaintImageInput {
   maskBase64: string;
 }
 
-type OpenAiSize = '1024x1024' | '1792x1024' | '1024x1792';
+export { resolveOpenAiSize, parseSizeDimensions };
+export { describeImageGenSetup, listAvailableImageGenProviders, resolveActiveImageGenProvider };
 
 export function isImageGenerationConfigured(): boolean {
-  return Boolean(config.openai.apiKey);
+  return isAnyImageGenProviderConfigured();
 }
 
 export function isInpaintSupported(): boolean {
@@ -46,22 +55,9 @@ export function isBackgroundRemovalConfigured(): boolean {
 }
 
 export function listConfiguredImageModels(): ImageModelId[] {
-  const models: ImageModelId[] = [];
-  if (isImageGenerationConfigured()) {
-    models.push('dall-e-3');
-  }
-  return models;
-}
-
-export function resolveOpenAiSize(width?: number, height?: number): OpenAiSize {
-  if (width === 768 && height === 1344) return '1024x1792';
-  if (width === 1344 && height === 768) return '1792x1024';
-  return '1024x1024';
-}
-
-export function parseSizeDimensions(size: OpenAiSize): { width: number; height: number } {
-  const [w, h] = size.split('x').map((v) => Number(v));
-  return { width: w, height: h };
+  const provider = resolveActiveImageGenProvider();
+  if (!provider) return [];
+  return provider.listModels().map((m) => m.id as ImageModelId);
 }
 
 async function writeImageFile(
@@ -77,41 +73,30 @@ async function writeImageFile(
   return filepath;
 }
 
-export async function generateImage(
-  input: GenerateImageInput,
-  client: Pick<OpenAI, 'images'> = new OpenAI({ apiKey: config.openai.apiKey }),
-): Promise<GenerateImageResult> {
-  if (!config.openai.apiKey) {
-    throw new Error('OPENAI_API_KEY required for image generation');
+export async function generateImage(input: GenerateImageInput): Promise<GenerateImageResult> {
+  const provider = resolveActiveImageGenProvider();
+  if (!provider) {
+    throw new Error(
+      'No image provider configured. Set FAL_KEY (recommended), OPENAI_API_KEY, REPLICATE_API_TOKEN, or COMFYUI_URL + COMFYUI_WORKFLOW_PATH.',
+    );
   }
 
-  const requestedModel = input.model ?? 'dall-e-3';
-  if (requestedModel !== 'dall-e-3') {
-    throw new Error(`Model "${requestedModel}" is not configured`);
-  }
-
-  const size = resolveOpenAiSize(input.width, input.height);
-  const response = await client.images.generate({
-    model: 'dall-e-3',
+  const size: OpenAiSize = resolveOpenAiSize(input.width, input.height);
+  const dims = parseSizeDimensions(size);
+  const generated = await provider.generate({
     prompt: input.prompt,
-    n: 1,
-    size,
-    quality: 'standard',
-    response_format: 'b64_json',
+    model: input.model,
+    width: input.width ?? dims.width,
+    height: input.height ?? dims.height,
   });
 
-  const b64 = response.data?.[0]?.b64_json;
-  if (!b64) throw new Error('No image returned from provider');
-
-  const buffer = Buffer.from(b64, 'base64');
-  const dims = parseSizeDimensions(size);
   const id = uuidv4();
-  const filepath = await writeImageFile(input.tenantId, id, buffer);
+  const filepath = await writeImageFile(input.tenantId, id, generated.buffer);
   createImageRecord(input.tenantId, {
     prompt: input.prompt,
-    model: 'dall-e-3',
-    width: dims.width,
-    height: dims.height,
+    model: generated.model,
+    width: generated.width,
+    height: generated.height,
     filepath,
   }, id);
 
@@ -119,9 +104,9 @@ export async function generateImage(
     id,
     filepath,
     prompt: input.prompt,
-    model: 'dall-e-3',
-    width: dims.width,
-    height: dims.height,
+    model: generated.model,
+    width: generated.width,
+    height: generated.height,
   };
 }
 
@@ -243,7 +228,7 @@ export async function saveImageBufferToGallery(input: {
     id,
     filepath,
     prompt: input.prompt,
-    model: input.model ?? 'dall-e-3',
+    model: input.model ?? 'gpt-image-1',
     width: input.width ?? 1024,
     height: input.height ?? 1024,
   };

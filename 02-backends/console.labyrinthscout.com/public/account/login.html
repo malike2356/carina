@@ -11,9 +11,9 @@
 <body class="hub-body">
   <header class="auth-top">
     <nav class="hub-nav" aria-label="Console navigation">
-      <a class="hub-brand" href="/">LABYRINTH SCOUT</a>
+      <a class="hub-brand" href="/pricing">LABYRINTH SCOUT</a>
       <div class="hub-nav-links">
-        <a href="/">Home</a>
+        <a href="/pricing">Home</a>
         <a href="/pricing">Pricing</a>
         <a href="/docs/">Docs</a>
         <a href="/account/login" class="active">Sign in</a>
@@ -44,6 +44,13 @@
   </div>
   <script src="/account/account.js?v=3"></script>
   <script>
+    function safeNextPath() {
+      const params = new URLSearchParams(window.location.search);
+      const next = params.get('next') || params.get('callbackUrl');
+      if (!next || !next.startsWith('/') || next.startsWith('//')) return '/account';
+      return next;
+    }
+
     const params = new URLSearchParams(window.location.search);
     if (params.get('expired') === '1') {
       document.getElementById('error').textContent = 'Session expired. Sign in again.';
@@ -71,7 +78,7 @@
         error.hidden = false;
         return;
       }
-      window.location.href = '/account';
+      window.location.href = safeNextPath();
     });
   </script>
 </body>

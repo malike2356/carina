@@ -67,6 +67,16 @@ export const PACK_MANIFESTS: Record<string, PackManifest> = {
     optional: true,
     category: 'research',
   },
+  'research-analysis': {
+    name: 'research-analysis',
+    version: '1.0.0',
+    description: 'SPSS file I/O, Python stats, PSPP, and Jamovi analysis for academic research',
+    author: 'VERLOX Ltd',
+    skillCount: 5,
+    optional: true,
+    category: 'academic',
+    npmPackage: '@verlox/pack-research-analysis',
+  },
   'data-science': {
     name: 'data-science',
     version: '1.0.0',

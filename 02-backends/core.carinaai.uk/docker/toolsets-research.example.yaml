@@ -1,0 +1,41 @@
+# Optional: enable research statistical tools for web and CLI agents.
+# Copy to CARINA_HOME/toolsets.yaml (default: /data/.carina/toolsets.yaml in Docker).
+#
+# Does NOT change messaging channel defaults (telegram, whatsapp, etc.).
+# PSPP, R, and Jamovi remain optional; Python stats work when image includes
+# src/tools/research requirements (see docker/Dockerfile.carina).
+
+version: 1
+default:
+  enabled:
+    - web
+    - search
+    - file
+    - skills
+platforms:
+  web:
+    enabled:
+      - web
+      - search
+      - file
+      - skills
+      - workspace
+      - utilities
+      - research
+  cli:
+    enabled:
+      - web
+      - search
+      - file
+      - skills
+      - workspace
+      - utilities
+      - ops
+      - research
+  api:
+    enabled:
+      - web
+      - file
+      - search
+      - skills
+      - research

@@ -4,11 +4,11 @@ Tags: `hmo`, `rra_2025`, `awaabs_law`, `legal`
 
 ## Section 21
 
-Section 21 “no-fault” evictions are abolished for new assured tenancies after implementation. HMO operators rely on **Section 8** with valid grounds and correct notice periods.
+Section 21 "no-fault" evictions are abolished for new assured tenancies after implementation. HMO operators rely on **Section 8** with valid grounds and correct notice periods.
 
 ## Section 8 - key grounds
 
-- **Ground 8 (mandatory rent arrears):** At least two months’ rent unpaid at notice service and hearing (joint tenancies: total arrears threshold).
+- **Ground 8 (mandatory rent arrears):** At least two months' rent unpaid at notice service and hearing (joint tenancies: total arrears threshold).
 - **Ground 10 / 11:** Some rent arrears (discretionary).
 - **Ground 1A:** Landlord occupation or sale (new RRA ground - strict conditions).
 
@@ -33,4 +33,12 @@ Generally **one rent increase per year** using the statutory form and notice per
 
 ## Prescribed Information
 
-Serve PI within legal deadlines; per-room HMO tenancies still require correct PI for each occupier’s deposit and tenancy terms.
+Serve PI within legal deadlines; per-room HMO tenancies still require correct PI for each occupier's deposit and tenancy terms.
+
+## Propreneur RRA 2025 Compliance Centre
+
+Full module reference: **`98-rra-2025-compliance-centre.md`**.
+
+Tenant hub: `/compliance/rra-2025` tracks PRS Database registration, ombudsman membership, Decent Homes assessments per property, pre-tenancy payment caps, and quarterly PRS reporting placeholders.
+
+Carina can summarise workspace status from `RrA2025Service::getWorkspaceComplianceStatus()`.

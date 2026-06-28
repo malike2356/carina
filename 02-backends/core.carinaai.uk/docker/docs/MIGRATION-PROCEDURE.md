@@ -1,0 +1,81 @@
+# Migration procedure
+
+Last updated: 2026-06-24
+
+## Rules
+
+1. Every schema change is a numbered SQL file under `src/infrastructure/migrations/`.
+2. Migrations run automatically during atomic deploy (`deploy-atomic.sh` calls `run_migrations()` before `carina-web` starts).
+3. Migrations must be idempotent:
+   - `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
+   - `ADD COLUMN IF NOT EXISTS` on every `ALTER TABLE`
+   - `ON CONFLICT DO NOTHING` on seed `INSERT`s
+4. Never edit a migration after it has run in production; add a new numbered file instead.
+5. Never renumber migrations; `009` stays `009` forever.
+6. Prefer a paired `NNN-name-rollback.sql` for manual recovery (never run automatically).
+7. Roll back application code first; roll back schema only when no new-format data exists.
+
+## Deploy flow
+
+1. Test on staging (apply SQL, deploy staging, smoke test).
+2. Take a fresh backup: `bash docker/scripts/backup-postgres.sh`
+3. Deploy production: `bash docker/scripts/deploy-prod.sh`
+4. Verify: `curl -fsS https://core.carinaai.uk/health`
+
+```bash
+cd /home/malike/apps/core.carinaai.uk
+bash docker/scripts/deploy-prod.sh
+```
+
+`deploy-atomic.sh`:
+
+1. Builds and tags `carina-release/*` images
+2. Applies pending SQL migrations against Postgres
+3. Rolls containers to new images
+4. Health-checks `/health`
+5. Records release metadata under `.deploy/`
+
+## Manual migration (emergency)
+
+```bash
+docker compose -f docker-compose.prod.yml exec postgres \
+  psql -U "$POSTGRES_USER" -d carina -f /path/to/migration.sql
+```
+
+Prefer the deploy script so migration order stays consistent.
+
+## Staging-first workflow
+
+Before production:
+
+1. Apply migration on staging: `docker compose -f docker-compose.staging.yml exec postgres-staging psql -U carina -d carina_staging -f /path/to/migration.sql`
+2. Deploy staging: `bash docker/scripts/deploy-staging.sh` (runs migrations + atomic service deploy)
+3. Seed or reset data: `bash docker/scripts/seed-staging.sh`
+4. Smoke test:
+   - `curl -fsS https://staging.core.carinaai.uk/health`
+   - `curl -fsS https://staging.app.carinaai.uk/api/health`
+   - `curl -fsS https://staging.admin.carinaai.uk/api/health`
+   - Log in to staging app; verify core features
+5. If staging passes, deploy production: `bash docker/scripts/deploy-prod.sh`
+
+## Rollback
+
+**Staging application rollback:**
+
+```bash
+bash docker/scripts/deploy-staging.sh --rollback
+# or per service:
+bash docker/scripts/deploy-staging-atomic.sh --rollback carina-web-staging
+```
+
+**Production application rollback:**
+
+**Schema rollback:** only when the migration has a paired down file and no incompatible data was written. Otherwise ship a forward fix migration.
+
+## Code review checklist
+
+- [ ] New migration file with next sequence number
+- [ ] Idempotent SQL
+- [ ] No destructive change without data backfill step
+- [ ] `.env.example` updated if new env vars required
+- [ ] `ENV-INVENTORY.md` updated for new env vars

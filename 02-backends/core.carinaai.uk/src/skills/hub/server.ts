@@ -3,7 +3,18 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express, { type Express, type Request, type Response } from 'express';
 import { config } from '../../config/index.js';
-import { initHubDb } from './migrations.js';
+import { initHubDb, hubPool } from './migrations.js';
+import { authorizeOps } from '../../ops/ops-auth.js';
+import {
+  createSubmission,
+  getSubmission,
+  publishSubmission,
+  reviewSubmission,
+  sendPublicationEmail,
+  sendRejectionEmail,
+  sendSubmissionConfirmation,
+  validateSubmissionInput,
+} from './marketplace-submissions.js';
 import {
   getHubPack,
   getHubSkill,
@@ -558,6 +569,120 @@ export function createSkillsHubApp(): Express {
     }
   });
 
+  // ---- Submission rate limiting (3 per email per day) ----
+  const SUBMIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const submitHits = new Map<string, number[]>();
+
+  function submissionRateLimit(email: string, res: Response): boolean {
+    const now = Date.now();
+    const hits = (submitHits.get(email) ?? []).filter((t) => now - t < SUBMIT_WINDOW_MS);
+    if (hits.length >= 3) {
+      res.status(429).json({ error: 'Rate limit: max 3 submissions per email per day.' });
+      return false;
+    }
+    hits.push(now);
+    submitHits.set(email, hits);
+    return true;
+  }
+
+  // ---- Submission routes ----
+
+  app.post('/api/submissions', async (req, res, next) => {
+    try {
+      const body = req.body as Record<string, unknown>;
+      const errors = validateSubmissionInput(body);
+      if (errors.length > 0) {
+        res.status(400).json({ error: 'validation_failed', details: errors });
+        return;
+      }
+      const email = String(body.authorEmail ?? '').trim().toLowerCase();
+      if (!submissionRateLimit(email, res)) return;
+
+      const sub = await createSubmission({
+        packName: String(body.packName).trim(),
+        version: String(body.version).trim(),
+        authorHandle: String(body.authorHandle).trim(),
+        authorEmail: email,
+        description: String(body.description).trim(),
+        category: body.category ? String(body.category).trim() : undefined,
+        pricingTier: String(body.pricingTier ?? 'free').trim(),
+        priceGbpCents: typeof body.priceGbpCents === 'number' ? body.priceGbpCents : undefined,
+        packArchiveUrl: String(body.packArchiveUrl).trim(),
+      });
+
+      void sendSubmissionConfirmation(sub).catch(() => {});
+      res.status(201).json({ submissionId: sub.id, status: 'pending' });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/submissions', async (req, res, next) => {
+    try {
+      if (!authorizeOps(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      const status = String(req.query.status ?? '').trim() || null;
+      const page = Math.max(1, parseInt(String(req.query.page ?? '1'), 10));
+      const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? '20'), 10)));
+      const offset = (page - 1) * limit;
+      const [rows, countRows] = await Promise.all([
+        hubPool.query(
+          `SELECT * FROM pack_submissions
+           WHERE ($1::text IS NULL OR status = $1)
+           ORDER BY submitted_at DESC LIMIT $2 OFFSET $3`,
+          [status, limit, offset],
+        ),
+        hubPool.query(
+          `SELECT COUNT(*) AS total FROM pack_submissions WHERE ($1::text IS NULL OR status = $1)`,
+          [status],
+        ),
+      ]);
+      const total = parseInt(String((countRows.rows[0] as Record<string, string>).total ?? '0'), 10);
+      res.json({ submissions: rows.rows, total, page, limit });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.get('/api/submissions/:id', async (req, res, next) => {
+    try {
+      if (!authorizeOps(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      const sub = await getSubmission(req.params.id);
+      if (!sub) { res.status(404).json({ error: 'Submission not found' }); return; }
+      res.json({ submission: sub });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.patch('/api/submissions/:id', async (req, res, next) => {
+    try {
+      if (!authorizeOps(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      const action = String(req.body?.action ?? '').trim() as 'approve' | 'reject';
+      if (action !== 'approve' && action !== 'reject') {
+        res.status(400).json({ error: 'action must be approve or reject' });
+        return;
+      }
+      const sub = await reviewSubmission(req.params.id, action, req.body?.reviewerNotes as string | undefined);
+      if (!sub) { res.status(404).json({ error: 'Submission not found or not pending' }); return; }
+      if (action === 'reject') void sendRejectionEmail(sub).catch(() => {});
+      res.json({ submission: sub });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  app.post('/api/submissions/:id/publish', async (req, res, next) => {
+    try {
+      if (!authorizeOps(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
+      const sub = await publishSubmission(req.params.id);
+      if (!sub) { res.status(404).json({ error: 'Submission not found or not approved' }); return; }
+      void sendPublicationEmail(sub).catch(() => {});
+      res.json({ submission: sub });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.use((err: unknown, _req: Request, res: Response, _next: () => void) => {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
@@ -595,6 +720,11 @@ async function handlePackDownload(name: string, res: Response, req?: Request): P
     return;
   }
   await recordPackDownload(name);
+  // install_count tracks unique installs separately from download_count (which tracks all downloads)
+  void hubPool.query(
+    `UPDATE skill_packs SET install_count = install_count + 1 WHERE name = $1`,
+    [name],
+  ).catch(() => {});
   res.download(archivePath);
 }
 

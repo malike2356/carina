@@ -1,0 +1,12 @@
+# Tagged release images for staging atomic deploy + rollback.
+# Used with: docker compose -f docker-compose.staging.yml -f docker-compose.staging.deploy.yml
+
+services:
+  carina-web-staging:
+    image: carina-staging-release/carina-web-staging:${CARINA_WEB_STAGING_TAG:-bootstrap}
+
+  carina-cloud-staging:
+    image: carina-staging-release/carina-cloud-staging:${CARINA_CLOUD_STAGING_TAG:-bootstrap}
+
+  carina-admin-staging:
+    image: carina-staging-release/carina-admin-staging:${CARINA_ADMIN_STAGING_TAG:-bootstrap}

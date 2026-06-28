@@ -7,6 +7,7 @@ import { deviceHasScope } from '../infrastructure/device-scopes.js';
 import { resolveProductMode } from '../product/surface.js';
 import { canPerform, type RbacAction } from '../hosted/rbac.js';
 import { requireOrgContext, type OrgContext } from '../hosted/org-context.js';
+import { isCloudProxyApiPath, isCloudProxyAuthorized } from './cloud-proxy-auth.js';
 
 const OPS_API_PATHS = new Set([
   '/api/health',
@@ -21,7 +22,9 @@ export function isOpsMachineApiPath(path: string, method: string): boolean {
   if (path.startsWith('/api/carina-ops/admin/')) return true;
   if (path.startsWith('/api/security/')) return true;
   if (path.startsWith('/api/mcp')) return true;
-  return path === '/api/chat/stream' && method === 'GET';
+  if (path === '/api/chat/stream' && method === 'GET') return true;
+  if (path === '/api/transcribe' && method === 'POST') return true;
+  return false;
 }
 
 const PUBLIC_HOSTED_PATHS = new Set([
@@ -58,6 +61,8 @@ const PUBLIC_HOSTED_PATHS = new Set([
 
 export function isPublicHostedPath(path: string): boolean {
   if (PUBLIC_HOSTED_PATHS.has(path)) return true;
+  if (path.startsWith('/api/channels/webhook/')) return true;
+  if (path.startsWith('/api/widget/')) return true;
   if (
     path.endsWith('.js')
     || path.endsWith('.css')
@@ -79,6 +84,11 @@ export async function requireWebAuth(req: Request, res: Response, next: NextFunc
 
   const pairedDevice = pairedDeviceFromRequest(req);
   if (pairedDevice && req.path === '/api/chat' && req.method === 'POST' && deviceHasScope(pairedDevice, 'chat')) {
+    next();
+    return;
+  }
+
+  if (req.path.startsWith('/api/') && isCloudProxyApiPath(req.path) && isCloudProxyAuthorized(req)) {
     next();
     return;
   }

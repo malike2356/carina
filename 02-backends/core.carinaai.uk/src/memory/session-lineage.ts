@@ -1,9 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { CARINA_HOME } from '../config/paths.js';
-
-const STORE_PATH = path.join(CARINA_HOME, 'session-lineage.json');
+import { resolveCarinaHome } from '../config/paths.js';
 
 type LineageStore = {
   version: number;
@@ -13,13 +11,19 @@ type LineageStore = {
   timestamps: Record<string, string>;
 };
 
+let warnedWriteFailure = false;
+
+function storePath(): string {
+  return path.join(resolveCarinaHome(), 'session-lineage.json');
+}
+
 function emptyStore(): LineageStore {
   return { version: 1, parents: {}, timestamps: {} };
 }
 
 function loadStore(): LineageStore {
   try {
-    const raw = JSON.parse(fs.readFileSync(STORE_PATH, 'utf-8')) as LineageStore;
+    const raw = JSON.parse(fs.readFileSync(storePath(), 'utf-8')) as LineageStore;
     return { ...emptyStore(), ...raw };
   } catch {
     return emptyStore();
@@ -27,8 +31,20 @@ function loadStore(): LineageStore {
 }
 
 function saveStore(store: LineageStore): void {
-  fs.mkdirSync(CARINA_HOME, { recursive: true });
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+  const home = resolveCarinaHome();
+  const filePath = storePath();
+  try {
+    fs.mkdirSync(home, { recursive: true });
+    const tmpPath = `${filePath}.tmp`;
+    fs.writeFileSync(tmpPath, JSON.stringify(store, null, 2), { mode: 0o644 });
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    if (!warnedWriteFailure) {
+      warnedWriteFailure = true;
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[session-lineage] Could not persist lineage store (${msg}); continuing without disk write`);
+    }
+  }
 }
 
 export function recordSessionContinuation(childSessionId: string, parentSessionId: string): void {

@@ -26,18 +26,24 @@ export interface TopupCheckoutInput {
 }
 
 export class StripeService {
-  private readonly stripe: Stripe;
+  private stripe: Stripe | null;
 
   constructor(stripe?: Stripe) {
+    this.stripe = stripe ?? null;
+  }
+
+  private client(): Stripe {
+    if (this.stripe) return this.stripe;
     const secret = config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '';
-    if (!secret && !stripe) {
+    if (!secret) {
       throw new Error('Missing required env var: STRIPE_SECRET_KEY');
     }
-    this.stripe = stripe ?? new Stripe(secret);
+    this.stripe = new Stripe(secret);
+    return this.stripe;
   }
 
   async createCheckoutSession(input: CheckoutInput): Promise<Stripe.Checkout.Session> {
-    return this.stripe.checkout.sessions.create({
+    return this.client().checkout.sessions.create({
       mode: 'subscription',
       customer_email: input.email,
       line_items: [{ price: resolveStripePriceId(input.plan), quantity: 1 }],
@@ -59,7 +65,7 @@ export class StripeService {
   }
 
   async createTopupCheckoutSession(input: TopupCheckoutInput): Promise<Stripe.Checkout.Session> {
-    return this.stripe.checkout.sessions.create({
+    return this.client().checkout.sessions.create({
       mode: 'payment',
       customer_email: input.email,
       line_items: [{ price: resolveTopupStripePriceId(input.packId), quantity: 1 }],
@@ -77,22 +83,52 @@ export class StripeService {
   handleWebhook(payload: Buffer | string, signature: string): Stripe.Event {
     const secret = config.hosted.stripeWebhookSecret || process.env.STRIPE_WEBHOOK_SECRET || '';
     if (!secret) throw new Error('Missing required env var: STRIPE_WEBHOOK_SECRET');
-    return this.stripe.webhooks.constructEvent(payload, signature, secret);
+    return this.client().webhooks.constructEvent(payload, signature, secret);
+  }
+
+  async getCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+    return this.client().checkout.sessions.retrieve(sessionId);
   }
 
   async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-    return this.stripe.subscriptions.retrieve(subscriptionId);
+    return this.client().subscriptions.retrieve(subscriptionId);
   }
 
   async cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-    return this.stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: true });
+    return this.client().subscriptions.update(subscriptionId, { cancel_at_period_end: true });
   }
 
   async reactivateSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-    return this.stripe.subscriptions.update(subscriptionId, { cancel_at_period_end: false });
+    return this.client().subscriptions.update(subscriptionId, { cancel_at_period_end: false });
   }
 
   async updatePaymentMethod(customerId: string, returnUrl: string): Promise<Stripe.BillingPortal.Session> {
-    return this.stripe.billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+    return this.client().billingPortal.sessions.create({ customer: customerId, return_url: returnUrl });
+  }
+
+  async retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return this.client().subscriptions.retrieve(subscriptionId, { expand: ['items.data.price'] });
+  }
+
+  async createSubscriptionItem(subscriptionId: string, priceId: string): Promise<Stripe.SubscriptionItem> {
+    return this.client().subscriptionItems.create({ subscription: subscriptionId, price: priceId });
+  }
+
+  async reportMeterEvent(params: {
+    eventName: string;
+    stripeCustomerId: string;
+    quantity: number;
+    timestamp?: number;
+    identifier?: string;
+  }): Promise<Stripe.Billing.MeterEvent> {
+    return this.client().billing.meterEvents.create({
+      event_name: params.eventName,
+      payload: {
+        stripe_customer_id: params.stripeCustomerId,
+        value: String(params.quantity),
+      },
+      timestamp: params.timestamp,
+      identifier: params.identifier,
+    });
   }
 }

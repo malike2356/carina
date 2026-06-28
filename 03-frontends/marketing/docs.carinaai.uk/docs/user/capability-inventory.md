@@ -67,9 +67,17 @@ See [Configuration](/docs/user/configuration) for env reference. Detail pages be
 
 Carina registers **72+ tools** in the base registry. Toolsets in `~/.carina/toolsets.yaml` enable subsets per platform (web, CLI, Telegram, etc.).
 
-**Core categories:** web search, files, shell, HTTP, email, code execution, browser, MCP, kanban, cron, delegation, workspace (notes, documents, images), ops audit, and pack-specific tools.
+**Core categories:** web search, files, shell, HTTP, email, code execution, browser, MCP, kanban, cron, delegation, workspace (notes, documents, images), ops audit, Trello, and pack-specific tools.
 
 Full inventory: `instructions/operations/TOOL_INVENTORY.md` in the Carina repo. Implementation detail: [Tools overview](/docs/user/tools/overview).
+
+## Integrations (configured)
+
+| Integration | Doc | Surfaces |
+|---|---|---|
+| Trello | [Trello](/docs/user/integrations/trello) | Web `/trello`, agent `trello` tool; Carina Cloud and private installs |
+
+Credentials: web UI on `/trello` or Cloud **Settings**, or `TRELLO_API_KEY` / `TRELLO_TOKEN` in `.env`.
 
 ## Providers (configured)
 

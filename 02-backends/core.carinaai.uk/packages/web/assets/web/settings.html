@@ -69,6 +69,19 @@
     </div>
 
     <div class="card">
+      <h2>Trello integration</h2>
+      <p class="status">Connect boards for the <a href="/trello" style="color:var(--accent)">Trello workspace</a> and the agent <code>trello</code> tool.</p>
+      <p id="trello-status" class="status">Loading...</p>
+      <label for="trelloApiKey">API key</label>
+      <input type="text" id="trelloApiKey" placeholder="From trello.com/app-key" autocomplete="off">
+      <label for="trelloToken">Token</label>
+      <input type="password" id="trelloToken" placeholder="Member token (read + write)" autocomplete="off">
+      <button id="trello-save-btn">Save Trello credentials</button>
+      <button class="danger" id="trello-clear-btn">Remove saved credentials</button>
+      <div id="trello-msg" class="msg" hidden></div>
+    </div>
+
+    <div class="card">
       <h2>Add provider key</h2>
       <label for="provider">Provider</label>
       <select id="provider">
@@ -173,7 +186,82 @@
       refresh();
     });
 
+    async function loadTrelloSettings() {
+      const res = await fetch('/api/trello/settings');
+      if (!res.ok) return null;
+      return res.json();
+    }
+
+    function renderTrelloSettings(data) {
+      const el = document.getElementById('trello-status');
+      if (!data) {
+        el.textContent = 'Could not load Trello status.';
+        return;
+      }
+      if (!data.configured) {
+        el.textContent = 'Not connected. Add credentials below or set TRELLO_API_KEY and TRELLO_TOKEN on the server.';
+        return;
+      }
+      const source = data.source === 'env' ? 'server environment' : 'saved credentials';
+      el.textContent = 'Connected (' + source + ')' + (data.apiKeyMask ? ' - key ' + data.apiKeyMask : '');
+      el.className = 'status on';
+    }
+
+    async function refreshTrello() {
+      renderTrelloSettings(await loadTrelloSettings());
+    }
+
+    document.getElementById('trello-save-btn').addEventListener('click', async () => {
+      const msg = document.getElementById('trello-msg');
+      msg.hidden = true;
+      const apiKey = document.getElementById('trelloApiKey').value.trim();
+      const token = document.getElementById('trelloToken').value.trim();
+      if (!apiKey || !token) {
+        msg.textContent = 'API key and token required';
+        msg.className = 'msg err';
+        msg.hidden = false;
+        return;
+      }
+      const res = await fetch('/api/trello/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey, token }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        msg.textContent = data.error || 'Save failed';
+        msg.className = 'msg err';
+        msg.hidden = false;
+        return;
+      }
+      document.getElementById('trelloApiKey').value = '';
+      document.getElementById('trelloToken').value = '';
+      msg.textContent = 'Trello credentials saved';
+      msg.className = 'msg ok';
+      msg.hidden = false;
+      renderTrelloSettings(data);
+    });
+
+    document.getElementById('trello-clear-btn').addEventListener('click', async () => {
+      if (!confirm('Remove saved Trello credentials for this account?')) return;
+      const msg = document.getElementById('trello-msg');
+      msg.hidden = true;
+      const res = await fetch('/api/trello/settings', { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        msg.textContent = data.error || 'Remove failed';
+        msg.className = 'msg err';
+        msg.hidden = false;
+        return;
+      }
+      msg.textContent = 'Saved Trello credentials removed';
+      msg.className = 'msg ok';
+      msg.hidden = false;
+      renderTrelloSettings(data);
+    });
+
     refresh();
+    refreshTrello();
   </script>
 </body>
 </html>

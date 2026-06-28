@@ -23,5 +23,6 @@ BS 5839 provides guidance on fire detection systems; document pass/fail and reme
 - `fire_safety_logs` table per property with `next_due_at`
 - Overdue logs feed compliance score and dashboard widgets
 - Carina tool: `get_fire_log_status`
+- **Full FRA:** `fire_risk_assessments`, defects, responsible person, materials config - see `100-fire-risk-assessment-full.md`
 
-When advising operators, emphasise documented evidence for council inspections and insurance.
+When advising operators, emphasise documented evidence for council inspections and insurance. Distinguish weekly/monthly **logs** from the annual **fire risk assessment** document.

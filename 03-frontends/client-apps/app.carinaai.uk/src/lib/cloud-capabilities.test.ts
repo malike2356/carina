@@ -22,4 +22,13 @@ describe('getCloudCapabilities', () => {
     expect(caps.terminal).toBe(true);
     expect(hasCloudCapability(caps, 'mcp')).toBe(true);
   });
+
+  it('terminal works with ops token even when core proxy flag is off', () => {
+    vi.stubEnv('CARINA_USE_CORE_PROXY', 'false');
+    vi.stubEnv('CARINA_OPS_TOKEN', 'test-token');
+    const caps = getCloudCapabilities();
+    expect(caps.terminal).toBe(true);
+    expect(caps.logs).toBe(false);
+    expect(caps.chatMode).toBe('byok-direct');
+  });
 });

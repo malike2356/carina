@@ -43,7 +43,7 @@ const JUNK_TITLE_PATTERNS = [
   /\btrends?\s+report\b/i,
   /\bkey trends\b/i,
   /\|\s*\d+\s+comments/i,
-  /✨|👇|🔥/,
+  /||/,
   /\bevent\s+20\d{2}\b/i,
   /\bregister now\b/i,
   /\bwhitepaper\b/i,
@@ -71,10 +71,20 @@ export function cleanPlainText(input: string, maxLen = 240): string {
   return input
     .replace(/<[^>]+>/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/[#*_`>]/g, ' ')
+    .replace(/\[[^\]]+\]/g, ' ')
+    .replace(/[#*_`>|]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, maxLen);
+}
+
+export function isJunkDamageText(input: string): boolean {
+  const plain = cleanPlainText(input, 400).toLowerCase();
+  if (!plain || plain.length < 8) return true;
+  if (/^(menu|report this post|share|subscribe|read more|sign in)\b/.test(plain)) return true;
+  if (plain.includes('report this post')) return true;
+  if (/\b(risk report|trends report|whitepaper|register now)\b/.test(plain) && !/\$[\d,]+/.test(plain)) return true;
+  return false;
 }
 
 export function isJunkSearchHit(hit: WebSearchHit): boolean {
@@ -150,6 +160,7 @@ export function parseCuratedFindings(raw: string): ResearchFinding[] {
       const sourceUrl = String(row.sourceUrl ?? row.source_url ?? '').trim();
       const sourceLabel = cleanPlainText(String(row.sourceLabel ?? row.source_label ?? title), 80);
       if (!title || !company || !damage || !sourceUrl.startsWith('http')) continue;
+      if (isJunkDamageText(damage)) continue;
       if (!['financial', 'security', 'brand', 'legal'].includes(category)) continue;
       findings.push({
         title,

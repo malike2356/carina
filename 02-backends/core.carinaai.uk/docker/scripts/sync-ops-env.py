@@ -38,8 +38,9 @@ CLOUD_RUNTIME_CANDIDATES = [
 
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
-DB_HOST = os.environ.get('DB_HOST', 'postgres')
-DB_PORT = os.environ.get('DB_PORT', '5432')
+PGBOUNCER_ENABLED = os.environ.get('PGBOUNCER_ENABLED', '1')
+DB_HOST = os.environ.get('DB_HOST', 'pgbouncer' if PGBOUNCER_ENABLED == '1' else 'postgres')
+DB_PORT = os.environ.get('DB_PORT', '6432' if PGBOUNCER_ENABLED == '1' else '5432')
 
 DOCKER_DEFAULTS = {
     'PORT': '4001',
