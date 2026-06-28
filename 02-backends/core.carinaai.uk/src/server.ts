@@ -16,6 +16,8 @@ import { adminRouter } from './admin/admin-router.js';
 import { mountWorkspaceUploads, workspaceRouter } from './workspace/workspace-router.js';
 import { publicPricingRouter } from './api/public-pricing.js';
 import { ragUploadRouter } from './api/rag-upload-api.js';
+import { toolStatusRouter } from './api/tool-status-api.js';
+import { runtimeToolsRouter } from './api/runtime-tools-api.js';
 
 export function mountCloudRawRoutes(app: Express): void {
   mountCloudWebhook(app);
@@ -30,6 +32,8 @@ export function mountServerRoutes(app: Express): void {
   app.post('/app/auth/login', loginCloudOrg);
   app.use('/api/public/pricing', publicPricingRouter);
   app.use('/api/carina-ops/rag', ragUploadRouter);
+  app.use('/api/carina-ops/credentials', toolStatusRouter);
+  app.use('/api/carina-ops/tools', runtimeToolsRouter);
   app.use('/api/cloud', cloudRouter);
   app.use('/api/incident-blog', incidentBlogRouter);
   if (isAiWorkersEnabled()) {

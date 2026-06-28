@@ -101,6 +101,86 @@ export const TOOL_RISK_REGISTRY: Record<string, ToolRiskSpec> = {
   },
   'process': { riskClass: 'execute', sideEffects: ['spawns host processes'], requiresDangerousFlag: true },
   'nmap': { riskClass: 'execute', sideEffects: ['network port scanning'], requiresDangerousFlag: true },
+  'pspp_analyze': {
+    riskClass: 'execute',
+    sideEffects: ['runs PSPP statistical analysis on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'jamovi_analyze': {
+    riskClass: 'execute',
+    sideEffects: ['runs Jamovi/jmv statistical analysis via Python and Rscript'],
+    requiresDangerousFlag: false,
+  },
+  'r_analyze': {
+    riskClass: 'execute',
+    sideEffects: ['runs R statistical analysis on local data files via Rscript'],
+    requiresDangerousFlag: false,
+  },
+  'sav_read': {
+    riskClass: 'read',
+    sideEffects: ['reads local SPSS .sav data files via Python'],
+    requiresDangerousFlag: false,
+  },
+  'spv_read': {
+    riskClass: 'read',
+    sideEffects: ['reads local SPSS .spv output files'],
+    requiresDangerousFlag: false,
+  },
+  'sav_write': {
+    riskClass: 'write',
+    sideEffects: ['writes local SPSS .sav data files via Python'],
+    requiresDangerousFlag: false,
+  },
+  'spss_syntax_generate': {
+    riskClass: 'write',
+    sideEffects: ['writes SPSS/PSPP .sps syntax files'],
+    requiresDangerousFlag: false,
+  },
+  'spss_output_parse': {
+    riskClass: 'read',
+    sideEffects: ['reads and parses SPSS/PSPP output files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_describe': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python descriptive statistics on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_normality': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python normality tests on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_compare_groups': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python group comparison tests on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_correlation': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python correlation analysis on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_regression': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python linear or logistic regression on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_chi_square': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python chi-square tests on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'stats_posthoc': {
+    riskClass: 'execute',
+    sideEffects: ['runs Python Tukey post-hoc tests on local data files'],
+    requiresDangerousFlag: false,
+  },
+  'apa_format': {
+    riskClass: 'read',
+    sideEffects: ['formats statistical results as APA markdown'],
+    requiresDangerousFlag: false,
+  },
   'amass': { riskClass: 'execute', sideEffects: ['subdomain enumeration'], requiresDangerousFlag: true },
   'theHarvester': { riskClass: 'execute', sideEffects: ['OSINT harvesting'], requiresDangerousFlag: true },
   'recon-ng': { riskClass: 'execute', sideEffects: ['OSINT framework execution'], requiresDangerousFlag: true },
@@ -249,6 +329,19 @@ export const TOOL_RISK_REGISTRY: Record<string, ToolRiskSpec> = {
 
   // Credential access
   'mcp': { riskClass: 'credential', sideEffects: ['connects to external MCP servers'], requiresDangerousFlag: true },
+
+  // Self-config: credential store (sprint 1)
+  'configure_credential': { riskClass: 'credential', sideEffects: ['writes encrypted credential to DB'], requiresDangerousFlag: false },
+  'list_credentials':     { riskClass: 'read',       sideEffects: ['reads credential metadata (no values)'], requiresDangerousFlag: false },
+  'test_credential':      { riskClass: 'external',   sideEffects: ['outbound HTTP to credential endpoint'], requiresDangerousFlag: false },
+  'remove_credential':    { riskClass: 'write',      sideEffects: ['deletes credential from DB'], requiresDangerousFlag: false },
+  'tool_status':          { riskClass: 'read',       sideEffects: ['reads tool registry and credential status'], requiresDangerousFlag: false },
+
+  // Self-config: dynamic tool generation (sprints 2-3)
+  'setup_tool_gen_auth':    { riskClass: 'credential', sideEffects: ['sets operator passphrase hash in DB'], requiresDangerousFlag: false },
+  'generate_and_run_tool':  { riskClass: 'execute',   sideEffects: ['generates and runs LLM code in sandbox'], requiresDangerousFlag: true },
+  'persist_runtime_tool':   { riskClass: 'write',     sideEffects: ['saves generated tool code to DB'], requiresDangerousFlag: true },
+  'approve_runtime_tool':   { riskClass: 'write',     sideEffects: ['activates generated tool in live registry'], requiresDangerousFlag: true },
 };
 
 export const LEAK_PRONE_TOOL_NAMES = [

@@ -71,6 +71,16 @@ import { phoneControlTool } from './phone-control.js';
 import { NODE_TOOLS } from './node-tools.js';
 import { createCyberTools } from './cyber/index.js';
 import { blogTools } from './blog.js';
+import { RESEARCH_TOOLS } from './research/index.js';
+import { generateAndRunTool } from './dynamic/generate-and-run.js';
+import { persistRuntimeTool } from './dynamic/persist-tool.js';
+import { approveRuntimeTool } from './dynamic/approve-tool.js';
+import { setupToolGenAuth } from './dynamic/setup-auth.js';
+import { configureCredentialTool } from './configure-credential.js';
+import { listCredentialsTool } from './list-credentials.js';
+import { testCredentialTool } from './test-credential.js';
+import { removeCredentialTool } from './remove-credential.js';
+import { toolStatusTool } from './tool-status.js';
 
 registry.register(webSearchTool);
 registry.register(fileReadTool);
@@ -134,11 +144,23 @@ registry.register(notesManageTool);
 registry.register(n8nTool);
 registry.register(trelloTool);
 registry.register(themeTool);
+registry.register(generateAndRunTool);
+registry.register(persistRuntimeTool);
+registry.register(approveRuntimeTool);
+registry.register(setupToolGenAuth);
+registry.register(configureCredentialTool);
+registry.register(listCredentialsTool);
+registry.register(testCredentialTool);
+registry.register(removeCredentialTool);
+registry.register(toolStatusTool);
 registry.register(documentsManageTool);
 registry.register(imagesGalleryTool);
 registry.register(secretsAuditTool);
 for (const tool of blogTools) {
   registry.register(tool);
+}
+for (const tool of RESEARCH_TOOLS) {
+  registry.register(tool, { toolset: 'research' });
 }
 for (const tool of OPERATOR_UTILITY_TOOLS) {
   registry.register(tool);

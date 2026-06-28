@@ -1,4 +1,6 @@
 import type pg from 'pg';
+import { TOOL_CREDENTIALS_MIGRATION } from '../credentials/credential-store.js';
+import { RUNTIME_TOOLS_MIGRATION } from '../tools/dynamic/tool-store.js';
 import { BACKGROUND_PROCESS_MIGRATION } from '../tools/process-persistence.js';
 import { KANBAN_BOARD_MIGRATION } from '../agents/kanban-persistence.js';
 import { WEBHOOK_MATURITY_MIGRATION } from '../webhooks/webhook-persistence.js';
@@ -1089,6 +1091,16 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(RAG_WORKSPACE_MIGRATION);
   } catch {
     // workspace_id column may already exist
+  }
+  try {
+    await client.query(TOOL_CREDENTIALS_MIGRATION);
+  } catch {
+    // tool_credentials table may already exist
+  }
+  try {
+    await client.query(RUNTIME_TOOLS_MIGRATION);
+  } catch {
+    // runtime_tools table may already exist
   }
 }
 

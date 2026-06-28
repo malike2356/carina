@@ -56,3 +56,30 @@ export interface OAuthTokenResponse {
   error?: string;
   error_description?: string;
 }
+
+export interface ToolCredential {
+  id: number;
+  service: string;
+  key_name: string;
+  encrypted_value: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CredentialStatus {
+  service: string;
+  key_name: string;
+  configured: boolean;
+  source: 'store' | 'env' | 'none';
+  masked_value?: string;
+}
+
+export interface ToolCapability {
+  tool_name: string;
+  description: string;
+  required_credentials: string[];
+  status: 'ready' | 'unconfigured' | 'partial' | 'error';
+  missing_credentials: string[];
+  category: string;
+}

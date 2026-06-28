@@ -6,7 +6,7 @@ import { startCLI } from './gateway/cli.js';
 import { startTelegram } from './gateway/telegram.js';
 import { startWebGateway } from './gateway/load-web-package.js';
 import { startDiscord } from './gateway/discord.js';
-import { startSlack } from './gateway/slack.js';
+import { startSlack, createSlackAmbientSchedulerTask } from './gateway/slack.js';
 import { config } from './config/index.js';
 import { isWhatsAppConfigured } from './gateway/whatsapp.js';
 import { initSandbox } from './tools/sandbox.js';
@@ -19,6 +19,7 @@ import { createProviderQuotaPollTask, providerQuotaPollingEnabled } from './brai
 import { createCommitmentDeliveryTask } from './commitments/delivery.js';
 import { commitmentsEnabled } from './commitments/inference.js';
 import { createReminderDeliveryTask } from './agents/reminder-delivery.js';
+import { createAmbientEvictionTask } from './agents/ambient/stale-eviction.js';
 import { loadAndRegisterAllJobs, setJobDeliverCallback } from './agents/cron-scheduler.js';
 import { loadAndRegisterAllWorkflows } from './agents/cron-workflow-scheduler.js';
 import { deliverJobOutput } from './agents/cron-delivery.js';
@@ -83,6 +84,9 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 process.on('SIGINT', () => void shutdown('SIGINT'));
 
 async function main(): Promise<void> {
+  const { initSentry } = await import('./observability/sentry.js');
+  await initSentry();
+
   applyActiveProfileFromDisk();
 
   const { otelEnabled, initOtel, getOtelStatus } = await import('./telemetry/otel.js');
@@ -125,16 +129,49 @@ async function main(): Promise<void> {
       memoryReady = true;
       const jobCount = await loadAndRegisterAllJobs();
       const workflowCount = await loadAndRegisterAllWorkflows();
+      const { loadAndRegisterAllAivaAutomations } = await import('./workers/aiva-automation-scheduler.js');
+      const aivaAutomationCount = await loadAndRegisterAllAivaAutomations();
       const { recoverProcessesOnStartup } = await import('./tools/process-registry.js');
       const recoveredProcesses = await recoverProcessesOnStartup();
+      const { rehydrateRuntimeTools } = await import('./tools/dynamic/rehydrate.js');
+      const rehydratedCount = await rehydrateRuntimeTools();
       const { startWebhookRetrySweep } = await import('./webhooks/dispatcher.js');
       startWebhookRetrySweep();
       await initSkills();
       startSkillCuratorSchedule();
       startHubSyncSchedule();
       startBillingReconciliationSchedule();
+      if (process.env.AI_WORKERS_ENABLED !== 'false') {
+        const { startAivaTrialEmailCron, startAivaGraceSuspendCron } = await import('./email/trial-email-cron.js');
+        startAivaTrialEmailCron();
+        startAivaGraceSuspendCron();
+        const { startGdprHardDeleteCron } = await import('./email/gdpr-cron.js');
+        startGdprHardDeleteCron();
+        const { startCronHeartbeatWriter } = await import('./health/cron-heartbeat.js');
+        startCronHeartbeatWriter();
+        const { startDailySummaryCron } = await import('./workers/summary-generator.js');
+        await startDailySummaryCron();
+        const { startEmailIngestionPoller } = await import('./ingestion/email/email-poller.js');
+        startEmailIngestionPoller();
+      }
       const recoveryNote = recoveredProcesses > 0 ? `, ${recoveredProcesses} background processes recovered` : '';
-      console.log(chalk.gray(`Memory store ready (${jobCount} jobs, ${workflowCount} workflows${recoveryNote})`));
+      const runtimeNote = rehydratedCount > 0 ? `, ${rehydratedCount} runtime tools rehydrated` : '';
+      console.log(chalk.gray(`Memory store ready (${jobCount} jobs, ${workflowCount} workflows, ${aivaAutomationCount} aiva automations${recoveryNote}${runtimeNote})`));
+
+      // Scheduled Scout security checks for the self-modification pipeline
+      if (process.env.SCOUT_SELF_MOD_AUTO_RESPONSE !== 'false') {
+        const { runScheduledSecurityChecks, runDailyDeepAudit } = await import('./security/scheduled-checks.js');
+        setInterval(() => { void runScheduledSecurityChecks(); }, 5 * 60 * 1000);
+        const auditHour = parseInt((process.env.SCOUT_SELF_MOD_DAILY_AUDIT_TIME ?? '02:00').split(':')[0] ?? '2', 10);
+        const now = new Date();
+        const nextAudit = new Date(now);
+        nextAudit.setUTCHours(auditHour, 0, 0, 0);
+        if (nextAudit <= now) nextAudit.setUTCDate(nextAudit.getUTCDate() + 1);
+        setTimeout(() => {
+          void runDailyDeepAudit();
+          setInterval(() => { void runDailyDeepAudit(); }, 24 * 60 * 60 * 1000);
+        }, nextAudit.getTime() - now.getTime());
+      }
     }
     if (process.env.CARINA_IMPORT_WORKSPACE === 'true') {
       const { imported, updated } = await importWorkspaceFiles();
@@ -181,7 +218,8 @@ async function main(): Promise<void> {
   });
 
   if (process.env.CARINA_CHECK_IN_ENABLED === 'true' || commitmentsEnabled()
-    || process.env.CARINA_REMINDER_DELIVERY !== 'false') {
+    || process.env.CARINA_REMINDER_DELIVERY !== 'false'
+    || process.env.CARINA_AMBIENT_MODE_ENABLED === 'true') {
     taskScheduler = new TaskScheduler(60_000);
     if (process.env.CARINA_CHECK_IN_ENABLED === 'true') {
       taskScheduler.register(createProactiveCheckInTask('cli', { memoryReady }));
@@ -202,6 +240,14 @@ async function main(): Promise<void> {
     if (process.env.CARINA_REMINDER_DELIVERY !== 'false') {
       taskScheduler.register(createReminderDeliveryTask());
       console.log(chalk.gray('Notes reminder delivery enabled'));
+    }
+    if (process.env.CARINA_AMBIENT_MODE_ENABLED === 'true') {
+      taskScheduler.register(createAmbientEvictionTask());
+      const ambientTask = createSlackAmbientSchedulerTask();
+      if (ambientTask) {
+        taskScheduler.register(ambientTask);
+      }
+      console.log(chalk.gray('Ambient channel agent enabled'));
     }
     taskScheduler.start();
   }

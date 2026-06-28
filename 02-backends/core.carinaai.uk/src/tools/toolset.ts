@@ -13,6 +13,15 @@ export const LEAF_EXCLUDED_TOOLS = [
   'debug-helpers',
   'mixture-of-agents',
   'computer-use',
+  'configure_credential',
+  'list_credentials',
+  'test_credential',
+  'remove_credential',
+  'tool_status',
+  'generate_and_run_tool',
+  'persist_runtime_tool',
+  'approve_runtime_tool',
+  'setup_tool_gen_auth',
 ] as const;
 
 /**
@@ -190,6 +199,24 @@ export const TOOLSET_MAP: Record<string, string[]> = {
     'blog-search-source',
   ],
   ops: ['secrets-audit', 'debug-helpers', 'capabilities-audit', 'channel-status-snapshot', 'learning-status'],
+  research: [
+    'pspp_analyze',
+    'jamovi_analyze',
+    'r_analyze',
+    'sav_read',
+    'sav_write',
+    'spv_read',
+    'spss_syntax_generate',
+    'spss_output_parse',
+    'stats_describe',
+    'stats_compare_groups',
+    'stats_correlation',
+    'stats_regression',
+    'stats_chi_square',
+    'stats_normality',
+    'stats_posthoc',
+    'apa_format',
+  ],
   utilities: [
     'json-format',
     'text-hash',
@@ -215,6 +242,19 @@ export const TOOLSET_MAP: Record<string, string[]> = {
     'git-brief-status',
     'disk-usage',
     'hex-encode',
+  ],
+  dynamic: [
+    'generate_and_run_tool',
+    'persist_runtime_tool',
+    'approve_runtime_tool',
+    'setup_tool_gen_auth',
+  ],
+  'self-config': [
+    'configure_credential',
+    'list_credentials',
+    'test_credential',
+    'remove_credential',
+    'tool_status',
   ],
   node: [
     'node_canvas_render',
@@ -248,9 +288,12 @@ export const TOOLSET_NAMES = [
   'ensemble',
   'workspace',
   'content',
+  'research',
   'ops',
   'utilities',
   'node',
+  'self-config',
+  'dynamic',
 ] as const;
 
 export function resolveToolset(toolsets: string[]): string[] {

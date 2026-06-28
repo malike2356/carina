@@ -1140,6 +1140,102 @@ const TOOL_META: Record<string, Omit<ToolCatalogEntry, 'name' | 'registered' | '
   'cron-explain': { category: 'utilities', purpose: 'Explain cron schedules', surfaces: ['agent', 'cli', 'web', 'cron'], toolset: 'utilities' },
   'rss-fetch': { category: 'utilities', purpose: 'Fetch RSS/Atom feeds', surfaces: ['agent', 'cli', 'web', 'cron'], toolset: 'utilities' },
   'research-list': { category: 'utilities', purpose: 'List saved deep-research reports', surfaces: ['agent', 'cli', 'web'], toolset: 'utilities' },
+  'pspp_analyze': {
+    category: 'research',
+    purpose: 'Run PSPP statistical analysis with APA-formatted output',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'jamovi_analyze': {
+    category: 'research',
+    purpose: 'Run Jamovi/jmv statistical analysis with APA-formatted output',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'r_analyze': {
+    category: 'research',
+    purpose: 'Run R statistical analysis via haven and broom with APA-formatted output',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'sav_read': {
+    category: 'research',
+    purpose: 'Read SPSS .sav files with variable metadata and preview',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'sav_write': {
+    category: 'research',
+    purpose: 'Write SPSS .sav files with labels and value maps',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'spv_read': {
+    category: 'research',
+    purpose: 'Read SPSS .spv output archives',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'spss_syntax_generate': {
+    category: 'research',
+    purpose: 'Generate SPSS/PSPP .sps syntax files',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'spss_output_parse': {
+    category: 'research',
+    purpose: 'Parse SPSS/PSPP .spv or text output into APA tables',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_describe': {
+    category: 'research',
+    purpose: 'Descriptive statistics via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_compare_groups': {
+    category: 'research',
+    purpose: 'T-test, ANOVA, Mann-Whitney, and Kruskal-Wallis via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_correlation': {
+    category: 'research',
+    purpose: 'Correlation matrix via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_regression': {
+    category: 'research',
+    purpose: 'Linear and logistic regression via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_chi_square': {
+    category: 'research',
+    purpose: 'Chi-square test of independence via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_normality': {
+    category: 'research',
+    purpose: 'Normality tests via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'stats_posthoc': {
+    category: 'research',
+    purpose: 'Tukey post-hoc comparisons via Python',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
+  'apa_format': {
+    category: 'research',
+    purpose: 'Format statistical output in APA markdown',
+    surfaces: ['agent', 'cli', 'web', 'mcp', 'pack'],
+    toolset: 'research',
+  },
   'learning-status': { category: 'ops', purpose: 'Self-improvement loop metrics', surfaces: ['agent', 'cli', 'ops'], toolset: 'ops' },
   'capabilities-audit': { category: 'ops', purpose: 'Audit tools/skills/channels vs targets', surfaces: ['agent', 'cli', 'ops'], toolset: 'ops' },
   'channel-status-snapshot': { category: 'ops', purpose: 'Channel health summary', surfaces: ['agent', 'cli', 'ops'], toolset: 'ops' },
@@ -1152,6 +1248,19 @@ const TOOL_META: Record<string, Omit<ToolCatalogEntry, 'name' | 'registered' | '
   'phone-control': { category: 'infrastructure', purpose: 'Dispatch shell commands to a paired phone node', surfaces: ['agent'], toolset: 'system' },
   'theme': { category: 'utilities', purpose: 'Set, list, or reset the workspace color theme', surfaces: ['agent', 'web'], toolset: 'utilities' },
   'trello': { category: 'integrations', purpose: 'Manage Trello boards, lists, and cards', surfaces: ['agent', 'web'], toolset: 'integrations' },
+
+  // Self-config: credential store (sprint 1)
+  'configure_credential': { category: 'security', purpose: 'Store an encrypted API credential in the secure credential store', surfaces: ['agent'], toolset: 'self-config' },
+  'list_credentials':     { category: 'security', purpose: 'List stored credentials by service and key name (values masked)', surfaces: ['agent'], toolset: 'self-config' },
+  'test_credential':      { category: 'security', purpose: 'Test a stored credential against its provider endpoint', surfaces: ['agent'], toolset: 'self-config' },
+  'remove_credential':    { category: 'security', purpose: 'Delete a stored credential from the credential store', surfaces: ['agent'], toolset: 'self-config' },
+  'tool_status':          { category: 'security', purpose: 'Report credential coverage and tool readiness for all registered tools', surfaces: ['agent'], toolset: 'self-config' },
+
+  // Self-config: dynamic tool generation (sprints 2-3)
+  'setup_tool_gen_auth':   { category: 'security', purpose: 'Set or rotate the operator passphrase that gates dynamic tool generation', surfaces: ['agent'], toolset: 'dynamic' },
+  'generate_and_run_tool': { category: 'ai',       purpose: 'Generate and sandbox-execute a new tool via LLM given a task description', surfaces: ['agent'], toolset: 'dynamic' },
+  'persist_runtime_tool':  { category: 'ai',       purpose: 'Persist a successfully-generated sandbox tool to the database for reuse', surfaces: ['agent'], toolset: 'dynamic' },
+  'approve_runtime_tool':  { category: 'security', purpose: 'Approve and activate a pending runtime-generated tool in the live registry', surfaces: ['agent'], toolset: 'dynamic' },
 };
 
 function resolveToolset(name: string): string | undefined {
