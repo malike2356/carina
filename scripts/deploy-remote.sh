@@ -37,6 +37,15 @@ if [[ ! -f artisan ]]; then
 fi
 
 run_artisan() {
+  # Prefer docker exec so artisan inherits the container's env (REMOTE_ROOT maps to
+  # /var/www/html inside the container). Running artisan on the host PHP with
+  # REMOTE_ROOT as the CWD produces wrong paths in config:cache (e.g. view paths
+  # resolve to /www/wwwroot/... instead of /var/www/html/...) which causes 500s.
+  if docker inspect propreneur-fpm >/dev/null 2>&1; then
+    docker exec propreneur-fpm php artisan "$@"
+    return
+  fi
+
   local artisan_path="$REMOTE_ROOT/artisan"
   if [[ "$(id -un)" == "$REMOTE_USER" ]]; then
     "$REMOTE_PHP" "$artisan_path" "$@"
