@@ -7,24 +7,25 @@ services:
       - .env.docker.runtime
     volumes:
       - carina-app-data:/app/data
+      - /var/log/verlox:/var/log/verlox:ro
       - ./docker/logrotate/carina:/etc/logrotate.d/carina:ro
       - ${LABYRINTHSCOUT_STATIC:-../labyrinthscout.com-static}:/var/www/labyrinthscout.com:rw
     environment:
       NODE_ENV: production
       HOSTED_MODE: "true"
       WEB_ENABLED: "true"
+      WEB_PORT: "3000"
+      CARINA_HOME: /app/data/.carina
       CARINA_OPS_PRODUCT_ENABLED: "true"
       INCIDENT_BLOG_OUTPUT_DIR: /var/www/labyrinthscout.com
-      DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina
+      DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@pgbouncer:6432/carina
+      SKILLS_HUB_DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@pgbouncer:6432/carina_skills_hub
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      # Provider, Telegram, Resend, and other secrets come from .env.docker.runtime only.
+      # Empty ${VAR:-} entries here override env_file and blank production keys.
       CARINA_SPLIT_GATEWAY: "false"
       CARINA_SUPERVISOR_HUB: "false"
       CARINA_SUPERVISOR_OPS: "false"
@@ -40,6 +41,8 @@ services:
       retries: 3
     depends_on:
       postgres:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -59,10 +62,12 @@ services:
       NODE_ENV: production
       SKILLS_HUB_PORT: "3001"
       SKILLS_HUB_URL: https://hub.carinaai.uk
-      SKILLS_HUB_DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina_skills_hub
+      SKILLS_HUB_DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@pgbouncer:6432/carina_skills_hub
       SKILLS_HUB_PUBLISH_KEY: ${SKILLS_HUB_PUBLISH_KEY:-}
       CARINA_SKIP_CONTAINER_BOOTSTRAP: "true"
     depends_on:
+      pgbouncer:
+        condition: service_healthy
       postgres:
         condition: service_healthy
     expose:
@@ -90,7 +95,7 @@ services:
       CARINA_API_URL: http://carina-web:3000
       CARINA_OPS_IN_DOCKER: "true"
       # Use postgres (Carina compose service) on the carina network. Do not use scout-postgres.
-      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@postgres:5432/carina
+      CARINA_DB_URL: postgresql://carina:${DB_PASSWORD:-secret}@pgbouncer:6432/carina
       SCOUT_COMPLIANCE_DB_URL: postgresql://scout:${SCOUT_DB_PASSWORD:-secret}@scout-postgres:5432/scout
       SCOUT_CONSOLE_URL: http://scout-console:4444
       SCOUT_URL: http://scout-console:4444
@@ -118,6 +123,8 @@ services:
     expose:
       - "4001"
     depends_on:
+      pgbouncer:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       carina-web:
@@ -139,16 +146,46 @@ services:
       HOSTNAME: "0.0.0.0"
       CARINA_CORE_URL: http://carina-web:3000
       CARINA_USE_CORE_PROXY: "true"
+      # Fallback when .env.cloud.runtime is stale; primary source is sync-cloud-env.py
+      CARINA_OPS_TOKEN: ${CARINA_OPS_TOKEN:-}
+      CARINA_INTERNAL_KEY: ${CARINA_INTERNAL_KEY:-}
       SKILLS_HUB_INTERNAL_URL: http://carina-hub:3001
+      CARINA_HOME: /app/data
+      # Set CARINA_LOCAL_WHISPER=false in .env.cloud.runtime to skip app-local Whisper probe.
+    volumes:
+      - carina-cloud-data:/app/data
     expose:
       - "4100"
     depends_on:
+      pgbouncer:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       carina-web:
         condition: service_healthy
     networks:
       - carina
+    restart: unless-stopped
+
+  carina-admin:
+    build:
+      context: ${CARINA_ADMIN_CONTEXT:-../../03-frontends/client-apps/admin.carinaai.uk}
+      dockerfile: ${CARINA_ADMIN_DOCKERFILE:-docker/Dockerfile.runtime}
+    env_file:
+      - ${CARINA_ADMIN_ENV_FILE:-.env.admin.runtime}
+    environment:
+      NODE_ENV: production
+      PORT: "4200"
+      HOSTNAME: "0.0.0.0"
+      ADMIN_CORE_URL: http://carina-web:3000
+    depends_on:
+      carina-web:
+        condition: service_healthy
+    expose:
+      - "4200"
+    networks:
+      - carina
+      - proxy
     restart: unless-stopped
 
   nginx:
@@ -171,6 +208,7 @@ services:
     volumes:
       - ${NGINX_CONF:-./docker/nginx/carina-prod.conf}:/etc/nginx/conf.d/default.conf:ro
       - ./docker/nginx/hub.carinaai.uk.conf:/etc/nginx/conf.d/hub.carinaai.uk.conf:ro
+      - ./docker/nginx/hireaiva.co.uk.conf:/etc/nginx/conf.d/hireaiva.co.uk.conf:ro
       - ./docker/nginx/console.labyrinthscout.com.conf:/etc/nginx/conf.d/console.labyrinthscout.com.conf:ro
       - ./docker/nginx/labyrinthscout.com.conf:/etc/nginx/conf.d/labyrinthscout.com.conf:ro
       - ./docker/nginx/propreneur.uk.conf:/etc/nginx/conf.d/propreneur.uk.conf:ro
@@ -179,14 +217,22 @@ services:
       - /www/wwwroot/propreneur-v2:/www/wwwroot/propreneur-v2:ro
       - /www/wwwroot/verlox.uk:/www/wwwroot/verlox.uk:ro
       - /www/wwwroot/va.verlox.uk:/www/wwwroot/va.verlox.uk:ro
+      - /www/wwwroot/hireaiva.co.uk:/var/www/hireaiva.co.uk:ro
       - /tmp/php-cgi-83.sock:/tmp/php-cgi-83.sock
       - ./docker/nginx/conf.d/certbot-location.inc:/etc/nginx/certbot-location.inc:ro
       - ./docker/nginx/conf.d/ssl-params.conf:/etc/nginx/conf.d/ssl-params.conf:ro
+      - ./docker/nginx/conf.d/security-defaults.conf:/etc/nginx/conf.d/security-defaults.conf:ro
+      - ./docker/nginx/conf.d/cloudflare-real-ip.conf:/etc/nginx/conf.d/cloudflare-real-ip.conf:ro
+      - ./docker/nginx/conf.d/security-headers.inc:/etc/nginx/conf.d/security-headers.inc:ro
+      - ./docker/nginx/conf.d/core-gateway-csp.inc:/etc/nginx/conf.d/core-gateway-csp.inc:ro
+      - ./docker/nginx/staging.carinaai.uk.conf:/etc/nginx/conf.d/staging.carinaai.uk.conf:ro
+      - ./docker/nginx/admin.carinaai.uk.conf:/etc/nginx/conf.d/admin.carinaai.uk.conf:ro
       - ./docs/.vitepress/dist:/var/www/docs:ro
       # carinaai.uk marketing site. After rsync to public_website/, run:
       #   bash docker/scripts/reload-marketing-nginx.sh
       # See public_website/README-DEPLOY.md and docker/DEPLOY.md (stale bind mount -> 403).
       - ./public_website:/var/www/public_website:ro
+      - ./status.carinaai.uk:/usr/share/nginx/html/status:ro
       - ${LABYRINTHSCOUT_STATIC:-../labyrinthscout.com-static}:/var/www/labyrinthscout.com:ro
       - ${CARINA_SSL_DIR:-/etc/letsencrypt}:/etc/nginx/ssl:ro
       - certbot-www:/var/www/certbot:ro
@@ -213,10 +259,21 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - /var/backups/postgres/wal:/wal_archive
     environment:
       POSTGRES_USER: carina
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
       POSTGRES_DB: carina
+    command:
+      - postgres
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /wal_archive/%f && cp %p /wal_archive/%f
+    ports:
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U carina"]
       interval: 5s
@@ -227,6 +284,28 @@ services:
         aliases:
           - carina-postgres
     restart: unless-stopped
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    volumes:
+      - ./docker/pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "6432"
+    networks:
+      carina:
+        aliases:
+          - pgbouncer
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U carina -d carina"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
@@ -246,6 +325,7 @@ volumes:
   redisdata:
   certbot-www:
   carina-app-data:
+  carina-cloud-data:
 
 networks:
   carina:
