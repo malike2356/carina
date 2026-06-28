@@ -3,6 +3,7 @@ import type {
   PropreneurComplianceItem,
   PropreneurPortfolioResponse,
   PropreneurProposalResponse,
+  PropreneurCarinaChatResponse,
 } from './propreneur-bridge.types.js';
 
 function tenantBaseDomain(): string {
@@ -152,6 +153,18 @@ export async function proposeFinancialLog(
     },
     options?.idempotencyKey,
   );
+}
+
+export async function chatWithCarina(
+  binding: PropreneurBridgeBinding,
+  message: string,
+  clientSessionId?: string,
+): Promise<PropreneurCarinaChatResponse> {
+  const body: Record<string, unknown> = { message };
+  if (clientSessionId) {
+    body.session_id = clientSessionId;
+  }
+  return bridgePost<PropreneurCarinaChatResponse>(binding, '/api/remote/carina/chat', body);
 }
 
 export function formatPortfolioContext(portfolio: PropreneurPortfolioResponse): string {

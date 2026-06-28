@@ -11,6 +11,7 @@ import {
   proposeComplianceUpdate,
   proposeDeal,
   proposeFinancialLog,
+  chatWithCarina,
 } from '../bridges/propreneur-bridge.js';
 import { registerSessionTool } from './session-tool-store.js';
 
@@ -220,6 +221,45 @@ export function createPropreneurWriteTools(sessionId: string): Tool[] {
   ];
 }
 
+export function createPropreneurCarinaRelayTool(sessionId: string): Tool[] {
+  return [
+    {
+      name: 'propreneur-carina-chat',
+      description:
+        'Send a message to the Carina AI agent running inside the connected Propreneur workspace. ' +
+        'Use this when the user wants to run complex multi-step property tasks, get AI-generated ' +
+        'reports, or ask questions that require deep access to their tenancy, compliance, CRM, or ' +
+        'financial data. The Propreneur Carina has full workspace context and specialist property ' +
+        'knowledge. Do not use this for simple data lookups - use the specific propreneur-get-* ' +
+        'tools for those.',
+      parameters: {
+        type: 'object',
+        properties: {
+          message: {
+            type: 'string',
+            description: 'The message or task to send to Propreneur Carina.',
+          },
+        },
+        required: ['message'],
+      },
+      execute: async (params) => {
+        const { binding } = requireBinding(sessionId);
+        const message = String(params.message ?? '').trim();
+        if (!message) throw new Error('message is required');
+        const result = await chatWithCarina(binding, message, `carina_standalone_${sessionId}`);
+        if (result.requires_confirmation) {
+          return {
+            reply: result.reply,
+            note: 'Propreneur Carina needs human approval before completing this action. The user must log in to Propreneur.',
+            requires_confirmation: true,
+          };
+        }
+        return { reply: result.reply, steps_used: result.steps_used };
+      },
+    },
+  ];
+}
+
 export function registerPropreneurSessionTools(sessionId: string): void {
   if (!isPropreneurBridgeEnabled()) return;
   const ctx = getWorkerSessionContext(sessionId);
@@ -231,5 +271,8 @@ export function registerPropreneurSessionTools(sessionId: string): void {
     for (const tool of createPropreneurWriteTools(sessionId)) {
       registerSessionTool(sessionId, tool);
     }
+  }
+  for (const tool of createPropreneurCarinaRelayTool(sessionId)) {
+    registerSessionTool(sessionId, tool);
   }
 }

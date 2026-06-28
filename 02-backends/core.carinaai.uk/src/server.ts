@@ -4,6 +4,7 @@ import { incidentBlogRouter } from './api/incident-blog.js';
 import { aivaRouter } from './api/aiva-api.js';
 import { aivaEmailRouter } from './api/aiva-email-api.js';
 import { aivaPropreneurWebhookRouter } from './api/aiva-propreneur-webhook-api.js';
+import { propreneurHubReplyRouter } from './api/propreneur-hub-reply-api.js';
 import { isAiWorkersEnabled } from './workers/aiva-message-handler.js';
 import { isEmailIngestionEnabled, isPropreneurBridgeEnabled } from './workers/aiva-feature-flags.js';
 import { mountChannelWebhooks } from './channels/channel-router.js';
@@ -44,6 +45,7 @@ export function mountServerRoutes(app: Express): void {
       app.use('/api/aiva/email', aivaEmailRouter);
     }
     app.use('/api/aiva/webhooks', aivaPropreneurWebhookRouter);
+    app.use('/api/webhooks', propreneurHubReplyRouter);
     app.use('/api/conversations', conversationsRouter);
     app.use('/api/channels', channelsApiRouter);
     app.use('/api/admin', adminRouter);

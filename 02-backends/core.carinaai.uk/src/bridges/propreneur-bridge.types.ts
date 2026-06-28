@@ -42,3 +42,10 @@ export interface PropreneurProposalResponse {
   status: string;
   proposal_type?: string;
 }
+
+export interface PropreneurCarinaChatResponse {
+  reply: string;
+  session_id: string;
+  steps_used: number;
+  requires_confirmation: boolean;
+}

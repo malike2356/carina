@@ -67,6 +67,10 @@ const LEGACY_PACK_LOADERS: Record<string, LegacyPackLoader> = {
     const { salesCrmSkills } = await import('./packs/sales-crm/skills.js');
     return { skills: salesCrmSkills, systemSuffix: '' };
   },
+  'propreneur-workspace': async () => {
+    const { propreneurWorkspaceSkills } = await import('./packs/propreneur-workspace/skills.js');
+    return { skills: propreneurWorkspaceSkills, systemSuffix: '' };
+  },
   'borehole-africa': async () => {
     const { boreholeAfricaSkills } = await import('./packs/borehole-africa/skills.js');
     return { skills: boreholeAfricaSkills, systemSuffix: '' };

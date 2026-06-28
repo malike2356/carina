@@ -167,6 +167,15 @@ export const PACK_MANIFESTS: Record<string, PackManifest> = {
     optional: true,
     category: 'sales',
   },
+  'propreneur-workspace': {
+    name: 'propreneur-workspace',
+    version: '1.0.0',
+    description: 'Property portfolio management via connected Propreneur workspace: portfolio review, compliance, deals, and AI-assisted property tasks.',
+    author: 'VERLOX Ltd',
+    skillCount: 5,
+    optional: true,
+    category: 'property',
+  },
   'borehole-africa': {
     name: 'borehole-africa',
     version: '1.0.0',

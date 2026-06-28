@@ -1,0 +1,10 @@
+{
+  "name": "propreneur-workspace",
+  "version": "1.0.0",
+  "description": "Property portfolio management via connected Propreneur workspace: portfolio review, compliance tracking, deal pipeline, and AI-assisted property tasks.",
+  "author": "VERLOX Ltd",
+  "category": "property",
+  "featured": true,
+  "pricing_tier": "free",
+  "skillCount": 5
+}
