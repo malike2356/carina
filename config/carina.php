@@ -49,6 +49,12 @@ return [
     /** Directory containing Carina SKILL.md source files compiled by carina:compile-skills. */
     'skills_path' => env('CARINA_SKILLS_PATH', resource_path('carina/skills')),
 
+    'hub' => [
+        'url' => env('SKILLS_HUB_URL', 'https://hub.carinaai.uk'),
+        'publish_key' => env('SKILLS_HUB_PUBLISH_KEY', ''),
+        'packs' => env('CARINA_HUB_PACKS', 'propreneur-workspace,legal-uk,sales-crm,finance'),
+    ],
+
     /**
      * When true, completed agent turns may auto-generate new skill files (queued).
      * Off by default; enable only when operators want session-driven skill curation.

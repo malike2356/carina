@@ -43,6 +43,7 @@ it('compiles a valid skill file to the manifest', function (): void {
 
     Artisan::call('carina:compile-skills', [
         '--output' => $outputPath,
+        '--skip-hub' => true,
     ]);
 
     expect(Artisan::output())->toContain('3 skills compiled. 0 failed.')
@@ -149,6 +150,20 @@ it('compiled skill blocks are injected into baseline context', function (): void
         ->and($appendix)->toContain('Portsmouth en-suite rooms often reach 115-145 per week');
 
     tenancy()->end();
+});
+
+it('skips hub fetch when --skip-hub is passed', function (): void {
+    $outputPath = storage_path('app/carina/compiled-skills-skip-hub-'.uniqid().'.json');
+
+    Artisan::call('carina:compile-skills', [
+        '--output' => $outputPath,
+        '--skip-hub' => true,
+    ]);
+
+    $manifest = json_decode((string) file_get_contents($outputPath), true);
+    expect(collect($manifest['skills'] ?? [])->pluck('source')->unique()->all())->toBe(['local']);
+
+    File::delete($outputPath);
 });
 
 it('compile command rejects duplicate skill names', function (): void {
