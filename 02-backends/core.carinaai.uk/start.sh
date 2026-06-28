@@ -71,7 +71,7 @@ trap stop_core TERM INT
 pkill -f "${ROOT}/dist/src/index.js" 2>/dev/null || true
 sleep 1
 
-if [ "${CARINA_FOREGROUND:-}" = "1" ]; then
+if [ "${CARINA_FOREGROUND:-}" = "1" ] || [ -n "${SUPERVISOR_PROCESS_NAME:-}" ]; then
   exec "${NODE_BIN}" "${ROOT}/dist/src/index.js"
 fi
 
