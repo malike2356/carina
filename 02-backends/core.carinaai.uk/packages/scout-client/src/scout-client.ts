@@ -141,7 +141,7 @@ export async function reportToolCall(call: ToolCallReport): Promise<void> {
 
   const event: ScoutEvent = {
     severity: call.success ? 'info' : 'warning',
-    source: 'carina-agent',
+    source: 'carina-aiva',
     event_type: 'tool_call',
     description: call.success
       ? `Tool ${call.toolName} executed (${call.durationMs}ms)`
@@ -279,7 +279,7 @@ export async function flushMetricsToScout(
     session_id: sessionId,
     event_type: 'session_metrics',
     severity: 'info',
-    source: 'carina-agent',
+    source: 'carina-aiva',
     description: JSON.stringify(metrics),
   });
 }

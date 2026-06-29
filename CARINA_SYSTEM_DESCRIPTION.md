@@ -1,55 +1,102 @@
-# VERLOX System Description: Carina, Aiva, and Scout
+# VERLOX System Description: Carina Aiva, Carina Mutant, and Labyrinth Scout
 
-**Date:** 26 June 2026
+**Date:** 26 June 2026 (updated 29 June 2026 - product rename)
 **Author:** Compiled by Herlox from live codebase audit
-**Repository:** /opt/lampp/htdocs/verlox/carina
+**Repository:** /opt/lampp/htdocs/verlox/carina_aiva
 **GitHub:** malike2356/carina-ai
+
+---
+
+## Product Naming (authoritative as of 29 June 2026)
+
+| Old name | New name | Notes |
+|---|---|---|
+| Carina (Enterprise) | Carina Aiva | This repo. Node.js core + Aiva bundled. Commercial. |
+| Carina CE | Carina Mutant | Separate repo. Python. Community Edition. MIT/AGPL. |
+| Scout | Labyrinth Scout | Unchanged. Governs both products. |
+
+Do not use "Carina Enterprise" or "Carina CE" in any new communications.
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Carina -- The AI Agent Platform](#carina)
+2. [Carina Aiva -- The Enterprise AI Platform](#carina)
 3. [Aiva -- The AI Employee Product](#aiva)
-4. [Scout -- Security Governance Layer](#scout)
-5. [The Tollbooth Architecture](#tollbooth)
-6. [Deployment & Infrastructure](#deployment)
-7. [What's Built vs What's Planned](#status)
+4. [Labyrinth Scout -- Security Governance Layer](#scout)
+5. [Carina Mutant -- The Community Platform](#mutant)
+6. [The Tollbooth Architecture](#tollbooth)
+7. [Deployment & Infrastructure](#deployment)
+8. [What's Built vs What's Planned](#status)
 
 ---
 
 ## 1. Overview {#overview}
 
-VERLOX builds three products that work as layers. Each layer can function
-independently, but together they form the tollbooth.
+VERLOX builds two AI platforms and one governance product. Together they form
+the tollbooth. Each can function independently.
 
 ```
-Layer 3: Scout     Security governance. On-chain trust. Compliance.
-                   Paid (Monitor £49/mo, Govern £79/mo, Enterprise custom).
+Labyrinth Scout    Security governance. On-chain trust. Compliance. Audit.
+                   Paid: Monitor £49/mo, Govern £79/mo, Enterprise via quote.
+                   Governs both Carina Aiva and Carina Mutant.
 
-Layer 2: Aiva      AI Employee. Human-in-the-loop. Role templates.
-                   Paid (Starter £49/mo, Team £99/mo, Business £299/mo).
+Carina Aiva        Enterprise AI platform. Commercial.
+                   Carina core (Node.js/TypeScript) + Aiva AI Employee bundled.
+                   Aiva tiers: Starter £49/mo, Team £99/mo, Business £299/mo.
+                   Domains: carinaai.uk / hireaiva.co.uk
+                   Repo: carina_aiva (this repo)
 
-Layer 1: Carina    AI agent platform. Gateway, tools, channels, memory.
-                   Free (MIT license). npm: carina-agent.
+Carina Mutant      Community AI platform. Open source (MIT/AGPL).
+                   Python/FastAPI backend. Self-hosted. The Mutant Agent.
+                   Free. Developer and security professional audience.
+                   Repo: malike2356/carina-mutant
+                   Local path: /opt/lampp/htdocs/verlox/carina_mutant
 ```
 
-A customer can use any layer without the others. A developer installs Carina
-for free. A business owner hires Aiva and gets Carina underneath. An enterprise
-buys Scout and gets governance for any agent, Carina or otherwise.
+A developer self-hosts Carina Mutant for free. A business owner hires Aiva
+and gets Carina Aiva underneath. An enterprise adds Labyrinth Scout on top of
+either platform for governance, compliance, and blockchain trust.
 
-The tollbooth architecture: Carina is the free road. Aiva and Scout are the
-tolls. Every AI agent interaction that touches a business system can route
-through Carina's Gateway, be verified by Scout, and be logged immutably.
-Carina doesn't need to own the agent. It owns the road.
+The tollbooth: Carina Mutant is the free road (open source, community).
+Carina Aiva is the managed commercial road (Aiva workers, billing, multi-tenant).
+Labyrinth Scout is the governance toll that sits above both.
 
 ---
 
-## 2. Carina -- The AI Agent Platform {#carina}
+## 5. Carina Mutant -- The Community Platform {#mutant}
 
-**License:** MIT (free forever)
-**Package:** carina-agent (npm)
+Carina Mutant is a separate codebase and separate product. It is NOT a
+stripped version of Carina Aiva. It is a community synthesis that:
+
+- Takes Hermes Agent (Python) as the agent core
+- Merges Odysseus (Python) workspace features into the backend
+- Ports OpenClaw channel adapters and mobile apps
+- Copies the Carina Aiva frontend UI (adapted, same visual language)
+- Adds the Mutant Agent: self-coding capability with sandbox and approval
+- Adds the full cybersecurity/SIEM suite from Kali, Parrot, CSI Linux
+- Adds the App Foundation SDK (carina-mutant-sdk / @carina-mutant/sdk)
+- Adds the Project Builder (builds any verlox project via NL)
+- Adds a Labyrinth Scout governance bridge (client only)
+
+**What Carina Mutant does NOT have (Carina Aiva / Enterprise-only):**
+- Labyrinth Scout full product (blockchain trust, on-chain attestation, WAV/WV)
+- Aiva AI Employee workers and billing
+- Multi-tenant client workspace management
+- Kill switch via native Redis pub/sub
+
+**Local path:** /opt/lampp/htdocs/verlox/carina_mutant
+**Build spec:** carina_mutant/prompts/ (31 prompts, 00-30)
+**License:** MIT (SDK + frontend) / AGPL-3.0 (backend)
+
+---
+
+## 2. Carina Aiva -- The Enterprise AI Platform {#carina}
+
+**Product name:** Carina Aiva (formerly "Carina Enterprise" internally)
+**License:** Commercial
+**Package:** carina-agent (npm, internal)
 **Runtime:** Node.js/TypeScript ESM
 **Repo location:** 02-backends/core.carinaai.uk/
 **Live at:** https://carinaai.uk

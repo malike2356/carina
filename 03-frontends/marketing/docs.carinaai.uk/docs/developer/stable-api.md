@@ -4,7 +4,7 @@
 
 **Version introduced:** 0.2.0
 
-Full policy: [STABLE_API.md on GitHub](https://github.com/malike2356/carina-agent/blob/main/docs/kernel/STABLE_API.md)
+Full policy: [STABLE_API.md on GitHub](https://github.com/malike2356/carina-mutant/blob/main/docs/kernel/STABLE_API.md)
 
 ## Semver rules
 
@@ -96,7 +96,7 @@ export class MyAdapter implements ChannelAdapter {
 }
 ```
 
-Reference: [IRC stub adapter](https://github.com/malike2356/carina-agent/blob/main/src/gateway/channels/adapters/irc-adapter.ts) in the repo.
+Reference: [IRC stub adapter](https://github.com/malike2356/carina-mutant/blob/main/src/gateway/channels/adapters/irc-adapter.ts) in the repo.
 
 ## Memory backend (`@verlox/carina-core/memory`)
 
@@ -133,7 +133,7 @@ registerProvider({
 
 ## Deprecation
 
-Deprecated stable APIs are announced in the [CHANGELOG](https://github.com/malike2356/carina-agent/blob/main/CHANGELOG.md) and removed no sooner than the next major release.
+Deprecated stable APIs are announced in the [CHANGELOG](https://github.com/malike2356/carina-mutant/blob/main/CHANGELOG.md) and removed no sooner than the next major release.
 
 ## Related
 

@@ -484,6 +484,6 @@ Common topics covered there: brand not updating, custom domain TXT verification,
 
 ## Still stuck?
 
-- [GitHub Issues](https://github.com/malike2356/carina-agent/issues): bug reports and feature requests.
+- [GitHub Issues](https://github.com/malike2356/carina-mutant/issues): bug reports and feature requests.
 - Email: [support@carinaai.uk](mailto:support@carinaai.uk)
 - **Ask Carina directly:** paste your error message into the chat. Carina can often diagnose configuration problems from log output.

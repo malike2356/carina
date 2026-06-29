@@ -28,7 +28,7 @@ Edit the generated file, then open a **PR with the RFC only** for review. Do not
 | New optional pack manifest field (minor semver) | No |
 | New domain pack content (hub publish) | No |
 
-RFCs must cite a **Target API version** (for example `@verlox/carina-core 0.2.0`). See [STABLE_API.md](https://github.com/malike2356/carina-agent/blob/main/docs/kernel/STABLE_API.md).
+RFCs must cite a **Target API version** (for example `@verlox/carina-core 0.2.0`). See [STABLE_API.md](https://github.com/malike2356/carina-mutant/blob/main/docs/kernel/STABLE_API.md).
 
 ## Workflow
 
@@ -55,7 +55,7 @@ Accepted RFCs may be implemented in follow-up PRs. Keep implementation PRs separ
 
 | Channel | Status |
 |---------|--------|
-| [GitHub Discussions](https://github.com/malike2356/carina-agent/discussions) | Active (Q&A template available) |
+| [GitHub Discussions](https://github.com/malike2356/carina-mutant/discussions) | Active (Q&A template available) |
 | GitHub Discussions **RFCs** category | Use for pre-PR feedback |
 | Discord | Placeholder: invite URL TBD |
 | Slack | Placeholder: workspace TBD |
@@ -69,4 +69,4 @@ Do not invent invite URLs until channels are officially announced.
 - [Contributing](/docs/user/contributing)
 - [Publishing a pack](/docs/developer/publishing-a-pack)
 
-RFC files live in `docs/rfc/` in the [carina-agent](https://github.com/malike2356/carina-agent) repository and are included in the public export.
+RFC files live in `docs/rfc/` in the [carina-mutant](https://github.com/malike2356/carina-mutant) repository and are included in the public export.

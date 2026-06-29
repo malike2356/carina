@@ -1,10 +1,10 @@
-# Sprint: Scout Risk Mitigation Layer — Automated Security for Self-Modifying Carina
+# Sprint: Scout Risk Mitigation Layer; Automated Security for Self-Modifying Carina
 
 ## What This Builds
 
-Scout (Carina's security sibling — 77 security tools, kill switch, quarantine, egress control, SSE event stream) becomes the automated guardian of Carina's self-modification capability. Not just manual operator tools — continuous automated detection, alerting, and response.
+Scout (Carina's security sibling; 77 security tools, kill switch, quarantine, egress control, SSE event stream) becomes the automated guardian of Carina's self-modification capability. Not just manual operator tools; continuous automated detection, alerting, and response.
 
-Scout monitors every tool generation, every sandbox execution, every network call, every persisted tool. When something looks wrong, Scout acts — quarantines the tool, blocks the session, alerts the operator, or pulls the kill switch.
+Scout monitors every tool generation, every sandbox execution, every network call, every persisted tool. When something looks wrong, Scout acts; quarantines the tool, blocks the session, alerts the operator, or pulls the kill switch.
 
 ## Prerequisites
 
@@ -58,7 +58,7 @@ Scout itself is already built and deployed. This prompt wires Scout INTO the sel
 
 ---
 
-## Part 1: Security Event Taxonomy — What Scout Watches
+## Part 1: Security Event Taxonomy; What Scout Watches
 
 Define every self-modification event as a typed security event in Scout's `security_events` table.
 
@@ -136,7 +136,7 @@ export const EVENT_SEVERITY: Record<string, 'info' | 'warning' | 'critical'> = {
 
 ---
 
-## Part 2: Event Logger — Wire Every Gate Into Scout
+## Part 2: Event Logger; Wire Every Gate Into Scout
 
 Every gate in the self-modification pipeline must emit security events.
 
@@ -209,7 +209,7 @@ function formatAlertMessage(eventType: string, detail: Record<string, unknown>):
   
 ${detail.reason || detail.warning || 'No additional detail.'}
 
-Action taken: ${detail.action_taken || 'None — operator review required.'}
+Action taken: ${detail.action_taken || 'None; operator review required.'}
 Time: ${new Date().toISOString()}
 Instance: ${detail.instance_id || 'carina-core'}`;
 }
@@ -217,7 +217,7 @@ Instance: ${detail.instance_id || 'carina-core'}`;
 
 ---
 
-## Part 3: Integration Points — Where Scout Hooks In
+## Part 3: Integration Points; Where Scout Hooks In
 
 ### 3.1 Hook Into the Auth Gate
 
@@ -332,7 +332,7 @@ if (!isDomainAllowed(hostname, allowlist)) {
 
 ## Part 4: Automated Anomaly Detection
 
-Scout doesn't just log — it detects patterns and acts.
+Scout doesn't just log; it detects patterns and acts.
 
 Create `src/security/anomaly-detector.ts`:
 
@@ -348,15 +348,15 @@ import { logSelfModEvent } from './self-mod-logger.js';
 
 // ── Thresholds ──────────────────────────────────────────────
 
-const RAPID_GEN_THRESHOLD = 3;        // Generations in window
+const RAPID_GEN_THRESHOLD = 3; // Generations in window
 const RAPID_GEN_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-const MAX_PENDING_TOOLS = 10;         // Cap on unapproved tools
-const MAX_FAILED_GENERATIONS = 5;     // Failed gens in 1 hour → alert
+const MAX_PENDING_TOOLS = 10; // Cap on unapproved tools
+const MAX_FAILED_GENERATIONS = 5; // Failed gens in 1 hour → alert
 
 // ── Detection Functions ─────────────────────────────────────
 
 /**
- * Check for rapid tool generation — could indicate:
+ * Check for rapid tool generation; could indicate:
  * - Carina is stuck in a loop generating tools
  * - Operator session is compromised and attacker is generating tools
  * - LLM is hallucinating tool generation requests
@@ -405,7 +405,7 @@ export function detectHighRiskPatterns(code: string): string[] {
     {
       name: 'file_exfiltration',
       pattern: /fetch\(.*btoa\(/,
-      reason: 'Encodes data before sending — possible exfiltration',
+      reason: 'Encodes data before sending; possible exfiltration',
     },
     {
       name: 'command_execution',
@@ -420,7 +420,7 @@ export function detectHighRiskPatterns(code: string): string[] {
     {
       name: 'large_data_upload',
       pattern: /fetch\(.*JSON\.stringify\(params/,
-      reason: 'Uploads all input parameters — possible data leak',
+      reason: 'Uploads all input parameters; possible data leak',
     },
   ];
   
@@ -435,7 +435,7 @@ export function detectHighRiskPatterns(code: string): string[] {
 }
 
 /**
- * Check pending tool count — if too many are unapproved, something may be wrong.
+ * Check pending tool count; if too many are unapproved, something may be wrong.
  */
 export async function checkPendingToolBloat(): Promise<void> {
   const count = await pool.query(
@@ -483,7 +483,7 @@ export async function checkVulnerableDependencies(): Promise<void> {
   
   // Known vulnerable versions (update this list)
   const vulnerableVersions: Array<{ package: string; range: string; cve: string; severity: string }> = [
-    // Example — update when CVEs are published
+    // Example; update when CVEs are published
     // { package: 'isolated-vm', range: '<4.7.0', cve: 'CVE-2024-XXXX', severity: 'high' },
   ];
   
@@ -506,7 +506,7 @@ export async function checkVulnerableDependencies(): Promise<void> {
 
 ---
 
-## Part 5: Automated Response — Scout Acts Without Waiting
+## Part 5: Automated Response; Scout Acts Without Waiting
 
 When anomaly detection fires, Scout can act automatically based on severity.
 
@@ -631,7 +631,7 @@ async function respondEmergency(
 ): Promise<void> {
   const instanceId = detail.instance_id as string || 'carina-core';
   
-  // Pull the kill switch — suspend Carina
+  // Pull the kill switch; suspend Carina
   await suspendInstance(instanceId, `Emergency auto-response to ${eventType}`);
   
   await logSelfModEvent('SCOUT_AUTO_SUSPEND', {
@@ -662,7 +662,7 @@ Create `src/security/scheduled-checks.ts`:
 ```typescript
 /**
  * Scheduled security checks that run via cron or heartbeat.
- * These are passive detections — they look for patterns over time.
+ * These are passive detections; they look for patterns over time.
  */
 
 export async function runScheduledSecurityChecks(): Promise<void> {
@@ -705,8 +705,8 @@ export async function runDailyDeepAudit(): Promise<{
     if (tool.fetch_allowed_domains) {
       const domains = JSON.parse(tool.fetch_allowed_domains);
       for (const domain of domains) {
-        // DNS check — is the domain still resolving?
-        // WhoIs check — has the domain changed ownership?
+        // DNS check; is the domain still resolving?
+        // WhoIs check; has the domain changed ownership?
         // (Implementation depends on available DNS/WhoIs tools)
       }
     }
@@ -749,8 +749,8 @@ The tab shows:
 - **Active tools** list with risk levels, usage counts, fetch domains
 - **Pending approval** queue
 - **Quarantine status** for any auto-quarantined tools
-- **Auto-response log** — what Scout did and why
-- **Kill switch button** — emergency suspend
+- **Auto-response log**; what Scout did and why
+- **Kill switch button**; emergency suspend
 
 ### 7.2 SSE Event Types for Dashboard
 
@@ -821,7 +821,7 @@ schedule('0 6 * * 1', runWeeklyCVECheck);
 
 ### 10.2 Register Event Hooks
 
-All self-mod events auto-flow to Scout via `logSelfModEvent()`. No additional registration needed — just import and call.
+All self-mod events auto-flow to Scout via `logSelfModEvent()`. No additional registration needed; just import and call.
 
 ---
 
@@ -852,19 +852,19 @@ All self-mod events auto-flow to Scout via `logSelfModEvent()`. No additional re
 
 | File | Action |
 |------|--------|
-| `src/security/self-mod-events.ts` | CREATE — event type taxonomy + severity map |
-| `src/security/self-mod-logger.ts` | CREATE — event emitter to Scout DB + Redis + Telegram |
-| `src/security/anomaly-detector.ts` | CREATE — pattern detection (rapid gen, high-risk, CVE) |
-| `src/security/auto-response.ts` | CREATE — 3-level automated response engine |
-| `src/security/scheduled-checks.ts` | CREATE — daily audit + weekly CVE check |
-| `src/tools/dynamic/auth-gate.ts` | MODIFY — emit events on auth attempts |
-| `src/tools/dynamic/generate-and-run.ts` | MODIFY — emit events at every stage |
-| `src/tools/dynamic/persist-tool.ts` | MODIFY — emit save events |
-| `src/sandbox/fetch-gatekeeper.ts` | MODIFY — emit fetch_denied events |
-| `src/sandbox/output-sanitizer.ts` | MODIFY — emit injection_blocked events |
-| `src/index.ts` | MODIFY — start scheduled checks |
-| `02-backends/console.labyrinthscout.com/public/dashboard.html` | MODIFY — add Self-Mod tab |
-| `.env` | MODIFY — add Scout self-mod env vars |
+| `src/security/self-mod-events.ts` | CREATE; event type taxonomy + severity map |
+| `src/security/self-mod-logger.ts` | CREATE; event emitter to Scout DB + Redis + Telegram |
+| `src/security/anomaly-detector.ts` | CREATE; pattern detection (rapid gen, high-risk, CVE) |
+| `src/security/auto-response.ts` | CREATE; 3-level automated response engine |
+| `src/security/scheduled-checks.ts` | CREATE; daily audit + weekly CVE check |
+| `src/tools/dynamic/auth-gate.ts` | MODIFY; emit events on auth attempts |
+| `src/tools/dynamic/generate-and-run.ts` | MODIFY; emit events at every stage |
+| `src/tools/dynamic/persist-tool.ts` | MODIFY; emit save events |
+| `src/sandbox/fetch-gatekeeper.ts` | MODIFY; emit fetch_denied events |
+| `src/sandbox/output-sanitizer.ts` | MODIFY; emit injection_blocked events |
+| `src/index.ts` | MODIFY; start scheduled checks |
+| `02-backends/console.labyrinthscout.com/public/dashboard.html` | MODIFY; add Self-Mod tab |
+| `.env` | MODIFY; add Scout self-mod env vars |
 
 ---
 

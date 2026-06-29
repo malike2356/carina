@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Enable GitHub Discussions and seed good-first issues on malike2356/carina-agent.
+# Enable GitHub Discussions and seed good-first issues on malike2356/carina-aiva.
 # Requires: gh auth login
+# Note: malike2356/carina-aiva is PRIVATE. This seeds internal team tracking issues.
+# When Carina Mutant (malike2356/carina-mutant) is published, run a separate community
+# bootstrap script targeting that public repo.
 set -euo pipefail
 
-REPO="${GITHUB_REPO:-malike2356/carina-agent}"
+REPO="${GITHUB_REPO:-malike2356/carina-aiva}"
 
 log() { echo "[community] $*"; }
 
@@ -90,4 +93,7 @@ Document recommended label colors in CONTRIBUTING or a maintainer note:
 Optional: add \`.github/labels.yml\` if we adopt labeler action later." \
   "good first issue,chore"
 
-log "Done. Open: https://github.com/${REPO}/discussions"
+log "Done. Open: https://github.com/${REPO}/issues"
+log ""
+log "REMINDER: malike2356/carina-aiva is private. For the public community repo, use:"
+log "  GITHUB_REPO=malike2356/carina-mutant bash scripts/bootstrap-carina-mutant-community.sh"

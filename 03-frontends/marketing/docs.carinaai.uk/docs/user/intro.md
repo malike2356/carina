@@ -23,7 +23,7 @@ Carina is the adoption surface. Scout is the paid security layer you add when th
 ## Get help
 
 - [Troubleshooting](/docs/user/troubleshooting) - common errors and fixes
-- [GitHub Issues](https://github.com/malike2356/carina-agent/issues) - bug reports and feature requests
+- [GitHub Issues](https://github.com/malike2356/carina-mutant/issues) - bug reports and feature requests
 - Email: support@carinaai.uk
 
 ## License

@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { PlanGateSection } from '@/components/billing/PlanGateSection';
 import { timeAgo } from '@/lib/aiva-utils';
+
+const PLAN_ORDER: Record<string, number> = { trial: 0, starter: 1, team: 2, business: 3 };
 
 interface EscalationRow {
   id: string;
@@ -21,41 +23,44 @@ export default function AivaEscalationsPage() {
   const [rows, setRows] = useState<EscalationRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [billingRes, escRes] = await Promise.all([
-        fetch('/api/aiva/billing/status'),
-        fetch('/api/aiva/escalations'),
-      ]);
-      if (billingRes.ok) {
-        const billing = (await billingRes.json()) as {
-          subscription?: { planTier?: string };
-          planTier?: string;
-        };
-        const tier =
-          billing.subscription?.planTier ??
-          billing.planTier ??
-          'trial';
-        setPlanTier(tier);
-      }
-      if (escRes.status === 403) {
-        const body = (await escRes.json()) as { planTier?: string };
-        setPlanTier(body.planTier ?? planTier);
-        setRows([]);
-        return;
-      }
-      if (!escRes.ok) return;
-      const body = (await escRes.json()) as { escalations?: EscalationRow[] };
-      setRows(body.escalations ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const billingRes = await fetch('/api/aiva/billing/status');
+        if (cancelled) return;
+
+        let tier = 'trial';
+        if (billingRes.ok) {
+          const billing = (await billingRes.json()) as {
+            subscription?: { planTier?: string };
+            planTier?: string;
+          };
+          tier = billing.subscription?.planTier ?? billing.planTier ?? 'trial';
+          setPlanTier(tier);
+        }
+
+        if ((PLAN_ORDER[tier] ?? 0) < (PLAN_ORDER['team'] ?? 0)) {
+          setRows([]);
+          return;
+        }
+
+        const escRes = await fetch('/api/aiva/escalations');
+        if (cancelled) return;
+
+        if (!escRes.ok) return;
+        const body = (await escRes.json()) as { escalations?: EscalationRow[] };
+        setRows(body.escalations ?? []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
     void load();
-  }, [load]);
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">

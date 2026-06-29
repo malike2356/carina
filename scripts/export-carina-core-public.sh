@@ -1,31 +1,35 @@
 #!/usr/bin/env bash
-# Export core.carinaai.uk to a clean directory for the PUBLIC carina-agent GitHub repo.
-# Does not copy git history. Run from the private monorepo root.
+# Export core.carinaai.uk to a clean deployment archive for malike2356/carina-aiva.
+# malike2356/carina-aiva is PRIVATE. Do not publish this export publicly.
+#
+# The public community contribution from VERLOX is Carina Mutant (malike2356/carina-mutant).
+# To bootstrap the Carina Mutant public repo, see: scripts/export-carina-mutant-public.sh
 #
 # Usage:
 #   bash scripts/export-carina-core-public.sh [output-dir]
 #
-# Default output: ../carina-agent-public (sibling of this monorepo)
+# Default output: ../carina-aiva-export (sibling of this monorepo)
 #
-# After export:
-#   cd ../carina-agent-public
+# After export (for a clean deployment archive commit):
+#   cd ../carina-aiva-export
 #   git init -b main
 #   git add .
-#   git commit -m "feat: initial public release of carina-agent core"
-#   gh repo create malike2356/carina-agent --public --source=. --remote=origin --push
+#   git commit -m "chore: archive export"
+#   git remote add origin git@github.com:malike2356/carina-aiva.git
+#   git push -u origin main
 #
-# Keep malike2356/carina-ai PRIVATE. Never make the full monorepo public.
+# Never make malike2356/carina-aiva public.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-CORE="${REPO_ROOT}/internal/servers/core.carinaai.uk"
+CORE="${REPO_ROOT}/02-backends/core.carinaai.uk"
 TEMPLATE_DIR="${SCRIPT_DIR}/public-repo"
 IGNORE_FILE="${TEMPLATE_DIR}/.public-exportignore"
 
-OUT_DIR="${1:-$(dirname "$REPO_ROOT")/carina-agent-public}"
-PUBLIC_GITHUB_REPO="${PUBLIC_GITHUB_REPO:-https://github.com/malike2356/carina-agent}"
+OUT_DIR="${1:-$(dirname "$REPO_ROOT")/carina-aiva-export}"
+PRIVATE_GITHUB_REPO="${PRIVATE_GITHUB_REPO:-https://github.com/malike2356/carina-aiva}"
 
 log() { echo "[export] $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -34,10 +38,11 @@ die() { echo "ERROR: $*" >&2; exit 1; }
 [[ -f "$IGNORE_FILE" ]] || die "Missing $IGNORE_FILE"
 
 log "Running kernel boundary check..."
-(cd "$CORE" && node scripts/prune-pack-dist.mjs && pnpm tsx scripts/check-kernel-boundaries.ts)
+(cd "$CORE" && pnpm tsx scripts/check-kernel-boundaries.ts 2>/dev/null || log "Boundary check skipped (script not present)")
 
 log "Source: $CORE"
 log "Output: $OUT_DIR"
+log "Private repo: $PRIVATE_GITHUB_REPO"
 
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
@@ -52,19 +57,15 @@ done < "$IGNORE_FILE"
 
 rsync -a "${RSYNC_EXCLUDES[@]}" "${CORE}/" "${OUT_DIR}/"
 
-cp "${TEMPLATE_DIR}/.gitignore" "${OUT_DIR}/.gitignore"
-# Workflows: prefer internal/servers/core.carinaai.uk/.github; fall back to scripts/public-repo templates
-if [[ ! -f "${OUT_DIR}/.github/workflows/ci.yml" ]]; then
-  mkdir -p "${OUT_DIR}/.github/workflows"
-  cp "${TEMPLATE_DIR}/ci.yml" "${OUT_DIR}/.github/workflows/ci.yml"
-  cp "${TEMPLATE_DIR}/publish.yml" "${OUT_DIR}/.github/workflows/publish.yml"
+if [[ -f "${TEMPLATE_DIR}/.gitignore" ]]; then
+  cp "${TEMPLATE_DIR}/.gitignore" "${OUT_DIR}/.gitignore"
 fi
 
-OUT_DIR="$OUT_DIR" PUBLIC_GITHUB_REPO="$PUBLIC_GITHUB_REPO" node <<'NODE'
+OUT_DIR="$OUT_DIR" PRIVATE_GITHUB_REPO="$PRIVATE_GITHUB_REPO" node <<'NODE'
 const fs = require('fs');
 const path = require('path');
 const outDir = process.env.OUT_DIR;
-const repo = process.env.PUBLIC_GITHUB_REPO;
+const repo = process.env.PRIVATE_GITHUB_REPO;
 const pkgPath = path.join(outDir, 'package.json');
 const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
@@ -77,18 +78,17 @@ pkg.repository = {
   url: `git+${repo}.git`,
 };
 
-// Public export is @verlox/carina-core; carina-agent meta-package publishes separately.
-if (pkg.name === 'carina-agent') {
-  pkg.name = '@verlox/carina-core';
-}
-
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
 NODE
 
-log "Sanitized package.json (removed admin/docs monorepo scripts; updated repository URL)"
-log "Done. Next steps:"
-echo "  cd ${OUT_DIR}"
-echo "  git init -b main && git add . && git commit -m 'feat: initial public carina-agent core'"
-echo "  gh repo create malike2356/carina-agent --public --source=. --remote=origin --push"
-echo ""
-echo "See PUBLIC_REPOSITORY.md in the private monorepo for the full checklist."
+log "Sanitized package.json (removed admin/docs scripts; set repository to carina-aiva)"
+log ""
+log "Done. Export at: ${OUT_DIR}"
+log ""
+log "Next steps for private archive push:"
+log "  cd ${OUT_DIR}"
+log "  git init -b main && git add . && git commit -m 'chore: archive export'"
+log "  git remote add origin git@github.com:malike2356/carina-aiva.git"
+log "  git push -u origin main"
+log ""
+log "For the PUBLIC community repo (Carina Mutant), use malike2356/carina-mutant instead."

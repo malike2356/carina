@@ -39,7 +39,7 @@ Your function MUST NOT:
 - Access fs, path, os, process, child_process, net, http (use fetch instead), dgram, tls, worker_threads
 - Use eval(), new Function(), setTimeout(), setInterval()
 - Access __dirname, __filename, globalThis, global
-- Use while(true) or for(;;) loops
+- Use while(true) or for(;) loops
 - Access process.env (credentials are injected via params if needed)
 - Return more than 1MB of data
 

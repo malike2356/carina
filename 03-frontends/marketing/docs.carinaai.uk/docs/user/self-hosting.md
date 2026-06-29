@@ -14,8 +14,8 @@ Docker is only required if you need the Cloud/Scout multi-service orchestration 
 The fastest way to run Carina. You need Node.js 22+ and pnpm:
 
 ```bash
-git clone https://github.com/carina-ai/carina.git
-cd carina/core.carinaai.uk
+git clone https://github.com/malike2356/carina-mutant.git
+cd carina-mutant
 pnpm install
 cp .env.example .env   # fill in your provider keys
 pnpm dev               # agent is live

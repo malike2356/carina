@@ -113,7 +113,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/malike2356/carina-agent.git"
+    "url": "git+https://github.com/malike2356/carina-aiva.git"
   },
   "publishConfig": {
     "access": "public"

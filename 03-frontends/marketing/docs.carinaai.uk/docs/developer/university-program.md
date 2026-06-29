@@ -45,7 +45,7 @@ Build a **vertical pack** with:
 - `knowledge/` markdown corpus (public or synthetic data only)
 - `carina ingest <pack>` and basic evaluation notes
 
-See [dissertation pack ideas on GitHub](https://github.com/malike2356/carina-agent/blob/main/docs.carinaai.uk/docs/developer/_examples/dissertation-pack-ideas.md).
+See [dissertation pack ideas on GitHub](https://github.com/malike2356/carina-mutant/blob/main/docs.carinaai.uk/docs/developer/_examples/dissertation-pack-ideas.md).
 
 ### Research
 
@@ -61,7 +61,7 @@ Five starter topics (expand in the ideas doc):
 4. **local gov pack** (council service navigation from public web sources)
 5. **sustainability pack** (carbon literacy, open datasets)
 
-Full briefs: [dissertation pack ideas on GitHub](https://github.com/malike2356/carina-agent/blob/main/docs.carinaai.uk/docs/developer/_examples/dissertation-pack-ideas.md)
+Full briefs: [dissertation pack ideas on GitHub](https://github.com/malike2356/carina-mutant/blob/main/docs.carinaai.uk/docs/developer/_examples/dissertation-pack-ideas.md)
 
 ## Academic naming (optional)
 
@@ -77,8 +77,8 @@ Replace `uop` with your institution slug. Production community packs typically u
 ## Contribute back
 
 - [Contributing guide](/docs/user/contributing)
-- [Good first issues](https://github.com/malike2356/carina-agent/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-- [GitHub Discussions](https://github.com/malike2356/carina-agent/discussions)
+- [Good first issues](https://github.com/malike2356/carina-mutant/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+- [GitHub Discussions](https://github.com/malike2356/carina-mutant/discussions)
 - [RFC process](/docs/developer/rfc-process) for stable API change proposals
 
 ## GDPR and data ethics

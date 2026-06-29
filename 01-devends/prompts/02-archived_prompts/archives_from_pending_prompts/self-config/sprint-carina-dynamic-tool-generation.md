@@ -1,8 +1,8 @@
-# Sprint: Carina Dynamic Tool Generation — Sandboxed Self-Extension
+# Sprint: Carina Dynamic Tool Generation; Sandboxed Self-Extension
 
 ## What This Builds
 
-When Carina encounters a task she genuinely cannot perform with her existing tools (even after self-configuration), she generates a new tool, validates it in a sandbox, uses it, and if it works — persists it for future reuse.
+When Carina encounters a task she genuinely cannot perform with her existing tools (even after self-configuration), she generates a new tool, validates it in a sandbox, uses it, and if it works; persists it for future reuse.
 
 This is Phase 2+3 of the self-modification capability. Phase 1 (credential store) must be complete first.
 
@@ -32,7 +32,7 @@ Every generated tool passes through FIVE security gates before it can execute. T
 
 ---
 
-## Part 1: The Sandbox — `isolated-vm`
+## Part 1: The Sandbox; `isolated-vm`
 
 ### 1.1 Install
 
@@ -49,9 +49,9 @@ Create `src/sandbox/sandbox-vm.ts`:
 import ivm from 'isolated-vm';
 
 export interface SandboxOptions {
-  timeout?: number;        // ms, default 30000
-  memoryLimit?: number;    // MB, default 128
-  outputLimit?: number;    // bytes, default 1_048_576 (1MB)
+  timeout?: number; // ms, default 30000
+  memoryLimit?: number; // MB, default 128
+  outputLimit?: number; // bytes, default 1_048_576 (1MB)
 }
 
 export interface SandboxResult {
@@ -78,7 +78,7 @@ Create `src/sandbox/allowed-apis.ts`:
 ```typescript
 /**
  * APIs passed into the sandbox at creation time.
- * These are COPIES, not references — the sandbox cannot mutate the host.
+ * These are COPIES, not references; the sandbox cannot mutate the host.
  */
 export interface SandboxAPIs {
   // Data transformation (pure, no side effects)
@@ -95,8 +95,8 @@ export interface SandboxAPIs {
   // Regex
   RegExp: typeof RegExp;
   
-  // HTTP (proxied — see below)
-  fetch: typeof fetch;  // Proxied through a gatekeeper
+  // HTTP (proxied; see below)
+  fetch: typeof fetch; // Proxied through a gatekeeper
   
   // Console (captured, not printed to host stdout)
   console: { log: (...args: unknown[]) => void; error: (...args: unknown[]) => void };
@@ -144,7 +144,7 @@ const BLOCKED_IPS = [
   /^0\./, /^169\.254\./, /^224\./, /^240\./,
 ];
 
-const ALLOWED_DOMAINS = ['*'];  // '*' = any public domain; override per-tool for stricter
+const ALLOWED_DOMAINS = ['*']; // '*' = any public domain; override per-tool for stricter
 
 export function createSandboxFetch(toolDomainAllowlist?: string[]): typeof fetch {
   const allowlist = toolDomainAllowlist ?? ALLOWED_DOMAINS;
@@ -160,7 +160,7 @@ export function createSandboxFetch(toolDomainAllowlist?: string[]): typeof fetch
     // No internal IPs (resolve first)
     const { hostname } = url;
     // Use dns.lookup to resolve and check IP range
-    // ... (implementation omitted for brevity — use dns.promises.lookup + BLOCKED_IPS check)
+    // ... (implementation omitted for brevity; use dns.promises.lookup + BLOCKED_IPS check)
     
     // Domain allowlist
     if (allowlist[0] !== '*' && !allowlist.some(d => hostname.endsWith(d))) {
@@ -241,7 +241,7 @@ export async function executeInSandbox(
     const context = await isolate.createContext();
     const jail = context.global;
     
-    // Build the API surface — every API is explicitly copied in
+    // Build the API surface; every API is explicitly copied in
     const apis: SandboxAPIs = {
       JSON: { parse: JSON.parse, stringify: JSON.stringify },
       Math: {
@@ -333,59 +333,59 @@ Create `src/sandbox/static-scanner.ts`:
 ```typescript
 /**
  * Scan generated code for dangerous patterns BEFORE execution.
- * This is a first-pass filter — the sandbox is the real defense,
+ * This is a first-pass filter; the sandbox is the real defense,
  * but catching these early gives better error messages to the LLM.
  */
 
 interface ScanResult {
   safe: boolean;
-  blocked: string[];  // What was blocked and why
+  blocked: string[]; // What was blocked and why
 }
 
 const BANNED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   // Direct filesystem
-  { pattern: /\brequire\s*\(/, reason: 'require() — no module loading' },
-  { pattern: /\bimport\s+/, reason: 'import — no ES module loading' },
-  { pattern: /\bimport\s*\(/, reason: 'import() — no dynamic imports' },
-  { pattern: /\bfs\./, reason: 'fs module — no filesystem access' },
-  { pattern: /\bpath\./, reason: 'path module — no filesystem access' },
-  { pattern: /\b__dirname\b/, reason: '__dirname — no filesystem context' },
-  { pattern: /\b__filename\b/, reason: '__filename — no filesystem context' },
+  { pattern: /\brequire\s*\(/, reason: 'require(); no module loading' },
+  { pattern: /\bimport\s+/, reason: 'import; no ES module loading' },
+  { pattern: /\bimport\s*\(/, reason: 'import(); no dynamic imports' },
+  { pattern: /\bfs\./, reason: 'fs module; no filesystem access' },
+  { pattern: /\bpath\./, reason: 'path module; no filesystem access' },
+  { pattern: /\b__dirname\b/, reason: '__dirname; no filesystem context' },
+  { pattern: /\b__filename\b/, reason: '__filename; no filesystem context' },
   
   // Process and environment
-  { pattern: /\bprocess\./, reason: 'process — no host process access' },
-  { pattern: /\bprocess\.env\b/, reason: 'process.env — no environment access' },
-  { pattern: /\bprocess\.exit\b/, reason: 'process.exit() — cannot kill host' },
+  { pattern: /\bprocess\./, reason: 'process; no host process access' },
+  { pattern: /\bprocess\.env\b/, reason: 'process.env; no environment access' },
+  { pattern: /\bprocess\.exit\b/, reason: 'process.exit(); cannot kill host' },
   
   // Code execution
-  { pattern: /\beval\s*\(/, reason: 'eval() — no dynamic code execution' },
-  { pattern: /\bnew\s+Function\s*\(/, reason: 'new Function() — no dynamic code execution' },
-  { pattern: /\bsetTimeout\s*\(/, reason: 'setTimeout — controlled via sandbox timeout' },
-  { pattern: /\bsetInterval\s*\(/, reason: 'setInterval — controlled via sandbox timeout' },
+  { pattern: /\beval\s*\(/, reason: 'eval(); no dynamic code execution' },
+  { pattern: /\bnew\s+Function\s*\(/, reason: 'new Function(); no dynamic code execution' },
+  { pattern: /\bsetTimeout\s*\(/, reason: 'setTimeout; controlled via sandbox timeout' },
+  { pattern: /\bsetInterval\s*\(/, reason: 'setInterval; controlled via sandbox timeout' },
   
   // Subprocess
-  { pattern: /\bchild_process\b/, reason: 'child_process — no subprocess spawning' },
-  { pattern: /\bexec\s*\(/, reason: 'exec() — no command execution' },
-  { pattern: /\bspawn\s*\(/, reason: 'spawn() — no process spawning' },
-  { pattern: /\bexecSync\b/, reason: 'execSync — no command execution' },
+  { pattern: /\bchild_process\b/, reason: 'child_process; no subprocess spawning' },
+  { pattern: /\bexec\s*\(/, reason: 'exec(); no command execution' },
+  { pattern: /\bspawn\s*\(/, reason: 'spawn(); no process spawning' },
+  { pattern: /\bexecSync\b/, reason: 'execSync; no command execution' },
   
   // Network raw
-  { pattern: /\bnet\./, reason: 'net module — use sandbox fetch() instead' },
-  { pattern: /\bhttp\./, reason: 'http module — use sandbox fetch() instead' },
-  { pattern: /\bdgram\./, reason: 'dgram — no raw sockets' },
-  { pattern: /\btls\./, reason: 'tls — no raw TLS' },
+  { pattern: /\bnet\./, reason: 'net module; use sandbox fetch() instead' },
+  { pattern: /\bhttp\./, reason: 'http module; use sandbox fetch() instead' },
+  { pattern: /\bdgram\./, reason: 'dgram; no raw sockets' },
+  { pattern: /\btls\./, reason: 'tls; no raw TLS' },
   
   // Worker threads
-  { pattern: /\bWorker\b/, reason: 'Worker — no thread spawning' },
-  { pattern: /\bworker_threads\b/, reason: 'worker_threads — no thread spawning' },
+  { pattern: /\bWorker\b/, reason: 'Worker; no thread spawning' },
+  { pattern: /\bworker_threads\b/, reason: 'worker_threads; no thread spawning' },
   
   // Global access
-  { pattern: /\bglobalThis\b/, reason: 'globalThis — no host global access' },
-  { pattern: /\bglobal\b/, reason: 'global — no host global access' },
+  { pattern: /\bglobalThis\b/, reason: 'globalThis; no host global access' },
+  { pattern: /\bglobal\b/, reason: 'global; no host global access' },
   
   // Infinite loops and DoS
-  { pattern: /\bwhile\s*\(\s*true\s*\)/, reason: 'while(true) — potential infinite loop' },
-  { pattern: /\bfor\s*\(\s*;\s*;\s*\)/, reason: 'for(;;) — potential infinite loop' },
+  { pattern: /\bwhile\s*\(\s*true\s*\)/, reason: 'while(true); potential infinite loop' },
+  { pattern: /\bfor\s*\(\s*;\s*;\s*\)/, reason: 'for(;); potential infinite loop' },
 ];
 
 export function scanGeneratedCode(code: string): ScanResult {
@@ -406,7 +406,7 @@ export function scanGeneratedCode(code: string): ScanResult {
 
 ---
 
-## Part 3: Tool Generator — The LLM Prompt
+## Part 3: Tool Generator; The LLM Prompt
 
 This is the internal prompt Carina uses to generate tool code. It goes into `src/tools/dynamic/generator-prompt.ts`:
 
@@ -426,13 +426,13 @@ You output a JSON object with three fields:
   "code": "async function execute(params) { ... }"
 }
 
-## Code Rules (MANDATORY — violations will crash)
+## Code Rules (MANDATORY; violations will crash)
 
 YOUR FUNCTION MUST:
 
 1. Be named exactly: async function execute(params)
 2. Accept ONE parameter called 'params' (an object with the keys you defined above)
-3. Return a plain value (string, number, boolean, array, or plain object — NOT a class instance, Map, Set, or Buffer)
+3. Return a plain value (string, number, boolean, array, or plain object; NOT a class instance, Map, Set, or Buffer)
 4. Use ONLY these APIs (everything else is blocked):
    - JSON.parse(), JSON.stringify()
    - Math.abs(), Math.ceil(), Math.floor(), Math.round(), Math.max(), Math.min(), Math.random(), Math.sqrt(), Math.pow()
@@ -440,9 +440,9 @@ YOUR FUNCTION MUST:
    - String methods (.split(), .replace(), .trim(), .toLowerCase(), .toUpperCase(), .includes(), .indexOf(), .slice(), .match(), .matchAll(), .replaceAll())
    - Array methods (.map(), .filter(), .reduce(), .find(), .sort(), .slice(), .concat(), .join(), .includes(), .indexOf(), .flat())
    - Object methods (.keys(), .values(), .entries(), .assign())
-   - atob(), btoa() — for base64
+   - atob(), btoa(); for base64
    - new RegExp()
-   - fetch(url, options) — for HTTPS API calls. Use ONLY GET and POST. Returns standard Response object.
+   - fetch(url, options); for HTTPS API calls. Use ONLY GET and POST. Returns standard Response object.
    - Buffer.from(str, encoding) and Buffer.isBuffer()
    - console.log() and console.error() for debugging (output captured, not printed)
 
@@ -452,8 +452,8 @@ YOUR FUNCTION MUST NOT:
 - Use eval(), new Function(), setTimeout(), setInterval()
 - Access __dirname, __filename, globalThis, global
 - Throw uncaught errors (wrap risky code in try/catch, return { error: "message" })
-- Write infinite loops (while(true), for(;;))
-- Access process.env for credentials — those are injected via params if needed
+- Write infinite loops (while(true), for(;))
+- Access process.env for credentials; those are injected via params if needed
 - Return more than 1MB of data
 
 ## Example
@@ -719,7 +719,7 @@ After successful execution, the tool can be saved for future reuse.`,
   requiresConfirmation: true,
   dangerous: true,
 
-  // Tool.execute only receives params — no second context arg exists in this codebase.
+  // Tool.execute only receives params; no second context arg exists in this codebase.
   // Operator-gating is via LEAF_EXCLUDED_TOOLS. LLM access via the shared llm singleton.
   async execute(rawParams: Record<string, unknown>): Promise<unknown> {
     const { task_description, input_data, save_on_success = true } = rawParams as {
@@ -835,7 +835,7 @@ function inferRiskLevel(code: string): 'low' | 'medium' | 'high' {
 
 ---
 
-## Part 6: Security — Defense Architecture
+## Part 6: Security; Defense Architecture
 
 ### Five Defense Layers (In Order)
 
@@ -855,7 +855,7 @@ function inferRiskLevel(code: string): 'low' | 'medium' | 'high' {
                   └──────────────┬───────────────┘
                                  │
                   ┌──────────────▼───────────────┐
-  LAYER 3         │  SANDBOX — isolated-vm        │
+  LAYER 3         │  SANDBOX; isolated-vm        │
                   │  V8 isolate. Zero host access │
                   │  by default. Memory + CPU cap │
                   │  Explicit API allowlist only. │
@@ -946,11 +946,11 @@ export const approveRuntimeTool = {
 Add to the ops dashboard API:
 
 ```typescript
-// GET /api/tools/runtime — list all generated tools
-// POST /api/tools/runtime/:id/approve — approve a tool
-// POST /api/tools/runtime/:id/disable — disable a tool
-// DELETE /api/tools/runtime/:id — permanently delete
-// GET /api/tools/runtime/stats — generation statistics
+// GET /api/tools/runtime; list all generated tools
+// POST /api/tools/runtime/:id/approve; approve a tool
+// POST /api/tools/runtime/:id/disable; disable a tool
+// DELETE /api/tools/runtime/:id; permanently delete
+// GET /api/tools/runtime/stats; generation statistics
 ```
 
 ---
@@ -985,7 +985,7 @@ telegram: ['messaging', 'file', 'web', 'search', 'skills', 'sync', 'media', 'dyn
 cli:      ['web', 'search', 'file', 'skills', 'dynamic'],
 ```
 
-Do NOT add `dynamic` to `web` platform defaults — only operator channels get tool generation.
+Do NOT add `dynamic` to `web` platform defaults; only operator channels get tool generation.
 
 ### 8.3 Add to LEAF_EXCLUDED_TOOLS
 
@@ -1012,7 +1012,7 @@ SANDBOX_MEMORY_MB=128
 SANDBOX_TIMEOUT_MS=30000
 SANDBOX_MAX_GENERATIONS_PER_HOUR=10
 
-# Auto-approval (DANGEROUS — off by default)
+# Auto-approval (DANGEROUS; off by default)
 # Set to 'true' to auto-approve low-risk generated tools
 RUNTIME_TOOL_AUTO_APPROVE=false
 ```
@@ -1047,8 +1047,8 @@ After building, verify:
 
 | File | Action |
 |------|--------|
-| `src/tools/dynamic/tool-store.ts` | CREATE — exports RUNTIME_TOOLS_MIGRATION constant |
-| `src/memory/migrations.ts` | MODIFY — import and include RUNTIME_TOOLS_MIGRATION |
+| `src/tools/dynamic/tool-store.ts` | CREATE; exports RUNTIME_TOOLS_MIGRATION constant |
+| `src/memory/migrations.ts` | MODIFY; import and include RUNTIME_TOOLS_MIGRATION |
 | `src/sandbox/sandbox-vm.ts` | CREATE |
 | `src/sandbox/allowed-apis.ts` | CREATE |
 | `src/sandbox/fetch-gatekeeper.ts` | CREATE |
@@ -1059,11 +1059,11 @@ After building, verify:
 | `src/tools/dynamic/tool-definition.ts` | CREATE |
 | `src/tools/dynamic/generate-and-run.ts` | CREATE |
 | `src/tools/dynamic/approve-tool.ts` | CREATE |
-| `src/tools/index.ts` | MODIFY — register 2 tools |
-| `src/tools/toolset.ts` | MODIFY — add `dynamic` toolset + LEAF_EXCLUDED |
-| `src/tools/toolset-config.ts` | MODIFY — add `dynamic` to operator platforms |
-| `src/index.ts` | MODIFY — add `rehydrateRuntimeTools()` call |
-| `.env` | MODIFY — add sandbox env vars |
+| `src/tools/index.ts` | MODIFY; register 2 tools |
+| `src/tools/toolset.ts` | MODIFY; add `dynamic` toolset + LEAF_EXCLUDED |
+| `src/tools/toolset-config.ts` | MODIFY; add `dynamic` to operator platforms |
+| `src/index.ts` | MODIFY; add `rehydrateRuntimeTools()` call |
+| `.env` | MODIFY; add sandbox env vars |
 
 ---
 
@@ -1077,4 +1077,4 @@ After building, verify:
 6. The result returns to Carina
 7. On success, the tool is saved to DB as `pending`
 8. You review and approve it (or reject it)
-9. Approved tools are available on every restart — no code deploy needed
+9. Approved tools are available on every restart; no code deploy needed

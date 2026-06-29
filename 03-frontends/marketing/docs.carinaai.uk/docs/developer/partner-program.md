@@ -29,7 +29,7 @@ Download SVGs from [carinaai.uk/partners](https://carinaai.uk/partners). Minimum
 | **Secured by Scout** | Only if Labyrinth Scout is integrated in production. Badge from [labyrinthscout.com](https://labyrinthscout.com), not this program. |
 | **Carina Enterprise Supported** | Only with a signed Enterprise contract. See [Enterprise](/docs/user/enterprise). |
 
-Full rules: [BRAND_RULES.md](https://github.com/malike2356/carina-agent/blob/main/core.carinaai.uk/docs/kernel/BRAND_RULES.md) in the repository.
+Full rules: [BRAND_RULES.md](https://github.com/malike2356/carina-mutant/blob/main/core.carinaai.uk/docs/kernel/BRAND_RULES.md) in the repository.
 
 ### Which badge should I request?
 

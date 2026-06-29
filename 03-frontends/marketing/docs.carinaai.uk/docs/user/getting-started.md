@@ -42,14 +42,14 @@ Package: [`carina-agent` v0.2.0](https://www.npmjs.com/package/carina-agent) on 
 ## Install from source
 
 ```bash
-git clone https://github.com/malike2356/carina-agent.git
-cd carina-agent
+git clone https://github.com/malike2356/carina-mutant.git
+cd carina-mutant
 pnpm install
 pnpm build
 pnpm cli
 ```
 
-Source lives in the public `carina-agent` repo (core only). The private `carina-ai` monorepo is VERLOX internal and is not cloned by customers.
+Source lives in the public `carina-mutant` repo (core only). The private `carina-ai` monorepo is VERLOX internal and is not cloned by customers.
 
 `pnpm cli` starts the full gateway stack (CLI + web + Telegram when configured). Use `SKIP_CLI=true pnpm dev` to run without an interactive terminal.
 

@@ -30,7 +30,7 @@ const BANNED_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\bglobalThis\b/, reason: 'globalThis - no host global access' },
   { pattern: /\b__SANDBOX_RESULT__/, reason: '__SANDBOX_RESULT__ - reserved marker' },
   { pattern: /while\s*\(\s*true\s*\)/, reason: 'while(true) - potential infinite loop' },
-  { pattern: /for\s*\(\s*;\s*;\s*\)/, reason: 'for(;;) - potential infinite loop' },
+  { pattern: /for\s*\(\s*;\s*;\s*\)/, reason: 'for(;) - potential infinite loop' },
 ];
 
 export function scanGeneratedCode(code: string): ScanResult {

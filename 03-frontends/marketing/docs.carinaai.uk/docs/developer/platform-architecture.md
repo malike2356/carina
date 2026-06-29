@@ -5,7 +5,7 @@ sidebar_position: 2
 
 # Platform architecture
 
-Carina is organized as a free MIT kernel with optional commercial layers and products built on top. See [Brand rules](https://github.com/malike2356/carina-agent/blob/main/docs/kernel/BRAND_RULES.md) for naming and licensing.
+Carina is organized as a free MIT kernel with optional commercial layers and products built on top. See [Brand rules](https://github.com/malike2356/carina-mutant/blob/main/docs/kernel/BRAND_RULES.md) for naming and licensing.
 
 ```mermaid
 flowchart TB
@@ -58,6 +58,6 @@ Scout is never bundled with the MIT core. See [Commercial boundaries](/docs/user
 ## Further reading
 
 - [Manifesto](/docs/developer/manifesto)
-- [MANIFESTO.md on GitHub](https://github.com/malike2356/carina-agent/blob/main/MANIFESTO.md)
+- [MANIFESTO.md on GitHub](https://github.com/malike2356/carina-mutant/blob/main/MANIFESTO.md)
 - [Commercial boundaries](/docs/user/pricing)
 - [Creating skill packs](/docs/developer/skills/packs)

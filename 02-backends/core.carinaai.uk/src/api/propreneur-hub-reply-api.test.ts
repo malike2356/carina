@@ -12,7 +12,7 @@ describe('propreneurHubReplyRouter', () => {
   beforeAll(async () => {
     process.env.CARINA_HUB_WEBHOOK_SECRET = 'test-hub-secret';
     const app = express();
-    app.use('/api/webhooks', propreneurHubReplyRouter);
+    app.use('/api/inbound', propreneurHubReplyRouter);
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const address = server.address();
@@ -30,7 +30,7 @@ describe('propreneurHubReplyRouter', () => {
   });
 
   it('returns 401 for invalid hub key', async () => {
-    const res = await fetch(`http://127.0.0.1:${port}/api/webhooks/propreneur-reply`, {
+    const res = await fetch(`http://127.0.0.1:${port}/api/inbound/propreneur-reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: 's1', reply: 'hello' }),
@@ -39,7 +39,7 @@ describe('propreneurHubReplyRouter', () => {
   });
 
   it('queues reply for session when key is valid', async () => {
-    const res = await fetch(`http://127.0.0.1:${port}/api/webhooks/propreneur-reply`, {
+    const res = await fetch(`http://127.0.0.1:${port}/api/inbound/propreneur-reply`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

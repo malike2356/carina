@@ -3,7 +3,7 @@
 Publish vertical packs to the Skills Hub or ship them privately with your Carina deployment.
 
 :::tip Community contribution
-Skill packs are the recommended first contribution to Carina. Propose a pack on [GitHub](https://github.com/malike2356/carina-agent/issues/new?template=skill_pack.yml) or read the [contributing guide](/docs/user/contributing).
+Skill packs are the recommended first contribution to Carina. Propose a pack on [GitHub](https://github.com/malike2356/carina-mutant/issues/new?template=skill_pack.yml) or read the [contributing guide](/docs/user/contributing).
 :::
 
 ## Pack layout
@@ -69,6 +69,6 @@ Confirm triggers fire and RAG retrieves chunks via domain-specific questions.
 
 ## Share with the community
 
-1. Open a PR adding your pack under `src/skills/packs/` in [carina-agent](https://github.com/malike2356/carina-agent), or
+1. Open a PR adding your pack under `src/skills/packs/` in [carina-mutant](https://github.com/malike2356/carina-mutant), or
 2. Publish to [skills.carinaai.uk](https://skills.carinaai.uk) with a hub publish key, or
-3. Post in [GitHub Discussions](https://github.com/malike2356/carina-agent/discussions/categories/show-and-tell) to get feedback before publishing
+3. Post in [GitHub Discussions](https://github.com/malike2356/carina-mutant/discussions/categories/show-and-tell) to get feedback before publishing

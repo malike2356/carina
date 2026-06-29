@@ -12,7 +12,7 @@ This tutorial takes you from zero to a working **hello-pack** domain pack. Domai
 The **kernel** is MIT and ships tools, memory, and channels. **Packs** are opt-in vertical knowledge you install under `~/.carina/packs/` or publish to the [Skills Hub](https://hub.carinaai.uk). Packs never replace core security or hosting.
 :::
 
-Example source on GitHub: [hello-pack example files](https://github.com/malike2356/carina-agent/tree/main/docs.carinaai.uk/docs/developer/_examples/hello-pack) and `src/skills/packs/template/` in the repository.
+Example source on GitHub: [hello-pack example files](https://github.com/malike2356/carina-mutant/tree/main/docs.carinaai.uk/docs/developer/_examples/hello-pack) and `src/skills/packs/template/` in the repository.
 
 ---
 
@@ -93,7 +93,7 @@ You are assisting with the hello-pack demo domain pack.
 Keep answers short, friendly, and free of fabricated regulatory or industry-specific claims.
 ```
 
-**TypeScript alternative** (if you develop inside a cloned repo with tsx): copy `skills.ts` and `prompts/system.ts` from the [hello-pack example on GitHub](https://github.com/malike2356/carina-agent/tree/main/docs.carinaai.uk/docs/developer/_examples/hello-pack) or `src/skills/packs/template/`.
+**TypeScript alternative** (if you develop inside a cloned repo with tsx): copy `skills.ts` and `prompts/system.ts` from the [hello-pack example on GitHub](https://github.com/malike2356/carina-mutant/tree/main/docs.carinaai.uk/docs/developer/_examples/hello-pack) or `src/skills/packs/template/`.
 
 Your directory should look like:
 
@@ -159,7 +159,7 @@ registerTool({
 });
 ```
 
-Full draft example file: [hello-lookup.ts.example on GitHub](https://github.com/malike2356/carina-agent/blob/main/docs.carinaai.uk/docs/developer/_examples/hello-pack/tools/hello-lookup.ts.example).
+Full draft example file: [hello-lookup.ts.example on GitHub](https://github.com/malike2356/carina-mutant/blob/main/docs.carinaai.uk/docs/developer/_examples/hello-pack/tools/hello-lookup.ts.example).
 
 In v0.2, custom tools ship in **npm pack packages** (`@carina/pack-*`) with a package entry module. The hello skill above works without a custom tool.
 
@@ -227,7 +227,7 @@ Breaking manifest or stable API changes require an [RFC](/docs/developer/rfc-pro
 - [Stable public API](/docs/developer/stable-api)
 - Copy the built-in template: `src/skills/packs/template/README.md` on GitHub
 
-**Community:** post your pack in [GitHub Discussions](https://github.com/malike2356/carina-agent/discussions) (Show and tell). Discord invite: TBD.
+**Community:** post your pack in [GitHub Discussions](https://github.com/malike2356/carina-mutant/discussions) (Show and tell). Discord invite: TBD.
 
 ---
 

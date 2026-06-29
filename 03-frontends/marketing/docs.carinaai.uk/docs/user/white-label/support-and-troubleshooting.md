@@ -122,7 +122,7 @@ cd backends/admin/ops.carinaai.uk && pnpm test:white-label
 | --- | --- |
 | Your product SLA | Your support email (set in brand) |
 | Hosted platform outage | Your operator escalation to VERLOX |
-| Kernel bug | [GitHub issues](https://github.com/malike2356/carina-agent/issues) for open-source path |
+| Kernel bug | [GitHub issues](https://github.com/malike2356/carina-mutant/issues) for open-source path |
 | Scout product | Labyrinth Scout support per your Scout contract |
 
 ## Related

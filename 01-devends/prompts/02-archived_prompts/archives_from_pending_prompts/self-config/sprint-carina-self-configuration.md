@@ -1,8 +1,8 @@
-# Sprint: Carina Self-Configuration — Dynamic Credential Store with Env Var Fallback
+# Sprint: Carina Self-Configuration; Dynamic Credential Store with Env Var Fallback
 
 ## What This Builds
 
-Carina gains the ability to accept API keys conversationally and wire them up herself. You give her a Tavily key in chat — she encrypts it, stores it, activates web search, and starts using it. No `.env` edit. No redeploy. No developer.
+Carina gains the ability to accept API keys conversationally and wire them up herself. You give her a Tavily key in chat; she encrypts it, stores it, activates web search, and starts using it. No `.env` edit. No redeploy. No developer.
 
 The manual `.env` method REMAINS as fallback. If the credential store is unavailable (DB down, no encryption key), Carina falls back to `process.env`. The resolver chain is: **credential store → process.env → null**.
 
@@ -42,9 +42,9 @@ User gives Carina a key
 
 **Key design decisions:**
 - Store wins over env vars when both exist (explicitly configured state beats ambient state)
-- Tools never read `process.env` directly after this sprint — they call `resolveCredential(keyName)`
-- Encryption key is `CREDENTIAL_ENCRYPTION_KEY` in `.env` — if missing, store is read-only (can't save new keys, but existing env vars still work)
-- Self-config tools are gated — only available to operator sessions, not tenant users
+- Tools never read `process.env` directly after this sprint; they call `resolveCredential(keyName)`
+- Encryption key is `CREDENTIAL_ENCRYPTION_KEY` in `.env`; if missing, store is read-only (can't save new keys, but existing env vars still work)
+- Self-config tools are gated; only available to operator sessions, not tenant users
 
 ---
 
@@ -180,7 +180,7 @@ export function decrypt(encoded: string): string | null {
       decipher.final(),
     ]).toString('utf8');
   } catch {
-    return null; // Decryption failed — corrupted data or wrong key
+    return null; // Decryption failed; corrupted data or wrong key
   }
 }
 
@@ -242,7 +242,7 @@ export class CredentialStore {
     return result.rows;
   }
 
-  /** Deactivate a credential (soft delete — keeps audit trail). */
+  /** Deactivate a credential (soft delete; keeps audit trail). */
   async remove(service: string, keyName: string): Promise<boolean> {
     const result = await pool.query(
       'UPDATE tool_credentials SET is_active = FALSE, updated_at = NOW() WHERE service = $1 AND key_name = $2',
@@ -299,7 +299,7 @@ export async function resolveCredential(keyName: string): Promise<string | null>
       const stored = await credentialStore.get(keyName);
       if (stored) return stored;
     } catch {
-      // Store unavailable — fall through to env
+      // Store unavailable; fall through to env
     }
   }
 
@@ -312,7 +312,7 @@ export async function resolveCredential(keyName: string): Promise<string | null>
 }
 
 /**
- * Synchronous version — checks env only. Use for startup/bootstrap code
+ * Synchronous version; checks env only. Use for startup/bootstrap code
  * where async DB access isn't available yet.
  */
 export function resolveCredentialSync(keyName: string): string | null {
@@ -322,7 +322,7 @@ export function resolveCredentialSync(keyName: string): string | null {
 }
 
 /**
- * Get the status of a credential — where it's coming from.
+ * Get the status of a credential; where it's coming from.
  */
 export async function getCredentialStatus(keyName: string): Promise<CredentialStatus> {
   if (isEncryptionAvailable()) {
@@ -378,7 +378,7 @@ Each tool that requires credentials declares them here. This is the source of tr
 export interface ToolCapabilityEntry {
   tool_name: string;
   description: string;
-  required_credentials: string[];   // key_names from tool_credentials or process.env
+  required_credentials: string[]; // key_names from tool_credentials or process.env
   category: string;
   /** If true, the tool is only listed when at least one credential is configured */
   hide_when_unconfigured?: boolean;
@@ -807,7 +807,7 @@ Use this when asked "what can you do" or "what's missing."`,
 
 ## Part 8: Registration
 
-### File: `src/tools/index.ts` — ADD these imports and registrations
+### File: `src/tools/index.ts`; ADD these imports and registrations
 
 ```typescript
 // At the top, with other imports:
@@ -825,7 +825,7 @@ registry.register(removeCredentialTool);
 registry.register(toolStatusTool);
 ```
 
-### File: `src/tools/toolset.ts` — ADD to TOOLSET_MAP
+### File: `src/tools/toolset.ts`; ADD to TOOLSET_MAP
 
 ```typescript
 // Add a new toolset category. Tool name strings must match the `name` field on each tool object.
@@ -840,9 +840,9 @@ registry.register(toolStatusTool);
 
 Note: `TOOLSET_MAP` values are tool `name` strings (snake_case), not file names (kebab-case).
 
-### File: `src/tools/toolset-config.ts` — ADD to LEAST_PRIVILEGE_TOOLSETS or per-operator YAML
+### File: `src/tools/toolset-config.ts`; ADD to LEAST_PRIVILEGE_TOOLSETS or per-operator YAML
 
-Platform defaults are NOT hardcoded in `toolset-config.ts`; they are driven by `LEAST_PRIVILEGE_TOOLSETS` and per-instance YAML/DB config. Add `self-config` to the operator's `toolsets.yaml` under `platforms.cli` and `platforms.telegram`. Do NOT add to `web` or `cron` — these tools are operator-only.
+Platform defaults are NOT hardcoded in `toolset-config.ts`; they are driven by `LEAST_PRIVILEGE_TOOLSETS` and per-instance YAML/DB config. Add `self-config` to the operator's `toolsets.yaml` under `platforms.cli` and `platforms.telegram`. Do NOT add to `web` or `cron`; these tools are operator-only.
 
 Example entry in `~/.carina/toolsets.yaml`:
 ```yaml
@@ -853,7 +853,7 @@ platforms:
     enabled: ['self-config']
 ```
 
-### File: `src/tools/toolset.ts` — ADD to LEAF_EXCLUDED_TOOLS (these should never reach tenant agents)
+### File: `src/tools/toolset.ts`; ADD to LEAF_EXCLUDED_TOOLS (these should never reach tenant agents)
 
 ```typescript
 export const LEAF_EXCLUDED_TOOLS = [
@@ -861,7 +861,7 @@ export const LEAF_EXCLUDED_TOOLS = [
   'session-search', 'todo', 'email-send', 'code-exec', 'cronjob',
   'webhook', 'checkpoint-manager', 'debug-helpers',
   'mixture-of-agents', 'computer-use',
-  // Self-config tools — operator only
+  // Self-config tools; operator only
   'configure_credential', 'list_credentials', 'test_credential',
   'remove_credential', 'tool_status',
 ] as const;
@@ -873,14 +873,14 @@ export const LEAF_EXCLUDED_TOOLS = [
 
 Every tool that reads `process.env.SOME_KEY` must switch to `resolveCredential('SOME_KEY')`. This is the migration work.
 
-### Pattern — BEFORE:
+### Pattern; BEFORE:
 
 ```typescript
 const apiKey = process.env.TAVILY_API_KEY;
 if (!apiKey) throw new Error('TAVILY_API_KEY not configured');
 ```
 
-### Pattern — AFTER:
+### Pattern; AFTER:
 
 ```typescript
 import { resolveCredential } from '../../credentials/resolver.js';
@@ -917,7 +917,7 @@ if (!apiKey) {
 
 ---
 
-## Part 10: REST API Endpoint (Optional — for Dashboard)
+## Part 10: REST API Endpoint (Optional; for Dashboard)
 
 ### File: `src/api/tool-status.ts`
 
@@ -1038,4 +1038,4 @@ Laud says "yes." Carina tests the key. It works. No deploy. No `.env` edit. No t
 
 If Carina's database is down or the encryption key is missing, she says:
 
-> "I can't store that right now — credential encryption isn't available. But if you add TAVILY_API_KEY=tvly-EXAMPLE to your .env file, I can use it immediately."
+> "I can't store that right now; credential encryption isn't available. But if you add TAVILY_API_KEY=tvly-EXAMPLE to your .env file, I can use it immediately."

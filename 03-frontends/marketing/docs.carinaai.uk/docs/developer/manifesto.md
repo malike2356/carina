@@ -11,7 +11,7 @@ Scout is the commercial governance layer for production agents: injection protec
 
 The full manifesto lives in the repository root:
 
-**[Read the full manifesto on GitHub](https://github.com/malike2356/carina-agent/blob/main/MANIFESTO.md)**
+**[Read the full manifesto on GitHub](https://github.com/malike2356/carina-mutant/blob/main/MANIFESTO.md)**
 
 Quick start:
 

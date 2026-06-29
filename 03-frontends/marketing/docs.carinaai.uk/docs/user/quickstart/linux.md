@@ -42,8 +42,8 @@ For contributors or anyone who wants to run directly from the repo:
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/carina-ai/carina.git
-cd carina/core.carinaai.uk
+git clone https://github.com/malike2356/carina-mutant.git
+cd carina-mutant
 pnpm install
 cp .env.example .env
 ```
