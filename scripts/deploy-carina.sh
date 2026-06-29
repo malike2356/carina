@@ -24,6 +24,7 @@ SCOUT_ENGINE_LOCAL="${REPO_ROOT}/02-backends/scout-engine"
 CARINA_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/carinaai.uk"
 DOCS_SUBDOMAIN_LOCAL="${REPO_ROOT}/03-frontends/marketing/docs.carinaai.uk"
 SCOUT_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com"
+HIREAIVA_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/hireaiva"
 VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
 APPS_ROOT="${APPS_ROOT:-/home/malike/apps}"
@@ -88,6 +89,13 @@ rsync -az --delete \
   --delete-excluded \
   --exclude='.git' \
   "${SCOUT_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/labyrinthscout.com-static/"
+
+log "Syncing hireaiva.co.uk marketing site..."
+ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '/www/wwwroot/hireaiva.co.uk'"
+rsync -az --delete \
+  --delete-excluded \
+  --exclude='.git' \
+  "${HIREAIVA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/www/wwwroot/hireaiva.co.uk/"
 
 log "Building docs.carinaai.uk (Docusaurus, baseUrl /)..."
 (

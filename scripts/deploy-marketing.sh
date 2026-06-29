@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # deploy-marketing.sh - Deploy static marketing sites to Contabo VPS
-# Run from the carina repo root: bash scripts/deploy-marketing.sh [carina|scout|all]
+# Run from the carina repo root: bash scripts/deploy-marketing.sh [carina|scout|hireaiva|all]
 #
 # carinaai.uk production uses Docker nginx + core.carinaai.uk/public_website/.
 # This script recreates nginx after the docker rsync (reload-marketing-nginx.sh).
@@ -109,6 +109,9 @@ main() {
       build_scout_docs
       deploy_site "labyrinthscout.com" "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
       ;;
+    hireaiva)
+      deploy_site "hireaiva.co.uk" "${REPO_ROOT}/03-frontends/marketing/hireaiva" "/www/wwwroot/hireaiva.co.uk"
+      ;;
     all)
       build_carina_docs
       build_scout_docs
@@ -116,9 +119,10 @@ main() {
       deploy_site "carinaai.uk-docker" "${REPO_ROOT}/03-frontends/marketing/carinaai.uk" "/home/malike/apps/core.carinaai.uk/public_website"
       reload_carina_marketing_nginx
       deploy_site "labyrinthscout.com" "${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com" "/www/wwwroot/labyrinthscout.com"
+      deploy_site "hireaiva.co.uk" "${REPO_ROOT}/03-frontends/marketing/hireaiva" "/www/wwwroot/hireaiva.co.uk"
       ;;
     *)
-      die "Usage: bash scripts/deploy-marketing.sh [carina|scout|all]"
+      die "Usage: bash scripts/deploy-marketing.sh [carina|scout|hireaiva|all]"
       ;;
   esac
 
