@@ -246,7 +246,7 @@ return [
 
     'carina_hub' => [
         'webhook_secret' => env('CARINA_HUB_WEBHOOK_SECRET', ''),
-        'reply_url' => env('CARINA_HUB_REPLY_URL', 'https://carinaai.uk/api/webhooks/propreneur-reply'),
+        'reply_url' => env('CARINA_HUB_REPLY_URL', 'https://core.carinaai.uk/api/webhooks/propreneur-reply'),
     ],
 
 ];
