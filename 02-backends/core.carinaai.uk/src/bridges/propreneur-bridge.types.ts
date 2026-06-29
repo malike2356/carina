@@ -44,6 +44,7 @@ export interface PropreneurProposalResponse {
 }
 
 export interface PropreneurCarinaChatResponse {
+  ok: boolean;
   reply: string;
   session_id: string;
   steps_used: number;
