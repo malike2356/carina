@@ -143,8 +143,11 @@ if [[ -f "$SECRETS_DIR/core.carinaai.uk.env" ]]; then
     if ! grep -qE "^${key}=" .env.docker.runtime 2>/dev/null; then
       echo "$line" >> .env.docker.runtime
     fi
-  done < <(grep -E '^(AI_WORKERS_ENABLED|CHANNEL_CREDENTIAL_KEY|WHATSAPP_|BAILEYS_|CARINA_WHATSAPP_|SLACK_|POSTMARK_|TELEGRAM_BOT_TOKEN|TELEGRAM_WEBHOOK)' \
+  done < <(grep -E '^(AI_WORKERS_ENABLED|CHANNEL_CREDENTIAL_KEY|WHATSAPP_|BAILEYS_|CARINA_WHATSAPP_|SLACK_|POSTMARK_|TELEGRAM_BOT_TOKEN|TELEGRAM_WEBHOOK|REDIS_PASSWORD)' \
     "$SECRETS_DIR/core.carinaai.uk.env")
+fi
+if [[ -f "$SECRETS_DIR/core.carinaai.uk.env" ]]; then
+  grep '^REDIS_PASSWORD=' "$SECRETS_DIR/core.carinaai.uk.env" >> .env 2>/dev/null || true
 fi
 if [[ -f "$SECRETS_DIR/app.carinaai.uk.env" ]]; then
   for key in CARINA_OPS_TOKEN CARINA_INTERNAL_KEY; do
@@ -157,6 +160,11 @@ fi
 python3 docker/scripts/sync-docker-env.py
 python3 docker/scripts/sync-ops-env.py
 python3 docker/scripts/sync-cloud-env.py
+set -a
+# shellcheck disable=SC1090
+[[ -f "$SECRETS_DIR/core.carinaai.uk.env" ]] && source "$SECRETS_DIR/core.carinaai.uk.env"
+set +a
+export REDIS_PASSWORD
 bash docker/scripts/stop-bare-metal-carina.sh
 bash docker/scripts/deploy-prod.sh
 bash docker/scripts/reload-marketing-nginx.sh

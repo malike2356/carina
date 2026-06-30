@@ -80,8 +80,9 @@ export class AivaWorkerPool {
       lastPongAt: null,
     };
 
-    worker.on('error', (err) => {
-      console.error(`[worker-pool] worker ${workerId} error:`, err.message);
+    worker.on('error', (err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[worker-pool] worker ${workerId} error:`, msg);
       this.workers.delete(workerId);
     });
 

@@ -165,6 +165,10 @@ REMOTE
 set -euo pipefail
 cd "${CORE_DIR}"
 export CARINA_CLOUD_CONTEXT="${DEPLOY_DIR}"
+set -a
+[[ -f /home/malike/secrets/core.carinaai.uk.env ]] && source /home/malike/secrets/core.carinaai.uk.env
+set +a
+export REDIS_PASSWORD
 # Use deploy compose so carina-web/hub/ops keep tagged release images (not bootstrap rebuilds).
 docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml build carina-cloud
 docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-deps carina-cloud

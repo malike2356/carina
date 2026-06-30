@@ -129,7 +129,7 @@ export async function createDraftApprovalForEmail(input: {
   });
 
   void logActivity(input.workerId, {
-    actionType: 'escalation',
+    actionType: 'escalated',
     summary: `Email draft awaiting approval: ${input.subject}`,
     inputText: draftBody,
     escalated: true,
