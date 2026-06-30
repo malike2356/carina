@@ -6,6 +6,7 @@ import {
   filterMemoryFactsForInjection,
   validateMemoryContent,
 } from './memory-discipline.js';
+import { guardMemoryWrite } from './memory-write-guard.js';
 
 const CURATED_SUMMARY_HEADER =
   'Curated long-term memory (compact summary; use memory search/list or session-search for details):';
@@ -96,11 +97,15 @@ export async function getPersistentFactsTotal(
 export async function addPersistentFact(
   target: MemoryTarget,
   content: string,
-  options: { agentId?: string } = {},
-): Promise<PersistentFact> {
+  options: { agentId?: string; sessionId?: string } = {},
+): Promise<PersistentFact | null> {
   const trimmed = content.trim();
   const validation = validateMemoryContent(trimmed);
   if (!validation.ok) throw new Error(validation.reason);
+
+  const sessionId = options.sessionId ?? `persistent:${target}:${activeProfileName()}`;
+  const guard = await guardMemoryWrite(trimmed, 'inference', sessionId);
+  if (!guard.allowed) return null;
 
   const current = await getPersistentFactsTotal(target, options.agentId);
   if (current + trimmed.length > MEMORY_BUDGETS[target]) {
@@ -144,7 +149,8 @@ export async function replacePersistentFact(
   oldText: string,
   newText: string,
   agentId?: string,
-): Promise<PersistentFact> {
+  sessionId?: string,
+): Promise<PersistentFact | null> {
   const matches = await findFactsByText(target, oldText, agentId);
   if (matches.length === 0) {
     throw new Error(`No memory entry matching "${oldText}" found for target "${target}".`);
@@ -155,6 +161,10 @@ export async function replacePersistentFact(
 
   const validation = validateMemoryContent(newText.trim());
   if (!validation.ok) throw new Error(validation.reason);
+
+  const guardSessionId = sessionId ?? `persistent:${target}:${activeProfileName()}`;
+  const guard = await guardMemoryWrite(newText.trim(), 'inference', guardSessionId);
+  if (!guard.allowed) return null;
 
   const current = await getPersistentFactsTotal(target, agentId);
   const delta = newText.trim().length - matches[0].content.length;

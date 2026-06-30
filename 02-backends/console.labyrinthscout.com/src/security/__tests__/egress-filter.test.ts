@@ -5,31 +5,15 @@ import {
   DataLeakError,
 } from '../egress-filter.js';
 
-const DEFAULT_DOMAINS = [
-  'api.search.brave.com',
-  'api.openai.com',
-  'api.anthropic.com',
-  'api.deepseek.com',
-  'api.resend.com',
-  'api.telegram.org',
-  'api.twilio.com',
-  'api.propertydata.co.uk',
-  'generativelanguage.googleapis.com',
-  '*.carinaai.uk',
-  '*.github.com',
-  'github.com',
-];
-
 function makeFilter(reportFn = vi.fn().mockResolvedValue(undefined)): EgressFilter {
   return new EgressFilter({
-    allowedDomains: [...DEFAULT_DOMAINS],
     scoutBaseUrl: null,
     reportFn,
   });
 }
 
 const OPENAI_KEY = 'sk-' + 'A'.repeat(48);
-const ANTHROPIC_KEY = 'sk-ant-api' + 'x'.repeat(100);
+const ANTHROPIC_KEY = 'sk-ant-api' + 'x'.repeat(95);
 const GITHUB_TOKEN = 'ghp_' + 'a'.repeat(36);
 
 describe('EgressFilter.isAllowed', () => {
@@ -43,22 +27,22 @@ describe('EgressFilter.isAllowed', () => {
     expect(filter.isAllowed('https://evil.com/steal')).toBe(false);
   });
 
-  it('allows wildcard subdomain: sub.carinaai.uk matches *.carinaai.uk', () => {
+  it('allows explicit carinaai.uk subdomain: hub.carinaai.uk', () => {
     const filter = makeFilter();
-    expect(filter.isAllowed('https://sub.carinaai.uk/api')).toBe(true);
+    expect(filter.isAllowed('https://hub.carinaai.uk/api')).toBe(true);
   });
 
-  it('does not allow bare wildcard root: carinaai.uk does not match *.carinaai.uk', () => {
+  it('blocks unlisted carinaai.uk subdomain: attacker.carinaai.uk', () => {
     const filter = makeFilter();
-    expect(filter.isAllowed('https://carinaai.uk/api')).toBe(false);
+    expect(filter.isAllowed('https://attacker.carinaai.uk/payload')).toBe(false);
   });
 
-  it('allows github.com exact match', () => {
+  it('blocks github.io pages: attacker.github.io', () => {
     const filter = makeFilter();
-    expect(filter.isAllowed('https://github.com/repos')).toBe(true);
+    expect(filter.isAllowed('https://attacker.github.io/payload')).toBe(false);
   });
 
-  it('allows sub.github.com via *.github.com wildcard', () => {
+  it('allows api.github.com hostname', () => {
     const filter = makeFilter();
     expect(filter.isAllowed('https://api.github.com/user')).toBe(true);
   });
@@ -80,7 +64,7 @@ describe('EgressFilter.scanForSensitiveData', () => {
   it('detects GitHub token pattern', async () => {
     const filter = makeFilter();
     const result = await filter.scanForSensitiveData(`gh=${GITHUB_TOKEN}`);
-    expect(result).toEqual({ found: true, patternName: 'github_token' });
+    expect(result).toEqual({ found: true, patternName: 'github_pat' });
   });
 
   it('returns found=false for clean content', async () => {
@@ -101,6 +85,33 @@ describe('EgressFilter.checkRequest', () => {
       'critical',
       expect.objectContaining({ hostname: 'evil.com' }),
     );
+  });
+
+  it('throws EgressBlockedError for disallowed GitHub path', async () => {
+    const reportFn = vi.fn().mockResolvedValue(undefined);
+    const filter = makeFilter(reportFn);
+
+    await expect(
+      filter.checkRequest('https://api.github.com/attacker/payload'),
+    ).rejects.toBeInstanceOf(EgressBlockedError);
+  });
+
+  it('allows malike2356 raw.githubusercontent.com path', async () => {
+    const reportFn = vi.fn().mockResolvedValue(undefined);
+    const filter = makeFilter(reportFn);
+
+    await expect(
+      filter.checkRequest('https://raw.githubusercontent.com/malike2356/carina-aiva/main/README.md'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('blocks arbitrary raw.githubusercontent.com path', async () => {
+    const reportFn = vi.fn().mockResolvedValue(undefined);
+    const filter = makeFilter(reportFn);
+
+    await expect(
+      filter.checkRequest('https://raw.githubusercontent.com/attacker/payload/main/evil.txt'),
+    ).rejects.toBeInstanceOf(EgressBlockedError);
   });
 
   it('throws DataLeakError when body contains API key', async () => {
@@ -140,17 +151,31 @@ describe('EgressFilter.checkResponse', () => {
     expect(reportFn).toHaveBeenCalledWith(
       'data_leak_inbound',
       'critical',
-      expect.objectContaining({ patternName: 'private_key' }),
+      expect.objectContaining({ patternName: 'private_key_pem' }),
     );
   });
 });
 
 describe('loadPolicyFromEnv domains', () => {
-  it('merges SCOUT_ALLOWED_DOMAINS with defaults', () => {
-    const prev = process.env.SCOUT_ALLOWED_DOMAINS;
-    process.env.SCOUT_ALLOWED_DOMAINS = 'custom.example.com';
+  it('merges CARINA_EGRESS_EXTRA_DOMAINS with defaults', () => {
+    const prevExtra = process.env.CARINA_EGRESS_EXTRA_DOMAINS;
+    const prevScout = process.env.SCOUT_ALLOWED_DOMAINS;
+    process.env.CARINA_EGRESS_EXTRA_DOMAINS = 'custom.example.com';
+    delete process.env.SCOUT_ALLOWED_DOMAINS;
     const filter = new EgressFilter({ scoutBaseUrl: null, reportFn: vi.fn() });
     expect(filter.isAllowed('https://custom.example.com/path')).toBe(true);
-    process.env.SCOUT_ALLOWED_DOMAINS = prev;
+    process.env.CARINA_EGRESS_EXTRA_DOMAINS = prevExtra;
+    process.env.SCOUT_ALLOWED_DOMAINS = prevScout;
+  });
+
+  it('falls back to SCOUT_ALLOWED_DOMAINS when CARINA_EGRESS_EXTRA_DOMAINS is unset', () => {
+    const prevExtra = process.env.CARINA_EGRESS_EXTRA_DOMAINS;
+    const prevScout = process.env.SCOUT_ALLOWED_DOMAINS;
+    delete process.env.CARINA_EGRESS_EXTRA_DOMAINS;
+    process.env.SCOUT_ALLOWED_DOMAINS = 'legacy.example.com';
+    const filter = new EgressFilter({ scoutBaseUrl: null, reportFn: vi.fn() });
+    expect(filter.isAllowed('https://legacy.example.com/path')).toBe(true);
+    process.env.CARINA_EGRESS_EXTRA_DOMAINS = prevExtra;
+    process.env.SCOUT_ALLOWED_DOMAINS = prevScout;
   });
 });

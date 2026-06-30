@@ -5,6 +5,8 @@ export type PenTestSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export type PenTestStep =
   | { send_message: string }
+  | { send_tool_result: string }
+  | { scan_memory_write: { content: string; source: 'user' | 'tool_result' | 'inference' } }
   | { authenticate_as: OrgRole | 'regular_user' }
   | { read_path: string }
   | { set_env: Record<string, string> }
@@ -60,6 +62,8 @@ export type ScenarioRuntimeContext = {
   sequenceViolationRuleId?: string;
   promptGuardBlocked: boolean;
   promptGuardReason?: string;
+  toolResultGuardBlocked: boolean;
+  memoryWriteBlocked: boolean;
   pathSafetyBlocked: boolean;
   pathSafetyCode?: string;
   rbacDenied: boolean;

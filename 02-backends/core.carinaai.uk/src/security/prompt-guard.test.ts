@@ -33,6 +33,7 @@ describe('PromptGuard', () => {
     expect(result.isMalicious).toBe(true);
     expect(result.layer).toBe(1);
     expect(result.patterns).toContain('ignore-previous-instructions');
+    expect(result.patternIds).toContain('INJ-A01');
     expect(result.message).toContain('Ref: SHIELD-');
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -47,7 +48,7 @@ describe('PromptGuard', () => {
   });
 
   it('loads patterns and whitelist from injection-patterns.json', () => {
-    expect(INPUT_PATTERNS.map((p) => p.id)).toContain('INJ-001');
+    expect(INPUT_PATTERNS.map((p) => p.id)).toContain('INJ-A01');
     expect(INPUT_PATTERNS.map((p) => p.label)).toContain('ignore-previous-instructions');
     expect(PATTERN_WHITELIST).toContain('system architecture');
   });
@@ -101,5 +102,6 @@ describe('PromptGuard', () => {
     expect(result.isMalicious).toBe(true);
     expect(result.layer).toBe(3);
     expect(result.patterns).toContain('hidden-html-comment-injection');
+    expect(result.patternIds).toContain('INJ-G01');
   });
 });

@@ -1,7 +1,17 @@
 # SEC-07: RASP Engine Correlation Window Hardening
 
+**Status: COMPLETED 2026-06-30**
+
+**What was built:**
+- `signal-buffer.ts`: sliding window (200 signals / 30 min retention)
+- `global-signal-store.ts`: cross-session Redis aggregation (`rasp_coordinated_attack` at threshold 5/hour)
+- `engine.ts`: restore on session start, `persistRaspSignalsOnShutdown()` wired to SIGTERM in `index.ts`
+- `mitre-tactics.ts`: pattern-to-tactic map, `detectTacticProgression()` boosts threat score
+- `prompt-guard-middleware.ts`: emits RASP signals with `patternId` on blocked input/tool output
+- Tests: `rasp.test.ts` including 6-minute gap sliding window and MITRE progression cases
+
 **Severity:** Medium-High
-**Status:** Partially addressed - RASP engine exists but correlation window exploitable
+**Status:** Patched
 **Affects:** core.carinaai.uk src/security/rasp/engine.ts
 
 ## Problem

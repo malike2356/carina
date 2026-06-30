@@ -1,4 +1,5 @@
 import type { Role } from '../../types/index.js';
+import { guardMemoryWrite, roleToMemorySource } from '../memory-write-guard.js';
 import { storageSessionId } from '../session-scope.js';
 import type { MemoryBackend } from './types.js';
 import { builtinBackend, resolveBuiltinTarget } from './builtin-backend.js';
@@ -76,6 +77,8 @@ export function listMemoryBackends(): string[] {
 }
 
 export async function backendSaveMemory(sessionId: string, role: Role, content: string): Promise<void> {
+  const guard = await guardMemoryWrite(content, roleToMemorySource(role), sessionId);
+  if (!guard.allowed) return;
   return active.saveMemory(storageSessionId(sessionId), role, content);
 }
 

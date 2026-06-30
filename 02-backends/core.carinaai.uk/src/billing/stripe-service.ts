@@ -1,11 +1,12 @@
 import Stripe from 'stripe';
 import { config } from '../config/index.js';
 import {
-  resolveStripePriceId,
-  resolveTopupStripePriceId,
+  resolveStripePriceIdAsync,
+  resolveTopupStripePriceIdAsync,
   type BillingPlanId,
   type CreditTopupPackId,
 } from './plans.js';
+import { refreshBillingConfigCache } from './billing-config.js';
 
 export interface CheckoutInput {
   tenantId: string;
@@ -43,10 +44,12 @@ export class StripeService {
   }
 
   async createCheckoutSession(input: CheckoutInput): Promise<Stripe.Checkout.Session> {
+    await refreshBillingConfigCache();
+    const priceId = await resolveStripePriceIdAsync(input.plan);
     return this.client().checkout.sessions.create({
       mode: 'subscription',
       customer_email: input.email,
-      line_items: [{ price: resolveStripePriceId(input.plan), quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: input.successUrl,
       cancel_url: input.cancelUrl,
       metadata: {
@@ -65,10 +68,12 @@ export class StripeService {
   }
 
   async createTopupCheckoutSession(input: TopupCheckoutInput): Promise<Stripe.Checkout.Session> {
+    await refreshBillingConfigCache();
+    const priceId = await resolveTopupStripePriceIdAsync(input.packId);
     return this.client().checkout.sessions.create({
       mode: 'payment',
       customer_email: input.email,
-      line_items: [{ price: resolveTopupStripePriceId(input.packId), quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       success_url: input.successUrl,
       cancel_url: input.cancelUrl,
       metadata: {

@@ -42,7 +42,9 @@ import { usersRouter } from './routes/users.js';
 import { serverPanelRouter } from './routes/server-panel.js';
 import { standingOrdersRouter } from './routes/standing-orders.js';
 import { pricingRouter } from './routes/pricing.js';
+import { billingConfigRouter } from './routes/billing-config.js';
 import { ensurePricingTable } from './lib/pricing-store.js';
+import { ensureBillingConfigTable } from './lib/billing-config-store.js';
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 // tsx runs server.ts from the ops root; tsc compiles it one level down into dist/.
@@ -166,6 +168,7 @@ app.use('/agent-tools', agentToolsRouter);
 app.use('/standing-orders', standingOrdersRouter);
 
 app.use('/pricing', pricingRouter);
+app.use('/billing-config', billingConfigRouter);
 app.use('/governance', governanceRouter);
 app.use('/users', usersRouter);
 app.use('/server', serverPanelRouter);
@@ -234,6 +237,12 @@ server.listen(PORT, listenHost, () => {
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(chalk.yellow(`  Platform pricing: skipped (${msg})`));
+    });
+  void ensureBillingConfigTable()
+    .then(() => console.log(chalk.gray('  Billing config: ready')))
+    .catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(chalk.yellow(`  Billing config: skipped (${msg})`));
     });
   void autoPairCarinaFromLocalCore()
     .then((result) => {

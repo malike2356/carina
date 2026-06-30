@@ -12,6 +12,10 @@ import { clearWorkerSessionContext } from '../workers/worker-session-context.js'
 import type { AivaChannelName } from '../channels/types.js';
 import { buildPortfolioContextSuffix } from '../workers/portfolio-context.js';
 import { registerPropreneurSessionTools } from '../tools/propreneur-portfolio.js';
+import {
+  getAivaWorkerPool,
+  isAivaWorkerIsolationEnabled,
+} from '../agents/worker-pool.js';
 
 export interface ProcessAivaMessageParams {
   workerId: string;
@@ -37,6 +41,22 @@ export type AivaStreamEvent =
   | { type: 'replace'; content: string };
 
 export async function* processAivaMessageStream(
+  params: ProcessAivaMessageParams,
+): AsyncGenerator<AivaStreamEvent> {
+  if (isAivaWorkerIsolationEnabled()) {
+    const pool = getAivaWorkerPool();
+    yield* pool.sendStream(
+      params.workerId,
+      { workerId: params.workerId, workspaceId: params.workspaceId },
+      { type: 'process_message', params },
+    );
+    return;
+  }
+
+  yield* processAivaMessageStreamDirect(params);
+}
+
+export async function* processAivaMessageStreamDirect(
   params: ProcessAivaMessageParams,
 ): AsyncGenerator<AivaStreamEvent> {
   const worker = await getWorker(params.workspaceId, params.workerId);

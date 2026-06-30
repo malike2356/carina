@@ -11,4 +11,18 @@ export const SIGNAL_SOURCE_WEIGHTS: Record<RASPSignalSource, number> = {
 
 export const CROSS_REFERENCE_BONUS = 0.15;
 
-export const CORRELATION_WINDOW_MS = 30_000;
+/** Sliding retention window for per-session signal correlation. */
+export const SIGNAL_RETENTION_MS = 30 * 60 * 1000;
+
+/** Maximum signals retained per session within the retention window. */
+export const SIGNAL_RETENTION_COUNT = 200;
+
+/** Cross-session pattern hit threshold within GLOBAL_SIGNAL_WINDOW_SECS. */
+export const GLOBAL_SIGNAL_THRESHOLD = 5;
+
+export const GLOBAL_SIGNAL_WINDOW_SECS = 60 * 60;
+
+export const SIGNAL_PERSISTENCE_TTL_SECS = 60 * 60;
+
+/** Backward-compatible alias for status and legacy callers. */
+export const CORRELATION_WINDOW_MS = SIGNAL_RETENTION_MS;

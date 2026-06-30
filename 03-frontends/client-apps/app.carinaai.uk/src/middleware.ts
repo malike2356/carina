@@ -7,6 +7,7 @@ import {
   isCloudOnlyRoute,
 } from '@/lib/product-surface';
 import { AIVA_POST_AUTH_PATH } from '@/lib/aiva-post-auth';
+import { isLegalExemptApiPath } from '@/lib/legal/legal-gate';
 
 const protectedPrefixes = [
   '/dashboard',
@@ -78,6 +79,32 @@ function withProductSurfaceHeader(response: NextResponse, aivaHost: boolean): Ne
   return response;
 }
 
+async function applyLegalApiGate(
+  request: NextRequest,
+  pathname: string,
+  sessionCookie: string | undefined,
+): Promise<NextResponse | null> {
+  if (!sessionCookie || !pathname.startsWith('/api/') || isLegalExemptApiPath(pathname)) {
+    return null;
+  }
+
+  try {
+    const statusUrl = new URL('/api/legal/status', request.url);
+    const res = await fetch(statusUrl, {
+      headers: { cookie: request.headers.get('cookie') ?? '' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { all_current_accepted?: boolean; pending?: unknown[] };
+    if (data.all_current_accepted) return null;
+    return NextResponse.json(
+      { code: 'legal_acceptance_required', pending: data.pending ?? [] },
+      { status: 403 },
+    );
+  } catch {
+    return null;
+  }
+}
+
 function applyAivaPlanGate(request: NextRequest, pathname: string): NextResponse | null {
   const isAivaPage = pathname.startsWith('/aiva');
   const isAivaApi =
@@ -99,7 +126,7 @@ function applyAivaPlanGate(request: NextRequest, pathname: string): NextResponse
   return NextResponse.redirect(billingUrl);
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const hostname = requestHostname(request);
   const aivaHost = isAivaProductHost(hostname);
   const hostHeader = request.headers.get('host') ?? '';
@@ -140,6 +167,11 @@ export function middleware(request: NextRequest) {
 
   const sessionCookie = getSessionCookie(request);
   if (sessionCookie) {
+    const legalGate = await applyLegalApiGate(request, pathname, sessionCookie);
+    if (legalGate) {
+      return withProductSurfaceHeader(legalGate, aivaHost);
+    }
+
     const planGate = applyAivaPlanGate(request, pathname);
     if (planGate) {
       return withProductSurfaceHeader(planGate, aivaHost);

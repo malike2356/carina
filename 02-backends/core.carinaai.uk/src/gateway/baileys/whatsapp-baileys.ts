@@ -1,6 +1,5 @@
 import chalk from 'chalk';
 import path from 'path';
-import os from 'os';
 import fs from 'fs/promises';
 import { channelRegistry } from '../channels/channel-registry.js';
 import { getRouter } from '../router.js';
@@ -8,10 +7,12 @@ import type { ChannelMessage, IChannelAdapter, SendOptions } from '../channels/c
 import { formatForChannel } from '../channels/channel-formatter.js';
 import { saveInboundMedia, transcribeInboundAudio } from './whatsapp-media.js';
 import { findContact } from '../../profiles/contacts.js';
+import { resolveCarinaDataDir } from '../../config/paths.js';
+import { reportEvent } from '../../security/scout-client.js';
+import { requireSessionSecret, useEncryptedAuthState } from './session-store.js';
 
 type BaileysModule = {
   default: (opts: Record<string, unknown>) => BaileysSocket;
-  useMultiFileAuthState: (dir: string) => Promise<{ state: unknown; saveCreds: () => Promise<void> }>;
   fetchLatestBaileysVersion: () => Promise<{ version: number[] }>;
   makeCacheableSignalKeyStore: (state: unknown, logger: unknown) => unknown;
   downloadMediaMessage: (
@@ -199,17 +200,44 @@ async function handleInboundMessage(
   if (reply) await adapter.sendMessage(from, reply);
 }
 
-async function connectBaileys(baileys: BaileysModule, authDir: string): Promise<BaileysSocket> {
-  const existing = baileysSockets.get('default');
+function resolveWhatsAppSessionDir(accountId: string): string {
+  if (process.env.BAILEYS_AUTH_DIR?.trim()) {
+    return process.env.BAILEYS_AUTH_DIR.trim();
+  }
+  return path.join(resolveCarinaDataDir(), 'whatsapp', accountId, 'session');
+}
+
+function resolveWhatsAppAccountId(): string {
+  return process.env.CARINA_WHATSAPP_ACCOUNT_ID?.trim() || 'default';
+}
+
+async function reportWhatsAppSessionRevoked(accountId: string, reason: number | undefined): Promise<void> {
+  await reportEvent({
+    severity: 'critical',
+    source: 'carina-whatsapp',
+    event_type: 'whatsapp_session_revoked',
+    description: 'WhatsApp session was revoked from the linked device',
+    metadata: { accountId, reason },
+    instance_id: process.env.CARINA_INSTANCE_ID ?? 'carina-core',
+  }).catch(() => undefined);
+}
+
+async function connectBaileys(
+  baileys: BaileysModule,
+  sessionDir: string,
+  accountId: string,
+  sessionSecret: string,
+): Promise<BaileysSocket> {
+  const existing = baileysSockets.get(accountId);
   if (existing) {
     try { existing.end(); } catch { /* ignore */ }
-    baileysSockets.delete('default');
+    baileysSockets.delete(accountId);
   }
 
-  const adapter = new BaileysWhatsAppAdapter(true);
+  const adapter = new BaileysWhatsAppAdapter(true, accountId);
   channelRegistry.register(adapter);
 
-  const { state, saveCreds } = await baileys.useMultiFileAuthState(authDir);
+  const { state, saveCreds } = await useEncryptedAuthState(sessionDir, sessionSecret);
   const { version } = await baileys.fetchLatestBaileysVersion();
 
   const sock = baileys.default({
@@ -223,7 +251,7 @@ async function connectBaileys(baileys: BaileysModule, authDir: string): Promise<
     markOnlineOnConnect: true,
   });
 
-  baileysSockets.set('default', sock);
+  baileysSockets.set(accountId, sock);
   const myJid = String((state as { creds?: { me?: { id?: string } } }).creds?.me?.id ?? '');
 
   sock.ev.on('creds.update', () => void saveCreds());
@@ -236,7 +264,7 @@ async function connectBaileys(baileys: BaileysModule, authDir: string): Promise<
     };
 
     if (u.qr) {
-      const qrPath = path.join(authDir, '..', 'baileys-qr.txt');
+      const qrPath = path.join(sessionDir, '..', 'baileys-qr.txt');
       await fs.writeFile(qrPath, u.qr, 'utf8').catch(() => undefined);
       console.log(chalk.gray(`QR saved to ${qrPath}`));
     }
@@ -246,13 +274,17 @@ async function connectBaileys(baileys: BaileysModule, authDir: string): Promise<
       const loggedOut = status === baileys.DisconnectReason.loggedOut;
       if (loggedOut) {
         console.warn(chalk.yellow('WhatsApp logged out. Run: carina whatsapp setup'));
+        await reportWhatsAppSessionRevoked(accountId, status);
+        try {
+          await fs.unlink(path.join(sessionDir, 'creds.enc'));
+        } catch { /* ignore */ }
         return;
       }
       reconnectAttempts++;
       const delay = Math.min(reconnectAttempts * 2000, 30_000);
       console.warn(chalk.yellow(`WhatsApp disconnected. Reconnecting in ${delay / 1000}s...`));
       setTimeout(() => {
-        void connectBaileys(baileys, authDir).catch((err) => {
+        void connectBaileys(baileys, sessionDir, accountId, sessionSecret).catch((err) => {
           console.warn(chalk.yellow(`WhatsApp reconnect failed: ${err instanceof Error ? err.message : err}`));
         });
       }, delay).unref();
@@ -292,10 +324,11 @@ export async function startBaileysWhatsApp(): Promise<void> {
     return;
   }
 
-  const authDir = process.env.BAILEYS_AUTH_DIR
-    ?? path.join(process.env.CARINA_HOME ?? path.join(os.homedir(), '.carina'), 'baileys-auth');
-  await fs.mkdir(authDir, { recursive: true });
+  const sessionSecret = requireSessionSecret();
+  const accountId = resolveWhatsAppAccountId();
+  const sessionDir = resolveWhatsAppSessionDir(accountId);
+  await fs.mkdir(sessionDir, { recursive: true, mode: 0o700 });
 
-  await connectBaileys(baileys, authDir);
+  await connectBaileys(baileys, sessionDir, accountId, sessionSecret);
   console.log(chalk.green('Baileys WhatsApp gateway ready (live session bridge)'));
 }

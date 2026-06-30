@@ -1,3 +1,5 @@
+import { getBillingConfig, resolveConfigValue } from './billing-config.js';
+
 export type BillingPlanId =
   | 'free'
   | 'carina_ops_starter'
@@ -176,20 +178,39 @@ export function planTier(plan: BillingPlanId): 'free' | 'pro' {
   return plan === 'free' ? 'free' : 'pro';
 }
 
+function legacyStripePriceId(normalized: BillingPlanId): string {
+  if (normalized === 'scout_monitor') {
+    return resolveConfigValue('STRIPE_PRICE_SCOUT_BASIC');
+  }
+  if (normalized === 'scout_pro') {
+    return resolveConfigValue('STRIPE_PRICE_SCOUT_PRO')
+      || resolveConfigValue('STRIPE_PRICE_SCOUT_STANDARD');
+  }
+  return '';
+}
+
 export function resolveStripePriceId(plan: BillingPlanId): string {
   const normalized = normalizePlanId(plan);
   const envKey = BILLING_PLANS[normalized].stripePriceEnv;
   if (!envKey) throw new Error(`Plan ${plan} does not use Stripe Checkout`);
-  const priceId = process.env[envKey] ?? '';
+  const priceId = resolveConfigValue(envKey);
   if (!priceId) {
-    const legacy =
-      normalized === 'scout_monitor'
-        ? process.env.STRIPE_PRICE_SCOUT_BASIC ?? ''
-        : normalized === 'scout_pro'
-          ? process.env.STRIPE_PRICE_SCOUT_PRO ?? process.env.STRIPE_PRICE_SCOUT_STANDARD ?? ''
-          : '';
+    const legacy = legacyStripePriceId(normalized);
     if (legacy) return legacy;
-    throw new Error(`Missing required env var: ${envKey}`);
+    throw new Error(`Missing Stripe price for ${envKey} (set in ops Billing Config or .env)`);
+  }
+  return priceId;
+}
+
+export async function resolveStripePriceIdAsync(plan: BillingPlanId): Promise<string> {
+  const normalized = normalizePlanId(plan);
+  const envKey = BILLING_PLANS[normalized].stripePriceEnv;
+  if (!envKey) throw new Error(`Plan ${plan} does not use Stripe Checkout`);
+  const priceId = await getBillingConfig(envKey);
+  if (!priceId) {
+    const legacy = legacyStripePriceId(normalized);
+    if (legacy) return legacy;
+    throw new Error(`Missing Stripe price for ${envKey} (set in ops Billing Config or .env)`);
   }
   return priceId;
 }
@@ -197,14 +218,28 @@ export function resolveStripePriceId(plan: BillingPlanId): string {
 export function planFromStripePriceId(priceId: string): BillingPlanId | null {
   for (const plan of Object.values(BILLING_PLANS)) {
     if (!plan.stripePriceEnv) continue;
-    const configured = process.env[plan.stripePriceEnv] ?? '';
+    const configured = resolveConfigValue(plan.stripePriceEnv);
     if (configured && configured === priceId) return plan.id;
   }
-  if (process.env.STRIPE_PRO_PRICE_ID === priceId) return 'scout_pro';
-  if (process.env.STRIPE_PRICE_SCOUT_PRO === priceId) return 'scout_pro';
-  if (process.env.STRIPE_PRICE_SCOUT_STANDARD === priceId) return 'scout_pro';
-  if (process.env.STRIPE_PRICE_SCOUT_GOVERN === priceId) return 'scout_pro';
-  if (process.env.STRIPE_PRICE_SCOUT_BASIC === priceId) return 'scout_monitor';
+  if (resolveConfigValue('STRIPE_PRO_PRICE_ID') === priceId) return 'scout_pro';
+  if (resolveConfigValue('STRIPE_PRICE_SCOUT_PRO') === priceId) return 'scout_pro';
+  if (resolveConfigValue('STRIPE_PRICE_SCOUT_STANDARD') === priceId) return 'scout_pro';
+  if (resolveConfigValue('STRIPE_PRICE_SCOUT_GOVERN') === priceId) return 'scout_pro';
+  if (resolveConfigValue('STRIPE_PRICE_SCOUT_BASIC') === priceId) return 'scout_monitor';
+  return null;
+}
+
+export async function planFromStripePriceIdAsync(priceId: string): Promise<BillingPlanId | null> {
+  for (const plan of Object.values(BILLING_PLANS)) {
+    if (!plan.stripePriceEnv) continue;
+    const configured = await getBillingConfig(plan.stripePriceEnv);
+    if (configured && configured === priceId) return plan.id;
+  }
+  if (await getBillingConfig('STRIPE_PRO_PRICE_ID') === priceId) return 'scout_pro';
+  if (await getBillingConfig('STRIPE_PRICE_SCOUT_PRO') === priceId) return 'scout_pro';
+  if (await getBillingConfig('STRIPE_PRICE_SCOUT_STANDARD') === priceId) return 'scout_pro';
+  if (await getBillingConfig('STRIPE_PRICE_SCOUT_GOVERN') === priceId) return 'scout_pro';
+  if (await getBillingConfig('STRIPE_PRICE_SCOUT_BASIC') === priceId) return 'scout_monitor';
   return null;
 }
 
@@ -217,8 +252,15 @@ export type CreditTopupPackId = keyof typeof CREDIT_TOPUP_PACKS;
 
 export function resolveTopupStripePriceId(packId: CreditTopupPackId): string {
   const envKey = CREDIT_TOPUP_PACKS[packId].stripePriceEnv;
-  const priceId = process.env[envKey] ?? '';
-  if (!priceId) throw new Error(`Missing required env var: ${envKey}`);
+  const priceId = resolveConfigValue(envKey);
+  if (!priceId) throw new Error(`Missing Stripe price for ${envKey} (set in ops Billing Config or .env)`);
+  return priceId;
+}
+
+export async function resolveTopupStripePriceIdAsync(packId: CreditTopupPackId): Promise<string> {
+  const envKey = CREDIT_TOPUP_PACKS[packId].stripePriceEnv;
+  const priceId = await getBillingConfig(envKey);
+  if (!priceId) throw new Error(`Missing Stripe price for ${envKey} (set in ops Billing Config or .env)`);
   return priceId;
 }
 

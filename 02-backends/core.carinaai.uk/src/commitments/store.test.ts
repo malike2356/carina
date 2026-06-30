@@ -36,7 +36,7 @@ describe('commitment store', () => {
       sourceSummary: 'interview',
       confidence: 0.9,
     });
-    expect(row.id).toMatch(/^cm_/);
+    expect(row?.id).toMatch(/^cm_/);
     expect(mod.listCommitments({ status: 'pending' })).toHaveLength(1);
   });
 
@@ -55,7 +55,7 @@ describe('commitment store', () => {
       sourceSummary: 'stress',
       confidence: 0.8,
     });
-    expect(mod.dismissCommitments([row.id])).toBe(1);
+    expect(mod.dismissCommitments([row!.id])).toBe(1);
     expect(mod.listCommitments({ status: 'pending' })).toHaveLength(0);
     expect(mod.listCommitments({ status: 'dismissed' })).toHaveLength(1);
   });

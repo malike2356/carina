@@ -44,7 +44,8 @@ Labyrinth Scout    Security governance. On-chain trust. Compliance. Audit.
 
 Carina Aiva        Enterprise AI platform. Commercial.
                    Carina core (Node.js/TypeScript) + Aiva AI Employee bundled.
-                   Aiva tiers: Starter £49/mo, Team £99/mo, Business £299/mo.
+                   Aiva tiers: Starter £149/mo, Growth £349/mo, Enterprise via quote.
+                   Extra AI Employee seat: £49/mo. Scout Govern bundled on all paid tiers.
                    Domains: carinaai.uk / hireaiva.co.uk
                    Repo: carina_aiva (this repo)
 
@@ -331,7 +332,7 @@ memory-wiki, phone-control, skill-workshop, tokenjuice, web-readability.
 
 **Domain:** hireaiva.co.uk
 **Backend:** admin.hireaiva.co.uk (proxied to aiva.carinaai.uk)
-**Pricing:** Starter £49/mo, Team £99/mo, Business £299/mo
+**Pricing:** Starter £149/mo, Growth £349/mo, Enterprise via quote. Extra seat £49/mo.
 
 ### 3.1 What Aiva Is
 
@@ -363,7 +364,7 @@ Single-page HTML/CSS at hireaiva.co.uk (2,186 lines, 77KB).
 - Channels (WhatsApp, Email, Slack, Telegram, Web chat)
 - "Three guarantees" (Human VA backup, Governance, Audit log)
 - Pricing (3 tiers)
-- Final CTA ("Your first Aiva is free for 15 days")
+- Final CTA ("Your first Aiva is free for 14 days")
 - Footer ("Powered by Carina. Monitored by Scout.")
 
 ### 3.3 Backend API (1,063 lines)
@@ -376,9 +377,9 @@ Mounted at `/api/aiva/`. 30+ endpoints across:
 - Worker conversations (channel threads)
 
 Subscription and billing:
-- Trial provisioning (15-day, 1 slot, idempotent)
+- Trial provisioning (14-day, 1 slot, 100 tasks, idempotent)
 - Subscription status (plan, trial days, slots, usage)
-- Stripe checkout session creation (3 tiers, month/year)
+- Stripe checkout session creation (Starter and Growth, month/year)
 - Stripe customer portal
 - Downgrade conflict resolution
 
@@ -433,11 +434,11 @@ Mounted at `/api/aiva/analytics/`:
 - Stripe Checkout: creates sessions with product metadata, auto-tax
 - Stripe Customer Portal: payment method management
 - Webhook handler: subscription lifecycle (activate, sync, suspend, invoice)
-- Pricing: Starter £49/mo or £490/yr, Team £99/mo or £990/yr,
-  Business £299/mo or £2,990/yr
-- Slot model: Starter=1, Team=5, Business=unlimited
+- Pricing: Starter £149/mo or £1,490/yr, Growth £349/mo or £3,490/yr,
+  extra AI Employee seat £49/mo
+- Slot model: Starter=1, Growth=5, additional seats via Stripe add-on
 - Grace period: 7 days on payment failure
-- Usage tracking: trial=200 msgs, Starter=2K, Team=10K, Business=unlimited
+- Usage tracking: trial=100 tasks, Starter=1,000 tasks, Growth=10,000 tasks
 - 80% and 100% threshold alerts via email
 - Downgrade conflict: if user has more workers than target tier allows, they
   select which to keep
@@ -490,7 +491,7 @@ Each Aiva worker gets channels provisioned on hire:
 - Web (always auto-provisioned)
 - Teams (app_id + app_password)
 
-Channel limits by tier: Starter 2, Team/Business unlimited.
+Channel limits by tier: Starter 3, Growth 10.
 
 ### 3.10 Feature Flags
 

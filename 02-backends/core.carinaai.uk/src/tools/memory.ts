@@ -54,6 +54,13 @@ export const memoryTool: Tool = {
         const fact = await addPersistentFact(target, content, { agentId });
         const facts = await listPersistentFacts(target, agentId);
         const used = facts.reduce((sum, f) => sum + f.content.length, 0);
+        if (!fact) {
+          return {
+            status: 'added',
+            target,
+            budget: { used, max: MEMORY_BUDGETS[target] },
+          };
+        }
         return {
           status: 'added',
           id: fact.id,
@@ -114,6 +121,9 @@ export const memoryTool: Tool = {
         const validation = validateMemoryContent(newText);
         if (!validation.ok) return { error: validation.reason };
         const fact = await replacePersistentFact(target, oldText, newText, agentId);
+        if (!fact) {
+          return { status: 'replaced', target };
+        }
         return { status: 'replaced', id: fact.id, target };
       }
 

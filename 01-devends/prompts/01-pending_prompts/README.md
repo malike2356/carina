@@ -1,11 +1,59 @@
 # Active implementation prompts
 
-**Updated:** 2026-06-27
+**Updated:** 2026-06-30
 
 `pending_prompts/` holds prompts that still need code or gap closure. Verified-complete
 work lives under `archived_prompts/archives_from_pending_prompts/`.
 
 ## Active work
+
+### ICP and GTM (COMPLETED 2026-06-30)
+
+Strategy and marketing deliverables shipped. Tracker: `01-devends/planning/gtm/AIVA-ICP-DELIVERABLES.md`.
+Archived prompt: `archived_prompts/archives_from_pending_prompts/gtm-readiness/aiva-icp-and-positioning.COMPLETED.md`.
+
+Remaining from that sprint: Stripe price sync, `carinaai.uk/pricing/` Aiva section update, `hireaiva` mirror deploy.
+
+### Pricing and billing (PENDING)
+
+| Prompt | What it does | Status |
+|--------|-------------|--------|
+| `pricing-strategy.md` | Authoritative prices for Scout, Aiva, Mutant keys, and Petraclus. Unit economics review. Stripe setup scripts. | RECOMMENDED - run scripts in test mode; founder sign-off before live |
+| `scout-bundling-and-ai-employee.md` | Scout Govern bundled on Aiva; AI Employee schema and seat billing (£49/mo add-on) | PENDING BUILD |
+
+Stripe setup:
+- Aiva: `aiva/02-backends/core.carinaai.uk/scripts/stripe-setup-aiva.ts`
+- Mutant keys + Petraclus: `carina/keys-server/scripts/stripe-setup-keys-products.py`
+- Webhooks: Aiva on `core.carinaai.uk`; keys on `keys.carinaai.uk`
+
+### Legal documents and acceptance gate (PENDING)
+
+| Prompt / File | What it is | Status |
+|---------------|-----------|--------|
+| `aiva/legal/TERMS_OF_SERVICE.md` | Terms of Service v1.0 (Verlox Ltd, England and Wales) | DRAFT - needs solicitor review |
+| `aiva/legal/PRIVACY_POLICY.md` | UK GDPR Privacy Policy v1.0 | DRAFT - needs solicitor review |
+| `aiva/legal/DATA_PROCESSING_AGREEMENT.md` | UK GDPR Article 28 DPA v1.0 with TOMs and sub-processor schedule | DRAFT - needs solicitor review |
+| `legal-acceptance-gate.md` | In-app acceptance gate: DB schema, API, middleware, onboarding UI, re-acceptance flow, public legal pages | PENDING BUILD |
+
+Build order: get solicitor sign-off on the three legal documents first, then build the
+acceptance gate. The gate implementation does not depend on the exact content of the
+documents, only on the version strings and URLs.
+
+Before going live:
+- Insert company number and registered address into all three documents.
+- Confirm ICO registration number and insert it into the Privacy Policy.
+- Confirm email provider sub-processor and add to Privacy Policy and DPA Schedule 3.
+- Set `effective_date` in all three documents.
+- Have a UK-qualified solicitor review all three before publishing.
+
+### Cyber toolset cleanup (PENDING)
+
+| Prompt | What it does | Status |
+|--------|-------------|--------|
+| `aiva-cyber-toolset-cleanup.md` | Remove offensive cyber tools from Aiva. Keep blue_team and compliance. Rename registry, update API route, update frontend cheatsheet. | PENDING |
+
+This closes the product separation decision made 2026-06-30: active/offensive tools live
+only in Petraclus. Aiva retains enterprise SOC, SIEM at scale, and org compliance only.
 
 ### Tollbooth platform sprint (TB-001 through TB-007)
 
@@ -36,6 +84,7 @@ TB-006 and TB-007 are Phase 3 and should only start after at least one partner i
 | `archived_prompts/archives_from_pending_prompts/security-tooling/` | Cyber tools API + `/security/tools` cheatsheet | 2026-06-26 |
 | `archived_prompts/archives_from_pending_prompts/sso/` | Enterprise SSO module | 2026-06-26 |
 | `archived_prompts/archives_from_pending_prompts/gtm-readiness/` | GTM-006, GTM-007 Aiva VA marketing | 2026-06-26 |
+| `archived_prompts/archives_from_pending_prompts/gtm-readiness/aiva-icp-and-positioning.COMPLETED.md` | ICP positioning, landing page, compliance one-pager, property sector, demo script | 2026-06-30 |
 | `archived_prompts/archives_from_pending_prompts/sprint-7-customer-onboarding-wizard.md` | Customer onboarding wizard | 2026-06-25 |
 | `archived_prompts/archives_from_pending_prompts/sprint-7-admin-va-setup-wizard.md` | Admin VA setup wizard | 2026-06-25 |
 

@@ -141,7 +141,7 @@ export interface Worker {
   skillPacks: string[];
   channels: string[];
   language: string;
-  status: 'active' | 'paused' | 'dismissed';
+  status: 'active' | 'paused' | 'dismissed' | 'suspended_by_scout';
   escalationThreshold: number;
   propreneurTenantSlug?: string | null;
   propreneurBridgeKeyRef?: string | null;

@@ -77,6 +77,19 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     currentPeriodStart: periodStart ? new Date(periodStart * 1000) : new Date(),
     currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : new Date(),
   });
+
+  const tier = session.metadata?.plan ?? 'starter';
+  const customerEmail =
+    typeof session.customer_email === 'string' ? session.customer_email : undefined;
+  const { provisionAivaScoutWorkspace } = await import('../aiva-scout-provisioning.js');
+  void provisionAivaScoutWorkspace({
+    workspaceId: String(workspaceId),
+    tier: String(tier),
+    email: customerEmail,
+  }).catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[aiva-scout] provision after checkout failed:', msg);
+  });
 }
 
 export async function handleAivaWebhookEvent(event: Stripe.Event): Promise<void> {

@@ -105,6 +105,14 @@ export function evaluateAssertions(
     failures.push(fail('prompt_guard', 'blocked', ctx.promptGuardBlocked, 'Expected prompt guard block'));
   }
 
+  if (assertion.tool_result_guard === 'blocked' && !ctx.toolResultGuardBlocked) {
+    failures.push(fail('tool_result_guard', 'blocked', ctx.toolResultGuardBlocked, 'Expected tool result guard block'));
+  }
+
+  if (assertion.memory_write_blocked === true && !ctx.memoryWriteBlocked) {
+    failures.push(fail('memory_write_blocked', true, ctx.memoryWriteBlocked, 'Expected memory write guard block'));
+  }
+
   if (assertion.plan_mode === 'blocked') {
     const blob = resultBlob(ctx);
     if (!includesNeedle(blob, 'plan_mode_blocked')) {

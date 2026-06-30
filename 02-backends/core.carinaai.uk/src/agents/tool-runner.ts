@@ -347,7 +347,7 @@ export async function executeToolCall(
       }))
       .catch(() => undefined);
     if (process.env.LABYRINTH_ENABLED === 'true') {
-      const safeStr = await scanToolOutput(call.toolName, resultStr);
+      const safeStr = await scanToolOutput(call.toolName, resultStr, { sessionId });
       if (typeof result === 'string') return safeStr;
       try {
         return JSON.parse(safeStr) as unknown;

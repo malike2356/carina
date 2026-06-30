@@ -3,6 +3,7 @@ import { cloudRouter, loginCloudOrg, mountCloudWebhook, registerCloudOrg } from 
 import { incidentBlogRouter } from './api/incident-blog.js';
 import { aivaRouter } from './api/aiva-api.js';
 import { aivaEmailRouter } from './api/aiva-email-api.js';
+import { aivaEmailApprovalRouter } from './api/aiva-email-approval-api.js';
 import { aivaPropreneurWebhookRouter } from './api/aiva-propreneur-webhook-api.js';
 import { propreneurHubReplyRouter } from './api/propreneur-hub-reply-api.js';
 import { isAiWorkersEnabled } from './workers/aiva-message-handler.js';
@@ -43,6 +44,7 @@ export function mountServerRoutes(app: Express): void {
     app.use('/api/aiva', aivaRouter);
     if (isEmailIngestionEnabled() || isPropreneurBridgeEnabled()) {
       app.use('/api/aiva/email', aivaEmailRouter);
+      app.use('/api/aiva/email/approvals', aivaEmailApprovalRouter);
     }
     app.use('/api/aiva/webhooks', aivaPropreneurWebhookRouter);
     app.use('/api/inbound', propreneurHubReplyRouter);

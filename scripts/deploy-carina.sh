@@ -143,7 +143,7 @@ if [[ -f "$SECRETS_DIR/core.carinaai.uk.env" ]]; then
     if ! grep -qE "^${key}=" .env.docker.runtime 2>/dev/null; then
       echo "$line" >> .env.docker.runtime
     fi
-  done < <(grep -E '^(AI_WORKERS_ENABLED|CHANNEL_CREDENTIAL_KEY|WHATSAPP_|SLACK_|POSTMARK_|TELEGRAM_BOT_TOKEN|TELEGRAM_WEBHOOK)' \
+  done < <(grep -E '^(AI_WORKERS_ENABLED|CHANNEL_CREDENTIAL_KEY|WHATSAPP_|BAILEYS_|CARINA_WHATSAPP_|SLACK_|POSTMARK_|TELEGRAM_BOT_TOKEN|TELEGRAM_WEBHOOK)' \
     "$SECRETS_DIR/core.carinaai.uk.env")
 fi
 if [[ -f "$SECRETS_DIR/app.carinaai.uk.env" ]]; then

@@ -24,6 +24,19 @@ function normalizeSteps(raw: unknown): PenTestStep[] {
       steps.push({ send_message: entry.send_message });
       continue;
     }
+    if (typeof entry.send_tool_result === 'string') {
+      steps.push({ send_tool_result: entry.send_tool_result });
+      continue;
+    }
+    if (entry.scan_memory_write && typeof entry.scan_memory_write === 'object') {
+      const row = entry.scan_memory_write as Record<string, unknown>;
+      const content = String(row.content ?? '');
+      const source = String(row.source ?? 'tool_result');
+      if (content && (source === 'user' || source === 'tool_result' || source === 'inference')) {
+        steps.push({ scan_memory_write: { content, source } });
+      }
+      continue;
+    }
     if (typeof entry.authenticate_as === 'string') {
       steps.push({ authenticate_as: entry.authenticate_as as PenTestStep extends { authenticate_as: infer R } ? R : never });
       continue;

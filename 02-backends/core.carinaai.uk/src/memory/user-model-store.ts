@@ -1,6 +1,7 @@
 import { pool } from './db.js';
 import type { UserFact, UserFactCategory, UserModelMeta } from './user-model.js';
 import { isUserFactCategory } from './user-model.js';
+import { guardMemoryWrite } from './memory-write-guard.js';
 
 export const USER_MODEL_MIGRATION = `
 CREATE TABLE IF NOT EXISTS user_model_facts (
@@ -50,6 +51,10 @@ export function rowToFact(row: Record<string, unknown>): UserFact {
 
 export async function saveFact(fact: UserFact & { profileId: string }): Promise<void> {
   if (!isUserFactCategory(fact.category)) return;
+
+  const guard = await guardMemoryWrite(fact.fact, 'inference', fact.conversationId);
+  if (!guard.allowed) return;
+
   await initUserModelStore();
   await pool.query(
     `INSERT INTO user_model_facts

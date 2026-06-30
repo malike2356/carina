@@ -1,6 +1,6 @@
 export type BillingState = 'trial' | 'active' | 'past_due' | 'suspended' | 'expired' | 'none';
 
-export type PaidPlan = 'starter' | 'team' | 'business';
+export type PaidPlan = 'starter' | 'growth' | 'team' | 'business';
 
 export interface AivaBillingInvoice {
   id: string;
@@ -43,54 +43,45 @@ export const AIVA_PLANS: AivaPlanDefinition[] = [
   {
     key: 'starter',
     label: 'Starter',
-    tagline: 'One Aiva, always on',
-    monthlyPence: 4900,
-    annualMonthlyPence: 3267,
+    tagline: 'One AI Employee, always on',
+    monthlyPence: 14900,
+    annualMonthlyPence: 12417,
     features: [
-      '1 Aiva worker',
-      '2 channels (web + 1)',
-      '2,000 messages / mo',
-      'Basic analytics',
+      '1 AI Employee',
+      '3 channel integrations',
+      '1,000 tasks / mo',
+      'Scout Govern included',
+      'Basic approval workflow',
       'Email support',
     ],
   },
   {
-    key: 'team',
-    label: 'Team',
-    tagline: 'Grow your AI team',
-    monthlyPence: 9900,
-    annualMonthlyPence: 6600,
+    key: 'growth',
+    label: 'Growth',
+    tagline: 'Scale your AI team',
+    monthlyPence: 34900,
+    annualMonthlyPence: 29083,
     badge: 'Most popular',
     features: [
-      'Up to 5 Aivas',
-      'All channels',
-      '10,000 messages / mo',
-      'Full analytics + heatmap',
-      'VA escalation queue',
+      '5 AI Employees',
+      '10 channel integrations',
+      '10,000 tasks / mo',
+      'Scout Govern included',
+      'Advanced approval workflow',
       'Priority support',
-    ],
-  },
-  {
-    key: 'business',
-    label: 'Business',
-    tagline: 'Unlimited Aivas, dedicated support',
-    monthlyPence: 29900,
-    annualMonthlyPence: 19933,
-    features: [
-      'Unlimited Aivas',
-      'All channels',
-      'Unlimited messages',
-      'Custom Aiva training (documents and FAQs)',
-      'Custom Scout governance rules',
-      'White-label widget and custom domain',
-      'On-chain attestation export',
-      'Dedicated account manager',
+      'Extra seats £49/mo each',
     ],
   },
 ];
 
 export const AIVA_BILLING_FOOTER =
   'Hire an Aiva. Powered by Carina. Governed by Scout. Backed by real humans.';
+
+function normalizePaidPlan(planTier: string): PaidPlan | null {
+  if (planTier === 'team') return 'growth';
+  if (planTier === 'starter' || planTier === 'growth' || planTier === 'business') return planTier;
+  return null;
+}
 
 function normalizeInvoiceStatus(status: string): AivaBillingInvoice['status'] {
   if (status === 'paid' || status === 'open' || status === 'void' || status === 'uncollectible') {
@@ -137,12 +128,11 @@ export function mapAivaBillingStatus(
   else if (rawStatus === 'suspended') state = 'suspended';
   else if (rawStatus === 'cancelled') state = 'expired';
 
-  const paidPlan: PaidPlan | null =
-    planTier === 'starter' || planTier === 'team' || planTier === 'business' ? planTier : null;
+  const paidPlan = state === 'trial' ? null : normalizePaidPlan(planTier);
 
   return {
     state,
-    plan: state === 'trial' ? null : paidPlan,
+    plan: paidPlan,
     trialEndsAt: subscription.trialEndsAt ? String(subscription.trialEndsAt) : null,
     currentPeriodEnd: subscription.currentPeriodEnd ? String(subscription.currentPeriodEnd) : null,
     invoices,
@@ -174,7 +164,7 @@ export function mergePlanPricing(
   }>,
 ): AivaPlanDefinition[] {
   return plans.map((plan) => {
-    const api = apiPlans.find((row) => row.tier === plan.key);
+    const api = apiPlans.find((row) => row.tier === plan.key || (row.tier === 'team' && plan.key === 'growth'));
     if (!api) return plan;
     const monthly = api.monthlyAmountPence ?? plan.monthlyPence;
     const annualTotal = api.annualAmountPence ?? plan.monthlyPence * 10;

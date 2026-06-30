@@ -86,6 +86,19 @@ export const config = {
     password: process.env.IMAP_PASSWORD ?? '',
     tls: process.env.IMAP_TLS !== 'false',
   },
+  googleOAuth: {
+    clientId: process.env.GOOGLE_OAUTH_CLIENT_ID?.trim() ?? '',
+    clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim() ?? '',
+    redirectUri: process.env.GOOGLE_OAUTH_REDIRECT_URI?.trim()
+      ?? 'http://localhost:3000/api/aiva/email/oauth/gmail/callback',
+  },
+  microsoftOAuth: {
+    clientId: process.env.MICROSOFT_OAUTH_CLIENT_ID?.trim() ?? '',
+    clientSecret: process.env.MICROSOFT_OAUTH_CLIENT_SECRET?.trim() ?? '',
+    tenantId: process.env.MICROSOFT_OAUTH_TENANT_ID?.trim() ?? 'common',
+    redirectUri: process.env.MICROSOFT_OAUTH_REDIRECT_URI?.trim()
+      ?? 'http://localhost:3000/api/aiva/email/oauth/outlook/callback',
+  },
   smtp: {
     host: process.env.SMTP_HOST ?? 'smtp.resend.com',
     port: parseInt(process.env.SMTP_PORT ?? '465', 10),

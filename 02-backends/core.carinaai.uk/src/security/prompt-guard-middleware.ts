@@ -11,9 +11,14 @@ import {
   isSecretExfiltrationRequest,
   scanAssistantOutputForSecretLeak,
 } from './secret-refusal-guard.js';
+import { emitRaspSignal, signalFromPromptGuard } from './rasp/index.js';
 
 let guard: PromptGuard | null = null;
 let auditPreview = '';
+
+export type PromptGuardScanOptions = {
+  sessionId?: string;
+};
 
 export type InputBlockInfo = {
   message: string;
@@ -21,6 +26,7 @@ export type InputBlockInfo = {
   source: 'prompt-guard' | 'agent-guard' | 'deception';
   layer?: 1 | 2 | 3;
   patterns?: string[];
+  patternIds?: string[];
 };
 
 export type InputScanResult = {
@@ -95,7 +101,33 @@ function blockedResult(block: InputBlockInfo): InputScanResult {
   return { allowed: false, text: block.message, block };
 }
 
-export async function scanUserInput(text: string): Promise<InputScanResult> {
+function mapPromptGuardConfidence(confidence: number): number {
+  return Math.min(1, Math.max(0.5, confidence / 100));
+}
+
+function emitPromptGuardRaspSignal(input: {
+  sessionId?: string;
+  eventType: string;
+  confidence: number;
+  patterns?: string[];
+  patternIds?: string[];
+  ref?: string;
+}): void {
+  void emitRaspSignal(signalFromPromptGuard({
+    sessionId: input.sessionId,
+    type: input.eventType,
+    severity: mapPromptGuardConfidence(input.confidence),
+    confidence: mapPromptGuardConfidence(input.confidence),
+    patterns: input.patterns,
+    patternId: input.patternIds?.[0],
+    ref: input.ref,
+  }));
+}
+
+export async function scanUserInput(
+  text: string,
+  options?: PromptGuardScanOptions,
+): Promise<InputScanResult> {
   if (!isPromptGuardEnabled()) {
     return { allowed: true, text };
   }
@@ -151,12 +183,21 @@ export async function scanUserInput(text: string): Promise<InputScanResult> {
     const result = await g.scanInput(text);
     if (result.isMalicious) {
       const message = result.message ?? result.sanitized ?? 'This request was blocked by the security shield.';
+      emitPromptGuardRaspSignal({
+        sessionId: options?.sessionId,
+        eventType: 'injection_blocked',
+        confidence: result.confidence,
+        patterns: result.patterns,
+        patternIds: result.patternIds,
+        ref: result.ref,
+      });
       return blockedResult({
         message,
         ref: result.ref,
         source: 'prompt-guard',
         layer: result.layer,
         patterns: result.patterns,
+        patternIds: result.patternIds,
       });
     }
     return { allowed: true, text };
@@ -165,7 +206,11 @@ export async function scanUserInput(text: string): Promise<InputScanResult> {
   }
 }
 
-export async function scanToolOutput(toolName: string, result: string): Promise<string> {
+export async function scanToolOutput(
+  toolName: string,
+  result: string,
+  options?: PromptGuardScanOptions,
+): Promise<string> {
   let output = result;
   const g = getGuard();
   if (g) {
@@ -173,6 +218,14 @@ export async function scanToolOutput(toolName: string, result: string): Promise<
       const scan = await g.scanToolResult(toolName, result);
       output = scan.isMalicious ? (scan.sanitized ?? result) : result;
       if (scan.isMalicious) {
+        emitPromptGuardRaspSignal({
+          sessionId: options?.sessionId,
+          eventType: 'tool_result_injection_blocked',
+          confidence: scan.confidence,
+          patterns: scan.patterns,
+          patternIds: scan.patternIds,
+          ref: scan.ref,
+        });
         appendSecurityAudit({
           category: 'prompt_injection',
           action: 'block',

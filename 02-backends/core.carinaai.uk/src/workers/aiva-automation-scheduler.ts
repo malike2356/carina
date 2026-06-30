@@ -1,6 +1,4 @@
 import { Cron } from 'croner';
-import { getRouter } from '../gateway/router.js';
-import type { CarinaMessage } from '../types/index.js';
 import {
   getAutomation,
   getWorkerById,
@@ -10,28 +8,15 @@ import {
   resetAutomationFailureCounter,
   updateAutomationRunTimes,
 } from './worker-store.js';
-import {
-  applyWorkerToSession,
-  isAiWorkersEnabled,
-  processWorkerInbound,
-} from './aiva-message-handler.js';
+import { isAiWorkersEnabled } from './aiva-message-handler.js';
+import { processAivaMessage } from './aiva-process-message.js';
 import { resolveWorkspacePlanTier } from '../billing/aiva-plan-gates.js';
 import { hasPlanTier } from '../billing/plan-tier.js';
-import { resolvePersonaWithKnowledge, stripKnowledgeFromPersona } from './knowledge-base.js';
-import { clearWorkerSessionContext } from './worker-session-context.js';
 
 const runtimes = new Map<string, Cron>();
 
 function jobId(automationId: string): string {
   return `aiva-automation-${automationId}`;
-}
-
-async function collectResponse(gen: AsyncGenerator<string>): Promise<string> {
-  const parts: string[] = [];
-  for await (const chunk of gen) {
-    parts.push(chunk);
-  }
-  return parts.join('');
 }
 
 async function runAutomation(automationId: string): Promise<void> {
@@ -46,34 +31,14 @@ async function runAutomation(automationId: string): Promise<void> {
   const planTier = await resolveWorkspacePlanTier(worker.workspaceId);
   if (!hasPlanTier(planTier, 'team')) return;
 
-  const router = getRouter();
-  const sessionId = `aiva-auto-${automation.id}`;
-  const message: CarinaMessage = {
-    id: `auto-${Date.now()}`,
-    sessionId,
-    tenantId: worker.workspaceId,
-    content: automation.description,
-    source: 'web',
-    timestamp: new Date(),
-    channelUserId: worker.workspaceId,
-  };
-
-  const personaPrompt = await resolvePersonaWithKnowledge(
-    worker.id,
-    stripKnowledgeFromPersona(worker.personaPrompt),
-    worker.workspaceId,
-  );
-  const ctx = {
-    worker,
-    personaPrompt,
-    channel: 'automation',
-    channelId: automation.id,
-  };
-
-  const restorePacks = applyWorkerToSession(router, sessionId, ctx);
   try {
-    await processWorkerInbound(ctx, message);
-    const reply = await collectResponse(router.handle(message));
+    const reply = await processAivaMessage({
+      workerId: worker.id,
+      workspaceId: worker.workspaceId,
+      userMessage: automation.description,
+      channel: 'web',
+      contactId: `auto-${automation.id}`,
+    });
     void logActivity(worker.id, {
       actionType: 'automation_run',
       summary: `Automation: ${automation.name}`,
@@ -116,9 +81,6 @@ async function runAutomation(automationId: string): Promise<void> {
       await resetAutomationFailureCounter(automation.id);
     }
     throw err;
-  } finally {
-    restorePacks();
-    clearWorkerSessionContext(sessionId);
   }
 }
 

@@ -574,6 +574,52 @@ aivaRouter.get('/subscription/status', requireWorkspace, async (req: AivaRequest
   res.json(status);
 });
 
+aivaRouter.get('/scout/governance', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const { getAivaScoutWorkspace } = await import('../billing/aiva-scout-store.js');
+  const { pool } = await import('../memory/db.js');
+  const workspaceId = req.workspaceId!;
+  const scout = await getAivaScoutWorkspace(workspaceId);
+  const workers = await pool.query(
+    `SELECT COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status = 'active')::int AS active,
+            COUNT(*) FILTER (WHERE status = 'suspended_by_scout')::int AS suspended_by_scout
+     FROM ai_workers WHERE workspace_id = $1 AND status != 'dismissed'`,
+    [workspaceId],
+  );
+  const events24h = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM aiva_scout_event_queue
+     WHERE workspace_id = $1 AND created_at >= NOW() - INTERVAL '24 hours'`,
+    [workspaceId],
+  );
+  const row = workers.rows[0] as { total?: number; active?: number; suspended_by_scout?: number };
+  res.json({
+    scoutStatus: scout?.scoutStatus ?? 'pending',
+    scoutDashboardUrl: scout?.scoutDashboardUrl ?? null,
+    scoutLastHeartbeatAt: scout?.scoutLastHeartbeatAt?.toISOString() ?? null,
+    employeesMonitored: Number(row?.total ?? 0),
+    employeesActive: Number(row?.active ?? 0),
+    employeesSuspendedByScout: Number(row?.suspended_by_scout ?? 0),
+    eventsLast24h: Number(events24h.rows[0]?.n ?? 0),
+    killSwitchActive: Number(row?.suspended_by_scout ?? 0) > 0,
+  });
+});
+
+aivaRouter.post('/scout/provision', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  try {
+    const { provisionAivaScoutWorkspace } = await import('../billing/aiva-scout-provisioning.js');
+    const sub = await getSubscription(req.workspaceId!);
+    const result = await provisionAivaScoutWorkspace({
+      workspaceId: req.workspaceId!,
+      tier: sub?.planTier ?? 'starter',
+      email: typeof req.body?.email === 'string' ? req.body.email : undefined,
+    });
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
 aivaRouter.get('/billing/pricing', (_req, res) => {
   res.json({ plans: getAivaPricingPlans() });
 });
@@ -592,7 +638,7 @@ aivaRouter.get('/billing/invoices', requireWorkspace, async (req: AivaRequest, r
 aivaRouter.post('/billing/checkout', requireWorkspace, async (req: AivaRequest, res: Response) => {
   try {
     const tier = String(req.body?.tier ?? 'starter');
-    if (tier !== 'starter' && tier !== 'team' && tier !== 'business') {
+    if (tier !== 'starter' && tier !== 'growth' && tier !== 'team' && tier !== 'business') {
       res.status(400).json({ error: 'Invalid tier' });
       return;
     }
@@ -602,7 +648,7 @@ aivaRouter.post('/billing/checkout', requireWorkspace, async (req: AivaRequest, 
     const email = typeof req.body?.email === 'string' ? req.body.email : undefined;
     const session = await createAivaCheckoutSession({
       workspaceId: req.workspaceId!,
-      tier: tier as 'starter' | 'team' | 'business',
+      tier: tier as 'starter' | 'growth' | 'team' | 'business',
       interval,
       successUrl,
       cancelUrl,

@@ -7,6 +7,7 @@ import { EgressFilter } from '../egress-filter.js';
 import { redactSensitiveText } from '../redaction.js';
 import { isPlanModeToolAllowed } from '../plan-mode-allowlist.js';
 import { appendSecurityAudit } from '../security-audit.js';
+import { guardMemoryWrite } from '../../memory/memory-write-guard.js';
 import {
   _clearBlockedSessions,
   _processControlMessage,
@@ -114,6 +115,8 @@ export async function createScenarioContext(sessionId = 'pentest-session'): Prom
     toolResults: [],
     toolSequence: [],
     promptGuardBlocked: false,
+    toolResultGuardBlocked: false,
+    memoryWriteBlocked: false,
     pathSafetyBlocked: false,
     rbacDenied: false,
     egressBlocked: false,
@@ -129,6 +132,33 @@ export async function runScenarioStep(step: PenTestStep, ctx: ScenarioRuntimeCon
   if ('set_env' in step) {
     ctx.env = { ...ctx.env, ...step.set_env };
     applyEnv(step.set_env);
+    return;
+  }
+
+  if ('send_tool_result' in step) {
+    const result = await getPromptGuard().scanToolResult('web-scrape', step.send_tool_result);
+    ctx.toolResultGuardBlocked = result.isMalicious;
+    ctx.promptGuardBlocked = result.isMalicious;
+    ctx.promptGuardReason = result.isMalicious
+      ? (result.patterns?.join(',') || 'tool_result_injection')
+      : undefined;
+    if (result.isMalicious) {
+      ctx.toolResults.push('tool_result_guard:blocked');
+      ctx.toolResults.push('injection_detected');
+    }
+    return;
+  }
+
+  if ('scan_memory_write' in step) {
+    const guard = await guardMemoryWrite(
+      step.scan_memory_write.content,
+      step.scan_memory_write.source,
+      ctx.sessionId,
+    );
+    ctx.memoryWriteBlocked = !guard.allowed;
+    if (!guard.allowed) {
+      ctx.toolResults.push('memory_write_guard:blocked');
+    }
     return;
   }
 

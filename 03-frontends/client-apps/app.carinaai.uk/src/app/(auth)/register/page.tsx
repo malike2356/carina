@@ -96,11 +96,11 @@ function RegisterForm() {
           />
           <span>
             I agree to the{' '}
-            <a href="https://carinaai.uk/terms/" target="_blank" rel="noopener noreferrer" className="text-accent underline">
+            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="text-accent underline">
               Terms of Service
             </a>{' '}
             and{' '}
-            <a href="https://carinaai.uk/privacy/" target="_blank" rel="noopener noreferrer" className="text-accent underline">
+            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className="text-accent underline">
               Privacy Policy
             </a>
           </span>

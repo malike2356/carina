@@ -4,7 +4,7 @@ import { listWorkerChannelDetails } from '../channels/channel-store.js';
 import { getSubscription } from '../workers/aiva-subscription-store.js';
 import type { AivaChannelName } from '../channels/types.js';
 
-export const STARTER_CHANNEL_LIMIT = 2;
+export const STARTER_CHANNEL_LIMIT = 3;
 
 const COUNTED_CHANNEL_TYPES: AivaChannelName[] = [
   'whatsapp',
@@ -18,7 +18,7 @@ const COUNTED_CHANNEL_TYPES: AivaChannelName[] = [
 ];
 
 export function channelLimitForTier(planTier: string): number | null {
-  if (hasPlanTier(planTier, 'team')) return null;
+  if (hasPlanTier(planTier, 'team')) return 10;
   return STARTER_CHANNEL_LIMIT;
 }
 

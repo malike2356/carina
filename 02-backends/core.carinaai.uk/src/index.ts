@@ -73,6 +73,8 @@ async function shutdown(signal: string): Promise<void> {
   stopAcpServer();
   const { shutdownOtel } = await import('./telemetry/otel.js');
   await shutdownOtel().catch(() => undefined);
+  const { persistRaspSignalsOnShutdown } = await import('./security/rasp/engine.js');
+  await persistRaspSignalsOnShutdown().catch(() => undefined);
   await pool.end().catch(() => undefined);
   const redis = getRedis();
   if (redis) redis.disconnect();
@@ -153,6 +155,15 @@ async function main(): Promise<void> {
         await startDailySummaryCron();
         const { startEmailIngestionPoller } = await import('./ingestion/email/email-poller.js');
         startEmailIngestionPoller();
+        const { startEmailApprovalTimeoutScheduler } = await import('./ingestion/email/approval-timeout-scheduler.js');
+        startEmailApprovalTimeoutScheduler();
+        const { startAivaScoutSchedulers } = await import('./billing/aiva-scout-schedulers.js');
+        startAivaScoutSchedulers();
+        if (process.env.AIVA_WORKER_ISOLATION !== 'false') {
+          const { getAivaWorkerPool } = await import('./agents/worker-pool.js');
+          const { startAivaWorkerPoolHealthCheck } = await import('./agents/worker-pool-health.js');
+          startAivaWorkerPoolHealthCheck(getAivaWorkerPool());
+        }
       }
       const recoveryNote = recoveredProcesses > 0 ? `, ${recoveredProcesses} background processes recovered` : '';
       const runtimeNote = rehydratedCount > 0 ? `, ${rehydratedCount} runtime tools rehydrated` : '';

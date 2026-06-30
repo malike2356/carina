@@ -1,6 +1,7 @@
 const PLAN_ORDER: Record<string, number> = {
   trial: 0,
   starter: 1,
+  growth: 2,
   team: 2,
   business: 3,
 };

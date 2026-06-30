@@ -8,9 +8,10 @@ export type PricingRow = {
 };
 
 const SEED: { id: string; label: string; monthly_gbp: number | null }[] = [
-  { id: 'aiva_starter', label: 'Aiva Starter', monthly_gbp: 49 },
-  { id: 'aiva_team', label: 'Aiva Team', monthly_gbp: 99 },
-  { id: 'aiva_business', label: 'Aiva Business', monthly_gbp: 299 },
+  { id: 'aiva_starter', label: 'Aiva Starter', monthly_gbp: 149 },
+  { id: 'aiva_team', label: 'Aiva Growth', monthly_gbp: 349 },
+  { id: 'aiva_business', label: 'Aiva Enterprise', monthly_gbp: null },
+  { id: 'aiva_seat_addon', label: 'Aiva extra AI Employee', monthly_gbp: 49 },
   { id: 'scout_monitor', label: 'Scout Monitor', monthly_gbp: 49 },
   { id: 'scout_govern', label: 'Scout Govern', monthly_gbp: 79 },
 ];

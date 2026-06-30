@@ -6,6 +6,16 @@ export type RASPSignalSource =
   | 'honeypot'
   | 'anomaly';
 
+export type MitreTacticId =
+  | 'TA0001'
+  | 'TA0002'
+  | 'TA0003'
+  | 'TA0005'
+  | 'TA0006'
+  | 'TA0009'
+  | 'TA0010'
+  | 'TA0043';
+
 export type RASPSignal = {
   id?: string;
   source: RASPSignalSource;
@@ -13,6 +23,8 @@ export type RASPSignal = {
   severity: number;
   confidence: number;
   timestamp: number;
+  patternId?: string;
+  mitreTactic?: MitreTacticId;
   context: {
     sessionId: string;
     agentId: string;

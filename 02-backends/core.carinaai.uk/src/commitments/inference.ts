@@ -50,7 +50,7 @@ export async function maybeInferCommitments(ctx: CommitmentInferenceContext): Pr
     const dueLatestAt = new Date(
       createdAt.getTime() + candidate.dueInHoursLatest * 60 * 60_000,
     );
-    addCommitment({
+    const commitment = addCommitment({
       kind: candidate.kind,
       agentId: ctx.agentId,
       sessionId: ctx.sessionId,
@@ -63,5 +63,6 @@ export async function maybeInferCommitments(ctx: CommitmentInferenceContext): Pr
       sourceSummary: candidate.sourceSummary,
       confidence: candidate.confidence,
     });
+    if (!commitment) continue;
   }
 }

@@ -17,8 +17,8 @@ const json = execFileSync(
   [
     'tsx',
     '-e',
-    `import { CYBER_TOOLS } from './src/tools/cyber-tools-registry.ts';
-const tools = CYBER_TOOLS.map((t) => ({
+    `import { AIVA_SECURITY_TOOLS } from './src/tools/cyber-tools-registry.ts';
+const tools = AIVA_SECURITY_TOOLS.map((t) => ({
   name: t.name,
   category: t.category,
   requiredTier: t.requiredTier,

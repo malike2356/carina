@@ -6,10 +6,11 @@ import {
   isCarinaOpsPlan,
   isScoutPlan,
   normalizePlanId,
-  planFromStripePriceId,
+  planFromStripePriceIdAsync,
   planTier,
   type BillingPlanId,
 } from './plans.js';
+import { refreshBillingConfigCache } from './billing-config.js';
 import { StripeService } from './stripe-service.js';
 import { provisionScoutTenant, syncScoutTenantPlan } from './scout-provisioning.js';
 import { sendScoutWelcomeEmail } from './scout-welcome-email.js';
@@ -42,12 +43,13 @@ function dateFromUnix(value: number | null | undefined): Date | null {
   return typeof value === 'number' ? new Date(value * 1000) : null;
 }
 
-function resolvePlanFromSubscription(subscription: Stripe.Subscription): BillingPlanId {
+async function resolvePlanFromSubscription(subscription: Stripe.Subscription): Promise<BillingPlanId> {
+  await refreshBillingConfigCache();
   const metaPlan = billingPlan(subscription.metadata?.plan);
   if (metaPlan !== 'free') return metaPlan;
   const priceId = subscription.items.data[0]?.price?.id;
   if (priceId) {
-    const mapped = planFromStripePriceId(priceId);
+    const mapped = await planFromStripePriceIdAsync(priceId);
     if (mapped) return mapped;
   }
   return 'free';
@@ -163,7 +165,7 @@ export class SubscriptionManager {
     const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
     const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id;
     const stripeSub = subscriptionId ? await this.stripeService.getSubscription(subscriptionId) : null;
-    const resolvedPlan = stripeSub ? resolvePlanFromSubscription(stripeSub) : plan;
+    const resolvedPlan = stripeSub ? await resolvePlanFromSubscription(stripeSub) : plan;
     const scoutApiKey = isScoutPlan(resolvedPlan) ? issueScoutApiKey() : null;
 
     const result = await pool.query<SubscriptionSnapshot>(
@@ -231,7 +233,7 @@ export class SubscriptionManager {
   async syncStripeSubscription(subscription: Stripe.Subscription): Promise<void> {
     const tenantId = subscription.metadata?.tenantId;
     if (!tenantId) return;
-    const plan = resolvePlanFromSubscription(subscription);
+    const plan = await resolvePlanFromSubscription(subscription);
     const orgId = subscription.metadata?.orgId || (await resolveOrgIdFromUser(tenantId));
 
     if (subscription.status === 'canceled' || subscription.status === 'unpaid') {
@@ -290,7 +292,7 @@ export class SubscriptionManager {
       return;
     }
     const orgId = subscription.metadata?.orgId || (await resolveOrgIdFromUser(tenantId));
-    const plan = resolvePlanFromSubscription(subscription);
+    const plan = await resolvePlanFromSubscription(subscription);
     await pool.query(
       `UPDATE subscriptions
        SET status = 'canceled', updated_at = NOW()

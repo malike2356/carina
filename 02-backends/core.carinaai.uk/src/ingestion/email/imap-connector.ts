@@ -6,6 +6,18 @@ export interface ImapConnectionParams {
   password: string;
 }
 
+export interface ImapOAuth2Params {
+  host: string;
+  port: number;
+  tls: boolean;
+  username: string;
+  accessToken: string;
+}
+
+export type ImapAuth =
+  | { type: 'password'; params: ImapConnectionParams }
+  | { type: 'oauth2'; params: ImapOAuth2Params };
+
 export interface RawImapMessage {
   uid: number;
   messageId: string;
@@ -15,16 +27,39 @@ export interface RawImapMessage {
   receivedAt: Date;
 }
 
-export async function testImapConnection(params: ImapConnectionParams): Promise<{ ok: boolean; mailbox?: string; error?: string }> {
-  try {
-    const { ImapFlow } = await import('imapflow');
-    const client = new ImapFlow({
-      host: params.host,
-      port: params.port,
-      secure: params.tls,
-      auth: { user: params.username, pass: params.password },
+type ImapClient = InstanceType<typeof import('imapflow').ImapFlow>;
+
+async function buildImapFlow(auth: ImapAuth): Promise<ImapClient> {
+  const { ImapFlow } = await import('imapflow');
+  if (auth.type === 'password') {
+    return new ImapFlow({
+      host: auth.params.host,
+      port: auth.params.port,
+      secure: auth.params.tls,
+      auth: { user: auth.params.username, pass: auth.params.password },
       logger: false,
     });
+  }
+  return new ImapFlow({
+    host: auth.params.host,
+    port: auth.params.port,
+    secure: auth.params.tls,
+    auth: {
+      user: auth.params.username,
+      accessToken: auth.params.accessToken,
+    },
+    logger: false,
+  });
+}
+
+function normalizeAuth(auth: ImapConnectionParams | ImapAuth): ImapAuth {
+  if ('type' in auth) return auth;
+  return { type: 'password', params: auth };
+}
+
+export async function testImapConnection(auth: ImapConnectionParams | ImapAuth): Promise<{ ok: boolean; mailbox?: string; error?: string }> {
+  try {
+    const client = await buildImapFlow(normalizeAuth(auth));
     await client.connect();
     const mailbox = await client.mailboxOpen('INBOX');
     const name = mailbox.path;
@@ -37,21 +72,14 @@ export async function testImapConnection(params: ImapConnectionParams): Promise<
 }
 
 export async function fetchUnseenFromSenders(
-  params: ImapConnectionParams,
+  auth: ImapConnectionParams | ImapAuth,
   allowedSenders: string[],
   limit = 25,
 ): Promise<RawImapMessage[]> {
   if (allowedSenders.length === 0) return [];
 
   const normalized = allowedSenders.map((s) => s.trim().toLowerCase());
-  const { ImapFlow } = await import('imapflow');
-  const client = new ImapFlow({
-    host: params.host,
-    port: params.port,
-    secure: params.tls,
-    auth: { user: params.username, pass: params.password },
-    logger: false,
-  });
+  const client = await buildImapFlow(normalizeAuth(auth));
 
   const messages: RawImapMessage[] = [];
   await client.connect();
@@ -101,19 +129,12 @@ export function senderMatches(fromAddress: string, allowedSenders: string[]): bo
 }
 
 export async function markMessagesSeen(
-  params: ImapConnectionParams,
+  auth: ImapConnectionParams | ImapAuth,
   uids: number[],
 ): Promise<void> {
   if (uids.length === 0) return;
 
-  const { ImapFlow } = await import('imapflow');
-  const client = new ImapFlow({
-    host: params.host,
-    port: params.port,
-    secure: params.tls,
-    auth: { user: params.username, pass: params.password },
-    logger: false,
-  });
+  const client = await buildImapFlow(normalizeAuth(auth));
 
   await client.connect();
   try {

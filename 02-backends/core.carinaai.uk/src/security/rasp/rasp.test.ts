@@ -20,6 +20,9 @@ import {
 } from './engine.js';
 import { signalFromPromptGuard, signalFromToolSequence } from './adapters.js';
 import { _resetRaspStoreForTests } from './store.js';
+import { SignalBuffer } from './signal-buffer.js';
+import { detectTacticProgression } from './mitre-tactics.js';
+import { SIGNAL_RETENTION_MS } from './signal-weights.js';
 
 describe('RASP signal correlator', () => {
   it('boosts severity when multiple sources agree', () => {
@@ -145,5 +148,111 @@ describe('RASP engine', () => {
       expect(isSessionBlocked('sess-contain') || getKillSwitchStatus().active).toBe(true);
     }
     expect(formatAttackGraph(assessment)).toContain('Attack graph');
+  });
+
+  it('retains signals across a 6-minute gap within the sliding window', async () => {
+    const engine = getRaspEngine();
+    const base = Date.now() - 7 * 60 * 1000;
+    await engine.ingest({
+      ...signalFromPromptGuard({
+        sessionId: 'sess-sliding',
+        type: 'injection_blocked',
+        patternId: 'INJ-O01',
+      }),
+      timestamp: base,
+    });
+    await engine.ingest({
+      ...signalFromToolSequence({
+        sessionId: 'sess-sliding',
+        toolName: 'shell-exec',
+        ruleId: 'critical-chain',
+        label: 'Critical chain',
+        severity: 'critical',
+      }),
+      timestamp: base + 6 * 60 * 1000,
+    });
+    expect(engine.getActiveSignals('sess-sliding')).toHaveLength(2);
+  });
+
+  it('boosts threat score when MITRE tactic progression is detected', async () => {
+    const engine = getRaspEngine();
+    const base = Date.now() - 10 * 60 * 1000;
+    await engine.ingest({
+      ...signalFromPromptGuard({
+        sessionId: 'sess-mitre',
+        type: 'injection_blocked',
+        patternId: 'INJ-O01',
+        severity: 0.7,
+        confidence: 0.7,
+      }),
+      timestamp: base,
+    });
+    await engine.ingest({
+      ...signalFromToolSequence({
+        sessionId: 'sess-mitre',
+        toolName: 'shell-exec',
+        ruleId: 'chain-1',
+        label: 'Shell chain',
+        severity: 'warning',
+      }),
+      timestamp: base + 3 * 60 * 1000,
+      patternId: 'INJ-J01',
+    });
+    const assessment = await engine.ingest({
+      ...signalFromPromptGuard({
+        sessionId: 'sess-mitre',
+        type: 'exfil_attempt',
+        patternId: 'INJ-D02',
+        severity: 0.75,
+        confidence: 0.75,
+      }),
+      timestamp: base + 6 * 60 * 1000,
+    });
+    expect(detectTacticProgression(assessment.signals)).toBe(true);
+    expect(assessment.threatScore).toBeGreaterThan(40);
+  });
+});
+
+describe('RASP signal buffer', () => {
+  it('prunes by count and age', () => {
+    const buffer = new SignalBuffer();
+    const now = Date.now();
+    for (let index = 0; index < 210; index += 1) {
+      buffer.push({
+        id: `sig-${index}`,
+        source: 'anomaly',
+        type: 'test',
+        severity: 0.5,
+        confidence: 0.5,
+        timestamp: now - index * 1000,
+        context: { sessionId: 'sess', agentId: 'agent', details: {} },
+      });
+    }
+    expect(buffer.getAll(now)).toHaveLength(200);
+    expect(buffer.getWindow(5 * 60 * 1000, now)).toHaveLength(200);
+  });
+
+  it('drops signals older than retention window', () => {
+    const buffer = new SignalBuffer();
+    const now = Date.now();
+    buffer.push({
+      id: 'old',
+      source: 'anomaly',
+      type: 'test',
+      severity: 0.5,
+      confidence: 0.5,
+      timestamp: now - SIGNAL_RETENTION_MS - 1,
+      context: { sessionId: 'sess', agentId: 'agent', details: {} },
+    });
+    buffer.push({
+      id: 'fresh',
+      source: 'anomaly',
+      type: 'test',
+      severity: 0.5,
+      confidence: 0.5,
+      timestamp: now - 60_000,
+      context: { sessionId: 'sess', agentId: 'agent', details: {} },
+    });
+    expect(buffer.getAll(now).map((row) => row.id)).toEqual(['fresh']);
   });
 });

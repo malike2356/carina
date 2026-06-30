@@ -16,6 +16,12 @@ import {
   updateConnectionStatus,
 } from '../ingestion/email/email-connection-store.js';
 import { testImapConnection } from '../ingestion/email/imap-connector.js';
+import { exchangeCodeForTokens, getGmailAuthUrl, isGmailOAuthConfigured } from '../ingestion/email/gmail-oauth.js';
+import {
+  exchangeOutlookCodeForTokens,
+  getOutlookAuthUrl,
+  isOutlookOAuthConfigured,
+} from '../ingestion/email/outlook-oauth.js';
 import { isEmailIngestionEnabled as emailIngestionFlag } from '../workers/aiva-feature-flags.js';
 import { pollWorkerInbox } from '../ingestion/email/email-poller.js';
 import { updateWorkerConfig, validateAndSetPropreneurBinding, clearPropreneurBinding } from '../workers/worker-bridge-store.js';
@@ -40,6 +46,23 @@ function resolveWorkspaceId(req: AivaEmailRequest): string | null {
   const fromQuery = typeof req.query.workspaceId === 'string' ? req.query.workspaceId : '';
   const fromBody = typeof req.body?.workspaceId === 'string' ? req.body.workspaceId : '';
   return (fromHeader ?? fromBody ?? fromQuery)?.trim() || null;
+}
+
+function encodeGmailOAuthState(workerId: string, workspaceId: string): string {
+  return Buffer.from(`${workerId}:${workspaceId}`, 'utf8').toString('base64url');
+}
+
+function decodeGmailOAuthState(state: string): { workerId: string; workspaceId: string } | null {
+  try {
+    const decoded = Buffer.from(state, 'base64url').toString('utf8');
+    const [workerId, workspaceId] = decoded.split(':');
+    if (!workerId || !workspaceId || !UUID_RE.test(workerId) || !UUID_RE.test(workspaceId)) {
+      return null;
+    }
+    return { workerId, workspaceId };
+  } catch {
+    return null;
+  }
 }
 
 function requireEmailIngestion(req: AivaEmailRequest, res: Response, next: NextFunction): void {
@@ -131,6 +154,169 @@ aivaEmailRouter.post('/connect', requireEmailIngestion, async (req: AivaEmailReq
         imapPort: connection.imapPort,
         status: connection.status,
         mailbox: test.mailbox,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+});
+
+aivaEmailRouter.get('/oauth/gmail/auth-url', requireEmailIngestion, async (req: AivaEmailRequest, res: Response) => {
+  try {
+    if (!isGmailOAuthConfigured()) {
+      res.status(503).json({ error: 'Gmail OAuth is not configured on this server' });
+      return;
+    }
+
+    const workerId = String(req.query.workerId ?? '').trim();
+    if (!UUID_RE.test(workerId)) {
+      res.status(400).json({ error: 'Valid workerId is required' });
+      return;
+    }
+
+    const worker = await getWorker(req.workspaceId!, workerId);
+    if (!worker) {
+      res.status(404).json({ error: 'Worker not found' });
+      return;
+    }
+
+    const state = encodeGmailOAuthState(workerId, req.workspaceId!);
+    res.json({ authUrl: getGmailAuthUrl(state) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+});
+
+aivaEmailRouter.post('/oauth/gmail/callback', async (req: AivaEmailRequest, res: Response) => {
+  try {
+    if (!credentialsConfigured()) {
+      res.status(503).json({ error: 'CHANNEL_CREDENTIAL_KEY is not configured' });
+      return;
+    }
+    if (!isGmailOAuthConfigured()) {
+      res.status(503).json({ error: 'Gmail OAuth is not configured on this server' });
+      return;
+    }
+
+    const code = String(req.body?.code ?? '').trim();
+    const state = String(req.body?.state ?? '').trim();
+    if (!code || !state) {
+      res.status(400).json({ error: 'code and state are required' });
+      return;
+    }
+
+    const decoded = decodeGmailOAuthState(state);
+    if (!decoded) {
+      res.status(400).json({ error: 'Invalid OAuth state' });
+      return;
+    }
+
+    const tokens = await exchangeCodeForTokens(code);
+    const connection = await upsertEmailConnection(decoded.workerId, {
+      imapHost: 'imap.gmail.com',
+      imapPort: 993,
+      imapTls: true,
+      username: tokens.email,
+      oauthProvider: 'gmail',
+      oauthRefreshToken: tokens.refreshToken,
+      status: 'connected',
+    });
+
+    res.json({
+      ok: true,
+      connection: {
+        id: connection.id,
+        workerId: connection.workerId,
+        imapHost: connection.imapHost,
+        imapPort: connection.imapPort,
+        status: connection.status,
+        oauthProvider: connection.oauthProvider,
+        username: tokens.email,
+      },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+});
+
+aivaEmailRouter.get('/oauth/outlook/auth-url', requireEmailIngestion, async (req: AivaEmailRequest, res: Response) => {
+  try {
+    if (!isOutlookOAuthConfigured()) {
+      res.status(503).json({ error: 'Microsoft OAuth is not configured on this server' });
+      return;
+    }
+
+    const workerId = String(req.query.workerId ?? '').trim();
+    if (!UUID_RE.test(workerId)) {
+      res.status(400).json({ error: 'Valid workerId is required' });
+      return;
+    }
+
+    const worker = await getWorker(req.workspaceId!, workerId);
+    if (!worker) {
+      res.status(404).json({ error: 'Worker not found' });
+      return;
+    }
+
+    const state = encodeGmailOAuthState(workerId, req.workspaceId!);
+    res.json({ authUrl: getOutlookAuthUrl(state) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message });
+  }
+});
+
+aivaEmailRouter.post('/oauth/outlook/callback', async (req: AivaEmailRequest, res: Response) => {
+  try {
+    if (!credentialsConfigured()) {
+      res.status(503).json({ error: 'CHANNEL_CREDENTIAL_KEY is not configured' });
+      return;
+    }
+    if (!isOutlookOAuthConfigured()) {
+      res.status(503).json({ error: 'Microsoft OAuth is not configured on this server' });
+      return;
+    }
+
+    const code = String(req.body?.code ?? '').trim();
+    const state = String(req.body?.state ?? '').trim();
+    const codeVerifier = typeof req.body?.codeVerifier === 'string'
+      ? String(req.body.codeVerifier).trim()
+      : undefined;
+    if (!code || !state) {
+      res.status(400).json({ error: 'code and state are required' });
+      return;
+    }
+
+    const decoded = decodeGmailOAuthState(state);
+    if (!decoded) {
+      res.status(400).json({ error: 'Invalid OAuth state' });
+      return;
+    }
+
+    const tokens = await exchangeOutlookCodeForTokens(code, codeVerifier);
+    const connection = await upsertEmailConnection(decoded.workerId, {
+      imapHost: 'outlook.office365.com',
+      imapPort: 993,
+      imapTls: true,
+      username: tokens.email,
+      oauthProvider: 'outlook',
+      oauthRefreshToken: tokens.refreshToken,
+      status: 'connected',
+    });
+
+    res.json({
+      ok: true,
+      connection: {
+        id: connection.id,
+        workerId: connection.workerId,
+        imapHost: connection.imapHost,
+        imapPort: connection.imapPort,
+        status: connection.status,
+        oauthProvider: connection.oauthProvider,
+        username: tokens.email,
       },
     });
   } catch (err) {

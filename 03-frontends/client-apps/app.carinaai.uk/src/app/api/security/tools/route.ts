@@ -23,7 +23,7 @@ export async function GET() {
         tools,
         total: tools.length,
         source: 'stub',
-        warning: `Core cyber tools unavailable (${message}). Showing cached registry.`,
+        warning: `Core security tools unavailable (${message}). Showing cached registry.`,
       });
     }
   }

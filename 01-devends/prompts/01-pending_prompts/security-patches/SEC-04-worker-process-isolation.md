@@ -1,222 +1,119 @@
 # SEC-04: Aiva Worker Process Isolation
 
 **Severity:** High
-**Status:** Unpatched - workers run as shared state in single Node.js process
-**Affects:** core.carinaai.uk src/agents/ (Aiva worker management)
+**Status:** Patched (2026-06-30)
+**Affects:** `aiva/02-backends/core.carinaai.uk/src/agents/`, `src/workers/aiva-process-message.ts`
 
 ## Problem
 
-Aiva workers currently run inside the same Node.js process. This means:
-- A bug in one worker (e.g., infinite loop, memory leak, uncaught exception) can
-  degrade or crash all workers.
-- Workers share the same global namespace, V8 heap, and module cache. A
-  compromised or malicious skill installed by one worker is accessible to all.
-- There is no memory ceiling per worker. A misbehaving worker consuming 4GB
-  will not be killed before it crashes the host process.
-- If a prompt injection succeeds and causes a worker to execute arbitrary tool
-  calls, there is no process boundary stopping it from reading another worker's
-  memory, session data, or tool results.
+Before this patch, every Aiva worker shared one Node.js process with the main Carina gateway. That meant:
 
-## Current Architecture (inferred)
+- A bug in one worker (infinite loop, memory leak, uncaught exception) could degrade or crash all workers.
+- Workers shared the same global namespace, V8 heap, and module cache. A compromised skill in one worker was reachable from all.
+- There was no per-worker memory ceiling. A worker consuming 4GB could take down the host process.
+- Prompt injection with arbitrary tool calls had no process boundary between workers.
+
+## Architecture before (shared heap)
 
 ```
 Node.js process (PID 1234)
-  └── CarinaOrchestrator
-        ├── WorkerA (client: Acme Ltd)   <- shared heap
-        ├── WorkerB (client: Beta Corp)  <- shared heap
-        └── WorkerC (client: Gamma Org)  <- shared heap
+  └── GatewayRouter (singleton via getRouter())
+        ├── session aiva-workerA-web-contact1 -> CarinaOrchestrator  (shared heap)
+        ├── session aiva-workerB-email-contact2 -> CarinaOrchestrator (shared heap)
+        └── session aiva-workerC-slack-contact3 -> CarinaOrchestrator (shared heap)
 ```
 
-## Target Architecture
+Entry points that created orchestrators in-process:
+
+- `src/workers/aiva-process-message.ts` (`processAivaMessageStreamDirect`)
+- `src/workers/aiva-automation-scheduler.ts` (cron automations)
+- `src/gateway/router.ts` (`runAgentTurn` when `resolveWorkerForMessage` matches)
+
+There is no `CarinaWorker` class. Aiva workers are DB records (`ai_workers`) executed through `GatewayRouter` + `CarinaOrchestrator`.
+
+## Architecture after (worker_threads)
 
 ```
-Node.js coordinator process (PID 1234)
-  ├── WorkerA (child_process / worker_threads, isolated heap)
-  │     Memory limit: 512MB. Crash does not affect B or C.
-  ├── WorkerB (child_process / worker_threads, isolated heap)
-  └── WorkerC (child_process / worker_threads, isolated heap)
+Node.js coordinator process (main thread)
+  └── AivaWorkerPool
+        ├── workerId=A (worker_threads, 512MB heap limit, own threadId)
+        │     └── worker-runner.ts -> initRouter() + processAivaMessageStreamDirect()
+        ├── workerId=B (worker_threads)
+        └── workerId=C (worker_threads)
 
-Inter-worker communication: only via the coordinator's message bus.
-No direct references shared between workers.
+Inter-worker communication: only via pool.postMessage / parentPort.
+No object references cross the thread boundary.
 ```
 
-## Implementation
+**Feature flag:** `AIVA_WORKER_ISOLATION=true` (default). Set `false` to fall back to the in-process path.
 
-### Option A: Node.js worker_threads (recommended for low latency)
+## Implementation (shipped)
 
-worker_threads give each Aiva worker its own V8 isolate with a separate heap.
-They are lighter than child processes and communicate via MessageChannel.
+Modeled on `subagent-runner.ts` / `subagent-worker.ts`.
+
+| File | Role |
+|------|------|
+| `src/agents/aiva-worker-pool-types.ts` | Message and status types (`ping`, `process_message`, stream events) |
+| `src/agents/worker-pool.ts` | Coordinator: `spawn`, `send`, `sendStream`, `terminate`, `respawn`, `listWorkers` |
+| `src/agents/worker-runner.ts` | Thread entry: lazy bootstrap (env, memory, router, skills), streams tokens back |
+| `src/agents/aiva-worker-runtime.ts` | Handles `ping` -> `pong` inside the thread |
+| `src/agents/worker-pool-health.ts` | Every 30s: PING each worker, 5s timeout, `respawn` on failure |
+| `src/workers/aiva-process-message.ts` | `processAivaMessageStream` routes through pool when flag is on; `processAivaMessageStreamDirect` runs in-thread |
+| `src/workers/aiva-automation-scheduler.ts` | Uses `processAivaMessage` (inherits isolation) |
+| `src/workers/worker-store.ts` | `pauseWorker` / `dismissWorker` terminate the isolated thread |
+| `src/index.ts` | Starts health check when `AI_WORKERS_ENABLED` and isolation are on |
+
+Memory limits per thread (`worker-pool.ts`):
 
 ```typescript
-// src/agents/worker-runner.ts  (NEW FILE - runs inside the worker thread)
-import { workerData, parentPort } from 'worker_threads';
-import { CarinaWorker } from './carina-worker.js';
-
-if (!parentPort) throw new Error('Must be run as a worker thread');
-
-const worker = new CarinaWorker(workerData.config);
-
-parentPort.on('message', async (msg: WorkerMessage) => {
-  try {
-    const result = await worker.handle(msg);
-    parentPort!.postMessage({ id: msg.id, ok: true, result });
-  } catch (err) {
-    parentPort!.postMessage({ id: msg.id, ok: false, error: String(err) });
-  }
-});
-
-worker.start().catch((err) => {
-  parentPort!.postMessage({ type: 'fatal', error: String(err) });
-  process.exit(1);
-});
-```
-
-```typescript
-// src/agents/worker-pool.ts  (NEW FILE - coordinator side)
-import { Worker, ResourceLimits } from 'worker_threads';
-import { resolve } from 'path';
-
-const WORKER_MEMORY_LIMIT_MB = 512;
-
 const WORKER_LIMITS: ResourceLimits = {
-  maxOldGenerationSizeMb: WORKER_MEMORY_LIMIT_MB,
+  maxOldGenerationSizeMb: 512,
   maxYoungGenerationSizeMb: 64,
 };
-
-export class AivaWorkerPool {
-  private workers = new Map<string, Worker>();
-
-  spawn(workerId: string, config: WorkerConfig): Worker {
-    const w = new Worker(resolve(import.meta.dirname, 'worker-runner.js'), {
-      workerData: { config },
-      resourceLimits: WORKER_LIMITS,
-    });
-
-    w.on('error', (err) => {
-      console.error(`[worker-pool] worker ${workerId} error:`, err.message);
-      this.workers.delete(workerId);
-    });
-
-    w.on('exit', (code) => {
-      if (code !== 0) {
-        console.error(`[worker-pool] worker ${workerId} exited with code ${code}`);
-      }
-      this.workers.delete(workerId);
-    });
-
-    this.workers.set(workerId, w);
-    return w;
-  }
-
-  async send(workerId: string, msg: WorkerMessage): Promise<unknown> {
-    const w = this.workers.get(workerId);
-    if (!w) throw new Error(`No worker with id ${workerId}`);
-
-    return new Promise((resolve, reject) => {
-      const id = crypto.randomUUID();
-      const handler = (response: WorkerResponse) => {
-        if (response.id !== id) return;
-        w.off('message', handler);
-        if (response.ok) resolve(response.result);
-        else reject(new Error(response.error));
-      };
-      w.on('message', handler);
-      w.postMessage({ ...msg, id });
-    });
-  }
-
-  async terminate(workerId: string): Promise<void> {
-    const w = this.workers.get(workerId);
-    if (!w) return;
-    await w.terminate();
-    this.workers.delete(workerId);
-  }
-
-  terminateAll(): Promise<void[]> {
-    return Promise.all([...this.workers.keys()].map((id) => this.terminate(id)));
-  }
-}
 ```
 
-### Option B: child_process.fork (recommended for full OS-level isolation)
+## Migration checklist (completed)
 
-`child_process.fork` gives a fully separate OS process with its own PID. It is
-heavier than worker_threads but gives stronger isolation: a segfault in the
-child does not affect the parent; ulimit applies per-process.
+1. Identified instantiation sites: `aiva-process-message.ts`, `aiva-automation-scheduler.ts`, `gateway/router.ts` (channel inbound with worker context).
+2. Pool spawn on first message per `workerId` via `sendStream` / `ensureWorker`.
+3. Direct orchestrator calls replaced at the Aiva message boundary; channel inbound still uses `GatewayRouter` on the main thread unless the message is routed through `processAivaMessage`.
+4. Thread boundary carries only serializable `ProcessAivaMessageParams` (no functions, Proxies, or SharedArrayBuffer).
+5. Read-only spawn config (`workerId`, `workspaceId`) passed via `workerData`; mutable state stays in DB/Redis accessed from within each thread.
+6. Health-check loop started from `src/index.ts`.
 
-```typescript
-// src/agents/fork-pool.ts  (NEW FILE - coordinator side)
-import { fork, ChildProcess } from 'child_process';
-import { resolve } from 'path';
+## Deferred: child_process.fork
 
-export class AivaForkPool {
-  private procs = new Map<string, ChildProcess>();
-
-  spawn(workerId: string, config: WorkerConfig): void {
-    const child = fork(resolve(import.meta.dirname, 'worker-fork.js'), [], {
-      env: {
-        ...process.env,
-        WORKER_CONFIG: JSON.stringify(config),
-        WORKER_ID: workerId,
-      },
-      // Memory ceiling via Node.js max-old-space
-      execArgv: ['--max-old-space-size=512'],
-    });
-
-    child.on('error', (err) => {
-      console.error(`[fork-pool] worker ${workerId} error:`, err.message);
-    });
-
-    child.on('exit', (code) => {
-      if (code !== 0 && code !== null) {
-        console.error(`[fork-pool] worker ${workerId} exited ${code} - respawning`);
-        this.procs.delete(workerId);
-        this.spawn(workerId, config);
-      }
-    });
-
-    this.procs.set(workerId, child);
-  }
-}
-```
-
-### Recommendation
-
-Use **worker_threads** now. It is simpler to wire into the existing codebase
-because workers still run in the same Node binary and share file descriptors.
-Switch to child_process.fork if a future audit determines per-process OS limits
-are needed (e.g., syscall filtering with seccomp).
-
-## Migration Checklist
-
-1. Identify where `CarinaWorker` or Aiva workers are instantiated in
-   `src/agents/`. Run:
-   ```bash
-   grep -rn "new CarinaWorker\|AivaWorker\|spawnWorker\|createWorker" \
-     02-backends/core.carinaai.uk/src/ --include="*.ts"
-   ```
-
-2. Replace direct instantiation with `AivaWorkerPool.spawn(workerId, config)`.
-
-3. Replace direct method calls on the worker with `AivaWorkerPool.send(workerId, msg)`.
-
-4. Ensure no object references that straddle the thread boundary (no passing
-   functions, no SharedArrayBuffer unless intentional, no Proxy objects).
-
-5. Move shared read-only data (config, injection patterns) into `workerData` at
-   spawn time. Mutable shared state must go through the coordinator.
-
-6. Add a health-check loop in the coordinator: every 30s, send a PING message
-   to each worker and expect PONG within 5s. Missing PONG = restart the worker.
+`child_process.fork` remains reserved for a future audit if OS-level limits are needed (seccomp, ulimit per PID). `worker_threads` is sufficient for V8 heap isolation and matches existing Carina patterns (`subagent-runner`, code-exec sandbox).
 
 ## Verification
 
 ```bash
-# After implementing: confirm each worker has its own thread ID
-pnpm cli -- "list workers"
-# Output should show: worker_id | thread_id | status | memory_mb
-# All thread_ids should be different from the main thread
+cd aiva/02-backends/core.carinaai.uk
 
-# Confirm memory limit enforced: start a worker, trigger heavy work
-# Worker memory should not exceed 512MB before OOM kill
+# Unit tests
+pnpm test src/agents/worker-pool.test.ts \
+  src/agents/aiva-worker-runtime.test.ts \
+  src/agents/worker-pool-health.test.ts \
+  src/workers/aiva-process-message.test.ts
+
+# Runtime: each active Aiva worker should have a distinct threadId
+# (inspect via pool.listWorkers() in a REPL or add an ops endpoint)
+```
+
+Expected `listWorkers()` shape:
+
+```
+worker_id | thread_id | status  | memory_limit_mb | last_pong_at
+```
+
+All `thread_id` values must differ from the main thread (`worker_threads` `threadId` 0).
+
+To confirm the memory limit: trigger heavy work in one worker; its thread should OOM near 512MB without killing sibling workers.
+
+## Environment
+
+```bash
+# .env.example
+AI_WORKERS_ENABLED=true
+AIVA_WORKER_ISOLATION=true   # set false to disable isolation
 ```

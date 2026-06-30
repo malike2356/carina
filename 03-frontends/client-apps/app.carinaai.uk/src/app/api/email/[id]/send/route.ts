@@ -10,7 +10,11 @@ export async function POST(_request: Request, _context: RouteContext) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   return NextResponse.json(
-    { error: 'Outbound email is not available on Carina Cloud yet. Save drafts for review only.' },
-    { status: 501 },
+    {
+      error:
+        'Use the Email Handler approval inbox at /aiva/approvals to approve and send drafts.',
+      approvalInboxPath: '/aiva/approvals',
+    },
+    { status: 410 },
   );
 }

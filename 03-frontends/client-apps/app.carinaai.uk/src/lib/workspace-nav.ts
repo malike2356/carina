@@ -148,10 +148,24 @@ export const NAV_ROUTES: NavRoute[] = [
   },
   {
     href: '/aiva/workers',
-    label: 'Your Aivas',
-    description: 'Manage your hired Aiva workers.',
+    label: 'AI Employees',
+    description: 'Manage your hired AI Employees (Aiva workers).',
     group: 'aiva',
     iconName: 'Bot',
+  },
+  {
+    href: '/aiva/governance',
+    label: 'Governance',
+    description: 'Scout protection status, audit summary, and kill switch awareness.',
+    group: 'aiva',
+    iconName: 'Shield',
+  },
+  {
+    href: '/aiva/approvals',
+    label: 'Approval inbox',
+    description: 'Review email drafts before your AI Employees send them.',
+    group: 'aiva',
+    iconName: 'Mail',
   },
   {
     href: '/aiva',

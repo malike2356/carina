@@ -1,5 +1,5 @@
 import type { Tool } from '../../types/index.js';
-import { CYBER_TOOLS, getCyberToolDef, type CyberToolDef } from '../cyber-tools-registry.js';
+import { AIVA_SECURITY_TOOLS, getCyberToolDef, type CyberToolDef } from '../cyber-tools-registry.js';
 import { buildUpgradeBanner, resolveWorkspaceTier } from '../tier-check.js';
 import { runBinary, type BinaryRunResult } from './exec.js';
 import { sanitizeTarget } from './sanitize.js';
@@ -380,7 +380,7 @@ export function createCyberTool(def: CyberToolDef): Tool {
 export function createCyberTools(): Tool[] {
   const tools: Tool[] = [];
 
-  for (const def of CYBER_TOOLS) {
+  for (const def of AIVA_SECURITY_TOOLS) {
     if (isEnhancedCyberTool(def.name)) {
       const factory = resolveEnhancedFactory(def.name);
       if (factory) {

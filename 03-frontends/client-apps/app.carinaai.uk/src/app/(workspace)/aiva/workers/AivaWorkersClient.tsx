@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bot, Plus, Search } from 'lucide-react';
 import { AivaCard } from '@/components/aiva/AivaCard';
@@ -11,6 +12,8 @@ import type { AivaWorker } from '@/lib/aiva-types';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 
 export function AivaWorkersClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { push } = useToast();
   const [workers, setWorkers] = useState<AivaWorker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,24 @@ export function AivaWorkersClient() {
   useEffect(() => {
     void loadWorkers();
   }, [loadWorkers]);
+
+  useEffect(() => {
+    const connected = searchParams.get('channel_connected');
+    const channelError = searchParams.get('channel_error');
+    if (!connected && !channelError) return;
+
+    if (connected === 'gmail' || connected === 'outlook') {
+      push(`${connected === 'gmail' ? 'Gmail' : 'Outlook'} connected successfully`, 'success');
+      void loadWorkers();
+    } else if (channelError) {
+      push(`Email connection failed: ${channelError}`, 'error');
+    }
+
+    const next = new URL(window.location.href);
+    next.searchParams.delete('channel_connected');
+    next.searchParams.delete('channel_error');
+    router.replace(`${next.pathname}${next.search}`);
+  }, [loadWorkers, push, router, searchParams]);
 
   const filteredWorkers = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
@@ -88,11 +109,11 @@ export function AivaWorkersClient() {
     <>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Your Aivas</h1>
+          <h1 className="text-2xl font-semibold">AI Employees</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {loading
               ? 'Loading...'
-              : `${workers.length} Aiva${workers.length !== 1 ? 's' : ''} configured`}
+              : `${workers.length} AI Employee${workers.length !== 1 ? 's' : ''} configured`}
           </p>
         </div>
         <Link href="/aiva" className="btn-primary flex items-center gap-2">

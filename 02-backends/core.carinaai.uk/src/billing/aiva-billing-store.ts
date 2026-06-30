@@ -4,8 +4,10 @@ import { resolveWorkspaceIdFromInvoice } from './aiva-stripe-metadata.js';
 import { suspendIfGraceExpired } from './aiva-billing.js';
 import { pool } from '../memory/db.js';
 import { slotLimitForTier } from './aiva-stripe-checkout.js';
+import { normalizeAivaTier, type AivaPaidTier } from './aiva-tier.js';
+import { refreshBillingConfigCache, resolveConfigValue } from './billing-config.js';
 
-export type AivaPlanTier = 'trial' | 'starter' | 'team' | 'business';
+export type AivaPlanTier = 'trial' | AivaPaidTier;
 
 export interface AivaInvoiceRow {
   id: string;
@@ -20,20 +22,43 @@ export interface AivaInvoiceRow {
   createdAt: string;
 }
 
+function aivaPriceEnvKey(tier: string, interval: 'month' | 'year'): string {
+  const lookup = tier === 'team' ? 'growth' : tier;
+  return `STRIPE_PRICE_AIVA_${lookup.toUpperCase()}_${interval === 'year' ? 'ANNUAL' : 'MONTHLY'}`;
+}
+
 function buildPriceTierMap(): Record<string, { tier: AivaPlanTier; interval: 'month' | 'year' }> {
-  const tiers: AivaPlanTier[] = ['starter', 'team', 'business'];
+  const tiers: AivaPlanTier[] = ['starter', 'growth', 'team', 'business'];
   const map: Record<string, { tier: AivaPlanTier; interval: 'month' | 'year' }> = {};
   for (const tier of tiers) {
-    const monthly = process.env[`STRIPE_PRICE_AIVA_${tier.toUpperCase()}_MONTHLY`]?.trim();
-    const annual = process.env[`STRIPE_PRICE_AIVA_${tier.toUpperCase()}_ANNUAL`]?.trim();
-    if (monthly) map[monthly] = { tier, interval: 'month' };
-    if (annual) map[annual] = { tier, interval: 'year' };
+    const monthlyKey = aivaPriceEnvKey(tier, 'month');
+    const annualKey = aivaPriceEnvKey(tier, 'year');
+    let monthly = resolveConfigValue(monthlyKey);
+    let annual = resolveConfigValue(annualKey);
+    if (tier === 'team') {
+      monthly = monthly || resolveConfigValue('STRIPE_PRICE_AIVA_TEAM_MONTHLY');
+      annual = annual || resolveConfigValue('STRIPE_PRICE_AIVA_TEAM_ANNUAL');
+    }
+    const stored = normalizeAivaTier(tier) as AivaPlanTier;
+    if (monthly) map[monthly] = { tier: stored, interval: 'month' };
+    if (annual) map[annual] = { tier: stored, interval: 'year' };
   }
   return map;
 }
 
+export async function refreshAivaPriceTierMap(): Promise<void> {
+  await refreshBillingConfigCache();
+}
+
 export function tierFromPriceId(priceId: string): { tier: AivaPlanTier; interval: 'month' | 'year' } | null {
   return buildPriceTierMap()[priceId] ?? null;
+}
+
+export async function tierFromPriceIdAsync(
+  priceId: string,
+): Promise<{ tier: AivaPlanTier; interval: 'month' | 'year' } | null> {
+  await refreshBillingConfigCache();
+  return tierFromPriceId(priceId);
 }
 
 export async function canHireMoreAivas(workspaceId: string): Promise<boolean> {

@@ -23,16 +23,20 @@ export function signalFromPromptGuard(input: {
   confidence?: number;
   source?: string;
   patterns?: string[];
+  patternId?: string;
   ref?: string;
 }): Omit<RASPSignal, 'timestamp'> {
+  const patternId = input.patternId ?? input.patterns?.[0];
   return {
     source: 'prompt_guard',
     type: input.type,
     severity: input.severity ?? 0.85,
     confidence: input.confidence ?? 0.8,
+    patternId,
     context: baseContext(input.sessionId ?? 'unknown', undefined, undefined, {
       source: input.source ?? 'prompt-guard',
       patterns: input.patterns,
+      patternId,
       ref: input.ref,
     }),
   };

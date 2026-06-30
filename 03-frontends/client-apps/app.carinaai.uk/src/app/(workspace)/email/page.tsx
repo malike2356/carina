@@ -132,7 +132,11 @@ export default function EmailPage() {
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Email</h1>
           <p className="text-xs text-text-muted">
-            Inbound triage and draft review. Outbound send is not wired on cloud yet.
+            Legacy triage view. Use{' '}
+            <a href="/aiva/approvals" className="text-accent hover:underline">
+              Approval inbox
+            </a>{' '}
+            for Email Handler drafts (approve, reject, edit before send).
           </p>
         </div>
         <IconButton label="Refresh" onClick={load}>

@@ -1,14 +1,14 @@
 /**
  * Create Stripe products and prices for Aiva billing tiers.
- * Run: STRIPE_SECRET_KEY=sk_... tsx scripts/stripe-setup-aiva.ts
+ * Run: STRIPE_SECRET_KEY=sk_test_... tsx scripts/stripe-setup-aiva.ts
  *
  * Prints env vars to add to core .env:
- *   STRIPE_PRICE_AIVA_STARTER_MONTHLY
- *   STRIPE_PRICE_AIVA_STARTER_ANNUAL
- *   STRIPE_PRICE_AIVA_TEAM_MONTHLY
- *   STRIPE_PRICE_AIVA_TEAM_ANNUAL
- *   STRIPE_PRICE_AIVA_BUSINESS_MONTHLY
- *   STRIPE_PRICE_AIVA_BUSINESS_ANNUAL
+ *   STRIPE_PRICE_AIVA_STARTER_MONTHLY / _ANNUAL
+ *   STRIPE_PRICE_AIVA_GROWTH_MONTHLY / _ANNUAL
+ *   STRIPE_PRICE_AIVA_SEAT_MONTHLY (per extra AI Employee)
+ *
+ * Legacy env keys (team, business) are still accepted by the billing layer for
+ * grandfathered subscriptions. Do not create new business-tier prices.
  */
 import Stripe from 'stripe';
 
@@ -21,15 +21,28 @@ if (!secret) {
 const stripe = new Stripe(secret);
 
 const TIERS = [
-  { id: 'starter', name: 'Aiva Starter', slots: 1, messages: '2,000', monthly: 2900, annual: 29000 },
-  { id: 'team', name: 'Aiva Team', slots: 5, messages: '10,000', monthly: 9900, annual: 99000 },
-  { id: 'business', name: 'Aiva Business', slots: 'Unlimited', messages: 'Unlimited', monthly: 29900, annual: 299000 },
+  {
+    id: 'starter',
+    name: 'Aiva Starter',
+    employees: 1,
+    tasks: '1,000',
+    monthly: 14900,
+    annual: 149000,
+  },
+  {
+    id: 'growth',
+    name: 'Aiva Growth',
+    employees: 5,
+    tasks: '10,000',
+    monthly: 34900,
+    annual: 349000,
+  },
 ] as const;
 
 async function main(): Promise<void> {
   const product = await stripe.products.create({
-    name: 'Aiva',
-    description: 'AI workers for customer conversations',
+    name: 'Carina Aiva',
+    description: 'AI Employees with built-in Scout governance',
     metadata: { product: 'aiva' },
   });
 
@@ -55,11 +68,26 @@ async function main(): Promise<void> {
     });
 
     const key = tier.id.toUpperCase();
-    console.log(`# ${tier.name} (${tier.slots} Aiva(s), ${tier.messages} msgs/mo)`);
+    console.log(`# ${tier.name} (${tier.employees} AI Employee(s), ${tier.tasks} tasks/mo)`);
     console.log(`STRIPE_PRICE_AIVA_${key}_MONTHLY=${monthly.id}`);
     console.log(`STRIPE_PRICE_AIVA_${key}_ANNUAL=${annual.id}`);
     console.log('');
   }
+
+  const seat = await stripe.prices.create({
+    product: product.id,
+    unit_amount: 4900,
+    currency: 'gbp',
+    recurring: { interval: 'month', usage_type: 'licensed' },
+    metadata: { product: 'aiva', plan: 'seat', interval: 'month' },
+    nickname: 'Aiva AI Employee seat (monthly)',
+  });
+
+  console.log('# Additional AI Employee beyond tier limit (£49/mo per seat)');
+  console.log(`STRIPE_PRICE_AIVA_SEAT_MONTHLY=${seat.id}`);
+  console.log('');
+  console.log('# Webhook (Aiva): https://core.carinaai.uk/api/billing/stripe/webhook');
+  console.log('# Enable UK VAT and customer portal in Stripe Dashboard after test checkout.');
 }
 
 main().catch((err) => {

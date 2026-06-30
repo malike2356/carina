@@ -1,6 +1,10 @@
 import Stripe from 'stripe';
 import { config } from '../config/index.js';
+import { slotLimitForTier, type AivaCheckoutTier } from './aiva-tier.js';
 import { pool } from '../memory/db.js';
+import { refreshBillingConfigCache, resolveConfigValue } from './billing-config.js';
+
+export { slotLimitForTier } from './aiva-tier.js';
 
 function stripeClient(): Stripe {
   const secret = config.hosted.stripeSecretKey || process.env.STRIPE_SECRET_KEY || '';
@@ -9,19 +13,28 @@ function stripeClient(): Stripe {
 }
 
 function priceIdForTier(tier: string, interval: 'month' | 'year'): string | null {
-  const key = `STRIPE_PRICE_AIVA_${tier.toUpperCase()}_${interval === 'year' ? 'ANNUAL' : 'MONTHLY'}`;
-  return process.env[key]?.trim() || null;
+  const normalized = tier === 'team' ? 'growth' : tier;
+  const keys = [
+    `STRIPE_PRICE_AIVA_${normalized.toUpperCase()}_${interval === 'year' ? 'ANNUAL' : 'MONTHLY'}`,
+  ];
+  if (normalized === 'growth') {
+    keys.push(`STRIPE_PRICE_AIVA_TEAM_${interval === 'year' ? 'ANNUAL' : 'MONTHLY'}`);
+  }
+  for (const key of keys) {
+    const value = resolveConfigValue(key);
+    if (value) return value;
+  }
+  return null;
 }
 
-export function slotLimitForTier(tier: string): number {
-  if (tier === 'team') return 5;
-  if (tier === 'business') return 999;
-  return 1;
+async function priceIdForTierAsync(tier: string, interval: 'month' | 'year'): Promise<string | null> {
+  await refreshBillingConfigCache();
+  return priceIdForTier(tier, interval);
 }
 
 export async function createAivaCheckoutSession(params: {
   workspaceId: string;
-  tier: 'starter' | 'team' | 'business';
+  tier: AivaCheckoutTier | 'team' | 'business';
   interval: 'month' | 'year';
   successUrl: string;
   cancelUrl: string;
@@ -36,9 +49,10 @@ export async function createAivaCheckoutSession(params: {
     throw new Error('Stripe is not configured on this server. Set STRIPE_SECRET_KEY.');
   }
 
-  const priceId = priceIdForTier(params.tier, params.interval);
+  const checkoutTier = params.tier === 'team' ? 'growth' : params.tier;
+  const priceId = await priceIdForTierAsync(checkoutTier, params.interval);
   if (!priceId) {
-    throw new Error(`Stripe price not configured for ${params.tier} ${params.interval}`);
+    throw new Error(`Stripe price not configured for ${checkoutTier} ${params.interval}`);
   }
 
   const stripe = stripeClient();
@@ -64,8 +78,8 @@ export async function createAivaCheckoutSession(params: {
   const metadata = {
     product: 'aiva',
     workspaceId: params.workspaceId,
-    plan: params.tier,
-    planName: `Aiva ${params.tier.charAt(0).toUpperCase()}${params.tier.slice(1)}`,
+    plan: checkoutTier,
+    planName: `Aiva ${checkoutTier.charAt(0).toUpperCase()}${checkoutTier.slice(1)}`,
     interval: params.interval,
   };
 

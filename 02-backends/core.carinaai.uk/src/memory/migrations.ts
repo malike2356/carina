@@ -762,6 +762,60 @@ CREATE TABLE IF NOT EXISTS aiva_scout_governance (
 );
 `;
 
+const AIVA_SCOUT_BUNDLING_MIGRATION = `
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_workspace_id TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_api_key_encrypted TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_dashboard_url TEXT;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_provisioned_at TIMESTAMPTZ;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_last_heartbeat_at TIMESTAMPTZ;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_provision_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE aiva_subscriptions ADD COLUMN IF NOT EXISTS scout_next_retry_at TIMESTAMPTZ;
+ALTER TABLE ai_workers ADD COLUMN IF NOT EXISTS approval_config JSONB NOT NULL DEFAULT '{"email_send": true}';
+ALTER TABLE ai_workers ADD COLUMN IF NOT EXISTS scout_risk_level TEXT NOT NULL DEFAULT 'medium';
+CREATE TABLE IF NOT EXISTS worker_email_approvals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id TEXT NOT NULL,
+  digest_id UUID,
+  message_id TEXT,
+  action_type TEXT NOT NULL DEFAULT 'email_send',
+  category TEXT NOT NULL DEFAULT 'client_query',
+  recipient TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  draft_body TEXT NOT NULL,
+  original_from TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reviewed_by TEXT,
+  reviewed_at TIMESTAMPTZ,
+  decision TEXT,
+  modified_body TEXT,
+  scout_event_id TEXT,
+  timeout_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '4 hours')
+);
+CREATE INDEX IF NOT EXISTS idx_worker_email_approvals_workspace
+  ON worker_email_approvals(workspace_id, status, requested_at DESC);
+CREATE TABLE IF NOT EXISTS worker_pending_triggers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  worker_id UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
+  workspace_id TEXT NOT NULL,
+  trigger_type TEXT NOT NULL,
+  trigger_detail JSONB NOT NULL DEFAULT '{}',
+  queued_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS aiva_scout_event_queue (
+  id BIGSERIAL PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  worker_id UUID,
+  event_type TEXT NOT NULL,
+  payload JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  flushed_at TIMESTAMPTZ
+);
+ALTER TABLE worker_email_digests ADD COLUMN IF NOT EXISTS category TEXT;
+`;
+
 const AMBIENT_AGENT_MIGRATION = `
 CREATE TABLE IF NOT EXISTS ambient_channel_settings (
   channel_id TEXT PRIMARY KEY,
@@ -924,12 +978,28 @@ CREATE TABLE IF NOT EXISTS platform_pricing (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 INSERT INTO platform_pricing (id, label, monthly_gbp) VALUES
-  ('aiva_starter',  'Aiva Starter',  49),
-  ('aiva_team',     'Aiva Team',     99),
-  ('aiva_business', 'Aiva Business', 299),
+  ('aiva_starter',  'Aiva Starter',  149),
+  ('aiva_growth',   'Aiva Growth',   349),
+  ('aiva_team',     'Aiva Growth',   349),
+  ('aiva_seat_addon', 'Aiva extra AI Employee', 49),
   ('scout_monitor', 'Scout Monitor', 49),
   ('scout_govern',  'Scout Govern',  79)
 ON CONFLICT (id) DO NOTHING;
+UPDATE platform_pricing SET monthly_gbp = 149, label = 'Aiva Starter', updated_at = NOW() WHERE id = 'aiva_starter';
+UPDATE platform_pricing SET monthly_gbp = 349, label = 'Aiva Growth', updated_at = NOW() WHERE id = 'aiva_team';
+INSERT INTO platform_pricing (id, label, monthly_gbp) VALUES ('aiva_growth', 'Aiva Growth', 349)
+ON CONFLICT (id) DO UPDATE SET monthly_gbp = 349, label = 'Aiva Growth', updated_at = NOW();
+INSERT INTO platform_pricing (id, label, monthly_gbp) VALUES ('aiva_seat_addon', 'Aiva extra AI Employee', 49)
+ON CONFLICT (id) DO UPDATE SET monthly_gbp = 49, updated_at = NOW();
+`;
+
+const BILLING_CONFIG_MIGRATION = `
+CREATE TABLE IF NOT EXISTS billing_config (
+  key        TEXT PRIMARY KEY,
+  value      TEXT NOT NULL DEFAULT '',
+  updated_by TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
 `;
 
 export async function runMigrations(client: pg.PoolClient): Promise<void> {
@@ -1073,6 +1143,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     // aiva admin tables may already exist
   }
   try {
+    await client.query(AIVA_SCOUT_BUNDLING_MIGRATION);
+  } catch {
+    // scout bundling tables may already exist
+  }
+  try {
     await client.query(CHANNEL_CONTEXT_FACTS_MIGRATION);
   } catch {
     // channel context facts table may already exist
@@ -1086,6 +1161,11 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     await client.query(PLATFORM_PRICING_MIGRATION);
   } catch {
     // platform pricing table may already exist
+  }
+  try {
+    await client.query(BILLING_CONFIG_MIGRATION);
+  } catch {
+    // billing_config table may already exist
   }
   try {
     await client.query(RAG_WORKSPACE_MIGRATION);

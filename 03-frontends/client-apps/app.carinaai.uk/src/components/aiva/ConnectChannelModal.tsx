@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { EmailConnectOptions } from '@/components/aiva/EmailConnectOptions';
 import { AIVA_INPUT_CLASS } from '@/lib/aiva-utils';
 import { cn } from '@/lib/utils';
 
@@ -12,9 +13,6 @@ const CHANNEL_FIELDS: Record<
   whatsapp: [
     { key: 'access_token', label: 'Access token', placeholder: 'Permanent system user token', secret: true },
     { key: 'phone_number_id', label: 'Phone number ID', placeholder: 'From Meta WhatsApp dashboard' },
-  ],
-  email: [
-    { key: 'from_address', label: 'Inbound address (optional)', placeholder: 'auto-generated if empty' },
   ],
   slack: [
     { key: 'bot_token', label: 'Bot token', placeholder: 'xoxb-...', secret: true },
@@ -113,44 +111,56 @@ export function ConnectChannelModal({
             <X className="h-4 w-4 text-text-muted" />
           </button>
         </div>
-        <p className="mb-4 text-xs text-text-muted">
-          {channelType === 'email'
-            ? 'Your Aiva gets a dedicated address at mail.carinaai.uk. Clients email it; replies come from the same address.'
-            : channelType === 'sms'
+        {channelType === 'email' ? (
+          <div className="mb-4 text-xs text-text-muted">
+            Connect a mailbox directly with OAuth, or use inbound forwarding for another provider.
+          </div>
+        ) : (
+          <p className="mb-4 text-xs text-text-muted">
+            {channelType === 'sms'
               ? 'Use your Twilio account SID, auth token, and SMS-capable from number. Set the Twilio webhook to https://core.carinaai.uk/api/channels/webhook/sms.'
               : channelType === 'discord'
                 ? 'Enable Message Content Intent on your bot. Carina connects the gateway when you save the bot token.'
                 : channelType === 'teams'
                   ? 'Set your Azure Bot messaging endpoint to https://core.carinaai.uk/api/channels/webhook/teams/{app-id} using the App ID below.'
                   : 'Credentials are encrypted before storage. See CHANNEL-SETUP.md on core for provider steps.'}
-        </p>
-        <form onSubmit={(e) => void submit(e)} className="space-y-3">
-          {fields.map((field) => (
-            <div key={field.key}>
-              <label className="mb-1 block text-xs font-medium text-text-primary">{field.label}</label>
-              <input
-                type={field.secret ? 'password' : 'text'}
-                value={values[field.key] ?? ''}
-                onChange={(ev) => setValues({ ...values, [field.key]: ev.target.value })}
-                placeholder={field.placeholder}
-                className={AIVA_INPUT_CLASS}
-              />
-            </div>
-          ))}
-          {channelType === 'web' ? (
-            <p className="text-sm text-text-secondary">
-              Web chat uses the embed widget. No credentials required; connect enables the widget for this Aiva.
-            </p>
-          ) : null}
-          {error ? <p className="text-xs text-danger">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={pending}
-            className={cn('btn-primary w-full py-2 text-sm', pending && 'opacity-70')}
-          >
-            {pending ? 'Connecting...' : 'Connect channel'}
-          </button>
-        </form>
+          </p>
+        )}
+        {channelType === 'email' ? (
+          <EmailConnectOptions
+            workerId={workerId}
+            onConnected={onConnected}
+            onClose={onClose}
+          />
+        ) : (
+          <form onSubmit={(e) => void submit(e)} className="space-y-3">
+            {fields.map((field) => (
+              <div key={field.key}>
+                <label className="mb-1 block text-xs font-medium text-text-primary">{field.label}</label>
+                <input
+                  type={field.secret ? 'password' : 'text'}
+                  value={values[field.key] ?? ''}
+                  onChange={(ev) => setValues({ ...values, [field.key]: ev.target.value })}
+                  placeholder={field.placeholder}
+                  className={AIVA_INPUT_CLASS}
+                />
+              </div>
+            ))}
+            {channelType === 'web' ? (
+              <p className="text-sm text-text-secondary">
+                Web chat uses the embed widget. No credentials required; connect enables the widget for this Aiva.
+              </p>
+            ) : null}
+            {error ? <p className="text-xs text-danger">{error}</p> : null}
+            <button
+              type="submit"
+              disabled={pending}
+              className={cn('btn-primary w-full py-2 text-sm', pending && 'opacity-70')}
+            >
+              {pending ? 'Connecting...' : 'Connect channel'}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

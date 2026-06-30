@@ -33,8 +33,8 @@ async function callCore(path: string): Promise<Response> {
 }
 
 export async function fetchCyberToolsFromCore(): Promise<{ tools: CyberTool[]; total: number }> {
-  const res = await callCore('/api/tools/cyber');
-  if (!res.ok) throw new Error(`Cyber tools fetch failed: HTTP ${res.status}`);
+  const res = await callCore('/api/tools/security');
+  if (!res.ok) throw new Error(`Security tools fetch failed: HTTP ${res.status}`);
   return res.json() as Promise<{ tools: CyberTool[]; total: number }>;
 }
 
@@ -43,8 +43,8 @@ export async function fetchCyberToolHealthFromCore(): Promise<{
   installedCount: number;
   total: number;
 }> {
-  const res = await callCore('/api/tools/cyber/health');
-  if (!res.ok) throw new Error(`Cyber tool health fetch failed: HTTP ${res.status}`);
+  const res = await callCore('/api/tools/security/health');
+  if (!res.ok) throw new Error(`Security tool health fetch failed: HTTP ${res.status}`);
   return res.json() as Promise<{ health: CyberToolHealth[]; installedCount: number; total: number }>;
 }
 

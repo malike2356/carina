@@ -3,6 +3,7 @@ import pgvector from 'pgvector/pg';
 import { config } from '../config/index.js';
 import { runMigrations } from './migrations.js';
 import { rebuildRegistry } from '../channels/worker-registry.js';
+import { refreshBillingConfigCache } from '../billing/billing-config.js';
 
 export const pool = new pg.Pool({
   connectionString: config.database.url,
@@ -28,6 +29,7 @@ export function initDb(): Promise<void> {
       } finally {
         client.release();
       }
+      await refreshBillingConfigCache(true).catch(() => undefined);
       if (process.env.AI_WORKERS_ENABLED !== 'false') {
         await rebuildRegistry().catch((err) => {
           console.warn('[channels] registry rebuild failed:', err);

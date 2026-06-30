@@ -47,7 +47,7 @@ import { workspacePresetsApiRouter } from '#core/api/workspace-presets-api.js';
 import { isWebTotpEnabled } from '#core/auth/web-totp-store.js';
 import { compareApiRouter } from '#core/api/compare-api.js';
 import { researchApiRouter } from '#core/api/research-api.js';
-import { cyberToolsApiRouter } from '#core/api/cyber-tools-api.js';
+import { securityToolsApiRouter } from '#core/api/cyber-tools-api.js';
 import { internalResearchApiRouter } from '#core/api/internal-research-api.js';
 import { internalTransactionalApiRouter } from '#core/api/internal-transactional-api.js';
 import { calendarApiRouter } from '#core/api/calendar-api.js';
@@ -703,7 +703,7 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
   app.use('/api/workspace/presets', workspacePresetsApiRouter);
   app.use('/api/compare', compareApiRouter);
   app.use('/api/research', researchApiRouter);
-  app.use('/api/tools', cyberToolsApiRouter);
+  app.use('/api/tools', securityToolsApiRouter);
   app.use('/api/internal/research', internalResearchApiRouter);
   app.use('/api/internal/transactional', internalTransactionalApiRouter);
   app.use('/api/calendar', calendarApiRouter);

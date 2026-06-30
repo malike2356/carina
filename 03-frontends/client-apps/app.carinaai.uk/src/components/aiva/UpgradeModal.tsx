@@ -16,9 +16,9 @@ type UpgradeModalProps = {
 };
 
 const SLOT_LABELS: Record<PlanTier, string> = {
-  starter: '1 Aiva',
-  team: 'Up to 5 Aivas',
-  business: 'Unlimited Aivas',
+  starter: '2 AI Employees included',
+  team: 'Up to 5 AI Employees',
+  business: 'Unlimited AI Employees',
 };
 
 const PLAN_ORDER: Record<PlanTier, number> = { starter: 0, team: 1, business: 2 };
@@ -90,12 +90,12 @@ export function UpgradeModal({
   }
 
   const title =
-    reason === 'usage_limit' ? 'Message limit reached' : "You've used all your Aiva slots.";
+    reason === 'usage_limit' ? 'Message limit reached' : 'You have used all included AI Employee seats.';
 
   const body =
     reason === 'usage_limit'
-      ? 'You have reached your message limit on your current plan. Upgrade to hire more Aivas.'
-      : `You are on Aiva ${tierLabel}. Your plan includes ${slotLimit} Aiva${slotLimit === 1 ? '' : 's'}. Upgrade to hire more Aivas.`;
+      ? 'You have reached your message limit on your current plan. Upgrade to add more AI Employees.'
+      : `Your plan includes ${slotLimit} AI Employee seat${slotLimit === 1 ? '' : 's'}. Add another seat from billing or upgrade your plan.`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { attackGraphBuilder, classifyAttack } from './attack-graph.js';
-import { CORRELATION_WINDOW_MS } from './signal-weights.js';
+import { SIGNAL_RETENTION_MS } from './signal-weights.js';
 import { signalCorrelator } from './correlator.js';
 import { decideResponse, executeResponse } from './response-dispatcher.js';
 import {
@@ -14,35 +14,56 @@ import {
   getKillSwitchStatus,
   isSessionBlocked,
 } from '../kill-switch-listener.js';
+import { SignalBuffer } from './signal-buffer.js';
+import {
+  persistAllSessionSignals,
+  recordSignalGlobally,
+  restoreSessionSignals,
+} from './global-signal-store.js';
+import { detectTacticProgression, enrichSignalWithMitreTactic } from './mitre-tactics.js';
 
 export function isRaspEnabled(): boolean {
   return process.env.CARINA_RASP_ENABLED !== 'false';
 }
 
 export class RASPEngine {
-  private signalBuffer: RASPSignal[] = [];
+  private sessionBuffers = new Map<string, SignalBuffer>();
+  private restoredSessions = new Set<string>();
   private lastAssessment: ThreatAssessment | undefined;
   private readonly correlationWindowMs: number;
 
-  constructor(correlationWindowMs = CORRELATION_WINDOW_MS) {
+  constructor(correlationWindowMs = SIGNAL_RETENTION_MS) {
     this.correlationWindowMs = correlationWindowMs;
   }
 
   getActiveSignals(sessionId?: string): RASPSignal[] {
-    this.prune(Date.now());
-    if (!sessionId) return [...this.signalBuffer];
-    return this.signalBuffer.filter((row) => row.context.sessionId === sessionId);
+    if (!sessionId) {
+      const all: RASPSignal[] = [];
+      for (const buffer of this.sessionBuffers.values()) {
+        all.push(...buffer.getAll());
+      }
+      return all;
+    }
+    return this.sessionBuffers.get(sessionId)?.getAll() ?? [];
   }
 
   async ingest(signalInput: RASPSignal): Promise<ThreatAssessment> {
-    const signal = assignSignalId(signalInput);
-    this.signalBuffer.push(signal);
-    this.prune(signal.timestamp);
+    const signal = enrichSignalWithMitreTactic(assignSignalId(signalInput));
+    const sessionId = signal.context.sessionId;
+    const buffer = await this.getSessionBuffer(sessionId);
+    buffer.push(signal);
 
-    const correlatedSignals = signalCorrelator.correlate(this.signalBuffer, signal);
+    await recordSignalGlobally(signal);
+
+    const sessionSignals = buffer.getAll();
+    const correlatedSignals = signalCorrelator.correlate(sessionSignals, signal);
     const attackGraph = attackGraphBuilder.build(correlatedSignals);
-    const threatScore = signalCorrelator.computeThreatScore(correlatedSignals);
-    const confidence = signalCorrelator.computeConfidence(correlatedSignals);
+    let threatScore = signalCorrelator.computeThreatScore(correlatedSignals);
+    let confidence = signalCorrelator.computeConfidence(correlatedSignals);
+    if (detectTacticProgression(correlatedSignals)) {
+      threatScore = Math.min(100, threatScore + 25);
+      confidence = Math.min(1, Number((confidence + 0.15).toFixed(3)));
+    }
     const { attackType, mitreTactic } = classifyAttack(correlatedSignals, attackGraph);
     const decision = decideResponse(threatScore, attackType, confidence);
 
@@ -56,7 +77,7 @@ export class RASPEngine {
       attackGraph,
       decision,
       timestamp: Date.now(),
-      sessionId: signal.context.sessionId,
+      sessionId,
     };
 
     if (decision.autoExecute && isRaspEnabled()) {
@@ -89,19 +110,36 @@ export class RASPEngine {
   }
 
   reset(): void {
-    this.signalBuffer = [];
+    this.sessionBuffers.clear();
+    this.restoredSessions.clear();
     this.lastAssessment = undefined;
   }
 
-  private prune(now: number): void {
-    this.signalBuffer = this.signalBuffer.filter(
-      (row) => now - row.timestamp < this.correlationWindowMs,
-    );
+  async persistSignals(): Promise<void> {
+    await persistAllSessionSignals(this.sessionBuffers);
+  }
+
+  private async getSessionBuffer(sessionId: string): Promise<SignalBuffer> {
+    let buffer = this.sessionBuffers.get(sessionId);
+    if (!buffer) {
+      buffer = new SignalBuffer();
+      this.sessionBuffers.set(sessionId, buffer);
+    }
+    if (!this.restoredSessions.has(sessionId)) {
+      this.restoredSessions.add(sessionId);
+      const restored = await restoreSessionSignals(sessionId);
+      if (restored.length > 0) {
+        buffer.pushMany(restored.map((row) => enrichSignalWithMitreTactic(row)));
+      }
+    }
+    return buffer;
   }
 
   private countBlockedSessions(): number {
     const sessions = new Set(
-      this.signalBuffer.map((row) => row.context.sessionId).filter(Boolean),
+      this.getActiveSignals()
+        .map((row) => row.context.sessionId)
+        .filter(Boolean),
     );
     let count = 0;
     for (const sessionId of sessions) {
@@ -121,6 +159,11 @@ export function getRaspEngine(): RASPEngine {
 export function _resetRaspEngineForTests(): void {
   engine?.reset();
   engine = null;
+}
+
+export async function persistRaspSignalsOnShutdown(): Promise<void> {
+  if (!engine) return;
+  await engine.persistSignals();
 }
 
 export async function buildRaspStatus(): Promise<RaspStatus> {

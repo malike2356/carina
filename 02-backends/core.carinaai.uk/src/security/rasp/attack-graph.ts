@@ -1,6 +1,7 @@
 import type { AttackNode, RASPSignal } from './types.js';
+import { resolveMitreTactic } from './mitre-tactics.js';
 
-const MITRE_BY_SOURCE: Partial<Record<RASPSignal['source'], string>> = {
+const MITRE_LABEL_BY_SOURCE: Partial<Record<RASPSignal['source'], string>> = {
   prompt_guard: 'Initial Access',
   tool_sequence: 'Execution',
   egress_filter: 'Exfiltration',
@@ -8,6 +9,22 @@ const MITRE_BY_SOURCE: Partial<Record<RASPSignal['source'], string>> = {
   trust_state: 'Defense Evasion',
   anomaly: 'Discovery',
 };
+
+function tacticLabel(signal: RASPSignal): string | undefined {
+  const tactic = resolveMitreTactic(signal);
+  if (!tactic) return MITRE_LABEL_BY_SOURCE[signal.source];
+  const labels: Record<string, string> = {
+    TA0001: 'Initial Access',
+    TA0002: 'Execution',
+    TA0003: 'Persistence',
+    TA0005: 'Defense Evasion',
+    TA0006: 'Credential Access',
+    TA0009: 'Collection',
+    TA0010: 'Exfiltration',
+    TA0043: 'Reconnaissance',
+  };
+  return labels[tactic] ?? tactic;
+}
 
 export class AttackGraphBuilder {
   build(signals: RASPSignal[]): AttackNode[] {
@@ -18,7 +35,7 @@ export class AttackGraphBuilder {
       source: signal.source,
       severity: signal.severity,
       timestamp: signal.timestamp,
-      mitreTactic: MITRE_BY_SOURCE[signal.source],
+      mitreTactic: tacticLabel(signal),
       next: index < sorted.length - 1
         ? [sorted[index + 1]!.id ?? `${sorted[index + 1]!.source}-${sorted[index + 1]!.timestamp}-${index + 1}`]
         : undefined,

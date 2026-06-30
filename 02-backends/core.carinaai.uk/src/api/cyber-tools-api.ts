@@ -1,9 +1,9 @@
 import { execSync } from 'node:child_process';
 import { Router, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { isControlAuthorized } from '../infrastructure/control-auth.js';
-import { CYBER_TOOLS } from '../tools/cyber-tools-registry.js';
+import { AIVA_SECURITY_TOOLS } from '../tools/cyber-tools-registry.js';
 
-export const cyberToolsApiRouter: ExpressRouter = Router();
+export const securityToolsApiRouter: ExpressRouter = Router();
 
 function resolveInternalKey(): string {
   return (
@@ -20,13 +20,13 @@ function isAuthorized(req: Request): boolean {
   return String(req.headers['x-internal-key'] ?? '').trim() === expected;
 }
 
-cyberToolsApiRouter.use((req: Request, res: Response, next) => {
+securityToolsApiRouter.use((req: Request, res: Response, next) => {
   if (isAuthorized(req)) { next(); return; }
   res.status(401).json({ error: 'Unauthorized' });
 });
 
-cyberToolsApiRouter.get('/cyber', (_req: Request, res: Response) => {
-  const tools = CYBER_TOOLS.map((t) => ({
+securityToolsApiRouter.get('/security', (_req: Request, res: Response) => {
+  const tools = AIVA_SECURITY_TOOLS.map((t) => ({
     name: t.name,
     category: t.category,
     requiredTier: t.requiredTier,
@@ -38,8 +38,8 @@ cyberToolsApiRouter.get('/cyber', (_req: Request, res: Response) => {
   res.json({ tools, total: tools.length });
 });
 
-cyberToolsApiRouter.get('/cyber/health', (_req: Request, res: Response) => {
-  const health = CYBER_TOOLS.map((t) => {
+securityToolsApiRouter.get('/security/health', (_req: Request, res: Response) => {
+  const health = AIVA_SECURITY_TOOLS.map((t) => {
     let installed = false;
     try {
       execSync(`which ${t.binary}`, { stdio: 'ignore', timeout: 3000 });

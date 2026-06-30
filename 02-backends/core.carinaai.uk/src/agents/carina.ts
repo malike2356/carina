@@ -592,7 +592,7 @@ export class CarinaAgent {
     userMessage: string,
     priorContext?: string,
   ): AsyncGenerator<TurnEvent> {
-    const inputScan = await scanUserInput(userMessage);
+    const inputScan = await scanUserInput(userMessage, { sessionId: this.sessionId });
     if (!inputScan.allowed) {
       yield { type: 'text', content: inputScan.block?.message ?? inputScan.text };
       return;

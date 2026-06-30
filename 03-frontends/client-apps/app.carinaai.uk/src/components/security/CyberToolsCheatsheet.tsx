@@ -427,12 +427,12 @@ export function CyberToolsCheatsheet() {
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Security tools</h1>
+          <h1 className="text-2xl font-semibold text-text-primary">Security Monitoring Tools</h1>
           <p className="mt-1 text-sm text-text-secondary">
-            Cheatsheet of all {total} tools Carina can use.
+            Defensive and compliance tools available in Aiva ({total} tools).
           </p>
           <p className="mt-1 text-sm text-text-secondary">
-            Prompt any of the trigger phrases to invoke a tool.
+            Prompt any of the trigger phrases to invoke a tool. For active security testing, see Petraclus.
           </p>
         </div>
         {source === 'core' ? (

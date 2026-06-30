@@ -155,7 +155,7 @@ not acknowledged within the SLA window, it escalates to the next severity level.
 | Tier | Price | What It Provides |
 |---|---|---|
 | Scout Monitor | GBP 49/month | Observe: monitoring, threat detection, audit log search, 6-channel alerts, weekly report |
-| Scout Govern | GBP 99/month | Act: everything in Monitor plus kill switch, compliance export, injection shield, egress filter, honeypots, deception layer, JIT credentials, forensic tools |
+| Scout Govern | GBP 79/month | Act: everything in Monitor plus kill switch, compliance export, injection shield, egress filter, honeypots, deception layer, JIT credentials, forensic tools |
 | Enterprise | Custom | Dedicated infrastructure, custom log retention, SLA, SOC 2 evidence package, regulatory engagement support |
 
 "One you see. The other you act on what you see."

@@ -93,7 +93,7 @@ describe('PromptGuard.scanInput', () => {
   });
 
   it('loads patterns and whitelist from injection-patterns.json', () => {
-    expect(INPUT_PATTERNS.map((p) => p.id)).toContain('INJ-001');
+    expect(INPUT_PATTERNS.map((p) => p.id)).toContain('INJ-A01');
     expect(INPUT_PATTERNS.map((p) => p.label)).toContain('ignore-previous-instructions');
     expect(PATTERN_WHITELIST).toContain('system architecture');
   });

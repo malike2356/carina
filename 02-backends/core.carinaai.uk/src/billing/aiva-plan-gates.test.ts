@@ -27,10 +27,11 @@ describe('aiva-plan-gates', () => {
     listWorkerChannelDetailsMock.mockReset();
   });
 
-  it('limits starter and trial to two channels', () => {
+  it('limits channels by tier per pricing-strategy.md', () => {
     expect(channelLimitForTier('trial')).toBe(STARTER_CHANNEL_LIMIT);
     expect(channelLimitForTier('starter')).toBe(STARTER_CHANNEL_LIMIT);
-    expect(channelLimitForTier('team')).toBeNull();
-    expect(channelLimitForTier('business')).toBeNull();
+    expect(channelLimitForTier('growth')).toBe(10);
+    expect(channelLimitForTier('team')).toBe(10);
+    expect(channelLimitForTier('business')).toBe(10);
   });
 });

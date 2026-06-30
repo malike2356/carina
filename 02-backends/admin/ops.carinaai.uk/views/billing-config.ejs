@@ -1,0 +1,115 @@
+<% title = 'Stripe Billing Config' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Stripe Billing Config</div>
+      <div class="ops-page-sub">
+        Paste Stripe <code class="ops-code">price_...</code> IDs here. Core checkout reads the database first (30s cache), then falls back to <code class="ops-code">core.carinaai.uk</code> env vars. No server restart required.
+      </div>
+    </div>
+  </div>
+
+  <% if (saved) { %>
+    <div class="ops-flash ok">Stripe price ID saved. Checkout will pick it up within about 30 seconds.</div>
+  <% } %>
+  <% if (cleared) { %>
+    <div class="ops-flash ok">Database override cleared. Core will use the env var fallback if set.</div>
+  <% } %>
+  <% if (errMsg) { %>
+    <div class="ops-flash err"><%= errMsg %></div>
+  <% } %>
+
+  <% const groups = ['aiva', 'scout', 'carina_ops', 'addons', 'keys_server']; %>
+  <% groups.forEach(function(groupKey) {
+    const groupRows = grouped[groupKey] || [];
+    if (!groupRows.length) return;
+  %>
+    <section class="ops-surface" style="margin-bottom:1.5rem;">
+      <h2 class="ops-section-title"><%= groupLabels[groupKey] %></h2>
+      <% if (groupKey === 'keys_server') { %>
+        <p class="ops-section-note" style="margin-bottom:1rem;">
+          Stored here for audit and ops visibility. <strong>keys-server</strong> still reads its own <code class="ops-code">.env</code> until that service is wired to this table.
+        </p>
+      <% } %>
+      <div class="ops-table-wrap">
+        <table class="ops-table">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Env var</th>
+              <th>Interval</th>
+              <th>Active value</th>
+              <th>Source</th>
+              <th>Stripe price ID</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% groupRows.forEach(function(row) { %>
+              <tr>
+                <td><strong><%= row.label %></strong></td>
+                <td><code class="ops-code"><%= row.key %></code></td>
+                <td>
+                  <% if (row.interval === 'annual') { %>
+                    <span class="ops-badge ops-badge-gray">Annual</span>
+                  <% } else { %>
+                    <span class="ops-badge ops-badge-gray">Monthly</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (row.effectiveValue) { %>
+                    <code class="ops-code"><%= row.effectiveValue %></code>
+                  <% } else { %>
+                    <span class="ops-badge ops-badge-gray">Not set</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (row.source === 'database') { %>
+                    <span class="ops-badge ops-badge-green">Database</span>
+                  <% } else if (row.source === 'env') { %>
+                    <span class="ops-badge">Env fallback</span>
+                  <% } else { %>
+                    <span class="ops-badge ops-badge-gray">Unset</span>
+                  <% } %>
+                  <% if (row.updated_at) { %>
+                    <div class="ops-muted" style="font-size:0.75rem;margin-top:0.25rem;">
+                      <%= row.updated_by ? row.updated_by + ' · ' : '' %><%= row.updated_at %>
+                    </div>
+                  <% } %>
+                </td>
+                <td colspan="2">
+                  <form method="post" action="<%= withV('/billing-config/update') %>" class="ops-inline-form">
+                    <input type="hidden" name="key" value="<%= row.key %>">
+                    <input
+                      type="text"
+                      name="value"
+                      value="<%= row.value %>"
+                      placeholder="<%= row.envFallback || 'price_...' %>"
+                      class="ops-input ops-input--sm"
+                      style="width:220px"
+                      spellcheck="false"
+                      autocomplete="off"
+                    >
+                    <button type="submit" class="ops-btn ops-btn-green ops-btn-sm">Save</button>
+                  </form>
+                  <% if (row.value) { %>
+                    <form method="post" action="<%= withV('/billing-config/update') %>" class="ops-inline-form" style="margin-top:0.35rem;">
+                      <input type="hidden" name="key" value="<%= row.key %>">
+                      <input type="hidden" name="value" value="">
+                      <button type="submit" class="ops-btn ops-btn-sm">Clear DB override</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% }); %>
+
+  <div class="ops-section-note">
+    <p><strong>Scout naming:</strong> use <code class="ops-code">STRIPE_PRICE_SCOUT_MONITOR</code> and <code class="ops-code">STRIPE_PRICE_SCOUT_GOVERN</code>. Legacy <code class="ops-code">SCOUT_PRO</code> / <code class="ops-code">SCOUT_STANDARD</code> env names are ignored for new setup.</p>
+    <p><strong>This weekend:</strong> you can still set prices in <code class="ops-code">core.carinaai.uk/.env</code>. This screen overrides env when a value is saved here.</p>
+  </div>
+</div>

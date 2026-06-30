@@ -67,6 +67,13 @@ describe('email-poller', () => {
 
   it('pollAllWorkerInboxes polls only listPollableConnections when enabled', async () => {
     isEmailIngestionEnabled.mockReturnValue(true);
+    getWorkerById.mockResolvedValue({
+      id: 'w1',
+      workspaceId: 'ws-1',
+      status: 'active',
+      channels: ['email'],
+      templateId: 'email-handler',
+    } as Worker);
     listPollableConnections.mockResolvedValue([
       {
         id: 'c1',

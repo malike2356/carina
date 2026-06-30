@@ -625,6 +625,45 @@ export const terminalAuditLog = pgTable(
   ],
 );
 
+export const legalDocuments = pgTable(
+  'legal_documents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    documentType: text('document_type').notNull(),
+    version: text('version').notNull(),
+    effectiveDate: text('effective_date').notNull(),
+    contentUrl: text('content_url').notNull(),
+    isCurrent: boolean('is_current').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('legal_documents_type_version_idx').on(t.documentType, t.version)],
+);
+
+export const legalAcceptances = pgTable(
+  'legal_acceptances',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    documentType: text('document_type').notNull(),
+    documentVersion: text('document_version').notNull(),
+    acceptedAt: timestamp('accepted_at').notNull().defaultNow(),
+    ipAddressHash: text('ip_address_hash'),
+    userAgent: text('user_agent'),
+  },
+  (t) => [
+    index('legal_acceptances_user_document_idx').on(t.userId, t.documentType),
+    index('legal_acceptances_workspace_accepted_idx').on(t.workspaceId, t.acceptedAt),
+  ],
+);
+
+export type LegalDocument = typeof legalDocuments.$inferSelect;
+export type LegalAcceptance = typeof legalAcceptances.$inferSelect;
+
 export type WorkspacePlan = (typeof planEnum.enumValues)[number];
 export type User = typeof users.$inferSelect;
 export type Workspace = typeof workspaces.$inferSelect;

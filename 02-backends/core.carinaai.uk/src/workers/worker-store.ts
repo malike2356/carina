@@ -13,6 +13,16 @@ import type {
 } from '../types/index.js';
 import { attestActivity, registerAivaAgent, reportAivaEvent, updateAivaAgentStatus } from './scout-fleet.js';
 
+async function releaseIsolatedWorkerThread(workerId: string): Promise<void> {
+  try {
+    const { isAivaWorkerIsolationEnabled, getAivaWorkerPool } = await import('../agents/worker-pool.js');
+    if (!isAivaWorkerIsolationEnabled()) return;
+    await getAivaWorkerPool().terminate(workerId);
+  } catch {
+    // Pool may not be initialized during tests or one-off CLI runs.
+  }
+}
+
 function activityDigest(activity: ActivityEntry): string {
   const inputDigest = activity.inputText
     ? createHash('sha256').update(activity.inputText).digest('hex')
@@ -208,6 +218,7 @@ export async function pauseWorker(workspaceId: string, workerId: string): Promis
     [workerId, workspaceId],
   );
   void updateAivaAgentStatus(workerId, 'paused').catch(() => {});
+  void releaseIsolatedWorkerThread(workerId);
 }
 
 export async function resumeWorker(workspaceId: string, workerId: string): Promise<void> {
@@ -224,6 +235,7 @@ export async function dismissWorker(workspaceId: string, workerId: string): Prom
     [workerId, workspaceId],
   );
   void updateAivaAgentStatus(workerId, 'dismissed').catch(() => {});
+  void releaseIsolatedWorkerThread(workerId);
 }
 
 export async function addWorkerChannel(

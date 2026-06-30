@@ -50,13 +50,14 @@
     <div class="nav-scroll">
       <div class="nav-body">
 
-        <details class="nav-group"<%= navOpen(['/tenants', '/subscriptions', '/operator', '/scout/accounts', '/pricing']) ? ' open' : '' %>>
+        <details class="nav-group"<%= navOpen(['/tenants', '/subscriptions', '/operator', '/scout/accounts', '/pricing', '/billing-config']) ? ' open' : '' %>>
           <summary>Fleet</summary>
           <div class="nav-group-body">
             <a href="<%= withV('/tenants') %>" class="nav-link<%= ap.startsWith('/tenants') ? ' active' : '' %>">All Tenants</a>
             <a href="<%= withV('/scout/accounts') %>" class="nav-link<%= ap.startsWith('/scout/accounts') ? ' active' : '' %>">Scout Accounts</a>
             <a href="<%= withV('/subscriptions') %>" class="nav-link<%= ap.startsWith('/subscriptions') ? ' active' : '' %>">Subscriptions</a>
             <a href="<%= withV('/pricing') %>" class="nav-link<%= ap.startsWith('/pricing') ? ' active' : '' %>">Platform Pricing</a>
+            <a href="<%= withV('/billing-config') %>" class="nav-link<%= ap.startsWith('/billing-config') ? ' active' : '' %>">Stripe Price IDs</a>
             <a href="<%= withV('/operator') %>" class="nav-link<%= ap.startsWith('/operator') ? ' active' : '' %>">Operator Tools</a>
           </div>
         </details>

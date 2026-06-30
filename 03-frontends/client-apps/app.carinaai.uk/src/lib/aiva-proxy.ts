@@ -1,7 +1,7 @@
 import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 
 export async function proxyAivaRequest(
-  workspaceId: string,
+  workspaceId: string | null,
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
@@ -14,7 +14,9 @@ export async function proxyAivaRequest(
 
   const token = resolveCoreProxyToken();
   const headers = new Headers(init.headers);
-  headers.set('X-Workspace-Id', workspaceId);
+  if (workspaceId) {
+    headers.set('X-Workspace-Id', workspaceId);
+  }
   if (!headers.has('Content-Type') && init.body) {
     headers.set('Content-Type', 'application/json');
   }

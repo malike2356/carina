@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { CARINA_HOME } from '../config/paths.js';
+import { scanMemoryContent } from '../memory/content-scanner.js';
 import type {
   Commitment,
   CommitmentKind,
@@ -39,6 +40,41 @@ export function generateCommitmentId(): string {
   return `cm_${crypto.randomBytes(9).toString('base64url')}`;
 }
 
+function commitmentContentBlocked(
+  checkInText: string,
+  sourceSummary: string,
+  sessionId: string,
+): boolean {
+  for (const [content, field] of [
+    [checkInText, 'checkInText'],
+    [sourceSummary, 'sourceSummary'],
+  ] as const) {
+    const scan = scanMemoryContent(content, 'inference');
+    if (scan.blocked) {
+      void import('../security/scout-client.js').then(({ reportEvent }) =>
+        reportEvent({
+          severity: 'critical',
+          source: 'memory-write-guard',
+          event_type: 'memory_write_blocked',
+          description: scan.description,
+          session_id: sessionId,
+          metadata: {
+            patternId: scan.patternId,
+            severity: scan.severity,
+            description: scan.description,
+            source: 'inference',
+            sessionId,
+            field,
+            contentPreview: content.slice(0, 120),
+          },
+        }),
+      );
+      return true;
+    }
+  }
+  return false;
+}
+
 export function listCommitments(filter: ListCommitmentsFilter = {}): Commitment[] {
   const store = loadStore();
   let rows = store.commitments;
@@ -70,7 +106,13 @@ export function addCommitment(input: {
   checkInText: string;
   sourceSummary: string;
   confidence: number;
-}): Commitment {
+}): Commitment | null {
+  const checkInText = input.checkInText.trim();
+  const sourceSummary = input.sourceSummary.trim();
+  if (commitmentContentBlocked(checkInText, sourceSummary, input.sessionId)) {
+    return null;
+  }
+
   const store = loadStore();
   const commitment: Commitment = {
     id: generateCommitmentId(),
@@ -83,8 +125,8 @@ export function addCommitment(input: {
     threadId: input.threadId,
     dueAt: input.dueAt.toISOString(),
     dueLatestAt: input.dueLatestAt.toISOString(),
-    checkInText: input.checkInText.trim(),
-    sourceSummary: input.sourceSummary.trim(),
+    checkInText,
+    sourceSummary,
     confidence: input.confidence,
     createdAt: new Date().toISOString(),
   };

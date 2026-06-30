@@ -10,6 +10,7 @@ import {
   backendSearchMemory,
   getMemoryBackend,
 } from './backends/index.js';
+import { guardMemoryWrite } from './memory-write-guard.js';
 import * as postgresEpisodic from './episodic-postgres.js';
 
 export async function saveMemory(
@@ -90,6 +91,9 @@ export async function insertRagChunk(
   embedding: number[],
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  const guard = await guardMemoryWrite(content, 'tool_result', `rag:${source}`);
+  if (!guard.allowed) return;
+
   const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
   await pool.query(
     `INSERT INTO rag_chunks (source, pack, content, embedding, metadata)
@@ -106,6 +110,9 @@ export async function insertRagChunkWithWorkspace(
   workspaceId: string | null,
   metadata: Record<string, unknown> = {},
 ): Promise<void> {
+  const guard = await guardMemoryWrite(content, 'tool_result', `rag:${source}`);
+  if (!guard.allowed) return;
+
   const vectorSql = embedding.length > 0 ? pgvector.toSql(embedding) : null;
   await pool.query(
     `INSERT INTO rag_chunks (source, pack, content, embedding, workspace_id, metadata)

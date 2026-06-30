@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSession, requireWorkspace } from '@/lib/session';
 import { proxyAivaRequest } from '@/lib/aiva-proxy';
+import { checkLegalGate } from '@/lib/legal/legal-gate';
 
 export async function handleAivaProxy(
   request: NextRequest,
@@ -9,6 +10,10 @@ export async function handleAivaProxy(
   try {
     const session = await requireSession();
     const workspace = await requireWorkspace(session.user.id);
+    const gate = await checkLegalGate(session.user.id, workspace.id);
+    if (gate) {
+      return NextResponse.json(gate, { status: 403 });
+    }
     const incoming = new URL(request.url);
     const path = `${corePath}${incoming.search}`;
 
