@@ -7,7 +7,7 @@ import {
   isCloudOnlyRoute,
 } from '@/lib/product-surface';
 import { AIVA_POST_AUTH_PATH } from '@/lib/aiva-post-auth';
-import { isLegalExemptApiPath } from '@/lib/legal/legal-gate';
+import { isLegalExemptApiPath } from '@/lib/legal/legal-gate-paths';
 
 const protectedPrefixes = [
   '/dashboard',

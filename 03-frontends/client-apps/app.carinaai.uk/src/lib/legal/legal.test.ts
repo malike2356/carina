@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hashClientIp, resolveRequestIp } from './ip-hash';
-import { isLegalExemptApiPath } from './legal-gate';
+import { isLegalExemptApiPath } from './legal-gate-paths';
 import { toLegalGatePayload } from './acceptance';
 import type { LegalDocumentSummary } from './documents';
 

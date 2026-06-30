@@ -1,3 +1,4 @@
+import 'server-only';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { legalAcceptances, workspaceMembers, workspaces } from '@/db/schema';

@@ -228,7 +228,12 @@ function PlanCta({
     );
   }
 
-  const order = { starter: 0, team: 1, business: 2 };
+  const order: Record<AivaPlanDefinition['key'], number> = {
+    starter: 0,
+    growth: 1,
+    team: 1,
+    business: 2,
+  };
   const currentOrder = currentPlan ? order[currentPlan] : -1;
   const thisOrder = order[plan];
   const isUpgrade = thisOrder > currentOrder;
