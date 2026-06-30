@@ -1,5 +1,5 @@
-import { Redis } from 'ioredis';
-import { config } from '../config/index.js';
+import type { Redis } from 'ioredis';
+import { createRedisClient } from '../lib/redis.js';
 
 export const SESSION_KEY = 'carina:cli:session_id';
 
@@ -8,7 +8,7 @@ let warned = false;
 
 export function initRedis(): Promise<void> {
   return new Promise((resolve) => {
-    const client = new Redis(config.redis.url, {
+    const client = createRedisClient({
       maxRetriesPerRequest: 1,
       lazyConnect: true,
     });

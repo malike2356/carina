@@ -20,7 +20,7 @@ services:
       INCIDENT_BLOG_OUTPUT_DIR: /var/www/labyrinthscout.com
       DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@pgbouncer:6432/carina
       SKILLS_HUB_DATABASE_URL: postgresql://carina:${DB_PASSWORD:-secret}@pgbouncer:6432/carina_skills_hub
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://carina:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
@@ -149,6 +149,7 @@ services:
       # Fallback when .env.cloud.runtime is stale; primary source is sync-cloud-env.py
       CARINA_OPS_TOKEN: ${CARINA_OPS_TOKEN:-}
       CARINA_INTERNAL_KEY: ${CARINA_INTERNAL_KEY:-}
+      LEGAL_IP_SALT: ${LEGAL_IP_SALT:-}
       SKILLS_HUB_INTERNAL_URL: http://carina-hub:3001
       CARINA_HOME: /app/data
       # Set CARINA_LOCAL_WHISPER=false in .env.cloud.runtime to skip app-local Whisper probe.
@@ -309,13 +310,18 @@ services:
 
   redis:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
     volumes:
       - redisdata:/data
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
+    # No host port binding: Redis is reachable only on the internal carina network.
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      test: ["CMD", "redis-cli", "--user", "carina", "-a", "${REDIS_PASSWORD:?set REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - carina
     restart: unless-stopped

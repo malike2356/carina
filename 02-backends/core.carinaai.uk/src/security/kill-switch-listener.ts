@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
-import { Redis } from 'ioredis';
+import type { Redis } from 'ioredis';
 import { config } from '../config/index.js';
+import { createRedisSubscriber } from '../lib/redis.js';
 import { clearSession } from '../memory/store.js';
 
 const CHANNEL = 'labyrinth:control';
@@ -96,7 +97,19 @@ export function isOperatorBlocked(instanceId: string, domain: string): boolean {
   return operatorBlockedDomains.get(instanceId)?.has(domain.toLowerCase()) ?? false;
 }
 
+async function applyWorkerScopedControl(payload: Record<string, unknown>): Promise<boolean> {
+  const { handleScoutWorkerControl } = await import('./scout-worker-killswitch.js');
+  return handleScoutWorkerControl(payload);
+}
+
 function applyControlPayload(payload: Record<string, unknown>): void {
+  void applyWorkerScopedControl(payload).then((handled) => {
+    if (handled) return;
+    applyInstanceControlPayload(payload);
+  });
+}
+
+function applyInstanceControlPayload(payload: Record<string, unknown>): void {
   const instanceId = config.labyrinth.instanceId;
   if (payload.instance_id !== instanceId) return;
 
@@ -221,11 +234,7 @@ export function initKillSwitchListener(): () => void {
   }
 
   try {
-    subscriber = new Redis(config.redis.url, {
-      lazyConnect: false,
-      maxRetriesPerRequest: null,
-      enableReadyCheck: false,
-    });
+    subscriber = createRedisSubscriber();
   } catch (err) {
     console.warn('[KillSwitch] Failed to create Redis subscriber. Kill switch disabled.', err);
     return () => {};

@@ -18,7 +18,7 @@ services:
       NODE_ENV: production
       SCOUT_PORT: ${SCOUT_PORT:-4444}
       SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@scout-postgres:5432/scout
-      REDIS_URL: redis://scout-redis:6379
+      REDIS_URL: redis://scout:${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}@scout-redis:6379
       SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
       SCOUT_SESSION_SECRET: ${SCOUT_SESSION_SECRET:?set SCOUT_SESSION_SECRET}
       SCOUT_DASHBOARD_PASSWORD: ${SCOUT_DASHBOARD_PASSWORD:-}
@@ -63,7 +63,7 @@ services:
       NODE_ENV: production
       SCOUT_PORT: ${SCOUT_ENGINE_PORT:-4455}
       SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@scout-postgres:5432/scout
-      REDIS_URL: redis://scout-redis:6379
+      REDIS_URL: redis://scout:${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}@scout-redis:6379
       SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
       SCOUT_CONSOLE_URL: http://labyrinth-scout:4444
     depends_on:
@@ -101,13 +101,17 @@ services:
   redis:
     image: redis:7-alpine
     container_name: scout-redis
+    environment:
+      REDIS_PASSWORD: ${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}
     volumes:
       - redisdata:/data
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      test: ["CMD", "redis-cli", "--user", "scout", "-a", "${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       scout:
         aliases:

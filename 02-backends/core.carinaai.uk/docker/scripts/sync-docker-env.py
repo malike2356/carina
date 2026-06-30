@@ -32,7 +32,13 @@ DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
 PGBOUNCER_ENABLED = os.environ.get('PGBOUNCER_ENABLED', '1')
 DB_HOST = os.environ.get('DB_HOST', 'pgbouncer' if PGBOUNCER_ENABLED == '1' else 'postgres')
 DB_PORT = os.environ.get('DB_PORT', '6432' if PGBOUNCER_ENABLED == '1' else '5432')
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://redis:6379')
+REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD', '')
+REDIS_URL = os.environ.get('REDIS_URL')
+if not REDIS_URL:
+    if REDIS_PASSWORD:
+        REDIS_URL = f'redis://carina:{REDIS_PASSWORD}@redis:6379'
+    else:
+        REDIS_URL = 'redis://redis:6379'
 
 DOCKER_URLS = {
     'DATABASE_URL': f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/carina',

@@ -67,7 +67,7 @@ services:
       HOSTED_MODE: "true"
       WEB_ENABLED: "true"
       DATABASE_URL: postgresql://carina:${DB_PASSWORD:-staging_secret}@postgres-staging:5432/carina_staging
-      REDIS_URL: redis://redis-staging:6379
+      REDIS_URL: redis://carina:${REDIS_PASSWORD:-staging-redis-local}@redis-staging:6379
     depends_on:
       postgres-staging:
         condition: service_healthy
@@ -151,11 +151,16 @@ services:
 
   redis-staging:
     image: redis:7-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-staging-redis-local}
+    volumes:
+      - ./docker/redis/dev-entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-staging-redis-local}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - carina-staging
     restart: unless-stopped
