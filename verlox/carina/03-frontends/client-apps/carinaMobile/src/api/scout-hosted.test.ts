@@ -16,10 +16,15 @@ describe('scout-hosted', () => {
       new Response(JSON.stringify(payload), { status: 200 }),
     );
 
-    await expect(fetchScoutKey('https://app.carinaai.uk')).resolves.toEqual(payload);
+    await expect(
+      fetchScoutKey('https://app.carinaai.uk', { apiKey: 'sess-token' }),
+    ).resolves.toEqual(payload);
     expect(fetchMock).toHaveBeenCalledWith(
       'https://app.carinaai.uk/app/auth/scout/key',
-      expect.objectContaining({ credentials: 'include' }),
+      expect.objectContaining({
+        credentials: 'omit',
+        headers: expect.objectContaining({ Authorization: 'Bearer sess-token' }),
+      }),
     );
   });
 });

@@ -7,7 +7,7 @@ describe('billing-client', () => {
   });
 
   it('returns usage payload from Carina Cloud', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
           usage: { tokensUsed: 1200, limit: 50000 },
@@ -23,9 +23,15 @@ describe('billing-client', () => {
       ),
     );
 
-    const data = await fetchBillingUsage('https://app.carinaai.uk');
+    const data = await fetchBillingUsage('https://app.carinaai.uk', { apiKey: 'sess-token' });
     expect(data.usage.tokensUsed).toBe(1200);
     expect(data.planName).toBe('Free');
+    expect(fetchSpy).toHaveBeenCalledWith(
+      'https://app.carinaai.uk/app/auth/billing/usage',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer sess-token' }),
+      }),
+    );
   });
 
   it('throws a readable error when billing is unavailable', async () => {

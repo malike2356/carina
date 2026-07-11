@@ -23,6 +23,7 @@ import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -52,6 +53,7 @@ class CarinaConnectionService : Service() {
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
   private var webSocket: WebSocket? = null
   private var client: OkHttpClient? = null
+  private var connectJob: Job? = null
   private var wsUrl: String = ""
   private var reconnectAttempt = 0
   private val maxBackoffSeconds = 30L
@@ -69,25 +71,53 @@ class CarinaConnectionService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     when (intent?.action) {
       ACTION_START -> {
-        wsUrl = intent.getStringExtra("wsUrl") ?: return START_NOT_STICKY
-        persistConnectionState(running = true, url = wsUrl)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-          startForeground(NOTIF_ID, buildNotification("Connecting..."), ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
-        } else {
-          startForeground(NOTIF_ID, buildNotification("Connecting..."))
+        promoteToForeground("Connecting...")
+        val requestedUrl = intent.getStringExtra("wsUrl")?.trim().orEmpty()
+        if (requestedUrl.isBlank()) {
+          Log.w(TAG, "Ignoring connection start without a websocket URL")
+          persistConnectionState(running = false, url = null)
+          stopSelf(startId)
+          return START_NOT_STICKY
         }
+        if (isRunning && requestedUrl == wsUrl) {
+          Log.d(TAG, "Connection service already running for requested URL")
+          return START_STICKY
+        }
+        wsUrl = requestedUrl
+        persistConnectionState(running = true, url = wsUrl)
         isRunning = true
-        scope.launch { connect() }
+        scheduleConnect()
       }
       ACTION_STOP -> {
         isRunning = false
         persistConnectionState(running = false, url = null)
+        connectJob?.cancel()
+        connectJob = null
         webSocket?.close(1000, "Service stopped")
-        scope.cancel()
+        stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
       }
     }
     return START_STICKY
+  }
+
+  private fun promoteToForeground(text: String) {
+    val notification = buildNotification(text)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      startForeground(NOTIF_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
+    } else {
+      startForeground(NOTIF_ID, notification)
+    }
+  }
+
+  private fun scheduleConnect(delayMs: Long = 0L) {
+    connectJob?.cancel()
+    connectJob = scope.launch {
+      if (delayMs > 0L) {
+        delay(delayMs)
+      }
+      connect()
+    }
   }
 
   private fun persistConnectionState(running: Boolean, url: String?) {
@@ -160,12 +190,9 @@ class CarinaConnectionService : Service() {
           map.putString("error", t.message ?: "unknown")
         }
         if (isRunning) {
-          scope.launch {
-            val waitMs = backoffDelay()
-            updateNotification("Reconnecting in ${waitMs / 1000}s...")
-            delay(waitMs)
-            connect()
-          }
+          val waitMs = backoffDelay()
+          updateNotification("Reconnecting in ${waitMs / 1000}s...")
+          scheduleConnect(waitMs)
         }
       }
     }
@@ -185,7 +212,7 @@ class CarinaConnectionService : Service() {
         Log.d(TAG, "Network available; triggering reconnect")
         webSocket?.close(1001, "Network change")
         reconnectAttempt = 0
-        if (isRunning) scope.launch { connect() }
+        if (isRunning) scheduleConnect()
       }
 
       override fun onLost(network: Network) {

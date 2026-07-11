@@ -1,0 +1,32 @@
+# Keep EAS upload under 2GB. Patterns match .gitignore style.
+
+node_modules/
+.pnpm-store/
+.expo/
+dist/
+web-build/
+.env
+.env*.local
+*.apk
+*.aab
+*.ipa
+*.log
+.git/
+.turbo/
+coverage/
+**/*.tsbuildinfo
+
+# Native build outputs (EAS regenerates / rebuilds these)
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+ios/build/
+ios/Pods/
+**/build/
+**/.gradle/
+**/.cxx/
+
+# Local model / heavy native artifacts if present outside node_modules
+**/*.so
+**/libreactnative.so

@@ -21,11 +21,10 @@ describe('buildStreamUrl', () => {
     expect(url.searchParams.get('notify')).toBeNull();
   });
 
-  it('uses the same client session id for stream and clear payloads', () => {
-    const clientSessionId = 'mobile-thread-42';
-    const streamUrl = new URL(
-      buildStreamUrl('https://app.carinaai.uk', 'hello', clientSessionId),
+  it('includes provider when provided', () => {
+    const url = new URL(
+      buildStreamUrl('https://app.carinaai.uk', 'hello', 'sess-1', false, 'deepseek'),
     );
-    expect(streamUrl.searchParams.get('sessionId')).toBe(clientSessionId);
+    expect(url.searchParams.get('provider')).toBe('deepseek');
   });
 });

@@ -29,6 +29,16 @@ export async function fetchChatHistory(
   const url = `${baseUrl.replace(/\/+$/, '')}/api/chat/history/${encodeURIComponent(sessionId)}?${params}`;
   const response = await fetch(url, mergeGatewayInit(options?.auth, { method: 'GET' }));
 
+  if (response.status === 404) {
+    return {
+      sessionId,
+      messages: [],
+      hasMore: false,
+      oldestMessageId: null,
+      newestMessageId: null,
+    };
+  }
+
   if (!response.ok) {
     const body = await response.text();
     throw new Error(`History fetch ${response.status}: ${body || response.statusText}`);

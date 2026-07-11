@@ -11,12 +11,13 @@ const SCOUT_TRUST_URL =
 const config: ExpoConfig = {
   name: 'Carina',
   slug: 'carina-mobile',
-  version: '0.1.0',
+  version: '0.1.1',
   scheme: 'carina',
   orientation: 'portrait',
   userInterfaceStyle: 'dark',
-  // llama.rn currently unlinked on Android (see react-native.config.js).
-  newArchEnabled: false,
+  icon: './assets/icon.png',
+  // llama.rn 0.12+ needs New Architecture for on-device mini models (Llama / Qwen / Gemma).
+  newArchEnabled: true,
   splash: {
     backgroundColor: '#09161e',
   },
@@ -41,9 +42,13 @@ const config: ExpoConfig = {
   },
   android: {
     adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#09161e',
     },
     package: 'uk.carinaai.mobile',
+    // Do not use resize: Expo Router tabs + RN 0.76 leave the composer under the
+    // keyboard. withKeyboardAdjustNothing sets adjustNothing; chat JS pads by height.
+    softwareKeyboardLayoutMode: 'pan',
     ...(process.env.GOOGLE_SERVICES_JSON
       ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON }
       : {}),
@@ -104,6 +109,8 @@ const config: ExpoConfig = {
         ],
       },
     ],
+    // Last so Expo soft-input defaults cannot overwrite adjustNothing.
+    './plugins/withKeyboardAdjustNothing.js',
   ],
   experiments: {
     typedRoutes: true,

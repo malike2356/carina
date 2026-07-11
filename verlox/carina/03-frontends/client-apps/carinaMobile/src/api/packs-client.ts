@@ -8,6 +8,26 @@ import type {
   PackMeta,
 } from './types';
 
+function formatPacksError(status: number, body: string, statusText: string): string {
+  const trimmed = body.trim();
+  if (
+    trimmed.startsWith('<!DOCTYPE') ||
+    trimmed.startsWith('<html') ||
+    trimmed.includes('self.__next_f')
+  ) {
+    return `Packs API ${status}: endpoint missing or returned HTML instead of JSON.`;
+  }
+  try {
+    const parsed = JSON.parse(trimmed) as { error?: string; message?: string };
+    const msg = parsed.error ?? parsed.message;
+    if (msg) return `Packs API ${status}: ${msg}`;
+  } catch {
+    // not JSON
+  }
+  const short = trimmed.length > 180 ? `${trimmed.slice(0, 180)}…` : trimmed;
+  return `Packs API ${status}: ${short || statusText}`;
+}
+
 async function packsFetch<T>(
   baseUrl: string,
   path: string,
@@ -21,7 +41,7 @@ async function packsFetch<T>(
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`Packs API ${response.status}: ${body || response.statusText}`);
+    throw new Error(formatPacksError(response.status, body, response.statusText));
   }
 
   return response.json() as Promise<T>;

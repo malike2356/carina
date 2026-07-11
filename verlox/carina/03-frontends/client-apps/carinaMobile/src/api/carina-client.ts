@@ -30,15 +30,14 @@ function buildHeaders(apiKey?: string): HeadersInit {
   return headers;
 }
 
+const REQUEST_TIMEOUT_MS = 8_000;
+
 function formatApiError(status: number, body: string, statusText: string): string {
   const trimmed = body.trim();
   if (!trimmed) return `Carina API ${status}: ${statusText || 'Request failed'}`;
 
   if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html') || trimmed.includes('self.__next_f')) {
-    if (status === 404) {
-      return 'Carina Cloud login route is missing on the server. Update the app or try again after a Cloud deploy.';
-    }
-    return `Carina API ${status}: server returned an HTML error page instead of JSON.`;
+    return `Carina API ${status}: server returned an HTML page instead of JSON.`;
   }
 
   try {
@@ -65,14 +64,25 @@ export class CarinaClient {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      credentials: this.credentials,
-      headers: {
-        ...buildHeaders(this.apiKey),
-        ...(init?.headers ?? {}),
-      },
-    });
+    const controller = init?.signal ? null : new AbortController();
+    const timeout = controller
+      ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+      : null;
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        credentials: this.credentials,
+        headers: {
+          ...buildHeaders(this.apiKey),
+          ...(init?.headers ?? {}),
+        },
+        signal: init?.signal ?? controller?.signal,
+      });
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       const body = await response.text();
