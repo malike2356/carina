@@ -12,6 +12,53 @@
     </div>
   </div>
 
+  <% if (saved) { %>
+    <div class="ops-empty" style="border-color:rgba(34,197,94,0.55);color:#bbf7d0;background:#052e16;">AI usage pricing settings saved.</div>
+  <% } %>
+  <div class="ops-surface" style="margin-bottom:16px;border-color:rgba(20,184,166,0.45);">
+    <div class="ops-section-title">Pricing controls</div>
+    <p class="ops-inline-note" style="color:#d7e5ee;max-width:760px;">
+      Configure the commercial add-ons used by the AI usage ledger. These values affect new usage records only; old records keep the rates used when they were written.
+    </p>
+    <form method="post" action="/ai-usage/pricing" style="display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:14px;align-items:end;margin-top:14px;">
+      <input type="hidden" name="days" value="<%= days %>">
+      <label style="display:grid;gap:6px;color:#f8fafc;font-weight:700;">
+        Payment fee buffer (%)
+        <input
+          class="ops-input"
+          name="paymentOverheadPercent"
+          type="number"
+          min="0"
+          max="100"
+          step="0.01"
+          value="<%= percent(summary.pricingConfig.paymentOverheadRate) %>"
+          style="background:#07131f;color:#ffffff;border:1px solid #5eead4;"
+        >
+      </label>
+      <label style="display:grid;gap:6px;color:#f8fafc;font-weight:700;">
+        Platform margin (%)
+        <input
+          class="ops-input"
+          name="platformMarginPercent"
+          type="number"
+          min="0"
+          max="100"
+          step="0.01"
+          value="<%= percent(summary.pricingConfig.platformMarginRate) %>"
+          style="background:#07131f;color:#ffffff;border:1px solid #5eead4;"
+        >
+      </label>
+      <button class="ops-btn primary" type="submit" style="min-height:42px;">Save pricing</button>
+    </form>
+    <div class="ops-inline-note" style="margin-top:10px;color:#cbd5e1;">
+      Current: <strong style="color:#ffffff;"><%= percent(summary.pricingConfig.paymentOverheadRate) %>%</strong> fee buffer,
+      <strong style="color:#ffffff;"><%= percent(summary.pricingConfig.platformMarginRate) %>%</strong> platform margin.
+      <% if (summary.pricingConfig.updatedAt) { %>
+        Last updated <%= new Date(summary.pricingConfig.updatedAt).toLocaleString('en-GB') %><% if (summary.pricingConfig.updatedBy) { %> by <%= summary.pricingConfig.updatedBy %><% } %>.
+      <% } %>
+    </div>
+  </div>
+
   <% if (!summary.ready) { %>
     <div class="ops-empty">Usage ledger is not ready yet. It will appear after the first routed model call writes `ai_usage_ledger`.</div>
   <% } else { %>

@@ -2,6 +2,7 @@ import { query, tableExists } from './db.js';
 
 export interface AiUsageDashboardSummary {
   ready: boolean;
+  pricingConfig: AiUsagePricingConfig;
   totals: {
     calls: number;
     tokens: number;
@@ -20,8 +21,23 @@ export interface AiUsageDashboardSummary {
   alerts: Array<{ level: 'warning' | 'critical'; message: string; tenantId?: string }>;
 }
 
+export interface AiUsagePricingConfig {
+  paymentOverheadRate: number;
+  platformMarginRate: number;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export const DEFAULT_AI_USAGE_PRICING_CONFIG: AiUsagePricingConfig = {
+  paymentOverheadRate: 0.035,
+  platformMarginRate: 0.015,
+  updatedAt: null,
+  updatedBy: null,
+};
+
 const EMPTY_SUMMARY: AiUsageDashboardSummary = {
   ready: false,
+  pricingConfig: DEFAULT_AI_USAGE_PRICING_CONFIG,
   totals: {
     calls: 0,
     tokens: 0,
@@ -45,8 +61,82 @@ export function formatMinorCurrency(minor: number, currency = 'GBP'): string {
   return `${symbol}${(minor / 100).toFixed(2)}`;
 }
 
+function normalizeRate(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(1, Math.max(0, numeric));
+}
+
+export function formatRatePercent(rate: number): string {
+  return (rate * 100).toFixed(2);
+}
+
+export async function ensureAiUsagePricingConfigTable(): Promise<void> {
+  await query(`
+    CREATE TABLE IF NOT EXISTS ai_usage_pricing_config (
+      id TEXT PRIMARY KEY DEFAULT 'default',
+      payment_overhead_rate NUMERIC(8,6) NOT NULL DEFAULT 0.035,
+      platform_margin_rate NUMERIC(8,6) NOT NULL DEFAULT 0.015,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_by TEXT
+    )
+  `);
+  await query(`
+    INSERT INTO ai_usage_pricing_config (id, payment_overhead_rate, platform_margin_rate)
+    VALUES ('default', 0.035, 0.015)
+    ON CONFLICT (id) DO NOTHING
+  `);
+}
+
+export async function getAiUsagePricingConfig(): Promise<AiUsagePricingConfig> {
+  await ensureAiUsagePricingConfigTable();
+  const result = await query<{
+    payment_overhead_rate: string;
+    platform_margin_rate: string;
+    updated_at: string | Date;
+    updated_by: string | null;
+  }>(
+    `SELECT payment_overhead_rate, platform_margin_rate, updated_at, updated_by
+     FROM ai_usage_pricing_config
+     WHERE id = 'default'`,
+  );
+  const row = result.rows[0];
+  if (!row) return DEFAULT_AI_USAGE_PRICING_CONFIG;
+  return {
+    paymentOverheadRate: normalizeRate(row.payment_overhead_rate, DEFAULT_AI_USAGE_PRICING_CONFIG.paymentOverheadRate),
+    platformMarginRate: normalizeRate(row.platform_margin_rate, DEFAULT_AI_USAGE_PRICING_CONFIG.platformMarginRate),
+    updatedAt: new Date(row.updated_at).toISOString(),
+    updatedBy: row.updated_by,
+  };
+}
+
+export async function updateAiUsagePricingConfig(input: {
+  paymentOverheadPercent: number;
+  platformMarginPercent: number;
+  updatedBy?: string | null;
+}): Promise<AiUsagePricingConfig> {
+  await ensureAiUsagePricingConfigTable();
+  const paymentOverheadRate = normalizeRate(input.paymentOverheadPercent / 100, DEFAULT_AI_USAGE_PRICING_CONFIG.paymentOverheadRate);
+  const platformMarginRate = normalizeRate(input.platformMarginPercent / 100, DEFAULT_AI_USAGE_PRICING_CONFIG.platformMarginRate);
+  await query(
+    `INSERT INTO ai_usage_pricing_config
+       (id, payment_overhead_rate, platform_margin_rate, updated_by, updated_at)
+     VALUES ('default', $1, $2, $3, NOW())
+     ON CONFLICT (id) DO UPDATE
+       SET payment_overhead_rate = EXCLUDED.payment_overhead_rate,
+           platform_margin_rate = EXCLUDED.platform_margin_rate,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = NOW()`,
+    [paymentOverheadRate, platformMarginRate, input.updatedBy ?? null],
+  );
+  return getAiUsagePricingConfig();
+}
+
 export async function fetchAiUsageDashboard(days = 30): Promise<AiUsageDashboardSummary> {
-  if (!(await tableExists('ai_usage_ledger'))) return EMPTY_SUMMARY;
+  const pricingConfig = await getAiUsagePricingConfig();
+  if (!(await tableExists('ai_usage_ledger'))) {
+    return { ...EMPTY_SUMMARY, pricingConfig };
+  }
   const safeDays = Math.min(365, Math.max(1, Math.floor(days)));
   const totals = await query<{
     calls: string;
@@ -135,6 +225,7 @@ export async function fetchAiUsageDashboard(days = 30): Promise<AiUsageDashboard
 
   return {
     ready: true,
+    pricingConfig,
     totals: {
       calls: Number(totals.rows[0]?.calls ?? 0),
       tokens: Number(totals.rows[0]?.tokens ?? 0),

@@ -1,4 +1,5 @@
-import { randomBytes, randomUUID } from 'crypto';
+import { randomBytes } from 'crypto';
+import { startBaileysPairingSession } from '../gateway/baileys/whatsapp-baileys.js';
 import { pool } from '../memory/db.js';
 
 export type WhatsAppWebPairingStatus =
@@ -24,6 +25,10 @@ export interface WhatsAppWebPairingSession {
 }
 
 let schemaReady: Promise<void> | null = null;
+
+function accountIdFor(input: { workspaceId: string; workerId: string }): string {
+  return `aiva-${input.workspaceId}-${input.workerId}`.replace(/[^a-zA-Z0-9_-]/g, '-');
+}
 
 function rowToSession(row: Record<string, unknown>): WhatsAppWebPairingSession {
   return {
@@ -69,9 +74,43 @@ export async function ensureWhatsAppWebPairingSchema(): Promise<void> {
         )
       `);
       await pool.query('CREATE INDEX IF NOT EXISTS aiva_whatsapp_web_sessions_worker_idx ON aiva_whatsapp_web_sessions (workspace_id, worker_id, created_at DESC)');
+      await pool.query('ALTER TABLE aiva_whatsapp_web_sessions ADD COLUMN IF NOT EXISTS last_error TEXT');
     })();
   }
   return schemaReady;
+}
+
+async function updatePairingSession(
+  id: string,
+  input: {
+    status?: WhatsAppWebPairingStatus;
+    qrPayload?: string | null;
+    pairingCode?: string | null;
+    credentialRef?: string | null;
+    lastError?: string | null;
+  },
+): Promise<void> {
+  await pool.query(
+    `UPDATE aiva_whatsapp_web_sessions
+     SET status = COALESCE($2, status),
+         qr_payload = CASE WHEN $3::BOOLEAN THEN $4 ELSE qr_payload END,
+         pairing_code = CASE WHEN $5::BOOLEAN THEN $6 ELSE pairing_code END,
+         credential_ref = COALESCE($7, credential_ref),
+         last_error = CASE WHEN $8::BOOLEAN THEN $9 ELSE last_error END,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [
+      id,
+      input.status ?? null,
+      Object.prototype.hasOwnProperty.call(input, 'qrPayload'),
+      input.qrPayload ?? null,
+      Object.prototype.hasOwnProperty.call(input, 'pairingCode'),
+      input.pairingCode ?? null,
+      input.credentialRef ?? null,
+      Object.prototype.hasOwnProperty.call(input, 'lastError'),
+      input.lastError ?? null,
+    ],
+  );
 }
 
 export async function startWhatsAppWebPairing(input: {
@@ -79,22 +118,75 @@ export async function startWhatsAppWebPairing(input: {
   workerId: string;
 }): Promise<WhatsAppWebPairingSession> {
   await ensureWhatsAppWebPairingSchema();
-  const nonce = randomBytes(18).toString('base64url');
   const pairingCode = randomBytes(4).toString('hex').toUpperCase();
-  const qrPayload = JSON.stringify({
-    type: 'carina_whatsapp_web_pairing',
-    session: randomUUID(),
-    nonce,
-    workerId: input.workerId,
-  });
+  const accountId = accountIdFor(input);
   const result = await pool.query(
     `INSERT INTO aiva_whatsapp_web_sessions
-       (workspace_id, worker_id, status, qr_payload, pairing_code, expires_at)
-     VALUES ($1,$2,'qr_ready',$3,$4,NOW() + INTERVAL '10 minutes')
+       (workspace_id, worker_id, status, qr_payload, pairing_code, credential_ref, expires_at)
+     VALUES ($1,$2,'pending',NULL,$3,$4,NOW() + INTERVAL '10 minutes')
      RETURNING *`,
-    [input.workspaceId, input.workerId, qrPayload, pairingCode],
+    [input.workspaceId, input.workerId, pairingCode, accountId],
   );
-  return rowToSession(result.rows[0]);
+  const sessionId = String(result.rows[0].id);
+
+  let resolved = false;
+  const finish = (resolve: () => void) => {
+    if (!resolved) {
+      resolved = true;
+      resolve();
+    }
+  };
+
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      void startBaileysPairingSession({
+        accountId,
+        onUpdate: async (update) => {
+          if (update.qr) {
+            await updatePairingSession(sessionId, {
+              status: 'qr_ready',
+              qrPayload: update.qr,
+              pairingCode,
+              credentialRef: accountId,
+              lastError: null,
+            });
+            finish(resolve);
+            return;
+          }
+          if (update.connection === 'open') {
+            await updatePairingSession(sessionId, {
+              status: 'paired',
+              qrPayload: null,
+              pairingCode: null,
+              credentialRef: accountId,
+              lastError: null,
+            });
+            finish(resolve);
+            return;
+          }
+          if (update.connection === 'close') {
+            await updatePairingSession(sessionId, {
+              status: 'disconnected',
+              lastError: update.statusCode
+                ? `Baileys disconnected with status ${update.statusCode}`
+                : 'Baileys disconnected',
+            });
+            finish(resolve);
+          }
+        },
+      }).catch(async (err) => {
+        await updatePairingSession(sessionId, {
+          status: 'disconnected',
+          lastError: err instanceof Error ? err.message : String(err),
+        });
+        finish(resolve);
+      });
+    }),
+    new Promise<void>((resolve) => setTimeout(resolve, 15_000)),
+  ]);
+
+  const latest = await getLatestWhatsAppWebPairing(input.workspaceId, input.workerId);
+  return latest ?? rowToSession(result.rows[0]);
 }
 
 export async function getLatestWhatsAppWebPairing(

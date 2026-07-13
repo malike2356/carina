@@ -333,18 +333,45 @@ function DirectWorkTab({ worker }: { worker: AivaWorker }) {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="rounded-lg border border-border bg-elevated p-4">
+    <div className="space-y-4">
+      <section className="rounded-lg border border-accent/35 bg-[#07131f] p-4 text-white">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent">Aiva work console</p>
+            <h2 className="mt-1 text-lg font-semibold text-white">{worker.name} is your active work surface.</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-200">
+              Chat is for instructions. Tasks are for accountable work. Review completed items here before they affect customers, channels, or business records.
+            </p>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-center text-xs">
+            <div className="rounded-lg border border-white/15 bg-white/10 px-3 py-2">
+              <div className="text-base font-semibold text-white">{messages.length}</div>
+              <div className="text-slate-200">Messages</div>
+            </div>
+            <div className="rounded-lg border border-white/15 bg-white/10 px-3 py-2">
+              <div className="text-base font-semibold text-white">{tasks.length}</div>
+              <div className="text-slate-200">Tasks</div>
+            </div>
+            <div className="rounded-lg border border-white/15 bg-white/10 px-3 py-2">
+              <div className="text-base font-semibold text-white">{events.length}</div>
+              <div className="text-slate-200">Events</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="rounded-lg border border-slate-600 bg-[#0b1722] p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-text-primary">Direct chat</h2>
-            <p className="text-xs text-text-muted">Message {worker.name} inside Carina without opening a channel app.</p>
+            <h2 className="text-sm font-semibold text-white">Direct chat</h2>
+            <p className="text-xs text-slate-300">Message {worker.name} inside Carina without opening a channel app.</p>
           </div>
           <MessageSquare className="h-4 w-4 text-accent" aria-hidden />
         </div>
-        <div className="min-h-64 space-y-3 rounded-lg border border-border bg-surface p-3">
+        <div className="min-h-64 space-y-3 rounded-lg border border-slate-700 bg-[#050b12] p-3">
           {messages.length === 0 ? (
-            <p className="text-sm text-text-muted">No direct messages yet. Send an instruction or assign work from this page.</p>
+            <p className="text-sm text-slate-300">No direct messages yet. Send an instruction or assign work from this page.</p>
           ) : (
             messages.map((item) => (
               <div
@@ -353,11 +380,11 @@ function DirectWorkTab({ worker }: { worker: AivaWorker }) {
                   'max-w-[82%] rounded-lg px-3 py-2 text-sm',
                   item.sender === 'user'
                     ? 'ml-auto bg-accent text-white'
-                    : 'mr-auto border border-border bg-elevated text-text-primary',
+                    : 'mr-auto border border-slate-600 bg-[#101d2a] text-white',
                 )}
               >
                 <p className="whitespace-pre-wrap">{item.content}</p>
-                <p className={cn('mt-1 text-[10px]', item.sender === 'user' ? 'text-white/70' : 'text-text-muted')}>
+                <p className={cn('mt-1 text-[10px]', item.sender === 'user' ? 'text-white/80' : 'text-slate-300')}>
                   {item.sender === 'user' ? 'You' : worker.name} · {timeAgo(item.createdAt)}
                 </p>
               </div>
@@ -385,10 +412,10 @@ function DirectWorkTab({ worker }: { worker: AivaWorker }) {
       </section>
 
       <aside className="space-y-4">
-        <section className="rounded-lg border border-border bg-elevated p-4">
+        <section className="rounded-lg border border-slate-600 bg-[#0b1722] p-4">
           <div className="mb-3 flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4 text-accent" aria-hidden />
-            <h2 className="text-sm font-semibold text-text-primary">Assign task</h2>
+            <h2 className="text-sm font-semibold text-white">Assign task</h2>
           </div>
           <div className="space-y-2">
             <input
@@ -426,18 +453,18 @@ function DirectWorkTab({ worker }: { worker: AivaWorker }) {
           {error ? <p className="mt-3 text-xs text-danger">{error}</p> : null}
         </section>
 
-        <section className="rounded-lg border border-border bg-elevated p-4">
-          <h2 className="mb-3 text-sm font-semibold text-text-primary">Work queue</h2>
+        <section className="rounded-lg border border-slate-600 bg-[#0b1722] p-4">
+          <h2 className="mb-3 text-sm font-semibold text-white">Work queue</h2>
           {tasks.length === 0 ? (
-            <p className="text-xs text-text-muted">No assigned work yet.</p>
+            <p className="text-xs text-slate-300">No assigned work yet.</p>
           ) : (
             <div className="space-y-2">
               {tasks.map((task) => (
-                <div key={task.id} className="rounded-lg border border-border bg-surface p-3">
+                <div key={task.id} className="rounded-lg border border-slate-700 bg-[#050b12] p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-text-primary">{task.title}</p>
-                      <p className="mt-1 text-xs text-text-muted">{task.priority} · {task.status}</p>
+                      <p className="text-sm font-medium text-white">{task.title}</p>
+                      <p className="mt-1 text-xs text-slate-300">{task.priority} · {task.status}</p>
                     </div>
                     {task.status === 'done' ? (
                       <button
@@ -449,29 +476,30 @@ function DirectWorkTab({ worker }: { worker: AivaWorker }) {
                       </button>
                     ) : null}
                   </div>
-                  <p className="mt-2 line-clamp-3 text-xs text-text-secondary">{task.instructions}</p>
+                  <p className="mt-2 line-clamp-3 text-xs text-slate-200">{task.instructions}</p>
                 </div>
               ))}
             </div>
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-elevated p-4">
-          <h2 className="mb-3 text-sm font-semibold text-text-primary">Activity timeline</h2>
+        <section className="rounded-lg border border-slate-600 bg-[#0b1722] p-4">
+          <h2 className="mb-3 text-sm font-semibold text-white">Activity timeline</h2>
           {events.length === 0 ? (
-            <p className="text-xs text-text-muted">No direct work events yet.</p>
+            <p className="text-xs text-slate-300">No direct work events yet.</p>
           ) : (
             <div className="space-y-2">
               {events.map((event) => (
-                <div key={event.id} className="border-l border-border pl-3">
-                  <p className="text-xs font-medium text-text-primary">{event.summary}</p>
-                  <p className="text-[11px] text-text-muted">{event.eventType} · {timeAgo(event.createdAt)}</p>
+                <div key={event.id} className="border-l border-slate-600 pl-3">
+                  <p className="text-xs font-medium text-white">{event.summary}</p>
+                  <p className="text-[11px] text-slate-300">{event.eventType} · {timeAgo(event.createdAt)}</p>
                 </div>
               ))}
             </div>
           )}
         </section>
       </aside>
+      </div>
     </div>
   );
 }

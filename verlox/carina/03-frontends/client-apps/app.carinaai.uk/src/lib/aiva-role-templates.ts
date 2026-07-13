@@ -101,4 +101,17 @@ export const AIVA_CHANNEL_OPTIONS = [
   { id: 'slack', label: 'Slack' },
   { id: 'telegram', label: 'Telegram' },
   { id: 'web', label: 'Web chat' },
+  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'messenger', label: 'Messenger' },
+  { id: 'twitter', label: 'X (Twitter)' },
+  { id: 'tiktok', label: 'TikTok' },
 ] as const;
+
+export const AIVA_SOCIAL_CHANNEL_OPTIONS = AIVA_CHANNEL_OPTIONS.filter((option) => (
+  option.id === 'linkedin'
+  || option.id === 'instagram'
+  || option.id === 'messenger'
+  || option.id === 'twitter'
+  || option.id === 'tiktok'
+));

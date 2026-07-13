@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Globe, Hash, Mail, MessageCircle, Send } from 'lucide-react';
+import { Globe, Hash, Instagram, Linkedin, Mail, MessageCircle, Send, Twitter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AIVA_CHANNEL_OPTIONS,
@@ -19,6 +19,11 @@ const CHANNEL_ICONS = {
   slack: Hash,
   telegram: Send,
   web: Globe,
+  linkedin: Linkedin,
+  instagram: Instagram,
+  messenger: MessageCircle,
+  twitter: Twitter,
+  tiktok: Send,
 } as const;
 
 export function AivaHireClient() {

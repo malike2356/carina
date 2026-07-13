@@ -28,4 +28,19 @@ describe('ai usage ledger cost formula', () => {
     expect(cost.platformMarginMinor).toBe(0);
     expect(cost.internalChargeBasisMinor).toBe(0);
   });
+
+  it('uses caller-provided pricing rates when configured', () => {
+    const cost = calculateUsageCost({
+      model: 'gpt-4o',
+      inputTokens: 1_000_000,
+      outputTokens: 1_000_000,
+      paymentOverheadRate: 0.05,
+      platformMarginRate: 0.08,
+    });
+
+    expect(cost.providerCostMinor).toBe(1000);
+    expect(cost.paymentOverheadMinor).toBe(50);
+    expect(cost.platformMarginMinor).toBe(80);
+    expect(cost.internalChargeBasisMinor).toBe(1130);
+  });
 });

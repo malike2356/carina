@@ -31,6 +31,7 @@ import { OfflineQueueBanner } from '@/components/OfflineQueueBanner';
 import { SessionDrawer } from '@/components/SessionDrawer';
 import { useChatSession } from '@/hooks/useChatSession';
 import { useOfflineQueue } from '@/hooks/useOfflineQueue';
+import { useScoutStatus } from '@/hooks/useScoutStatus';
 import { useSessionActions } from '@/hooks/useSessionActions';
 import { useSessionIndex } from '@/hooks/useSessionIndex';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
@@ -48,7 +49,7 @@ export default function ChatScreen() {
     sessionId?: string;
     pendingVoice?: string;
   }>();
-  const { user, instance, gatewayAuth, client } = useAuth();
+  const { instance, gatewayAuth, client } = useAuth();
   const { providers, loading: providerLoading, reload: reloadProviders, error: providerError } =
     useCarinaConfig();
   const {
@@ -56,6 +57,7 @@ export default function ChatScreen() {
     messages,
     streaming,
     streamError,
+    chatAccess,
     activeTools,
     sendMessage,
     runCommand,
@@ -71,6 +73,7 @@ export default function ChatScreen() {
     instance?.baseUrl,
     gatewayAuth ?? undefined,
   );
+  const scoutStatus = useScoutStatus();
   const { isReady: localModelReady } = useLocalModel();
 
   const offlineLocalReady =
@@ -88,7 +91,6 @@ export default function ChatScreen() {
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const insets = useSafeAreaInsets();
 
-  const scoutStatus = user?.scoutActive ? 'active' : user ? 'inactive' : 'unknown';
   const providerLabel = providerError
     ? 'Provider issue'
     : providerLoading
@@ -305,6 +307,18 @@ export default function ChatScreen() {
 
         {streamError ? <Text style={styles.error}>{streamError}</Text> : null}
         {voiceError ? <Text style={styles.error}>{voiceError}</Text> : null}
+        {chatAccess?.mode === 'mini' ? (
+          <View style={styles.accessBanner}>
+            <Text style={styles.accessTitle}>Mini mode active</Text>
+            <Text style={styles.accessText}>
+              Free messages used: {chatAccess.freeMessagesUsed} / {chatAccess.freeMessagesLimit}.
+              Add BYOK or subscribe for full model access.
+            </Text>
+            <Pressable style={styles.accessButton} onPress={() => router.push('/usage')}>
+              <Text style={styles.accessButtonText}>Open usage</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <ToolActivityStrip tools={activeTools} />
         <OfflineQueueBanner
@@ -438,6 +452,39 @@ const styles = StyleSheet.create({
     fontSize: 12,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.xs,
+  },
+  accessBanner: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.amberDeep,
+    borderRadius: 10,
+    backgroundColor: colors.inkMid,
+    gap: spacing.xs,
+  },
+  accessTitle: {
+    color: colors.amber,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  accessText: {
+    color: colors.silver,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  accessButton: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 8,
+    backgroundColor: colors.teal,
+  },
+  accessButtonText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '700',
   },
   composerSafe: {
     backgroundColor: colors.inkMid,

@@ -11,6 +11,13 @@ export interface UsageCostBreakdown {
   internalChargeBasisMinor: number;
 }
 
+export interface AiUsagePricingConfig {
+  paymentOverheadRate: number;
+  platformMarginRate: number;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
 export interface AiUsageSummary {
   totals: {
     calls: number;
@@ -31,6 +38,14 @@ export interface AiUsageSummary {
 }
 
 let schemaReady: Promise<void> | null = null;
+let pricingConfigCache: { value: AiUsagePricingConfig; expiresAt: number } | null = null;
+
+export const DEFAULT_AI_USAGE_PRICING_CONFIG: AiUsagePricingConfig = {
+  paymentOverheadRate: 0.035,
+  platformMarginRate: 0.015,
+  updatedAt: null,
+  updatedBy: null,
+};
 
 export async function ensureAiUsageLedgerSchema(): Promise<void> {
   if (!schemaReady) {
@@ -89,12 +104,84 @@ export async function ensureAiUsageLedgerSchema(): Promise<void> {
       await pool.query('ALTER TABLE ai_usage_ledger ADD COLUMN IF NOT EXISTS provider_cost_actual_minor INTEGER');
       await pool.query('CREATE INDEX IF NOT EXISTS ai_usage_ledger_plan_created_idx ON ai_usage_ledger (plan_id, created_at DESC)');
       await pool.query('CREATE INDEX IF NOT EXISTS ai_usage_ledger_byok_created_idx ON ai_usage_ledger (byok, created_at DESC)');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS ai_usage_pricing_config (
+          id TEXT PRIMARY KEY DEFAULT 'default',
+          payment_overhead_rate NUMERIC(8,6) NOT NULL DEFAULT 0.035,
+          platform_margin_rate NUMERIC(8,6) NOT NULL DEFAULT 0.015,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_by TEXT
+        )
+      `);
+      await pool.query(`
+        INSERT INTO ai_usage_pricing_config (id, payment_overhead_rate, platform_margin_rate)
+        VALUES ('default', 0.035, 0.015)
+        ON CONFLICT (id) DO NOTHING
+      `);
     })().catch((err) => {
       schemaReady = null;
       throw err;
     });
   }
   await schemaReady;
+}
+
+function normalizeRate(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.min(1, Math.max(0, numeric));
+}
+
+export async function getAiUsagePricingConfig(options: { refresh?: boolean } = {}): Promise<AiUsagePricingConfig> {
+  await ensureAiUsageLedgerSchema();
+  const now = Date.now();
+  if (!options.refresh && pricingConfigCache && pricingConfigCache.expiresAt > now) {
+    return pricingConfigCache.value;
+  }
+  const result = await pool.query<{
+    payment_overhead_rate: string;
+    platform_margin_rate: string;
+    updated_at: string | Date;
+    updated_by: string | null;
+  }>(
+    `SELECT payment_overhead_rate, platform_margin_rate, updated_at, updated_by
+     FROM ai_usage_pricing_config
+     WHERE id = 'default'`,
+  );
+  const row = result.rows[0];
+  const value: AiUsagePricingConfig = row
+    ? {
+      paymentOverheadRate: normalizeRate(row.payment_overhead_rate, DEFAULT_AI_USAGE_PRICING_CONFIG.paymentOverheadRate),
+      platformMarginRate: normalizeRate(row.platform_margin_rate, DEFAULT_AI_USAGE_PRICING_CONFIG.platformMarginRate),
+      updatedAt: new Date(row.updated_at).toISOString(),
+      updatedBy: row.updated_by,
+    }
+    : DEFAULT_AI_USAGE_PRICING_CONFIG;
+  pricingConfigCache = { value, expiresAt: now + 60_000 };
+  return value;
+}
+
+export async function updateAiUsagePricingConfig(input: {
+  paymentOverheadRate: number;
+  platformMarginRate: number;
+  updatedBy?: string | null;
+}): Promise<AiUsagePricingConfig> {
+  await ensureAiUsageLedgerSchema();
+  const paymentOverheadRate = normalizeRate(input.paymentOverheadRate, DEFAULT_AI_USAGE_PRICING_CONFIG.paymentOverheadRate);
+  const platformMarginRate = normalizeRate(input.platformMarginRate, DEFAULT_AI_USAGE_PRICING_CONFIG.platformMarginRate);
+  await pool.query(
+    `INSERT INTO ai_usage_pricing_config
+       (id, payment_overhead_rate, platform_margin_rate, updated_by, updated_at)
+     VALUES ('default', $1, $2, $3, NOW())
+     ON CONFLICT (id) DO UPDATE
+       SET payment_overhead_rate = EXCLUDED.payment_overhead_rate,
+           platform_margin_rate = EXCLUDED.platform_margin_rate,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = NOW()`,
+    [paymentOverheadRate, platformMarginRate, input.updatedBy ?? null],
+  );
+  pricingConfigCache = null;
+  return getAiUsagePricingConfig({ refresh: true });
 }
 
 export function calculateUsageCost(input: {
@@ -128,6 +215,20 @@ export function calculateUsageCost(input: {
   };
 }
 
+async function calculateConfiguredUsageCost(input: {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  byok?: boolean;
+}): Promise<UsageCostBreakdown> {
+  const config = await getAiUsagePricingConfig();
+  return calculateUsageCost({
+    ...input,
+    paymentOverheadRate: config.paymentOverheadRate,
+    platformMarginRate: config.platformMarginRate,
+  });
+}
+
 export async function recordModelPolicyDecision(input: {
   decision: ModelPolicyDecision;
   tenantId?: string;
@@ -140,7 +241,7 @@ export async function recordModelPolicyDecision(input: {
 }): Promise<void> {
   await ensureAiUsageLedgerSchema();
   const totalTokens = input.decision.estimatedInputTokens + input.decision.estimatedOutputTokens;
-  const cost = calculateUsageCost({
+  const cost = await calculateConfiguredUsageCost({
     model: input.decision.selectedModel,
     inputTokens: input.decision.estimatedInputTokens,
     outputTokens: input.decision.estimatedOutputTokens,
@@ -235,7 +336,7 @@ export async function recordModelUsageResult(input: {
   const cachedTokens = Number(input.response.tokensCached ?? 0);
   const totalTokens = Number(input.response.tokensUsed ?? inputTokens + outputTokens);
   const byok = input.byok ?? input.billingMode === 'byok';
-  const cost = calculateUsageCost({
+  const cost = await calculateConfiguredUsageCost({
     model: input.decision.selectedModel,
     inputTokens,
     outputTokens,
