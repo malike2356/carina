@@ -57,7 +57,7 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
   {
     slug: 'whatsapp',
     label: 'WhatsApp',
-    description: 'Business API messaging for tenant and buyer enquiries.',
+    description: 'WhatsApp Web pairing for easiest setup, or Business API for scale and compliance.',
     group: 'messaging',
     groupLabel: 'Messaging channels',
     kind: 'aiva',
@@ -67,9 +67,10 @@ export const INTEGRATION_CATALOG: IntegrationDef[] = [
     statusKey: 'aiva:whatsapp',
     aivaChannelType: 'whatsapp',
     setupSteps: [
-      'Create a Meta Business app and add the WhatsApp product.',
-      'Webhook URL: https://core.carinaai.uk/api/channels/webhook/whatsapp',
-      'Save access token and phone number ID when connecting each Aiva.',
+      'Choose WhatsApp Web for the easiest setup, then scan the pairing QR from the phone that owns the account.',
+      'Choose WhatsApp Business API for production scale, templates, compliance, and Meta-approved business messaging.',
+      'Webhook URL for Business API: https://core.carinaai.uk/api/channels/webhook/whatsapp',
+      'WhatsApp Web can disconnect when WhatsApp changes Web behaviour; use Business API for high-volume operations.',
     ],
   },
   {

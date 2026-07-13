@@ -45,7 +45,9 @@ import { serverPanelRouter } from './routes/server-panel.js';
 import { standingOrdersRouter } from './routes/standing-orders.js';
 import { pricingRouter } from './routes/pricing.js';
 import { billingConfigRouter } from './routes/billing-config.js';
+import { usageGatesRouter } from './routes/usage-gates.js';
 import { provisionBusinessRouter } from './routes/provision-business.js';
+import { aiUsageRouter } from './routes/ai-usage.js';
 import { ensurePricingTable } from './lib/pricing-store.js';
 import { ensureBillingConfigTable } from './lib/billing-config-store.js';
 import { businessAdminProxyRouter, businessAdminShellRouter, businessAdminApiProxyRouter, businessAdminStaticProxyRouter } from './routes/business-admin-proxy.js';
@@ -78,8 +80,8 @@ app.use((_req, res, next) => {
 app.use(express.static(path.join(__opsDir, 'public')));
 
 app.get('/favicon.ico', (_req, res) => {
-  res.type('image/svg+xml');
-  res.sendFile(path.join(__opsDir, 'public', 'favicon.svg'));
+  res.type('image/png');
+  res.sendFile(path.join(__opsDir, 'public', 'brand', 'carina-icon.png'));
 });
 
 app.use((req, res, next) => {
@@ -178,6 +180,8 @@ app.use('/standing-orders', standingOrdersRouter);
 
 app.use('/pricing', pricingRouter);
 app.use('/billing-config', billingConfigRouter);
+app.use('/usage-gates', usageGatesRouter);
+app.use('/ai-usage', aiUsageRouter);
 app.use('/admin/provision-business', provisionBusinessRouter);
 app.use('/governance', governanceRouter);
 app.use('/mutation', mutationRouter);
