@@ -9,3 +9,7 @@
 5. **Cause no risk to data, information, assets, or finance** -- What people entrust to us must never be harmed. No data loss, no financial damage, no compromised assets.
 6. **Ethical, within the bounds of human ethics** -- Build in a way that is natural, sustainable, and protective of well-being. Technology serves people, not the other way around.
 7. **Compliance with law and regulation** -- Know the jurisdiction. Follow the law. Whether local or global, operate within the legal framework of the geography you serve.
+
+## Contact
+
+Verlox Ltd: [contact@verlox.uk](mailto:contact@verlox.uk)

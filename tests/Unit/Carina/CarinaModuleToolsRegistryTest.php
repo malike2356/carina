@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 use App\Services\Carina\CarinaToolRegistry;
 
-it('registers 144 tenant carina agent tools including clarify', function (): void {
+it('registers 193 tenant carina agent tools including clarify', function (): void {
     $registry = app(CarinaToolRegistry::class);
     $names = array_map(fn ($t) => $t->name(), $registry->all());
 
-    expect(count($names))->toBe(144)
+    expect(count($names))->toBe(193)
         ->and($names)->toContain('create_journal_entry')
         ->and($names)->toContain('generate_security_report')
         ->and($names)->toContain('run_calculator')

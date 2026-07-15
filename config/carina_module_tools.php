@@ -1095,6 +1095,1668 @@ return array (
   ),
   34 => 
   array (
+    'name' => 'get_upcoming_compliance',
+    'description' => 'List compliance certificates expiring within N days.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'days_ahead' => 
+        array (
+          'description' => 'days ahead',
+          'type' => 'integer',
+        ),
+        'property_id' => 
+        array (
+          'description' => 'property id',
+          'type' => 'integer',
+        ),
+      ),
+    ),
+  ),
+  35 => 
+  array (
+    'name' => 'attach_document',
+    'description' => 'Attach a file to a property from chat (URL or local path).',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'file_path' => 
+        array (
+          'description' => 'file path',
+          'type' => 'string',
+        ),
+        'file_name' => 
+        array (
+          'description' => 'file name',
+          'type' => 'string',
+        ),
+        'document_type' => 
+        array (
+          'description' => 'document type',
+          'type' => 'string',
+        ),
+        'notes' => 
+        array (
+          'description' => 'notes',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+        1 => 'file_path',
+      ),
+    ),
+  ),
+  36 => 
+  array (
+    'name' => 'list_property_documents',
+    'description' => 'List documents stored on a property vault.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+      ),
+    ),
+  ),
+  37 => 
+  array (
+    'name' => 'check_compliance_expiry',
+    'description' => 'Find compliance items expiring within a timeframe, optionally for one property.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'days' => 
+        array (
+          'description' => 'days',
+          'type' => 'integer',
+        ),
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  38 => 
+  array (
+    'name' => 'draft_tenant_message',
+    'description' => 'Draft a message to a property tenant for landlord review (does not send).',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'message_type' => 
+        array (
+          'description' => 'message type',
+          'type' => 'string',
+        ),
+        'body' => 
+        array (
+          'description' => 'body',
+          'type' => 'string',
+        ),
+        'tenancy_id' => 
+        array (
+          'description' => 'tenancy id',
+          'type' => 'integer',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+      ),
+    ),
+  ),
+  39 => 
+  array (
+    'name' => 'send_tenant_message',
+    'description' => 'Send an approved tenant message draft via email or SMS.',
+    'gate' => 'portfolio',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'draft_id' => 
+        array (
+          'description' => 'draft id',
+          'type' => 'integer',
+        ),
+        'approved' => 
+        array (
+          'description' => 'approved',
+          'type' => 'boolean',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'draft_id',
+        1 => 'approved',
+      ),
+    ),
+  ),
+  40 => 
+  array (
+    'name' => 'list_tenant_communications',
+    'description' => 'List recent direct tenant messages for a property.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'limit' => 
+        array (
+          'description' => 'limit',
+          'type' => 'integer',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+      ),
+    ),
+  ),
+  41 => 
+  array (
+    'name' => 'manage_property',
+    'description' => 'Add or update tenants, notes, or property fields via conversation.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'action' => 
+        array (
+          'description' => 'action',
+          'type' => 'string',
+        ),
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'name' => 
+        array (
+          'description' => 'name',
+          'type' => 'string',
+        ),
+        'email' => 
+        array (
+          'description' => 'email',
+          'type' => 'string',
+        ),
+        'phone' => 
+        array (
+          'description' => 'phone',
+          'type' => 'string',
+        ),
+        'monthly_rent' => 
+        array (
+          'description' => 'monthly rent',
+          'type' => 'number',
+        ),
+        'tenancy_start' => 
+        array (
+          'description' => 'tenancy start',
+          'type' => 'string',
+        ),
+        'tenancy_id' => 
+        array (
+          'description' => 'tenancy id',
+          'type' => 'integer',
+        ),
+        'content' => 
+        array (
+          'description' => 'content',
+          'type' => 'string',
+        ),
+        'category' => 
+        array (
+          'description' => 'category',
+          'type' => 'string',
+        ),
+        'tenancy_end' => 
+        array (
+          'description' => 'tenancy end',
+          'type' => 'string',
+        ),
+        'is_active' => 
+        array (
+          'description' => 'is active',
+          'type' => 'boolean',
+        ),
+        'address_line_1' => 
+        array (
+          'description' => 'address line 1',
+          'type' => 'string',
+        ),
+        'city' => 
+        array (
+          'description' => 'city',
+          'type' => 'string',
+        ),
+        'postcode' => 
+        array (
+          'description' => 'postcode',
+          'type' => 'string',
+        ),
+        'bedrooms' => 
+        array (
+          'description' => 'bedrooms',
+          'type' => 'integer',
+        ),
+        'purchase_price' => 
+        array (
+          'description' => 'purchase price',
+          'type' => 'number',
+        ),
+        'current_value' => 
+        array (
+          'description' => 'current value',
+          'type' => 'number',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'action',
+      ),
+    ),
+  ),
+  42 => 
+  array (
+    'name' => 'query_payments',
+    'description' => 'Check rent payment status for a property or the portfolio.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'month' => 
+        array (
+          'description' => 'month',
+          'type' => 'string',
+        ),
+        'status' => 
+        array (
+          'description' => 'status',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  43 => 
+  array (
+    'name' => 'record_payment',
+    'description' => 'Record a rent payment for a property tenancy.',
+    'gate' => 'portfolio',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'amount' => 
+        array (
+          'description' => 'amount',
+          'type' => 'number',
+        ),
+        'month' => 
+        array (
+          'description' => 'month',
+          'type' => 'string',
+        ),
+        'method' => 
+        array (
+          'description' => 'method',
+          'type' => 'string',
+        ),
+        'payment_date' => 
+        array (
+          'description' => 'payment date',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+        1 => 'amount',
+      ),
+    ),
+  ),
+  44 => 
+  array (
+    'name' => 'portfolio_summary',
+    'description' => 'Portfolio rent roll, collection rate, and compliance alerts.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  45 => 
+  array (
+    'name' => 'property_detail',
+    'description' => 'Full property snapshot including tenancy, payments, compliance, and notes.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+      ),
+    ),
+  ),
+  46 => 
+  array (
+    'name' => 'analyze_deal',
+    'description' => 'Quick BTL deal analysis from purchase price, rent, and mortgage assumptions.',
+    'gate' => 'deals',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'purchase_price' => 
+        array (
+          'description' => 'purchase price',
+          'type' => 'number',
+        ),
+        'monthly_rent' => 
+        array (
+          'description' => 'monthly rent',
+          'type' => 'number',
+        ),
+        'deposit_percent' => 
+        array (
+          'description' => 'deposit percent',
+          'type' => 'number',
+        ),
+        'interest_rate' => 
+        array (
+          'description' => 'interest rate',
+          'type' => 'number',
+        ),
+        'mortgage_term' => 
+        array (
+          'description' => 'mortgage term',
+          'type' => 'integer',
+        ),
+        'property_type' => 
+        array (
+          'description' => 'property type',
+          'type' => 'string',
+        ),
+        'bedrooms' => 
+        array (
+          'description' => 'bedrooms',
+          'type' => 'integer',
+        ),
+        'location' => 
+        array (
+          'description' => 'location',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'purchase_price',
+        1 => 'monthly_rent',
+      ),
+    ),
+  ),
+  47 => 
+  array (
+    'name' => 'compare_deals',
+    'description' => 'Compare two conversational deal scenarios side by side.',
+    'gate' => 'deals',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'deal_a' => 
+        array (
+          'description' => 'deal a',
+          'type' => 'object',
+          'additionalProperties' => true,
+        ),
+        'deal_b' => 
+        array (
+          'description' => 'deal b',
+          'type' => 'object',
+          'additionalProperties' => true,
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'deal_a',
+        1 => 'deal_b',
+      ),
+    ),
+  ),
+  48 => 
+  array (
+    'name' => 'upload_floor_plan',
+    'description' => 'Upload a floor plan image from chat and queue vision analysis.',
+    'gate' => 'deals',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'file_path' => 
+        array (
+          'description' => 'file path',
+          'type' => 'string',
+        ),
+        'file_name' => 
+        array (
+          'description' => 'file name',
+          'type' => 'string',
+        ),
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'property_id' => 
+        array (
+          'description' => 'property id',
+          'type' => 'integer',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'file_path',
+        1 => 'file_name',
+      ),
+    ),
+  ),
+  49 => 
+  array (
+    'name' => 'check_floor_plan_status',
+    'description' => 'Check floor plan analysis progress and latest BOQ if available.',
+    'gate' => 'deals',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'floor_plan_id' => 
+        array (
+          'description' => 'floor plan id',
+          'type' => 'integer',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'floor_plan_id',
+      ),
+    ),
+  ),
+  50 => 
+  array (
+    'name' => 'auto_process_email',
+    'description' => 'Classify and act on an inbound email (attach docs, flag maintenance, digest).',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'email_id' => 
+        array (
+          'description' => 'email id',
+          'type' => 'string',
+        ),
+        'subject' => 
+        array (
+          'description' => 'subject',
+          'type' => 'string',
+        ),
+        'body' => 
+        array (
+          'description' => 'body',
+          'type' => 'string',
+        ),
+        'from' => 
+        array (
+          'description' => 'from',
+          'type' => 'string',
+        ),
+        'classification' => 
+        array (
+          'description' => 'classification',
+          'type' => 'string',
+        ),
+        'attachments' => 
+        array (
+          'description' => 'attachments',
+          'type' => 'array',
+          'items' => 
+          array (
+            'type' => 'string',
+          ),
+        ),
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'subject',
+        1 => 'classification',
+      ),
+    ),
+  ),
+  51 => 
+  array (
+    'name' => 'email_digest',
+    'description' => 'Morning digest of processed and flagged emails from the last 24 hours.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  52 => 
+  array (
+    'name' => 'flag_email_for_review',
+    'description' => 'Flag an email for manual landlord review.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'email_id' => 
+        array (
+          'description' => 'email id',
+          'type' => 'string',
+        ),
+        'reason' => 
+        array (
+          'description' => 'reason',
+          'type' => 'string',
+        ),
+        'subject' => 
+        array (
+          'description' => 'subject',
+          'type' => 'string',
+        ),
+        'from' => 
+        array (
+          'description' => 'from',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'email_id',
+      ),
+    ),
+  ),
+  53 => 
+  array (
+    'name' => 'search_emails',
+    'description' => 'Search processed email digest items by keyword or classification.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'query' => 
+        array (
+          'description' => 'query',
+          'type' => 'string',
+        ),
+        'classification' => 
+        array (
+          'description' => 'classification',
+          'type' => 'string',
+        ),
+        'limit' => 
+        array (
+          'description' => 'limit',
+          'type' => 'integer',
+        ),
+      ),
+    ),
+  ),
+  54 => 
+  array (
+    'name' => 'create_maintenance_request',
+    'description' => 'Report a maintenance issue by property reference or ID.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'property_id' => 
+        array (
+          'description' => 'property id',
+          'type' => 'integer',
+        ),
+        'title' => 
+        array (
+          'description' => 'title',
+          'type' => 'string',
+        ),
+        'description' => 
+        array (
+          'description' => 'description',
+          'type' => 'string',
+        ),
+        'priority' => 
+        array (
+          'description' => 'priority',
+          'type' => 'string',
+        ),
+        'category' => 
+        array (
+          'description' => 'category',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'description',
+      ),
+    ),
+  ),
+  55 => 
+  array (
+    'name' => 'list_maintenance',
+    'description' => 'List maintenance requests with optional status, priority, or property filters.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'status' => 
+        array (
+          'description' => 'status',
+          'type' => 'string',
+        ),
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'priority' => 
+        array (
+          'description' => 'priority',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  56 => 
+  array (
+    'name' => 'assign_contractor',
+    'description' => 'Assign a contractor to a maintenance request and create a works order.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'request_id' => 
+        array (
+          'description' => 'request id',
+          'type' => 'integer',
+        ),
+        'contractor_id' => 
+        array (
+          'description' => 'contractor id',
+          'type' => 'integer',
+        ),
+        'contractor_name' => 
+        array (
+          'description' => 'contractor name',
+          'type' => 'string',
+        ),
+        'scheduled_date' => 
+        array (
+          'description' => 'scheduled date',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'request_id',
+      ),
+    ),
+  ),
+  57 => 
+  array (
+    'name' => 'update_maintenance_status',
+    'description' => 'Update maintenance request status and record invoice on completion.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'request_id' => 
+        array (
+          'description' => 'request id',
+          'type' => 'integer',
+        ),
+        'status' => 
+        array (
+          'description' => 'status',
+          'type' => 'string',
+        ),
+        'invoice_amount' => 
+        array (
+          'description' => 'invoice amount',
+          'type' => 'number',
+        ),
+        'outcome_notes' => 
+        array (
+          'description' => 'outcome notes',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'request_id',
+        1 => 'status',
+      ),
+    ),
+  ),
+  58 => 
+  array (
+    'name' => 'manage_contractor',
+    'description' => 'Add a contractor contact to the workspace.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'action' => 
+        array (
+          'description' => 'action',
+          'type' => 'string',
+        ),
+        'name' => 
+        array (
+          'description' => 'name',
+          'type' => 'string',
+        ),
+        'trade' => 
+        array (
+          'description' => 'trade',
+          'type' => 'string',
+        ),
+        'phone' => 
+        array (
+          'description' => 'phone',
+          'type' => 'string',
+        ),
+        'email' => 
+        array (
+          'description' => 'email',
+          'type' => 'string',
+        ),
+        'company' => 
+        array (
+          'description' => 'company',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'name',
+        1 => 'trade',
+      ),
+    ),
+  ),
+  59 => 
+  array (
+    'name' => 'list_contractors',
+    'description' => 'List contractor contacts, optionally filtered by trade.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'trade' => 
+        array (
+          'description' => 'trade',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  60 => 
+  array (
+    'name' => 'start_tenant_application',
+    'description' => 'Start a tenant move-in application for a property.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'property_id' => 
+        array (
+          'description' => 'property id',
+          'type' => 'integer',
+        ),
+        'applicant_name' => 
+        array (
+          'description' => 'applicant name',
+          'type' => 'string',
+        ),
+        'applicant_email' => 
+        array (
+          'description' => 'applicant email',
+          'type' => 'string',
+        ),
+        'applicant_phone' => 
+        array (
+          'description' => 'applicant phone',
+          'type' => 'string',
+        ),
+        'proposed_rent' => 
+        array (
+          'description' => 'proposed rent',
+          'type' => 'number',
+        ),
+        'proposed_start_date' => 
+        array (
+          'description' => 'proposed start date',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'applicant_name',
+      ),
+    ),
+  ),
+  61 => 
+  array (
+    'name' => 'update_application_status',
+    'description' => 'Update onboarding checks and application stage.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'application_id' => 
+        array (
+          'description' => 'application id',
+          'type' => 'integer',
+        ),
+        'status' => 
+        array (
+          'description' => 'status',
+          'type' => 'string',
+        ),
+        'referencing_passed' => 
+        array (
+          'description' => 'referencing passed',
+          'type' => 'boolean',
+        ),
+        'right_to_rent_verified' => 
+        array (
+          'description' => 'right to rent verified',
+          'type' => 'boolean',
+        ),
+        'deposit_received' => 
+        array (
+          'description' => 'deposit received',
+          'type' => 'boolean',
+        ),
+        'deposit_amount' => 
+        array (
+          'description' => 'deposit amount',
+          'type' => 'number',
+        ),
+        'move_in_date' => 
+        array (
+          'description' => 'move in date',
+          'type' => 'string',
+        ),
+        'notes' => 
+        array (
+          'description' => 'notes',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'application_id',
+        1 => 'status',
+      ),
+    ),
+  ),
+  62 => 
+  array (
+    'name' => 'list_applications',
+    'description' => 'List tenant applications with optional status or property filters.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'status' => 
+        array (
+          'description' => 'status',
+          'type' => 'string',
+        ),
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  63 => 
+  array (
+    'name' => 'complete_onboarding',
+    'description' => 'Create active tenancy when all onboarding checks are complete.',
+    'gate' => 'portfolio',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'application_id' => 
+        array (
+          'description' => 'application id',
+          'type' => 'integer',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'application_id',
+      ),
+    ),
+  ),
+  64 => 
+  array (
+    'name' => 'manage_insurance',
+    'description' => 'Add or update a property insurance policy record.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'property_id' => 
+        array (
+          'description' => 'property id',
+          'type' => 'integer',
+        ),
+        'policy_type' => 
+        array (
+          'description' => 'policy type',
+          'type' => 'string',
+        ),
+        'provider' => 
+        array (
+          'description' => 'provider',
+          'type' => 'string',
+        ),
+        'policy_number' => 
+        array (
+          'description' => 'policy number',
+          'type' => 'string',
+        ),
+        'annual_premium' => 
+        array (
+          'description' => 'annual premium',
+          'type' => 'number',
+        ),
+        'start_date' => 
+        array (
+          'description' => 'start date',
+          'type' => 'string',
+        ),
+        'expiry_date' => 
+        array (
+          'description' => 'expiry date',
+          'type' => 'string',
+        ),
+        'renewal_date' => 
+        array (
+          'description' => 'renewal date',
+          'type' => 'string',
+        ),
+        'notes' => 
+        array (
+          'description' => 'notes',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'expiry_date',
+      ),
+    ),
+  ),
+  65 => 
+  array (
+    'name' => 'list_insurance',
+    'description' => 'List insurance policy records, optionally for one property.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  66 => 
+  array (
+    'name' => 'insurance_expiring',
+    'description' => 'List insurance policies expiring within 60 days or already expired.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  67 => 
+  array (
+    'name' => 'hmo_check',
+    'description' => 'Assess HMO licensing triggers and physical compliance checklist for a property.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'property_id' => 
+        array (
+          'description' => 'property id',
+          'type' => 'integer',
+        ),
+        'tenant_count' => 
+        array (
+          'description' => 'tenant count',
+          'type' => 'integer',
+        ),
+        'household_count' => 
+        array (
+          'description' => 'household count',
+          'type' => 'integer',
+        ),
+        'storeys' => 
+        array (
+          'description' => 'storeys',
+          'type' => 'integer',
+        ),
+        'local_authority' => 
+        array (
+          'description' => 'local authority',
+          'type' => 'string',
+        ),
+        'fire_doors_fitted' => 
+        array (
+          'description' => 'fire doors fitted',
+          'type' => 'boolean',
+        ),
+        'emergency_lighting' => 
+        array (
+          'description' => 'emergency lighting',
+          'type' => 'boolean',
+        ),
+        'fire_alarm_grade_d' => 
+        array (
+          'description' => 'fire alarm grade d',
+          'type' => 'boolean',
+        ),
+        'room_sizes_compliant' => 
+        array (
+          'description' => 'room sizes compliant',
+          'type' => 'boolean',
+        ),
+        'notes' => 
+        array (
+          'description' => 'notes',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  68 => 
+  array (
+    'name' => 'hmo_compliance_status',
+    'description' => 'Portfolio view of properties flagged for HMO licensing or checks.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  69 => 
+  array (
+    'name' => 'batch_mark_rent',
+    'description' => 'Mark rent as paid across active tenancies for a month.',
+    'gate' => 'portfolio',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'month' => 
+        array (
+          'description' => 'month',
+          'type' => 'string',
+        ),
+        'property_ids' => 
+        array (
+          'description' => 'property ids',
+          'type' => 'string',
+        ),
+        'amount' => 
+        array (
+          'description' => 'amount',
+          'type' => 'number',
+        ),
+      ),
+    ),
+  ),
+  70 => 
+  array (
+    'name' => 'batch_compliance_check',
+    'description' => 'Check compliance expiry across the portfolio.',
+    'gate' => 'compliance',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'days' => 
+        array (
+          'description' => 'days',
+          'type' => 'integer',
+        ),
+      ),
+    ),
+  ),
+  71 => 
+  array (
+    'name' => 'upcoming_events',
+    'description' => 'List upcoming compliance deadlines and tenancy renewals.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  72 => 
+  array (
+    'name' => 'generate_report',
+    'description' => 'Generate a portfolio PDF report and optionally email it.',
+    'gate' => 'reporting',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'report_type' => 
+        array (
+          'description' => 'report type',
+          'type' => 'string',
+        ),
+        'send_to' => 
+        array (
+          'description' => 'send to',
+          'type' => 'string',
+        ),
+        'property_ids' => 
+        array (
+          'description' => 'property ids',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  73 => 
+  array (
+    'name' => 'portfolio_health',
+    'description' => 'Portfolio health score with rent collection and compliance metrics.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  74 => 
+  array (
+    'name' => 'manage_sourcing_lead',
+    'description' => 'Add or update a property acquisition sourcing lead.',
+    'gate' => 'sourcing',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'action' => 
+        array (
+          'description' => 'action',
+          'type' => 'string',
+        ),
+        'lead_id' => 
+        array (
+          'description' => 'lead id',
+          'type' => 'integer',
+        ),
+        'property_address' => 
+        array (
+          'description' => 'property address',
+          'type' => 'string',
+        ),
+        'source' => 
+        array (
+          'description' => 'source',
+          'type' => 'string',
+        ),
+        'asking_price' => 
+        array (
+          'description' => 'asking price',
+          'type' => 'number',
+        ),
+        'offer_amount' => 
+        array (
+          'description' => 'offer amount',
+          'type' => 'number',
+        ),
+        'stage' => 
+        array (
+          'description' => 'stage',
+          'type' => 'string',
+        ),
+        'estimated_monthly_rent' => 
+        array (
+          'description' => 'estimated monthly rent',
+          'type' => 'number',
+        ),
+        'notes' => 
+        array (
+          'description' => 'notes',
+          'type' => 'string',
+        ),
+        'next_action' => 
+        array (
+          'description' => 'next action',
+          'type' => 'string',
+        ),
+        'next_action_date' => 
+        array (
+          'description' => 'next action date',
+          'type' => 'string',
+        ),
+        'agent_contact_id' => 
+        array (
+          'description' => 'agent contact id',
+          'type' => 'integer',
+        ),
+      ),
+    ),
+  ),
+  75 => 
+  array (
+    'name' => 'pipeline_overview',
+    'description' => 'Snapshot of active sourcing leads grouped by pipeline stage.',
+    'gate' => 'sourcing',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  76 => 
+  array (
+    'name' => 'record_expense',
+    'description' => 'Record a landlord property expense for tax and portfolio tracking.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'property_reference' => 
+        array (
+          'description' => 'property reference',
+          'type' => 'string',
+        ),
+        'category' => 
+        array (
+          'description' => 'category',
+          'type' => 'string',
+        ),
+        'amount' => 
+        array (
+          'description' => 'amount',
+          'type' => 'number',
+        ),
+        'expense_date' => 
+        array (
+          'description' => 'expense date',
+          'type' => 'string',
+        ),
+        'description' => 
+        array (
+          'description' => 'description',
+          'type' => 'string',
+        ),
+        'tax_deductible' => 
+        array (
+          'description' => 'tax deductible',
+          'type' => 'boolean',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'property_reference',
+        1 => 'amount',
+      ),
+    ),
+  ),
+  77 => 
+  array (
+    'name' => 'tax_summary',
+    'description' => 'Rental income and deductible expense summary for a UK tax year.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'tax_year' => 
+        array (
+          'description' => 'tax year',
+          'type' => 'string',
+        ),
+      ),
+    ),
+  ),
+  78 => 
+  array (
+    'name' => 'portfolio_intelligence',
+    'description' => 'Cross-property performance analytics: yields, cash flow, vacancies.',
+    'gate' => 'portfolio',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  79 => 
+  array (
+    'name' => 'subscription_info',
+    'description' => 'Show current plan, usage, limits, and billing links.',
+    'gate' => 'billing',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  80 => 
+  array (
+    'name' => 'invite_team_member',
+    'description' => 'Invite a user to the workspace by email.',
+    'gate' => 'platform',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'email' => 
+        array (
+          'description' => 'email',
+          'type' => 'string',
+        ),
+        'name' => 
+        array (
+          'description' => 'name',
+          'type' => 'string',
+        ),
+        'role' => 
+        array (
+          'description' => 'role',
+          'type' => 'string',
+        ),
+        'role_name' => 
+        array (
+          'description' => 'role name',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'email',
+      ),
+    ),
+  ),
+  81 => 
+  array (
+    'name' => 'list_team_members',
+    'description' => 'List all users in the workspace.',
+    'gate' => 'platform',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  82 => 
+  array (
+    'name' => 'remove_team_member',
+    'description' => 'Remove a workspace member by email.',
+    'gate' => 'platform',
+    'confirm' => true,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+        'email' => 
+        array (
+          'description' => 'email',
+          'type' => 'string',
+        ),
+      ),
+      'required' => 
+      array (
+        0 => 'email',
+      ),
+    ),
+  ),
+  83 => 
+  array (
+    'name' => 'workspace_settings',
+    'description' => 'Workspace name, plan, and settings links.',
+    'gate' => 'platform',
+    'confirm' => false,
+    'schema' => 
+    array (
+      'type' => 'object',
+      'properties' => 
+      array (
+      ),
+    ),
+  ),
+  84 => 
+  array (
     'name' => 'list_mentorship_programmes',
     'description' => 'List available mentorship programmes.',
     'gate' => 'mentoring',
@@ -1112,7 +2774,7 @@ return array (
       ),
     ),
   ),
-  35 => 
+  85 => 
   array (
     'name' => 'match_mentor',
     'description' => 'Find a compatible mentor for criteria.',
@@ -1140,7 +2802,7 @@ return array (
       ),
     ),
   ),
-  36 => 
+  86 => 
   array (
     'name' => 'view_mentee_progress',
     'description' => 'Show mentee goals, milestones, and session notes.',
@@ -1168,7 +2830,7 @@ return array (
       ),
     ),
   ),
-  37 => 
+  87 => 
   array (
     'name' => 'create_mentorship_goal',
     'description' => 'Set a goal for a mentee.',
@@ -1202,7 +2864,7 @@ return array (
       ),
     ),
   ),
-  38 => 
+  88 => 
   array (
     'name' => 'log_mentorship_session',
     'description' => 'Record a mentorship session note.',
@@ -1236,7 +2898,7 @@ return array (
       ),
     ),
   ),
-  39 => 
+  89 => 
   array (
     'name' => 'generate_mentorship_invoice',
     'description' => 'Create an invoice for mentorship billing.',
@@ -1265,7 +2927,7 @@ return array (
       ),
     ),
   ),
-  40 => 
+  90 => 
   array (
     'name' => 'list_courses',
     'description' => 'Search available courses.',
@@ -1289,7 +2951,7 @@ return array (
       ),
     ),
   ),
-  41 => 
+  91 => 
   array (
     'name' => 'enrol_in_course',
     'description' => 'Enrol a user in a course.',
@@ -1318,7 +2980,7 @@ return array (
       ),
     ),
   ),
-  42 => 
+  92 => 
   array (
     'name' => 'start_quiz',
     'description' => 'Begin a course quiz or assessment.',
@@ -1347,7 +3009,7 @@ return array (
       ),
     ),
   ),
-  43 => 
+  93 => 
   array (
     'name' => 'create_community_post',
     'description' => 'Publish a post to the community feed.',
@@ -1380,7 +3042,7 @@ return array (
       ),
     ),
   ),
-  44 => 
+  94 => 
   array (
     'name' => 'find_groups',
     'description' => 'Search community groups by topic or location.',
@@ -1399,7 +3061,7 @@ return array (
       ),
     ),
   ),
-  45 => 
+  95 => 
   array (
     'name' => 'share_deal_with_investor',
     'description' => 'Share a deal pack with an external investor contact.',
@@ -1428,7 +3090,7 @@ return array (
       ),
     ),
   ),
-  46 => 
+  96 => 
   array (
     'name' => 'invite_investor',
     'description' => 'Send an investor portal invitation.',
@@ -1456,7 +3118,7 @@ return array (
       ),
     ),
   ),
-  47 => 
+  97 => 
   array (
     'name' => 'get_investor_matches',
     'description' => 'Find deals matching investor criteria.',
@@ -1484,7 +3146,7 @@ return array (
       ),
     ),
   ),
-  48 => 
+  98 => 
   array (
     'name' => 'create_sourcing_criterion',
     'description' => 'Set deal-finding criteria (location, price, yield).',
@@ -1514,7 +3176,7 @@ return array (
       ),
     ),
   ),
-  49 => 
+  99 => 
   array (
     'name' => 'find_matching_listings',
     'description' => 'Search listings against sourcing criteria.',
@@ -1538,7 +3200,7 @@ return array (
       ),
     ),
   ),
-  50 => 
+  100 => 
   array (
     'name' => 'set_up_listing_watch',
     'description' => 'Automate monitoring of new listings matching criteria.',
@@ -1566,7 +3228,7 @@ return array (
       ),
     ),
   ),
-  51 => 
+  101 => 
   array (
     'name' => 'get_sourcing_research_links',
     'description' => 'View saved research links for due diligence.',
@@ -1590,7 +3252,7 @@ return array (
       ),
     ),
   ),
-  52 => 
+  102 => 
   array (
     'name' => 'list_inbound_leads',
     'description' => 'View captured leads from social platforms.',
@@ -1614,7 +3276,7 @@ return array (
       ),
     ),
   ),
-  53 => 
+  103 => 
   array (
     'name' => 'get_campaign_performance',
     'description' => 'Show ad campaign stats (impressions, clicks, leads, spend).',
@@ -1633,7 +3295,7 @@ return array (
       ),
     ),
   ),
-  54 => 
+  104 => 
   array (
     'name' => 'create_ad_campaign',
     'description' => 'Set up a new Meta, LinkedIn, or TikTok campaign.',
@@ -1667,7 +3329,7 @@ return array (
       ),
     ),
   ),
-  55 => 
+  105 => 
   array (
     'name' => 'pause_ad_campaign',
     'description' => 'Pause an active ad campaign.',
@@ -1690,7 +3352,7 @@ return array (
       ),
     ),
   ),
-  56 => 
+  106 => 
   array (
     'name' => 'get_lead_funnel_summary',
     'description' => 'Overview of lead sources and conversion rates.',
@@ -1714,7 +3376,7 @@ return array (
       ),
     ),
   ),
-  57 => 
+  107 => 
   array (
     'name' => 'create_works_order',
     'description' => 'Issue a works order for a property.',
@@ -1748,7 +3410,7 @@ return array (
       ),
     ),
   ),
-  58 => 
+  108 => 
   array (
     'name' => 'approve_works_order_quote',
     'description' => 'Approve a quote on a works order.',
@@ -1777,7 +3439,7 @@ return array (
       ),
     ),
   ),
-  59 => 
+  109 => 
   array (
     'name' => 'get_works_order_status',
     'description' => 'Track works order completion status.',
@@ -1800,7 +3462,7 @@ return array (
       ),
     ),
   ),
-  60 => 
+  110 => 
   array (
     'name' => 'register_property_asset',
     'description' => 'Register an asset (boiler, appliance) on a property.',
@@ -1834,7 +3496,7 @@ return array (
       ),
     ),
   ),
-  61 => 
+  111 => 
   array (
     'name' => 'schedule_maintenance',
     'description' => 'Schedule recurring or one-off maintenance.',
@@ -1868,7 +3530,7 @@ return array (
       ),
     ),
   ),
-  62 => 
+  112 => 
   array (
     'name' => 'log_maintenance_record',
     'description' => 'Record completed maintenance work.',
@@ -1902,41 +3564,7 @@ return array (
       ),
     ),
   ),
-  63 => 
-  array (
-    'name' => 'create_maintenance_request',
-    'description' => 'Report a maintenance issue requiring attention.',
-    'gate' => 'portfolio',
-    'confirm' => false,
-    'schema' => 
-    array (
-      'type' => 'object',
-      'properties' => 
-      array (
-        'property_id' => 
-        array (
-          'description' => 'property id',
-          'type' => 'integer',
-        ),
-        'description' => 
-        array (
-          'description' => 'description',
-          'type' => 'string',
-        ),
-        'priority' => 
-        array (
-          'description' => 'priority',
-          'type' => 'string',
-        ),
-      ),
-      'required' => 
-      array (
-        0 => 'property_id',
-        1 => 'description',
-      ),
-    ),
-  ),
-  64 => 
+  113 => 
   array (
     'name' => 'create_staff_profile',
     'description' => 'Add a team member staff profile.',
@@ -1970,7 +3598,7 @@ return array (
       ),
     ),
   ),
-  65 => 
+  114 => 
   array (
     'name' => 'run_payroll',
     'description' => 'Generate payroll for a pay period.',
@@ -1999,7 +3627,7 @@ return array (
       ),
     ),
   ),
-  66 => 
+  115 => 
   array (
     'name' => 'approve_leave_request',
     'description' => 'Approve or decline a staff leave request.',
@@ -2028,7 +3656,7 @@ return array (
       ),
     ),
   ),
-  67 => 
+  116 => 
   array (
     'name' => 'create_invoice',
     'description' => 'Generate a tenant-facing invoice.',
@@ -2067,7 +3695,7 @@ return array (
       ),
     ),
   ),
-  68 => 
+  117 => 
   array (
     'name' => 'record_payment',
     'description' => 'Record payment against an invoice.',
@@ -2101,7 +3729,7 @@ return array (
       ),
     ),
   ),
-  69 => 
+  118 => 
   array (
     'name' => 'get_subscription_usage',
     'description' => 'Show current plan usage and limits.',
@@ -2115,7 +3743,7 @@ return array (
       ),
     ),
   ),
-  70 => 
+  119 => 
   array (
     'name' => 'upgrade_subscription',
     'description' => 'Change workspace billing plan.',
@@ -2138,7 +3766,7 @@ return array (
       ),
     ),
   ),
-  71 => 
+  120 => 
   array (
     'name' => 'run_backup',
     'description' => 'Trigger a workspace or platform backup job.',
@@ -2157,7 +3785,7 @@ return array (
       ),
     ),
   ),
-  72 => 
+  121 => 
   array (
     'name' => 'generate_security_report',
     'description' => 'Summary of security findings (SCOUT).',
@@ -2176,7 +3804,7 @@ return array (
       ),
     ),
   ),
-  73 => 
+  122 => 
   array (
     'name' => 'remember',
     'description' => 'Store a durable fact about the investor or portfolio for future sessions.',
@@ -2205,7 +3833,7 @@ return array (
       ),
     ),
   ),
-  74 => 
+  123 => 
   array (
     'name' => 'recall',
     'description' => 'Search stored memories and past conversation snippets.',
@@ -2228,7 +3856,7 @@ return array (
       ),
     ),
   ),
-  75 => 
+  124 => 
   array (
     'name' => 'clarify',
     'description' => 'Ask the user a specific question before proceeding with an ambiguous or high-stakes action.',
@@ -2265,7 +3893,7 @@ return array (
       ),
     ),
   ),
-  76 => 
+  125 => 
   array (
     'name' => 'create_scheduled_task',
     'description' => 'Create a recurring Carina task with schedule and prompt.',
@@ -2310,7 +3938,7 @@ return array (
       ),
     ),
   ),
-  77 => 
+  126 => 
   array (
     'name' => 'list_scheduled_tasks',
     'description' => 'List active scheduled Carina tasks for the current user.',
@@ -2324,7 +3952,7 @@ return array (
       ),
     ),
   ),
-  78 => 
+  127 => 
   array (
     'name' => 'delete_scheduled_task',
     'description' => 'Delete a scheduled Carina task permanently.',
@@ -2347,7 +3975,7 @@ return array (
       ),
     ),
   ),
-  79 => 
+  128 => 
   array (
     'name' => 'pause_scheduled_task',
     'description' => 'Pause or resume a scheduled Carina task.',
@@ -2376,7 +4004,7 @@ return array (
       ),
     ),
   ),
-  80 => 
+  129 => 
   array (
     'name' => 'transcribe_audio',
     'description' => 'Transcribe an audio file (OGG, MP3, WAV, M4A) to text using Whisper.',
@@ -2404,7 +4032,7 @@ return array (
       ),
     ),
   ),
-  81 => 
+  130 => 
   array (
     'name' => 'webhook_subscribe',
     'description' => 'Subscribe to an external event; returns inbound webhook URL.',
@@ -2449,7 +4077,7 @@ return array (
       ),
     ),
   ),
-  82 => 
+  131 => 
   array (
     'name' => 'list_webhooks',
     'description' => 'List active Carina webhook subscriptions for the current user.',
@@ -2463,7 +4091,7 @@ return array (
       ),
     ),
   ),
-  83 => 
+  132 => 
   array (
     'name' => 'delete_webhook',
     'description' => 'Delete a Carina webhook subscription permanently.',

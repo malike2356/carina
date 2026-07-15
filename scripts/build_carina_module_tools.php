@@ -46,6 +46,67 @@ $tools = [
     ['log_aml_training', 'Record AML training completion for a user.', 'compliance', false, ['user_id' => 'integer', 'completed_at' => 'string', 'provider' => 'string'], ['user_id', 'completed_at']],
     ['file_complaint', 'Create a complaint case.', 'compliance', true, ['subject' => 'string', 'description' => 'string', 'contact_id' => 'integer'], ['subject', 'description']],
     ['get_regulatory_profile', 'View regulatory profile summary for the workspace.', 'compliance', false, [], []],
+    ['get_upcoming_compliance', 'List compliance certificates expiring within N days.', 'compliance', false, ['days_ahead' => 'integer', 'property_id' => 'integer'], []],
+    // Property document chat (3)
+    ['attach_document', 'Attach a file to a property from chat (URL or local path).', 'compliance', false, ['property_reference' => 'string', 'file_path' => 'string', 'file_name' => 'string', 'document_type' => 'string', 'notes' => 'string'], ['property_reference', 'file_path']],
+    ['list_property_documents', 'List documents stored on a property vault.', 'compliance', false, ['property_reference' => 'string'], ['property_reference']],
+    ['check_compliance_expiry', 'Find compliance items expiring within a timeframe, optionally for one property.', 'compliance', false, ['days' => 'integer', 'property_reference' => 'string'], []],
+    // Tenant communication (3)
+    ['draft_tenant_message', 'Draft a message to a property tenant for landlord review (does not send).', 'portfolio', false, ['property_reference' => 'string', 'message_type' => 'string', 'body' => 'string', 'tenancy_id' => 'integer'], ['property_reference']],
+    ['send_tenant_message', 'Send an approved tenant message draft via email or SMS.', 'portfolio', true, ['draft_id' => 'integer', 'approved' => 'boolean'], ['draft_id', 'approved']],
+    ['list_tenant_communications', 'List recent direct tenant messages for a property.', 'portfolio', false, ['property_reference' => 'string', 'limit' => 'integer'], ['property_reference']],
+    // Property operations via chat (5)
+    ['manage_property', 'Add or update tenants, notes, or property fields via conversation.', 'portfolio', false, ['action' => 'string', 'property_reference' => 'string', 'name' => 'string', 'email' => 'string', 'phone' => 'string', 'monthly_rent' => 'number', 'tenancy_start' => 'string', 'tenancy_id' => 'integer', 'content' => 'string', 'category' => 'string', 'tenancy_end' => 'string', 'is_active' => 'boolean', 'address_line_1' => 'string', 'city' => 'string', 'postcode' => 'string', 'bedrooms' => 'integer', 'purchase_price' => 'number', 'current_value' => 'number'], ['action']],
+    ['query_payments', 'Check rent payment status for a property or the portfolio.', 'portfolio', false, ['property_reference' => 'string', 'month' => 'string', 'status' => 'string'], []],
+    ['record_payment', 'Record a rent payment for a property tenancy.', 'portfolio', true, ['property_reference' => 'string', 'amount' => 'number', 'month' => 'string', 'method' => 'string', 'payment_date' => 'string'], ['property_reference', 'amount']],
+    ['portfolio_summary', 'Portfolio rent roll, collection rate, and compliance alerts.', 'portfolio', false, [], []],
+    ['property_detail', 'Full property snapshot including tenancy, payments, compliance, and notes.', 'portfolio', false, ['property_reference' => 'string'], ['property_reference']],
+    // Deal analysis via chat (4)
+    ['analyze_deal', 'Quick BTL deal analysis from purchase price, rent, and mortgage assumptions.', 'deals', false, ['purchase_price' => 'number', 'monthly_rent' => 'number', 'deposit_percent' => 'number', 'interest_rate' => 'number', 'mortgage_term' => 'integer', 'property_type' => 'string', 'bedrooms' => 'integer', 'location' => 'string'], ['purchase_price', 'monthly_rent']],
+    ['compare_deals', 'Compare two conversational deal scenarios side by side.', 'deals', false, ['deal_a' => 'object', 'deal_b' => 'object'], ['deal_a', 'deal_b']],
+    ['upload_floor_plan', 'Upload a floor plan image from chat and queue vision analysis.', 'deals', false, ['file_path' => 'string', 'file_name' => 'string', 'property_reference' => 'string', 'property_id' => 'integer'], ['file_path', 'file_name']],
+    ['check_floor_plan_status', 'Check floor plan analysis progress and latest BOQ if available.', 'deals', false, ['floor_plan_id' => 'integer'], ['floor_plan_id']],
+    // Email actions via chat (4)
+    ['auto_process_email', 'Classify and act on an inbound email (attach docs, flag maintenance, digest).', 'portfolio', false, ['email_id' => 'string', 'subject' => 'string', 'body' => 'string', 'from' => 'string', 'classification' => 'string', 'attachments' => 'array', 'property_reference' => 'string'], ['subject', 'classification']],
+    ['email_digest', 'Morning digest of processed and flagged emails from the last 24 hours.', 'portfolio', false, [], []],
+    ['flag_email_for_review', 'Flag an email for manual landlord review.', 'portfolio', false, ['email_id' => 'string', 'reason' => 'string', 'subject' => 'string', 'from' => 'string'], ['email_id']],
+    ['search_emails', 'Search processed email digest items by keyword or classification.', 'portfolio', false, ['query' => 'string', 'classification' => 'string', 'limit' => 'integer'], []],
+    // Maintenance lifecycle via chat (6)
+    ['create_maintenance_request', 'Report a maintenance issue by property reference or ID.', 'portfolio', false, ['property_reference' => 'string', 'property_id' => 'integer', 'title' => 'string', 'description' => 'string', 'priority' => 'string', 'category' => 'string'], ['description']],
+    ['list_maintenance', 'List maintenance requests with optional status, priority, or property filters.', 'portfolio', false, ['status' => 'string', 'property_reference' => 'string', 'priority' => 'string'], []],
+    ['assign_contractor', 'Assign a contractor to a maintenance request and create a works order.', 'portfolio', false, ['request_id' => 'integer', 'contractor_id' => 'integer', 'contractor_name' => 'string', 'scheduled_date' => 'string'], ['request_id']],
+    ['update_maintenance_status', 'Update maintenance request status and record invoice on completion.', 'portfolio', false, ['request_id' => 'integer', 'status' => 'string', 'invoice_amount' => 'number', 'outcome_notes' => 'string'], ['request_id', 'status']],
+    ['manage_contractor', 'Add a contractor contact to the workspace.', 'portfolio', false, ['action' => 'string', 'name' => 'string', 'trade' => 'string', 'phone' => 'string', 'email' => 'string', 'company' => 'string'], ['name', 'trade']],
+    ['list_contractors', 'List contractor contacts, optionally filtered by trade.', 'portfolio', false, ['trade' => 'string'], []],
+    // Tenant onboarding via chat (4)
+    ['start_tenant_application', 'Start a tenant move-in application for a property.', 'portfolio', false, ['property_reference' => 'string', 'property_id' => 'integer', 'applicant_name' => 'string', 'applicant_email' => 'string', 'applicant_phone' => 'string', 'proposed_rent' => 'number', 'proposed_start_date' => 'string'], ['applicant_name']],
+    ['update_application_status', 'Update onboarding checks and application stage.', 'portfolio', false, ['application_id' => 'integer', 'status' => 'string', 'referencing_passed' => 'boolean', 'right_to_rent_verified' => 'boolean', 'deposit_received' => 'boolean', 'deposit_amount' => 'number', 'move_in_date' => 'string', 'notes' => 'string'], ['application_id', 'status']],
+    ['list_applications', 'List tenant applications with optional status or property filters.', 'portfolio', false, ['status' => 'string', 'property_reference' => 'string'], []],
+    ['complete_onboarding', 'Create active tenancy when all onboarding checks are complete.', 'portfolio', true, ['application_id' => 'integer'], ['application_id']],
+    // Insurance and HMO compliance via chat (5)
+    ['manage_insurance', 'Add or update a property insurance policy record.', 'compliance', false, ['property_reference' => 'string', 'property_id' => 'integer', 'policy_type' => 'string', 'provider' => 'string', 'policy_number' => 'string', 'annual_premium' => 'number', 'start_date' => 'string', 'expiry_date' => 'string', 'renewal_date' => 'string', 'notes' => 'string'], ['expiry_date']],
+    ['list_insurance', 'List insurance policy records, optionally for one property.', 'compliance', false, ['property_reference' => 'string'], []],
+    ['insurance_expiring', 'List insurance policies expiring within 60 days or already expired.', 'compliance', false, [], []],
+    ['hmo_check', 'Assess HMO licensing triggers and physical compliance checklist for a property.', 'compliance', false, ['property_reference' => 'string', 'property_id' => 'integer', 'tenant_count' => 'integer', 'household_count' => 'integer', 'storeys' => 'integer', 'local_authority' => 'string', 'fire_doors_fitted' => 'boolean', 'emergency_lighting' => 'boolean', 'fire_alarm_grade_d' => 'boolean', 'room_sizes_compliant' => 'boolean', 'notes' => 'string'], []],
+    ['hmo_compliance_status', 'Portfolio view of properties flagged for HMO licensing or checks.', 'compliance', false, [], []],
+    // Batch operations, calendar, reports (5)
+    ['batch_mark_rent', 'Mark rent as paid across active tenancies for a month.', 'portfolio', true, ['month' => 'string', 'property_ids' => 'string', 'amount' => 'number'], []],
+    ['batch_compliance_check', 'Check compliance expiry across the portfolio.', 'compliance', false, ['days' => 'integer'], []],
+    ['upcoming_events', 'List upcoming compliance deadlines and tenancy renewals.', 'portfolio', false, [], []],
+    ['generate_report', 'Generate a portfolio PDF report and optionally email it.', 'reporting', true, ['report_type' => 'string', 'send_to' => 'string', 'property_ids' => 'string'], []],
+    ['portfolio_health', 'Portfolio health score with rent collection and compliance metrics.', 'portfolio', false, [], []],
+    // Sourcing CRM, tax, and portfolio intelligence (5)
+    ['manage_sourcing_lead', 'Add or update a property acquisition sourcing lead.', 'sourcing', false, ['action' => 'string', 'lead_id' => 'integer', 'property_address' => 'string', 'source' => 'string', 'asking_price' => 'number', 'offer_amount' => 'number', 'stage' => 'string', 'estimated_monthly_rent' => 'number', 'notes' => 'string', 'next_action' => 'string', 'next_action_date' => 'string', 'agent_contact_id' => 'integer'], []],
+    ['pipeline_overview', 'Snapshot of active sourcing leads grouped by pipeline stage.', 'sourcing', false, [], []],
+    ['record_expense', 'Record a landlord property expense for tax and portfolio tracking.', 'portfolio', false, ['property_reference' => 'string', 'category' => 'string', 'amount' => 'number', 'expense_date' => 'string', 'description' => 'string', 'tax_deductible' => 'boolean'], ['property_reference', 'amount']],
+    ['tax_summary', 'Rental income and deductible expense summary for a UK tax year.', 'portfolio', false, ['tax_year' => 'string'], []],
+    ['portfolio_intelligence', 'Cross-property performance analytics: yields, cash flow, vacancies.', 'portfolio', false, [], []],
+    // Workspace admin, billing, and team (5)
+    ['subscription_info', 'Show current plan, usage, limits, and billing links.', 'billing', false, [], []],
+    ['invite_team_member', 'Invite a user to the workspace by email.', 'platform', true, ['email' => 'string', 'name' => 'string', 'role' => 'string', 'role_name' => 'string'], ['email']],
+    ['list_team_members', 'List all users in the workspace.', 'platform', false, [], []],
+    ['remove_team_member', 'Remove a workspace member by email.', 'platform', true, ['email' => 'string'], ['email']],
+    ['workspace_settings', 'Workspace name, plan, and settings links.', 'platform', false, [], []],
     // Mentoring (6)
     ['list_mentorship_programmes', 'List available mentorship programmes.', 'mentoring', false, ['query' => 'string'], []],
     ['match_mentor', 'Find a compatible mentor for criteria.', 'mentoring', false, ['mentee_user_id' => 'integer', 'programme_id' => 'integer'], ['mentee_user_id']],
@@ -82,7 +143,6 @@ $tools = [
     ['register_property_asset', 'Register an asset (boiler, appliance) on a property.', 'portfolio', false, ['property_id' => 'integer', 'name' => 'string', 'asset_type' => 'string'], ['property_id', 'name']],
     ['schedule_maintenance', 'Schedule recurring or one-off maintenance.', 'portfolio', false, ['property_id' => 'integer', 'title' => 'string', 'due_at' => 'string'], ['property_id', 'title']],
     ['log_maintenance_record', 'Record completed maintenance work.', 'portfolio', false, ['property_id' => 'integer', 'description' => 'string', 'completed_at' => 'string'], ['property_id', 'description']],
-    ['create_maintenance_request', 'Report a maintenance issue requiring attention.', 'portfolio', false, ['property_id' => 'integer', 'description' => 'string', 'priority' => 'string'], ['property_id', 'description']],
     // Staff (3)
     ['create_staff_profile', 'Add a team member staff profile.', 'staff', false, ['name' => 'string', 'email' => 'string', 'role' => 'string'], ['name', 'email']],
     ['run_payroll', 'Generate payroll for a pay period.', 'staff', true, ['period_start' => 'string', 'period_end' => 'string'], ['period_start', 'period_end']],
