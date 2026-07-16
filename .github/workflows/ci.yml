@@ -214,6 +214,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
+      - run: docker build -f docker/Dockerfile.runtime -t carina-ops:ci .
 
   cloud:
     name: Cloud build and tests
