@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Propreneur Capture</title>
+  <style>
+    body { font-family: system-ui, sans-serif; font-size: 13px; margin: 0; padding: 12px; width: 340px; box-sizing: border-box; }
+    h1 { font-size: 15px; margin: 0 0 8px; }
+    .thumb { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 8px; background: #eee; margin-bottom: 8px; }
+    .muted { color: #555; font-size: 11px; }
+    label { display: block; margin-top: 8px; font-weight: 600; }
+    select { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px 8px; }
+    button { margin-top: 10px; width: 100%; padding: 8px; cursor: pointer; border-radius: 6px; border: none; font-weight: 600; }
+    .primary { background: #4f46e5; color: #fff; }
+    .secondary { background: #e5e7eb; color: #111; }
+    #status { margin-top: 10px; font-size: 12px; word-break: break-word; }
+    .state { display: none; }
+    .state.active { display: block; }
+    a { color: #4f46e5; }
+  </style>
+</head>
+<body>
+  <h1>Propreneur Capture</h1>
+
+  <div id="state-loading" class="state active">
+    <p class="muted">Reading this tab…</p>
+  </div>
+
+  <div id="state-unsupported" class="state">
+    <p class="muted">Open a supported listing page (Rightmove, Zoopla, OnTheMarket, OpenRent, or SpareRoom), then open this popup again.</p>
+  </div>
+
+  <div id="state-preview" class="state">
+    <img id="previewImg" class="thumb" alt="" hidden>
+    <p id="previewTitle" class="font-semibold"></p>
+    <p id="previewAddr" class="muted"></p>
+    <p id="previewPrice"></p>
+    <label for="strategy">Strategy</label>
+    <select id="strategy">
+      <option value="btl">Buy-to-Let</option>
+      <option value="brr">BRR</option>
+      <option value="hmo">HMO</option>
+      <option value="r2r">Rent-to-rent</option>
+      <option value="sa">Serviced accommodation</option>
+      <option value="flip">Flip</option>
+      <option value="commercial">Commercial</option>
+    </select>
+    <button type="button" class="primary" id="saveBtn">Save to Propreneur</button>
+    <button type="button" class="secondary" id="fallbackUrlBtn" hidden>Send URL only (server scrape)</button>
+    <p class="muted" style="margin-top:8px;">Workspace URL and token are set under Extension options.</p>
+  </div>
+
+  <div id="state-success" class="state">
+    <p>Saved.</p>
+    <p id="successLink"></p>
+  </div>
+
+  <div id="state-error" class="state">
+    <p id="errorText"></p>
+  </div>
+
+  <p class="muted" style="margin-top:10px;"><a id="openOptions" href="#">Open options</a></p>
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

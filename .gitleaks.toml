@@ -1,0 +1,14 @@
+title = "Propreneur v2 gitleaks config"
+
+[allowlist]
+description = "Global allowlist"
+regexes = [
+    '''(?i)your[_-]?api[_-]?key''',
+    '''(?i)your[_-]?secret''',
+    '''(?i)example[_-]?key''',
+]
+paths = [
+    '''\.env\.example$''',
+    '''^tests/''',
+    '''^brain/''',
+]

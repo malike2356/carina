@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Propreneur Capture - Options</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 560px; margin: 24px auto; padding: 0 16px; }
+    label { display: block; margin-top: 16px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px; }
+    button { margin-top: 20px; padding: 10px 16px; cursor: pointer; }
+    .hint { color: #555; font-size: 13px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Propreneur Capture</h1>
+  <p class="hint">Use the same origin as your workspace (for example <code>https://xelox.propreneur.test:8000</code>) with no trailing slash. Create a personal API token in Propreneur (tenant user settings).</p>
+  <label for="apiBase">Workspace API base URL</label>
+  <input id="apiBase" type="url" placeholder="https://your-tenant.propreneur.test:8000" autocomplete="off">
+  <label for="token">Personal API token</label>
+  <input id="token" type="password" placeholder="Bearer token" autocomplete="off">
+  <label for="strategy">Default strategy</label>
+  <select id="strategy" style="width:100%;margin-top:6px;padding:8px;">
+    <option value="btl">Buy-to-Let</option>
+    <option value="brr">BRR</option>
+    <option value="hmo">HMO</option>
+    <option value="r2r">Rent-to-rent</option>
+    <option value="sa">Serviced accommodation</option>
+    <option value="flip">Flip</option>
+    <option value="commercial">Commercial</option>
+  </select>
+  <button type="button" id="saveBtn">Save</button>
+  <p id="status" class="hint"></p>
+  <script src="options.js"></script>
+</body>
+</html>

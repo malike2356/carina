@@ -1,0 +1,86 @@
+name: CI
+
+# Push/PR disabled until account billing allows Actions on this private repo.
+# Manual runs: gh workflow run CI --repo malike2356/propreneur-v2 --ref main
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pest:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: propreneur_testing
+      DB_USERNAME: propreneur
+      DB_PASSWORD: local_dev_password
+      CENTRAL_DB_DRIVER: pgsql
+      CENTRAL_DB_HOST: 127.0.0.1
+      CENTRAL_DB_PORT: 5432
+      CENTRAL_DB_DATABASE: propreneur_testing
+      CENTRAL_DB_USERNAME: propreneur
+      CENTRAL_DB_PASSWORD: local_dev_password
+      TENANCY_DB_DRIVER: pgsql
+      TENANCY_MAINTENANCE_DB: propreneur_testing
+      TENANT_BASE_DOMAIN: propreneur.test
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: propreneur
+          POSTGRES_PASSWORD: local_dev_password
+          POSTGRES_DB: propreneur_testing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U propreneur -d propreneur_testing"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pgsql, pdo_pgsql, bcmath, intl, fileinfo
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --no-interaction
+
+      - name: Migrate central database (testing)
+        run: php artisan migrate --no-interaction --force
+
+      - name: Verify route knowledge docs match route:list (no secrets)
+        run: |
+          set -euo pipefail
+          php artisan route:list --json | python3 scripts/build-route-knowledge.py
+          git diff --exit-code -- brain/knowledge/64-api-route-consolidated.md \
+            brain/knowledge/66-api-routes-tenant-subdomain.md \
+            brain/knowledge/67-api-routes-central-filament-misc.md \
+            scripts/build-route-knowledge.py
+
+      - name: Verify API docs contract is current
+        run: php artisan api:docs:build --check
+
+      - name: Run tests
+        run: php artisan test
