@@ -14,6 +14,19 @@ REVISION="${SOURCE_REVISION:-}"
 
 cd "${ROOT_DIR}"
 mkdir -p "${STATE_DIR}/receipts"
+
+if ! grep -qE '^SCOUT_REDIS_PASSWORD=.+' .env 2>/dev/null; then
+  python3 - <<'PY'
+from pathlib import Path
+import secrets
+
+path = Path(".env")
+lines = path.read_text().splitlines() if path.exists() else []
+lines.append(f"SCOUT_REDIS_PASSWORD={secrets.token_urlsafe(36)}")
+path.write_text("\n".join(lines) + "\n")
+PY
+fi
+
 exec 9>"${STATE_DIR}/scout.lock"
 flock -n 9 || {
   echo "ERROR: Another Scout deployment is running." >&2

@@ -195,16 +195,16 @@ set -a
 [[ -f "$SECRETS_DIR/core.carinaai.uk.env" ]] && source "$SECRETS_DIR/core.carinaai.uk.env"
 set +a
 export REDIS_PASSWORD
-bash docker/scripts/stop-bare-metal-carina.sh
-bash docker/scripts/deploy-prod.sh
-bash docker/scripts/reload-marketing-nginx.sh
+bash docker/scripts/stop-bare-metal-carina.sh </dev/null
+bash docker/scripts/deploy-prod.sh </dev/null
+bash docker/scripts/reload-marketing-nginx.sh </dev/null
 
 # Scout stack
 cd "$APPS_ROOT/console.labyrinthscout.com"
 export SCOUT_ENGINE_CONTEXT="$APPS_ROOT/scout-engine"
 # Copy .env from secrets dir if not already present; never overwrite an existing one.
 test -f .env || cp "$SECRETS_DIR/scout.env" .env 2>/dev/null || true
-bash deploy-atomic.sh
+bash deploy-atomic.sh </dev/null
 
 # Prune stopped containers only after both stacks are healthy. Release image
 # retention and dangling-image cleanup are handled by deploy-atomic.sh.

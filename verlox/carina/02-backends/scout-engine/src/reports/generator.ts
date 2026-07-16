@@ -147,7 +147,11 @@ async function htmlToPdf(html: string): Promise<Buffer> {
   // Requires puppeteer to be installed
   try {
     const puppeteer = await import('puppeteer');
-    const browser = await puppeteer.default.launch({ headless: true, args: ['--no-sandbox'] });
+    const browser = await puppeteer.default.launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox'],
+    });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'load' });
     const pdf = await page.pdf({ format: 'A4', printBackground: true });

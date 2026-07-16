@@ -331,3 +331,4 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - run: docker build -t scout-engine:ci .
