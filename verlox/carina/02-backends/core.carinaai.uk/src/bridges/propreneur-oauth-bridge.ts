@@ -67,9 +67,7 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
   router.get('/propreneur/panel.js', (_req, res) => {
     res.type('application/javascript').send(`
 (() => {
-  const match = location.pathname.match(/^\\/aiva\\/workers\\/([0-9a-f-]+)$/i);
-  if (!match) return;
-  const workerId = match[1];
+  let workerId = '';
   let status = null;
   let loading = false;
 
@@ -97,7 +95,14 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
   };
 
   const mount = () => {
-    if (document.querySelector('[data-propreneur-panel]')) return;
+    const match = location.pathname.match(/^\\/aiva\\/workers\\/([0-9a-f-]+)$/i);
+    if (!match) return;
+    const nextWorkerId = match[1];
+    const existing = document.querySelector('[data-propreneur-panel]');
+    if (existing?.dataset.workerId === nextWorkerId) return;
+    existing?.remove();
+    workerId = nextWorkerId;
+    status = null;
     const headings = [...document.querySelectorAll('h2,h3')];
     const anchor = headings.find((node) => /^(Edit|Security and privacy)$/i.test(node.textContent.trim()));
     if (!anchor) return;
@@ -106,6 +111,7 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
 
     const root = document.createElement('section');
     root.dataset.propreneurPanel = 'true';
+    root.dataset.workerId = workerId;
     root.style.cssText = 'margin-bottom:2rem;border:1px solid var(--border);border-radius:.75rem;padding:1rem;background:var(--surface-elevated,var(--surface));';
     root.innerHTML = '<h3 style="font-size:.875rem;font-weight:600;margin:0 0 .5rem">Propreneur integration</h3>'
       + '<p style="font-size:.75rem;opacity:.75;margin:0 0 .75rem">Connect this Aiva to your Propreneur workspace. Enter the name before .propreneur.uk, then approve on Propreneur.</p>'
