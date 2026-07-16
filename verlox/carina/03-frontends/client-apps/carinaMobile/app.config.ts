@@ -11,15 +11,18 @@ const SCOUT_TRUST_URL =
 const config: ExpoConfig = {
   name: 'Carina',
   slug: 'carina-mobile',
-  version: '0.1.1',
+  version: '0.1.5',
   scheme: 'carina',
   orientation: 'portrait',
   userInterfaceStyle: 'dark',
+  // Carina wordmark app icon. Do not replace with the legacy hub/star mark.
   icon: './assets/icon.png',
   // llama.rn 0.12+ needs New Architecture for on-device mini models (Llama / Qwen / Gemma).
   newArchEnabled: true,
   splash: {
-    backgroundColor: '#09161e',
+    image: './assets/logo/carina-wordmark.png',
+    resizeMode: 'contain',
+    backgroundColor: '#000000',
   },
   ios: {
     supportsTablet: true,
@@ -43,8 +46,9 @@ const config: ExpoConfig = {
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#09161e',
+      backgroundColor: '#000000',
     },
+    versionCode: 5,
     package: 'uk.carinaai.mobile',
     // Do not use resize: Expo Router tabs + RN 0.76 leave the composer under the
     // keyboard. withKeyboardAdjustNothing sets adjustNothing; chat JS pads by height.

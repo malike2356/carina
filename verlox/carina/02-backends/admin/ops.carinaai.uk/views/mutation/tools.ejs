@@ -1,0 +1,89 @@
+<% title = 'Generated Tools' %>
+<div class="ops-page">
+<%- include('_nav') %>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Generated Tools</div>
+    <div class="ops-page-sub">Runtime tools created by Carina's mutation engine.</div>
+  </div>
+</div>
+
+<% if (error) { %>
+  <div class="ops-card" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;">
+    <div style="color:#f87171;font-size:13px;"><%= error %></div>
+  </div>
+<% } %>
+
+<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+  <% ['all', 'active', 'pending', 'disabled'].forEach(function(f) { %>
+    <a href="/mutation/tools<%= f === 'all' ? '' : '?status=' + f %>"
+       class="ops-badge <%= activeFilter === f ? 'ops-badge-cyan' : 'ops-badge-gray' %>"><%= f %></a>
+  <% }); %>
+</div>
+
+<div class="ops-card">
+  <% if (!tools.length) { %>
+    <div class="ops-empty">No runtime tools found.</div>
+  <% } else { %>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>Name</th><th>Status</th><th>Quality</th><th>Promoted</th>
+            <th>Uses</th><th>Last Used</th><th>Risk</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% tools.forEach(function(tool) {
+            var qs = tool.qualityScore;
+            var qPct = qs != null ? Math.round(Number(qs) * 100) : null;
+            var qColor = qPct == null ? '#6b7280' : qPct >= 75 ? '#22c55e' : qPct >= 45 ? '#f59e0b' : '#ef4444';
+            var statusClass = tool.status === 'active' ? 'ops-badge-green' : tool.status === 'pending' ? 'ops-badge-amber' : 'ops-badge-red';
+          %>
+            <tr>
+              <td>
+                <a href="/mutation/tools/<%= tool.id %>" class="ops-link" style="font-weight:600;"><%= tool.name %></a>
+                <div style="color:var(--muted);font-size:11px;"><%= tool.displayName || '' %></div>
+              </td>
+              <td><span class="ops-badge <%= statusClass %>"><%= tool.status %></span></td>
+              <td style="min-width:100px;">
+                <% if (qPct != null) { %>
+                  <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:8px;overflow:hidden;">
+                    <div style="width:<%= qPct %>%;height:100%;background:<%= qColor %>;"></div>
+                  </div>
+                  <span style="font-size:11px;color:var(--muted);"><%= qPct %>%</span>
+                <% } else { %>
+                  <span style="color:var(--muted);font-size:11px;">n/a</span>
+                <% } %>
+              </td>
+              <td><%= tool.promoted ? '&#9733;' : '-' %></td>
+              <td><%= tool.timesUsed ?? 0 %></td>
+              <td style="font-size:12px;color:var(--muted);"><%= tool.lastUsedAt ? new Date(tool.lastUsedAt).toLocaleString() : '-' %></td>
+              <td><span class="ops-badge ops-badge-gray"><%= tool.riskLevel || 'low' %></span></td>
+              <td style="white-space:nowrap;">
+                <a href="/mutation/tools/<%= tool.id %>" class="ops-link">View</a>
+                <% if (tool.status === 'pending') { %>
+                  <form method="post" action="/mutation/tools/<%= tool.id %>/approve" style="display:inline;margin-left:6px;">
+                    <button type="submit" class="ops-btn-sm">Approve</button>
+                  </form>
+                <% } %>
+                <% if (tool.status === 'active') { %>
+                  <form method="post" action="/mutation/tools/<%= tool.id %>/disable" style="display:inline;margin-left:6px;">
+                    <button type="submit" class="ops-btn-sm">Disable</button>
+                  </form>
+                <% } %>
+                <% if (tool.status === 'disabled') { %>
+                  <form method="post" action="/mutation/tools/<%= tool.id %>/reinstate" style="display:inline;margin-left:6px;">
+                    <button type="submit" class="ops-btn-sm">Reinstate</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+</div>

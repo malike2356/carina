@@ -1,0 +1,14 @@
+node_modules/
+dist/
+data/
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.production.example
+.npmrc.publish
+*.pem
+*.key
+.DS_Store
+.idea/
+.vscode/

@@ -90,10 +90,27 @@ export const AIVA_ROLE_TEMPLATE_CARDS: AivaRoleTemplateCard[] = [
     exampleA: 'Aria: "Yes, orders placed before 2pm ship same day..."',
     roleName: 'Customer Support',
     roleDescription:
-      'Triages inbound queries, answers FAQs from the knowledge base, and routes complex issues to the right team member. Tone: helpful and calm. Flags billing disputes, legal questions, or angry tone for review.',
+      'Triages inbound queries, answers FAQs from the knowledge base, and routes complex issues to the right team member. Tone: helpful and calm. Escalates immediately on billing disputes, legal questions, or angry tone.',
     defaultChannels: ['email', 'web', 'whatsapp'],
   },
 ];
+
+export const AIVA_FEATURED_TEMPLATE_IDS = [
+  'customer-support',
+  'outreach-coordinator',
+  'calendar-manager',
+  'content-assistant',
+  'property-manager',
+  'financial-analyst',
+] as const;
+
+export const AIVA_SOCIAL_CHANNEL_OPTIONS = [
+  { id: 'linkedin', label: 'LinkedIn', subtitle: 'Messages and page conversations' },
+  { id: 'instagram', label: 'Instagram', subtitle: 'Business account direct messages' },
+  { id: 'messenger', label: 'Facebook Messenger', subtitle: 'Facebook Page conversations' },
+  { id: 'twitter', label: 'X (Twitter)', subtitle: 'Direct messages and mentions' },
+  { id: 'tiktok', label: 'TikTok', subtitle: 'Business messaging' },
+] as const;
 
 export const AIVA_CHANNEL_OPTIONS = [
   { id: 'whatsapp', label: 'WhatsApp' },
@@ -101,17 +118,5 @@ export const AIVA_CHANNEL_OPTIONS = [
   { id: 'slack', label: 'Slack' },
   { id: 'telegram', label: 'Telegram' },
   { id: 'web', label: 'Web chat' },
-  { id: 'linkedin', label: 'LinkedIn' },
-  { id: 'instagram', label: 'Instagram' },
-  { id: 'messenger', label: 'Messenger' },
-  { id: 'twitter', label: 'X (Twitter)' },
-  { id: 'tiktok', label: 'TikTok' },
+  ...AIVA_SOCIAL_CHANNEL_OPTIONS.map(({ id, label }) => ({ id, label })),
 ] as const;
-
-export const AIVA_SOCIAL_CHANNEL_OPTIONS = AIVA_CHANNEL_OPTIONS.filter((option) => (
-  option.id === 'linkedin'
-  || option.id === 'instagram'
-  || option.id === 'messenger'
-  || option.id === 'twitter'
-  || option.id === 'tiktok'
-));

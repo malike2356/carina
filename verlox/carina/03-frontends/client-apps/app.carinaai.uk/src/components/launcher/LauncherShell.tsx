@@ -115,7 +115,6 @@ export function LauncherShell(data: Props) {
         keyCount={data.keyCount}
         taskCount={data.taskCount}
         activeSkillPacks={data.activeSkillPacks}
-        sessionDates={data.sessionDates}
       />
     );
   }

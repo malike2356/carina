@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Playbooks; Carina</title>
+<style>
+  .pb-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .pb-toolbar button {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  .pb-toolbar button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0a0a0c;
+    font-weight: 600;
+  }
+  .pb-toolbar button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .pb-banner {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    padding: 10px 12px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .pb-banner.error {
+    border-color: rgba(255, 120, 120, 0.35);
+    color: #ffb4b4;
+  }
+  .pb-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+  table.pb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .pb-table th,
+  .pb-table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pb-table th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: var(--surface);
+  }
+  .pb-table tr:last-child td { border-bottom: none; }
+  .pb-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .pb-actions button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .pb-actions button:hover { border-color: rgba(25, 196, 154, 0.45); }
+  .pb-empty {
+    padding: 28px 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.86rem;
+  }
+  .pb-empty button {
+    margin-top: 10px;
+    background: var(--accent);
+    color: #0a0a0c;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Playbooks</h1>
+  <span class="status" id="pb-status">Loading</span>
+</header>
+<div class="ws-scroll-page">
+  <p style="font-size:0.84rem;color:var(--muted);margin:0 0 12px">
+    Visual automation playbooks authored in Keprix Visual Playbook Studio. Runtime execution stays on Keprix YAML.
+  </p>
+  <div class="pb-toolbar">
+    <button type="button" class="primary" id="pb-new">New playbook</button>
+    <button type="button" id="pb-refresh">Refresh</button>
+  </div>
+  <div class="pb-banner" id="pb-banner" hidden></div>
+  <div class="pb-table-wrap">
+    <table class="pb-table" id="pb-table" hidden>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Updated</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="pb-rows"></tbody>
+    </table>
+    <div class="pb-empty" id="pb-empty" hidden>
+      <p>No playbooks yet. Create one in Keprix Visual Playbook Studio.</p>
+      <button type="button" id="pb-empty-new">Open studio</button>
+      <p style="margin-top:12px;font-size:0.78rem">Deal analysis starter template ships in prompt 02.</p>
+    </div>
+  </div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script>
+(function() {
+  var API = '/api/agent-studio/playbooks';
+  var statusEl = document.getElementById('pb-status');
+  var bannerEl = document.getElementById('pb-banner');
+  var tableEl = document.getElementById('pb-table');
+  var rowsEl = document.getElementById('pb-rows');
+  var emptyEl = document.getElementById('pb-empty');
+  var newBtn = document.getElementById('pb-new');
+  var refreshBtn = document.getElementById('pb-refresh');
+  var emptyNewBtn = document.getElementById('pb-empty-new');
+
+  function setStatus(text) {
+    if (statusEl) statusEl.textContent = text;
+  }
+
+  function showBanner(message, isError) {
+    if (!bannerEl) return;
+    bannerEl.hidden = !message;
+    bannerEl.textContent = message || '';
+    bannerEl.className = isError ? 'pb-banner error' : 'pb-banner';
+  }
+
+  function formatDate(value) {
+    if (!value) return '-';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+  }
+
+  function openStudio(options) {
+    var body = options || {};
+    setStatus('Opening studio');
+    fetch(API + '/handoff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+      .then(function(result) {
+        if (!result.ok || !result.data || !result.data.url) {
+          throw new Error((result.data && result.data.error) || 'Handoff failed');
+        }
+        window.open(result.data.url, '_blank', 'noopener,noreferrer');
+        setStatus('Ready');
+      })
+      .catch(function(err) {
+        showBanner(err.message || 'Could not open Keprix studio', true);
+        setStatus('Handoff blocked');
+      });
+  }
+
+  function renderRows(playbooks) {
+    if (!rowsEl || !tableEl || !emptyEl) return;
+    rowsEl.innerHTML = '';
+    if (!playbooks.length) {
+      tableEl.hidden = true;
+      emptyEl.hidden = false;
+      return;
+    }
+    tableEl.hidden = false;
+    emptyEl.hidden = true;
+    playbooks.forEach(function(row) {
+      var tr = document.createElement('tr');
+      var nameTd = document.createElement('td');
+      nameTd.textContent = row.name;
+      var updatedTd = document.createElement('td');
+      updatedTd.textContent = formatDate(row.updated_at);
+      var statusTd = document.createElement('td');
+      statusTd.textContent = row.status || 'draft';
+      var actionsTd = document.createElement('td');
+      var actions = document.createElement('div');
+      actions.className = 'pb-actions';
+      var editBtn = document.createElement('button');
+      editBtn.type = 'button';
+      editBtn.textContent = 'Edit in Studio';
+      editBtn.addEventListener('click', function() {
+        openStudio({ playbook_id: row.id });
+      });
+      var assignBtn = document.createElement('button');
+      assignBtn.type = 'button';
+      assignBtn.textContent = 'Assign to worker';
+      assignBtn.title = 'Open Aiva hire flow with this playbook template';
+      assignBtn.addEventListener('click', function() {
+        var target = 'https://app.carinaai.uk/aiva?playbookId=' + encodeURIComponent(row.id);
+        window.open(target, '_blank', 'noopener,noreferrer');
+      });
+      actions.appendChild(editBtn);
+      actions.appendChild(assignBtn);
+      actionsTd.appendChild(actions);
+      tr.appendChild(nameTd);
+      tr.appendChild(updatedTd);
+      tr.appendChild(statusTd);
+      tr.appendChild(actionsTd);
+      rowsEl.appendChild(tr);
+    });
+  }
+
+  function loadPlaybooks() {
+    setStatus('Loading');
+    showBanner('', false);
+    fetch(API)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.configured) {
+          showBanner(data.message || 'Keprix studio is not configured on this instance.', true);
+          renderRows([]);
+          setStatus('Not configured');
+          return;
+        }
+        if (data.error) {
+          showBanner(data.error, true);
+        } else if (!data.handoffReady) {
+          showBanner('List proxy is ready. Set KEPRIX_HANDOFF_SECRET to open the studio without a separate Keprix login.', false);
+        }
+        renderRows(data.playbooks || []);
+        setStatus((data.playbooks || []).length ? 'Ready' : 'No playbooks');
+      })
+      .catch(function(err) {
+        showBanner(err.message || 'Failed to load playbooks', true);
+        renderRows([]);
+        setStatus('Error');
+      });
+  }
+
+  if (newBtn) newBtn.addEventListener('click', function() { openStudio({ playbook_id: 'new' }); });
+  if (emptyNewBtn) emptyNewBtn.addEventListener('click', function() { openStudio({ playbook_id: 'new' }); });
+  if (refreshBtn) refreshBtn.addEventListener('click', loadPlaybooks);
+  loadPlaybooks();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<% title = 'Free usage gates' %>
+<%
+  function val(key, fallback) {
+    const row = rows[key];
+    if (!row) return fallback;
+    return (row.effectiveValue || row.value || fallback || '').trim() || fallback;
+  }
+  function isOn(key, defaultOn) {
+    const v = String(val(key, defaultOn ? 'on' : 'off')).toLowerCase();
+    if (['off', '0', 'false', 'no'].indexOf(v) !== -1) return false;
+    if (['on', '1', 'true', 'yes'].indexOf(v) !== -1) return true;
+    return !!defaultOn;
+  }
+  const byokOn = isOn('AIVA_SOFT_WALL_ALLOW_BYOK', true);
+  const topupOn = isOn('AIVA_SOFT_WALL_ALLOW_TOPUP', true);
+  const upgradeOn = isOn('AIVA_SOFT_WALL_ALLOW_UPGRADE', true);
+  const miniOn = isOn('AIVA_SOFT_WALL_ALLOW_MINI_LLM', false);
+%>
+<link rel="stylesheet" href="/usage-gates.css">
+
+<div class="ops-page ug-page">
+  <div class="ug-hero">
+    <div>
+      <p class="ug-kicker">Billing policy</p>
+      <h1 class="ug-title">When free runs out</h1>
+      <p class="ug-lead">Set the free allowance, then choose how customers continue.</p>
+    </div>
+    <a class="ops-btn ug-link-quiet" href="<%= withV('/billing-config?group=aiva') %>">Raw keys</a>
+  </div>
+
+  <% if (saved) { %>
+    <div class="ops-flash ok">Saved. Core is enforcing this policy now.</div>
+  <% } %>
+  <% if (reloadWarn) { %>
+    <div class="ops-flash err">Saved locally, but Core reload failed. Retry in a minute.</div>
+  <% } %>
+  <% if (errMsg) { %>
+    <div class="ops-flash err"><%= errMsg %></div>
+  <% } %>
+
+  <ol class="ug-journey" aria-label="Customer path">
+    <li class="ug-journey__step">
+      <span class="ug-journey__n">1</span>
+      <div>
+        <strong>Free</strong>
+        <span id="ug-live-free">From the form below</span>
+      </div>
+    </li>
+    <li class="ug-journey__arrow" aria-hidden="true"></li>
+    <li class="ug-journey__step ug-journey__step--wall">
+      <span class="ug-journey__n">2</span>
+      <div>
+        <strong>Soft wall</strong>
+        <span>Managed AI stops</span>
+      </div>
+    </li>
+    <li class="ug-journey__arrow" aria-hidden="true"></li>
+    <li class="ug-journey__step ug-journey__step--go">
+      <span class="ug-journey__n">3</span>
+      <div>
+        <strong>Continue</strong>
+        <span id="ug-live-escapes">From the toggles below</span>
+      </div>
+    </li>
+  </ol>
+
+  <div class="ug-tabs" role="tablist" aria-label="Product">
+    <button type="button" class="ug-tab is-active" data-ug-tab="aiva" role="tab" aria-selected="true">Aiva</button>
+    <button type="button" class="ug-tab" data-ug-tab="carina" role="tab" aria-selected="false">Carina</button>
+  </div>
+
+  <form method="post" action="<%= withV('/usage-gates/save') %>" class="ug-form" id="ug-form">
+    <section class="ug-panel is-active" data-ug-panel="aiva" role="tabpanel">
+      <div class="ug-panel__head">
+        <h2>Free allowance</h2>
+        <p>Hard stop on workers and channels when this is used up.</p>
+      </div>
+
+      <div class="ug-metrics">
+        <label class="ug-metric">
+          <span class="ug-metric__label">Messages</span>
+          <input
+            class="ug-metric__input"
+            type="number"
+            min="1"
+            max="10000"
+            name="AIVA_TRIAL_MESSAGE_LIMIT"
+            value="<%= val('AIVA_TRIAL_MESSAGE_LIMIT', '20') %>"
+            inputmode="numeric"
+          >
+          <span class="ug-metric__hint">free managed replies</span>
+        </label>
+        <label class="ug-metric">
+          <span class="ug-metric__label">Credit</span>
+          <span class="ug-metric__prefix">£</span>
+          <input
+            class="ug-metric__input ug-metric__input--money"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            name="AIVA_TRIAL_CREDIT_GBP"
+            value="<%= val('AIVA_TRIAL_CREDIT_GBP', '1') %>"
+            inputmode="decimal"
+          >
+          <span class="ug-metric__hint">trial wallet grant</span>
+        </label>
+        <label class="ug-metric">
+          <span class="ug-metric__label">Daily cap</span>
+          <span class="ug-metric__prefix">£</span>
+          <input
+            class="ug-metric__input ug-metric__input--money"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            name="AIVA_TRIAL_DAILY_CAP_GBP"
+            value="<%= val('AIVA_TRIAL_DAILY_CAP_GBP', '2') %>"
+            inputmode="decimal"
+          >
+          <span class="ug-metric__hint">max spend per day</span>
+        </label>
+      </div>
+
+      <div class="ug-panel__head ug-panel__head--next">
+        <h2>How they continue</h2>
+        <p>Pick at least one path. Customers only see what you enable.</p>
+      </div>
+
+      <div class="ug-escapes">
+        <label class="ug-escape <%= byokOn ? 'is-on' : '' %>">
+          <input type="checkbox" name="AIVA_SOFT_WALL_ALLOW_BYOK" value="on" <%= byokOn ? 'checked' : '' %>>
+          <span class="ug-escape__mark" aria-hidden="true"></span>
+          <span class="ug-escape__body">
+            <strong>Own key (BYOK)</strong>
+            <span>Add API key, keep using</span>
+          </span>
+        </label>
+        <label class="ug-escape <%= topupOn ? 'is-on' : '' %>">
+          <input type="checkbox" name="AIVA_SOFT_WALL_ALLOW_TOPUP" value="on" <%= topupOn ? 'checked' : '' %>>
+          <span class="ug-escape__mark" aria-hidden="true"></span>
+          <span class="ug-escape__body">
+            <strong>Top up</strong>
+            <span>One-time prepaid credit</span>
+          </span>
+        </label>
+        <label class="ug-escape <%= upgradeOn ? 'is-on' : '' %>">
+          <input type="checkbox" name="AIVA_SOFT_WALL_ALLOW_UPGRADE" value="on" <%= upgradeOn ? 'checked' : '' %>>
+          <span class="ug-escape__mark" aria-hidden="true"></span>
+          <span class="ug-escape__body">
+            <strong>Subscribe</strong>
+            <span>Starter / Team / Business</span>
+          </span>
+        </label>
+        <label class="ug-escape <%= miniOn ? 'is-on' : '' %>">
+          <input type="checkbox" name="AIVA_SOFT_WALL_ALLOW_MINI_LLM" value="on" <%= miniOn ? 'checked' : '' %>>
+          <span class="ug-escape__mark" aria-hidden="true"></span>
+          <span class="ug-escape__body">
+            <strong>Mini LLM</strong>
+            <span>CTA only for now</span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <section class="ug-panel" data-ug-panel="carina" role="tabpanel" hidden>
+      <div class="ug-panel__head">
+        <h2>Carina free tiers</h2>
+        <p>Separate from Aiva. Hosted messages and Cloud chat tokens.</p>
+      </div>
+      <div class="ug-metrics ug-metrics--two">
+        <label class="ug-metric">
+          <span class="ug-metric__label">Hosted messages / day</span>
+          <input
+            class="ug-metric__input"
+            type="number"
+            min="1"
+            max="100000"
+            name="CARINA_CLOUD_FREE_DAILY_MESSAGES"
+            value="<%= val('CARINA_CLOUD_FREE_DAILY_MESSAGES', '100') %>"
+            inputmode="numeric"
+          >
+          <span class="ug-metric__hint">core hosted free tier</span>
+        </label>
+        <label class="ug-metric">
+          <span class="ug-metric__label">Cloud tokens / day</span>
+          <input
+            class="ug-metric__input"
+            type="number"
+            min="1000"
+            max="10000000"
+            name="CARINA_CLOUD_FREE_DAILY_TOKENS"
+            value="<%= val('CARINA_CLOUD_FREE_DAILY_TOKENS', '50000') %>"
+            inputmode="numeric"
+          >
+          <span class="ug-metric__hint">also set on carina-cloud env</span>
+        </label>
+      </div>
+    </section>
+
+    <div class="ug-bar">
+      <p class="ug-bar__hint">Applies to live Aiva soft walls as soon as Core reloads.</p>
+      <div class="ug-bar__actions">
+        <a class="ops-btn" href="<%= withV('/usage-gates') %>">Discard</a>
+        <button type="submit" class="ops-btn ops-btn-green">Save and enforce</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('ug-form');
+  var liveFree = document.getElementById('ug-live-free');
+  var liveEscapes = document.getElementById('ug-live-escapes');
+  var tabs = document.querySelectorAll('[data-ug-tab]');
+  var panels = document.querySelectorAll('[data-ug-panel]');
+  var activeProduct = 'aiva';
+
+  function field(name) {
+    var el = form && form.elements[name];
+    return el ? String(el.value || '').trim() : '';
+  }
+
+  function checked(name) {
+    var el = form && form.elements[name];
+    return !!(el && el.checked);
+  }
+
+  function refreshLive() {
+    if (!liveFree || !liveEscapes) return;
+    if (activeProduct === 'carina') {
+      var msgs = field('CARINA_CLOUD_FREE_DAILY_MESSAGES') || ';';
+      var tokens = field('CARINA_CLOUD_FREE_DAILY_TOKENS') || ';';
+      liveFree.textContent = msgs + ' msgs/day · ' + tokens + ' tokens/day';
+      liveEscapes.textContent = 'Paid / BYOK paths on Carina plans';
+      return;
+    }
+    var messages = field('AIVA_TRIAL_MESSAGE_LIMIT') || ';';
+    var credit = field('AIVA_TRIAL_CREDIT_GBP') || ';';
+    var cap = field('AIVA_TRIAL_DAILY_CAP_GBP') || ';';
+    liveFree.textContent = messages + ' msgs · £' + credit + ' credit · £' + cap + '/day';
+    var escapes = [];
+    if (checked('AIVA_SOFT_WALL_ALLOW_BYOK')) escapes.push('BYOK');
+    if (checked('AIVA_SOFT_WALL_ALLOW_TOPUP')) escapes.push('top-up');
+    if (checked('AIVA_SOFT_WALL_ALLOW_UPGRADE')) escapes.push('subscribe');
+    if (checked('AIVA_SOFT_WALL_ALLOW_MINI_LLM')) escapes.push('mini LLM');
+    liveEscapes.textContent = escapes.length ? escapes.join(', ') : 'None selected';
+  }
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      var id = tab.getAttribute('data-ug-tab');
+      activeProduct = id || 'aiva';
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.classList.toggle('is-active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      panels.forEach(function (panel) {
+        var on = panel.getAttribute('data-ug-panel') === id;
+        panel.classList.toggle('is-active', on);
+        panel.hidden = !on;
+      });
+      refreshLive();
+    });
+  });
+
+  document.querySelectorAll('.ug-escape input').forEach(function (input) {
+    input.addEventListener('change', function () {
+      input.closest('.ug-escape').classList.toggle('is-on', input.checked);
+      refreshLive();
+    });
+  });
+
+  if (form) {
+    form.addEventListener('input', refreshLive);
+    form.addEventListener('change', refreshLive);
+  }
+  refreshLive();
+})();
+</script>

@@ -1,0 +1,9 @@
+{
+  "name": "channel-setup",
+  "version": "2.0.0",
+  "description": "Conversational configuration for everything: channels, LLM keys, workspace preferences, model selection, integrations, Scout, and voice. BotFather style, one field at a time.",
+  "author": "VERLOX Ltd",
+  "skillCount": 2,
+  "optional": false,
+  "category": "configuration"
+}

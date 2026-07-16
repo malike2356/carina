@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { config } from '../config/index.js';
 import { pool } from '../memory/db.js';
 import { runHostedMigrations } from './hosted-migrations.js';
+import { getPrimaryOrgForUser } from '../hosted/org-service.js';
 
 let hostedReady = false;
 
@@ -42,7 +43,12 @@ function signJwt(payload: Record<string, string>): string {
   return `${header}.${body}.${sig}`;
 }
 
-export function verifyJwt(token: string): { userId: string; email: string; orgId?: string } | null {
+export function verifyJwt(token: string): {
+  userId: string;
+  email: string;
+  orgId?: string;
+  role?: string;
+} | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [header, body, sig] = parts;
@@ -55,10 +61,17 @@ export function verifyJwt(token: string): { userId: string; email: string; orgId
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as {
       userId: string;
       email: string;
+      orgId?: string;
+      role?: string;
       exp: number;
     };
     if (payload.exp < Date.now()) return null;
-    return { userId: payload.userId, email: payload.email };
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      orgId: payload.orgId,
+      role: payload.role,
+    };
   } catch {
     return null;
   }
@@ -99,18 +112,15 @@ export async function loginUser(
   const row = result.rows[0];
   if (!verifyPassword(password, String(row.password_hash))) return null;
   const userId = String(row.id);
-  const token = signJwt({ userId, email });
-  const orgRow = await pool.query<{ id: string; role: string }>(
-    `SELECT o.id, om.role FROM organizations o
-     JOIN organization_members om ON om.org_id = o.id
-     WHERE om.user_id = $1 LIMIT 1`,
-    [userId],
-  ).catch(() => ({ rows: [] as { id: string; role: string }[] }));
-  const orgMember = orgRow.rows[0];
+  const orgMember = await getPrimaryOrgForUser(userId).catch(() => null);
+  const jwtPayload: Record<string, string> = { userId, email };
+  if (orgMember?.orgId) jwtPayload.orgId = orgMember.orgId;
+  if (orgMember?.role) jwtPayload.role = orgMember.role;
+  const token = signJwt(jwtPayload);
   return {
     token,
     apiKey: String(row.api_key),
-    orgId: orgMember?.id,
+    orgId: orgMember?.orgId,
     role: orgMember?.role,
   };
 }
@@ -170,22 +180,24 @@ export async function setUserTier(userId: string, tier: 'free' | 'pro'): Promise
   await pool.query('UPDATE hosted_users SET tier = $1 WHERE id = $2', [tier, userId]);
 }
 
-export async function upsertHostedUser(email: string, password: string): Promise<void> {
+export async function upsertHostedUser(email: string, password: string): Promise<string> {
   await initHostedDb();
   const passwordHash = hashPassword(password);
   const existing = await pool.query('SELECT id FROM hosted_users WHERE email = $1', [email]);
   if ((existing.rowCount ?? 0) > 0) {
-    await pool.query('UPDATE hosted_users SET password_hash = $1 WHERE email = $2', [passwordHash, email]);
-    return;
+    const userId = String(existing.rows[0].id);
+    await pool.query('UPDATE hosted_users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+    return userId;
   }
   const apiKey = `carina_${crypto.randomBytes(24).toString('hex')}`;
   const schemaName = `u_${crypto.randomBytes(8).toString('hex')}`;
-  await pool.query(
-    'INSERT INTO hosted_users (email, password_hash, api_key, schema_name) VALUES ($1, $2, $3, $4)',
+  const inserted = await pool.query(
+    'INSERT INTO hosted_users (email, password_hash, api_key, schema_name) VALUES ($1, $2, $3, $4) RETURNING id',
     [email, passwordHash, apiKey, schemaName],
   );
   const safe = schemaName.replace(/[^a-z0-9_]/gi, '');
   await pool.query(`CREATE SCHEMA IF NOT EXISTS "${safe}"`);
+  return String(inserted.rows[0].id);
 }
 
 export async function createHostedAccountForProvisioning(
@@ -230,32 +242,58 @@ export async function createPasswordResetLoginUrl(userId: string): Promise<strin
   return `${appUrl}/auth/reset-password?token=${token}`;
 }
 
-export async function requestPasswordReset(email: string, _origin: string): Promise<void> {
+export async function requestPasswordReset(email: string, origin?: string): Promise<void> {
+  await initHostedDb();
   const result = await pool.query('SELECT id FROM hosted_users WHERE email = $1', [email]);
   if ((result.rowCount ?? 0) === 0) return;
   const userId = String(result.rows[0].id);
-  await createPasswordResetLoginUrl(userId);
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  await pool.query(
+    `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [userId, tokenHash, expiresAt],
+  );
+  const baseUrl = origin?.replace(/\/$/, '')
+    ?? process.env.CARINA_HOSTED_APP_URL
+    ?? 'https://app.carinaai.uk';
+  const { sendPasswordResetEmail } = await import('../email/email-triggers.js');
+  await sendPasswordResetEmail({
+    email,
+    resetUrl: `${baseUrl}/auth/reset-password?token=${rawToken}`,
+    expiresInMinutes: 60,
+  }).catch(() => undefined);
 }
 
 export async function confirmPasswordReset(token: string, newPassword: string): Promise<boolean> {
+  await initHostedDb();
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const result = await pool.query(
-    `SELECT user_id FROM hosted_password_resets
-     WHERE token = $1 AND expires_at > NOW()`,
-    [token],
+    `SELECT id, user_id FROM password_reset_tokens
+     WHERE token_hash = $1 AND used_at IS NULL AND expires_at > NOW()`,
+    [tokenHash],
   ).catch(() => ({ rows: [] as { user_id: string }[] }));
   if (result.rows.length === 0) return false;
   const userId = String(result.rows[0].user_id);
+  const resetId = String((result.rows[0] as { id?: string }).id ?? '');
   const passwordHash = hashPassword(newPassword);
   await pool.query('UPDATE hosted_users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
-  await pool.query('DELETE FROM hosted_password_resets WHERE token = $1', [token]).catch(() => undefined);
+  if (resetId) {
+    await pool.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [resetId]);
+  }
   return true;
 }
 
 export async function maybeBootstrapHostedAccount(forceReset = false): Promise<void> {
   await initHostedDb();
-  const adminEmail = process.env.HOSTED_ADMIN_EMAIL?.trim();
-  const adminPassword = process.env.HOSTED_ADMIN_PASSWORD?.trim();
+  const adminEmail = config.hosted.bootstrapEmail.trim();
+  const adminPassword = config.hosted.bootstrapPassword.trim();
   if (!adminEmail || !adminPassword) return;
+  if (adminPassword.length < 8) {
+    console.warn('[hosted-auth] bootstrap password must be 8+ chars; account was not changed');
+    return;
+  }
   const existing = await pool.query('SELECT id FROM hosted_users WHERE email = $1', [adminEmail]);
   if ((existing.rowCount ?? 0) > 0 && !forceReset) return;
   await upsertHostedUser(adminEmail, adminPassword);

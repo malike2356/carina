@@ -5,7 +5,8 @@ export type BillingPlanId =
   | 'enterprise'
   | 'carina_ops_starter'
   | 'carina_ops_team'
-  | 'scout_pro';
+  | 'scout_pro'
+  | 'scout_team';
 
 export interface BillingPlan {
   id: BillingPlanId;
@@ -77,12 +78,27 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
       'Priority support',
     ],
   },
+  scout_team: {
+    id: 'scout_team',
+    name: 'Scout Team',
+    monthlyPriceGbp: 399,
+    tokenLimit: null,
+    includedCredits: null,
+    stripePriceEnv: 'STRIPE_PRICE_SCOUT_TEAM',
+    features: [
+      'Everything in Scout Govern',
+      'Team policy management',
+      'Shared incident response',
+      'Priority support',
+    ],
+  },
   carina_ops_starter: {
     id: 'carina_ops_starter',
     name: 'Carina Ops Starter',
     monthlyPriceGbp: 99,
     tokenLimit: null,
-    includedCredits: null,
+    includedCredits: 500_000,
+    maxTopupCredits: 500_000,
     stripePriceEnv: 'STRIPE_PRICE_CARINA_OPS_STARTER',
     features: [
       'Up to 5 client workspaces',
@@ -95,7 +111,8 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     name: 'Carina Ops Team',
     monthlyPriceGbp: 299,
     tokenLimit: null,
-    includedCredits: null,
+    includedCredits: 2_000_000,
+    maxTopupCredits: 2_000_000,
     stripePriceEnv: 'STRIPE_PRICE_CARINA_OPS_TEAM',
     features: [
       'Up to 25 client workspaces',
@@ -112,7 +129,7 @@ export const BILLING_PLANS: Record<BillingPlanId, BillingPlan> = {
     stripePriceEnv: 'STRIPE_PRICE_ENTERPRISE',
     features: [
       'Everything in Scout',
-      'SOC2 Type II attestation',
+      'SOC2 readiness export (not a third-party audit)',
       '99.9% uptime SLA',
       'Dedicated Slack support',
       'On-premise deployment option',
@@ -134,7 +151,10 @@ export function isCarinaOpsPlan(plan: BillingPlanId): boolean {
 }
 
 export function isScoutPlan(plan: BillingPlanId): boolean {
-  return plan === 'scout_standard' || plan === 'scout_monitor' || plan === 'scout_pro';
+  return plan === 'scout_standard'
+    || plan === 'scout_monitor'
+    || plan === 'scout_pro'
+    || plan === 'scout_team';
 }
 
 export function planTier(plan: BillingPlanId): string {
@@ -145,12 +165,19 @@ export function planTier(plan: BillingPlanId): string {
   return 'free';
 }
 
-export function resolveCreditUsdRate(_planId: BillingPlanId): number {
-  return 0;
+export const DEFAULT_CREDIT_GBP_USD = 1.25;
+
+export function resolveCreditUsdRate(planId: BillingPlanId): number {
+  const override = Number(process.env.CREDIT_USD_RATE ?? '');
+  if (Number.isFinite(override) && override > 0) return override;
+  const plan = BILLING_PLANS[planId];
+  if (!plan.monthlyPriceGbp || !plan.includedCredits) return 0;
+  return (plan.monthlyPriceGbp * DEFAULT_CREDIT_GBP_USD) / plan.includedCredits;
 }
 
-export function resolveStripePriceId(plan: BillingPlanId): string {
-  const envKey = BILLING_PLANS[plan].stripePriceEnv;
+export function resolveStripePriceId(plan: BillingPlanId | string): string {
+  const normalized = normalizePlanId(plan);
+  const envKey = BILLING_PLANS[normalized].stripePriceEnv;
   if (!envKey) throw new Error(`Plan ${plan} does not use Stripe Checkout`);
   const priceId = process.env[envKey] ?? '';
   if (!priceId) throw new Error(`Missing required env var: ${envKey}`);
@@ -174,6 +201,7 @@ export async function planFromStripePriceIdAsync(priceId: string): Promise<Billi
 }
 
 export function normalizePlanId(value: unknown): BillingPlanId {
+  if (value === 'scout_govern') return 'scout_pro';
   if (
     value === 'free' ||
     value === 'scout_standard' ||
@@ -181,7 +209,8 @@ export function normalizePlanId(value: unknown): BillingPlanId {
     value === 'enterprise' ||
     value === 'carina_ops_starter' ||
     value === 'carina_ops_team' ||
-    value === 'scout_pro'
+    value === 'scout_pro' ||
+    value === 'scout_team'
   ) {
     return value;
   }

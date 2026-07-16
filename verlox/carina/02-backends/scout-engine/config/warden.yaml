@@ -1,0 +1,95 @@
+# WARDEN; Scout defensive immune system configuration
+enabled: true
+dry_run: true
+auto_remove: false
+kill_switch_on_critical: true
+
+evidence_dir: ./data/warden/evidence
+quarantine_dir: ./data/warden/quarantine
+rules_dir: ./warden/rules
+signatures_dir: ./warden/signatures
+
+schedule:
+  continuous_ms: 0
+  network_ms: 30000
+  host_ms: 300000
+  yara_sweep_ms: 900000
+  connected_ms: 3600000
+  deep_scan_ms: 21600000
+
+sensors:
+  carina: true
+  scout: true
+  host: true
+  network: true
+  connected_systems: true
+  devices: true
+  deployed_agents: true
+  supply_chain: true
+
+arsenal:
+  capa:
+    enabled: true
+    binary: capa
+  x64dbg:
+    enabled: false
+    binary: x64dbg
+  radare2:
+    enabled: true
+    binary: r2
+  mobsf:
+    enabled: true
+    base_url: http://warden-mobsf:8000
+  floss:
+    enabled: true
+    binary: floss
+  drakvuf:
+    enabled: false
+    binary: drakvuf
+  volatility:
+    enabled: true
+    binary: vol
+  ghidra:
+    enabled: true
+    analyze_headless: analyzeHeadless
+    base_url: http://warden-ghidra:8088
+  capev2:
+    enabled: false
+    base_url: http://warden-cape:8000
+  yara:
+    enabled: true
+    binary: yara
+    rules_glob: custom/*.yar
+
+response:
+  isolate: true
+  sandbox: true
+  immobilize: true
+  strip: true
+  remove_requires_confirmation: true
+  critical_high_auto_remove: false
+
+alerts:
+  dashboard: true
+  webhook_url: ""
+  email: false
+  syslog: false
+
+carina:
+  watch_paths: []
+  process_name_hints:
+    - carina
+    - node
+  tool_rate_limit_per_sec: 50
+
+scout:
+  integrity_paths:
+    - package.json
+    - dist/server.js
+    - config/warden.yaml
+  rehash_ms: 300000
+
+network:
+  connection_whitelist_ports: [22, 80, 443, 4444, 5432, 6379]
+  blocklist_file: signatures/ip_blocklist.txt
+  domain_blocklist_file: signatures/domain_blocklist.txt

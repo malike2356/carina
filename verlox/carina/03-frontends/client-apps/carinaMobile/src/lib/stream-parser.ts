@@ -1,8 +1,37 @@
+import type { ChatAccessInfo, ChatStreamChunk } from '@/api/types';
+
 const TOOL_PATTERN = /\[using ([\w-]+)\.\.\.\]/g;
 
-export function normalizeStreamPayload(payload: string): {
-  content?: string;
-  error?: string;
+function parseChatAccess(value: unknown): ChatAccessInfo | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const access = value as Record<string, unknown>;
+  if (
+    access.mode !== 'platform'
+    && access.mode !== 'byok'
+    && access.mode !== 'mini'
+  ) {
+    return undefined;
+  }
+  if (
+    typeof access.freeMessagesUsed !== 'number'
+    || typeof access.freeMessagesLimit !== 'number'
+    || typeof access.upgradeUrl !== 'string'
+    || typeof access.byokUrl !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    mode: access.mode,
+    freeMessagesUsed: access.freeMessagesUsed,
+    freeMessagesLimit: access.freeMessagesLimit,
+    upgradeUrl: access.upgradeUrl,
+    byokUrl: access.byokUrl,
+    ...(typeof access.provider === 'string' ? { provider: access.provider } : {}),
+    ...(typeof access.model === 'string' ? { model: access.model } : {}),
+  };
+}
+
+export function normalizeStreamPayload(payload: string): ChatStreamChunk & {
   sessionId?: string;
 } {
   try {
@@ -15,10 +44,13 @@ export function normalizeStreamPayload(payload: string): {
         content?: string;
         error?: string;
         sessionId?: string;
+        access?: unknown;
         type?: string;
         meta?: { sessionId?: string };
       };
       if (record.error) return { error: record.error };
+      const access = parseChatAccess(record.access);
+      if (access) return { access };
       if (record.sessionId && !record.content && record.type !== 'text') {
         return { sessionId: record.sessionId };
       }

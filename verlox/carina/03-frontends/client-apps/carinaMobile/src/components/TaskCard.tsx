@@ -24,7 +24,7 @@ export function TaskCard({ task, onOpenSession }: TaskCardProps) {
       disabled={!canOpen}
       accessibilityRole="button"
       accessibilityLabel={`Task ${task.status}: ${task.prompt}`}
-      accessibilityHint={canOpen ? 'Opens the related chat session' : undefined}
+      accessibilityHint={canOpen ? 'Opens the related conversation' : undefined}
     >
       <View style={styles.header}>
         <Text style={[styles.status, { color: STATUS_COLORS[task.status] }]}>
@@ -43,9 +43,13 @@ export function TaskCard({ task, onOpenSession }: TaskCardProps) {
         </Text>
       ) : null}
       {task.toolsUsed && task.toolsUsed.length > 0 ? (
-        <Text style={styles.tools}>{task.toolsUsed.join(' · ')}</Text>
+        <View style={styles.toolRow}>
+          {task.toolsUsed.map((tool) => (
+            <Text key={tool} style={styles.toolBadge}>{tool}</Text>
+          ))}
+        </View>
       ) : null}
-      {canOpen ? <Text style={styles.openHint}>Open chat session</Text> : null}
+      {canOpen ? <Text style={styles.openHint}>View conversation</Text> : null}
     </Pressable>
   );
 }
@@ -84,9 +88,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  tools: {
+  toolRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  toolBadge: {
     color: colors.tealLight,
-    fontSize: 11,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    backgroundColor: 'rgba(94, 234, 212, 0.1)',
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    overflow: 'hidden',
   },
   openHint: {
     color: colors.tealLight,

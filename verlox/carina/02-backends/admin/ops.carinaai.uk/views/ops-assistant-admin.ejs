@@ -1,0 +1,307 @@
+<% title = 'Ops Assistant' %>
+<style>
+  .oaa-page { max-width: 58rem; margin: 0 auto; padding: 28px 24px; }
+  .oaa-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 22px; padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .oaa-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(59,130,246,0.12));
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .oaa-icon svg { width: 22px; height: 22px; color: #a78bfa; }
+  .oaa-header-text h1 { margin: 0; font-size: 1.2rem; font-weight: 700; color: #f8fafc; }
+  .oaa-header-text p { margin: 3px 0 0; font-size: 0.78rem; color: #94a3b8; }
+  .oaa-status { margin-left: auto; display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .oaa-status.on { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .oaa-status.off { background: rgba(239,68,68,0.08); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+  .oaa-status-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .oaa-status.on .oaa-status-dot { background: #4ade80; }
+  .oaa-status.off .oaa-status-dot { background: #f87171; }
+
+  .oaa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .oaa-stat { padding: 16px 18px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); }
+  .oaa-stat-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin: 0 0 6px; }
+  .oaa-stat-value { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin: 0; }
+  .oaa-stat-note { margin: 3px 0 0; font-size: 0.68rem; color: #64748b; }
+
+  .oaa-section { border-radius: 12px; border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); padding: 20px 22px; margin-bottom: 18px; }
+  .oaa-section-title { font-size: 0.88rem; font-weight: 700; color: #e2e8f0; margin: 0 0 12px; }
+  .oaa-section-desc { font-size: 0.75rem; color: #94a3b8; margin: 0 0 14px; line-height: 1.5; }
+
+  .oaa-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .oaa-btn {
+    padding: 9px 18px; border-radius: 8px; border: none; font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .oaa-btn-primary { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: #fff; box-shadow: 0 2px 8px rgba(124,58,237,0.2); }
+  .oaa-btn-primary:hover { opacity: 0.9; }
+  .oaa-btn-secondary { background: rgba(255,255,255,0.04); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.12); }
+  .oaa-btn-secondary:hover { background: rgba(255,255,255,0.08); color: #f1f5f9; }
+  .oaa-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .oaa-search-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .oaa-search-input { flex: 1; padding: 9px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.25); color: #f1f5f9; font-size: 0.78rem; outline: none; }
+  .oaa-search-input:focus { border-color: rgba(124,58,237,0.5); }
+  .oaa-search-input::placeholder { color: #475569; }
+
+  .oaa-results { max-height: 300px; overflow-y: auto; }
+  .oaa-result { padding: 10px 14px; border-radius: 8px; background: rgba(0,0,0,0.15); margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.04); }
+  .oaa-result-file { font-size: 0.7rem; font-weight: 600; color: #a78bfa; font-family: 'JetBrains Mono', monospace; }
+  .oaa-result-lines { font-size: 0.62rem; color: #64748b; margin-left: 8px; }
+  .oaa-result-preview { font-size: 0.72rem; color: #94a3b8; margin-top: 4px; line-height: 1.4; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace; }
+  .oaa-empty { text-align: center; padding: 20px; color: #475569; font-size: 0.78rem; }
+
+  .oaa-editor { width: 100%; min-height: 300px; padding: 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); color: #e2e8f0; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; line-height: 1.6; resize: vertical; outline: none; }
+  .oaa-editor:focus { border-color: rgba(124,58,237,0.4); }
+
+  .oaa-flash { margin-bottom: 14px; padding: 10px 14px; border-radius: 8px; font-size: 0.78rem; display: none; }
+  .oaa-flash.ok { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); color: #86efac; display: block; }
+  .oaa-flash.err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; display: block; }
+
+  @media (max-width: 640px) {
+    .oaa-page { padding: 16px 12px; }
+    .oaa-header { flex-wrap: wrap; }
+    .oaa-status { margin-left: 0; margin-top: 8px; }
+    .oaa-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+
+<div class="oaa-page">
+  <header class="oaa-header">
+    <div class="oaa-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <path d="M8 10h.01M12 10h.01M16 10h.01"/>
+      </svg>
+    </div>
+    <div class="oaa-header-text">
+      <h1>Ops Assistant</h1>
+      <p>Internal AI coach with full codebase RAG. Appears as the floating chat bubble on every page.</p>
+    </div>
+    <div id="oaa-status" class="oaa-status off">
+      <span class="oaa-status-dot"></span>
+      <span id="oaa-status-label">Checking...</span>
+    </div>
+  </header>
+
+  <div id="oaa-flash" class="oaa-flash"></div>
+
+  <div class="oaa-grid" id="oaa-stats">
+    <div class="oaa-stat">
+      <p class="oaa-stat-label">Provider</p>
+      <p class="oaa-stat-value" id="stat-provider">-</p>
+    </div>
+    <div class="oaa-stat">
+      <p class="oaa-stat-label">Knowledge size</p>
+      <p class="oaa-stat-value" id="stat-knowledge">-</p>
+      <p class="oaa-stat-note">characters in system prompt</p>
+    </div>
+    <div class="oaa-stat">
+      <p class="oaa-stat-label">Files indexed</p>
+      <p class="oaa-stat-value" id="stat-files">-</p>
+    </div>
+    <div class="oaa-stat">
+      <p class="oaa-stat-label">RAG chunks</p>
+      <p class="oaa-stat-value" id="stat-chunks">-</p>
+    </div>
+    <div class="oaa-stat">
+      <p class="oaa-stat-label">Indexed at</p>
+      <p class="oaa-stat-value" id="stat-indexed-at" style="font-size:0.78rem;">-</p>
+    </div>
+  </div>
+
+  <!-- Usage stats -->
+  <div class="oaa-section" style="margin-bottom:18px;">
+    <h2 class="oaa-section-title">Token usage and cost</h2>
+    <p class="oaa-section-desc">Tracked since last container restart. DeepSeek pricing: $0.14/M input, $0.28/M output.</p>
+    <div class="oaa-grid" id="oaa-usage-stats" style="margin-bottom:0;">
+      <div class="oaa-stat">
+        <p class="oaa-stat-label">Requests</p>
+        <p class="oaa-stat-value" id="usage-requests">0</p>
+      </div>
+      <div class="oaa-stat">
+        <p class="oaa-stat-label">Input tokens</p>
+        <p class="oaa-stat-value" id="usage-input">0</p>
+      </div>
+      <div class="oaa-stat">
+        <p class="oaa-stat-label">Output tokens</p>
+        <p class="oaa-stat-value" id="usage-output">0</p>
+      </div>
+      <div class="oaa-stat">
+        <p class="oaa-stat-label">Total cost</p>
+        <p class="oaa-stat-value" id="usage-cost" style="color:#4ade80;">$0.000</p>
+        <p class="oaa-stat-note">estimated USD</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="oaa-actions">
+    <button type="button" id="btn-reindex" class="oaa-btn oaa-btn-primary">Re-index codebase</button>
+    <button type="button" id="btn-refresh" class="oaa-btn oaa-btn-secondary">Refresh knowledge scan</button>
+  </div>
+
+  <!-- RAG Search Test -->
+  <div class="oaa-section">
+    <h2 class="oaa-section-title">Test RAG search</h2>
+    <p class="oaa-section-desc">Search the indexed codebase to see what chunks the assistant would retrieve for a given question.</p>
+    <div class="oaa-search-row">
+      <input type="text" id="search-input" class="oaa-search-input" placeholder="Try: billing config, google oauth, kill switch..." />
+      <button type="button" id="btn-search" class="oaa-btn oaa-btn-secondary">Search</button>
+    </div>
+    <div id="search-results" class="oaa-results">
+      <div class="oaa-empty">Enter a query above to test retrieval</div>
+    </div>
+  </div>
+
+  <!-- Knowledge File Editor -->
+  <div class="oaa-section">
+    <h2 class="oaa-section-title">Knowledge file (OPS-KNOWLEDGE.md)</h2>
+    <p class="oaa-section-desc">Edit the knowledge file directly. Changes take effect immediately on the next chat message (no restart needed).</p>
+    <textarea id="knowledge-editor" class="oaa-editor" placeholder="Loading..."></textarea>
+    <div style="margin-top:10px;">
+      <button type="button" id="btn-save-knowledge" class="oaa-btn oaa-btn-primary">Save knowledge file</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var statusEl = document.getElementById('oaa-status');
+  var statusLabel = document.getElementById('oaa-status-label');
+  var flashEl = document.getElementById('oaa-flash');
+
+  function flash(msg, type) {
+    flashEl.textContent = msg;
+    flashEl.className = 'oaa-flash ' + type;
+    setTimeout(function() { flashEl.className = 'oaa-flash'; }, 4000);
+  }
+
+  var jsonHeaders = { 'Accept': 'application/json' };
+
+  function loadHealth() {
+    fetch('/ops-assistant/health', { credentials: 'same-origin', headers: jsonHeaders })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        statusEl.className = 'oaa-status ' + (d.ok ? 'on' : 'off');
+        statusLabel.textContent = d.ok ? 'Online (' + d.provider + ')' : 'No provider';
+        document.getElementById('stat-provider').textContent = d.provider || 'None';
+        document.getElementById('stat-knowledge').textContent = d.knowledgeSize ? (d.knowledgeSize / 1000).toFixed(1) + 'K' : '-';
+        if (d.rag) {
+          document.getElementById('stat-files').textContent = d.rag.fileCount || '0';
+          document.getElementById('stat-chunks').textContent = d.rag.chunkCount || '0';
+          document.getElementById('stat-indexed-at').textContent = d.rag.indexedAt ? new Date(d.rag.indexedAt).toLocaleString() : 'Never';
+        }
+      })
+      .catch(function() {
+        statusEl.className = 'oaa-status off';
+        statusLabel.textContent = 'Error';
+      });
+  }
+
+  document.getElementById('btn-reindex').addEventListener('click', function() {
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Indexing...';
+    fetch('/ops-assistant/refresh', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: '{}' })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(d) {
+        flash('Re-indexed: ' + (d.rag?.chunkCount || 0) + ' chunks from ' + (d.rag?.fileCount || 0) + ' files', 'ok');
+        loadHealth();
+        loadUsage();
+      })
+      .catch(function(e) { flash('Re-index failed: ' + e.message, 'err'); })
+      .finally(function() { btn.disabled = false; btn.textContent = 'Re-index codebase'; });
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', function() {
+    var btn = this;
+    btn.disabled = true;
+    fetch('/ops-assistant/refresh', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: '{}' })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(d) {
+        flash('Knowledge refreshed (' + (d.knowledgeSize / 1000).toFixed(1) + 'K chars)', 'ok');
+        loadHealth();
+      })
+      .catch(function(e) { flash('Refresh failed: ' + e.message, 'err'); })
+      .finally(function() { btn.disabled = false; });
+  });
+
+  document.getElementById('btn-search').addEventListener('click', doSearch);
+  document.getElementById('search-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') doSearch(); });
+
+  function doSearch() {
+    var q = document.getElementById('search-input').value.trim();
+    if (!q) return;
+    var resultsEl = document.getElementById('search-results');
+    resultsEl.innerHTML = '<div class="oaa-empty">Searching...</div>';
+    fetch('/ops-assistant/search?q=' + encodeURIComponent(q), { credentials: 'same-origin', headers: jsonHeaders })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!d.results || !d.results.length) {
+          resultsEl.innerHTML = '<div class="oaa-empty">No results for "' + q + '"</div>';
+          return;
+        }
+        resultsEl.innerHTML = d.results.map(function(r) {
+          return '<div class="oaa-result">' +
+            '<span class="oaa-result-file">' + r.file + '</span>' +
+            '<span class="oaa-result-lines">lines ' + r.lines + '</span>' +
+            '<div class="oaa-result-preview">' + escHtml(r.preview) + '</div>' +
+            '</div>';
+        }).join('');
+      })
+      .catch(function() { resultsEl.innerHTML = '<div class="oaa-empty">Search failed</div>'; });
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Load knowledge file
+  fetch('/ops-assistant/knowledge', { credentials: 'same-origin', headers: jsonHeaders })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok && d.content) document.getElementById('knowledge-editor').value = d.content;
+      else document.getElementById('knowledge-editor').value = '# OPS-KNOWLEDGE.md\n\nAdd knowledge here. The assistant reads this on every message.\n';
+    })
+    .catch(function() { document.getElementById('knowledge-editor').value = '(Could not load file)'; });
+
+  document.getElementById('btn-save-knowledge').addEventListener('click', function() {
+    var btn = this;
+    var content = document.getElementById('knowledge-editor').value;
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    fetch('/ops-assistant/knowledge', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ content: content }),
+    })
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(d) {
+        if (d.ok) flash('Knowledge file saved', 'ok');
+        else flash('Save failed: ' + (d.error || 'unknown'), 'err');
+      })
+      .catch(function(e) { flash('Save failed: ' + e.message, 'err'); })
+      .finally(function() { btn.disabled = false; btn.textContent = 'Save knowledge file'; });
+  });
+
+  function loadUsage() {
+    fetch('/ops-assistant/usage', { credentials: 'same-origin', headers: jsonHeaders })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        document.getElementById('usage-requests').textContent = d.totalRequests || '0';
+        document.getElementById('usage-input').textContent = d.totalInputTokens ? d.totalInputTokens.toLocaleString() : '0';
+        document.getElementById('usage-output').textContent = d.totalOutputTokens ? d.totalOutputTokens.toLocaleString() : '0';
+        document.getElementById('usage-cost').textContent = '$' + (d.totalCostUsd || 0).toFixed(4);
+      })
+      .catch(function() {});
+  }
+
+  loadHealth();
+  loadUsage();
+  setInterval(loadUsage, 15000);
+})();
+</script>

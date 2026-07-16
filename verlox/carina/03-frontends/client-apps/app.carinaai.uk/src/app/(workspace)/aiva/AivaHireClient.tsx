@@ -2,7 +2,19 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Globe, Hash, Instagram, Linkedin, Mail, MessageCircle, Send, Twitter } from 'lucide-react';
+import {
+  Facebook,
+  Globe,
+  Hash,
+  Instagram,
+  Linkedin,
+  Mail,
+  MessageCircle,
+  Music2,
+  Send,
+  Twitter,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AIVA_CHANNEL_OPTIONS,
@@ -13,7 +25,7 @@ import { AIVA_INPUT_CLASS, readAivaError } from '@/lib/aiva-utils';
 import { CarinaEditor } from '@/components/editor';
 import { UpgradeModal } from '@/components/aiva/UpgradeModal';
 
-const CHANNEL_ICONS = {
+const CHANNEL_ICONS: Record<string, LucideIcon> = {
   whatsapp: MessageCircle,
   email: Mail,
   slack: Hash,
@@ -21,10 +33,10 @@ const CHANNEL_ICONS = {
   web: Globe,
   linkedin: Linkedin,
   instagram: Instagram,
-  messenger: MessageCircle,
+  messenger: Facebook,
   twitter: Twitter,
-  tiktok: Send,
-} as const;
+  tiktok: Music2,
+};
 
 export function AivaHireClient() {
   const router = useRouter();
@@ -123,7 +135,7 @@ export function AivaHireClient() {
           <h1 className="text-2xl font-semibold">Hire an Aiva</h1>
           <p className="mt-1 text-sm text-text-secondary">
             Describe the role in plain English. Your Aiva will be ready in under three minutes.
-            Powered by Carina. Escalations are visible when human review is needed.
+            Powered by Carina. Backed by real humans when it matters.
           </p>
         </div>
 
@@ -180,7 +192,7 @@ export function AivaHireClient() {
           <label className="text-sm font-medium text-text-primary">Channels</label>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {AIVA_CHANNEL_OPTIONS.map((ch) => {
-              const Icon = CHANNEL_ICONS[ch.id];
+              const Icon = CHANNEL_ICONS[ch.id] ?? MessageCircle;
               const checked = channels.includes(ch.id);
               return (
                 <label

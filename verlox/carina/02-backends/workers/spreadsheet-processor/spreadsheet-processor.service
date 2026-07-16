@@ -1,0 +1,19 @@
+[Unit]
+Description=Aiva Spreadsheet Processor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=malike
+WorkingDirectory=/home/malike/apps/carina/02-backends/workers/spreadsheet-processor
+ExecStart=/usr/bin/python3 monitor.py
+Restart=on-failure
+RestartSec=30
+EnvironmentFile=/home/malike/apps/carina/02-backends/workers/spreadsheet-processor/.env
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=spreadsheet-processor
+
+[Install]
+WantedBy=multi-user.target

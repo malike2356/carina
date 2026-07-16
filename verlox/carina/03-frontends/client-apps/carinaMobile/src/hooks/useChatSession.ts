@@ -2,7 +2,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { streamChat } from '@/api/chat-stream';
 import { fetchChatHistory } from '@/api/chat-history-client';
-import type { ChatMessage, InstanceConfig } from '@/api/types';
+import type { ChatAccessInfo, ChatMessage, InstanceConfig } from '@/api/types';
 import { getLoadedLocalModelDisplayName } from '@/lib/local-inference';
 import { isSlashCommand } from '@/config/commands';
 import { isApiAuthError } from '@/lib/cloud-features';
@@ -17,7 +17,7 @@ import { loadRemotePushEnabled } from '@/lib/notification-prefs';
 import { hapticError, hapticSuccess } from '@/lib/haptics';
 import { notifyTaskFinished } from '@/lib/notifications';
 import { syncTaskWidgetFromStore } from '@/lib/widget-sync';
-import { patchTask, upsertTask } from '@/lib/task-store';
+import { shouldCreateAutoTask, upsertTask } from '@/lib/task-store';
 import { useAuth } from '@/store/auth-store';
 import { isLocalModelEnabled } from '@/store/local-model-store';
 import { ensureSessionId, rotateSessionId, setSessionId } from '@/store/instance-store';
@@ -76,6 +76,7 @@ export function useChatSession() {
   const [streaming, setStreaming] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [activeTools, setActiveTools] = useState<string[]>([]);
+  const [chatAccess, setChatAccess] = useState<ChatAccessInfo | null>(null);
   const [ready, setReady] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const gatewayAuthRef = useRef(gatewayAuth);
@@ -130,6 +131,7 @@ export function useChatSession() {
     setInstance(config);
     setMessages([]);
     setActiveTools([]);
+    setChatAccess(null);
     setStreamError(null);
     await upsertSessionMeta({
       id: config.sessionId,
@@ -150,6 +152,7 @@ export function useChatSession() {
       const merged = await syncServerHistory(config, stored, gatewayAuth ?? undefined);
       setMessages(merged);
       setActiveTools([]);
+      setChatAccess(null);
       setStreamError(null);
     },
     [cancel, sessionId, setInstance, gatewayAuth],
@@ -167,6 +170,7 @@ export function useChatSession() {
       setInstance(config);
       setMessages([]);
       setActiveTools([]);
+      setChatAccess(null);
       setStreamError(null);
     },
     [cancel, sessionId, setInstance],
@@ -369,14 +373,6 @@ export function useChatSession() {
         activeSessionId = next.sessionId;
       }
 
-      await upsertTask({
-        id: taskId,
-        sessionId: activeSessionId,
-        prompt: text,
-        status: 'running',
-        startedAt: new Date().toISOString(),
-      });
-
       try {
         try {
           const providers = await client?.providers();
@@ -403,6 +399,14 @@ export function useChatSession() {
             void setSessionId(serverSessionId).then((next) => setInstance(next));
           },
           onChunk: (chunk) => {
+            if (chunk.access) {
+              setChatAccess(chunk.access);
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId ? { ...msg, accessMode: chunk.access?.mode } : msg,
+                ),
+              );
+            }
             if (!chunk.content) return;
             streamBuffer += chunk.content;
             const tools = extractToolNames(streamBuffer);
@@ -434,26 +438,26 @@ export function useChatSession() {
           return finalMessages;
         });
         await persist(activeSessionId, finalMessages);
-        await patchTask(taskId, {
-          sessionId: activeSessionId,
-          status: 'completed',
-          completedAt: new Date().toISOString(),
-          toolsUsed,
-          summary: stripToolMarkers(full).slice(0, 240) || full.trim().slice(0, 240),
-        });
-        void notifyTaskFinished(text, 'completed');
+        if (shouldCreateAutoTask(toolsUsed)) {
+          await upsertTask({
+            id: taskId,
+            sessionId: activeSessionId,
+            prompt: text,
+            kind: 'auto',
+            status: 'completed',
+            startedAt: new Date().toISOString(),
+            completedAt: new Date().toISOString(),
+            toolsUsed,
+            summary: stripToolMarkers(full).slice(0, 240) || full.trim().slice(0, 240),
+          });
+          void notifyTaskFinished(text, 'completed');
+          void syncTaskWidgetFromStore();
+        }
         void hapticSuccess();
-        void syncTaskWidgetFromStore();
         setActiveTools([]);
       } catch (err) {
         if (controller.signal.aborted) {
           setMessages((prev) => prev.filter((item) => item.id !== assistantId));
-          await patchTask(taskId, {
-            sessionId: activeSessionId || sessionId,
-            status: 'failed',
-            completedAt: new Date().toISOString(),
-            summary: 'Cancelled',
-          });
           return;
         }
 
@@ -462,12 +466,6 @@ export function useChatSession() {
           setStreamError('Session expired. Sign in again to continue.');
           void refresh();
           setMessages((prev) => prev.filter((item) => item.id !== assistantId));
-          await patchTask(taskId, {
-            sessionId: activeSessionId || sessionId,
-            status: 'failed',
-            completedAt: new Date().toISOString(),
-            summary: msg,
-          });
           return;
         }
         if (isLikelyNetworkError(msg)) {
@@ -478,12 +476,6 @@ export function useChatSession() {
             setStreamError('Connection lost. Queued message not sent.');
           }
           setMessages((prev) => prev.filter((item) => item.id !== assistantId));
-          await patchTask(taskId, {
-            sessionId: activeSessionId || sessionId,
-            status: 'failed',
-            completedAt: new Date().toISOString(),
-            summary: msg,
-          });
           return;
         }
         setStreamError(msg);
@@ -501,15 +493,7 @@ export function useChatSession() {
           return finalMessages;
         });
         await persist(activeSessionId || sessionId, finalMessages);
-        await patchTask(taskId, {
-          sessionId: activeSessionId || sessionId,
-          status: 'failed',
-          completedAt: new Date().toISOString(),
-          summary: msg,
-        });
-        void notifyTaskFinished(text, 'failed');
         void hapticError();
-        void syncTaskWidgetFromStore();
       } finally {
         setStreaming(false);
         abortRef.current = null;
@@ -524,6 +508,7 @@ export function useChatSession() {
     streaming,
     streamError,
     activeTools,
+    chatAccess,
     sendMessage,
     runCommand,
     cancel,

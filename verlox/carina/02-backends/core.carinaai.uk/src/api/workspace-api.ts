@@ -1,4 +1,5 @@
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
+import { pool } from '../memory/db.js';
 import {
   createAutomation,
   createWorker,
@@ -10,6 +11,7 @@ import {
   getWorkerAnalytics,
   getWorkerOverviewMetrics,
   listActivity,
+  listOutboundCommunications,
   listAudit,
   listAutomations,
   listOpenEscalations,
@@ -56,9 +58,15 @@ import {
   sendAivaCreatedEmail,
   sendWelcomeEmail,
 } from '../email/email-triggers.js';
-import { upsertWorkspaceContact, aivaAppUrl } from '../email/workspace-contact.js';
+import {
+  upsertWorkspaceContact,
+  aivaAppUrl,
+  getWorkspaceContact,
+  updateWorkspaceOwnerProfile,
+  serializeWorkspaceProfile,
+} from '../email/workspace-contact.js';
 import { eraseWorkspaceData, streamWorkspaceExportZip } from '../workers/workspace-gdpr.js';
-import { pool } from '../memory/db.js';
+import { maskIdentifier } from '../channels/mask-identifier.js';
 import {
   appendKnowledgeToPersona,
   extractDocumentText,
@@ -105,6 +113,7 @@ import { startWorkerPlaybookRun } from '../workers/playbook-run-client.js';
 import { workerPlaybookRouter } from './worker-playbook-api.js';
 import { aivaMarketplaceRouter } from './aiva-marketplace-api.js';
 import { provisioningWizardRouter } from './provisioning-wizard-api.js';
+import { mountSpinnableParityRoutes } from './spinnable-parity-api.js';
 import {
   assignEmployeeTask,
   getEmployeeProfile,
@@ -264,6 +273,7 @@ function requireWorkspace(req: AivaRequest, res: Response, next: NextFunction): 
 aivaRouter.use('/workers/:id', requireWorkspace, workerPlaybookRouter);
 aivaRouter.use('/marketplace', requireWorkspace, aivaMarketplaceRouter);
 aivaRouter.use('/provision', requireWorkspace, provisioningWizardRouter);
+mountSpinnableParityRoutes(aivaRouter, requireWorkspace);
 
 aivaRouter.post('/workers', requireWorkspace, async (req: AivaRequest, res: Response) => {
   try {
@@ -311,6 +321,9 @@ aivaRouter.post('/workers', requireWorkspace, async (req: AivaRequest, res: Resp
       skillPacks,
       channels: defaultChannels,
       language,
+      orgId: typeof req.body?.orgId === 'string' && req.body.orgId.trim()
+        ? req.body.orgId.trim()
+        : (typeof req.headers['x-aiva-org-id'] === 'string' ? req.headers['x-aiva-org-id'] : null),
     });
 
     const explicitPlaybookId = req.body?.playbookId ? String(req.body.playbookId).trim() : '';
@@ -396,7 +409,13 @@ aivaRouter.post('/workers', requireWorkspace, async (req: AivaRequest, res: Resp
 });
 
 aivaRouter.get('/workers', requireWorkspace, async (req: AivaRequest, res: Response) => {
-  const workers = await listWorkers(req.workspaceId!);
+  const orgId = typeof req.query.orgId === 'string'
+    ? req.query.orgId
+    : (typeof req.headers['x-aiva-org-id'] === 'string' ? req.headers['x-aiva-org-id'] : null);
+  const { loadDepthFeatures } = await import('../workers/product-tools/features.js');
+  const features = loadDepthFeatures();
+  const scoped = (features.orgs.strictScoping || features.orgs.switcherEnabled) ? orgId : null;
+  const workers = await listWorkers(req.workspaceId!, scoped);
   res.json({ workers });
 });
 
@@ -599,6 +618,20 @@ aivaRouter.patch('/workers/:id', requireWorkspace, async (req: AivaRequest, res:
       roleDescription,
       personaPrompt,
       language: req.body?.language ? String(req.body.language) : undefined,
+      workerConfig: req.body?.workerConfig && typeof req.body.workerConfig === 'object'
+        ? {
+            ...(existing.workerConfig ?? {}),
+            ...(req.body.workerConfig as Record<string, unknown>),
+            ...(req.body?.permissions && typeof req.body.permissions === 'object'
+              ? { permissions: req.body.permissions }
+              : {}),
+          }
+        : req.body?.permissions && typeof req.body.permissions === 'object'
+          ? {
+              ...(existing.workerConfig ?? {}),
+              permissions: req.body.permissions,
+            }
+          : undefined,
     });
     res.json({ worker });
   } catch (err) {
@@ -634,6 +667,28 @@ aivaRouter.get('/workers/:id/activity', requireWorkspace, async (req: AivaReques
   const limit = parseInt(String(req.query.limit ?? '50'), 10) || 50;
   const activity = await listActivity(req.workspaceId!, workerId, limit);
   res.json({ activity });
+});
+
+aivaRouter.get('/workers/:id/outbound', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const workerId = routeParam(req.params.id);
+  const worker = await getWorker(req.workspaceId!, workerId);
+  if (!worker) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  const limit = parseInt(String(req.query.limit ?? '20'), 10) || 20;
+  const rows = await listOutboundCommunications(req.workspaceId!, workerId, limit);
+  res.json({
+    outbound: rows.map((row) => ({
+      id: row.id,
+      channel: row.channel ?? 'email',
+      contactId: row.contactId ? maskIdentifier(row.channel ?? 'email', row.contactId) : '',
+      preview: (row.outputText ?? row.summary).slice(0, 280),
+      subject: row.actionType === 'message_sent' ? row.summary : undefined,
+      status: 'delivered',
+      createdAt: row.createdAt.toISOString(),
+    })),
+  });
 });
 
 aivaRouter.get('/workers/:id/audit', requireWorkspace, async (req: AivaRequest, res: Response) => {
@@ -919,7 +974,7 @@ aivaRouter.get('/workers/:id/conversations', requireWorkspace, async (req: AivaR
     [workerId, limit],
   );
   res.json({
-    conversations: result.rows.map((row) => ({
+    conversations: result.rows.map((row: Record<string, unknown>) => ({
       id: String(row.id),
       channel: String(row.channel),
       contactId: String(row.contact_id),
@@ -1463,6 +1518,43 @@ aivaRouter.get('/workers/:id/propreneur/status', requireWorkspace, requirePropre
   });
 });
 
+aivaRouter.get('/workspace/profile', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const contact = await getWorkspaceContact(req.workspaceId!);
+  if (!contact) {
+    res.json({ profile: null });
+    return;
+  }
+  res.json({ profile: serializeWorkspaceProfile(contact) });
+});
+
+aivaRouter.patch('/workspace/profile', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const workspaceId = req.workspaceId!;
+  let contact = await getWorkspaceContact(workspaceId);
+  const ownerEmail = typeof req.body?.ownerEmail === 'string' ? req.body.ownerEmail.trim() : '';
+  if (!contact && ownerEmail) {
+    contact = await upsertWorkspaceContact(
+      workspaceId,
+      ownerEmail,
+      typeof req.body?.ownerName === 'string' ? req.body.ownerName : '',
+    );
+  }
+  if (!contact) {
+    res.status(404).json({ error: 'Workspace profile not found' });
+    return;
+  }
+  const updated = await updateWorkspaceOwnerProfile(workspaceId, {
+    ownerName: typeof req.body?.ownerName === 'string' ? req.body.ownerName : undefined,
+    ownerPhone: typeof req.body?.ownerPhone === 'string' ? req.body.ownerPhone : undefined,
+    preferredName: typeof req.body?.preferredName === 'string' ? req.body.preferredName : undefined,
+    workFunction: typeof req.body?.workFunction === 'string' ? req.body.workFunction : undefined,
+    personalPreferences: typeof req.body?.personalPreferences === 'string'
+      ? req.body.personalPreferences
+      : undefined,
+    marketingOptOut: typeof req.body?.marketingOptOut === 'boolean' ? req.body.marketingOptOut : undefined,
+  });
+  res.json({ profile: updated ? serializeWorkspaceProfile(updated) : serializeWorkspaceProfile(contact) });
+});
+
 aivaRouter.post('/workspace/export', requireWorkspace, requireBusinessPlan, async (req: AivaRequest, res: Response) => {
   try {
     await streamWorkspaceExportZip(req.workspaceId!, res);
@@ -1640,6 +1732,20 @@ aivaRouter.delete('/workers/:id/knowledge/:entryId', requireWorkspace, requireBu
   if (!existing) {
     res.status(404).json({ error: 'Worker not found' });
     return;
+  }
+
+  try {
+    const { getBinding } = await import('../aiva/workspace-ops/store.js');
+    const { pushDocumentToDrive } = await import('../aiva/workspace-ops/sync-engine.js');
+    const binding = await getBinding(req.workspaceId!, workerId);
+    if (binding?.rootFolderId) {
+      await pushDocumentToDrive({ binding, documentId: entryId, trash: true });
+    }
+  } catch (err) {
+    console.warn(
+      '[workspace-ops] Drive trash on knowledge delete failed:',
+      err instanceof Error ? err.message : err,
+    );
   }
 
   const deleted = await pool.query(

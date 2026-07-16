@@ -1,0 +1,10 @@
+export * from './types.js';
+export * from './store.js';
+export * from './ingest.js';
+export * from './pipeline.js';
+export * from './verdict.js';
+export * from './quarantine.js';
+export * from './delivery.js';
+export * from './scout-bridge.js';
+export { getShieldAdapter, listShieldAdapters, shieldAdaptersHealth } from './adapters/registry.js';
+export { channelShieldRouter, emailShieldAliasRouter } from './aiva-channel-shield-api.js';

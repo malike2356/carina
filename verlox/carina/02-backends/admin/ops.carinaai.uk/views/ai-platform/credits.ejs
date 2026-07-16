@@ -1,0 +1,59 @@
+<% title = 'Credits' %>
+<div class="ops-page">
+<%- include('../partials/ai-platform-nav') %>
+
+<h1 class="text-2xl font-bold text-white mb-4">Credits and spend controls<% if (coreConnected) { %> <span class="text-xs font-normal text-[#22c55e]">live</span><% } %></h1>
+<% if (saved) { %><p class="text-sm text-[#22c55e] mb-4">Saved.</p><% } %>
+<% if (!coreConnected) { %>
+  <div class="mb-4 rounded border border-yellow-700 bg-yellow-900/30 px-4 py-2 text-sm text-yellow-300">
+    Core not connected. Spend data is from local ledger only. Pair Carina in Settings to see live metrics.
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <section class="ops-stat-cell">
+    <h2 class="text-sm font-semibold text-white mb-4">Current balance</h2>
+    <p class="text-3xl font-bold text-white mb-2">$<%= org.creditBalance.toFixed(2) %></p>
+    <dl class="text-sm space-y-2 text-gray-400">
+      <div class="flex justify-between"><dt>Spend this month</dt><dd class="text-white">$<%= spendMonth.toFixed(4) %></dd></div>
+      <div class="flex justify-between"><dt>Monthly limit</dt><dd class="text-white">$<%= org.monthlyLimit.toFixed(2) %></dd></div>
+      <div class="flex justify-between"><dt>30-day est. cost</dt><dd class="text-white">$<%= usage.estimatedCost.toFixed(4) %></dd></div>
+      <div class="flex justify-between"><dt>Auto reload</dt><dd class="text-white"><%= org.autoReloadEnabled ? 'On' : 'Off' %></dd></div>
+      <div class="flex justify-between"><dt>Prompt caching</dt><dd class="text-white"><%= org.promptCachingEnabled ? 'On' : 'Off' %></dd></div>
+      <div class="flex justify-between"><dt>Batch API</dt><dd class="text-white"><%= org.batchEnabled ? 'On' : 'Off' %></dd></div>
+    </dl>
+  </section>
+
+  <form method="post" action="/ai-platform/credits" class="ops-stat-cell space-y-3">
+    <h2 class="text-sm font-semibold text-white mb-2">Edit org settings</h2>
+    <div>
+      <label class="block text-xs text-gray-400 mb-1">Organization name</label>
+      <input name="name" value="<%= org.name %>" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Credit balance (USD)</label>
+        <input name="creditBalance" type="number" step="0.01" value="<%= org.creditBalance %>" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1">Monthly limit (USD)</label>
+        <input name="monthlyLimit" type="number" step="0.01" value="<%= org.monthlyLimit %>" class="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
+      </div>
+    </div>
+    <div class="space-y-2 text-sm">
+      <label class="flex items-center gap-2 text-gray-300">
+        <input type="checkbox" name="autoReloadEnabled" value="1" <%= org.autoReloadEnabled ? 'checked' : '' %>> Turn on auto-reload
+      </label>
+      <label class="flex items-center gap-2 text-gray-300">
+        <input type="checkbox" name="promptCachingEnabled" value="1" <%= org.promptCachingEnabled ? 'checked' : '' %>> Enable prompt caching (ledger flag)
+      </label>
+      <label class="flex items-center gap-2 text-gray-300">
+        <input type="checkbox" name="batchEnabled" value="1" <%= org.batchEnabled ? 'checked' : '' %>> Enable batch API
+      </label>
+    </div>
+    <button type="submit" class="w-full py-2 bg-[#22c55e] text-black rounded text-sm font-medium">Save settings</button>
+  </form>
+</div>
+
+<p class="text-xs text-gray-500 mt-6">Usage ledger updates when Workbench runs complete. Connect billing webhooks in a later phase for live credit deduction.</p>
+</div>

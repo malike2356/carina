@@ -8,6 +8,9 @@ import { registerChannel } from '../channels/worker-registry.js';
 import { sendWorkerOnboardingMessage } from './workspace-onboarding.js';
 import { activateTrialOnFirstChannel } from './aiva-subscription-store.js';
 import { checkChannelCredentialForTrial, recordChannelCredentialTrial, } from '../security/trial-abuse-guard.js';
+import { firstName, getWorkspaceContact } from '../email/workspace-contact.js';
+import { generateHireOutreachContent } from './hire-outreach.js';
+import { logActivity } from './worker-store.js';
 
 export interface ChannelBinding {
   channel: string;
@@ -103,6 +106,37 @@ export function pickFirstOnboardingTarget(channelRows: WorkerChannelRow[], chann
         return { row, contactId, credentials };
     }
     return null;
+}
+export function pickAllOnboardingTargets(
+    channelRows: WorkerChannelRow[],
+    channelBindings: ChannelBinding[] = [],
+    ownerEmail?: string | null,
+): OnboardingTarget[] {
+    const bindingByChannel = new Map(channelBindings
+        .filter((b) => b.channel !== 'web' && b.identifier.trim())
+        .map((b) => [b.channel, b.identifier.trim()]));
+    const targets: OnboardingTarget[] = [];
+    const seen = new Set<string>();
+
+    for (const row of channelRows) {
+        if (row.channel === 'web')
+            continue;
+        let contactId = resolveOnboardingContact(row.channel, bindingByChannel.get(row.channel));
+        if (!contactId && row.channel === 'email' && ownerEmail) {
+            contactId = ownerEmail.trim().toLowerCase();
+        }
+        if (!contactId)
+            continue;
+        const credentials = resolveOutboundCredentials(row.channel, row);
+        if (row.channel !== 'email' && Object.keys(credentials).length === 0)
+            continue;
+        const key = `${row.channel}:${contactId}`;
+        if (seen.has(key))
+            continue;
+        seen.add(key);
+        targets.push({ row, contactId, credentials });
+    }
+    return targets;
 }
 function resolveHireChannelIdentity(channel: string, worker: Worker, binding: string | undefined) {
     const value = binding?.trim() ?? '';
@@ -250,11 +284,43 @@ export async function provisionWorkerChannels(worker: Worker, workspaceId: strin
     }
     return rows;
 }
-export async function sendHireOnboardingMessages(worker: Worker, channelRows: WorkerChannelRow[], channelBindings: ChannelBinding[] = []): Promise<void> {
-    const target = pickFirstOnboardingTarget(channelRows, channelBindings);
-    if (!target)
+export async function sendHireOnboardingMessages(
+    worker: Worker,
+    channelRows: WorkerChannelRow[],
+    channelBindings: ChannelBinding[] = [],
+): Promise<void> {
+    const contact = await getWorkspaceContact(worker.workspaceId);
+    const ownerFirstName = contact
+        ? firstName(contact.preferredName || contact.ownerName, contact.ownerEmail)
+        : undefined;
+    const targets = pickAllOnboardingTargets(channelRows, channelBindings, contact?.ownerEmail);
+    if (targets.length === 0)
         return;
-    await sendWorkerOnboardingMessage(worker, target.row.channel, target.contactId, target.credentials);
+
+    const outreach = await generateHireOutreachContent(worker, contact);
+
+    for (const target of targets) {
+        const channel = target.row.channel;
+        const body = channel === 'whatsapp' || channel === 'sms'
+            ? outreach.whatsappBody
+            : outreach.emailBody;
+        await sendWorkerOnboardingMessage(
+            worker,
+            channel,
+            target.contactId,
+            target.credentials,
+            ownerFirstName,
+            { content: body, subject: outreach.subject },
+        );
+        void logActivity(worker.id, {
+            actionType: 'message_sent',
+            summary: `Welcome message delivered on ${channel}`,
+            outputText: body.slice(0, 1000),
+            channel,
+            contactId: target.contactId,
+            escalated: false,
+        }).catch(() => {});
+    }
 }
 export function parseChannelBindings(raw: unknown): ChannelBinding[] {
     if (!Array.isArray(raw))

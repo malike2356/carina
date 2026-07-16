@@ -14,14 +14,14 @@ describe('task-notification', () => {
 
   it('builds completed notification copy', () => {
     expect(buildTaskNotificationContent('Draft email', 'completed')).toEqual({
-      title: 'Carina finished',
+      title: 'Task completed',
       body: 'Draft email',
     });
   });
 
   it('builds failed notification copy', () => {
     expect(buildTaskNotificationContent('Research topic', 'failed').title).toBe(
-      'Carina task failed',
+      'Task failed',
     );
   });
 

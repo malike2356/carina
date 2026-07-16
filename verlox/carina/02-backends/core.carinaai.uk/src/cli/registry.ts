@@ -1,0 +1,774 @@
+import type { CliCommand, PackageInfo } from './types.js';
+import { loadLocalEnv } from './config/env.js';
+import { loadCarinaEnv } from '../config/load-env.js';
+import { buildGroupCliCommands, expandArgvForGroups, isGroupCommandName, runCommandGroup } from './groups/index.js';
+
+function cmd(
+  name: string,
+  summary: string,
+  handler: (args: string[]) => Promise<void>,
+  opts: { usage?: string; aliases?: string[]; loadEnv?: boolean } = {},
+): CliCommand {
+  return {
+    name,
+    summary,
+    usage: opts.usage ?? `carina ${name}`,
+    aliases: opts.aliases,
+    loadEnv: opts.loadEnv,
+    handler,
+  };
+}
+
+let cachedPackage: PackageInfo | null = null;
+
+export function readPackageInfo(): PackageInfo {
+  if (cachedPackage) return cachedPackage;
+  cachedPackage = { name: 'carina-agent', version: '0.1.0' };
+  return cachedPackage;
+}
+
+export function setPackageInfo(pkg: PackageInfo): void {
+  cachedPackage = pkg;
+}
+
+export function buildCommands(): CliCommand[] {
+  return [
+    cmd('chat', 'Interactive agent REPL (default)', async () => {
+      const { runChat } = await import('./commands/agent.js');
+      await runChat();
+    }, { usage: 'carina [chat]', aliases: [''] }),
+
+    cmd('tui', 'Chat terminal UI (Ink) or operator dashboard', async (args) => {
+      const { runTui } = await import('../tui/index.js');
+      const simple = args.includes('--simple');
+      const operator = args.includes('--operator');
+      const connectIdx = args.indexOf('--connect');
+      const tokenIdx = args.indexOf('--token');
+      const gatewayUrl = connectIdx >= 0 ? args[connectIdx + 1] : undefined;
+      const gatewayToken = tokenIdx >= 0 ? args[tokenIdx + 1] : undefined;
+      await runTui({
+        memoryReady: true,
+        simple,
+        operator,
+        gatewayUrl,
+        gatewayToken,
+      });
+    }, { loadEnv: true, usage: 'carina tui [--operator] [--simple] [--connect <url>] [--token <key>]' }),
+
+    cmd('setup', 'First-run setup wizard', async (args) => {
+      const { runCliSetup } = await import('./commands/setup.js');
+      await runCliSetup(args);
+    }, { usage: 'carina setup [--full] [--provider-only]' }),
+
+    cmd('onboard', 'Guided first-run (setup + doctor)', async (args) => {
+      const { runOnboardCommand } = await import('./commands/onboard-cli.js');
+      await runOnboardCommand(args);
+    }, { loadEnv: true, usage: 'carina onboard [--install-daemon] [--skip-setup] [--skip-gateway] [--skip-doctor] [--json]' }),
+
+    cmd('status', 'Operator overview (health, gateway, backups)', async (args) => {
+      const { runStatusCommand } = await import('./commands/status-cli.js');
+      await runStatusCommand(args);
+    }, { loadEnv: true, usage: 'carina status [--json] [--quick] [--control] [--no-update]' }),
+
+    cmd('reset', 'Clear local Carina state (keeps CLI installed)', async (args) => {
+      const { runResetCommand } = await import('./commands/reset-cli.js');
+      await runResetCommand(args);
+    }, { usage: 'carina reset [--scope soft|state|full] [--dry-run] [--force] [audit]' }),
+
+    cmd('uninstall', 'Remove CLI and optionally purge ~/.carina', async (args) => {
+      const { runUninstallCommand } = await import('./commands/uninstall-cli.js');
+      await runUninstallCommand(args);
+    }, { usage: 'carina uninstall [--purge-state] [--force]' }),
+
+    cmd('serve', 'Local web/API server on localhost:3000 (or: carina serve mcp)', async (args) => {
+      const { runServe } = await import('./commands/serve.js');
+      await runServe(args);
+    }, { loadEnv: true, usage: 'carina serve [mcp] [--stdio|--http] [options]' }),
+
+    cmd('mcp', 'MCP server mode (expose Carina tools to external clients)', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('mcp', args);
+    }, {
+      loadEnv: true,
+      usage: 'carina mcp <list|server|status|tools> [options]',
+    }),
+
+    cmd('web', 'Start web UI and gateway', async () => {
+      const { runWeb } = await import('./commands/agent.js');
+      await runWeb();
+    }, { loadEnv: true }),
+
+    cmd('config', 'Manage config.yaml and .env', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('config', args);
+    }, { usage: 'carina config <list|get|set|edit|check|validate|migrate>', aliases: ['cfg'] }),
+
+    cmd('skin', 'Switch terminal color theme', async (args) => {
+      const { runSkinCommand } = await import('./commands/skin-cli.js');
+      await runSkinCommand(args);
+    }, { usage: 'carina skin [list|set <name>|<name>|reset]' }),
+
+    cmd('model', 'List, set, or pick LLM provider/model', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('model', args);
+    }, { usage: 'carina model [menu|list|set|pick|test]', aliases: ['m'] }),
+
+    cmd('tools', 'List and toggle agent tools/toolsets', async (args) => {
+      const { runToolsCommand } = await import('./commands/tools-cli.js');
+      await runToolsCommand(args);
+    }, { usage: 'carina tools [menu|list|toolsets|platform|enable|disable]' }),
+
+    cmd('profile', 'Manage isolated agent profiles', async (args) => {
+      const { runProfileCommand } = await import('./commands/profile-cli.js');
+      await runProfileCommand(args);
+    }, { usage: 'carina profile <list|create|use|show|show-model|show-summary|clear-model|delete>' }),
+
+    cmd('agents', 'Named agent workspaces and channel routing', async (args) => {
+      const { runAgentsCommand } = await import('./commands/agents-cli.js');
+      await runAgentsCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina agents <list|add|use|bind|route|show|remove> [args]',
+    }),
+
+    cmd('personality', 'View or edit profile personality', async (args) => {
+      const { runPersonalityCommand } = await import('./commands/personality-cli.js');
+      await runPersonalityCommand(args);
+    }, { usage: 'carina personality <show|edit>' }),
+
+    cmd('gateway', 'Messaging gateway control', async (args) => {
+      const { runGatewayCommand } = await import('./commands/gateway.js');
+      await runGatewayCommand(args);
+    }, { usage: 'carina gateway <status|start|setup>' }),
+
+    cmd('channels', 'List and configure messaging channels', async (args) => {
+      const { runChannelsCommand } = await import('./commands/channels.js');
+      await runChannelsCommand(args[0] ?? 'list', ...args.slice(1));
+    }, { loadEnv: true, usage: 'carina channels <list|status|setup|dm|threads|directory> [args]' }),
+
+    cmd('whatsapp', 'WhatsApp pairing via Baileys', async (args) => {
+      const { runWhatsAppCommand } = await import('./commands/whatsapp.js');
+      await runWhatsAppCommand(args[0] ?? 'setup');
+    }, { loadEnv: true }),
+
+    cmd('pairing', 'Device pairing codes', async (args) => {
+      const { runPairingCommand } = await import('./commands/pairing-cli.js');
+      await runPairingCommand(args);
+    }, { usage: 'carina pairing <status|code|devices|nodes|approve|reject|revoke|rotate|qr> [id]' }),
+
+    cmd('pair', 'Pair a mobile device via token and QR', async (args) => {
+      const { runPairCommand } = await import('./commands/pair-cli.js');
+      await runPairCommand(args);
+    }, { usage: 'carina pair [list|revoke|token|accept] [args]' }),
+
+    cmd('host', 'Gateway host daemon (install, start, logs)', async (args) => {
+      const { runHostCommand } = await import('./commands/host-cli.js');
+      await runHostCommand(args);
+    }, { loadEnv: true, usage: 'carina host <status|install|start|stop|restart|uninstall|logs|supervise> [args]' }),
+
+    cmd('node-host', 'Remote node daemon (pair, install, start)', async (args) => {
+      const { runNodeHostCommand } = await import('./commands/node-host-cli.js');
+      await runNodeHostCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina node-host <status|pair|pair-wait|configure|start|stop|restart|install|uninstall|audit> [args]',
+    }),
+
+    cmd('nodes', 'Connected node devices (list, capabilities, raw commands)', async (args) => {
+      const { runNodesCommand } = await import('./commands/nodes-cli.js');
+      await runNodesCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina nodes <list|capabilities|command> [args]',
+    }),
+
+    cmd('cron', 'Scheduled job management', async (args) => {
+      const { runCronCommand } = await import('./commands/cron.js');
+      if ((args[0] ?? 'list') === 'workflow') {
+        await runCronCommand('workflow', undefined, args.slice(1));
+      } else {
+        await runCronCommand(args[0] ?? 'list', args[1], args.slice(2));
+      }
+    }, { loadEnv: true }),
+
+    cmd('tasks', 'Background processes, cron, TaskFlows, delivery queue', async (args) => {
+      const { runTasksCommand } = await import('./commands/tasks-cli.js');
+      await runTasksCommand(args);
+    }, { loadEnv: true, usage: 'carina tasks [background|cron|taskflows|delivery] [--json]' }),
+
+    cmd('taskflows', 'Durable automation workflows', async (args) => {
+      const { runTaskFlowsCommand } = await import('./commands/taskflows-cli.js');
+      await runTaskFlowsCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('acp', 'ACP bridge client and session management', async (args) => {
+      const { runAcpCommand } = await import('./commands/acp-cli.js');
+      await runAcpCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('doctor', 'Health check (Node, DB, Redis, gateway)', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('doctor', args);
+    }, { loadEnv: true, usage: 'carina doctor [--json] [--fix|--repair] [--quiet]' }),
+
+    cmd('locale', 'Locale catalog and language helpers', async (args) => {
+      const { runLocaleCli } = await import('./commands/locale-cli.js');
+      await runLocaleCli(args);
+    }, { loadEnv: true, usage: 'carina locale [show|list|set <code>|t <key> [locale]]' }),
+
+    cmd('logs', 'View agent log files', async (args) => {
+      const { runLogsCommand } = await import('./commands/logs.js');
+      const action = args[0] ?? 'tail';
+      const logName = args[1] && !args[1].startsWith('--') ? args[1] : undefined;
+      await runLogsCommand(action, logName, args);
+    }, { usage: 'carina logs <list|tail> [file] [--lines N] [--json]' }),
+
+    cmd('skills', 'Curated skills from skill curator', async (args) => {
+      const { runSkillsCommand } = await import('./commands/skills-cli.js');
+      await runSkillsCommand(args[0] ?? 'list', args.slice(1));
+    }, { loadEnv: true, usage: 'carina skills <list|search|install|info|sources|update|index|refresh|audit> [args]' }),
+
+    cmd('format-registry', 'Community skill format registry', async (args) => {
+      const { runFormatRegistryCommand } = await import('./commands/format-registry-cli.js');
+      await runFormatRegistryCommand(args[0] ?? 'list', args.slice(1));
+    }, { loadEnv: true, usage: 'carina format-registry <list|search|info|update|contribute|submit>' }),
+
+    cmd('curator', 'Skill curator operator (report, prune, archive)', async (args) => {
+      const { runCuratorCommand } = await import('./commands/curator-cli.js');
+      await runCuratorCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina curator <report|list|duplicates|prune|archive|restore|run> [--profile NAME] [--force]',
+    }),
+
+    cmd('learning', 'Self-improvement loop operator (status, recap, rollback)', async (args) => {
+      const { runLearningCommand } = await import('./commands/learning-cli.js');
+      await runLearningCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina learning <status|recap|events|shared|share|sync|pending|improvements|show|versions|rollback> [--json] [--days=N]',
+    }),
+
+    cmd('capabilities', 'Tools, skills, and channel discovery audit', async (args) => {
+      const { runCapabilitiesCommand } = await import('./commands/capabilities-cli.js');
+      await runCapabilitiesCommand(args[0] ?? 'audit', ...args.slice(1));
+    }, {
+      loadEnv: true,
+      usage: 'carina capabilities <audit|status|tools|channels|gaps> [--json]',
+    }),
+
+    cmd('benchmark', 'Platform capability benchmarks vs published references', async (args) => {
+      const { runBenchmarkCommand } = await import('./commands/benchmark-cli.js');
+      await runBenchmarkCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina benchmark <run|regression|list|runs|report|public|compare> [--json] [--out dir]',
+    }),
+
+    cmd('workshop', 'Review queue for captured skills (opt-in)', async (args) => {
+      const { runWorkshopCommand } = await import('./commands/workshop-cli.js');
+      await runWorkshopCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina workshop <status|list|show|approve|reject|purge> [id]',
+    }),
+
+    cmd('kanban', 'Kanban operator queue (claim, board, status)', async (args) => {
+      const { runKanbanCommand } = await import('./commands/kanban-cli.js');
+      await runKanbanCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina kanban <status|board|queue|add|claim|release|complete> [--profile NAME]',
+    }),
+
+    cmd('packs', 'Skill pack install/remove', async (args) => {
+      const { runPacksCommand } = await import('./commands/packs-cli.js');
+      await runPacksCommand(args);
+    }, { usage: 'carina packs <list|status|enable|disable|install|remove> [--bypass-eval]' }),
+
+    cmd('pack', 'Domain pack hub (search, install, publish)', async (args) => {
+      const { runPackCommand } = await import('./commands/pack/index.js');
+      await runPackCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina pack <search|list|install|publish> [args]',
+    }),
+
+    cmd('rfc', 'RFC workflow (propose kernel API changes)', async (args) => {
+      const { runRfcCommand } = await import('./commands/rfc/index.js');
+      await runRfcCommand(args);
+    }, { usage: 'carina rfc <propose|list> [args]' }),
+
+    cmd('extensions', 'Extension bundle install/enable (operator, opt-in)', async (args) => {
+      const { runExtensionsCommand } = await import('./commands/extensions-cli.js');
+      await runExtensionsCommand(args);
+    }, {
+      usage: 'carina extensions <list|install|enable|disable|remove|rollback|validate|status> [args]',
+    }),
+
+    cmd('eval', 'Offline skill pack evaluation harness', async (args) => {
+      const { runEvalCommand } = await import('./commands/eval-cli.js');
+      await runEvalCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina eval <run|compare|generate|gate|authoring|reports|report> [args]',
+    }),
+
+    cmd('install-pack', 'Install skill pack (alias)', async (args) => {
+      const { runPacksCommand } = await import('./commands/packs-cli.js');
+      await runPacksCommand(['install', args[0] ?? '']);
+    }),
+
+    cmd('list-packs', 'List installed packs (alias)', async () => {
+      const { runPacksCommand } = await import('./commands/packs-cli.js');
+      await runPacksCommand(['list']);
+    }),
+
+    cmd('commitments', 'Inferred follow-up commitments', async (args) => {
+      const { runCommitmentsCommand } = await import('./commands/commitments-cli.js');
+      await runCommitmentsCommand(args);
+    }, { usage: 'carina commitments [list|dismiss] [--all] [--agent <id>] [--status <status>] [--json]' }),
+
+    cmd('memory', 'Episodic and persistent memory', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('memory', args);
+    }, { loadEnv: true, usage: 'carina memory <list|search|facts|dreams|promote|reindex|backends|use|status|test|clear>', aliases: ['mem'] }),
+
+    cmd('sessions', 'Session index and local sessions', async (args) => {
+      const { runSessionsCommand } = await import('./commands/sessions-cli.js');
+      await runSessionsCommand(args);
+    }, { usage: 'carina sessions <list|show|delete> [id] [--json]' }),
+
+    cmd('history', 'Show chat message history for a session', async (args) => {
+      const { runHistoryCommand } = await import('./commands/history-cli.js');
+      await runHistoryCommand(args);
+    }, { loadEnv: true, usage: 'carina history [session-id] [--limit N]', aliases: ['hist'] }),
+
+    cmd('checkpoint', 'Filesystem snapshots', async (args) => {
+      const { runCheckpointCommand } = await import('./commands/checkpoint-cli.js');
+      await runCheckpointCommand(args);
+    }),
+
+    cmd('rag', 'Vector knowledge search', async (args) => {
+      const { runRagCommand } = await import('./commands/rag-cli.js');
+      await runRagCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('backup', 'Backup and restore ~/.carina', async (args) => {
+      const { runBackupCommand } = await import('./commands/backup-cli.js');
+      await runBackupCommand(args);
+    }, { usage: 'carina backup <list|create|archive|plan|restore|verify> [label] [--force] [--dry-run] [--json]' }),
+
+    cmd('ops', 'Sandbox, DNS, proxy, backup, secrets reload, audit', async (args) => {
+      const { runOpsCommand } = await import('./commands/ops-cli.js');
+      await runOpsCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina ops <sandbox|dns|proxy|backup|secrets|audit> ...',
+    }),
+
+    cmd('providers', 'LLM provider catalog and management', async (args) => {
+      const { runProvidersCommand } = await import('./commands/providers-cli.js');
+      await runProvidersCommand(args);
+    }, { loadEnv: true, usage: 'carina providers <list|info|copilot|preset|health|status|reset|test|disable|enable|scan> [args]' }),
+
+    cmd('playbook', 'Hardware-aware model discovery and serve helper', async (args) => {
+      const { runCookbookCommand, runCookbookDefault } = await import('./commands/cookbook-cli.js');
+      if (args.length === 0) {
+        await runCookbookDefault();
+        return;
+      }
+      await runCookbookCommand(args);
+    }, { usage: 'carina playbook [list|search|inspect|serve] [args]' }),
+
+    cmd('cookbook', 'Deprecated alias for playbook', async (args) => {
+      console.warn('Note: carina cookbook is now carina playbook. Use: carina playbook');
+      const { runCookbookCommand, runCookbookDefault } = await import('./commands/cookbook-cli.js');
+      if (args.length === 0) {
+        await runCookbookDefault();
+        return;
+      }
+      await runCookbookCommand(args);
+    }, { usage: 'carina cookbook (deprecated; use playbook)' }),
+
+    cmd('research', 'Multi-step deep research with cited report', async (args) => {
+      const { runResearchCommand } = await import('./commands/research-cli.js');
+      await runResearchCommand(args);
+    }, { loadEnv: true, usage: 'carina research "<query>" | list | show <id> | edit <id> | export <id> [--rounds N] [--sources N] [--save file]' }),
+
+    cmd('blog', 'Incident blog management', async (args) => {
+      const { runBlogCommand } = await import('./commands/blog.js');
+      await runBlogCommand(args);
+    }, { loadEnv: true, usage: 'carina blog <list|show|create|edit|delete|approve|publish|reject|review|subscribers|newsletter|generate-page|research-run|research-status|research-log|search-source>' }),
+
+    cmd('compare', 'Send one prompt to multiple LLM providers in parallel', async (args) => {
+      const { runCompareCommand } = await import('./commands/compare-cli.js');
+      await runCompareCommand(args);
+    }, { loadEnv: true, usage: 'carina compare "<prompt>" [--providers a,b] [--blind] [--save file.md] [--max-tokens N] [--format terminal|markdown]' }),
+
+    cmd('trajectory', 'Inspect and export agent tool trajectories', async (args) => {
+      const { runTrajectoryCommand } = await import('./commands/trajectory-cli.js');
+      await runTrajectoryCommand(args);
+    }, { usage: 'carina trajectory <list|show|start|stop|export> [sessionId|bundleId]' }),
+
+    cmd('queue', 'Inspect gateway command queue lanes', async (args) => {
+      const { runQueueCommand } = await import('./commands/queue-cli.js');
+      await runQueueCommand(args);
+    }, { usage: 'carina queue <status|config|drain> [--json]' }),
+
+    cmd('standing-orders', 'Manage persistent agent directives', async (args) => {
+      const { runStandingOrdersCommand } = await import('./commands/standing-orders-cli.js');
+      await runStandingOrdersCommand(args);
+    }, { loadEnv: true, usage: 'carina standing-orders <add|list|remove|toggle|cleanup> [--agent id] [--json]' }),
+
+    cmd('about', 'Runtime version and MIT license information', async () => {
+      const { runAboutCommand } = await import('./commands/about-cli.js');
+      await runAboutCommand();
+    }, { usage: 'carina about' }),
+
+    cmd('scout', 'Labyrinth Scout integration', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('scout', args);
+    }, { loadEnv: true, aliases: ['sec'] }),
+
+    cmd('obsidian', 'Obsidian vault for investigation knowledge base', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('obsidian', args);
+    }, {
+      loadEnv: true,
+      usage: 'carina obsidian <init|dashboard|case|evidence|target|log|search|vault> ...',
+    }),
+
+    cmd('security', 'Security posture audit', async (args) => {
+      const { runSecurityCommand } = await import('./commands/security-cli.js');
+      await runSecurityCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('forensics', 'Incident forensics pipeline', async (args) => {
+      const { runForensicsCommand } = await import('./commands/forensics-cli.js');
+      await runForensicsCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina forensics <list|snapshot|timeline|report|export|verify|playbook|run|open> ...',
+    }),
+
+    cmd('recon', 'Reconnaissance and OSINT cyber tools (Phase 1)', async (args) => {
+      const { runReconCommand } = await import('./commands/recon-cli.js');
+      await runReconCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina recon <scan|subdomains|osint|framework|spiderfoot|username|graph|dmitry|metadata|wordlist> ... [--json]',
+    }),
+
+    cmd('vuln', 'Vulnerability scanning cyber tools (Phase 2)', async (args) => {
+      const { runVulnCommand } = await import('./commands/vuln-cli.js');
+      await runVulnCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina vuln <scan|web|sqli|wordpress|fingerprint|layer2|assess> ... [--json]',
+    }),
+
+    cmd('exploit', 'Exploitation and post-exploitation tools (Phase 3)', async (args) => {
+      const { runExploitCommand } = await import('./commands/exploit-cli.js');
+      await runExploitCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina exploit <run|suggest|post|impacket|winrm|cme|mimikatz> ... [--json]',
+    }),
+
+    cmd('brute', 'Network credential brute forcing (hydra)', async (args) => {
+      const { runBruteCommand } = await import('./commands/brute-crack-cli.js');
+      await runBruteCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina brute service <target> --protocol <proto> --port N ... [--json]',
+    }),
+
+    cmd('crack', 'Offline hash cracking (john, hashcat)', async (args) => {
+      const { runCrackCommand } = await import('./commands/brute-crack-cli.js');
+      await runCrackCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina crack <hash|gpu> <file> ... [--json]',
+    }),
+
+    cmd('web', 'Web application testing tools (Phase 4)', async (args) => {
+      const { runWebCommand } = await import('./commands/web-cli.js');
+      await runWebCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina web <scan|proxy|dirs|vhost|params|gobuster|ssti> ... [--json]',
+    }),
+
+    cmd('wireless', 'Wireless and network MITM tools (Phase 5)', async (args) => {
+      const { runWirelessCommand } = await import('./commands/wireless-cli.js');
+      await runWirelessCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina wireless <audit|discover|auto|mitm> ... [--json]',
+    }),
+
+    cmd('forensic', 'Forensics and imaging cyber tools (Phase 6)', async (args) => {
+      const { runForensicCommand } = await import('./commands/forensic-cli.js');
+      await runForensicCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina forensic <autopsy|memory|image|ts|firmware|reverse|extract|yara|carve|timeline|pcap|registry|hash|debug> ... [--json]',
+    }),
+
+    cmd('traffic', 'Sniffing and traffic analysis tools (Phase 7)', async (args) => {
+      const { runTrafficCommand } = await import('./commands/traffic-cli.js');
+      await runTrafficCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina traffic <pcap|capture|creds|poison|craft> ... [--json]',
+    }),
+
+    cmd('privacy', 'Privacy, OPSEC, and anti-forensics tools (Phase 8)', async (args) => {
+      const { runPrivacyCommand } = await import('./commands/privacy-cli.js');
+      await runPrivacyCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina privacy <tor|proxy|strip|clean|disk> ... [--json]',
+    }),
+
+    cmd('reverse', 'Reverse engineering tools (Phase 9)', async (args) => {
+      const { runReverseCommand } = await import('./commands/reverse-cli.js');
+      await runReverseCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina reverse <analyze|open> ... [--json]',
+    }),
+
+    cmd('blue', 'Blue team and defense tools (Phase 10)', async (args) => {
+      const { runBlueCommand } = await import('./commands/blue-cli.js');
+      await runBlueCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina blue <monitor|ad-map> ... [--json]',
+    }),
+
+    cmd('report', 'Reporting and TIP tools (Phase 11)', async (args) => {
+      const { runReportCommand } = await import('./commands/report-cli.js');
+      await runReportCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina report <timeline|search|status|stix|transform> ... [--json]',
+    }),
+
+    cmd('compliance', 'SOC2, ISO27001, and GDPR compliance automation', async (args) => {
+      const { runComplianceCommand } = await import('./commands/compliance-cli.js');
+      await runComplianceCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina compliance <status|collect|report|gaps|dsar|breach> [--framework soc2|iso|gdpr|all] [--refresh] [--json]',
+    }),
+
+    cmd('governance', 'Enterprise governance, RBAC, audit trail, and trust framework', async (args) => {
+      const { runGovernanceCommand } = await import('./commands/governance-cli.js');
+      await runGovernanceCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina governance <status|audit|policies|trust|rbac|evaluate|sso> [--json]',
+    }),
+
+    cmd('plan', 'Fail-safe read-only tool exploration mode', async (args) => {
+      const { runPlanCommand } = await import('./commands/plan-cli.js');
+      await runPlanCommand(args);
+    }, { usage: 'carina plan <on|off|status> [--session ID] [--json]' }),
+
+    cmd('approvals', 'Dangerous tool approval rules and grants', async (args) => {
+      const { runApprovalsCommand } = await import('./commands/approvals-cli.js');
+      await runApprovalsCommand(args);
+    }, {
+      loadEnv: true,
+      usage: 'carina approvals <list|allow|block|grant|revoke|audit|risk> ...',
+    }),
+
+    cmd('tenant', 'Hosted tenant status', async (args) => {
+      const { runTenantCommand } = await import('./commands/tenant-cli.js');
+      await runTenantCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('billing', 'Stripe billing status', async (args) => {
+      const { runBillingCommand } = await import('./commands/billing-cli.js');
+      await runBillingCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('plugins', 'Plugin bundles (alias for extensions)', async (args) => {
+      const { runPluginsCommand } = await import('./commands/plugins-cli.js');
+      await runPluginsCommand(args);
+    }, {
+      usage: 'carina plugins <list|install|enable|disable|remove|rollback|validate|status> [args]',
+    }),
+
+    cmd('hooks', 'Plugin and custom hooks', async (args) => {
+      const { runHooksCommand } = await import('./commands/hooks-cli.js');
+      await runHooksCommand(args);
+    }),
+
+    cmd('migrate', 'Import from Claude or Carina bundles', async (args) => {
+      const { runMigrateCommand } = await import('./commands/migrate-cli.js');
+      await runMigrateCommand(args);
+    }, { usage: 'carina migrate <status|claude|export|import> [--from PATH] [--dry-run] [--force]' }),
+
+    cmd('update', 'Check for package updates', async (args) => {
+      const { runUpdateCommand } = await import('./commands/update-cli.js');
+      await runUpdateCommand(args);
+    }),
+
+    cmd('ingest', 'Ingest RAG corpus for a pack', async (args) => {
+      const { runIngestCommand } = await import('./commands/ingest-cli.js');
+      await runIngestCommand(args);
+    }),
+
+    cmd('hub', 'Carina Hub marketplace (catalog, install, publish)', async (args) => {
+      const { runCommandGroup } = await import('./groups/index.js');
+      await runCommandGroup('hub', args);
+    }, {
+      loadEnv: true,
+      usage: 'carina hub <status|featured|search|stats|auth|catalog|install|publish> [args]',
+    }),
+
+    cmd('certify', 'Built on Carina certification checks', async (args) => {
+      const { runCertifyCommand } = await import('./commands/certify-cli.js');
+      await runCertifyCommand(args);
+    }, { usage: 'carina certify [built-on|powered-by] [project-path] [--json]' }),
+
+    cmd('enterprise', 'Enterprise support model (MIT kernel + paid layers)', async (args) => {
+      const { runEnterpriseCommand } = await import('./commands/enterprise-cli.js');
+      await runEnterpriseCommand(args);
+    }, { usage: 'carina enterprise <status|tiers|offer|security> [--json]' }),
+
+    cmd('contacts', 'Contact directory', async (args) => {
+      const { runContactsCommand } = await import('./commands/contacts-cli.js');
+      await runContactsCommand(args);
+    }),
+
+    cmd('secrets', 'Manage .env secrets (redacted list)', async (args) => {
+      const { runSecretsCommand } = await import('./commands/secrets-cli.js');
+      await runSecretsCommand(args);
+    }),
+
+    cmd('credentials', 'API key pools and OAuth device login', async (args) => {
+      const { runCredentialsCommand } = await import('./commands/credentials-cli.js');
+      await runCredentialsCommand(args);
+    }, { loadEnv: true, usage: 'carina credentials <status|profiles|configure|add|remove|retire|rotate|test|oauth> [--profile NAME]' }),
+
+    cmd('env', 'Show non-secret environment', async (args) => {
+      const { runEnvCommand } = await import('./commands/env-cli.js');
+      await runEnvCommand(args);
+    }, { loadEnv: true }),
+
+    cmd('completion', 'Shell completion scripts', async (args) => {
+      const { runCompletionCommand } = await import('./commands/completion/index.js');
+      await runCompletionCommand(args);
+    }, { usage: 'carina completion <bash|zsh|fish|powershell|dynamic> [--install]' }),
+
+    cmd('ide', 'IDE extension install/build', async (args) => {
+      const action = args[0] ?? 'install';
+      const target = (args[1] ?? 'all') as 'vscode' | 'cursor' | 'zed' | 'jetbrains' | 'all';
+      const { buildIdeExtensions, installIdeExtension } = await import('./commands/ide.js');
+      if (action === 'build') await buildIdeExtensions();
+      else if (action === 'install') await installIdeExtension(target);
+      else {
+        console.error('Usage: carina ide <install|build> [target]');
+        process.exit(1);
+      }
+    }),
+
+    cmd('help', 'Show help', async (args) => {
+      const { buildHelpText, buildCommandHelp } = await import('./help.js');
+      const { printGroupHelp } = await import('./group-command.js');
+      const { resolveCommandGroup, isGroupCommandName } = await import('./groups/index.js');
+      const pkg = readPackageInfo();
+      if (args[0]) {
+        const expanded = expandArgvForGroups(args);
+        const groupName = expanded[0] ?? args[0];
+        if (groupName && isGroupCommandName(groupName)) {
+          const group = resolveCommandGroup(groupName);
+          if (group) {
+            printGroupHelp(group, pkg);
+            return;
+          }
+        }
+        const target = resolveCommand(groupName);
+        if (!target) {
+          console.error(`Unknown command: ${args[0]}`);
+          process.exit(1);
+        }
+        console.log(buildCommandHelp(target, pkg));
+        return;
+      }
+      console.log(buildHelpText(buildCommands(), pkg));
+    }, { aliases: ['-h', '--help'] }),
+
+    cmd('hosted', 'Operator recovery for hosted-auth accounts', async (args) => {
+      const { runHostedCommand } = await import('./commands/hosted-cli.js');
+      await runHostedCommand(args);
+    }, { loadEnv: true, usage: 'carina hosted <reset-password|bootstrap> [options]' }),
+
+    cmd('version', 'Print version', async () => {
+      const { versionWithLicenseLine } = await import('./commands/about-cli.js');
+      console.log(versionWithLicenseLine());
+    }, { aliases: ['-v', '--version'] }),
+
+    ...buildGroupCliCommands(),
+  ];
+}
+
+export function buildCommandList(): CliCommand[] {
+  return buildCommands();
+}
+
+export function resolveCommand(name: string): CliCommand | undefined {
+  if (!name) return buildCommands().find((c) => c.name === 'chat');
+  return buildCommands().find(
+    (c) => c.name === name || c.aliases?.includes(name),
+  );
+}
+
+export async function runCli(argv: string[], pkg?: PackageInfo): Promise<void> {
+  if (pkg) setPackageInfo(pkg);
+
+  // Load .env before provider plugins so API keys (e.g. GITHUB_TOKEN) are available.
+  loadCarinaEnv();
+
+  // Load provider plugins before any command handler runs so plugin factories
+  // are registered before the LLMRouter singleton is first imported.
+  const { loadProviderPlugins } = await import('../plugins/loader.js');
+  const pluginNames = await loadProviderPlugins();
+  if (pluginNames.length > 0) {
+    const { llm } = await import('../brain/llm.js');
+    llm.refreshPlugins();
+  }
+
+  const expanded = expandArgvForGroups(argv);
+  const commandName = expanded[0] ?? '';
+  const rest = expanded.slice(1);
+
+  if (commandName && isGroupCommandName(commandName)) {
+    const { resolveCommandGroup } = await import('./groups/index.js');
+    if (resolveCommandGroup(commandName)?.loadEnv) loadLocalEnv();
+    await runCommandGroup(commandName, rest);
+    return;
+  }
+
+  if (!commandName) {
+    loadLocalEnv();
+    const chat = resolveCommand('chat');
+    await chat?.handler?.([]);
+    return;
+  }
+
+  const command = resolveCommand(commandName);
+  if (!command?.handler) {
+    loadLocalEnv();
+    const chat = resolveCommand('chat');
+    await chat?.handler?.(argv);
+    return;
+  }
+
+  if (command.loadEnv) loadLocalEnv();
+  await command.handler(rest);
+}

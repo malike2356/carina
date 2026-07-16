@@ -1,0 +1,62 @@
+<% title = 'Tool Gaps' %>
+<div class="ops-page">
+<%- include('_nav') %>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Tool Gaps</div>
+    <div class="ops-page-sub">Missing tool proposals detected during agent runs.</div>
+  </div>
+</div>
+
+<% if (error) { %>
+  <div class="ops-card" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;">
+    <div style="color:#f87171;font-size:13px;"><%= error %></div>
+  </div>
+<% } %>
+
+<% if (!autoSynthesisEnabled) { %>
+  <div class="ops-card" style="margin-bottom:16px;border-color:rgba(245,158,11,0.3);">
+    <div style="font-size:13px;color:var(--muted);">
+      Gap proposals are recorded but auto-synthesis is disabled. Enable
+      <code>CARINA_AUTO_SYNTHESIS=true</code> to allow automatic proposal insertion.
+    </div>
+  </div>
+<% } %>
+
+<div class="ops-card">
+  <% if (!proposals.length) { %>
+    <div class="ops-empty">No tool gap proposals.</div>
+  <% } else { %>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr><th>Missing Tool</th><th>Task Context</th><th>Proposed At</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% proposals.forEach(function(p) {
+            var st = p.status || 'pending';
+            var stClass = st === 'pending' ? 'ops-badge-amber' : st === 'synthesized' ? 'ops-badge-green' : 'ops-badge-gray';
+          %>
+            <tr>
+              <td style="font-weight:600;"><%= p.missingTool || p.missing_tool %></td>
+              <td style="font-size:12px;color:var(--muted);"><%= p.taskContext || p.task_context || '-' %></td>
+              <td style="font-size:12px;"><%= p.proposedAt || p.proposed_at ? new Date(p.proposedAt || p.proposed_at).toLocaleString() : '-' %></td>
+              <td><span class="ops-badge <%= stClass %>"><%= st %></span></td>
+              <td>
+                <% if (st === 'pending') { %>
+                  <form method="post" action="/mutation/gaps/<%= p.id %>/dismiss" style="display:inline;">
+                    <button type="submit" class="ops-btn-sm">Dismiss</button>
+                  </form>
+                <% } else { %>
+                  -
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+</div>

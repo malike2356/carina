@@ -2,15 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { PlanGateSection } from '@/components/billing/PlanGateSection';
-import {
-  MobileEmptyState,
-  MobileList,
-  MobileListRow,
-  MobileScreen,
-  MobileSkeleton,
-} from '@/components/aiva/mobile';
 import { timeAgo } from '@/lib/aiva-utils';
 
 const PLAN_ORDER: Record<string, number> = { trial: 0, starter: 1, team: 2, business: 3 };
@@ -50,7 +42,7 @@ export default function AivaEscalationsPage() {
           setPlanTier(tier);
         }
 
-        if ((PLAN_ORDER[tier] ?? 0) < (PLAN_ORDER.team ?? 0)) {
+        if ((PLAN_ORDER[tier] ?? 0) < (PLAN_ORDER['team'] ?? 0)) {
           setRows([]);
           return;
         }
@@ -71,51 +63,49 @@ export default function AivaEscalationsPage() {
   }, []);
 
   return (
-    <MobileScreen
-      title="Escalations"
-      subtitle="Open handoffs waiting for human review. Escalation response is plan-based and capacity-managed."
-      backHref="/aiva/approvals"
-      backLabel="Inbox"
-      hideTitleOnMobile
-    >
+    <div className="mx-auto max-w-4xl space-y-6 p-6">
+      <div>
+        <h1 className="text-xl font-semibold text-text-primary">VA escalation queue</h1>
+        <p className="mt-1 text-sm text-text-secondary">
+          Open escalations waiting for human review. VERLOX VAs respond on Team plans and above.
+        </p>
+      </div>
+
       <PlanGateSection planRequired="team" currentPlan={planTier}>
         {loading ? (
-          <MobileSkeleton variant="list" rows={4} />
+          <p className="text-sm text-text-muted">Loading queue...</p>
         ) : rows.length === 0 ? (
-          <MobileEmptyState
-            icon={<AlertTriangle className="h-10 w-10" />}
-            title="No open escalations"
-            description="When an Aiva flags work for human review, it appears here with the reason and status."
-            action={
-              <Link
-                href="/aiva/approvals"
-                className="btn-primary flex min-h-11 w-full items-center justify-center rounded-lg text-sm font-medium"
-              >
-                Back to inbox
-              </Link>
-            }
-          />
+          <p className="rounded-lg border border-border bg-elevated p-6 text-sm text-text-muted">
+            No open escalations. When an Aiva hands off to a human, it appears here.
+          </p>
         ) : (
-          <MobileList>
+          <div className="space-y-3">
             {rows.map((row) => (
-              <MobileListRow
+              <article
                 key={row.id}
-                href={`/aiva/workers/${row.workerId}`}
-                title={row.workerName}
-                subtitle={
-                  <span className="flex flex-col gap-1">
-                    <span className="capitalize">{row.channel} · {timeAgo(row.createdAt)}</span>
-                    <span className="line-clamp-3 text-text-secondary">{row.originalInput}</span>
-                    {row.holdingMessage ? (
-                      <span>Holding: {row.holdingMessage}</span>
-                    ) : null}
-                  </span>
-                }
-              />
+                className="rounded-lg border border-border bg-elevated p-4"
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Link
+                      href={`/aiva/workers/${row.workerId}`}
+                      className="font-medium text-accent hover:underline"
+                    >
+                      {row.workerName}
+                    </Link>
+                    <span className="text-text-muted capitalize">{row.channel}</span>
+                  </div>
+                  <span className="text-xs text-text-muted">{timeAgo(row.createdAt)}</span>
+                </div>
+                <p className="text-sm text-text-primary">{row.originalInput}</p>
+                {row.holdingMessage ? (
+                  <p className="mt-2 text-xs text-text-muted">Holding: {row.holdingMessage}</p>
+                ) : null}
+              </article>
             ))}
-          </MobileList>
+          </div>
         )}
       </PlanGateSection>
-    </MobileScreen>
+    </div>
   );
 }

@@ -1,0 +1,8 @@
+<% var ap = typeof activePath !== 'undefined' ? activePath : ''; %>
+<nav class="ops-subnav" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+  <a href="/mutation" class="ops-badge<%= ap === '/mutation' ? ' ops-badge-cyan' : ' ops-badge-gray' %>">Overview</a>
+  <a href="/mutation/tools" class="ops-badge<%= ap.startsWith('/mutation/tools') ? ' ops-badge-cyan' : ' ops-badge-gray' %>">Tools</a>
+  <a href="/mutation/prompts" class="ops-badge<%= ap.startsWith('/mutation/prompts') ? ' ops-badge-cyan' : ' ops-badge-gray' %>">Prompts</a>
+  <a href="/mutation/gaps" class="ops-badge<%= ap.startsWith('/mutation/gaps') ? ' ops-badge-cyan' : ' ops-badge-gray' %>">Gaps</a>
+  <a href="/mutation/extensions" class="ops-badge<%= ap.startsWith('/mutation/extensions') ? ' ops-badge-cyan' : ' ops-badge-gray' %>">Extensions</a>
+</nav>

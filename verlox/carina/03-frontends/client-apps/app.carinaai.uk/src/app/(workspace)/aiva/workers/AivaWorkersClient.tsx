@@ -1,57 +1,19 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bot, Plus, Search } from 'lucide-react';
-import { AivaAvatar } from '@/components/aiva/AivaAvatar';
-import { AivaCard } from '@/components/aiva/AivaCard';
-import { ChannelIcons } from '@/components/aiva/ChannelIcon';
+import { AivaHireDrawer } from '@/components/aiva/AivaHireDrawer';
+import { AivaWorkerRow } from '@/components/aiva/AivaWorkerRow';
 import { DowngradeConflictScreen } from '@/components/aiva/DowngradeConflictScreen';
-import { StatusChip } from '@/components/aiva/StatusChip';
 import {
   MobileEmptyState,
-  MobileList,
-  MobileListRow,
   MobileScreen,
   MobileSkeleton,
 } from '@/components/aiva/mobile';
 import { useToast } from '@/components/ui/Toast';
-import { useRelativeTimeLabel } from '@/hooks/useRelativeTimeLabel';
 import type { AivaWorker } from '@/lib/aiva-types';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
-
-function WorkerListRow({
-  worker,
-}: {
-  worker: AivaWorker;
-}) {
-  const lastActiveLabel = useRelativeTimeLabel(worker.lastActiveAt ?? null);
-  const desc =
-    worker.roleDescription.length > 72
-      ? `${worker.roleDescription.slice(0, 72)}...`
-      : worker.roleDescription;
-
-  return (
-    <MobileListRow
-      href={`/aiva/workers/${worker.id}`}
-      leading={<AivaAvatar name={worker.name} />}
-      title={worker.name}
-      subtitle={
-        <span className="flex flex-col gap-1">
-          <span>{desc}</span>
-          <span className="flex items-center gap-2">
-            <ChannelIcons channels={worker.channels} />
-            <span>
-              {worker.messagesToday ?? 0} msgs today · {lastActiveLabel}
-            </span>
-          </span>
-        </span>
-      }
-      trailing={<StatusChip status={worker.status} trialDaysLeft={worker.trialDaysLeft} />}
-    />
-  );
-}
 
 export function AivaWorkersClient() {
   const router = useRouter();
@@ -61,6 +23,7 @@ export function AivaWorkersClient() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [billing, setBilling] = useState<Record<string, unknown> | null>(null);
+  const [hireOpen, setHireOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const loadWorkers = useCallback(async () => {
@@ -71,7 +34,7 @@ export function AivaWorkersClient() {
         fetch('/api/aiva/billing/status'),
       ]);
       if (!workersRes.ok) {
-        push('Could not load Aivas', 'error');
+        push('Could not load workers', 'error');
         setWorkers([]);
         return;
       }
@@ -81,7 +44,7 @@ export function AivaWorkersClient() {
         setBilling((await billingRes.json()) as Record<string, unknown>);
       }
     } catch {
-      push('Could not load Aivas', 'error');
+      push('Could not load workers', 'error');
       setWorkers([]);
     } finally {
       setLoading(false);
@@ -90,6 +53,12 @@ export function AivaWorkersClient() {
 
   useEffect(() => {
     void loadWorkers();
+  }, [loadWorkers]);
+
+  useEffect(() => {
+    const onOrg = () => void loadWorkers();
+    window.addEventListener('aiva-org-changed', onOrg);
+    return () => window.removeEventListener('aiva-org-changed', onOrg);
   }, [loadWorkers]);
 
   useEffect(() => {
@@ -115,17 +84,11 @@ export function AivaWorkersClient() {
     if (!q) return workers;
     return workers.filter(
       (w) =>
-        w.name.toLowerCase().includes(q) ||
-        w.roleDescription?.toLowerCase().includes(q) ||
-        w.status.toLowerCase().includes(q),
+        w.name.toLowerCase().includes(q)
+        || w.roleDescription?.toLowerCase().includes(q)
+        || w.status.toLowerCase().includes(q),
     );
   }, [workers, debouncedSearch]);
-
-  function handleStatusChange(id: string, status: string) {
-    setWorkers((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, status: status as AivaWorker['status'] } : w)),
-    );
-  }
 
   const pendingConflict = Boolean(billing?.pendingDowngradeConflict);
   const pendingTier = String(billing?.pendingDowngradeTier ?? 'starter');
@@ -140,7 +103,7 @@ export function AivaWorkersClient() {
         pendingDowngradeSlotLimit={pendingSlotLimit}
         aivasUsed={aivasUsed}
         onResolved={() => {
-          push('Your plan has been updated. Unselected Aivas have been paused.', 'success');
+          push('Your plan has been updated. Unselected workers have been paused.', 'success');
           void loadWorkers();
         }}
       />
@@ -148,71 +111,64 @@ export function AivaWorkersClient() {
   }
 
   const hireAction = (
-    <Link
-      href="/aiva"
-      className="btn-primary inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium"
+    <button
+      type="button"
+      onClick={() => setHireOpen(true)}
+      className="btn-primary inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium"
     >
-      <Plus className="h-4 w-4" />
-      Hire an Aiva
-    </Link>
+      <Plus className="h-4 w-4" aria-hidden />
+      Hire Worker
+    </button>
   );
 
   return (
     <MobileScreen
-      title="AI Employees"
-      subtitle={
-        loading
-          ? undefined
-          : `${workers.length} AI Employee${workers.length !== 1 ? 's' : ''} configured`
-      }
+      title="AI Workers"
+      subtitle={loading ? undefined : 'Manage and interact with your AI workforce'}
       primaryAction={<div className="hidden lg:block">{hireAction}</div>}
       hideTitleOnMobile
+      className="max-w-4xl"
     >
-      <div className="mb-4 lg:hidden">{hireAction}</div>
-
       {!loading && workers.length > 0 ? (
-        <div className="relative mb-4 max-w-sm">
+        <div className="relative mb-5 max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Aivas..."
-            className="min-h-11 w-full rounded-lg border border-border bg-base py-2.5 pl-9 pr-3 text-base lg:text-sm"
+            placeholder="Search workers by name..."
+            className="min-h-10 w-full rounded-lg border border-border bg-base py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted"
           />
         </div>
       ) : null}
 
-      {loading ? <MobileSkeleton variant="list" rows={6} /> : null}
+      {loading ? <MobileSkeleton variant="list" rows={4} /> : null}
 
       {!loading && workers.length === 0 ? (
         <MobileEmptyState
-          icon={<Bot className="h-12 w-12" />}
-          title="No Aivas yet"
-          description="Hire your first Aiva and it will appear here. Powered by Carina, with visible escalation when human review is needed."
+          icon={<Bot className="h-12 w-12 text-text-muted" />}
+          title="No AI workers yet"
+          description="Hire your first Aiva to handle customer and admin work. Optional human assist is available on request if something unusual comes up."
           action={hireAction}
         />
       ) : null}
 
       {!loading && workers.length > 0 && filteredWorkers.length === 0 ? (
-        <p className="text-sm text-text-muted">No Aivas match your search.</p>
+        <p className="text-sm text-text-muted">No workers match your search.</p>
       ) : null}
 
       {!loading && filteredWorkers.length > 0 ? (
-        <>
-          <div className="lg:hidden">
-            <MobileList>
-              {filteredWorkers.map((worker) => (
-                <WorkerListRow key={worker.id} worker={worker} />
-              ))}
-            </MobileList>
-          </div>
-          <div className="hidden grid-cols-1 gap-4 md:grid-cols-2 lg:grid xl:grid-cols-3">
-            {filteredWorkers.map((worker) => (
-              <AivaCard key={worker.id} worker={worker} onStatusChange={handleStatusChange} />
-            ))}
-          </div>
-        </>
+        <div className="flex flex-col gap-3">
+          {filteredWorkers.map((worker) => (
+            <AivaWorkerRow key={worker.id} worker={worker} />
+          ))}
+        </div>
       ) : null}
+
+      <AivaHireDrawer
+        open={hireOpen}
+        onClose={() => setHireOpen(false)}
+        onHired={(workerId) => router.push(`/aiva/workers/${workerId}?tab=work`)}
+      />
     </MobileScreen>
   );
 }

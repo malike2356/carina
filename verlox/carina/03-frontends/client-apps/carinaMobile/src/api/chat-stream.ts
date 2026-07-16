@@ -75,9 +75,11 @@ function consumeSseBuffer(
     const chunk = normalizeStreamPayload(payload);
     if (chunk.sessionId) handlers.onSessionId?.(chunk.sessionId);
     if (chunk.error) throw new Error(chunk.error);
+    if (chunk.content || chunk.access) {
+      handlers.onChunk(chunk);
+    }
     if (chunk.content) {
       nextFull += chunk.content;
-      handlers.onChunk(chunk);
     }
   }
   return { buffer: rest, fullText: nextFull, done: false };

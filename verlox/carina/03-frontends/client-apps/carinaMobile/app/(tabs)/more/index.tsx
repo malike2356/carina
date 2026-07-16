@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { ScreenShell } from '@/components/ScreenShell';
 import { useAppLock } from '@/hooks/useAppLock';
 import { useCloudFeatureAccess } from '@/hooks/useCloudFeatureAccess';
+import { useMobileUpdateCheck } from '@/hooks/useMobileUpdateCheck';
 import { useNativeCapabilities } from '@/hooks/useNativeCapabilities';
 import { useNotificationPrefs } from '@/hooks/useNotificationPrefs';
 import { useAuth } from '@/store/auth-store';
@@ -25,7 +26,9 @@ export default function MoreScreen() {
   const cloudUser = instance?.mode === 'cloud' && user;
   const memoryAccess = useCloudFeatureAccess('memory');
   const packsAccess = useCloudFeatureAccess('packs');
+  const aivaAccess = useCloudFeatureAccess('aiva');
   const native = useNativeCapabilities();
+  const { checking: checkingUpdate, update, checkForUpdate } = useMobileUpdateCheck({ auto: false });
 
   const handleSignOut = useCallback(async () => {
     await signOut();
@@ -38,6 +41,51 @@ export default function MoreScreen() {
 
   return (
     <ScreenShell title="More" subtitle="Settings, memory, packs, and security.">
+      {aivaAccess.available ? (
+        <View style={styles.card}>
+          <Text style={styles.label}>Aiva workspace</Text>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => router.push('/(tabs)/employees' as Href)}
+          >
+            <Text style={styles.linkText}>Workers</Text>
+            <Text style={styles.linkMeta}>Browse your team and open worker chat</Text>
+          </Pressable>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => router.push('/hire' as Href)}
+          >
+            <Text style={styles.linkText}>Hire worker</Text>
+            <Text style={styles.linkMeta}>Create a new Aiva with name, role, and tools</Text>
+          </Pressable>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => router.push('/(tabs)/inbox' as Href)}
+          >
+            <Text style={styles.linkText}>Inbox</Text>
+            <Text style={styles.linkMeta}>
+              Approvals, conversations, and escalations
+            </Text>
+          </Pressable>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => router.push('/governance' as Href)}
+          >
+            <Text style={styles.linkText}>Governance</Text>
+            <Text style={styles.linkMeta}>Scout monitoring and kill-switch awareness</Text>
+          </Pressable>
+          <Pressable
+            style={styles.linkRow}
+            onPress={() => router.push('/(tabs)/chat' as Href)}
+          >
+            <Text style={styles.linkText}>Carina agent chat</Text>
+            <Text style={styles.linkMeta}>
+              General Carina assistant (separate from worker chats)
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.card}>
         <Text style={styles.label}>Workspace</Text>
         <Pressable
@@ -160,6 +208,24 @@ export default function MoreScreen() {
             choose Widgets, and add Carina tasks.
           </Text>
         ) : null}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>App updates</Text>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => void checkForUpdate({ manual: true, force: true })}
+          disabled={checkingUpdate}
+        >
+          <Text style={styles.linkText}>
+            {checkingUpdate ? 'Checking for updates...' : 'Check for update'}
+          </Text>
+          <Text style={styles.linkMeta}>
+            {update?.updateAvailable
+              ? `Latest APK: v${update.latestVersion}`
+              : 'Looks for the latest sideload APK from Carina Cloud'}
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>

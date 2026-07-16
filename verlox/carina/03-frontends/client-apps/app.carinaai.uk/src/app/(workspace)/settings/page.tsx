@@ -5,7 +5,6 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Bell,
-  Bot,
   Brain,
   ChevronRight,
   Keyboard,
@@ -20,7 +19,6 @@ import { BrandSettings } from '@/components/settings/BrandSettings';
 import { SsoSettings } from '@/components/settings/SsoSettings';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { SettingsToolLinks } from '@/components/settings/SettingsToolLinks';
-import { CarinaConfigStatusPanel } from '@/components/settings/CarinaConfigStatusPanel';
 import { Kbd } from '@/components/ui/Kbd';
 import {
   APPEARANCE_DEFAULTS,
@@ -146,7 +144,7 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const sectionParam = searchParams.get('section');
   const validSections = new Set<Section>([
-    'join', 'appearance', 'brand', 'chat', 'brain', 'shortcuts', 'account', 'notifications', 'security', 'carina',
+    'join', 'appearance', 'brand', 'chat', 'brain', 'shortcuts', 'account', 'notifications', 'security',
   ]);
   const [activeSection, setActiveSection] = useState<Section>(() => {
     if (sectionParam && validSections.has(sectionParam as Section)) {
@@ -319,7 +317,6 @@ export default function SettingsPage() {
 
   const navItems: Array<{ id: Section; label: string; icon: ReactNode }> = [
     { id: 'join', label: 'Join', icon: <Link2 className="h-4 w-4" /> },
-    { id: 'carina', label: 'Carina', icon: <Bot className="h-4 w-4" /> },
     { id: 'appearance', label: 'Appearance', icon: <Monitor className="h-4 w-4" /> },
     { id: 'brand', label: 'Brand', icon: <Palette className="h-4 w-4" /> },
     { id: 'chat', label: 'Chat', icon: <MessageSquare className="h-4 w-4" /> },
@@ -334,34 +331,32 @@ export default function SettingsPage() {
   const brain = workspaceSettings.brain;
 
   return (
-    <div className="flex h-full flex-col bg-base">
-      <nav
-        aria-label="Settings sections"
-        className="shrink-0 border-b border-border bg-base"
-      >
-        <div className="flex items-center gap-1 overflow-x-auto px-4 py-2 sm:px-6">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setActiveSection(item.id)}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors',
-                activeSection === item.id
-                  ? 'bg-elevated font-medium text-text-primary'
-                  : 'text-text-secondary hover:bg-surface hover:text-text-primary',
-              )}
-            >
-              <span className={activeSection === item.id ? 'text-accent' : 'text-text-muted'}>
-                {item.icon}
-              </span>
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </nav>
+    <div className="flex h-full bg-base">
+      <aside className="flex w-52 shrink-0 flex-col border-r border-border pt-4">
+        <p className="px-4 pb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+          Settings
+        </p>
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setActiveSection(item.id)}
+            className={cn(
+              'flex items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors',
+              activeSection === item.id
+                ? 'bg-elevated font-medium text-text-primary'
+                : 'text-text-secondary hover:bg-surface hover:text-text-primary',
+            )}
+          >
+            <span className={activeSection === item.id ? 'text-accent' : 'text-text-muted'}>
+              {item.icon}
+            </span>
+            {item.label}
+          </button>
+        ))}
+      </aside>
 
-      <main className="relative min-h-0 flex-1 overflow-y-auto">
+      <main className="relative flex-1 overflow-y-auto">
         {(saving || saved) && (
           <div
             className={cn(
@@ -383,19 +378,6 @@ export default function SettingsPage() {
                 </p>
               </div>
               <SettingsToolLinks items={SETTINGS_SECTION_LINKS.join} />
-            </div>
-          )}
-
-          {activeSection === 'carina' && (
-            <div className="space-y-6">
-              <div>
-                <h1 className="mb-1 text-base font-semibold text-text-primary">Carina configuration</h1>
-                <p className="text-xs text-text-muted">
-                  Status of all Carina settings: providers, integrations, workspace preferences, Scout, and voice.
-                  Configure anything by talking to Carina directly.
-                </p>
-              </div>
-              <CarinaConfigStatusPanel />
             </div>
           )}
 

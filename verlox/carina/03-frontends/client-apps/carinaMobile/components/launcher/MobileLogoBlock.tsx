@@ -4,12 +4,11 @@ export function MobileLogoBlock() {
   return (
     <View style={styles.wrap}>
       <Image
-        source={require('../../assets/logo/carina_logo_1.png')}
+        source={require('../../assets/logo/carina-wordmark.png')}
         style={styles.logo}
         resizeMode="contain"
         accessibilityLabel="Carina logo"
       />
-      <Text style={styles.wordmark}>Carina</Text>
       <Text style={styles.tagline}>ONE MEMORY. ONE AGENT. EVERYWHERE.</Text>
     </View>
   );
@@ -17,13 +16,7 @@ export function MobileLogoBlock() {
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: 10, paddingTop: 16 },
-  logo: { width: 96, height: 96 },
-  wordmark: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#e8f0f8',
-    letterSpacing: -0.5,
-  },
+  logo: { width: 240, height: 80 },
   tagline: {
     fontSize: 9,
     fontWeight: '600',

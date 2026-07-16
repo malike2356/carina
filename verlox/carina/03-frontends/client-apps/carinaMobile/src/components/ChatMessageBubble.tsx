@@ -22,6 +22,9 @@ export function ChatMessageBubble({ message }: ChatMessageBubbleProps) {
         {!isUser && message.inferenceType === 'local' ? (
           <Text style={styles.onDevice}>on-device</Text>
         ) : null}
+        {!isUser && message.accessMode === 'mini' ? (
+          <Text style={styles.mini}>mini mode</Text>
+        ) : null}
         {!isUser && message.toolsUsed && message.toolsUsed.length > 0 ? (
           <Text style={styles.tools}>{message.toolsUsed.join(' · ')}</Text>
         ) : null}
@@ -74,6 +77,13 @@ const styles = StyleSheet.create({
   },
   onDevice: {
     color: colors.tealLight,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  mini: {
+    color: colors.amber,
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.4,

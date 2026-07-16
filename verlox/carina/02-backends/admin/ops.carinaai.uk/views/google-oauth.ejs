@@ -1,0 +1,571 @@
+<%
+  const st = typeof status === 'object' && status ? status : {};
+  const uris = Array.isArray(st.redirectUris) ? st.redirectUris : [];
+  const ready = Boolean(st.configured && st.clientIdSet && st.clientSecretSet);
+%>
+<style>
+  .goauth-page {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 32px 28px;
+  }
+
+  /* Header */
+  .goauth-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .goauth-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(66,133,244,0.15), rgba(52,168,83,0.12));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .goauth-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+  .goauth-header-text h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.01em;
+  }
+  .goauth-header-text p {
+    margin: 3px 0 0;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    line-height: 1.4;
+  }
+  .goauth-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .goauth-status.on {
+    background: rgba(34,197,94,0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34,197,94,0.25);
+  }
+  .goauth-status.off {
+    background: rgba(148,163,184,0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(148,163,184,0.2);
+  }
+  .goauth-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .goauth-status.on .goauth-status-dot { background: #4ade80; }
+  .goauth-status.off .goauth-status-dot { background: #64748b; }
+
+  /* Flash messages */
+  .goauth-flash {
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .goauth-flash.ok {
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.25);
+    color: #86efac;
+  }
+  .goauth-flash.err {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: #fca5a5;
+  }
+
+  /* Steps timeline */
+  .goauth-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .goauth-step {
+    position: relative;
+    padding: 24px 0 24px 56px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .goauth-step:last-child { border-bottom: none; }
+
+  /* Step number/check circle */
+  .goauth-step::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 32px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  .goauth-step.is-done::before {
+    background: rgba(34,197,94,0.12);
+    border-color: rgba(34,197,94,0.4);
+  }
+  .goauth-num {
+    position: absolute;
+    left: 0;
+    top: 32px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #94a3b8;
+    z-index: 1;
+  }
+  .goauth-step.is-done .goauth-num { color: #4ade80; }
+
+  /* Connector line between steps */
+  .goauth-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 17px;
+    top: 70px;
+    bottom: 0;
+    width: 2px;
+    background: rgba(255,255,255,0.06);
+  }
+  .goauth-step.is-done:not(:last-child)::after {
+    background: rgba(34,197,94,0.25);
+  }
+
+  .goauth-step-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+  .goauth-step-desc {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+  .goauth-step-content {
+    margin-top: 14px;
+  }
+
+  /* Checklist in step 1 */
+  .goauth-checklist {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .goauth-checklist li {
+    position: relative;
+    padding: 6px 0 6px 20px;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+  .goauth-checklist li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #475569;
+  }
+  .goauth-ext-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: rgba(66,133,244,0.08);
+    border: 1px solid rgba(66,133,244,0.2);
+    color: #93c5fd;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .goauth-ext-link:hover {
+    background: rgba(66,133,244,0.14);
+    border-color: rgba(66,133,244,0.35);
+  }
+
+  /* URI list in step 2 */
+  .goauth-uri-panel {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 14px;
+    max-height: 20rem;
+    overflow-y: auto;
+  }
+  .goauth-uri-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .goauth-uri-item:last-child { border-bottom: none; }
+  .goauth-uri-item code {
+    flex: 1;
+    font-size: 0.72rem;
+    color: #e2e8f0;
+    word-break: break-all;
+    line-height: 1.5;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  }
+  .goauth-copy-btn {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .goauth-copy-btn:hover {
+    background: rgba(255,255,255,0.08);
+    color: #e2e8f0;
+    border-color: rgba(255,255,255,0.2);
+  }
+  .goauth-copy-btn.copied {
+    background: rgba(34,197,94,0.12);
+    border-color: rgba(34,197,94,0.3);
+    color: #4ade80;
+  }
+  .goauth-copy-all {
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    color: #cbd5e1;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .goauth-copy-all:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.2);
+    color: #f1f5f9;
+  }
+
+  /* Credential form in step 3 */
+  .goauth-cred-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .goauth-cred-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.2);
+    font-size: 0.72rem;
+    color: #86efac;
+  }
+  .goauth-cred-chip .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #4ade80;
+  }
+  .goauth-form-grid {
+    display: grid;
+    gap: 14px;
+  }
+  .goauth-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .goauth-field input[type="text"],
+  .goauth-field input[type="password"] {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.25);
+    color: #f1f5f9;
+    font-size: 0.82rem;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .goauth-field input:focus {
+    border-color: rgba(66,133,244,0.5);
+    box-shadow: 0 0 0 3px rgba(66,133,244,0.08);
+  }
+  .goauth-field input::placeholder {
+    color: #475569;
+  }
+  .goauth-check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+  .goauth-check-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #4ade80;
+    cursor: pointer;
+  }
+  .goauth-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    box-shadow: 0 2px 8px rgba(22,163,74,0.2);
+  }
+  .goauth-submit:hover { opacity: 0.92; }
+  .goauth-submit:active { transform: scale(0.98); }
+
+  @media (max-width: 640px) {
+    .goauth-page { padding: 20px 16px; }
+    .goauth-header { flex-wrap: wrap; }
+    .goauth-status { margin-left: 0; margin-top: 8px; }
+    .goauth-step { padding-left: 48px; }
+    .goauth-step::before,
+    .goauth-num { width: 30px; height: 30px; font-size: 12px; }
+    .goauth-step:not(:last-child)::after { left: 14px; top: 64px; }
+  }
+</style>
+
+<div class="goauth-page">
+  <!-- Header -->
+  <header class="goauth-header">
+    <div class="goauth-icon">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.96 10.96 0 0 0 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09a6.6 6.6 0 0 1 0-4.18V7.07H2.18a10.96 10.96 0 0 0 0 9.86l3.66-2.84z" fill="#FBBC05"/>
+        <path d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.96 10.96 0 0 0 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+      </svg>
+    </div>
+    <div class="goauth-header-text">
+      <h1>Google OAuth</h1>
+      <p>Connect Google sign-in, Drive, Docs, and Calendar APIs to your workspace.</p>
+    </div>
+    <div class="goauth-status <%= ready ? 'on' : 'off' %>">
+      <span class="goauth-status-dot"></span>
+      <%= ready ? 'Connected' : 'Not configured' %>
+    </div>
+  </header>
+
+  <% if (saved) { %>
+    <div class="goauth-flash ok">
+      Credentials saved<% if (filesCount) { %> to Core and <%= filesCount %> env file(s)<% } %>.
+      <% if (restarted) { %> Containers restarted.<% } %>
+    </div>
+  <% } %>
+  <% if (restartWarn) { %>
+    <div class="goauth-flash err">
+      Saved, but restart failed<% if (errMsg) { %>: <%= errMsg %><% } %>.
+      Restart carina-web and carina-cloud from your usual deploy.
+    </div>
+  <% } else if (errMsg && !saved) { %>
+    <div class="goauth-flash err"><%= errMsg %></div>
+  <% } %>
+
+  <!-- Steps -->
+  <div class="goauth-steps">
+
+    <!-- Step 1: Create Google Client -->
+    <section class="goauth-step<%= ready ? ' is-done' : '' %>">
+      <span class="goauth-num"><%- ready ? '&#10003;' : '1' %></span>
+      <h2 class="goauth-step-title">Create a Google OAuth client</h2>
+      <p class="goauth-step-desc">Set up a Web Application credential in Google Cloud Console. This is optional; email/password login works without it.</p>
+      <div class="goauth-step-content">
+        <ul class="goauth-checklist">
+          <li>Enable the Drive, Docs, and Calendar APIs in your project</li>
+          <li>Configure the OAuth consent screen as External (Testing mode)</li>
+          <li>Add your test Gmail to the authorized test users list</li>
+          <li>Create an OAuth 2.0 Client ID (type: Web application)</li>
+        </ul>
+        <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" class="goauth-ext-link">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/><path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/></svg>
+          Google Cloud Console
+        </a>
+      </div>
+    </section>
+
+    <!-- Step 2: Redirect URIs -->
+    <section class="goauth-step<%= ready ? ' is-done' : '' %>">
+      <span class="goauth-num"><%- ready ? '&#10003;' : '2' %></span>
+      <h2 class="goauth-step-title">Add authorized redirect URIs</h2>
+      <p class="goauth-step-desc">Paste each URI below into your Google OAuth client's "Authorized redirect URIs" field.</p>
+      <div class="goauth-step-content">
+        <div class="goauth-uri-panel" id="goauth-uris">
+          <% uris.forEach(function (uri) { %>
+            <div class="goauth-uri-item">
+              <code><%= uri %></code>
+              <button type="button" class="goauth-copy-btn" data-copy="<%= uri %>">Copy</button>
+            </div>
+          <% }) %>
+        </div>
+        <button type="button" class="goauth-copy-all" id="goauth-copy-all">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/></svg>
+          Copy all URIs
+        </button>
+      </div>
+    </section>
+
+    <!-- Step 3: Credentials -->
+    <section class="goauth-step<%= ready ? ' is-done' : '' %>">
+      <span class="goauth-num"><%- ready ? '&#10003;' : '3' %></span>
+      <h2 class="goauth-step-title"><%= ready ? 'Credentials connected' : 'Enter credentials' %></h2>
+      <p class="goauth-step-desc">
+        <%= ready
+          ? 'Google OAuth is active. Replace credentials below only if you need to rotate keys.'
+          : 'Paste the Client ID and Client Secret from Google, then save to enable Google sign-in.' %>
+      </p>
+      <div class="goauth-step-content">
+        <% if (ready) { %>
+          <div class="goauth-cred-status">
+            <span class="goauth-cred-chip"><span class="dot"></span> Client ID: <%= st.clientIdHint || 'configured' %></span>
+            <span class="goauth-cred-chip"><span class="dot"></span> Secret: set</span>
+            <span class="goauth-cred-chip"><span class="dot"></span> Source: <%= st.source || 'database' %></span>
+          </div>
+        <% } %>
+        <form method="post" action="<%= withV('/google-oauth/save') %>" autocomplete="off">
+          <div class="goauth-form-grid">
+            <div class="goauth-field">
+              <label for="clientId">Client ID</label>
+              <input
+                id="clientId"
+                name="clientId"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="123456789.apps.googleusercontent.com"
+                pattern=".*\.apps\.googleusercontent\.com"
+                title="Must end with .apps.googleusercontent.com"
+                required
+              />
+            </div>
+            <div class="goauth-field">
+              <label for="clientSecret">Client Secret</label>
+              <input
+                id="clientSecret"
+                name="clientSecret"
+                type="password"
+                autocomplete="new-password"
+                placeholder="GOCSPX-..."
+                required
+              />
+            </div>
+            <div class="goauth-check-row">
+              <input type="checkbox" name="doRestart" value="1" id="doRestart" checked />
+              <label for="doRestart" style="margin:0;text-transform:none;letter-spacing:0;font-weight:400;">Restart containers after saving</label>
+            </div>
+            <div>
+              <button type="submit" class="goauth-submit">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/></svg>
+                <%= ready ? 'Replace and apply' : 'Save and apply' %>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  function copyText(text, btn) {
+    var cls = 'copied';
+    var original = btn.textContent;
+    function done(ok) {
+      if (ok) {
+        btn.textContent = 'Copied';
+        btn.classList.add(cls);
+      } else {
+        btn.textContent = 'Failed';
+      }
+      window.setTimeout(function () {
+        btn.textContent = original;
+        btn.classList.remove(cls);
+      }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }).catch(function () { done(false); });
+      return;
+    }
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    try { done(document.execCommand('copy')); } catch (e) { done(false); }
+    document.body.removeChild(ta);
+  }
+
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      copyText(btn.getAttribute('data-copy') || '', btn);
+    });
+  });
+
+  var allBtn = document.getElementById('goauth-copy-all');
+  if (allBtn) {
+    allBtn.addEventListener('click', function () {
+      var lines = [];
+      document.querySelectorAll('#goauth-uris code').forEach(function (el) {
+        lines.push(el.textContent.trim());
+      });
+      copyText(lines.join('\n'), allBtn);
+    });
+  }
+})();
+</script>

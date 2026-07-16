@@ -1,0 +1,778 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "slug": "gmail",
+      "label": "Gmail",
+      "category": "google",
+      "status": "live",
+      "auth": "oauth",
+      "driver": "google",
+      "scopes": [
+        "read",
+        "send"
+      ],
+      "oauthProvider": "google_workspace",
+      "probe": {
+        "action": "list"
+      },
+      "actions": [
+        {
+          "id": "list",
+          "scope": "read"
+        },
+        {
+          "id": "send",
+          "scope": "send"
+        },
+        {
+          "id": "draft",
+          "scope": "write"
+        }
+      ]
+    },
+    {
+      "slug": "google-calendar",
+      "label": "Google Calendar",
+      "category": "google",
+      "status": "live",
+      "auth": "oauth",
+      "driver": "google",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "oauthProvider": "google_workspace",
+      "probe": {
+        "action": "list"
+      },
+      "actions": [
+        {
+          "id": "list",
+          "scope": "read"
+        },
+        {
+          "id": "create",
+          "scope": "write"
+        },
+        {
+          "id": "update",
+          "scope": "write"
+        }
+      ]
+    },
+    {
+      "slug": "google-drive",
+      "label": "Google Drive / Docs",
+      "category": "google",
+      "status": "live",
+      "auth": "oauth",
+      "driver": "google",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "oauthProvider": "google_workspace",
+      "probe": {
+        "action": "list"
+      },
+      "actions": [
+        {
+          "id": "list",
+          "scope": "read"
+        },
+        {
+          "id": "upload",
+          "scope": "write"
+        }
+      ]
+    },
+    {
+      "slug": "google-sheets",
+      "label": "Google Sheets",
+      "category": "google",
+      "status": "live",
+      "auth": "oauth",
+      "driver": "google",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "oauthProvider": "google_workspace",
+      "probe": {
+        "action": "read"
+      },
+      "actions": [
+        {
+          "id": "read",
+          "scope": "read"
+        },
+        {
+          "id": "append",
+          "scope": "write"
+        }
+      ]
+    },
+    {
+      "slug": "google-tasks",
+      "label": "Google Tasks",
+      "category": "google",
+      "status": "probe_only",
+      "auth": "oauth",
+      "driver": "google",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "oauthProvider": "google_workspace",
+      "probe": {
+        "action": "list"
+      },
+      "actions": [
+        {
+          "id": "list",
+          "scope": "read"
+        }
+      ]
+    },
+    {
+      "slug": "google-analytics",
+      "label": "Google Analytics",
+      "category": "google",
+      "status": "coming_soon",
+      "auth": "oauth",
+      "driver": "http",
+      "scopes": [
+        "read"
+      ],
+      "oauthProvider": "google_workspace"
+    },
+    {
+      "slug": "hubspot",
+      "label": "HubSpot",
+      "category": "crm",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "hubspot-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.hubapi.com/crm/v3/objects/contacts?limit=1",
+        "authHeader": "Bearer {{token}}"
+      },
+      "actions": [
+        {
+          "id": "search_contacts",
+          "scope": "read",
+          "method": "GET",
+          "url": "https://api.hubapi.com/crm/v3/objects/contacts/search",
+          "authHeader": "Bearer {{token}}"
+        },
+        {
+          "id": "get_contact",
+          "scope": "read",
+          "method": "GET",
+          "url": "https://api.hubapi.com/crm/v3/objects/contacts/{{contactId}}",
+          "authHeader": "Bearer {{token}}"
+        }
+      ]
+    },
+    {
+      "slug": "pipedrive",
+      "label": "Pipedrive",
+      "category": "crm",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "pipedrive-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.pipedrive.com/v1/users/me?api_token={{token}}"
+      },
+      "actions": [
+        {
+          "id": "create_person",
+          "scope": "write",
+          "method": "POST",
+          "url": "https://api.pipedrive.com/v1/persons?api_token={{token}}"
+        }
+      ]
+    },
+    {
+      "slug": "salesforce",
+      "label": "Salesforce",
+      "category": "crm",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "salesforce-token",
+      "actions": [
+        {
+          "id": "query",
+          "scope": "read",
+          "method": "GET",
+          "url": "{{instanceUrl}}/services/data/v61.0/query?q={{query}}",
+          "authHeader": "Bearer {{token}}"
+        }
+      ],
+      "configFields": [
+        "instanceUrl"
+      ]
+    },
+    {
+      "slug": "stripe",
+      "label": "Stripe",
+      "category": "finance",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read"
+      ],
+      "vaultLabel": "stripe-secret-key",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.stripe.com/v1/balance",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "zendesk",
+      "label": "Zendesk",
+      "category": "support",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "zendesk-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://{{subdomain}}.zendesk.com/api/v2/tickets.json?per_page=1",
+        "authHeader": "Basic {{basic}}"
+      },
+      "configFields": [
+        "subdomain",
+        "email"
+      ]
+    },
+    {
+      "slug": "freshdesk",
+      "label": "Freshdesk",
+      "category": "support",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "freshdesk-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://{{domain}}.freshdesk.com/api/v2/tickets?per_page=1",
+        "authHeader": "Basic {{basic}}"
+      },
+      "configFields": [
+        "domain"
+      ]
+    },
+    {
+      "slug": "intercom",
+      "label": "Intercom",
+      "category": "support",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "intercom-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.intercom.io/me",
+        "authHeader": "Bearer {{token}}",
+        "headers": {
+          "Accept": "application/json",
+          "Intercom-Version": "2.11"
+        }
+      }
+    },
+    {
+      "slug": "slack-tool",
+      "label": "Slack (tools)",
+      "category": "comms",
+      "status": "live",
+      "auth": "vault",
+      "driver": "slack",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "slack-bot-token",
+      "probe": {
+        "action": "auth_test"
+      }
+    },
+    {
+      "slug": "microsoft-teams-tool",
+      "label": "Microsoft Teams (tools)",
+      "category": "comms",
+      "status": "coming_soon",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "teams-token"
+    },
+    {
+      "slug": "notion",
+      "label": "Notion",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "notion-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.notion.com/v1/users/me",
+        "authHeader": "Bearer {{token}}",
+        "headers": {
+          "Notion-Version": "2022-06-28"
+        }
+      }
+    },
+    {
+      "slug": "airtable",
+      "label": "Airtable",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "airtable-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.airtable.com/v0/meta/bases",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "trello",
+      "label": "Trello",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "trello-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.trello.com/1/members/me?key={{apiKey}}&token={{token}}"
+      },
+      "configFields": [
+        "apiKey"
+      ]
+    },
+    {
+      "slug": "asana",
+      "label": "Asana",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "asana-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://app.asana.com/api/1.0/users/me",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "linear",
+      "label": "Linear",
+      "category": "dev",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "linear-token",
+      "probe": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authHeader": "Bearer {{token}}",
+        "json": {
+          "query": "{ viewer { id name } }"
+        }
+      }
+    },
+    {
+      "slug": "jira",
+      "label": "Jira",
+      "category": "dev",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "jira-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://{{domain}}.atlassian.net/rest/api/3/myself",
+        "authHeader": "Basic {{basic}}"
+      },
+      "configFields": [
+        "domain",
+        "email"
+      ]
+    },
+    {
+      "slug": "github",
+      "label": "GitHub",
+      "category": "dev",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "github-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.github.com/user",
+        "authHeader": "Bearer {{token}}",
+        "headers": {
+          "Accept": "application/vnd.github+json"
+        }
+      }
+    },
+    {
+      "slug": "calendly",
+      "label": "Calendly",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "calendly-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.calendly.com/users/me",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "outlook-mail",
+      "label": "Outlook Mail",
+      "category": "microsoft",
+      "status": "coming_soon",
+      "auth": "oauth",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "send"
+      ],
+      "oauthProvider": "microsoft"
+    },
+    {
+      "slug": "outlook-calendar",
+      "label": "Outlook Calendar",
+      "category": "microsoft",
+      "status": "coming_soon",
+      "auth": "oauth",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "oauthProvider": "microsoft"
+    },
+    {
+      "slug": "mailchimp",
+      "label": "Mailchimp",
+      "category": "marketing",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "mailchimp-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://{{dc}}.api.mailchimp.com/3.0/",
+        "authHeader": "Bearer {{token}}"
+      },
+      "configFields": [
+        "dc"
+      ]
+    },
+    {
+      "slug": "beehiiv",
+      "label": "Beehiiv",
+      "category": "marketing",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "beehiiv-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.beehiiv.com/v2/publications",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "shopify",
+      "label": "Shopify",
+      "category": "commerce",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "shopify-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://{{shop}}.myshopify.com/admin/api/2024-01/shop.json",
+        "authHeader": "X-Shopify-Access-Token {{token}}"
+      },
+      "configFields": [
+        "shop"
+      ]
+    },
+    {
+      "slug": "supabase",
+      "label": "Supabase",
+      "category": "dev",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read"
+      ],
+      "vaultLabel": "supabase-key",
+      "probe": {
+        "method": "GET",
+        "url": "{{baseUrl}}/rest/v1/",
+        "authHeader": "Bearer {{token}}",
+        "headers": {
+          "apikey": "{{token}}"
+        }
+      },
+      "configFields": [
+        "baseUrl"
+      ]
+    },
+    {
+      "slug": "clickup",
+      "label": "ClickUp",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "clickup-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.clickup.com/api/v2/user",
+        "authHeader": "{{token}}"
+      }
+    },
+    {
+      "slug": "monday",
+      "label": "Monday.com",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "monday-token",
+      "probe": {
+        "method": "POST",
+        "url": "https://api.monday.com/v2",
+        "authHeader": "{{token}}",
+        "json": {
+          "query": "{ me { id name } }"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    },
+    {
+      "slug": "todoist",
+      "label": "Todoist",
+      "category": "productivity",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "todoist-token",
+      "probe": {
+        "method": "GET",
+        "url": "https://api.todoist.com/rest/v2/projects",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "dropbox",
+      "label": "Dropbox",
+      "category": "storage",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "dropbox-token",
+      "probe": {
+        "method": "POST",
+        "url": "https://api.dropboxapi.com/2/users/get_current_account",
+        "authHeader": "Bearer {{token}}"
+      }
+    },
+    {
+      "slug": "box",
+      "label": "Box",
+      "category": "storage",
+      "status": "coming_soon",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "box-token"
+    },
+    {
+      "slug": "twitter-tool",
+      "label": "X / Twitter (tools)",
+      "category": "social",
+      "status": "coming_soon",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "twitter-token"
+    },
+    {
+      "slug": "linkedin-tool",
+      "label": "LinkedIn (tools)",
+      "category": "social",
+      "status": "coming_soon",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "linkedin-token"
+    },
+    {
+      "slug": "browser",
+      "label": "Browser / web scrape",
+      "category": "browser",
+      "status": "live",
+      "auth": "none",
+      "driver": "browser",
+      "scopes": [
+        "read"
+      ],
+      "probe": {
+        "action": "health"
+      },
+      "actions": [
+        {
+          "id": "fetch",
+          "scope": "read"
+        },
+        {
+          "id": "navigate",
+          "scope": "read"
+        }
+      ]
+    },
+    {
+      "slug": "custom-http",
+      "label": "Custom HTTP (allowlisted)",
+      "category": "custom",
+      "status": "live",
+      "auth": "vault",
+      "driver": "http",
+      "scopes": [
+        "read",
+        "write"
+      ],
+      "vaultLabel": "custom-http-token",
+      "probe": {
+        "method": "GET",
+        "url": "{{baseUrl}}{{probePath}}",
+        "authHeader": "Bearer {{token}}"
+      },
+      "configFields": [
+        "baseUrl",
+        "probePath"
+      ],
+      "allowUrlOverride": true
+    }
+  ]
+}

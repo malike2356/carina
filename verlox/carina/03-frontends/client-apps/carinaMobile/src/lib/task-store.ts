@@ -3,6 +3,10 @@ import type { AgentTask } from '@/api/types';
 
 const STORAGE_KEY = 'carina.agent.tasks';
 
+export function shouldCreateAutoTask(toolsUsed: readonly string[]): boolean {
+  return toolsUsed.length > 0;
+}
+
 export async function loadTasks(): Promise<AgentTask[]> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
   if (!raw) return [];

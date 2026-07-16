@@ -1347,27 +1347,35 @@ adminRouter.patch('/va/queue/:id/first-response', async (req: AdminRequest, res:
 });
 
 adminRouter.get('/audit-log', async (req: AdminRequest, res: Response) => {
-  const format = typeof req.query.format === 'string' ? req.query.format : 'json';
-  const params = {
-    page: parseInt(String(req.query.page ?? '1'), 10) || 1,
-    limit: parseInt(String(req.query.limit ?? '100'), 10) || 100,
-    action: typeof req.query.action === 'string' ? req.query.action : undefined,
-    targetType: typeof req.query.target_type === 'string' ? req.query.target_type : undefined,
-    adminUserId: typeof req.query.adminUserId === 'string' ? req.query.adminUserId : undefined,
-    since: typeof req.query.since === 'string' ? req.query.since : undefined,
-    until: typeof req.query.until === 'string' ? req.query.until : undefined,
-  };
+  try {
+    const format = typeof req.query.format === 'string' ? req.query.format : 'json';
+    const params = {
+      page: parseInt(String(req.query.page ?? '1'), 10) || 1,
+      limit: parseInt(String(req.query.limit ?? '100'), 10) || 100,
+      action: typeof req.query.action === 'string' ? req.query.action : undefined,
+      targetType: typeof req.query.target_type === 'string' ? req.query.target_type : undefined,
+      adminUserId: typeof req.query.adminUserId === 'string' ? req.query.adminUserId : undefined,
+      since: typeof req.query.since === 'string' ? req.query.since : undefined,
+      until: typeof req.query.until === 'string' ? req.query.until : undefined,
+    };
 
-  const result = await queryAuditLog(params);
+    const result = await queryAuditLog(params);
 
-  if (format === 'csv') {
-    const csv = auditLogToCsv(result.entries);
-    res.setHeader('Content-Disposition', 'attachment; filename="admin-audit-log.csv"');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.send(csv);
-    return;
+    if (format === 'csv') {
+      const csv = auditLogToCsv(result.entries);
+      res.setHeader('Content-Disposition', 'attachment; filename="admin-audit-log.csv"');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.send(csv);
+      return;
+    }
+
+    const admins = await queryAuditLogAdmins();
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ...result, admins });
+  } catch (err) {
+    console.error('[admin] audit-log failed:', err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : 'Failed to load audit log',
+    });
   }
-
-  const admins = await queryAuditLogAdmins();
-  res.json({ ...result, admins });
 });

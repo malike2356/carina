@@ -13,12 +13,12 @@ export function buildTaskNotificationContent(
   const preview = truncatePrompt(prompt);
   if (status === 'completed') {
     return {
-      title: 'Carina finished',
+      title: 'Task completed',
       body: preview || 'Your task completed.',
     };
   }
   return {
-    title: 'Carina task failed',
+    title: 'Task failed',
     body: preview || 'Something went wrong.',
   };
 }

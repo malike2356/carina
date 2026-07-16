@@ -1,0 +1,9 @@
+{
+  "name": "media-extended",
+  "version": "1.0.0",
+  "description": "Spotify DJ, video storyboards, podcast transcription, image batches, TTS narration, and media QC",
+  "author": "VERLOX Ltd",
+  "category": "media",
+  "optional": true,
+  "skillCount": 7
+}

@@ -36,6 +36,7 @@ export interface ChatResponse {
 export interface ChatStreamChunk {
   content?: string;
   error?: string;
+  access?: ChatAccessInfo;
 }
 
 export type ChatRole = 'user' | 'assistant';
@@ -49,7 +50,18 @@ export interface ChatMessage {
   createdAt: string;
   status?: 'streaming' | 'done' | 'error';
   inferenceType?: 'cloud' | 'local';
+  accessMode?: ChatAccessInfo['mode'];
   source?: string;
+}
+
+export interface ChatAccessInfo {
+  mode: 'platform' | 'byok' | 'mini';
+  freeMessagesUsed: number;
+  freeMessagesLimit: number;
+  upgradeUrl: string;
+  byokUrl: string;
+  provider?: string;
+  model?: string;
 }
 
 export interface SessionPrefs {
@@ -106,11 +118,14 @@ export interface HostedContext {
 
 export type AgentTaskStatus = 'running' | 'completed' | 'failed';
 
+export type AgentTaskKind = 'auto' | 'assigned';
+
 export interface AgentTask {
   id: string;
   sessionId: string;
   prompt: string;
   status: AgentTaskStatus;
+  kind?: AgentTaskKind;
   startedAt: string;
   completedAt?: string;
   toolsUsed?: string[];

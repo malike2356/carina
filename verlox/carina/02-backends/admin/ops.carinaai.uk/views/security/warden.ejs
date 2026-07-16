@@ -1,0 +1,967 @@
+<% title = 'Warden' %>
+<style>
+  .wd-radar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in srgb, var(--bg, #0b0f0c) 72%, transparent);
+    backdrop-filter: blur(2px);
+  }
+  .wd-radar-overlay[hidden] { display: none !important; }
+  .wd-radar-panel {
+    width: min(420px, 92vw);
+    padding: 1.5rem 1.25rem 1.25rem;
+    text-align: center;
+    background: color-mix(in srgb, var(--surface, #121816) 96%, transparent);
+    border: 1px solid color-mix(in srgb, var(--green, #00c864) 22%, transparent);
+  }
+  .wd-radar-panel h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text, #e8eee9);
+  }
+  .wd-radar-panel p {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: var(--muted, #8a9a90);
+  }
+  .wd-radar-canvas-wrap {
+    margin: 0 auto 1rem;
+    width: 220px;
+    height: 220px;
+  }
+  #wd-scan-radar {
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--green, #00c864) 25%, transparent);
+    background: radial-gradient(circle, rgba(0,200,100,0.06), transparent 70%);
+  }
+  .wd-radar-actions { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+  .wd-bg-chip {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--green, #00c864) 28%, transparent);
+    background: color-mix(in srgb, var(--green, #00c864) 8%, transparent);
+    font-size: 0.85rem;
+  }
+  .wd-bg-chip.is-on { display: flex; }
+  .wd-bg-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--green, #00c864);
+    box-shadow: 0 0 0 0 rgba(0,200,100,0.5);
+    animation: wd-pulse 1.4s ease-out infinite;
+  }
+  @keyframes wd-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0,200,100,0.45); }
+    70% { box-shadow: 0 0 0 8px rgba(0,200,100,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,200,100,0); }
+  }
+  .wd-schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+  .wd-schedule-grid label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted, #8a9a90);
+    margin-bottom: 0.35rem;
+  }
+  .wd-schedule-grid select {
+    width: 100%;
+    background: var(--bg, #0b0f0c);
+    color: var(--text, #e8eee9);
+    border: 1px solid color-mix(in srgb, var(--border, #2a3530) 100%, transparent);
+    padding: 0.45rem 0.55rem;
+    font-size: 0.9rem;
+  }
+  .wd-threat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-width: 320px;
+  }
+  .wd-threat-actions .ops-btn {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.45rem;
+  }
+  .wd-dryrun-banner {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid color-mix(in srgb, #c9a227 40%, transparent);
+    background: color-mix(in srgb, #c9a227 10%, transparent);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .wd-dryrun-banner[hidden] { display: none !important; }
+  .wd-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+  }
+  .wd-setting-block h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted, #8a9a90);
+  }
+  .wd-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--border, #2a3530) 55%, transparent);
+    font-size: 0.9rem;
+  }
+  .wd-toggle-row:last-child { border-bottom: 0; }
+  .wd-toggle-row .wd-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--muted, #8a9a90);
+    margin-top: 0.15rem;
+  }
+  .wd-toggle-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .wd-toggle-row input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+  }
+</style>
+
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Warden</div>
+      <div class="ops-page-sub">Scout defensive immune system. Sensors watch Carina, Scout, host, and network; the arsenal analyses suspicious artifacts; response can isolate, sandbox, immobilize, strip, or remove (dry-run by default).</div>
+    </div>
+    <div class="ops-head-actions">
+      <span id="wd-posture-badge" class="ops-badge ops-badge-gray">Checking</span>
+      <button type="button" class="ops-btn" id="wd-btn-quick" onclick="wardenQuickScan()">Quick scan</button>
+      <button type="button" class="ops-btn" id="wd-btn-full" onclick="wardenFullScan()">Full scan</button>
+      <button type="button" class="ops-btn" onclick="wardenRefresh()">Refresh</button>
+    </div>
+  </div>
+
+  <div id="wd-msg" class="ks-msg" hidden></div>
+
+  <div id="wd-dryrun-banner" class="wd-dryrun-banner" hidden>
+    <span><strong>Dry-run is on.</strong> Isolate / sandbox / strip / remove are simulated until you turn live response on.</span>
+    <button type="button" class="ops-btn" onclick="wardenSetDryRun(false)">Enable live response</button>
+  </div>
+
+  <div id="wd-bg-chip" class="wd-bg-chip" role="status">
+    <span class="wd-bg-dot" aria-hidden="true"></span>
+    <span id="wd-bg-label">Scan running in background</span>
+    <button type="button" class="ops-btn ops-btn-ghost ops-btn-sm" onclick="wardenShowRadar()">Show radar</button>
+  </div>
+
+  <div class="ops-metrics">
+    <div class="ops-metric">
+      <div class="ops-metric-label">Posture</div>
+      <div class="ops-metric-value" id="wd-posture">-</div>
+      <div class="ops-inline-note" id="wd-enabled">-</div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Open threats</div>
+      <div class="ops-metric-value" id="wd-open">-</div>
+      <div class="ops-inline-note">Critical: <span id="wd-crit">0</span></div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Mode</div>
+      <div class="ops-metric-value muted" id="wd-dryrun" style="font-size:15px;">-</div>
+      <div class="ops-inline-note">Practice = safe simulate; Live = real actions</div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Last scan</div>
+      <div class="ops-metric-value muted" id="wd-last" style="font-size:15px;">-</div>
+      <div class="ops-inline-note" id="wd-active-note">Auto-refresh every 20s</div>
+    </div>
+  </div>
+
+  <div class="ops-surface ops-table-wrap" style="margin-bottom:1rem;">
+    <div class="ops-section">
+      <div class="ops-section-title">Scan schedule</div>
+      <div class="ops-section-sub">Automate Warden intervals (engine timers; persisted to warden.yaml). Set to Off to disable that cadence.</div>
+      <div class="wd-schedule-grid" style="margin-top:0.75rem;">
+        <div>
+          <label for="wd-sched-quick">Quick scan</label>
+          <select id="wd-sched-quick">
+            <option value="0">Off</option>
+            <option value="30000">Every 30 seconds</option>
+            <option value="60000">Every 1 minute</option>
+            <option value="300000">Every 5 minutes</option>
+            <option value="900000">Every 15 minutes</option>
+            <option value="3600000">Every hour</option>
+          </select>
+        </div>
+        <div>
+          <label for="wd-sched-full">Full scan</label>
+          <select id="wd-sched-full">
+            <option value="0">Off</option>
+            <option value="300000">Every 5 minutes</option>
+            <option value="900000">Every 15 minutes</option>
+            <option value="1800000">Every 30 minutes</option>
+            <option value="3600000">Every hour</option>
+            <option value="21600000">Every 6 hours</option>
+            <option value="86400000">Daily</option>
+          </select>
+        </div>
+        <div>
+          <label for="wd-sched-deep">Deep scan</label>
+          <select id="wd-sched-deep">
+            <option value="0">Off</option>
+            <option value="3600000">Every hour</option>
+            <option value="21600000">Every 6 hours</option>
+            <option value="43200000">Every 12 hours</option>
+            <option value="86400000">Daily</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:0.85rem;">
+        <button type="button" class="ops-btn" onclick="wardenSaveSchedule()">Save schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-surface ops-table-wrap" style="margin-bottom:1rem;">
+    <div class="ops-section">
+      <div class="ops-section-title">Malware analysis arsenal</div>
+      <div class="ops-section-sub">
+        Scout uses these tools automatically in the background during full/deep scans when a suspicious file is found.
+        You can also turn tools on/off, or analyze a file path yourself below.
+        Gray tools are not installed on this host (CAPEv2 needs KVM; DRAKVUF needs Xen; x64dbg needs Windows).
+      </div>
+      <table class="ops-table" id="wd-arsenal-table">
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>Role</th>
+            <th>On this host</th>
+            <th>Use in scans</th>
+          </tr>
+        </thead>
+        <tbody id="wd-arsenal-body">
+          <tr><td colspan="4" class="ops-empty">Loading arsenal...</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:0.75rem;">
+        <button type="button" class="ops-btn" onclick="wardenSaveArsenal()">Save tool on/off</button>
+      </div>
+      <div style="margin-top:1.25rem;">
+        <div class="ops-section-title" style="font-size:0.95rem;">Analyze a file now</div>
+        <div class="ops-section-sub">Enter an absolute path on this Scout host (example: /tmp/sample.bin). Enabled tools that fit the file type will run.</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.65rem;align-items:center;">
+          <input id="wd-analyze-path" type="text" placeholder="/path/to/suspicious/file" style="flex:1;min-width:220px;background:var(--bg,#0b0f0c);color:var(--text,#e8eee9);border:1px solid color-mix(in srgb, var(--border,#2a3530) 100%, transparent);padding:0.45rem 0.55rem;" />
+          <select id="wd-analyze-tool" style="background:var(--bg,#0b0f0c);color:var(--text,#e8eee9);border:1px solid color-mix(in srgb, var(--border,#2a3530) 100%, transparent);padding:0.45rem 0.55rem;">
+            <option value="">All suitable tools</option>
+            <option value="yara">YARA only</option>
+            <option value="capa">capa only</option>
+            <option value="floss">FLOSS only</option>
+            <option value="radare2">Radare2 only</option>
+            <option value="ghidra">Ghidra only</option>
+            <option value="volatility">Volatility only</option>
+            <option value="mobsf">MobSF only</option>
+          </select>
+          <button type="button" class="ops-btn" onclick="wardenAnalyzeFile()">Analyze</button>
+        </div>
+        <pre id="wd-analyze-out" class="ops-inline-note" style="white-space:pre-wrap;font-size:12px;max-height:260px;overflow:auto;margin:0.75rem 0 0;display:none;"></pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="ops-surface ops-table-wrap" style="margin-bottom:1rem;">
+    <div class="ops-section">
+      <div class="ops-section-title">Sensor grid</div>
+      <div class="ops-section-sub">What Warden watches continuously or on schedule.</div>
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>Sensor</th>
+            <th>Enabled</th>
+            <th>Last signals</th>
+            <th>Last run</th>
+          </tr>
+        </thead>
+        <tbody id="wd-sensor-body">
+          <tr><td colspan="4" class="ops-empty">Loading sensors...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ops-surface ops-table-wrap" style="margin-bottom:1rem;">
+    <div class="ops-section">
+      <div class="ops-section-title">Active threats</div>
+      <div class="ops-section-sub">Not monitoring-only. Use the buttons to contain or clean up. Recommended set runs the scored playbook for that threat.</div>
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Risk</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Resolve</th>
+          </tr>
+        </thead>
+        <tbody id="wd-threat-body">
+          <tr><td colspan="5" class="ops-empty">Loading threats...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ops-surface ops-table-wrap" style="margin-bottom:1rem;">
+    <div class="ops-section">
+      <div class="ops-section-title">Event timeline</div>
+      <div class="ops-section-sub">Warden responses and forensic report markers.</div>
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>Level</th>
+            <th>Time</th>
+            <th>Title</th>
+          </tr>
+        </thead>
+        <tbody id="wd-event-body">
+          <tr><td colspan="3" class="ops-empty">Loading events...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="ops-surface" style="margin-bottom:1rem;">
+    <div class="ops-section">
+      <div class="ops-section-title">Protection settings</div>
+      <div class="ops-section-sub">Plain-language controls for what Warden watches and how it responds. No JSON required.</div>
+      <div class="wd-settings-grid" style="margin-top:0.85rem;" id="wd-settings">
+        <div class="wd-setting-block">
+          <h3>Core</h3>
+          <div class="wd-toggle-row">
+            <div>Warden protection<span class="wd-hint">Master switch for the immune system</span></div>
+            <label><input type="checkbox" id="wd-set-enabled" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Practice mode (dry-run)<span class="wd-hint">Simulate isolate/sandbox/remove; nothing destructive</span></div>
+            <label><input type="checkbox" id="wd-set-dryrun" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Auto-remove critical threats<span class="wd-hint">Only when practice mode is off</span></div>
+            <label><input type="checkbox" id="wd-set-autoremove" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Kill switch on critical<span class="wd-hint">Can suspend Carina / lock host on critical hits</span></div>
+            <label><input type="checkbox" id="wd-set-killswitch" /> On</label>
+          </div>
+        </div>
+        <div class="wd-setting-block">
+          <h3>What we watch</h3>
+          <div id="wd-sensor-toggles"></div>
+        </div>
+        <div class="wd-setting-block">
+          <h3>Allowed responses</h3>
+          <div class="wd-toggle-row">
+            <div>Isolate<span class="wd-hint">Cut network / quarantine</span></div>
+            <label><input type="checkbox" id="wd-set-resp-isolate" data-resp="isolate" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Sandbox<span class="wd-hint">Detonate sample safely</span></div>
+            <label><input type="checkbox" id="wd-set-resp-sandbox" data-resp="sandbox" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Immobilize<span class="wd-hint">Freeze the process</span></div>
+            <label><input type="checkbox" id="wd-set-resp-immobilize" data-resp="immobilize" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Strip privileges<span class="wd-hint">Remove dangerous capabilities</span></div>
+            <label><input type="checkbox" id="wd-set-resp-strip" data-resp="strip" /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Require confirm before remove<span class="wd-hint">Extra safety for destructive cleanup</span></div>
+            <label><input type="checkbox" id="wd-set-resp-confirm" /> On</label>
+          </div>
+        </div>
+        <div class="wd-setting-block">
+          <h3>Alerts</h3>
+          <div class="wd-toggle-row">
+            <div>Show on dashboard</div>
+            <label><input type="checkbox" id="wd-set-alert-dash" disabled /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Email alerts<span class="wd-hint">Needs mail connector configured</span></div>
+            <label><input type="checkbox" id="wd-set-alert-email" disabled /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Syslog</div>
+            <label><input type="checkbox" id="wd-set-alert-syslog" disabled /> On</label>
+          </div>
+          <div class="wd-toggle-row">
+            <div>Webhook<span class="wd-hint" id="wd-webhook-hint">Not set</span></div>
+            <span class="ops-inline-note" id="wd-webhook-state">-</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:0.85rem;display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button type="button" class="ops-btn" onclick="wardenSaveSettings()">Save protection settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="wd-radar-overlay" class="wd-radar-overlay" hidden>
+  <div class="wd-radar-panel">
+    <h2 id="wd-radar-title">Scanning</h2>
+    <p id="wd-radar-sub">Sensors and arsenal are running. You can keep watching or send this to the background.</p>
+    <div class="wd-radar-canvas-wrap">
+      <canvas id="wd-scan-radar" width="220" height="220" aria-label="Scan radar"></canvas>
+    </div>
+    <div class="wd-radar-actions">
+      <button type="button" class="ops-btn" onclick="wardenBackgroundScan()">Send to background</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var WARDEN_API = '/scout-api/api/warden';
+var WARDEN_SCAN_API = '/security/warden/scan';
+var WARDEN_SCHED_API = '/security/warden/schedule';
+var SENSOR_LABELS = {
+  carina: { name: 'Carina runtime', hint: 'Agent process and tool behaviour' },
+  scout: { name: 'Scout integrity', hint: 'Scout binaries and config tamper checks' },
+  host: { name: 'This host', hint: 'Local processes, files, and persistence' },
+  network: { name: 'Network', hint: 'Suspicious connections and destinations' },
+  connected_systems: { name: 'Connected systems', hint: 'Linked services and peers' },
+  devices: { name: 'Devices', hint: 'Attached / enrolled devices' },
+  deployed_agents: { name: 'Deployed agents', hint: 'Fleet agents under Scout' },
+  supply_chain: { name: 'Supply chain', hint: 'Dependencies and package integrity' }
+};
+var ARSENAL_META = [
+  { key: 'yara', name: 'YARA', role: 'Signature / pattern scan of files and memory exports' },
+  { key: 'capa', name: 'capa', role: 'Capability map with MITRE ATT&CK tags' },
+  { key: 'floss', name: 'FLOSS', role: 'Obfuscated string extraction (C2 URLs, keys)' },
+  { key: 'radare2', name: 'Radare2', role: 'ELF/PE disassembly and triage' },
+  { key: 'ghidra', name: 'Ghidra', role: 'Headless deep decompile' },
+  { key: 'volatility', name: 'Volatility 3', role: 'Memory dump forensics (fileless / injected code)' },
+  { key: 'capev2', name: 'CAPEv2', role: 'Dynamic sandbox detonation' },
+  { key: 'drakvuf', name: 'DRAKVUF', role: 'Agentless hypervisor monitoring' },
+  { key: 'x64dbg', name: 'x64dbg', role: 'Windows sandbox debug hooks' },
+  { key: 'mobsf', name: 'MobSF', role: 'APK/IPA mobile malware scan' }
+];
+
+var wdActiveJobId = null;
+var wdActiveMode = null;
+var wdBackground = false;
+var wdPollTimer = null;
+var wdRadarRaf = null;
+
+function wdShow(msg, isErr) {
+  var el = document.getElementById('wd-msg');
+  el.hidden = false;
+  el.textContent = msg;
+  el.style.color = isErr ? '#c45c5c' : '';
+  setTimeout(function() { el.hidden = true; }, 6000);
+}
+
+function wdFetch(path, opts) {
+  return fetch(WARDEN_API + path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, opts || {}))
+    .then(function(r) {
+      if (!r.ok) throw new Error(path + ' -> ' + r.status);
+      return r.json();
+    });
+}
+
+function setPostureBadge(posture) {
+  var badge = document.getElementById('wd-posture-badge');
+  var cls = 'ops-badge ops-badge-gray';
+  if (posture === 'secure') cls = 'ops-badge ops-badge-green';
+  else if (posture === 'elevated') cls = 'ops-badge ops-badge-amber';
+  else if (posture === 'compromised') cls = 'ops-badge ops-badge-red';
+  badge.className = cls;
+  badge.textContent = (posture || 'unknown').toUpperCase();
+}
+
+var wdArsenalEnabled = {};
+
+function renderArsenal(avail, arsenalCfg) {
+  avail = avail || {};
+  arsenalCfg = arsenalCfg || {};
+  var body = document.getElementById('wd-arsenal-body');
+  body.innerHTML = ARSENAL_META.map(function(tool) {
+    var reachable = avail[tool.key] === true;
+    var enabled = arsenalCfg[tool.key]
+      ? arsenalCfg[tool.key].enabled !== false
+      : (wdArsenalEnabled[tool.key] !== false);
+    wdArsenalEnabled[tool.key] = enabled;
+    var badge = reachable
+      ? '<span class="ops-badge ops-badge-green">Ready</span>'
+      : '<span class="ops-badge ops-badge-gray">Not on host</span>';
+    var toggle = reachable
+      ? '<label><input type="checkbox" data-arsenal="' + tool.key + '"' + (enabled ? ' checked' : '') + ' /> Use</label>'
+      : '<span class="ops-inline-note">Unavailable</span>';
+    return '<tr><td><strong>' + tool.name + '</strong></td><td>' + tool.role + '</td><td>' + badge + '</td><td>' + toggle + '</td></tr>';
+  }).join('');
+}
+
+function wardenSaveArsenal() {
+  var arsenal = {};
+  ARSENAL_META.forEach(function(tool) {
+    var el = document.querySelector('#wd-arsenal-body input[data-arsenal="' + tool.key + '"]');
+    arsenal[tool.key] = { enabled: el ? !!el.checked : false };
+  });
+  wdFetch('/config', { method: 'PUT', body: JSON.stringify({ arsenal: arsenal }) })
+    .then(function() {
+      wdShow('Arsenal tool settings saved');
+      return wardenRefresh();
+    })
+    .catch(function(err) { wdShow(String(err), true); });
+}
+
+function wardenAnalyzeFile() {
+  var path = (document.getElementById('wd-analyze-path').value || '').trim();
+  var tool = document.getElementById('wd-analyze-tool').value;
+  var out = document.getElementById('wd-analyze-out');
+  if (!path) {
+    wdShow('Enter a file path on this host first', true);
+    return;
+  }
+  out.style.display = 'block';
+  out.textContent = 'Running analysis...';
+  var body = { path: path };
+  if (tool) body.tools = [tool];
+  wdFetch('/arsenal/analyze', { method: 'POST', body: JSON.stringify(body) })
+    .then(function(data) {
+      var lines = (data.results || []).map(function(r) {
+        var state = !r.available ? 'skipped (off or missing)' : (r.ok ? 'ok' : 'no hit / failed');
+        return r.tool + ' · ' + state + ' · ' + (r.summary || '') + (r.durationMs != null ? ' (' + r.durationMs + 'ms)' : '');
+      });
+      out.textContent = lines.length ? lines.join('\n') : 'No tool results';
+      wdShow('Analysis finished');
+    })
+    .catch(function(err) {
+      out.textContent = String(err);
+      wdShow(String(err), true);
+    });
+}
+
+function renderSensors(sensors) {
+  var body = document.getElementById('wd-sensor-body');
+  if (!sensors || !sensors.length) {
+    body.innerHTML = '<tr><td colspan="4" class="ops-empty">No sensor data</td></tr>';
+    return;
+  }
+  body.innerHTML = sensors.map(function(s) {
+    var meta = SENSOR_LABELS[s.name] || { name: s.name, hint: '' };
+    return '<tr><td><strong>' + meta.name + '</strong><div class="ops-inline-note">' + meta.hint + '</div></td><td>' +
+      (s.enabled ? 'Watching' : 'Off') +
+      '</td><td>' + (s.lastSignalCount || 0) +
+      '</td><td>' + (s.lastRunAt || 'Not yet') + '</td></tr>';
+  }).join('');
+}
+
+function renderSettings(config) {
+  if (!config) return;
+  document.getElementById('wd-set-enabled').checked = !!config.enabled;
+  document.getElementById('wd-set-dryrun').checked = !!config.dry_run;
+  document.getElementById('wd-set-autoremove').checked = !!config.auto_remove;
+  document.getElementById('wd-set-killswitch').checked = !!config.kill_switch_on_critical;
+
+  var resp = config.response || {};
+  document.getElementById('wd-set-resp-isolate').checked = !!resp.isolate;
+  document.getElementById('wd-set-resp-sandbox').checked = !!resp.sandbox;
+  document.getElementById('wd-set-resp-immobilize').checked = !!resp.immobilize;
+  document.getElementById('wd-set-resp-strip').checked = !!resp.strip;
+  document.getElementById('wd-set-resp-confirm').checked = resp.remove_requires_confirmation !== false;
+
+  var alerts = config.alerts || {};
+  document.getElementById('wd-set-alert-dash').checked = !!alerts.dashboard;
+  document.getElementById('wd-set-alert-email').checked = !!alerts.email;
+  document.getElementById('wd-set-alert-syslog').checked = !!alerts.syslog;
+  var webhookSet = alerts.webhook_url === '[set]' || (alerts.webhook_url && alerts.webhook_url.length > 0);
+  document.getElementById('wd-webhook-state').textContent = webhookSet ? 'Connected' : 'Not connected';
+  document.getElementById('wd-webhook-hint').textContent = webhookSet ? 'Webhook endpoint is configured' : 'No webhook configured yet';
+
+  var sensors = config.sensors || {};
+  var wrap = document.getElementById('wd-sensor-toggles');
+  wrap.innerHTML = Object.keys(SENSOR_LABELS).map(function(key) {
+    var meta = SENSOR_LABELS[key];
+    var on = sensors[key] !== false;
+    return '<div class="wd-toggle-row"><div>' + meta.name + '<span class="wd-hint">' + meta.hint +
+      '</span></div><label><input type="checkbox" data-sensor="' + key + '"' + (on ? ' checked' : '') + ' /> On</label></div>';
+  }).join('');
+}
+
+function wardenSaveSettings() {
+  var sensors = {};
+  document.querySelectorAll('#wd-sensor-toggles input[data-sensor]').forEach(function(el) {
+    sensors[el.getAttribute('data-sensor')] = !!el.checked;
+  });
+  var body = {
+    enabled: document.getElementById('wd-set-enabled').checked,
+    dry_run: document.getElementById('wd-set-dryrun').checked,
+    auto_remove: document.getElementById('wd-set-autoremove').checked,
+    kill_switch_on_critical: document.getElementById('wd-set-killswitch').checked,
+    sensors: sensors,
+    response: {
+      isolate: document.getElementById('wd-set-resp-isolate').checked,
+      sandbox: document.getElementById('wd-set-resp-sandbox').checked,
+      immobilize: document.getElementById('wd-set-resp-immobilize').checked,
+      strip: document.getElementById('wd-set-resp-strip').checked,
+      remove_requires_confirmation: document.getElementById('wd-set-resp-confirm').checked
+    }
+  };
+  wdFetch('/config', { method: 'PUT', body: JSON.stringify(body) })
+    .then(function() {
+      wdShow('Protection settings saved');
+      return wardenRefresh();
+    })
+    .catch(function(err) { wdShow(String(err), true); });
+}
+
+function renderThreats(threats) {
+  var body = document.getElementById('wd-threat-body');
+  if (!threats || !threats.length) {
+    body.innerHTML = '<tr><td colspan="5" class="ops-empty">No active threats</td></tr>';
+    return;
+  }
+  body.innerHTML = threats.map(function(t) {
+    var id = String(t.id || '').replace(/"/g, '');
+    var closed = t.status === 'removed' || t.status === 'contained' || t.status === 'false_positive';
+    var btns = closed
+      ? '<span class="ops-inline-note">' + t.status + '</span>'
+      : '<div class="wd-threat-actions">' +
+        '<button type="button" class="ops-btn" onclick="wardenRespond(\'' + id + '\',\'isolate\')">Isolate</button>' +
+        '<button type="button" class="ops-btn" onclick="wardenRespond(\'' + id + '\',\'sandbox\')">Sandbox</button>' +
+        '<button type="button" class="ops-btn" onclick="wardenRespond(\'' + id + '\',\'immobilize\')">Immobilize</button>' +
+        '<button type="button" class="ops-btn" onclick="wardenRespond(\'' + id + '\',\'strip\')">Strip</button>' +
+        '<button type="button" class="ops-btn" onclick="wardenRespond(\'' + id + '\',\'remove\', true)">Remove</button>' +
+        '<button type="button" class="ops-btn" onclick="wardenRespond(\'' + id + '\', null)">Run recommended</button>' +
+        '</div>';
+    return '<tr><td>' + t.severity + '</td><td>' + t.riskScore + '</td><td>' +
+      '<strong>' + (t.title || '') + '</strong><div class="ops-inline-note">' + (t.description || '').slice(0, 120) + '</div>' +
+      '</td><td>' + t.status + '</td><td>' + btns + '</td></tr>';
+  }).join('');
+}
+
+function wardenRespond(threatId, action, confirmRemove) {
+  var label = action || 'recommended playbook';
+  if (action === 'remove') {
+    if (!window.confirm('Remove this threat artifact/process? With dry-run on this is simulated. With live response on it is destructive.')) {
+      return;
+    }
+  } else if (!window.confirm('Run "' + label + '" against this threat?')) {
+    return;
+  }
+  var body = { confirmRemove: !!confirmRemove };
+  if (action) body.action = action;
+  wdFetch('/threats/' + encodeURIComponent(threatId) + '/respond', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+    .then(function(result) {
+      var parts = (result.responses || []).map(function(r) {
+        return r.action + (r.dryRun ? ' (dry-run)' : '') + ': ' + (r.detail || (r.ok ? 'ok' : 'failed'));
+      });
+      wdShow(parts.length ? parts.join(' · ') : 'Response recorded');
+      return wardenRefresh();
+    })
+    .catch(function(err) { wdShow(String(err), true); });
+}
+
+function wardenSetDryRun(enabled) {
+  var msg = enabled
+    ? 'Turn dry-run back on? Destructive actions will be simulated again.'
+    : 'Turn OFF dry-run and enable LIVE response? Isolate/sandbox/remove will execute for real on this host.';
+  if (!window.confirm(msg)) return;
+  wdFetch('/config', {
+    method: 'PUT',
+    body: JSON.stringify({ dry_run: !!enabled })
+  })
+    .then(function() {
+      wdShow(enabled ? 'Dry-run enabled' : 'Live response enabled');
+      return wardenRefresh();
+    })
+    .catch(function(err) { wdShow(String(err), true); });
+}
+
+function renderEvents(events) {
+  var body = document.getElementById('wd-event-body');
+  if (!events || !events.length) {
+    body.innerHTML = '<tr><td colspan="3" class="ops-empty">No events yet</td></tr>';
+    return;
+  }
+  body.innerHTML = events.map(function(e) {
+    return '<tr><td>' + e.level + '</td><td>' + e.timestamp + '</td><td>' + e.title + '</td></tr>';
+  }).join('');
+}
+
+function pickClosestOption(selectEl, ms) {
+  var value = String(ms == null ? 0 : ms);
+  var found = false;
+  for (var i = 0; i < selectEl.options.length; i++) {
+    if (selectEl.options[i].value === value) { found = true; break; }
+  }
+  if (!found && ms > 0) {
+    var opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = 'Custom (' + Math.round(ms / 1000) + 's)';
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = found || ms > 0 ? value : '0';
+}
+
+function applySchedule(schedule) {
+  if (!schedule) return;
+  pickClosestOption(document.getElementById('wd-sched-quick'), schedule.network_ms);
+  pickClosestOption(document.getElementById('wd-sched-full'), schedule.host_ms);
+  pickClosestOption(document.getElementById('wd-sched-deep'), schedule.deep_scan_ms);
+}
+
+function startRadar() {
+  var canvas = document.getElementById('wd-scan-radar');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var W = canvas.width, H = canvas.height;
+  var cx = W / 2, cy = H / 2;
+  var r = Math.min(cx, cy) - 8;
+  var sweep = 0;
+  var dots = [];
+  var lastDot = Date.now();
+  for (var i = 0; i < 4; i++) {
+    dots.push({ a: Math.random() * Math.PI * 2, d: 0.2 + Math.random() * 0.7, born: Date.now() - Math.random() * 8000 });
+  }
+  function frame() {
+    if (document.getElementById('wd-radar-overlay').hidden && !wdActiveJobId) {
+      wdRadarRaf = null;
+      return;
+    }
+    if (document.getElementById('wd-radar-overlay').hidden) {
+      wdRadarRaf = requestAnimationFrame(frame);
+      return;
+    }
+    ctx.clearRect(0, 0, W, H);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,200,100,0.03)'; ctx.fill();
+    [0.33, 0.66, 1.0].forEach(function(f) {
+      ctx.beginPath(); ctx.arc(cx, cy, r * f, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0,200,100,0.12)'; ctx.lineWidth = 1; ctx.stroke();
+    });
+    ctx.strokeStyle = 'rgba(0,200,100,0.08)';
+    ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+    var span = Math.PI * 0.55;
+    for (var ti = 0; ti < 32; ti++) {
+      var ta = sweep - (span / 32) * ti;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, ta, ta + span / 32); ctx.closePath();
+      ctx.fillStyle = 'rgba(0,200,100,' + ((1 - ti / 32) * 0.18) + ')'; ctx.fill();
+    }
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(sweep) * r, cy + Math.sin(sweep) * r);
+    ctx.strokeStyle = 'rgba(0,200,100,0.75)'; ctx.lineWidth = 2; ctx.stroke();
+    var now = Date.now();
+    dots = dots.filter(function(d) { return now - d.born < 12000; });
+    dots.forEach(function(d) {
+      var age = (now - d.born) / 12000;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(d.a) * r * d.d, cy + Math.sin(d.a) * r * d.d, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,200,100,' + (1 - age).toFixed(2) + ')'; ctx.fill();
+    });
+    if (now - lastDot > 2200) {
+      dots.push({ a: Math.random() * Math.PI * 2, d: 0.18 + Math.random() * 0.75, born: now });
+      lastDot = now;
+    }
+    sweep += 0.028;
+    if (sweep > Math.PI * 2) sweep -= Math.PI * 2;
+    wdRadarRaf = requestAnimationFrame(frame);
+  }
+  if (!wdRadarRaf) wdRadarRaf = requestAnimationFrame(frame);
+}
+
+function setScanUiBusy(busy) {
+  document.getElementById('wd-btn-quick').disabled = !!busy;
+  document.getElementById('wd-btn-full').disabled = !!busy;
+}
+
+function wardenShowRadar() {
+  wdBackground = false;
+  document.getElementById('wd-radar-overlay').hidden = false;
+  document.getElementById('wd-bg-chip').classList.remove('is-on');
+  startRadar();
+}
+
+function wardenBackgroundScan() {
+  wdBackground = true;
+  document.getElementById('wd-radar-overlay').hidden = true;
+  document.getElementById('wd-bg-chip').classList.add('is-on');
+  document.getElementById('wd-bg-label').textContent =
+    (wdActiveMode || 'Scan') + ' running in background' + (wdActiveJobId ? ' (' + wdActiveJobId.slice(0, 8) + '...)' : '');
+}
+
+function clearActiveScan(finalMsg, isErr) {
+  wdActiveJobId = null;
+  wdActiveMode = null;
+  setScanUiBusy(false);
+  document.getElementById('wd-radar-overlay').hidden = true;
+  document.getElementById('wd-bg-chip').classList.remove('is-on');
+  if (wdPollTimer) { clearInterval(wdPollTimer); wdPollTimer = null; }
+  if (finalMsg) wdShow(finalMsg, !!isErr);
+}
+
+function pollActiveScan() {
+  if (!wdActiveJobId) return;
+  wdFetch('/scan/' + encodeURIComponent(wdActiveJobId))
+    .then(function(job) {
+      var label = (job.mode || 'scan') + ' · ' + job.status;
+      document.getElementById('wd-radar-title').textContent = 'Scanning · ' + (job.mode || '');
+      document.getElementById('wd-radar-sub').textContent = 'Job ' + job.id.slice(0, 8) + '... status: ' + job.status;
+      document.getElementById('wd-active-note').textContent = label;
+      if (job.status === 'completed') {
+        clearActiveScan((job.mode || 'Scan') + ' completed');
+        wardenRefresh();
+      } else if (job.status === 'failed') {
+        clearActiveScan((job.mode || 'Scan') + ' failed: ' + (job.error || 'unknown'), true);
+        wardenRefresh();
+      }
+    })
+    .catch(function(err) {
+      clearActiveScan(String(err), true);
+    });
+}
+
+function startScan(mode) {
+  setScanUiBusy(true);
+  wdBackground = false;
+  wdActiveMode = mode;
+  document.getElementById('wd-radar-title').textContent = 'Scanning · ' + mode;
+  document.getElementById('wd-radar-sub').textContent = 'Queueing scan on scout-engine...';
+  document.getElementById('wd-radar-overlay').hidden = false;
+  document.getElementById('wd-bg-chip').classList.remove('is-on');
+  startRadar();
+
+  fetch(WARDEN_SCAN_API, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: mode })
+  })
+    .then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) throw new Error((data && data.error) || ('scan -> ' + r.status));
+        return data;
+      });
+    })
+    .then(function(job) {
+      wdActiveJobId = job.id;
+      document.getElementById('wd-radar-sub').textContent = 'Job ' + job.id.slice(0, 8) + '... running. Send to background anytime.';
+      if (wdPollTimer) clearInterval(wdPollTimer);
+      wdPollTimer = setInterval(pollActiveScan, 1500);
+      pollActiveScan();
+    })
+    .catch(function(err) {
+      clearActiveScan(String(err), true);
+    });
+}
+
+function wardenQuickScan() { startScan('quick'); }
+function wardenFullScan() { startScan('full'); }
+
+function wardenSaveSchedule() {
+  var body = {
+    network_ms: Number(document.getElementById('wd-sched-quick').value),
+    host_ms: Number(document.getElementById('wd-sched-full').value),
+    deep_scan_ms: Number(document.getElementById('wd-sched-deep').value)
+  };
+  fetch(WARDEN_SCHED_API, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+    .then(function(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) throw new Error((data && data.error) || ('schedule -> ' + r.status));
+        return data;
+      });
+    })
+    .then(function(data) {
+      applySchedule(data.schedule);
+      wdShow('Schedule saved and scheduler restarted');
+    })
+    .catch(function(err) { wdShow(String(err), true); });
+}
+
+function wardenRefresh() {
+  Promise.all([
+    wdFetch('/status'),
+    wdFetch('/threats'),
+    wdFetch('/events?limit=30'),
+    wdFetch('/config')
+  ]).then(function(parts) {
+    var status = parts[0];
+    var threats = parts[1];
+    var events = parts[2];
+    var config = parts[3];
+
+    setPostureBadge(status.posture);
+    document.getElementById('wd-posture').textContent = status.posture || '-';
+    document.getElementById('wd-enabled').textContent = status.enabled ? 'Warden enabled' : 'Warden disabled';
+    document.getElementById('wd-open').textContent = status.openThreats != null ? status.openThreats : '-';
+    document.getElementById('wd-crit').textContent = status.criticalThreats != null ? status.criticalThreats : '0';
+    document.getElementById('wd-dryrun').textContent = status.dryRun ? 'Practice' : 'Live';
+    var banner = document.getElementById('wd-dryrun-banner');
+    if (status.dryRun) {
+      banner.hidden = false;
+      banner.querySelector('span').innerHTML = '<strong>Practice mode is on.</strong> Isolate / sandbox / strip / remove are simulated until you turn live response on.';
+      banner.querySelector('button').textContent = 'Enable live response';
+      banner.querySelector('button').setAttribute('onclick', 'wardenSetDryRun(false)');
+    } else {
+      banner.hidden = false;
+      banner.querySelector('span').innerHTML = '<strong>Live response is on.</strong> Containment actions execute for real. Switch back to practice mode when finished.';
+      banner.querySelector('button').textContent = 'Back to practice mode';
+      banner.querySelector('button').setAttribute('onclick', 'wardenSetDryRun(true)');
+    }
+    document.getElementById('wd-last').textContent = status.lastScanAt || 'Not yet';
+    if (!wdActiveJobId) {
+      var active = (status.activeScans && status.activeScans[0]) || null;
+      document.getElementById('wd-active-note').textContent = active
+        ? ('Active: ' + active.mode + ' · ' + active.status)
+        : 'Auto-refresh every 20s';
+    }
+
+    applySchedule(status.schedule || config.schedule);
+    renderArsenal(status.arsenalAvailability, config.arsenal);
+    renderSensors(status.sensors);
+    renderThreats(threats.threats);
+    renderEvents(events.events);
+    renderSettings(config);
+  }).catch(function(err) {
+    setPostureBadge('unknown');
+    document.getElementById('wd-posture').textContent = 'offline';
+    document.getElementById('wd-enabled').textContent = String(err);
+    wdShow(String(err), true);
+  });
+}
+
+wardenRefresh();
+setInterval(wardenRefresh, 20000);
+</script>

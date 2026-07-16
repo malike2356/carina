@@ -1,0 +1,14 @@
+allowBuilds:
+  '@sentry/cli': true
+  '@whiskeysockets/baileys': true
+  better-sqlite3: true
+  esbuild: true
+  node-pty: true
+  protobufjs: true
+  puppeteer: true
+  sharp: true
+
+overrides:
+  '@xmldom/xmldom': 0.9.10
+  '@xmldom/xmldom@^0.8.10': 0.9.10
+  node-forge: 1.4.0

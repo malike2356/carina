@@ -46,8 +46,12 @@ import { standingOrdersRouter } from './routes/standing-orders.js';
 import { pricingRouter } from './routes/pricing.js';
 import { billingConfigRouter } from './routes/billing-config.js';
 import { usageGatesRouter } from './routes/usage-gates.js';
+import { googleOAuthRouter } from './routes/google-oauth.js';
+import { humanAssistBridgeRouter } from './routes/human-assist-bridge.js';
+import { spreadsheetProcessorRouter } from './routes/spreadsheet-processor.js';
 import { provisionBusinessRouter } from './routes/provision-business.js';
 import { aiUsageRouter } from './routes/ai-usage.js';
+import { opsAssistantRouter } from './routes/ops-assistant.js';
 import { ensurePricingTable } from './lib/pricing-store.js';
 import { ensureBillingConfigTable } from './lib/billing-config-store.js';
 import { businessAdminProxyRouter, businessAdminShellRouter, businessAdminApiProxyRouter, businessAdminStaticProxyRouter } from './routes/business-admin-proxy.js';
@@ -131,7 +135,7 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  const uiVersion = process.env.UI_VERSION ?? '20260711b';
+  const uiVersion = process.env.UI_VERSION ?? '20260716a';
   res.locals.carinaApiUrl = CARINA_BASE;
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
   res.locals.uiVersion = uiVersion;
@@ -142,7 +146,13 @@ app.use((req, res, next) => {
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'carina-ops' });
+  res.json({
+    ok: true,
+    service: 'carina-ops',
+    revision: process.env.BUILD_REVISION ?? 'unknown',
+    imageDigest: process.env.IMAGE_DIGEST ?? 'unknown',
+    buildTime: process.env.BUILD_TIME ?? 'unknown',
+  });
 });
 
 app.use(authRouter);
@@ -181,7 +191,11 @@ app.use('/standing-orders', standingOrdersRouter);
 app.use('/pricing', pricingRouter);
 app.use('/billing-config', billingConfigRouter);
 app.use('/usage-gates', usageGatesRouter);
+app.use('/google-oauth', googleOAuthRouter);
+app.use('/human-assist-bridge', humanAssistBridgeRouter);
+app.use('/spreadsheet-processor', spreadsheetProcessorRouter);
 app.use('/ai-usage', aiUsageRouter);
+app.use('/ops-assistant', opsAssistantRouter);
 app.use('/admin/provision-business', provisionBusinessRouter);
 app.use('/governance', governanceRouter);
 app.use('/mutation', mutationRouter);

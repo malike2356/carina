@@ -154,13 +154,6 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'Bot',
   },
   {
-    href: '/agent-os',
-    label: 'Agent OS',
-    description: 'Glass pane for workers, memory, spend, and workflows.',
-    group: 'aiva',
-    iconName: 'LayoutDashboard',
-  },
-  {
     href: '/aiva/governance',
     label: 'Governance',
     description: 'Scout protection status, audit summary, and kill switch awareness.',
@@ -191,7 +184,7 @@ export const NAV_ROUTES: NavRoute[] = [
   {
     href: '/aiva/escalations',
     label: 'VA queue',
-    description: 'Visible human-review escalations across your Aivas (Team plan).',
+    description: 'Open human escalations across your Aivas (Team plan).',
     group: 'aiva',
     iconName: 'LifeBuoy',
     planRequired: 'team',
@@ -263,14 +256,6 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'Waypoints',
   },
   {
-    href: '/settings/channel-shield',
-    label: 'Channel Shield',
-    description: 'Inbound protection and quarantine across messaging channels.',
-    group: 'account',
-    parent: '/settings',
-    iconName: 'Shield',
-  },
-  {
     href: '/settings/calendar',
     label: 'Calendar sync',
     description: 'Connect Google Calendar or CalDAV providers.',
@@ -310,7 +295,7 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'BarChart2',
   },
   {
-    href: '/billing/aiva',
+    href: '/billing',
     label: 'Billing and plan',
     description: 'View your current plan and usage.',
     group: 'account',
@@ -419,7 +404,10 @@ export function filterNavForSurface(
       if (route.group === 'account' && route.href === '/analytics') return false;
       if (isCloudOnlyRoute(route.href)) return false;
       return true;
-    });
+    })
+    .map((route) =>
+      route.href === '/billing' ? { ...route, href: '/billing/aiva' } : route,
+    );
 }
 
 export function filterNavGroupsForSurface(
@@ -463,7 +451,6 @@ export type SettingsToolLink = {
 
 export type SettingsSectionId =
   | 'join'
-  | 'carina'
   | 'appearance'
   | 'brand'
   | 'chat'
@@ -474,7 +461,7 @@ export type SettingsSectionId =
   | 'security';
 
 export const SETTINGS_SECTION_LINKS: Record<
-  Exclude<SettingsSectionId, 'carina' | 'appearance' | 'shortcuts' | 'notifications'>,
+  Exclude<SettingsSectionId, 'appearance' | 'shortcuts' | 'notifications'>,
   SettingsToolLink[]
 > = {
   join: [
@@ -482,11 +469,6 @@ export const SETTINGS_SECTION_LINKS: Record<
       label: 'Channels and integrations',
       description: 'Slack, WhatsApp, Telegram, Trello, calendar, and more.',
       href: '/settings/channels',
-    },
-    {
-      label: 'Channel Shield',
-      description: 'Inbound protection and quarantine across all messaging channels.',
-      href: '/settings/channel-shield',
     },
     { label: 'Device pairing', description: 'Link phones and tablets with a QR code.', href: '/settings/pairing' },
     { label: 'Calendar sync', description: 'Connect Google Calendar or other providers.', href: '/settings/calendar' },
@@ -517,7 +499,7 @@ export const SETTINGS_SECTION_LINKS: Record<
   ],
   account: [
     { label: 'Profiles', description: 'Workspace personas and provider defaults.', href: '/profiles' },
-    { label: 'Billing and plan', description: 'View your current plan and invoices.', href: '/billing/aiva' },
+    { label: 'Billing and plan', description: 'View your current plan and invoices.', href: '/billing' },
   ],
   security: [
     { label: 'Privacy settings', description: 'Export data, cookies, and account deletion.', href: '/settings/privacy' },

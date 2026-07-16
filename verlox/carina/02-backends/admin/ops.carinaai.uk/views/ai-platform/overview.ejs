@@ -1,0 +1,246 @@
+<% title = 'AI Platform' %>
+<div class="ops-page">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="ops-page-head"><div><div class="ops-page-title">AI Platform</div><div class="ops-page-sub">Org controls, model economics, and platform lifecycle for Carina.</div></div></div>
+
+<% if (!coreConnected) { %>
+  <div class="mb-4 rounded border border-yellow-700 bg-yellow-900/30 px-4 py-2 text-sm text-yellow-300">
+    Core not connected. Showing local data only. Pair Carina in Settings to see live metrics.
+  </div>
+<% } %>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Credits</p>
+    <p class="text-xl font-bold text-white">$<%= org.creditBalance.toFixed(2) %></p>
+    <p class="text-xs text-gray-500 mt-1">Limit $<%= org.monthlyLimit.toFixed(0) %> / month</p>
+  </div>
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Spend this month</p>
+    <p class="text-xl font-bold text-white">$<%= spendMonth.toFixed(4) %></p>
+  </div>
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Prompt caching</p>
+    <p class="text-lg font-semibold <%= org.promptCachingEnabled ? 'text-[#22c55e]' : 'text-gray-500' %>">
+      <%= org.promptCachingEnabled ? 'Enabled' : 'Not enabled' %>
+    </p>
+  </div>
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Batch API</p>
+    <p class="text-lg font-semibold <%= org.batchEnabled ? 'text-[#22c55e]' : 'text-gray-500' %>">
+      <%= org.batchEnabled ? 'Enabled' : 'Disabled' %>
+    </p>
+  </div>
+</div>
+
+<% if (coreTelemetry) { %>
+<%
+  const tSessions = coreTelemetry.sessions && coreTelemetry.sessions.summary
+    ? coreTelemetry.sessions.summary
+    : (coreTelemetry.health && coreTelemetry.health.sessions ? coreTelemetry.health.sessions : null);
+  const tChannels = coreTelemetry.channels && coreTelemetry.channels.summary
+    ? coreTelemetry.channels.summary
+    : coreTelemetry.health.channels;
+  const tByProvider = tSessions && tSessions.byProvider ? tSessions.byProvider : {};
+  const providerEntries = Object.entries(tByProvider);
+%>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Turns (24h)</p>
+    <p class="text-xl font-bold text-white"><%= coreTelemetry.metrics.turns.total %></p>
+    <p class="text-xs text-gray-500 mt-1">Avg latency <%= (coreTelemetry.metrics.turns.avgLatencyMs / 1000).toFixed(1) %>s</p>
+  </div>
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Sessions (24h)</p>
+    <p class="text-xl font-bold text-white"><%= tSessions ? tSessions.uniqueSessions : 0 %></p>
+    <p class="text-xs text-gray-500 mt-1"><%= tSessions ? tSessions.turns : 0 %> total turns</p>
+  </div>
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">Channels</p>
+    <p class="text-xl font-bold text-white"><%= tChannels.connected || 0 %> connected</p>
+    <p class="text-xs text-gray-500 mt-1"><%= tChannels.degraded || 0 %> degraded</p>
+  </div>
+  <div class="ops-stat-cell">
+    <p class="text-gray-400 text-sm">System health</p>
+    <p class="text-lg font-semibold <%= coreTelemetry.health.healthy ? 'text-[#22c55e]' : 'text-red-400' %>">
+      <%= coreTelemetry.health.healthy ? 'Healthy' : 'Degraded' %>
+    </p>
+    <p class="text-xs text-gray-500 mt-1"><%= coreTelemetry.health.generatedAt ? new Date(coreTelemetry.health.generatedAt).toLocaleTimeString() : '' %></p>
+  </div>
+</div>
+
+<% if (providerEntries.length) { %>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+  <% for (const [prov, count] of providerEntries) { %>
+    <div class="ops-stat-cell py-2 px-3">
+      <p class="text-xs text-gray-400"><%= prov %></p>
+      <p class="text-lg font-bold text-white"><%= count %> <span class="text-xs font-normal text-gray-500">turns</span></p>
+    </div>
+  <% } %>
+</div>
+<% } %>
+
+<% if (coreTelemetry.health.checks && coreTelemetry.health.checks.length) { %>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 mb-6">
+  <% for (const check of coreTelemetry.health.checks) { %>
+    <div class="ops-stat-cell py-2 px-3">
+      <p class="text-xs text-gray-400 truncate"><%= check.id || check.name || 'check' %></p>
+      <p class="text-sm font-medium <%= check.status === 'ok' ? 'text-[#22c55e]' : check.status === 'fail' ? 'text-red-400' : 'text-yellow-400' %>"><%= check.status %></p>
+      <% if (check.detail) { %><p class="text-xs text-gray-600 truncate mt-0.5"><%= check.detail %></p><% } %>
+    </div>
+  <% } %>
+</div>
+<% } %>
+<% } %>
+
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+  <% const countItems = [
+    ['Agents', counts.agents, '/ai-platform/agents'],
+    ['Sessions', counts.sessions, '/ai-platform/sessions'],
+    ['Deployments', counts.deployments, '/ai-platform/deployments'],
+    ['Vault items', counts.vaultItems, '/ai-platform/vaults'],
+    ['Memory stores', counts.memoryStores, '/ai-platform/memory'],
+    ['Files', counts.assets, '/ai-platform/files'],
+  ]; %>
+  <% for (const [label, val, href] of countItems) { %>
+    <a href="<%= href %>" class="ops-stat-cell hover:border-[#22c55e]">
+      <p class="text-gray-400 text-xs"><%= label %></p>
+      <p class="text-lg font-bold text-white"><%= val %></p>
+    </a>
+  <% } %>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <section class="ops-stat-cell">
+    <h2 class="text-lg font-semibold text-white mb-3">Usage (24h)<% if (coreConnected) { %> <span class="text-xs font-normal text-[#22c55e]">live</span><% } %></h2>
+    <% if (!usage.hasData) { %>
+      <p class="text-gray-500 text-sm">No usage recorded in this window.</p>
+    <% } else { %>
+      <dl class="grid grid-cols-2 gap-3 text-sm">
+        <div><dt class="text-gray-500">Turns</dt><dd class="text-white font-medium"><%= usage.requests %></dd></div>
+        <div><dt class="text-gray-500">Cache hits</dt><dd class="text-white font-medium"><%= usage.cacheHits %></dd></div>
+      </dl>
+    <% } %>
+    <a href="/ai-platform/analytics" class="inline-block mt-3 text-sm text-[#06b6d4] hover:underline">Open analytics</a>
+  </section>
+
+  <section class="ops-stat-cell">
+    <h2 class="text-lg font-semibold text-white mb-3">Org settings</h2>
+    <dl class="text-sm space-y-2">
+      <div class="flex justify-between"><dt class="text-gray-500">Organization</dt><dd class="text-white"><%= org.name %></dd></div>
+      <div class="flex justify-between"><dt class="text-gray-500">Auto reload</dt><dd class="text-white"><%= org.autoReloadEnabled ? 'On' : 'Off' %></dd></div>
+    </dl>
+    <a href="/ai-platform/credits" class="inline-block mt-3 text-sm text-[#06b6d4] hover:underline">Edit credits and limits</a>
+  </section>
+</div>
+
+<% if (coreTelemetry && coreTelemetry.sessions && coreTelemetry.sessions.sessions && coreTelemetry.sessions.sessions.length) { %>
+<section class="ops-stat-cell mb-6">
+  <h2 class="text-lg font-semibold text-white mb-3">Recent sessions (24h)</h2>
+  <div class="overflow-x-auto max-h-64 overflow-y-auto">
+    <table class="ops-table w-full text-xs">
+      <thead>
+        <tr class="text-left text-gray-500 border-b border-[#2a2a2a] sticky top-0 bg-[#1a1a1a]">
+          <th class="py-2 pr-3">Session</th>
+          <th class="py-2 pr-3">Platform</th>
+          <th class="py-2 pr-3">Status</th>
+          <th class="py-2 pr-3">Turns</th>
+          <th class="py-2">Last activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const sess of coreTelemetry.sessions.sessions.slice(0, 20)) { %>
+          <tr class="border-b border-[#2a2a2a]/50">
+            <td class="py-2 pr-3 text-gray-300 font-mono truncate max-w-[200px]"><%= sess.sessionId %></td>
+            <td class="py-2 pr-3 text-white"><%= sess.platform || '-' %></td>
+            <td class="py-2 pr-3 <%= sess.status === 'active' ? 'text-[#22c55e]' : 'text-gray-400' %>"><%= sess.status %></td>
+            <td class="py-2 pr-3 text-white"><%= sess.turnCount %></td>
+            <td class="py-2 text-gray-500"><%= new Date(sess.lastActivityAt).toLocaleString() %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<% if (coreTelemetry && coreTelemetry.metrics.providers.recent && coreTelemetry.metrics.providers.recent.length) { %>
+<section class="ops-stat-cell mb-6">
+  <h2 class="text-lg font-semibold text-white mb-3">Recent provider calls</h2>
+  <div class="overflow-x-auto max-h-64 overflow-y-auto">
+    <table class="ops-table w-full text-xs">
+      <thead>
+        <tr class="text-left text-gray-500 border-b border-[#2a2a2a] sticky top-0 bg-[#1a1a1a]">
+          <th class="py-2 pr-3">Provider</th>
+          <th class="py-2 pr-3">Model</th>
+          <th class="py-2 pr-3">Status</th>
+          <th class="py-2 pr-3">Latency</th>
+          <th class="py-2">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const obs of coreTelemetry.metrics.providers.recent) { %>
+          <tr class="border-b border-[#2a2a2a]/50">
+            <td class="py-2 pr-3 text-white"><%= obs.provider %></td>
+            <td class="py-2 pr-3 text-gray-400 font-mono"><%= obs.model || '-' %></td>
+            <td class="py-2 pr-3 <%= obs.status === 'ok' || obs.status === 'success' ? 'text-[#22c55e]' : 'text-red-400' %>"><%= obs.status %></td>
+            <td class="py-2 pr-3 text-gray-400"><%= obs.latencyMs %>ms</td>
+            <td class="py-2 text-gray-500"><%= new Date(obs.at).toLocaleTimeString() %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<section class="ops-stat-cell mb-6">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-semibold text-white">Models</h2>
+    <a href="/ai-platform/workbench" class="text-sm text-[#06b6d4] hover:underline">Open workbench</a>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="ops-table w-full text-sm">
+      <thead>
+        <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+          <th class="py-2 pr-4">Provider</th>
+          <th class="py-2 pr-4">Model</th>
+          <th class="py-2 pr-4">Tier</th>
+          <th class="py-2 pr-4">Status</th>
+          <th class="py-2 pr-4">Input $/1M</th>
+          <th class="py-2">Output $/1M</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const m of models) { %>
+          <tr class="border-b border-[#2a2a2a]/50">
+            <td class="py-2 pr-4 text-white"><%= m.provider %><% if (m.isDefault) { %> <span class="text-[#22c55e] text-xs">default</span><% } %></td>
+            <td class="py-2 pr-4 text-gray-300 font-mono text-xs"><%= m.model %></td>
+            <td class="py-2 pr-4 text-gray-400"><%= m.tier %></td>
+            <td class="py-2 pr-4"><%= m.status %></td>
+            <td class="py-2 pr-4 text-gray-400"><%= m.inputPrice %></td>
+            <td class="py-2 text-gray-400"><%= m.outputPrice %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="ops-stat-cell">
+  <h2 class="text-lg font-semibold text-white mb-3">Recent workbench runs</h2>
+  <% if (!recentRuns.length) { %>
+    <p class="text-gray-500 text-sm">No runs yet. <a href="/ai-platform/workbench" class="ops-link">Create one</a>.</p>
+  <% } else { %>
+    <ul class="space-y-2 text-sm">
+      <% for (const run of recentRuns) { %>
+        <li class="flex justify-between gap-2 border-b border-[#2a2a2a] pb-2">
+          <a href="/ai-platform/workbench?run=<%= run.id %>" class="ops-link truncate"><%= run.title %></a>
+          <span class="text-gray-500 shrink-0"><%= run.status %> · $<%= run.costEstimate.toFixed(4) %></span>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+</section>
+</div>

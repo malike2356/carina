@@ -1,6 +1,12 @@
 import type { HostedUser, InstanceConfig } from '@/api/types';
 
-export type CloudFeatureId = 'memory' | 'packs' | 'billing' | 'remote-push' | 'scout-hosted';
+export type CloudFeatureId =
+  | 'memory'
+  | 'packs'
+  | 'billing'
+  | 'remote-push'
+  | 'scout-hosted'
+  | 'aiva';
 
 const FEATURE_LABELS: Record<CloudFeatureId, string> = {
   memory: 'Memory browser',
@@ -8,6 +14,7 @@ const FEATURE_LABELS: Record<CloudFeatureId, string> = {
   billing: 'Usage and billing',
   'remote-push': 'Remote push notifications',
   'scout-hosted': 'Hosted Scout controls',
+  aiva: 'Aiva AI employees',
 };
 
 export interface CloudFeatureAccess {

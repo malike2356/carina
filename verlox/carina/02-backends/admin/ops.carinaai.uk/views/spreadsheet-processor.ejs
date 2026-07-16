@@ -1,0 +1,151 @@
+<style>
+  .sp-wrap {
+    max-width: 52rem;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .sp-wrap .ops-page-head {
+    justify-content: center;
+    text-align: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .sp-wrap .ops-page-sub {
+    max-width: 38rem;
+    margin: 0 auto;
+  }
+  .sp-flash {
+    max-width: 38rem;
+    margin: 0 auto 1rem;
+  }
+  .sp-sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .sp-section {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface, rgba(255,255,255,0.02));
+    padding: 20px;
+  }
+  .sp-section.sp-full {
+    grid-column: 1 / -1;
+  }
+  .sp-section h2 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--heading);
+    margin: 0 0 14px;
+  }
+  .sp-hint {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .sp-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-top: 1.25rem;
+  }
+  @media (max-width: 800px) {
+    .sp-sections {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<div class="ops-page sp-wrap">
+  <div class="ops-page-head">
+    <div>
+      <h1 class="ops-page-title">Spreadsheet Processor</h1>
+      <div class="ops-page-sub">
+        Aiva watches an email inbox for spreadsheet attachments, enriches them with AI, and replies with the completed file. Configure the inbox, AI key, and outbound email here.
+      </div>
+    </div>
+    <%
+      const ready = Boolean(cfg['SP_IMAP_USER'] && cfg['SP_IMAP_PASSWORD'] && cfg['SP_DEEPSEEK_API_KEY']);
+    %>
+    <span class="ops-pill <%= ready ? 'ok' : '' %>"><%= ready ? 'Configured' : 'Not configured' %></span>
+  </div>
+
+  <% if (saved) { %>
+    <div class="ops-flash ok sp-flash">
+      Settings saved<% if (deployed) { %> and worker .env deployed<% } %>.
+    </div>
+  <% } %>
+  <% if (errMsg) { %>
+    <div class="ops-flash err sp-flash"><%= errMsg %></div>
+  <% } %>
+
+  <form method="post" action="<%= withV('/spreadsheet-processor/save') %>" class="ops-form" autocomplete="off">
+
+    <div class="sp-sections">
+
+      <section class="sp-section">
+        <h2>Inbox (IMAP)</h2>
+        <p class="sp-hint" style="margin-top:0;">The inbox Aiva watches for incoming spreadsheets.</p>
+
+        <label class="ops-label" for="imapHost">IMAP host</label>
+        <input id="imapHost" name="imapHost" type="text" class="ops-input mono"
+               value="<%= cfg['SP_IMAP_HOST'] || 'imap.gmail.com' %>"
+               placeholder="imap.gmail.com" />
+
+        <label class="ops-label" for="imapPort" style="margin-top:0.75rem;">IMAP port</label>
+        <input id="imapPort" name="imapPort" type="text" class="ops-input mono"
+               value="<%= cfg['SP_IMAP_PORT'] || '993' %>"
+               placeholder="993" />
+
+        <label class="ops-label" for="imapUser" style="margin-top:0.75rem;">IMAP user (email)</label>
+        <input id="imapUser" name="imapUser" type="text" class="ops-input mono"
+               value="<%= cfg['SP_IMAP_USER'] || '' %>"
+               placeholder="inbox@gmail.com" />
+
+        <label class="ops-label" for="imapPassword" style="margin-top:0.75rem;">IMAP password</label>
+        <input id="imapPassword" name="imapPassword" type="password" class="ops-input mono"
+               value="<%= maskedImapPwd %>"
+               placeholder="App password" autocomplete="new-password" />
+        <p class="sp-hint">Gmail: use an App Password (16 chars, no spaces).</p>
+      </section>
+
+      <section class="sp-section">
+        <h2>AI Enrichment</h2>
+        <p class="sp-hint" style="margin-top:0;">DeepSeek fills empty cells and enriches property/lead data.</p>
+
+        <label class="ops-label" for="deepseekKey">DeepSeek API key</label>
+        <input id="deepseekKey" name="deepseekKey" type="password" class="ops-input mono"
+               value="<%= maskedDeepseek %>"
+               placeholder="sk-..." autocomplete="new-password" />
+
+        <label class="ops-label" for="pollInterval" style="margin-top:0.75rem;">Poll interval (seconds)</label>
+        <input id="pollInterval" name="pollInterval" type="text" class="ops-input mono"
+               value="<%= cfg['SP_POLL_INTERVAL'] || '120' %>"
+               placeholder="120" />
+        <p class="sp-hint">How often the worker checks for new emails. Default: 120 (2 minutes).</p>
+      </section>
+
+      <section class="sp-section sp-full">
+        <h2>Outbound email</h2>
+        <p class="sp-hint" style="margin-top:0;">
+          Replies use the platform Resend key (set in
+          <a href="<%= withV('/billing-config?group=integrations') %>">Billing config / Integrations</a>)
+          and the system from address (set in
+          <a href="<%= withV('/billing-config?group=system_email') %>">Billing config / System email</a>).
+          Currently: <strong><%= cfg['SYSTEM_EMAIL_FROM'] || 'contact@verlox.uk' %></strong>
+        </p>
+      </section>
+
+    </div>
+
+    <div class="sp-actions">
+      <label style="display:flex;gap:0.5rem;align-items:center;font-size:0.85rem;color:var(--muted);">
+        <input type="checkbox" name="deployEnv" value="1" checked />
+        <span>Write worker .env on save</span>
+      </label>
+      <button type="submit" class="ops-btn ops-btn-green">Save</button>
+    </div>
+
+  </form>
+</div>

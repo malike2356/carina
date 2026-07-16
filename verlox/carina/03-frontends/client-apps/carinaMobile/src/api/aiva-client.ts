@@ -57,6 +57,24 @@ export interface AivaEmployeeTask {
   updatedAt: string;
 }
 
+export interface AivaConversationSummaryRow {
+  id: string;
+  channel: string;
+  contactId: string;
+  lastMessageAt: string | null;
+  messageCount: number;
+}
+
+export interface AivaOutboundMessage {
+  id: string;
+  channel: string;
+  contactId: string;
+  preview: string;
+  subject?: string;
+  status: 'delivered' | 'failed' | 'pending';
+  createdAt: string;
+}
+
 export interface AivaSubscriptionStatus {
   planTier: string;
   status: string;
@@ -306,6 +324,77 @@ export function getAivaWorker(
     undefined,
     'Aiva worker',
     parseAivaWorkerDetail,
+  );
+}
+
+export function listAivaWorkerConversations(
+  baseUrl: string,
+  workerId: string,
+  auth?: GatewayAuthOptions,
+  limit = 10,
+): Promise<AivaConversationSummaryRow[]> {
+  return aivaRequest(
+    baseUrl,
+    `/api/aiva/workers/${encodeURIComponent(workerId)}/conversations?limit=${limit}`,
+    auth,
+    undefined,
+    'Aiva worker conversations',
+    (payload) => {
+      const root = asRecord(payload);
+      const rows = Array.isArray(root?.conversations) ? root.conversations : [];
+      return rows
+        .map((row) => {
+          const item = asRecord(row);
+          const id = asString(item?.id);
+          if (!item || !id) return null;
+          return {
+            id,
+            channel: asString(item.channel, 'unknown'),
+            contactId: asString(item.contactId),
+            lastMessageAt: asIsoOrNull(item.lastMessageAt),
+            messageCount: typeof item.messageCount === 'number' ? item.messageCount : 0,
+          };
+        })
+        .filter((item): item is AivaConversationSummaryRow => item !== null);
+    },
+  );
+}
+
+export function listAivaWorkerOutbound(
+  baseUrl: string,
+  workerId: string,
+  auth?: GatewayAuthOptions,
+  limit = 20,
+): Promise<AivaOutboundMessage[]> {
+  return aivaRequest(
+    baseUrl,
+    `/api/aiva/workers/${encodeURIComponent(workerId)}/outbound?limit=${limit}`,
+    auth,
+    undefined,
+    'Aiva worker outbound',
+    (payload) => {
+      const root = asRecord(payload);
+      const rows = Array.isArray(root?.outbound) ? root.outbound : [];
+      return rows
+        .map((row) => {
+          const item = asRecord(row);
+          const id = asString(item?.id);
+          if (!item || !id) return null;
+          const rawStatus = asString(item.status, 'pending');
+          const status: AivaOutboundMessage['status'] =
+            rawStatus === 'delivered' || rawStatus === 'failed' ? rawStatus : 'pending';
+          return {
+            id,
+            channel: asString(item.channel, 'unknown'),
+            contactId: asString(item.contactId),
+            preview: asString(item.preview),
+            ...(typeof item.subject === 'string' ? { subject: item.subject } : {}),
+            status,
+            createdAt: asIsoOrNull(item.createdAt) ?? new Date().toISOString(),
+          };
+        })
+        .filter((item): item is AivaOutboundMessage => item !== null);
+    },
   );
 }
 

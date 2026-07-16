@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labyrinth Scout | Enterprise Console</title>
+  <link rel="stylesheet" href="/theme/index.css?v=5">
+<link rel="stylesheet" href="/console-app.css?v=4">
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('scoutTheme') || 'light';
+    if (pref === 'dark') document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+  } catch (e) {}
+})();
+</script>
+</head>
+<body class="console-body">
+<div class="layout">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <svg class="logo-shield" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2L4 7v8c0 7.4 5.2 14.3 12 16 6.8-1.7 12-8.6 12-16V7L16 2z" fill="rgba(0,200,100,0.08)" stroke="#00c864" stroke-width="1.5"/>
+        <path d="M11 16l3 3 7-7" stroke="#00c864" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="logo-text">
+        <div class="brand">LABYRINTH SCOUT</div>
+        <div class="sub">Enterprise Console</div>
+      </div>
+    </div>
+    <div class="user-line">Session: <span id="userEmail">-</span></div>
+  </div>
+
+  <div class="sidebar-radar">
+    <div class="radar-label">Threat Radar</div>
+    <canvas id="radarCanvas" width="154" height="154"></canvas>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section">Monitoring</div>
+    <div class="nav-item active" data-page="overview">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Overview
+    </div>
+    <div class="nav-item" data-page="agents">
+      <svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      Agents
+    </div>
+
+    <div class="nav-section">Threats</div>
+    <div class="nav-item" data-page="threats">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2v6M8 10v1M3 13l5 2 5-2V4L8 1 3 4v9z"/></svg>
+      Live Threats
+    </div>
+    <div class="nav-item" data-page="anomalies">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 12l4-5 3 3 3-6 4 8"/></svg>
+      Anomalies
+    </div>
+    <div class="nav-item" data-page="incidents">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1L1 14h14L8 1zm0 4v4m0 3v1"/></svg>
+      Incidents
+    </div>
+
+    <div class="nav-section">Forensics</div>
+    <div class="nav-item" data-page="findings">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="6" r="4"/><path d="M10 10l4 4"/></svg>
+      Findings
+    </div>
+    <div class="nav-item" data-page="attack-surface">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2"/><path d="M8 2v2M8 12v2M2 8h2M12 8h2"/></svg>
+      Attack Surface
+    </div>
+    <div class="nav-item" data-page="score">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 12l3-3 3 2 3-5 3 2"/><rect x="1" y="1" width="14" height="14" rx="1"/></svg>
+      Scout Score
+    </div>
+    <div class="nav-item" data-page="reports">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h8M4 7h8M4 10h5"/><rect x="1" y="1" width="14" height="14" rx="1"/></svg>
+      Reports
+    </div>
+
+    <div class="nav-section">Defence</div>
+    <a class="nav-item nav-link" href="/warden/" title="WARDEN immune system">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1L2 4v5c0 3.2 2.6 5.8 6 7 3.4-1.2 6-3.8 6-7V4L8 1z"/><path d="M8 5v4M6.5 8.5L8 10l1.5-1.5"/></svg>
+      Warden
+    </a>
+    <div class="nav-item" data-page="policy">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1L2 4v5c0 3 2.5 5.5 6 7 3.5-1.5 6-4 6-7V4L8 1z"/></svg>
+      Policy
+    </div>
+    <div class="nav-item" data-page="policy-packs">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="4" width="12" height="9" rx="1"/><path d="M5 4V3a3 3 0 016 0v1"/></svg>
+      Policy Packs
+    </div>
+    <div class="nav-item" data-page="auto-remediation">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 8h4l2-5 2 10 2-5h2"/></svg>
+      Auto-Remediation
+    </div>
+    <div class="nav-item" data-page="tripwires">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 8h14M8 1v4M8 11v4M5 5l6 6M11 5l-6 6"/></svg>
+      Tripwires
+    </div>
+    <div class="nav-item" data-page="honeypots">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5 10c0-1.7 1.3-3 3-3s3 1.3 3 3v2H5v-2z"/><path d="M3 12h10l-1 2H4l-1-2z"/><path d="M8 3V1M5 4l-2-2M11 4l2-2"/></svg>
+      Honeypots
+    </div>
+    <div class="nav-item" data-page="deception">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/><circle cx="8" cy="8" r="1" fill="currentColor"/></svg>
+      Deception
+    </div>
+    <div class="nav-item" data-page="killswitch">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M6 3.5l-2-2M10 3.5l2-2"/></svg>
+      Kill Switch
+    </div>
+    <div class="nav-item" data-page="quarantine">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="10" height="10" rx="1"/><path d="M8 6v4M6 8h4"/></svg>
+      Quarantine
+    </div>
+    <div class="nav-item" data-page="egress">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10 3l4 4-4 4M14 7H6M1 4v8"/></svg>
+      Egress Control
+    </div>
+
+    <div class="nav-section">Compliance</div>
+    <div class="nav-item" data-page="soc2">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1L2 4v5c0 3 2.5 5.5 6 7 3.5-1.5 6-4 6-7V4L8 1zM5 8l2 2 4-4"/></svg>
+      SOC2 Report
+    </div>
+    <div class="nav-item" data-page="governance">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 14h14M3 14V7l5-5 5 5v7"/><rect x="6" y="10" width="4" height="4"/></svg>
+      Governance
+    </div>
+    <div class="nav-item" data-page="trust">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1a5 5 0 100 10A5 5 0 008 1zM3 13l-2 2M13 13l2 2"/><circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none"/></svg>
+      Blockchain Trust
+    </div>
+    <div class="nav-item" data-page="posture">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="1" width="14" height="14" rx="1"/><path d="M4 8h2l2-4 2 8 2-4h2"/></svg>
+      Security Posture
+    </div>
+
+    <div class="nav-section">Audit</div>
+    <div class="nav-item" data-page="audit">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4h8M4 8h8M4 12h5"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>
+      Audit Logs
+    </div>
+
+    <div class="nav-section">System</div>
+    <div class="nav-item" data-page="settings">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.1 3.1l1.4 1.4M11.5 11.5l1.4 1.4M3.1 12.9l1.4-1.4M11.5 4.5l1.4-1.4"/></svg>
+      Settings
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title" id="pageTitle">OVERVIEW</span>
+    <div class="topbar-right">
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Toggle light or dark theme">Light</button>
+      <div class="status-pill"><span class="s-dot" id="agentDot"></span><span id="agentStatus">-</span></div>
+      <div class="status-pill"><span class="s-dot" id="scoutDot"></span><span id="scoutStatus">Scout</span></div>
+      <span id="clockEl" style="color:var(--text3);font-size: 15px;letter-spacing:1px;"></span>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- OVERVIEW -->
+    <div class="page active" id="page-overview">
+
+      <!-- Threat level -->
+      <div class="threat-banner level-loading" id="threatBanner">
+        <div><div class="threat-level-label">Threat Level</div><div class="threat-level-val" id="threatLevelVal">-</div></div>
+        <div class="threat-level-desc" id="threatLevelDesc">Evaluating...</div>
+      </div>
+
+      <!-- Kill switch panel -->
+      <div class="kill-panel">
+        <div class="kill-panel-left">
+          <div class="kp-label">Emergency Kill Switch</div>
+          <div class="kp-status standby" id="killPanelStatus">Standby</div>
+          <div class="kp-sub" id="killPanelSub">All agents operating normally</div>
+        </div>
+        <div class="kill-panel-right">
+          <button class="disarm-btn" onclick="disarmKill()" id="disarmBtnOv" style="display:none">Disarm</button>
+          <button class="halt-btn" onclick="triggerKill()" id="haltBtnOv">HALT ALL</button>
+        </div>
+      </div>
+
+      <section class="exec-band" aria-label="Executive summary">
+        <div class="exec-card highlight">
+          <div class="exec-head"><strong>24H Volume</strong><span id="exec-volume-label">Signals</span></div>
+          <div class="exec-value cyan" id="exec-volume-value">-</div>
+          <div class="exec-sub" id="exec-volume-sub">Events processed in the current monitoring window</div>
+          <canvas id="exec-volume-canvas" class="exec-spark" height="42"></canvas>
+        </div>
+        <div class="exec-card">
+          <div class="exec-head"><strong>Agent Coverage</strong><span id="exec-coverage-label">Fleet</span></div>
+          <div class="exec-value green" id="exec-coverage-value">-</div>
+          <div class="exec-sub" id="exec-coverage-sub">Online instances as a share of the registered fleet</div>
+          <canvas id="exec-coverage-canvas" class="exec-spark" height="42"></canvas>
+        </div>
+        <div class="exec-card">
+          <div class="exec-head"><strong>Threat Load</strong><span id="exec-threat-label">Risk</span></div>
+          <div class="exec-value amber" id="exec-threat-value">-</div>
+          <div class="exec-sub" id="exec-threat-sub">Blocked, critical and breach events combined</div>
+          <canvas id="exec-threat-canvas" class="exec-spark" height="42"></canvas>
+        </div>
+        <div class="exec-card">
+          <div class="exec-head"><strong>Control State</strong><span id="exec-control-label">Key</span></div>
+          <div class="exec-value purple" id="exec-control-value">-</div>
+          <div class="exec-sub" id="exec-control-sub">Key, score and response controls at a glance</div>
+          <canvas id="exec-control-canvas" class="exec-spark" height="42"></canvas>
+        </div>
+      </section>
+
+      <!-- 4 tiles -->
+      <div class="tiles">
+        <div class="tile"><div class="tile-label">System Status</div><div class="tile-value green" id="tileStatus">-</div><div class="tile-sub" id="tileStatusSub">checking...</div></div>
+        <div class="tile info"><div class="tile-label">Active Agents</div><div class="tile-value cyan" id="tileAgents">-</div><div class="tile-sub" id="tileAgentsSub">-</div></div>
+        <div class="tile purple"><div class="tile-label">Scout Score</div><div class="tile-value purple" id="tileScore">-</div><div class="tile-sub" id="tileScoreSub">overall</div></div>
+        <div class="tile alert"><div class="tile-label">Open Incidents</div><div class="tile-value red" id="tileIncidents">-</div><div class="tile-sub" id="tileIncidentsSub">-</div></div>
+      </div>
+
+      <!-- Chart + feed -->
+      <div class="row2">
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Event Volume / 24h</span><span style="font-size: 15px;color:var(--text3)" id="chartTotal">-</span></div>
+          <canvas id="chartCanvas" height="110"></canvas>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Live Activity Feed</span></div>
+          <div class="feed" id="activityFeed"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+
+      <!-- Bottom stat row -->
+      <div class="stat-row">
+        <div class="stat-mini" onclick="nav('threats')" style="cursor:pointer">
+          <div class="sm-label">Threats Blocked</div>
+          <div class="sm-val amber" id="smThreats">-</div>
+          <div class="sm-sub">last 24h events</div>
+        </div>
+        <div class="stat-mini" onclick="nav('honeypots')" style="cursor:pointer">
+          <div class="sm-label">Honeypot Hits</div>
+          <div class="sm-val red" id="smHoneypot">-</div>
+          <div class="sm-sub" id="smHoneypotSub">-</div>
+        </div>
+        <div class="stat-mini" onclick="nav('tripwires')" style="cursor:pointer">
+          <div class="sm-label">Tripwire Alerts</div>
+          <div class="sm-val amber" id="smTripwire">-</div>
+          <div class="sm-sub" id="smTripwireSub">-</div>
+        </div>
+        <div class="stat-mini" onclick="nav('anomalies')" style="cursor:pointer">
+          <div class="sm-label">Anomalies</div>
+          <div class="sm-val cyan" id="smAnomalies">-</div>
+          <div class="sm-sub" id="smAnomaliesSub">recent detections</div>
+        </div>
+        <div class="stat-mini" onclick="nav('audit')" style="cursor:pointer">
+          <div class="sm-label">Audit Events</div>
+          <div class="sm-val green" id="smAudit">-</div>
+          <div class="sm-sub">logged total</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- AGENTS -->
+    <div class="page" id="page-agents">
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Instance</th><th>Model</th><th>Status</th><th>Last Heartbeat</th><th>Events</th></tr></thead>
+        <tbody id="agentsTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- LIVE THREATS -->
+    <div class="page" id="page-threats">
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Time</th><th>Severity</th><th>Type</th><th>Agent</th><th>Description</th><th>Outcome</th></tr></thead>
+        <tbody id="threatsTbl"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- ANOMALIES -->
+    <div class="page" id="page-anomalies">
+      <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+        <div class="tile warn"><div class="tile-label">Anomalies Detected</div><div class="tile-value amber" id="anomalyCount">-</div><div class="tile-sub">recent</div></div>
+        <div class="tile"><div class="tile-label">Baselines</div><div class="tile-value green" id="baselineCount">-</div><div class="tile-sub">monitored metrics</div></div>
+        <div class="tile alert"><div class="tile-label">High Deviation</div><div class="tile-value red" id="highDevCount">-</div><div class="tile-sub">above threshold</div></div>
+      </div>
+      <div id="anomalyKeyWarn"></div>
+      <div class="panel"><div class="panel-head"><span class="panel-title">Recent Anomalies</span></div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th>Time</th><th>Type</th><th>Metric</th><th>Value</th><th>Baseline</th><th>Deviation</th></tr></thead>
+          <tbody id="anomaliesTbl"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- INCIDENTS -->
+    <div class="page" id="page-incidents">
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Time</th><th>Agent</th><th>Event</th><th>Tool</th><th>Severity</th></tr></thead>
+        <tbody id="incidentsTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- FINDINGS -->
+    <div class="page" id="page-findings">
+      <div id="findingsKeyWarn"></div>
+      <div class="panel" style="margin-bottom:10px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="findSev" onchange="loadFindings()" style="background:var(--void);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:var(--mono);font-size: 17px;">
+            <option value="">All Severity</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+          </select>
+          <select id="findStatus" onchange="loadFindings()" style="background:var(--void);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:var(--mono);font-size: 17px;">
+            <option value="open">Open</option><option value="">All</option><option value="remediated">Remediated</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Severity</th><th>Title</th><th>Type</th><th>Host</th><th>Tool</th><th>Last Seen</th></tr></thead>
+        <tbody id="findingsTbl"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- ATTACK SURFACE -->
+    <div class="page" id="page-attack-surface">
+      <div id="surfaceKeyWarn"></div>
+      <div id="surfaceContent"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- SCOUT SCORE -->
+    <div class="page" id="page-score">
+      <div id="scoreKeyWarn"></div>
+      <div class="panel">
+        <div id="scoreBig"><div class="loading">Loading...</div></div>
+      </div>
+      <div class="panel" style="margin-top:12px;">
+        <div class="panel-head"><span class="panel-title">Score History (last 30 days)</span></div>
+        <canvas id="scoreCanvas" height="100" style="width:100%;display:block;"></canvas>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div id="reportsKeyWarn"></div>
+      <div id="reportsContent"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- POLICY -->
+    <div class="page" id="page-policy">
+      <div id="policyKeyWarn"></div>
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Rule</th><th>Type</th><th>Scope</th><th>Action</th><th>Status</th></tr></thead>
+        <tbody id="policyTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- POLICY PACKS -->
+    <div class="page" id="page-policy-packs">
+      <div id="packsKeyWarn"></div>
+      <div id="packsContent"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- AUTO-REMEDIATION -->
+    <div class="page" id="page-auto-remediation">
+      <div id="autoKeyWarn"></div>
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Rule ID</th><th>Condition</th><th>Action</th><th>Priority</th><th>Status</th></tr></thead>
+        <tbody id="autoTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- TRIPWIRES -->
+    <div class="page" id="page-tripwires">
+      <div id="tripwireKeyWarn"></div>
+      <div class="row2" style="margin-bottom:12px">
+        <div class="panel"><div class="panel-head"><span class="panel-title">Recent Hits</span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Time</th><th>Wire</th><th>Source</th><th>Event</th></tr></thead>
+          <tbody id="tripwireHitsTbl"><tr><td colspan="4" class="loading">Loading...</td></tr></tbody></table></div>
+        </div>
+        <div class="panel"><div class="panel-head"><span class="panel-title">Configuration</span></div>
+          <div id="tripwireConfig"><div class="loading">Loading...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HONEYPOTS -->
+    <div class="page" id="page-honeypots">
+      <div id="honeypotKeyWarn"></div>
+      <div class="tiles" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px">
+        <div class="tile"><div class="tile-label">Active Honeypots</div><div class="tile-value green" id="hpActive">-</div><div class="tile-sub">deployed</div></div>
+        <div class="tile warn"><div class="tile-label">Total Hits</div><div class="tile-value amber" id="hpHits">-</div><div class="tile-sub">all time</div></div>
+        <div class="tile alert"><div class="tile-label">Attacker IPs</div><div class="tile-value red" id="hpIPs">-</div><div class="tile-sub">unique sources</div></div>
+      </div>
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Token</th><th>Type</th><th>Hits</th><th>Last Hit</th><th>Status</th></tr></thead>
+        <tbody id="honeypotTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- DECEPTION -->
+    <div class="page" id="page-deception">
+      <div id="deceptionKeyWarn"></div>
+      <div class="panel"><div class="panel-head"><span class="panel-title">Moving Target Augmentation</span></div>
+        <div id="deceptionContent"><div class="loading">Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- KILL SWITCH -->
+    <div class="page" id="page-killswitch">
+      <div id="killKeyWarn"></div>
+      <div class="panel" style="max-width:500px">
+        <div class="panel-head"><span class="panel-title">Kill Switch Status</span></div>
+        <div id="killswitchStatus"><div class="loading">Loading...</div></div>
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+          <button class="kill-btn" onclick="triggerKill()">HALT ALL AGENTS</button>
+          <button class="disarm-btn" onclick="disarmKill()">Disarm</button>
+        </div>
+        <div style="font-size: 17px;color:var(--text3);margin-top:10px;line-height:1.6">Triggering the kill switch sends an immediate halt signal to all connected Carina instances. Agents will stop processing tools and tasks. Use Disarm to resume normal operation.</div>
+      </div>
+    </div>
+
+    <!-- QUARANTINE -->
+    <div class="page" id="page-quarantine">
+      <div id="quarantineKeyWarn"></div>
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Tool</th><th>Reason</th><th>Quarantined At</th></tr></thead>
+        <tbody id="quarantineTbl"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- EGRESS CONTROL -->
+    <div class="page" id="page-egress">
+      <div id="egressKeyWarn"></div>
+      <div class="panel"><div class="panel-head"><span class="panel-title">Domain Blocklist</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Domain</th><th>Added</th><th>Reason</th></tr></thead>
+        <tbody id="egressTbl"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- SOC2 -->
+    <div class="page" id="page-soc2">
+      <div id="soc2KeyWarn"></div>
+      <div id="soc2Content"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- GOVERNANCE -->
+    <div class="page" id="page-governance">
+      <div id="governanceKeyWarn"></div>
+      <div id="governanceContent"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- BLOCKCHAIN TRUST -->
+    <div class="page" id="page-trust">
+      <div id="trustKeyWarn"></div>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-head"><span class="panel-title">Trust hub</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;font-size:14px;">
+          <a class="btn-ghost" href="https://carinaai.uk/trust" target="_blank" rel="noopener noreferrer">Public trust page</a>
+          <a class="btn-ghost" href="/api/public/trust" target="_blank" rel="noopener noreferrer">Public API JSON</a>
+          <a class="btn-ghost" href="/api/trust/compliance-report?format=pdf">Compliance PDF</a>
+          <a class="btn-ghost" href="/docs/trust/platform.html" target="_blank" rel="noopener noreferrer">Operator docs</a>
+        </div>
+      </div>
+      <div id="trustPublicSnapshot" class="panel" style="margin-bottom:12px"><div class="loading">Loading public trust snapshot...</div></div>
+      <div class="panel"><div class="panel-head"><span class="panel-title">On-chain history</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th>Time</th><th>Type</th><th>Score</th><th>Chain</th><th>Verified</th></tr></thead>
+        <tbody id="trustTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- SECURITY POSTURE -->
+    <div class="page" id="page-posture">
+      <div id="postureKeyWarn"></div>
+      <div id="postureContent"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- AUDIT -->
+    <div class="page" id="page-audit">
+      <div id="auditKeyWarn"></div>
+      <div class="panel"><div class="tbl-wrap">
+        <table><thead><tr><th>Time</th><th>Type</th><th>Agent</th><th>Tool</th><th>Summary</th></tr></thead>
+        <tbody id="auditTbl"><tr><td colspan="5" class="loading">Loading...</td></tr></tbody></table>
+      </div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="panel" style="max-width:520px">
+        <div class="panel-head"><span class="panel-title">Scout API Key</span></div>
+        <div style="font-size: 14px;color:var(--text2);margin-bottom:10px;line-height:1.6">
+          Extended modules (Warden, findings, score, defence) need a Scout API key in this browser.
+          The console creates one automatically on first load. If modules still say the key is required, generate a new key below and click Save.
+        </div>
+        <input class="key-input" id="apiKeyInput" type="password" placeholder="lbs-... (paste or generate)">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="save-btn" type="button" onclick="saveApiKey()">Save Key</button>
+          <button class="save-btn" type="button" id="mintKeyBtn" onclick="generateConsoleKey()" style="background:transparent;border:1px solid var(--border);color:var(--text)">Generate new key</button>
+        </div>
+        <div style="font-size: 13px;color:var(--text3);margin-top:8px" id="keyStatus"></div>
+        <div style="font-size: 13px;color:var(--text2);margin-top:12px;line-height:1.5">
+          Manage all keys in <a href="/account/dashboard" style="color:var(--cyan)">Account dashboard</a>.
+          Plaintext is shown only once when a key is created.
+        </div>
+      </div>
+      <div class="panel" style="max-width:520px;margin-top:10px">
+        <div class="panel-head"><span class="panel-title">Account</span></div>
+        <div style="font-size: 15px;color:var(--text2)">Email: <span id="settingsEmail" style="color:var(--cyan)">-</span></div>
+        <div style="margin-top:12px"><button class="logout-btn" style="width:auto;padding:6px 16px" onclick="doLogout()">Sign Out</button></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+'use strict';
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+(function() {
+  var loginNext = '/account/login?next=' + encodeURIComponent(location.pathname + location.search);
+  fetch('/account/api/me', { credentials: 'include' })
+    .then(function(r) { if (!r.ok) { location.href = loginNext; return null; } return r.json(); })
+    .then(function(me) {
+      if (!me) return;
+      var e = me.email || me.username || 'user';
+      document.getElementById('userEmail').textContent = e;
+      document.getElementById('settingsEmail').textContent = e;
+      boot();
+    })
+    .catch(function() { location.href = loginNext; });
+})();
+
+// ── State ─────────────────────────────────────────────────────────────────────
+var SCOUT_KEY = localStorage.getItem('scout_api_key') || '';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function apiK(path, opts) {
+  opts = opts || {};
+  var h = { 'Content-Type': 'application/json' };
+  if (SCOUT_KEY) h['X-Scout-Key'] = SCOUT_KEY;
+  return fetch(path, Object.assign({}, opts, { headers: Object.assign(h, opts.headers || {}), credentials: 'include' }))
+    .then(function(r) { return r.json().catch(function() { return {}; }); });
+}
+function apiA(path) {
+  return fetch(path, { credentials: 'include' }).then(function(r) { return r.json().catch(function() { return {}; }); });
+}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtT(ts) { if (!ts) return '-'; var d=new Date(ts); return d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function fmtD(ts) { if (!ts) return '-'; var d=new Date(ts); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}) + ' ' + fmtT(ts); }
+function instanceIsLive(inst) {
+  if (!inst) return false;
+  if (inst.status === 'suspended') return false;
+  if (inst.status === 'active' || inst.status === 'online') return true;
+  if (typeof inst.secondsAgo === 'number') return inst.secondsAgo <= 90;
+  var seenAt = inst.last_heartbeat || inst.last_seen_at;
+  if (!seenAt) return false;
+  return (Date.now() - new Date(seenAt).getTime()) < 90000;
+}
+function sev(s) {
+  var m = {critical:'br',high:'br',breach:'br',medium:'ba',warning:'ba',low:'bc',info:'bx',ok:'bg',active:'bg',armed:'br',disarmed:'bg',triggered:'br'};
+  return '<span class="badge ' + (m[(s||'info').toLowerCase()] || 'bx') + '">' + esc(s||'info') + '</span>';
+}
+function sevDot(s) {
+  var m = {critical:'red',high:'red',breach:'red',medium:'amber',warning:'amber',low:'cyan',info:'green'};
+  return m[(s||'info').toLowerCase()] || 'green';
+}
+function keyWarn(elId, page) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  if (!SCOUT_KEY) {
+    el.innerHTML = '<div class="key-warn">Scout API key required for this module. Open <a onclick="nav(\'settings\')">Settings</a> and click <strong>Generate new key</strong>, then reload this page.</div>';
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+var pageLabels = {
+  overview:'EXECUTIVE OVERVIEW', agents:'AGENTS', threats:'LIVE THREATS', anomalies:'ANOMALIES', incidents:'INCIDENTS',
+  findings:'FINDINGS', 'attack-surface':'ATTACK SURFACE', score:'SCOUT SCORE', reports:'REPORTS',
+  policy:'POLICY', 'policy-packs':'POLICY PACKS', 'auto-remediation':'AUTO-REMEDIATION',
+  tripwires:'TRIPWIRES', honeypots:'HONEYPOTS', deception:'DECEPTION', killswitch:'KILL SWITCH',
+  quarantine:'QUARANTINE', egress:'EGRESS CONTROL', soc2:'SOC2 COMPLIANCE', governance:'GOVERNANCE',
+  trust:'BLOCKCHAIN TRUST', posture:'SECURITY POSTURE', audit:'AUDIT LOGS', settings:'SETTINGS'
+};
+function nav(page) {
+  if (!page) return;
+  document.querySelectorAll('.nav-item[data-page]').forEach(function(el) { el.classList.toggle('active', el.dataset.page === page); });
+  document.querySelectorAll('.page').forEach(function(el) { el.classList.toggle('active', el.id === 'page-' + page); });
+  document.getElementById('pageTitle').textContent = pageLabels[page] || page.toUpperCase();
+  loadPage(page);
+}
+document.querySelectorAll('.nav-item[data-page]').forEach(function(el) {
+  el.addEventListener('click', function() { nav(el.dataset.page); });
+});
+function syncThemeToggle() {
+  var btn = document.getElementById('themeToggle');
+  if (!btn) return;
+  var dark = document.documentElement.classList.contains('dark');
+  btn.textContent = dark ? 'Dark' : 'Light';
+  btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+}
+function toggleTheme() {
+  var dark = document.documentElement.classList.toggle('dark');
+  try { localStorage.setItem('scoutTheme', dark ? 'dark' : 'light'); } catch (e) {}
+  syncThemeToggle();
+}
+document.getElementById('themeToggle') && document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+syncThemeToggle();
+function loadPage(p) {
+  var map = {
+    agents: loadAgents, threats: loadThreats, anomalies: loadAnomalies,
+    incidents: loadIncidents, findings: loadFindings, 'attack-surface': loadSurface,
+    score: loadScore, reports: loadReports, policy: loadPolicy, 'policy-packs': loadPolicyPacks,
+    'auto-remediation': loadAutoRemediation, tripwires: loadTripwires, honeypots: loadHoneypots,
+    deception: loadDeception, killswitch: loadKillSwitch, quarantine: loadQuarantine,
+    egress: loadEgress, soc2: loadSOC2, governance: loadGovernance, trust: loadTrust,
+    posture: loadPosture, audit: loadAudit, settings: function() { loadSettingsPage(); }
+  };
+  if (map[p]) map[p]();
+}
+
+// ── Clock ─────────────────────────────────────────────────────────────────────
+function tickClock() { var e=document.getElementById('clockEl'); if(e) e.textContent=new Date().toISOString().slice(0,19).replace('T',' ')+' UTC'; }
+setInterval(tickClock, 1000); tickClock();
+
+// ── Radar ─────────────────────────────────────────────────────────────────────
+var radarAngle = 0, radarDots = [];
+function radarDot(sev) {
+  var r=18+Math.random()*56, a=Math.random()*Math.PI*2;
+  var cm={critical:'#ff2244',high:'#ff2244',breach:'#ff2244',medium:'#d4af37',warning:'#d4af37',low:'#00c864',info:'#00c864'};
+  radarDots.push({x:Math.cos(a)*r,y:Math.sin(a)*r,color:cm[(sev||'info').toLowerCase()]||'#00c864',born:Date.now()});
+}
+(function radarLoop() {
+  var cv=document.getElementById('radarCanvas'); if(!cv){requestAnimationFrame(radarLoop);return;}
+  var ctx=cv.getContext('2d'), cx=77, cy=77, R=73, now=Date.now();
+  radarAngle+=0.018;
+  radarDots=radarDots.filter(function(d){return now-d.born<18000;});
+  ctx.clearRect(0,0,154,154);
+  ctx.fillStyle='#080e18'; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+  [0.33,0.66,1].forEach(function(f){
+    ctx.beginPath(); ctx.arc(cx,cy,R*f,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,200,100,0.07)'; ctx.lineWidth=1; ctx.stroke();
+  });
+  ctx.strokeStyle='rgba(0,200,100,0.05)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(cx-R,cy); ctx.lineTo(cx+R,cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx,cy-R); ctx.lineTo(cx,cy+R); ctx.stroke();
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(radarAngle);
+  var sg=ctx.createLinearGradient(0,0,R,0);
+  sg.addColorStop(0,'rgba(0,200,100,0.3)'); sg.addColorStop(1,'rgba(0,200,100,0)');
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,-0.4,0); ctx.closePath();
+  ctx.fillStyle=sg; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(R,0);
+  ctx.strokeStyle='#00c864'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.restore();
+  radarDots.forEach(function(d){
+    var age=(now-d.born)/18000;
+    ctx.globalAlpha=1-age;
+    ctx.beginPath(); ctx.arc(cx+d.x,cy+d.y,2.5,0,Math.PI*2);
+    ctx.fillStyle=d.color; ctx.fill();
+    ctx.globalAlpha=1;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,2,0,Math.PI*2); ctx.fillStyle='#00c864'; ctx.fill();
+  ctx.save(); ctx.globalCompositeOperation='destination-in';
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill(); ctx.restore();
+  requestAnimationFrame(radarLoop);
+})();
+
+function fitCanvas(cv, height) {
+  if (!cv) return null;
+  cv.width = cv.offsetWidth || 300;
+  cv.height = height;
+  return cv.getContext('2d');
+}
+
+function renderSparkline(canvasId, values, options) {
+  var cv = document.getElementById(canvasId);
+  if (!cv) return;
+  var ctx = fitCanvas(cv, cv.height || 42);
+  if (!ctx) return;
+  var W = cv.width;
+  var H = cv.height;
+  var data = Array.isArray(values) && values.length ? values.slice() : [0];
+  var max = Math.max.apply(null, data);
+  if (!Number.isFinite(max) || max <= 0) max = 1;
+  var color = options && options.color ? options.color : '#63c6ff';
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(96,117,138,0.28)';
+  ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(function (f) {
+    var y = H - H * f;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(W, y);
+    ctx.stroke();
+  });
+  ctx.beginPath();
+  data.forEach(function (v, i) {
+    var x = (i / Math.max(1, data.length - 1)) * (W - 4) + 2;
+    var y = H - (Math.max(0, v) / max) * (H - 6) - 2;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  var grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, options && options.fillTop ? options.fillTop : 'rgba(99,198,255,0.24)');
+  grad.addColorStop(1, options && options.fillBottom ? options.fillBottom : 'rgba(99,198,255,0.02)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+function renderBarStrip(canvasId, values, options) {
+  var cv = document.getElementById(canvasId);
+  if (!cv) return;
+  var ctx = fitCanvas(cv, cv.height || 42);
+  if (!ctx) return;
+  var W = cv.width;
+  var H = cv.height;
+  var data = Array.isArray(values) && values.length ? values.slice() : [0];
+  var max = Math.max.apply(null, data);
+  if (!Number.isFinite(max) || max <= 0) max = 1;
+  var color = options && options.color ? options.color : '#4cc38a';
+  ctx.clearRect(0, 0, W, H);
+  var gap = 3;
+  var bw = (W - gap * (data.length - 1)) / data.length;
+  data.forEach(function (v, i) {
+    var h = Math.max(2, (Math.max(0, v) / max) * (H - 4));
+    var x = i * (bw + gap);
+    var y = H - h;
+    var g = ctx.createLinearGradient(0, y, 0, H);
+    g.addColorStop(0, options && options.fillTop ? options.fillTop : color);
+    g.addColorStop(1, options && options.fillBottom ? options.fillBottom : 'rgba(76,195,138,0.08)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, bw, h);
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+function boot() {
+  fetch('/api/readiness',{credentials:'include'})
+    .then(function(r){ document.getElementById('scoutDot').className='s-dot '+(r.ok?'live':'err'); document.getElementById('scoutStatus').textContent=r.ok?'Scout live':'Scout error'; })
+    .catch(function(){ document.getElementById('scoutDot').className='s-dot err'; document.getElementById('scoutStatus').textContent='Scout offline'; });
+
+  // Auto-fetch / mint a Scout API key for this browser session.
+  // Plaintext is only returned at creation time, so if localStorage is empty we
+  // always create a new "Console" key rather than leaving modules locked.
+  function startWithKey(key) {
+    if (!key) {
+      loadOverview();
+      setInterval(loadOverview, 30000);
+      return;
+    }
+    SCOUT_KEY = key;
+    try { localStorage.setItem('scout_api_key', key); } catch (e) {}
+    var inp = document.getElementById('apiKeyInput');
+    if (inp) inp.value = key;
+    var status = document.getElementById('keyStatus');
+    if (status) status.textContent = 'Key loaded for this browser.';
+    loadOverview();
+    setInterval(loadOverview, 30000);
+  }
+
+  function mintConsoleKey() {
+    return fetch('/account/api/keys', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label: 'Console ' + new Date().toISOString().slice(0, 10) }),
+    })
+      .then(function(r) { return r.json().catch(function() { return {}; }); })
+      .then(function(result) {
+        if (result.key) {
+          startWithKey(result.key);
+          return true;
+        }
+        startWithKey('');
+        return false;
+      })
+      .catch(function() {
+        startWithKey('');
+        return false;
+      });
+  }
+
+  var cached = '';
+  try { cached = localStorage.getItem('scout_api_key') || ''; } catch (e) { cached = ''; }
+  if (cached) {
+    startWithKey(cached);
+  } else {
+    mintConsoleKey();
+  }
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+function loadOverview() {
+  apiA('/account/api/instances').then(function(data){
+    var list=Array.isArray(data)?data:(data.instances||[]); var n=list.length;
+    window.__scoutAgentsOnline = list.filter(function(a){ return instanceIsLive(a); });
+    document.getElementById('tileAgents').textContent=n;
+    document.getElementById('tileAgentsSub').textContent=n+' registered';
+    document.getElementById('agentDot').className='s-dot '+(n>0?'live':'');
+    document.getElementById('agentStatus').textContent=n>0?(n+' agent'+(n!==1?'s':'')):'No agents';
+  }).catch(function(){});
+
+  apiA('/account/api/events?limit=200').then(function(data){
+    var ev=Array.isArray(data)?data:(data.events||[]);
+    var threats=ev.filter(function(e){var t=(e.event_type||e.type||'').toLowerCase(); return t.indexOf('block')>=0||t.indexOf('deny')>=0||t.indexOf('threat')>=0||t.indexOf('breach')>=0||t.indexOf('kill')>=0;});
+    var incidents=ev.filter(function(e){var s=(e.severity||'').toLowerCase(); return s==='critical'||s==='high'||s==='breach';});
+    var blocked=ev.filter(function(e){var t=(e.event_type||e.type||'').toLowerCase(); return t.indexOf('block')>=0||t.indexOf('deny')>=0||t.indexOf('quarantine')>=0;});
+    document.getElementById('smThreats').textContent=threats.length;
+    document.getElementById('smAudit').textContent=ev.length;
+    document.getElementById('tileIncidents').textContent=incidents.length;
+    document.getElementById('tileIncidentsSub').textContent=incidents.length?'needs attention':'all clear';
+    document.getElementById('tileStatus').textContent=incidents.length?'ALERT':'OK';
+    document.getElementById('tileStatus').className='tile-value '+(incidents.length?'red':'green');
+    document.getElementById('tileStatusSub').textContent=incidents.length?(incidents.length+' high-sev event'+(incidents.length!==1?'s':'')):'no active alerts';
+    ev.slice(0,14).forEach(function(e){radarDot(e.severity||e.level||'info');});
+    renderFeed(ev.slice(0,20));
+    renderChart(ev);
+    var hourly = new Array(24).fill(0);
+    var blockedHourly = new Array(24).fill(0);
+    var now = Date.now();
+    ev.forEach(function(e) {
+      var ts = new Date(e.created_at || e.occurred_at || e.timestamp || 0).getTime();
+      if (!Number.isFinite(ts)) return;
+      var age = now - ts;
+      if (age < 0 || age > 86400000) return;
+      var idx = Math.min(23, Math.floor((age / 86400000) * 24));
+      hourly[23 - idx] += 1;
+      var t = (e.event_type || e.type || '').toLowerCase();
+      if (t.indexOf('block') >= 0 || t.indexOf('deny') >= 0 || t.indexOf('quarantine') >= 0) {
+        blockedHourly[23 - idx] += 1;
+      }
+    });
+    renderSparkline('exec-volume-canvas', hourly, { color: '#63c6ff', fillTop: 'rgba(99,198,255,0.28)', fillBottom: 'rgba(99,198,255,0.02)' });
+    renderBarStrip('exec-threat-canvas', blockedHourly, { color: '#d7b46a', fillTop: 'rgba(215,180,106,0.9)', fillBottom: 'rgba(215,180,106,0.12)' });
+    renderSparkline('exec-control-canvas', hourly.map(function(v, i){ return v > 0 ? Math.max(1, 20 - i) : 0; }), { color: '#8d9cff', fillTop: 'rgba(141,156,255,0.24)', fillBottom: 'rgba(141,156,255,0.02)' });
+    document.getElementById('exec-volume-value').textContent = ev.length;
+    document.getElementById('exec-volume-sub').textContent = 'Events processed across the last 24 hours';
+    var totalAgents = Number(document.getElementById('tileAgents').textContent) || 0;
+    var onlineAgents = Array.isArray(window.__scoutAgentsOnline) ? window.__scoutAgentsOnline.length : 0;
+    var coverage = totalAgents > 0 ? Math.round((onlineAgents / totalAgents) * 100) : 0;
+    document.getElementById('exec-coverage-value').textContent = coverage + '%';
+    document.getElementById('exec-coverage-sub').textContent = totalAgents > 0 ? (onlineAgents + ' of ' + totalAgents + ' instances online') : 'No registered instances yet';
+    renderSparkline('exec-coverage-canvas', [coverage, Math.max(0, coverage - 12), Math.max(0, coverage - 8), Math.max(0, coverage - 5), coverage], { color: '#4cc38a', fillTop: 'rgba(76,195,138,0.24)', fillBottom: 'rgba(76,195,138,0.02)' });
+    var controlScore = SCOUT_KEY ? (blocked.length * 12 + incidents.length * 18 + threats.length * 4) : 0;
+    document.getElementById('exec-threat-value').textContent = controlScore;
+    document.getElementById('exec-threat-sub').textContent = blocked.length + ' blocked events, ' + incidents.length + ' incidents';
+    document.getElementById('exec-control-value').textContent = SCOUT_KEY ? 'LIVE' : 'LOCKED';
+    document.getElementById('exec-control-sub').textContent = SCOUT_KEY ? 'API key loaded, control plane active' : 'Add the Scout API key to unlock deeper controls';
+    // Derive threat level from real data
+    var banner=document.getElementById('threatBanner');
+    var lv=document.getElementById('threatLevelVal');
+    var ld=document.getElementById('threatLevelDesc');
+    if(incidents.length>=3){
+      banner.className='threat-banner level-alert'; lv.className='threat-level-val alert'; lv.textContent='CRITICAL';
+      ld.textContent=incidents.length+' high-severity incidents in last 24h. Immediate review required.';
+    } else if(incidents.length>0||threats.length>2){
+      banner.className='threat-banner level-warn'; lv.className='threat-level-val warn'; lv.textContent='ELEVATED';
+      ld.textContent=(incidents.length||threats.length)+' active event'+(incidents.length!==1?'s':'')+' flagged in the monitoring window.';
+    } else {
+      banner.className='threat-banner level-ok'; lv.className='threat-level-val ok'; lv.textContent='NORMAL';
+      ld.textContent='No high-severity incidents detected. '+ev.length+' events logged in last 24h.';
+    }
+  }).catch(function(){
+    document.getElementById('threatBanner').className='threat-banner level-loading';
+    document.getElementById('threatLevelVal').textContent='-';
+    document.getElementById('threatLevelDesc').textContent='Could not load event data.';
+  });
+
+  // Kill switch status
+  if(SCOUT_KEY) {
+    apiK('/api/killswitch/status').then(function(data){
+      var armed=data.armed||data.active||data.triggered||false;
+      var ps=document.getElementById('killPanelStatus'), sub=document.getElementById('killPanelSub');
+      var hb=document.getElementById('haltBtnOv'), db=document.getElementById('disarmBtnOv');
+      if(armed){
+        ps.textContent='ARMED'; ps.className='kp-status armed';
+        sub.textContent=data.reason?'Reason: '+data.reason:'Kill switch active - agents halted';
+        hb.className='halt-btn armed'; db.style.display='inline-block';
+      } else {
+        ps.textContent='Standby'; ps.className='kp-status standby';
+        sub.textContent='All agents operating normally';
+        hb.className='halt-btn'; db.style.display='none';
+      }
+    }).catch(function(){});
+  }
+
+  // Scout score
+  if(SCOUT_KEY) {
+    apiK('/api/score').then(function(data){
+      var sc=data.score??data.overall??null;
+      document.getElementById('tileScore').textContent=sc!=null?sc:'-';
+      document.getElementById('tileScoreSub').textContent=sc!=null?'out of 100':'no data yet';
+    }).catch(function(){document.getElementById('tileScore').textContent='-';});
+  }
+
+  // Honeypot summary
+  if(SCOUT_KEY) {
+    apiK('/api/honeypots/summary').then(function(data){
+      var hits=data.total??data.total_hits??data.hits??null;
+      document.getElementById('smHoneypot').textContent=hits!=null?hits:'-';
+      var triggered=data.triggered??null;
+      document.getElementById('smHoneypotSub').textContent=triggered!=null?(triggered+' triggered'):(data.unique_attackers!=null?(data.unique_attackers+' unique sources'):(data.active_count!=null?(data.active_count+' deployed'):'-'));
+    }).catch(function(){document.getElementById('smHoneypot').textContent='-';});
+  }
+
+  // Tripwire hits
+  if(SCOUT_KEY) {
+    apiK('/api/tripwires/hits').then(function(data){
+      var hits=data.hits||data||[]; if(!Array.isArray(hits))hits=[];
+      document.getElementById('smTripwire').textContent=hits.length;
+      var recent=hits.filter(function(h){return h.triggered_at&&(Date.now()-new Date(h.triggered_at).getTime())<86400000;});
+      document.getElementById('smTripwireSub').textContent=recent.length+' in last 24h';
+    }).catch(function(){document.getElementById('smTripwire').textContent='-';});
+  }
+
+  // Anomalies
+  if(SCOUT_KEY) {
+    apiK('/api/anomalies/recent?limit=50').then(function(data){
+      var list=data.anomalies||data||[]; if(!Array.isArray(list))list=[];
+      document.getElementById('smAnomalies').textContent=list.length;
+      document.getElementById('smAnomaliesSub').textContent=list.length?'recent detections':'none detected';
+      list.slice(0,5).forEach(function(a){radarDot(a.severity||'medium');});
+    }).catch(function(){document.getElementById('smAnomalies').textContent='-';});
+  }
+}
+
+function renderFeed(ev) {
+  var el=document.getElementById('activityFeed');
+  if(!ev.length){el.innerHTML='<div class="empty">No recent activity</div>';return;}
+  el.innerHTML=ev.map(function(e){
+    var dot=sevDot(e.severity||e.level);
+    var msg=e.description||e.message||e.event_type||e.type||'Event';
+    var agent=(e.agent_id||e.instance_id||'').slice(0,8);
+    return '<div class="feed-item"><div class="f-dot '+dot+'"></div><div class="feed-body"><div class="feed-msg">'+esc(msg)+'</div><div class="feed-meta">'+fmtT(e.created_at||e.occurred_at||e.timestamp)+(agent?' / '+agent:'')+'</div></div></div>';
+  }).join('');
+}
+
+function renderChart(ev) {
+  var cv=document.getElementById('chartCanvas'); if(!cv)return;
+  cv.width=cv.offsetWidth||580; var ctx=cv.getContext('2d'), W=cv.width, H=110;
+  var buckets=new Array(12).fill(0), now=Date.now(), span=86400000, bs=span/12;
+  ev.forEach(function(e){
+    var ts=new Date(e.created_at||e.occurred_at||e.timestamp||0).getTime();
+    var age=now-ts; if(age>=0&&age<span){var b=Math.floor((span-age)/bs); if(b>=0&&b<12)buckets[b]++;}
+  });
+  var max=Math.max.apply(null,buckets)||1;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(0,200,100,0.05)'; ctx.lineWidth=1;
+  [0.33,0.66].forEach(function(f){var y=H-H*f; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();});
+  buckets.forEach(function(v,i){
+    var bh=(v/max)*(H-14), x=i*(W/12)+2, w=(W/12)-4, y=H-bh;
+    var g=ctx.createLinearGradient(0,y,0,H);
+    g.addColorStop(0,'rgba(0,200,100,0.65)'); g.addColorStop(1,'rgba(0,200,100,0.1)');
+    ctx.fillStyle=g; ctx.fillRect(x,y,w,bh);
+  });
+  ctx.fillStyle='#3a5568'; ctx.font='7px JetBrains Mono,monospace'; ctx.textAlign='center';
+  [0,6,12,18,24].forEach(function(h){
+    var x=(h/24)*W; ctx.fillText(h===0?'-24h':h===24?'now':'-'+(24-h)+'h',x,H-1);
+  });
+  document.getElementById('chartTotal').textContent=(buckets.reduce(function(a,b){return a+b;},0))+' events';
+}
+
+// ── Agents ────────────────────────────────────────────────────────────────────
+function loadAgents() {
+  var tb=document.getElementById('agentsTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiA('/account/api/instances').then(function(data){
+    var list=Array.isArray(data)?data:(data.instances||[]);
+    if(!list.length){tb.innerHTML='<tr><td colspan="5" class="empty">No agents registered</td></tr>';return;}
+    tb.innerHTML=list.map(function(a){
+      var live = instanceIsLive(a);
+      return '<tr><td>'+esc(a.name||a.id||'-')+'</td><td>'+esc(a.model||a.agent_type||'-')+'</td><td>'+(live?'<span class="badge bg">Online</span>':'<span class="badge bx">Offline</span>')+'</td><td>'+fmtD(a.last_heartbeat||a.last_seen_at)+'</td><td>'+(a.event_count||'-')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Threats ───────────────────────────────────────────────────────────────────
+function loadThreats() {
+  var tb=document.getElementById('threatsTbl'); tb.innerHTML='<tr><td colspan="6" class="loading">Loading...</td></tr>';
+  apiA('/account/api/events?limit=100').then(function(data){
+    var ev=Array.isArray(data)?data:(data.events||[]);
+    var thr=ev.filter(function(e){var t=(e.event_type||e.type||'').toLowerCase(),s=(e.severity||'').toLowerCase(); return t.indexOf('block')>=0||t.indexOf('deny')>=0||t.indexOf('threat')>=0||t.indexOf('breach')>=0||s==='critical'||s==='high';});
+    if(!thr.length){tb.innerHTML='<tr><td colspan="6" class="empty">No threats detected</td></tr>';return;}
+    tb.innerHTML=thr.map(function(e){
+      return '<tr><td>'+fmtD(e.created_at||e.occurred_at)+'</td><td>'+sev(e.severity)+'</td><td>'+esc(e.event_type||e.type||'-')+'</td><td>'+esc((e.agent_id||e.instance_id||'-').slice(0,12))+'</td><td>'+esc((e.description||e.message||'-').slice(0,80))+'</td><td>'+esc(e.outcome||e.action||'logged')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="6" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Anomalies ─────────────────────────────────────────────────────────────────
+function loadAnomalies() {
+  keyWarn('anomalyKeyWarn');
+  var tb=document.getElementById('anomaliesTbl'); tb.innerHTML='<tr><td colspan="6" class="loading">Loading...</td></tr>';
+  Promise.all([apiK('/api/anomalies/recent?limit=50'), apiK('/api/anomalies/baselines')])
+    .then(function(results){
+      var recent=results[0].anomalies||results[0]||[], baselines=results[1].baselines||results[1]||[];
+      if(!Array.isArray(recent)) recent=[];
+      if(!Array.isArray(baselines)) baselines=[];
+      document.getElementById('anomalyCount').textContent=recent.length;
+      document.getElementById('baselineCount').textContent=baselines.length;
+      var high=recent.filter(function(a){return (a.deviation||0)>2||a.severity==='high'||a.severity==='critical';});
+      document.getElementById('highDevCount').textContent=high.length;
+      if(!recent.length&&!baselines.length){tb.innerHTML='<tr><td colspan="6" class="empty">No anomaly data'+(SCOUT_KEY?'':' - API key required')+'</td></tr>';return;}
+      if(!recent.length){tb.innerHTML='<tr><td colspan="6" class="empty">No anomalies detected</td></tr>';return;}
+      tb.innerHTML=recent.map(function(a){
+        return '<tr><td>'+fmtD(a.detected_at||a.created_at)+'</td><td>'+esc(a.anomaly_type||a.type||'-')+'</td><td>'+esc(a.metric||'-')+'</td><td>'+esc(a.value!=null?a.value:'-')+'</td><td>'+esc(a.baseline!=null?a.baseline:'-')+'</td><td>'+sev(a.severity||'info')+'</td></tr>';
+      }).join('');
+      recent.slice(0,5).forEach(function(a){radarDot(a.severity||'medium');});
+    }).catch(function(){tb.innerHTML='<tr><td colspan="6" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Incidents ─────────────────────────────────────────────────────────────────
+function loadIncidents() {
+  var tb=document.getElementById('incidentsTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiA('/account/api/events?limit=100').then(function(data){
+    var ev=Array.isArray(data)?data:(data.events||[]);
+    if(!ev.length){tb.innerHTML='<tr><td colspan="5" class="empty">No incidents</td></tr>';return;}
+    tb.innerHTML=ev.slice(0,60).map(function(e){
+      return '<tr><td>'+fmtD(e.created_at||e.occurred_at)+'</td><td>'+esc((e.agent_id||e.instance_id||'-').slice(0,14))+'</td><td>'+esc(e.event_type||e.type||'-')+'</td><td>'+esc(e.tool_name||'-')+'</td><td>'+sev(e.severity||'info')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Findings ──────────────────────────────────────────────────────────────────
+function loadFindings() {
+  keyWarn('findingsKeyWarn');
+  var tb=document.getElementById('findingsTbl'); tb.innerHTML='<tr><td colspan="6" class="loading">Loading...</td></tr>';
+  var s=document.getElementById('findSev').value, st=document.getElementById('findStatus').value;
+  var qs=new URLSearchParams({limit:'50'}); if(s)qs.set('severity',s); if(st)qs.set('status',st);
+  apiK('/api/findings?'+qs).then(function(data){
+    var list=data.findings||data||[]; if(!Array.isArray(list))list=[];
+    if(!list.length){tb.innerHTML='<tr><td colspan="6" class="empty">No findings'+(SCOUT_KEY?'':' - API key required')+'</td></tr>';return;}
+    tb.innerHTML=list.map(function(f){
+      return '<tr><td>'+sev(f.severity)+'</td><td>'+esc((f.title||f.name||'-').slice(0,80))+'</td><td>'+esc(f.finding_type||f.type||'-')+'</td><td>'+esc(f.affected_host||'-')+'</td><td>'+esc(f.tool_name||'-')+'</td><td>'+fmtD(f.last_seen_at||f.created_at)+'</td></tr>';
+    }).join('');
+    list.slice(0,5).forEach(function(f){radarDot(f.severity||'info');});
+  }).catch(function(){tb.innerHTML='<tr><td colspan="6" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Attack Surface ────────────────────────────────────────────────────────────
+function loadSurface() {
+  keyWarn('surfaceKeyWarn');
+  var el=document.getElementById('surfaceContent'); el.innerHTML='<div class="loading">Loading...</div>';
+  apiK('/api/attack-surface/summary').then(function(data){
+    var exp=data.exposed||data.services||[], score=data.score||data.risk_score;
+    if(!exp.length&&!score){
+      el.innerHTML='<div class="panel"><div class="empty">No attack surface data'+(SCOUT_KEY?'. Run a scan to populate.':' - API key required')+'</div></div>'; return;
+    }
+    var scoreHtml=score?'<div class="tiles" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px"><div class="tile alert"><div class="tile-label">Risk Score</div><div class="tile-value red">'+esc(score)+'</div></div><div class="tile warn"><div class="tile-label">Exposed Services</div><div class="tile-value amber">'+exp.length+'</div></div><div class="tile info"><div class="tile-label">Attack Vectors</div><div class="tile-value cyan">'+(data.vectors||data.attack_vectors||0)+'</div></div></div>':'';
+    var tblHtml=exp.length?'<div class="panel"><div class="tbl-wrap"><table><thead><tr><th>Service</th><th>Host</th><th>Port</th><th>Risk</th><th>Status</th></tr></thead><tbody>'+exp.map(function(s){return '<tr><td>'+esc(s.service||s.name||'-')+'</td><td>'+esc(s.host||'-')+'</td><td>'+esc(s.port||'-')+'</td><td>'+sev(s.risk||s.severity||'info')+'</td><td>'+esc(s.status||'exposed')+'</td></tr>';}).join('')+'</tbody></table></div></div>':'';
+    el.innerHTML=scoreHtml+tblHtml||'<div class="panel"><div class="empty">No data</div></div>';
+  }).catch(function(){el.innerHTML='<div class="panel"><div class="empty">Failed to load</div></div>';});
+}
+
+// ── Scout Score ───────────────────────────────────────────────────────────────
+function loadScore() {
+  keyWarn('scoreKeyWarn');
+  var el=document.getElementById('scoreBig'); el.innerHTML='<div class="loading">Loading...</div>';
+  Promise.all([apiK('/api/score'), apiK('/api/score/history')]).then(function(res){
+    var d=res[0], hist=res[1].history||res[1]||[];
+    var sc=d.score??d.overall??'-';
+    var cls=typeof sc==='number'?(sc>=80?'':'mid'):''; if(typeof sc==='number'&&sc<50)cls='low';
+    var bd=d.breakdown||{};
+    var cats=['exposure','vulnerabilities','compliance','agentSafety'];
+    el.innerHTML='<div class="score-big"><div class="score-num '+cls+'">'+sc+'</div><div class="score-label">Overall Scout Score / 100</div><div class="score-bars">'+cats.map(function(k){var v=bd[k]??'-'; return '<div class="sbar"><div class="sbar-label">'+esc(k==='agentSafety'?'Agent Safety':k.charAt(0).toUpperCase()+k.slice(1))+'</div><div class="sbar-val">'+v+'</div><div class="sbar-track"><div class="sbar-fill" style="width:'+(v||0)+'%"></div></div></div>';}).join('')+'</div></div>';
+    if(Array.isArray(hist)&&hist.length){
+      var cv=document.getElementById('scoreCanvas'); cv.width=cv.offsetWidth||580;
+      var ctx=cv.getContext('2d'), W=cv.width, H=100;
+      ctx.clearRect(0,0,W,H);
+      var pts=hist.slice(-30); var n=pts.length; if(!n)return;
+      var vals=pts.map(function(p){return p.score||0;});
+      var mi=Math.min.apply(null,vals)-5, ma=Math.max.apply(null,vals)+5;
+      if(ma-mi<10)mi=Math.max(0,ma-20);
+      ctx.strokeStyle='rgba(0,200,100,0.3)'; ctx.lineWidth=1;
+      [0.33,0.66].forEach(function(f){var y=H-H*f; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();});
+      ctx.beginPath();
+      pts.forEach(function(p,i){
+        var x=(i/(n-1||1))*(W-4)+2; var y=H-((( p.score||0)-mi)/(ma-mi))*H;
+        if(i===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      });
+      ctx.strokeStyle='#00c864'; ctx.lineWidth=2; ctx.stroke();
+    }
+  }).catch(function(){el.innerHTML='<div class="empty">Failed to load score'+(SCOUT_KEY?'':' - API key required')+'</div>';});
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+function loadReports() {
+  keyWarn('reportsKeyWarn');
+  var el=document.getElementById('reportsContent'); el.innerHTML='<div class="loading">Loading...</div>';
+  apiK('/api/reports/latest').then(function(data){
+    var rep=data.report||data||{};
+    var rows=Array.isArray(data)?data:[rep];
+    el.innerHTML='<div class="panel"><div class="panel-head"><span class="panel-title">Latest Reports</span><a href="/api/reports/stix/download" style="font-size: 17px;color:var(--cyan);letter-spacing:1px" target="_blank">Export STIX</a></div>'+
+      (rows.length&&rows[0].id?'<div class="tbl-wrap"><table><thead><tr><th>Report ID</th><th>Type</th><th>Period</th><th>Findings</th><th>Score</th><th>Generated</th></tr></thead><tbody>'+rows.map(function(r){
+        return '<tr><td>'+esc((r.id||r.report_id||'-').slice(0,12))+'</td><td>'+esc(r.type||r.report_type||'Security')+'</td><td>'+esc(r.period||'-')+'</td><td>'+esc(r.findings_count||r.total_findings||'-')+'</td><td>'+esc(r.score||'-')+'</td><td>'+fmtD(r.generated_at||r.created_at)+'</td></tr>';
+      }).join('')+'</tbody></table></div>':'<div class="empty">No reports yet'+(SCOUT_KEY?'. Reports are generated automatically after scans.':' - API key required')+'</div>')+'</div>';
+  }).catch(function(){el.innerHTML='<div class="panel"><div class="empty">Failed to load reports</div></div>';});
+}
+
+// ── Policy ────────────────────────────────────────────────────────────────────
+function loadPolicy() {
+  keyWarn('policyKeyWarn');
+  var tb=document.getElementById('policyTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiK('/api/policy').then(function(data){
+    var rules=data.rules||data.policy||data||[]; if(!Array.isArray(rules))rules=[];
+    if(!rules.length){tb.innerHTML='<tr><td colspan="5" class="empty">No policy rules'+(SCOUT_KEY?'':' - API key required')+'</td></tr>';return;}
+    tb.innerHTML=rules.map(function(r){
+      return '<tr><td>'+esc(r.name||r.id||'-')+'</td><td>'+esc(r.type||r.rule_type||'-')+'</td><td>'+esc(r.scope||r.target||'global')+'</td><td>'+esc(r.action||r.outcome||'-')+'</td><td>'+(r.enabled!==false?'<span class="badge bg">Active</span>':'<span class="badge bx">Disabled</span>')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Policy Packs ──────────────────────────────────────────────────────────────
+function loadPolicyPacks() {
+  keyWarn('packsKeyWarn');
+  var el=document.getElementById('packsContent'); el.innerHTML='<div class="loading">Loading...</div>';
+  Promise.all([apiK('/api/policy-packs'), apiK('/api/policy-packs/active')]).then(function(res){
+    var packs=res[0].packs||res[0]||[], active=res[1].active||res[1]||[];
+    if(!Array.isArray(packs))packs=[]; if(!Array.isArray(active))active=[];
+    var activeIds=active.map(function(a){return a.id||a;});
+    if(!packs.length){el.innerHTML='<div class="panel"><div class="empty">No policy packs'+(SCOUT_KEY?'':' - API key required')+'</div></div>';return;}
+    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">'+packs.map(function(p){
+      var isActive=activeIds.indexOf(p.id)>=0;
+      return '<div class="card-mini"><div class="cm-head"><span class="cm-title">'+esc(p.id||p.name||'-')+'</span><span class="cm-badge '+(isActive?'ok':'off')+'">'+(isActive?'Active':'Available')+'</span></div><div style="font-size: 17px;color:var(--text2);line-height:1.5;margin:4px 0">'+esc((p.description||'-').slice(0,100))+'</div><div style="font-size: 15px;color:var(--text3)">'+(p.rules?.length||p.rule_count||0)+' rules</div></div>';
+    }).join('')+'</div>';
+  }).catch(function(){el.innerHTML='<div class="panel"><div class="empty">Failed to load</div></div>';});
+}
+
+// ── Auto-Remediation ──────────────────────────────────────────────────────────
+function loadAutoRemediation() {
+  keyWarn('autoKeyWarn');
+  var tb=document.getElementById('autoTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiK('/api/auto-remediation/rules').then(function(data){
+    var rules=data.rules||data||[]; if(!Array.isArray(rules))rules=[];
+    if(!rules.length){tb.innerHTML='<tr><td colspan="5" class="empty">No remediation rules'+(SCOUT_KEY?'':' - API key required')+'</td></tr>';return;}
+    tb.innerHTML=rules.map(function(r){
+      return '<tr><td>'+esc((r.id||'-').slice(0,14))+'</td><td>'+esc((r.condition||r.trigger||'-').slice(0,60))+'</td><td>'+esc(r.action||r.remediation_action||'-')+'</td><td>'+esc(r.priority||'-')+'</td><td>'+(r.enabled!==false?'<span class="badge bg">Active</span>':'<span class="badge bx">Off</span>')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Tripwires ─────────────────────────────────────────────────────────────────
+function loadTripwires() {
+  keyWarn('tripwireKeyWarn');
+  var tb=document.getElementById('tripwireHitsTbl'), cfg=document.getElementById('tripwireConfig');
+  tb.innerHTML='<tr><td colspan="4" class="loading">Loading...</td></tr>';
+  cfg.innerHTML='<div class="loading">Loading...</div>';
+  Promise.all([apiK('/api/tripwires/hits'), apiK('/api/tripwires/config')]).then(function(res){
+    var hits=res[0].hits||res[0]||[], conf=res[1];
+    if(!Array.isArray(hits))hits=[];
+    if(!hits.length){tb.innerHTML='<tr><td colspan="4" class="empty">No tripwire hits'+(SCOUT_KEY?'':' - key required')+'</td></tr>';}
+    else tb.innerHTML=hits.map(function(h){
+      return '<tr><td>'+fmtD(h.triggered_at||h.created_at)+'</td><td>'+esc(h.wire_id||h.tripwire||'-')+'</td><td>'+esc(h.source_ip||h.source||'-')+'</td><td>'+esc(h.event_type||h.type||'-')+'</td></tr>';
+    }).join('');
+    if(conf&&(conf.wires||conf.sensors)){
+      var wires=conf.wires||conf.sensors||[];
+      cfg.innerHTML=wires.map(function(w){return '<div class="progress-row"><div class="progress-label">'+esc(w.id||w.name||'-')+'</div><div>'+(w.enabled?'<span class="badge bg">Armed</span>':'<span class="badge bx">Off</span>')+'</div></div>';}).join('')||'<div class="empty">No wires configured</div>';
+    } else { cfg.innerHTML='<div class="empty">No config data'+(SCOUT_KEY?'':' - key required')+'</div>'; }
+  }).catch(function(){tb.innerHTML='<tr><td colspan="4" class="empty">Failed to load</td></tr>';cfg.innerHTML='<div class="empty">Failed</div>';});
+}
+
+// ── Honeypots ─────────────────────────────────────────────────────────────────
+function loadHoneypots() {
+  keyWarn('honeypotKeyWarn');
+  var tb=document.getElementById('honeypotTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  Promise.all([apiK('/api/honeypots/summary'), apiK('/api/honeypots/active')]).then(function(res){
+    var sum=res[0], active=res[1].honeypots||res[1]||[];
+    if(!Array.isArray(active))active=[];
+    document.getElementById('hpActive').textContent=sum.active_count||active.length||'0';
+    document.getElementById('hpHits').textContent=sum.total_hits||'0';
+    document.getElementById('hpIPs').textContent=sum.unique_attackers||sum.unique_ips||'0';
+    if(!active.length){tb.innerHTML='<tr><td colspan="5" class="empty">No honeypots deployed'+(SCOUT_KEY?'':' - key required')+'</td></tr>';return;}
+    tb.innerHTML=active.map(function(h){
+      radarDot(h.hits>0?'warning':'info');
+      return '<tr><td>'+esc((h.token||h.id||'-').slice(0,20))+'</td><td>'+esc(h.type||'-')+'</td><td>'+esc(h.hits||'0')+'</td><td>'+fmtD(h.last_hit_at||h.last_triggered_at)+'</td><td>'+(h.active?'<span class="badge bg">Active</span>':'<span class="badge bx">Inactive</span>')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Deception ─────────────────────────────────────────────────────────────────
+function loadDeception() {
+  keyWarn('deceptionKeyWarn');
+  var el=document.getElementById('deceptionContent'); el.innerHTML='<div class="loading">Loading...</div>';
+  apiK('/api/deception/augmentation').then(function(data){
+    var marker=data.marker||data, prev=data.previous_markers||data.previous||[];
+    if(!marker||(!marker.id&&!marker.value)){el.innerHTML='<div class="empty">No deception data'+(SCOUT_KEY?'':' - key required')+'</div>';return;}
+    el.innerHTML='<div class="tiles" style="grid-template-columns:repeat(2,1fr);margin-bottom:12px">'+
+      '<div class="tile purple"><div class="tile-label">Current Marker</div><div class="tile-value purple" style="font-size: 26px;word-break:break-all">'+esc((marker.value||marker.id||'-').slice(0,32))+'</div><div class="tile-sub">rotated '+fmtD(marker.rotated_at||marker.rotatedAt)+'</div></div>'+
+      '<div class="tile info"><div class="tile-label">Rotation History</div><div class="tile-value cyan">'+prev.length+'</div><div class="tile-sub">previous markers</div></div></div>'+
+      (prev.length?'<div class="tbl-wrap"><table><thead><tr><th>Marker</th><th>Active From</th><th>Retired</th></tr></thead><tbody>'+prev.map(function(p){return '<tr><td>'+esc((p.value||p.id||'-').slice(0,32))+'</td><td>'+fmtD(p.active_from||p.rotatedAt)+'</td><td>'+fmtD(p.retired_at)+'</td></tr>';}).join('')+'</tbody></table></div>':'');
+  }).catch(function(){el.innerHTML='<div class="empty">Failed to load</div>';});
+}
+
+// ── Kill Switch ───────────────────────────────────────────────────────────────
+function loadKillSwitch() {
+  keyWarn('killKeyWarn');
+  var el=document.getElementById('killswitchStatus'); el.innerHTML='<div class="loading">Loading...</div>';
+  apiK('/api/killswitch/status').then(function(data){
+    var armed=data.armed||data.active||data.triggered||false;
+    var ts=data.triggered_at||data.armed_at;
+    el.innerHTML='<div style="display:flex;align-items:center;gap:12px;padding:12px 0">'+
+      '<div class="s-dot '+(armed?'err':'live')+'" style="width:10px;height:10px;border-radius:50%;flex-shrink:0"></div>'+
+      '<div><div style="font-size: 30px;font-weight:700;color:'+(armed?'var(--red)':'var(--green)')+'">'+sev(armed?'ARMED':'Standby')+'</div>'+
+      '<div style="font-size: 17px;color:var(--text3);margin-top:4px">'+(ts?'Last triggered: '+fmtD(ts):'Never triggered')+'</div></div></div>'+
+      (data.reason?'<div style="font-size: 19px;color:var(--amber);padding:6px 0;border-top:1px solid var(--border)">Reason: '+esc(data.reason)+'</div>':'');
+    document.getElementById('killBadgeOv').textContent=armed?'ARMED':'Standby';
+    document.getElementById('killBadgeOv').className='cm-badge '+(armed?'err':'off');
+  }).catch(function(){el.innerHTML='<div class="empty">Failed to load'+(SCOUT_KEY?'':' - key required')+'</div>';});
+}
+
+function triggerKill() {
+  var overlay=document.createElement('div'); overlay.className='modal-overlay';
+  overlay.innerHTML='<div class="modal-box"><div class="modal-title">Confirm Kill Switch</div><div class="modal-body">This sends an immediate halt signal to all connected Carina agents. They will stop all processing. You can disarm to resume.</div><div class="modal-actions"><button class="kill-btn" id="confirmKillBtn">HALT ALL AGENTS</button><button class="disarm-btn" id="cancelKillBtn">Cancel</button></div></div>';
+  document.body.appendChild(overlay);
+  overlay.querySelector('#cancelKillBtn').onclick=function(){overlay.remove();};
+  overlay.querySelector('#confirmKillBtn').onclick=function(){
+    overlay.remove();
+    apiK('/api/killswitch/trigger',{method:'POST',body:JSON.stringify({reason:'Client console kill switch'})}).then(function(){loadKillSwitch(); loadOverview();}).catch(function(){});
+  };
+  overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.remove();});
+}
+function disarmKill() {
+  apiK('/api/killswitch/disarm',{method:'POST'}).then(function(){loadKillSwitch(); loadOverview();}).catch(function(){});
+}
+
+// ── Quarantine ────────────────────────────────────────────────────────────────
+function loadQuarantine() {
+  keyWarn('quarantineKeyWarn');
+  var tb=document.getElementById('quarantineTbl'); tb.innerHTML='<tr><td colspan="3" class="loading">Loading...</td></tr>';
+  apiK('/api/quarantine/tools').then(function(data){
+    var tools=data.tools||data||[]; if(!Array.isArray(tools))tools=[];
+    if(!tools.length){tb.innerHTML='<tr><td colspan="3" class="empty">No tools quarantined'+(SCOUT_KEY?'':' - key required')+'</td></tr>';return;}
+    tb.innerHTML=tools.map(function(t){return '<tr><td>'+esc(t.tool||t.name||'-')+'</td><td>'+esc(t.reason||'-')+'</td><td>'+fmtD(t.quarantined_at||t.created_at)+'</td></tr>';}).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="3" class="empty">Failed to load</td></tr>';});
+}
+
+// ── Egress Control ────────────────────────────────────────────────────────────
+function loadEgress() {
+  keyWarn('egressKeyWarn');
+  var tb=document.getElementById('egressTbl'); tb.innerHTML='<tr><td colspan="3" class="loading">Loading...</td></tr>';
+  apiK('/api/egress/blocklist').then(function(data){
+    var list=data.blocklist||data.domains||data||[]; if(!Array.isArray(list))list=[];
+    if(!list.length){tb.innerHTML='<tr><td colspan="3" class="empty">No blocked domains'+(SCOUT_KEY?'':' - key required')+'</td></tr>';return;}
+    tb.innerHTML=list.map(function(d){return '<tr><td>'+esc(d.domain||d||'-')+'</td><td>'+fmtD(d.added_at||d.created_at)+'</td><td>'+esc(d.reason||'-')+'</td></tr>';}).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="3" class="empty">Failed to load</td></tr>';});
+}
+
+// ── SOC2 ──────────────────────────────────────────────────────────────────────
+function loadSOC2() {
+  keyWarn('soc2KeyWarn');
+  var el=document.getElementById('soc2Content'); el.innerHTML='<div class="loading">Loading...</div>';
+  Promise.all([apiK('/api/compliance/regulatory-classification'), apiK('/api/compliance/report')]).then(function(res){
+    var regs=res[0], rep=res[1];
+    var controls=rep.controls||rep.items||[];
+    var score=rep.score||rep.compliance_score||regs.score;
+    var scoreHtml=score!=null?'<div class="panel" style="margin-bottom:12px"><div class="score-big"><div class="score-num '+(score>=80?'':score>=60?'mid':'low')+'">'+score+'</div><div class="score-label">SOC2 Compliance Score</div></div></div>':'';
+    var regHtml=regs.classifications?'<div class="panel" style="margin-bottom:12px"><div class="panel-head"><span class="panel-title">Regulatory Classification</span></div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">'+Object.entries(regs.classifications).map(function(entry){return '<div class="card-mini"><div class="cm-head"><span class="cm-title">'+esc(entry[0])+'</span><span class="cm-badge '+(entry[1]?'ok':'off')+'">'+(entry[1]?'Compliant':'Gap')+'</span></div></div>';}).join('')+'</div></div>':'';
+    var ctrlHtml=controls.length?'<div class="panel"><div class="panel-head"><span class="panel-title">Controls</span></div>'+controls.map(function(c){
+      var pct=c.score||c.completion||0;
+      return '<div class="progress-row"><div class="progress-label">'+esc(c.name||c.control||'-')+'</div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%;background:'+(pct>=80?'var(--green)':pct>=60?'var(--amber)':'var(--red)')+'"></div></div><div class="progress-pct">'+pct+'%</div></div>';
+    }).join('')+'</div>':'';
+    el.innerHTML=scoreHtml+regHtml+ctrlHtml||'<div class="panel"><div class="empty">No compliance data'+(SCOUT_KEY?'':' - key required')+'</div></div>';
+  }).catch(function(){el.innerHTML='<div class="panel"><div class="empty">Failed to load</div></div>';});
+}
+
+// ── Governance ────────────────────────────────────────────────────────────────
+function loadGovernance() {
+  keyWarn('governanceKeyWarn');
+  var el=document.getElementById('governanceContent'); el.innerHTML='<div class="loading">Loading...</div>';
+  apiK('/api/governance/templates').then(function(data){
+    var templates=data.templates||data||[]; if(!Array.isArray(templates))templates=[];
+    if(!templates.length){el.innerHTML='<div class="panel"><div class="empty">No governance templates'+(SCOUT_KEY?'':' - key required')+'</div></div>';return;}
+    el.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">'+templates.map(function(t){
+      return '<div class="card-mini"><div class="cm-head"><span class="cm-title">'+esc(t.name||t.id||'-')+'</span><span class="cm-badge '+(t.active?'ok':'bx')+'">'+(t.active?'Active':'Available')+'</span></div><div style="font-size: 17px;color:var(--text2);line-height:1.5;margin:4px 0">'+esc((t.description||'-').slice(0,100))+'</div><div style="font-size: 15px;color:var(--text3)">'+(t.industry||t.framework||'')+(t.controls_count?' / '+t.controls_count+' controls':'')+'</div></div>';
+    }).join('')+'</div>';
+  }).catch(function(){el.innerHTML='<div class="panel"><div class="empty">Failed to load</div></div>';});
+}
+
+// ── Trust ─────────────────────────────────────────────────────────────────────
+function loadTrust() {
+  keyWarn('trustKeyWarn');
+  var tb=document.getElementById('trustTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  var snap=document.getElementById('trustPublicSnapshot');
+  if(snap) snap.innerHTML='<div class="loading">Loading public trust snapshot...</div>';
+  Promise.all([
+    fetch('/api/public/trust').then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }),
+    apiK('/api/trust/history'),
+  ]).then(function(res){
+    var pub=res[0], hist=res[1]||{};
+    if(snap && pub){
+      var id=pub.identity||{}, chain=pub.chain||{};
+      snap.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;padding:10px 12px;font-size:15px;">'+
+        '<div><div style="color:var(--text3);font-size:13px">Risk score</div><div style="font-size:22px;font-weight:700;color:var(--green)">'+esc(pub.risk_score)+'</div><div>'+esc(pub.risk_tier_label||'')+'</div></div>'+
+        '<div><div style="color:var(--text3);font-size:13px">ERC-8004</div><div>'+esc(chain.erc8004_label||chain.erc8004_status||'-')+'</div><div style="font-size:13px;color:var(--text3)">Agent #'+(id.agent_id?esc(id.agent_id):'-')+'</div></div>'+
+        '<div><div style="color:var(--text3);font-size:13px">ERC-8126</div><div>'+esc(chain.erc8126_label||chain.erc8126_status||'-')+'</div></div>'+
+        '<div><div style="color:var(--text3);font-size:13px">Agents protected</div><div>'+esc((pub.monitoring&&pub.monitoring.agents_protected)||0)+'</div></div>'+
+        '</div>';
+    } else if(snap){ snap.innerHTML='<div class="empty">Public trust API unavailable</div>'; }
+    var rows=[];
+    (hist.attestations||[]).forEach(function(a){
+      rows.push({at:a.submitted_at,type:a.namespace||a.kind||'attestation',score:a.score,tx:a.tx_hash,explorer:a.explorer_url,verified:!!a.tx_hash});
+    });
+    (hist.verifications||[]).forEach(function(v){
+      rows.push({at:v.submitted_at,type:v.kind||'erc8126',score:v.unified_risk_score,tx:v.response_tx_hash,explorer:v.response_explorer_url,verified:!!v.response_tx_hash});
+    });
+    rows.sort(function(a,b){ return new Date(b.at||0)-new Date(a.at||0); });
+    if(!rows.length){tb.innerHTML='<tr><td colspan="5" class="empty">No on-chain history'+(SCOUT_KEY?'':' - key required')+'</td></tr>';return;}
+    tb.innerHTML=rows.map(function(h){
+      var chainCell=h.explorer?'<a href="'+esc(h.explorer)+'" target="_blank" rel="noopener noreferrer">'+esc(String(h.tx||'').slice(0,12)+'...')+'</a>':esc(h.tx||'-');
+      return '<tr><td>'+fmtD(h.at)+'</td><td>'+esc(h.type||'-')+'</td><td>'+esc(h.score??'-')+'</td><td>'+chainCell+'</td><td>'+(h.verified?'<span class="badge bg">on-chain</span>':'<span class="badge bx">pending</span>')+'</td></tr>';
+    }).join('');
+  }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>'; if(snap) snap.innerHTML='<div class="empty">Failed to load</div>';});
+}
+
+// ── Security Posture ──────────────────────────────────────────────────────────
+function loadPosture() {
+  keyWarn('postureKeyWarn');
+  var el=document.getElementById('postureContent'); el.innerHTML='<div class="loading">Loading...</div>';
+  apiK('/api/security/posture').then(function(data){
+    var pos=data.posture||data, cats=pos.categories||pos.controls||[];
+    var overall=pos.score||pos.overall_score||pos.posture_score;
+    var scoreHtml=overall!=null?'<div class="panel" style="margin-bottom:12px"><div class="score-big"><div class="score-num '+(overall>=80?'':overall>=60?'mid':'low')+'">'+overall+'</div><div class="score-label">Security Posture Score</div></div></div>':'';
+    var catHtml=cats.length?'<div class="panel"><div class="panel-head"><span class="panel-title">Control Categories</span></div>'+cats.map(function(c){
+      var pct=c.score||c.completion||c.percentage||0;
+      return '<div class="progress-row"><div class="progress-label">'+esc(c.name||c.category||'-')+'</div><div class="progress-track"><div class="progress-fill" style="width:'+pct+'%;background:'+(pct>=80?'var(--green)':pct>=60?'var(--amber)':'var(--red)')+'"></div></div><div class="progress-pct">'+pct+'%</div></div>';
+    }).join('')+'</div>':'';
+    if(!scoreHtml&&!catHtml){el.innerHTML='<div class="panel"><div class="empty">No posture data'+(SCOUT_KEY?'':' - key required')+'</div></div>';return;}
+    el.innerHTML=scoreHtml+catHtml;
+  }).catch(function(){el.innerHTML='<div class="panel"><div class="empty">Failed to load</div></div>';});
+}
+
+// ── Audit ─────────────────────────────────────────────────────────────────────
+function loadAudit() {
+  keyWarn('auditKeyWarn');
+  var tb=document.getElementById('auditTbl'); tb.innerHTML='<tr><td colspan="5" class="loading">Loading...</td></tr>';
+  apiK('/api/audit?limit=100').then(function(data){
+    var ev=data.events||data.logs||data||[]; if(!Array.isArray(ev))ev=[];
+    if(!ev.length){
+      apiA('/account/api/events?limit=100').then(function(d2){
+        var ev2=Array.isArray(d2)?d2:(d2.events||[]);
+        if(!ev2.length){tb.innerHTML='<tr><td colspan="5" class="empty">No audit entries</td></tr>';return;}
+        tb.innerHTML=ev2.map(function(e){return '<tr><td>'+fmtD(e.created_at||e.occurred_at)+'</td><td>'+esc(e.event_type||e.type||'-')+'</td><td>'+esc((e.agent_id||e.instance_id||'-').slice(0,14))+'</td><td>'+esc(e.tool_name||'-')+'</td><td>'+esc((e.description||e.message||'-').slice(0,100))+'</td></tr>';}).join('');
+      });
+      return;
+    }
+    tb.innerHTML=ev.map(function(e){return '<tr><td>'+fmtD(e.created_at||e.occurred_at||e.timestamp)+'</td><td>'+esc(e.event_type||e.action||e.type||'-')+'</td><td>'+esc((e.agent_id||e.instance_id||e.actor||'-').slice(0,14))+'</td><td>'+esc(e.tool_name||e.resource||'-')+'</td><td>'+esc((e.description||e.message||e.summary||'-').slice(0,100))+'</td></tr>';}).join('');
+  }).catch(function(){
+    apiA('/account/api/events?limit=100').then(function(d2){
+      var ev2=Array.isArray(d2)?d2:(d2.events||[]);
+      if(!ev2.length){tb.innerHTML='<tr><td colspan="5" class="empty">No audit entries</td></tr>';return;}
+      tb.innerHTML=ev2.map(function(e){return '<tr><td>'+fmtD(e.created_at||e.occurred_at)+'</td><td>'+esc(e.event_type||e.type||'-')+'</td><td>'+esc((e.agent_id||e.instance_id||'-').slice(0,14))+'</td><td>'+esc(e.tool_name||'-')+'</td><td>'+esc((e.description||e.message||'-').slice(0,100))+'</td></tr>';}).join('');
+    }).catch(function(){tb.innerHTML='<tr><td colspan="5" class="empty">Failed to load</td></tr>';});
+  });
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function loadSettingsPage() {
+  document.getElementById('apiKeyInput').value = SCOUT_KEY;
+  document.getElementById('keyStatus').textContent = SCOUT_KEY
+    ? 'Key loaded for this browser.'
+    : 'No key in this browser yet. Click Generate new key.';
+}
+function saveApiKey() {
+  var k = document.getElementById('apiKeyInput').value.trim();
+  try { localStorage.setItem('scout_api_key', k); } catch (e) {}
+  SCOUT_KEY = k;
+  document.getElementById('keyStatus').textContent = k ? 'Key saved for this browser.' : 'Key cleared.';
+}
+function generateConsoleKey() {
+  var btn = document.getElementById('mintKeyBtn');
+  if (btn) btn.disabled = true;
+  document.getElementById('keyStatus').textContent = 'Generating key...';
+  fetch('/account/api/keys', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label: 'Console ' + new Date().toISOString().slice(0, 10) }),
+  })
+    .then(function(r) { return r.json().catch(function() { return {}; }); })
+    .then(function(result) {
+      if (btn) btn.disabled = false;
+      if (!result.key) {
+        document.getElementById('keyStatus').textContent = result.error || 'Could not generate key. Try Account dashboard.';
+        return;
+      }
+      document.getElementById('apiKeyInput').value = result.key;
+      saveApiKey();
+      document.getElementById('keyStatus').textContent = 'New key generated and saved. Modules should unlock now.';
+    })
+    .catch(function() {
+      if (btn) btn.disabled = false;
+      document.getElementById('keyStatus').textContent = 'Could not generate key. Check you are signed in.';
+    });
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+function doLogout() {
+  fetch('/account/logout',{method:'POST',credentials:'include'}).finally(function(){location.href='/account/login';});
+}
+</script>
+</body>
+</html>

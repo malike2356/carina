@@ -1,0 +1,99 @@
+<% title = 'Prompt Overrides' %>
+<div class="ops-page">
+<%- include('_nav') %>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Prompt Overrides</div>
+    <div class="ops-page-sub">Staged and active system prompt mutations per tenant.</div>
+  </div>
+  <div class="ops-actions">
+    <form method="post" action="/mutation/prompts/rollback">
+      <button type="submit" class="ops-btn">Restore Previous Version</button>
+    </form>
+  </div>
+</div>
+
+<% if (error) { %>
+  <div class="ops-card" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;">
+    <div style="color:#f87171;font-size:13px;"><%= error %></div>
+  </div>
+<% } %>
+
+<div class="ops-card" style="margin-bottom:16px;">
+  <div class="ops-section-title">Staged (awaiting approval)</div>
+  <% if (!staged.length) { %>
+    <div class="ops-empty">No staged prompt overrides.</div>
+  <% } else { %>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr><th>Rationale</th><th>Confidence</th><th>Created By</th><th>Created At</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% staged.forEach(function(p) { %>
+            <tr>
+              <td><%= p.rationale || '-' %></td>
+              <td><%= p.confidence != null ? Math.round(p.confidence * 100) + '%' : '-' %></td>
+              <td><%= p.createdBy || p.created_by || '-' %></td>
+              <td style="font-size:12px;"><%= p.createdAt || p.created_at ? new Date(p.createdAt || p.created_at).toLocaleString() : '-' %></td>
+              <td>
+                <form method="post" action="/mutation/prompts/<%= p.id %>/activate" style="display:inline;">
+                  <button type="submit" class="ops-btn-sm">Activate</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">History</div>
+  <% if (!history.length) { %>
+    <div class="ops-empty">No prompt override history.</div>
+  <% } else { %>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr><th>Version</th><th>Status</th><th>Active?</th><th>Created By</th><th>Created At</th><th>Preview</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% history.forEach(function(p) {
+            var isActive = p.isActive || p.is_active;
+            var rowStyle = isActive ? 'border-left:3px solid #22c55e;' : '';
+          %>
+            <tr style="<%= rowStyle %>">
+              <td>v<%= p.version %></td>
+              <td>
+                <% if (isActive) { %>
+                  <span class="ops-badge ops-badge-green">active</span>
+                <% } else if (!p.activatedAt && !p.activated_at) { %>
+                  <span class="ops-badge ops-badge-amber">staged</span>
+                <% } else { %>
+                  <span class="ops-badge ops-badge-gray">inactive</span>
+                <% } %>
+              </td>
+              <td><%= isActive ? '&#10003;' : '-' %></td>
+              <td><%= p.createdBy || p.created_by || '-' %></td>
+              <td style="font-size:12px;"><%= p.createdAt || p.created_at ? new Date(p.createdAt || p.created_at).toLocaleString() : '-' %></td>
+              <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                <%= (p.content || '').slice(0, 100) %>
+              </td>
+              <td>
+                <% if (!isActive) { %>
+                  <form method="post" action="/mutation/prompts/<%= p.id %>/activate" style="display:inline;">
+                    <button type="submit" class="ops-btn-sm">Activate</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+</div>

@@ -6,6 +6,22 @@ nawafs/
 zaps/
 velox/
 verlox/
+!verlox/
+verlox/*
+!verlox/carina/
+verlox/carina/*
+!verlox/carina/02-backends/
+!verlox/carina/02-backends/**
+!verlox/carina/03-frontends/
+!verlox/carina/03-frontends/**
+!verlox/carina/scripts/
+!verlox/carina/scripts/**
+!verlox/carina/AGENTS.md
+!verlox/carina/README.md
+!verlox/carina/.gitignore
+!verlox/scripts/
+verlox/scripts/*
+!verlox/scripts/fix-writing-style.py
 
 # Node modules
 node_modules/

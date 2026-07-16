@@ -1,6 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, typography } from '@/theme/tokens';
+import { Image, StyleSheet, View } from 'react-native';
 
 interface CarinaLogoProps {
   size?: 'sm' | 'md';
@@ -9,9 +8,12 @@ interface CarinaLogoProps {
 export function CarinaLogo({ size = 'md' }: CarinaLogoProps) {
   return (
     <View style={styles.row}>
-      <Text style={[styles.wordmark, size === 'sm' && styles.wordmarkSm]}>
-        Carina<Text style={styles.dot}>.</Text>
-      </Text>
+      <Image
+        source={require('../../assets/logo/carina-wordmark.png')}
+        style={[styles.wordmark, size === 'sm' && styles.wordmarkSm]}
+        resizeMode="contain"
+        accessibilityLabel="Carina logo"
+      />
     </View>
   );
 }
@@ -22,15 +24,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   wordmark: {
-    fontFamily: typography.serif,
-    fontSize: 28,
-    fontWeight: '500',
-    color: colors.white,
+    width: 160,
+    height: 52,
   },
   wordmarkSm: {
-    fontSize: 22,
-  },
-  dot: {
-    color: colors.amber,
+    width: 105,
+    height: 34,
   },
 });

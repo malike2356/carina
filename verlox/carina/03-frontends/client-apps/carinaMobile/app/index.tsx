@@ -30,6 +30,10 @@ export default function Index() {
     );
   }
 
+  if (instance.mode === 'cloud') {
+    return <Redirect href={'/(tabs)/employees' as Href} />;
+  }
+
   return <Redirect href="/(tabs)/chat" />;
 }
 

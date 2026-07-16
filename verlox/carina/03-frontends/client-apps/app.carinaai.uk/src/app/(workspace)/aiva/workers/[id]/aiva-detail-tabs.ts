@@ -9,10 +9,12 @@ export type AivaTab = {
 };
 
 export const AIVA_CORE_TABS: AivaTab[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'work', label: 'Work' },
+  { id: 'work', label: 'Chat' },
+  { id: 'call', label: 'Call' },
   { id: 'channels', label: 'Channels' },
   { id: 'training', label: 'Training' },
+  { id: 'drive-docs', label: 'Drive docs' },
   { id: 'automations', label: 'Automations' },
+  { id: 'overview', label: 'Oversight' },
   { id: 'settings', label: 'Settings' },
 ];

@@ -1,0 +1,48 @@
+@import './scout-base.css';
+
+/* Hub and marketing shell background */
+.dark body.hub-body {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -8%, color-mix(in srgb, var(--primary) 9%, transparent), transparent 55%),
+    var(--void);
+}
+
+.dark body.hub-body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--primary) 3.5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--primary) 3.5%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Enterprise console shell background */
+body.console-body {
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.dark body.console-body {
+  background: var(--void);
+}
+
+.dark body.console-body::after {
+  content: none;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--void);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border2);
+}

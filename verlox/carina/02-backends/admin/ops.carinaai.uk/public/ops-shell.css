@@ -49,19 +49,15 @@ aside#sidebar.ops-sidebar {
   text-decoration: none;
 }
 
-.logo-shield {
-  width: 30px;
-  height: 30px;
-  background: var(--logo-shield-bg);
-  border: 1px solid var(--logo-shield-border);
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.logo-mark {
+  width: 34px;
+  height: 34px;
+  display: block;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
-.logo-name { color: var(--heading); font-size: 14px; font-weight: 700; letter-spacing: 1.5px; }
+.logo-name { color: var(--heading); font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
 .logo-sub { color: var(--muted); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
 
 .nav-scroll {
@@ -135,6 +131,9 @@ aside#sidebar.ops-sidebar {
 .nav-link:hover { color: var(--text); background: rgba(255, 255, 255, 0.025); }
 .nav-link.active { color: var(--green); border-left-color: var(--green); background: var(--green-dim); }
 .nav-link.active-red { color: var(--red); border-left-color: var(--red); background: color-mix(in srgb, var(--red) 6%, transparent); }
+.nav-link.sub { padding-left: 26px; font-size: 0.78rem; opacity: 0.8; }
+.nav-link.sub:hover { opacity: 1; }
+.nav-link.sub.active { opacity: 1; }
 .nav-group.threats summary { color: var(--nav-threats); }
 .nav-group.defence summary { color: var(--nav-defence); }
 .nav-group.forensics summary { color: var(--nav-forensics); }
@@ -3414,3 +3413,179 @@ main.ops-main:has(.business-shell) .ops-content {
   }
 }
 
+.ops-pricing-page {
+  max-width: 1040px;
+}
+
+.ops-pricing-help {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.ops-pricing-help > div {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.ops-pricing-help strong,
+.ops-pricing-help span {
+  display: block;
+}
+
+.ops-pricing-help strong {
+  color: var(--heading);
+  font-size: var(--fs-sm, 14px);
+  font-weight: 600;
+}
+
+.ops-pricing-help span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.ops-pricing-group {
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.ops-pricing-group-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ops-pricing-group-head .ops-section-title {
+  margin-bottom: 4px;
+}
+
+.ops-pricing-extra-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin: -4px 0 12px;
+}
+
+.ops-pricing-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ops-pricing-row {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.ops-pricing-main {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ops-pricing-order {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  color: var(--muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 11px;
+  height: 22px;
+  justify-content: center;
+  margin-top: 1px;
+  width: 22px;
+}
+
+.ops-pricing-name {
+  color: var(--heading);
+  font-size: var(--fs-sm, 14px);
+  font-weight: 650;
+}
+
+.ops-pricing-meta {
+  align-items: center;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ops-pricing-helptext {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 5px;
+}
+
+.ops-pricing-edit {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.ops-pricing-form {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.ops-pricing-form .ops-input {
+  width: 100px;
+}
+
+.ops-pricing-footer-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 18px;
+}
+
+@media (max-width: 980px) {
+  .ops-pricing-help {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-pricing-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-pricing-edit {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .ops-pricing-group {
+    padding: 14px;
+  }
+
+  .ops-pricing-group-head {
+    flex-direction: column;
+  }
+
+  .ops-pricing-form {
+    width: 100%;
+  }
+
+  .ops-pricing-form .ops-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+  }
+}

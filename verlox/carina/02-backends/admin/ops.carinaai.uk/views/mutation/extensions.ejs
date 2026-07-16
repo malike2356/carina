@@ -1,0 +1,73 @@
+<% title = 'TS Extensions' %>
+<div class="ops-page">
+<%- include('_nav') %>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">TypeScript Extensions</div>
+    <div class="ops-page-sub">Scoped code mutations awaiting operator approval.</div>
+  </div>
+</div>
+
+<% if (error) { %>
+  <div class="ops-card" style="border-color:rgba(239,68,68,0.4);margin-bottom:16px;">
+    <div style="color:#f87171;font-size:13px;"><%= error %></div>
+  </div>
+<% } %>
+
+<% if (!extensionsEnabled) { %>
+  <div class="ops-card" style="margin-bottom:16px;border-color:rgba(245,158,11,0.3);">
+    <div style="font-size:13px;color:var(--muted);">
+      TypeScript extensions are disabled. Enable <code>CARINA_MUTATION_EXTENSIONS=true</code>
+      on the core instance to allow extension requests.
+    </div>
+  </div>
+<% } %>
+
+<div class="ops-card">
+  <% if (!extensions.length) { %>
+    <div class="ops-empty">No extension mutations.</div>
+  <% } else { %>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr><th>Task</th><th>File Path</th><th>Compile</th><th>Tests</th><th>Status</th><th>Staged At</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% extensions.forEach(function(ext) {
+            var st = ext.status || 'staged';
+            var stClass = st === 'approved' ? 'ops-badge-green' : st === 'staged' ? 'ops-badge-amber' : 'ops-badge-gray';
+            var compileOk = ext.compile_passed;
+            var testOk = ext.test_passed;
+          %>
+            <tr>
+              <td style="max-width:200px;font-size:12px;"><%= ext.task %></td>
+              <td style="font-size:11px;font-family:monospace;"><%= ext.file_path %></td>
+              <td><span class="ops-badge <%= compileOk ? 'ops-badge-green' : 'ops-badge-red' %>"><%= compileOk ? 'pass' : 'fail' %></span></td>
+              <td><span class="ops-badge <%= testOk ? 'ops-badge-green' : 'ops-badge-red' %>"><%= testOk ? 'pass' : 'fail' %></span></td>
+              <td><span class="ops-badge <%= stClass %>"><%= st %></span></td>
+              <td style="font-size:12px;"><%= ext.created_at ? new Date(ext.created_at).toLocaleString() : '-' %></td>
+              <td style="white-space:nowrap;">
+                <% if (st === 'staged') { %>
+                  <% if (compileOk) { %>
+                    <form method="post" action="/mutation/extensions/<%= ext.id %>/approve" style="display:inline;">
+                      <button type="submit" class="ops-btn-sm">Approve</button>
+                    </form>
+                  <% } %>
+                  <form method="post" action="/mutation/extensions/<%= ext.id %>/reject" style="display:inline;margin-left:4px;">
+                    <button type="submit" class="ops-btn-sm">Reject</button>
+                  </form>
+                <% } %>
+                <details style="display:inline-block;margin-left:8px;">
+                  <summary class="ops-link" style="cursor:pointer;font-size:12px;">Source</summary>
+                  <pre style="background:rgba(0,0,0,0.35);padding:8px;border-radius:4px;max-width:400px;max-height:200px;overflow:auto;font-size:11px;margin-top:6px;"><%= ext.source_code %></pre>
+                </details>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+</div>

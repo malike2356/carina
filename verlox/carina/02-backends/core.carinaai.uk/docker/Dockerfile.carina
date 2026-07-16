@@ -1,0 +1,90 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+RUN apk add --no-cache python3 make g++
+RUN corepack enable && corepack prepare pnpm@latest --activate
+COPY package.json pnpm-lock.yaml* .npmrc* pnpm-workspace.yaml ./
+COPY packages ./packages
+RUN pnpm install --frozen-lockfile 2>/dev/null || pnpm install
+RUN pnpm rebuild better-sqlite3
+COPY tsconfig.json ./
+COPY scripts ./scripts
+COPY plugins ./plugins
+COPY src ./src
+COPY bin ./bin
+COPY locales ./locales
+COPY widget ./widget
+COPY config ./config
+RUN cd widget && npm install && npm run build
+ARG BUILD_REVISION=unknown
+RUN echo "Carina core build revision: ${BUILD_REVISION}" && pnpm --filter @verlox/carina-transport build && pnpm build && pnpm --filter @verlox/carina-web build
+
+FROM node:22-bookworm-slim
+WORKDIR /app
+ARG BUILD_REVISION=unknown
+ARG BUILD_TIME=unknown
+ENV NODE_ENV=production
+ENV BUILD_REVISION=${BUILD_REVISION}
+ENV BUILD_TIME=${BUILD_TIME}
+ENV CARINA_SPLIT_GATEWAY=false
+ENV CARINA_SUPERVISOR_HUB=false
+ENV CARINA_SUPERVISOR_OPS=false
+# Debian slim (not Alpine): faster-whisper/ctranslate2 ship wheels on glibc; Alpine
+# pulls PyAV from source and fails on current Python (av/logging.pyx Cython error).
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    tini wget curl logrotate python3 python3-pip ffmpeg supervisor \
+  && pip3 install --break-system-packages --no-cache-dir edge-tts faster-whisper \
+  && edge-tts --version \
+  && python3 -c "from faster_whisper import WhisperModel; print('faster-whisper ok')" \
+  && mkdir -p /app/data/whisper-models \
+  && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/scripts ./scripts
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/package.json ./
+RUN corepack enable && corepack prepare pnpm@latest --activate \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends python3 make g++ \
+  && pnpm rebuild node-pty \
+  && test -n "$(find node_modules/.pnpm -path '*/node-pty/build/Release/pty.node' -print -quit)" \
+  && apt-get purge -y make g++ \
+  && apt-get autoremove -y \
+  && rm -rf /var/lib/apt/lists/*
+COPY --from=build /app/packages/web/package.json ./packages/web/package.json
+COPY --from=build /app/packages/web/dist ./packages/web/dist
+COPY --from=build /app/packages/web/assets ./packages/web/assets
+COPY --from=build /app/packages/web/public ./packages/web/public
+COPY --from=build /app/packages/transport ./packages/transport
+COPY --from=build /app/packages/scout-client/package.json ./packages/scout-client/package.json
+COPY --from=build /app/packages/scout-client/dist ./packages/scout-client/dist
+COPY --from=build /app/locales ./locales
+COPY src/skills/packs ./src/skills/packs
+COPY src/tools/research ./src/tools/research
+COPY brain ./brain
+COPY widget/dist ./widget/dist
+COPY config ./config
+RUN pip3 install --break-system-packages --no-cache-dir -r src/tools/research/requirements.txt \
+  && python3 src/tools/research/stats-analysis.py deps | grep -q '"pandas": true' \
+  && python3 src/tools/research/sav-io.py deps | grep -q '"pyreadstat": true'
+RUN ln -sfn ../brain dist/brain
+RUN mkdir -p node_modules/@verlox \
+  && ln -sfn ../.. node_modules/@verlox/carina-core \
+  && ln -sfn ../../packages/web node_modules/@verlox/carina-web \
+  && ln -sfn ../../packages/transport node_modules/@verlox/carina-transport
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY docker/healthcheck.sh /usr/local/bin/carina-healthcheck
+COPY docker/supervisor /app/docker/supervisor
+COPY docker/logrotate /app/docker/logrotate
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh /usr/local/bin/carina-healthcheck \
+  && mkdir -p /app/data/logs \
+  && chown -R node:node /app/data/logs
+ENV CARINA_HOME=/data/.carina
+ENV CARINA_LOCALES_DIR=/app/locales
+ENV WEB_ENABLED=true
+ENV WEB_PORT=3000
+VOLUME ["/data", "/app/data/logs"]
+EXPOSE 3000 3001
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+  CMD /usr/local/bin/carina-healthcheck
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/app/docker/supervisor/supervisord.conf"]

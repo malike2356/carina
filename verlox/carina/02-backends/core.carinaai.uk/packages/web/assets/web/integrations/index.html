@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Integrations; Carina</title>
+<style>
+  .ig-toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .ig-toolbar input, .ig-toolbar button, .ig-chip {
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 10px; font-size: 0.82rem;
+  }
+  .ig-chip.active { border-color: var(--accent); color: var(--accent); }
+  .ig-banner { border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:0.82rem; color:var(--muted); }
+  .ig-banner.error { color:#ffb4b4; border-color:rgba(255,120,120,0.35); }
+  .ig-tabs { display:flex; gap:8px; margin-bottom:12px; }
+  .ig-tabs button { background:transparent; border:1px solid var(--border); color:var(--text); border-radius:8px; padding:6px 10px; cursor:pointer; }
+  .ig-tabs button.active { border-color:var(--accent); color:var(--accent); }
+  .ig-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+  @media (max-width: 900px) { .ig-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width: 640px) { .ig-grid { grid-template-columns:1fr; } }
+  .ig-card { border:1px solid var(--border); border-radius:10px; background:var(--surface-2); padding:12px; cursor:pointer; }
+  .ig-card:hover { border-color:rgba(25,196,154,0.45); }
+  .ig-card h3 { margin:0 0 4px; font-size:0.9rem; }
+  .ig-card p { margin:0; font-size:0.78rem; color:var(--muted); }
+  .ig-badge { display:inline-block; font-size:0.65rem; padding:2px 6px; border-radius:999px; border:1px solid var(--border); margin-right:4px; }
+  .ig-drawer { display:none; margin-top:12px; border:1px solid var(--border); border-radius:10px; padding:12px; background:var(--surface-2); }
+  .ig-drawer.open { display:block; }
+  .ig-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .ig-actions button { background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:6px 10px; cursor:pointer; }
+  .ig-actions button.primary { background:var(--accent); color:#0a0a0c; border-color:var(--accent); font-weight:600; }
+  .ig-foot { margin-top:16px; font-size:0.72rem; color:var(--muted); }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Integrations</h1>
+  <span class="status" id="ig-status">Loading</span>
+</header>
+<div class="ws-scroll-page">
+  <p style="font-size:0.84rem;color:var(--muted);margin:0 0 12px" id="ig-subtitle">
+  Browse connectors for visual playbooks. Worker channels (WhatsApp, email) stay in Aiva settings.
+  </p>
+  <div class="ig-tabs">
+    <button type="button" class="active" data-tab="tools">Data and tools</button>
+    <button type="button" data-tab="channels">Worker channels</button>
+  </div>
+  <div id="ig-tools-panel">
+    <div class="ig-toolbar">
+      <input type="search" id="ig-search" placeholder="Search connectors" />
+      <button type="button" id="ig-refresh">Refresh</button>
+    </div>
+    <div class="ig-toolbar" id="ig-categories"></div>
+    <div class="ig-banner" id="ig-banner" hidden></div>
+    <div class="ig-grid" id="ig-grid"></div>
+    <div class="ig-drawer" id="ig-drawer">
+      <h2 id="ig-drawer-title" style="margin:0 0 6px;font-size:1rem"></h2>
+      <p id="ig-drawer-desc" style="margin:0;color:var(--muted);font-size:0.82rem"></p>
+      <div class="ig-actions">
+        <button type="button" class="primary" id="ig-install">Install</button>
+        <button type="button" id="ig-studio">Use in playbook</button>
+        <button type="button" id="ig-docs">Documentation</button>
+      </div>
+    </div>
+    <p class="ig-foot">Connectors powered by Keprix.</p>
+  </div>
+  <div id="ig-channels-panel" hidden>
+    <div class="ig-banner">
+      Worker channels (WhatsApp, email, Slack, social) are configured per Aiva in the hosted app.
+      Open your Aiva worker detail page and use the Channels tab.
+    </div>
+    <div class="ig-actions">
+      <a href="https://app.carinaai.uk/channels" class="ig-actions" style="text-decoration:none">
+        <button type="button" class="primary">Open Aiva channels</button>
+      </a>
+    </div>
+  </div>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script>
+(function() {
+  var API = '/api/integrations';
+  var state = { connectors: [], categories: [], selected: null, category: '', stub: false };
+  var statusEl = document.getElementById('ig-status');
+  var bannerEl = document.getElementById('ig-banner');
+  var gridEl = document.getElementById('ig-grid');
+  var drawerEl = document.getElementById('ig-drawer');
+  var categoriesEl = document.getElementById('ig-categories');
+
+  function setStatus(text) { if (statusEl) statusEl.textContent = text; }
+  function showBanner(message, isError) {
+    if (!bannerEl) return;
+    bannerEl.hidden = !message;
+    bannerEl.textContent = message || '';
+    bannerEl.className = isError ? 'ig-banner error' : 'ig-banner';
+  }
+
+  function renderCategories() {
+    if (!categoriesEl) return;
+    var chips = ['<button type="button" class="ig-chip' + (state.category ? '' : ' active') + '" data-category="">All</button>'];
+    state.categories.forEach(function(cat) {
+      var active = state.category === cat.id ? ' active' : '';
+      chips.push('<button type="button" class="ig-chip' + active + '" data-category="' + cat.id + '">' + cat.label + '</button>');
+    });
+    categoriesEl.innerHTML = chips.join('');
+    categoriesEl.querySelectorAll('[data-category]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        state.category = btn.getAttribute('data-category') || '';
+        loadCatalog();
+      });
+    });
+  }
+
+  function openDrawer(connector) {
+    state.selected = connector;
+    if (!drawerEl) return;
+    document.getElementById('ig-drawer-title').textContent = connector.label;
+    document.getElementById('ig-drawer-desc').textContent = connector.description;
+    drawerEl.classList.add('open');
+  }
+
+  function renderGrid() {
+    if (!gridEl) return;
+    gridEl.innerHTML = '';
+    state.connectors.forEach(function(row) {
+      var card = document.createElement('article');
+      card.className = 'ig-card';
+      var badges = '<span class="ig-badge">' + row.category + '</span>';
+      if (row.auth_pattern === 'sidecar') badges += '<span class="ig-badge">Sidecar bridge</span>';
+      if (row.install_status && row.install_status.installed) badges += '<span class="ig-badge">Installed</span>';
+      card.innerHTML = '<h3>' + row.label + '</h3><p>' + row.description + '</p><div style="margin-top:8px">' + badges + '</div>';
+      card.addEventListener('click', function() { openDrawer(row); });
+      gridEl.appendChild(card);
+    });
+    var subtitle = document.getElementById('ig-subtitle');
+    if (subtitle) {
+      subtitle.textContent = state.connectors.length + '+ connectors for visual playbooks. Worker channels stay in Aiva settings.';
+    }
+    setStatus(state.connectors.length ? 'Ready' : 'No connectors');
+  }
+
+  function loadCatalog() {
+    setStatus('Loading');
+    var params = new URLSearchParams();
+    if (state.category) params.set('category', state.category);
+    var q = document.getElementById('ig-search');
+    if (q && q.value.trim()) params.set('q', q.value.trim());
+    fetch(API + '/catalog?' + params.toString())
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (!data.configured) {
+          showBanner(data.message || 'Integrations catalog is not configured.', true);
+          state.connectors = [];
+          renderGrid();
+          return;
+        }
+        if (data.error) showBanner(data.error, true);
+        else if (data.stub) showBanner('Showing stub catalog (INTEGRATIONS_CATALOG_STUB=1 or Keprix unreachable).', false);
+        else showBanner('', false);
+        state.connectors = data.connectors || [];
+        state.categories = data.categories || [];
+        state.stub = Boolean(data.stub);
+        renderCategories();
+        renderGrid();
+      })
+      .catch(function(err) {
+        showBanner(err.message || 'Failed to load catalog', true);
+        renderGrid();
+      });
+  }
+
+  function handoff(connectorId, action) {
+    fetch(API + '/handoff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connector_id: connectorId, action: action }),
+    })
+      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+      .then(function(result) {
+        if (!result.ok || !result.data.url) throw new Error(result.data.error || 'Handoff failed');
+        window.open(result.data.url, '_blank', 'noopener,noreferrer');
+      })
+      .catch(function(err) { showBanner(err.message || 'Handoff failed', true); });
+  }
+
+  document.querySelectorAll('.ig-tabs button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.ig-tabs button').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var tab = btn.getAttribute('data-tab');
+      document.getElementById('ig-tools-panel').hidden = tab !== 'tools';
+      document.getElementById('ig-channels-panel').hidden = tab !== 'channels';
+    });
+  });
+  document.getElementById('ig-refresh').addEventListener('click', loadCatalog);
+  document.getElementById('ig-search').addEventListener('input', function() {
+    clearTimeout(window.__igSearchTimer);
+    window.__igSearchTimer = setTimeout(loadCatalog, 250);
+  });
+  document.getElementById('ig-install').addEventListener('click', function() {
+    if (state.selected) handoff(state.selected.id, 'install');
+  });
+  document.getElementById('ig-studio').addEventListener('click', function() {
+    if (state.selected) handoff(state.selected.id, 'studio');
+  });
+  document.getElementById('ig-docs').addEventListener('click', function() {
+    if (state.selected && state.selected.docs_url) window.open(state.selected.docs_url, '_blank', 'noopener,noreferrer');
+  });
+  loadCatalog();
+})();
+</script>
+</body>
+</html>

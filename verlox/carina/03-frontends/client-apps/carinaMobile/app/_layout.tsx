@@ -5,6 +5,7 @@ import { AppLockOverlay } from '@/components/AppLockOverlay';
 import { useAppLock } from '@/hooks/useAppLock';
 import { useDeepLinks } from '@/hooks/useDeepLinks';
 import { useLocalModelLifecycle } from '@/hooks/useLocalModelLifecycle';
+import { useMobileUpdateCheck } from '@/hooks/useMobileUpdateCheck';
 import { useNotificationSetup } from '@/hooks/useNotificationSetup';
 import { AppLockProvider } from '@/store/app-lock-store';
 import { AuthProvider } from '@/store/auth-store';
@@ -14,6 +15,7 @@ function RootShell() {
   useDeepLinks();
   useNotificationSetup();
   useLocalModelLifecycle();
+  useMobileUpdateCheck();
   const { locked, unlock } = useAppLock();
 
   return (

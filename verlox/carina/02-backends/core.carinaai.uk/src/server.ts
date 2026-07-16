@@ -6,6 +6,7 @@ import { incidentBlogRouter } from './api/incident-blog.js';
 import { aivaRouter } from './api/workspace-api.js';
 import { aivaEmailRouter } from './api/workspace-email-api.js';
 import { aivaEmailOAuthRouter } from './api/aiva-email-oauth-api.js';
+import { aivaToolsOAuthRouter } from './api/aiva-tools-oauth-api.js';
 import { aivaSocialOAuthRouter } from './api/aiva-social-oauth-api.js';
 import { aivaSocialApprovalRouter } from './api/aiva-social-approval-api.js';
 import { aivaN8nIntegrationRouter } from './api/aiva-n8n-integration-api.js';
@@ -35,6 +36,8 @@ import { capabilityCheckRouter } from './api/capability-check-api.js';
 import { onboardingRouter } from './api/onboarding-api.js';
 import { channelConfigApiRouter } from './api/channel-config-api.js';
 import { settingsApiRouter } from './api/settings-api.js';
+import { channelShieldRouter, emailShieldAliasRouter } from './channel-shield/index.js';
+import { workspaceOpsRouter } from './aiva/workspace-ops/index.js';
 
 export function mountCloudRawRoutes(app: Express): void {
   mountCloudWebhook(app);
@@ -68,6 +71,7 @@ export function mountServerRoutes(app: Express): void {
     app.use('/api/aiva/analytics', aivaAnalyticsRouter);
     app.use('/api/analytics', aivaAnalyticsRouter);
     app.use('/api/aiva', aivaRouter);
+    app.use('/api/aiva/tools/oauth', aivaToolsOAuthRouter);
     if (isEmailIngestionActive() || isPropreneurBridgeEnabled()) {
       app.use('/api/aiva/email', aivaEmailRouter);
       app.use('/api/aiva/email/oauth', aivaEmailOAuthRouter);
@@ -77,6 +81,9 @@ export function mountServerRoutes(app: Express): void {
     app.use('/api/aiva/social/approvals', aivaSocialApprovalRouter);
     app.use('/api/aiva/integrations/n8n', aivaN8nIntegrationRouter);
     app.use('/api/aiva/webhooks', aivaPropreneurWebhookRouter);
+    app.use('/api/aiva/channel-shield', channelShieldRouter);
+    app.use('/api/aiva/email-shield', emailShieldAliasRouter);
+    app.use('/api/aiva/workspace-ops', workspaceOpsRouter);
     app.use('/api/inbound', propreneurHubReplyRouter);
     app.use('/api/conversations', conversationsRouter);
     app.use('/api/channels', channelsApiRouter);

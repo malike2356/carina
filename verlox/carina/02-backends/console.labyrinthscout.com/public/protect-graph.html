@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Protect graph</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1220; --fg:#d7e0ea; --accent:#c9a227; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, sans-serif; background:var(--bg); color:var(--fg); padding:2rem; }
+    h1 { color:var(--accent); font-weight:600; letter-spacing:0.04em; }
+    input, button { padding:0.5rem 0.75rem; margin:0.25rem 0; background:#121a2b; color:var(--fg); border:1px solid #2a3a55; }
+    button { cursor:pointer; border-color:var(--accent); }
+    pre { background:#121a2b; padding:1rem; overflow:auto; border:1px solid #2a3a55; }
+    .hint { opacity:0.7; max-width:42rem; }
+  </style>
+</head>
+<body>
+  <h1>PROTECT GRAPH</h1>
+  <p class="hint">Blast-radius query against Scout Protect graph. Not BloodHound Enterprise. Paste account API key (Pro).</p>
+  <div>
+    <input id="base" size="40" placeholder="http://127.0.0.1:4444" value="" />
+    <input id="key" size="40" type="password" placeholder="X-Scout-Key" />
+  </div>
+  <div>
+    <input id="nodeId" size="40" placeholder="node UUID" />
+    <button id="go">Blast radius</button>
+  </div>
+  <pre id="out">{}</pre>
+  <script>
+    const out = document.getElementById('out');
+    document.getElementById('go').onclick = async () => {
+      const base = document.getElementById('base').value.replace(/\/$/, '');
+      const key = document.getElementById('key').value;
+      const nodeId = document.getElementById('nodeId').value;
+      const res = await fetch(base + '/api/protect/graph/blast-radius/' + encodeURIComponent(nodeId), {
+        headers: { 'X-Scout-Key': key }
+      });
+      out.textContent = JSON.stringify(await res.json(), null, 2);
+    };
+  </script>
+</body>
+</html>

@@ -43,3 +43,4 @@ function withOptionalFirebase(config) {
 }
 
 module.exports = withOptionalFirebase;
+

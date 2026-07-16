@@ -26,11 +26,16 @@ export interface AivaWorker {
   language: string;
   status: AivaWorkerStatus;
   propreneurTenantSlug?: string | null;
+  workerConfig?: {
+    permissions?: AivaWorkerPermissions;
+  };
   messagesToday?: number;
   totalMessages?: number;
   escalationRate?: number;
   automationsRan?: number;
   lastActiveAt?: string | null;
+  openThreads?: number;
+  pendingApprovals?: number;
   trialDaysLeft?: number;
   scout?: {
     enabled?: boolean;
@@ -40,6 +45,31 @@ export interface AivaWorker {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type AivaWorkerPermissions = {
+  email: 'anyone' | 'specific' | 'organization' | 'owner_only';
+  whatsapp: 'anyone' | 'organization' | 'owner_only';
+};
+
+export type AivaOutboundMessage = {
+  id: string;
+  channel: string;
+  contactId: string;
+  preview: string;
+  subject?: string;
+  status: 'delivered' | 'failed' | 'pending';
+  createdAt: string;
+};
+
+export type AivaWorkspaceProfile = {
+  ownerEmail: string;
+  ownerName: string;
+  ownerPhone: string;
+  preferredName: string;
+  workFunction: string;
+  personalPreferences: string;
+  marketingOptOut: boolean;
+};
 
 export interface AivaActivityItem {
   id: string;

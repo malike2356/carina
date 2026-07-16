@@ -28,7 +28,6 @@ export interface LauncherData {
   scoutPaired: boolean;
   version: string;
   activeSkillPacks: string;
-  sessionDates: string[];
 }
 
 async function loadOptionalLauncherValue<T>(
@@ -96,10 +95,6 @@ export async function loadLauncherData(userId: string, userName: string, userEma
     lastMessageAt: s.lastMessageAt,
   }));
 
-  const sessionDates = sessions
-    .filter((s) => s.lastMessageAt != null)
-    .map((s) => new Date(s.lastMessageAt!).toISOString());
-
   return {
     userName,
     userEmail,
@@ -113,7 +108,6 @@ export async function loadLauncherData(userId: string, userName: string, userEma
     scoutPaired: scoutKeys.some((k) => k.provider === 'labyrinth-scout'),
     version: process.env.NEXT_PUBLIC_APP_VERSION ?? '1.0.0',
     activeSkillPacks: workspace.activeSkillPacks,
-    sessionDates,
   };
 }
 

@@ -14,6 +14,7 @@ import { CloudFeatureGate } from '@/components/CloudFeatureGate';
 import { ScreenShell } from '@/components/ScreenShell';
 import { useBilling } from '@/hooks/useBilling';
 import { hapticLight } from '@/lib/haptics';
+import { useAuth } from '@/store/auth-store';
 import { colors, radii, spacing } from '@/theme/tokens';
 
 function formatTokens(value: number): string {
@@ -23,7 +24,19 @@ function formatTokens(value: number): string {
 }
 
 function UsageScreenBody() {
-  const { data, loading, error, busy, refresh, openPortal, openCheckout } = useBilling();
+  const { instance } = useAuth();
+  const {
+    data,
+    aiva,
+    loading,
+    error,
+    busy,
+    refresh,
+    openPortal,
+    openCheckout,
+    openTopup,
+    aivaAvailable,
+  } = useBilling();
 
   useFocusEffect(
     useCallback(() => {
@@ -41,6 +54,19 @@ function UsageScreenBody() {
     void hapticLight();
     const url = await openCheckout();
     if (url) await WebBrowser.openBrowserAsync(url);
+  }
+
+  async function handleTopup(packId: string) {
+    void hapticLight();
+    const url = await openTopup(packId);
+    if (url) await WebBrowser.openBrowserAsync(url);
+  }
+
+  async function handleByok() {
+    void hapticLight();
+    const base = (instance?.baseUrl ?? '').replace(/\/+$/, '');
+    if (!base) return;
+    await WebBrowser.openBrowserAsync(`${base}/settings/keys`);
   }
 
   const usagePercent =
@@ -68,47 +94,166 @@ function UsageScreenBody() {
           </Pressable>
         </View>
       ) : null}
-      {loading && !data ? (
+      {loading && !data && !aiva ? (
         <ActivityIndicator color={colors.tealLight} />
-      ) : data ? (
+      ) : (
         <>
-          <View style={styles.card}>
-            <Text style={styles.label}>Plan</Text>
-            <Text style={styles.value}>{data.planName}</Text>
-            <Text style={styles.meta}>
-              {data.subscription.plan} · {data.subscription.status} · tier {data.tier}
-            </Text>
-            {data.monthlyPriceGbp !== null ? (
-              <Text style={styles.meta}>£{data.monthlyPriceGbp}/month</Text>
-            ) : null}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.label}>Token usage (month)</Text>
-            <Text style={styles.metric}>
-              {formatTokens(data.usage.tokensUsed)}
-              {data.usage.limit ? ` / ${formatTokens(data.usage.limit)}` : ''}
-            </Text>
-            {usagePercent !== null ? (
-              <View style={styles.meterTrack}>
-                <View style={[styles.meterFill, { width: `${usagePercent}%` }]} />
+          {aivaAvailable && aiva ? (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.label}>Aiva plan</Text>
+                <Text style={styles.value}>{aiva.planTier}</Text>
+                <Text style={styles.meta}>
+                  Status {aiva.status}
+                  {aiva.trialDaysRemaining != null
+                    ? ` · trial ${aiva.trialDaysRemaining} day(s) left`
+                    : ''}
+                </Text>
+                {aiva.trialEndsAt ? (
+                  <Text style={styles.meta}>
+                    Trial ends {new Date(aiva.trialEndsAt).toLocaleDateString()}
+                  </Text>
+                ) : null}
               </View>
-            ) : null}
-            {data.usage.warning ? (
-              <Text style={styles.warn}>{data.usage.warning}</Text>
-            ) : null}
-            {data.usage.blocked ? (
-              <Text style={styles.error}>{data.usage.blocked}</Text>
-            ) : null}
-          </View>
 
-          {data.freeDailyLimit !== null ? (
-            <View style={styles.card}>
-              <Text style={styles.label}>Messages today</Text>
-              <Text style={styles.metric}>
-                {data.messagesToday} / {data.freeDailyLimit}
-              </Text>
-            </View>
+              {aiva.wallet ? (
+                <View style={styles.card}>
+                  <Text style={styles.label}>Managed AI credit</Text>
+                  <Text style={styles.metric}>£{aiva.wallet.remainingGbp.toFixed(2)}</Text>
+                  <Text style={styles.meta}>
+                    {aiva.wallet.exhausted
+                      ? 'Credit exhausted'
+                      : aiva.wallet.lowCredit
+                        ? 'Low credit warning'
+                        : 'Wallet balance'}
+                    {aiva.wallet.byokActive ? ' · BYOK active' : ''}
+                  </Text>
+                </View>
+              ) : null}
+
+              {aiva.agentLimits ? (
+                <View style={styles.card}>
+                  <Text style={styles.label}>
+                    Usage allowance ({aiva.agentLimits.period})
+                  </Text>
+                  <Text style={styles.meta}>
+                    {aiva.agentLimits.remainingCalls != null
+                      ? `${aiva.agentLimits.remainingCalls.toLocaleString()} calls remaining`
+                      : `${aiva.agentLimits.usedCalls.toLocaleString()} calls used`}
+                    {aiva.agentLimits.remainingTokens != null
+                      ? ` · ${formatTokens(aiva.agentLimits.remainingTokens)} tokens remaining`
+                      : ''}
+                    {aiva.agentLimits.custom ? ' · custom policy' : ''}
+                  </Text>
+                  {aiva.agentLimits.maxCalls != null ? (
+                    <Text style={styles.meta}>
+                      {aiva.agentLimits.usedCalls.toLocaleString()} /{' '}
+                      {aiva.agentLimits.maxCalls.toLocaleString()} calls
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {aiva.softWall ? (
+                <View style={styles.softWall}>
+                  <Text style={styles.softTitle}>
+                    {aiva.wallet?.exhausted
+                      ? 'Managed AI credit used up'
+                      : 'Your trial has ended'}
+                  </Text>
+                  <Text style={styles.meta}>
+                    Connect your own API key, top up managed credit, or upgrade so employees can
+                    keep running.
+                  </Text>
+                  {aiva.softWallActions.includes('byok') ? (
+                    <Pressable
+                      style={styles.secondaryBtn}
+                      onPress={() => void handleByok()}
+                      disabled={busy}
+                    >
+                      <Text style={styles.secondaryBtnText}>Add BYOK key</Text>
+                    </Pressable>
+                  ) : null}
+                  {aiva.softWallActions.includes('topup')
+                    ? aiva.packs.map((pack) => (
+                        <Pressable
+                          key={pack.id}
+                          style={styles.secondaryBtn}
+                          onPress={() => void handleTopup(pack.id)}
+                          disabled={busy}
+                        >
+                          <Text style={styles.secondaryBtnText}>
+                            Top up {pack.label}
+                          </Text>
+                        </Pressable>
+                      ))
+                    : null}
+                  {aiva.softWallActions.includes('upgrade') ? (
+                    <Pressable
+                      style={styles.primaryBtn}
+                      onPress={() => void handleCheckout()}
+                      disabled={busy}
+                    >
+                      <Text style={styles.primaryBtnText}>Upgrade plan</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {aiva.prepaidRemainingMessages > 0 ? (
+                <Text style={styles.meta}>
+                  Prepaid remaining: {aiva.prepaidRemainingMessages} messages (£
+                  {aiva.prepaidRemainingGbp.toFixed(2)})
+                </Text>
+              ) : null}
+            </>
+          ) : null}
+
+          {data ? (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.label}>Carina Cloud plan</Text>
+                <Text style={styles.value}>{data.planName}</Text>
+                <Text style={styles.meta}>
+                  {data.subscription.plan} · {data.subscription.status} · tier {data.tier}
+                </Text>
+                {data.monthlyPriceGbp !== null ? (
+                  <Text style={styles.meta}>£{data.monthlyPriceGbp}/month</Text>
+                ) : null}
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.label}>Token usage (month)</Text>
+                <Text style={styles.metric}>
+                  {formatTokens(data.usage.tokensUsed)}
+                  {data.usage.limit ? ` / ${formatTokens(data.usage.limit)}` : ''}
+                </Text>
+                {usagePercent !== null ? (
+                  <View style={styles.meterTrack}>
+                    <View style={[styles.meterFill, { width: `${usagePercent}%` }]} />
+                  </View>
+                ) : null}
+                {data.usage.warning ? (
+                  <Text style={styles.warn}>{data.usage.warning}</Text>
+                ) : null}
+                {data.usage.blocked ? (
+                  <Text style={styles.error}>{data.usage.blocked}</Text>
+                ) : null}
+              </View>
+
+              {data.freeDailyLimit !== null ? (
+                <View style={styles.card}>
+                  <Text style={styles.label}>Messages today</Text>
+                  <Text style={styles.metric}>
+                    {data.messagesToday} / {data.freeDailyLimit}
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : null}
+
+          {!data && !aiva && !loading ? (
+            <Text style={styles.meta}>Usage data is not available yet. Pull to refresh.</Text>
           ) : null}
 
           <Pressable
@@ -121,20 +266,20 @@ function UsageScreenBody() {
             <Text style={styles.primaryBtnText}>Manage billing</Text>
           </Pressable>
 
-          {data.tier !== 'pro' ? (
+          {!aiva?.softWall && (aivaAvailable || data?.tier !== 'pro') ? (
             <Pressable
               style={styles.secondaryBtn}
               onPress={() => void handleCheckout()}
               disabled={busy}
               accessibilityRole="button"
-              accessibilityLabel="Upgrade to Pro"
+              accessibilityLabel="Upgrade plan"
             >
-              <Text style={styles.secondaryBtnText}>Upgrade to Pro</Text>
+              <Text style={styles.secondaryBtnText}>
+                {aivaAvailable ? 'Upgrade Aiva plan' : 'Upgrade to Pro'}
+              </Text>
             </Pressable>
           ) : null}
         </>
-      ) : (
-        <Text style={styles.meta}>Usage data is not available yet. Pull to refresh.</Text>
       )}
     </ScrollView>
   );
@@ -144,7 +289,7 @@ export default function UsageScreen() {
   return (
     <ScreenShell
       title="Usage and billing"
-      subtitle="Carina Cloud token usage, plan, and Stripe billing."
+      subtitle="Plan, managed credit, limits, and Stripe billing."
       showBack
       scroll={false}
     >
@@ -165,6 +310,19 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.xs,
     backgroundColor: colors.inkMid,
+  },
+  softWall: {
+    borderWidth: 1,
+    borderColor: colors.amber,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+    backgroundColor: colors.inkMid,
+  },
+  softTitle: {
+    color: colors.amber,
+    fontSize: 16,
+    fontWeight: '700',
   },
   label: {
     color: colors.amber,
@@ -218,6 +376,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   retryText: {
     color: colors.tealLight,
@@ -229,6 +389,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   primaryBtnText: {
     color: colors.white,
@@ -241,6 +403,8 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   secondaryBtnText: {
     color: colors.tealLight,

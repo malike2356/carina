@@ -1,0 +1,582 @@
+<%
+  const st = typeof status === 'object' && status ? status : {};
+  const enabled = Boolean(st.enabled);
+  const tokenSet = Boolean(st.bridgeTokenSet);
+  const carinaPaired = !st.error || !String(st.error).includes('CARINA_OPS_TOKEN');
+  const lastOk = st.lastPublishOk === true;
+  const lastFail = st.lastPublishOk === false;
+  const ready = enabled && tokenSet && Boolean(st.misBaseUrl) && !st.error;
+  const misInbox = st.misInboxUrl || 'https://verlox.uk/mis/va/aiva-assist';
+  const misBase = st.misBaseUrl || 'https://verlox.uk';
+  const mode = st.publishMode || 'push_and_poll';
+  const modeLabel = mode === 'push_only'
+    ? 'Push only'
+    : mode === 'poll_only'
+      ? 'Poll only'
+      : 'Push + poll';
+  const modeHint = mode === 'push_only'
+    ? 'Core pushes each new request to MIS as soon as it is queued.'
+    : mode === 'poll_only'
+      ? 'MIS pulls queued jobs on a schedule. Use when push is blocked.'
+      : 'Core pushes immediately, and MIS can also pull as a backup.';
+  let healthLabel = 'Not ready';
+  let healthClass = '';
+  if (st.error) {
+    healthLabel = 'Needs attention';
+  } else if (ready) {
+    healthLabel = 'Live';
+    healthClass = 'on';
+  } else if (enabled && !tokenSet) {
+    healthLabel = 'Token missing';
+  } else if (!enabled) {
+    healthLabel = 'Off';
+  }
+%>
+<style>
+  .hab-page {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 32px 28px;
+  }
+
+  /* Header */
+  .hab-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .hab-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.12));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .hab-icon svg { width: 22px; height: 22px; color: #c084fc; }
+  .hab-header-text h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.01em;
+  }
+  .hab-header-text p {
+    margin: 3px 0 0;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    line-height: 1.4;
+    max-width: 32rem;
+  }
+  .hab-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .hab-status.on {
+    background: rgba(34,197,94,0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34,197,94,0.25);
+  }
+  .hab-status.off {
+    background: rgba(148,163,184,0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(148,163,184,0.2);
+  }
+  .hab-status.warn {
+    background: rgba(251,191,36,0.1);
+    color: #fbbf24;
+    border: 1px solid rgba(251,191,36,0.25);
+  }
+  .hab-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .hab-status.on .hab-status-dot { background: #4ade80; }
+  .hab-status.off .hab-status-dot { background: #64748b; }
+  .hab-status.warn .hab-status-dot { background: #fbbf24; }
+
+  /* Flash */
+  .hab-flash {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .hab-flash.ok {
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.25);
+    color: #86efac;
+  }
+  .hab-flash.err {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: #fca5a5;
+  }
+
+  /* Status cards row */
+  .hab-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .hab-stat {
+    padding: 16px 18px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .hab-stat-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    margin: 0 0 6px;
+  }
+  .hab-stat-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .hab-stat-value.green { color: #4ade80; }
+  .hab-stat-value.amber { color: #fbbf24; }
+  .hab-stat-value.red { color: #f87171; }
+  .hab-stat-note {
+    margin: 4px 0 0;
+    font-size: 0.72rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  /* Flow diagram */
+  .hab-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin-bottom: 28px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .hab-flow-step {
+    flex: 1;
+    padding: 18px 16px;
+    background: rgba(255,255,255,0.02);
+    border-right: 1px solid rgba(255,255,255,0.04);
+    position: relative;
+  }
+  .hab-flow-step:last-child { border-right: none; }
+  .hab-flow-step::after {
+    content: '';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid rgba(255,255,255,0.08);
+    z-index: 1;
+  }
+  .hab-flow-step:last-child::after { display: none; }
+  .hab-flow-kicker {
+    margin: 0 0 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .hab-flow-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+  .hab-flow-desc {
+    margin: 4px 0 0;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    line-height: 1.4;
+  }
+
+  /* Two-column layout */
+  .hab-columns {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* Settings card */
+  .hab-card {
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    padding: 24px;
+  }
+  .hab-card-title {
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+  .hab-card-desc {
+    margin: 0 0 18px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  /* Toggle switch */
+  .hab-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.15);
+    margin-bottom: 18px;
+    cursor: pointer;
+  }
+  .hab-toggle-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4ade80;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .hab-toggle-text strong {
+    display: block;
+    font-size: 0.85rem;
+    color: #f1f5f9;
+  }
+  .hab-toggle-text span {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  /* Form fields */
+  .hab-field { margin-bottom: 16px; }
+  .hab-field label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .hab-field input,
+  .hab-field select {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(0,0,0,0.25);
+    color: #f1f5f9;
+    font-size: 0.82rem;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .hab-field input:focus,
+  .hab-field select:focus {
+    border-color: rgba(168,85,247,0.5);
+    box-shadow: 0 0 0 3px rgba(168,85,247,0.08);
+  }
+  .hab-field input::placeholder { color: #475569; }
+  .hab-field-hint {
+    margin: 4px 0 0;
+    font-size: 0.72rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+  .hab-field-hint code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    font-size: 0.68rem;
+  }
+  .hab-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.2);
+    margin-right: 10px;
+  }
+  .hab-submit:hover { opacity: 0.9; }
+  .hab-submit:active { transform: scale(0.98); }
+  .hab-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.04);
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .hab-link-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.2);
+    color: #f1f5f9;
+  }
+
+  /* Checklist card */
+  .hab-checklist {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: hab-check;
+  }
+  .hab-checklist li {
+    counter-increment: hab-check;
+    position: relative;
+    padding: 10px 0 10px 32px;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .hab-checklist li:last-child { border-bottom: none; }
+  .hab-checklist li::before {
+    content: counter(hab-check);
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #64748b;
+  }
+  .hab-checklist code {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.05);
+    font-size: 0.72rem;
+  }
+  .hab-checklist-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  @media (max-width: 768px) {
+    .hab-page { padding: 20px 16px; }
+    .hab-header { flex-wrap: wrap; }
+    .hab-status { margin-left: 0; margin-top: 8px; }
+    .hab-stats { grid-template-columns: repeat(2, 1fr); }
+    .hab-flow { flex-direction: column; }
+    .hab-flow-step::after { display: none; }
+    .hab-flow-step { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .hab-columns { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="hab-page">
+  <!-- Header -->
+  <header class="hab-header">
+    <div class="hab-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    </div>
+    <div class="hab-header-text">
+      <h1>Human Assist Bridge</h1>
+      <p>Routes Aiva escalation requests to the VERLOX VA inbox. VAs claim work; status flows back to the Aiva owner automatically.</p>
+    </div>
+    <div class="hab-status <%= healthClass === 'on' ? 'on' : (st.error ? 'warn' : 'off') %>">
+      <span class="hab-status-dot"></span>
+      <%= healthLabel %>
+    </div>
+  </header>
+
+  <% if (saved) { %>
+    <div class="hab-flash ok">Bridge settings saved.</div>
+  <% } %>
+  <% if (errMsg) { %>
+    <div class="hab-flash err"><%= errMsg %></div>
+  <% } %>
+  <% if (st.error) { %>
+    <div class="hab-flash err"><%= st.error %></div>
+  <% } %>
+
+  <!-- Status metrics -->
+  <div class="hab-stats">
+    <div class="hab-stat">
+      <p class="hab-stat-label">Bridge</p>
+      <p class="hab-stat-value <%= enabled ? 'green' : 'amber' %>"><%= enabled ? 'Active' : 'Off' %></p>
+      <p class="hab-stat-note"><%= enabled ? 'Requests route to VA inbox' : 'Requests stay in Aiva only' %></p>
+    </div>
+    <div class="hab-stat">
+      <p class="hab-stat-label">Token</p>
+      <p class="hab-stat-value <%= tokenSet ? 'green' : 'red' %>"><%= tokenSet ? 'Configured' : 'Missing' %></p>
+      <p class="hab-stat-note"><%= tokenSet ? 'MIS can authenticate' : 'Required before enabling' %></p>
+    </div>
+    <div class="hab-stat">
+      <p class="hab-stat-label">Mode</p>
+      <p class="hab-stat-value"><%= modeLabel %></p>
+      <p class="hab-stat-note"><%= modeHint %></p>
+    </div>
+    <div class="hab-stat">
+      <p class="hab-stat-label">Last Publish</p>
+      <p class="hab-stat-value <%= lastOk ? 'green' : (lastFail ? 'red' : '') %>"><%= lastOk ? 'OK' : (lastFail ? 'Failed' : 'Never') %></p>
+      <p class="hab-stat-note"><%= st.lastPublishAt || 'No attempt yet' %></p>
+    </div>
+  </div>
+
+  <% if (st.lastPublishError) { %>
+    <div class="hab-flash err">Last publish error: <%= st.lastPublishError %></div>
+  <% } %>
+
+  <!-- Flow diagram -->
+  <div class="hab-flow">
+    <div class="hab-flow-step">
+      <p class="hab-flow-kicker">Step 1</p>
+      <p class="hab-flow-title">Owner requests help</p>
+      <p class="hab-flow-desc">User taps Human Assist in Aiva. Request enters the queue.</p>
+    </div>
+    <div class="hab-flow-step">
+      <p class="hab-flow-kicker">Step 2</p>
+      <p class="hab-flow-title">Core publishes job</p>
+      <p class="hab-flow-desc">Bridge pushes the job to MIS (or MIS polls for it).</p>
+    </div>
+    <div class="hab-flow-step">
+      <p class="hab-flow-kicker">Step 3</p>
+      <p class="hab-flow-title">VA claims and delivers</p>
+      <p class="hab-flow-desc">A VA picks up the work. Status syncs back to the owner.</p>
+    </div>
+  </div>
+
+  <!-- Two-column: config + checklist -->
+  <div class="hab-columns">
+    <!-- Configuration -->
+    <div class="hab-card">
+      <h2 class="hab-card-title"><%= ready ? 'Bridge settings' : 'Configure the bridge' %></h2>
+      <p class="hab-card-desc">
+        <%= ready
+          ? 'Connection is live. Adjust settings or rotate the token as needed.'
+          : 'Enable the bridge, set the MIS endpoint, and save a shared authentication token.' %>
+      </p>
+
+      <form method="post" action="<%= withV('/human-assist-bridge/save') %>">
+        <label class="hab-toggle-row">
+          <input type="checkbox" name="enabled" value="1" <%= enabled ? 'checked' : '' %> />
+          <div class="hab-toggle-text">
+            <strong>Enable bridge</strong>
+            <span>Route new escalation requests to the VA inbox</span>
+          </div>
+        </label>
+
+        <div class="hab-field">
+          <label for="misBaseUrl">MIS base URL</label>
+          <input id="misBaseUrl" name="misBaseUrl" type="url" value="<%= misBase %>" required />
+          <p class="hab-field-hint">VA inbox resolves to <code><%= misBase.replace(/\/$/, '') %>/mis/va/aiva-assist</code></p>
+        </div>
+
+        <div class="hab-field">
+          <label for="bridgeToken">Bridge token</label>
+          <input id="bridgeToken" name="bridgeToken" type="password" autocomplete="off"
+            placeholder="<%= tokenSet ? 'On file (enter new value only to rotate)' : 'Shared secret for Core and MIS' %>" />
+          <p class="hab-field-hint">Leave blank to keep existing token. Must match the value stored in MIS.</p>
+        </div>
+
+        <div class="hab-field">
+          <label for="publishMode">Delivery mode</label>
+          <select id="publishMode" name="publishMode">
+            <option value="push_and_poll" <%= mode === 'push_and_poll' ? 'selected' : '' %>>Push + poll backup (recommended)</option>
+            <option value="push_only" <%= mode === 'push_only' ? 'selected' : '' %>>Push only</option>
+            <option value="poll_only" <%= mode === 'poll_only' ? 'selected' : '' %>>Poll only</option>
+          </select>
+          <p class="hab-field-hint" id="hab-mode-hint"><%= modeHint %></p>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
+          <button type="submit" class="hab-submit">Save bridge settings</button>
+          <a class="hab-link-btn" href="<%= misInbox %>" target="_blank" rel="noopener">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/><path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/></svg>
+            Open VA inbox
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Setup checklist -->
+    <div class="hab-card">
+      <h2 class="hab-card-title">Setup checklist</h2>
+      <p class="hab-card-desc">Complete these steps when configuring a new environment.</p>
+      <ol class="hab-checklist">
+        <li>Pair Core in Ops Settings (<code>CARINA_OPS_TOKEN</code>)<%= carinaPaired ? '' : ' - needed now' %></li>
+        <li>Set the same bridge token in MIS Aiva assist settings</li>
+        <li>Enable the bridge on this page and save</li>
+        <li>Submit a test Human Assist request from Aiva</li>
+        <li>Verify the job appears in the VA inbox and claim it</li>
+      </ol>
+      <div class="hab-checklist-links">
+        <a class="hab-link-btn" href="<%= withV('/settings') %>">Ops Settings</a>
+        <a class="hab-link-btn" href="<%= withV('/business-inner/va-queue') %>">Queue</a>
+        <a class="hab-link-btn" href="https://verlox.uk/mis/va" target="_blank" rel="noopener">MIS</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var select = document.getElementById('publishMode');
+  var hint = document.getElementById('hab-mode-hint');
+  if (!select || !hint) return;
+  var copy = {
+    push_and_poll: 'Core pushes immediately, and MIS can also pull as a backup.',
+    push_only: 'Core pushes each new request to MIS as soon as it is queued.',
+    poll_only: 'MIS pulls queued jobs on a schedule. Use when push is blocked.'
+  };
+  select.addEventListener('change', function () {
+    hint.textContent = copy[select.value] || copy.push_and_poll;
+  });
+})();
+</script>

@@ -1,0 +1,96 @@
+{
+  "connectors": [
+    {
+      "id": "notion",
+      "label": "Notion",
+      "category": "productivity",
+      "description": "Read and write Notion pages and databases",
+      "icon": "book-open",
+      "auth_pattern": "mcp",
+      "featured": true,
+      "tags": ["docs", "wiki"],
+      "install_hint": "Install via MCP admin",
+      "docs_url": "https://docs.keprix.example/integrations/notion",
+      "install_status": { "installed": false },
+      "sample_playbook_node": { "type": "agent_task", "tool": "notion_search" }
+    },
+    {
+      "id": "github",
+      "label": "GitHub",
+      "category": "devtools",
+      "description": "Issues, pull requests, and repository automation",
+      "icon": "github",
+      "auth_pattern": "mcp",
+      "featured": true,
+      "tags": ["code", "ci"],
+      "install_hint": "Connect GitHub MCP server",
+      "docs_url": "https://docs.keprix.example/integrations/github",
+      "install_status": { "installed": true },
+      "sample_playbook_node": { "type": "agent_task", "tool": "github_create_issue" }
+    },
+    {
+      "id": "slack",
+      "label": "Slack",
+      "category": "messaging",
+      "description": "Send updates to Slack channels",
+      "icon": "message-square",
+      "auth_pattern": "oauth",
+      "featured": true,
+      "tags": ["chat"],
+      "install_hint": "OAuth connect in MCP admin",
+      "docs_url": "https://docs.keprix.example/integrations/slack",
+      "install_status": { "installed": false },
+      "sample_playbook_node": { "type": "agent_task", "tool": "slack_post_message" }
+    },
+    {
+      "id": "n8n_sidecar",
+      "label": "n8n sidecar",
+      "category": "automation",
+      "description": "Bridge legacy n8n workflows into Keprix playbooks",
+      "icon": "workflow",
+      "auth_pattern": "sidecar",
+      "featured": true,
+      "tags": ["migration", "sidecar"],
+      "install_hint": "Run keprix migrate from-n8n",
+      "docs_url": "https://docs.keprix.example/integrations/n8n-sidecar",
+      "install_status": { "installed": false },
+      "sample_playbook_node": { "type": "sidecar_call", "sidecar": "n8n" }
+    },
+    {
+      "id": "web_search",
+      "label": "Web search",
+      "category": "ai",
+      "description": "Search the web from playbook steps",
+      "icon": "search",
+      "auth_pattern": "api_key",
+      "featured": false,
+      "tags": ["research"],
+      "install_hint": "Set provider API key",
+      "docs_url": "https://docs.keprix.example/integrations/web-search",
+      "install_status": { "installed": true },
+      "sample_playbook_node": { "type": "agent_task", "tool": "web_search" }
+    },
+    {
+      "id": "postgres",
+      "label": "PostgreSQL",
+      "category": "data",
+      "description": "Query Postgres databases from playbooks",
+      "icon": "database",
+      "auth_pattern": "api_key",
+      "featured": false,
+      "tags": ["sql"],
+      "install_hint": "Add connection string in MCP admin",
+      "docs_url": "https://docs.keprix.example/integrations/postgres",
+      "install_status": { "installed": false },
+      "sample_playbook_node": { "type": "agent_task", "tool": "postgres_query" }
+    }
+  ],
+  "categories": [
+    { "id": "productivity", "label": "Productivity", "count": 1 },
+    { "id": "devtools", "label": "Developer tools", "count": 1 },
+    { "id": "messaging", "label": "Messaging", "count": 1 },
+    { "id": "automation", "label": "Automation", "count": 1 },
+    { "id": "ai", "label": "AI", "count": 1 },
+    { "id": "data", "label": "Data", "count": 1 }
+  ]
+}

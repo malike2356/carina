@@ -1,0 +1,42 @@
+{
+  "capabilities": [
+    {
+      "id": "operator-improvements-route",
+      "owner": "carina-ops",
+      "source": "02-backends/admin/ops.carinaai.uk/routes/operator.ts",
+      "productionPath": "https://ops.carinaai.uk/operator/improvements"
+    },
+    {
+      "id": "centered-pricing-layout",
+      "owner": "carina-ops",
+      "source": "02-backends/admin/ops.carinaai.uk/views/pricing.ejs",
+      "productionPath": "https://ops.carinaai.uk/pricing"
+    },
+    {
+      "id": "live-ai-platform-telemetry",
+      "owner": "carina-ops",
+      "source": "02-backends/admin/ops.carinaai.uk/lib/ai-platform.ts",
+      "productionPath": "https://ops.carinaai.uk/ai-platform"
+    },
+    {
+      "id": "apk-welcome-gui-toggle",
+      "owner": "carina-core-and-ops",
+      "source": "02-backends/core.carinaai.uk/src/email/complete-welcome-content.ts"
+    },
+    {
+      "id": "telegram-webhook-verification",
+      "owner": "carina-core",
+      "source": "02-backends/core.carinaai.uk/src/channels/adapters/telegram-adapter.ts"
+    },
+    {
+      "id": "cost-warning-not-user-visible",
+      "owner": "carina-core",
+      "source": "02-backends/core.carinaai.uk/src/agents/carina.ts"
+    },
+    {
+      "id": "mobile-chat-task-separation",
+      "owner": "carina-mobile",
+      "source": "03-frontends/client-apps/carinaMobile/src/hooks/useChatSession.ts"
+    }
+  ]
+}

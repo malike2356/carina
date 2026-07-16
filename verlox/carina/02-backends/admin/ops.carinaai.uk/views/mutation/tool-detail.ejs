@@ -1,0 +1,66 @@
+<% title = 'Tool Detail' %>
+<div class="ops-page">
+<%- include('_nav') %>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title"><%= tool.name %></div>
+    <div class="ops-page-sub"><%= tool.description %></div>
+  </div>
+  <div class="ops-actions">
+    <a href="/mutation/tools" class="ops-btn ops-btn-ghost">Back to Tools</a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;">
+  <div class="ops-card"><div class="ops-card-label">Status</div><div class="ops-card-val"><%= tool.status %></div></div>
+  <div class="ops-card"><div class="ops-card-label">Quality Score</div><div class="ops-card-val"><%= tool.qualityScore != null ? Math.round(tool.qualityScore * 100) + '%' : 'n/a' %></div></div>
+  <div class="ops-card"><div class="ops-card-label">Uses</div><div class="ops-card-val"><%= tool.timesUsed ?? 0 %></div></div>
+  <div class="ops-card"><div class="ops-card-label">Risk</div><div class="ops-card-val"><%= tool.riskLevel || 'low' %></div></div>
+</div>
+
+<div class="ops-card" style="margin-bottom:16px;">
+  <div class="ops-section-title">Metadata</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;">
+    <div><span style="color:var(--muted);">Category:</span> <%= tool.category %></div>
+    <div><span style="color:var(--muted);">Promoted:</span> <%= tool.promoted ? 'yes' : 'no' %></div>
+    <div><span style="color:var(--muted);">Sandbox test:</span> <%= tool.sandboxTestPassed ? 'passed' : 'failed / skipped' %></div>
+    <div><span style="color:var(--muted);">Approved by:</span> <%= tool.approvedBy || '-' %></div>
+    <div><span style="color:var(--muted);">Last used:</span> <%= tool.lastUsedAt ? new Date(tool.lastUsedAt).toLocaleString() : '-' %></div>
+    <div><span style="color:var(--muted);">Created:</span> <%= tool.createdAt ? new Date(tool.createdAt).toLocaleString() : '-' %></div>
+  </div>
+</div>
+
+<div class="ops-card" style="margin-bottom:16px;">
+  <div class="ops-section-title">Source Code</div>
+  <pre style="background:rgba(0,0,0,0.35);padding:12px;border-radius:6px;overflow:auto;max-height:400px;font-size:12px;line-height:1.5;"><%= tool.sourceCode %></pre>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Quality History</div>
+  <% if (!qualitySamples.length) { %>
+    <div class="ops-empty">No quality samples recorded.</div>
+  <% } else { %>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr><th>Outcome</th><th>Score</th><th>Error</th><th>Duration</th><th>Sampled At</th></tr>
+        </thead>
+        <tbody>
+          <% qualitySamples.forEach(function(s) {
+            var oc = s.outcome === 'success' ? 'ops-badge-green' : s.outcome === 'partial' ? 'ops-badge-amber' : 'ops-badge-red';
+          %>
+            <tr>
+              <td><span class="ops-badge <%= oc %>"><%= s.outcome %></span></td>
+              <td><%= Math.round(Number(s.score) * 100) %>%</td>
+              <td style="font-size:12px;color:var(--muted);"><%= s.errorSummary || s.error_summary || '-' %></td>
+              <td><%= s.durationMs ?? s.duration_ms ?? '-' %> ms</td>
+              <td style="font-size:12px;"><%= s.sampledAt || s.sampled_at ? new Date(s.sampledAt || s.sampled_at).toLocaleString() : '-' %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+</div>

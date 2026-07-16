@@ -160,9 +160,9 @@ function ThreadBody({ conversationId }: { conversationId: string }) {
       {thread.workerId ? (
         <Pressable
           style={styles.secondaryBtn}
-          onPress={() => router.push(`/employee/${thread.workerId}` as Href)}
+          onPress={() => router.push(`/employee/${thread.workerId}/chat` as Href)}
         >
-          <Text style={styles.secondaryBtnText}>Open employee</Text>
+          <Text style={styles.secondaryBtnText}>Open worker chat</Text>
         </Pressable>
       ) : null}
     </ScrollView>

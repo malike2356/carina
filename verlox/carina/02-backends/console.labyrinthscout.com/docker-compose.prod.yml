@@ -1,0 +1,140 @@
+# Production compose for Labyrinth Scout.
+# Requires the external 'proxy' Docker network (created once on the host):
+#   docker network create proxy
+# The Carina nginx container proxies console.labyrinthscout.com to
+# labyrinth-scout:4444 via the proxy network.
+
+services:
+  labyrinth-scout:
+    image: scout-release/scout-console:${SCOUT_CONSOLE_TAG:?SCOUT_CONSOLE_TAG must be set}
+    build:
+      context: ..
+      dockerfile: console.labyrinthscout.com/Dockerfile
+    container_name: scout-console
+    env_file:
+      - .env
+    expose:
+      - "4444"
+    environment:
+      NODE_ENV: production
+      SCOUT_PORT: ${SCOUT_PORT:-4444}
+      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@scout-postgres:5432/scout
+      REDIS_URL: redis://scout:${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}@scout-redis:6379
+      SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
+      SCOUT_SESSION_SECRET: ${SCOUT_SESSION_SECRET:?set SCOUT_SESSION_SECRET}
+      SCOUT_DASHBOARD_PASSWORD: ${SCOUT_DASHBOARD_PASSWORD:-}
+      SCOUT_LICENSE_KEY: ${SCOUT_LICENSE_KEY:-}
+      SCOUT_PROXY_ENABLED: ${SCOUT_PROXY_ENABLED:-false}
+      SCOUT_PROXY_PORT: ${SCOUT_PROXY_PORT:-8080}
+      SCOUT_PROXY_KEY: ${SCOUT_PROXY_KEY:-}
+      SCOUT_CONSOLE_PUBLIC_URL: ${SCOUT_CONSOLE_PUBLIC_URL:-https://console.labyrinthscout.com}
+      SCOUT_ENGINE_URL: http://scout-engine:4455
+      LABYRINTH_LLM_ROUTER_URL: ${CARINA_API_URL:-http://carina-web:3000}
+      CARINA_API_URL: ${CARINA_API_URL:-}
+      CARINA_OPS_TOKEN: ${CARINA_OPS_TOKEN:-}
+      # Telegram: use TELEGRAM_* from env_file (.env). Do not set empty SCOUT_TELEGRAM_* here;
+      # blank compose overrides block fallback to TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID.
+      SCOUT_RESEND_API_KEY: ${SCOUT_RESEND_API_KEY:-}
+      SCOUT_ALERT_FROM_EMAIL: ${SCOUT_ALERT_FROM_EMAIL:-}
+      SCOUT_ALERT_TO_EMAIL: ${SCOUT_ALERT_TO_EMAIL:-}
+      IMAGE_DIGEST: ${SCOUT_CONSOLE_IMAGE_DIGEST:-unknown}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - scout
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4444/api/readiness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  scout-engine:
+    image: scout-release/scout-engine:${SCOUT_ENGINE_TAG:?SCOUT_ENGINE_TAG must be set}
+    build:
+      context: ${SCOUT_ENGINE_CONTEXT:-../scout-engine}
+      dockerfile: Dockerfile
+    container_name: scout-engine
+    expose:
+      - "4455"
+    environment:
+      NODE_ENV: production
+      SCOUT_PORT: ${SCOUT_ENGINE_PORT:-4455}
+      SCOUT_DATABASE_URL: postgresql://scout:${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}@scout-postgres:5432/scout
+      REDIS_URL: redis://scout:${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}@scout-redis:6379
+      SCOUT_API_KEY: ${SCOUT_API_KEY:?set SCOUT_API_KEY}
+      SCOUT_CONSOLE_URL: http://labyrinth-scout:4444
+      IMAGE_DIGEST: ${SCOUT_ENGINE_IMAGE_DIGEST:-unknown}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      labyrinth-scout:
+        condition: service_healthy
+    networks:
+      - scout
+      - proxy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4455/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16@sha256:a132765ec351c65111b5b675928a3a0515a466a40f97277329db8b8209ad8bc9
+    container_name: scout-postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: scout
+      POSTGRES_PASSWORD: ${SCOUT_DB_PASSWORD:?set SCOUT_DB_PASSWORD}
+      POSTGRES_DB: scout
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scout"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      scout:
+        aliases:
+          - scout-postgres
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine@sha256:8b81dd37ff027bec4e516d41acfbe9fe2460070dc6d4a4570a2ac5b9d59df065
+    container_name: scout-redis
+    environment:
+      REDIS_PASSWORD: ${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}
+    volumes:
+      - redisdata:/data
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/redis-entrypoint.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/redis-entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "--user", "scout", "-a", "${SCOUT_REDIS_PASSWORD:?set SCOUT_REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      scout:
+        aliases:
+          - scout-redis
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+
+networks:
+  scout:
+    driver: bridge
+  proxy:
+    external: true
+    name: proxy

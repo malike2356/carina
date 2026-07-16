@@ -1,13 +1,3 @@
-packages:
-  - '.'
-
-# pnpm 11: approve packages that need postinstall / native builds
-onlyBuiltDependencies:
-  - llama.rn
-  - esbuild
-
-# Explicit allow list (boolean values required; never leave placeholder strings)
 allowBuilds:
-  llama.rn: true
   esbuild: true
-  dtrace-provider: false
+  llama.rn: true

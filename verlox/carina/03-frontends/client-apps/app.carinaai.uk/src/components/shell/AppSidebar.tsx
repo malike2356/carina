@@ -81,8 +81,10 @@ import {
 } from '@/i18n/nav-keys';
 import { hrefToWindowId, preferWindowOverlay } from '@/lib/window-manager/definitions';
 import { useOptionalWindowManager } from '@/lib/window-manager/WindowManagerContext';
+import { AivaSidebar } from '@/components/shell/AivaSidebar';
 import { BrandMark } from '@/components/shell/BrandMark';
 import { authClient } from '@/lib/auth-client';
+import { useMobileNav } from '@/hooks/useMobileNav';
 
 interface Session {
   id: string;
@@ -196,9 +198,11 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   const navGroups = filterNavGroupsForSurface(productSurface, NAV_GROUPS);
   const navRoutes = filterNavForSurface(productSurface, NAV_ROUTES);
   const navPanels = filterNavPanelsForSurface(productSurface, NAV_PANELS);
-  const homeHref = '/launcher';
+  const homeHref = isAivaProduct ? '/aiva/workers' : '/launcher';
 
   const [openGroupId, setOpenGroupId] = useState<NavGroupId | null>('workspace');
+  const isMobile = useMobileNav();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     try {
@@ -226,14 +230,31 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   }, [appearance.sidebarCollapsed]);
 
   useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     function handleToggleSidebar() {
+      if (isMobile) {
+        setMobileOpen((open) => !open);
+        return;
+      }
       userToggled.current = true;
       setCollapsed((current) => !current);
     }
 
     document.addEventListener('toggle-sidebar', handleToggleSidebar);
     return () => document.removeEventListener('toggle-sidebar', handleToggleSidebar);
-  }, []);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || !mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [isMobile, mobileOpen]);
 
   useEffect(() => {
     function fetchSessions() {
@@ -261,10 +282,50 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   }
 
   const initials = (userName || userEmail).slice(0, 2).toUpperCase();
+  const showCollapsedRail = collapsed && !isMobile;
 
-  if (collapsed) {
+  if (isAivaProduct) {
     return (
-      <aside className="flex w-12 flex-col items-center gap-1.5 border-r border-border bg-surface py-3">
+      <>
+        <button
+          type="button"
+          aria-label="Close menu"
+          className={cn(
+            'fixed inset-0 z-40 bg-black/40 transition-opacity lg:hidden',
+            mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
+          )}
+          onClick={() => setMobileOpen(false)}
+        />
+        <div
+          className={cn(
+            'fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out lg:static lg:z-auto lg:translate-x-0',
+            showCollapsedRail ? 'w-12' : 'w-[min(15rem,85vw)] lg:w-56',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          )}
+        >
+          <AivaSidebar
+            userEmail={userEmail}
+            userName={userName}
+            collapsed={showCollapsedRail}
+            mobile={isMobile}
+            onCollapse={() => {
+              if (isMobile) {
+                setMobileOpen(false);
+                return;
+              }
+              userToggled.current = true;
+              setCollapsed((current) => !current);
+            }}
+            onNavigate={() => setMobileOpen(false)}
+          />
+        </div>
+      </>
+    );
+  }
+
+  if (showCollapsedRail) {
+    return (
+      <aside className="hidden w-12 flex-col items-center gap-1.5 border-r border-border bg-surface py-3 lg:flex">
         <Tooltip text={t('sidebar.expand')} side="right">
           <IconButton
             label={t('sidebar.expand')}
@@ -338,17 +399,42 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
   }
 
   return (
-    <aside className="flex w-56 flex-col border-r border-border bg-surface">
+    <>
+      <button
+        type="button"
+        aria-label="Close menu"
+        className={cn(
+          'fixed inset-0 z-40 bg-black/50 transition-opacity lg:hidden',
+          mobileOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+        onClick={() => setMobileOpen(false)}
+      />
+      <aside
+        className={cn(
+          'flex flex-col border-r border-border bg-surface',
+          // Mobile: overlay drawer only (never occupies document flow width)
+          'fixed inset-y-0 left-0 z-50 w-[min(16rem,88vw)] transition-transform duration-200 ease-out',
+          // Desktop: persistent rail in flow
+          'lg:static lg:z-auto lg:w-56 lg:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        )}
+        aria-hidden={isMobile ? !mobileOpen : undefined}
+      >
       <div className="flex items-center justify-between px-3 py-3">
         <Link
           href={homeHref}
           className="transition-colors hover:text-accent"
+          onClick={() => setMobileOpen(false)}
         >
           <BrandMark />
         </Link>
         <IconButton
-          label={t('sidebar.collapse')}
+          label={isMobile ? 'Close menu' : t('sidebar.collapse')}
           onClick={() => {
+            if (isMobile) {
+              setMobileOpen(false);
+              return;
+            }
             userToggled.current = true;
             setCollapsed(true);
           }}
@@ -419,6 +505,7 @@ export function AppSidebar({ userEmail, userName }: AppSidebarProps) {
         </IconButton>
       </div>
     </aside>
+    </>
   );
 }
 

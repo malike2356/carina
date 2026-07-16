@@ -1,0 +1,8 @@
+{
+  "from": "clean@partner.example",
+  "to": ["inbox@example.com"],
+  "subject": "Status update",
+  "text": "All good. See https://docs.carinaai.uk for notes.",
+  "messageId": "email-clean-1",
+  "authSignals": { "spf": "pass", "dkim": "pass", "dmarc": "pass" }
+}

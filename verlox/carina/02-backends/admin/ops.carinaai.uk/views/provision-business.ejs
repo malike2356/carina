@@ -1,0 +1,69 @@
+<% title = 'Provision Business workspace' %>
+<div class="ops-page">
+  <div class="mb-6">
+    <a href="/tenants" class="text-sm text-[#06b6d4] hover:underline">&larr; Fleet</a>
+    <h1 class="text-2xl font-bold text-white mt-2">Provision Aiva Business workspace</h1>
+    <p class="text-sm text-gray-400 mt-1">Manual Business tier setup with optional custom domain and welcome email.</p>
+  </div>
+
+  <% if (error) { %>
+    <div class="mb-4 rounded-lg border border-red-600/50 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+      <%= error %>
+    </div>
+  <% } %>
+
+  <% if (result) { %>
+    <div class="mb-6 ops-surface p-5 space-y-4">
+      <h2 class="text-lg font-semibold text-green-300">Workspace provisioned</h2>
+      <div class="space-y-2 text-sm text-gray-200">
+        <p><span class="text-gray-400">Workspace ID:</span> <code class="text-cyan-300"><%= result.workspaceId %></code></p>
+        <p>
+          <span class="text-gray-400">Login URL:</span>
+          <code class="block mt-1 break-all text-cyan-300 bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2"><%= result.loginUrl %></code>
+        </p>
+        <% if (result.customDomainRow) { %>
+          <div class="mt-4 space-y-2">
+            <p class="text-gray-300 font-medium">Custom domain DNS</p>
+            <p><span class="text-gray-400">Hostname:</span> <%= result.customDomainRow.hostname %></p>
+            <p><span class="text-gray-400">CNAME target:</span></p>
+            <code class="block break-all text-cyan-300 bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2"><%= result.customDomainRow.cnameTarget %></code>
+            <% if (result.customDomainRow.cfOwnershipVerificationName && result.customDomainRow.cfOwnershipVerificationValue) { %>
+              <p class="text-gray-400 mt-2">Cloudflare ownership TXT</p>
+              <code class="block break-all text-cyan-300 bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2"><%= result.customDomainRow.cfOwnershipVerificationName %> = <%= result.customDomainRow.cfOwnershipVerificationValue %></code>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+      <a href="/admin/provision-business" class="inline-block text-sm text-[#06b6d4] hover:underline">Provision another workspace</a>
+    </div>
+  <% } %>
+
+  <form method="post" action="/admin/provision-business" class="w-full space-y-6">
+    <section class="ops-surface p-5 space-y-4">
+      <h2 class="text-lg font-semibold text-white">Client details</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <label class="block text-sm">
+          <span class="text-gray-400">Email address</span>
+          <input type="email" name="email" value="<%= form.email %>"
+                 class="mt-1 w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white" required>
+        </label>
+        <label class="block text-sm">
+          <span class="text-gray-400">Workspace / company name</span>
+          <input type="text" name="workspaceName" value="<%= form.workspaceName %>"
+                 class="mt-1 w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white" required>
+        </label>
+        <label class="block text-sm md:col-span-2">
+          <span class="text-gray-400">Custom domain (optional, e.g. aiva.theirdomain.com)</span>
+          <input type="text" name="customDomain" value="<%= form.customDomain %>"
+                 class="mt-1 w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-white"
+                 placeholder="aiva.example.com">
+        </label>
+      </div>
+      <label class="flex items-center gap-2 text-sm text-gray-300">
+        <input type="checkbox" name="sendWelcomeEmail" <%= form.sendWelcomeEmail ? 'checked' : '' %> class="rounded">
+        Send welcome email with login link and DNS instructions
+      </label>
+    </section>
+    <button type="submit" class="ops-btn-primary">Provision Business workspace</button>
+  </form>
+</div>

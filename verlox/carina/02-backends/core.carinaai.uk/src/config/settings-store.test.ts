@@ -167,7 +167,7 @@ describe('saveDomainSettings', () => {
     const { ALL_CONFIG_DOMAINS } = await import('./settings-requirements.js');
     const domain = ALL_CONFIG_DOMAINS.find((d) => d.id === 'workspace:timezone')!;
 
-    await saveDomainSettings(domain, { CARINA_TIMEZONE: 'UTC' }, null);
+    await saveDomainSettings(domain, { WORKSPACE_TIMEZONE: 'UTC' }, null);
     expect(poolQueryMock).toHaveBeenCalled();
   });
 
@@ -185,7 +185,7 @@ describe('saveDomainSettings', () => {
     const { ALL_CONFIG_DOMAINS } = await import('./settings-requirements.js');
     const domain = ALL_CONFIG_DOMAINS.find((d) => d.id === 'workspace:timezone')!;
 
-    const result = await saveDomainSettings(domain, { CARINA_TIMEZONE: 'UTC' }, null);
+    const result = await saveDomainSettings(domain, { WORKSPACE_TIMEZONE: 'UTC' }, null);
     expect(result.ok).toBe(true);
   });
 });
