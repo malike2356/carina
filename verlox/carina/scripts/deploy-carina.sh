@@ -96,16 +96,16 @@ else
   log "Skipping independently managed labyrinthscout.com marketing repository."
 fi
 
-log "Syncing hireaiva.co.uk marketing site..."
-if [[ ! -s "${HIREAIVA_MARKETING_LOCAL}/index.html" ]]; then
-  echo "ERROR: Missing or empty Hire Aiva homepage: ${HIREAIVA_MARKETING_LOCAL}/index.html" >&2
-  exit 1
+if [[ -s "${HIREAIVA_MARKETING_LOCAL}/index.html" ]]; then
+  log "Syncing hireaiva.co.uk marketing site..."
+  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '/www/wwwroot/hireaiva.co.uk'"
+  rsync -az --delete \
+    --delete-excluded \
+    --exclude='.git' \
+    "${HIREAIVA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/www/wwwroot/hireaiva.co.uk/"
+else
+  log "Skipping Hire Aiva marketing because its committed homepage is empty."
 fi
-ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '/www/wwwroot/hireaiva.co.uk'"
-rsync -az --delete \
-  --delete-excluded \
-  --exclude='.git' \
-  "${HIREAIVA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:/www/wwwroot/hireaiva.co.uk/"
 
 log "Building docs.carinaai.uk (Docusaurus, baseUrl /)..."
 (
