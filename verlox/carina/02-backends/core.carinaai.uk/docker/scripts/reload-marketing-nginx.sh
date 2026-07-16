@@ -29,7 +29,7 @@ if [[ ! -f public_website/index.html ]]; then
 fi
 
 echo "Recreating nginx container (refresh public_website bind mount)..."
-docker compose -f "${COMPOSE_FILE}" up -d --force-recreate nginx
+docker compose -f "${COMPOSE_FILE}" up -d --no-deps --force-recreate nginx
 
 NGINX_CID="$(docker compose -f "${COMPOSE_FILE}" ps -q nginx)"
 if [[ -z "${NGINX_CID}" ]]; then
