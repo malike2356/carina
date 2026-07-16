@@ -24,6 +24,7 @@ check_ssh() {
 
 build_local() {
   log "Building Next.js admin app..."
+  mkdir -p public
   ADMIN_BASE_PATH="${ADMIN_BASE_PATH:-/business-inner}" ./node_modules/.bin/next build || die "Build failed. Run 'pnpm install' first if needed."
 }
 
