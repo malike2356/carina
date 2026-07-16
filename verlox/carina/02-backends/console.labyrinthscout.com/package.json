@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/deception dist/security dist/detections/packs/endpoint-v1 && cp src/deception/decoy-tokens.json dist/deception/ && cp src/security/injection-patterns.json dist/security/ && cp src/detections/packs/endpoint-v1/pack.json dist/detections/packs/endpoint-v1/",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

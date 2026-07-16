@@ -9,12 +9,12 @@ fi
 ACL_FILE=/tmp/users.acl
 cat > "$ACL_FILE" <<EOF
 user default off nopass ~* &* -@all
-user scout on >${REDIS_PASSWORD} ~scout:* ~labyrinth:* ~session:* ~cache:* &labyrinth:control +@read +@write +@pubsub +@connection -@dangerous -@admin
+user scout on >${REDIS_PASSWORD} ~scout:* ~labyrinth:* ~session:* ~cache:* &scout:* &labyrinth:control +@read +@write +@pubsub +@connection +info -@dangerous -@admin
 EOF
 
 exec redis-server \
   --aclfile "$ACL_FILE" \
-  --protected-mode yes \
+  --protected-mode no \
   --rename-command FLUSHALL "" \
   --rename-command FLUSHDB "" \
   --rename-command CONFIG "CONFIG_DISABLED_USE_ENV" \
