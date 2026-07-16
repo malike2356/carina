@@ -32,6 +32,7 @@ import {
   proposeSetting,
   proposeTeamInvite,
   proposeWorksOrder,
+  proxyDispatch,
   chatWithCarina,
 } from '../bridges/propreneur-bridge.js';
 import { registerSessionTool } from './session-tool-store.js';
@@ -649,6 +650,52 @@ export function createPropreneurCarinaRelayTool(sessionId: string): Tool[] {
   ];
 }
 
+export function createPropreneurProxyTool(sessionId: string): Tool[] {
+  return [
+    {
+      name: 'propreneur-proxy',
+      description:
+        'Call any internal Propreneur API route via the scoped proxy. Use this for routes ' +
+        'not covered by the specific propreneur-get-* and propreneur-propose-* tools. ' +
+        'The proxy respects scope restrictions on the bound token. Blocked routes (auth, ' +
+        'billing mutations, admin) will return 403.',
+      parameters: {
+        type: 'object',
+        properties: {
+          targetPath: {
+            type: 'string',
+            description: 'Internal route path, e.g. "api/contacts" or "api/properties/5/tenancies"',
+          },
+          targetMethod: {
+            type: 'string',
+            description: 'HTTP method: GET, POST, PUT, PATCH, DELETE. Default: GET',
+          },
+          targetBody: {
+            type: 'object',
+            description: 'Request body for POST/PUT/PATCH',
+          },
+          targetQuery: {
+            type: 'object',
+            description: 'Query parameters as key-value pairs',
+          },
+        },
+        required: ['targetPath'],
+      },
+      execute: async (params) => {
+        const { binding } = requireBinding(sessionId);
+        const targetPath = String(params.targetPath ?? '').trim();
+        if (!targetPath) throw new Error('targetPath is required');
+        return proxyDispatch(binding, {
+          targetPath,
+          targetMethod: params.targetMethod ? String(params.targetMethod) : 'GET',
+          targetBody: (params.targetBody as Record<string, unknown>) ?? {},
+          targetQuery: (params.targetQuery as Record<string, string>) ?? {},
+        });
+      },
+    },
+  ];
+}
+
 export function registerPropreneurSessionTools(sessionId: string): void {
   if (!isPropreneurBridgeEnabled()) return;
   const ctx = getWorkerSessionContext(sessionId);
@@ -668,6 +715,9 @@ export function registerPropreneurSessionTools(sessionId: string): void {
     }
   }
   for (const tool of createPropreneurCarinaRelayTool(sessionId)) {
+    registerSessionTool(sessionId, tool);
+  }
+  for (const tool of createPropreneurProxyTool(sessionId)) {
     registerSessionTool(sessionId, tool);
   }
 }

@@ -350,3 +350,37 @@ export function formatPortfolioContext(portfolio: PropreneurPortfolioResponse): 
   });
   return `Propreneur portfolio (${portfolio.total} properties):\n${lines.join('\n')}`;
 }
+
+// ── Scoped proxy ──────────────────────────────────────────────────────────────
+
+export interface ProxyDispatchOptions {
+  targetPath: string;
+  targetMethod?: string;
+  targetBody?: Record<string, unknown>;
+  targetQuery?: Record<string, string>;
+}
+
+export interface ProxyDispatchResponse {
+  proxy_status: number;
+  proxy_path: string;
+  proxy_method: string;
+  data: Record<string, unknown>;
+}
+
+export async function proxyDispatch(
+  binding: PropreneurBridgeBinding,
+  options: ProxyDispatchOptions,
+): Promise<ProxyDispatchResponse> {
+  return bridgePost<ProxyDispatchResponse>(binding, '/api/aiva-proxy/dispatch', {
+    target_path: options.targetPath,
+    target_method: options.targetMethod ?? 'GET',
+    target_body: options.targetBody ?? {},
+    target_query: options.targetQuery ?? {},
+  });
+}
+
+export async function getProxyScopes(
+  binding: PropreneurBridgeBinding,
+): Promise<{ scopes: string[]; domains: string[]; permissions: string[] }> {
+  return bridgeFetch(binding, '/api/aiva-proxy/scopes');
+}
