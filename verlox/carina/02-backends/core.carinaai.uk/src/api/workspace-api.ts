@@ -41,6 +41,10 @@ import {
   resolvePropreneurBinding,
   validateAndSetPropreneurBinding,
 } from '../workers/worker-bridge-store.js';
+import {
+  createPropreneurConnectToken,
+  registerPropreneurOAuthRoutes,
+} from '../bridges/propreneur-oauth-bridge.js';
 import { credentialsConfigured } from '../channels/credential-store.js';
 import {
   registerAutomationJob,
@@ -235,6 +239,7 @@ function billingErrorStatus(message: string): number {
 }
 
 export const aivaRouter: ExpressRouter = Router();
+registerPropreneurOAuthRoutes(aivaRouter);
 aivaRouter.use(requireCloudProxy);
 
 type AivaRequest = Request & { workspaceId?: string };
@@ -1510,11 +1515,12 @@ aivaRouter.get('/workers/:id/propreneur/status', requireWorkspace, requirePropre
     return;
   }
   const binding = resolvePropreneurBinding(worker);
-  res.json({
+  res.set('Cache-Control', 'no-store').json({
     bound: Boolean(binding),
     tenantSlug: worker.propreneurTenantSlug ?? null,
     summaryEnabled: Boolean(worker.workerConfig?.summary?.enabled),
     summarySchedule: worker.workerConfig?.summary?.summarySchedule ?? null,
+    connectToken: createPropreneurConnectToken(req.workspaceId!, workerId),
   });
 });
 

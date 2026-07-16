@@ -65,7 +65,7 @@ export function createPropreneurConnectToken(workspaceId: string, workerId: stri
 
 export function registerPropreneurOAuthRoutes(router: Router): void {
   router.get('/propreneur/panel.js', (_req, res) => {
-    res.type('application/javascript').send(`
+    res.set('Cache-Control', 'no-store').type('application/javascript').send(`
 (() => {
   let workerId = '';
   let status = null;
