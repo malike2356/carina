@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, ChevronLeft, ChevronUp, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -350,7 +350,7 @@ export default function FleetPage() {
     };
   }, [liveEnabled]);
 
-  async function openDrawerById(workerId: string) {
+  const openDrawerById = useCallback(async (workerId: string) => {
     setDrawerOpen(true);
     try {
       const res = await fetch(`/api/admin/fleet/${workerId}`);
@@ -364,14 +364,14 @@ export default function FleetPage() {
       toast('Failed to load Aiva detail', 'error');
       setDrawerOpen(false);
     }
-  }
+  }, [toast]);
 
   const deepLinkedWorker = useRef<string | null>(null);
   useEffect(() => {
     if (!workerFromQuery || deepLinkedWorker.current === workerFromQuery) return;
     deepLinkedWorker.current = workerFromQuery;
     void openDrawerById(workerFromQuery);
-  }, [workerFromQuery]);
+  }, [openDrawerById, workerFromQuery]);
 
   async function openDrawer(aiva: FleetAiva) {
     await openDrawerById(aiva.workerId);

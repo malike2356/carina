@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+const OPS_CONSOLE_URL = process.env.NEXT_PUBLIC_OPS_CONSOLE_URL ?? 'https://ops.carinaai.uk';
+
 const BUSINESS_LINKS = [
   { href: '/customers', label: 'Customers' },
   { href: '/fleet', label: 'Fleet' },
@@ -19,7 +21,7 @@ export function OpsBusinessChrome() {
   return (
     <header className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-4">
       <a
-        href="/"
+        href={OPS_CONSOLE_URL}
         target="_top"
         rel="noopener"
         className="text-xs font-medium tracking-wide text-accent hover:underline"

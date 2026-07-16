@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_BASE_PATH, OPS_BUSINESS_SHELL_PREFIX } from '@/lib/admin-base-path';
 import {
-  adminSessionOptions,
   getAdminSessionFromRequest,
   isValidAdminSession,
 } from '@/lib/admin-session';
@@ -92,7 +91,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/business-inner',
-    '/business-inner/:path*',
+    '/',
+    '/:path*',
   ],
 };

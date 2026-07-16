@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -52,7 +53,14 @@ export default function TotpSetupPage() {
           Scan this QR code with your authenticator app for {email || 'your account'}.
         </p>
         {qrDataUrl ? (
-          <img src={qrDataUrl} alt="TOTP QR code" className="mx-auto my-6 block rounded border border-border bg-white p-2" />
+          <Image
+            src={qrDataUrl}
+            alt="TOTP QR code"
+            width={220}
+            height={220}
+            unoptimized
+            className="mx-auto my-6 block rounded border border-border bg-white p-2"
+          />
         ) : (
           <p className="my-6 text-sm text-text-muted">Loading QR code...</p>
         )}
