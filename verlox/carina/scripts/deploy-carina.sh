@@ -40,6 +40,12 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev
   exit 1
 }
 
+log "Building core widget asset..."
+(
+  cd "${CORE_LOCAL}"
+  pnpm --dir widget build
+)
+
 log "Syncing core.carinaai.uk..."
 rsync -az --delete \
   --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
