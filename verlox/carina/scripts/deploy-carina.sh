@@ -40,9 +40,10 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev
   exit 1
 }
 
-log "Building core widget asset..."
+log "Building shared transport and core widget assets..."
 (
   cd "${CORE_LOCAL}"
+  pnpm --filter @verlox/carina-transport build
   pnpm --dir widget build
 )
 
