@@ -384,3 +384,24 @@ export async function getProxyScopes(
 ): Promise<{ scopes: string[]; domains: string[]; permissions: string[] }> {
   return bridgeFetch(binding, '/api/aiva-proxy/scopes');
 }
+
+// ── Session impersonation ─────────────────────────────────────────────────────
+
+export interface SessionUrlResponse {
+  session_url: string;
+  user_id: number;
+  user_name: string;
+  redirect_to: string | null;
+  expires_at: string;
+  ttl_seconds: number;
+}
+
+export async function generateSessionUrl(
+  binding: PropreneurBridgeBinding,
+  options?: { userId?: number; redirectTo?: string },
+): Promise<SessionUrlResponse> {
+  const body: Record<string, unknown> = {};
+  if (options?.userId != null) body.user_id = options.userId;
+  if (options?.redirectTo) body.redirect_to = options.redirectTo;
+  return bridgePost<SessionUrlResponse>(binding, '/api/aiva-bridge/session/generate', body);
+}

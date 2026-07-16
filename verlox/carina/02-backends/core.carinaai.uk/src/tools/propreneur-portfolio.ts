@@ -33,6 +33,7 @@ import {
   proposeTeamInvite,
   proposeWorksOrder,
   proxyDispatch,
+  generateSessionUrl,
   chatWithCarina,
 } from '../bridges/propreneur-bridge.js';
 import { registerSessionTool } from './session-tool-store.js';
@@ -696,6 +697,35 @@ export function createPropreneurProxyTool(sessionId: string): Tool[] {
   ];
 }
 
+export function createPropreneurSessionLinkTool(sessionId: string): Tool[] {
+  return [
+    {
+      name: 'propreneur-open-workspace',
+      description:
+        'Generate a short-lived signed URL that logs the user into their Propreneur workspace. ' +
+        'Returns a clickable link valid for 5 minutes. Use this when the user wants to view ' +
+        'or manage something in the full Propreneur UI. You can deep-link to a specific page ' +
+        'like /properties/5 or /contacts/12. Present the link as a clickable action to the user.',
+      parameters: {
+        type: 'object',
+        properties: {
+          redirectTo: {
+            type: 'string',
+            description:
+              'Deep-link path within Propreneur, e.g. "/dashboard", "/properties/5", ' +
+              '"/contacts/12", "/maintenance", "/deals". Omit for the dashboard.',
+          },
+        },
+      },
+      execute: async (params) => {
+        const { binding } = requireBinding(sessionId);
+        const redirectTo = params.redirectTo ? String(params.redirectTo) : undefined;
+        return generateSessionUrl(binding, { redirectTo });
+      },
+    },
+  ];
+}
+
 export function registerPropreneurSessionTools(sessionId: string): void {
   if (!isPropreneurBridgeEnabled()) return;
   const ctx = getWorkerSessionContext(sessionId);
@@ -718,6 +748,9 @@ export function registerPropreneurSessionTools(sessionId: string): void {
     registerSessionTool(sessionId, tool);
   }
   for (const tool of createPropreneurProxyTool(sessionId)) {
+    registerSessionTool(sessionId, tool);
+  }
+  for (const tool of createPropreneurSessionLinkTool(sessionId)) {
     registerSessionTool(sessionId, tool);
   }
 }
