@@ -69,26 +69,38 @@ rsync -az --delete \
   --exclude='.env' --exclude='node_modules' --exclude='.git' --exclude='dist' \
   "${SCOUT_ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/scout-engine/"
 
-log "Syncing carinaai.uk marketing site..."
-ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/public_website'"
-rsync -az --delete \
-  --delete-excluded \
-  --exclude='.git' \
-  "${CARINA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/public_website/"
+if [[ -d "${CARINA_MARKETING_LOCAL}" ]]; then
+  log "Syncing carinaai.uk marketing site..."
+  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/public_website'"
+  rsync -az --delete \
+    --delete-excluded \
+    --exclude='.git' \
+    "${CARINA_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/public_website/"
+else
+  log "Skipping independently managed carinaai.uk marketing repository."
+fi
 
 log "Deploying install.carinaai.uk..."
 ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/public_website/install'"
 rsync -az \
   "${CORE_LOCAL}/install.sh" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/public_website/install/install.sh"
 
-log "Syncing labyrinthscout.com marketing site..."
-ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/labyrinthscout.com-static'"
-rsync -az --delete \
-  --delete-excluded \
-  --exclude='.git' \
-  "${SCOUT_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/labyrinthscout.com-static/"
+if [[ -d "${SCOUT_MARKETING_LOCAL}" ]]; then
+  log "Syncing labyrinthscout.com marketing site..."
+  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/labyrinthscout.com-static'"
+  rsync -az --delete \
+    --delete-excluded \
+    --exclude='.git' \
+    "${SCOUT_MARKETING_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/labyrinthscout.com-static/"
+else
+  log "Skipping independently managed labyrinthscout.com marketing repository."
+fi
 
 log "Syncing hireaiva.co.uk marketing site..."
+if [[ ! -s "${HIREAIVA_MARKETING_LOCAL}/index.html" ]]; then
+  echo "ERROR: Missing or empty Hire Aiva homepage: ${HIREAIVA_MARKETING_LOCAL}/index.html" >&2
+  exit 1
+fi
 ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '/www/wwwroot/hireaiva.co.uk'"
 rsync -az --delete \
   --delete-excluded \
