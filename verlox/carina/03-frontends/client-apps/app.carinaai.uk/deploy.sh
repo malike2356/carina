@@ -81,6 +81,7 @@ deploy() {
     die "ws package not found locally. Run pnpm install in app.carinaai.uk first."
   fi
   WS_SRC="$(dirname "${WS_PKG}")"
+  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${DEPLOY_DIR}/node_modules/ws'"
   rsync -az "${WS_SRC}/" "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/node_modules/ws/"
 
   log "Applying database migrations (idempotent)..."
