@@ -109,17 +109,17 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
+      <div className="mb-4 grid grid-cols-[minmax(14rem,2fr)_repeat(3,minmax(9rem,1fr))] items-center gap-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Workspace name or email..."
-          className="admin-input max-w-xs flex-1"
+          className="admin-input w-full"
         />
         <select
           value={planFilter}
           onChange={(e) => setPlanFilter(e.target.value)}
-          className="admin-input w-auto text-sm"
+          className="admin-input w-full text-sm"
         >
           <option value="all">All plans</option>
           <option value="trial">Trial</option>
@@ -130,7 +130,7 @@ export default function CustomersPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="admin-input w-auto text-sm"
+          className="admin-input w-full text-sm"
         >
           <option value="all">All statuses</option>
           <option value="active">Active</option>
@@ -140,7 +140,7 @@ export default function CustomersPage() {
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value)}
-          className="admin-input w-auto text-sm"
+          className="admin-input w-full text-sm"
         >
           <option value="created_at_desc">Latest</option>
           <option value="last_active_desc">Last active</option>
