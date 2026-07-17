@@ -7,6 +7,11 @@ import {
   SignalCell,
   rowClass,
 } from '@/components/customers/CustomerBadges';
+import { ProvisionCustomerModal } from '@/components/customers/ProvisionCustomerModal';
+import {
+  DeleteCustomerModal,
+  type DeleteCustomerTarget,
+} from '@/components/customers/DeleteCustomerModal';
 import { TableSkeleton } from '@/components/ui/Skeleton';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { timeAgo } from '@/lib/format';
@@ -61,6 +66,8 @@ export default function CustomersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState('created_at_desc');
   const [page, setPage] = useState(1);
+  const [showProvision, setShowProvision] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteCustomerTarget | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const load = useCallback(async () => {
@@ -107,6 +114,13 @@ export default function CustomersPage() {
           <h1 className="text-2xl font-semibold text-text-primary">Customers</h1>
           <p className="mt-0.5 text-sm text-text-muted">{total} workspaces</p>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowProvision(true)}
+          className="btn-admin-primary text-sm"
+        >
+          Provision customer
+        </button>
       </div>
 
       <div className="mb-4 grid grid-cols-[minmax(14rem,2fr)_repeat(3,minmax(9rem,1fr))] items-center gap-3">
@@ -211,12 +225,29 @@ export default function CustomersPage() {
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/customers/${ws.workspaceId}`}
-                        className="text-xs text-accent hover:underline"
-                      >
-                        View
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          href={`/customers/${ws.workspaceId}`}
+                          className="text-xs text-accent hover:underline"
+                        >
+                          View
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDeleteTarget({
+                              workspaceId: ws.workspaceId,
+                              name: ws.name,
+                              ownerEmail: ws.ownerEmail,
+                              subscriptionStatus: ws.subscriptionStatus,
+                              monthlyAmountPence: ws.monthlyAmountPence,
+                            })
+                          }
+                          className="text-xs text-danger hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -251,6 +282,17 @@ export default function CustomersPage() {
           </div>
         </div>
       ) : null}
+
+      <ProvisionCustomerModal
+        open={showProvision}
+        onClose={() => setShowProvision(false)}
+        onProvisioned={() => void load()}
+      />
+      <DeleteCustomerModal
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onDeleted={() => void load()}
+      />
     </div>
   );
 }
