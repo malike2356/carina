@@ -2,8 +2,31 @@ import type { Request, Response, NextFunction } from 'express';
 import { loginAdminOperatorViaGoogle } from './admin-bridge.js';
 import { findUserById } from './ops-users.js';
 
+/** Refresh a few minutes early so mid-page API calls do not race expiry. */
+const REFRESH_SKEW_MS = 5 * 60 * 1000;
+
+function adminTokenExpiryMs(token: string): number | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as {
+      exp?: number;
+    };
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isAdminTokenUsable(token: string | undefined, nowMs = Date.now()): boolean {
+  if (!token?.trim()) return false;
+  const exp = adminTokenExpiryMs(token);
+  if (exp === null) return false;
+  return exp - REFRESH_SKEW_MS > nowMs;
+}
+
 export async function applyBusinessAdminBridge(req: Request): Promise<boolean> {
-  if (req.session?.adminToken) return true;
+  if (isAdminTokenUsable(req.session?.adminToken)) return true;
 
   let email = req.session?.adminEmail?.trim().toLowerCase();
   if (!email && req.session?.userId) {
@@ -26,7 +49,7 @@ export async function ensureBusinessAdminSession(
   res: Response,
   next: NextFunction,
 ): Promise<void> {
-  if (req.session?.adminToken) {
+  if (isAdminTokenUsable(req.session?.adminToken)) {
     next();
     return;
   }
