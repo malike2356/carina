@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 export function AivaRolesCatalog() {
   const [query, setQuery] = useState('');
   const [activeGroup, setActiveGroup] = useState<string>('featured');
+  const activeGroupEntry = AIVA_ROLE_GROUPS.find((group) => group.id === activeGroup) ?? AIVA_ROLE_GROUPS[0];
 
   const filteredGroups = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -59,32 +60,42 @@ export function AivaRolesCatalog() {
       </label>
 
       {!query.trim() ? (
-        <nav className="flex flex-wrap gap-2" aria-label="Role groups">
-          {AIVA_ROLE_GROUPS.map((group) => (
-            <button
-              key={group.id}
-              type="button"
-              onClick={() => setActiveGroup(group.id)}
-              className={cn(
-                'rounded-xl px-3.5 py-2 text-left text-sm transition',
-                activeGroup === group.id
-                  ? 'bg-accent/15 text-accent ring-1 ring-accent/30'
-                  : 'bg-muted/60 text-text-secondary hover:bg-muted hover:text-text-primary',
-              )}
-            >
-              <span className="block font-medium">{group.title}</span>
-              <span className="mt-0.5 hidden text-[11px] text-text-muted sm:block">
-                {group.templateIds.length} roles
-              </span>
-            </button>
-          ))}
-        </nav>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-text-muted">
+              {activeGroupEntry.description}
+            </p>
+            <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-text-secondary">
+              {activeGroupEntry.templateIds.length} roles
+            </span>
+          </div>
+          <nav
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+            aria-label="Role groups"
+          >
+            {AIVA_ROLE_GROUPS.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => setActiveGroup(group.id)}
+                className={cn(
+                  'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition',
+                  activeGroup === group.id
+                    ? 'bg-accent text-white shadow-sm'
+                    : 'bg-muted/60 text-text-secondary hover:bg-muted hover:text-text-primary',
+                )}
+              >
+                {group.title}
+              </button>
+            ))}
+          </nav>
+        </div>
       ) : null}
 
       <div className="space-y-8">
         {visible.map(({ group, cards }) => (
           <section key={group.id} className="space-y-3">
-            {(query.trim() || activeGroup === group.id) ? (
+            {query.trim() ? (
               <div>
                 <h2 className="text-base font-semibold text-text-primary">{group.title}</h2>
                 <p className="mt-0.5 text-sm text-text-muted">{group.description}</p>
