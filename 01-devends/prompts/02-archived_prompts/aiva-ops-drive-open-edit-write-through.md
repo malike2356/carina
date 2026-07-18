@@ -19,7 +19,7 @@ tags:
 
 ## Status: BUILT
 
-Claim/pull Open in Aiva for Ops Drive Docs with write-through save. Deployed with mobile APK 0.1.9.
+Claim/pull Open in Aiva for Ops Drive Docs with write-through save. Deployed with mobile APK 0.1.10.
 
 # Prompt: Open and edit Ops Drive Docs in Aiva (Drive stays backup)
 

@@ -1,14 +1,14 @@
 {
   "platform": "android",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "build": "2026-07-18",
   "apkUrl": "/downloads/carina-mobile.apk",
   "minSupportedVersion": "0.1.1",
   "releaseNotes": [
-    "Employee chat composer lifts above the Android keyboard.",
-    "Clearer errors when the AI model provider rejects a request.",
-    "Compact employee section tabs."
+    "Ops Drive: Open in Aiva claims Docs into the editor with Drive write-through on save.",
+    "Bind or create Ops pack reuses an existing Drive folder by name.",
+    "Channels connect mode and employee chat keyboard pad."
   ],
-  "sha256": "94fdb729fdea6d9047ed772ea96079a55221ddae4ccea6092a17dc96f4220b92",
-  "updatedAt": "2026-07-18T13:52:58Z"
+  "sha256": "adbd07f6811355b46af9d1c7b31874f4cfa6f986e228a782b42a6cdcdfd6d551",
+  "updatedAt": "2026-07-18T14:10:06Z"
 }
