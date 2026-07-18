@@ -30,8 +30,17 @@ describe('product-surface', () => {
 
   it('flags cloud-only routes', () => {
     expect(isCloudOnlyRoute('/chat/abc')).toBe(true);
+    expect(isCloudOnlyRoute('/launcher')).toBe(true);
     expect(isCloudOnlyRoute('/aiva/workers')).toBe(false);
     expect(isCloudOnlyRoute('/billing')).toBe(false);
+    // Aiva primary nav destinations must not bounce to /aiva/workers
+    expect(isCloudOnlyRoute('/documents')).toBe(false);
+    expect(isCloudOnlyRoute('/calendar')).toBe(false);
+    expect(isCloudOnlyRoute('/tasks')).toBe(false);
+    expect(isCloudOnlyRoute('/research')).toBe(false);
+    expect(isCloudOnlyRoute('/email')).toBe(false);
+    expect(isCloudOnlyRoute('/files')).toBe(false);
+    expect(isCloudOnlyRoute('/scheduled')).toBe(false);
   });
 
   it('resolves billing href per product surface', () => {

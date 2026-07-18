@@ -65,21 +65,18 @@ export function billingHrefForSurface(surface: ProductSurface): string {
 /** Nav groups shown on the Aiva product host (workspace/chat hidden). */
 export const AIVA_SURFACE_GROUPS = new Set(['aiva', 'account']);
 
-/** Cloud-only route prefixes redirected to /aiva on the Aiva host. */
+/**
+ * Cloud-only route prefixes redirected away on the Aiva host.
+ * Do not include routes linked from AIVA_PRIMARY_NAV (documents, calendar,
+ * tasks, research, email, files, scheduled): those must open as pages.
+ */
 export const CLOUD_ONLY_ROUTE_PREFIXES = [
   '/launcher',
   '/dashboard',
   '/chat',
   '/library',
   '/support',
-  '/research',
-  '/tasks',
-  '/documents',
-  '/email',
-  '/calendar',
-  '/files',
   '/cron',
-  '/scheduled',
   '/terminal',
   '/mcp',
   '/webhooks',
