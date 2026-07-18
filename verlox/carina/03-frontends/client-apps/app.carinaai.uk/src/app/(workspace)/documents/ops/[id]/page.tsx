@@ -53,7 +53,7 @@ function OpsDocumentEditorInner() {
   const editorRef = useRef<CarinaEditorHandle>(null);
 
   const backHref = workerId
-    ? `/documents?tab=drive&section=files&workerId=${encodeURIComponent(workerId)}`
+    ? `/aiva/workers/${encodeURIComponent(workerId)}?tab=drive-docs&section=files`
     : '/documents?tab=drive';
 
   const load = useCallback(async () => {
