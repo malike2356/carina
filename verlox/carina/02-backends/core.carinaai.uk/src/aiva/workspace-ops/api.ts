@@ -14,6 +14,7 @@ import {
   getKnowledgeEntry,
   insertKnowledgeDocument,
   listKnowledgeSummaries,
+  OPS_KNOWLEDGE_WRITE,
   updateKnowledgeDocument,
 } from '../../workers/knowledge-base.js';
 import { bootstrapWorkspaceOps } from './bootstrap.js';
@@ -274,6 +275,7 @@ workspaceOpsRouter.post(
         workspaceId: req.workspaceId!,
         title,
         content,
+        ...OPS_KNOWLEDGE_WRITE,
       });
       await markDocumentPendingAndPush({
         workspaceId: req.workspaceId!,
@@ -327,6 +329,7 @@ workspaceOpsRouter.patch(
         entryId: documentId,
         title: typeof req.body?.title === 'string' ? req.body.title : undefined,
         content: typeof req.body?.content === 'string' ? req.body.content : undefined,
+        ...OPS_KNOWLEDGE_WRITE,
       });
       const categoryRaw = typeof req.body?.category === 'string' ? req.body.category : undefined;
       await markDocumentPendingAndPush({

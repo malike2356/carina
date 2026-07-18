@@ -4,7 +4,16 @@ import { getSubscription } from './aiva-subscription-store.js';
 
 export const KNOWLEDGE_CHAR_LIMIT = 50_000;
 export const DOC_CHAR_LIMIT = 20_000;
+/** Ops Drive / capture docs are editable copies; they are not injected into the RAG persona budget. */
+export const OPS_DOC_CHAR_LIMIT = 200_000;
 export const FAQ_PAIR_CHAR_LIMIT = 500;
+
+/** Defaults for Ops Drive claim, sync, capture, and bootstrap document writes. */
+export const OPS_KNOWLEDGE_WRITE = {
+  enabled: false,
+  countTowardLimit: false,
+  maxChars: OPS_DOC_CHAR_LIMIT,
+} as const;
 
 export interface KnowledgeEntry {
   id: string;
@@ -153,10 +162,11 @@ export async function extractDocumentText(filename: string, buffer: Buffer): Pro
   throw new Error('Unsupported file type. Use PDF, DOCX, or TXT.');
 }
 
-export function truncateDocumentText(text: string): string {
+export function truncateDocumentText(text: string, maxChars: number = DOC_CHAR_LIMIT): string {
+  const limit = Math.max(1, maxChars);
   const trimmed = text.trim();
-  if (trimmed.length <= DOC_CHAR_LIMIT) return trimmed;
-  return `${trimmed.slice(0, DOC_CHAR_LIMIT)}\n\n[Document truncated to ${DOC_CHAR_LIMIT.toLocaleString()} characters]`;
+  if (trimmed.length <= limit) return trimmed;
+  return `${trimmed.slice(0, limit)}\n\n[Document truncated to ${limit.toLocaleString()} characters]`;
 }
 
 export async function getKnowledgeEntry(
@@ -176,18 +186,34 @@ export async function insertKnowledgeDocument(input: {
   workspaceId: string;
   title: string;
   content: string;
+  /** When false, doc is stored for Ops editing but not injected into the worker persona. Default true. */
+  enabled?: boolean;
+  /** When false, skip the 50k enabled-knowledge budget check. Defaults to matching `enabled`. */
+  countTowardLimit?: boolean;
+  maxChars?: number;
 }): Promise<KnowledgeEntry> {
-  const content = truncateDocumentText(input.content);
+  const enabled = input.enabled !== false;
+  const countTowardLimit = input.countTowardLimit ?? enabled;
+  const content = truncateDocumentText(input.content, input.maxChars ?? DOC_CHAR_LIMIT);
   const charCount = content.length;
-  const currentTotal = await getKnowledgeCharTotal(input.workerId);
-  if (currentTotal + charCount > KNOWLEDGE_CHAR_LIMIT) {
-    throw new Error(`Knowledge base limit (${KNOWLEDGE_CHAR_LIMIT} chars) would be exceeded`);
+  if (countTowardLimit) {
+    const currentTotal = await getKnowledgeCharTotal(input.workerId);
+    if (currentTotal + charCount > KNOWLEDGE_CHAR_LIMIT) {
+      throw new Error(`Knowledge base limit (${KNOWLEDGE_CHAR_LIMIT} chars) would be exceeded`);
+    }
   }
   const result = await pool.query(
-    `INSERT INTO aiva_knowledge_base (worker_id, workspace_id, type, title, content, char_count)
-     VALUES ($1, $2, 'document', $3, $4, $5)
+    `INSERT INTO aiva_knowledge_base (worker_id, workspace_id, type, title, content, char_count, enabled)
+     VALUES ($1, $2, 'document', $3, $4, $5, $6)
      RETURNING *`,
-    [input.workerId, input.workspaceId, input.title.trim() || 'Document', content, charCount],
+    [
+      input.workerId,
+      input.workspaceId,
+      input.title.trim() || 'Document',
+      content,
+      charCount,
+      enabled,
+    ],
   );
   return mapRow(result.rows[0] as Record<string, unknown>);
 }
@@ -197,6 +223,8 @@ export async function updateKnowledgeDocument(input: {
   entryId: string;
   title?: string;
   content?: string;
+  countTowardLimit?: boolean;
+  maxChars?: number;
 }): Promise<KnowledgeEntry> {
   const existing = await getKnowledgeEntry(input.workerId, input.entryId);
   if (!existing || existing.type !== 'document') {
@@ -204,12 +232,18 @@ export async function updateKnowledgeDocument(input: {
   }
   const title = input.title !== undefined ? input.title.trim() || existing.title : existing.title;
   const content =
-    input.content !== undefined ? truncateDocumentText(input.content) : existing.content;
+    input.content !== undefined
+      ? truncateDocumentText(input.content, input.maxChars ?? DOC_CHAR_LIMIT)
+      : existing.content;
   const charCount = content.length;
-  const currentTotal = await getKnowledgeCharTotal(input.workerId);
-  const adjusted = currentTotal - existing.charCount + charCount;
-  if (adjusted > KNOWLEDGE_CHAR_LIMIT) {
-    throw new Error(`Knowledge base limit (${KNOWLEDGE_CHAR_LIMIT} chars) would be exceeded`);
+  const countTowardLimit = input.countTowardLimit ?? existing.enabled;
+  if (countTowardLimit) {
+    const currentTotal = await getKnowledgeCharTotal(input.workerId);
+    const previousCounted = existing.enabled ? existing.charCount : 0;
+    const adjusted = currentTotal - previousCounted + charCount;
+    if (adjusted > KNOWLEDGE_CHAR_LIMIT) {
+      throw new Error(`Knowledge base limit (${KNOWLEDGE_CHAR_LIMIT} chars) would be exceeded`);
+    }
   }
   const result = await pool.query(
     `UPDATE aiva_knowledge_base

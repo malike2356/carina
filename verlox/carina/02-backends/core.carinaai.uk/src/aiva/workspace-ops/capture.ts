@@ -1,4 +1,4 @@
-import { insertKnowledgeDocument } from '../../workers/knowledge-base.js';
+import { insertKnowledgeDocument, OPS_KNOWLEDGE_WRITE } from '../../workers/knowledge-base.js';
 import { getBinding } from './store.js';
 import { pushDocumentToDrive } from './sync-engine.js';
 import type { OpsCategory } from './types.js';
@@ -19,6 +19,7 @@ async function createAndPush(opts: {
     workspaceId: opts.workspaceId,
     title: opts.title,
     content: opts.content,
+    ...OPS_KNOWLEDGE_WRITE,
   });
   await pushDocumentToDrive({
     binding,

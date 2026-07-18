@@ -1,7 +1,7 @@
 import {
-  DOC_CHAR_LIMIT,
   getKnowledgeEntry,
   insertKnowledgeDocument,
+  OPS_KNOWLEDGE_WRITE,
   truncateDocumentText,
   updateKnowledgeDocument,
 } from '../../workers/knowledge-base.js';
@@ -194,6 +194,7 @@ async function upsertFromDriveFile(opts: {
   const content = truncateDocumentText(
     text ??
       `Drive file "${opts.file.name}" is not text-indexable.\nOpen in Drive: ${opts.file.webViewLink ?? opts.file.id}`,
+    OPS_KNOWLEDGE_WRITE.maxChars,
   );
   const title = opts.file.name;
   const contentHash = hashDocumentContent(title, content);
@@ -220,6 +221,7 @@ async function upsertFromDriveFile(opts: {
           entryId: entry.id,
           title,
           content,
+          ...OPS_KNOWLEDGE_WRITE,
         });
         await upsertMapping({
           bindingId: opts.binding.id,
@@ -260,6 +262,7 @@ async function upsertFromDriveFile(opts: {
         entryId: entry.id,
         title,
         content,
+        ...OPS_KNOWLEDGE_WRITE,
       });
       await upsertMapping({
         bindingId: opts.binding.id,
@@ -294,6 +297,7 @@ async function upsertFromDriveFile(opts: {
       workspaceId: opts.binding.workspaceId,
       title,
       content,
+      ...OPS_KNOWLEDGE_WRITE,
     });
     docId = created.id;
   } else {
@@ -302,6 +306,7 @@ async function upsertFromDriveFile(opts: {
       entryId: docId,
       title,
       content,
+      ...OPS_KNOWLEDGE_WRITE,
     });
   }
 
@@ -479,7 +484,7 @@ export async function pushDocumentToDrive(opts: {
   if (!folder) throw new Error('No Ops folder bound for this category');
 
   const title = entry.title.slice(0, 200);
-  const content = entry.content.slice(0, DOC_CHAR_LIMIT);
+  const content = entry.content.slice(0, OPS_KNOWLEDGE_WRITE.maxChars);
   const contentHash = hashDocumentContent(title, content);
 
   if (existing?.driveFileId) {

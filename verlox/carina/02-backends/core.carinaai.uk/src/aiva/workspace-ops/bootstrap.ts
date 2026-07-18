@@ -5,7 +5,7 @@ import {
   resolveWorkerDriveToken,
 } from './drive-client.js';
 import { hashDocumentContent } from './hash.js';
-import { insertKnowledgeDocument } from '../../workers/knowledge-base.js';
+import { insertKnowledgeDocument, OPS_KNOWLEDGE_WRITE } from '../../workers/knowledge-base.js';
 import {
   getBinding,
   listFolders,
@@ -199,6 +199,7 @@ export async function bootstrapWorkspaceOps(opts: {
         workspaceId: opts.workspaceId,
         title: tmpl.title,
         content: tmpl.body,
+        ...OPS_KNOWLEDGE_WRITE,
       });
       await upsertMapping({
         bindingId: binding.id,
