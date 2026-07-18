@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import {
   Clock,
   Copy,
@@ -28,6 +28,13 @@ import { CarinaEditor } from '@/components/editor';
 import { PropreneurBindingPanel } from '@/components/aiva/PropreneurBindingPanel';
 import { AivaWorkerDirectChat } from '@/components/aiva/AivaWorkerDirectChat';
 import { AivaWorkerCallPanel } from '@/components/aiva/AivaWorkerCallPanel';
+import {
+  DEFAULT_PAGE_SIZE,
+  ListPager,
+  slicePage,
+  totalPagesFor,
+} from '@/components/ui/ListPager';
+import { Spinner } from '@/components/ui/Spinner';
 import type {
   AivaActivityItem,
   AivaAuditRow,
@@ -207,6 +214,7 @@ function OverviewTab({
     </div>
   );
 }
+
 
 function DriveDocsTab({ worker }: { worker: AivaWorker }) {
   const searchParams = useSearchParams();
@@ -550,6 +558,10 @@ function AutomationsTab({
   const [scheduleText, setScheduleText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const totalPages = totalPagesFor(automations.length, DEFAULT_PAGE_SIZE);
+  const pageAutomations = slicePage(automations, page, DEFAULT_PAGE_SIZE);
 
   async function createAutomation(e: React.FormEvent) {
     e.preventDefault();
@@ -613,7 +625,7 @@ function AutomationsTab({
         </div>
       ) : (
         <div className="space-y-2">
-          {automations.map((auto) => (
+          {pageAutomations.map((auto) => (
             <div
               key={auto.id}
               className="flex items-center gap-4 rounded-lg border border-border px-4 py-3"
@@ -646,6 +658,12 @@ function AutomationsTab({
               </button>
             </div>
           ))}
+          <ListPager
+            page={page}
+            totalPages={totalPages}
+            totalItems={automations.length}
+            onChangePage={setPage}
+          />
         </div>
       )}
 
@@ -732,11 +750,15 @@ function SettingsTab({
   const [saved, setSaved] = useState(false);
   const [dismissOpen, setDismissOpen] = useState(false);
   const [confirmName, setConfirmName] = useState('');
-  const [auditLimit, setAuditLimit] = useState(50);
+  const [auditPage, setAuditPage] = useState(1);
 
   useEffect(() => {
     setRoleDescription(worker.roleDescription);
   }, [worker.roleDescription]);
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [worker.id, auditRows.length]);
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -766,7 +788,8 @@ function SettingsTab({
     if (res.ok) onDismiss();
   }
 
-  const visibleAudit = auditRows.slice(0, auditLimit);
+  const auditTotalPages = totalPagesFor(auditRows.length, DEFAULT_PAGE_SIZE);
+  const visibleAudit = slicePage(auditRows, auditPage, DEFAULT_PAGE_SIZE);
   const nameMatches =
     confirmName.trim().toLowerCase() === worker.name.trim().toLowerCase();
 
@@ -886,15 +909,12 @@ function SettingsTab({
             </tbody>
           </table>
         </div>
-        {auditRows.length >= auditLimit && auditLimit === 50 ? (
-          <button
-            type="button"
-            onClick={() => setAuditLimit(100)}
-            className="mt-3 text-xs text-accent hover:underline"
-          >
-            Load more
-          </button>
-        ) : null}
+        <ListPager
+          page={auditPage}
+          totalPages={auditTotalPages}
+          totalItems={auditRows.length}
+          onChangePage={setAuditPage}
+        />
       </div>
 
       <div className="border-t border-border" />
@@ -998,7 +1018,7 @@ export function AivaDetailClient({
         await Promise.all([
           fetch(`/api/aiva/workers/${workerId}`),
           fetch(`/api/aiva/workers/${workerId}/activity?limit=10`),
-          fetch(`/api/aiva/workers/${workerId}/audit?limit=100`),
+          fetch(`/api/aiva/workers/${workerId}/audit?limit=200`),
           fetch(`/api/aiva/workers/${workerId}/channels`),
           fetch(`/api/aiva/workers/${workerId}/automations`),
           fetch('/api/aiva/billing/status'),
@@ -1172,7 +1192,17 @@ export function AivaDetailClient({
         />
       ) : null}
       {activeTab === 'training' ? <TrainingTab workerId={workerId} /> : null}
-      {activeTab === 'drive-docs' ? <DriveDocsTab worker={worker} /> : null}
+      {activeTab === 'drive-docs' ? (
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-16">
+              <Spinner />
+            </div>
+          }
+        >
+          <DriveDocsTab worker={worker} />
+        </Suspense>
+      ) : null}
       {activeTab === 'settings' ? (
         <SettingsTab
           worker={worker}
