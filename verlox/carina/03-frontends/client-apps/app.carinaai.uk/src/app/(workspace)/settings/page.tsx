@@ -331,36 +331,39 @@ export default function SettingsPage() {
   const brain = workspaceSettings.brain;
 
   return (
-    <div className="flex h-full bg-base">
-      <aside className="flex w-52 shrink-0 flex-col border-r border-border pt-4">
-        <p className="px-4 pb-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-          Settings
-        </p>
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => setActiveSection(item.id)}
-            className={cn(
-              'flex items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors',
-              activeSection === item.id
-                ? 'bg-elevated font-medium text-text-primary'
-                : 'text-text-secondary hover:bg-surface hover:text-text-primary',
-            )}
-          >
-            <span className={activeSection === item.id ? 'text-accent' : 'text-text-muted'}>
-              {item.icon}
-            </span>
-            {item.label}
-          </button>
-        ))}
-      </aside>
+    <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-base">
+      <nav
+        aria-label="Settings sections"
+        className="sticky top-0 z-20 shrink-0 border-b border-border bg-base"
+      >
+        <div className="-mx-px flex gap-1 overflow-x-auto px-3 py-2 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {navItems.map((item) => {
+            const active = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveSection(item.id)}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors lg:text-sm',
+                  active
+                    ? 'bg-elevated text-text-primary'
+                    : 'text-text-secondary hover:bg-surface hover:text-text-primary',
+                )}
+              >
+                <span className={active ? 'text-accent' : 'text-text-muted'}>{item.icon}</span>
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
-      <main className="relative flex-1 overflow-y-auto">
+      <main className="relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         {(saving || saved) && (
           <div
             className={cn(
-              'fixed right-6 top-4 z-50 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+              'fixed right-4 top-16 z-50 rounded-md px-3 py-1.5 text-xs font-medium transition-colors lg:right-6 lg:top-4',
               saving ? 'bg-elevated text-text-secondary' : 'bg-accent text-black',
             )}
           >
@@ -368,7 +371,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <div className="max-w-3xl px-8 py-8">
+        <div className="max-w-3xl px-4 py-6 lg:px-8 lg:py-8">
           {activeSection === 'join' && (
             <div className="space-y-6">
               <div>
