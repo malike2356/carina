@@ -1,7 +1,16 @@
-import { NextResponse } from 'next/server';
-export async function GET() {
-  return NextResponse.json({ error: 'Not available in this build' }, { status: 501 });
+import { NextRequest } from 'next/server';
+import { handleAivaProxy } from '@/lib/aiva-route';
+
+export const dynamic = 'force-dynamic';
+
+type Ctx = { params: Promise<{ workerId: string }> };
+
+export async function GET(request: NextRequest, context: Ctx) {
+  const { workerId } = await context.params;
+  return handleAivaProxy(request, `/api/aiva/email/senders/${workerId}`);
 }
-export async function POST() {
-  return NextResponse.json({ error: 'Not available in this build' }, { status: 501 });
+
+export async function POST(request: NextRequest, context: Ctx) {
+  const { workerId } = await context.params;
+  return handleAivaProxy(request, `/api/aiva/email/senders/${workerId}`);
 }

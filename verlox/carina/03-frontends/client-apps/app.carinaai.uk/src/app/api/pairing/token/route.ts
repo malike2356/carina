@@ -1,7 +1,19 @@
 import { NextResponse } from 'next/server';
-export async function GET() {
-  return NextResponse.json({ error: 'Not available in this build' }, { status: 501 });
-}
+import { createPairingCode } from '@/lib/pairing';
+import { getSession, requireWorkspace } from '@/lib/session';
+
+export const dynamic = 'force-dynamic';
+
 export async function POST() {
-  return NextResponse.json({ error: 'Not available in this build' }, { status: 501 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  await requireWorkspace(session.user.id);
+
+  try {
+    const data = await createPairingCode();
+    return NextResponse.json({ data });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Pairing token unavailable';
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 }
