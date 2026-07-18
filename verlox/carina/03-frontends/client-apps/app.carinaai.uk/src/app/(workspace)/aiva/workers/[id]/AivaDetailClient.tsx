@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Clock,
@@ -21,10 +21,13 @@ import { StatusChip } from '@/components/aiva/StatusChip';
 import { UsageBadge } from '@/components/aiva/UsageBadge';
 import { AIVA_CORE_TABS, type AivaTab } from '@/app/(workspace)/aiva/workers/[id]/aiva-detail-tabs';
 import { TrainingTab } from '@/components/aiva/TrainingTab';
+import { WorkspaceOpsTab, type OpsSection } from '@/components/aiva/WorkspaceOpsTab';
 import { ScoutWorkerStatus } from '@/components/aiva/ScoutWorkerStatus';
 import { PlanGateSection } from '@/components/billing/PlanGateSection';
 import { CarinaEditor } from '@/components/editor';
 import { PropreneurBindingPanel } from '@/components/aiva/PropreneurBindingPanel';
+import { AivaWorkerDirectChat } from '@/components/aiva/AivaWorkerDirectChat';
+import { AivaWorkerCallPanel } from '@/components/aiva/AivaWorkerCallPanel';
 import type {
   AivaActivityItem,
   AivaAuditRow,
@@ -202,6 +205,46 @@ function OverviewTab({
         )}
       </div>
     </div>
+  );
+}
+
+function DriveDocsTab({ worker }: { worker: AivaWorker }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const sectionParam = searchParams.get('section');
+  const section: OpsSection =
+    sectionParam === 'files' ||
+    sectionParam === 'capture' ||
+    sectionParam === 'setup' ||
+    sectionParam === 'home'
+      ? sectionParam
+      : 'home';
+
+  const captureKinds = ['minutes', 'attendance', 'next-meeting', 'funder-month'] as const;
+  const captureHint =
+    sectionParam && (captureKinds as readonly string[]).includes(sectionParam)
+      ? sectionParam
+      : null;
+
+  function setSection(next: OpsSection) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', 'drive-docs');
+    params.set('section', next);
+    router.replace(`${pathname}?${params.toString()}`);
+  }
+
+  return (
+    <WorkspaceOpsTab
+      workerId={worker.id}
+      workerName={worker.name}
+      section={captureHint ? 'capture' : section}
+      initialCapture={captureHint}
+      onRequestSection={setSection}
+      oauthReturnPath={`/aiva/workers/${worker.id}?tab=drive-docs&section=setup`}
+      showFullWorkspaceLink
+    />
   );
 }
 
@@ -1102,6 +1145,10 @@ export function AivaDetailClient({
         </nav>
       </div>
 
+      {activeTab === 'work' ? <AivaWorkerDirectChat worker={worker} /> : null}
+      {activeTab === 'call' ? (
+        <AivaWorkerCallPanel workerId={worker.id} workerName={worker.name} />
+      ) : null}
       {activeTab === 'overview' ? (
         <OverviewTab worker={worker} activity={activity} usageBar={usageBar} workerId={workerId} />
       ) : null}
@@ -1125,6 +1172,7 @@ export function AivaDetailClient({
         />
       ) : null}
       {activeTab === 'training' ? <TrainingTab workerId={workerId} /> : null}
+      {activeTab === 'drive-docs' ? <DriveDocsTab worker={worker} /> : null}
       {activeTab === 'settings' ? (
         <SettingsTab
           worker={worker}
