@@ -422,8 +422,9 @@ export function filterNavPanelsForSurface(
   surface: 'cloud' | 'aiva',
   panels: NavPanel[],
 ): NavPanel[] {
-  if (surface !== 'aiva') return [];
-  return panels.filter((panel) => panel.group === 'aiva');
+  // Aiva uses AivaSidebar primary links; Cloud shows intelligence panels in the accordion.
+  if (surface === 'aiva') return [];
+  return panels;
 }
 
 export type SidebarTool =

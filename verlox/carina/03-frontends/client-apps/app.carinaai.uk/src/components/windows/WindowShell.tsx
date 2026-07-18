@@ -106,17 +106,19 @@ export function WindowShell({
     <div
       ref={modalRef}
       className={cn(
-        'carina-window pointer-events-auto fixed inset-0 z-[var(--carina-window-z)]',
+        // Outer shell must not steal clicks from the left nav / account menu.
+        // Only the floating content chrome receives pointer events.
+        'carina-window pointer-events-none fixed inset-0 z-[var(--carina-window-z)]',
         focused && 'carina-window-focused',
         definition.accent === 'scout' && 'carina-window-scout',
       )}
       style={{ ['--carina-window-z' as string]: zIndex }}
-      onMouseDown={handleFocus}
     >
       <div
         ref={contentRef}
-        className="carina-window-content"
+        className="carina-window-content pointer-events-auto"
         style={floatingStyle(definition, maximized, isMobile)}
+        onMouseDown={handleFocus}
       >
         <div ref={headerRef} className="carina-window-header">
           <h2 className="carina-window-title">{definition.title}</h2>
