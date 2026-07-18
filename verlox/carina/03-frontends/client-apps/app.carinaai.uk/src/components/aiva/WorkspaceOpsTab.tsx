@@ -153,6 +153,23 @@ function planBlockedMessage(body: OpsStatus & { error?: string; message?: string
   return null;
 }
 
+async function readJsonResponse<T extends Record<string, unknown>>(res: Response): Promise<T> {
+  const text = await res.text();
+  const trimmed = text.trim();
+  if (!trimmed) {
+    throw new Error(res.ok ? 'Empty response from server' : `Request failed (${res.status})`);
+  }
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    throw new Error(
+      res.ok
+        ? 'Server returned a non-JSON response'
+        : `Request failed (${res.status}). Try again or reconnect Google Drive.`,
+    );
+  }
+}
+
 export function WorkspaceOpsTab({
   workerId,
   workerName,
@@ -359,13 +376,13 @@ export function WorkspaceOpsTab({
         if (folderId) qs.set('folderId', folderId);
         if (pageToken) qs.set('pageToken', pageToken);
         const res = await fetch(`/api/aiva/workspace-ops/browse?${qs}`);
-        const data = (await res.json()) as {
+        const data = await readJsonResponse<{
           folderId?: string;
           path?: Array<{ folderId: string; name: string; kind: string; category?: string }>;
           items?: typeof browseItems;
           nextPageToken?: string;
           error?: string;
-        };
+        }>(res);
         if (!res.ok) {
           throw new Error(data.error ?? 'Could not browse Drive folder');
         }
@@ -511,7 +528,7 @@ export function WorkspaceOpsTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workerId, direction: 'both' }),
       });
-      const data = (await res.json()) as OpsSyncRun & { error?: string; ok?: boolean };
+      const data = await readJsonResponse<OpsSyncRun & { error?: string; ok?: boolean }>(res);
       if (!res.ok) {
         throw new Error(planBlockedMessage(data as OpsStatus) ?? data.error ?? 'Sync failed');
       }
