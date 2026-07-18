@@ -4,8 +4,9 @@ import { resolveWorkspaceIdFromInvoice } from './aiva-stripe-metadata.js';
 import { suspendIfGraceExpired } from './aiva-billing.js';
 import { pool } from '../memory/db.js';
 import { slotLimitDbValue } from './aiva-tier.js';
+import { resolveConfigValue } from './billing-config.js';
 
-export type AivaPlanTier = 'trial' | 'starter' | 'team' | 'business';
+export type AivaPlanTier = 'trial' | 'starter' | 'team' | 'business' | 'prompt_rate';
 
 export interface AivaInvoiceRow {
   id: string;
@@ -21,11 +22,13 @@ export interface AivaInvoiceRow {
 }
 
 function buildPriceTierMap(): Record<string, { tier: AivaPlanTier; interval: 'month' | 'year' }> {
-  const tiers: AivaPlanTier[] = ['starter', 'team', 'business'];
+  const tiers: Array<Exclude<AivaPlanTier, 'trial'>> = ['starter', 'team', 'business', 'prompt_rate'];
   const map: Record<string, { tier: AivaPlanTier; interval: 'month' | 'year' }> = {};
   for (const tier of tiers) {
-    const monthly = process.env[`STRIPE_PRICE_AIVA_${tier.toUpperCase()}_MONTHLY`]?.trim();
-    const annual = process.env[`STRIPE_PRICE_AIVA_${tier.toUpperCase()}_ANNUAL`]?.trim();
+    const monthlyKey = `STRIPE_PRICE_AIVA_${tier.toUpperCase()}_MONTHLY`;
+    const annualKey = `STRIPE_PRICE_AIVA_${tier.toUpperCase()}_ANNUAL`;
+    const monthly = resolveConfigValue(monthlyKey) || process.env[monthlyKey]?.trim();
+    const annual = resolveConfigValue(annualKey) || process.env[annualKey]?.trim();
     if (monthly) map[monthly] = { tier, interval: 'month' };
     if (annual) map[annual] = { tier, interval: 'year' };
   }

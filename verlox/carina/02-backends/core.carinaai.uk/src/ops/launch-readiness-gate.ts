@@ -163,6 +163,20 @@ export async function evaluateLaunchReadinessGate(
     automated: true,
   });
 
+  const promptRateKey = 'STRIPE_PRICE_AIVA_PROMPT_RATE_MONTHLY';
+  const promptRateSet = Boolean(get(promptRateKey).trim());
+  checks.push({
+    id: 'billing.prompt_rate_price',
+    label: 'Aiva Prompt Rate (optional special client price)',
+    status: promptRateSet ? 'ok' : 'warn',
+    detail: promptRateSet
+      ? 'STRIPE_PRICE_AIVA_PROMPT_RATE_MONTHLY is set'
+      : 'Optional: STRIPE_PRICE_AIVA_PROMPT_RATE_MONTHLY not set (special client rates disabled)',
+    remediation:
+      'Seed from .stripe-credentials-and-price-id.md (Aiva Propmp Rate £30) via billing_config or env when offering special rates.',
+    automated: true,
+  });
+
   // --- Trial / managed token cost controls ---
   const trialControls = assertTrialCostControlsReady(get);
   const capValue = get('AIVA_TRIAL_DAILY_CAP_GBP').trim();

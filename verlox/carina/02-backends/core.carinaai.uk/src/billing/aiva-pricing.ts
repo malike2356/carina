@@ -14,6 +14,7 @@ export interface AivaPlanPricing {
 
 const MONTHLY_PENCE: Record<string, number> = {
   starter: 4900,
+  prompt_rate: 3000,
   team: 9900,
   business: 19900,
 };
@@ -50,6 +51,21 @@ export function getAivaPricingPlans(): AivaPlanPricing[] {
     monthlyAmountPence: MONTHLY_PENCE[tier] ?? null,
     annualAmountPence: ANNUAL_PENCE[tier] ?? null,
   }));
+}
+
+/** Special client rates (not shown on public billing marketing). */
+export function getAivaSpecialPricingPlans(): AivaPlanPricing[] {
+  return [
+    {
+      tier: 'prompt_rate',
+      label: 'Prompt Rate',
+      slotLimit: slotLimitForTier('prompt_rate'),
+      monthlyPriceId: envPrice('prompt_rate', 'month'),
+      annualPriceId: null,
+      monthlyAmountPence: MONTHLY_PENCE.prompt_rate ?? null,
+      annualAmountPence: null,
+    },
+  ];
 }
 
 export const loadAivaPricingPlans = getAivaPricingPlans;

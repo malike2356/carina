@@ -399,7 +399,7 @@ adminRouter.patch('/workspaces/:id/plan', async (req: AdminRequest, res: Respons
     res.status(400).json({ error: 'reason is required' });
     return;
   }
-  const allowed = ['trial', 'starter', 'team', 'business', 'suspended'];
+  const allowed = ['trial', 'starter', 'team', 'business', 'prompt_rate', 'suspended'];
   if (!allowed.includes(planTier)) {
     res.status(400).json({ error: 'Invalid plan tier' });
     return;

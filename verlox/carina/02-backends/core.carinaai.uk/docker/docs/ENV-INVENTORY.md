@@ -23,6 +23,15 @@ No secret values in this file. Names only.
 | STRIPE_PRICE_AIVA_TEAM_ANNUAL | Stripe price ID | no | yes |
 | STRIPE_PRICE_AIVA_BUSINESS_MONTHLY | Stripe price ID | no | yes |
 | STRIPE_PRICE_AIVA_BUSINESS_ANNUAL | Stripe price ID | no | yes |
+| STRIPE_PRICE_AIVA_PROMPT_RATE_MONTHLY | Optional special client rate (not marketed) | no | optional |
+| CARINA_PRIMARY_PROVIDER | Primary chat provider (default `anthropic`) | no | no |
+| CARINA_PRIMARY_MODEL | Primary chat model (default `claude-haiku-4-5-20251001`) | no | no |
+| CARINA_FALLBACK_PROVIDER | Fallback chat provider on errors (default `deepseek`) | no | no |
+| CARINA_FALLBACK_MODEL | Fallback chat model (default `deepseek-chat`) | no | no |
+| CARINA_PROVIDER_FALLBACK | Comma provider failover order (synced from primary,fallback) | no | no |
+| DEFAULT_PROVIDER | Active LLM provider (synced from primary) | no | no |
+| ANTHROPIC_MODEL | Anthropic model id when primary is anthropic | no | no |
+| DEEPSEEK_MODEL | DeepSeek model id | no | no |
 | AI_WORKERS_ENABLED | `false` disables Aiva routes | no | no |
 | EMAIL_INGESTION_ENABLED | Per-Aiva IMAP connect API, digest storage, and poll cron (all workspaces) | no | no |
 | EMAIL_INGESTION_PILOT_WORKSPACE_IDS | Comma-separated workspace UUIDs for IMAP pilot when global flag is false | no | no |

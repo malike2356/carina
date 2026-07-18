@@ -9,6 +9,8 @@ import {
   MobileSkeleton,
   MobileTabs,
 } from '@/components/aiva/mobile';
+import { OriginFilterChips } from '@/components/ui/OriginFilterChips';
+import { INBOX_ORIGIN_HELPER_TEXT, type OriginFilter } from '@/lib/sync-ownership';
 import { EmailApprovalInboxClient } from './EmailApprovalInboxClient';
 import { SocialApprovalInboxClient } from './SocialApprovalInboxClient';
 
@@ -18,6 +20,7 @@ export function AivaApprovalsClient() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') === 'social' ? 'social' : 'email';
   const [tab, setTab] = useState<InboxTab>(initialTab);
+  const [originFilter, setOriginFilter] = useState<OriginFilter>('aiva');
 
   const tabs = useMemo(
     () => [
@@ -53,6 +56,28 @@ export function AivaApprovalsClient() {
         <span className="text-xs text-text-muted">Open queue</span>
       </Link>
 
+      <div className="mb-3 space-y-1.5">
+        <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
+        <p className="text-[11px] text-text-muted">{INBOX_ORIGIN_HELPER_TEXT}</p>
+        <p className="text-[11px] text-text-muted">
+          Unified origin feed also available at{' '}
+          <Link href="/inbox" className="text-accent hover:underline">
+            /inbox
+          </Link>
+          .
+        </p>
+      </div>
+
+      {originFilter === 'google' || originFilter === 'local' ? (
+        <p className="mb-4 rounded-xl border border-border bg-elevated px-4 py-3 text-sm text-text-secondary">
+          Approval drafts are Aiva-origin. Switch to All or Aiva, or open{' '}
+          <Link href="/inbox" className="text-accent hover:underline">
+            /inbox
+          </Link>{' '}
+          for Google Drive drops.
+        </p>
+      ) : null}
+
       <div className="mb-5">
         <MobileTabs
           tabs={tabs}
@@ -61,7 +86,11 @@ export function AivaApprovalsClient() {
         />
       </div>
 
-      {tab === 'email' ? <EmailApprovalInboxClient embedded /> : <SocialApprovalInboxClient embedded />}
+      {originFilter === 'google' || originFilter === 'local'
+        ? null
+        : tab === 'email'
+          ? <EmailApprovalInboxClient embedded />
+          : <SocialApprovalInboxClient embedded />}
     </MobileScreen>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
   Loader2,
@@ -12,8 +12,16 @@ import {
 import { CoreSurfaceBanner } from '@/components/shell/CoreSurfaceBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { OriginBadge } from '@/components/ui/OriginBadge';
+import { OriginFilterChips } from '@/components/ui/OriginFilterChips';
 import { Spinner } from '@/components/ui/Spinner';
 import { CarinaEditor } from '@/components/editor';
+import {
+  EMAIL_ORIGIN_HELPER_TEXT,
+  classifyEmailOrigin,
+  matchesOriginFilter,
+  type OriginFilter,
+} from '@/lib/sync-ownership';
 import { cn } from '@/lib/utils';
 
 type FilterTab = 'inbox' | 'high' | 'archived' | 'spam';
@@ -28,7 +36,10 @@ interface EmailRow {
   status: string;
   aiDraftReply: string | null;
   receivedAt: string;
+  externalId?: string | null;
 }
+
+const EMAIL_SYNC_STORAGE_KEY = 'aiva.email.lastSyncedAt';
 
 const TABS: Array<{ id: FilterTab; label: string; status?: string; urgency?: string }> = [
   { id: 'inbox', label: 'Inbox', status: 'inbox' },
@@ -51,8 +62,19 @@ export default function EmailPage() {
   const [drafting, setDrafting] = useState(false);
   const [draftText, setDraftText] = useState('');
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [originFilter, setOriginFilter] = useState<OriginFilter>('all');
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
-  const selected = rows.find((row) => row.id === selectedId) ?? null;
+  const filteredRows = useMemo(
+    () =>
+      rows.filter((row) =>
+        matchesOriginFilter({ origin: classifyEmailOrigin(row) }, originFilter),
+      ),
+    [rows, originFilter],
+  );
+
+  const selected = filteredRows.find((row) => row.id === selectedId) ?? null;
 
   async function load() {
     setLoading(true);
@@ -75,12 +97,31 @@ export default function EmailPage() {
   }
 
   useEffect(() => {
-    load();
+    try {
+      setLastSyncedAt(localStorage.getItem(EMAIL_SYNC_STORAGE_KEY));
+    } catch {
+      setLastSyncedAt(null);
+    }
+    void load();
   }, [tab]);
 
   useEffect(() => {
     setDraftText(selected?.aiDraftReply ?? '');
   }, [selected?.id, selected?.aiDraftReply]);
+
+  async function syncNow() {
+    setSyncing(true);
+    // Thin stub: refresh list and stamp last synced; do not invent full Gmail pull.
+    await load();
+    const stamp = new Date().toISOString();
+    try {
+      localStorage.setItem(EMAIL_SYNC_STORAGE_KEY, stamp);
+    } catch {
+      /* ignore */
+    }
+    setLastSyncedAt(stamp);
+    setSyncing(false);
+  }
 
   async function generateDraft() {
     if (!selected) return;
@@ -131,18 +172,38 @@ export default function EmailPage() {
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Email</h1>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-text-muted">{EMAIL_ORIGIN_HELPER_TEXT}</p>
+          <p className="mt-0.5 text-xs text-text-muted">
             Legacy triage view. Use{' '}
             <a href="/aiva/approvals" className="text-accent hover:underline">
               Approval inbox
             </a>{' '}
             for Email Handler drafts (approve, reject, edit before send).
           </p>
+          {lastSyncedAt ? (
+            <p className="mt-0.5 text-[10px] text-text-muted">
+              Last synced {new Date(lastSyncedAt).toLocaleString()}
+            </p>
+          ) : null}
         </div>
-        <IconButton label="Refresh" onClick={load}>
-          <RefreshCw className="h-4 w-4" />
-        </IconButton>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => void syncNow()}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:bg-elevated"
+          >
+            {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Sync now
+          </button>
+          <IconButton label="Refresh" onClick={load}>
+            <RefreshCw className="h-4 w-4" />
+          </IconButton>
+        </div>
       </header>
+
+      <div className="border-b border-border px-6 py-2">
+        <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
+      </div>
 
       <div className="flex flex-1 min-h-0">
         <div className="flex w-52 flex-col border-r border-border">
@@ -176,15 +237,15 @@ export default function EmailPage() {
             <div className="flex flex-1 items-center justify-center">
               <Spinner />
             </div>
-          ) : rows.length === 0 ? (
+          ) : filteredRows.length === 0 ? (
             <EmptyState
               icon={<Mail className="h-8 w-8" />}
               title="No messages"
-              subtitle="Use the inbound webhook below, or add messages manually via API."
+              subtitle="Use the inbound webhook below, or add messages manually via API. Google imports show when external_id is set."
             />
           ) : (
             <div className="flex-1 overflow-y-auto">
-              {rows.map((row) => (
+              {filteredRows.map((row) => (
                 <button
                   key={row.id}
                   type="button"
@@ -198,9 +259,12 @@ export default function EmailPage() {
                     <span className="truncate text-xs font-medium text-text-primary">
                       {row.fromAddress}
                     </span>
-                    <span className={cn('rounded px-1.5 py-0.5 text-[10px]', urgencyClass(row.urgency))}>
-                      {row.urgency}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <OriginBadge origin={classifyEmailOrigin(row)} />
+                      <span className={cn('rounded px-1.5 py-0.5 text-[10px]', urgencyClass(row.urgency))}>
+                        {row.urgency}
+                      </span>
+                    </div>
                   </div>
                   <p className="truncate text-xs text-text-secondary">{row.subject}</p>
                   <p className="mt-0.5 line-clamp-1 text-[10px] text-text-muted">
@@ -221,6 +285,9 @@ export default function EmailPage() {
             ) : (
               <>
                 <div className="mb-4">
+                  <div className="mb-2">
+                    <OriginBadge origin={classifyEmailOrigin(selected)} />
+                  </div>
                   <p className="text-xs text-text-muted">From</p>
                   <p className="text-sm text-text-primary">{selected.fromAddress}</p>
                   <p className="mt-2 text-xs text-text-muted">Subject</p>

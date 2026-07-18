@@ -17,6 +17,7 @@ export interface WorkspaceListParams {
 
 function monthlyPenceForTier(tier: string): number {
   if (tier === 'starter') return 4900;
+  if (tier === 'prompt_rate') return 3000;
   if (tier === 'team') return 9900;
   if (tier === 'business') return 29900;
   return 0;

@@ -15,7 +15,16 @@ import {
 import { CoreSurfaceBanner } from '@/components/shell/CoreSurfaceBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
+import { OriginBadge } from '@/components/ui/OriginBadge';
+import { OriginFilterChips } from '@/components/ui/OriginFilterChips';
 import { Spinner } from '@/components/ui/Spinner';
+import {
+  CALENDAR_ORIGIN_HELPER_TEXT,
+  SYNC_OWNERSHIP_HELPER_TEXT,
+  classifyFromCalendarSource,
+  matchesOriginFilter,
+  type OriginFilter,
+} from '@/lib/sync-ownership';
 import { cn } from '@/lib/utils';
 
 type ViewMode = 'month' | 'week' | 'agenda';
@@ -81,6 +90,10 @@ function sameDay(a: Date, b: Date): boolean {
   );
 }
 
+function eventOrigin(event: CalendarEventRow) {
+  return classifyFromCalendarSource(event.source);
+}
+
 export default function CalendarPage() {
   const [view, setView] = useState<ViewMode>('month');
   const [cursor, setCursor] = useState(() => new Date());
@@ -94,6 +107,9 @@ export default function CalendarPage() {
   const [saving, setSaving] = useState(false);
   const [quickDay, setQuickDay] = useState<Date | null>(null);
   const [quickTitle, setQuickTitle] = useState('');
+  const [originFilter, setOriginFilter] = useState<OriginFilter>('all');
+  const [syncProvider, setSyncProvider] = useState<'google' | 'caldav' | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
 
   const range = useMemo(() => {
     if (view === 'week') {
@@ -112,6 +128,23 @@ export default function CalendarPage() {
     return { start: gridStart, end };
   }, [view, cursor]);
 
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((event) =>
+        matchesOriginFilter({ origin: eventOrigin(event) }, originFilter),
+      ),
+    [events, originFilter],
+  );
+
+  async function loadConnectionMeta() {
+    const res = await fetch('/api/calendar/connection');
+    const data = await res.json();
+    if (data.data) {
+      setSyncProvider(data.data.provider === 'google' ? 'google' : 'caldav');
+      setLastSyncAt(data.data.lastSyncAt ?? null);
+    }
+  }
+
   async function load() {
     setLoading(true);
     const params = new URLSearchParams({
@@ -128,10 +161,15 @@ export default function CalendarPage() {
     void load();
   }, [range.start.toISOString(), range.end.toISOString()]);
 
-  async function syncCalDav() {
+  useEffect(() => {
+    void loadConnectionMeta();
+  }, []);
+
+  async function syncCalendar() {
     setSyncing(true);
     await fetch('/api/calendar/sync', { method: 'POST' });
     setSyncing(false);
+    await loadConnectionMeta();
     await load();
   }
 
@@ -182,7 +220,9 @@ export default function CalendarPage() {
   }
 
   async function deleteSelected() {
-    if (!selected || selected.source === 'caldav' || selected.id.startsWith('note-')) return;
+    if (!selected) return;
+    const origin = eventOrigin(selected);
+    if (origin === 'google' || selected.id.startsWith('note-')) return;
     await fetch(`/api/calendar/events/${selected.id}`, { method: 'DELETE' });
     setSelected(null);
     await load();
@@ -205,12 +245,19 @@ export default function CalendarPage() {
         ? `Week of ${startOfWeek(cursor).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
         : 'Next 30 days';
 
+  const syncLabel = syncProvider === 'google' ? 'Sync Google' : 'Sync CalDAV';
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex flex-wrap items-center gap-3 border-b border-border px-6 py-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold text-text-primary">Calendar</h1>
-          <p className="text-xs text-text-muted">Local events; optional CalDAV import in settings.</p>
+          <p className="text-xs text-text-muted">{CALENDAR_ORIGIN_HELPER_TEXT}</p>
+          {lastSyncAt ? (
+            <p className="mt-0.5 text-[10px] text-text-muted">
+              Last synced {new Date(lastSyncAt).toLocaleString()}
+            </p>
+          ) : null}
         </div>
         <div className="flex items-center gap-1">
           {(['month', 'week', 'agenda'] as ViewMode[]).map((mode) => (
@@ -234,9 +281,14 @@ export default function CalendarPage() {
         <IconButton label="Next" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + (view === 'week' ? 0 : 1), cursor.getDate() + (view === 'week' ? 7 : 0)))}>
           <ChevronRight className="h-4 w-4" />
         </IconButton>
-        <IconButton label="Sync CalDAV" onClick={syncCalDav}>
-          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-        </IconButton>
+        <button
+          type="button"
+          onClick={() => void syncCalendar()}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:bg-elevated"
+        >
+          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {syncLabel}
+        </button>
         <Link href="/settings/calendar" className="rounded-md border border-border p-2 text-text-secondary hover:bg-elevated">
           <Settings className="h-4 w-4" />
         </Link>
@@ -244,6 +296,10 @@ export default function CalendarPage() {
 
       <div className="border-b border-border px-6 py-3">
         <CoreSurfaceBanner surface="calendar" />
+        <div className="mb-3 space-y-1.5">
+          <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
+          <p className="text-[11px] text-text-muted">{SYNC_OWNERSHIP_HELPER_TEXT}</p>
+        </div>
         <form onSubmit={parseNl} className="flex flex-wrap items-center gap-2">
           <Sparkles className="h-4 w-4 text-accent" />
           <input
@@ -280,11 +336,11 @@ export default function CalendarPage() {
           {loading ? (
             <div className="flex justify-center py-16"><Spinner /></div>
           ) : view === 'agenda' ? (
-            events.length === 0 ? (
-              <EmptyState icon={<CalendarDays className="h-8 w-8" />} title="No upcoming events" subtitle="Add events locally, parse quick-add text, or sync CalDAV after you configure it." />
+            filteredEvents.length === 0 ? (
+              <EmptyState icon={<CalendarDays className="h-8 w-8" />} title="No upcoming events" subtitle="Add events in Aiva, parse quick-add text, or sync Google / CalDAV after you configure it." />
             ) : (
               <div className="space-y-2">
-                {events
+                {filteredEvents
                   .slice()
                   .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())
                   .map((event) => (
@@ -298,7 +354,7 @@ export default function CalendarPage() {
                         <p className="text-sm text-text-primary">{event.title}</p>
                         <p className="text-xs text-text-muted">{formatTime(event.startsAt, event.allDay)}</p>
                       </div>
-                      <span className="text-[10px] uppercase text-text-muted">{event.source}</span>
+                      <OriginBadge origin={eventOrigin(event)} />
                     </button>
                   ))}
               </div>
@@ -311,7 +367,7 @@ export default function CalendarPage() {
                 </div>
               ))}
               {monthCells.map((day) => {
-                const dayEvents = events.filter((event) => sameDay(new Date(event.startsAt), day));
+                const dayEvents = filteredEvents.filter((event) => sameDay(new Date(event.startsAt), day));
                 const inMonth = day.getMonth() === cursor.getMonth() || view === 'week';
                 return (
                   <button
@@ -366,7 +422,10 @@ export default function CalendarPage() {
 
           {selected ? (
             <div>
-              <p className="text-sm font-semibold text-text-primary">{selected.title}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-semibold text-text-primary">{selected.title}</p>
+                <OriginBadge origin={eventOrigin(selected)} />
+              </div>
               <p className="mt-1 text-xs text-text-muted">{formatTime(selected.startsAt, selected.allDay)}</p>
               <p className="mt-1 text-[10px] uppercase text-text-muted">Source: {selected.source}</p>
               {selected.description && (
@@ -375,7 +434,7 @@ export default function CalendarPage() {
               {selected.noteId && (
                 <p className="mt-3 text-xs text-accent">Linked note reminder</p>
               )}
-              {selected.source === 'local' && (
+              {eventOrigin(selected) === 'aiva' && (
                 <button type="button" onClick={deleteSelected} className="mt-4 text-xs text-danger hover:underline">
                   Delete event
                 </button>

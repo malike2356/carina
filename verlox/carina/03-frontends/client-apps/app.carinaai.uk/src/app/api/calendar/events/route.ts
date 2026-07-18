@@ -101,7 +101,8 @@ export async function POST(request: Request) {
       startsAt,
       endsAt: endsAt && !Number.isNaN(endsAt.getTime()) ? endsAt : null,
       allDay: Boolean(body.allDay),
-      source: 'local',
+      // Aiva UI creates classify as origin=aiva (see sync-ownership.ts).
+      source: 'aiva',
     })
     .returning();
 

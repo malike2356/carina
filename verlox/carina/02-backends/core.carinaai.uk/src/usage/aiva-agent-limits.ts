@@ -77,6 +77,12 @@ export const PLAN_DEFAULT_LIMITS: Record<string, AivaLimitPolicy> = {
     maxTokens: 4_000_000,
     perService: { inference: { maxCalls: 2_000, maxTokens: 4_000_000 } },
   },
+  prompt_rate: {
+    period: 'month',
+    maxCalls: 2_000,
+    maxTokens: 4_000_000,
+    perService: { inference: { maxCalls: 2_000, maxTokens: 4_000_000 } },
+  },
   team: {
     period: 'month',
     maxCalls: 10_000,

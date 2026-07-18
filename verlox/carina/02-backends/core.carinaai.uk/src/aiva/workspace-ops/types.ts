@@ -11,6 +11,11 @@ export const OPS_CATEGORIES = [
 
 export type OpsCategory = (typeof OPS_CATEGORIES)[number];
 
+/** Drive folder pack profiles (labels/templates only; category keys stay stable). */
+export const OPS_PACK_PROFILES = ['default', 'community-sessions'] as const;
+
+export type OpsPackProfile = (typeof OPS_PACK_PROFILES)[number];
+
 /** Categories pulled into Aiva knowledge on sync. */
 export const INDEXED_OPS_CATEGORIES: readonly OpsCategory[] = [
   'policies',
@@ -90,6 +95,7 @@ export interface WorkspaceOpsSyncRun {
   finishedAt: string | null;
 }
 
+/** Default Drive folder names (committee / general ops). */
 export const FOLDER_LABELS: Record<OpsCategory, string> = {
   policies: '01-Policies',
   minutes: '02-Minutes',
@@ -100,6 +106,39 @@ export const FOLDER_LABELS: Record<OpsCategory, string> = {
   inbox: '07-Inbox-for-Aiva',
 };
 
+/** Community sessions / women's wellbeing monthly sessions pack. */
+export const COMMUNITY_SESSIONS_FOLDER_LABELS: Record<OpsCategory, string> = {
+  policies: '01-Policies-and-Safeguarding',
+  minutes: '02-Session-Notes',
+  attendance: '03-Attendance',
+  'next-meeting': '04-Session-Planner',
+  'funder-month': '05-Funder-Reports',
+  templates: '06-Posters-and-Templates',
+  inbox: '07-Inbox-for-Aiva',
+};
+
+const PACK_FOLDER_LABELS: Record<OpsPackProfile, Record<OpsCategory, string>> = {
+  default: FOLDER_LABELS,
+  'community-sessions': COMMUNITY_SESSIONS_FOLDER_LABELS,
+};
+
 export function isOpsCategory(value: string): value is OpsCategory {
   return (OPS_CATEGORIES as readonly string[]).includes(value);
+}
+
+export function isOpsPackProfile(value: string): value is OpsPackProfile {
+  return (OPS_PACK_PROFILES as readonly string[]).includes(value);
+}
+
+export function resolveOpsPackProfile(value: unknown): OpsPackProfile {
+  if (typeof value === 'string' && isOpsPackProfile(value)) return value;
+  return 'default';
+}
+
+export function folderLabelsForPack(profile: OpsPackProfile = 'default'): Record<OpsCategory, string> {
+  return PACK_FOLDER_LABELS[profile] ?? FOLDER_LABELS;
+}
+
+export function packProfileFromBindingMeta(meta: Record<string, unknown> | null | undefined): OpsPackProfile {
+  return resolveOpsPackProfile(meta?.packProfile);
 }

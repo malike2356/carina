@@ -18,6 +18,7 @@ type RemoteEvent = {
   dtStart: Date;
   dtEnd?: Date;
   allDay: boolean;
+  aivaManaged?: boolean;
 };
 
 export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
@@ -36,7 +37,7 @@ export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
   try {
     const remote = await fetchRemoteEvents(connection, workspaceId, start, end);
     let imported = 0;
-    const source = connection.provider === 'google' ? 'google' : 'caldav';
+    const providerSource = connection.provider === 'google' ? 'google' : 'caldav';
 
     for (const event of remote.events) {
       const externalUid = event.uid;
@@ -50,6 +51,9 @@ export async function syncWorkspaceCalendar(workspaceId: string): Promise<{
           ),
         )
         .limit(1);
+
+      // Aiva-created Google events carry private extendedProperty aivaManaged=true.
+      const source = event.aivaManaged ? 'aiva' : providerSource;
 
       const values = {
         workspaceId,

@@ -16,19 +16,19 @@ Prefer WhatsApp/email send only when the channel is connected; otherwise leave a
   },
   {
     key: 'day-after-meeting',
-    name: 'Ops: day after meeting minutes',
+    name: 'Ops: day after session attendance',
     cronExpression: '0 10 * * *',
     scheduleLabel: 'Daily 10:00',
-    prompt: `If yesterday's meeting likely happened (from NEXT meeting or recent minutes), remind the operator to add minutes and attendance in Aiva documents (Workspace Ops).
-Do not invent attendees. Link them to the Knowledge / Drive documents tab.`,
+    prompt: `If a community session likely happened yesterday (from session planner or recent notes), remind the operator to Record attendance after the session in Drive ops.
+Do not invent attendees. Month 1: attendance sheets are funder evidence; charts come later if needed.`,
   },
   {
     key: 'monthly-funder-pack',
-    name: 'Ops: monthly activity report',
+    name: 'Ops: monthly funder evidence pack',
     cronExpression: '0 9 1 * *',
     scheduleLabel: '1st of month 09:00',
-    prompt: `Remind the operator to fill this month's Monthly report document with verified counts and activity notes only.
-Optionally draft an update into a Doc using synced facts. Require human approval before any external send.`,
+    prompt: `Remind the operator to Record one monthly funder report for last month: verified people-supported count (if known), sessions held (if known), activity bullets, and any human-entered outcomes or posters/comms.
+Use synced attendance sheets and session notes only. Do not invent numbers. Draft status stays draft until a human approves send. Month 1 is structured Drive documents for funders; charts come later if needed.`,
   },
   {
     key: 'sync-health',

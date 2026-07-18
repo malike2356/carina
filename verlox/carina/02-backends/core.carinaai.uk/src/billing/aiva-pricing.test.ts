@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { getAivaPricingPlans, type AivaPlanPricing } from './aiva-pricing.js';
+import {
+  getAivaPricingPlans,
+  getAivaSpecialPricingPlans,
+  type AivaPlanPricing,
+} from './aiva-pricing.js';
 import { slotLimitForTier } from './aiva-stripe-checkout.js';
 import { gbpToPence } from './platform-pricing-amounts.js';
 
@@ -14,5 +18,14 @@ describe('getAivaPricingPlans', () => {
     expect(plans[1]?.slotLimit).toBe(5);
     expect(slotLimitForTier('starter')).toBe(2);
     expect(slotLimitForTier('team')).toBe(5);
+  });
+
+  it('keeps Prompt Rate off public marketing list', () => {
+    const publicTiers = getAivaPricingPlans().map((p) => p.tier);
+    expect(publicTiers).not.toContain('prompt_rate');
+    const special = getAivaSpecialPricingPlans();
+    expect(special[0]?.tier).toBe('prompt_rate');
+    expect(special[0]?.monthlyAmountPence).toBe(gbpToPence(30));
+    expect(special[0]?.slotLimit).toBe(2);
   });
 });

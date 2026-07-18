@@ -37,6 +37,12 @@ export const BILLING_CONFIG_SLOTS: BillingConfigSlot[] = [
   { key: 'STRIPE_PRICE_AIVA_TEAM_ANNUAL', label: 'Aiva Team', group: 'aiva', interval: 'annual' },
   { key: 'STRIPE_PRICE_AIVA_BUSINESS_MONTHLY', label: 'Aiva Business', group: 'aiva', interval: 'monthly' },
   { key: 'STRIPE_PRICE_AIVA_BUSINESS_ANNUAL', label: 'Aiva Business', group: 'aiva', interval: 'annual' },
+  {
+    key: 'STRIPE_PRICE_AIVA_PROMPT_RATE_MONTHLY',
+    label: 'Aiva Prompt Rate (special / client rate, monthly)',
+    group: 'aiva',
+    interval: 'monthly',
+  },
   { key: 'PADDLE_PRICE_AIVA_BUSINESS_MONTHLY', label: 'Aiva Business (Paddle, monthly)', group: 'aiva', interval: 'monthly' },
   { key: 'PADDLE_PRICE_AIVA_BUSINESS_ANNUAL', label: 'Aiva Business (Paddle, annual)', group: 'aiva', interval: 'annual' },
   { key: 'STRIPE_PRICE_AIVA_SEAT_MONTHLY', label: 'Aiva extra AI Employee seat', group: 'aiva', interval: 'monthly' },

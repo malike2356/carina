@@ -1,4 +1,4 @@
-import { slotLimitForTier, type AivaCheckoutTier } from './workspace-tier.js';
+import { slotLimitForTier, type AivaAssignableCheckoutTier } from './workspace-tier.js';
 import { pool } from '../memory/db.js';
 import { refreshBillingConfigCache, resolveConfigValue } from './billing-config.js';
 import {
@@ -28,9 +28,15 @@ async function priceIdForTierAsync(tier: string, interval: 'month' | 'year'): Pr
   return priceIdForTier(tier, interval);
 }
 
+function planDisplayName(tier: string): string {
+  if (tier === 'prompt_rate') return 'Aiva Prompt Rate';
+  const label = tier.charAt(0).toUpperCase() + tier.slice(1);
+  return `Aiva ${label}`;
+}
+
 export async function createAivaCheckoutSession(params: {
   workspaceId: string;
-  tier: AivaCheckoutTier | 'growth';
+  tier: AivaAssignableCheckoutTier | 'growth';
   interval: 'month' | 'year';
   successUrl: string;
   cancelUrl: string;
@@ -46,6 +52,10 @@ export async function createAivaCheckoutSession(params: {
   }
 
   const checkoutTier = params.tier === 'growth' ? 'team' : params.tier;
+  if (checkoutTier === 'prompt_rate' && params.interval === 'year') {
+    throw new Error('Prompt Rate is monthly only. Use interval=month.');
+  }
+
   const priceId = await priceIdForTierAsync(checkoutTier, params.interval);
   if (!priceId) {
     throw new Error(`Stripe price not configured for ${checkoutTier} ${params.interval}`);
@@ -79,7 +89,7 @@ export async function createAivaCheckoutSession(params: {
     product: 'aiva',
     workspaceId: params.workspaceId,
     plan: checkoutTier,
-    planName: `Aiva ${checkoutTier.charAt(0).toUpperCase()}${checkoutTier.slice(1)}`,
+    planName: planDisplayName(checkoutTier),
     interval: params.interval,
   };
 

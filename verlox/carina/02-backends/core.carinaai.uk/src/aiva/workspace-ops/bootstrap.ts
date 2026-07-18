@@ -13,9 +13,17 @@ import {
   upsertFolder,
   upsertMapping,
 } from './store.js';
-import { FOLDER_LABELS, OPS_CATEGORIES, type OpsCategory } from './types.js';
+import {
+  folderLabelsForPack,
+  OPS_CATEGORIES,
+  resolveOpsPackProfile,
+  type OpsCategory,
+  type OpsPackProfile,
+} from './types.js';
 
-const TEMPLATE_BODIES: Record<OpsCategory, { title: string; body: string }> = {
+type TemplateSeed = { title: string; body: string };
+
+const DEFAULT_TEMPLATE_BODIES: Record<OpsCategory, TemplateSeed> = {
   policies: {
     title: 'Policies template',
     body: `Policy\nOwner:\nEffective date:\nReview date:\nPurpose:\nScope:\nPolicy:\n`,
@@ -25,16 +33,16 @@ const TEMPLATE_BODIES: Record<OpsCategory, { title: string; body: string }> = {
     body: `Minutes\nDate:\nAttendees:\nApologies:\nAgenda:\n1.\nDecisions:\nActions:\n- [ ] Owner / due\n`,
   },
   attendance: {
-    title: 'Attendance template',
-    body: `Attendance\nMeeting date:\nPresent:\n-\nApologies:\n-\nNotes:\n`,
+    title: 'Attendance sheet template',
+    body: `Attendance sheet\nSession date:\nSession name:\nVenue / session type:\nPresent (verified only):\n-\nApologies:\n-\nRule: Aiva must not invent attendees.\n`,
   },
   'next-meeting': {
     title: 'NEXT meeting',
     body: `Next meeting\nWhen:\nInvitees:\n-\nAgenda:\n1.\nPrep notes:\n`,
   },
   'funder-month': {
-    title: 'Funder month template',
-    body: `Funder month update\nMonth:\nPeople supported (count only if verified):\nActivity bullets:\n-\nOutcomes / evidence links:\n-\nDraft status: draft\n`,
+    title: 'Monthly funder report template',
+    body: `Monthly funder evidence pack\nMonth:\nSessions held (count only if verified):\nPeople supported (count only if verified):\nActivity bullets:\n-\nPosters / communications done:\n-\nOutcomes / quotes:\n-\nDraft status: draft\nHuman approval required before send.\n`,
   },
   templates: {
     title: 'Document template',
@@ -46,20 +54,63 @@ const TEMPLATE_BODIES: Record<OpsCategory, { title: string; body: string }> = {
   },
 };
 
+const COMMUNITY_SESSIONS_TEMPLATE_BODIES: Record<OpsCategory, TemplateSeed> = {
+  policies: {
+    title: 'Safeguarding and policies checklist',
+    body: `Policies and safeguarding\nOwner:\nEffective date:\nReview date:\nPurpose:\nScope:\nSafeguarding notes:\nPolicy summary:\nDo not invent names, incidents, or numbers.\n`,
+  },
+  minutes: {
+    title: 'Session notes template',
+    body: `Session notes\nDate:\nFacilitator:\nTheme / topic:\nWho attended (names only if verified):\n-\nApologies:\n-\nWhat happened:\n1.\nDecisions / next steps:\n- [ ] Owner / due\nDo not invent attendees or outcomes.\n`,
+  },
+  attendance: {
+    title: 'Session attendance sheet',
+    body: `Attendance sheet\nSession date:\nSession name:\nVenue / session type:\nMonth folder (e.g. 2026-06):\nPresent (verified only):\n-\nApologies:\n-\nDo not invent attendees.\nMonth 1: save after each session for funder evidence.\n`,
+  },
+  'next-meeting': {
+    title: 'Session planner',
+    body: `Session planner\nWhen:\nVenue / channel:\nInvitees:\n-\nTheme / topic:\nAgenda:\n1.\nMaterials / posters needed:\n-\nPrep notes:\nDo not invent invitees or dates.\n`,
+  },
+  'funder-month': {
+    title: 'Funder monthly evidence',
+    body: `Monthly funder evidence pack\nMonth (e.g. 2026-06):\nSessions held (count only if verified):\nPeople supported (count only if verified):\nActivity bullets:\n-\nPosters / communications done:\n-\nOutcomes / quotes:\n-\nEvidence links (Drive / photos / sheets):\n-\nDraft status: draft\nHuman approval required before send.\nDo not invent attendees or numbers.\nMonth 1: one structured Drive document; charts come later if needed.\n`,
+  },
+  templates: {
+    title: 'Poster and template stub',
+    body: `Poster / template\nTitle:\nOwner:\nDate:\nMonth folder (e.g. 2026-06):\nStatus: draft\n\nCopy / content:\n`,
+  },
+  inbox: {
+    title: 'Inbox note',
+    body: `Inbox capture\nDate:\nNote:\n`,
+  },
+};
+
+export function templateBodiesForPack(profile: OpsPackProfile = 'default'): Record<OpsCategory, TemplateSeed> {
+  return profile === 'community-sessions'
+    ? COMMUNITY_SESSIONS_TEMPLATE_BODIES
+    : DEFAULT_TEMPLATE_BODIES;
+}
+
 export async function bootstrapWorkspaceOps(opts: {
   workspaceId: string;
   workerId: string;
   orgName: string;
   pollMinutes?: number;
   seedTemplates?: boolean;
+  packProfile?: string;
 }): Promise<{
   bindingId: string;
   rootFolderId: string;
   rootFolderName: string;
+  packProfile: OpsPackProfile;
   folders: Array<{ category: OpsCategory; folderId: string; folderName: string }>;
 }> {
   const orgName = opts.orgName.trim();
   if (!orgName) throw new Error('orgName is required');
+
+  const packProfile = resolveOpsPackProfile(opts.packProfile);
+  const folderLabels = folderLabelsForPack(packProfile);
+  const templateBodies = templateBodiesForPack(packProfile);
 
   const worker = await getWorker(opts.workspaceId, opts.workerId);
   if (!worker) throw new Error('Worker not found');
@@ -81,12 +132,16 @@ export async function bootstrapWorkspaceOps(opts: {
     rootFolderId,
     rootFolderName: rootName,
     pollMinutes: opts.pollMinutes ?? 10,
+    meta: {
+      ...(binding?.meta ?? {}),
+      packProfile,
+    },
   });
 
   const existingFolders = await listFolders(binding.id);
   const folders: Array<{ category: OpsCategory; folderId: string; folderName: string }> = [];
   for (const category of OPS_CATEGORIES) {
-    const label = FOLDER_LABELS[category];
+    const label = folderLabels[category];
     const prior = existingFolders.find((f) => f.category === category);
     if (prior?.folderId) {
       folders.push({
@@ -115,7 +170,7 @@ export async function bootstrapWorkspaceOps(opts: {
   if (forceSeed || autoSeed) {
     for (const category of OPS_CATEGORIES) {
       if (category === 'inbox') continue;
-      const tmpl = TEMPLATE_BODIES[category];
+      const tmpl = templateBodies[category];
       const folder = folders.find((f) => f.category === category)!;
       const doc = await createGoogleDoc({
         accessToken,
@@ -152,6 +207,7 @@ export async function bootstrapWorkspaceOps(opts: {
     bindingId: binding.id,
     rootFolderId,
     rootFolderName: rootName,
+    packProfile,
     folders,
   };
 }
@@ -161,6 +217,7 @@ export async function retargetWorkspaceOps(opts: {
   workerId: string;
   orgName: string;
   pollMinutes?: number;
+  packProfile?: string;
 }): Promise<Awaited<ReturnType<typeof bootstrapWorkspaceOps>>> {
   return bootstrapWorkspaceOps({ ...opts, seedTemplates: false });
 }

@@ -1096,7 +1096,8 @@ aivaRouter.get('/billing/invoices', requireWorkspace, async (req: AivaRequest, r
 aivaRouter.post('/billing/checkout', requireWorkspace, async (req: AivaRequest, res: Response) => {
   try {
     const tier = String(req.body?.tier ?? 'starter');
-    if (tier !== 'starter' && tier !== 'growth' && tier !== 'team' && tier !== 'business') {
+    const { isAivaAssignableCheckoutTier } = await import('../billing/aiva-tier.js');
+    if (!isAivaAssignableCheckoutTier(tier)) {
       res.status(400).json({ error: 'Invalid tier' });
       return;
     }
@@ -1106,7 +1107,7 @@ aivaRouter.post('/billing/checkout', requireWorkspace, async (req: AivaRequest, 
     const email = typeof req.body?.email === 'string' ? req.body.email : undefined;
     const session = await createAivaCheckoutSession({
       workspaceId: req.workspaceId!,
-      tier: tier as 'starter' | 'growth' | 'team' | 'business',
+      tier,
       interval,
       successUrl,
       cancelUrl,

@@ -38,7 +38,7 @@ import {
   markMappingDeleted,
 } from './store.js';
 import { markDocumentPendingAndPush, pushDocumentToDrive, runWorkspaceOpsSync } from './sync-engine.js';
-import { isOpsCategory, type SyncDirection } from './types.js';
+import { isOpsCategory, packProfileFromBindingMeta, type SyncDirection } from './types.js';
 
 export const workspaceOpsRouter: ExpressRouter = Router();
 workspaceOpsRouter.use(requireCloudProxy);
@@ -102,6 +102,7 @@ workspaceOpsRouter.post(
         orgName,
         pollMinutes: Number(req.body?.pollMinutes ?? 10) || 10,
         seedTemplates: req.body?.seedTemplates === true ? true : req.body?.seedTemplates === false ? false : undefined,
+        packProfile: req.body?.packProfile,
       });
       await registerWorkspaceOpsSyncJobs();
       res.status(201).json({ ok: true, ...result });
@@ -154,6 +155,7 @@ workspaceOpsRouter.get(
       res.json({
         bootstrapped: Boolean(binding.rootFolderId),
         binding,
+        packProfile: packProfileFromBindingMeta(binding.meta),
         folders,
         mappingCount: mappings.length,
         lastRun,
@@ -379,6 +381,8 @@ workspaceOpsRouter.post(
       workspaceId,
       workerId,
       meetingDate: String(body.meetingDate ?? body.date ?? ''),
+      sessionTitle: String(body.sessionTitle ?? body.title ?? ''),
+      venueOrSessionType: String(body.venueOrSessionType ?? body.venue ?? ''),
       present: Array.isArray(body.present)
         ? body.present.map((n) => String(n))
         : String(body.present ?? '')
@@ -420,6 +424,14 @@ workspaceOpsRouter.post(
   ),
 );
 
+function linesFromBody(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  return String(value ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 workspaceOpsRouter.post(
   '/funder-month',
   requireWorkspace,
@@ -430,12 +442,13 @@ workspaceOpsRouter.post(
       workerId,
       month: String(body.month ?? ''),
       count: body.count == null || body.count === '' ? null : Number(body.count),
-      bullets: Array.isArray(body.bullets)
-        ? body.bullets.map((b) => String(b))
-        : String(body.bullets ?? '')
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean),
+      sessionsHeldCount:
+        body.sessionsHeldCount == null || body.sessionsHeldCount === ''
+          ? null
+          : Number(body.sessionsHeldCount),
+      bullets: linesFromBody(body.bullets),
+      postersComms: linesFromBody(body.postersComms),
+      outcomesQuotes: linesFromBody(body.outcomesQuotes),
     }),
   ),
 );

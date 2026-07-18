@@ -14,8 +14,16 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Spinner } from '@/components/ui/Spinner';
+import { OriginBadge } from '@/components/ui/OriginBadge';
+import { OriginFilterChips } from '@/components/ui/OriginFilterChips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  TASKS_ORIGIN_HELPER_TEXT,
+  classifyTaskOrigin,
+  matchesOriginFilter,
+  type OriginFilter,
+} from '@/lib/sync-ownership';
 import { cn } from '@/lib/utils';
 
 type TaskStatus = 'active' | 'paused' | 'draft';
@@ -90,6 +98,7 @@ export default function TasksPage() {
   const [runsLoading, setRunsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [originFilter, setOriginFilter] = useState<OriginFilter>('all');
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -99,9 +108,17 @@ export default function TasksPage() {
     prompt: '',
   });
 
+  const filteredTasks = useMemo(
+    () =>
+      tasks.filter((task) =>
+        matchesOriginFilter({ origin: classifyTaskOrigin(task) }, originFilter),
+      ),
+    [tasks, originFilter],
+  );
+
   const selectedTask = useMemo(
-    () => tasks.find((task) => task.id === selectedId) ?? tasks[0] ?? null,
-    [selectedId, tasks],
+    () => filteredTasks.find((task) => task.id === selectedId) ?? filteredTasks[0] ?? null,
+    [selectedId, filteredTasks],
   );
 
   async function loadTasks() {
@@ -212,7 +229,7 @@ export default function TasksPage() {
       <div className="flex items-center gap-4 border-b border-border px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Tasks</h1>
-          <p className="mt-0.5 text-xs text-text-muted">Scheduled workspace automations and their recent runs</p>
+          <p className="mt-0.5 text-xs text-text-muted">{TASKS_ORIGIN_HELPER_TEXT}</p>
           {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
         </div>
         <Button
@@ -225,6 +242,10 @@ export default function TasksPage() {
           <RefreshCw className="h-3.5 w-3.5" />
           Refresh
         </Button>
+      </div>
+
+      <div className="border-b border-border px-6 py-2">
+        <OriginFilterChips value={originFilter} onChange={setOriginFilter} showGoogle={false} />
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_360px] overflow-hidden max-lg:grid-cols-1">
@@ -294,8 +315,8 @@ export default function TasksPage() {
             <div className="flex h-56 items-center justify-center">
               <Spinner />
             </div>
-          ) : tasks.length === 0 ? (
-            <EmptyState title="No tasks" subtitle="Create an automation to start tracking scheduled work." />
+          ) : filteredTasks.length === 0 ? (
+            <EmptyState title="No tasks" subtitle="Create an automation to start tracking scheduled work. Google list import awaits the Tasks API." />
           ) : (
             <div className="overflow-hidden rounded-lg border border-border">
               <div className="grid grid-cols-[minmax(220px,1fr)_120px_120px_110px_128px] border-b border-border bg-elevated px-4 py-2 text-xs font-medium text-text-muted max-xl:grid-cols-[minmax(220px,1fr)_110px_96px_112px]">
@@ -305,7 +326,7 @@ export default function TasksPage() {
                 <span>Status</span>
                 <span>Actions</span>
               </div>
-              {tasks.map((task) => (
+              {filteredTasks.map((task) => (
                 <button
                   key={task.id}
                   type="button"
@@ -318,6 +339,7 @@ export default function TasksPage() {
                   <span className="min-w-0">
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium text-text-primary">{task.name}</span>
+                      <OriginBadge origin={classifyTaskOrigin(task)} />
                       {task.builtIn && (
                         <span className="rounded border border-accent/25 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
                           Built in
