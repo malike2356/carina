@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ExternalLink,
   FolderSync,
@@ -170,6 +170,7 @@ export function WorkspaceOpsTab({
   oauthReturnPath?: string;
   showFullWorkspaceLink?: boolean;
 }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<OpsStatus | null>(null);
   const [documents, setDocuments] = useState<OpsDocument[]>([]);
@@ -186,6 +187,29 @@ export function WorkspaceOpsTab({
       : 'minutes',
   );
   const [originFilter, setOriginFilter] = useState<OriginFilter>('aiva');
+  const [filesView, setFilesView] = useState<'folders' | 'synced'>('folders');
+  const [browseFolderId, setBrowseFolderId] = useState<string | null>(null);
+  const [browsePath, setBrowsePath] = useState<
+    Array<{ folderId: string; name: string; kind: string; category?: string }>
+  >([]);
+  const [browseItems, setBrowseItems] = useState<
+    Array<{
+      id: string;
+      name: string;
+      mimeType: string;
+      kind: 'folder' | 'file';
+      webViewLink?: string;
+      mapping?: {
+        aivaDocumentId: string | null;
+        syncStatus: string;
+        category: string;
+        origin: 'aiva' | 'google';
+      };
+    }>
+  >([]);
+  const [browseNextPage, setBrowseNextPage] = useState<string | undefined>();
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [claimingDriveFileId, setClaimingDriveFileId] = useState('');
 
   const [minutesDate, setMinutesDate] = useState(todayIsoDate);
   const [minutesTitle, setMinutesTitle] = useState('');
@@ -311,6 +335,112 @@ export function WorkspaceOpsTab({
     return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [documents, originFilter]);
 
+  const filteredBrowseItems = useMemo(() => {
+    return browseItems.filter((item) => {
+      if (item.kind === 'folder') return true;
+      const origin = item.mapping?.origin
+        ? item.mapping.origin
+        : classifyDocumentOrigin({
+            category: item.mapping?.category,
+            driveWebViewLink: item.webViewLink,
+            syncStatus: item.mapping?.syncStatus ?? 'drive_only',
+          });
+      return matchesOriginFilter({ origin }, originFilter);
+    });
+  }, [browseItems, originFilter]);
+
+  const loadBrowse = useCallback(
+    async (folderId?: string | null, pageToken?: string, append = false) => {
+      if (!workerId) return;
+      setBrowseLoading(true);
+      setError('');
+      try {
+        const qs = new URLSearchParams({ workerId });
+        if (folderId) qs.set('folderId', folderId);
+        if (pageToken) qs.set('pageToken', pageToken);
+        const res = await fetch(`/api/aiva/workspace-ops/browse?${qs}`);
+        const data = (await res.json()) as {
+          folderId?: string;
+          path?: Array<{ folderId: string; name: string; kind: string; category?: string }>;
+          items?: typeof browseItems;
+          nextPageToken?: string;
+          error?: string;
+        };
+        if (!res.ok) {
+          throw new Error(data.error ?? 'Could not browse Drive folder');
+        }
+        setBrowseFolderId(data.folderId ?? folderId ?? null);
+        setBrowsePath(data.path ?? []);
+        setBrowseItems((prev) => (append ? [...prev, ...(data.items ?? [])] : (data.items ?? [])));
+        setBrowseNextPage(data.nextPageToken);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not browse Drive folder');
+      } finally {
+        setBrowseLoading(false);
+      }
+    },
+    [workerId],
+  );
+
+  useEffect(() => {
+    if (section !== 'files' || !bootstrapped || filesView !== 'folders') return;
+    void loadBrowse(browseFolderId);
+    // Only re-run when entering files / bootstrap / view mode; folder clicks call loadBrowse directly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: avoid loop on browseFolderId
+  }, [section, bootstrapped, filesView, workerId, loadBrowse]);
+
+  async function openDriveFileInAiva(driveFileId: string, existingDocId?: string | null) {
+    if (existingDocId) {
+      router.push(`/documents/ops/${existingDocId}?workerId=${encodeURIComponent(workerId)}`);
+      return;
+    }
+    setClaimingDriveFileId(driveFileId);
+    setError('');
+    setNotice('');
+    try {
+      const res = await fetch('/api/aiva/workspace-ops/documents/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workerId, driveFileId }),
+      });
+      const data = (await res.json()) as {
+        error?: string;
+        aivaDocumentId?: string;
+        title?: string;
+        driveNewer?: boolean;
+        syncStatus?: string;
+      };
+      if (!res.ok || !data.aivaDocumentId) {
+        throw new Error(planBlockedMessage(data) ?? data.error ?? 'Could not open Drive file in Aiva');
+      }
+      if (data.driveNewer) {
+        setNotice(`Loaded newer Drive copy of ${data.title ?? 'document'} into Aiva.`);
+      }
+      setBrowseItems((prev) =>
+        prev.map((item) =>
+          item.id === driveFileId
+            ? {
+                ...item,
+                mapping: {
+                  aivaDocumentId: data.aivaDocumentId!,
+                  syncStatus: data.syncStatus ?? 'synced',
+                  category: item.mapping?.category ?? 'inbox',
+                  origin: item.mapping?.origin ?? 'google',
+                },
+              }
+            : item,
+        ),
+      );
+      router.push(
+        `/documents/ops/${data.aivaDocumentId}?workerId=${encodeURIComponent(workerId)}`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open Drive file in Aiva');
+    } finally {
+      setClaimingDriveFileId('');
+    }
+  }
+
   async function connectGoogleDrive() {
     setBusy('oauth');
     setError('');
@@ -345,18 +475,23 @@ export function WorkspaceOpsTab({
         body: JSON.stringify({
           workerId,
           orgName: orgName.trim(),
-          seedTemplates: true,
+          // Auto-seed only for brand-new empty packs; reuse existing Drive trees as-is.
           packProfile,
         }),
       });
       const data = (await res.json()) as OpsStatus & {
         error?: string;
         rootFolderName?: string;
+        rootReused?: boolean;
       };
       if (!res.ok) {
         throw new Error(planBlockedMessage(data) ?? data.error ?? 'Bootstrap failed');
       }
-      setNotice(`Created ${data.rootFolderName ?? 'Ops'} folder pack in Google Drive.`);
+      setNotice(
+        data.rootReused
+          ? `Bound to existing ${data.rootFolderName ?? 'Ops'} folder in Google Drive.`
+          : `Created ${data.rootFolderName ?? 'Ops'} folder pack in Google Drive.`,
+      );
       await load();
       onRequestSection('home');
     } catch (err) {
@@ -602,9 +737,20 @@ export function WorkspaceOpsTab({
               </p>
               <ul className="mt-3 space-y-1.5">
                 {folders.map((folder) => (
-                  <li key={folder.folderId} className="flex items-center gap-2 text-sm text-text-secondary">
-                    <FolderSync className="h-3.5 w-3.5 shrink-0 text-text-muted" />
-                    <span>{folder.folderName}</span>
+                  <li key={folder.folderId}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilesView('folders');
+                        setBrowseFolderId(folder.folderId);
+                        onRequestSection('files');
+                        void loadBrowse(folder.folderId);
+                      }}
+                      className="flex min-h-10 w-full items-center gap-2 rounded-lg px-1 text-left text-sm text-text-secondary hover:bg-muted hover:text-text-primary"
+                    >
+                      <FolderSync className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+                      <span>{folder.folderName}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -638,8 +784,8 @@ export function WorkspaceOpsTab({
             <h3 className="text-sm font-semibold text-text-primary">2. Create Ops folder pack</h3>
             <p className="mt-1 text-sm text-text-muted">
               {isCommunityPack
-                ? 'Creates top-level Aiva folders in Drive (Policies and Safeguarding, Session Notes, Attendance, Session Planner, Funder Reports, Posters and Templates, Inbox). Month subfolders such as 2026-06 live under Attendance, Session Notes, and Posters. Keep finance spreadsheets under Funder-Reports or a Drive subfolder named Finance.'
-                : 'Creates a numbered Drive tree (Policies, Minutes, Attendance, Next meeting, reports, Templates, Inbox) and binds it to Aiva.'}
+                ? 'Uses an existing Ops pack with the same name when present (Policies and Safeguarding, Session Notes, Attendance, Session Planner, Funder Reports, Posters and Templates, Inbox). Only creates missing folders.'
+                : 'Uses an existing "{Org} Ops" folder when present, then binds category folders (Policies, Minutes, Attendance, Next meeting, reports, Templates, Inbox). Only creates what is missing.'}
             </p>
             <label className="mt-3 block text-xs font-medium text-text-muted" htmlFor="ops-pack-profile">
               Folder pack style
@@ -670,7 +816,7 @@ export function WorkspaceOpsTab({
               className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl border border-border bg-elevated px-4 text-sm font-medium text-text-primary hover:bg-muted disabled:opacity-50"
             >
               {busy === 'bootstrap' ? <Spinner size="sm" /> : <FolderSync className="h-4 w-4" />}
-              {bootstrapped ? 'Refresh folder pack' : 'Create folder pack'}
+              {bootstrapped ? 'Refresh folder pack' : 'Bind or create folder pack'}
             </button>
             {bootstrapped && status?.binding?.rootFolderName ? (
               <p className="mt-2 text-xs text-text-muted">
@@ -685,9 +831,39 @@ export function WorkspaceOpsTab({
 
       {section === 'files' ? (
         <section className="space-y-4">
-          <div className="space-y-1.5">
-            <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
-            <p className="text-[11px] text-text-muted">{DOCUMENTS_ORIGIN_HELPER_TEXT}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="space-y-1.5">
+              <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
+              <p className="text-[11px] text-text-muted">{DOCUMENTS_ORIGIN_HELPER_TEXT}</p>
+            </div>
+            {bootstrapped ? (
+              <div className="flex gap-1 rounded-lg border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setFilesView('folders')}
+                  className={cn(
+                    'min-h-9 rounded-md px-3 text-xs font-medium',
+                    filesView === 'folders'
+                      ? 'bg-accent text-primary-foreground'
+                      : 'text-text-secondary hover:bg-muted',
+                  )}
+                >
+                  Folder view
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilesView('synced')}
+                  className={cn(
+                    'min-h-9 rounded-md px-3 text-xs font-medium',
+                    filesView === 'synced'
+                      ? 'bg-accent text-primary-foreground'
+                      : 'text-text-secondary hover:bg-muted',
+                  )}
+                >
+                  Synced list
+                </button>
+              </div>
+            ) : null}
           </div>
           {!bootstrapped ? (
             <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center">
@@ -700,6 +876,120 @@ export function WorkspaceOpsTab({
               >
                 Open Drive setup
               </button>
+            </div>
+          ) : filesView === 'folders' ? (
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              <nav className="flex flex-wrap items-center gap-1 text-xs text-text-muted">
+                {browsePath.map((crumb, index) => (
+                  <span key={crumb.folderId} className="inline-flex items-center gap-1">
+                    {index > 0 ? <span aria-hidden>/</span> : null}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBrowseFolderId(crumb.folderId);
+                        void loadBrowse(crumb.folderId);
+                      }}
+                      className={cn(
+                        'min-h-9 max-w-[12rem] truncate rounded-md px-1.5 text-left hover:text-text-primary',
+                        index === browsePath.length - 1
+                          ? 'font-medium text-text-primary'
+                          : 'text-accent hover:underline',
+                      )}
+                    >
+                      {crumb.name}
+                    </button>
+                  </span>
+                ))}
+              </nav>
+              {browseLoading && browseItems.length === 0 ? (
+                <div className="flex justify-center py-10">
+                  <Spinner size="sm" />
+                </div>
+              ) : filteredBrowseItems.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-sm font-medium text-text-primary">No files here yet</p>
+                  <p className="mt-1 text-sm text-text-muted">
+                    Record attendance or run Sync now, then open this folder again.
+                  </p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {filteredBrowseItems.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                    >
+                      {item.kind === 'folder' ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBrowseFolderId(item.id);
+                            void loadBrowse(item.id);
+                          }}
+                          className="flex min-h-10 min-w-0 flex-1 items-center gap-2 text-left text-sm font-medium text-text-primary hover:text-accent"
+                        >
+                          <FolderSync className="h-4 w-4 shrink-0 text-text-muted" />
+                          <span className="truncate">{item.name}</span>
+                        </button>
+                      ) : (
+                        <>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="truncate text-sm font-medium text-text-primary">{item.name}</p>
+                              <OriginBadge
+                                origin={
+                                  item.mapping?.origin ??
+                                  classifyDocumentOrigin({
+                                    category: item.mapping?.category,
+                                    driveWebViewLink: item.webViewLink,
+                                    syncStatus: item.mapping?.syncStatus ?? 'drive_only',
+                                  })
+                                }
+                              />
+                            </div>
+                            <p className="text-xs text-text-muted">
+                              {item.mapping?.syncStatus ?? 'drive_only'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <button
+                              type="button"
+                              disabled={claimingDriveFileId === item.id}
+                              onClick={() =>
+                                void openDriveFileInAiva(item.id, item.mapping?.aivaDocumentId)
+                              }
+                              className="text-xs font-medium text-accent hover:underline disabled:opacity-50"
+                            >
+                              {claimingDriveFileId === item.id ? 'Opening...' : 'Open in Aiva'}
+                            </button>
+                            {item.webViewLink ? (
+                              <a
+                                href={item.webViewLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                              >
+                                Open in Drive
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {browseNextPage ? (
+                <button
+                  type="button"
+                  disabled={browseLoading}
+                  onClick={() => void loadBrowse(browseFolderId, browseNextPage, true)}
+                  className="inline-flex min-h-10 items-center text-sm font-medium text-accent hover:underline disabled:opacity-50"
+                >
+                  {browseLoading ? 'Loading...' : 'Load more'}
+                </button>
+              ) : null}
             </div>
           ) : docsByCategory.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card px-5 py-8 text-center">
@@ -730,17 +1020,25 @@ export function WorkspaceOpsTab({
                           {doc.createdAt ? ` · ${formatTimestamp(doc.createdAt)}` : ''}
                         </p>
                       </div>
-                      {doc.driveWebViewLink ? (
-                        <a
-                          href={doc.driveWebViewLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                      <div className="flex flex-wrap items-center gap-3">
+                        <Link
+                          href={`/documents/ops/${doc.id}?workerId=${encodeURIComponent(workerId)}`}
+                          className="text-xs font-medium text-accent hover:underline"
                         >
-                          Open in Drive
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
-                      ) : null}
+                          Open in Aiva
+                        </Link>
+                        {doc.driveWebViewLink ? (
+                          <a
+                            href={doc.driveWebViewLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                          >
+                            Open in Drive
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        ) : null}
+                      </div>
                     </li>
                   ))}
                 </ul>

@@ -73,6 +73,60 @@ export async function listDriveChildren(opts: {
   return { files: data.files ?? [], nextPageToken: data.nextPageToken };
 }
 
+/** Find folders by exact name (My Drive + shared). Prefer non-trashed matches. */
+export async function findDriveFoldersByName(opts: {
+  accessToken: string;
+  name: string;
+  parentId?: string;
+}): Promise<DriveFileMeta[]> {
+  const name = opts.name.replace(/'/g, "\\'");
+  const parts = [
+    `mimeType = 'application/vnd.google-apps.folder'`,
+    `name = '${name}'`,
+    'trashed = false',
+  ];
+  if (opts.parentId) {
+    parts.push(`'${opts.parentId}' in parents`);
+  }
+  const url = new URL(DRIVE_FILES);
+  url.searchParams.set('q', parts.join(' and '));
+  url.searchParams.set('pageSize', '25');
+  url.searchParams.set(
+    'fields',
+    'files(id,name,mimeType,modifiedTime,webViewLink,trashed,parents)',
+  );
+  url.searchParams.set('spaces', 'drive');
+  url.searchParams.set('includeItemsFromAllDrives', 'true');
+  url.searchParams.set('supportsAllDrives', 'true');
+  url.searchParams.set('corpora', 'allDrives');
+  const res = await driveFetch(opts.accessToken, url.toString());
+  const data = (await res.json()) as { files?: DriveFileMeta[]; error?: unknown };
+  if (!res.ok) throw new Error(`Drive folder search failed: ${JSON.stringify(data)}`);
+  return data.files ?? [];
+}
+
+/** Reuse a child folder by name under parent, or create it. */
+export async function ensureNamedDriveFolder(opts: {
+  accessToken: string;
+  name: string;
+  parentId?: string;
+}): Promise<{ folder: DriveFileMeta; created: boolean }> {
+  const matches = await findDriveFoldersByName({
+    accessToken: opts.accessToken,
+    name: opts.name,
+    parentId: opts.parentId,
+  });
+  if (matches[0]) {
+    return { folder: matches[0], created: false };
+  }
+  const created = await createDriveFolder({
+    accessToken: opts.accessToken,
+    name: opts.name,
+    parentId: opts.parentId,
+  });
+  return { folder: created, created: true };
+}
+
 export async function getDriveFile(
   accessToken: string,
   fileId: string,

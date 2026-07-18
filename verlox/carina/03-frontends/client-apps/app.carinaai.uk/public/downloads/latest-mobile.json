@@ -1,14 +1,14 @@
 {
   "platform": "android",
-  "version": "0.1.5",
-  "build": "2026-07-16",
+  "version": "0.1.9",
+  "build": "2026-07-18",
   "apkUrl": "/downloads/carina-mobile.apk",
   "minSupportedVersion": "0.1.1",
   "releaseNotes": [
-    "Employee overview, chat, tasks, channels, training, automations, and settings now use separate pages.",
-    "The legacy hub star has been replaced with the Carina wordmark.",
-    "Employee navigation and Android branding have been refreshed."
+    "Employee chat composer lifts above the Android keyboard.",
+    "Clearer errors when the AI model provider rejects a request.",
+    "Compact employee section tabs."
   ],
-  "sha256": "d6908faeb8fb5a93bc11900a559a701f3281178a107206f40a8e52fb6ef4d905",
-  "updatedAt": "2026-07-16T18:22:04Z"
+  "sha256": "94fdb729fdea6d9047ed772ea96079a55221ddae4ccea6092a17dc96f4220b92",
+  "updatedAt": "2026-07-18T13:52:58Z"
 }

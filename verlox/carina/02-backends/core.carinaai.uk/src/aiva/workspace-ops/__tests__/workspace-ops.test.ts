@@ -73,6 +73,21 @@ describe('workspace-ops pack profiles', () => {
   });
 });
 
+describe('workspace-ops drive folder reuse helpers', () => {
+  it('exports ensureNamedDriveFolder from drive-client', async () => {
+    const mod = await import('../drive-client.js');
+    expect(typeof mod.ensureNamedDriveFolder).toBe('function');
+    expect(typeof mod.findDriveFoldersByName).toBe('function');
+  });
+});
+
+describe('workspace-ops claim export', () => {
+  it('exports claimDriveFileIntoAiva', async () => {
+    const mod = await import('../sync-engine.js');
+    expect(typeof mod.claimDriveFileIntoAiva).toBe('function');
+  });
+});
+
 describe('workspace-ops reminders', () => {
   it('ships three primary + sync health templates', () => {
     expect(OPS_REMINDER_TEMPLATES.length).toBeGreaterThanOrEqual(3);

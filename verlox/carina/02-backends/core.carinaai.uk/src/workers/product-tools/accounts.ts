@@ -3,6 +3,9 @@ import { encryptCredentials, decryptCredentials } from '../../channels/credentia
 import { getCatalogTool } from './catalog.js';
 import { loadDepthFeatures } from './features.js';
 import { upsertToolGrant } from '../spinnable-parity-store.js';
+import { getWorker } from '../worker-store.js';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type ToolAccountRecord = {
   id: string;
@@ -101,13 +104,80 @@ export async function listToolAccounts(workspaceId: string, toolSlug?: string, o
   const result = await pool.query(
     `SELECT id, tool_slug, label, provider, status, meta, last_probe_ok, created_at, updated_at
      FROM aiva_tool_accounts WHERE workspace_id = $1
-     ORDER BY tool_slug, updated_at DESC`,
+     ORDER BY
+       CASE WHEN status = 'connected' THEN 0 ELSE 1 END,
+       tool_slug,
+       updated_at DESC`,
     [workspaceId],
   );
   return result.rows.map(mapAccount);
 }
 
-export async function createAndProbeToolAccount(input: {
+async function findReusableToolAccountId(input: {
+  workspaceId: string;
+  toolSlug: string;
+  orgId?: string | null;
+  email?: string;
+}): Promise<string | null> {
+  const email = input.email?.trim().toLowerCase() ?? '';
+  if (email) {
+    const byEmail = await pool.query(
+      `SELECT id FROM aiva_tool_accounts
+       WHERE workspace_id = $1 AND tool_slug = $2
+         AND (
+           lower(coalesce(meta->>'email', '')) = $3
+           OR lower(label) = $3
+           OR lower(label) = ('google (' || $3 || ')')
+         )
+         AND ($4::uuid IS NULL OR org_id IS NULL OR org_id = $4::uuid)
+       ORDER BY
+         CASE WHEN status = 'connected' THEN 0 ELSE 1 END,
+         updated_at DESC
+       LIMIT 1`,
+      [input.workspaceId, input.toolSlug, email, input.orgId ?? null],
+    );
+    if (byEmail.rows[0]?.id) return String(byEmail.rows[0].id);
+  }
+  const bySlug = await pool.query(
+    `SELECT id FROM aiva_tool_accounts
+     WHERE workspace_id = $1 AND tool_slug = $2
+       AND ($3::uuid IS NULL OR org_id IS NULL OR org_id = $3::uuid)
+     ORDER BY
+       CASE WHEN status = 'connected' THEN 0 ELSE 1 END,
+       updated_at DESC
+     LIMIT 1`,
+    [input.workspaceId, input.toolSlug, input.orgId ?? null],
+  );
+  return bySlug.rows[0]?.id ? String(bySlug.rows[0].id) : null;
+}
+
+async function purgeDuplicateToolAccounts(input: {
+  workspaceId: string;
+  toolSlug: string;
+  keepId: string;
+  email?: string;
+}): Promise<void> {
+  const email = input.email?.trim().toLowerCase() ?? '';
+  if (!email) return;
+  await pool.query(
+    `DELETE FROM aiva_tool_accounts
+     WHERE workspace_id = $1
+       AND tool_slug = $2
+       AND id <> $3::uuid
+       AND (
+         lower(coalesce(meta->>'email', '')) = $4
+         OR lower(label) = $4
+         OR lower(label) = ('google (' || $4 || ')')
+       )`,
+    [input.workspaceId, input.toolSlug, input.keepId, email],
+  );
+}
+
+/**
+ * Create or refresh a workspace tool account so Grant can reuse OAuth/vault
+ * credentials across workers without repeating consent.
+ */
+export async function upsertConnectedToolAccount(input: {
   workspaceId: string;
   toolSlug: string;
   label?: string;
@@ -122,25 +192,58 @@ export async function createAndProbeToolAccount(input: {
   if (tool.status === 'coming_soon') throw new Error('Tool is coming_soon');
 
   const label = (input.label ?? tool.label).trim() || tool.label;
-  const insert = await pool.query(
-    `INSERT INTO aiva_tool_accounts
-      (workspace_id, org_id, tool_slug, label, provider, credentials_enc, meta, status, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, 'pending_probe', NOW())
-     RETURNING *`,
-    [
-      input.workspaceId,
-      input.orgId ?? null,
-      input.toolSlug,
-      label,
-      tool.oauthProvider ?? tool.auth,
-      encryptCredentials(input.credentials),
-      JSON.stringify(input.meta ?? {}),
-    ],
-  );
-  const accountId = String(insert.rows[0].id);
+  const email =
+    typeof input.credentials.email === 'string'
+      ? input.credentials.email
+      : (typeof input.meta?.email === 'string' ? input.meta.email : undefined);
+  const existingId = await findReusableToolAccountId({
+    workspaceId: input.workspaceId,
+    toolSlug: input.toolSlug,
+    orgId: input.orgId,
+    email,
+  });
 
-  // Temporary worker-less probe via invoke with isProbe and injected session is hard;
-  // run HTTP/google probe by temporarily storing credentials on a synthetic path via invoke helpers.
+  let accountId: string;
+  if (existingId) {
+    await pool.query(
+      `UPDATE aiva_tool_accounts SET
+         label = $2,
+         provider = $3,
+         credentials_enc = $4,
+         meta = $5::jsonb,
+         org_id = COALESCE($6::uuid, org_id),
+         status = 'pending_probe',
+         updated_at = NOW()
+       WHERE id = $1`,
+      [
+        existingId,
+        label,
+        tool.oauthProvider ?? tool.auth,
+        encryptCredentials(input.credentials),
+        JSON.stringify(input.meta ?? {}),
+        input.orgId ?? null,
+      ],
+    );
+    accountId = existingId;
+  } else {
+    const insert = await pool.query(
+      `INSERT INTO aiva_tool_accounts
+        (workspace_id, org_id, tool_slug, label, provider, credentials_enc, meta, status, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, 'pending_probe', NOW())
+       RETURNING id`,
+      [
+        input.workspaceId,
+        input.orgId ?? null,
+        input.toolSlug,
+        label,
+        tool.oauthProvider ?? tool.auth,
+        encryptCredentials(input.credentials),
+        JSON.stringify(input.meta ?? {}),
+      ],
+    );
+    accountId = String(insert.rows[0].id);
+  }
+
   const probeAction = tool.probe?.action ?? tool.actions?.[0]?.id ?? 'list';
   const probed = await probeAccountCredentials({
     workspaceId: input.workspaceId,
@@ -158,9 +261,29 @@ export async function createAndProbeToolAccount(input: {
     [accountId, probed.ok ? 'connected' : 'needs_reauth', probed.ok, probed.ok ? null : (probed.error ?? 'probe_failed')],
   );
 
+  if (probed.ok && email) {
+    await purgeDuplicateToolAccounts({
+      workspaceId: input.workspaceId,
+      toolSlug: input.toolSlug,
+      keepId: accountId,
+      email,
+    });
+  }
+
   const accounts = await listToolAccounts(input.workspaceId, input.toolSlug);
   const account = accounts.find((row) => row.id === accountId);
   return { ok: probed.ok, account, error: probed.error, probe: probed.data };
+}
+
+export async function createAndProbeToolAccount(input: {
+  workspaceId: string;
+  toolSlug: string;
+  label?: string;
+  credentials: Record<string, string>;
+  meta?: Record<string, unknown>;
+  orgId?: string | null;
+}): Promise<{ ok: boolean; account?: ToolAccountRecord; error?: string; probe?: unknown }> {
+  return upsertConnectedToolAccount(input);
 }
 
 async function probeAccountCredentials(input: {
@@ -201,6 +324,14 @@ async function probeAccountCredentials(input: {
   if (tool.driver === 'http' || tool.driver === 'slack') {
     const { runHttpProbeOrAction, buildBasicAuth, buildBasicUserPass } = await import('./http-driver.js');
     const vars: Record<string, string> = { ...input.credentials };
+    // configFields (e.g. Trello apiKey) are stored in meta, not credentials
+    if (input.meta) {
+      for (const [key, value] of Object.entries(input.meta)) {
+        if (typeof value === 'string' && value.trim() && !vars[key]) {
+          vars[key] = value.trim();
+        }
+      }
+    }
     if (vars.value && !vars.token) vars.token = vars.value;
     if (vars.email && vars.token) {
       vars.basic = buildBasicAuth(vars.email, vars.token).slice('Basic '.length);
@@ -285,6 +416,51 @@ export async function probeToolAccount(workspaceId: string, accountId: string) {
   };
 }
 
+async function applyAccountGrantToWorker(input: {
+  workspaceId: string;
+  workerId: string;
+  account: Record<string, unknown>;
+  scopes?: string[];
+}): Promise<void> {
+  const accountId = String(input.account.id);
+  const toolSlug = String(input.account.tool_slug);
+  const tool = getCatalogTool(toolSlug);
+  const scopes = input.scopes?.length ? input.scopes : (tool?.scopes ?? []);
+
+  await pool.query(
+    `INSERT INTO aiva_worker_tool_account_grants
+      (workspace_id, worker_id, account_id, tool_slug, scopes, status, updated_at)
+     VALUES ($1, $2, $3, $4, $5, 'connected', NOW())
+     ON CONFLICT (worker_id, account_id) DO UPDATE SET
+       scopes = EXCLUDED.scopes, status = 'connected', updated_at = NOW()`,
+    [input.workspaceId, input.workerId, accountId, toolSlug, scopes],
+  );
+
+  await upsertToolGrant({
+    workspaceId: input.workspaceId,
+    workerId: input.workerId,
+    toolSlug,
+    scopes,
+    status: 'connected',
+  });
+
+  const credentials = decryptCredentials(String(input.account.credentials_enc));
+  const { upsertToolSession } = await import('./sessions.js');
+  await upsertToolSession({
+    workspaceId: input.workspaceId,
+    workerId: input.workerId,
+    toolSlug,
+    provider: String(input.account.provider ?? ''),
+    credentials,
+    meta: {
+      ...((input.account.meta && typeof input.account.meta === 'object')
+        ? input.account.meta as Record<string, unknown>
+        : {}),
+      accountId,
+    },
+  });
+}
+
 export async function grantToolAccountToWorker(input: {
   workspaceId: string;
   workerId: string;
@@ -293,6 +469,14 @@ export async function grantToolAccountToWorker(input: {
 }) {
   await ensureAccountsSchema();
   if (!accountsFeatureEnabled()) throw new Error('Tool accounts disabled in depth-features config');
+  if (!UUID_RE.test(input.workerId)) {
+    throw new Error('Valid workerId is required');
+  }
+  const worker = await getWorker(input.workspaceId, input.workerId);
+  if (!worker) {
+    throw new Error('Worker not found. Pick an Aiva from the Grant to worker list.');
+  }
+
   const accountRes = await pool.query(
     `SELECT * FROM aiva_tool_accounts WHERE workspace_id = $1 AND id = $2`,
     [input.workspaceId, input.accountId],
@@ -302,41 +486,43 @@ export async function grantToolAccountToWorker(input: {
   if (String(account.status) !== 'connected') {
     throw new Error('Account is not connected; reconnect and probe first');
   }
-  const tool = getCatalogTool(String(account.tool_slug));
-  const scopes = input.scopes?.length ? input.scopes : (tool?.scopes ?? []);
 
-  await pool.query(
-    `INSERT INTO aiva_worker_tool_account_grants
-      (workspace_id, worker_id, account_id, tool_slug, scopes, status, updated_at)
-     VALUES ($1, $2, $3, $4, $5, 'connected', NOW())
-     ON CONFLICT (worker_id, account_id) DO UPDATE SET
-       scopes = EXCLUDED.scopes, status = 'connected', updated_at = NOW()`,
-    [input.workspaceId, input.workerId, input.accountId, String(account.tool_slug), scopes],
-  );
-
-  // Mirror legacy grant row so workerHasToolGrant still works
-  await upsertToolGrant({
+  await applyAccountGrantToWorker({
     workspaceId: input.workspaceId,
     workerId: input.workerId,
-    toolSlug: String(account.tool_slug),
-    scopes,
-    status: 'connected',
+    account,
+    scopes: input.scopes,
   });
 
-  // Copy credentials into per-worker session so existing google/http drivers work
-  const credentials = decryptCredentials(String(account.credentials_enc));
-  const { upsertToolSession } = await import('./sessions.js');
-  await upsertToolSession({
-    workspaceId: input.workspaceId,
-    workerId: input.workerId,
-    toolSlug: String(account.tool_slug),
-    provider: String(account.provider ?? ''),
-    credentials,
-    meta: {
-      ...((account.meta && typeof account.meta === 'object') ? account.meta as Record<string, unknown> : {}),
-      accountId: input.accountId,
-    },
-  });
+  // Google suite: granting one connected Google account also grants sibling
+  // Google tools for the same email so Drive/Gmail/Calendar do not need three clicks.
+  const meta = (account.meta && typeof account.meta === 'object')
+    ? account.meta as Record<string, unknown>
+    : {};
+  const email = typeof meta.email === 'string' ? meta.email.trim().toLowerCase() : '';
+  const provider = String(account.provider ?? '');
+  if (email && (provider === 'google_workspace' || provider.startsWith('google'))) {
+    const siblings = await pool.query(
+      `SELECT * FROM aiva_tool_accounts
+       WHERE workspace_id = $1
+         AND id <> $2
+         AND status = 'connected'
+         AND lower(coalesce(meta->>'email', '')) = $3
+         AND (provider = 'google_workspace' OR provider LIKE 'google%')`,
+      [input.workspaceId, input.accountId, email],
+    );
+    for (const sibling of siblings.rows) {
+      try {
+        await applyAccountGrantToWorker({
+          workspaceId: input.workspaceId,
+          workerId: input.workerId,
+          account: sibling,
+        });
+      } catch {
+        /* best-effort sibling grant */
+      }
+    }
+  }
 
   return listWorkerAccountGrants(input.workspaceId, input.workerId);
 }
@@ -384,7 +570,7 @@ export async function getAccountCredentialsForWorker(
   if (!accountsFeatureEnabled()) return null;
   await ensureAccountsSchema();
   const result = await pool.query(
-    `SELECT a.credentials_enc
+    `SELECT a.credentials_enc, a.meta
      FROM aiva_worker_tool_account_grants g
      JOIN aiva_tool_accounts a ON a.id = g.account_id
      WHERE g.workspace_id = $1 AND g.worker_id = $2 AND g.tool_slug = $3
@@ -394,5 +580,14 @@ export async function getAccountCredentialsForWorker(
     [workspaceId, workerId, toolSlug],
   );
   if (result.rows.length === 0) return null;
-  return decryptCredentials(String(result.rows[0].credentials_enc));
+  const vars = decryptCredentials(String(result.rows[0].credentials_enc));
+  const meta = result.rows[0].meta;
+  if (meta && typeof meta === 'object') {
+    for (const [key, value] of Object.entries(meta as Record<string, unknown>)) {
+      if (typeof value === 'string' && value.trim() && !vars[key]) {
+        vars[key] = value.trim();
+      }
+    }
+  }
+  return vars;
 }

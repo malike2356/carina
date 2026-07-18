@@ -9,12 +9,14 @@ import { hashDocumentContent } from './hash.js';
 import {
   createGoogleDoc,
   exportDriveFileText,
+  getDriveFile,
   listDriveChildren,
   resolveWorkerDriveToken,
   trashDriveFile,
   updateGoogleDocText,
   type DriveFileMeta,
 } from './drive-client.js';
+import { isFolderAllowedInOpsTree } from './browse.js';
 import {
   finishSyncRun,
   getBinding,
@@ -161,8 +163,8 @@ async function pullFromDrive(opts: {
           file,
           category,
         });
-        if (result === 'pulled') pulled += 1;
-        else if (result === 'conflict') {
+        if (result.result === 'pulled') pulled += 1;
+        else if (result.result === 'conflict') {
           pulled += 1;
           conflicts += 1;
         } else skipped += 1;
@@ -179,7 +181,13 @@ async function upsertFromDriveFile(opts: {
   accessToken: string;
   file: DriveFileMeta;
   category: OpsCategory;
-}): Promise<'pulled' | 'conflict' | 'skipped'> {
+}): Promise<{
+  result: 'pulled' | 'conflict' | 'skipped';
+  aivaDocumentId: string | null;
+  syncStatus: string;
+  indexable: boolean;
+  driveNewer: boolean;
+}> {
   const existing = await getMappingByDriveFile(opts.binding.id, opts.file.id);
   const text = await exportDriveFileText(opts.accessToken, opts.file);
   const indexable = text != null;
@@ -199,7 +207,13 @@ async function upsertFromDriveFile(opts: {
       if (aivaHash !== existing.contentHash && contentHash !== existing.contentHash) {
         // Both changed since last sync: last-writer-wins by timestamp
         if (aivaMs > driveMs) {
-          return 'skipped';
+          return {
+            result: 'skipped',
+            aivaDocumentId: entry.id,
+            syncStatus: existing.syncStatus,
+            indexable: existing.indexable,
+            driveNewer: false,
+          };
         }
         await updateKnowledgeDocument({
           workerId: opts.binding.workerId,
@@ -224,9 +238,23 @@ async function upsertFromDriveFile(opts: {
           lastDirection: 'pull',
           meta: { conflictResolved: 'drive_wins' },
         });
-        return 'conflict';
+        return {
+          result: 'conflict',
+          aivaDocumentId: entry.id,
+          syncStatus: 'conflict',
+          indexable,
+          driveNewer: true,
+        };
       }
-      if (contentHash === existing.contentHash) return 'skipped';
+      if (contentHash === existing.contentHash) {
+        return {
+          result: 'skipped',
+          aivaDocumentId: entry.id,
+          syncStatus: existing.syncStatus,
+          indexable: existing.indexable,
+          driveNewer: false,
+        };
+      }
       await updateKnowledgeDocument({
         workerId: opts.binding.workerId,
         entryId: entry.id,
@@ -249,7 +277,13 @@ async function upsertFromDriveFile(opts: {
         updatedAtDrive: opts.file.modifiedTime ? new Date(opts.file.modifiedTime) : new Date(),
         lastDirection: 'pull',
       });
-      return 'pulled';
+      return {
+        result: 'pulled',
+        aivaDocumentId: entry.id,
+        syncStatus: 'synced',
+        indexable,
+        driveNewer: driveMs > aivaMs,
+      };
     }
   }
 
@@ -271,6 +305,7 @@ async function upsertFromDriveFile(opts: {
     });
   }
 
+  const syncStatus = indexable ? 'synced' : 'drive_only';
   await upsertMapping({
     bindingId: opts.binding.id,
     workspaceId: opts.binding.workspaceId,
@@ -282,12 +317,104 @@ async function upsertFromDriveFile(opts: {
     title,
     contentHash,
     indexable,
-    syncStatus: indexable ? 'synced' : 'drive_only',
+    syncStatus,
     updatedAtAiva: new Date(),
     updatedAtDrive: opts.file.modifiedTime ? new Date(opts.file.modifiedTime) : new Date(),
     lastDirection: 'pull',
   });
-  return 'pulled';
+  return {
+    result: 'pulled',
+    aivaDocumentId: docId,
+    syncStatus,
+    indexable,
+    driveNewer: false,
+  };
+}
+
+async function inferCategoryForDriveFile(opts: {
+  accessToken: string;
+  file: DriveFileMeta;
+  folders: Array<{ category: OpsCategory; folderId: string }>;
+  rootFolderId: string;
+}): Promise<OpsCategory> {
+  let current = opts.file.parents?.[0];
+  for (let depth = 0; depth < 8 && current; depth += 1) {
+    const hit = opts.folders.find((f) => f.folderId === current);
+    if (hit) return hit.category;
+    if (current === opts.rootFolderId) return 'inbox';
+    const parentFile = await getDriveFile(opts.accessToken, current);
+    current = parentFile.parents?.[0];
+  }
+  return categoryForFolder(opts.folders, opts.file.parents?.[0]);
+}
+
+/**
+ * Claim a single Drive file inside the Ops tree into an Aiva knowledge doc.
+ * Always pull-through so the editor opens with current Drive content; saves write back via push.
+ */
+export async function claimDriveFileIntoAiva(opts: {
+  workspaceId: string;
+  workerId: string;
+  driveFileId: string;
+}): Promise<{
+  aivaDocumentId: string;
+  syncStatus: string;
+  title: string;
+  indexable: boolean;
+  driveNewer: boolean;
+  result: 'pulled' | 'conflict' | 'skipped';
+}> {
+  const binding = await getBinding(opts.workspaceId, opts.workerId);
+  if (!binding?.rootFolderId) {
+    throw new Error('Ops folder pack is not bootstrapped yet');
+  }
+  const driveFileId = opts.driveFileId.trim();
+  if (!driveFileId) throw new Error('driveFileId is required');
+
+  const accessToken = await resolveWorkerDriveToken(opts.workspaceId, opts.workerId);
+  const file = await getDriveFile(accessToken, driveFileId);
+  if (file.mimeType === 'application/vnd.google-apps.folder') {
+    throw new Error('Cannot open a folder as a document');
+  }
+  if (file.trashed) throw new Error('Drive file is in trash');
+
+  const folders = await listFolders(binding.id);
+  const categoryFolderIds = folders.map((f) => f.folderId);
+  const parentId = file.parents?.[0] ?? '';
+  const allowed = await isFolderAllowedInOpsTree({
+    accessToken,
+    folderId: parentId || binding.rootFolderId,
+    rootFolderId: binding.rootFolderId,
+    categoryFolderIds,
+  });
+  if (!allowed) {
+    throw new Error('File is outside the Ops Drive pack');
+  }
+
+  const category = await inferCategoryForDriveFile({
+    accessToken,
+    file,
+    folders,
+    rootFolderId: binding.rootFolderId,
+  });
+
+  const upserted = await upsertFromDriveFile({
+    binding,
+    accessToken,
+    file,
+    category,
+  });
+  if (!upserted.aivaDocumentId) {
+    throw new Error('Claim failed: no Aiva document id');
+  }
+  return {
+    aivaDocumentId: upserted.aivaDocumentId,
+    syncStatus: upserted.syncStatus,
+    title: file.name,
+    indexable: upserted.indexable,
+    driveNewer: upserted.driveNewer,
+    result: upserted.result,
+  };
 }
 
 async function pushPendingToDrive(opts: {

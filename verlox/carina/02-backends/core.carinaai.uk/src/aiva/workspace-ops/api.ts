@@ -17,6 +17,7 @@ import {
   updateKnowledgeDocument,
 } from '../../workers/knowledge-base.js';
 import { bootstrapWorkspaceOps } from './bootstrap.js';
+import { browseOpsFolder } from './browse.js';
 import {
   captureAttendance,
   captureFunderMonth,
@@ -37,7 +38,7 @@ import {
   listMappings,
   markMappingDeleted,
 } from './store.js';
-import { markDocumentPendingAndPush, pushDocumentToDrive, runWorkspaceOpsSync } from './sync-engine.js';
+import { markDocumentPendingAndPush, pushDocumentToDrive, runWorkspaceOpsSync, claimDriveFileIntoAiva } from './sync-engine.js';
 import { isOpsCategory, packProfileFromBindingMeta, type SyncDirection } from './types.js';
 
 export const workspaceOpsRouter: ExpressRouter = Router();
@@ -193,6 +194,38 @@ workspaceOpsRouter.get(
 );
 
 workspaceOpsRouter.get(
+  '/browse',
+  requireWorkspace,
+  requireBusinessPlan,
+  async (req: OpsReq, res: Response) => {
+    try {
+      const workerId = await requireWorker(req, res);
+      if (!workerId) return;
+      const folderId =
+        typeof req.query.folderId === 'string' ? req.query.folderId.trim() : undefined;
+      const pageToken =
+        typeof req.query.pageToken === 'string' ? req.query.pageToken.trim() : undefined;
+      const result = await browseOpsFolder({
+        workspaceId: req.workspaceId!,
+        workerId,
+        folderId: folderId || undefined,
+        pageToken: pageToken || undefined,
+      });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const status =
+        /outside the Ops|not bootstrapped/i.test(message)
+          ? 400
+          : /token|oauth|Drive/i.test(message)
+            ? 502
+            : 400;
+      res.status(status).json({ error: message });
+    }
+  },
+);
+
+workspaceOpsRouter.get(
   '/documents',
   requireWorkspace,
   requireBusinessPlan,
@@ -249,6 +282,31 @@ workspaceOpsRouter.post(
         category,
       });
       res.status(201).json({ document: doc });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+workspaceOpsRouter.post(
+  '/documents/claim',
+  requireWorkspace,
+  requireBusinessPlan,
+  async (req: OpsReq, res: Response) => {
+    try {
+      const workerId = await requireWorker(req, res);
+      if (!workerId) return;
+      const driveFileId = String(req.body?.driveFileId ?? '').trim();
+      if (!driveFileId) {
+        res.status(400).json({ error: 'driveFileId is required' });
+        return;
+      }
+      const claimed = await claimDriveFileIntoAiva({
+        workspaceId: req.workspaceId!,
+        workerId,
+        driveFileId,
+      });
+      res.status(201).json({ ok: true, ...claimed });
     } catch (err) {
       res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }

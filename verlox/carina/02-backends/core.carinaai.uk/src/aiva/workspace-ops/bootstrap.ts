@@ -1,7 +1,7 @@
 import { getWorker } from '../../workers/worker-store.js';
 import {
-  createDriveFolder,
   createGoogleDoc,
+  ensureNamedDriveFolder,
   resolveWorkerDriveToken,
 } from './drive-client.js';
 import { hashDocumentContent } from './hash.js';
@@ -103,6 +103,7 @@ export async function bootstrapWorkspaceOps(opts: {
   rootFolderId: string;
   rootFolderName: string;
   packProfile: OpsPackProfile;
+  rootReused: boolean;
   folders: Array<{ category: OpsCategory; folderId: string; folderName: string }>;
 }> {
   const orgName = opts.orgName.trim();
@@ -120,9 +121,16 @@ export async function bootstrapWorkspaceOps(opts: {
 
   let binding = await getBinding(opts.workspaceId, opts.workerId);
   let rootFolderId = binding?.rootFolderId ?? '';
+  let rootCreated = false;
   if (!rootFolderId) {
-    const root = await createDriveFolder({ accessToken, name: rootName });
-    rootFolderId = root.id;
+    // Reuse an existing Drive pack with the same name (shared or prior bootstrap)
+    // instead of creating a duplicate "{Org} Ops" root every time.
+    const ensured = await ensureNamedDriveFolder({
+      accessToken,
+      name: rootName,
+    });
+    rootFolderId = ensured.folder.id;
+    rootCreated = ensured.created;
   }
 
   binding = await upsertBinding({
@@ -135,11 +143,13 @@ export async function bootstrapWorkspaceOps(opts: {
     meta: {
       ...(binding?.meta ?? {}),
       packProfile,
+      rootReused: !rootCreated,
     },
   });
 
   const existingFolders = await listFolders(binding.id);
   const folders: Array<{ category: OpsCategory; folderId: string; folderName: string }> = [];
+  let createdCategoryCount = 0;
   for (const category of OPS_CATEGORIES) {
     const label = folderLabels[category];
     const prior = existingFolders.find((f) => f.category === category);
@@ -151,22 +161,28 @@ export async function bootstrapWorkspaceOps(opts: {
       });
       continue;
     }
-    const created = await createDriveFolder({
+    const ensured = await ensureNamedDriveFolder({
       accessToken,
       name: label,
       parentId: rootFolderId,
     });
+    if (ensured.created) createdCategoryCount += 1;
     await upsertFolder({
       bindingId: binding.id,
       category,
-      folderId: created.id,
+      folderId: ensured.folder.id,
       folderName: label,
     });
-    folders.push({ category, folderId: created.id, folderName: label });
+    folders.push({ category, folderId: ensured.folder.id, folderName: label });
   }
 
   const forceSeed = opts.seedTemplates === true;
-  const autoSeed = opts.seedTemplates !== false && existingFolders.length === 0;
+  // Only auto-seed templates for a brand-new empty pack, not when reusing Drive folders.
+  const autoSeed =
+    opts.seedTemplates !== false
+    && existingFolders.length === 0
+    && rootCreated
+    && createdCategoryCount === OPS_CATEGORIES.length;
   if (forceSeed || autoSeed) {
     for (const category of OPS_CATEGORIES) {
       if (category === 'inbox') continue;
@@ -208,6 +224,7 @@ export async function bootstrapWorkspaceOps(opts: {
     rootFolderId,
     rootFolderName: rootName,
     packProfile,
+    rootReused: !rootCreated,
     folders,
   };
 }
