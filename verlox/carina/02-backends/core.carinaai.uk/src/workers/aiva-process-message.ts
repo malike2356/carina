@@ -21,6 +21,8 @@ import { registerPropreneurSessionTools } from '../tools/propreneur-portfolio.js
 import { registerPropreneurSelfConfigureTool } from '../tools/propreneur-self-configure.js';
 import { registerProductToolAdapters } from '../tools/product-tool-adapters.js';
 import { registerWorkerMemorySessionTools } from '../tools/worker-memory.js';
+import { registerWorkerAutomationSessionTools } from '../tools/worker-automation.js';
+import { registerWeatherForecastSessionTool } from '../tools/weather-forecast.js';
 import { forceImmediateInvalidation } from '../brain/prompt-cache.js';
 import {
   hydrateEpisodicFromEmployeeThread,
@@ -186,7 +188,7 @@ export async function* processAivaMessageStreamDirect(
     continuationHint: '',
   }));
 
-  const [personaPrompt, capabilityContext, scopeGrants, productToolsPrompt, pinnedMemories, externalPrefetch] =
+  const [personaPrompt, capabilityContext, scopeGrants, productToolsPrompt, pinnedMemories, externalPrefetch, capabilityPrompt] =
     await Promise.all([
       resolvePersonaWithKnowledge(
         worker.id,
@@ -218,8 +220,22 @@ export async function* processAivaMessageStreamDirect(
         contactId: params.contactId,
         query: params.userMessage,
       }).catch(() => ''),
+      import('../capabilities/manifest-builder.js')
+        .then(async ({ buildCapabilityManifest }) => {
+          const { buildCapabilityPromptBlock } = await import('../capabilities/prompt-injection.js');
+          const manifest = await buildCapabilityManifest({
+            sessionId: `aiva-${params.workerId}`,
+            workspaceId: params.workspaceId,
+            platform: 'web',
+          });
+          return buildCapabilityPromptBlock(manifest);
+        })
+        .catch(() => ''),
     ]);
 
+  const { buildProductSelfKnowledgeSuffix } = await import('../platform/product-self-knowledge.js');
+  const selfKnowledgeSuffix = buildProductSelfKnowledgeSuffix('aiva');
+  const capabilityBlockSuffix = capabilityPrompt ? `\n\n${capabilityPrompt}` : '';
   const pinnedLines = (pinnedMemories as Array<{ pinned?: boolean; content?: string }>)
     .filter((m) => m.pinned)
     .slice(0, 12)
@@ -256,6 +272,11 @@ export async function* processAivaMessageStreamDirect(
   const scopeSuffix = scopeGrants ? `\n\n${scopeGrants}` : '';
   const toolsSuffix = productToolsPrompt ? `\n\n${productToolsPrompt}` : '';
   const externalSuffix = externalPrefetch ? `\n${externalPrefetch}` : '';
+  const automationHint =
+    '\n\nScheduled jobs: for recurring Telegram/Aiva tasks (morning weather + email digests, daily briefings), '
+    + 'use worker-automation (not host cronjob). After the user gives city, time, and email detail, create the job; '
+    + 'do not ask them to confirm a cron expression. Prefer weather-forecast for weather. Delivery defaults to this chat.';
+
   const ctx = {
     worker,
     personaPrompt: withWorkerIdentityOverride(
@@ -265,13 +286,17 @@ export async function* processAivaMessageStreamDirect(
         + capabilitySuffix
         + scopeSuffix
         + toolsSuffix
+        + selfKnowledgeSuffix
+        + capabilityBlockSuffix
         + durableMemorySuffix
         + externalSuffix
-        + bridgeSuffix,
+        + bridgeSuffix
+        + automationHint,
       worker.roleDescription,
     ),
     channel: params.channel,
     channelId: params.contactId,
+    contactId: params.contactId,
     planTier,
   };
 
@@ -281,6 +306,8 @@ export async function* processAivaMessageStreamDirect(
   registerPropreneurSessionTools(sessionId);
   registerPropreneurSelfConfigureTool(sessionId);
   registerWorkerMemorySessionTools(sessionId);
+  registerWorkerAutomationSessionTools(sessionId);
+  registerWeatherForecastSessionTool(sessionId);
   await registerProductToolAdapters(sessionId);
   const parts: string[] = [];
   try {

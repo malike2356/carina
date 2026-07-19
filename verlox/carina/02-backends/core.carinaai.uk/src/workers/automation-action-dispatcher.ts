@@ -53,6 +53,20 @@ export async function dispatchAutomationAction(input: {
 
   try {
     if (action.type === 'aiva_prompt' || input.actionType === 'aiva_prompt') {
+      const raw = input.action && typeof input.action === 'object'
+        ? input.action as Record<string, unknown>
+        : {};
+      const deliverRaw = raw.deliver;
+      const deliver = deliverRaw && typeof deliverRaw === 'object'
+        ? {
+          channel: String((deliverRaw as { channel?: unknown }).channel ?? ''),
+          contactId: String(
+            (deliverRaw as { contactId?: unknown }).contactId
+              ?? (deliverRaw as { contact_id?: unknown }).contact_id
+              ?? '',
+          ),
+        }
+        : null;
       return await runAivaPrompt({
         workerId: input.workerId,
         workspaceId: input.workspaceId,
@@ -61,6 +75,7 @@ export async function dispatchAutomationAction(input: {
         automationDescription: input.automationDescription,
         prompt: action.type === 'aiva_prompt' ? action.prompt : input.automationDescription,
         payload: input.payload,
+        deliver,
       });
     }
 
@@ -154,18 +169,24 @@ async function runAivaPrompt(input: {
   automationDescription: string;
   prompt: string;
   payload?: Record<string, unknown>;
+  deliver?: { channel?: string; contactId?: string } | null;
 }): Promise<DispatchResult> {
   const userMessage = input.payload && Object.keys(input.payload).length > 0
     ? `${input.prompt}\n\nEvent context:\n${JSON.stringify(input.payload).slice(0, 2000)}`
     : input.prompt;
+
+  const deliverChannel = String(input.deliver?.channel ?? '').trim();
+  const deliverContactId = String(input.deliver?.contactId ?? '').trim();
+  const runAsChannel = (deliverChannel || 'web') as import('../channels/types.js').AivaChannelName;
+  const runAsContact = deliverContactId || `auto-${input.automationId}`;
 
   // processAivaMessage enforces wallet / BYOK / usage limits.
   const reply = await processAivaMessage({
     workerId: input.workerId,
     workspaceId: input.workspaceId,
     userMessage,
-    channel: 'web',
-    contactId: `auto-${input.automationId}`,
+    channel: runAsChannel,
+    contactId: runAsContact,
   });
 
   const automationLike = {
@@ -189,6 +210,21 @@ async function runAivaPrompt(input: {
     };
   }
 
+  let delivered = false;
+  let deliverError: string | undefined;
+  if (deliverChannel && deliverContactId && deliverChannel !== 'web') {
+    try {
+      delivered = await deliverAutomationReply({
+        workerId: input.workerId,
+        channel: deliverChannel,
+        contactId: deliverContactId,
+        content: reply,
+      });
+    } catch (err) {
+      deliverError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   void logActivity(input.workerId, {
     actionType: 'automation_run',
     summary: `Automation: ${input.automationName}`,
@@ -202,6 +238,49 @@ async function runAivaPrompt(input: {
   return {
     ok: true,
     output: reply,
-    usage: { routed: 'aiva_prompt' },
+    usage: { routed: 'aiva_prompt', delivered },
+    diagnostics: deliverError ? { deliverError } : delivered ? { delivered: true } : undefined,
   };
+}
+
+async function deliverAutomationReply(input: {
+  workerId: string;
+  channel: string;
+  contactId: string;
+  content: string;
+}): Promise<boolean> {
+  const { listWorkerChannelDetails, readChannelCredentials } = await import('../channels/channel-store.js');
+  const { getAdapter } = await import('../channels/adapter-registry.js');
+  const channel = input.channel as import('../channels/types.js').AivaChannelName;
+  const channels = await listWorkerChannelDetails(input.workerId);
+  const row = channels.find((c) => c.channel === channel && c.enabled);
+  if (!row) return false;
+  const adapter = getAdapter(channel);
+  if (!adapter) return false;
+  const credentials = readChannelCredentials(row);
+  const chunks = chunkTelegramText(input.content, 3500);
+  for (const chunk of chunks) {
+    await adapter.send(
+      { channel, contactId: input.contactId, content: chunk },
+      credentials,
+    );
+  }
+  return true;
+}
+
+function chunkTelegramText(text: string, maxLen: number): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return ['(empty briefing)'];
+  if (trimmed.length <= maxLen) return [trimmed];
+  const parts: string[] = [];
+  let rest = trimmed;
+  while (rest.length > maxLen) {
+    let cut = rest.lastIndexOf('\n\n', maxLen);
+    if (cut < maxLen * 0.4) cut = rest.lastIndexOf('\n', maxLen);
+    if (cut < maxLen * 0.4) cut = maxLen;
+    parts.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) parts.push(rest);
+  return parts;
 }

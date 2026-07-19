@@ -22,14 +22,23 @@ async function queueAutomation(automationId: string): Promise<void> {
   await enqueueDueAutomation(automationId, 'croner');
 }
 
-export function registerAutomationJob(automationId: string, cronExpression: string): void {
+export function registerAutomationJob(
+  automationId: string,
+  cronExpression: string,
+  timezone?: string,
+): void {
   unregisterAutomationJob(automationId);
   if (!cronExpression?.trim()) return;
-  const cron = new Cron(cronExpression, () => {
-    void queueAutomation(automationId).catch((err) => {
-      console.warn(`[aiva-automation] enqueue failed for ${automationId}:`, err);
-    });
-  });
+  const tz = timezone?.trim() || undefined;
+  const cron = new Cron(
+    cronExpression,
+    tz ? { timezone: tz } : {},
+    () => {
+      void queueAutomation(automationId).catch((err) => {
+        console.warn(`[aiva-automation] enqueue failed for ${automationId}:`, err);
+      });
+    },
+  );
   runtimes.set(jobId(automationId), cron);
 }
 
@@ -53,7 +62,7 @@ export async function loadAndRegisterAllAivaAutomations(): Promise<number> {
       (automation.triggerType === 'cron' || automation.triggerType === 'schedule')
       && automation.cronExpression
     ) {
-      registerAutomationJob(automation.id, automation.cronExpression);
+      registerAutomationJob(automation.id, automation.cronExpression, automation.timezone);
     }
   }
   return automations.length;

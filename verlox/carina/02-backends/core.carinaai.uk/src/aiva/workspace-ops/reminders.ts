@@ -67,7 +67,7 @@ export async function installOpsReminderAutomations(opts: {
       actionJson: { type: 'aiva_prompt', prompt: template.prompt },
       approvalMode: template.key === 'monthly-funder-pack' ? 'require_write' : 'require_write',
     });
-    await registerAutomationJob(automation.id, template.cronExpression);
+    registerAutomationJob(automation.id, template.cronExpression);
     installed.push(template.key);
   }
 

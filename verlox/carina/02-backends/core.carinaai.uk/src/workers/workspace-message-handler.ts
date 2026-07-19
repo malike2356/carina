@@ -82,12 +82,20 @@ export async function resolveWorkerForMessage(message: CarinaMessage) {
 export function applyWorkerToSession(
   router: GatewayRouter,
   sessionId: string,
-  ctx: { worker: { id: string; personaPrompt: string; skillPacks: string[] }; personaPrompt: string; planTier?: string },
+  ctx: {
+    worker: { id: string; personaPrompt: string; skillPacks: string[] };
+    personaPrompt: string;
+    planTier?: string;
+    channel?: string;
+    contactId?: string;
+  },
 ): () => void {
   setWorkerSessionContext(sessionId, {
     worker: ctx.worker as import('../types/index.js').Worker,
     personaPrompt: ctx.personaPrompt,
     planTier: ctx.planTier,
+    channel: ctx.channel,
+    contactId: ctx.contactId,
   });
   router.setSessionSystemPromptSuffix(sessionId, ctx.personaPrompt);
   return applyWorkerSkillPacks(sessionId, ctx.worker.skillPacks);

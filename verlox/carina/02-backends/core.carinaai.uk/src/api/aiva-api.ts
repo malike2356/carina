@@ -773,7 +773,7 @@ aivaRouter.post('/workers/:id/automations', requireWorkspace, requireTeamPlan, a
       cronExpression: parsed.cronExpression,
       scheduleLabel: parsed.scheduleLabel,
     });
-    registerAutomationJob(automation.id, automation.cronExpression);
+    registerAutomationJob(automation.id, automation.cronExpression, automation.timezone);
     res.status(201).json({ automation });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -792,7 +792,7 @@ aivaRouter.patch('/workers/:id/automations/:automationId', requireWorkspace, req
   const enabled = Boolean(req.body?.enabled);
   await toggleAutomation(automationId, enabled);
   if (enabled) {
-    registerAutomationJob(automationId, automation.cronExpression);
+    registerAutomationJob(automationId, automation.cronExpression, automation.timezone);
   } else {
     unregisterAutomationJob(automationId);
   }

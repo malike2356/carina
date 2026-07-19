@@ -66,9 +66,26 @@ export const productivitySkills: PackSkillInput[] = [
     description: 'Current weather and short forecast via Open-Meteo',
     trigger: ['weather', 'forecast', 'rain today', 'temperature'],
     steps: `1. Resolve location from user message or configured default.
-2. Use http-request against api.open-meteo.com (no API key needed).
+2. Prefer weather-forecast (Open-Meteo, no API key). Fallback: http-request against api.open-meteo.com.
 3. Present current conditions and next 24-48h summary.`,
-    toolsUsed: ['http-request'],
+    toolsUsed: ['weather-forecast', 'http-request'],
+  },
+  {
+    name: 'morning-digest-schedule',
+    description: 'Schedule a daily morning weather + email digest on Telegram',
+    trigger: [
+      'morning digest',
+      'cron job weather',
+      'every morning weather',
+      'daily email summary',
+      'weather and emails every morning',
+      'send me the weather forecast and emails',
+    ],
+    steps: `1. Collect city, email detail level (subject+body summary vs count), and local time if missing.
+2. As soon as those are known, call worker-automation action=create with city, country, hour/minute or schedule_text, timezone (default Europe/London). Do NOT use host cronjob. Do NOT ask the user to confirm a cron expression.
+3. Confirm the created scheduleLabel, nextRunAt, and that delivery goes to this Telegram chat.
+4. Offer worker-automation action=test to run once now.`,
+    toolsUsed: ['worker-automation', 'weather-forecast', 'gmail-list', 'gmail-get'],
   },
   {
     name: 'news-digest',

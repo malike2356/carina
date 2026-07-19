@@ -83,13 +83,13 @@ export const operatorDailySkills: PackSkillInput[] = [
   },
   {
     name: 'scheduled-voice-briefing',
-    description: 'Schedule a recurring spoken briefing via cron and TTS',
+    description: 'Schedule a recurring spoken briefing via automation and TTS',
     trigger: ['voice briefing', 'morning briefing audio', 'spoken summary daily', 'schedule tts'],
     steps: `1. Draft a self-contained briefing prompt (weather, tasks, calendar if configured).
-2. cronjob create with deliver channel (telegram, web, etc.).
-3. text-to-speech for one-off audio; cron for recurring.
+2. On Aiva/Telegram: worker-automation create (not host cronjob); deliver to this chat.
+3. text-to-speech for one-off audio when asked.
 4. Confirm schedule timezone with user.`,
-    toolsUsed: ['cronjob', 'text-to-speech', 'notes-manage', 'http-request'],
+    toolsUsed: ['worker-automation', 'text-to-speech', 'notes-manage', 'weather-forecast'],
   },
   {
     name: 'mcp-server-connect',

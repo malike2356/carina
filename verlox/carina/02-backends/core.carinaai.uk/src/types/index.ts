@@ -310,4 +310,8 @@ export interface WorkerContext {
   worker: Worker;
   personaPrompt: string;
   planTier?: string;
+  /** Origin channel for this chat turn (telegram, web, …). */
+  channel?: string;
+  /** Origin contact/chat id for delivery defaults. */
+  contactId?: string;
 }

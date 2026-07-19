@@ -34,10 +34,10 @@ export const capabilitiesOpsSkills: PackSkillInput[] = [
     name: 'cron-schedule-design',
     description: 'Design and validate cron schedules for recurring jobs',
     trigger: ['cron schedule', 'every morning at', 'validate cron'],
-    steps: `1. cron-explain with proposed expression and operator timezone.
-2. Show next 5 run times; adjust expression if needed.
-3. cronjob create only after user confirms expression.`,
-    toolsUsed: ['cron-explain', 'cronjob'],
+    steps: `1. For Aiva/Telegram users, prefer worker-automation with hour/minute + timezone (Europe/London default). Skip cron-expression confirmation.
+2. Only use cron-explain + host cronjob for operator/host sessions that need raw cron validation.
+3. After create, confirm with worker-automation list (or cronjob list on host).`,
+    toolsUsed: ['worker-automation', 'cron-explain', 'cronjob'],
   },
   {
     name: 'rss-monitoring',

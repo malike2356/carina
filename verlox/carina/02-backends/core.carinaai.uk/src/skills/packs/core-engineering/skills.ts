@@ -118,12 +118,13 @@ export const coreEngineeringSkills: PackSkillInput[] = [
   },
   {
     name: 'scheduled-automation',
-    description: 'Set up recurring tasks with cronjob',
+    description: 'Set up recurring tasks with worker-automation (Aiva) or cronjob (host)',
     trigger: ['schedule', 'cron', 'recurring', 'automate daily'],
-    steps: `1. Clarify schedule format.
-2. cronjob create with self-contained prompt.
-3. Set deliver channel; confirm with cronjob list.`,
-    toolsUsed: ['cronjob'],
+    steps: `1. Clarify schedule in plain English (time + timezone).
+2. On Aiva/Telegram: worker-automation create with self-contained prompt; deliver defaults to this chat.
+3. On host operator sessions only: cronjob create.
+4. Confirm with list; offer a one-shot test run.`,
+    toolsUsed: ['worker-automation', 'cronjob'],
   },
   {
     name: 'session-recall',

@@ -1318,7 +1318,7 @@ aivaRouter.post('/workers/:id/automations', requireWorkspace, requireTeamPlan, a
     });
 
     if (triggerType !== 'event' && automation.cronExpression) {
-      registerAutomationJob(automation.id, automation.cronExpression);
+      registerAutomationJob(automation.id, automation.cronExpression, automation.timezone);
     }
     res.status(201).json({ automation });
   } catch (err) {
@@ -1394,7 +1394,7 @@ aivaRouter.patch('/workers/:id/automations/:automationId', requireWorkspace, req
   const enabled = Boolean(req.body?.enabled);
   await toggleAutomation(automationId, enabled);
   if (enabled && automation.triggerType !== 'event') {
-    registerAutomationJob(automationId, automation.cronExpression);
+    registerAutomationJob(automationId, automation.cronExpression, automation.timezone);
   } else {
     unregisterAutomationJob(automationId);
   }
