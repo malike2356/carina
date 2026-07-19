@@ -36,6 +36,66 @@ export interface DeepResearchOptions {
   parallelSearch?: boolean;
 }
 
+/** Keprix-style depth presets mapped from the UI rounds slider. */
+export type ResearchDepthLabel = 'quick' | 'standard' | 'deep';
+
+export type ResearchDepthConfig = {
+  label: ResearchDepthLabel;
+  subQuestions: number;
+  sourcesPerQuestion: number;
+  maxSources: number;
+  targetWords: number;
+  minSections: number;
+  minBodyChars: number;
+  minSummaryChars: number;
+  pageChars: number;
+  searchCount: number;
+};
+
+export function resolveResearchDepth(maxRounds = 3): ResearchDepthConfig {
+  const rounds = Number.isFinite(maxRounds) ? Math.min(Math.max(1, Math.round(maxRounds)), 10) : 3;
+  if (rounds <= 3) {
+    return {
+      label: 'quick',
+      subQuestions: 5,
+      sourcesPerQuestion: 3,
+      maxSources: 12,
+      targetWords: 500,
+      minSections: 3,
+      minBodyChars: 900,
+      minSummaryChars: 80,
+      pageChars: 10_000,
+      searchCount: 5,
+    };
+  }
+  if (rounds <= 6) {
+    return {
+      label: 'standard',
+      subQuestions: 8,
+      sourcesPerQuestion: 3,
+      maxSources: 24,
+      targetWords: 1500,
+      minSections: 4,
+      minBodyChars: 2800,
+      minSummaryChars: 120,
+      pageChars: 12_000,
+      searchCount: 6,
+    };
+  }
+  return {
+    label: 'deep',
+    subQuestions: 12,
+    sourcesPerQuestion: 5,
+    maxSources: 48,
+    targetWords: 3000,
+    minSections: 5,
+    minBodyChars: 5500,
+    minSummaryChars: 160,
+    pageChars: 16_000,
+    searchCount: 8,
+  };
+}
+
 export interface ResearchSection {
   heading: string;
   body: string;
@@ -63,6 +123,7 @@ export interface DeepResearchReport {
 }
 
 const autoConfirm: ConfirmFn = async () => true;
+const SUMMARY_UNAVAILABLE_RE = /^summary unavailable\.?$/i;
 
 function emitProgress(
   phase: Parameters<typeof emitResearchProgress>[0],
@@ -92,7 +153,85 @@ function extractJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
-export function parseSubQuestions(text: string): string[] {
+function sourceSnippet(source: SourceCitation): string {
+  return source.snippet.replace(/\s+/g, ' ').trim().slice(0, 360);
+}
+
+function hasUsableResearchContent(report: DeepResearchReport): boolean {
+  const summary = report.summary.trim();
+  const bodyChars = report.sections.reduce((sum, section) => sum + section.body.trim().length, 0);
+  return report.sources.length > 0 && (
+    (summary.length >= 40 && !SUMMARY_UNAVAILABLE_RE.test(summary))
+    || bodyChars >= 80
+  );
+}
+
+function buildQualityRecoveryReport(
+  report: DeepResearchReport,
+  query: string,
+  reasons: string[],
+): DeepResearchReport {
+  const existingBody = report.sections
+    .map((section) => section.body.trim())
+    .filter(Boolean)
+    .join('\n\n')
+    .slice(0, 1800);
+  const usableSources = report.sources.slice(0, 8);
+  const sourceEvidence = usableSources
+    .map((source) => `- ${source.title}: ${sourceSnippet(source)} [${source.id}]`)
+    .join('\n');
+  const citedIds = usableSources.map((source) => source.id);
+  const qualityNote = reasons.length > 0
+    ? `The automated quality gate asked for more depth before marking this complete: ${reasons.join('; ')}.`
+    : 'The automated quality gate asked for more depth before marking this complete.';
+  const summary = report.summary.trim() && !SUMMARY_UNAVAILABLE_RE.test(report.summary.trim())
+    ? report.summary.trim()
+    : [
+        `Partial research report for: ${query}.`,
+        `Carina found ${report.sources.length} source(s), but synthesis did not reach the normal depth threshold.`,
+        'The report below keeps the evidence that was gathered and highlights what still needs review.',
+      ].join(' ');
+
+  const sections: ResearchSection[] = [];
+  if (existingBody) {
+    sections.push({
+      heading: 'Available synthesis',
+      body: existingBody,
+      sourceCitations: report.sections.flatMap((section) => section.sourceCitations).slice(0, 12),
+    });
+  }
+
+  sections.push(
+    {
+      heading: 'Source-backed evidence gathered',
+      body: sourceEvidence || 'Sources were recorded, but snippets were too thin to quote usefully.',
+      sourceCitations: citedIds,
+    },
+    {
+      heading: 'Quality note',
+      body: qualityNote,
+      sourceCitations: [],
+    },
+    {
+      heading: 'What to do next',
+      body: [
+        'Use this as a working draft rather than a final board-ready report.',
+        'Ask a follow-up question for the missing sections, or rerun research with a narrower query.',
+        'For forecasts, ask Carina to separate hard evidence, analyst estimates, and speculation.',
+      ].join('\n'),
+      sourceCitations: [],
+    },
+  );
+
+  return {
+    ...report,
+    title: report.title.trim() || `Research: ${query}`,
+    summary,
+    sections,
+  };
+}
+
+export function parseSubQuestions(text: string, maxQuestions = 5): string[] {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const questions: string[] = [];
   for (const line of lines) {
@@ -102,7 +241,7 @@ export function parseSubQuestions(text: string): string[] {
     if (!q.endsWith('?')) q = `${q}?`;
     questions.push(q);
   }
-  return [...new Set(questions)].slice(0, 5);
+  return [...new Set(questions)].slice(0, Math.max(1, maxQuestions));
 }
 
 function stripHtml(html: string): string {
@@ -114,19 +253,19 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function extractPageText(body: string): string {
+function extractPageText(body: string, pageChars = 8000): string {
   const trimmed = body.trim();
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(trimmed) as { content?: string; text?: string; body?: string };
       const text = parsed.content ?? parsed.text ?? parsed.body;
-      if (typeof text === 'string') return text.slice(0, 8000);
+      if (typeof text === 'string') return text.slice(0, pageChars);
     } catch {
       // fall through
     }
   }
-  if (/<html|<body|<div/i.test(trimmed)) return stripHtml(trimmed).slice(0, 8000);
-  return trimmed.slice(0, 8000);
+  if (/<html|<body|<div/i.test(trimmed)) return stripHtml(trimmed).slice(0, pageChars);
+  return trimmed.slice(0, pageChars);
 }
 
 async function chatText(
@@ -139,12 +278,15 @@ async function chatText(
 
 async function planResearch(
   query: string,
+  subQuestionCount: number,
   providerOverride?: ProviderOverride,
 ): Promise<string[]> {
+  const count = Math.max(3, subQuestionCount);
   const prompt = [
     'You are planning a multi-source research report.',
     `Main topic: ${query}`,
-    'Return exactly 3 to 5 specific sub-questions that must be answered to cover this topic well.',
+    `Return exactly ${count} specific sub-questions that must be answered to cover this topic thoroughly.`,
+    'Cover background, recent developments, evidence, stakeholders, risks or caveats, and practical implications where relevant.',
     'Format as a numbered list only. No preamble.',
   ].join('\n');
 
@@ -152,14 +294,28 @@ async function planResearch(
     { role: 'user', content: prompt, timestamp: new Date() },
   ], providerOverride);
 
-  const questions = parseSubQuestions(text);
-  if (questions.length >= 3) return questions;
-
-  return [
+  const questions = parseSubQuestions(text, count);
+  const seed = [
     `What is the current state of ${query}?`,
     `What recent changes or updates apply to ${query}?`,
-    `What are the key facts and figures about ${query}?`,
+    `What are the key facts, figures, and evidence about ${query}?`,
+    `Who are the main stakeholders and what do they claim about ${query}?`,
+    `What risks, caveats, or open questions remain about ${query}?`,
+    `What practical next steps or recommendations follow from the evidence on ${query}?`,
+    `How do competing viewpoints or alternatives compare for ${query}?`,
+    `What timelines, regulations, or market forces shape ${query}?`,
+    `What case studies or concrete examples illuminate ${query}?`,
+    `What should a decision-maker watch next regarding ${query}?`,
+    `Which sources are most authoritative on ${query} and why?`,
+    `What counter-evidence challenges the mainstream narrative on ${query}?`,
   ];
+
+  const merged = [...questions];
+  for (const item of seed) {
+    if (merged.length >= count) break;
+    if (!merged.includes(item)) merged.push(item);
+  }
+  return merged.slice(0, count);
 }
 
 async function gatherSourcesForQuestions(
@@ -168,6 +324,9 @@ async function gatherSourcesForQuestions(
   maxSources: number,
   progress: Pick<DeepResearchOptions, 'onProgress' | 'onProgressEvent'>,
   parallelSearch: boolean,
+  sourcesPerQuestion = 3,
+  pageChars = 8000,
+  searchCount = 5,
 ): Promise<{ sources: SourceCitation[]; searchQueries: string[] }> {
   const sources: SourceCitation[] = [];
   const searchQueries: string[] = [];
@@ -175,20 +334,20 @@ async function gatherSourcesForQuestions(
 
   const ingestHits = async (question: string, hits: Array<{ title: string; url: string; description: string }>) => {
     searchQueries.push(question);
-    for (const hit of hits.slice(0, 3)) {
+    for (const hit of hits.slice(0, sourcesPerQuestion)) {
       if (sources.length >= maxSources) break;
-      if (!hit.url.startsWith('https://')) continue;
+      if (!/^https?:\/\//i.test(hit.url)) continue;
       if (sources.some((s) => s.url === hit.url)) continue;
 
       emitProgress('extract', `Reading: ${hit.url}`, progress);
-      const pageText = await fetchPageText(hit.url, sessionId);
+      const pageText = await fetchPageText(hit.url, sessionId, pageChars);
       const id = `src-${sourceCounter}`;
       sourceCounter += 1;
       sources.push({
         id,
         title: hit.title || hit.url,
         url: hit.url,
-        snippet: (pageText || hit.description || hit.title).slice(0, 8000),
+        snippet: (pageText || hit.description || hit.title).slice(0, pageChars),
         fetchedAt: new Date().toISOString(),
       });
     }
@@ -201,7 +360,7 @@ async function gatherSourcesForQuestions(
     const batches = await Promise.all(questions.map(async (question) => {
       emitProgress('search', `Searching: ${question}`, progress);
       try {
-        return { question, hits: await runWebSearchTool(question, sessionId) };
+        return { question, hits: await runWebSearchTool(question, sessionId, searchCount) };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         emitProgress('search', `Search skipped: ${msg}`, progress, { question });
@@ -219,7 +378,7 @@ async function gatherSourcesForQuestions(
     if (sources.length >= maxSources) break;
     emitProgress('search', `Searching: ${question}`, progress);
     try {
-      const hits = await runWebSearchTool(question, sessionId);
+      const hits = await runWebSearchTool(question, sessionId, searchCount);
       await ingestHits(question, hits);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -230,33 +389,60 @@ async function gatherSourcesForQuestions(
   return { sources, searchQueries };
 }
 
+function normalizeSearchHits(
+  result: unknown,
+): Array<{ title: string; url: string; description: string }> {
+  const rows = Array.isArray(result)
+    ? result
+    : result && typeof result === 'object' && Array.isArray((result as { results?: unknown }).results)
+      ? (result as { results: unknown[] }).results
+      : null;
+
+  if (!rows) return [];
+
+  return rows.map((hit) => ({
+    title: String((hit as { title?: string }).title ?? ''),
+    url: String((hit as { url?: string }).url ?? '').trim(),
+    description: String(
+      (hit as { description?: string }).description
+      ?? (hit as { content?: string }).content
+      ?? '',
+    ),
+  })).filter((h) => /^https?:\/\//i.test(h.url));
+}
+
 async function runWebSearchTool(
   query: string,
   sessionId: string,
+  searchCount = 5,
 ): Promise<Array<{ title: string; url: string; description: string }>> {
-  const result = await executeToolCall({
-    type: 'tool_call',
-    toolName: 'web-search',
-    toolCallId: `research-search-${Date.now()}`,
-    params: { query, count: 5 },
-  }, autoConfirm, false, sessionId);
+  // Prefer the search provider directly so research does not depend on session tool policy.
+  try {
+    const { runWebSearch } = await import('../tools/web-search-provider.js');
+    return normalizeSearchHits(await runWebSearch(query, searchCount));
+  } catch (directErr) {
+    const result = await executeToolCall({
+      type: 'tool_call',
+      toolName: 'web-search',
+      toolCallId: `research-search-${Date.now()}`,
+      params: { query, count: searchCount },
+    }, autoConfirm, false, sessionId);
 
-  if (Array.isArray(result)) {
-    return result.map((hit) => ({
-      title: String((hit as { title?: string }).title ?? ''),
-      url: String((hit as { url?: string }).url ?? ''),
-      description: String((hit as { description?: string }).description ?? ''),
-    })).filter((h) => h.url);
+    if (result && typeof result === 'object' && 'error' in result) {
+      const toolError = String((result as { error: string }).error);
+      const directMsg = directErr instanceof Error ? directErr.message : String(directErr);
+      throw new Error(toolError || directMsg);
+    }
+
+    const hits = normalizeSearchHits(result);
+    if (hits.length > 0) return hits;
+
+    const directMsg = directErr instanceof Error ? directErr.message : String(directErr);
+    throw new Error(directMsg || 'web-search returned no results');
   }
-
-  if (result && typeof result === 'object' && 'error' in result) {
-    throw new Error(String((result as { error: string }).error));
-  }
-
-  return [];
 }
 
-async function fetchPageText(url: string, sessionId: string): Promise<string> {
+async function fetchPageText(url: string, sessionId: string, pageChars = 8000): Promise<string> {
   const result = await executeToolCall({
     type: 'tool_call',
     toolName: 'http-request',
@@ -267,7 +453,7 @@ async function fetchPageText(url: string, sessionId: string): Promise<string> {
   if (result && typeof result === 'object') {
     if ('error' in result) return '';
     const body = (result as { body?: string }).body;
-    if (typeof body === 'string') return extractPageText(body);
+    if (typeof body === 'string') return extractPageText(body, pageChars);
   }
   return '';
 }
@@ -276,6 +462,7 @@ async function synthesizeReport(
   query: string,
   subQuestions: string[],
   sources: SourceCitation[],
+  depth: ResearchDepthConfig,
   providerOverride?: ProviderOverride,
 ): Promise<DeepResearchReport> {
   const sourceBlock = sources.map((s) => (
@@ -284,19 +471,23 @@ async function synthesizeReport(
 
   const prompt = [
     `Write a structured research report on: ${query}`,
+    `Depth: ${depth.label}. Target length: about ${depth.targetWords} words across the full report.`,
     'Research plan sub-questions:',
     ...subQuestions.map((q, i) => `${i + 1}. ${q}`),
     '',
     'Sources (cite using source IDs in brackets, e.g. [src-1]):',
-    sourceBlock,
+    sourceBlock || '(No fetched sources; be explicit about uncertainty.)',
     '',
     'Return ONLY valid JSON with this shape:',
     '{',
     '  "title": string,',
-    '  "summary": string (2-3 sentences),',
+    '  "summary": string (4-8 sentences; executive summary with key takeaways),',
     '  "sections": [{ "heading": string, "body": string, "sourceCitations": string[] }]',
     '}',
-    'Include at least 3 section headings.',
+    `Include at least ${depth.minSections} section headings.`,
+    'Each section body must be detailed prose with evidence, not bullet fluff.',
+    'Address disagreements between sources, caveats, and what remains unknown.',
+    'Every major claim should cite at least one source ID when sources exist.',
   ].join('\n');
 
   const text = await chatText([
@@ -487,16 +678,21 @@ export function formatGatewaySummary(report: DeepResearchReport, plainTextChanne
 
 export async function runDeepResearch(options: DeepResearchOptions): Promise<DeepResearchReport> {
   const sessionId = options.sessionId ?? 'deep-research';
-  const maxSources = options.maxSources ?? 12;
-  const maxQualityPasses = options.maxQualityPasses ?? 3;
+  const depth = resolveResearchDepth(options.maxRounds ?? 3);
+  const maxSources = options.maxSources ?? depth.maxSources;
+  const maxQualityPasses = options.maxQualityPasses ?? Math.min(5, Math.max(1, Math.ceil((options.maxRounds ?? 3) / 2)));
   const parallelSearch = options.parallelSearch !== false;
   const progress = {
     onProgress: options.onProgress,
     onProgressEvent: options.onProgressEvent,
   };
 
-  emitProgress('plan', 'Planning research sub-questions', progress);
-  const subQuestions = await planResearch(options.query, options.providerOverride);
+  emitProgress('plan', `Planning ${depth.label} research (${depth.subQuestions} sub-questions)`, progress, {
+    depth: depth.label,
+    targetWords: depth.targetWords,
+    maxSources,
+  });
+  const subQuestions = await planResearch(options.query, depth.subQuestions, options.providerOverride);
   if (subQuestions.length < 3) {
     throw new Error('Planning failed to produce enough sub-questions.');
   }
@@ -510,7 +706,16 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
     maxSources,
     progress,
     parallelSearch,
+    depth.sourcesPerQuestion,
+    depth.pageChars,
+    depth.searchCount,
   );
+
+  if (sources.length === 0) {
+    throw new Error(
+      'Deep research found no web sources. Configure TAVILY_API_KEY, BRAVE_SEARCH_API_KEY, or SEARXNG_URL on core, then retry.',
+    );
+  }
 
   let qualityPass = 0;
   let report: DeepResearchReport | null = null;
@@ -526,23 +731,24 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
       });
     }
 
-    emitProgress('synthesize', 'Synthesising report', progress);
+    emitProgress('synthesize', `Synthesising ${depth.label} report (~${depth.targetWords} words)`, progress);
     report = await synthesizeReport(
       options.query,
       subQuestions,
       verifiedSources,
+      depth,
       options.providerOverride,
     );
     report.searchQueries = [...searchQueries];
     report.roundCount = qualityPass + 1;
 
-    const quality = evaluateResearchQuality(report);
-    const passed = passesResearchQualityGate(report);
+    const quality = evaluateResearchQuality(report, { ...depth, maxSources });
+    const passed = passesResearchQualityGate(report, { ...depth, maxSources });
     emitProgress(
       'quality_gate',
       passed ? 'Quality gate passed' : `Quality gate score ${quality.score} (need ${researchQualityThreshold()})`,
       progress,
-      { score: quality.score, passed, reasons: quality.reasons },
+      { score: quality.score, passed, reasons: quality.reasons, depth: depth.label },
     );
 
     if (passed) break;
@@ -557,19 +763,20 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
           options.query,
           subQuestions,
           verifiedSources,
+          depth,
           teacherOverride,
         );
         report.searchQueries = [...searchQueries];
         report.roundCount = qualityPass + 1;
 
-        const teacherQuality = evaluateResearchQuality(report);
+        const teacherQuality = evaluateResearchQuality(report, { ...depth, maxSources });
         emitProgress(
           'quality_gate',
           `Teacher synthesis score ${teacherQuality.score}`,
           progress,
           {
             score: teacherQuality.score,
-            passed: passesResearchQualityGate(report),
+            passed: passesResearchQualityGate(report, { ...depth, maxSources }),
             reasons: teacherQuality.reasons,
             teacher: teacherOverride?.name,
           },
@@ -609,19 +816,32 @@ export async function runDeepResearch(options: DeepResearchOptions): Promise<Dee
         remaining,
         progress,
         parallelSearch,
+        depth.sourcesPerQuestion,
+        depth.pageChars,
+        depth.searchCount,
       );
-      for (const source of extra.sources) {
-        if (sources.length >= maxSources) break;
-        if (!sources.some((s) => s.url === source.url)) {
-          sources.push(source);
-        }
-      }
-      searchQueries.push(...extra.searchQueries);
+      sources = [...sources, ...extra.sources];
+      searchQueries = [...searchQueries, ...extra.searchQueries];
     }
   }
 
   if (!report) {
     throw new Error('Research synthesis failed.');
+  }
+
+  const finalQuality = evaluateResearchQuality(report, { ...depth, maxSources });
+  if (!passesResearchQualityGate(report, { ...depth, maxSources })) {
+    if (!hasUsableResearchContent(report)) {
+      throw new Error(
+        `Research quality gate failed after ${report.roundCount} round(s): ${finalQuality.reasons.join('; ') || `score ${finalQuality.score}`}`,
+      );
+    }
+    report = buildQualityRecoveryReport(report, options.query, finalQuality.reasons);
+    emitProgress('quality_gate', 'Quality gate did not pass, saving partial research with evidence', progress, {
+      score: finalQuality.score,
+      reasons: finalQuality.reasons,
+      partial: true,
+    });
   }
 
   emitProgress('done', 'Research complete', progress, {
