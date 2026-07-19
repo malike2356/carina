@@ -62,6 +62,15 @@ describe('calendarOwnershipFromSource', () => {
 });
 
 describe('classifyEmailOrigin', () => {
+  it('prefers explicit source over external_id and status', () => {
+    expect(
+      classifyEmailOrigin({ source: 'aiva', externalId: 'gmail-1', status: 'sent' }),
+    ).toBe('aiva');
+    expect(
+      classifyEmailOrigin({ source: 'google', externalId: 'gmail-2', status: 'sent' }),
+    ).toBe('google');
+  });
+
   it('treats external_id as google import', () => {
     expect(classifyEmailOrigin({ externalId: 'gmail-1', status: 'inbox' })).toBe('google');
   });

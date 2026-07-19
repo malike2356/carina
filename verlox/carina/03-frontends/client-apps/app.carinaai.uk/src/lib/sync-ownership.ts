@@ -120,16 +120,21 @@ export function calendarOwnershipFromSource(
   };
 }
 
-/** Email: Gmail import has externalId; Aiva drafts/sends; else local. */
+/** Email: explicit source wins; else Gmail import has externalId; Aiva drafts/sends; else local. */
 export function classifyEmailOrigin(row: {
   externalId?: string | null;
   status?: string | null;
   aiDraftReply?: string | null;
+  source?: string | null;
 }): SyncOrigin {
-  const externalId = row.externalId?.trim();
-  if (externalId) return 'google';
+  const source = String(row.source ?? '').trim().toLowerCase();
+  if (source === 'aiva' || source === 'google' || source === 'local') {
+    return source;
+  }
   const status = String(row.status ?? '').toLowerCase();
   if (status === 'draft_reply' || status === 'sent') return 'aiva';
+  const externalId = row.externalId?.trim();
+  if (externalId) return 'google';
   if (row.aiDraftReply?.trim()) return 'aiva';
   return 'local';
 }
@@ -138,6 +143,7 @@ export function emailOwnershipFromRow(row: {
   externalId?: string | null;
   status?: string | null;
   aiDraftReply?: string | null;
+  source?: string | null;
   lastSyncedAt?: string | null;
 }): SyncOwnershipFields {
   const origin = classifyEmailOrigin(row);

@@ -86,13 +86,53 @@ export async function invokeProductTool(input: InvokeProductToolInput): Promise<
 
   if (tool.driver === 'google') {
     try {
-      return await invokeGoogleAction({
+      const result = await invokeGoogleAction({
         workspaceId: input.workspaceId,
         workerId: input.workerId,
         toolSlug: input.slug,
         action: input.action,
         input: input.input,
       });
+      if (result.ok && input.slug === 'gmail' && input.action === 'send' && !input.isProbe) {
+        const data = (result.data ?? {}) as Record<string, unknown>;
+        const payload = input.input ?? {};
+        const to =
+          typeof payload.to === 'string'
+            ? payload.to
+            : typeof data.to === 'string'
+              ? data.to
+              : '';
+        const subject =
+          typeof payload.subject === 'string'
+            ? payload.subject
+            : typeof data.subject === 'string'
+              ? data.subject
+              : '(no subject)';
+        const body =
+          typeof payload.body === 'string'
+            ? payload.body
+            : typeof payload.text === 'string'
+              ? payload.text
+              : '';
+        const gmailMessageId =
+          typeof data.id === 'string'
+            ? data.id
+            : typeof data.messageId === 'string'
+              ? data.messageId
+              : null;
+        if (to.trim()) {
+          const { notifyAivaEmailOutboundBackground } = await import('../aiva-email-outbound-notify.js');
+          notifyAivaEmailOutboundBackground({
+            workspaceId: input.workspaceId,
+            workerId: input.workerId,
+            to: to.trim(),
+            subject: subject.trim() || '(no subject)',
+            body,
+            gmailMessageId,
+          });
+        }
+      }
+      return result;
     } catch (err) {
       return {
         ok: false,

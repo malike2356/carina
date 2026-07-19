@@ -278,3 +278,8 @@ VALUES
   ('privacy_policy', '1.0', '2026-06-30', '/legal/privacy', true),
   ('dpa', '1.0', '2026-06-30', '/legal/dpa', true)
 ON CONFLICT ("document_type", "version") DO NOTHING;
+
+-- 0010: outbound email provenance (agent send + Gmail Sent sync)
+ALTER TABLE "email_messages" ADD COLUMN IF NOT EXISTS "to_address" text;
+ALTER TABLE "email_messages" ADD COLUMN IF NOT EXISTS "source" varchar(30) DEFAULT 'local' NOT NULL;
+CREATE INDEX IF NOT EXISTS "email_messages_external_id_idx" ON "email_messages" ("external_id");

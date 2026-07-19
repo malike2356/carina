@@ -432,6 +432,9 @@ export const emailMessages = pgTable(
       .references(() => workspaces.id, { onDelete: 'cascade' }),
     externalId: text('external_id'),
     fromAddress: text('from_address').notNull(),
+    toAddress: text('to_address'),
+    /** aiva = agent/UI send; google = Gmail import; local = webhook/manual */
+    source: varchar('source', { length: 30 }).notNull().default('local'),
     subject: text('subject').notNull().default(''),
     bodyPreview: text('body_preview'),
     bodyFull: text('body_full'),
@@ -446,6 +449,7 @@ export const emailMessages = pgTable(
     index('email_messages_workspace_id_idx').on(t.workspaceId),
     index('email_messages_status_idx').on(t.status),
     index('email_messages_received_at_idx').on(t.receivedAt),
+    index('email_messages_external_id_idx').on(t.externalId),
   ],
 );
 
