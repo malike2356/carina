@@ -26,10 +26,14 @@ describe('deeper google + crm catalog actions', () => {
     const gmail = getCatalogTool('gmail');
     const cal = getCatalogTool('google-calendar');
     const sheets = getCatalogTool('google-sheets');
+    const drive = getCatalogTool('google-drive');
     expect(gmail?.actions?.some((a) => a.id === 'draft')).toBe(true);
+    expect(gmail?.actions?.some((a) => a.id === 'get')).toBe(true);
     expect(cal?.actions?.some((a) => a.id === 'create')).toBe(true);
     expect(cal?.actions?.some((a) => a.id === 'update')).toBe(true);
     expect(sheets?.actions?.some((a) => a.id === 'append')).toBe(true);
+    expect(drive?.actions?.some((a) => a.id === 'search')).toBe(true);
+    expect(drive?.actions?.some((a) => a.id === 'read')).toBe(true);
   });
 
   it('exposes deeper hubspot/pipedrive and live salesforce query', () => {

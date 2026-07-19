@@ -13,6 +13,7 @@ import { getModelMetadata } from '../brain/model-metadata.js';
 import { filterToolsForPlanMode } from '../security/plan-mode-allowlist.js';
 import { resolvePlanMode } from '../security/plan-mode-state.js';
 import { getToolExecutionContext } from '../security/tool-execution-context.js';
+import { isToolAllowedForWorker } from '../workers/workspace-message-handler.js';
 
 export type SessionToolResolution = {
   names: string[];
@@ -46,7 +47,12 @@ export function resolveSessionToolNames(opts: {
 function resolveToolsFromNames(names: string[], sessionId: string): Tool[] {
   const allowed = new Set(names);
   const globalTools = registry.list().filter((t) => allowed.has(t.name));
-  const sessionTools = listSessionTools(sessionId).filter((t) => allowed.has(t.name));
+  // Session tools are intentionally registered for this chat (Aiva product adapters,
+  // Propreneur connect/portfolio, etc.). Include them even when they are not members
+  // of the global toolset name list, as long as the worker policy allows them.
+  const sessionTools = listSessionTools(sessionId).filter((t) =>
+    isToolAllowedForWorker(t.name, sessionId),
+  );
   const byName = new Map(globalTools.map((t) => [t.name, t]));
   for (const tool of sessionTools) byName.set(tool.name, tool);
   return [...byName.values()];

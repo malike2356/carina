@@ -111,7 +111,9 @@ export const emailSmtpSendTool: Tool = {
 
 export const emailListTool: Tool = {
   name: 'email-list',
-  description: 'List recent inbound emails stored from the Resend webhook.',
+  description:
+    'List recent inbound emails stored from the Resend webhook only. '
+    + 'This is NOT Gmail. For a worker with Gmail connected, use gmail-list instead.',
   parameters: {
     type: 'object',
     properties: {

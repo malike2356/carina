@@ -85,8 +85,12 @@ export async function invokeGoogleAction(opts: {
   try {
     if (opts.toolSlug === 'gmail' && opts.action === 'list') {
       const q = typeof opts.input?.q === 'string' ? opts.input.q : '';
+      const maxResults = Math.min(
+        25,
+        Math.max(1, Number(opts.input?.maxResults ?? opts.input?.limit ?? 10) || 10),
+      );
       const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-      url.searchParams.set('maxResults', '10');
+      url.searchParams.set('maxResults', String(maxResults));
       if (q) url.searchParams.set('q', q);
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
       const data = await res.json();
@@ -185,7 +189,31 @@ export async function invokeGoogleAction(opts: {
       url.searchParams.set('q', q);
       url.searchParams.set('pageSize', '25');
       url.searchParams.set('fields', 'files(id,name,mimeType,modifiedTime,webViewLink,parents)');
+      url.searchParams.set('corpora', 'allDrives');
+      url.searchParams.set('includeItemsFromAllDrives', 'true');
+      url.searchParams.set('supportsAllDrives', 'true');
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'google-drive' && opts.action === 'search') {
+      const rawQuery = String(opts.input?.query ?? opts.input?.q ?? '').trim();
+      if (!rawQuery) return { ok: false, data: null, error: 'query required' };
+      const escaped = rawQuery.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const pageSize = Math.min(
+        25,
+        Math.max(1, Number(opts.input?.pageSize ?? opts.input?.limit ?? 10) || 10),
+      );
+      const q =
+        `(name contains '${escaped}' or fullText contains '${escaped}') and trashed = false`;
+      const url = new URL('https://www.googleapis.com/drive/v3/files');
+      url.searchParams.set('q', q);
+      url.searchParams.set('pageSize', String(pageSize));
+      url.searchParams.set('fields', 'files(id,name,mimeType,modifiedTime,webViewLink,parents)');
+      url.searchParams.set('corpora', 'allDrives');
+      url.searchParams.set('includeItemsFromAllDrives', 'true');
+      url.searchParams.set('supportsAllDrives', 'true');
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(20000) });
       const data = await res.json();
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }

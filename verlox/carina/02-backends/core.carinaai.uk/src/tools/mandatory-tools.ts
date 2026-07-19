@@ -115,12 +115,26 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
   {
     id: 'api_data',
     label: 'API responses and live data',
-    tools: ['http-request', 'web-search'],
-    guidance: 'Call the endpoint or search; do not synthesise API JSON.',
+    tools: [
+      'http-request',
+      'web-search',
+      'gmail-list',
+      'gmail-get',
+      'google-drive-search',
+      'google-drive-read',
+    ],
+    guidance:
+      'Call the endpoint, search, or connected Gmail/Drive tools; do not invent inbox or Drive contents.',
     patterns: [
       /\bcall\s+(the\s+)?api\b/i,
       /\bfetch\s+from\b/i,
       /\bget\s+response\s+from\b/i,
+      /\blast\s+\d+\s+emails?\b/i,
+      /\b(my|the)\s+(inbox|emails?)\b/i,
+      /\bread\s+(my\s+)?(email|mail|gmail)\b/i,
+      /\bgoogle\s+drive\b/i,
+      /\bboreholes?\b/i,
+      /\bBDAG\b/,
     ],
   },
   {

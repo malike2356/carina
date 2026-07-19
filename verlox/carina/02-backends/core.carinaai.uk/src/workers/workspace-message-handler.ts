@@ -219,8 +219,13 @@ export async function processWorkerOutbound(
   reply: string,
 ): Promise<{ reply: string; escalated: boolean }> {
   const hasEscalate = reply.includes(ESCALATE_MARKER);
-  const stripped = reply.replace(ESCALATE_MARKER, '').trim();
+  let stripped = reply.replace(ESCALATE_MARKER, '').trim();
   const hold = holdingMessage();
+
+  // Group-chat silence token must never surface in 1:1 Aiva worker chat.
+  if (stripped === 'NO_RESPONSE_NEEDED') {
+    stripped = 'What would you like me to help with?';
+  }
 
   if (hasEscalate) {
     const recentCount = await countEscalationsInWindow(ctx.worker.id, 60);

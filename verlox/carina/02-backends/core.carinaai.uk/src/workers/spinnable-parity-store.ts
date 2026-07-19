@@ -849,6 +849,9 @@ export async function describeProductToolGrantsForPrompt(
       const scopes = grant.scopes.length > 0 ? grant.scopes.join(', ') : 'default';
       return `- ${label} (${grant.toolSlug}): scopes ${scopes}`;
     }),
+    'Callable tools for connected Google products:',
+    '- Gmail: use gmail-list and gmail-get (not email-list; that is Resend inbound only).',
+    '- Google Drive: use google-drive-search then google-drive-read (not search-files or http-request).',
     'Do not use or invent access to other SaaS products.',
   ].join('\n');
 }

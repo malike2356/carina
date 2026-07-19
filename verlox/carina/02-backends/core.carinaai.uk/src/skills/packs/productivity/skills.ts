@@ -3,13 +3,14 @@ import type { PackSkillInput } from '../../pack-types.js';
 export const productivitySkills: PackSkillInput[] = [
   {
     name: 'google-workspace',
-    description: 'Gmail, Calendar, and Drive workflows via API or browser',
-    trigger: ['gmail', 'google calendar', 'google drive', 'schedule meeting', 'send email'],
-    steps: `1. Check if Google API credentials are configured.
-2. For simple tasks, use browser-navigate to Google apps if authenticated.
-3. For API access, use http-request with the user's OAuth token from config.
-4. Draft emails and calendar events; confirm before sending.`,
-    toolsUsed: ['http-request', 'browser-navigate', 'email-send'],
+    description: 'Gmail, Calendar, and Drive via connected product tools',
+    trigger: ['gmail', 'google calendar', 'google drive', 'schedule meeting', 'send email', 'boreholes', 'BDAG'],
+    steps: `1. Prefer native product tools when Gmail/Drive are connected for this worker.
+2. For inbox: use gmail-list (then gmail-get for full body). Never use email-list for Gmail.
+3. For Drive docs (BDAG, boreholes, etc.): use google-drive-search, then google-drive-read.
+4. Do not call http-request with OAuth tokens. Do not use search-files for Google Drive.
+5. Draft emails and calendar events; confirm before sending.`,
+    toolsUsed: ['gmail-list', 'gmail-get', 'google-drive-search', 'google-drive-read', 'email-send'],
   },
   {
     name: 'notion-workspace',

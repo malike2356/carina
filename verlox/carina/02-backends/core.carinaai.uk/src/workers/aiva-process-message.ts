@@ -19,6 +19,8 @@ import {
 } from '../workers/worker-capability-context.js';
 import { registerPropreneurSessionTools } from '../tools/propreneur-portfolio.js';
 import { registerPropreneurSelfConfigureTool } from '../tools/propreneur-self-configure.js';
+import { registerProductToolAdapters } from '../tools/product-tool-adapters.js';
+import { forceImmediateInvalidation } from '../brain/prompt-cache.js';
 import {
   getAivaWorkerPool,
   isAivaWorkerIsolationEnabled,
@@ -198,8 +200,11 @@ export async function* processAivaMessageStreamDirect(
   };
 
   const restorePacks = applyWorkerToSession(router, sessionId, ctx);
+  // Rebuild system prompt each Aiva turn so new grants, persona, and tools are visible.
+  forceImmediateInvalidation(sessionId);
   registerPropreneurSessionTools(sessionId);
   registerPropreneurSelfConfigureTool(sessionId);
+  await registerProductToolAdapters(sessionId);
   const parts: string[] = [];
   try {
     await processWorkerInbound(ctx, message);
