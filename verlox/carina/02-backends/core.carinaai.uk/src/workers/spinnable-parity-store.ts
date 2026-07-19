@@ -854,6 +854,7 @@ export async function describeProductToolGrantsForPrompt(
     '- Aiva Email page store: use workspace-email-list and workspace-email-get for synced Inbox/Sent (source tags, drafts).',
     '- Drafts needing owner approval: use workspace-email-draft-for-approval (queues /aiva/approvals; does not send).',
     '- Google Drive: use google-drive-search then google-drive-read (not search-files or http-request).',
+    '- Google Calendar: use google-calendar-list (optional timeMin/timeMax ISO), google-calendar-create, google-calendar-update (not calendar-list).',
     'Do not use or invent access to other SaaS products.',
   ].join('\n');
 }

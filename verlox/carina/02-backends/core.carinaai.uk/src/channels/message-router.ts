@@ -151,6 +151,7 @@ export async function routeInboundMessage(
     contactId: message.contactId,
     threadId: message.threadId,
     contactName: message.contactName,
+    preferAudio: message.metadata?.preferAudio === 'true',
   });
 
   if (response) {
@@ -164,6 +165,17 @@ export async function routeInboundMessage(
   return { handled: true, response, entry };
 }
 
+/** Queue/steer system acks must not be sent to Telegram (or other external chats). */
+function isInternalQueueAck(response: string): boolean {
+  const trimmed = response.trim();
+  return (
+    /^\[Steer\]/i.test(trimmed)
+    || /^\[Queued:/i.test(trimmed)
+    || /^Message queued\.?$/i.test(trimmed)
+    || /^Message dropped:/i.test(trimmed)
+  );
+}
+
 export async function handleParsedInbound(
   message: InboundMessage,
   identifier: string,
@@ -171,6 +183,13 @@ export async function handleParsedInbound(
 ): Promise<void> {
   const result = await routeInboundMessage(message.channel, identifier, () => message, forcedEntry);
   if (!result.handled || !result.response || !result.entry) return;
+
+  if (isInternalQueueAck(result.response)) {
+    console.info(
+      `[channel-router] suppressed internal ack on ${message.channel}: ${result.response.slice(0, 80)}`,
+    );
+    return;
+  }
 
   if (isSocialAivaChannel(message.channel)) {
     await handleSocialInboundReply({

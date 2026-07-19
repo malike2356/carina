@@ -3,7 +3,14 @@ import { generateSpeech } from '../utils/tts.js';
 import { llm } from '../brain/llm.js';
 import type { Message } from '../types/index.js';
 
-const VOICE_HINT_RE = /\b(?:voice(?:\s+note|\s+reply)?|audio(?:\s+voice)?|spoken(?:\s+reply)?|text[\s-]to[\s-]speech|tts)\b/i;
+const VOICE_HINT_RE =
+  /\b(?:voice(?:\s+(?:note|reply|audio))?|audio(?:\s+(?:voice|format|file|mp3|reply))?|spoken(?:\s+reply)?|text[\s-]to[\s-]speech|tts|surface\s+(?:the\s+)?audio|send\s+(?:the\s+)?(?:audio|voice))\b/i;
+
+/** Natural asks that should become voice when "Prefer voice replies" is on. */
+const NARRATIVE_SPEAK_RE =
+  /\b(?:summarise|summarize|summary|tell\s+me|read\s+(?:me|this|it|out)|brief\s+me|give\s+me\s+(?:a\s+)?(?:summary|rundown|recap))\b/i;
+
+export const TELEGRAM_VOICE_REPLY_CHAR_THRESHOLD = 280;
 
 export type SpokenReplyResult =
   | { ok: true }
@@ -38,16 +45,68 @@ export function wantsSpokenReply(text: string): boolean {
   return VOICE_HINT_RE.test(text);
 }
 
+/** Summarise / tell me / read me style asks (no need to say "audio format"). */
+export function wantsNarrativeSpeakIntent(text: string): boolean {
+  return NARRATIVE_SPEAK_RE.test(text);
+}
+
+export function isLongTelegramReply(
+  text: string,
+  threshold = TELEGRAM_VOICE_REPLY_CHAR_THRESHOLD,
+): boolean {
+  return text.trim().length >= threshold;
+}
+
+/** Default on: undefined or missing means prefer voice. */
+export function prefersTelegramVoiceReplies(
+  telegramConfig?: { preferVoiceReplies?: boolean } | null,
+): boolean {
+  return telegramConfig?.preferVoiceReplies !== false;
+}
+
+/**
+ * Decide whether an Aiva Telegram reply should be sent as audio.
+ * Explicit voice requests always win. Otherwise, when the preference is on,
+ * narrative asks and long replies auto-speak.
+ */
+export function shouldSendTelegramVoiceReply(input: {
+  preferVoiceReplies: boolean;
+  inboundText: string;
+  replyText: string;
+  explicitVoiceRequested?: boolean;
+}): boolean {
+  if (input.explicitVoiceRequested || wantsSpokenReply(input.inboundText)) {
+    return true;
+  }
+  if (!input.preferVoiceReplies) return false;
+  return (
+    wantsNarrativeSpeakIntent(input.inboundText)
+    || isLongTelegramReply(input.replyText)
+  );
+}
+
 export function stripSpeakDirective(text: string): string {
   return text
     .replace(/^\/?speak\s*/i, '')
     .replace(/\[speak\]\s*/gi, '')
+    .replace(/\s*(?:put\s+it\s+here\s+in\s+telegram\.?)/gi, '')
+    .replace(/\s*(?:here\s+)?in\s+voice(?:\s+audio)?\b/gi, '')
     .replace(
-      /\s*[,;-]?\s*(?:please\s+)?(?:respond|reply|answer|say\s+(?:it|that))?\s*(?:in|with|as)\s+(?:an?\s+)?(?:audio\s+voice|voice(?:\s+note)?|audio|speech|tts)\s*$/i,
+      /\s*(?:and\s+)?(?:i\s+)?(?:need|want)\s+(?:the\s+)?(?:response|reply|answer)\s+in\s+(?:audio(?:\s+format)?|voice(?:\s+audio)?)\s*(?:[-,]\s*not\s+text)?/gi,
+      '',
+    )
+    .replace(
+      /\s*[,;-]?\s*(?:please\s+)?(?:respond|reply|answer|say\s+(?:it|that))?\s*(?:in|with|as)\s+(?:an?\s+)?(?:audio\s+voice|voice(?:\s+(?:note|audio))?|audio(?:\s+format)?|speech|tts)\s*$/i,
       '',
     )
     .replace(/\s*[,;-]?\s*(?:please\s+)?(?:respond|reply|answer)\s+in\s+voice\s*$/i, '')
-    .replace(/\s*[,;-]?\s*(?:in|with|as)\s+(?:an?\s+)?(?:audio\s+voice|voice(?:\s+note)?|audio|speech|tts)\s*$/i, '')
+    .replace(
+      /\s*[,;-]?\s*(?:in|with|as)\s+(?:an?\s+)?(?:audio\s+voice|voice(?:\s+(?:note|audio))?|audio(?:\s+format)?|speech|tts)\s*$/i,
+      '',
+    )
+    .replace(/\s*(?:not\s+text\.?)/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/[.\s]+$/g, '')
     .trim();
 }
 
@@ -55,6 +114,7 @@ export function stripSpeakDirective(text: string): string {
 export function cleanTextForTelegramSpeech(text: string): string {
   return text
     .replace(/\n?\[using [^\]]+\]\n?/g, '\n')
+    .replace(/\n?\[Channel note:[^\]]*\]\n?/gi, '\n')
     .replace(/\*\*/g, '')
     .replace(/\s+/g, ' ')
     .trim();

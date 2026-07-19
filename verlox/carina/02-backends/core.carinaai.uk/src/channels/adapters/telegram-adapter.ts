@@ -1,4 +1,10 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import type { ChannelAdapter, InboundMessage, OutboundMessage } from '../types.js';
+import {
+  stripSpeakDirective,
+  wantsSpokenReply,
+} from '../../gateway/telegram-audio.js';
 
 interface TelegramUpdate {
   message?: {
@@ -8,6 +14,44 @@ interface TelegramUpdate {
     from?: { id: number; first_name?: string; username?: string };
     chat: { id: number; type: string };
   };
+}
+
+const MEDIA_PATH_RE =
+  /(?:MEDIA:\s*)?((?:\.\/)?data\/tts\/[a-f0-9-]+\.mp3)\b/gi;
+
+function extractMediaPaths(text: string): string[] {
+  const found: string[] = [];
+  for (const match of text.matchAll(MEDIA_PATH_RE)) {
+    const p = match[1]?.trim();
+    if (p && !found.includes(p)) found.push(p);
+  }
+  return found;
+}
+
+function stripMediaArtifacts(text: string): string {
+  return text
+    .replace(/\[Listen to audio[^\]]*\]\([^)]*data\/tts\/[^)]+\)/gi, '')
+    .replace(MEDIA_PATH_RE, '')
+    .replace(/MEDIA:\s*/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+async function resolveExistingMediaPath(relativeOrAbsolute: string): Promise<string | null> {
+  const candidates = [
+    relativeOrAbsolute,
+    path.resolve(process.cwd(), relativeOrAbsolute),
+    path.resolve(process.cwd(), relativeOrAbsolute.replace(/^\.\//, '')),
+  ];
+  for (const candidate of candidates) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
 }
 
 export const telegramAdapter: ChannelAdapter = {
@@ -25,16 +69,28 @@ export const telegramAdapter: ChannelAdapter = {
     if (!msg?.text || !msg.from || !msg.chat) return null;
     if (msg.chat.type !== 'private') return null;
 
+    const rawText = msg.text.trim();
+    const preferAudio = wantsSpokenReply(rawText);
+    const stripped = preferAudio ? stripSpeakDirective(rawText) : rawText;
+    // Keep enough task text for the LLM; never reduce a voice ask to a tiny stub.
+    const content =
+      preferAudio && stripped.trim().length >= 8
+        ? stripped
+        : rawText;
+
     return {
       channel: 'telegram',
       workerId,
       workspaceId,
       contactId: String(msg.chat.id),
       contactName: msg.from.first_name ?? msg.from.username,
-      content: msg.text.trim(),
+      content,
       rawPayload: payload,
       timestamp: new Date(msg.date * 1000),
       threadId: String(msg.message_id),
+      metadata: preferAudio
+        ? { preferAudio: 'true', rawUserText: rawText }
+        : undefined,
     };
   },
 
@@ -42,12 +98,53 @@ export const telegramAdapter: ChannelAdapter = {
     const botToken = credentials.bot_token ?? credentials.token;
     if (!botToken) throw new Error('Telegram credentials missing bot_token');
 
+    const preferAudio = message.metadata?.preferAudio === 'true';
+    const mediaPaths = extractMediaPaths(message.content);
+    let audioSent = false;
+
+    // Prefer uploading tool-generated MEDIA files when present.
+    for (const mediaPath of mediaPaths) {
+      const absolute = await resolveExistingMediaPath(mediaPath);
+      if (!absolute) continue;
+      try {
+        const { sendTelegramAudioFile } = await import('../../workers/summary-tts.js');
+        await sendTelegramAudioFile(botToken, message.contactId, absolute, 'Voice reply');
+        audioSent = true;
+        break;
+      } catch (err) {
+        console.warn(
+          '[telegram-adapter] MEDIA upload failed:',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
+    if (!audioSent && preferAudio) {
+      audioSent = await sendTelegramSpokenOutbound({
+        botToken,
+        chatId: message.contactId,
+        text: stripMediaArtifacts(message.content),
+      });
+      if (audioSent) return;
+    }
+
+    if (audioSent && preferAudio) {
+      // Voice request satisfied; do not also dump paths / listen links as text.
+      return;
+    }
+
+    const textOut = stripMediaArtifacts(message.content);
+    if (!textOut) {
+      if (audioSent) return;
+      throw new Error('Telegram send skipped: empty text after media strip');
+    }
+
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: message.contactId,
-        text: message.content,
+        text: textOut,
         ...(message.replyToThreadId ? { reply_to_message_id: Number(message.replyToThreadId) } : {}),
       }),
     });
@@ -56,6 +153,42 @@ export const telegramAdapter: ChannelAdapter = {
     if (!result.ok) throw new Error(`Telegram send failed: ${result.description ?? 'unknown'}`);
   },
 };
+
+async function sendTelegramSpokenOutbound(input: {
+  botToken: string;
+  chatId: string;
+  text: string;
+}): Promise<boolean> {
+  const speechSource = input.text.trim();
+  if (!speechSource || speechSource.length < 12) return false;
+  try {
+    const { buildVoiceScript } = await import('../../gateway/telegram-audio.js');
+    const {
+      synthesizeSummaryAudio,
+      sendTelegramAudioFile,
+    } = await import('../../workers/summary-tts.js');
+
+    const speechText = await buildVoiceScript(speechSource);
+    const { filePath, cleanup } = await synthesizeSummaryAudio(speechText);
+    try {
+      await sendTelegramAudioFile(
+        input.botToken,
+        input.chatId,
+        filePath,
+        'Voice reply',
+      );
+    } finally {
+      await cleanup();
+    }
+    return true;
+  } catch (err) {
+    console.warn(
+      '[telegram-adapter] spoken reply failed, falling back to text:',
+      err instanceof Error ? err.message : String(err),
+    );
+    return false;
+  }
+}
 
 export async function registerTelegramWebhook(botToken: string, workerId: string): Promise<void> {
   const coreUrl = (process.env.CORE_URL ?? process.env.CARINA_CORE_URL ?? 'https://core.carinaai.uk').replace(/\/$/, '');

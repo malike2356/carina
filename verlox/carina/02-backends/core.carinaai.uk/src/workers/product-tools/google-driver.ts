@@ -149,10 +149,22 @@ export async function invokeGoogleAction(opts: {
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
     if (opts.toolSlug === 'google-calendar' && opts.action === 'list') {
-      const res = await fetch(
-        'https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=10&singleEvents=true&orderBy=startTime',
-        { headers, signal: AbortSignal.timeout(15000) },
+      const maxResults = Math.min(
+        50,
+        Math.max(1, Number(opts.input?.maxResults ?? opts.input?.limit ?? 10) || 10),
       );
+      const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
+      url.searchParams.set('maxResults', String(maxResults));
+      url.searchParams.set('singleEvents', 'true');
+      url.searchParams.set('orderBy', 'startTime');
+      const timeMin = String(opts.input?.timeMin ?? '').trim();
+      const timeMax = String(opts.input?.timeMax ?? '').trim();
+      url.searchParams.set('timeMin', timeMin || new Date().toISOString());
+      if (timeMax) url.searchParams.set('timeMax', timeMax);
+      const res = await fetch(url.toString(), {
+        headers,
+        signal: AbortSignal.timeout(15000),
+      });
       const data = await res.json();
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }

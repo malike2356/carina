@@ -407,9 +407,125 @@ function createDriveTools(sessionId: string): Tool[] {
   ];
 }
 
+function createCalendarTools(sessionId: string): Tool[] {
+  return [
+    {
+      name: 'google-calendar-list',
+      description:
+        'List upcoming Google Calendar events for this worker (primary calendar). '
+        + 'Use for agenda, schedule, "what is on my calendar", or "activities next week". '
+        + 'Pass timeMin/timeMax as ISO datetimes to bound the window (e.g. last week of July).',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Max events (1-50). Default 25.',
+          },
+          timeMin: {
+            type: 'string',
+            description: 'Optional ISO datetime lower bound (inclusive). Defaults to now.',
+          },
+          timeMax: {
+            type: 'string',
+            description: 'Optional ISO datetime upper bound (exclusive).',
+          },
+        },
+      },
+      execute: async (params) => {
+        const limit = Math.min(50, Math.max(1, Number(params.limit ?? 25)));
+        const timeMin = typeof params.timeMin === 'string' ? params.timeMin.trim() : '';
+        const timeMax = typeof params.timeMax === 'string' ? params.timeMax.trim() : '';
+        const listed = await invokeGranted(sessionId, 'google-calendar', 'list', {
+          maxResults: limit,
+          timeMin: timeMin || undefined,
+          timeMax: timeMax || undefined,
+        });
+        if (!listed || typeof listed !== 'object' || !(listed as { ok?: boolean }).ok) {
+          return listed;
+        }
+        const data = (listed as { data?: { items?: Array<Record<string, unknown>> } }).data;
+        const items = Array.isArray(data?.items) ? data.items : [];
+        const events = items.map((item) => {
+          const start = item.start as { dateTime?: string; date?: string } | undefined;
+          const end = item.end as { dateTime?: string; date?: string } | undefined;
+          return {
+            id: String(item.id ?? ''),
+            summary: String(item.summary ?? '(no title)'),
+            start: start?.dateTime ?? start?.date ?? '',
+            end: end?.dateTime ?? end?.date ?? '',
+            location: typeof item.location === 'string' ? item.location : '',
+            status: typeof item.status === 'string' ? item.status : '',
+          };
+        });
+        return { ok: true, count: events.length, events };
+      },
+    },
+    {
+      name: 'google-calendar-create',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Create a Google Calendar event on the connected primary calendar.',
+      parameters: {
+        type: 'object',
+        properties: {
+          summary: { type: 'string', description: 'Event title' },
+          start: { type: 'string', description: 'ISO datetime start' },
+          end: { type: 'string', description: 'ISO datetime end' },
+          description: { type: 'string', description: 'Optional event description' },
+        },
+        required: ['summary', 'start', 'end'],
+      },
+      execute: async (params) => {
+        const summary = String(params.summary ?? '').trim();
+        const start = String(params.start ?? '').trim();
+        const end = String(params.end ?? '').trim();
+        if (!summary || !start || !end) {
+          return { ok: false, error: 'summary, start, and end required' };
+        }
+        return invokeGranted(sessionId, 'google-calendar', 'create', {
+          summary,
+          start,
+          end,
+          description: typeof params.description === 'string' ? params.description : undefined,
+        });
+      },
+    },
+    {
+      name: 'google-calendar-update',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Update an existing Google Calendar event by id.',
+      parameters: {
+        type: 'object',
+        properties: {
+          eventId: { type: 'string', description: 'Calendar event id' },
+          summary: { type: 'string' },
+          start: { type: 'string', description: 'ISO datetime start' },
+          end: { type: 'string', description: 'ISO datetime end' },
+          description: { type: 'string' },
+        },
+        required: ['eventId'],
+      },
+      execute: async (params) => {
+        const eventId = String(params.eventId ?? '').trim();
+        if (!eventId) return { ok: false, error: 'eventId required' };
+        return invokeGranted(sessionId, 'google-calendar', 'update', {
+          eventId,
+          summary: typeof params.summary === 'string' ? params.summary : undefined,
+          start: typeof params.start === 'string' ? params.start : undefined,
+          end: typeof params.end === 'string' ? params.end : undefined,
+          description: typeof params.description === 'string' ? params.description : undefined,
+        });
+      },
+    },
+  ];
+}
+
 const SLUG_TO_TOOLS: Record<string, (sessionId: string) => Tool[]> = {
   gmail: createGmailTools,
   'google-drive': createDriveTools,
+  'google-calendar': createCalendarTools,
 };
 
 /**

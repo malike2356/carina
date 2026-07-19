@@ -58,6 +58,8 @@ export interface ProcessAivaMessageParams {
   isWebPreviewSession?: boolean;
   /** Partner / developer API token id when present (never from untrusted body alone). */
   apiTokenId?: string;
+  /** When true (Telegram voice ask), channel delivers audio; model must not invent file paths. */
+  preferAudio?: boolean;
 }
 
 export async function processAivaMessage(params: ProcessAivaMessageParams): Promise<string> {
@@ -279,6 +281,20 @@ export async function* processAivaMessageStreamDirect(
     || /MEMORY \/ agent notes \[\d+%; [1-9]/.test(durableMemorySuffix)
     || pinnedLines.length > 0;
 
+  const messagingChannel =
+    params.channel === 'telegram'
+    || params.channel === 'whatsapp'
+    || params.channel === 'slack'
+    || params.channel === 'discord';
+
+  const portfolioSuffix = await buildPortfolioContextSuffix(worker);
+  const capabilitySuffix = capabilityContext
+    ? buildWorkerCapabilityContextSuffix(capabilityContext)
+    : '';
+  const scopeSuffix = scopeGrants ? `\n\n${scopeGrants}` : '';
+  const toolsSuffix = productToolsPrompt ? `\n\n${productToolsPrompt}` : '';
+  const externalSuffix = externalPrefetch ? `\n${externalPrefetch}` : '';
+
   const bridgeSuffix = bridge.continuationHint
     ? `\n\n${bridge.continuationHint}${
       bridge.source === 'employee_thread' && bridge.turns.length > 0
@@ -288,15 +304,18 @@ export async function* processAivaMessageStreamDirect(
     : hasCuratedMemory
       ? '\n\nSession context: durable USER/MEMORY notes exist for this contact. '
         + 'Do not re-introduce yourself. Carry curated facts forward; use worker-conversation-search for older chat details.'
-      : '';
+      : messagingChannel
+        ? '\n\nMessaging channel: this is an ongoing Telegram/WhatsApp chat with the workspace owner. '
+          + 'Do not re-introduce yourself or restart the conversation. Answer the latest message directly.'
+        : '';
 
-  const portfolioSuffix = await buildPortfolioContextSuffix(worker);
-  const capabilitySuffix = capabilityContext
-    ? buildWorkerCapabilityContextSuffix(capabilityContext)
+  const voiceChannelNote = params.preferAudio && messagingChannel
+    ? '\n\n[Channel note: The user asked for a spoken/audio reply on Telegram. '
+      + 'Write a clear spoken summary in plain text. Do NOT call text-to-speech. '
+      + 'Do NOT mention file paths, MEDIA: links, or "listen to audio". '
+      + 'The channel will convert your reply to a Telegram voice/audio message.]'
     : '';
-  const scopeSuffix = scopeGrants ? `\n\n${scopeGrants}` : '';
-  const toolsSuffix = productToolsPrompt ? `\n\n${productToolsPrompt}` : '';
-  const externalSuffix = externalPrefetch ? `\n${externalPrefetch}` : '';
+
   const automationHint =
     '\n\nScheduled jobs: for recurring Telegram/Aiva tasks (morning weather + email digests, daily briefings), '
     + 'use worker-automation (not host cronjob). After the user gives city, time, and email detail, create the job; '
@@ -316,6 +335,7 @@ export async function* processAivaMessageStreamDirect(
         + durableMemorySuffix
         + externalSuffix
         + bridgeSuffix
+        + voiceChannelNote
         + automationHint,
       worker.roleDescription,
     ),
@@ -340,6 +360,10 @@ export async function* processAivaMessageStreamDirect(
       }
     }
     const rawReply = parts.join('');
+    if (/^\[Steer\]/i.test(rawReply.trim()) || /^\[Queued:/i.test(rawReply.trim())) {
+      yield { type: 'replace', content: '' };
+      return;
+    }
     const processed = await processWorkerOutbound(ctx, message, rawReply);
     const visibleRaw = rawReply.replace(/\[ESCALATE\]/g, '').trim();
     if (processed.reply !== visibleRaw) {
