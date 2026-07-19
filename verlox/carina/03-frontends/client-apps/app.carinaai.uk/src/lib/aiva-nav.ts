@@ -80,7 +80,7 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
   },
   {
     href: '/tasks',
-    label: 'Tasks',
+    label: 'Schedules',
     icon: CheckSquare,
     match: (pathname) =>
       pathname.startsWith('/tasks') || pathname.startsWith('/scheduled'),
@@ -104,6 +104,12 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
     match: (pathname) => pathname.startsWith('/aiva/projects'),
   },
   {
+    href: '/analytics',
+    label: 'Analytics',
+    icon: BarChart2,
+    match: (pathname) => pathname.startsWith('/analytics'),
+  },
+  {
     href: '/aiva/tools',
     label: 'Tools',
     icon: Wrench,
@@ -114,7 +120,7 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
   },
   {
     href: '/aiva/approvals',
-    label: 'Inbox',
+    label: 'Approvals',
     icon: Inbox,
     match: (pathname) =>
       pathname.startsWith('/aiva/approvals')
@@ -193,8 +199,8 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
       },
       {
         href: '/tasks',
-        label: 'Tasks',
-        description: 'Automated tasks with schedule and event triggers.',
+        label: 'Schedules',
+        description: 'Workspace housekeeping on a timer (tidy, calendar sync). Not Aiva morning digests.',
         icon: CheckSquare,
       },
       {
@@ -206,7 +212,7 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
       {
         href: '/email',
         label: 'Email',
-        description: 'Inbound email triage, urgency filtering, and AI draft replies.',
+        description: 'Your mailbox: read, send, and triage mail.',
         icon: Mail,
       },
       {
@@ -217,8 +223,8 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
       },
       {
         href: '/aiva/approvals',
-        label: 'Inbox',
-        description: 'Approvals and escalations waiting on you.',
+        label: 'Approvals',
+        description: 'Approve drafts before your Aivas send email or social posts.',
         icon: Inbox,
       },
     ],
@@ -280,9 +286,9 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
         icon: CreditCard,
       },
       {
-        href: '/developer/usage',
-        label: 'Usage',
-        description: 'AI token usage, event volume, and estimated costs.',
+        href: '/analytics',
+        label: 'Analytics',
+        description: 'Business metrics, Aiva activity, meetings, schedules, content, and usage.',
         icon: BarChart2,
       },
       {

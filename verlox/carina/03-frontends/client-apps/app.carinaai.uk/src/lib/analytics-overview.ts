@@ -2,10 +2,25 @@ import 'server-only';
 
 import { and, desc, eq, gte, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { chatMessages, chatSessions, usageEvents } from '@/db/schema';
+import {
+  calendarEvents,
+  chatMessages,
+  chatSessions,
+  documents,
+  emailMessages,
+  researchJobs,
+  scheduledTasks,
+  taskRuns,
+  usageEvents,
+  userMemories,
+  userNotes,
+  workspaceSkills,
+} from '@/db/schema';
 import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 import type {
+  AnalyticsAivaOverview,
   AnalyticsBreakdownRow,
+  AnalyticsBusinessOverview,
   AnalyticsOverview,
   AnalyticsSeriesPoint,
   AnalyticsSessionRow,
@@ -33,6 +48,353 @@ function normalizeLabel(value: string | null | undefined, fallback: string): str
 
 function estimateCostGbp(tokens: number): number {
   return (tokens / 1000) * 0.002;
+}
+
+function pctChange(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Number((((current - previous) / previous) * 100).toFixed(1));
+}
+
+function toPeriod(days: number): '7d' | '30d' | '90d' {
+  if (days <= 7) return '7d';
+  if (days >= 90) return '90d';
+  return '30d';
+}
+
+function emptyAivaOverview(): AnalyticsAivaOverview {
+  return {
+    available: false,
+    gated: false,
+    summary: {
+      totalConversations: 0,
+      messagesFromAiva: 0,
+      escalationRate: 0,
+      avgResponseSec: 0,
+    },
+    volume: [],
+    channels: [],
+    escalations: [],
+    heatmap: [],
+    workers: [],
+  };
+}
+
+function rowsFromExecute<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  const rows = (value as { rows?: unknown[] } | null)?.rows;
+  return Array.isArray(rows) ? rows as T[] : [];
+}
+
+async function fetchCoreJson<T>(
+  workspaceId: string,
+  path: string,
+): Promise<{ data: T | null; status: number }> {
+  if (!coreProxyEnabled()) return { data: null, status: 503 };
+
+  const token = resolveCoreProxyToken();
+  const response = await fetch(`${resolveCoreUrl().replace(/\/$/, '')}${path}`, {
+    headers: {
+      authorization: `Bearer ${token}`,
+      'x-internal-key': token,
+      'x-workspace-id': workspaceId,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) return { data: null, status: response.status };
+  return { data: await response.json() as T, status: response.status };
+}
+
+async function loadAivaOverview(workspaceId: string, days: number): Promise<AnalyticsAivaOverview> {
+  if (!coreProxyEnabled()) return emptyAivaOverview();
+  const period = toPeriod(days);
+
+  try {
+    const [summaryRes, volumeRes, channelsRes, escalationsRes, heatmapRes, workersRes] = await Promise.all([
+      fetchCoreJson<{
+        totalConversations?: number;
+        messagesFromAiva?: number;
+        escalationRate?: number;
+        avgResponseSec?: number;
+      }>(workspaceId, `/api/analytics/summary?period=${period}`),
+      fetchCoreJson<{ points?: Array<{ date: string; count: number }> }>(
+        workspaceId,
+        `/api/analytics/volume?period=${period}`,
+      ),
+      fetchCoreJson<{ channels?: AnalyticsAivaOverview['channels'] }>(
+        workspaceId,
+        `/api/analytics/channels?period=${period}`,
+      ),
+      fetchCoreJson<{ points?: AnalyticsAivaOverview['escalations'] }>(
+        workspaceId,
+        `/api/analytics/escalations?period=${period}`,
+      ),
+      fetchCoreJson<{ cells?: AnalyticsAivaOverview['heatmap'] }>(
+        workspaceId,
+        `/api/analytics/heatmap?period=${period}`,
+      ),
+      fetchCoreJson<{ workers?: AnalyticsAivaOverview['workers'] }>(
+        workspaceId,
+        `/api/analytics/aiva-breakdown?period=${period}`,
+      ),
+    ]);
+
+    const teamGated = [channelsRes, escalationsRes, heatmapRes, workersRes].some((res) => res.status === 402 || res.status === 403);
+    return {
+      available: Boolean(summaryRes.data || volumeRes.data),
+      gated: teamGated,
+      summary: {
+        totalConversations: Number(summaryRes.data?.totalConversations ?? 0),
+        messagesFromAiva: Number(summaryRes.data?.messagesFromAiva ?? 0),
+        escalationRate: Number(summaryRes.data?.escalationRate ?? 0),
+        avgResponseSec: Number(summaryRes.data?.avgResponseSec ?? 0),
+      },
+      volume: volumeRes.data?.points ?? [],
+      channels: channelsRes.data?.channels ?? [],
+      escalations: escalationsRes.data?.points ?? [],
+      heatmap: heatmapRes.data?.cells ?? [],
+      workers: workersRes.data?.workers ?? [],
+    };
+  } catch {
+    return emptyAivaOverview();
+  }
+}
+
+function metric(current: number, previous: number) {
+  return { current, previous, changePct: pctChange(current, previous) };
+}
+
+async function loadBusinessOverview(workspaceId: string, days: number, since: Date): Promise<AnalyticsBusinessOverview> {
+  const previousSince = new Date(since.getTime() - days * 86_400_000);
+  const now = new Date();
+
+  const [
+    moduleRows,
+    previousRows,
+    activityRows,
+    meetingSources,
+    scheduleRows,
+    scheduleRunRows,
+    contentRows,
+    emailRows,
+    researchRows,
+  ] = await Promise.all([
+    db.execute(sql`
+      SELECT 'Messages' AS label, COUNT(*)::int AS value FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      UNION ALL SELECT 'Usage events', COUNT(*)::int FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      UNION ALL SELECT 'Meetings', COUNT(*)::int FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${since}
+      UNION ALL SELECT 'Documents', COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      UNION ALL SELECT 'Schedules', COUNT(*)::int FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      UNION ALL SELECT 'Emails', COUNT(*)::int FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${since}
+      UNION ALL SELECT 'Research', COUNT(*)::int FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      UNION ALL SELECT 'Memories', COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      UNION ALL SELECT 'Notes', COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+    `),
+    db.execute(sql`
+      SELECT 'Messages' AS label, COUNT(*)::int AS value FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      UNION ALL SELECT 'Usage events', COUNT(*)::int FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      UNION ALL SELECT 'Meetings', COUNT(*)::int FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${previousSince} AND starts_at < ${since}
+      UNION ALL SELECT 'Documents', COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      UNION ALL SELECT 'Schedules', COUNT(*)::int FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      UNION ALL SELECT 'Emails', COUNT(*)::int FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${previousSince} AND received_at < ${since}
+      UNION ALL SELECT 'Research', COUNT(*)::int FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      UNION ALL SELECT 'Memories', COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      UNION ALL SELECT 'Notes', COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+    `),
+    db.execute(sql`
+      SELECT d::date AS day,
+        COALESCE(m.messages, 0)::int AS messages,
+        COALESCE(u.usage_events, 0)::int AS usage_events,
+        COALESCE(c.meetings, 0)::int AS meetings,
+        COALESCE(doc.documents, 0)::int AS documents,
+        COALESCE(s.schedules, 0)::int AS schedules,
+        COALESCE(e.emails, 0)::int AS emails,
+        COALESCE(r.research, 0)::int AS research
+      FROM generate_series(${since}::date, ${now}::date, '1 day') d
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS messages FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) m ON m.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS usage_events FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) u ON u.day = d::date
+      LEFT JOIN (SELECT date(starts_at) AS day, COUNT(*)::int AS meetings FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${since} GROUP BY 1) c ON c.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS documents FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) doc ON doc.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS schedules FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) s ON s.day = d::date
+      LEFT JOIN (SELECT date(received_at) AS day, COUNT(*)::int AS emails FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${since} GROUP BY 1) e ON e.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS research FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) r ON r.day = d::date
+      ORDER BY day ASC
+    `),
+    db
+      .select({
+        key: calendarEvents.source,
+        value: sql<number>`count(*)::int`,
+      })
+      .from(calendarEvents)
+      .where(and(eq(calendarEvents.workspaceId, workspaceId), gte(calendarEvents.startsAt, since)))
+      .groupBy(calendarEvents.source),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${scheduledTasks.status} = 'active')::int`,
+        paused: sql<number>`count(*) filter (where ${scheduledTasks.status} = 'paused')::int`,
+        draft: sql<number>`count(*) filter (where ${scheduledTasks.status} = 'draft')::int`,
+      })
+      .from(scheduledTasks)
+      .where(eq(scheduledTasks.workspaceId, workspaceId)),
+    db
+      .select({
+        key: taskRuns.status,
+        value: sql<number>`count(*)::int`,
+      })
+      .from(taskRuns)
+      .where(and(eq(taskRuns.workspaceId, workspaceId), gte(taskRuns.createdAt, since)))
+      .groupBy(taskRuns.status),
+    db.execute(sql`
+      SELECT
+        (SELECT COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId}) AS documents,
+        (SELECT COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND archived = false) AS active_documents,
+        (SELECT COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND archived = true) AS archived_documents,
+        (SELECT COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND enabled = true) AS memories,
+        (SELECT COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND archived = false) AS notes,
+        (SELECT COUNT(*)::int FROM workspace_skills WHERE workspace_id = ${workspaceId} AND enabled = true) AS skills
+    `),
+    db
+      .select({
+        status: emailMessages.status,
+        total: sql<number>`count(*)::int`,
+        urgent: sql<number>`count(*) filter (where ${emailMessages.urgency} = 'urgent')::int`,
+      })
+      .from(emailMessages)
+      .where(and(eq(emailMessages.workspaceId, workspaceId), gte(emailMessages.receivedAt, since)))
+      .groupBy(emailMessages.status),
+    db
+      .select({
+        status: researchJobs.status,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(researchJobs)
+      .where(and(eq(researchJobs.workspaceId, workspaceId), gte(researchJobs.createdAt, since)))
+      .groupBy(researchJobs.status),
+  ]);
+
+  const current = new Map(rowsFromExecute<{ label: string; value: number }>(moduleRows).map((row) => [row.label, Number(row.value)]));
+  const previous = new Map(rowsFromExecute<{ label: string; value: number }>(previousRows).map((row) => [row.label, Number(row.value)]));
+  const value = (label: string) => current.get(label) ?? 0;
+  const prev = (label: string) => previous.get(label) ?? 0;
+  const moduleLabels = ['Messages', 'Usage events', 'Meetings', 'Documents', 'Schedules', 'Emails', 'Research', 'Memories', 'Notes'];
+  const modules = moduleLabels.map((label) => ({
+    key: label.toLowerCase().replaceAll(' ', '_'),
+    label,
+    value: value(label),
+    previous: prev(label),
+    changePct: pctChange(value(label), prev(label)),
+  }));
+
+  const activitySeries = rowsFromExecute<{
+    day: string | Date;
+    messages: number;
+    usage_events: number;
+    meetings: number;
+    documents: number;
+    schedules: number;
+    emails: number;
+    research: number;
+  }>(activityRows).map((row) => ({
+    date: String(row.day).slice(0, 10),
+    messages: Number(row.messages ?? 0),
+    usageEvents: Number(row.usage_events ?? 0),
+    meetings: Number(row.meetings ?? 0),
+    documents: Number(row.documents ?? 0),
+    schedules: Number(row.schedules ?? 0),
+    emails: Number(row.emails ?? 0),
+    research: Number(row.research ?? 0),
+  }));
+
+  const totalMeetings = value('Meetings');
+  const upcomingMeetings = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(calendarEvents)
+    .where(and(eq(calendarEvents.workspaceId, workspaceId), gte(calendarEvents.startsAt, now)));
+  const emailStatusRows = emailRows.map((row) => ({
+    key: row.status,
+    label: row.status,
+    value: Number(row.total ?? 0),
+  }));
+  const researchStatusRows = researchRows.map((row) => ({
+    key: row.status,
+    label: row.status,
+    value: Number(row.total ?? 0),
+  }));
+  const content = rowsFromExecute<{
+    documents?: number;
+    active_documents?: number;
+    archived_documents?: number;
+    memories?: number;
+    notes?: number;
+    skills?: number;
+  }>(contentRows)[0] ?? {
+    documents: 0,
+    active_documents: 0,
+    archived_documents: 0,
+    memories: 0,
+    notes: 0,
+    skills: 0,
+  };
+
+  return {
+    scorecard: {
+      moduleActivity: metric(modules.reduce((sum, row) => sum + row.value, 0), modules.reduce((sum, row) => sum + row.previous, 0)),
+      meetings: metric(value('Meetings'), prev('Meetings')),
+      schedules: metric(value('Schedules'), prev('Schedules')),
+      documents: metric(value('Documents'), prev('Documents')),
+      emails: metric(value('Emails'), prev('Emails')),
+      researchJobs: metric(value('Research'), prev('Research')),
+      memories: metric(value('Memories'), prev('Memories')),
+      notes: metric(value('Notes'), prev('Notes')),
+    },
+    modules,
+    activitySeries,
+    meetings: {
+      total: totalMeetings,
+      upcoming: Number(upcomingMeetings[0]?.total ?? 0),
+      past: Math.max(0, totalMeetings - Number(upcomingMeetings[0]?.total ?? 0)),
+      bySource: meetingSources.map((row) => ({
+        key: row.key,
+        label: normalizeLabel(row.key, 'local'),
+        value: Number(row.value ?? 0),
+      })),
+    },
+    schedules: {
+      total: Number(scheduleRows[0]?.total ?? 0),
+      active: Number(scheduleRows[0]?.active ?? 0),
+      paused: Number(scheduleRows[0]?.paused ?? 0),
+      draft: Number(scheduleRows[0]?.draft ?? 0),
+      runs: scheduleRunRows.map((row) => ({
+        key: row.key,
+        label: row.key,
+        value: Number(row.value ?? 0),
+      })),
+    },
+    content: {
+      documents: Number(content.documents ?? 0),
+      activeDocuments: Number(content.active_documents ?? 0),
+      archivedDocuments: Number(content.archived_documents ?? 0),
+      memories: Number(content.memories ?? 0),
+      notes: Number(content.notes ?? 0),
+      skills: Number(content.skills ?? 0),
+    },
+    email: {
+      total: emailStatusRows.reduce((sum, row) => sum + row.value, 0),
+      inbox: emailStatusRows.find((row) => row.key === 'inbox')?.value ?? 0,
+      draft: emailStatusRows.find((row) => row.key === 'draft')?.value ?? 0,
+      sent: emailStatusRows.find((row) => row.key === 'sent')?.value ?? 0,
+      urgent: emailRows.reduce((sum, row) => sum + Number(row.urgent ?? 0), 0),
+      byStatus: emailStatusRows,
+    },
+    research: {
+      total: researchStatusRows.reduce((sum, row) => sum + row.value, 0),
+      completed: researchStatusRows.find((row) => row.key === 'completed')?.value ?? 0,
+      running: researchStatusRows.find((row) => row.key === 'running')?.value ?? 0,
+      failed: researchStatusRows.find((row) => row.key === 'failed')?.value ?? 0,
+      byStatus: researchStatusRows,
+    },
+  };
 }
 
 async function loadCoreTelemetry(hours: number): Promise<AnalyticsOverview['core']> {
@@ -283,6 +645,8 @@ export async function buildAnalyticsOverview(workspaceId: string, rangeDays = 30
       providerBreakdown,
       sessions,
     },
+    business: await loadBusinessOverview(workspaceId, days, since),
+    aiva: await loadAivaOverview(workspaceId, days),
     core: await loadCoreTelemetry(Math.min(days * 24, 168)),
   };
 }
