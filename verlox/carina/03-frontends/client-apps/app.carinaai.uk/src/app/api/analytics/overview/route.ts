@@ -13,6 +13,14 @@ export async function GET(request: Request): Promise<Response> {
   const workspace = await requireWorkspace(session.user.id);
   const url = new URL(request.url);
   const days = Number(url.searchParams.get('days') ?? 30);
-  const overview = await buildAnalyticsOverview(workspace.id, Number.isFinite(days) ? days : 30);
-  return Response.json({ data: overview });
+  try {
+    const overview = await buildAnalyticsOverview(workspace.id, Number.isFinite(days) ? days : 30);
+    return Response.json({ data: overview });
+  } catch (err) {
+    console.error('[analytics] overview failed:', err);
+    return Response.json(
+      { error: err instanceof Error ? err.message : 'Unable to load analytics' },
+      { status: 500 },
+    );
+  }
 }

@@ -167,6 +167,9 @@ function metric(current: number, previous: number) {
 async function loadBusinessOverview(workspaceId: string, days: number, since: Date): Promise<AnalyticsBusinessOverview> {
   const previousSince = new Date(since.getTime() - days * 86_400_000);
   const now = new Date();
+  const sinceIso = since.toISOString();
+  const previousSinceIso = previousSince.toISOString();
+  const nowIso = now.toISOString();
 
   const [
     moduleRows,
@@ -180,26 +183,26 @@ async function loadBusinessOverview(workspaceId: string, days: number, since: Da
     researchRows,
   ] = await Promise.all([
     db.execute(sql`
-      SELECT 'Messages' AS label, COUNT(*)::int AS value FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-      UNION ALL SELECT 'Usage events', COUNT(*)::int FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-      UNION ALL SELECT 'Meetings', COUNT(*)::int FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${since}
-      UNION ALL SELECT 'Documents', COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-      UNION ALL SELECT 'Schedules', COUNT(*)::int FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-      UNION ALL SELECT 'Emails', COUNT(*)::int FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${since}
-      UNION ALL SELECT 'Research', COUNT(*)::int FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-      UNION ALL SELECT 'Memories', COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
-      UNION ALL SELECT 'Notes', COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND created_at >= ${since}
+      SELECT 'Messages' AS label, COUNT(*)::int AS value FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
+      UNION ALL SELECT 'Usage events', COUNT(*)::int FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
+      UNION ALL SELECT 'Meetings', COUNT(*)::int FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${sinceIso}
+      UNION ALL SELECT 'Documents', COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
+      UNION ALL SELECT 'Schedules', COUNT(*)::int FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
+      UNION ALL SELECT 'Emails', COUNT(*)::int FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${sinceIso}
+      UNION ALL SELECT 'Research', COUNT(*)::int FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
+      UNION ALL SELECT 'Memories', COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
+      UNION ALL SELECT 'Notes', COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso}
     `),
     db.execute(sql`
-      SELECT 'Messages' AS label, COUNT(*)::int AS value FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
-      UNION ALL SELECT 'Usage events', COUNT(*)::int FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
-      UNION ALL SELECT 'Meetings', COUNT(*)::int FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${previousSince} AND starts_at < ${since}
-      UNION ALL SELECT 'Documents', COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
-      UNION ALL SELECT 'Schedules', COUNT(*)::int FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
-      UNION ALL SELECT 'Emails', COUNT(*)::int FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${previousSince} AND received_at < ${since}
-      UNION ALL SELECT 'Research', COUNT(*)::int FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
-      UNION ALL SELECT 'Memories', COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
-      UNION ALL SELECT 'Notes', COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSince} AND created_at < ${since}
+      SELECT 'Messages' AS label, COUNT(*)::int AS value FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
+      UNION ALL SELECT 'Usage events', COUNT(*)::int FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
+      UNION ALL SELECT 'Meetings', COUNT(*)::int FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${previousSinceIso} AND starts_at < ${sinceIso}
+      UNION ALL SELECT 'Documents', COUNT(*)::int FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
+      UNION ALL SELECT 'Schedules', COUNT(*)::int FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
+      UNION ALL SELECT 'Emails', COUNT(*)::int FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${previousSinceIso} AND received_at < ${sinceIso}
+      UNION ALL SELECT 'Research', COUNT(*)::int FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
+      UNION ALL SELECT 'Memories', COUNT(*)::int FROM user_memories WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
+      UNION ALL SELECT 'Notes', COUNT(*)::int FROM user_notes WHERE workspace_id = ${workspaceId} AND created_at >= ${previousSinceIso} AND created_at < ${sinceIso}
     `),
     db.execute(sql`
       SELECT d::date AS day,
@@ -210,14 +213,14 @@ async function loadBusinessOverview(workspaceId: string, days: number, since: Da
         COALESCE(s.schedules, 0)::int AS schedules,
         COALESCE(e.emails, 0)::int AS emails,
         COALESCE(r.research, 0)::int AS research
-      FROM generate_series(${since}::date, ${now}::date, '1 day') d
-      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS messages FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) m ON m.day = d::date
-      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS usage_events FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) u ON u.day = d::date
-      LEFT JOIN (SELECT date(starts_at) AS day, COUNT(*)::int AS meetings FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${since} GROUP BY 1) c ON c.day = d::date
-      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS documents FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) doc ON doc.day = d::date
-      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS schedules FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) s ON s.day = d::date
-      LEFT JOIN (SELECT date(received_at) AS day, COUNT(*)::int AS emails FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${since} GROUP BY 1) e ON e.day = d::date
-      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS research FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${since} GROUP BY 1) r ON r.day = d::date
+      FROM generate_series(${sinceIso}::date, ${nowIso}::date, '1 day') d
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS messages FROM chat_messages WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso} GROUP BY 1) m ON m.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS usage_events FROM usage_events WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso} GROUP BY 1) u ON u.day = d::date
+      LEFT JOIN (SELECT date(starts_at) AS day, COUNT(*)::int AS meetings FROM calendar_events WHERE workspace_id = ${workspaceId} AND starts_at >= ${sinceIso} GROUP BY 1) c ON c.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS documents FROM documents WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso} GROUP BY 1) doc ON doc.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS schedules FROM scheduled_tasks WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso} GROUP BY 1) s ON s.day = d::date
+      LEFT JOIN (SELECT date(received_at) AS day, COUNT(*)::int AS emails FROM email_messages WHERE workspace_id = ${workspaceId} AND received_at >= ${sinceIso} GROUP BY 1) e ON e.day = d::date
+      LEFT JOIN (SELECT date(created_at) AS day, COUNT(*)::int AS research FROM research_jobs WHERE workspace_id = ${workspaceId} AND created_at >= ${sinceIso} GROUP BY 1) r ON r.day = d::date
       ORDER BY day ASC
     `),
     db
