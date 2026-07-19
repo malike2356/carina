@@ -81,6 +81,7 @@ TB-006 and TB-007 are Phase 3 and should only start after at least one partner i
 | `archived_prompts/archives_from_pending_prompts/tollbooth-ui/UI-002-*.md` | Partner usage dashboard + CSV export in app.carinaai.uk | 2026-06-26 |
 | `archived_prompts/archives_from_pending_prompts/tollbooth-ui/UI-003-*.md` | Marketplace submission review queue in admin.carinaai.uk | 2026-06-26 |
 | `archived_prompts/archives_from_pending_prompts/tollbooth-ui/UI-004-*.md` | Partner accounts admin (list, detail, suspend, key revoke) in admin.carinaai.uk | 2026-06-26 |
+| `archived_prompts/archives_from_pending_prompts/security-patches/` | SEC-04 worker isolation, SEC-07 RASP correlation, SEC-08 pentest harness (verified 2026-07-19) | 2026-06-30 |
 | `archived_prompts/archives_from_pending_prompts/security-tooling/` | Cyber tools API + `/security/tools` cheatsheet | 2026-06-26 |
 | `archived_prompts/archives_from_pending_prompts/sso/` | Enterprise SSO module | 2026-06-26 |
 | `archived_prompts/archives_from_pending_prompts/gtm-readiness/` | GTM-006, GTM-007 Aiva VA marketing | 2026-06-26 |
@@ -109,6 +110,7 @@ Index: `sprint-4-action-README.md` (all 29 COMPLETED)
 ```
 archived_prompts/archives_from_pending_prompts/
 ├── rag-upload/        Knowledge upload API, UI, CLI (COMPLETED 2026-06-26)
+├── security-patches/  SEC-04, SEC-07, SEC-08 (COMPLETED 2026-06-30; verified 2026-07-19)
 ├── security-tooling/  Cyber tools API + cheatsheet (COMPLETED 2026-06-26)
 ├── sprint-4/          Aiva platform (prompts 01, 05-29 except 02-04)
 ├── sprint-5/          aiva-billing (22, 24)

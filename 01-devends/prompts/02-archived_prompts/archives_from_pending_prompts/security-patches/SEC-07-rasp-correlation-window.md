@@ -1,5 +1,7 @@
 # SEC-07: RASP Engine Correlation Window Hardening
 
+**Verified 2026-07-19:** unit tests + SEC-08 harness 7/7 passed; archived from pending.
+
 **Status: COMPLETED 2026-06-30**
 
 **What was built:**

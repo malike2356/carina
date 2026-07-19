@@ -1,5 +1,7 @@
 # SEC-04: Aiva Worker Process Isolation
 
+**Verified 2026-07-19:** unit tests + SEC-08 harness 7/7 passed; archived from pending.
+
 **Severity:** High
 **Status:** Patched (2026-06-30)
 **Affects:** `aiva/02-backends/core.carinaai.uk/src/agents/`, `src/workers/aiva-process-message.ts`
