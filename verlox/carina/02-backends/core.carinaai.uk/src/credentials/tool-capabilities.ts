@@ -44,8 +44,20 @@ export const TOOL_CAPABILITIES: ToolCapabilityEntry[] = [
   // Messaging
   {
     tool_name: 'email_smtp_send',
-    description: 'Send email via SMTP',
+    description: 'Send email via SMTP (or Resend SMTP when RESEND_API_KEY is set)',
     required_credentials: ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'],
+    category: 'messaging',
+  },
+  {
+    tool_name: 'email-send',
+    description: 'Send email via Resend API',
+    required_credentials: ['RESEND_API_KEY'],
+    category: 'messaging',
+  },
+  {
+    tool_name: 'gmail-send',
+    description: 'Send email via connected Gmail for this worker',
+    required_credentials: [],
     category: 'messaging',
   },
   {

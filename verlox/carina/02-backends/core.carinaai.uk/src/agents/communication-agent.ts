@@ -5,8 +5,18 @@ import type { ProviderOverride } from '../brain/llm.js';
 export class CommunicationAgent extends SubAgent {
   name = 'communication';
   systemPromptSuffix =
-    'You are a communication specialist. Draft and send clear, professional messages. Do not take any other action.';
-  allowedTools = ['email-send', 'http-request'];
+    'You are a communication specialist. Draft and send clear, professional messages. '
+    + 'Prefer gmail-send when Gmail is connected for this worker. '
+    + 'Otherwise use email-send (Resend) or email-smtp-send. '
+    + 'Do not claim IMAP is required for outbound send. Do not take any other action.';
+  allowedTools = [
+    'gmail-send',
+    'gmail-list',
+    'gmail-get',
+    'email-send',
+    'email-smtp-send',
+    'http-request',
+  ];
   requiresConfirmation = true;
 
   constructor(
