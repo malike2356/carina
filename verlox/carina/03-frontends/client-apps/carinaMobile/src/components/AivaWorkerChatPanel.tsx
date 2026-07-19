@@ -88,11 +88,11 @@ export function AivaWorkerChatPanel({
         renderItem={({ item }) => {
           const mine = item.sender === 'user';
           return (
-            <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
-              <Text style={[styles.bubbleText, mine && styles.bubbleTextMine]}>{item.content}</Text>
-              <Text style={[styles.bubbleMeta, mine && styles.bubbleMetaMine]}>
-                {mine ? 'You' : worker.name}
-              </Text>
+            <View style={[styles.row, mine ? styles.rowMine : styles.rowTheirs]}>
+              <View style={[styles.bubble, mine ? styles.bubbleMine : styles.bubbleTheirs]}>
+                <Text style={styles.bubbleText}>{item.content}</Text>
+              </View>
+              <Text style={styles.bubbleMeta}>{mine ? 'You' : worker.name}</Text>
             </View>
           );
         }}
@@ -169,26 +169,27 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
   },
+  row: { maxWidth: '85%', gap: 4 },
+  rowMine: { alignSelf: 'flex-end', alignItems: 'flex-end' },
+  rowTheirs: { alignSelf: 'flex-start', alignItems: 'flex-start' },
   bubble: {
-    maxWidth: '85%',
-    borderRadius: 16,
+    maxWidth: '100%',
+    borderRadius: radii.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   bubbleMine: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.teal,
+    backgroundColor: colors.inkLift,
+    borderBottomRightRadius: 4,
   },
   bubbleTheirs: {
-    alignSelf: 'flex-start',
     backgroundColor: colors.inkMid,
     borderWidth: 1,
     borderColor: colors.borderDim,
+    borderBottomLeftRadius: 4,
   },
   bubbleText: { color: colors.white, fontSize: 14, lineHeight: 20 },
-  bubbleTextMine: { color: colors.white },
-  bubbleMeta: { color: colors.silverMid, fontSize: 11, marginTop: 4 },
-  bubbleMetaMine: { color: 'rgba(255,255,255,0.75)' },
+  bubbleMeta: { color: colors.silverMid, fontSize: 11 },
   typing: {
     flexDirection: 'row',
     alignItems: 'center',

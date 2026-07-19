@@ -11,7 +11,7 @@ const SCOUT_TRUST_URL =
 const config: ExpoConfig = {
   name: 'Carina',
   slug: 'carina-mobile',
-  version: '0.1.5',
+  version: '0.1.15',
   scheme: 'carina',
   orientation: 'portrait',
   userInterfaceStyle: 'dark',
@@ -48,7 +48,7 @@ const config: ExpoConfig = {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#000000',
     },
-    versionCode: 5,
+    versionCode: 15,
     package: 'uk.carinaai.mobile',
     // Do not use resize: Expo Router tabs + RN 0.76 leave the composer under the
     // keyboard. withKeyboardAdjustNothing sets adjustNothing; chat JS pads by height.
