@@ -622,6 +622,17 @@ export class CarinaAgent {
       return;
     }
     const safeUserMessage = inputScan.text;
+    // Early episodic save: persist the user turn before inference so interrupted
+    // or failed turns still leave conversational memory for the next message.
+    let userEpisodicSaved = false;
+    if (this.memoryReady && this.persistMemory) {
+      try {
+        await saveMemory(this.sessionId, 'user', safeUserMessage);
+        userEpisodicSaved = true;
+      } catch {
+        userEpisodicSaved = false;
+      }
+    }
     const prompt = priorContext
       ? `${wrapCompactedContext(priorContext)}\n\n---\n\nTask:\n${safeUserMessage}`
       : safeUserMessage;
@@ -960,7 +971,9 @@ export class CarinaAgent {
           }
         }
         if (this.memoryReady && this.persistMemory) {
-          await saveMemory(this.sessionId, 'user', safeUserMessage);
+          if (!userEpisodicSaved) {
+            await saveMemory(this.sessionId, 'user', safeUserMessage);
+          }
           await saveMemory(this.sessionId, 'assistant', turnText);
           maybeRunRemCycle();
         }

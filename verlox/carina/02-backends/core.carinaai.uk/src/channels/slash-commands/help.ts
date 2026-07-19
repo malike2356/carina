@@ -6,10 +6,14 @@ export const helpCommand: SlashCommand = {
   description: 'Show available slash commands',
   async handler() {
     const cmds = listCommands();
-    const lines = ['Carina slash commands:', ''];
+    const lines = ['Aiva slash commands:', ''];
     for (const cmd of cmds) {
       lines.push(`/${cmd.name} - ${cmd.description}`);
     }
+    lines.push(
+      '',
+      'Memory tip: /memory shows USER+MEMORY budgets; /search finds old chats; /remember saves durable facts.',
+    );
     return lines.join('\n');
   },
 };

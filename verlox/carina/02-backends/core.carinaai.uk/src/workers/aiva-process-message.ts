@@ -20,7 +20,19 @@ import {
 import { registerPropreneurSessionTools } from '../tools/propreneur-portfolio.js';
 import { registerPropreneurSelfConfigureTool } from '../tools/propreneur-self-configure.js';
 import { registerProductToolAdapters } from '../tools/product-tool-adapters.js';
+import { registerWorkerMemorySessionTools } from '../tools/worker-memory.js';
 import { forceImmediateInvalidation } from '../brain/prompt-cache.js';
+import {
+  hydrateEpisodicFromEmployeeThread,
+  resolveAivaConversationBridge,
+  formatBridgeHistoryForPrompt,
+} from '../memory/aiva/conversation-bridge.js';
+import { buildWorkerDurableMemorySuffix } from '../memory/aiva/worker-persistent-memory.js';
+import {
+  prefetchExternalMemoryContext,
+  syncTurnToExternalMemory,
+} from '../memory/aiva/external-provider.js';
+import { listMemories } from '../workers/spinnable-parity-store.js';
 import {
   getAivaWorkerPool,
   isAivaWorkerIsolationEnabled,
@@ -150,7 +162,31 @@ export async function* processAivaMessageStreamDirect(
     messageId: params.threadId,
   };
 
-  const [personaPrompt, capabilityContext, scopeGrants, productToolsPrompt, memorySuffix] =
+  // Bridge: hydrate episodic from employee UI thread when model memory is empty.
+  await hydrateEpisodicFromEmployeeThread({
+    sessionId,
+    workspaceId: params.workspaceId,
+    workerId: params.workerId,
+    contactId: params.contactId,
+    channel: params.channel,
+    currentUserMessage: params.userMessage,
+  }).catch(() => ({ hydrated: 0, source: 'none' as const }));
+
+  const bridge = await resolveAivaConversationBridge({
+    sessionId,
+    workspaceId: params.workspaceId,
+    workerId: params.workerId,
+    contactId: params.contactId,
+    channel: params.channel,
+  }).catch(() => ({
+    episodicCount: 0,
+    threadCount: 0,
+    source: 'none' as const,
+    turns: [],
+    continuationHint: '',
+  }));
+
+  const [personaPrompt, capabilityContext, scopeGrants, productToolsPrompt, pinnedMemories, externalPrefetch] =
     await Promise.all([
       resolvePersonaWithKnowledge(
         worker.id,
@@ -175,23 +211,63 @@ export async function* processAivaMessageStreamDirect(
           describeProductToolGrantsForPrompt(params.workspaceId, params.workerId),
         )
         .catch(() => ''),
-      import('../workers/spinnable-parity-store.js')
-        .then(({ buildMemoryPromptSuffix }) =>
-          buildMemoryPromptSuffix(params.workspaceId, params.workerId),
-        )
-        .catch(() => ''),
+      listMemories(params.workspaceId, params.workerId).catch(() => []),
+      prefetchExternalMemoryContext({
+        workspaceId: params.workspaceId,
+        workerId: params.workerId,
+        contactId: params.contactId,
+        query: params.userMessage,
+      }).catch(() => ''),
     ]);
+
+  const pinnedLines = (pinnedMemories as Array<{ pinned?: boolean; content?: string }>)
+    .filter((m) => m.pinned)
+    .slice(0, 12)
+    .map((m) => String(m.content ?? '').trim())
+    .filter(Boolean);
+
+  const durableMemorySuffix = await buildWorkerDurableMemorySuffix({
+    workspaceId: params.workspaceId,
+    workerId: params.workerId,
+    contactId: params.contactId,
+    pinnedLines,
+  }).catch(() => '');
+
+  const hasCuratedMemory =
+    /USER PROFILE \[\d+% — [1-9]/.test(durableMemorySuffix)
+    || /MEMORY \/ agent notes \[\d+% — [1-9]/.test(durableMemorySuffix)
+    || pinnedLines.length > 0;
+
+  const bridgeSuffix = bridge.continuationHint
+    ? `\n\n${bridge.continuationHint}${
+      bridge.source === 'employee_thread' && bridge.turns.length > 0
+        ? `\n\n${formatBridgeHistoryForPrompt(bridge.turns)}`
+        : ''
+    }`
+    : hasCuratedMemory
+      ? '\n\nSession context: durable USER/MEMORY notes exist for this contact. '
+        + 'Do not re-introduce yourself. Carry curated facts forward; use worker-conversation-search for older chat details.'
+      : '';
+
   const portfolioSuffix = await buildPortfolioContextSuffix(worker);
   const capabilitySuffix = capabilityContext
     ? buildWorkerCapabilityContextSuffix(capabilityContext)
     : '';
   const scopeSuffix = scopeGrants ? `\n\n${scopeGrants}` : '';
   const toolsSuffix = productToolsPrompt ? `\n\n${productToolsPrompt}` : '';
+  const externalSuffix = externalPrefetch ? `\n${externalPrefetch}` : '';
   const ctx = {
     worker,
     personaPrompt: withWorkerIdentityOverride(
       worker.name,
-      personaPrompt + portfolioSuffix + capabilitySuffix + scopeSuffix + toolsSuffix + memorySuffix,
+      personaPrompt
+        + portfolioSuffix
+        + capabilitySuffix
+        + scopeSuffix
+        + toolsSuffix
+        + durableMemorySuffix
+        + externalSuffix
+        + bridgeSuffix,
       worker.roleDescription,
     ),
     channel: params.channel,
@@ -204,6 +280,7 @@ export async function* processAivaMessageStreamDirect(
   forceImmediateInvalidation(sessionId);
   registerPropreneurSessionTools(sessionId);
   registerPropreneurSelfConfigureTool(sessionId);
+  registerWorkerMemorySessionTools(sessionId);
   await registerProductToolAdapters(sessionId);
   const parts: string[] = [];
   try {
@@ -220,6 +297,13 @@ export async function* processAivaMessageStreamDirect(
     if (processed.reply !== visibleRaw) {
       yield { type: 'replace', content: processed.reply };
     }
+    await syncTurnToExternalMemory({
+      workspaceId: params.workspaceId,
+      workerId: params.workerId,
+      contactId: params.contactId,
+      userMessage: params.userMessage,
+      assistantReply: processed.reply,
+    }).catch(() => undefined);
     await recordAivaRequestUsage({
       workspaceId: params.workspaceId,
       workerId: params.workerId,

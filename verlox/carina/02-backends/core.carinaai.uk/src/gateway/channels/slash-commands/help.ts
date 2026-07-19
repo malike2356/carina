@@ -10,6 +10,8 @@ export const helpCommand: SlashCommand = {
       'Carina slash commands:',
       '',
       ...cmds.map((c) => `/${c.name}  -  ${c.description}`),
+      '',
+      'Memory: /memory | /remember <text> | /forget <id|text> | /search <query> | /clear',
     ];
     return lines.join('\n');
   },

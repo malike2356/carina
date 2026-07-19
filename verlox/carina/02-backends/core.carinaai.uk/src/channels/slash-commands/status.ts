@@ -57,7 +57,7 @@ function resolveEmbeddingStatus(): string {
 export const statusCommand: SlashCommand = {
   name: 'status',
   description: 'System health, active toolsets, uptime',
-  async handler() {
+  async handler(msg) {
     const uptimeMin = Math.floor((Date.now() - startedAt) / 60000);
     const uptimeStr = uptimeMin < 60
       ? `${uptimeMin}m`
@@ -68,8 +68,9 @@ export const statusCommand: SlashCommand = {
       ? toolsets.enabledToolsets.join(', ')
       : 'none';
 
-    return [
-      'Carina status:',
+    const { enrichStatusWithMemory } = await import('./memory-commands.js');
+    const base = [
+      'Aiva status:',
       `Uptime: ${uptimeStr}`,
       `Active toolsets: ${toolsetSummary}`,
       `Active tools: ${toolsets.toolCount}`,
@@ -78,5 +79,6 @@ export const statusCommand: SlashCommand = {
       `Embedding: ${resolveEmbeddingStatus()}`,
       `Last deploy: ${await resolveDeployTimestamp()}`,
     ].join('\n');
+    return enrichStatusWithMemory(base, msg);
   },
 };

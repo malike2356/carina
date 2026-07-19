@@ -69,6 +69,7 @@ export const statusCommand: SlashCommand = {
       ? toolsets.enabledToolsets.join(', ')
       : 'none';
 
+    const { appendMemoryToStatus } = await import('./memory-commands.js');
     const lines = [
       'Carina status:',
       `Uptime: ${uptime}`,
@@ -80,6 +81,6 @@ export const statusCommand: SlashCommand = {
       `Last deploy: ${deployTimestamp}`,
     ];
 
-    return lines.join('\n');
+    return appendMemoryToStatus(lines.join('\n'));
   },
 };
