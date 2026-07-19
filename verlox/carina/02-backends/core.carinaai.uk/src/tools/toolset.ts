@@ -20,6 +20,7 @@ export const LEAF_EXCLUDED_TOOLS = [
   'test_credential',
   'remove_credential',
   'tool_status',
+  'list_live_capabilities',
   'generate_and_run_tool',
   'persist_runtime_tool',
   'approve_runtime_tool',
@@ -30,7 +31,14 @@ export const LEAF_EXCLUDED_TOOLS = [
  * Tools always given to the main agent regardless of toolset config.
  * These are excluded from subagents via LEAF_EXCLUDED_TOOLS + filterLeafTools.
  */
-export const ALWAYS_ON_TOOLS = ['memory', 'todo', 'clarify', 'session-search'] as const;
+export const ALWAYS_ON_TOOLS = [
+  'memory',
+  'todo',
+  'clarify',
+  'session-search',
+  'list_live_capabilities',
+  'weather-forecast',
+] as const;
 
 export const TOOLSET_MAP: Record<string, string[]> = {
   terminal: ['shell-exec', 'process'],
@@ -114,7 +122,7 @@ export const TOOLSET_MAP: Record<string, string[]> = {
     'stix',
     'cyberchef',
   ],
-  web: ['http-request', 'web-search'],
+  web: ['http-request', 'web-search', 'weather-forecast'],
   browser: [
     'browser-navigate',
     'browser-click',
@@ -258,6 +266,7 @@ export const TOOLSET_MAP: Record<string, string[]> = {
     'test_credential',
     'remove_credential',
     'tool_status',
+    'list_live_capabilities',
   ],
   node: [
     'node_canvas_render',

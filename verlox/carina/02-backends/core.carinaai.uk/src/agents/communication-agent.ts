@@ -10,6 +10,7 @@ export class CommunicationAgent extends SubAgent {
     + 'Otherwise use email-send (Resend) or email-smtp-send. '
     + 'Do not claim IMAP is required for outbound send. Do not take any other action.';
   allowedTools = [
+    'weather-forecast',
     'gmail-send',
     'gmail-list',
     'gmail-get',

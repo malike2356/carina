@@ -28,6 +28,7 @@ function buildMorningDigestPrompt(input: {
   const limit = Math.min(10, Math.max(1, input.emailLimit));
   return [
     'Build today\'s morning digest. Reply with the full briefing only (no tool chatter or preamble).',
+    'IMPORTANT: Do this yourself in this turn. Do NOT delegate to a subagent or communication agent.',
     '',
     `1. Weather for ${city}, ${country}: call weather-forecast with city="${city}" and country="${country}".`,
     '   Summarise today: conditions, high/low C, rain chance, wind if notable.',

@@ -48,6 +48,7 @@ import { checkpointManagerTool } from './checkpoint-manager.js';
 import { debugHelpersTool } from './debug-helpers.js';
 import { mixtureOfAgentsTool } from './mixture-of-agents.js';
 import { computerUseTool } from './computer-use.js';
+import { createWeatherForecastTool } from './weather-forecast.js';
 import { videoGenerationTool } from './video-generation.js';
 import {
   discordTool,
@@ -83,6 +84,7 @@ import { configureTool } from './configure-tool.js';
 import { testCredentialTool } from './test-credential.js';
 import { removeCredentialTool } from './remove-credential.js';
 import { toolStatusTool } from './tool-status.js';
+import { listLiveCapabilitiesTool } from './list-live-capabilities.js';
 
 registry.register(webSearchTool);
 registry.register(fileReadTool);
@@ -116,6 +118,7 @@ registry.register(checkpointManagerTool);
 registry.register(debugHelpersTool);
 registry.register(mixtureOfAgentsTool);
 registry.register(computerUseTool);
+registry.register(createWeatherForecastTool());
 registry.register(videoGenerationTool);
 registry.register(homeassistantTool);
 registry.register(xSearchTool);
@@ -157,6 +160,7 @@ registry.register(configureTool);
 registry.register(testCredentialTool);
 registry.register(removeCredentialTool);
 registry.register(toolStatusTool);
+registry.register(listLiveCapabilitiesTool);
 registry.register(documentsManageTool);
 registry.register(imagesGalleryTool);
 registry.register(secretsAuditTool);
