@@ -30,6 +30,7 @@ const DEDUP_MAX_ALERTS = 3;
 
 /** Security events that must always notify operators (never throttled). */
 export const NEVER_THROTTLE_EVENT_TYPES = new Set([
+  'alert_test',
   'honeypot_triggered',
   'stale_marker_detected',
   'repeated_injection_blocks',

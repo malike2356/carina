@@ -449,29 +449,50 @@
   document.getElementById('send-test-alert')?.addEventListener('click', async () => {
     const resultEl = document.getElementById('alert-test-result');
     const severity = document.getElementById('alert-test-severity')?.value || 'critical';
-    if (resultEl) resultEl.textContent = 'Sending...';
+    if (resultEl) {
+      resultEl.textContent = 'Sending...';
+      resultEl.className = 'ops-inline-note';
+    }
     try {
       const r = await fetch('/settings/alert-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({ severity }),
       });
-      const d = await r.json();
+      const raw = await r.text();
+      let d = {};
+      try {
+        d = raw ? JSON.parse(raw) : {};
+      } catch {
+        if (resultEl) {
+          resultEl.textContent = r.status === 401 || /login/i.test(raw)
+            ? 'Session expired. Refresh and sign in, then retry.'
+            : 'Request failed (HTTP ' + r.status + ').';
+          resultEl.className = 'text-xs text-red-400';
+        }
+        return;
+      }
       if (d.ok) {
         const n = d.channels_notified ?? 0;
         if (resultEl) {
-          resultEl.textContent = 'Test sent. Event ' + (d.event_id || '') + '. Channels: ' + n + '.';
-          resultEl.className = 'text-xs text-green-400';
+          resultEl.textContent = n > 0
+            ? 'Test sent. Event ' + (d.event_id || '') + '. Channels: ' + n + '.'
+            : 'Event created, but no channels matched this severity. Check Min severity on each channel.';
+          resultEl.className = n > 0 ? 'text-xs text-green-400' : 'text-xs text-amber-400';
         }
       } else {
         if (resultEl) {
-          resultEl.textContent = d.error || 'Test failed';
+          resultEl.textContent = d.error || ('Test failed (HTTP ' + r.status + ')');
           resultEl.className = 'text-xs text-red-400';
         }
       }
-    } catch {
+    } catch (err) {
       if (resultEl) {
-        resultEl.textContent = 'Request failed';
+        resultEl.textContent = 'Request failed: ' + (err && err.message ? err.message : 'network error');
         resultEl.className = 'text-xs text-red-400';
       }
     }

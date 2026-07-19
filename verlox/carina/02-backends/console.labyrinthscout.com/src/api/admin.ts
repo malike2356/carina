@@ -212,20 +212,28 @@ adminRouter.post('/alert-test', requireScoutPro, async (req: Request, res: Respo
   if (redis) {
     try {
       await redis.del(`scout:alert-dedup:${instanceId}:alert_test`);
+      await redis.del(`scout:alert-throttle:${instanceId}:${severity}:alert_test`);
     } catch {
       /* non-fatal */
     }
   }
 
+  let dispatchError: string | null = null;
   try {
     await alertDispatcher.dispatch(toSecurityEvent(inserted));
     console.info(
-      `[Admin] Alert test dispatched: severity=${severity} instance=${instanceId} id=${id}`,
+      `[Admin] Alert test dispatched: severity=${severity} instance=${instanceId} id=${id} channels=${channelsNotified}`,
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    dispatchError = msg;
     console.error('[Admin] Alert test dispatch failed:', msg);
   }
 
-  res.json({ ok: true, event_id: id, channels_notified: channelsNotified });
+  res.json({
+    ok: true,
+    event_id: id,
+    channels_notified: channelsNotified,
+    ...(dispatchError ? { dispatch_error: dispatchError } : {}),
+  });
 });

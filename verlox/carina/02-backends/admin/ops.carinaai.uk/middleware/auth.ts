@@ -16,7 +16,12 @@ function wantsStreamResponse(req: Request): boolean {
 
 function wantsJsonResponse(req: Request): boolean {
   const accept = req.get('accept') ?? '';
-  return accept.includes('application/json') || accept.includes('text/event-stream');
+  const contentType = req.get('content-type') ?? '';
+  return (
+    accept.includes('application/json') ||
+    accept.includes('text/event-stream') ||
+    contentType.includes('application/json')
+  );
 }
 
 function wantsApiResponse(req: Request): boolean {
