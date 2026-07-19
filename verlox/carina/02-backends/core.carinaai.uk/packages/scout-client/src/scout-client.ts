@@ -175,7 +175,12 @@ function scheduleMetricsFlush(sessionId: string): void {
     sessionId,
     setTimeout(() => {
       metricsDebounceTimers.delete(sessionId);
-      void flushMetricsToScout(resolveInstanceId(), sessionId);
+      void flushMetricsToScout(resolveInstanceId(), sessionId).catch((err) => {
+        console.warn(
+          '[scout-client] debounced metrics flush failed:',
+          err instanceof Error ? err.message : String(err),
+        );
+      });
     }, METRICS_DEBOUNCE_MS),
   );
 }
@@ -226,7 +231,12 @@ export async function recordToolCall(
 function ensureMetricsFlush(sessionId: string): void {
   if (sessionTimers.has(sessionId)) return;
   const timer = setInterval(() => {
-    void flushMetricsToScout(resolveInstanceId(), sessionId);
+    void flushMetricsToScout(resolveInstanceId(), sessionId).catch((err) => {
+      console.warn(
+        '[scout-client] metrics flush failed:',
+        err instanceof Error ? err.message : String(err),
+      );
+    });
   }, DETECT_INTERVAL_MS);
   sessionTimers.set(sessionId, timer);
 }
@@ -260,37 +270,44 @@ export async function flushMetricsToScout(
   const redis = getRedis();
   if (!redis) return;
 
-  const base = `scout:metrics:${sessionId}`;
-  const [toolCalls, toolsUsed, totalLen, shellCount, httpCount, toolSequence] = await Promise.all([
-    redis.get(`${base}:tool_calls`),
-    redis.scard(`${base}:tools_used`),
-    redis.get(`${base}:total_response_length`),
-    redis.get(`${base}:shell_count`),
-    redis.get(`${base}:http_count`),
-    redis.lrange(`${base}:tool_sequence`, 0, -1),
-  ]);
+  try {
+    const base = `scout:metrics:${sessionId}`;
+    const [toolCalls, toolsUsed, totalLen, shellCount, httpCount, toolSequence] = await Promise.all([
+      redis.get(`${base}:tool_calls`),
+      redis.scard(`${base}:tools_used`),
+      redis.get(`${base}:total_response_length`),
+      redis.get(`${base}:shell_count`),
+      redis.get(`${base}:http_count`),
+      redis.lrange(`${base}:tool_sequence`, 0, -1),
+    ]);
 
-  const tc = Number(toolCalls ?? 0);
-  const metrics = {
-    tool_calls_per_5min: tc,
-    unique_tools_used: toolsUsed,
-    avg_response_length: tc > 0 ? Number(totalLen ?? 0) / tc : 0,
-    shell_exec_count: Number(shellCount ?? 0),
-    http_request_count: Number(httpCount ?? 0),
-    injection_attempt_count: 0,
-    egress_blocked_count: 0,
-    tool_sequence: toolSequence,
-    hour_utc: new Date().getUTCHours(),
-  };
+    const tc = Number(toolCalls ?? 0);
+    const metrics = {
+      tool_calls_per_5min: tc,
+      unique_tools_used: toolsUsed,
+      avg_response_length: tc > 0 ? Number(totalLen ?? 0) / tc : 0,
+      shell_exec_count: Number(shellCount ?? 0),
+      http_request_count: Number(httpCount ?? 0),
+      injection_attempt_count: 0,
+      egress_blocked_count: 0,
+      tool_sequence: toolSequence,
+      hour_utc: new Date().getUTCHours(),
+    };
 
-  await postToScout('/api/events', {
-    instance_id: instanceId,
-    session_id: sessionId,
-    event_type: 'session_metrics',
-    severity: 'info',
-    source: 'carina-aiva',
-    description: JSON.stringify(metrics),
-  });
+    await postToScout('/api/events', {
+      instance_id: instanceId,
+      session_id: sessionId,
+      event_type: 'session_metrics',
+      severity: 'info',
+      source: 'carina-aiva',
+      description: JSON.stringify(metrics),
+    });
+  } catch (err) {
+    console.warn(
+      '[scout-client] flushMetricsToScout failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
 }
 
 export async function reportHeartbeat(): Promise<void> {
