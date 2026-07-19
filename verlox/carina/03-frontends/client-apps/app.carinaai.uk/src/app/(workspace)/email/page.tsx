@@ -7,6 +7,7 @@ import {
   Mail,
   PenSquare,
   RefreshCw,
+  Send,
   Sparkles,
   Trash2,
   X,
@@ -26,7 +27,7 @@ import {
 } from '@/lib/sync-ownership';
 import { cn } from '@/lib/utils';
 
-type FilterTab = 'inbox' | 'sent' | 'high' | 'archived' | 'spam';
+type FilterTab = 'inbox' | 'sent' | 'high' | 'draft_reply' | 'archived' | 'spam';
 
 interface EmailRow {
   id: string;
@@ -49,9 +50,17 @@ const TABS: Array<{ id: FilterTab; label: string; status?: string; urgency?: str
   { id: 'inbox', label: 'Inbox', status: 'inbox' },
   { id: 'sent', label: 'Sent', status: 'sent' },
   { id: 'high', label: 'High urgency', urgency: 'high' },
+  { id: 'draft_reply', label: 'Drafts', status: 'draft_reply' },
   { id: 'archived', label: 'Archived', status: 'archived' },
   { id: 'spam', label: 'Spam', status: 'spam' },
 ];
+
+const SOURCE_OPTIONS = [
+  { id: '', label: 'Any source' },
+  { id: 'aiva', label: 'Aiva' },
+  { id: 'google', label: 'Google' },
+  { id: 'local', label: 'Local' },
+] as const;
 
 function urgencyClass(urgency: string): string {
   if (urgency === 'high') return 'bg-danger/20 text-danger';
@@ -77,6 +86,20 @@ export default function EmailPage() {
   const [composeBody, setComposeBody] = useState('');
   const [sending, setSending] = useState(false);
   const [composeError, setComposeError] = useState<string | null>(null);
+  const [searchQ, setSearchQ] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [appliedQ, setAppliedQ] = useState('');
+  const [appliedFrom, setAppliedFrom] = useState('');
+  const [appliedTo, setAppliedTo] = useState('');
+  const [appliedSource, setAppliedSource] = useState('');
+  const [appliedDateFrom, setAppliedDateFrom] = useState('');
+  const [appliedDateTo, setAppliedDateTo] = useState('');
+  const [submittingApproval, setSubmittingApproval] = useState(false);
+  const [approvalNotice, setApprovalNotice] = useState<string | null>(null);
 
   const filteredRows = useMemo(
     () =>
@@ -92,9 +115,15 @@ export default function EmailPage() {
   async function load() {
     setLoading(true);
     const active = TABS.find((t) => t.id === tab)!;
-    const params = new URLSearchParams({ meta: '1' });
+    const params = new URLSearchParams({ meta: '1', limit: '100' });
     if (active.status) params.set('status', active.status);
     if (active.urgency) params.set('urgency', active.urgency);
+    if (appliedQ) params.set('q', appliedQ);
+    if (appliedFrom) params.set('from', appliedFrom);
+    if (appliedTo) params.set('to', appliedTo);
+    if (appliedSource) params.set('source', appliedSource);
+    if (appliedDateFrom) params.set('dateFrom', appliedDateFrom);
+    if (appliedDateTo) params.set('dateTo', appliedDateTo);
 
     const res = await fetch(`/api/email?${params}`);
     const data = await res.json();
@@ -116,11 +145,36 @@ export default function EmailPage() {
       setLastSyncedAt(null);
     }
     void load();
-  }, [tab]);
+  }, [tab, appliedQ, appliedFrom, appliedTo, appliedSource, appliedDateFrom, appliedDateTo]);
 
   useEffect(() => {
     setDraftText(selected?.aiDraftReply ?? '');
+    setApprovalNotice(null);
   }, [selected?.id, selected?.aiDraftReply]);
+
+  function applyFilters() {
+    setAppliedQ(searchQ.trim());
+    setAppliedFrom(filterFrom.trim());
+    setAppliedTo(filterTo.trim());
+    setAppliedSource(filterSource.trim());
+    setAppliedDateFrom(dateFrom.trim());
+    setAppliedDateTo(dateTo.trim());
+  }
+
+  function clearFilters() {
+    setSearchQ('');
+    setFilterFrom('');
+    setFilterTo('');
+    setFilterSource('');
+    setDateFrom('');
+    setDateTo('');
+    setAppliedQ('');
+    setAppliedFrom('');
+    setAppliedTo('');
+    setAppliedSource('');
+    setAppliedDateFrom('');
+    setAppliedDateTo('');
+  }
 
   async function syncNow() {
     setSyncing(true);
@@ -144,8 +198,13 @@ export default function EmailPage() {
         /* ignore */
       }
       setLastSyncedAt(stamp);
-      if (tab !== 'sent') setTab('sent');
-      else await load();
+      const inboxImported = Number(data.folders?.inbox?.imported ?? 0);
+      const inboxUpdated = Number(data.folders?.inbox?.updated ?? 0);
+      if (inboxImported + inboxUpdated > 0 && tab !== 'inbox') {
+        setTab('inbox');
+      } else {
+        await load();
+      }
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Sync failed');
     } finally {
@@ -210,6 +269,40 @@ export default function EmailPage() {
     await load();
   }
 
+  async function submitForApproval() {
+    if (!selected) return;
+    const body = draftText.trim();
+    if (!body) {
+      setApprovalNotice('Write or generate a draft before submitting for approval.');
+      return;
+    }
+    setSubmittingApproval(true);
+    setApprovalNotice(null);
+    try {
+      await fetch(`/api/email/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aiDraftReply: body }),
+      });
+      const res = await fetch(`/api/email/${selected.id}/submit-approval`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ draftBody: body }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setApprovalNotice(typeof data.error === 'string' ? data.error : 'Could not queue approval');
+        return;
+      }
+      setApprovalNotice('Queued for approval. Review and send from Approvals.');
+      await load();
+    } catch (err) {
+      setApprovalNotice(err instanceof Error ? err.message : 'Could not queue approval');
+    } finally {
+      setSubmittingApproval(false);
+    }
+  }
+
   async function archiveMessage() {
     if (!selected) return;
     await fetch(`/api/email/${selected.id}`, {
@@ -230,6 +323,10 @@ export default function EmailPage() {
     await load();
   }
 
+  const hasActiveFilters = Boolean(
+    appliedQ || appliedFrom || appliedTo || appliedSource || appliedDateFrom || appliedDateTo,
+  );
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -237,12 +334,12 @@ export default function EmailPage() {
           <h1 className="text-lg font-semibold text-text-primary">Email</h1>
           <p className="text-xs text-text-muted">{EMAIL_ORIGIN_HELPER_TEXT}</p>
           <p className="mt-0.5 text-xs text-text-muted">
-            Agent Gmail sends land under Aiva in Sent. Sync now pulls Gmail Sent as Google.
-            Use{' '}
+            Sync pulls Gmail Inbox and Sent. Aivas can read synced mail and draft replies; send only
+            after you approve in{' '}
             <a href="/aiva/approvals" className="text-accent hover:underline">
-              Approval inbox
-            </a>{' '}
-            for Email Handler drafts.
+              Approvals
+            </a>
+            .
           </p>
           {lastSyncedAt ? (
             <p className="mt-0.5 text-[10px] text-text-muted">
@@ -279,8 +376,95 @@ export default function EmailPage() {
         </div>
       </header>
 
-      <div className="border-b border-border px-6 py-2">
+      <div className="space-y-2 border-b border-border px-6 py-2">
         <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
+        <div className="grid gap-2 md:grid-cols-6">
+          <label className="block text-[10px] text-text-muted md:col-span-2">
+            Search
+            <input
+              type="search"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') applyFilters();
+              }}
+              className="mt-0.5 w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-xs text-text-primary"
+              placeholder="Subject, body, from, to"
+            />
+          </label>
+          <label className="block text-[10px] text-text-muted">
+            From
+            <input
+              type="text"
+              value={filterFrom}
+              onChange={(e) => setFilterFrom(e.target.value)}
+              className="mt-0.5 w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-xs text-text-primary"
+              placeholder="sender@"
+            />
+          </label>
+          <label className="block text-[10px] text-text-muted">
+            To
+            <input
+              type="text"
+              value={filterTo}
+              onChange={(e) => setFilterTo(e.target.value)}
+              className="mt-0.5 w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-xs text-text-primary"
+              placeholder="recipient@"
+            />
+          </label>
+          <label className="block text-[10px] text-text-muted">
+            Source
+            <select
+              value={filterSource}
+              onChange={(e) => setFilterSource(e.target.value)}
+              className="mt-0.5 w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-xs text-text-primary"
+            >
+              {SOURCE_OPTIONS.map((opt) => (
+                <option key={opt.id || 'any'} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex items-end gap-1">
+            <button
+              type="button"
+              onClick={applyFilters}
+              className="rounded-md bg-accent px-2.5 py-1.5 text-xs text-primary-foreground"
+            >
+              Apply
+            </button>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-md border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:bg-elevated"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="grid gap-2 md:grid-cols-4">
+          <label className="block text-[10px] text-text-muted">
+            From date
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="mt-0.5 w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-xs text-text-primary"
+            />
+          </label>
+          <label className="block text-[10px] text-text-muted">
+            To date
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="mt-0.5 w-full rounded-md border border-border bg-elevated px-2 py-1.5 text-xs text-text-primary"
+            />
+          </label>
+        </div>
       </div>
 
       {composeOpen ? (
@@ -388,9 +572,15 @@ export default function EmailPage() {
               icon={<Mail className="h-8 w-8" />}
               title="No messages"
               subtitle={
-                tab === 'sent'
-                  ? 'Send from Compose or Sync now to pull Gmail Sent. Agent sends appear under Aiva.'
-                  : 'Use Compose, Sync now, or the inbound webhook. Filter by Aiva / Google above.'
+                hasActiveFilters
+                  ? 'No messages match these filters. Clear filters or Sync now.'
+                  : tab === 'sent'
+                    ? 'Send from Compose or Sync now to pull Gmail Sent. Agent sends appear under Aiva.'
+                    : tab === 'inbox'
+                      ? 'Sync now pulls Gmail Inbox (replies and new mail) as Google.'
+                      : tab === 'draft_reply'
+                        ? 'Drafts awaiting approval or saved replies appear here.'
+                        : 'Use Compose, Sync now, or the inbound webhook. Filter by Aiva / Google above.'
               }
             />
           ) : (
@@ -481,13 +671,36 @@ export default function EmailPage() {
                       variant="compact"
                       minHeight="12rem"
                     />
+                    {approvalNotice ? (
+                      <p className="mt-2 text-[10px] text-text-muted">
+                        {approvalNotice}{' '}
+                        {approvalNotice.includes('Queued') ? (
+                          <a href="/aiva/approvals" className="text-accent hover:underline">
+                            Open Approvals
+                          </a>
+                        ) : null}
+                      </p>
+                    ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
                         onClick={saveDraft}
-                        className="rounded-md bg-accent px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+                        className="rounded-md border border-border px-3 py-1.5 text-xs text-text-secondary hover:bg-elevated"
                       >
                         Save draft
+                      </button>
+                      <button
+                        type="button"
+                        disabled={submittingApproval || !draftText.trim()}
+                        onClick={() => void submitForApproval()}
+                        className="inline-flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-xs text-primary-foreground disabled:opacity-50"
+                      >
+                        {submittingApproval ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Send className="h-3 w-3" />
+                        )}
+                        Submit for approval
                       </button>
                       <button
                         type="button"

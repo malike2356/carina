@@ -850,7 +850,9 @@ export async function describeProductToolGrantsForPrompt(
       return `- ${label} (${grant.toolSlug}): scopes ${scopes}`;
     }),
     'Callable tools for connected Google products:',
-    '- Gmail: use gmail-list, gmail-get, and gmail-send (not email-list; that is Resend inbound only).',
+    '- Gmail live API: use gmail-list, gmail-get, and gmail-send (not email-list; that is Resend inbound only).',
+    '- Aiva Email page store: use workspace-email-list and workspace-email-get for synced Inbox/Sent (source tags, drafts).',
+    '- Drafts needing owner approval: use workspace-email-draft-for-approval (queues /aiva/approvals; does not send).',
     '- Google Drive: use google-drive-search then google-drive-read (not search-files or http-request).',
     'Do not use or invent access to other SaaS products.',
   ].join('\n');

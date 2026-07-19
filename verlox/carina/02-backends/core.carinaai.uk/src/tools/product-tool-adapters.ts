@@ -89,6 +89,7 @@ function createGmailTools(sessionId: string): Tool[] {
       description:
         'List recent Gmail messages for this worker (connected Google Gmail). '
         + 'Use this for "read my last N emails", inbox checks, or searching mail. '
+        + 'For the Aiva Email page sync store (origin tags, drafts), prefer workspace-email-list. '
         + 'Do NOT use email-list for Gmail; that tool only lists Resend webhook mail.',
       parameters: {
         type: 'object',
@@ -140,7 +141,9 @@ function createGmailTools(sessionId: string): Tool[] {
     },
     {
       name: 'gmail-get',
-      description: 'Fetch one Gmail message by id (subject, from, body text). Use after gmail-list.',
+      description:
+        'Fetch one Gmail message by id (subject, from, body text). Use after gmail-list. '
+        + 'Prefer workspace-email-get for synced Aiva Email page rows.',
       parameters: {
         type: 'object',
         properties: {
@@ -175,7 +178,8 @@ function createGmailTools(sessionId: string): Tool[] {
       requiresConfirmation: true,
       description:
         'Send an email from this worker\'s connected Gmail account. '
-        + 'Prefer this over email-smtp-send / email-send when Gmail is connected.',
+        + 'Prefer this over email-smtp-send / email-send when Gmail is connected. '
+        + 'For replies that need owner approval first, use workspace-email-draft-for-approval.',
       parameters: {
         type: 'object',
         properties: {
@@ -190,7 +194,160 @@ function createGmailTools(sessionId: string): Tool[] {
         const subject = String(params.subject ?? '').trim();
         const body = String(params.body ?? '');
         if (!to || !subject) return { ok: false, error: 'to and subject required' };
+        // Logging to Email page happens inside invokeProductTool (gmail send).
         return invokeGranted(sessionId, 'gmail', 'send', { to, subject, body });
+      },
+    },
+    {
+      name: 'workspace-email-list',
+      description:
+        'List emails from the Aiva Email page store (synced Gmail + agent sends + webhook). '
+        + 'Use this to answer questions about what is on /email (Inbox, Sent, Aiva vs Google). '
+        + 'Prefer this over gmail-list when the user refers to the Email page or synced mail.',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: 'Search subject/body/from/to' },
+          status: {
+            type: 'string',
+            description: 'inbox | sent | archived | spam | draft_reply',
+          },
+          source: { type: 'string', description: 'aiva | google | local' },
+          from: { type: 'string', description: 'Filter by from address substring' },
+          to: { type: 'string', description: 'Filter by to address substring' },
+          limit: { type: 'number', description: 'Max rows (1-30). Default 10.' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { listSyncedEmails } = await import('../workers/aiva-synced-email.js');
+        return listSyncedEmails({
+          workspaceId: ctx.worker.workspaceId,
+          q: typeof params.q === 'string' ? params.q : undefined,
+          status: typeof params.status === 'string' ? params.status : undefined,
+          source: typeof params.source === 'string' ? params.source : undefined,
+          from: typeof params.from === 'string' ? params.from : undefined,
+          to: typeof params.to === 'string' ? params.to : undefined,
+          limit: Number(params.limit ?? 10),
+        });
+      },
+    },
+    {
+      name: 'workspace-email-get',
+      description:
+        'Read one synced Email page message by id (full body + draft if any). '
+        + 'Use after workspace-email-list to answer detailed questions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'email_messages id from workspace-email-list' },
+        },
+        required: ['id'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const id = String(params.id ?? '').trim();
+        if (!id) return { ok: false, error: 'id required' };
+        const { getSyncedEmail } = await import('../workers/aiva-synced-email.js');
+        return getSyncedEmail({ workspaceId: ctx.worker.workspaceId, id });
+      },
+    },
+    {
+      name: 'workspace-email-draft-for-approval',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Draft a reply to a synced Email page message and queue it for owner approval. '
+        + 'Does NOT send. Owner must approve in /aiva/approvals. '
+        + 'Provide messageId from workspace-email-list/get, or pass to/subject/body for a new reply thread.',
+      parameters: {
+        type: 'object',
+        properties: {
+          messageId: {
+            type: 'string',
+            description: 'Synced email_messages id to reply to (preferred).',
+          },
+          draftBody: {
+            type: 'string',
+            description: 'Optional draft you already wrote. If omitted, Aiva drafts from the message.',
+          },
+          to: { type: 'string', description: 'Recipient if not using messageId' },
+          subject: { type: 'string', description: 'Subject if not using messageId' },
+          body: { type: 'string', description: 'Original message body context if not using messageId' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+
+        const messageId = String(params.messageId ?? '').trim();
+        let recipient = String(params.to ?? '').trim();
+        let subject = String(params.subject ?? '').trim();
+        let originalBody = String(params.body ?? '');
+        let originalFrom = recipient;
+        let draftBody = String(params.draftBody ?? '').trim();
+
+        if (messageId) {
+          const { getSyncedEmail } = await import('../workers/aiva-synced-email.js');
+          const got = await getSyncedEmail({
+            workspaceId: ctx.worker.workspaceId,
+            id: messageId,
+          });
+          if (!got.ok || !got.data || typeof got.data !== 'object') {
+            return { ok: false, error: got.error ?? 'Synced message not found' };
+          }
+          const row = got.data as Record<string, unknown>;
+          originalFrom = String(row.fromAddress ?? '');
+          recipient = originalFrom;
+          subject = String(row.subject ?? '(no subject)');
+          originalBody = String(row.bodyFull ?? row.bodyPreview ?? '');
+          if (!draftBody && typeof row.aiDraftReply === 'string' && row.aiDraftReply.trim()) {
+            draftBody = row.aiDraftReply.trim();
+          }
+        }
+
+        if (!recipient || !subject) {
+          return { ok: false, error: 'messageId or to+subject required' };
+        }
+
+        if (!draftBody) {
+          const { draftEmailResponse } = await import('../ingestion/email/email-draft-handler.js');
+          draftBody = await draftEmailResponse({
+            workerId: ctx.worker.id,
+            workspaceId: ctx.worker.workspaceId,
+            from: originalFrom || recipient,
+            subject,
+            body: originalBody,
+            category: 'client_query',
+          });
+        }
+
+        const replySubject = /^re:/i.test(subject) ? subject : `Re: ${subject}`;
+        const { createEmailApproval } = await import('../ingestion/email/worker-approval-store.js');
+        const approval = await createEmailApproval({
+          workerId: ctx.worker.id,
+          workspaceId: ctx.worker.workspaceId,
+          messageId: messageId || undefined,
+          category: 'client_query',
+          recipient,
+          subject: replySubject,
+          draftBody,
+          originalFrom: originalFrom || recipient,
+        });
+
+        return {
+          ok: true,
+          data: {
+            approvalId: approval.id,
+            recipient: approval.recipient,
+            subject: approval.subject,
+            draftPreview: draftBody.slice(0, 500),
+            status: 'pending',
+            note: 'Queued for owner approval at /aiva/approvals. Not sent yet.',
+          },
+        };
       },
     },
   ];

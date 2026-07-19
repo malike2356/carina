@@ -148,19 +148,47 @@ export async function sendApprovedEmail(input: {
   const existing = await getApproval(input.workspaceId, input.approvalId);
   if (!existing || existing.status !== 'pending') return null;
 
-  // Send while still pending so a Resend failure does not leave a false "approved" row.
+  // Send while still pending so a send failure does not leave a false "approved" row.
   const body = input.modifiedBody ?? existing.draftBody;
-  const creds = await getEmailCredentials(existing.workerId);
-  const replyTo = creds?.username;
 
-  await sendEmail({
-    to: existing.recipient,
-    subject: existing.subject,
-    replyTo,
-    transactional: true,
-    workspaceId: input.workspaceId,
-    template: React.createElement(Text, null, body),
-  });
+  let sentVia: 'gmail' | 'resend' = 'resend';
+  const { workerHasToolGrant } = await import('../../workers/spinnable-parity-store.js');
+  const hasGmail = await workerHasToolGrant(
+    input.workspaceId,
+    existing.workerId,
+    'gmail',
+  );
+
+  if (hasGmail) {
+    const { invokeProductTool } = await import('../../workers/product-tools/invoke.js');
+    const gmailResult = await invokeProductTool({
+      workspaceId: input.workspaceId,
+      workerId: existing.workerId,
+      slug: 'gmail',
+      action: 'send',
+      input: {
+        to: existing.recipient,
+        subject: existing.subject,
+        body,
+      },
+    });
+    if (!gmailResult.ok) {
+      throw new Error(gmailResult.error || 'Gmail send failed');
+    }
+    sentVia = 'gmail';
+  } else {
+    const creds = await getEmailCredentials(existing.workerId);
+    const replyTo = creds?.username;
+    await sendEmail({
+      to: existing.recipient,
+      subject: existing.subject,
+      replyTo,
+      transactional: true,
+      workspaceId: input.workspaceId,
+      template: React.createElement(Text, null, body),
+    });
+    sentVia = 'resend';
+  }
 
   const decision = input.modifiedBody ? 'modified' : 'approved';
   const resolved = await resolveApproval({
@@ -178,13 +206,13 @@ export async function sendApprovedEmail(input: {
     workspaceId: input.workspaceId,
     workerId: resolved.workerId,
     eventType: 'email_sent',
-    description: `Approved email sent to ${resolved.recipient}`,
-    metadata: { approvalId: resolved.id },
+    description: `Approved email sent to ${resolved.recipient} via ${sentVia}`,
+    metadata: { approvalId: resolved.id, sentVia },
   });
 
   void logActivity(resolved.workerId, {
     actionType: 'message_sent',
-    summary: `Email sent to ${resolved.recipient}`,
+    summary: `Email sent to ${resolved.recipient} via ${sentVia}`,
     outputText: body,
     escalated: false,
     channel: 'email',
