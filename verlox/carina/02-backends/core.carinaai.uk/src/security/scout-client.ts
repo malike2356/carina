@@ -136,9 +136,16 @@ export async function reportScoutSignal(signal: ScoutSignal): Promise<void> {
 }
 
 export async function reportToolCall(call: ToolCallReport): Promise<void> {
-  const mod = await scout();
-  if (!mod) return;
-  return mod.reportToolCall(call);
+  try {
+    const mod = await scout();
+    if (!mod) return;
+    await mod.reportToolCall(call);
+  } catch (err) {
+    console.warn(
+      '[scout] reportToolCall failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
 }
 
 export async function reportHeartbeat(): Promise<void> {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { db } from '@/db';
 import { researchJobs, type ResearchStatus } from '@/db/schema';
 import {
@@ -101,6 +101,24 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const workspace = await requireWorkspace(session.user.id);
+
+  // Fail stale running jobs so the UI cannot spin forever after a core crash.
+  const staleBefore = new Date(Date.now() - 20 * 60_000);
+  await db
+    .update(researchJobs)
+    .set({
+      status: 'failed' satisfies ResearchStatus,
+      error: 'Research timed out waiting for core (job left running too long). Retry the query.',
+      completedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(researchJobs.workspaceId, workspace.id),
+        eq(researchJobs.status, 'running'),
+        lt(researchJobs.createdAt, staleBefore),
+      ),
+    );
+
   const jobs = await db
     .select()
     .from(researchJobs)

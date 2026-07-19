@@ -209,7 +209,16 @@ export async function recordToolCall(
   multi.rpush(`${base}:tool_sequence`, toolName);
   multi.ltrim(`${base}:tool_sequence`, -32, -1);
   multi.expire(`${base}:tool_sequence`, METRICS_TTL_SECONDS);
-  await multi.exec();
+  try {
+    await multi.exec();
+  } catch (err) {
+    // Redis telemetry must never crash the agent process mid-tool-call.
+    console.warn(
+      '[scout-client] recordToolCall redis failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+    return;
+  }
 
   ensureMetricsFlush(sessionId);
 }

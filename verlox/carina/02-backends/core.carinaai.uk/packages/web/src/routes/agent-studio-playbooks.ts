@@ -56,7 +56,9 @@ function playbooksAuth(req: PlaybooksRequest, res: Response, next: NextFunction)
 }
 
 function actorKey(req: PlaybooksRequest): string {
-  return req.playbooksActor?.carinaUserId ?? req.ip ?? 'unknown';
+  // Avoid req.ip: express-rate-limit v8 rejects IP-based custom keyGenerators
+  // unless ipKeyGenerator is used, and throws on module load (process crash loop).
+  return req.playbooksActor?.carinaUserId ?? 'anonymous';
 }
 
 const handoffLimiter = rateLimit({

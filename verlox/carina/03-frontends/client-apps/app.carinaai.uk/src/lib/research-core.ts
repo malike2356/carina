@@ -20,8 +20,14 @@ export function resolveResearchCoreKey(): string {
 }
 
 export function resolveResearchCallbackUrl(jobId: string): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:4100';
-  return `${base.replace(/\/$/, '')}/api/research/${jobId}/webhook`;
+  // Prefer Docker-internal callback so core can finish jobs without hairpinning
+  // through the public internet (and survive brief public-edge blips).
+  const internalBase =
+    process.env.CARINA_CLOUD_INTERNAL_URL?.trim()
+    || (process.env.NODE_ENV === 'production' ? 'http://carina-cloud:4100' : '');
+  const publicBase = process.env.NEXT_PUBLIC_APP_URL?.trim() || 'http://localhost:4100';
+  const base = (internalBase || publicBase).replace(/\/$/, '');
+  return `${base}/api/research/${jobId}/webhook`;
 }
 
 export function buildResearchQuery(query: string, mode: string): string {

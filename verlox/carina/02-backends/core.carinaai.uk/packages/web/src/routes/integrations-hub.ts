@@ -58,7 +58,11 @@ const handoffLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => (req as IntegrationsRequest).integrationsActor?.carinaUserId ?? req.ip ?? 'unknown',
+  // Prefer authenticated actor id. Do not use req.ip here: express-rate-limit v8
+  // throws ERR_ERL_KEY_GEN_IPV6 when custom keyGenerators reference IP without
+  // ipKeyGenerator, and that crash loops carina-core under supervisor.
+  keyGenerator: (req) =>
+    (req as IntegrationsRequest).integrationsActor?.carinaUserId ?? 'anonymous',
   message: { error: 'Handoff rate limit exceeded. Try again in a minute.' },
 });
 

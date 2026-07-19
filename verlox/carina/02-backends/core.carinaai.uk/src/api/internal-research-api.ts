@@ -71,6 +71,12 @@ internalResearchApiRouter.post('/run', (req: Request, res: Response) => {
   const callbackUrl = String(req.body?.callbackUrl ?? '').trim();
   const mode = String(req.body?.mode ?? 'auto');
   const maxRounds = Number(req.body?.maxRounds ?? req.body?.rounds ?? 3);
+  const boundedRounds = Number.isFinite(maxRounds) ? Math.min(Math.max(1, maxRounds), 10) : 3;
+  // Cap wall-clock so a hung LLM/tool cannot leave cloud jobs "running" forever.
+  const timeoutMs = Math.min(
+    Math.max(Number(req.body?.timeoutMs ?? 0) || boundedRounds * 120_000, 60_000),
+    15 * 60_000,
+  );
 
   if (!query) {
     res.status(400).json({ error: 'query is required' });
@@ -86,21 +92,33 @@ internalResearchApiRouter.post('/run', (req: Request, res: Response) => {
   }
 
   res.json({ accepted: true, jobId });
+  console.info(`[research] accepted job=${jobId} rounds=${boundedRounds} timeoutMs=${timeoutMs}`);
 
   void (async () => {
     try {
-      const report = await runDeepResearch({
-        query: buildResearchQuery(query, mode),
-        maxRounds: Number.isFinite(maxRounds) ? Math.min(Math.max(1, maxRounds), 10) : 3,
-        sessionId: `cloud-research:${jobId}`,
-      });
+      const report = await Promise.race([
+        runDeepResearch({
+          query: buildResearchQuery(query, mode),
+          maxRounds: boundedRounds,
+          maxQualityPasses: Math.max(1, Math.min(boundedRounds, 5)),
+          sessionId: `cloud-research:${jobId}`,
+        }),
+        new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`Research timed out after ${Math.round(timeoutMs / 1000)}s`)),
+            timeoutMs,
+          );
+        }),
+      ]);
       await postWebhook(callbackUrl, {
         status: 'completed',
         output: renderReportMarkdown(report),
         sources: mapSources(report),
       });
+      console.info(`[research] completed job=${jobId}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      console.error(`[research] failed job=${jobId}:`, message);
       try {
         await postWebhook(callbackUrl, {
           status: 'failed',
