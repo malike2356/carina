@@ -113,6 +113,19 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
     ],
   },
   {
+    id: 'send_email',
+    label: 'Send outbound email',
+    tools: ['gmail-send', 'email-send', 'email-smtp-send'],
+    guidance:
+      'Call gmail-send when available, otherwise email-send or email-smtp-send. Do not claim IMAP is required.',
+    patterns: [
+      /\bsend\s+(this\s+)?(an?\s+)?e-?mails?\b/i,
+      /\bsend\s+(this\s+)?(message|mail)\s+to\b/i,
+      /\bemail\s+this\s+to\b/i,
+      /\bto:\s*\S+@\S+/i,
+    ],
+  },
+  {
     id: 'api_data',
     label: 'API responses and live data',
     tools: [

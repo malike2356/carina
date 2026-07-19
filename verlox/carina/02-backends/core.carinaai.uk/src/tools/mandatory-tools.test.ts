@@ -39,6 +39,12 @@ describe('mandatory-tools', () => {
     expect(hint).toContain('Do not substitute');
   });
 
+  it('matches send-email requests to gmail-send', () => {
+    const tools = primaryMandatoryTools('send this email to To: laudpaul@gmail.com Subject: Hello');
+    expect(tools).toContain('gmail-send');
+    expect(tools).toContain('email-send');
+  });
+
   it('buildMandatoryToolHint returns structured guidance', () => {
     const hint = buildMandatoryToolHint('what time is it in London?');
     expect(hint).toContain('Mandatory tool routing');

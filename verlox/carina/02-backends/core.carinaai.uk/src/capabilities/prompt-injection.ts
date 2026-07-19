@@ -34,15 +34,32 @@ function formatExtensionList(extensions: CapabilityManifest['extensions']['activ
 export function buildCapabilityPromptBlock(manifest: CapabilityManifest): string {
   const { summary, tools, channels, skills, knowledge, credentials, platform, scout, extensions } = manifest;
 
-  const missingCredTools = tools.active.filter((t) => t.credentialStatus === 'missing');
+  const gmailSendReady = tools.active.some(
+    (t) => t.name === 'gmail-send' && t.credentialStatus !== 'missing',
+  );
+  const missingCredTools = tools.active.filter((t) => {
+    if (t.credentialStatus !== 'missing') return false;
+    // Outbound mail via connected Gmail does not need Resend/SMTP/IMAP env keys.
+    if (gmailSendReady && (t.name === 'email-send' || t.name === 'email-smtp-send' || t.name === 'email-list')) {
+      return false;
+    }
+    return true;
+  });
   const missingCredNote = missingCredTools.length > 0
     ? `Tools waiting on credentials: ${missingCredTools.slice(0, 4).map((t) => t.name).join(', ')}.`
+    : '';
+  const outboundMailNote = gmailSendReady
+    ? 'Outbound email: Gmail is connected. Use gmail-send. Do not claim IMAP/SMTP credentials are required.'
     : '';
 
   const availableChannelNames = channels.available.slice(0, 4).map((c) => c.name).join(', ');
   const setupHint = channels.available[0]
     ? `Want more channels? ${channels.available[0].name} takes about ${channels.available[0].setupTime} to set up.`
     : '';
+
+  const missingCredLabels = gmailSendReady
+    ? credentials.missing.filter((k) => !/^imap-|^smtp-/.test(k))
+    : credentials.missing;
 
   const block = [
     '## YOUR CAPABILITIES (authoritative for "what can you do?" questions)',
@@ -61,16 +78,18 @@ export function buildCapabilityPromptBlock(manifest: CapabilityManifest): string
     knowledge.documentCount > 0
       ? `You have ${knowledge.documentCount} indexed document sources covering: ${knowledge.domains.join(', ') || 'general'}.`
       : 'No uploaded documents indexed yet. Ask the operator to upload FAQs, policies, or guides.',
+    'Platform self-knowledge pack `carina-rag` is available via retrieval when answering what this product can do.',
     '',
     '### Extensions',
     formatExtensionList(extensions.active),
     '',
     '### Credential status',
     credentials.configured.length > 0 ? `Ready: ${credentials.configured.slice(0, 8).join(', ')}.` : '',
-    credentials.missing.length > 0
-      ? `Missing: ${credentials.missing.slice(0, 6).join(', ')}; affected integrations may not work until connected.`
+    missingCredLabels.length > 0
+      ? `Missing: ${missingCredLabels.slice(0, 6).join(', ')}; affected integrations may not work until connected.`
       : '',
     missingCredNote,
+    outboundMailNote,
     '',
     '### Platform',
     `${platform.tierLabel} plan. ${platform.slotLimit === null ? 'Unlimited' : `Up to ${platform.slotLimit}`} AI workers. ${platform.slotsUsed} in use.`,
@@ -81,7 +100,7 @@ export function buildCapabilityPromptBlock(manifest: CapabilityManifest): string
       : 'Scout not connected; advanced governance may be unavailable.',
     '',
     '### Answering capability questions',
-    'When asked "what can you do?":',
+    'When asked "what can you do?" or "what do you know about this system?":',
     '1. Summarise active tools by category in plain language (no raw tool names unless asked).',
     `2. Report ${summary.totalToolsActive} active tools, not the full ${summary.totalToolsAvailable} catalog.`,
     channels.connected.length > 0
@@ -90,7 +109,8 @@ export function buildCapabilityPromptBlock(manifest: CapabilityManifest): string
     credentials.missing.length > 0
       ? '4. Say which integrations need credentials before they will work.'
       : '4. Offer one concrete next capability if something is not set up yet.',
-    setupHint ? `5. ${setupHint}` : '',
+    '5. Call tool_status or list_live_capabilities when the injected block may be stale or the user asks for a live inventory.',
+    setupHint ? `6. ${setupHint}` : '',
   ]
     .filter((line) => line !== '')
     .join('\n');

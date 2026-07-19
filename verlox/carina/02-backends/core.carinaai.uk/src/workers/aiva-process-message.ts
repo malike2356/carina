@@ -9,7 +9,7 @@ import {
   processWorkerInbound,
   processWorkerOutbound,
 } from '../workers/aiva-message-handler.js';
-import { clearWorkerSessionContext } from '../workers/worker-session-context.js';
+import { clearWorkerSessionContext, setWorkerSessionContext } from '../workers/worker-session-context.js';
 import type { AivaChannelName } from '../channels/types.js';
 import { buildPortfolioContextSuffix } from '../workers/portfolio-context.js';
 import {
@@ -188,6 +188,30 @@ export async function* processAivaMessageStreamDirect(
     continuationHint: '',
   }));
 
+  // Register product tools on the real chat session before building the capability
+  // prompt, otherwise the block reports email/IMAP missing and hides gmail-send.
+  setWorkerSessionContext(sessionId, {
+    worker,
+    personaPrompt: worker.personaPrompt,
+    planTier,
+    channel: params.channel,
+    contactId: params.contactId,
+  });
+  registerPropreneurSessionTools(sessionId);
+  registerPropreneurSelfConfigureTool(sessionId);
+  registerWorkerMemorySessionTools(sessionId);
+  registerWorkerAutomationSessionTools(sessionId);
+  registerWeatherForecastSessionTool(sessionId);
+  await registerProductToolAdapters(sessionId);
+
+  const capabilityPlatform =
+    params.channel === 'telegram'
+    || params.channel === 'whatsapp'
+    || params.channel === 'slack'
+    || params.channel === 'discord'
+      ? params.channel
+      : 'web';
+
   const [personaPrompt, capabilityContext, scopeGrants, productToolsPrompt, pinnedMemories, externalPrefetch, capabilityPrompt] =
     await Promise.all([
       resolvePersonaWithKnowledge(
@@ -224,9 +248,10 @@ export async function* processAivaMessageStreamDirect(
         .then(async ({ buildCapabilityManifest }) => {
           const { buildCapabilityPromptBlock } = await import('../capabilities/prompt-injection.js');
           const manifest = await buildCapabilityManifest({
-            sessionId: `aiva-${params.workerId}`,
+            sessionId,
             workspaceId: params.workspaceId,
-            platform: 'web',
+            platform: capabilityPlatform,
+            forceRefresh: true,
           });
           return buildCapabilityPromptBlock(manifest);
         })
@@ -303,11 +328,7 @@ export async function* processAivaMessageStreamDirect(
   const restorePacks = applyWorkerToSession(router, sessionId, ctx);
   // Rebuild system prompt each Aiva turn so new grants, persona, and tools are visible.
   forceImmediateInvalidation(sessionId);
-  registerPropreneurSessionTools(sessionId);
-  registerPropreneurSelfConfigureTool(sessionId);
-  registerWorkerMemorySessionTools(sessionId);
-  registerWorkerAutomationSessionTools(sessionId);
-  registerWeatherForecastSessionTool(sessionId);
+  // Session tools were registered above (before capability prompt); keep adapters warm.
   await registerProductToolAdapters(sessionId);
   const parts: string[] = [];
   try {

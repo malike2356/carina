@@ -80,4 +80,20 @@ describe('session-tool-resolution product/propreneur adapters', () => {
     expect(resolution.names).toContain('google-drive-search');
     expect(resolution.tools.some((t) => t.name === 'gmail-list')).toBe(true);
   });
+
+  it('keeps only allowlisted session tools when explicitAllowed is set', async () => {
+    registerSessionTool(SESSION, stubTool('gmail-send'));
+    registerSessionTool(SESSION, stubTool('gmail-list'));
+    registerSessionTool(SESSION, stubTool('propreneur-connect'));
+
+    const resolution = await resolveSessionTools({
+      sessionId: SESSION,
+      platform: 'default',
+      explicitAllowed: ['gmail-send', 'email-send', 'http-request'],
+    });
+
+    expect(resolution.names).toContain('gmail-send');
+    expect(resolution.names).not.toContain('propreneur-connect');
+    expect(resolution.names).not.toContain('gmail-list');
+  });
 });

@@ -44,15 +44,24 @@ export function resolveSessionToolNames(opts: {
   return names;
 }
 
-function resolveToolsFromNames(names: string[], sessionId: string): Tool[] {
+function resolveToolsFromNames(
+  names: string[],
+  sessionId: string,
+  opts?: { restrictSessionToAllowed?: boolean },
+): Tool[] {
   const allowed = new Set(names);
   const globalTools = registry.list().filter((t) => allowed.has(t.name));
   // Session tools are intentionally registered for this chat (Aiva product adapters,
   // Propreneur connect/portfolio, etc.). Include them even when they are not members
   // of the global toolset name list, as long as the worker policy allows them.
-  const sessionTools = listSessionTools(sessionId).filter((t) =>
+  // When an explicit allowlist is active (communication/coding subagents), only keep
+  // session tools that are on that list so gmail-send is not drowned by embedding filter.
+  let sessionTools = listSessionTools(sessionId).filter((t) =>
     isToolAllowedForWorker(t.name, sessionId),
   );
+  if (opts?.restrictSessionToAllowed) {
+    sessionTools = sessionTools.filter((t) => allowed.has(t.name));
+  }
   const byName = new Map(globalTools.map((t) => [t.name, t]));
   for (const tool of sessionTools) byName.set(tool.name, tool);
   return [...byName.values()];
@@ -67,7 +76,9 @@ export async function resolveSessionTools(opts: {
   model?: string;
 }): Promise<SessionToolResolution> {
   const names = resolveSessionToolNames(opts);
-  let tools = resolveToolsFromNames(names, opts.sessionId);
+  let tools = resolveToolsFromNames(names, opts.sessionId, {
+    restrictSessionToAllowed: Boolean(opts.explicitAllowed?.length),
+  });
   let embeddingFiltered = false;
 
   const provider = opts.provider ?? 'openai';
