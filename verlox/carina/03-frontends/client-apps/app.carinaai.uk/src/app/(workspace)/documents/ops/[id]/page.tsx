@@ -8,6 +8,7 @@ import {
   Check,
   ExternalLink,
   Loader2,
+  Save,
   Trash2,
 } from 'lucide-react';
 import { CarinaEditor, type CarinaEditorHandle } from '@/components/editor';
@@ -45,6 +46,7 @@ function OpsDocumentEditorInner() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,8 +94,13 @@ function OpsDocumentEditorInner() {
   const persist = useCallback(
     async (nextTitle: string, nextContent: string) => {
       if (!workerId || !documentId) return;
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
       setSaving(true);
       setSaved(false);
+      setSaveError(null);
       const res = await fetch(
         `/api/aiva/workspace-ops/documents/${encodeURIComponent(documentId)}?workerId=${encodeURIComponent(workerId)}`,
         {
@@ -109,10 +116,13 @@ function OpsDocumentEditorInner() {
       const data = (await res.json()) as OpsDocResponse;
       setSaving(false);
       if (!res.ok) {
-        setError(data.error ?? 'Save failed');
+        const message = data.error ?? 'Save failed';
+        setError(message);
+        setSaveError(message);
         return;
       }
       setError(null);
+      setSaveError(null);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
@@ -132,6 +142,10 @@ function OpsDocumentEditorInner() {
   function handleContentChange(value: string) {
     setContent(value);
     scheduleSave(title, value);
+  }
+
+  async function saveNow() {
+    await persist(title, content);
   }
 
   async function deleteDocument() {
@@ -192,7 +206,9 @@ function OpsDocumentEditorInner() {
         <div className="flex items-center gap-2 text-[10px] text-text-muted">
           {category ? <span className="uppercase">{category}</span> : null}
           {syncStatus ? <span>{syncStatus}</span> : null}
-          {saving ? (
+          {saveError ? (
+            <span className="text-danger">{saveError}</span>
+          ) : saving ? (
             'Saving...'
           ) : saved ? (
             <span className="inline-flex items-center gap-1 text-emerald-400">
@@ -202,6 +218,15 @@ function OpsDocumentEditorInner() {
             'Autosave on'
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => void saveNow()}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:bg-elevated hover:text-text-primary disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          Save
+        </button>
         {driveLink ? (
           <a
             href={driveLink}

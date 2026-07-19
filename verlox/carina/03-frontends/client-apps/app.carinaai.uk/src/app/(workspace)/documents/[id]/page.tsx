@@ -10,6 +10,7 @@ import {
   Loader2,
   MessageSquare,
   PenLine,
+  Save,
   Sparkles,
   Trash2,
   Wand2,
@@ -33,6 +34,7 @@ export default function DocumentEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
   const [assistBusy, setAssistBusy] = useState<string | null>(null);
   const [inlinePrompt, setInlinePrompt] = useState('');
@@ -59,13 +61,30 @@ export default function DocumentEditorPage() {
 
   const persist = useCallback(
     async (nextTitle: string, nextContent: string) => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        saveTimer.current = null;
+      }
       setSaving(true);
       setSaved(false);
-      await fetch(`/api/documents/${params.id}`, {
+      setSaveError(null);
+      const res = await fetch(`/api/documents/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: nextTitle, content: nextContent }),
       });
+      if (!res.ok) {
+        let message = 'Save failed';
+        try {
+          const data = (await res.json()) as { error?: string };
+          message = data.error ?? message;
+        } catch {
+          message = 'Save failed';
+        }
+        setSaveError(message);
+        setSaving(false);
+        return;
+      }
       setSaving(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -86,6 +105,10 @@ export default function DocumentEditorPage() {
   function handleContentChange(value: string) {
     setContent(value);
     scheduleSave(title, value);
+  }
+
+  async function saveNow() {
+    await persist(title, content);
   }
 
   function applyAssistResult(
@@ -207,7 +230,9 @@ export default function DocumentEditorPage() {
           placeholder="Document title"
         />
         <div className="flex items-center gap-1 text-[10px] text-text-muted">
-          {saving ? 'Saving...' : saved ? (
+          {saveError ? (
+            <span className="text-danger">{saveError}</span>
+          ) : saving ? 'Saving...' : saved ? (
             <span className="inline-flex items-center gap-1 text-emerald-400">
               <Check className="h-3 w-3" /> Saved
             </span>
@@ -215,6 +240,15 @@ export default function DocumentEditorPage() {
             'Autosave on'
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => void saveNow()}
+          disabled={saving}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:bg-elevated hover:text-text-primary disabled:opacity-50"
+        >
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          Save
+        </button>
         <IconButton label="Export markdown" onClick={exportMarkdown}>
           <Download className="h-4 w-4" />
         </IconButton>
