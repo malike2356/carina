@@ -295,21 +295,21 @@ export async function buildWorkerDurableMemorySuffix(opts: {
 
   if (userLines.length > 0) {
     parts.push(
-      `USER PROFILE [${userBudget.percent}% — ${userBudget.used}/${userBudget.max} chars]`,
+      `USER PROFILE [${userBudget.percent}%; ${userBudget.used}/${userBudget.max} chars]`,
       userLines.join('\n§\n'),
     );
   } else {
-    parts.push(`USER PROFILE [${userBudget.percent}% — ${userBudget.used}/${userBudget.max} chars]: (empty)`);
+    parts.push(`USER PROFILE [${userBudget.percent}%; ${userBudget.used}/${userBudget.max} chars]: (empty)`);
   }
 
   if (memoryLines.length > 0) {
     parts.push(
-      `MEMORY / agent notes [${memoryBudget.percent}% — ${memoryBudget.used}/${memoryBudget.max} chars]`,
+      `MEMORY / agent notes [${memoryBudget.percent}%; ${memoryBudget.used}/${memoryBudget.max} chars]`,
       memoryLines.join('\n§\n'),
     );
   } else {
     parts.push(
-      `MEMORY / agent notes [${memoryBudget.percent}% — ${memoryBudget.used}/${memoryBudget.max} chars]: (empty)`,
+      `MEMORY / agent notes [${memoryBudget.percent}%; ${memoryBudget.used}/${memoryBudget.max} chars]: (empty)`,
     );
   }
 

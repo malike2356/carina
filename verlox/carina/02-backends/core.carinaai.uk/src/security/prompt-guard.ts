@@ -232,11 +232,13 @@ export class PromptGuard {
           original_length: result.length,
         });
       }
+      // Still strip matched obfuscation (e.g. zero-width) without containing the session.
       return {
         isMalicious: false,
         confidence: highestPatternConfidence(matched),
         layer: 3,
         patterns: matched.map((m) => m.label),
+        sanitized,
       };
     }
 

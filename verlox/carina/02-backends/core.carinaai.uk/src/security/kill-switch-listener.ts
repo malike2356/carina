@@ -112,6 +112,21 @@ export function blockSessionByPolicy(sessionId: string, reason: string): void {
   appendLog(logLine);
 }
 
+/** Clear RASP/Scout session blocks so /new can continue on the same channel session id. */
+export function clearSessionPolicyBlock(sessionId: string): boolean {
+  if (!sessionId) return false;
+  const had =
+    blockedSessions.delete(sessionId)
+    || suspendedSessions.delete(sessionId)
+    || gracefulSuspendSessions.delete(sessionId);
+  if (had) {
+    const logLine = `SESSION BLOCK CLEARED: ${sessionId}`;
+    console.info(`[KillSwitch] ${logLine}`);
+    appendLog(logLine);
+  }
+  return had;
+}
+
 export function suspendInstanceByPolicy(reason: string): void {
   suspended = true;
   suspensionReason = reason;

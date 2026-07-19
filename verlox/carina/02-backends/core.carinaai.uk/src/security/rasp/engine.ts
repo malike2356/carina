@@ -26,6 +26,24 @@ export function isRaspEnabled(): boolean {
   return process.env.CARINA_RASP_ENABLED !== 'false';
 }
 
+const SOFT_OBFUSCATION_PATTERN_IDS = new Set([
+  'INJ-F03',
+  'zero-width-character',
+  'zero-width',
+]);
+
+function isSoftObfuscationOnly(signals: RASPSignal[]): boolean {
+  if (signals.length === 0) return false;
+  return signals.every((signal) => {
+    if (signal.source !== 'prompt_guard') return false;
+    const fromId = String(signal.patternId ?? '').trim();
+    if (fromId && SOFT_OBFUSCATION_PATTERN_IDS.has(fromId)) return true;
+    const patterns = signal.context.details?.patterns;
+    if (!Array.isArray(patterns) || patterns.length === 0) return false;
+    return patterns.every((p) => SOFT_OBFUSCATION_PATTERN_IDS.has(String(p)));
+  });
+}
+
 export class RASPEngine {
   private sessionBuffers = new Map<string, SignalBuffer>();
   private restoredSessions = new Set<string>();
@@ -65,7 +83,19 @@ export class RASPEngine {
       confidence = Math.min(1, Number((confidence + 0.15).toFixed(3)));
     }
     const { attackType, mitreTactic } = classifyAttack(correlatedSignals, attackGraph);
-    const decision = decideResponse(threatScore, attackType, confidence);
+    let decision = decideResponse(threatScore, attackType, confidence);
+
+    // Soft obfuscation alone (e.g. zero-width chars in Gmail drafts) must not contain sessions.
+    if (
+      (decision.action === 'contain' || decision.action === 'kill')
+      && isSoftObfuscationOnly(correlatedSignals)
+    ) {
+      decision = {
+        action: 'alert',
+        description: `Soft obfuscation only (${attackType ?? 'unknown'}). Alerting without containing session.`,
+        autoExecute: false,
+      };
+    }
 
     const assessment: ThreatAssessment = {
       id: randomUUID(),

@@ -10,6 +10,8 @@ export const newCommand: SlashCommand = {
     const router = getRouter();
     const sessionId = await router.getChannelSession(route.agent.id, msg);
     await router.clearSession(sessionId);
+    const { clearSessionPolicyBlock } = await import('../../../security/kill-switch-listener.js');
+    clearSessionPolicyBlock(sessionId);
     return 'Fresh conversation started. Previous context cleared.';
   },
 };

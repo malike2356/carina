@@ -121,6 +121,23 @@ describe('RASP engine', () => {
     expect(formatThreatAssessment(assessment!)).toContain('sess-rasp-1');
   });
 
+  it('does not contain on soft obfuscation-only prompt_guard signals', async () => {
+    const engine = getRaspEngine();
+    const assessment = await engine.ingest({
+      ...signalFromPromptGuard({
+        sessionId: 'sess-soft-zwc',
+        type: 'tool_result_injection_blocked',
+        severity: 0.85,
+        confidence: 0.85,
+        patternId: 'INJ-F03',
+        patterns: ['zero-width-character'],
+      }),
+      timestamp: Date.now(),
+    });
+    expect(assessment.decision.action).toBe('alert');
+    expect(isSessionBlocked('sess-soft-zwc')).toBe(false);
+  });
+
   it('executes contain response for high score', async () => {
     const engine = getRaspEngine();
     const now = Date.now();

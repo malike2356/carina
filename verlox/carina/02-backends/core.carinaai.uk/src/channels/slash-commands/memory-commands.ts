@@ -99,6 +99,8 @@ export const newCommand: SlashCommand = {
     const sessionId = aivaSessionId(msg.workerId, msg.channel, msg.contactId);
     await clearSession(sessionId);
     forceImmediateInvalidation(sessionId);
+    const { clearSessionPolicyBlock } = await import('../../security/kill-switch-listener.js');
+    clearSessionPolicyBlock(sessionId);
     return 'Fresh conversation started. Durable USER/MEMORY notes were kept.';
   },
 };

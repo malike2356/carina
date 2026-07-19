@@ -54,10 +54,10 @@ export async function formatWorkerMemoryStatus(opts: {
   const lines = [
     'Durable memory (clear split)',
     '',
-    `USER PROFILE [${userBudget.percent}% — ${userBudget.used}/${userBudget.max}]`,
+    `USER PROFILE [${userBudget.percent}%; ${userBudget.used}/${userBudget.max}]`,
     ...(user.length ? user.map((f) => `- [${f.id.slice(0, 8)}] ${f.content}`) : ['(empty)']),
     '',
-    `MEMORY / notes [${memoryBudget.percent}% — ${memoryBudget.used}/${memoryBudget.max}]`,
+    `MEMORY / notes [${memoryBudget.percent}%; ${memoryBudget.used}/${memoryBudget.max}]`,
     ...(memory.length ? memory.map((f) => `- [${f.id.slice(0, 8)}] ${f.content}`) : ['(empty)']),
     '',
     describeExternalMemoryForStatus(),
@@ -142,6 +142,8 @@ export async function clearAivaConversation(opts: {
   const sessionId = aivaSessionId(opts.workerId, opts.channel, opts.contactId);
   await clearSession(sessionId);
   forceImmediateInvalidation(sessionId);
+  const { clearSessionPolicyBlock } = await import('../../security/kill-switch-listener.js');
+  clearSessionPolicyBlock(sessionId);
   return 'Conversation context cleared. Durable USER/MEMORY notes were kept. Use /forget to remove those.';
 }
 
@@ -166,10 +168,10 @@ export async function formatCoreMemoryStatus(): Promise<string> {
   return [
     'Durable memory (clear split)',
     '',
-    `USER PROFILE [${userBudget.percent}% — ${userBudget.used}/${userBudget.max}]`,
+    `USER PROFILE [${userBudget.percent}%; ${userBudget.used}/${userBudget.max}]`,
     ...(user.length ? user.map((f) => `- [${f.id.slice(0, 8)}] ${f.content}`) : ['(empty)']),
     '',
-    `MEMORY / notes [${memoryBudget.percent}% — ${memoryBudget.used}/${memoryBudget.max}]`,
+    `MEMORY / notes [${memoryBudget.percent}%; ${memoryBudget.used}/${memoryBudget.max}]`,
     ...(memory.length ? memory.map((f) => `- [${f.id.slice(0, 8)}] ${f.content}`) : ['(empty)']),
     '',
     'Commands: /remember <text> | /forget <id|text> | /search <query> | /new | /clear',

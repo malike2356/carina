@@ -216,7 +216,7 @@ export async function scanToolOutput(
   if (g) {
     try {
       const scan = await g.scanToolResult(toolName, result);
-      output = scan.isMalicious ? (scan.sanitized ?? result) : result;
+      output = scan.sanitized ?? result;
       if (scan.isMalicious) {
         emitPromptGuardRaspSignal({
           sessionId: options?.sessionId,

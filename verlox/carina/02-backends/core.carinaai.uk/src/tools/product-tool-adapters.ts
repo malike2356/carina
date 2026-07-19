@@ -169,6 +169,30 @@ function createGmailTools(sessionId: string): Tool[] {
         };
       },
     },
+    {
+      name: 'gmail-send',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Send an email from this worker\'s connected Gmail account. '
+        + 'Prefer this over email-smtp-send / email-send when Gmail is connected.',
+      parameters: {
+        type: 'object',
+        properties: {
+          to: { type: 'string', description: 'Recipient email address' },
+          subject: { type: 'string', description: 'Email subject' },
+          body: { type: 'string', description: 'Plain text body' },
+        },
+        required: ['to', 'subject', 'body'],
+      },
+      execute: async (params) => {
+        const to = String(params.to ?? '').trim();
+        const subject = String(params.subject ?? '').trim();
+        const body = String(params.body ?? '');
+        if (!to || !subject) return { ok: false, error: 'to and subject required' };
+        return invokeGranted(sessionId, 'gmail', 'send', { to, subject, body });
+      },
+    },
   ];
 }
 

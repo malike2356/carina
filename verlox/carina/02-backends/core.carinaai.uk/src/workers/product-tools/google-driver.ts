@@ -107,8 +107,26 @@ export async function invokeGoogleAction(opts: {
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
     if (opts.toolSlug === 'gmail' && opts.action === 'send') {
-      const raw = String(opts.input?.rawMime ?? '');
-      if (!raw) return { ok: false, data: null, error: 'rawMime required' };
+      let raw = String(opts.input?.rawMime ?? '');
+      if (!raw) {
+        const to = String(opts.input?.to ?? '').trim();
+        const subject = String(opts.input?.subject ?? '').trim();
+        const body = String(opts.input?.body ?? opts.input?.text ?? '');
+        if (!to || !subject) {
+          return { ok: false, data: null, error: 'rawMime or to+subject required' };
+        }
+        const from = String(opts.input?.from ?? '').trim();
+        const lines = [
+          from ? `From: ${from}` : null,
+          `To: ${to}`,
+          `Subject: ${subject}`,
+          'MIME-Version: 1.0',
+          'Content-Type: text/plain; charset="UTF-8"',
+          '',
+          body,
+        ].filter((line) => line !== null);
+        raw = lines.join('\r\n');
+      }
       const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },

@@ -10,7 +10,9 @@ export const emailSendTool: Tool = {
   name: 'email-send',
   dangerous: true,
   requiresConfirmation: true,
-  description: 'Send a plain-text email via Resend.',
+  description:
+    'Send a plain-text email via Resend. Prefer this when RESEND_API_KEY is configured (hosted Aiva/Carina). '
+    + 'For a worker with Gmail connected, prefer gmail-send so mail goes from their mailbox.',
   parameters: {
     type: 'object',
     properties: {
@@ -48,7 +50,8 @@ export const emailSmtpSendTool: Tool = {
   dangerous: true,
   requiresConfirmation: true,
   description:
-    'Send an email using SMTP (Gmail, Outlook, or any mail server). Uses SMTP_* env vars. REQUIRED when the user asks to send email; use this instead of email-send which requires a Resend API key. Works with Gmail app passwords.',
+    'Send email via SMTP. Uses config.smtp (SMTP_HOST/USER/PASS or SMTP_PASSWORD), falling back to Resend SMTP when RESEND_API_KEY is set. '
+    + 'Prefer email-send (Resend API) or gmail-send (connected Gmail) when those are available.',
   parameters: {
     type: 'object',
     properties: {
@@ -58,31 +61,40 @@ export const emailSmtpSendTool: Tool = {
       from: {
         type: 'string',
         description:
-          'Optional sender address (defaults to SMTP_FROM env var, falling back to SMTP_USER)',
+          'Optional sender address (defaults to SMTP_FROM / SYSTEM_EMAIL_FROM / SMTP_USER)',
       },
     },
     required: ['to', 'subject', 'body'],
   },
   execute: async (params) => {
-    const host = process.env.SMTP_HOST ?? 'smtp.gmail.com';
-    const port = Number(process.env.SMTP_PORT ?? 587);
-    const user = process.env.SMTP_USER;
-    const pass = process.env.SMTP_PASS;
+    // Align with gateway smtp-sender: SMTP_PASS, SMTP_PASSWORD, or RESEND_API_KEY.
+    const host = process.env.SMTP_HOST?.trim() || config.smtp.host;
+    const port = Number(process.env.SMTP_PORT ?? config.smtp.port ?? 587);
+    const user =
+      process.env.SMTP_USER?.trim()
+      || (config.smtp.user ? String(config.smtp.user) : '')
+      || '';
+    const pass =
+      process.env.SMTP_PASS?.trim()
+      || process.env.SMTP_PASSWORD?.trim()
+      || (config.smtp.password ? String(config.smtp.password) : '')
+      || '';
     const from =
-      String(params.from ?? '').trim() ||
-      process.env.SMTP_FROM ||
-      process.env.SYSTEM_EMAIL_FROM ||
-      user ||
-      '';
+      String(params.from ?? '').trim()
+      || process.env.SMTP_FROM?.trim()
+      || process.env.SYSTEM_EMAIL_FROM?.trim()
+      || config.smtp.from
+      || user
+      || '';
 
     if (!user || !pass) {
       throw new Error(
-        'SMTP_USER and SMTP_PASS env vars must be set (e.g. Gmail app password).',
+        'SMTP credentials missing. Set SMTP_USER + SMTP_PASS (or SMTP_PASSWORD), or RESEND_API_KEY for Resend SMTP.',
       );
     }
     if (!from) {
       throw new Error(
-        'No sender address; set SMTP_FROM or pass the "from" parameter.',
+        'No sender address; set SMTP_FROM / SYSTEM_EMAIL_FROM or pass the "from" parameter.',
       );
     }
 

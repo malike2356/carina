@@ -234,8 +234,8 @@ export async function* processAivaMessageStreamDirect(
   }).catch(() => '');
 
   const hasCuratedMemory =
-    /USER PROFILE \[\d+% — [1-9]/.test(durableMemorySuffix)
-    || /MEMORY \/ agent notes \[\d+% — [1-9]/.test(durableMemorySuffix)
+    /USER PROFILE \[\d+%; [1-9]/.test(durableMemorySuffix)
+    || /MEMORY \/ agent notes \[\d+%; [1-9]/.test(durableMemorySuffix)
     || pinnedLines.length > 0;
 
   const bridgeSuffix = bridge.continuationHint

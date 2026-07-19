@@ -222,8 +222,8 @@
     {
       "id": "INJ-F03",
       "pattern": "[\\u200B-\\u200D\\uFEFF\\u2060\\u00AD\\u034F]",
-      "severity": "high",
-      "description": "Zero-width or invisible character obfuscation.",
+      "severity": "warning",
+      "description": "Zero-width or invisible character obfuscation. Warning only: common in copied email/HTML and must not alone contain a session.",
       "scope": "input"
     },
     {
