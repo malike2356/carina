@@ -6,6 +6,7 @@ export type MandatoryToolCategory =
   | 'file_contents'
   | 'git'
   | 'live_facts'
+  | 'send_email'
   | 'api_data'
   | 'memory_instruction'
   | 'memory_recall'
