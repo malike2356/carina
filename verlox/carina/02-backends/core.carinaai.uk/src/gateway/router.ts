@@ -49,6 +49,14 @@ import { getSteerHandler } from '../agents/steer-handler.js';
 import type { ProviderOverride } from './model-command.js';
 
 const memoryFallback = new Map<string, string>();
+let redisSessionWarningShown = false;
+
+function warnRedisSessionFallback(err: unknown): void {
+  if (redisSessionWarningShown) return;
+  const msg = err instanceof Error ? err.message : String(err);
+  console.warn(`[gateway] Redis session map unavailable; using memory fallback (${msg})`);
+  redisSessionWarningShown = true;
+}
 
 const SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
 
@@ -159,15 +167,19 @@ export class GatewayRouter {
     const redis = getRedis();
 
     if (redis) {
-      const existing = await redis.get(mapKey);
-      if (existing) {
-        await this.touchSessionIdentity(existing, inbound);
-        return existing;
+      try {
+        const existing = await redis.get(mapKey);
+        if (existing) {
+          await this.touchSessionIdentity(existing, inbound);
+          return existing;
+        }
+        const sessionId = allocateGatewaySession();
+        await redis.set(mapKey, sessionId);
+        await this.touchSessionIdentity(sessionId, inbound);
+        return sessionId;
+      } catch (err) {
+        warnRedisSessionFallback(err);
       }
-      const sessionId = allocateGatewaySession();
-      await redis.set(mapKey, sessionId);
-      await this.touchSessionIdentity(sessionId, inbound);
-      return sessionId;
     }
 
     const cached = memoryFallback.get(mapKey);
@@ -232,11 +244,15 @@ export class GatewayRouter {
     const redis = getRedis();
 
     if (redis) {
-      const existing = await redis.get(mapKey);
-      if (existing) return existing;
-      const sessionId = allocateGatewaySession();
-      await redis.set(mapKey, sessionId);
-      return sessionId;
+      try {
+        const existing = await redis.get(mapKey);
+        if (existing) return existing;
+        const sessionId = allocateGatewaySession();
+        await redis.set(mapKey, sessionId);
+        return sessionId;
+      } catch (err) {
+        warnRedisSessionFallback(err);
+      }
     }
 
     const cached = memoryFallback.get(mapKey);
@@ -315,10 +331,14 @@ export class GatewayRouter {
     const newSessionId = allocateGatewaySession(oldSessionId);
     const redis = getRedis();
     if (redis) {
-      await redis.set(mapKey, newSessionId);
-    } else {
-      memoryFallback.set(mapKey, newSessionId);
+      try {
+        await redis.set(mapKey, newSessionId);
+        return newSessionId;
+      } catch (err) {
+        warnRedisSessionFallback(err);
+      }
     }
+    memoryFallback.set(mapKey, newSessionId);
     return newSessionId;
   }
 

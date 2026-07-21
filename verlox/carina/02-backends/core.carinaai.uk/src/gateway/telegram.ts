@@ -15,6 +15,7 @@ import { interceptSlashCommand } from './channels/slash-commands/interceptor.js'
 
 const TELEGRAM_MAX = 4096;
 const EDIT_INTERVAL_MS = 1000;
+const CHAT_ACTION_INTERVAL_MS = 4000;
 
 type TelegramWebhookBot = TelegramBot & {
   processUpdate: (update: unknown) => Promise<void> | void;
@@ -43,6 +44,25 @@ async function sendLong(bot: TelegramBot, chatId: number, text: string, adapter:
   for (const chunk of chunks) {
     await bot.sendMessage(chatId, chunk);
   }
+}
+
+function startTelegramChatAction(
+  bot: TelegramBot,
+  chatId: number,
+  action: Parameters<TelegramBot['sendChatAction']>[1],
+): () => void {
+  let stopped = false;
+  const send = () => {
+    if (stopped) return;
+    void bot.sendChatAction(chatId, action).catch(() => undefined);
+  };
+  send();
+  const timer = setInterval(send, CHAT_ACTION_INTERVAL_MS);
+  timer.unref?.();
+  return () => {
+    stopped = true;
+    clearInterval(timer);
+  };
 }
 
 async function streamToTelegram(
@@ -219,10 +239,21 @@ export async function startTelegram(): Promise<void> {
       }
     }
 
-    await bot.sendChatAction(chatId, speakRequested ? 'record_voice' : 'typing');
+    const stopChatAction = startTelegramChatAction(
+      bot,
+      chatId,
+      speakRequested ? 'record_voice' : 'typing',
+    );
 
     try {
-      const inboundMsg = speakRequested ? { ...msg, text: text || 'Give me a brief spoken summary.' } : msg;
+      const inboundMsg = speakRequested
+        ? {
+            ...msg,
+            text:
+              `${text || 'Give me a brief spoken summary.'}\n\n` +
+              '[Channel note: Telegram will deliver this reply as audio. Reply in plain text only; do not call text-to-speech.]',
+          }
+        : msg;
       const generator = getRouter().handleInbound('telegram', inboundMsg);
 
       if (speakRequested) {
@@ -243,6 +274,8 @@ export async function startTelegram(): Promise<void> {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       await bot.sendMessage(chatId, `Error: ${errMsg}`);
+    } finally {
+      stopChatAction();
     }
   });
 

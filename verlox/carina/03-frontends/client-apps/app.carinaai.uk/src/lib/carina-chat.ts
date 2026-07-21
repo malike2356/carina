@@ -28,6 +28,21 @@ export type CarinaChatStreamEvent =
   | { type: 'tool_done'; id: string; output: unknown; durationMs: number }
   | { type: 'tool_error'; id: string; error: string; durationMs: number };
 
+function stringifyCoreError(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if (typeof record.message === 'string' && record.message.trim()) return record.message;
+    if (typeof record.error === 'string' && record.error.trim()) return record.error;
+    if (typeof record.content === 'string' && record.content.trim()) return record.content;
+  }
+  return null;
+}
+
+function isLateCoreCloseError(message: string | null): boolean {
+  return Boolean(message && /connection is closed|stream.*closed|terminated|econnreset/i.test(message));
+}
+
 function resolveProvider(
   keys: Array<{ provider: string; apiKey: string }>,
   providerOverride?: string,
@@ -115,7 +130,10 @@ export function normalizeCoreEvent(parsed: unknown): CarinaChatStreamEvent | nul
     return null;
   }
   if (eventType === 'error') {
-    throw new ChatStreamError(String(event.error ?? event.content ?? 'Chat failed'), 'CHAT_FAILED');
+    throw new ChatStreamError(
+      stringifyCoreError(event.content) ?? stringifyCoreError(event.error) ?? 'Chat failed',
+      'CHAT_FAILED',
+    );
   }
   if (eventType === 'tool_start') {
     return {
@@ -165,10 +183,14 @@ export function normalizeCoreEvent(parsed: unknown): CarinaChatStreamEvent | nul
   return null;
 }
 
-function consumeCoreSseLines(buffer: string): { remainder: string; events: CarinaChatStreamEvent[] } {
+function consumeCoreSseLines(
+  buffer: string,
+  options: { seenOutput?: boolean } = {},
+): { remainder: string; events: CarinaChatStreamEvent[] } {
   const events: CarinaChatStreamEvent[] = [];
   const lines = buffer.split('\n');
   const remainder = lines.pop() ?? '';
+  let seenOutput = options.seenOutput ?? false;
 
   for (const line of lines) {
     if (!line.startsWith('data: ')) continue;
@@ -180,15 +202,42 @@ function consumeCoreSseLines(buffer: string): { remainder: string; events: Carin
       parsed = JSON.parse(data);
     } catch {
       events.push({ type: 'text', content: data });
+      seenOutput = true;
       continue;
+    }
+
+    if (typeof parsed === 'string') {
+      if (seenOutput && /^Error:\s*\[unknown\]\s*Connection is closed\./i.test(parsed.trim())) {
+        continue;
+      }
+      const event = normalizeCoreEvent(parsed);
+      if (event) {
+        events.push(event);
+        seenOutput = true;
+      }
+      continue;
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      const record = parsed as Record<string, unknown>;
+      if (record.type === 'error') {
+        const message = stringifyCoreError(record.content) ?? stringifyCoreError(record.error);
+        if (seenOutput && isLateCoreCloseError(message)) {
+          continue;
+        }
+      }
     }
 
     try {
       const event = normalizeCoreEvent(parsed);
-      if (event) events.push(event);
+      if (event) {
+        events.push(event);
+        seenOutput = true;
+      }
     } catch (err) {
       if (err instanceof ChatStreamError) throw err;
       events.push({ type: 'text', content: data });
+      seenOutput = true;
     }
   }
 
@@ -332,18 +381,20 @@ export async function* streamCarinaChat(input: {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let sseBuffer = '';
+    let sawCoreOutput = false;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       sseBuffer += decoder.decode(value, { stream: true });
-      const { remainder, events } = consumeCoreSseLines(sseBuffer);
+      const { remainder, events } = consumeCoreSseLines(sseBuffer, { seenOutput: sawCoreOutput });
       sseBuffer = remainder;
       for (const event of events) {
         yield event;
+        sawCoreOutput = true;
       }
     }
     sseBuffer += decoder.decode();
-    const { events } = consumeCoreSseLines(`${sseBuffer}\n`);
+    const { events } = consumeCoreSseLines(`${sseBuffer}\n`, { seenOutput: sawCoreOutput });
     for (const event of events) {
       yield event;
     }

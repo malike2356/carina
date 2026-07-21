@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatSessions } from '@/db/schema';
+import { isChatSessionUuid } from '@/lib/chat-sessions';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
 
   const workspace = await requireWorkspace(session.user.id);
   const body = (await request.json()) as { ids?: string[]; action?: string };
-  const ids = (body.ids ?? []).filter(Boolean);
+  const ids = (body.ids ?? []).filter(isChatSessionUuid);
   if (ids.length === 0) return NextResponse.json({ error: 'No ids provided' }, { status: 400 });
 
   const owned = await db

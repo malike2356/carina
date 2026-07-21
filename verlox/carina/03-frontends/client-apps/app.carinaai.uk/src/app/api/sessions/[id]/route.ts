@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatSessions } from '@/db/schema';
+import { isChatSessionUuid } from '@/lib/chat-sessions';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +11,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 async function getWorkspaceSession(userId: string, sessionId: string) {
   const workspace = await requireWorkspace(userId);
+  if (!isChatSessionUuid(sessionId)) {
+    return { workspace, chatSession: null };
+  }
   const [chatSession] = await db
     .select()
     .from(chatSessions)

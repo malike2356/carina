@@ -111,6 +111,11 @@ function effectiveSystemPrompt(messages: Message[]): { prompt: string; cacheKey:
   return { prompt: combined, cacheKey: cached.cacheKey };
 }
 
+function isLateStreamCloseError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /connection is closed|stream.*closed|terminated|econnreset/i.test(msg);
+}
+
 export class ClaudeProvider implements LLMProvider {
   name = 'anthropic';
   private client: Anthropic;
@@ -580,11 +585,21 @@ export class LLMRouter {
     let lastErr: unknown;
     for (let i = 0; i < providers.length; i++) {
       const { provider, model } = providers[i]!;
+      let yieldedOutput = false;
       try {
-        yield* provider.stream(messages, tools, model);
+        for await (const chunk of provider.stream(messages, tools, model)) {
+          yieldedOutput = true;
+          yield chunk;
+        }
         recordProviderSuccess(provider.name, model);
         return;
       } catch (err) {
+        if (yieldedOutput && isLateStreamCloseError(err)) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[llm] ${provider.name} stream closed after output (${msg}); ending turn.`);
+          recordProviderSuccess(provider.name, model);
+          return;
+        }
         lastErr = err;
         const msg = err instanceof Error ? err.message : String(err);
         const next = providers[i + 1]?.provider.name;

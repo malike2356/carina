@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatMessages, chatSessions } from '@/db/schema';
+import { isChatSessionUuid } from '@/lib/chat-sessions';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as { sessionId?: string };
   const sessionId = String(body.sessionId ?? '').trim();
   if (!sessionId) return NextResponse.json({ error: 'sessionId is required' }, { status: 400 });
+  if (!isChatSessionUuid(sessionId)) return NextResponse.json({ ok: true });
 
   const workspace = await requireWorkspace(session.user.id);
   await db

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { chatMessages, chatSessions } from '@/db/schema';
+import { isChatSessionUuid } from '@/lib/chat-sessions';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -14,6 +15,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const workspace = await requireWorkspace(session.user.id);
   const { id } = await context.params;
+  if (!isChatSessionUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const [chatSession] = await db
     .select()
     .from(chatSessions)

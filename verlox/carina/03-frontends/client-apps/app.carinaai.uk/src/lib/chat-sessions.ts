@@ -13,7 +13,7 @@ export async function getOrCreateSession(
   workspaceId: string,
   sessionId: string | null,
 ): Promise<string> {
-  if (sessionId) {
+  if (isChatSessionUuid(sessionId)) {
     const existing = await db
       .select({ id: chatSessions.id })
       .from(chatSessions)

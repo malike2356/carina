@@ -11,4 +11,9 @@ describe('isChatSessionUuid', () => {
     expect(isChatSessionUuid('')).toBe(false);
     expect(isChatSessionUuid(null)).toBe(false);
   });
+
+  it('rejects arbitrary client labels that would fail uuid queries', () => {
+    expect(isChatSessionUuid('smoke-session')).toBe(false);
+    expect(isChatSessionUuid('default')).toBe(false);
+  });
 });
