@@ -23,7 +23,6 @@ import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import { useBrand } from '@/components/shell/BrandProvider';
 import { useIsAivaProduct } from '@/hooks/useProductSurface';
-import { TERMS_VERSION } from '@/lib/gdpr-constants';
 
 type RegisterFormProps = {
   googleAuthEnabled: boolean;
@@ -75,18 +74,13 @@ function RegisterFormInner({ googleAuthEnabled }: RegisterFormProps) {
       setPending(false);
       return;
     }
-    const result = await authClient.signUp.email({
-      name,
-      email,
-      password,
-      termsAcceptedAt: new Date(),
-      termsVersion: TERMS_VERSION,
-    } as Parameters<typeof authClient.signUp.email>[0]);
+    const result = await authClient.signUp.email({ name, email, password });
     if (result.error) {
       setError(result.error.message ?? 'Registration failed');
       setPending(false);
       return;
     }
+    void fetch('/api/auth/accept-terms', { method: 'POST' }).catch(() => {});
 
     if (fromAiva) {
       void fetch('/api/aiva/subscription/trial', {
