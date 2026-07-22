@@ -149,6 +149,12 @@ export function finalizeGracefulSessionSuspend(sessionId: string): void {
 
 export function blockSessionByPolicy(sessionId: string, reason: string): void {
   if (!sessionId) return;
+  if (!isScoutEnforcementEnabled()) {
+    const logLine = `MONITOR ONLY: policy session block ignored for ${sessionId}. Reason: ${reason}`;
+    console.warn(`[KillSwitch] ${logLine}`);
+    appendLog(logLine);
+    return;
+  }
   blockedSessions.add(sessionId);
   const logLine = `SESSION BLOCKED (policy): ${sessionId}. Reason: ${reason}`;
   console.warn(`[KillSwitch] ${logLine}`);

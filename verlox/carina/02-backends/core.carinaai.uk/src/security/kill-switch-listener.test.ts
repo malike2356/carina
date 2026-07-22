@@ -132,6 +132,13 @@ describe('kill-switch-listener', () => {
     expect(isSessionBlocked('session-A')).toBe(false);
   });
 
+  it('does not block policy sessions in monitor mode', async () => {
+    process.env.SCOUT_CONTROL_MODE = 'monitor';
+    const { blockSessionByPolicy, isSessionBlocked } = await import('./kill-switch-listener.js');
+    blockSessionByPolicy('session-A', 'test');
+    expect(isSessionBlocked('session-A')).toBe(false);
+  });
+
   it('quarantine_tool marks tool as quarantined', async () => {
     const { isToolQuarantined, _processControlMessage } = await import('./kill-switch-listener.js');
     _processControlMessage(
