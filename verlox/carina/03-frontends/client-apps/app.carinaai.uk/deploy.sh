@@ -52,8 +52,10 @@ deploy() {
   rsync -az --delete \
     --exclude='.env' \
     --filter='protect .env' \
+    --filter='protect .pnpm-store/***' \
+    --filter='protect node_modules/.pnpm/***' \
     --exclude='start.sh' \
-    --exclude='src/db/migrations/' \
+    --filter='protect src/db/***' \
     --exclude='scripts/' \
     "${STANDALONE_APP_DIR}/" "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/"
   rsync -az \
