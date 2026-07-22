@@ -43,4 +43,22 @@ describe('sendEmail preview mode', () => {
     expect(output.toLowerCase()).toContain('welcome, alex');
     expect(output).toContain('Hire an Aiva. Powered by Carina. Governed by Scout. Optional human assist on request.');
   });
+
+  it('renders Telegram setup guidance in the welcome email', async () => {
+    const { render } = await import('@react-email/render');
+    const { WelcomeEmail } = await import('./templates/welcome.js');
+    const output = await render(
+      <WelcomeEmail
+        firstName="Alex"
+        loginUrl="https://admin.hireaiva.co.uk/login"
+        apkUrl="https://admin.hireaiva.co.uk/downloads/carina-mobile.apk"
+      />,
+    );
+
+    expect(output).toContain('Connect Telegram to your Aiva');
+    expect(output).toContain('Open Telegram and search for @BotFather.');
+    expect(output).toContain('paste the bot token');
+    expect(output).not.toContain('Get the app');
+    expect(output).not.toContain('Download Aiva for Android');
+  });
 });
