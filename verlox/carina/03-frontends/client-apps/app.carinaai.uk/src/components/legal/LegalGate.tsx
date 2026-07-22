@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LEGAL_DOCUMENT_LABELS, type LegalDocumentType } from '@/lib/legal/constants';
 import { Button } from '@/components/ui/button';
 

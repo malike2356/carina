@@ -52,6 +52,7 @@ export function CompleteWelcomeEmail({
 }: CompleteWelcomeEmailProps) {
   const [bullet1, bullet2, bullet3] = quickStartBullets(templateDomain);
   const reachChannel = connectedChannel ?? pendingChannel;
+  const telegramSetupUrl = channelSetupUrls.Telegram ?? channelSetupUrls['Worker channels'] ?? workspaceUrl;
 
   return (
     <Layout preview={`${workerName} is live`} unsubscribeUrl={unsubscribeUrl}>
@@ -98,6 +99,33 @@ export function CompleteWelcomeEmail({
               Add {label}
             </Button>
           ))}
+      </SectionBlock>
+
+      <SectionBlock title="Optional: connect Telegram for mobile chat">
+        <Text style={mutedStyle}>
+          Telegram is useful when you want to message {workerName} from your phone without signing
+          in to the workspace every time. To connect it, create a private bot token in Telegram and
+          add it to this AI worker.
+        </Text>
+        <Text style={{ ...mutedStyle, margin: '0 0 8px' }}>
+          1. Open Telegram and message @BotFather.
+        </Text>
+        <Text style={{ ...mutedStyle, margin: '0 0 8px' }}>
+          2. Send /newbot and follow the prompts for the bot name and username.
+        </Text>
+        <Text style={{ ...mutedStyle, margin: '0 0 8px' }}>
+          3. Copy the token BotFather gives you. Keep it private.
+        </Text>
+        <Text style={{ ...mutedStyle, margin: '0 0 8px' }}>
+          4. Open {workerName}, go to Channels, choose Telegram, paste the token, and connect.
+        </Text>
+        <Text style={{ ...mutedStyle, margin: '0 0 16px' }}>
+          5. Send a test message to the new Telegram bot. The chat can continue from Telegram or
+          the workspace without starting again.
+        </Text>
+        <Button href={telegramSetupUrl} style={secondaryButtonStyle()}>
+          Connect Telegram
+        </Button>
       </SectionBlock>
 
       <SectionBlock title="Your workspace">

@@ -19,9 +19,100 @@ import {
   getGoogleOAuthPlatformStatus,
   saveGoogleOAuthPlatformCredentials,
 } from '../ops/google-oauth-platform.js';
+import {
+  backfillMissingEmbeddings,
+  getEmbeddingsPlatformStatus,
+  probeEmbeddings,
+  saveEmbeddingsPlatformConfig,
+} from '../ops/embeddings-platform.js';
+import {
+  effectiveScoutControlMode,
+  parseScoutAlertMinimumSeverity,
+  parseScoutControlMode,
+  readScoutControlSettings,
+  writeScoutControlSettings,
+} from '../security/scout-control-settings.js';
 
 export function mountOpsRoutes(app: Express): void {
   mountObservabilityRoutes(app);
+
+  app.get('/api/ops/embeddings', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const status = await getEmbeddingsPlatformStatus();
+      res.json(status);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/embeddings', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const saved = await saveEmbeddingsPlatformConfig({
+        preferredProvider: body.preferredProvider !== undefined
+          ? String(body.preferredProvider)
+          : undefined,
+        embeddingModel: body.embeddingModel !== undefined
+          ? String(body.embeddingModel)
+          : undefined,
+        maxChars: body.maxChars !== undefined ? String(body.maxChars) : undefined,
+        geminiApiKey: body.geminiApiKey !== undefined ? String(body.geminiApiKey) : undefined,
+        openaiApiKey: body.openaiApiKey !== undefined ? String(body.openaiApiKey) : undefined,
+        openaiBaseUrl: body.openaiBaseUrl !== undefined ? String(body.openaiBaseUrl) : undefined,
+        voyageApiKey: body.voyageApiKey !== undefined ? String(body.voyageApiKey) : undefined,
+        ollamaBaseUrl: body.ollamaBaseUrl !== undefined ? String(body.ollamaBaseUrl) : undefined,
+        ollamaApiKey: body.ollamaApiKey !== undefined ? String(body.ollamaApiKey) : undefined,
+        ollamaEnabled: body.ollamaEnabled as string | boolean | undefined,
+        ollamaEmbeddingModel: body.ollamaEmbeddingModel !== undefined
+          ? String(body.ollamaEmbeddingModel)
+          : undefined,
+      });
+      if (!saved.ok) {
+        res.status(400).json({ error: saved.error ?? 'Save failed' });
+        return;
+      }
+      const status = await getEmbeddingsPlatformStatus();
+      res.json({ ok: true, status });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/embeddings/probe', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const result = await probeEmbeddings();
+      res.status(result.ok ? 200 : 503).json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/embeddings/backfill', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const limitRaw = (req.body as { limit?: unknown } | undefined)?.limit;
+      const limit = limitRaw !== undefined ? Number(limitRaw) : undefined;
+      const result = await backfillMissingEmbeddings(limit);
+      res.status(result.ok ? 200 : 503).json(result);
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
 
   app.get('/api/ops/google-oauth', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
@@ -79,6 +170,15 @@ export function mountOpsRoutes(app: Express): void {
     res.json({ ok: true, reloaded: true });
   });
 
+  app.get('/api/ops/aiva-hosted-email/status', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { hostedEmailOperatorStatus } = await import('../ingestion/email/hosted-email-address.js');
+    res.json(hostedEmailOperatorStatus());
+  });
+
   app.get('/api/ops/usage-gates', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -100,6 +200,48 @@ export function mountOpsRoutes(app: Express): void {
 
   app.get('/api/ops/health', (_req: Request, res: Response) => {
     res.json({ ok: true, service: 'carina-ops' });
+  });
+
+  app.get('/api/ops/scout-control', (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const settings = readScoutControlSettings();
+    const mode = effectiveScoutControlMode();
+    res.json({
+      ok: true,
+      mode,
+      enforcementEnabled: mode === 'enforce',
+      alertMinimumSeverity: settings.alertMinimumSeverity,
+      updatedAt: settings.updatedAt ?? null,
+      updatedBy: settings.updatedBy ?? null,
+    });
+  });
+
+  app.put('/api/ops/scout-control', (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const mode = parseScoutControlMode(req.body?.mode);
+    if (!mode) {
+      res.status(400).json({ error: 'mode must be monitor or enforce' });
+      return;
+    }
+    const settings = writeScoutControlSettings({
+      mode,
+      alertMinimumSeverity: parseScoutAlertMinimumSeverity(req.body?.alertMinimumSeverity),
+      updatedBy: 'ops',
+    });
+    res.json({
+      ok: true,
+      mode: effectiveScoutControlMode(),
+      enforcementEnabled: effectiveScoutControlMode() === 'enforce',
+      alertMinimumSeverity: settings.alertMinimumSeverity,
+      updatedAt: settings.updatedAt ?? null,
+      updatedBy: settings.updatedBy ?? null,
+    });
   });
 
   app.get('/api/ops/launch-readiness', async (req: Request, res: Response) => {

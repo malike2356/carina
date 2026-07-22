@@ -193,6 +193,15 @@ async function sendTelegramSpokenOutbound(input: {
 export async function registerTelegramWebhook(botToken: string, workerId: string): Promise<void> {
   const coreUrl = (process.env.CORE_URL ?? process.env.CARINA_CORE_URL ?? 'https://core.carinaai.uk').replace(/\/$/, '');
   const webhookUrl = `${coreUrl}/api/channels/webhook/telegram/${workerId}`;
+  const commands = [
+    { command: 'start', description: 'Start or resume the conversation' },
+    { command: 'help', description: 'Show what this Aiva can do' },
+    { command: 'research', description: 'Run research and save it to the workspace' },
+    { command: 'document', description: 'Create a document in the workspace' },
+    { command: 'schedule', description: 'Create a scheduled task or reminder' },
+    { command: 'memory', description: 'Show or update what Aiva should remember' },
+    { command: 'handoff', description: 'Ask for human help' },
+  ];
   const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -205,6 +214,23 @@ export async function registerTelegramWebhook(botToken: string, workerId: string
   const result = await response.json() as { ok?: boolean; description?: string };
   if (!result.ok) {
     throw new Error(`Telegram webhook registration failed: ${result.description ?? 'unknown'}`);
+  }
+  try {
+    await fetch(`https://api.telegram.org/bot${botToken}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ commands }),
+    });
+    await fetch(`https://api.telegram.org/bot${botToken}/setChatMenuButton`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menu_button: { type: 'commands' } }),
+    });
+  } catch (err) {
+    console.warn(
+      '[telegram-adapter] command menu registration failed:',
+      err instanceof Error ? err.message : String(err),
+    );
   }
 }
 

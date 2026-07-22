@@ -57,6 +57,7 @@ function buildFlashMessages(query: Record<string, unknown>): FlashMessage[] {
   add('core_web_password_ok', 'core_web_password_err', 'Core web login password updated.');
   add('ops_admin_password_ok', 'ops_admin_password_err', 'Ops admin password updated.');
   add('shield_ok', 'shield_err', 'Channel Shield protection updated.');
+  add('scout_control_ok', 'scout_control_err', 'Scout control settings updated.');
   return messages;
 }
 
@@ -65,12 +66,23 @@ settingsRouter.get('/', async (req, res) => {
   let coreWebPasswordSet = false;
   let carinaConnected = false;
   let scoutConnected = false;
+  let scoutControl = {
+    mode: 'monitor',
+    enforcementEnabled: false,
+    alertMinimumSeverity: 'critical',
+    updatedAt: null as string | null,
+  };
   if (carinaOpsTokenSet()) {
     carinaConnected = await testCarinaConnection();
     if (carinaConnected) {
       const response = await carinaGet('/api/ops/web-password');
       const parsed = await carinaJson<{ set?: boolean }>(response);
       coreWebPasswordSet = parsed.ok && parsed.data?.set === true;
+      const scoutControlResponse = await carinaGet('/api/ops/scout-control');
+      const scoutControlParsed = await carinaJson<typeof scoutControl>(scoutControlResponse);
+      if (scoutControlParsed.ok && scoutControlParsed.data) {
+        scoutControl = scoutControlParsed.data;
+      }
     }
   }
   if (process.env.SCOUT_API_KEY) {
@@ -90,6 +102,7 @@ settingsRouter.get('/', async (req, res) => {
     scoutErr: typeof req.query['scout_err'] === 'string' ? req.query['scout_err'] : '',
     scoutPaired: Boolean(process.env.SCOUT_API_KEY),
     scoutConnected,
+    scoutControl,
     scoutPairOk: req.query['scout_pair_ok'] === '1',
     scoutPairErr: typeof req.query['scout_pair_err'] === 'string' ? req.query['scout_pair_err'] : '',
     carinaPaired: carinaOpsTokenSet(),
@@ -116,6 +129,29 @@ settingsRouter.get('/', async (req, res) => {
       : '',
     flashMessages: buildFlashMessages(req.query as Record<string, unknown>),
   });
+});
+
+settingsRouter.post('/scout-control', async (req, res) => {
+  if (!carinaOpsTokenSet()) {
+    res.redirect('/settings?scout_control_err=' + encodeURIComponent('Carina ops token is not set'));
+    return;
+  }
+  const mode = String((req.body as { mode?: unknown }).mode ?? '').trim();
+  const alertMinimumSeverity = String(
+    (req.body as { alertMinimumSeverity?: unknown }).alertMinimumSeverity ?? 'critical',
+  ).trim();
+  try {
+    const response = await carinaPut('/api/ops/scout-control', { mode, alertMinimumSeverity });
+    const parsed = await carinaJson<{ error?: string }>(response);
+    if (!response.ok || !parsed.ok) {
+      res.redirect('/settings?scout_control_err=' + encodeURIComponent(parsed.error ?? 'Save failed'));
+      return;
+    }
+    res.redirect('/settings?scout_control_ok=1');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.redirect('/settings?scout_control_err=' + encodeURIComponent('Failed: ' + msg));
+  }
 });
 
 settingsRouter.post('/test-carina', async (_req, res) => {

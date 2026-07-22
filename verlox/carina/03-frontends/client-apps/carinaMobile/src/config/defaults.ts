@@ -2,7 +2,7 @@ import { DEFAULT_AGENT_MODE } from './product-boundaries';
 
 // Keep env var names and fallbacks in sync with app.config.ts.
 export const DEFAULT_CLOUD_URL =
-  process.env.EXPO_PUBLIC_CARINA_CLOUD_URL ?? 'https://app.carinaai.uk';
+  process.env.EXPO_PUBLIC_CARINA_CLOUD_URL ?? 'https://admin.hireaiva.co.uk';
 
 export const DEFAULT_SCOUT_TRUST_URL =
   process.env.EXPO_PUBLIC_SCOUT_TRUST_URL ??

@@ -3,7 +3,7 @@ import type { ExpoConfig } from 'expo/config';
 // Keep these fallbacks in sync with src/config/defaults.ts, which reads the
 // same EXPO_PUBLIC_* vars at runtime (inlined into the bundle by Expo).
 const CARINA_CLOUD_URL =
-  process.env.EXPO_PUBLIC_CARINA_CLOUD_URL ?? 'https://app.carinaai.uk';
+  process.env.EXPO_PUBLIC_CARINA_CLOUD_URL ?? 'https://admin.hireaiva.co.uk';
 const SCOUT_TRUST_URL =
   process.env.EXPO_PUBLIC_SCOUT_TRUST_URL ??
   'https://console.labyrinthscout.com/api/public/trust';
@@ -11,7 +11,7 @@ const SCOUT_TRUST_URL =
 const config: ExpoConfig = {
   name: 'Carina',
   slug: 'carina-mobile',
-  version: '0.1.15',
+  version: '0.1.16',
   scheme: 'carina',
   orientation: 'portrait',
   userInterfaceStyle: 'dark',
@@ -48,7 +48,7 @@ const config: ExpoConfig = {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: '#000000',
     },
-    versionCode: 15,
+    versionCode: 16,
     package: 'uk.carinaai.mobile',
     // Do not use resize: Expo Router tabs + RN 0.76 leave the composer under the
     // keyboard. withKeyboardAdjustNothing sets adjustNothing; chat JS pads by height.

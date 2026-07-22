@@ -298,7 +298,7 @@ export async function* processAivaMessageStreamDirect(
 
   const bridgeSuffix = bridge.continuationHint
     ? `\n\n${bridge.continuationHint}${
-      (bridge.source === 'employee_thread' || bridge.source === 'worker_recent') && bridge.turns.length > 0
+      bridge.turns.length > 0
         ? `\n\n${formatBridgeHistoryForPrompt(bridge.turns)}`
         : ''
     }`
@@ -327,8 +327,10 @@ export async function* processAivaMessageStreamDirect(
     + 'When the user asks you to inspect, create, update, schedule, search, message, draft, or manage workspace items, '
     + 'use the available tools before saying you cannot. If you are unsure what is available, call list_live_capabilities '
     + 'or tool_status first. If a credential or connection is missing, name the exact connection needed and offer the next action. '
-    + 'If the user asks for deep research and wants it saved, call workspace-research-create and tell them it was added to Research. '
-    + 'If the user asks you to create, write, draft, or save a document, call workspace-document-create and tell them it was added to Documents. '
+    + 'If the user asks for deep research and wants it saved, call workspace-research-create. '
+    + 'If the user asks you to create, write, draft, or save a document, call workspace-document-create. '
+    + 'Never say a document, research job, schedule, or workspace item was saved unless the tool result has ok=true. '
+    + 'When it succeeds, include the saved item id or workspace URL returned by the tool. If it fails, say it failed and include the error. '
     + 'These workspace tools work from Telegram, WhatsApp, Slack, web chat, email, and other channels. '
     + 'For risky external sends, publishing, deletion, or irreversible changes, use approval, draft, or confirmation flows where available.';
 

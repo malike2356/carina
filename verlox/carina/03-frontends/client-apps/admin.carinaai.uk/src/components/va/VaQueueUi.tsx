@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { DragEvent, ReactNode } from 'react';
 import { SeverityBadge } from '@/components/fleet/FleetUi';
 import { timeAgo } from '@/lib/format';
 
@@ -164,11 +164,15 @@ export function EscalationCard({
   escalation: e,
   onView,
   onQuickAssign,
+  onMoveStage,
+  onDragStart,
   availableMembers,
 }: {
   escalation: EscalationCardData;
   onView: (id: string) => void;
   onQuickAssign: (escalationId: string, memberId: string) => void;
+  onMoveStage: (escalationId: string, status: 'open' | 'in_progress' | 'resolved') => void;
+  onDragStart: (event: DragEvent<HTMLDivElement>, escalationId: string) => void;
   availableMembers: Array<{ id: string; name: string; currentLoad: number; maxLoad: number }>;
 }) {
   const cardClass = [
@@ -181,7 +185,11 @@ export function EscalationCard({
   ].join(' ');
 
   return (
-    <div className={cardClass}>
+    <div
+      className={cardClass}
+      draggable
+      onDragStart={(event) => onDragStart(event, e.id)}
+    >
       <div className="flex items-center justify-between">
         {e.priority !== 'normal' ? <PriorityBadge priority={e.priority} /> : <span />}
         <SlaBadge escalation={e} />
@@ -200,6 +208,33 @@ export function EscalationCard({
           ) : null}
         </div>
         <div className="flex items-center gap-2">
+          {e.status !== 'open' ? (
+            <button
+              type="button"
+              onClick={() => onMoveStage(e.id, 'open')}
+              className="text-[11px] text-text-muted hover:text-text-primary"
+            >
+              Reopen
+            </button>
+          ) : null}
+          {e.status !== 'in_progress' ? (
+            <button
+              type="button"
+              onClick={() => onMoveStage(e.id, 'in_progress')}
+              className="text-[11px] text-amber-300 hover:underline"
+            >
+              Start
+            </button>
+          ) : null}
+          {e.status !== 'resolved' ? (
+            <button
+              type="button"
+              onClick={() => onMoveStage(e.id, 'resolved')}
+              className="text-[11px] text-green-400 hover:underline"
+            >
+              Resolve
+            </button>
+          ) : null}
           {e.status === 'open' && availableMembers.length > 0 ? (
             <select
               defaultValue=""
@@ -234,21 +269,36 @@ export function EscalationCard({
 
 export function KanbanColumn({
   title,
+  stage,
   count,
   breachCount,
   escalations,
   onView,
   onQuickAssign,
+  onMoveStage,
   availableMembers,
 }: {
   title: string;
+  stage: 'open' | 'in_progress' | 'resolved';
   count: number;
   breachCount: number;
   escalations: EscalationCardData[];
   onView: (id: string) => void;
   onQuickAssign: (escalationId: string, memberId: string) => void;
+  onMoveStage: (escalationId: string, status: 'open' | 'in_progress' | 'resolved') => void;
   availableMembers: Array<{ id: string; name: string; currentLoad: number; maxLoad: number }>;
 }) {
+  function handleDragStart(event: DragEvent<HTMLDivElement>, escalationId: string) {
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', escalationId);
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const escalationId = event.dataTransfer.getData('text/plain');
+    if (escalationId) onMoveStage(escalationId, stage);
+  }
+
   return (
     <div className="flex flex-col">
       <div className="mb-3 flex items-center gap-2">
@@ -260,13 +310,19 @@ export function KanbanColumn({
           </span>
         ) : null}
       </div>
-      <div className="flex h-[calc(100vh-300px)] flex-col gap-2 overflow-y-auto pr-1">
+      <div
+        className="flex h-[calc(100vh-300px)] flex-col gap-2 overflow-y-auto rounded-lg pr-1"
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={handleDrop}
+      >
         {escalations.map((e) => (
           <EscalationCard
             key={e.id}
             escalation={e}
             onView={onView}
             onQuickAssign={onQuickAssign}
+            onMoveStage={onMoveStage}
+            onDragStart={handleDragStart}
             availableMembers={availableMembers}
           />
         ))}

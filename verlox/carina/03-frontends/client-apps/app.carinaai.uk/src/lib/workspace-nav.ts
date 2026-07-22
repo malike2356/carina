@@ -70,8 +70,8 @@ export const NAV_ROUTES: NavRoute[] = [
   },
   {
     href: '/tasks',
-    label: 'Tasks',
-    description: 'Your task list and project tracking.',
+    label: 'Schedules',
+    description: 'Workspace housekeeping on a timer. Not Aiva morning digests.',
     group: 'workspace',
     iconName: 'CheckSquare',
   },
@@ -100,14 +100,14 @@ export const NAV_ROUTES: NavRoute[] = [
   {
     href: '/email',
     label: 'Email',
-    description: 'Inbound email and message triage.',
+    description: 'Your mailbox: read, send, and triage mail.',
     group: 'workspace',
     iconName: 'Mail',
   },
   {
     href: '/cron',
-    label: 'Cron jobs',
-    description: 'Recurring automated tasks on a schedule.',
+    label: 'Scheduled jobs',
+    description: 'Aiva-created cron jobs, reminders, and recurring automated tasks.',
     group: 'workspace',
     iconName: 'CalendarClock',
   },
@@ -162,8 +162,8 @@ export const NAV_ROUTES: NavRoute[] = [
   },
   {
     href: '/aiva/approvals',
-    label: 'Approval inbox',
-    description: 'Review email drafts before your AI Employees send them.',
+    label: 'Approvals',
+    description: 'Approve drafts before your Aivas send email or social posts. Not your mailbox.',
     group: 'aiva',
     iconName: 'Mail',
   },
@@ -439,7 +439,7 @@ export const SIDEBAR_TOOLS: SidebarTool[] = [
   { kind: 'route', href: '/channels', label: 'Channels' },
   { kind: 'route', href: '/calendar', label: 'Calendar' },
   { kind: 'route', href: '/research', label: 'Research' },
-  { kind: 'route', href: '/tasks', label: 'Tasks' },
+  { kind: 'route', href: '/tasks', label: 'Schedules' },
 ];
 
 export type SettingsToolLink = {
@@ -483,7 +483,7 @@ export const SETTINGS_SECTION_LINKS: Record<
   chat: [
     { label: 'Open notes', description: 'Quick notes panel alongside chat.', panel: 'notes' },
     { label: 'Files', description: 'Upload and browse workspace files.', href: '/files' },
-    { label: 'Email', description: 'Inbound email and message triage.', href: '/email' },
+    { label: 'Email', description: 'Your mailbox: read, send, and triage mail.', href: '/email' },
     { label: 'Channels', description: 'Messaging, tools, and device connections.', href: '/channels' },
     { label: 'Cron jobs', description: 'Scheduled automations and recurring tasks.', href: '/cron' },
   ],

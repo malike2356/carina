@@ -1,6 +1,6 @@
 'use client';
 
-import { Bot } from 'lucide-react';
+import { Bot, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { PlanStatusBadge } from '@/components/customers/CustomerBadges';
 import { capitalize, formatDate, timeAgo } from '@/lib/format';
@@ -39,6 +39,25 @@ interface InvoiceRow {
   status: string;
   paidAt: string;
   invoicePdfUrl: string | null;
+}
+
+interface WalletBalance {
+  remainingGbp?: number;
+  remainingPence?: number;
+  trialGrantedPence?: number;
+  purchasedPence?: number;
+  debitedPence?: number;
+  lowCredit?: boolean;
+  exhausted?: boolean;
+}
+
+interface WalletLedgerRow {
+  id: string | number;
+  eventType: string;
+  amountPence: number;
+  model?: string | null;
+  note?: string | null;
+  createdAt: string;
 }
 
 interface SubscriptionInfo {
@@ -89,6 +108,10 @@ function SeverityBadge({ severity }: { severity: string }) {
   );
 }
 
+function formatGbpFromPence(pence?: number): string {
+  return `GBP ${((pence ?? 0) / 100).toFixed(2)}`;
+}
+
 export function CustomerDetailTabs({
   workspaceId,
   subscription,
@@ -111,6 +134,9 @@ export function CustomerDetailTabs({
   const [activityOffset, setActivityOffset] = useState(initialActivity.length);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMoreActivity, setHasMoreActivity] = useState(initialActivity.length >= 20);
+  const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
+  const [walletLedger, setWalletLedger] = useState<WalletLedgerRow[]>([]);
+  const [walletLoading, setWalletLoading] = useState(false);
 
   const stripeDashboardBase =
     process.env.NEXT_PUBLIC_STRIPE_DASHBOARD_URL ?? 'https://dashboard.stripe.com/customers';
@@ -131,11 +157,33 @@ export function CustomerDetailTabs({
     }
   }, [workspaceId, activityOffset]);
 
+  const loadWallet = useCallback(async () => {
+    setWalletLoading(true);
+    try {
+      const res = await fetch(`/api/admin/workspaces/${workspaceId}/ai-wallet`, {
+        credentials: 'include',
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as {
+        balance?: WalletBalance;
+        ledger?: WalletLedgerRow[];
+      };
+      setWalletBalance(body.balance ?? null);
+      setWalletLedger(body.ledger ?? []);
+    } finally {
+      setWalletLoading(false);
+    }
+  }, [workspaceId]);
+
   useEffect(() => {
     setActivity(initialActivity);
     setActivityOffset(initialActivity.length);
     setHasMoreActivity(initialActivity.length >= 20);
   }, [initialActivity]);
+
+  useEffect(() => {
+    if (activeTab === 'billing') void loadWallet();
+  }, [activeTab, loadWallet]);
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'aivas', label: 'Aivas' },
@@ -354,6 +402,85 @@ export function CustomerDetailTabs({
               ))}
             </tbody>
           </table>
+
+          <div className="rounded-lg border border-border bg-elevated p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-primary">AI usage wallet</h2>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  Credits and usage debits for managed Aiva model calls.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadWallet()}
+                className="inline-flex items-center gap-1.5 rounded border border-border px-2 py-1 text-xs text-text-secondary hover:bg-overlay"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Refresh
+              </button>
+            </div>
+            <div className="mb-4 grid gap-2 sm:grid-cols-4">
+              <div className="rounded border border-border bg-base px-3 py-2">
+                <p className="text-[10px] uppercase text-text-muted">Remaining</p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">
+                  {walletBalance
+                    ? formatGbpFromPence(
+                      walletBalance.remainingPence
+                        ?? Math.round((walletBalance.remainingGbp ?? 0) * 100),
+                    )
+                    : walletLoading ? 'Loading...' : 'Unavailable'}
+                </p>
+              </div>
+              <div className="rounded border border-border bg-base px-3 py-2">
+                <p className="text-[10px] uppercase text-text-muted">Trial</p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">
+                  {formatGbpFromPence(walletBalance?.trialGrantedPence)}
+                </p>
+              </div>
+              <div className="rounded border border-border bg-base px-3 py-2">
+                <p className="text-[10px] uppercase text-text-muted">Purchased</p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">
+                  {formatGbpFromPence(walletBalance?.purchasedPence)}
+                </p>
+              </div>
+              <div className="rounded border border-border bg-base px-3 py-2">
+                <p className="text-[10px] uppercase text-text-muted">Used</p>
+                <p className="mt-1 text-sm font-semibold text-text-primary">
+                  {formatGbpFromPence(walletBalance?.debitedPence)}
+                </p>
+              </div>
+            </div>
+            {walletLedger.length === 0 ? (
+              <p className="text-xs text-text-muted">
+                No wallet ledger rows yet. Apply AI usage credit from Admin overrides to create one.
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded border border-border">
+                <div className="grid grid-cols-[120px_100px_minmax(0,1fr)_150px] border-b border-border bg-base px-3 py-2 text-[11px] font-medium text-text-muted max-sm:hidden">
+                  <span>Type</span>
+                  <span>Amount</span>
+                  <span>Note</span>
+                  <span>Date</span>
+                </div>
+                {walletLedger.slice(0, 20).map((row) => (
+                  <div
+                    key={row.id}
+                    className="grid grid-cols-[120px_100px_minmax(0,1fr)_150px] gap-2 border-b border-border px-3 py-2 text-xs last:border-b-0 max-sm:flex max-sm:flex-col"
+                  >
+                    <span className="font-medium text-text-primary">{row.eventType}</span>
+                    <span className={row.amountPence < 0 ? 'text-red-400' : 'text-green-400'}>
+                      {formatGbpFromPence(row.amountPence)}
+                    </span>
+                    <span className="truncate text-text-secondary">
+                      {row.note || row.model || '-'}
+                    </span>
+                    <span className="text-text-muted">{formatDate(row.createdAt)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
     </div>

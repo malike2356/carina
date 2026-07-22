@@ -269,6 +269,46 @@ export default function VaQueuePage() {
     }
   }
 
+  async function handleMoveStage(
+    escalationId: string,
+    status: 'open' | 'in_progress' | 'resolved',
+  ) {
+    const previous = items;
+    const now = new Date().toISOString();
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === escalationId
+          ? {
+              ...item,
+              status,
+              firstResponseAt:
+                status === 'in_progress' ? item.firstResponseAt ?? now : item.firstResponseAt,
+              resolvedAt: status === 'resolved' ? item.resolvedAt ?? now : null,
+            }
+          : item,
+      ),
+    );
+    const res = await fetch(`/api/admin/va/queue/${escalationId}/status`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      setItems(previous);
+      toast(body.error ?? 'Status update failed', 'error');
+      return;
+    }
+    toast('Escalation moved', 'success');
+    void loadQueue();
+    void loadTeam();
+    void loadSla();
+    if (selectedId === escalationId) {
+      const detailRes = await fetch(`/api/admin/va/queue/${escalationId}`);
+      if (detailRes.ok) setDetail((await detailRes.json()) as EscalationSummary);
+    }
+  }
+
   async function markFirstResponse() {
     if (!selectedId || detail?.firstResponseAt) return;
     const res = await fetch(`/api/admin/va/queue/${selectedId}/first-response`, { method: 'PATCH' });
@@ -459,29 +499,35 @@ export default function VaQueuePage() {
               <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-3">
                 <KanbanColumn
                   title="Unassigned"
+                  stage="open"
                   count={grouped.unassigned.length}
                   breachCount={grouped.unassigned.filter((e) => e.slaBreached).length}
                   escalations={grouped.unassigned}
                   onView={setSelectedId}
                   onQuickAssign={(id, memberId) => void handleAssign(id, memberId)}
+                  onMoveStage={(id, status) => void handleMoveStage(id, status)}
                   availableMembers={availableMembers}
                 />
                 <KanbanColumn
                   title="In Progress"
+                  stage="in_progress"
                   count={grouped.in_progress.length}
                   breachCount={grouped.in_progress.filter((e) => e.slaBreached).length}
                   escalations={grouped.in_progress}
                   onView={setSelectedId}
                   onQuickAssign={(id, memberId) => void handleAssign(id, memberId)}
+                  onMoveStage={(id, status) => void handleMoveStage(id, status)}
                   availableMembers={availableMembers}
                 />
                 <KanbanColumn
                   title="Resolved Today"
+                  stage="resolved"
                   count={grouped.resolved_today.length}
                   breachCount={0}
                   escalations={grouped.resolved_today}
                   onView={setSelectedId}
                   onQuickAssign={(id, memberId) => void handleAssign(id, memberId)}
+                  onMoveStage={(id, status) => void handleMoveStage(id, status)}
                   availableMembers={availableMembers}
                 />
               </div>

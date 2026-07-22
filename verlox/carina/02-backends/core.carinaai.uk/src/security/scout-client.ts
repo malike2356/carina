@@ -11,6 +11,7 @@ import {
   type ScoutSignal,
 } from './scout-mutual-types.js';
 import { isScoutMutualIntegrationActive } from './scout-mode.js';
+import { shouldForwardScoutAlert } from './scout-control-settings.js';
 
 export type { ScoutEvent, ToolCallReport } from './load-scout-package.js';
 export type { ScoutSignal } from './scout-mutual-types.js';
@@ -92,14 +93,20 @@ export async function reportEvent(event: ScoutEvent): Promise<void> {
     if (rules && shouldSuppressEvent(event, rules)) return;
   }
 
-  const mod = await scout();
-  if (!mod) return;
-  await insertScoutSignalCache(event);
+  await insertScoutSignalCache(event).catch((err) => {
+    console.warn(
+      '[scout] signal cache write failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+  });
   void emitPlatformEvent({
     eventType: 'scout_audit',
     scoutVerified: true,
     metadata: { scoutEventType: event.event_type, instanceId: event.instance_id ?? null },
   }).catch(() => {});
+  if (!shouldForwardScoutAlert(event.severity)) return;
+  const mod = await scout();
+  if (!mod) return;
   return mod.reportEvent(event);
 }
 

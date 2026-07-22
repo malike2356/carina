@@ -4,6 +4,7 @@ import {
   Bot,
   Building2,
   Calendar,
+  CalendarClock,
   CheckSquare,
   CreditCard,
   FileText,
@@ -12,6 +13,7 @@ import {
   Inbox,
   LayoutGrid,
   Library,
+  LifeBuoy,
   Link2,
   Mail,
   MoreHorizontal,
@@ -84,6 +86,12 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
     icon: CheckSquare,
     match: (pathname) =>
       pathname.startsWith('/tasks') || pathname.startsWith('/scheduled'),
+  },
+  {
+    href: '/cron',
+    label: 'Scheduled jobs',
+    icon: CalendarClock,
+    match: (pathname) => pathname.startsWith('/cron'),
   },
   {
     href: '/research',
@@ -204,6 +212,12 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
         icon: CheckSquare,
       },
       {
+        href: '/cron',
+        label: 'Scheduled jobs',
+        description: 'Aiva-created cron jobs, reminders, and recurring scheduled tasks.',
+        icon: CalendarClock,
+      },
+      {
         href: '/research',
         label: 'Research',
         description: 'Deep multi-round web search and synthesis.',
@@ -278,6 +292,12 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
         label: 'Human assist',
         description: 'Request optional human help when Aiva needs it.',
         icon: HandHelping,
+      },
+      {
+        href: '/aiva/help',
+        label: 'Help and Ask Carina',
+        description: 'Guides plus Carina, your in-app product support assistant.',
+        icon: LifeBuoy,
       },
       {
         href: '/billing/aiva',

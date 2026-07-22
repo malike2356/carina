@@ -2,11 +2,56 @@ import { getSessionHistory, saveMemory } from '../store.js';
 import { listEmployeeThreadMessages } from '../../aiva/employee-comms.js';
 import type { AivaChannelName } from '../../channels/types.js';
 import { config } from '../../config/index.js';
+import { pool } from '../db.js';
 
 export type BridgedTurn = {
   role: 'user' | 'assistant';
   content: string;
 };
+
+function mergeTurns(limit: number, ...groups: BridgedTurn[][]): BridgedTurn[] {
+  const seen = new Set<string>();
+  const merged: BridgedTurn[] = [];
+  for (const group of groups) {
+    for (const turn of group) {
+      const content = turn.content.trim();
+      if (!content) continue;
+      const key = `${turn.role}:${content}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push({ role: turn.role, content });
+    }
+  }
+  return merged.slice(-limit);
+}
+
+async function listRecentWorkerEpisodicTurns(opts: {
+  workerId: string;
+  excludeSessionId?: string;
+  limit: number;
+}): Promise<BridgedTurn[]> {
+  const prefix = `aiva-${opts.workerId}-`;
+  const result = await pool.query(
+    `SELECT role, content
+     FROM (
+       SELECT role, content, created_at
+       FROM episodic_memories
+       WHERE session_id LIKE $1
+         AND session_id <> $2
+         AND role IN ('user', 'assistant')
+       ORDER BY created_at DESC
+       LIMIT $3
+     ) recent
+     ORDER BY created_at ASC`,
+    [`${prefix}%`, opts.excludeSessionId ?? '', opts.limit],
+  );
+  return result.rows
+    .map((row) => ({
+      role: String(row.role) as 'user' | 'assistant',
+      content: String(row.content ?? '').trim(),
+    }))
+    .filter((turn) => turn.content.length > 0);
+}
 
 /**
  * When episodic history is empty but the employee UI thread has messages,
@@ -20,7 +65,7 @@ export async function hydrateEpisodicFromEmployeeThread(opts: {
   contactId: string;
   channel: AivaChannelName;
   currentUserMessage?: string;
-}): Promise<{ hydrated: number; source: 'episodic' | 'employee_thread' | 'none' }> {
+}): Promise<{ hydrated: number; source: 'episodic' | 'employee_thread' | 'worker_recent' | 'none' }> {
   let episodicCount = 0;
   try {
     const history = await getSessionHistory(opts.sessionId, 5);
@@ -32,25 +77,45 @@ export async function hydrateEpisodicFromEmployeeThread(opts: {
     return { hydrated: 0, source: 'episodic' };
   }
 
-  let messages: Array<{ sender: string; content: string }> = [];
+  let turns: BridgedTurn[] = [];
   try {
     const listed = await listEmployeeThreadMessages(opts.workspaceId, opts.workerId, {
       contactId: opts.contactId,
       channel: opts.channel,
       limit: 40,
     });
-    messages = listed.messages;
+    turns = listed.messages
+      .filter((msg) => msg.sender === 'user' || msg.sender === 'employee')
+      .map((msg) => ({
+        role: (msg.sender === 'employee' ? 'assistant' : 'user') as 'user' | 'assistant',
+        content: String(msg.content ?? '').trim(),
+      }))
+      .filter((turn) => turn.content.length > 0);
   } catch {
-    return { hydrated: 0, source: 'none' };
+    turns = [];
   }
-  if (messages.length === 0) return { hydrated: 0, source: 'none' };
+  let source: 'employee_thread' | 'worker_recent' = 'employee_thread';
+
+  if (turns.length === 0) {
+    try {
+      turns = await listRecentWorkerEpisodicTurns({
+        workerId: opts.workerId,
+        excludeSessionId: opts.sessionId,
+        limit: 40,
+      });
+      source = 'worker_recent';
+    } catch {
+      turns = [];
+    }
+  }
+  if (turns.length === 0) return { hydrated: 0, source: 'none' };
 
   const current = (opts.currentUserMessage ?? '').trim();
-  const prior = [...messages];
+  const prior = [...turns];
   if (current) {
     for (let i = prior.length - 1; i >= 0; i -= 1) {
-      const msg = prior[i];
-      if (msg?.sender === 'user' && String(msg.content).trim() === current) {
+      const turn = prior[i];
+      if (turn?.role === 'user' && turn.content.trim() === current) {
         prior.splice(i, 1);
         break;
       }
@@ -58,20 +123,15 @@ export async function hydrateEpisodicFromEmployeeThread(opts: {
   }
 
   let hydrated = 0;
-  for (const msg of prior) {
-    const content = String(msg.content ?? '').trim();
+  for (const turn of prior) {
+    const content = turn.content.trim();
     if (!content) continue;
-    if (msg.sender === 'user') {
-      await saveMemory(opts.sessionId, 'user', content);
-      hydrated += 1;
-    } else if (msg.sender === 'employee') {
-      await saveMemory(opts.sessionId, 'assistant', content);
-      hydrated += 1;
-    }
+    await saveMemory(opts.sessionId, turn.role, content);
+    hydrated += 1;
   }
   return {
     hydrated,
-    source: hydrated > 0 ? 'employee_thread' : 'none',
+    source: hydrated > 0 ? source : 'none',
   };
 }
 
@@ -88,7 +148,7 @@ export async function resolveAivaConversationBridge(opts: {
 }): Promise<{
   episodicCount: number;
   threadCount: number;
-  source: 'episodic' | 'employee_thread' | 'none';
+  source: 'episodic' | 'employee_thread' | 'worker_recent' | 'none';
   turns: BridgedTurn[];
   continuationHint: string;
 }> {
@@ -129,15 +189,29 @@ export async function resolveAivaConversationBridge(opts: {
     thread = [];
   }
 
+  let workerRecent: BridgedTurn[] = [];
+  try {
+    workerRecent = await listRecentWorkerEpisodicTurns({
+      workerId: opts.workerId,
+      excludeSessionId: opts.sessionId,
+      limit,
+    });
+  } catch {
+    workerRecent = [];
+  }
+
   if (episodic.length > 0) {
+    const turns = mergeTurns(limit, workerRecent, thread, episodic);
     return {
       episodicCount: episodic.length,
       threadCount: thread.length,
-      source: 'episodic',
-      turns: episodic.slice(-limit),
+      source: workerRecent.length > 0 || thread.length > episodic.length
+        ? 'worker_recent'
+        : 'episodic',
+      turns,
       continuationHint:
-        'Continuing an existing conversation. Do not re-introduce yourself. '
-        + 'Carry prior context forward unless the user asks to start fresh (/new).',
+        'Continuing an existing cross-channel Aiva conversation. Do not re-introduce yourself. '
+        + 'Carry prior context forward from Telegram, web, email, and other connected channels unless the user asks to start fresh (/new).',
     };
   }
 
@@ -150,6 +224,18 @@ export async function resolveAivaConversationBridge(opts: {
       continuationHint:
         'Conversation history was recovered from the durable employee thread '
         + '(episodic store was empty). Do not re-introduce yourself.',
+    };
+  }
+
+  if (workerRecent.length > 0) {
+    return {
+      episodicCount: 0,
+      threadCount: thread.length,
+      source: 'worker_recent',
+      turns: workerRecent.slice(-limit),
+      continuationHint:
+        'Recent conversation history was recovered from this Aiva across another connected channel. '
+        + 'Treat this as the same ongoing relationship and do not re-introduce yourself.',
     };
   }
 

@@ -4,6 +4,7 @@ import type { Redis } from 'ioredis';
 import { config } from '../config/index.js';
 import { createRedisSubscriber } from '../lib/redis.js';
 import { clearSession } from '../memory/store.js';
+import { effectiveScoutControlMode } from './scout-control-settings.js';
 import { isAgenticScoutCommand } from './scout-mutual-types.js';
 
 const CHANNEL = 'labyrinth:control';
@@ -22,7 +23,6 @@ const operatorBlockedDomains = new Map<string, Set<string>>();
 // Per-session rate limit overrides. Populated via Scout control messages.
 const sessionRateLimits = new Map<string, number>();
 export type SandboxPolicyMode = 'default' | 'docker_only' | 'session_only' | 'host_blocked';
-type ScoutControlMode = 'enforce' | 'monitor';
 
 let instanceSandboxPolicy: SandboxPolicyMode = 'default';
 const sessionSandboxPolicies = new Map<string, SandboxPolicyMode>();
@@ -41,17 +41,8 @@ const ENFORCEMENT_ACTIONS = new Set([
   'clear_session_memory',
 ]);
 
-function getScoutControlMode(): ScoutControlMode {
-  const raw = (process.env.SCOUT_CONTROL_MODE ?? process.env.LABYRINTH_CONTROL_MODE ?? '')
-    .trim()
-    .toLowerCase();
-  return raw === 'monitor' || raw === 'monitor_only' || raw === 'observe' ? 'monitor' : 'enforce';
-}
-
 export function isScoutEnforcementEnabled(): boolean {
-  if (process.env.SCOUT_ENFORCEMENT_ENABLED === 'false') return false;
-  if (process.env.LABYRINTH_ENFORCEMENT_ENABLED === 'false') return false;
-  return getScoutControlMode() === 'enforce';
+  return effectiveScoutControlMode() === 'enforce';
 }
 
 function isEnforcementAction(action: unknown): boolean {

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Router, type Response, type Router as ExpressRouter } from 'express';
 import { pool } from '../memory/db.js';
 import { maskIdentifier } from '../channels/mask-identifier.js';
@@ -543,13 +544,17 @@ adminRouter.post('/workspaces/:id/ai-wallet/credit', async (req: AdminRequest, r
     return;
   }
   try {
-    const sessionId = `admin:${req.adminUser!.operatorId}:${Date.now()}`;
-    await creditAivaWalletPurchase({
+    const sessionId = `admin:${req.adminUser!.operatorId}:${Date.now()}:${crypto.randomBytes(6).toString('hex')}`;
+    const result = await creditAivaWalletPurchase({
       workspaceId,
       amountPence,
       stripeSessionId: sessionId,
       note: `admin:${note}`,
     });
+    if (!result.credited) {
+      res.status(422).json({ error: 'Credit was not applied (duplicate session id)' });
+      return;
+    }
     await writeAdminAudit({
       adminUserId: req.adminUser!.operatorId,
       action: 'add_ai_wallet_credit',
@@ -1340,6 +1345,64 @@ adminRouter.patch('/va/queue/:id/first-response', async (req: AdminRequest, res:
   try {
     const firstResponseAt = await markFirstResponse(id);
     res.json({ firstResponseAt });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(400).json({ error: msg });
+  }
+});
+
+adminRouter.patch('/va/queue/:id/status', async (req: AdminRequest, res: Response) => {
+  const id = String(req.params.id);
+  const status = String(req.body?.status ?? '').trim();
+  if (!['open', 'in_progress', 'resolved'].includes(status)) {
+    res.status(400).json({ error: 'status must be open, in_progress, or resolved' });
+    return;
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE ai_worker_escalations
+       SET status = $2,
+           first_response_at = CASE
+             WHEN $2 = 'in_progress' AND first_response_at IS NULL THEN NOW()
+             ELSE first_response_at
+           END,
+           resolved_at = CASE
+             WHEN $2 = 'resolved' THEN COALESCE(resolved_at, NOW())
+             WHEN $2 != 'resolved' THEN NULL
+             ELSE resolved_at
+           END,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING id, status, first_response_at, resolved_at, assigned_to`,
+      [id, status],
+    );
+    const row = result.rows[0] as {
+      id: string;
+      status: string;
+      first_response_at: Date | string | null;
+      resolved_at: Date | string | null;
+      assigned_to: string | null;
+    } | undefined;
+    if (!row) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    await writeAdminAudit({
+      adminUserId: req.adminUser!.operatorId,
+      action: 'va_status_update',
+      targetType: 'escalation',
+      targetId: id,
+      metadata: { status },
+      ipAddress: req.ip,
+    });
+    res.json({
+      id: row.id,
+      status: row.status,
+      firstResponseAt: row.first_response_at,
+      resolvedAt: row.resolved_at,
+      assignedTo: row.assigned_to,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(400).json({ error: msg });

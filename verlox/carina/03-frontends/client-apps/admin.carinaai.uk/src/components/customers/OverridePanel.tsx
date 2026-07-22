@@ -40,8 +40,11 @@ export function OverridePanel({
   const [extendDays, setExtendDays] = useState('14');
   const [forcePlan, setForcePlan] = useState(subscription.planTier);
   const [forceReason, setForceReason] = useState('');
-  const [creditAmount, setCreditAmount] = useState('');
-  const [creditNote, setCreditNote] = useState('');
+  const [walletAmountGbp, setWalletAmountGbp] = useState('');
+  const [walletNote, setWalletNote] = useState('');
+  const [walletRemainingGbp, setWalletRemainingGbp] = useState<number | null>(null);
+  const [stripeCreditGbp, setStripeCreditGbp] = useState('');
+  const [stripeCreditNote, setStripeCreditNote] = useState('');
   const [notes, setNotes] = useState(adminNotes);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -60,6 +63,34 @@ export function OverridePanel({
   useEffect(() => {
     setTrialEndsAt(subscription.trialEndsAt);
   }, [subscription.trialEndsAt]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/admin/workspaces/${workspaceId}/ai-wallet`, {
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          balance?: { remainingGbp?: number; remainingPence?: number };
+        };
+        if (cancelled) return;
+        const gbp =
+          typeof body.balance?.remainingGbp === 'number'
+            ? body.balance.remainingGbp
+            : typeof body.balance?.remainingPence === 'number'
+              ? body.balance.remainingPence / 100
+              : null;
+        setWalletRemainingGbp(gbp);
+      } catch {
+        // Balance is informational; credit actions still work without it.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId]);
 
   function showOk(message: string) {
     setFeedback({ type: 'ok', message });
@@ -80,8 +111,10 @@ export function OverridePanel({
     setFeedback(null);
     try {
       const res = await request();
-      const body = (await res.json()) as Record<string, unknown> & { error?: string };
-      if (!res.ok) throw new Error(body.error ?? 'Action failed');
+      const body = (await res.json().catch(() => ({}))) as Record<string, unknown> & {
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? `Action failed (${res.status})`);
       showOk(onSuccess(body));
       onUpdated();
     } catch (err) {
@@ -91,6 +124,12 @@ export function OverridePanel({
     } finally {
       setBusy(false);
     }
+  }
+
+  function poundsToPence(raw: string): number {
+    const pounds = Number(raw);
+    if (!Number.isFinite(pounds) || pounds <= 0) return 0;
+    return Math.round(pounds * 100);
   }
 
   const isLikelyTest =
@@ -229,46 +268,126 @@ export function OverridePanel({
       <div className="admin-section-divider" />
 
       <div>
-        <p className="mb-2 text-xs font-medium text-text-primary">Add credit</p>
+        <p className="mb-2 text-xs font-medium text-text-primary">AI usage credit</p>
+        <p className="mb-2 text-[11px] text-text-muted">
+          Adds GBP to the managed AI wallet (usage budget). Current balance:{' '}
+          {walletRemainingGbp === null ? '...' : `£${walletRemainingGbp.toFixed(2)}`}
+        </p>
         <div className="mb-2 flex gap-2">
-          <span className="self-center text-xs text-text-muted">GBP</span>
+          <span className="self-center text-xs text-text-muted">£</span>
           <input
             type="number"
-            min={1}
-            value={creditAmount}
-            onChange={(e) => setCreditAmount(e.target.value)}
-            className="admin-input w-20 text-xs"
-            placeholder="5000"
+            min={0.01}
+            step={0.01}
+            value={walletAmountGbp}
+            onChange={(e) => setWalletAmountGbp(e.target.value)}
+            className="admin-input w-24 text-xs"
+            placeholder="50"
           />
-          <span className="self-center text-[11px] text-text-muted">(pence)</span>
+          <span className="self-center text-[11px] text-text-muted">GBP</span>
         </div>
         <input
-          value={creditNote}
-          onChange={(e) => setCreditNote(e.target.value)}
+          value={walletNote}
+          onChange={(e) => setWalletNote(e.target.value)}
           placeholder="Note (required)"
           className="admin-input mb-2 text-xs"
         />
         <button
           type="button"
-          disabled={busy || !creditAmount || !creditNote.trim()}
-          onClick={() =>
+          disabled={busy || poundsToPence(walletAmountGbp) < 1 || !walletNote.trim()}
+          onClick={() => {
+            const amountPence = poundsToPence(walletAmountGbp);
             void runAction(
-              `Add GBP ${(Number(creditAmount) / 100).toFixed(2)} credit to ${workspaceName}?`,
+              `Add £${(amountPence / 100).toFixed(2)} AI usage credit to ${workspaceName}?`,
+              () =>
+                fetch(`/api/admin/workspaces/${workspaceId}/ai-wallet/credit`, {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    amountPence,
+                    note: walletNote.trim(),
+                  }),
+                }),
+              (body) => {
+                const balance = body.balance as
+                  | { remainingGbp?: number; remainingPence?: number }
+                  | undefined;
+                const gbp =
+                  typeof balance?.remainingGbp === 'number'
+                    ? balance.remainingGbp
+                    : typeof balance?.remainingPence === 'number'
+                      ? balance.remainingPence / 100
+                      : null;
+                if (gbp !== null) setWalletRemainingGbp(gbp);
+                setWalletAmountGbp('');
+                setWalletNote('');
+                return gbp === null
+                  ? 'Done. AI usage credit applied.'
+                  : `Done. Wallet balance £${gbp.toFixed(2)}.`;
+              },
+            );
+          }}
+          className="btn-admin-credit w-full"
+        >
+          Apply AI usage credit
+        </button>
+      </div>
+
+      <div className="admin-section-divider" />
+
+      <div>
+        <p className="mb-2 text-xs font-medium text-text-primary">Stripe billing credit</p>
+        <p className="mb-2 text-[11px] text-text-muted">
+          Applies a Stripe customer balance credit. Requires an existing Stripe customer on this
+          workspace.
+        </p>
+        <div className="mb-2 flex gap-2">
+          <span className="self-center text-xs text-text-muted">£</span>
+          <input
+            type="number"
+            min={0.01}
+            step={0.01}
+            value={stripeCreditGbp}
+            onChange={(e) => setStripeCreditGbp(e.target.value)}
+            className="admin-input w-24 text-xs"
+            placeholder="50"
+          />
+          <span className="self-center text-[11px] text-text-muted">GBP</span>
+        </div>
+        <input
+          value={stripeCreditNote}
+          onChange={(e) => setStripeCreditNote(e.target.value)}
+          placeholder="Note (required)"
+          className="admin-input mb-2 text-xs"
+        />
+        <button
+          type="button"
+          disabled={busy || poundsToPence(stripeCreditGbp) < 1 || !stripeCreditNote.trim()}
+          onClick={() => {
+            const amount = poundsToPence(stripeCreditGbp);
+            void runAction(
+              `Add £${(amount / 100).toFixed(2)} Stripe billing credit to ${workspaceName}?`,
               () =>
                 fetch(`/api/admin/workspaces/${workspaceId}/credit`, {
                   method: 'POST',
+                  credentials: 'include',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    amount: Number(creditAmount),
-                    note: creditNote.trim(),
+                    amount,
+                    note: stripeCreditNote.trim(),
                   }),
                 }),
-              (body) => `Done. Credit note ${String(body.creditNoteId ?? '').slice(0, 16)}.`,
-            )
-          }
+              (body) => {
+                setStripeCreditGbp('');
+                setStripeCreditNote('');
+                return `Done. Credit note ${String(body.creditNoteId ?? '').slice(0, 16)}.`;
+              },
+            );
+          }}
           className="btn-admin-credit w-full"
         >
-          Apply credit
+          Apply Stripe credit
         </button>
       </div>
 

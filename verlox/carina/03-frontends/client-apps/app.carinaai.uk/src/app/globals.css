@@ -26,7 +26,7 @@
   --color-primary-foreground: var(--primary-foreground, #fafafa);
   --color-danger: var(--destructive, #ef4444);
   --color-danger-dim: color-mix(in srgb, var(--destructive, #ef4444) 18%, transparent);
-  --color-bubble-user: color-mix(in srgb, var(--primary, #22c55e) 16%, var(--card, #1a1d2e));
+  --color-bubble-user: color-mix(in srgb, var(--primary, #22c55e) 12%, var(--card, #1a1d2e));
   --color-bubble-assistant: color-mix(in srgb, var(--muted, #262626) 70%, var(--card, #1a1d2e));
   --color-code-bg: color-mix(in srgb, var(--background, #0d1117) 88%, black);
   --color-code-text: var(--foreground, #e6edf3);
@@ -220,11 +220,43 @@ a {
 @media (max-width: 768px) {
   .carina-window-content {
     inset: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
+    width: 100% !important;
+    height: 100dvh !important;
     max-width: none !important;
     max-height: none !important;
     border-radius: 0;
+  }
+
+  .carina-workspace-shell {
+    width: 100vw;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .carina-workspace-shell main,
+  .carina-workspace-shell section,
+  .carina-workspace-shell article,
+  .carina-workspace-shell aside,
+  .carina-workspace-shell form,
+  .carina-workspace-shell div {
+    min-width: 0;
+  }
+
+  .carina-workspace-shell img,
+  .carina-workspace-shell video,
+  .carina-workspace-shell canvas,
+  .carina-workspace-shell svg {
+    max-width: 100%;
+  }
+
+  .carina-workspace-shell pre {
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .carina-workspace-shell code {
+    word-break: break-word;
   }
 }
 

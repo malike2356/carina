@@ -16,6 +16,12 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Spinner } from '@/components/ui/Spinner';
 import { OriginBadge } from '@/components/ui/OriginBadge';
 import { OriginFilterChips } from '@/components/ui/OriginFilterChips';
+import {
+  DEFAULT_PAGE_SIZE,
+  ListPager,
+  slicePage,
+  totalPagesFor,
+} from '@/components/ui/ListPager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -99,6 +105,7 @@ export default function TasksPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [originFilter, setOriginFilter] = useState<OriginFilter>('all');
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -114,6 +121,16 @@ export default function TasksPage() {
         matchesOriginFilter({ origin: classifyTaskOrigin(task) }, originFilter),
       ),
     [tasks, originFilter],
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [originFilter]);
+
+  const totalPages = totalPagesFor(filteredTasks.length, DEFAULT_PAGE_SIZE);
+  const pageTasks = useMemo(
+    () => slicePage(filteredTasks, page, DEFAULT_PAGE_SIZE),
+    [filteredTasks, page],
   );
 
   const selectedTask = useMemo(
@@ -228,8 +245,12 @@ export default function TasksPage() {
     <div className="flex h-full flex-col bg-base">
       <div className="flex items-center gap-4 border-b border-border px-6 py-4">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Tasks</h1>
+          <h1 className="text-lg font-semibold text-text-primary">Workspace schedules</h1>
           <p className="mt-0.5 text-xs text-text-muted">{TASKS_ORIGIN_HELPER_TEXT}</p>
+          <p className="mt-1 text-xs text-text-muted">
+            Looking for morning digests or routines for one AI employee? Open that worker →{' '}
+            <span className="font-medium text-text-secondary">Automations</span> tab.
+          </p>
           {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
         </div>
         <Button
@@ -256,13 +277,13 @@ export default function TasksPage() {
           >
             <div className="mb-3 flex items-center gap-2">
               <Plus className="h-4 w-4 text-accent" />
-              <h2 className="text-sm font-semibold text-text-primary">New automation</h2>
+              <h2 className="text-sm font-semibold text-text-primary">New workspace schedule</h2>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <Input
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder="Task name"
+                placeholder="Schedule name"
               />
               <Input
                 value={form.description}
@@ -300,7 +321,7 @@ export default function TasksPage() {
               <Input
                 value={form.prompt}
                 onChange={(event) => setForm((current) => ({ ...current, prompt: event.target.value }))}
-                placeholder="Automation prompt"
+                placeholder="What should run (prompt or action key)"
               />
             </div>
             <div className="mt-3 flex justify-end">
@@ -316,23 +337,23 @@ export default function TasksPage() {
               <Spinner />
             </div>
           ) : filteredTasks.length === 0 ? (
-            <EmptyState title="No tasks" subtitle="Create an automation to start tracking scheduled work. Google list import awaits the Tasks API." />
+            <EmptyState title="No workspace schedules" subtitle="Create a schedule for workspace housekeeping (tidy, calendar sync, custom prompts). Morning digests belong on each Aiva's Automations tab." />
           ) : (
             <div className="overflow-hidden rounded-lg border border-border">
-              <div className="grid grid-cols-[minmax(220px,1fr)_120px_120px_110px_128px] border-b border-border bg-elevated px-4 py-2 text-xs font-medium text-text-muted max-xl:grid-cols-[minmax(220px,1fr)_110px_96px_112px]">
+              <div className="grid grid-cols-[minmax(220px,1fr)_120px_120px_110px_128px] border-b border-border bg-elevated px-4 py-2 text-xs font-medium text-text-muted max-xl:grid-cols-[minmax(220px,1fr)_110px_96px_112px] max-sm:hidden">
                 <span>Task</span>
                 <span className="max-xl:hidden">Trigger</span>
                 <span>Type</span>
                 <span>Status</span>
                 <span>Actions</span>
               </div>
-              {filteredTasks.map((task) => (
+              {pageTasks.map((task) => (
                 <button
                   key={task.id}
                   type="button"
                   onClick={() => setSelectedId(task.id)}
                   className={cn(
-                    'grid w-full grid-cols-[minmax(220px,1fr)_120px_120px_110px_128px] items-center gap-2 border-b border-border px-4 py-3 text-left last:border-b-0 hover:bg-elevated/60 max-xl:grid-cols-[minmax(220px,1fr)_110px_96px_112px]',
+                    'grid w-full grid-cols-[minmax(220px,1fr)_120px_120px_110px_128px] items-center gap-2 border-b border-border px-4 py-3 text-left last:border-b-0 hover:bg-elevated/60 max-xl:grid-cols-[minmax(220px,1fr)_110px_96px_112px] max-sm:flex max-sm:flex-col max-sm:items-stretch max-sm:gap-3 max-sm:px-3',
                     selectedTask?.id === task.id && 'bg-elevated',
                   )}
                 >
@@ -352,7 +373,7 @@ export default function TasksPage() {
                     <CalendarClock className="h-3.5 w-3.5 text-text-muted" />
                     {TRIGGER_LABELS[task.triggerType]}
                   </span>
-                  <span className="flex items-center gap-1.5 text-xs text-text-secondary">
+                  <span className="flex items-center gap-1.5 text-xs text-text-secondary max-sm:flex-wrap">
                     {task.taskType === 'action' ? <Zap className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
                     {TYPE_LABELS[task.taskType]}
                   </span>
@@ -361,7 +382,7 @@ export default function TasksPage() {
                       {STATUS_LABELS[task.status]}
                     </span>
                   </span>
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 max-sm:flex-wrap">
                     <Button
                       type="button"
                       variant="ghost"
@@ -401,6 +422,14 @@ export default function TasksPage() {
                   </span>
                 </button>
               ))}
+              <ListPager
+                page={page}
+                totalPages={totalPages}
+                totalItems={filteredTasks.length}
+                onChangePage={setPage}
+                disabled={loading}
+                className="px-4"
+              />
             </div>
           )}
         </div>
