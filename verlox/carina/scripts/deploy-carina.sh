@@ -115,16 +115,20 @@ else
   log "Skipping Hire Aiva marketing because its committed homepage is empty."
 fi
 
-log "Building docs.carinaai.uk (Docusaurus, baseUrl /)..."
-(
-  cd "${DOCS_SUBDOMAIN_LOCAL}"
-  pnpm build
-)
+if [[ -x "${DOCS_SUBDOMAIN_LOCAL}/node_modules/.bin/docusaurus" ]]; then
+  log "Building docs.carinaai.uk (Docusaurus, baseUrl /)..."
+  (
+    cd "${DOCS_SUBDOMAIN_LOCAL}"
+    pnpm build
+  )
 
-log "Syncing docs.carinaai.uk static build..."
-ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/docs/.vitepress/dist'"
-rsync -az --delete \
-  "${DOCS_SUBDOMAIN_LOCAL}/build/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/docs/.vitepress/dist/"
+  log "Syncing docs.carinaai.uk static build..."
+  ssh "${VPS_USER}@${VPS_HOST}" "mkdir -p '${APPS_ROOT}/core.carinaai.uk/docs/.vitepress/dist'"
+  rsync -az --delete \
+    "${DOCS_SUBDOMAIN_LOCAL}/build/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/docs/.vitepress/dist/"
+else
+  log "Skipping docs.carinaai.uk because Docusaurus dependencies are not installed locally."
+fi
 
 log "Running Docker production deploy on VPS..."
 ssh "${VPS_USER}@${VPS_HOST}" bash -s -- "${APPS_ROOT}" "${SOURCE_REVISION}" <<'REMOTE'
