@@ -22,11 +22,54 @@ const operatorBlockedDomains = new Map<string, Set<string>>();
 // Per-session rate limit overrides. Populated via Scout control messages.
 const sessionRateLimits = new Map<string, number>();
 export type SandboxPolicyMode = 'default' | 'docker_only' | 'session_only' | 'host_blocked';
+type ScoutControlMode = 'enforce' | 'monitor';
 
 let instanceSandboxPolicy: SandboxPolicyMode = 'default';
 const sessionSandboxPolicies = new Map<string, SandboxPolicyMode>();
 let allowlistEnforced = process.env.SCOUT_ENFORCE_ALLOWLIST === 'true';
 let subscriber: Redis | null = null;
+
+const ENFORCEMENT_ACTIONS = new Set([
+  'suspend',
+  'block_session',
+  'suspend_session',
+  'quarantine_tool',
+  'block_egress',
+  'set_rate_limit',
+  'set_sandbox_policy',
+  'set_tool_policy',
+  'clear_session_memory',
+]);
+
+function getScoutControlMode(): ScoutControlMode {
+  const raw = (process.env.SCOUT_CONTROL_MODE ?? process.env.LABYRINTH_CONTROL_MODE ?? '')
+    .trim()
+    .toLowerCase();
+  return raw === 'monitor' || raw === 'monitor_only' || raw === 'observe' ? 'monitor' : 'enforce';
+}
+
+export function isScoutEnforcementEnabled(): boolean {
+  if (process.env.SCOUT_ENFORCEMENT_ENABLED === 'false') return false;
+  if (process.env.LABYRINTH_ENFORCEMENT_ENABLED === 'false') return false;
+  return getScoutControlMode() === 'enforce';
+}
+
+function isEnforcementAction(action: unknown): boolean {
+  return typeof action === 'string' && ENFORCEMENT_ACTIONS.has(action);
+}
+
+function shouldMonitorOnly(payload: Record<string, unknown>): boolean {
+  return !isScoutEnforcementEnabled() && isEnforcementAction(payload.action);
+}
+
+function recordMonitorOnlyControl(payload: Record<string, unknown>): void {
+  const action = String(payload.action ?? 'unknown');
+  const reason = String(payload.reason ?? '');
+  const target = String(payload.session_id ?? payload.tool ?? payload.domain ?? payload.instance_id ?? '');
+  const logLine = `MONITOR ONLY: Scout ${action} ignored. Target: ${target}. Reason: ${reason}`;
+  console.warn(`[KillSwitch] ${logLine}`);
+  appendLog(logLine);
+}
 
 export function getInstanceSandboxPolicy(): SandboxPolicyMode {
   return instanceSandboxPolicy;
@@ -128,6 +171,12 @@ export function clearSessionPolicyBlock(sessionId: string): boolean {
 }
 
 export function suspendInstanceByPolicy(reason: string): void {
+  if (!isScoutEnforcementEnabled()) {
+    const logLine = `MONITOR ONLY: policy suspend ignored. Reason: ${reason}`;
+    console.warn(`[KillSwitch] ${logLine}`);
+    appendLog(logLine);
+    return;
+  }
   suspended = true;
   suspensionReason = reason;
   const logLine = `SUSPENDED (policy): ${reason}`;
@@ -201,6 +250,14 @@ function applyInstanceControlPayload(payload: Record<string, unknown>): void {
 }
 
 function applyInstanceControlActions(payload: Record<string, unknown>): void {
+  if (shouldMonitorOnly(payload)) {
+    recordMonitorOnlyControl(payload);
+    if (payload.capture_forensic === true || payload.action === 'suspend' || payload.action === 'suspend_session') {
+      void triggerForensicCapture(payload);
+    }
+    return;
+  }
+
   if (payload.action === 'suspend') {
     suspended = true;
     suspensionReason = (payload.reason as string) || 'No reason provided';

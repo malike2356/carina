@@ -19,6 +19,10 @@ vi.mock('../config/index.js', () => ({
 
 describe('kill-switch-listener', () => {
   beforeEach(async () => {
+    delete process.env.SCOUT_CONTROL_MODE;
+    delete process.env.LABYRINTH_CONTROL_MODE;
+    delete process.env.SCOUT_ENFORCEMENT_ENABLED;
+    delete process.env.LABYRINTH_ENFORCEMENT_ENABLED;
     clearSessionMock.mockClear();
     const mod = await import('./kill-switch-listener.js');
     mod._resetSuspendedFlag();
@@ -48,6 +52,17 @@ describe('kill-switch-listener', () => {
     );
     _processControlMessage(JSON.stringify({ action: 'resume', instance_id: 'test-001' }));
     expect(() => checkNotSuspended()).not.toThrow();
+  });
+
+  it('does not suspend the instance in monitor mode', async () => {
+    process.env.SCOUT_CONTROL_MODE = 'monitor';
+    const { checkNotSuspended, getKillSwitchStatus, _processControlMessage } =
+      await import('./kill-switch-listener.js');
+    _processControlMessage(
+      JSON.stringify({ action: 'suspend', instance_id: 'test-001', reason: 'test' }),
+    );
+    expect(() => checkNotSuspended()).not.toThrow();
+    expect(getKillSwitchStatus().active).toBe(false);
   });
 
   it('ignores messages for other instances', async () => {
@@ -101,6 +116,20 @@ describe('kill-switch-listener', () => {
     );
     expect(isSessionBlocked('session-A')).toBe(true);
     expect(isSessionBlocked('session-B')).toBe(false);
+  });
+
+  it('does not block sessions in monitor mode', async () => {
+    process.env.SCOUT_CONTROL_MODE = 'monitor';
+    const { isSessionBlocked, _processControlMessage } = await import('./kill-switch-listener.js');
+    _processControlMessage(
+      JSON.stringify({
+        action: 'block_session',
+        session_id: 'session-A',
+        instance_id: 'test-001',
+        reason: 'test',
+      }),
+    );
+    expect(isSessionBlocked('session-A')).toBe(false);
   });
 
   it('quarantine_tool marks tool as quarantined', async () => {

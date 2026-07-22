@@ -4,6 +4,7 @@ import { queueWorkerTrigger, consumePendingTriggers } from '../ingestion/email/w
 import { pollWorkerInbox } from '../ingestion/email/email-poller.js';
 import { replayQueuedSocialTrigger } from '../ingestion/social/social-draft-handler.js';
 import { sendEmail } from '../email/email-service.js';
+import { isScoutEnforcementEnabled } from './kill-switch-listener.js';
 import { Text } from '@react-email/components';
 import React from 'react';
 
@@ -11,6 +12,10 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 
 export async function suspendWorkerByScout(workerId: string, reason: string): Promise<void> {
   if (!UUID_RE.test(workerId)) return;
+  if (!isScoutEnforcementEnabled()) {
+    console.warn(`[ScoutWorker] Monitor only: worker suspend ignored for ${workerId}. Reason: ${reason}`);
+    return;
+  }
 
   const result = await pool.query(
     `UPDATE ai_workers SET status = 'suspended_by_scout', updated_at = NOW()

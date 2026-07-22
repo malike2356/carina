@@ -23,13 +23,16 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      TAVILY_API_KEY: ${TAVILY_API_KEY:-}
+      # TAVILY / BRAVE / SEARXNG come from .env.docker.runtime via env_file.
+      # Do not interpolate them here; empty host values blank the env_file keys.
       CARINA_SPLIT_GATEWAY: "false"
       CARINA_SUPERVISOR_HUB: "false"
       CARINA_SUPERVISOR_OPS: "false"
       IMAGE_DIGEST: ${CARINA_WEB_IMAGE_DIGEST:-unknown}
       LABYRINTH_URL: http://labyrinth-scout:4444
-      LABYRINTH_LLM_ROUTER_URL: http://carina-web:3333
+      LABYRINTH_LLM_ROUTER_URL: http://carina-web:3000
+      SCOUT_CONTROL_MODE: ${SCOUT_CONTROL_MODE:-monitor}
+      SCOUT_ENFORCEMENT_ENABLED: ${SCOUT_ENFORCEMENT_ENABLED:-false}
       # Pairing secrets (LABYRINTH_API_KEY, instance id/name) come from .env.docker.runtime
       # via sync-docker-env.py. Do not override them here; empty host interpolation blanks env_file.
     healthcheck:
@@ -90,7 +93,7 @@ services:
       NODE_ENV: production
       PORT: "4001"
       BIND_HOST: 0.0.0.0
-      CARINA_API_URL: http://carina-web:3333
+      CARINA_API_URL: http://carina-web:3000
       CARINA_ADMIN_INTERNAL_URL: http://carina-admin:4200
       CARINA_OPS_IN_DOCKER: "true"
       # Use postgres (Carina compose service) on the carina network. Do not use scout-postgres.
@@ -148,7 +151,7 @@ services:
       NODE_ENV: production
       PORT: "4100"
       HOSTNAME: "0.0.0.0"
-      CARINA_CORE_URL: http://carina-web:3333
+      CARINA_CORE_URL: http://carina-web:3000
       CARINA_USE_CORE_PROXY: "true"
       SKILLS_HUB_INTERNAL_URL: http://carina-hub:3001
       IMAGE_DIGEST: ${CARINA_CLOUD_IMAGE_DIGEST:-unknown}
@@ -179,7 +182,7 @@ services:
       NODE_ENV: production
       PORT: "4200"
       HOSTNAME: "0.0.0.0"
-      ADMIN_CORE_URL: http://carina-web:3333
+      ADMIN_CORE_URL: http://carina-web:3000
       OPS_CONSOLE_URL: https://ops.carinaai.uk
       IMAGE_DIGEST: ${CARINA_ADMIN_IMAGE_DIGEST:-unknown}
     expose:
