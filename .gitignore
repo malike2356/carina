@@ -18,6 +18,7 @@ verlox/carina/*
 !verlox/carina/scripts/**
 !verlox/carina/AGENTS.md
 !verlox/carina/README.md
+!verlox/carina/.easignore
 !verlox/carina/.gitignore
 !verlox/scripts/
 verlox/scripts/*
