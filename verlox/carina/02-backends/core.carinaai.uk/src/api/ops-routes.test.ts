@@ -9,6 +9,7 @@ describe('ops-routes', () => {
 
   beforeEach(async () => {
     process.env.CARINA_OPS_TOKEN = 'test-ops-token-123456';
+    process.env.CHANNEL_CREDENTIAL_KEY = 'a'.repeat(64);
     const app = express();
     app.use(express.json());
     mountOpsRoutes(app);
@@ -23,6 +24,10 @@ describe('ops-routes', () => {
 
   afterEach(async () => {
     delete process.env.CARINA_OPS_TOKEN;
+    delete process.env.AIVA_HUMAN_ASSIST_BRIDGE_TOKEN;
+    delete process.env.AIVA_HUMAN_ASSIST_MIS_URL;
+    delete process.env.AIVA_HUMAN_ASSIST_PUBLISH_MODE;
+    delete process.env.CHANNEL_CREDENTIAL_KEY;
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
@@ -138,6 +143,54 @@ describe('ops-routes', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as { environment: { envPath: string } };
     expect(body.environment.envPath).toContain('.env');
+  });
+
+  it('returns human assist bridge status for ops', async () => {
+    process.env.AIVA_HUMAN_ASSIST_BRIDGE_TOKEN = 'bridge-token-123456';
+    process.env.AIVA_HUMAN_ASSIST_MIS_URL = 'https://verlox.uk';
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/human-assist/bridge`, {
+      headers: { authorization: 'Bearer test-ops-token-123456' },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      enabled: boolean;
+      misBaseUrl: string;
+      bridgeTokenSet: boolean;
+      publishMode: string;
+      misInboxUrl: string;
+    };
+    expect(body.enabled).toBe(true);
+    expect(body.misBaseUrl).toBe('https://verlox.uk');
+    expect(body.bridgeTokenSet).toBe(true);
+    expect(body.publishMode).toBe('push_and_poll');
+    expect(body.misInboxUrl).toBe('https://verlox.uk/mis/va/aiva-assist');
+  });
+
+  it('saves human assist bridge status for ops', async () => {
+    const res = await fetch(`http://127.0.0.1:${port}/api/ops/human-assist/bridge`, {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer test-ops-token-123456',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        enabled: true,
+        misBaseUrl: 'https://verlox.uk/',
+        bridgeToken: 'bridge-token-abcdef',
+        publishMode: 'poll_only',
+      }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json() as {
+      enabled: boolean;
+      misBaseUrl: string;
+      bridgeTokenSet: boolean;
+      publishMode: string;
+    };
+    expect(body.enabled).toBe(true);
+    expect(body.misBaseUrl).toBe('https://verlox.uk');
+    expect(body.bridgeTokenSet).toBe(true);
+    expect(body.publishMode).toBe('poll_only');
   });
 
   it('updates core web password for ops', async () => {

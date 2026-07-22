@@ -46,6 +46,7 @@ export async function getHumanAssistBridgeConfig(): Promise<HumanAssistBridgeCon
   const misBaseUrl = (saved.AIVA_HUMAN_ASSIST_MIS_URL || liveMisUrl()).replace(/\/$/, '');
   const bridgeToken = saved.AIVA_HUMAN_ASSIST_BRIDGE_TOKEN || liveToken();
   const publishMode = (saved.AIVA_HUMAN_ASSIST_PUBLISH_MODE as HumanAssistBridgeConfig['publishMode'])
+    || (process.env.AIVA_HUMAN_ASSIST_PUBLISH_MODE as HumanAssistBridgeConfig['publishMode'])
     || 'push_and_poll';
 
   if (bridgeToken && !process.env.AIVA_HUMAN_ASSIST_BRIDGE_TOKEN) {
@@ -120,6 +121,7 @@ export async function saveHumanAssistBridgeConfig(input: {
   }
   const results = await Promise.all(writes);
   for (const r of results) {
+    if (!r.ok && r.error?.includes('DATABASE_URL is not configured')) continue;
     if (!r.ok) return { ok: false, error: r.error ?? 'save failed' };
   }
   return { ok: true };

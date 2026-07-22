@@ -32,6 +32,11 @@ import {
   readScoutControlSettings,
   writeScoutControlSettings,
 } from '../security/scout-control-settings.js';
+import {
+  bridgeTokenHint,
+  getHumanAssistBridgeConfig,
+  saveHumanAssistBridgeConfig,
+} from '../workers/human-assist-bridge-config.js';
 
 export function mountOpsRoutes(app: Express): void {
   mountObservabilityRoutes(app);
@@ -217,6 +222,62 @@ export function mountOpsRoutes(app: Express): void {
       updatedAt: settings.updatedAt ?? null,
       updatedBy: settings.updatedBy ?? null,
     });
+  });
+
+  app.get('/api/ops/human-assist/bridge', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const config = await getHumanAssistBridgeConfig();
+      res.json({
+        enabled: config.enabled,
+        misBaseUrl: config.misBaseUrl,
+        bridgeTokenSet: Boolean(config.bridgeToken),
+        bridgeTokenHint: bridgeTokenHint(config.bridgeToken),
+        publishMode: config.publishMode,
+        lastPublishAt: config.lastPublishAt,
+        lastPublishOk: config.lastPublishOk,
+        lastPublishError: config.lastPublishError,
+        misInboxUrl: `${config.misBaseUrl.replace(/\/$/, '')}/mis/va/aiva-assist`,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.post('/api/ops/human-assist/bridge', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const result = await saveHumanAssistBridgeConfig({
+        enabled: req.body?.enabled === true,
+        misBaseUrl: req.body?.misBaseUrl !== undefined ? String(req.body.misBaseUrl) : undefined,
+        bridgeToken: req.body?.bridgeToken !== undefined ? String(req.body.bridgeToken) : undefined,
+        publishMode: req.body?.publishMode !== undefined ? String(req.body.publishMode) : undefined,
+      });
+      if (!result.ok) {
+        res.status(400).json({ error: result.error ?? 'Save failed' });
+        return;
+      }
+      const config = await getHumanAssistBridgeConfig();
+      res.json({
+        enabled: config.enabled,
+        misBaseUrl: config.misBaseUrl,
+        bridgeTokenSet: Boolean(config.bridgeToken),
+        bridgeTokenHint: bridgeTokenHint(config.bridgeToken),
+        publishMode: config.publishMode,
+        lastPublishAt: config.lastPublishAt,
+        lastPublishOk: config.lastPublishOk,
+        lastPublishError: config.lastPublishError,
+        misInboxUrl: `${config.misBaseUrl.replace(/\/$/, '')}/mis/va/aiva-assist`,
+      });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
   });
 
   app.put('/api/ops/scout-control', (req: Request, res: Response) => {
