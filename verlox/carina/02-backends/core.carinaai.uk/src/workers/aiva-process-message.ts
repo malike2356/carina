@@ -29,6 +29,7 @@ import {
   resolveAivaConversationBridge,
   formatBridgeHistoryForPrompt,
 } from '../memory/aiva/conversation-bridge.js';
+import { aivaSessionId } from '../memory/aiva/memory-commands.js';
 import { buildWorkerDurableMemorySuffix } from '../memory/aiva/worker-persistent-memory.js';
 import {
   prefetchExternalMemoryContext,
@@ -152,7 +153,7 @@ export async function* processAivaMessageStreamDirect(
   }
 
   const router = getRouter();
-  const sessionId = `aiva-${params.workerId}-${params.channel}-${params.contactId}`;
+  const sessionId = aivaSessionId(params.workerId, params.channel, params.contactId);
   const message: CarinaMessage = {
     id: `aiva-${Date.now()}`,
     sessionId,
@@ -297,7 +298,7 @@ export async function* processAivaMessageStreamDirect(
 
   const bridgeSuffix = bridge.continuationHint
     ? `\n\n${bridge.continuationHint}${
-      bridge.source === 'employee_thread' && bridge.turns.length > 0
+      (bridge.source === 'employee_thread' || bridge.source === 'worker_recent') && bridge.turns.length > 0
         ? `\n\n${formatBridgeHistoryForPrompt(bridge.turns)}`
         : ''
     }`
@@ -321,6 +322,16 @@ export async function* processAivaMessageStreamDirect(
     + 'use worker-automation (not host cronjob). After the user gives city, time, and email detail, create the job; '
     + 'do not ask them to confirm a cron expression. Prefer weather-forecast for weather. Delivery defaults to this chat.';
 
+  const workspaceActionHint =
+    '\n\nWorkspace action mode: you are an Aiva worker with read/write access to workspace features through tools. '
+    + 'When the user asks you to inspect, create, update, schedule, search, message, draft, or manage workspace items, '
+    + 'use the available tools before saying you cannot. If you are unsure what is available, call list_live_capabilities '
+    + 'or tool_status first. If a credential or connection is missing, name the exact connection needed and offer the next action. '
+    + 'If the user asks for deep research and wants it saved, call workspace-research-create and tell them it was added to Research. '
+    + 'If the user asks you to create, write, draft, or save a document, call workspace-document-create and tell them it was added to Documents. '
+    + 'These workspace tools work from Telegram, WhatsApp, Slack, web chat, email, and other channels. '
+    + 'For risky external sends, publishing, deletion, or irreversible changes, use approval, draft, or confirmation flows where available.';
+
   const ctx = {
     worker,
     personaPrompt: withWorkerIdentityOverride(
@@ -336,6 +347,7 @@ export async function* processAivaMessageStreamDirect(
         + externalSuffix
         + bridgeSuffix
         + voiceChannelNote
+        + workspaceActionHint
         + automationHint,
       worker.roleDescription,
     ),
@@ -376,6 +388,19 @@ export async function* processAivaMessageStreamDirect(
       userMessage: params.userMessage,
       assistantReply: processed.reply,
     }).catch(() => undefined);
+    void import('../memory/aiva/learning-loop.js')
+      .then(({ learnFromAivaTurn }) =>
+        learnFromAivaTurn({
+          workspaceId: params.workspaceId,
+          workerId: params.workerId,
+          contactId: params.contactId,
+          channel: params.channel,
+          sessionId,
+          userMessage: params.userMessage,
+          assistantReply: processed.reply,
+        }),
+      )
+      .catch(() => undefined);
     await recordAivaRequestUsage({
       workspaceId: params.workspaceId,
       workerId: params.workerId,

@@ -211,3 +211,22 @@ export async function registerTelegramWebhook(botToken: string, workerId: string
 export function telegramBotIdFromToken(token: string): string {
   return token.split(':')[0] ?? token;
 }
+
+export async function sendTelegramChatAction(input: {
+  botToken: string;
+  chatId: string;
+  action?: 'typing' | 'upload_voice';
+}): Promise<void> {
+  const response = await fetch(`https://api.telegram.org/bot${input.botToken}/sendChatAction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: input.chatId,
+      action: input.action ?? 'typing',
+    }),
+  });
+  const result = await response.json() as { ok?: boolean; description?: string };
+  if (!result.ok) {
+    throw new Error(`Telegram chat action failed: ${result.description ?? 'unknown'}`);
+  }
+}

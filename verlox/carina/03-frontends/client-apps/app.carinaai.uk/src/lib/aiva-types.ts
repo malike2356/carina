@@ -28,6 +28,10 @@ export interface AivaWorker {
   propreneurTenantSlug?: string | null;
   workerConfig?: {
     permissions?: AivaWorkerPermissions;
+    telegram?: {
+      /** Default off. Explicit voice asks still go out as audio. */
+      preferVoiceReplies?: boolean;
+    };
   };
   messagesToday?: number;
   totalMessages?: number;

@@ -522,6 +522,114 @@ function createCalendarTools(sessionId: string): Tool[] {
   ];
 }
 
+function createWorkspaceSurfaceTools(sessionId: string): Tool[] {
+  return [
+    {
+      name: 'workspace-research-create',
+      description:
+        'Create a deep research job in the Aiva workspace Research page. '
+        + 'Use whenever the user asks for deep research and says to save it, add it, or put it in Research. '
+        + 'Returns the saved job id and workspace URL. The job may continue running after the chat reply.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Research question or topic' },
+          mode: {
+            type: 'string',
+            enum: ['auto', 'product', 'compare', 'how-to', 'fact-check'],
+          },
+          rounds: { type: 'number', description: 'Research depth, 1 to 10. Default 6.' },
+        },
+        required: ['query'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const query = String(params.query ?? '').trim();
+        if (query.length < 5) return { ok: false, error: 'query must be at least 5 characters' };
+        const { createWorkspaceResearchJob } = await import('../workers/aiva-workspace-surfaces.js');
+        return createWorkspaceResearchJob({
+          workspaceId: ctx.worker.workspaceId,
+          query,
+          mode: typeof params.mode === 'string' ? params.mode : 'auto',
+          rounds: Number(params.rounds ?? 6),
+        });
+      },
+    },
+    {
+      name: 'workspace-research-list',
+      description:
+        'List recent jobs from the Aiva workspace Research page. '
+        + 'Use when the user asks what research has been saved or what is running.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Max jobs, 1 to 50. Default 10.' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { listWorkspaceResearchJobs } = await import('../workers/aiva-workspace-surfaces.js');
+        return listWorkspaceResearchJobs({
+          workspaceId: ctx.worker.workspaceId,
+          limit: Number(params.limit ?? 10),
+        });
+      },
+    },
+    {
+      name: 'workspace-document-create',
+      description:
+        'Create a document in the Aiva workspace Documents page. '
+        + 'Use whenever the user asks you to create, write, draft, or save a document in the workspace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Document title' },
+          content: { type: 'string', description: 'Full document body' },
+          format: { type: 'string', enum: ['markdown', 'plain'] },
+        },
+        required: ['title', 'content'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const title = String(params.title ?? '').trim() || 'Untitled';
+        const content = String(params.content ?? '');
+        if (!content.trim()) return { ok: false, error: 'content required' };
+        const { createWorkspaceDocument } = await import('../workers/aiva-workspace-surfaces.js');
+        return createWorkspaceDocument({
+          workspaceId: ctx.worker.workspaceId,
+          title,
+          content,
+          format: params.format === 'plain' ? 'plain' : 'markdown',
+        });
+      },
+    },
+    {
+      name: 'workspace-document-list',
+      description:
+        'List documents from the Aiva workspace Documents page. '
+        + 'Use when the user asks what documents exist in the workspace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Max documents, 1 to 100. Default 20.' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { listWorkspaceDocuments } = await import('../workers/aiva-workspace-surfaces.js');
+        return listWorkspaceDocuments({
+          workspaceId: ctx.worker.workspaceId,
+          limit: Number(params.limit ?? 20),
+        });
+      },
+    },
+  ];
+}
+
 const SLUG_TO_TOOLS: Record<string, (sessionId: string) => Tool[]> = {
   gmail: createGmailTools,
   'google-drive': createDriveTools,
@@ -536,12 +644,17 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
   const ctx = getWorkerSessionContext(sessionId);
   if (!ctx) return [];
 
+  const registered: string[] = [];
+  for (const tool of createWorkspaceSurfaceTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    registered.push(tool.name);
+  }
+
   const grants = await listToolGrants(ctx.worker.workspaceId, ctx.worker.id);
   const connected = new Set(
     grants.filter((g) => g.status === 'connected').map((g) => g.toolSlug),
   );
 
-  const registered: string[] = [];
   for (const [slug, factory] of Object.entries(SLUG_TO_TOOLS)) {
     if (!connected.has(slug)) continue;
     for (const tool of factory(sessionId)) {

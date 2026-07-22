@@ -57,11 +57,11 @@ export function isLongTelegramReply(
   return text.trim().length >= threshold;
 }
 
-/** Default on: undefined or missing means prefer voice. */
+/** Default off: text is the default unless the user asks for audio or owner enables voice. */
 export function prefersTelegramVoiceReplies(
   telegramConfig?: { preferVoiceReplies?: boolean } | null,
 ): boolean {
-  return telegramConfig?.preferVoiceReplies !== false;
+  return telegramConfig?.preferVoiceReplies === true;
 }
 
 /**

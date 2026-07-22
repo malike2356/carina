@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { chatMessages, type Workspace } from '@/db/schema';
 
 export const FREE_PLATFORM_MESSAGE_LIMIT = Number.parseInt(
-  process.env.FREE_PLATFORM_MESSAGE_LIMIT ?? '20',
+  process.env.FREE_PLATFORM_MESSAGE_LIMIT ?? '100',
   10,
 );
 

@@ -2,24 +2,20 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Building2,
   Check,
   ChevronDown,
   Globe,
   Hash,
-  Headphones,
   Mail,
-  PenLine,
   RefreshCw,
   Send,
-  Settings2,
   Smartphone,
-  TrendingUp,
 } from 'lucide-react';
 import { ChannelIcon } from '@/components/aiva/ChannelIcon';
 import { AIVA_INPUT_CLASS } from '@/lib/aiva-utils';
 import { CarinaEditor } from '@/components/editor';
 import { useOnboardingStep } from '@/lib/onboarding-context';
+import { AIVA_ROLE_TEMPLATE_CARDS } from '@/lib/aiva-role-templates';
 import { cn } from '@/lib/utils';
 
 const SECTORS = [
@@ -42,44 +38,12 @@ const SECTOR_TO_TEMPLATE: Record<string, string> = {
   'customer-support': 'customer-support',
 };
 
-const ROLE_TEMPLATES = [
-  {
-    id: 'customer-support',
-    label: 'Customer Support',
-    icon: Headphones,
-    description: 'Answers enquiries around the clock',
-  },
-  {
-    id: 'outreach-coordinator',
-    label: 'Outreach Coordinator',
-    icon: Send,
-    description: 'Qualifies leads and books calls',
-  },
-  {
-    id: 'property-manager',
-    label: 'Property Manager',
-    icon: Building2,
-    description: 'Handles tenant and landlord queries',
-  },
-  {
-    id: 'financial-analyst',
-    label: 'Financial Analyst',
-    icon: TrendingUp,
-    description: 'Answers finance and accounts queries',
-  },
-  {
-    id: 'content-assistant',
-    label: 'Content Assistant',
-    icon: PenLine,
-    description: 'Drafts copy and manages requests',
-  },
-  {
-    id: 'calendar-manager',
-    label: 'Operations',
-    icon: Settings2,
-    description: 'Tracks tasks and coordinates teams',
-  },
-];
+const ROLE_TEMPLATES = AIVA_ROLE_TEMPLATE_CARDS.map((template) => ({
+  id: template.templateId,
+  label: template.label,
+  icon: template.icon,
+  description: template.roleDescription,
+}));
 
 const CHANNEL_OPTIONS = [
   {
@@ -392,7 +356,7 @@ export function OnboardingClient() {
             subtitle="Pick a starting point. You can change this at any time."
           />
           {!wizard.customMode ? (
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="mb-4 grid max-h-[50vh] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
               {ROLE_TEMPLATES.map((template) => {
                 const selected = wizard.templateId === template.id;
                 const Icon = template.icon;

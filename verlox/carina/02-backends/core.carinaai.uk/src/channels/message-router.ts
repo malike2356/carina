@@ -1,12 +1,13 @@
 import type { InboundMessage, AivaChannelName } from './types.js';
 import { upsertThread, markChannelVerified } from './channel-store.js';
-import { lookupWorker, type RegistryEntry } from './worker-registry.js';
+import { getRegistryCredentials, lookupWorker, type RegistryEntry } from './worker-registry.js';
 import { processAivaMessage } from '../workers/aiva-process-message.js';
 import { pool } from '../memory/db.js';
 import { checkAndEnforceLimit, maybeSendUsageAlerts, recordManagedMessage } from '../usage/usage-service.js';
 import { isSocialAivaChannel } from './social-channel-utils.js';
 import { handleSocialInboundReply } from '../ingestion/social/social-draft-handler.js';
 import { sendOutboundReply } from './outbound-reply.js';
+import { sendTelegramChatAction } from './adapters/telegram-adapter.js';
 import type { SoftWallAction } from '../billing/usage-gate-policy.js';
 
 export { sendOutboundReply };
@@ -55,6 +56,37 @@ async function claimInboundMessage(
 function exhaustedReply(_actions?: SoftWallAction[]): string {
   if (!_actions?.length) return LIMIT_REPLY;
   return LIMIT_REPLY;
+}
+
+function startTelegramTypingLoop(entry: RegistryEntry, message: InboundMessage): (() => void) | null {
+  if (message.channel !== 'telegram') return null;
+  const credentials = getRegistryCredentials(entry);
+  const botToken = credentials.bot_token ?? credentials.token;
+  if (!botToken) return null;
+
+  let stopped = false;
+  const sendAction = () => {
+    void sendTelegramChatAction({
+      botToken,
+      chatId: message.contactId,
+      action: message.metadata?.preferAudio === 'true' ? 'upload_voice' : 'typing',
+    }).catch((err) => {
+      console.warn(
+        '[telegram] chat action skipped:',
+        err instanceof Error ? err.message : String(err),
+      );
+    });
+  };
+
+  sendAction();
+  const interval = setInterval(() => {
+    if (!stopped) sendAction();
+  }, 4000);
+
+  return () => {
+    stopped = true;
+    clearInterval(interval);
+  };
 }
 
 export async function routeInboundMessage(
@@ -143,16 +175,22 @@ export async function routeInboundMessage(
         : undefined,
   });
 
-  const response = await processAivaMessage({
-    workerId: entry.workerId,
-    workspaceId: entry.workspaceId,
-    userMessage: message.content,
-    channel: message.channel,
-    contactId: message.contactId,
-    threadId: message.threadId,
-    contactName: message.contactName,
-    preferAudio: message.metadata?.preferAudio === 'true',
-  });
+  const stopTyping = startTelegramTypingLoop(entry, message);
+  let response = '';
+  try {
+    response = await processAivaMessage({
+      workerId: entry.workerId,
+      workspaceId: entry.workspaceId,
+      userMessage: message.content,
+      channel: message.channel,
+      contactId: message.contactId,
+      threadId: message.threadId,
+      contactName: message.contactName,
+      preferAudio: message.metadata?.preferAudio === 'true',
+    });
+  } finally {
+    stopTyping?.();
+  }
 
   if (response) {
     await recordManagedMessage(entry.workspaceId, {

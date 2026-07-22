@@ -117,6 +117,15 @@ export function isToolAllowedForWorker(toolName: string, sessionId: string): boo
     return Boolean(resolvePropreneurBinding(ctx.worker));
   }
 
+  if (
+    toolName === 'workspace-research-create'
+    || toolName === 'workspace-research-list'
+    || toolName === 'workspace-document-create'
+    || toolName === 'workspace-document-list'
+  ) {
+    return true;
+  }
+
   if (ctx.worker.skillPacks.length === 0) return true;
 
   const highRisk = ['shell-exec', 'http-request', 'file-write', 'file-delete'];
@@ -202,6 +211,17 @@ export function recordToolFailure(sessionId: string, toolName: string): void {
       summary: `Tool ${toolName} failed ${entry.count} times in 30 minutes`,
       metadata: { toolName },
     }).catch(() => {});
+    void import('../memory/aiva/learning-loop.js')
+      .then(({ recordAivaToolFailureLesson }) =>
+        recordAivaToolFailureLesson({
+          workspaceId: ctx.worker.workspaceId,
+          workerId: ctx.worker.id,
+          toolName,
+          sessionId,
+          failureCount: entry.count,
+        }),
+      )
+      .catch(() => undefined);
     toolFailureCounts.delete(key);
   }
 }

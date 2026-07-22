@@ -3,23 +3,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Building2,
   Globe,
   Hash,
-  Headphones,
   Mail,
-  PenLine,
   Send,
-  Settings2,
   Smartphone,
-  TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { BrandMark } from '@/components/shell/BrandMark';
 import { AIVA_INPUT_CLASS } from '@/lib/aiva-utils';
+import { AIVA_ROLE_TEMPLATE_CARDS } from '@/lib/aiva-role-templates';
 import { cn } from '@/lib/utils';
 
 type WizardStep = 1 | 2 | 3;
+
+const DEFAULT_NAMES = [
+  'Aria',
+  'Alex',
+  'Mia',
+  'Sam',
+  'Leo',
+  'Dana',
+  'Quinn',
+  'Nova',
+  'Sage',
+  'Blake',
+  'River',
+  'Ellis',
+];
 
 const ROLE_TEMPLATES: Array<{
   id: string;
@@ -27,50 +38,13 @@ const ROLE_TEMPLATES: Array<{
   description: string;
   icon: LucideIcon;
   defaultName: string;
-}> = [
-  {
-    id: 'customer-support',
-    label: 'Customer Support',
-    description: 'Answers enquiries around the clock',
-    icon: Headphones,
-    defaultName: 'Aria',
-  },
-  {
-    id: 'outreach-coordinator',
-    label: 'Outreach',
-    description: 'Qualifies leads and books calls',
-    icon: Send,
-    defaultName: 'Alex',
-  },
-  {
-    id: 'property-manager',
-    label: 'Property',
-    description: 'Handles tenant and landlord queries',
-    icon: Building2,
-    defaultName: 'Mia',
-  },
-  {
-    id: 'financial-analyst',
-    label: 'Finance',
-    description: 'Answers accounts and finance queries',
-    icon: TrendingUp,
-    defaultName: 'Sam',
-  },
-  {
-    id: 'content-assistant',
-    label: 'Content',
-    description: 'Drafts copy and handles requests',
-    icon: PenLine,
-    defaultName: 'Leo',
-  },
-  {
-    id: 'calendar-manager',
-    label: 'Operations',
-    description: 'Tracks tasks and coordinates teams',
-    icon: Settings2,
-    defaultName: 'Dana',
-  },
-];
+}> = AIVA_ROLE_TEMPLATE_CARDS.map((template, index) => ({
+  id: template.templateId,
+  label: template.label,
+  description: template.roleDescription,
+  icon: template.icon,
+  defaultName: DEFAULT_NAMES[index % DEFAULT_NAMES.length],
+}));
 
 const CHANNEL_OPTIONS: Array<{
   id: string;
@@ -237,7 +211,7 @@ export function OnboardingClientSimple() {
         <BrandMark nameClassName="text-sm font-semibold text-text-primary" size={28} />
       </header>
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-10">
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-4xl">
           <StepCounter step={step} />
 
           {step === 1 ? (
@@ -246,7 +220,7 @@ export function OnboardingClientSimple() {
                 title="What will your Aiva help with?"
                 subtitle="Pick the one that fits best. You can adjust this later."
               />
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="grid max-h-[60vh] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
                 {ROLE_TEMPLATES.map((template) => {
                   const selected = templateId === template.id;
                   const Icon = template.icon;

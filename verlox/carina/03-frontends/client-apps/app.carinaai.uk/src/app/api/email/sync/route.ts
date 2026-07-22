@@ -161,10 +161,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({} as Record<string, unknown>));
   const maxMessages = Math.min(25, Math.max(1, Number(body.limit ?? 15)));
   const preferredWorkerId = String(body.workerId ?? '').trim();
-  const foldersRaw = Array.isArray(body.folders) ? body.folders : ['inbox', 'sent'];
+  const foldersRaw: unknown[] = Array.isArray(body.folders) ? body.folders : ['inbox', 'sent'];
   const folders = foldersRaw
-    .map((f) => String(f).trim().toLowerCase())
-    .filter((f): f is MailFolder => f === 'inbox' || f === 'sent');
+    .map((folder) => String(folder).trim().toLowerCase())
+    .filter((folder): folder is MailFolder => folder === 'inbox' || folder === 'sent');
   const foldersToSync: MailFolder[] = folders.length > 0 ? folders : ['inbox', 'sent'];
 
   const workersRes = await proxyAivaRequest(workspace.id, '/api/aiva/workers', { method: 'GET' });

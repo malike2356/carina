@@ -91,14 +91,14 @@ function downloadMarkdown(job: ResearchJob) {
     `# Research: ${job.query}`,
     '',
     `Mode: ${job.mode}`,
-    `Rounds: ${job.rounds}`,
+    `Depth rounds: ${job.rounds}`,
     `Date: ${new Date(job.createdAt).toLocaleString()}`,
     '',
     '---',
     '',
     job.output ?? 'No output',
   ].join('\n');
-  const blob = new Blob([content], { type: 'text/markdown' });
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -106,6 +106,44 @@ function downloadMarkdown(job: ResearchJob) {
   anchor.click();
   URL.revokeObjectURL(url);
 }
+
+function downloadHtml(job: ResearchJob) {
+  const body = (job.output ?? 'No output')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Research: ${job.query.replace(/</g, '')}</title>
+  <style>
+    body { font-family: Georgia, serif; max-width: 720px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #111; }
+    pre { white-space: pre-wrap; font-family: Georgia, serif; }
+    h1 { font-size: 1.6rem; }
+  </style>
+</head>
+<body>
+  <h1>Research: ${job.query.replace(/</g, '')}</h1>
+  <p><small>Mode: ${job.mode} / Depth rounds: ${job.rounds} / ${new Date(job.createdAt).toLocaleString()}</small></p>
+  <hr />
+  <pre>${body}</pre>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `research-${job.id.slice(0, 8)}.html`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+const DEPTH_PRESETS = [
+  { id: 'quick', label: 'Quick', rounds: 3, hint: '~5 questions, ~12 sources' },
+  { id: 'standard', label: 'Standard', rounds: 6, hint: '~8 questions, ~24 sources' },
+  { id: 'deep', label: 'Deep', rounds: 9, hint: '~12 questions, ~48 sources' },
+] as const;
 
 export default function ResearchPage() {
   const router = useRouter();
@@ -115,8 +153,9 @@ export default function ResearchPage() {
   const [showForm, setShowForm] = useState(false);
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState('auto');
-  const [rounds, setRounds] = useState(3);
+  const [rounds, setRounds] = useState(6);
   const [submitting, setSubmitting] = useState(false);
+  const [savingDoc, setSavingDoc] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const activeJob = useMemo(
@@ -206,10 +245,50 @@ export default function ResearchPage() {
     }
   }
 
+  async function saveAsDocument(job: ResearchJob) {
+    if (!job.output?.trim()) return;
+    setSavingDoc(true);
+    try {
+      const title = `Research: ${job.query}`.slice(0, 120);
+      const response = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          content: [
+            `# ${title}`,
+            '',
+            `Mode: ${job.mode}`,
+            `Depth rounds: ${job.rounds}`,
+            `Date: ${new Date(job.createdAt).toLocaleString()}`,
+            '',
+            '---',
+            '',
+            job.output,
+          ].join('\n'),
+          format: 'markdown',
+        }),
+      });
+      const data = await response.json();
+      if (data.data?.id) {
+        router.push(`/documents/${data.data.id}`);
+        return;
+      }
+      window.alert(data.error ?? 'Could not save document');
+    } catch {
+      window.alert('Could not save document');
+    } finally {
+      setSavingDoc(false);
+    }
+  }
+
+  const activeDepth = DEPTH_PRESETS.find((item) => item.rounds === rounds)?.id
+    ?? (rounds <= 3 ? 'quick' : rounds <= 6 ? 'standard' : 'deep');
+
   return (
-    <div className="flex h-full bg-base">
-      <aside className="flex w-[21rem] shrink-0 flex-col overflow-hidden border-r border-border max-lg:w-72">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+    <div className="flex min-h-0 h-full flex-col bg-base lg:flex-row">
+      <aside className="flex max-h-[45vh] w-full shrink-0 flex-col overflow-hidden border-b border-border lg:max-h-none lg:w-[21rem] lg:border-b-0 lg:border-r max-lg:w-full">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div>
             <h1 className="text-sm font-semibold text-text-primary">Research</h1>
             <p className="mt-0.5 text-[11px] text-text-muted">Deep search and synthesis jobs</p>
@@ -221,7 +300,7 @@ export default function ResearchPage() {
         </div>
 
         {showForm && (
-          <form onSubmit={(event) => void submitResearch(event)} className="space-y-3 border-b border-border bg-surface p-4">
+          <form onSubmit={(event) => void submitResearch(event)} className="max-h-[58vh] space-y-3 overflow-y-auto border-b border-border bg-surface p-4 lg:max-h-none">
             <CarinaEditor
               value={query}
               onChange={setQuery}
@@ -256,27 +335,30 @@ export default function ResearchPage() {
             </div>
 
             <div>
-              <div className="mb-1 flex items-center justify-between text-[11px] text-text-muted">
-                <span>Research rounds</span>
-                <span className="font-medium text-text-secondary">{rounds}</span>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={10}
-                value={rounds}
-                onChange={(event) => setRounds(Number(event.target.value))}
-                className="w-full accent-green-500"
-              />
-              <div className="flex justify-between text-[10px] text-text-muted">
-                <span>1 quick</span>
-                <span>10 deep</span>
+              <p className="mb-1.5 text-[11px] font-medium text-text-muted">Depth</p>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+                {DEPTH_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => setRounds(preset.rounds)}
+                    className={cn(
+                      'rounded-md border px-2 py-2 text-left transition-colors',
+                      activeDepth === preset.id
+                        ? 'border-accent/40 bg-accent/10'
+                        : 'border-border bg-elevated hover:bg-overlay',
+                    )}
+                  >
+                    <span className="block text-[11px] font-semibold text-text-primary">{preset.label}</span>
+                    <span className="mt-0.5 block text-[10px] leading-3 text-text-muted">{preset.hint}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
             <Button type="submit" size="sm" disabled={submitting || query.trim().length < 5} className="w-full">
               {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-              {submitting ? 'Starting' : `Start research (${rounds} rounds)`}
+              {submitting ? 'Starting' : `Start ${DEPTH_PRESETS.find((p) => p.id === activeDepth)?.label ?? 'Standard'} research`}
             </Button>
           </form>
         )}
@@ -326,7 +408,7 @@ export default function ResearchPage() {
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {!activeJob ? (
           <div className="flex flex-1 items-center justify-center">
             <EmptyState
@@ -343,7 +425,7 @@ export default function ResearchPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between gap-4 border-b border-border px-6 py-4">
+            <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 items-center gap-3">
                 {STATUS_ICON[activeJob.status]}
                 <div className="min-w-0">
@@ -355,7 +437,7 @@ export default function ResearchPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {activeJob.status === 'completed' && (
                   <>
                     <Button
@@ -367,9 +449,23 @@ export default function ResearchPage() {
                       <MessageSquare className="h-3.5 w-3.5" />
                       Discuss in chat
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={savingDoc || !activeJob.output}
+                      onClick={() => void saveAsDocument(activeJob)}
+                    >
+                      {savingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                      {savingDoc ? 'Saving' : 'Save as document'}
+                    </Button>
                     <Button type="button" variant="outline" size="sm" onClick={() => downloadMarkdown(activeJob)}>
                       <Download className="h-3.5 w-3.5" />
-                      Export
+                      MD
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => downloadHtml(activeJob)}>
+                      <Download className="h-3.5 w-3.5" />
+                      HTML
                     </Button>
                   </>
                 )}
@@ -385,7 +481,7 @@ export default function ResearchPage() {
                 <p className="text-xs text-text-secondary">
                   {activeJob.status === 'queued'
                     ? 'Research queued. It will start shortly.'
-                    : `Running ${activeJob.rounds} rounds of web research.`}
+                    : `Running deep web research (${activeJob.rounds} depth rounds). This can take several minutes.`}
                 </p>
               </div>
             )}
@@ -396,8 +492,8 @@ export default function ResearchPage() {
               </div>
             )}
 
-            <div className="flex min-h-0 flex-1 overflow-hidden">
-              <section className="min-w-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row">
+              <section className="min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
                 {activeJob.status === 'completed' && activeJob.output ? (
                   <div className="mx-auto max-w-4xl">
                     <MarkdownContent content={activeJob.output} />
@@ -417,7 +513,7 @@ export default function ResearchPage() {
               </section>
 
               {sources.length > 0 && (
-                <aside className="w-72 shrink-0 overflow-y-auto border-l border-border bg-surface">
+                <aside className="max-h-80 w-full shrink-0 overflow-y-auto border-t border-border bg-surface xl:max-h-none xl:w-72 xl:border-l xl:border-t-0">
                   <div className="border-b border-border px-4 py-3">
                     <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                       <Globe className="h-3 w-3" />
