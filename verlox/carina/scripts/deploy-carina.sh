@@ -221,6 +221,10 @@ set +a
 export REDIS_PASSWORD
 bash docker/scripts/stop-bare-metal-carina.sh </dev/null
 bash docker/scripts/deploy-prod.sh </dev/null
+if [[ ! -f public_website/index.html && -f "$APPS_ROOT/carinaai.uk-static/index.html" ]]; then
+  mkdir -p public_website
+  cp -a "$APPS_ROOT/carinaai.uk-static/." public_website/
+fi
 bash docker/scripts/reload-marketing-nginx.sh </dev/null
 
 # Scout stack
