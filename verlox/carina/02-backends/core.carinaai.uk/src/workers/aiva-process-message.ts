@@ -20,6 +20,7 @@ import {
 import { registerPropreneurSessionTools } from '../tools/propreneur-portfolio.js';
 import { registerPropreneurSelfConfigureTool } from '../tools/propreneur-self-configure.js';
 import { registerProductToolAdapters } from '../tools/product-tool-adapters.js';
+import { registerAivaChannelSelfConfigTool } from '../tools/aiva-channel-self-config.js';
 import { registerWorkerMemorySessionTools } from '../tools/worker-memory.js';
 import { registerWorkerAutomationSessionTools } from '../tools/worker-automation.js';
 import { registerWeatherForecastSessionTool } from '../tools/weather-forecast.js';
@@ -202,6 +203,7 @@ export async function* processAivaMessageStreamDirect(
   });
   registerPropreneurSessionTools(sessionId);
   registerPropreneurSelfConfigureTool(sessionId);
+  registerAivaChannelSelfConfigTool(sessionId);
   registerWorkerMemorySessionTools(sessionId);
   registerWorkerAutomationSessionTools(sessionId);
   registerWeatherForecastSessionTool(sessionId);
@@ -329,6 +331,7 @@ export async function* processAivaMessageStreamDirect(
     + 'or tool_status first. If a credential or connection is missing, name the exact connection needed and offer the next action. '
     + 'If the user asks for deep research and wants it saved, call workspace-research-create. '
     + 'If the user asks you to create, write, draft, or save a document, call workspace-document-create. '
+    + 'If the user provides a Telegram BotFather token or asks you to connect Telegram for this Aiva, call aiva-channel-connect and never echo the token. '
     + 'Never say a document, research job, schedule, or workspace item was saved unless the tool result has ok=true. '
     + 'When it succeeds, include the saved item id or workspace URL returned by the tool. If it fails, say it failed and include the error. '
     + 'These workspace tools work from Telegram, WhatsApp, Slack, web chat, email, and other channels. '

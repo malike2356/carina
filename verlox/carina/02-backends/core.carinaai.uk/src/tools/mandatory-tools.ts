@@ -10,7 +10,10 @@ export type MandatoryToolCategory =
   | 'api_data'
   | 'memory_instruction'
   | 'memory_recall'
-  | 'image_generation';
+  | 'image_generation'
+  | 'workspace_document'
+  | 'workspace_research'
+  | 'channel_self_config';
 
 export type MandatoryToolRule = {
   id: MandatoryToolCategory;
@@ -134,6 +137,7 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
       'web-search',
       'gmail-list',
       'gmail-get',
+      'google-drive-list',
       'google-drive-search',
       'google-drive-read',
     ],
@@ -147,6 +151,7 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
       /\b(my|the)\s+(inbox|emails?)\b/i,
       /\bread\s+(my\s+)?(email|mail|gmail)\b/i,
       /\bgoogle\s+drive\b/i,
+      /\b(my|the)\s+drive\b/i,
       /\bboreholes?\b/i,
       /\bBDAG\b/,
     ],
@@ -188,6 +193,42 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
       /\bmarketing\s+(banner|graphic|image)\b/i,
       /\bimage\s+generation\b/i,
       /\bdall-?e\b/i,
+    ],
+  },
+  {
+    id: 'workspace_document',
+    label: 'Workspace document save',
+    tools: ['workspace-document-create', 'workspace-document-list'],
+    guidance:
+      'Call workspace-document-create for create, draft, write, or save document requests in an Aiva workspace.',
+    patterns: [
+      /\b(create|write|draft|make|save)\b.+\b(document|doc|file)\b/i,
+      /\b(save|put|add)\b.+\b(documents?|document vault|workspace documents?)\b/i,
+      /\bcreate.+\bin (my|the)\s+workspace\b/i,
+    ],
+  },
+  {
+    id: 'workspace_research',
+    label: 'Workspace research save',
+    tools: ['workspace-research-create', 'workspace-research-list'],
+    guidance:
+      'Call workspace-research-create for deep research requests that should be saved to the Aiva Research page.',
+    patterns: [
+      /\bdeep\s+research\b/i,
+      /\bresearch\b.+\b(save|saved|workspace|research area|research page)\b/i,
+      /\b(save|put|add)\b.+\bresearch\b/i,
+    ],
+  },
+  {
+    id: 'channel_self_config',
+    label: 'Aiva channel self-configuration',
+    tools: ['aiva-channel-connect'],
+    guidance:
+      'Call aiva-channel-connect when the user provides a Telegram BotFather token or asks this Aiva to connect Telegram.',
+    patterns: [
+      /\btelegram\b.+\b(bot\s+token|token|connect|configure|setup|set up)\b/i,
+      /\b\d+:[A-Za-z0-9_-]{20,}\b/,
+      /\bBotFather\b/i,
     ],
   },
 ];

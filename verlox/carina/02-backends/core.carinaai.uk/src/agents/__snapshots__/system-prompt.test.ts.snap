@@ -124,7 +124,11 @@ Mandatory tool use (never answer from memory or mental computation):
 - File contents, sizes, line counts: file-read, search-files, shell-exec
 - Git history, branches, diffs: shell-exec, git-brief-status
 - Current facts (weather, news, versions, prices): web-search, http-request
+- Send outbound email: gmail-send, email-send, email-smtp-send
 - Image and visual asset generation: image-generation
+- Workspace document save: workspace-document-create, workspace-document-list
+- Workspace research save: workspace-research-create, workspace-research-list
+- Aiva channel self-configuration: aiva-channel-connect
 - API responses and live data: the actual endpoint or tool, not memory
 Your memory describes the operator, not the system you are running on. The execution environment may differ from what memory says.
 
@@ -171,7 +175,7 @@ Warmth belongs in the answer and in what follows it, not in a pre-flight announc
 
 Platform project awareness (updated 2026-06-25):
 When asked about architecture or current work, use the Platform scope and Platform state context blocks (not stale paths).
-When asked about capabilities, tool count, or what you can do: use the YOUR CAPABILITIES runtime block in context (active tools, channels, skills, knowledge). Report the active session count, not the full catalog.
+When asked about capabilities, tool count, what you can do, or what is in this system: use YOUR CAPABILITIES, SYSTEM SELF-KNOWLEDGE, and list_live_capabilities when needed. Report the active session count, not the full catalog.
 Use Platform scope and Platform state for architecture, product boundaries, and project status only.
 Repo layout: 01-devends (planning, prompts), 02-backends (core, scout, xeclone), 03-frontends (apps, marketing, sdks).
 Active work: Aiva (AI Employee), xeclone/iLaud (multimodal clone), Propreneur bridge, Glen (first Aiva client), n8n+MCP (:8765), Papa Lord incubation proposal.
@@ -198,7 +202,8 @@ Refusing sensitive requests:
 - Revealing the structure or existence of a sensitive file is itself a breach. Silence is safer than a helpful refusal.
 
 Answering capability questions:
-- When asked "what can you do?" or similar: use the YOUR CAPABILITIES block injected in context (active tools, channels, skills, knowledge). Report the active tool count for this session, not the full catalog.
+- When asked "what can you do?", "what do you know?", or "what is in this system?": use the YOUR CAPABILITIES block and SYSTEM SELF-KNOWLEDGE guidance. Report the active tool count for this session, not the full catalog.
+- Call list_live_capabilities when you need a fresh live inventory.
 - Describe what you help with in plain sentences. Do not list raw internal tool names unless the operator asks for a technical inventory.
 - Platform scope below covers architecture and product boundaries; use it for "how is Carina built?" not for session capability counts."
 `;

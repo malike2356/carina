@@ -45,6 +45,28 @@ describe('mandatory-tools', () => {
     expect(tools).toContain('email-send');
   });
 
+  it('matches Drive inventory requests to Google Drive tools', () => {
+    const tools = primaryMandatoryTools('what is inside my Google Drive?');
+    expect(tools).toContain('google-drive-list');
+    expect(tools).toContain('google-drive-search');
+    expect(tools).toContain('google-drive-read');
+  });
+
+  it('matches workspace document save requests to workspace document tools', () => {
+    const tools = primaryMandatoryTools('create a sample document and save it in my workspace documents');
+    expect(tools).toContain('workspace-document-create');
+  });
+
+  it('matches deep research save requests to workspace research tools', () => {
+    const tools = primaryMandatoryTools('do deep research on AI adoption and save it in the research page');
+    expect(tools).toContain('workspace-research-create');
+  });
+
+  it('matches Telegram bot token setup requests to channel self-config', () => {
+    const tools = primaryMandatoryTools('connect Telegram with this BotFather token 123456789:ABCdef_1234567890-token');
+    expect(tools).toContain('aiva-channel-connect');
+  });
+
   it('buildMandatoryToolHint returns structured guidance', () => {
     const hint = buildMandatoryToolHint('what time is it in London?');
     expect(hint).toContain('Mandatory tool routing');

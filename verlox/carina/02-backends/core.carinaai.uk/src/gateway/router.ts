@@ -523,6 +523,10 @@ export class GatewayRouter {
 
     if (workerCtx) {
       restorePacks = applyWorkerToSession(this, message.sessionId, workerCtx);
+      const { registerProductToolAdapters } = await import('../tools/product-tool-adapters.js');
+      const { registerAivaChannelSelfConfigTool } = await import('../tools/aiva-channel-self-config.js');
+      registerAivaChannelSelfConfigTool(message.sessionId);
+      await registerProductToolAdapters(message.sessionId);
       void processWorkerInbound(workerCtx, message).catch(() => {});
     }
 

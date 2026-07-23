@@ -37,6 +37,17 @@ function holdingMessage(): string {
     ?? 'I am checking on this and will get back to you shortly.';
 }
 
+function workerWorkspaceActionSuffix(): string {
+  return [
+    '',
+    'Workspace action mode: you are an Aiva worker with read/write access to this workspace through tools.',
+    'Use workspace-document-create when the user asks you to create, write, draft, or save a document in the workspace.',
+    'Use workspace-research-create when the user asks for deep research and wants it saved in the workspace Research page.',
+    'Use aiva-channel-connect when the user provides a Telegram BotFather token or asks you to connect Telegram for this Aiva. Never echo tokens back.',
+    'Never claim a document, research job, channel, schedule, or workspace item was saved unless the tool result confirms success.',
+  ].join('\n');
+}
+
 export function isAiWorkersEnabled(): boolean {
   return process.env.AI_WORKERS_ENABLED !== 'false';
 }
@@ -97,7 +108,10 @@ export function applyWorkerToSession(
     channel: ctx.channel,
     contactId: ctx.contactId,
   });
-  router.setSessionSystemPromptSuffix(sessionId, ctx.personaPrompt);
+  router.setSessionSystemPromptSuffix(
+    sessionId,
+    `${ctx.personaPrompt}\n${workerWorkspaceActionSuffix()}`.trim(),
+  );
   return applyWorkerSkillPacks(sessionId, ctx.worker.skillPacks);
 }
 
@@ -122,6 +136,7 @@ export function isToolAllowedForWorker(toolName: string, sessionId: string): boo
     || toolName === 'workspace-research-list'
     || toolName === 'workspace-document-create'
     || toolName === 'workspace-document-list'
+    || toolName === 'aiva-channel-connect'
   ) {
     return true;
   }

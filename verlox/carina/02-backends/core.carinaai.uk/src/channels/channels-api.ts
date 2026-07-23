@@ -1,32 +1,22 @@
 import { Router, type NextFunction, type Request, type Response, type Router as ExpressRouter } from 'express';
 import {
-  createWorkerChannel,
   deleteWorkerChannel,
-  generateEmailSlug,
   listWorkspaceChannels,
   readChannelCredentials,
   setChannelEnabled,
 } from './channel-store.js';
 import { registerChannel, unregisterChannel } from './worker-registry.js';
-import { getWorker } from '../workers/worker-store.js';
-import { registerTelegramWebhook } from './adapters/telegram-adapter.js';
-import { normalizeSmsNumber } from './adapters/sms-adapter.js';
-import {
-  ensureDiscordGateway,
-  resolveDiscordApplicationId,
-  stopDiscordGateway,
-} from './adapters/discord-gateway.js';
+import { stopDiscordGateway } from './adapters/discord-gateway.js';
 import { processAivaMessage } from '../workers/aiva-process-message.js';
 import { getAdapter } from './adapter-registry.js';
 import type { AivaChannelName } from './types.js';
 import { requireCloudProxy } from '../gateway/cloud-proxy-auth.js';
-import { assertCanAddConnectedChannel } from '../billing/aiva-plan-gates.js';
-import {
-  isSocialAivaChannel,
-  socialCredentialsComplete,
-} from './social-channel-utils.js';
 import { getConfiguredChannels } from '../api/channel-config-api.js';
 import { listChannelSummaries } from './channel-requirements.js';
+import {
+  connectWorkerChannel,
+  WorkerChannelConnectError,
+} from './worker-channel-connect.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -103,127 +93,28 @@ channelsApiRouter.post('/', requireWorkspace, async (req: ChannelRequest, res: R
     const workspaceId = req.workspaceId!;
     const workerId = String(req.body?.workerId ?? '');
     const channel = String(req.body?.channel ?? '') as AivaChannelName;
-    let identifier = String(req.body?.identifier ?? '').trim();
+    const identifier = String(req.body?.identifier ?? '').trim();
     const credentials = (req.body?.credentials ?? {}) as Record<string, string>;
 
-    const worker = await getWorker(workspaceId, workerId);
-    if (!worker) {
-      res.status(404).json({ error: 'Worker not found' });
-      return;
-    }
-
-    if (channel === 'email' && !identifier) {
-      identifier = generateEmailSlug(worker.name, worker.id);
-      credentials.from_address = identifier;
-    }
-
-    if (channel === 'telegram' && credentials.bot_token) {
-      identifier = workerId;
-      await registerTelegramWebhook(credentials.bot_token, workerId);
-    }
-
-    if (channel === 'whatsapp' && credentials.phone_number_id) {
-      identifier = credentials.phone_number_id;
-    }
-
-    if (channel === 'slack' && credentials.team_id) {
-      identifier = credentials.team_id;
-    }
-
-    if (channel === 'web') {
-      identifier = `web:${workerId}`;
-    }
-
-    if (channel === 'sms') {
-      const fromNumber = normalizeSmsNumber(String(credentials.from_number ?? ''));
-      if (!fromNumber || !credentials.account_sid?.trim() || !credentials.auth_token?.trim()) {
-        res.status(400).json({ error: 'SMS requires account_sid, auth_token, and from_number' });
-        return;
-      }
-      credentials.from_number = fromNumber;
-      identifier = fromNumber;
-    }
-
-    if (channel === 'discord' && credentials.bot_token) {
-      identifier = await resolveDiscordApplicationId(credentials.bot_token);
-      credentials.application_id = identifier;
-    }
-
-    if (channel === 'teams' && credentials.app_id) {
-      identifier = credentials.app_id.trim();
-      if (!credentials.app_password?.trim()) {
-        res.status(400).json({ error: 'Teams requires app_id and app_password' });
-        return;
-      }
-    }
-
-    if (isSocialAivaChannel(channel)) {
-      if (!identifier) identifier = 'pending';
-      if (!socialCredentialsComplete(channel, credentials)) {
-        res.status(400).json({ error: 'OAuth connection required', code: 'OAUTH_REQUIRED' });
-        return;
-      }
-      if (channel === 'linkedin' && credentials.member_id) {
-        identifier = credentials.member_id.trim();
-      }
-      if (channel === 'instagram' && credentials.instagram_business_account_id) {
-        identifier = credentials.instagram_business_account_id.trim();
-      }
-      if (channel === 'messenger' && credentials.page_id) {
-        identifier = credentials.page_id.trim();
-      }
-      if (channel === 'twitter' && credentials.user_id) {
-        identifier = credentials.user_id.trim();
-      }
-      if (channel === 'tiktok' && credentials.open_id) {
-        identifier = credentials.open_id.trim();
-      }
-    }
-
-    if (!identifier) {
-      res.status(400).json({ error: 'identifier is required' });
-      return;
-    }
-
-    const gate = await assertCanAddConnectedChannel(workspaceId, workerId, channel);
-    if (!gate.allowed) {
-      res.status(403).json({
-        error: `Starter plan allows ${gate.limit} channels (web + 1). Upgrade to Team for all channels.`,
-        code: 'PLAN_UPGRADE_REQUIRED',
-        planTier: gate.planTier,
-        planRequired: 'team',
-        channelLimit: gate.limit,
-        connectedCount: gate.connected,
-      });
-      return;
-    }
-
-    const row = await createWorkerChannel({
+    const row = await connectWorkerChannel({
       workerId,
       workspaceId,
       channel,
       identifier,
-      credentials: Object.keys(credentials).length > 0 ? credentials : undefined,
+      credentials,
     });
-
-    registerChannel(channel, identifier, {
-      workerId,
-      workspaceId,
-      channelRowId: row.id,
-      credentialBlob: row.credentials.encrypted ?? '',
-    });
-
-    if (channel === 'discord' && credentials.bot_token) {
-      try {
-        await ensureDiscordGateway(identifier, credentials.bot_token, workerId, workspaceId);
-      } catch (err) {
-        console.warn('[channels-api] discord gateway start failed:', err);
-      }
-    }
 
     res.status(201).json({ channel: row });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    if (err instanceof WorkerChannelConnectError) {
+      res.status(err.statusCode).json({
+        error: msg,
+        code: err.code,
+        ...(err.details ?? {}),
+      });
+      return;
+    }
     res.status(500).json({ error: msg });
   }
 });
