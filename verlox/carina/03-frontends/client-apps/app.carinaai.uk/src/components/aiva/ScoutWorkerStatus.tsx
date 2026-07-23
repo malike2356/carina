@@ -1,13 +1,9 @@
 'use client';
 
-import { ExternalLink, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useProductSurface } from '@/hooks/useProductSurface';
 import { billingHrefForSurface } from '@/lib/product-surface';
-
-const SCOUT_FLEET_URL =
-  process.env.NEXT_PUBLIC_SCOUT_FLEET_URL ??
-  'https://console.labyrinthscout.com/dashboard';
 
 export function ScoutWorkerStatus({
   workerId,
@@ -34,29 +30,30 @@ export function ScoutWorkerStatus({
     );
   }
 
+  const statusLabel = monitoring ? 'Scout monitoring active' : 'Scout paused with Aiva';
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
       <div
-        className="flex items-center gap-1.5 rounded-md border border-border bg-elevated px-2.5 py-1.5 text-xs"
-        title="Scout governance monitors this Aiva on every plan"
+        className="flex max-w-full items-center gap-1.5 rounded-md border border-border bg-elevated px-2 py-1.5 text-xs sm:px-2.5"
+        title={statusLabel}
       >
-        <Shield className="h-3.5 w-3.5 text-green-500" />
-        <span className="text-text-secondary">
-          {monitoring ? 'Scout monitoring active' : 'Scout paused with Aiva'}
+        <Shield className="h-3.5 w-3.5 shrink-0 text-green-500" />
+        <span className="hidden text-text-secondary sm:inline">{statusLabel}</span>
+        <span className="text-text-secondary sm:hidden">
+          {monitoring ? 'Scout on' : 'Scout paused'}
         </span>
       </div>
       {registered ? (
-        <a
-          href={`${SCOUT_FLEET_URL}/agents/${workerId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-ghost flex items-center gap-1.5 text-xs"
+        <Link
+          href={`/aiva/workers/${workerId}`}
+          className="btn-ghost inline-flex items-center gap-1.5 text-xs"
         >
-          Fleet view <ExternalLink className="h-3 w-3" />
-        </a>
+          Fleet view
+        </Link>
       ) : (
         <Link href={`${billingHref}?feature=scout`} className="text-xs text-text-muted hover:text-accent">
-          Fleet sync pending
+          Fleet pending
         </Link>
       )}
     </div>
