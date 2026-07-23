@@ -286,21 +286,21 @@ export default function ResearchPage() {
     ?? (rounds <= 3 ? 'quick' : rounds <= 6 ? 'standard' : 'deep');
 
   return (
-    <div className="flex min-h-0 h-full flex-col bg-base lg:flex-row">
-      <aside className="flex max-h-[45vh] w-full shrink-0 flex-col overflow-hidden border-b border-border lg:max-h-none lg:w-[21rem] lg:border-b-0 lg:border-r max-lg:w-full">
+    <div className="flex h-auto min-h-full min-w-0 flex-col overflow-y-auto bg-base lg:h-full lg:min-h-0 lg:flex-row lg:overflow-hidden">
+      <aside className="flex w-full min-w-0 shrink-0 flex-col overflow-visible border-b border-border lg:max-h-none lg:w-[21rem] lg:overflow-hidden lg:border-b-0 lg:border-r">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
           <div>
             <h1 className="text-sm font-semibold text-text-primary">Research</h1>
             <p className="mt-0.5 text-[11px] text-text-muted">Deep search and synthesis jobs</p>
           </div>
-          <Button type="button" size="sm" onClick={() => setShowForm((current) => !current)}>
+          <Button type="button" size="sm" onClick={() => setShowForm((current) => !current)} className="shrink-0">
             <Plus className="h-3.5 w-3.5" />
             New
           </Button>
         </div>
 
         {showForm && (
-          <form onSubmit={(event) => void submitResearch(event)} className="max-h-[58vh] space-y-3 overflow-y-auto border-b border-border bg-surface p-4 lg:max-h-none">
+          <form onSubmit={(event) => void submitResearch(event)} className="space-y-3 border-b border-border bg-surface p-3 sm:p-4 lg:max-h-none lg:overflow-y-auto">
             <CarinaEditor
               value={query}
               onChange={setQuery}
@@ -319,16 +319,16 @@ export default function ResearchPage() {
                     type="button"
                     onClick={() => setMode(itemMode)}
                     className={cn(
-                      'flex w-full items-start gap-2 rounded-md border px-2.5 py-2 text-left transition-colors',
+                      'flex w-full min-w-0 items-start gap-2 rounded-md border px-2.5 py-2 text-left transition-colors',
                       mode === itemMode
                         ? 'border-accent/40 bg-accent/10'
                         : 'border-border bg-elevated hover:bg-overlay',
                     )}
                   >
-                    <span className="mt-0.5 w-16 shrink-0 text-[11px] font-medium capitalize text-text-primary">
+                    <span className="mt-0.5 w-14 shrink-0 text-[11px] font-medium capitalize text-text-primary sm:w-16">
                       {itemMode}
                     </span>
-                    <span className="text-[11px] leading-4 text-text-muted">{description}</span>
+                    <span className="min-w-0 text-[11px] leading-4 text-text-muted">{description}</span>
                   </button>
                 ))}
               </div>
@@ -356,7 +356,7 @@ export default function ResearchPage() {
               </div>
             </div>
 
-            <Button type="submit" size="sm" disabled={submitting || query.trim().length < 5} className="w-full">
+            <Button type="submit" size="sm" disabled={submitting || query.trim().length < 5} className="h-auto min-h-8 w-full whitespace-normal px-3 py-2 text-center leading-4">
               {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
               {submitting ? 'Starting' : `Start ${DEPTH_PRESETS.find((p) => p.id === activeDepth)?.label ?? 'Standard'} research`}
             </Button>
@@ -371,7 +371,7 @@ export default function ResearchPage() {
             </IconButton>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-visible lg:overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-10">
                 <Spinner />
@@ -388,17 +388,17 @@ export default function ResearchPage() {
                   type="button"
                   onClick={() => setActiveJobId(job.id)}
                   className={cn(
-                    'flex w-full items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface',
+                    'flex w-full min-w-0 items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-surface',
                     activeJob?.id === job.id && 'bg-surface',
                   )}
                 >
                   <span className="mt-0.5 shrink-0">{STATUS_ICON[job.status]}</span>
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 text-xs leading-5 text-text-primary">{job.query}</span>
-                    <span className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-text-muted">
                       <span className="capitalize">{job.mode}</span>
                       <span>{job.rounds} rounds</span>
-                      <span className="ml-auto">{new Date(job.createdAt).toLocaleDateString()}</span>
+                      <span>{new Date(job.createdAt).toLocaleDateString()}</span>
                     </span>
                   </span>
                 </button>
@@ -408,9 +408,9 @@ export default function ResearchPage() {
         </div>
       </aside>
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible lg:overflow-hidden">
         {!activeJob ? (
-          <div className="flex flex-1 items-center justify-center">
+          <div className="flex flex-1 items-center justify-center px-4 py-12">
             <EmptyState
               icon={<Search className="h-8 w-8" />}
               title="No research selected"
@@ -425,19 +425,19 @@ export default function ResearchPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 flex-col gap-3 border-b border-border px-3 py-3 sm:px-6 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-start gap-3 sm:items-center">
                 {STATUS_ICON[activeJob.status]}
                 <div className="min-w-0">
-                  <h2 className="line-clamp-1 text-sm font-semibold leading-tight text-text-primary">
+                  <h2 className="line-clamp-3 text-sm font-semibold leading-tight text-text-primary sm:line-clamp-2 lg:line-clamp-1">
                     {activeJob.query}
                   </h2>
-                  <p className="mt-0.5 text-[11px] capitalize text-text-muted">
+                  <p className="mt-1 text-[11px] capitalize leading-4 text-text-muted">
                     {activeJob.mode} / {activeJob.rounds} rounds / {formatDate(activeJob.createdAt)}
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:flex-wrap sm:items-center">
                 {activeJob.status === 'completed' && (
                   <>
                     <Button
@@ -445,6 +445,7 @@ export default function ResearchPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => void discussInChat(activeJob)}
+                      className="h-auto min-h-8 whitespace-normal px-2 py-2 text-center leading-4 sm:px-3"
                     >
                       <MessageSquare className="h-3.5 w-3.5" />
                       Discuss in chat
@@ -455,28 +456,29 @@ export default function ResearchPage() {
                       size="sm"
                       disabled={savingDoc || !activeJob.output}
                       onClick={() => void saveAsDocument(activeJob)}
+                      className="h-auto min-h-8 whitespace-normal px-2 py-2 text-center leading-4 sm:px-3"
                     >
                       {savingDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                       {savingDoc ? 'Saving' : 'Save as document'}
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => downloadMarkdown(activeJob)}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => downloadMarkdown(activeJob)} className="px-2 sm:px-3">
                       <Download className="h-3.5 w-3.5" />
                       MD
                     </Button>
-                    <Button type="button" variant="outline" size="sm" onClick={() => downloadHtml(activeJob)}>
+                    <Button type="button" variant="outline" size="sm" onClick={() => downloadHtml(activeJob)} className="px-2 sm:px-3">
                       <Download className="h-3.5 w-3.5" />
                       HTML
                     </Button>
                   </>
                 )}
-                <IconButton label="Delete report" size="sm" onClick={() => void deleteJob(activeJob)}>
+                <IconButton label="Delete report" size="sm" className="min-h-8 justify-self-end px-2 sm:min-h-0" onClick={() => void deleteJob(activeJob)}>
                   <Trash2 className="h-3.5 w-3.5 text-danger" />
                 </IconButton>
               </div>
             </div>
 
             {(activeJob.status === 'queued' || activeJob.status === 'running') && (
-              <div className="flex items-center gap-3 border-b border-border bg-surface px-6 py-3">
+              <div className="flex items-start gap-3 border-b border-border bg-surface px-3 py-3 sm:items-center sm:px-6">
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />
                 <p className="text-xs text-text-secondary">
                   {activeJob.status === 'queued'
@@ -487,25 +489,25 @@ export default function ResearchPage() {
             )}
 
             {activeJob.status === 'failed' && (
-              <div className="border-b border-border bg-danger/10 px-6 py-3">
+              <div className="border-b border-border bg-danger/10 px-3 py-3 sm:px-6">
                 <p className="text-xs text-danger">Research failed: {activeJob.error ?? 'Unknown error'}</p>
               </div>
             )}
 
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row">
-              <section className="min-w-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-visible xl:flex-row xl:overflow-hidden">
+              <section className="min-w-0 flex-1 overflow-visible px-3 py-4 sm:px-6 sm:py-5 lg:overflow-y-auto">
                 {activeJob.status === 'completed' && activeJob.output ? (
-                  <div className="mx-auto max-w-4xl">
+                  <div className="research-report mx-auto max-w-4xl min-w-0 overflow-hidden break-words text-sm [overflow-wrap:anywhere] sm:text-base">
                     <MarkdownContent content={activeJob.output} />
                   </div>
                 ) : activeJob.status === 'queued' || activeJob.status === 'running' ? (
-                  <div className="flex flex-col items-center justify-center gap-3 py-20">
+                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center sm:py-20">
                     <Loader2 className="h-8 w-8 animate-spin text-accent" />
                     <p className="text-xs text-text-muted">Carina is researching.</p>
                     <p className="text-[11px] text-text-muted">Results will appear here when complete.</p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-3 py-20">
+                  <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center sm:py-20">
                     <FileText className="h-8 w-8 text-text-muted" />
                     <p className="text-xs text-text-muted">No output available.</p>
                   </div>
@@ -513,7 +515,7 @@ export default function ResearchPage() {
               </section>
 
               {sources.length > 0 && (
-                <aside className="max-h-80 w-full shrink-0 overflow-y-auto border-t border-border bg-surface xl:max-h-none xl:w-72 xl:border-l xl:border-t-0">
+                <aside className="w-full min-w-0 shrink-0 overflow-visible border-t border-border bg-surface xl:max-h-none xl:w-72 xl:overflow-y-auto xl:border-l xl:border-t-0">
                   <div className="border-b border-border px-4 py-3">
                     <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
                       <Globe className="h-3 w-3" />
@@ -529,11 +531,11 @@ export default function ResearchPage() {
                         rel="noopener noreferrer"
                         className="block px-4 py-3 transition-colors hover:bg-elevated"
                       >
-                        <span className="flex items-start gap-2">
-                          <span className="line-clamp-2 text-xs leading-5 text-text-primary">{source.title}</span>
+                        <span className="flex min-w-0 items-start gap-2">
+                          <span className="line-clamp-2 min-w-0 text-xs leading-5 text-text-primary">{source.title}</span>
                           <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-text-muted" />
                         </span>
-                        <span className="mt-1 block truncate text-[10px] text-text-muted">{source.url}</span>
+                        <span className="mt-1 block break-all text-[10px] leading-4 text-text-muted">{source.url}</span>
                         {source.snippet && (
                           <span className="mt-1 line-clamp-2 block text-[11px] leading-4 text-text-muted">
                             {source.snippet}
