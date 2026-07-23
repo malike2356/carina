@@ -13,6 +13,10 @@ export function getWorkerSessionContext(sessionId: string): WorkerContext | unde
   return sessionWorkers.get(sessionId);
 }
 
+export function listWorkerSessionContexts(): WorkerContext[] {
+  return [...sessionWorkers.values()];
+}
+
 export function clearWorkerSessionContext(sessionId: string): void {
   sessionWorkers.delete(sessionId);
   savedPackEnv.delete(sessionId);
