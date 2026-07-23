@@ -328,9 +328,9 @@ export default function EmailPage() {
   );
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div>
+    <div className="flex h-full min-w-0 flex-col overflow-x-hidden">
+      <header className="flex min-w-0 flex-col gap-3 border-b border-border px-3 py-4 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold text-text-primary">Email</h1>
           <p className="text-xs text-text-muted">{EMAIL_ORIGIN_HELPER_TEXT}</p>
           <p className="mt-0.5 text-xs text-text-muted">
@@ -350,14 +350,14 @@ export default function EmailPage() {
             <p className="mt-0.5 text-[10px] text-danger">{syncError}</p>
           ) : null}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="grid w-full grid-cols-2 items-center gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
           <button
             type="button"
             onClick={() => {
               setComposeOpen(true);
               setComposeError(null);
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs text-primary-foreground hover:opacity-90"
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs text-primary-foreground hover:opacity-90"
           >
             <PenSquare className="h-3.5 w-3.5" />
             Compose
@@ -365,7 +365,7 @@ export default function EmailPage() {
           <button
             type="button"
             onClick={() => void syncNow()}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:bg-elevated"
+            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs text-text-secondary hover:bg-elevated"
           >
             {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             Sync now
@@ -376,7 +376,7 @@ export default function EmailPage() {
         </div>
       </header>
 
-      <div className="space-y-2 border-b border-border px-6 py-2">
+      <div className="min-w-0 space-y-2 border-b border-border px-3 py-2 sm:px-6">
         <OriginFilterChips value={originFilter} onChange={setOriginFilter} />
         <div className="grid gap-2 md:grid-cols-6">
           <label className="block text-[10px] text-text-muted md:col-span-2">
@@ -426,7 +426,7 @@ export default function EmailPage() {
               ))}
             </select>
           </label>
-          <div className="flex items-end gap-1">
+          <div className="grid grid-cols-2 items-end gap-1 md:flex">
             <button
               type="button"
               onClick={applyFilters}
@@ -468,8 +468,8 @@ export default function EmailPage() {
       </div>
 
       {composeOpen ? (
-        <div className="border-b border-border bg-surface px-6 py-3">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="min-w-0 border-b border-border bg-surface px-3 py-3 sm:px-6">
+          <div className="mb-2 flex min-w-0 items-center justify-between">
             <p className="text-xs font-semibold text-text-primary">New message</p>
             <button
               type="button"
@@ -515,7 +515,7 @@ export default function EmailPage() {
           {composeError ? (
             <p className="mt-1 text-[10px] text-danger">{composeError}</p>
           ) : null}
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:flex">
             <button
               type="button"
               disabled={sending || !composeTo.trim() || !composeSubject.trim()}
@@ -535,16 +535,16 @@ export default function EmailPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-1 min-h-0">
-        <div className="flex w-52 flex-col border-r border-border">
-          <div className="space-y-0.5 p-2">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+        <div className="flex w-full shrink-0 flex-col border-b border-border lg:w-52 lg:border-b-0 lg:border-r">
+          <div className="flex gap-1 overflow-x-auto p-2 [scrollbar-width:none] lg:block lg:space-y-0.5 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             {TABS.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setTab(item.id)}
                 className={cn(
-                  'w-full rounded-md px-2 py-1.5 text-left text-xs',
+                  'shrink-0 rounded-md px-2 py-1.5 text-left text-xs lg:w-full',
                   tab === item.id
                     ? 'bg-elevated text-text-primary'
                     : 'text-text-secondary hover:bg-elevated',
@@ -555,14 +555,14 @@ export default function EmailPage() {
             ))}
           </div>
           {webhookUrl && (
-            <div className="mt-auto border-t border-border p-2">
+            <div className="hidden border-t border-border p-2 lg:mt-auto lg:block">
               <p className="mb-1 text-[10px] font-semibold uppercase text-text-muted">Inbound webhook</p>
               <p className="break-all text-[10px] text-text-muted">{webhookUrl}</p>
             </div>
           )}
         </div>
 
-        <div className="flex w-80 flex-col border-r border-border">
+        <div className="flex min-h-[14rem] w-full shrink-0 flex-col border-b border-border lg:min-h-0 lg:w-80 lg:border-b-0 lg:border-r">
           {loading ? (
             <div className="flex flex-1 items-center justify-center">
               <Spinner />
@@ -591,11 +591,11 @@ export default function EmailPage() {
                   type="button"
                   onClick={() => setSelectedId(row.id)}
                   className={cn(
-                    'w-full border-b border-border px-3 py-2.5 text-left transition-colors',
+                    'w-full min-w-0 border-b border-border px-3 py-2.5 text-left transition-colors',
                     selectedId === row.id ? 'bg-elevated' : 'hover:bg-elevated/60',
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center justify-between gap-2">
                     <span className="truncate text-xs font-medium text-text-primary">
                       {row.status === 'sent' && row.toAddress
                         ? `To: ${row.toAddress}`
@@ -618,8 +618,8 @@ export default function EmailPage() {
           )}
         </div>
 
-        <div className="flex flex-1 flex-col min-w-0">
-          <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4">
             <CoreSurfaceBanner surface="email" />
 
             {!selected ? (
@@ -640,7 +640,7 @@ export default function EmailPage() {
                   ) : null}
                   <p className="mt-2 text-xs text-text-muted">Subject</p>
                   <p className="text-sm font-medium text-text-primary">{selected.subject}</p>
-                  <div className="mt-4 whitespace-pre-wrap text-sm text-text-secondary">
+                  <div className="mt-4 whitespace-pre-wrap break-words text-sm text-text-secondary">
                     {selected.bodyFull || selected.bodyPreview || '(empty body)'}
                   </div>
                 </div>

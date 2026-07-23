@@ -218,8 +218,8 @@ export default function DocumentEditorPage() {
   }
 
   return (
-    <div className="flex h-full flex-col" data-page-title={title}>
-      <header className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+    <div className="flex h-full min-w-0 flex-col overflow-x-hidden" data-page-title={title}>
+      <header className="flex min-w-0 flex-wrap items-center gap-2 border-b border-border px-3 py-3 sm:px-4">
         <Link href="/documents" className="text-text-muted hover:text-text-primary">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -229,7 +229,7 @@ export default function DocumentEditorPage() {
           className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-text-primary outline-none"
           placeholder="Document title"
         />
-        <div className="flex items-center gap-1 text-[10px] text-text-muted">
+        <div className="min-w-0 text-[10px] text-text-muted">
           {saveError ? (
             <span className="text-danger">{saveError}</span>
           ) : saving ? 'Saving...' : saved ? (
@@ -244,7 +244,7 @@ export default function DocumentEditorPage() {
           type="button"
           onClick={() => void saveNow()}
           disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:bg-elevated hover:text-text-primary disabled:opacity-50"
+          className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-text-secondary hover:bg-elevated hover:text-text-primary disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
           Save
@@ -277,8 +277,8 @@ export default function DocumentEditorPage() {
         </IconButton>
       </header>
 
-      <div className="flex flex-1 min-h-0">
-        <div className="flex flex-1 flex-col border-r border-border">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col border-border lg:border-r">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <button
               type="button"
@@ -301,8 +301,8 @@ export default function DocumentEditorPage() {
               Preview
             </button>
           </div>
-          <div className="flex flex-1 flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4">
               <CoreSurfaceBanner surface="documents" />
               {preview ? (
                 <MarkdownContent content={content || '_Empty document_'} />
@@ -319,13 +319,13 @@ export default function DocumentEditorPage() {
             </div>
             {!preview && (
               <form
-                className="shrink-0 border-t border-border px-4 py-3"
+                className="min-w-0 shrink-0 border-t border-border px-3 py-3 sm:px-4"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void runInlineCommand();
                 }}
               >
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-elevated px-2 py-1.5 focus-within:border-accent/50">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-elevated px-2 py-1.5 focus-within:border-accent/50 sm:flex-nowrap">
                   <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent" />
                   <span className="shrink-0 text-xs text-text-muted">Carina,</span>
                   <input
@@ -334,7 +334,7 @@ export default function DocumentEditorPage() {
                     onFocus={() => editorRef.current?.focus()}
                     disabled={assistBusy !== null}
                     placeholder={DEFAULT_INLINE_PROMPT}
-                    className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
+                    className="min-w-[10rem] flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
                   />
                   <button
                     type="submit"
@@ -356,7 +356,7 @@ export default function DocumentEditorPage() {
           </div>
         </div>
 
-        <aside className="w-72 shrink-0 overflow-y-auto p-4">
+        <aside className="w-full shrink-0 overflow-y-auto border-t border-border p-3 sm:p-4 lg:w-72 lg:border-t-0">
           <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-text-primary">
             <Sparkles className="h-3.5 w-3.5 text-accent" />
             AI assist

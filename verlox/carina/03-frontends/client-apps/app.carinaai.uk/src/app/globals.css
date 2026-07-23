@@ -100,6 +100,134 @@ a {
   min-height: 44px;
 }
 
+.carina-workspace-shell {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
+.carina-workspace-shell :where(section, article, aside, main, header, footer, nav, div, form, label) {
+  min-width: 0;
+}
+
+.carina-workspace-shell :where(p, h1, h2, h3, h4, h5, h6, span, a, button, label, input, textarea, pre, code, td, th, li) {
+  overflow-wrap: anywhere;
+}
+
+.carina-workspace-shell :where(img, video, canvas, svg) {
+  max-width: 100%;
+}
+
+.carina-workspace-shell :where(input, textarea, select) {
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  .carina-workspace-shell :where(.min-w-\[12rem\], .min-w-\[220px\]) {
+    min-width: 0 !important;
+  }
+
+  .carina-workspace-shell :where(table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .carina-workspace-shell :where(.recharts-wrapper, .recharts-surface) {
+    max-width: 100% !important;
+  }
+
+  .carina-workspace-shell :where(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) {
+    white-space: normal;
+  }
+}
+
+/* Shared button utilities used across Aiva/Carina UI.
+   Components rely on these class names; without them CTAs render as plain text. */
+.btn-primary,
+.btn-ghost,
+.btn-secondary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.btn-primary:disabled,
+.btn-ghost:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-primary-foreground);
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-secondary {
+  background-color: var(--color-elevated);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-overlay);
+  border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-accent));
+}
+
+.btn-ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-elevated);
+  color: var(--color-text-primary);
+}
+
+.btn-danger {
+  background-color: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+  color: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
+}
+
 @keyframes carina-thinking {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
   30% { transform: translateY(-5px); opacity: 1; }
@@ -228,35 +356,8 @@ a {
   }
 
   .carina-workspace-shell {
-    width: 100vw;
     max-width: 100vw;
     overflow-x: hidden;
-  }
-
-  .carina-workspace-shell main,
-  .carina-workspace-shell section,
-  .carina-workspace-shell article,
-  .carina-workspace-shell aside,
-  .carina-workspace-shell form,
-  .carina-workspace-shell div {
-    min-width: 0;
-  }
-
-  .carina-workspace-shell img,
-  .carina-workspace-shell video,
-  .carina-workspace-shell canvas,
-  .carina-workspace-shell svg {
-    max-width: 100%;
-  }
-
-  .carina-workspace-shell pre {
-    max-width: 100%;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-
-  .carina-workspace-shell code {
-    word-break: break-word;
   }
 }
 

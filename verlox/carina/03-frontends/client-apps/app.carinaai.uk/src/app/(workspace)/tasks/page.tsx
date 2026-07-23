@@ -242,9 +242,9 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-base">
-      <div className="flex items-center gap-4 border-b border-border px-6 py-4">
-        <div>
+    <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-base">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-border px-3 py-4 sm:px-6 lg:flex-row lg:items-start lg:gap-4">
+        <div className="min-w-0">
           <h1 className="text-lg font-semibold text-text-primary">Workspace schedules</h1>
           <p className="mt-0.5 text-xs text-text-muted">{TASKS_ORIGIN_HELPER_TEXT}</p>
           <p className="mt-1 text-xs text-text-muted">
@@ -258,24 +258,24 @@ export default function TasksPage() {
           variant="outline"
           size="sm"
           onClick={() => void loadTasks()}
-          className="ml-auto"
+          className="w-full sm:w-auto lg:ml-auto"
         >
           <RefreshCw className="h-3.5 w-3.5" />
           Refresh
         </Button>
       </div>
 
-      <div className="border-b border-border px-6 py-2">
+      <div className="min-w-0 border-b border-border px-3 py-2 sm:px-6">
         <OriginFilterChips value={originFilter} onChange={setOriginFilter} showGoogle={false} />
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_360px] overflow-hidden max-lg:grid-cols-1">
-        <div className="min-h-0 overflow-y-auto px-6 py-5">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)_360px] overflow-hidden max-lg:grid-cols-1">
+        <div className="min-h-0 min-w-0 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6">
           <form
             onSubmit={(event) => void createTask(event)}
             className="mb-5 rounded-lg border border-border bg-surface p-4"
           >
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-3 flex min-w-0 items-center gap-2">
               <Plus className="h-4 w-4 text-accent" />
               <h2 className="text-sm font-semibold text-text-primary">New workspace schedule</h2>
             </div>
@@ -324,7 +324,7 @@ export default function TasksPage() {
                 placeholder="What should run (prompt or action key)"
               />
             </div>
-            <div className="mt-3 flex justify-end">
+            <div className="mt-3 flex justify-stretch sm:justify-end">
               <Button type="submit" size="sm" disabled={saving || !form.name.trim()}>
                 <Plus className="h-3.5 w-3.5" />
                 {saving ? 'Creating' : 'Create draft'}
@@ -339,7 +339,7 @@ export default function TasksPage() {
           ) : filteredTasks.length === 0 ? (
             <EmptyState title="No workspace schedules" subtitle="Create a schedule for workspace housekeeping (tidy, calendar sync, custom prompts). Morning digests belong on each Aiva's Automations tab." />
           ) : (
-            <div className="overflow-hidden rounded-lg border border-border">
+            <div className="min-w-0 overflow-hidden rounded-lg border border-border">
               <div className="grid grid-cols-[minmax(220px,1fr)_120px_120px_110px_128px] border-b border-border bg-elevated px-4 py-2 text-xs font-medium text-text-muted max-xl:grid-cols-[minmax(220px,1fr)_110px_96px_112px] max-sm:hidden">
                 <span>Task</span>
                 <span className="max-xl:hidden">Trigger</span>
@@ -359,7 +359,7 @@ export default function TasksPage() {
                 >
                   <span className="min-w-0">
                     <span className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium text-text-primary">{task.name}</span>
+                      <span className="min-w-0 break-words text-sm font-medium text-text-primary">{task.name}</span>
                       <OriginBadge origin={classifyTaskOrigin(task)} />
                       {task.builtIn && (
                         <span className="rounded border border-accent/25 bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
@@ -367,7 +367,7 @@ export default function TasksPage() {
                         </span>
                       )}
                     </span>
-                    <span className="mt-1 block truncate text-xs text-text-muted">{task.description || task.prompt}</span>
+                    <span className="mt-1 block break-words text-xs text-text-muted">{task.description || task.prompt}</span>
                   </span>
                   <span className="flex items-center gap-1.5 text-xs text-text-secondary max-xl:hidden">
                     <CalendarClock className="h-3.5 w-3.5 text-text-muted" />
@@ -434,7 +434,7 @@ export default function TasksPage() {
           )}
         </div>
 
-        <aside className="min-h-0 overflow-y-auto border-l border-border bg-surface px-5 py-5 max-lg:border-l-0 max-lg:border-t">
+        <aside className="min-h-0 min-w-0 overflow-y-auto overflow-x-hidden border-l border-border bg-surface px-3 py-5 sm:px-5 max-lg:border-l-0 max-lg:border-t">
           {selectedTask ? (
             <>
                 <div className="flex items-start gap-3">
@@ -448,7 +448,7 @@ export default function TasksPage() {
                     </p>
                   </div>
                 </div>
-              <div className="mt-4 flex gap-2">
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:flex">
                 <Button type="button" size="sm" onClick={() => void runTask(selectedTask)}>
                   <Play className="h-3.5 w-3.5" />
                   Run now
