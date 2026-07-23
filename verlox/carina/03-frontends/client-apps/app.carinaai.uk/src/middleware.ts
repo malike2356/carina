@@ -153,6 +153,12 @@ export async function middleware(request: NextRequest) {
       const dest = sessionCookie ? AIVA_POST_AUTH_PATH : '/register';
       return NextResponse.redirect(new URL(dest, request.url));
     }
+    if (pathname.startsWith('/dashboard/agents/')) {
+      const workerId = pathname.slice('/dashboard/agents/'.length).split('/')[0];
+      if (workerId) {
+        return NextResponse.redirect(new URL(`/aiva/workers/${encodeURIComponent(workerId)}`, request.url));
+      }
+    }
     if (pathname === '/billing') {
       return NextResponse.redirect(new URL('/billing/aiva', request.url));
     }
