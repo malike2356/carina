@@ -168,7 +168,7 @@ async function getCoreInventorySections(
     inventorySection('automations', () => pool.query(
       `SELECT id::text, worker_id::text, name, description, cron_expression,
               schedule_label, trigger_type, trigger_event, enabled, last_run_at,
-              next_run_at, created_at, updated_at
+              next_run_at, created_at
        FROM ai_worker_automations
        WHERE workspace_id = $1
        ORDER BY created_at DESC
@@ -176,10 +176,19 @@ async function getCoreInventorySections(
       [workspaceId, limit],
     )),
     inventorySection('approvals', () => pool.query(
-      `SELECT id::text, worker_id::text, category, recipient, subject, status, created_at, updated_at
-       FROM aiva_email_approvals
-       WHERE workspace_id = $1
-       ORDER BY created_at DESC
+      `SELECT id, worker_id, type, category, recipient, subject, status, requested_at
+       FROM (
+         SELECT id::text, worker_id::text, 'email' AS type, category, recipient,
+                subject, status, requested_at
+         FROM worker_email_approvals
+         WHERE workspace_id = $1
+         UNION ALL
+         SELECT id::text, worker_id::text, 'social' AS type, channel AS category,
+                contact_id AS recipient, left(draft_text, 120) AS subject, status, requested_at
+         FROM worker_social_approvals
+         WHERE workspace_id = $1
+       ) approvals
+       ORDER BY requested_at DESC
        LIMIT $2`,
       [workspaceId, limit],
     )),
