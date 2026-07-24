@@ -544,6 +544,7 @@ function createWorkspaceSurfaceTools(sessionId: string): Tool[] {
         const { getWorkspaceInventory } = await import('../workers/aiva-workspace-surfaces.js');
         return getWorkspaceInventory({
           workspaceId: ctx.worker.workspaceId,
+          workerId: ctx.worker.id,
           limit: Number(params.limit ?? 10),
         });
       },
