@@ -101,6 +101,15 @@ describe('aiva-message-handler Propreneur bridge tools', () => {
     const { isToolAllowedForWorker } = await import('./aiva-message-handler.js');
     expect(isToolAllowedForWorker('workspace-inventory', sessionId)).toBe(true);
   });
+
+  it('allows explicit workspace control tools for Aiva workers', async () => {
+    const { isToolAllowedForWorker } = await import('./aiva-message-handler.js');
+    expect(isToolAllowedForWorker('workspace-channel-connect', sessionId)).toBe(true);
+    expect(isToolAllowedForWorker('workspace-schedule-create', sessionId)).toBe(true);
+    expect(isToolAllowedForWorker('workspace-approval-approve', sessionId)).toBe(true);
+    expect(isToolAllowedForWorker('workspace-worker-update', sessionId)).toBe(true);
+    expect(isToolAllowedForWorker('google-drive-create-file', sessionId)).toBe(true);
+  });
 });
 
 describe('propreneur write tools', () => {

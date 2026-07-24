@@ -96,6 +96,26 @@
         {
           "id": "upload",
           "scope": "write"
+        },
+        {
+          "id": "create",
+          "scope": "write"
+        },
+        {
+          "id": "update",
+          "scope": "write"
+        },
+        {
+          "id": "move",
+          "scope": "write"
+        },
+        {
+          "id": "delete",
+          "scope": "write"
+        },
+        {
+          "id": "share",
+          "scope": "write"
         }
       ]
     },

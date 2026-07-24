@@ -1,4 +1,5 @@
 import type { Tool } from '../types/index.js';
+import { pool } from '../memory/db.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
 import { listToolGrants } from '../workers/spinnable-parity-store.js';
 import { invokeProductTool } from '../workers/product-tools/invoke.js';
@@ -356,6 +357,22 @@ function createGmailTools(sessionId: string): Tool[] {
 function createDriveTools(sessionId: string): Tool[] {
   return [
     {
+      name: 'google-drive-list',
+      description:
+        'List recent Google Drive files or files inside a specific folder for this worker. '
+        + 'Use this when the user asks what is in Drive or inside a Drive folder.',
+      parameters: {
+        type: 'object',
+        properties: {
+          folderId: { type: 'string', description: 'Optional Drive folder id.' },
+        },
+      },
+      execute: async (params) => {
+        const folderId = typeof params.folderId === 'string' ? params.folderId.trim() : '';
+        return invokeGranted(sessionId, 'google-drive', 'list', { folderId: folderId || undefined });
+      },
+    },
+    {
       name: 'google-drive-search',
       description:
         'Search Google Drive / Docs for this worker (connected Drive). '
@@ -402,6 +419,136 @@ function createDriveTools(sessionId: string): Tool[] {
         const data = (got as { data?: { file?: unknown; text?: string | null } }).data;
         const text = typeof data?.text === 'string' ? data.text.slice(0, 20_000) : data?.text;
         return { ok: true, file: data?.file, text };
+      },
+    },
+    {
+      name: 'google-drive-create-file',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Create a Google Doc in a connected Google Drive folder. Requires Google Drive write access.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Document title.' },
+          content: { type: 'string', description: 'Document body text.' },
+          parentId: { type: 'string', description: 'Drive folder id to create the document in.' },
+        },
+        required: ['title', 'content', 'parentId'],
+      },
+      execute: async (params) => {
+        const title = String(params.title ?? '').trim();
+        const content = String(params.content ?? '');
+        const parentId = String(params.parentId ?? params.folderId ?? '').trim();
+        if (!title || !content.trim() || !parentId) {
+          return { ok: false, error: 'title, content, and parentId are required' };
+        }
+        return invokeGranted(sessionId, 'google-drive', 'create', { title, content, parentId });
+      },
+    },
+    {
+      name: 'google-drive-create-folder',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Create a Google Drive folder. parentId is optional; omitted creates in My Drive.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Folder name.' },
+          parentId: { type: 'string', description: 'Optional parent folder id.' },
+        },
+        required: ['name'],
+      },
+      execute: async (params) => {
+        const name = String(params.name ?? '').trim();
+        const parentId = String(params.parentId ?? params.folderId ?? '').trim();
+        if (!name) return { ok: false, error: 'name required' };
+        return invokeGranted(sessionId, 'google-drive', 'create', {
+          title: name,
+          parentId: parentId || undefined,
+          mimeType: 'application/vnd.google-apps.folder',
+        });
+      },
+    },
+    {
+      name: 'google-drive-update-file',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Replace the text content of an existing Google Doc by Drive file id. Requires Drive write access.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string', description: 'Drive file id.' },
+          content: { type: 'string', description: 'Replacement document body.' },
+        },
+        required: ['fileId', 'content'],
+      },
+      execute: async (params) => {
+        const fileId = String(params.fileId ?? params.id ?? '').trim();
+        const content = String(params.content ?? params.body ?? '');
+        if (!fileId || !content.trim()) return { ok: false, error: 'fileId and content are required' };
+        return invokeGranted(sessionId, 'google-drive', 'update', { fileId, content });
+      },
+    },
+    {
+      name: 'google-drive-move-file',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Move a Google Drive file to another folder.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          parentId: { type: 'string', description: 'Destination folder id.' },
+        },
+        required: ['fileId', 'parentId'],
+      },
+      execute: async (params) => {
+        const fileId = String(params.fileId ?? params.id ?? '').trim();
+        const parentId = String(params.parentId ?? params.folderId ?? '').trim();
+        if (!fileId || !parentId) return { ok: false, error: 'fileId and parentId are required' };
+        return invokeGranted(sessionId, 'google-drive', 'move', { fileId, parentId });
+      },
+    },
+    {
+      name: 'google-drive-delete-file',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Move a Google Drive file to trash. Requires explicit user confirmation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+        },
+        required: ['fileId'],
+      },
+      execute: async (params) => {
+        const fileId = String(params.fileId ?? params.id ?? '').trim();
+        if (!fileId) return { ok: false, error: 'fileId required' };
+        return invokeGranted(sessionId, 'google-drive', 'delete', { fileId });
+      },
+    },
+    {
+      name: 'google-drive-share-file',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Share a Google Drive file with a user by email. Requires explicit confirmation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fileId: { type: 'string' },
+          emailAddress: { type: 'string' },
+          role: { type: 'string', enum: ['reader', 'commenter', 'writer'] },
+        },
+        required: ['fileId', 'emailAddress'],
+      },
+      execute: async (params) => {
+        const fileId = String(params.fileId ?? params.id ?? '').trim();
+        const emailAddress = String(params.emailAddress ?? params.email ?? '').trim();
+        const role = String(params.role ?? 'reader').trim();
+        if (!fileId || !emailAddress) return { ok: false, error: 'fileId and emailAddress are required' };
+        return invokeGranted(sessionId, 'google-drive', 'share', { fileId, emailAddress, role });
       },
     },
   ];
@@ -522,6 +669,84 @@ function createCalendarTools(sessionId: string): Tool[] {
   ];
 }
 
+function maskValue(value: string): string {
+  if (value.length <= 8) return value;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+function normalizeLimit(value: unknown, fallback: number, max: number): number {
+  return Math.min(max, Math.max(1, Number(value ?? fallback) || fallback));
+}
+
+function simpleCronFromText(text: string): { cronExpression: string; scheduleLabel: string } {
+  const raw = text.trim();
+  const lower = raw.toLowerCase();
+  const time = lower.match(/\b(?:at\s+)?([01]?\d|2[0-3])(?::([0-5]\d))?\b/);
+  const hour = time ? Number(time[1]) : 9;
+  const minute = time?.[2] ? Number(time[2]) : 0;
+  if (/\bevery\s+hour|hourly\b/.test(lower)) {
+    return { cronExpression: '0 * * * *', scheduleLabel: raw || 'Hourly' };
+  }
+  const days: Record<string, number> = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+  };
+  for (const [day, number] of Object.entries(days)) {
+    if (lower.includes(day)) {
+      return { cronExpression: `${minute} ${hour} * * ${number}`, scheduleLabel: raw || `Every ${day}` };
+    }
+  }
+  if (/\bmonthly\b|every month/.test(lower)) {
+    return { cronExpression: `${minute} ${hour} 1 * *`, scheduleLabel: raw || 'Monthly' };
+  }
+  if (/\bweekly\b|every week/.test(lower)) {
+    return { cronExpression: `${minute} ${hour} * * 1`, scheduleLabel: raw || 'Weekly' };
+  }
+  return { cronExpression: `${minute} ${hour} * * *`, scheduleLabel: raw || 'Daily' };
+}
+
+async function listWorkspaceApprovalRows(workspaceId: string, limit: number, status?: string) {
+  const statusClause = status ? 'WHERE workspace_id = $1 AND status = $3' : 'WHERE workspace_id = $1';
+  const params = status ? [workspaceId, limit, status] : [workspaceId, limit];
+  const result = await pool.query(
+    `SELECT * FROM (
+       SELECT id::text, worker_id::text, 'email' AS type, category, recipient,
+              subject, draft_body AS draft, status, requested_at
+       FROM worker_email_approvals
+       ${statusClause}
+       UNION ALL
+       SELECT id::text, worker_id::text, 'social' AS type, channel AS category,
+              contact_id AS recipient, left(draft_text, 160) AS subject, draft_text AS draft,
+              status, requested_at
+       FROM worker_social_approvals
+       ${statusClause}
+     ) approvals
+     ORDER BY requested_at DESC
+     LIMIT $2`,
+    params,
+  );
+  return result.rows;
+}
+
+async function getApprovalType(workspaceId: string, approvalId: string, requestedType?: string): Promise<'email' | 'social' | null> {
+  if (requestedType === 'email' || requestedType === 'social') return requestedType;
+  const email = await pool.query(
+    'SELECT id FROM worker_email_approvals WHERE workspace_id = $1 AND id = $2 LIMIT 1',
+    [workspaceId, approvalId],
+  );
+  if (email.rows[0]) return 'email';
+  const social = await pool.query(
+    'SELECT id FROM worker_social_approvals WHERE workspace_id = $1 AND id = $2 LIMIT 1',
+    [workspaceId, approvalId],
+  );
+  return social.rows[0] ? 'social' : null;
+}
+
 function createWorkspaceSurfaceTools(sessionId: string): Tool[] {
   return [
     {
@@ -579,6 +804,308 @@ function createWorkspaceSurfaceTools(sessionId: string): Tool[] {
           mode: typeof params.mode === 'string' ? params.mode : 'auto',
           rounds: Number(params.rounds ?? 6),
         });
+      },
+    },
+    {
+      name: 'workspace-channel-list',
+      description: 'List channels connected to this Aiva in the workspace.',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { listWorkerChannelDetails } = await import('../channels/channel-store.js');
+        const channels = await listWorkerChannelDetails(ctx.worker.id);
+        return {
+          ok: true,
+          channels: channels.map((row) => ({
+            id: row.id,
+            channel: row.channel,
+            identifier: maskValue(row.identifier),
+            enabled: row.enabled,
+            verified: row.verified,
+            updatedAt: row.updatedAt.toISOString(),
+          })),
+        };
+      },
+    },
+    {
+      name: 'workspace-channel-connect',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Connect this Aiva to Telegram using a BotFather token provided by the owner. '
+        + 'Never echo the token back.',
+      parameters: {
+        type: 'object',
+        properties: {
+          channel: { type: 'string', enum: ['telegram'] },
+          bot_token: { type: 'string', description: 'Sensitive Telegram bot token.' },
+        },
+        required: ['channel', 'bot_token'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const channel = String(params.channel ?? '').trim();
+        if (channel !== 'telegram') return { ok: false, error: 'Only Telegram is supported for self-config now' };
+        const { connectWorkerChannel } = await import('../channels/worker-channel-connect.js');
+        const row = await connectWorkerChannel({
+          workspaceId: ctx.worker.workspaceId,
+          workerId: ctx.worker.id,
+          channel: 'telegram',
+          credentials: { bot_token: String(params.bot_token ?? '').trim() },
+        });
+        return {
+          ok: true,
+          channel: row.channel,
+          identifier: maskValue(row.identifier),
+          enabled: row.enabled,
+          verified: row.verified,
+          message: 'Telegram connected. Send /start to the bot in Telegram, then message this Aiva there.',
+        };
+      },
+    },
+    {
+      name: 'workspace-channel-disconnect',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Disconnect a channel from this Aiva by channel row id.',
+      parameters: {
+        type: 'object',
+        properties: { channelId: { type: 'string' } },
+        required: ['channelId'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const channelId = String(params.channelId ?? '').trim();
+        if (!channelId) return { ok: false, error: 'channelId required' };
+        const { deleteWorkerChannel } = await import('../channels/channel-store.js');
+        const deleted = await deleteWorkerChannel(ctx.worker.workspaceId, channelId);
+        return { ok: deleted, deleted };
+      },
+    },
+    {
+      name: 'workspace-channel-status',
+      description: 'Show connection status for this Aiva channel.',
+      parameters: {
+        type: 'object',
+        properties: { channel: { type: 'string', description: 'Optional channel name.' } },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const requested = typeof params.channel === 'string' ? params.channel.trim() : '';
+        const { listWorkerChannelDetails } = await import('../channels/channel-store.js');
+        const channels = (await listWorkerChannelDetails(ctx.worker.id))
+          .filter((row) => !requested || row.channel === requested);
+        return {
+          ok: true,
+          channels: channels.map((row) => ({
+            id: row.id,
+            channel: row.channel,
+            identifier: maskValue(row.identifier),
+            enabled: row.enabled,
+            verified: row.verified,
+          })),
+        };
+      },
+    },
+    {
+      name: 'workspace-channel-test',
+      description: 'Test whether this Aiva channel appears connected and has saved credentials.',
+      parameters: {
+        type: 'object',
+        properties: { channel: { type: 'string' } },
+        required: ['channel'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const channel = String(params.channel ?? '').trim();
+        const { getWorkerChannelByWorkerAndChannel } = await import('../channels/channel-store.js');
+        const row = await getWorkerChannelByWorkerAndChannel(ctx.worker.id, channel as never);
+        return {
+          ok: Boolean(row?.enabled),
+          channel,
+          connected: Boolean(row),
+          enabled: Boolean(row?.enabled),
+          verified: Boolean(row?.verified),
+          hasCredentials: Boolean(row?.credentials?.encrypted),
+        };
+      },
+    },
+    {
+      name: 'workspace-schedule-list',
+      description: 'List this Aiva workspace scheduled tasks and cron jobs.',
+      parameters: {
+        type: 'object',
+        properties: { limit: { type: 'number' } },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const result = await pool.query(
+          `SELECT id::text, worker_id::text, name, description, cron_expression, schedule_label,
+                  trigger_type, trigger_event, enabled, last_run_at, next_run_at, created_at
+           FROM ai_worker_automations
+           WHERE workspace_id = $1
+           ORDER BY created_at DESC
+           LIMIT $2`,
+          [ctx.worker.workspaceId, normalizeLimit(params.limit, 20, 100)],
+        );
+        return { ok: true, schedules: result.rows };
+      },
+    },
+    {
+      name: 'workspace-schedule-create',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Create a scheduled Aiva workspace task or cron job. Use for reminders, recurring research, reports, and scheduled work.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          description: { type: 'string' },
+          schedule: { type: 'string', description: 'Natural language schedule such as daily at 9, every Monday at 10, weekly, monthly.' },
+          cronExpression: { type: 'string' },
+          timezone: { type: 'string' },
+          prompt: { type: 'string', description: 'Task prompt for Aiva to run.' },
+        },
+        required: ['name', 'description'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const name = String(params.name ?? '').trim();
+        const description = String(params.description ?? params.prompt ?? '').trim();
+        if (!name || !description) return { ok: false, error: 'name and description are required' };
+        const parsed = simpleCronFromText(String(params.schedule ?? params.cronExpression ?? 'daily at 9'));
+        const cronExpression = String(params.cronExpression ?? '').trim() || parsed.cronExpression;
+        const { createAutomation } = await import('../workers/worker-store.js');
+        const automation = await createAutomation(ctx.worker.id, ctx.worker.workspaceId, {
+          name,
+          description,
+          cronExpression,
+          scheduleLabel: String(params.schedule ?? '').trim() || parsed.scheduleLabel,
+          triggerType: 'cron',
+          timezone: String(params.timezone ?? 'Europe/London'),
+          actionType: 'aiva_prompt',
+          actionJson: { type: 'aiva_prompt', prompt: String(params.prompt ?? description) },
+          approvalMode: 'require_write',
+        });
+        return { ok: true, schedule: automation };
+      },
+    },
+    {
+      name: 'workspace-schedule-update',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Update a scheduled task or cron job in this workspace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          scheduleId: { type: 'string' },
+          name: { type: 'string' },
+          description: { type: 'string' },
+          schedule: { type: 'string' },
+          cronExpression: { type: 'string' },
+          enabled: { type: 'boolean' },
+        },
+        required: ['scheduleId'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const scheduleId = String(params.scheduleId ?? params.id ?? '').trim();
+        const parsed = params.schedule ? simpleCronFromText(String(params.schedule)) : null;
+        const result = await pool.query(
+          `UPDATE ai_worker_automations
+           SET name = COALESCE($3, name),
+               description = COALESCE($4, description),
+               cron_expression = COALESCE($5, cron_expression),
+               schedule_label = COALESCE($6, schedule_label),
+               enabled = COALESCE($7, enabled)
+           WHERE id = $1 AND workspace_id = $2
+           RETURNING *`,
+          [
+            scheduleId,
+            ctx.worker.workspaceId,
+            typeof params.name === 'string' ? params.name.trim() : null,
+            typeof params.description === 'string' ? params.description.trim() : null,
+            typeof params.cronExpression === 'string' ? params.cronExpression.trim() : parsed?.cronExpression ?? null,
+            typeof params.schedule === 'string' ? params.schedule.trim() : null,
+            typeof params.enabled === 'boolean' ? params.enabled : null,
+          ],
+        );
+        return result.rows[0] ? { ok: true, schedule: result.rows[0] } : { ok: false, error: 'Schedule not found' };
+      },
+    },
+    {
+      name: 'workspace-schedule-pause',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Pause a scheduled task.',
+      parameters: { type: 'object', properties: { scheduleId: { type: 'string' } }, required: ['scheduleId'] },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const result = await pool.query(
+          `UPDATE ai_worker_automations SET enabled = false WHERE id = $1 AND workspace_id = $2 RETURNING id::text, enabled`,
+          [String(params.scheduleId ?? params.id ?? '').trim(), ctx.worker.workspaceId],
+        );
+        return result.rows[0] ? { ok: true, schedule: result.rows[0] } : { ok: false, error: 'Schedule not found' };
+      },
+    },
+    {
+      name: 'workspace-schedule-resume',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Resume a paused scheduled task.',
+      parameters: { type: 'object', properties: { scheduleId: { type: 'string' } }, required: ['scheduleId'] },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const result = await pool.query(
+          `UPDATE ai_worker_automations SET enabled = true WHERE id = $1 AND workspace_id = $2 RETURNING id::text, enabled`,
+          [String(params.scheduleId ?? params.id ?? '').trim(), ctx.worker.workspaceId],
+        );
+        return result.rows[0] ? { ok: true, schedule: result.rows[0] } : { ok: false, error: 'Schedule not found' };
+      },
+    },
+    {
+      name: 'workspace-schedule-delete',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Delete a scheduled task.',
+      parameters: { type: 'object', properties: { scheduleId: { type: 'string' } }, required: ['scheduleId'] },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const result = await pool.query(
+          `DELETE FROM ai_worker_automations WHERE id = $1 AND workspace_id = $2 RETURNING id::text`,
+          [String(params.scheduleId ?? params.id ?? '').trim(), ctx.worker.workspaceId],
+        );
+        return { ok: Boolean(result.rows[0]), deleted: Boolean(result.rows[0]) };
+      },
+    },
+    {
+      name: 'workspace-schedule-run-now',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Queue a scheduled task to run immediately.',
+      parameters: { type: 'object', properties: { scheduleId: { type: 'string' } }, required: ['scheduleId'] },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const result = await pool.query(
+          `UPDATE ai_worker_automations SET next_run_at = NOW()
+           WHERE id = $1 AND workspace_id = $2
+           RETURNING id::text, next_run_at`,
+          [String(params.scheduleId ?? params.id ?? '').trim(), ctx.worker.workspaceId],
+        );
+        return result.rows[0] ? { ok: true, schedule: result.rows[0] } : { ok: false, error: 'Schedule not found' };
       },
     },
     {
@@ -650,6 +1177,421 @@ function createWorkspaceSurfaceTools(sessionId: string): Tool[] {
           workspaceId: ctx.worker.workspaceId,
           limit: Number(params.limit ?? 20),
         });
+      },
+    },
+    {
+      name: 'workspace-approval-list',
+      description: 'List workspace approvals across email and social approval queues.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number' },
+          status: { type: 'string', description: 'Optional status filter such as pending, sent, rejected, timeout.' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const status = typeof params.status === 'string' && params.status.trim() ? params.status.trim() : undefined;
+        const approvals = await listWorkspaceApprovalRows(
+          ctx.worker.workspaceId,
+          normalizeLimit(params.limit, 20, 100),
+          status,
+        );
+        return { ok: true, approvals };
+      },
+    },
+    {
+      name: 'workspace-approval-get',
+      description: 'Get one workspace approval by id. Detects email or social approval type when not supplied.',
+      parameters: {
+        type: 'object',
+        properties: {
+          approvalId: { type: 'string' },
+          type: { type: 'string', enum: ['email', 'social'] },
+        },
+        required: ['approvalId'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const approvalId = String(params.approvalId ?? params.id ?? '').trim();
+        const type = await getApprovalType(ctx.worker.workspaceId, approvalId, String(params.type ?? ''));
+        if (type === 'email') {
+          const { getApproval } = await import('../ingestion/email/worker-approval-store.js');
+          return { ok: true, type, approval: await getApproval(ctx.worker.workspaceId, approvalId) };
+        }
+        if (type === 'social') {
+          const { getSocialApproval } = await import('../ingestion/social/social-approval-store.js');
+          return { ok: true, type, approval: await getSocialApproval(ctx.worker.workspaceId, approvalId) };
+        }
+        return { ok: false, error: 'Approval not found' };
+      },
+    },
+    {
+      name: 'workspace-approval-create',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Create an email or social approval draft in the workspace approval queue.',
+      parameters: {
+        type: 'object',
+        properties: {
+          type: { type: 'string', enum: ['email', 'social'] },
+          recipient: { type: 'string' },
+          subject: { type: 'string' },
+          draftBody: { type: 'string' },
+          channel: { type: 'string' },
+          contactId: { type: 'string' },
+          inboundText: { type: 'string' },
+          draftText: { type: 'string' },
+        },
+        required: ['type'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const type = String(params.type ?? '').trim();
+        if (type === 'email') {
+          const { createEmailApproval } = await import('../ingestion/email/worker-approval-store.js');
+          const recipient = String(params.recipient ?? '').trim();
+          const subject = String(params.subject ?? '').trim();
+          const draftBody = String(params.draftBody ?? params.draftText ?? '').trim();
+          if (!recipient || !subject || !draftBody) {
+            return { ok: false, error: 'recipient, subject, and draftBody are required' };
+          }
+          const approval = await createEmailApproval({
+            workerId: ctx.worker.id,
+            workspaceId: ctx.worker.workspaceId,
+            category: 'client_query',
+            recipient,
+            subject,
+            draftBody,
+            originalFrom: recipient,
+          });
+          return { ok: true, type, approval };
+        }
+        if (type === 'social') {
+          const { createSocialApproval } = await import('../ingestion/social/social-approval-store.js');
+          const channel = String(params.channel ?? ctx.channel ?? '').trim();
+          const contactId = String(params.contactId ?? ctx.contactId ?? '').trim();
+          const draftText = String(params.draftText ?? params.draftBody ?? '').trim();
+          if (!channel || !contactId || !draftText) {
+            return { ok: false, error: 'channel, contactId, and draftText are required' };
+          }
+          const approval = await createSocialApproval({
+            workerId: ctx.worker.id,
+            workspaceId: ctx.worker.workspaceId,
+            channel: channel as never,
+            contactId,
+            inboundText: String(params.inboundText ?? ''),
+            draftText,
+          });
+          return { ok: true, type, approval };
+        }
+        return { ok: false, error: 'type must be email or social' };
+      },
+    },
+    {
+      name: 'workspace-approval-modify',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Modify the draft body/text for a pending email or social approval.',
+      parameters: {
+        type: 'object',
+        properties: {
+          approvalId: { type: 'string' },
+          type: { type: 'string', enum: ['email', 'social'] },
+          draftBody: { type: 'string' },
+          draftText: { type: 'string' },
+        },
+        required: ['approvalId'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const approvalId = String(params.approvalId ?? params.id ?? '').trim();
+        const body = String(params.draftBody ?? params.draftText ?? '').trim();
+        if (!body) return { ok: false, error: 'draft body is required' };
+        const type = await getApprovalType(ctx.worker.workspaceId, approvalId, String(params.type ?? ''));
+        if (type === 'email') {
+          const result = await pool.query(
+            `UPDATE worker_email_approvals
+             SET draft_body = $3, modified_body = $3, decision = 'modified'
+             WHERE workspace_id = $1 AND id = $2 AND status = 'pending'
+             RETURNING *`,
+            [ctx.worker.workspaceId, approvalId, body],
+          );
+          return result.rows[0] ? { ok: true, type, approval: result.rows[0] } : { ok: false, error: 'Approval not found or already resolved' };
+        }
+        if (type === 'social') {
+          const { patchSocialApprovalDraft } = await import('../ingestion/social/social-send-on-approve.js');
+          const approval = await patchSocialApprovalDraft({
+            workspaceId: ctx.worker.workspaceId,
+            approvalId,
+            draftText: body,
+          });
+          return approval ? { ok: true, type, approval } : { ok: false, error: 'Approval not found or already resolved' };
+        }
+        return { ok: false, error: 'Approval not found' };
+      },
+    },
+    {
+      name: 'workspace-approval-approve',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Approve a pending email or social approval and release the action.',
+      parameters: {
+        type: 'object',
+        properties: {
+          approvalId: { type: 'string' },
+          type: { type: 'string', enum: ['email', 'social'] },
+          modifiedBody: { type: 'string' },
+        },
+        required: ['approvalId'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const approvalId = String(params.approvalId ?? params.id ?? '').trim();
+        const type = await getApprovalType(ctx.worker.workspaceId, approvalId, String(params.type ?? ''));
+        if (type === 'email') {
+          const { sendApprovedEmail } = await import('../ingestion/email/email-draft-handler.js');
+          const approval = await sendApprovedEmail({
+            workspaceId: ctx.worker.workspaceId,
+            approvalId,
+            reviewedBy: ctx.contactId ?? 'workspace_owner',
+            modifiedBody: typeof params.modifiedBody === 'string' ? params.modifiedBody : undefined,
+          });
+          return approval ? { ok: true, type, approval } : { ok: false, error: 'Approval not found or already resolved' };
+        }
+        if (type === 'social') {
+          const { approveSocialApproval } = await import('../ingestion/social/social-send-on-approve.js');
+          const approval = await approveSocialApproval({
+            workspaceId: ctx.worker.workspaceId,
+            approvalId,
+            decisionBy: ctx.contactId ?? 'workspace_owner',
+            modifiedDraft: typeof params.modifiedBody === 'string' ? params.modifiedBody : undefined,
+          });
+          return approval ? { ok: true, type, approval } : { ok: false, error: 'Approval not found or already resolved' };
+        }
+        return { ok: false, error: 'Approval not found' };
+      },
+    },
+    {
+      name: 'workspace-approval-reject',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Reject a pending email or social approval.',
+      parameters: {
+        type: 'object',
+        properties: {
+          approvalId: { type: 'string' },
+          type: { type: 'string', enum: ['email', 'social'] },
+        },
+        required: ['approvalId'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const approvalId = String(params.approvalId ?? params.id ?? '').trim();
+        const type = await getApprovalType(ctx.worker.workspaceId, approvalId, String(params.type ?? ''));
+        if (type === 'email') {
+          const { rejectEmailApproval } = await import('../ingestion/email/email-draft-handler.js');
+          const approval = await rejectEmailApproval({
+            workspaceId: ctx.worker.workspaceId,
+            approvalId,
+            reviewedBy: ctx.contactId ?? 'workspace_owner',
+          });
+          return approval ? { ok: true, type, approval } : { ok: false, error: 'Approval not found or already resolved' };
+        }
+        if (type === 'social') {
+          const { rejectSocialApproval } = await import('../ingestion/social/social-send-on-approve.js');
+          const approval = await rejectSocialApproval({
+            workspaceId: ctx.worker.workspaceId,
+            approvalId,
+            decisionBy: ctx.contactId ?? 'workspace_owner',
+          });
+          return approval ? { ok: true, type, approval } : { ok: false, error: 'Approval not found or already resolved' };
+        }
+        return { ok: false, error: 'Approval not found' };
+      },
+    },
+    {
+      name: 'workspace-worker-get',
+      description: 'Read this Aiva worker settings and capability state.',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { getWorker } = await import('../workers/worker-store.js');
+        return { ok: true, worker: await getWorker(ctx.worker.workspaceId, ctx.worker.id) };
+      },
+    },
+    {
+      name: 'workspace-worker-update',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Update this Aiva worker name, role, persona, language, skill packs, or worker config.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          roleDescription: { type: 'string' },
+          personaPrompt: { type: 'string' },
+          language: { type: 'string' },
+          skillPacks: { type: 'array', items: { type: 'string' } },
+          workerConfig: { type: 'object' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const patch: Record<string, unknown> = {};
+        if (typeof params.name === 'string') patch.name = params.name.trim();
+        if (typeof params.roleDescription === 'string') patch.roleDescription = params.roleDescription.trim();
+        if (typeof params.personaPrompt === 'string') patch.personaPrompt = params.personaPrompt;
+        if (typeof params.language === 'string') patch.language = params.language.trim();
+        if (Array.isArray(params.skillPacks)) patch.skillPacks = params.skillPacks.filter((x): x is string => typeof x === 'string');
+        if (params.workerConfig && typeof params.workerConfig === 'object') {
+          patch.workerConfig = {
+            ...(ctx.worker.workerConfig ?? {}),
+            ...(params.workerConfig as Record<string, unknown>),
+          };
+        }
+        const { updateWorker } = await import('../workers/worker-store.js');
+        return { ok: true, worker: await updateWorker(ctx.worker.workspaceId, ctx.worker.id, patch) };
+      },
+    },
+    {
+      name: 'workspace-worker-pause',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Pause this Aiva worker.',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { pauseWorker } = await import('../workers/worker-store.js');
+        await pauseWorker(ctx.worker.workspaceId, ctx.worker.id);
+        return { ok: true, status: 'paused' };
+      },
+    },
+    {
+      name: 'workspace-worker-resume',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Resume this Aiva worker.',
+      parameters: { type: 'object', properties: {} },
+      execute: async () => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { resumeWorker } = await import('../workers/worker-store.js');
+        await resumeWorker(ctx.worker.workspaceId, ctx.worker.id);
+        return { ok: true, status: 'active' };
+      },
+    },
+    {
+      name: 'workspace-worker-voice-settings-update',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Update this Aiva Telegram voice preference. Default should be text unless the user asks for audio.',
+      parameters: {
+        type: 'object',
+        properties: {
+          preferVoiceReplies: { type: 'boolean' },
+          askBeforeVoice: { type: 'boolean' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const workerConfig = {
+          ...(ctx.worker.workerConfig ?? {}),
+          telegram: {
+            ...((ctx.worker.workerConfig?.telegram as Record<string, unknown> | undefined) ?? {}),
+            preferVoiceReplies: Boolean(params.preferVoiceReplies),
+            askBeforeVoice: params.askBeforeVoice !== false,
+          },
+        };
+        const { updateWorker } = await import('../workers/worker-store.js');
+        return { ok: true, worker: await updateWorker(ctx.worker.workspaceId, ctx.worker.id, { workerConfig }) };
+      },
+    },
+    {
+      name: 'workspace-worker-skill-enable',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Enable a skill pack for this Aiva worker.',
+      parameters: {
+        type: 'object',
+        properties: { skillPack: { type: 'string' } },
+        required: ['skillPack'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const skillPack = String(params.skillPack ?? params.id ?? '').trim();
+        if (!skillPack) return { ok: false, error: 'skillPack required' };
+        const skillPacks = Array.from(new Set([...(ctx.worker.skillPacks ?? []), skillPack]));
+        const { updateWorker } = await import('../workers/worker-store.js');
+        return { ok: true, worker: await updateWorker(ctx.worker.workspaceId, ctx.worker.id, { skillPacks }) };
+      },
+    },
+    {
+      name: 'workspace-worker-skill-disable',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Disable a skill pack for this Aiva worker.',
+      parameters: {
+        type: 'object',
+        properties: { skillPack: { type: 'string' } },
+        required: ['skillPack'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const skillPack = String(params.skillPack ?? params.id ?? '').trim();
+        if (!skillPack) return { ok: false, error: 'skillPack required' };
+        const skillPacks = (ctx.worker.skillPacks ?? []).filter((item) => item !== skillPack);
+        const { updateWorker } = await import('../workers/worker-store.js');
+        return { ok: true, worker: await updateWorker(ctx.worker.workspaceId, ctx.worker.id, { skillPacks }) };
+      },
+    },
+    {
+      name: 'workspace-worker-scout-mode-update',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Update Scout mode for this Aiva in workerConfig. Use monitoring_only to stop defensive blocking, or defense_enabled to restore defensive actions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['monitoring_only', 'defense_enabled'] },
+        },
+        required: ['mode'],
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const mode = String(params.mode ?? '').trim();
+        if (mode !== 'monitoring_only' && mode !== 'defense_enabled') {
+          return { ok: false, error: 'mode must be monitoring_only or defense_enabled' };
+        }
+        const currentConfig = (ctx.worker.workerConfig ?? {}) as Record<string, unknown>;
+        const workerConfig = {
+          ...currentConfig,
+          scout: {
+            ...((currentConfig.scout as Record<string, unknown> | undefined) ?? {}),
+            mode,
+            defenseEnabled: mode === 'defense_enabled',
+            monitoringOnly: mode === 'monitoring_only',
+          },
+        };
+        const { updateWorker } = await import('../workers/worker-store.js');
+        return {
+          ok: true,
+          worker: await updateWorker(ctx.worker.workspaceId, ctx.worker.id, { workerConfig: workerConfig as never }),
+        };
       },
     },
   ];

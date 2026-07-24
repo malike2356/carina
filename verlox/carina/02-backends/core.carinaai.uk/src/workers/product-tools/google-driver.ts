@@ -253,11 +253,11 @@ export async function invokeGoogleAction(opts: {
       const parentId = String(opts.input?.parentId ?? opts.input?.folderId ?? '').trim();
       const mime = String(opts.input?.mimeType ?? 'application/vnd.google-apps.document');
       const bodyText = String(opts.input?.content ?? opts.input?.body ?? '');
-      if (!parentId) return { ok: false, data: null, error: 'parentId (folder) is required' };
       if (mime.includes('folder')) {
-        const folder = await createDriveFolder({ accessToken, name: title, parentId });
+        const folder = await createDriveFolder({ accessToken, name: title, parentId: parentId || undefined });
         return { ok: true, data: folder };
       }
+      if (!parentId) return { ok: false, data: null, error: 'parentId (folder) is required for document creation' };
       const doc = await createGoogleDoc({ accessToken, title, parentId, bodyText });
       return { ok: true, data: doc };
     }
@@ -276,6 +276,58 @@ export async function invokeGoogleAction(opts: {
       if (!fileId) return { ok: false, data: null, error: 'fileId is required' };
       await updateGoogleDocText({ accessToken, documentId: fileId, bodyText });
       return { ok: true, data: { id: fileId, updated: true } };
+    }
+    if (opts.toolSlug === 'google-drive' && opts.action === 'move') {
+      const fileId = String(opts.input?.fileId ?? opts.input?.id ?? '').trim();
+      const parentId = String(opts.input?.parentId ?? opts.input?.folderId ?? '').trim();
+      if (!fileId || !parentId) return { ok: false, data: null, error: 'fileId and parentId are required' };
+      const metaRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=parents&supportsAllDrives=true`,
+        { headers, signal: AbortSignal.timeout(15000) },
+      );
+      const meta = await metaRes.json() as { parents?: string[] };
+      if (!metaRes.ok) return { ok: false, data: meta, error: JSON.stringify(meta) };
+      const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
+      url.searchParams.set('addParents', parentId);
+      if (Array.isArray(meta.parents) && meta.parents.length > 0) {
+        url.searchParams.set('removeParents', meta.parents.join(','));
+      }
+      url.searchParams.set('fields', 'id,name,mimeType,modifiedTime,webViewLink,parents');
+      url.searchParams.set('supportsAllDrives', 'true');
+      const res = await fetch(url, {
+        method: 'PATCH',
+        headers,
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'google-drive' && opts.action === 'delete') {
+      const { trashDriveFile } = await import('../../aiva/workspace-ops/drive-client.js');
+      const fileId = String(opts.input?.fileId ?? opts.input?.id ?? '').trim();
+      if (!fileId) return { ok: false, data: null, error: 'fileId is required' };
+      await trashDriveFile(accessToken, fileId);
+      return { ok: true, data: { id: fileId, trashed: true } };
+    }
+    if (opts.toolSlug === 'google-drive' && opts.action === 'share') {
+      const fileId = String(opts.input?.fileId ?? opts.input?.id ?? '').trim();
+      const emailAddress = String(opts.input?.emailAddress ?? opts.input?.email ?? '').trim();
+      const role = String(opts.input?.role ?? 'reader').trim();
+      if (!fileId || !emailAddress) return { ok: false, data: null, error: 'fileId and emailAddress are required' };
+      if (!['reader', 'commenter', 'writer'].includes(role)) {
+        return { ok: false, data: null, error: 'role must be reader, commenter, or writer' };
+      }
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/permissions?supportsAllDrives=true&sendNotificationEmail=true`,
+        {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'user', role, emailAddress }),
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
     if (opts.toolSlug === 'google-sheets' && (opts.action === 'read' || opts.action === 'list')) {
       // Probe uses spreadsheets endpoint; list spreadsheets via Drive query when no spreadsheetId
