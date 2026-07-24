@@ -116,6 +116,21 @@ export async function getWorkspaceInventory(input: {
   params.set('limit', String(Math.min(50, Math.max(1, input.limit ?? 10))));
   const result = await appFetch(`/api/internal/workspace/inventory?${params}`);
   if (!result.ok) {
+    if (result.status === 404 || result.status === 503) {
+      const sections = await getCoreInventorySections(
+        input.workspaceId,
+        input.workerId,
+        Math.min(50, Math.max(1, input.limit ?? 10)),
+      );
+      return {
+        ok: true,
+        data: {
+          workspaceId: input.workspaceId,
+          sections,
+          source: 'core',
+        },
+      };
+    }
     return { ok: false, error: String(result.json.error ?? `HTTP ${result.status}`) };
   }
   const data = await mergeCoreInventorySections(result.json.data, input);
