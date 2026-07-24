@@ -525,6 +525,30 @@ function createCalendarTools(sessionId: string): Tool[] {
 function createWorkspaceSurfaceTools(sessionId: string): Tool[] {
   return [
     {
+      name: 'workspace-inventory',
+      description:
+        'Get a cross-module inventory of the Aiva workspace. '
+        + 'Use this when the user asks what is in their workspace, whether you have full workspace access, '
+        + 'or asks for a broad audit across documents, research, email, notes, memory, calendar, schedules, '
+        + 'chats, Aivas, channels, automations, approvals, and skills. '
+        + 'If a section is unavailable, report that specific section as unavailable instead of claiming full access.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'number', description: 'Max items per section, 1 to 50. Default 10.' },
+        },
+      },
+      execute: async (params) => {
+        const ctx = getWorkerSessionContext(sessionId);
+        if (!ctx) return { ok: false, error: 'No worker session context' };
+        const { getWorkspaceInventory } = await import('../workers/aiva-workspace-surfaces.js');
+        return getWorkspaceInventory({
+          workspaceId: ctx.worker.workspaceId,
+          limit: Number(params.limit ?? 10),
+        });
+      },
+    },
+    {
       name: 'workspace-research-create',
       description:
         'Create a deep research job in the Aiva workspace Research page. '

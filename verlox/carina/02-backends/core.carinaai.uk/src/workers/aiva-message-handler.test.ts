@@ -96,6 +96,11 @@ describe('aiva-message-handler Propreneur bridge tools', () => {
     const { isToolAllowedForWorker } = await import('./aiva-message-handler.js');
     expect(isToolAllowedForWorker('remember', sessionId)).toBe(true);
   });
+
+  it('always allows workspace inventory for Aiva workers', async () => {
+    const { isToolAllowedForWorker } = await import('./aiva-message-handler.js');
+    expect(isToolAllowedForWorker('workspace-inventory', sessionId)).toBe(true);
+  });
 });
 
 describe('propreneur write tools', () => {

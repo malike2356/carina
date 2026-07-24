@@ -104,3 +104,16 @@ export async function listWorkspaceDocuments(input: {
   }
   return { ok: true, data: result.json.data };
 }
+
+export async function getWorkspaceInventory(input: {
+  workspaceId: string;
+  limit?: number;
+}): Promise<{ ok: boolean; data?: unknown; error?: string }> {
+  const params = new URLSearchParams({ workspaceId: input.workspaceId });
+  params.set('limit', String(Math.min(50, Math.max(1, input.limit ?? 10))));
+  const result = await appFetch(`/api/internal/workspace/inventory?${params}`);
+  if (!result.ok) {
+    return { ok: false, error: String(result.json.error ?? `HTTP ${result.status}`) };
+  }
+  return { ok: true, data: result.json.data };
+}
