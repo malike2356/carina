@@ -127,6 +127,8 @@ export interface AivaChannelCard {
   identifier?: string;
   active?: boolean;
   connected: boolean;
+  verified?: boolean;
+  connectionStatus?: 'disconnected' | 'oauth_pending' | 'configured' | 'connected' | 'token_expired';
   messageCount?: number;
 }
 
@@ -153,6 +155,17 @@ export interface AivaEmployeeMessage {
   sender: 'user' | 'employee' | 'system';
   content: string;
   createdAt: string;
+}
+
+export interface AivaConversation {
+  id: string;
+  workerId: string;
+  title: string;
+  contactId: string;
+  messageCount: number;
+  lastMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AivaEmployeeTask {

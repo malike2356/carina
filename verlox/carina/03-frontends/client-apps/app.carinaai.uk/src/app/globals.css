@@ -38,6 +38,13 @@
   --message-gap: 16px;
 }
 
+.lab-bg::before {
+  overflow: hidden;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-sizing: border-box;
+}
+
 .google-auth-btn {
   display: inline-flex;
   align-items: center;

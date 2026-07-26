@@ -13,8 +13,10 @@ const ALLOWED_ROOTS = new Set([
   'comanagers',
   'transfer',
   'memories',
+  'learning',
   'direct-thread',
   'direct-messages',
+  'direct-conversations',
 ]);
 
 function corePath(workerId: string, rest: string[]): string | null {

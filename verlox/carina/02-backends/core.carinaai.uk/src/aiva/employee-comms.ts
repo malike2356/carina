@@ -28,6 +28,17 @@ export interface EmployeeThreadMessage {
   createdAt: string;
 }
 
+export interface EmployeeConversation {
+  id: string;
+  workerId: string;
+  title: string;
+  contactId: string;
+  messageCount: number;
+  lastMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EmployeeTask {
   id: string;
   workerId: string;
@@ -125,11 +136,15 @@ export async function ensureEmployeeCommsSchema(): Promise<void> {
           worker_id UUID NOT NULL REFERENCES ai_workers(id) ON DELETE CASCADE,
           contact_id TEXT NOT NULL DEFAULT 'app',
           channel TEXT NOT NULL DEFAULT 'web',
+          title TEXT NOT NULL DEFAULT 'New chat',
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           UNIQUE (workspace_id, worker_id, contact_id, channel)
         )
       `);
+      await pool.query(
+        "ALTER TABLE aiva_employee_threads ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT 'New chat'",
+      );
       await pool.query(`
         CREATE TABLE IF NOT EXISTS aiva_employee_messages (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -242,6 +257,89 @@ export async function getOrCreateEmployeeThread(
     [workspaceId, workerId, contactId, channel],
   );
   return String(result.rows[0].id);
+}
+
+function rowConversation(row: Record<string, unknown>): EmployeeConversation {
+  return {
+    id: String(row.id),
+    workerId: String(row.worker_id),
+    title: String(row.title || (row.contact_id === 'app' ? 'Previous chat' : 'New chat')),
+    contactId: String(row.contact_id),
+    messageCount: Number(row.message_count ?? 0),
+    lastMessage: row.last_message ? String(row.last_message) : null,
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+  };
+}
+
+export async function listEmployeeConversations(
+  workspaceId: string,
+  workerId: string,
+): Promise<EmployeeConversation[]> {
+  await ensureEmployeeCommsSchema();
+  const result = await pool.query(
+    `SELECT t.*,
+            COUNT(m.id)::int AS message_count,
+            (ARRAY_AGG(m.content ORDER BY m.created_at DESC)
+              FILTER (WHERE m.id IS NOT NULL))[1] AS last_message
+     FROM aiva_employee_threads t
+     LEFT JOIN aiva_employee_messages m ON m.thread_id = t.id
+     WHERE t.workspace_id = $1 AND t.worker_id = $2 AND t.channel = 'web'
+     GROUP BY t.id
+     ORDER BY t.updated_at DESC`,
+    [workspaceId, workerId],
+  );
+  return result.rows.map(rowConversation);
+}
+
+export async function createEmployeeConversation(
+  workspaceId: string,
+  workerId: string,
+): Promise<EmployeeConversation> {
+  await ensureEmployeeCommsSchema();
+  const worker = await getWorker(workspaceId, workerId);
+  if (!worker) throw new Error('Worker not found');
+  const contactId = `app:${randomUUID()}`;
+  const result = await pool.query(
+    `INSERT INTO aiva_employee_threads (workspace_id, worker_id, contact_id, channel, title)
+     VALUES ($1, $2, $3, 'web', 'New chat')
+     RETURNING *, 0::int AS message_count, NULL::text AS last_message`,
+    [workspaceId, workerId, contactId],
+  );
+  return rowConversation(result.rows[0]);
+}
+
+export async function renameEmployeeConversation(
+  workspaceId: string,
+  workerId: string,
+  conversationId: string,
+  title: string,
+): Promise<EmployeeConversation | null> {
+  await ensureEmployeeCommsSchema();
+  const cleanTitle = title.trim().slice(0, 80);
+  if (!cleanTitle) throw new Error('Conversation title is required');
+  const result = await pool.query(
+    `UPDATE aiva_employee_threads
+     SET title = $4, updated_at = NOW()
+     WHERE id = $1 AND workspace_id = $2 AND worker_id = $3 AND channel = 'web'
+     RETURNING *, 0::int AS message_count, NULL::text AS last_message`,
+    [conversationId, workspaceId, workerId, cleanTitle],
+  );
+  return result.rowCount ? rowConversation(result.rows[0]) : null;
+}
+
+export async function deleteEmployeeConversation(
+  workspaceId: string,
+  workerId: string,
+  conversationId: string,
+): Promise<boolean> {
+  await ensureEmployeeCommsSchema();
+  const result = await pool.query(
+    `DELETE FROM aiva_employee_threads
+     WHERE id = $1 AND workspace_id = $2 AND worker_id = $3 AND channel = 'web'`,
+    [conversationId, workspaceId, workerId],
+  );
+  return Boolean(result.rowCount);
 }
 
 async function appendMessage(input: {
@@ -369,6 +467,16 @@ export async function sendEmployeeMessage(input: {
     content: reply || 'I am unable to respond right now.',
     contactId,
   });
+  await pool.query(
+    `UPDATE aiva_employee_threads
+     SET title = CASE
+           WHEN title = 'New chat' THEN LEFT($2, 80)
+           ELSE title
+         END,
+         updated_at = NOW()
+     WHERE id = $1`,
+    [threadId, content],
+  );
   await logActivity(input.workerId, {
     actionType: 'message_sent',
     summary: 'Direct app reply sent',

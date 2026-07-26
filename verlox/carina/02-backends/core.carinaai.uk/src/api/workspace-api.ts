@@ -58,8 +58,6 @@ import {
 } from '../workers/aiva-subscription-store.js';
 import { listAivaInvoices } from '../billing/aiva-billing-store.js';
 import {
-  countWorkers,
-  sendAivaCreatedEmail,
   sendWelcomeEmail,
 } from '../email/email-triggers.js';
 import {
@@ -120,14 +118,24 @@ import { provisioningWizardRouter } from './provisioning-wizard-api.js';
 import { mountSpinnableParityRoutes } from './spinnable-parity-api.js';
 import {
   assignEmployeeTask,
+  createEmployeeConversation,
+  deleteEmployeeConversation,
   getEmployeeProfile,
+  listEmployeeConversations,
   listEmployeeDirectory,
   listEmployeeEvents,
   listEmployeeTasks,
   listEmployeeThreadMessages,
+  renameEmployeeConversation,
   sendEmployeeMessage,
   updateEmployeeTask,
 } from '../aiva/employee-comms.js';
+import {
+  approveAivaLearningItem,
+  listAivaLearning,
+  removeAivaLearningItem,
+  runAivaDailyLearningReview,
+} from '../memory/aiva/learning-loop.js';
 import {
   getLatestWhatsAppWebPairing,
   revokeWhatsAppWebPairing,
@@ -169,7 +177,12 @@ const ALL_CHANNEL_TYPES = [
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-type ChannelConnectionStatus = 'disconnected' | 'oauth_pending' | 'connected' | 'token_expired';
+type ChannelConnectionStatus =
+  | 'disconnected'
+  | 'oauth_pending'
+  | 'configured'
+  | 'connected'
+  | 'token_expired';
 
 function resolveChannelConnectionStatus(
   type: string,
@@ -197,7 +210,7 @@ function resolveChannelConnectionStatus(
       }
     }
   }
-  return 'connected';
+  return row.verified ? 'connected' : 'configured';
 }
 
 async function assertCanHireWorker(workspaceId: string): Promise<void> {
@@ -377,17 +390,6 @@ aivaRouter.post('/workers', requireWorkspace, async (req: AivaRequest, res: Resp
       console.warn('[aiva-api] hire onboarding messages failed:', err);
     });
 
-    const workerCount = await countWorkers(workspaceId);
-    const onboardingComplete = req.body?.onboardingComplete === true;
-    if (workerCount === 1 && !onboardingComplete) {
-      void sendAivaCreatedEmail({
-        workspaceId,
-        workerName: worker.name,
-        role: roleDescription,
-        workerId: worker.id,
-      }).catch((err) => console.error('[aiva-api] aiva created email failed:', err));
-    }
-
     res.status(201).json({ worker: await getWorker(workspaceId, worker.id) });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -466,6 +468,58 @@ async function handleEmployeeMessage(req: AivaRequest, res: Response): Promise<v
   }
 }
 
+async function handleListEmployeeConversations(req: AivaRequest, res: Response): Promise<void> {
+  const conversations = await listEmployeeConversations(
+    req.workspaceId!,
+    routeParam(req.params.id),
+  );
+  res.json({ conversations });
+}
+
+async function handleCreateEmployeeConversation(req: AivaRequest, res: Response): Promise<void> {
+  try {
+    const conversation = await createEmployeeConversation(
+      req.workspaceId!,
+      routeParam(req.params.id),
+    );
+    res.status(201).json({ conversation });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(msg.includes('not found') ? 404 : 400).json({ error: msg });
+  }
+}
+
+async function handleRenameEmployeeConversation(req: AivaRequest, res: Response): Promise<void> {
+  try {
+    const conversation = await renameEmployeeConversation(
+      req.workspaceId!,
+      routeParam(req.params.id),
+      routeParam(req.params.conversationId),
+      String(req.body?.title ?? ''),
+    );
+    if (!conversation) {
+      res.status(404).json({ error: 'Conversation not found' });
+      return;
+    }
+    res.json({ conversation });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+async function handleDeleteEmployeeConversation(req: AivaRequest, res: Response): Promise<void> {
+  const deleted = await deleteEmployeeConversation(
+    req.workspaceId!,
+    routeParam(req.params.id),
+    routeParam(req.params.conversationId),
+  );
+  if (!deleted) {
+    res.status(404).json({ error: 'Conversation not found' });
+    return;
+  }
+  res.status(204).end();
+}
+
 async function handleListEmployeeTasks(req: AivaRequest, res: Response): Promise<void> {
   const tasks = await listEmployeeTasks(req.workspaceId!, routeParam(req.params.id), {
     status: typeof req.query.status === 'string' ? req.query.status : undefined,
@@ -525,10 +579,90 @@ aivaRouter.get('/employees/:id/events', requireWorkspace, handleListEmployeeEven
 
 aivaRouter.get('/workers/:id/direct-thread', requireWorkspace, handleEmployeeThread);
 aivaRouter.post('/workers/:id/direct-messages', requireWorkspace, handleEmployeeMessage);
+aivaRouter.get('/workers/:id/direct-conversations', requireWorkspace, handleListEmployeeConversations);
+aivaRouter.post('/workers/:id/direct-conversations', requireWorkspace, handleCreateEmployeeConversation);
+aivaRouter.patch('/workers/:id/direct-conversations/:conversationId', requireWorkspace, handleRenameEmployeeConversation);
+aivaRouter.delete('/workers/:id/direct-conversations/:conversationId', requireWorkspace, handleDeleteEmployeeConversation);
 aivaRouter.get('/workers/:id/direct-tasks', requireWorkspace, handleListEmployeeTasks);
 aivaRouter.post('/workers/:id/direct-tasks', requireWorkspace, handleAssignEmployeeTask);
 aivaRouter.patch('/workers/:id/direct-tasks/:taskId', requireWorkspace, handleUpdateEmployeeTask);
 aivaRouter.get('/workers/:id/direct-events', requireWorkspace, handleListEmployeeEvents);
+
+aivaRouter.get('/workers/:id/learning', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const workerId = routeParam(req.params.id);
+  const workspaceId = req.workspaceId!;
+  const worker = await getWorker(workspaceId, workerId);
+  if (!worker) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  const status = String(req.query.status ?? 'all');
+  const data = await listAivaLearning({
+    workspaceId,
+    workerId,
+    status: ['pending', 'approved', 'removed', 'auto_saved'].includes(status)
+      ? status as 'pending' | 'approved' | 'removed' | 'auto_saved'
+      : 'all',
+    limit: parseInt(String(req.query.limit ?? '50'), 10) || 50,
+  });
+  res.json(data);
+});
+
+aivaRouter.post('/workers/:id/learning/review', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const workerId = routeParam(req.params.id);
+  const workspaceId = req.workspaceId!;
+  const worker = await getWorker(workspaceId, workerId);
+  if (!worker) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  const result = await runAivaDailyLearningReview({ workspaceId, workerId });
+  const data = await listAivaLearning({ workspaceId, workerId, status: 'all', limit: 50 });
+  res.json({ result, ...data });
+});
+
+aivaRouter.post('/workers/:id/learning/:learningId/approve', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const workerId = routeParam(req.params.id);
+  const workspaceId = req.workspaceId!;
+  const worker = await getWorker(workspaceId, workerId);
+  if (!worker) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  const item = await approveAivaLearningItem({
+    workspaceId,
+    workerId,
+    learningId: routeParam(req.params.learningId),
+    reviewedBy: typeof req.body?.reviewedBy === 'string' ? req.body.reviewedBy : 'owner',
+  });
+  if (!item) {
+    res.status(404).json({ error: 'Learning item not found' });
+    return;
+  }
+  res.json({ item });
+});
+
+aivaRouter.post('/workers/:id/learning/:learningId/remove', requireWorkspace, async (req: AivaRequest, res: Response) => {
+  const workerId = routeParam(req.params.id);
+  const workspaceId = req.workspaceId!;
+  const worker = await getWorker(workspaceId, workerId);
+  if (!worker) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  const item = await removeAivaLearningItem({
+    workspaceId,
+    workerId,
+    learningId: routeParam(req.params.learningId),
+    reviewedBy: typeof req.body?.reviewedBy === 'string' ? req.body.reviewedBy : 'owner',
+    removeMemory: req.body?.removeMemory !== false,
+  });
+  if (!item) {
+    res.status(404).json({ error: 'Learning item not found' });
+    return;
+  }
+  res.json({ item });
+});
 
 aivaRouter.get('/workers/:id', requireWorkspace, async (req: AivaRequest, res: Response) => {
   const workerId = routeParam(req.params.id);
@@ -618,22 +752,36 @@ aivaRouter.patch('/workers/:id', requireWorkspace, async (req: AivaRequest, res:
       return;
     }
 
+    const incomingConfig =
+      req.body?.workerConfig && typeof req.body.workerConfig === 'object'
+        ? (req.body.workerConfig as Record<string, unknown>)
+        : null;
+    const existingConfig = (existing.workerConfig ?? {}) as Record<string, unknown>;
+    const mergedTelegram =
+      incomingConfig?.telegram && typeof incomingConfig.telegram === 'object'
+        ? {
+            ...((existingConfig.telegram as Record<string, unknown> | undefined) ?? {}),
+            ...(incomingConfig.telegram as Record<string, unknown>),
+          }
+        : undefined;
+
     const worker = await updateWorker(req.workspaceId!, workerId, {
       name: roleName,
       roleDescription,
       personaPrompt,
       language: req.body?.language ? String(req.body.language) : undefined,
-      workerConfig: req.body?.workerConfig && typeof req.body.workerConfig === 'object'
+      workerConfig: incomingConfig
         ? {
-            ...(existing.workerConfig ?? {}),
-            ...(req.body.workerConfig as Record<string, unknown>),
+            ...existingConfig,
+            ...incomingConfig,
+            ...(mergedTelegram ? { telegram: mergedTelegram } : {}),
             ...(req.body?.permissions && typeof req.body.permissions === 'object'
               ? { permissions: req.body.permissions }
               : {}),
           }
         : req.body?.permissions && typeof req.body.permissions === 'object'
           ? {
-              ...(existing.workerConfig ?? {}),
+              ...existingConfig,
               permissions: req.body.permissions,
             }
           : undefined,
@@ -732,14 +880,14 @@ aivaRouter.get('/workers/:id/channels', requireWorkspace, async (req: AivaReques
   const channels = ALL_CHANNEL_TYPES.map((type) => {
     const row = rowByType.get(type as typeof rows[number]['channel']);
     const connectionStatus = resolveChannelConnectionStatus(type, worker.channels, row);
-    const connected = connectionStatus === 'connected' || connectionStatus === 'token_expired';
+    const configured = connectionStatus !== 'disconnected' && connectionStatus !== 'oauth_pending';
     return {
       id: row?.id ?? type,
       type,
       label: CHANNEL_LABELS[type] ?? type,
       identifier: row?.identifier,
       active: row?.enabled ?? worker.channels.includes(type),
-      connected,
+      connected: configured,
       verified: row?.verified ?? false,
       connectionStatus,
     };
