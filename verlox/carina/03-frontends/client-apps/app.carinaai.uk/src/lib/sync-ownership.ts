@@ -36,7 +36,7 @@ export const EMAIL_ORIGIN_HELPER_TEXT =
   'Aiva mail is what Aiva drafted or sent. Google mail is imported from Gmail and is not rewritten without approval.';
 
 export const TASKS_ORIGIN_HELPER_TEXT =
-  'Aiva tasks are workspace automations Aiva manages. Local tasks stay in this workspace. Google Tasks list import awaits the Tasks API.';
+  'Workspace schedules keep the workspace tidy (calendar sync, memory tidy). They are not the same as an Aiva\'s Automations tab (morning digests and that employee\'s own routines).';
 
 export const DOCUMENTS_ORIGIN_HELPER_TEXT =
   'Aiva docs are Ops pack files Aiva manages. Google docs are imported from Drive and stay read-mostly unless you Record or approve edits.';
@@ -128,9 +128,8 @@ export function classifyEmailOrigin(row: {
   source?: string | null;
 }): SyncOrigin {
   const source = String(row.source ?? '').trim().toLowerCase();
-  if (source === 'aiva' || source === 'google' || source === 'local') {
-    return source;
-  }
+  if (source === 'aiva' || source.startsWith('aiva-')) return 'aiva';
+  if (source === 'google' || source === 'local') return source;
   const status = String(row.status ?? '').toLowerCase();
   if (status === 'draft_reply' || status === 'sent') return 'aiva';
   const externalId = row.externalId?.trim();
