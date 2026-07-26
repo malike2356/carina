@@ -21,7 +21,7 @@ import {
 /** Defaults when billing_config / env unset. Keep trial tiny (solopreneur-safe ~£1). */
 export const MESSAGE_LIMITS_BY_TIER: Record<string, number> = {
   trial: 20,
-  starter: 2000,
+  starter: 1000,
   team: 10000,
   business: Number.POSITIVE_INFINITY,
 };

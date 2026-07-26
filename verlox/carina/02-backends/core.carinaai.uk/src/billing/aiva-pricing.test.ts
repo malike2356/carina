@@ -16,7 +16,7 @@ describe('getAivaPricingPlans', () => {
     expect(plans[2]?.monthlyAmountPence).toBe(gbpToPence(199));
     expect(plans[0]?.slotLimit).toBe(2);
     expect(plans[1]?.slotLimit).toBe(5);
-    expect(slotLimitForTier('starter')).toBe(2);
+    expect(slotLimitForTier('starter')).toBe(1);
     expect(slotLimitForTier('team')).toBe(5);
   });
 

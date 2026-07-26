@@ -45,7 +45,7 @@ describe('aiva-plan-gates', () => {
 
   it('gives business an unlimited slot limit', () => {
     expect(slotLimitForTier('business')).toBeNull();
-    expect(slotLimitForTier('starter')).toBe(2);
+    expect(slotLimitForTier('starter')).toBe(1);
     expect(slotLimitForTier('growth')).toBe(5);
   });
 

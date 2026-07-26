@@ -68,7 +68,7 @@ describe('usage-service', () => {
       await import('./usage-service.js');
     expect(MESSAGE_LIMITS_BY_TIER).toMatchObject({
       trial: 20,
-      starter: 2000,
+      starter: 1000,
       team: 10000,
     });
     expect(messageLimit('business')).toBe(Number.POSITIVE_INFINITY);

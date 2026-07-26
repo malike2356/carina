@@ -27,7 +27,8 @@ export function slotLimitForTier(tier: string): number | null {
   const normalized = normalizeAivaTier(tier);
   if (normalized === 'business') return null;
   if (normalized === 'team') return 5;
-  if (normalized === 'starter' || normalized === 'prompt_rate') return 2;
+  if (normalized === 'prompt_rate') return 2;
+  if (normalized === 'starter') return 1;
   return 1;
 }
 
