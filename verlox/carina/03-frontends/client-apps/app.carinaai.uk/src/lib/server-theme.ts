@@ -8,23 +8,25 @@ import {
 } from '@/lib/theme-runtime';
 import { isAivaProductHost } from '@/lib/product-surface';
 
-const AIVA_DEFAULT_THEME = 'modern-minimal';
+const AIVA_DEFAULT_THEME = 'amber-minimal';
 const AIVA_DEFAULT_MODE: ThemeMode = 'light';
 
 export async function resolveServerThemePreference(): Promise<{ themeId: string; mode: ThemeMode }> {
   const cookieStore = await cookies();
   const themeRaw = cookieStore.get('carina_theme')?.value;
   const modeRaw = cookieStore.get('carina_theme_mode')?.value;
+  const explicitTheme = cookieStore.get('carina_theme_explicit')?.value === '1';
+  const host = (await headers()).get('host') ?? '';
+  const isAivaProduct = isAivaProductHost(host);
 
-  if (themeRaw || modeRaw) {
+  if ((themeRaw || modeRaw) && (!isAivaProduct || explicitTheme)) {
     return {
       themeId: normalizeThemeId(themeRaw ?? DEFAULT_MULTI_THEME),
       mode: normalizeThemeMode(modeRaw, themeRaw),
     };
   }
 
-  const host = (await headers()).get('host') ?? '';
-  if (isAivaProductHost(host)) {
+  if (isAivaProduct) {
     return { themeId: AIVA_DEFAULT_THEME, mode: AIVA_DEFAULT_MODE };
   }
 

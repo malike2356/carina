@@ -6,12 +6,14 @@ import { appearanceToCSS, normalizeAppearance, type AppearanceSettings } from '@
 import type { ResolvedBrand } from '@/lib/brand';
 import {
   applyThemePreferenceAsync,
+  hasExplicitThemePreference,
   readCookieThemePreference,
   readStoredThemePreference,
   storeThemePreference,
   type ThemePreference,
 } from '@/lib/theme-runtime';
 import { DEFAULT_THEME } from '@/lib/themes';
+import { useIsAivaProduct } from '@/hooks/useProductSurface';
 
 function applyBrandTokens(colorTokens: Record<string, string> | undefined) {
   if (!colorTokens || typeof document === 'undefined') return;
@@ -31,8 +33,12 @@ function applyAppearance(appearance: AppearanceSettings) {
   document.dispatchEvent(new CustomEvent('appearance-changed', { detail: appearance }));
 }
 
-function applyDefaults() {
-  void applyThemePreferenceAsync({ themeId: DEFAULT_THEME, mode: 'dark' });
+function applyDefaults(isAivaProduct: boolean) {
+  void applyThemePreferenceAsync(
+    isAivaProduct
+      ? { themeId: 'amber-minimal', mode: 'light' }
+      : { themeId: DEFAULT_THEME, mode: 'dark' },
+  );
   applyAppearance(normalizeAppearance(null));
 }
 
@@ -55,20 +61,28 @@ function resolvePreferenceFromApi(data: {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { workspaceBootstrap, workspaceLoaded } = useWorkspaceBootstrap();
+  const isAivaProduct = useIsAivaProduct();
 
   useEffect(() => {
     const stored = readStoredThemePreference() ?? readCookieThemePreference();
-    if (stored) {
+    if (stored && (!isAivaProduct || hasExplicitThemePreference())) {
       void applyThemePreferenceAsync(stored);
     } else {
-      applyDefaults();
+      applyDefaults(isAivaProduct);
+      if (isAivaProduct) {
+        storeThemePreference({ themeId: 'amber-minimal', mode: 'light' });
+      }
     }
-  }, []);
+  }, [isAivaProduct]);
 
   useEffect(() => {
     if (!workspaceLoaded) return;
 
-    const stored = readStoredThemePreference() ?? readCookieThemePreference();
+    const storedPreference = readStoredThemePreference() ?? readCookieThemePreference();
+    const stored =
+      storedPreference && (!isAivaProduct || hasExplicitThemePreference())
+        ? storedPreference
+        : null;
 
     async function applyWorkspaceTheme() {
       const apiPreference = resolvePreferenceFromApi(workspaceBootstrap);
@@ -89,7 +103,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
 
     void applyWorkspaceTheme();
-  }, [workspaceBootstrap, workspaceLoaded]);
+  }, [isAivaProduct, workspaceBootstrap, workspaceLoaded]);
 
   useEffect(() => {
     async function handleSetTheme(event: Event) {

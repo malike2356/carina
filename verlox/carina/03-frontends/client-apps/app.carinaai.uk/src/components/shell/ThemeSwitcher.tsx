@@ -40,14 +40,23 @@ export function ThemeSwitcher({
   onChange,
 }: ThemeSwitcherProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const isAivaProduct = useIsAivaProduct();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [preference, setPreference] = useState<ThemePreference>(
-    initialPreference ?? DEFAULT_THEME_PREFERENCE,
+    initialPreference ??
+      (isAivaProduct
+        ? { themeId: 'amber-minimal', mode: 'light' }
+        : DEFAULT_THEME_PREFERENCE),
   );
-  const isAivaProduct = useIsAivaProduct();
 
   useEffect(() => {
+    const themeId = document.documentElement.getAttribute('data-theme');
+    const mode = document.documentElement.getAttribute('data-theme-mode');
+    if (themeId && (mode === 'light' || mode === 'dark')) {
+      setPreference({ themeId, mode });
+    }
+
     function onThemeChange(event: Event) {
       const detail = (event as CustomEvent<ThemePreference | string>).detail;
       if (typeof detail === 'string') {

@@ -32,8 +32,9 @@ APPS_ROOT="${APPS_ROOT:-/home/malike/apps}"
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 
 SOURCE_REVISION="$(bash "${SCRIPT_DIR}/deploy-preflight.sh")"
-export SOURCE_REVISION
-log "Deploying committed revision ${SOURCE_REVISION}"
+SOURCE_CONTENT_DIGEST="$(bash "${SCRIPT_DIR}/deploy-source-digest.sh" "${REPO_ROOT}")"
+export SOURCE_REVISION SOURCE_CONTENT_DIGEST
+log "Deploying revision ${SOURCE_REVISION} with content ${SOURCE_CONTENT_DIGEST}"
 
 ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev/null || {
   echo "ERROR: Cannot SSH to ${VPS_USER}@${VPS_HOST}" >&2
@@ -131,10 +132,12 @@ else
 fi
 
 log "Running Docker production deploy on VPS..."
-ssh "${VPS_USER}@${VPS_HOST}" bash -s -- "${APPS_ROOT}" "${SOURCE_REVISION}" <<'REMOTE'
+ssh "${VPS_USER}@${VPS_HOST}" bash -s -- \
+  "${APPS_ROOT}" "${SOURCE_REVISION}" "${SOURCE_CONTENT_DIGEST}" <<'REMOTE'
 set -euo pipefail
 APPS_ROOT="$1"; shift
 export SOURCE_REVISION="$1"; shift
+export SOURCE_CONTENT_DIGEST="$1"; shift
 
 # Ensure the shared proxy network exists (idempotent).
 docker network inspect proxy >/dev/null 2>&1 || docker network create proxy

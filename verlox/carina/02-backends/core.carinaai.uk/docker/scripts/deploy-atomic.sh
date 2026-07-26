@@ -123,6 +123,7 @@ build_and_deploy() {
   deploy_log "Building ${service} from ${revision} as ${ref}"
   docker compose "${COMPOSE_ARGS[@]}" build --pull \
     --build-arg "BUILD_REVISION=${revision}" \
+    --build-arg "SOURCE_CONTENT_DIGEST=$(source_content_digest)" \
     --build-arg "BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     "${service}"
   docker image inspect "${ref}" >/dev/null 2>&1 || \
@@ -202,6 +203,7 @@ main() {
   fi
 
   revision="$(source_revision)"
+  source_content_digest >/dev/null
   tag="$(release_tag)"
   prepare_compose_tags "${tag}" "${targets[@]}"
   assert_services_exist

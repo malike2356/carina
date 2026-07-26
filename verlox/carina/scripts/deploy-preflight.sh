@@ -42,6 +42,11 @@ if [[ -n "${STATUS}" ]]; then
     printf '%s\n' "${STATUS}" >&2
     exit 1
   fi
+  if [[ -z "${CARINA_DIRTY_DEPLOY_REASON:-}" ]]; then
+    echo "ERROR: CARINA_ALLOW_DIRTY_DEPLOY requires CARINA_DIRTY_DEPLOY_REASON." >&2
+    echo "ERROR: Dirty releases must have an explicit audit reason." >&2
+    exit 1
+  fi
 
   release_dir="${CARINA_RELEASE_DIR:-${CARINA_ROOT}/.deploy}"
   timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -53,6 +58,7 @@ if [[ -n "${STATUS}" ]]; then
       | sed 's/^/# UNTRACKED /'
   } > "${patch_path}"
   echo "WARNING: Emergency dirty deploy recorded at ${patch_path}" >&2
+  printf 'REASON: %s\n' "${CARINA_DIRTY_DEPLOY_REASON}" >> "${patch_path}"
 fi
 
 printf '%s\n' "${REVISION}"

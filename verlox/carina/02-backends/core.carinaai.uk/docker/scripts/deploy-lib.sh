@@ -27,8 +27,18 @@ source_revision() {
   printf '%s\n' "${revision}"
 }
 
+source_content_digest() {
+  local digest="${SOURCE_CONTENT_DIGEST:-}"
+  [[ "${digest}" =~ ^[0-9a-f]{64}$ ]] || \
+    deploy_die "SOURCE_CONTENT_DIGEST must be a 64-character SHA-256 digest"
+  printf '%s\n' "${digest}"
+}
+
 release_tag() {
-  printf '%s-%s\n' "$(source_revision)" "$(date -u +%Y%m%dT%H%M%SZ)"
+  printf '%s-%s-%s\n' \
+    "$(source_revision)" \
+    "$(source_content_digest | cut -c1-12)" \
+    "$(date -u +%Y%m%dT%H%M%SZ)"
 }
 
 record_release() {
@@ -122,14 +132,16 @@ write_release_receipt() {
   local service="$1"
   local tag="$2"
   local image_ref="$3"
-  local revision digest receipt
+  local revision source_digest digest receipt
   revision="$(source_revision)"
+  source_digest="$(source_content_digest)"
   digest="$(docker image inspect --format '{{.Id}}' "${image_ref}")"
   ensure_deploy_state
   receipt="${DEPLOY_STATE_DIR}/receipts/${service}-${tag}.json"
   RECEIPT_PATH="${receipt}" \
   RECEIPT_SERVICE="${service}" \
   RECEIPT_REVISION="${revision}" \
+  RECEIPT_SOURCE_DIGEST="${source_digest}" \
   RECEIPT_TAG="${tag}" \
   RECEIPT_IMAGE="${image_ref}" \
   RECEIPT_DIGEST="${digest}" \
@@ -153,6 +165,7 @@ migrations = sorted(
 receipt = {
     "service": os.environ["RECEIPT_SERVICE"],
     "revision": os.environ["RECEIPT_REVISION"],
+    "sourceContentDigest": os.environ["RECEIPT_SOURCE_DIGEST"],
     "releaseTag": os.environ["RECEIPT_TAG"],
     "image": os.environ["RECEIPT_IMAGE"],
     "imageDigest": os.environ["RECEIPT_DIGEST"],

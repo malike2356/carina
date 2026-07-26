@@ -8,9 +8,10 @@ import { getBreadcrumbs } from '@/lib/workspace-nav';
 
 interface BreadcrumbProps {
   pageTitle?: string;
+  embedded?: boolean;
 }
 
-export function Breadcrumb({ pageTitle }: BreadcrumbProps) {
+export function Breadcrumb({ pageTitle, embedded = false }: BreadcrumbProps) {
   const pathname = usePathname();
   const [dynamicTitle, setDynamicTitle] = useState('');
 
@@ -19,18 +20,22 @@ export function Breadcrumb({ pageTitle }: BreadcrumbProps) {
     setDynamicTitle(el?.dataset.pageTitle ?? '');
   }, [pathname]);
 
-  if (pathname.startsWith('/chat/') || pathname === '/chat') return null;
-
   const crumbs = getBreadcrumbs(pathname);
-  if (crumbs.length === 0) return null;
+  if (crumbs.length === 0 || pathname.startsWith('/chat/') || pathname === '/chat') {
+    return embedded ? <span className="text-sm font-medium text-text-secondary">Workspace</span> : null;
+  }
 
   const hasTrail = crumbs.length > 1 || Boolean(pageTitle) || Boolean(dynamicTitle);
-  if (!hasTrail) return null;
+  if (!hasTrail && !embedded) return null;
 
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center gap-1.5 border-b border-border bg-surface px-4 py-2 text-xs text-text-muted"
+      className={
+        embedded
+          ? 'flex items-center gap-1.5 text-xs text-text-muted'
+          : 'flex items-center gap-1.5 border-b border-border bg-surface px-4 py-2 text-xs text-text-muted'
+      }
     >
       {crumbs.map((crumb, index) => {
         const isLast = index === crumbs.length - 1;

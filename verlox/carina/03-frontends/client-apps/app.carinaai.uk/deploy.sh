@@ -13,6 +13,7 @@ DEPLOY_DIR="/home/malike/apps/app.carinaai.uk"
 CORE_DIR="/home/malike/apps/core.carinaai.uk"
 SERVICE="carina-cloud"
 CARINA_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+GIT_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || true)"
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -23,6 +24,7 @@ check_ssh() {
 }
 
 build_local() {
+  node scripts/verify-ui-release.mjs || die "UI release contract failed."
   log "Syncing multi-theme CSS..."
   node scripts/sync-multi-themes.mjs || die "theme:sync failed."
   log "Building Next.js app..."
@@ -30,10 +32,20 @@ build_local() {
 }
 
 deploy() {
-  if [[ -z "${SOURCE_REVISION:-}" ]]; then
-    SOURCE_REVISION="$(bash "${CARINA_ROOT}/scripts/deploy-preflight.sh")"
-    export SOURCE_REVISION
+  [[ -n "${GIT_ROOT}" ]] || die "Deployment source must be inside a Git worktree."
+  SCRIPT_REL="$(realpath --relative-to="${GIT_ROOT}" "${SCRIPT_DIR}")"
+  TRACKED_COUNT="$(git -C "${GIT_ROOT}" ls-files -- "${SCRIPT_REL}" | wc -l)"
+  (( TRACKED_COUNT >= 100 )) || \
+    die "Refusing untracked deployment mirror ${SCRIPT_DIR}. Use the canonical tracked frontend."
+
+  PREFLIGHT_REVISION="$(bash "${CARINA_ROOT}/scripts/deploy-preflight.sh")"
+  if [[ -n "${SOURCE_REVISION:-}" && "${SOURCE_REVISION}" != "${PREFLIGHT_REVISION}" ]]; then
+    die "SOURCE_REVISION does not match the checked-out revision."
   fi
+  SOURCE_REVISION="${PREFLIGHT_REVISION}"
+  SOURCE_CONTENT_DIGEST="$(bash "${CARINA_ROOT}/scripts/deploy-source-digest.sh" "${SCRIPT_DIR}")"
+  export SOURCE_REVISION SOURCE_CONTENT_DIGEST
+  log "Release source: ${SOURCE_REVISION} content ${SOURCE_CONTENT_DIGEST}"
   check_ssh
   build_local
 
@@ -171,6 +183,7 @@ set -a
 set +a
 export REDIS_PASSWORD
 export SOURCE_REVISION="${SOURCE_REVISION}"
+export SOURCE_CONTENT_DIGEST="${SOURCE_CONTENT_DIGEST}"
 bash docker/scripts/deploy-atomic.sh carina-cloud
 EOF
 

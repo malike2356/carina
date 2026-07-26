@@ -14,6 +14,8 @@ export const THEME_COOKIE = 'carina_theme';
 export const THEME_MODE_COOKIE = 'carina_theme_mode';
 export const THEME_STORAGE_KEY = 'carina.theme';
 export const THEME_MODE_STORAGE_KEY = 'carina.theme_mode';
+export const THEME_EXPLICIT_STORAGE_KEY = 'carina.theme_explicit';
+export const THEME_EXPLICIT_COOKIE = 'carina_theme_explicit';
 
 const LEGACY_THEME_MAP: Record<string, string> = {
   dark: 'default',
@@ -68,6 +70,18 @@ export function readStoredThemePreference(): ThemePreference | null {
   } catch {
     return null;
   }
+}
+
+export function hasExplicitThemePreference(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (localStorage.getItem(THEME_EXPLICIT_STORAGE_KEY) === '1') return true;
+  } catch {
+    // ignore unavailable storage
+  }
+  return document.cookie
+    .split(';')
+    .some((entry) => entry.trim() === `${THEME_EXPLICIT_COOKIE}=1`);
 }
 
 export function readCookieThemePreference(): ThemePreference | null {
@@ -184,6 +198,12 @@ export async function persistThemePreference(
     themeId: normalizeThemeId(preference.themeId),
     mode: normalizeThemeMode(preference.mode, preference.themeId),
   };
+  try {
+    localStorage.setItem(THEME_EXPLICIT_STORAGE_KEY, '1');
+  } catch {
+    // ignore unavailable storage
+  }
+  document.cookie = `${THEME_EXPLICIT_COOKIE}=1; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
   storeThemePreference(normalized);
   await applyThemePreferenceAsync(normalized);
   document.dispatchEvent(new CustomEvent('set-theme', { detail: normalized }));

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { workspaceSettings } from '@/db/schema';
@@ -14,6 +15,7 @@ import {
 } from '@/lib/terminal-access';
 import { isThemeName } from '@/lib/themes';
 import { getSession, requireWorkspace } from '@/lib/session';
+import { isAivaProductHost } from '@/lib/product-surface';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,11 +38,25 @@ export async function GET() {
     workspaceBrand,
     userColorTokens: settings?.customTheme,
   });
+  const isAivaProduct = isAivaProductHost((await headers()).get('host') ?? '');
+  const storedAppearance =
+    typeof settings?.appearance === 'object' && settings.appearance !== null
+      ? (settings.appearance as { themeMode?: unknown })
+      : null;
+  const useAivaDefaults =
+    isAivaProduct &&
+    (!settings || (settings.theme === 'dark' && !storedAppearance?.themeMode));
+  const aivaDefaultAppearance = useAivaDefaults
+    ? normalizeAppearance({ themeMode: 'light' })
+    : undefined;
 
   return NextResponse.json({
     data: settings
       ? {
           ...settings,
+          ...(useAivaDefaults
+            ? { theme: 'amber-minimal', appearance: aivaDefaultAppearance }
+            : {}),
           brand: workspaceBrand,
           resolvedBrand,
           ...normalizeBrainSettings(settings),
@@ -50,7 +66,8 @@ export async function GET() {
         }
       : {
           workspaceId: workspace.id,
-          theme: 'default',
+          theme: isAivaProduct ? 'amber-minimal' : 'default',
+          ...(isAivaProduct ? { appearance: aivaDefaultAppearance } : {}),
           brand: {},
           resolvedBrand: resolveWorkspaceBrand({}),
           terminalEnabled: true,
