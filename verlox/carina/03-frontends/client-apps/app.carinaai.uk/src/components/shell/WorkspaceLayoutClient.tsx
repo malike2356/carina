@@ -13,7 +13,6 @@ import { CanvasSidePanel } from '@/components/canvas/CanvasSidePanel';
 import { CanvasPanelProvider } from '@/lib/canvas-panel';
 import { AppProviders } from '@/components/shell/AppProviders';
 import { LegalGate } from '@/components/legal/LegalGate';
-import { AskCarinaWidget } from '@/components/karina/AskCarinaWidget';
 import { WorkspaceTopBar } from '@/components/shell/WorkspaceTopBar';
 
 type WorkspaceLayoutClientProps = {
@@ -46,7 +45,6 @@ export function WorkspaceLayoutClient({ children, userEmail, userName }: Workspa
             <CommandPalette />
             <GlobalShortcuts />
             <ShortcutsPanel />
-            <AskCarinaWidget />
           </div>
         </CanvasPanelProvider>
       </LegalGate>
