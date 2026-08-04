@@ -1,0 +1,115 @@
+<% title = 'Memories' %>
+<div class="ops-page">
+<div class="ops-page-head"><div><div class="ops-page-title">Memories</div>
+  <div class="ops-page-sub">Metadata only. Message plaintext is never shown in Ops (privacy).</div>
+</div></div>
+
+<div class="ops-surface p-3 mb-4 text-sm" style="border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);">
+  Message bodies stay redacted. Role shows the speaker; Customer and Aiva identify the workspace owner and worker.
+</div>
+
+<form method="get" class="flex flex-wrap gap-3 mb-4 text-sm">
+  <input type="hidden" name="sort" value="<%= sortBy %>">
+  <input type="hidden" name="dir" value="<%= sortDir %>">
+  <select name="role" class="ops-input">
+    <option value="all" <%= role === 'all' ? 'selected' : '' %>>All roles</option>
+    <option value="user" <%= role === 'user' ? 'selected' : '' %>>User</option>
+    <option value="assistant" <%= role === 'assistant' ? 'selected' : '' %>>Assistant</option>
+    <option value="system" <%= role === 'system' ? 'selected' : '' %>>System</option>
+  </select>
+  <input type="text" name="customer" value="<%= customerFilter || '' %>" placeholder="Customer name or email..."
+         class="ops-input min-w-[180px]">
+  <input type="text" name="aiva" value="<%= aivaFilter || '' %>" placeholder="Aiva name..."
+         class="ops-input min-w-[140px]">
+  <input type="text" name="session" value="<%= sessionFilter %>" placeholder="Session ID filter..."
+         class="ops-input min-w-[180px]">
+  <button type="submit" class="ops-btn ops-btn-green">Filter</button>
+</form>
+
+<div class="ops-surface ops-table-wrap">
+  <table class="ops-table w-full text-sm">
+    <thead class="bg-[#1a1a1a] text-gray-400 text-left">
+      <tr>
+        <th class="p-3">
+          <a href="/memories<%= sortLink('time') %>" class="text-gray-400 hover:text-white font-semibold inline-flex items-center gap-1">
+            Time<%- sortArrow(sortBy, sortDir, 'time') %>
+          </a>
+        </th>
+        <th class="p-3">Customer</th>
+        <th class="p-3">Aiva</th>
+        <th class="p-3">
+          <a href="/memories<%= sortLink('role') %>" class="text-gray-400 hover:text-white font-semibold inline-flex items-center gap-1">
+            Role / who<%- sortArrow(sortBy, sortDir, 'role') %>
+          </a>
+        </th>
+        <th class="p-3">
+          <a href="/memories<%= sortLink('session') %>" class="text-gray-400 hover:text-white font-semibold inline-flex items-center gap-1">
+            Session<%- sortArrow(sortBy, sortDir, 'session') %>
+          </a>
+        </th>
+        <th class="p-3">Size</th>
+        <th class="p-3"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const m of memories) {
+           const attr = m.attribution || {};
+      %>
+        <tr class="border-t border-[#2a2a2a] hover:bg-[#1a1a1a]">
+          <td class="p-3 text-gray-500 whitespace-nowrap"><%= new Date(m.updated_at || m.created_at).toLocaleString() %></td>
+          <td class="p-3">
+            <div class="text-white text-xs"><%= attr.customerName || attr.customerLabel || 'Unknown customer' %></div>
+            <% if (attr.customerEmail) { %>
+              <div class="text-gray-500 text-[11px]"><%= attr.customerEmail %></div>
+            <% } %>
+          </td>
+          <td class="p-3">
+            <div class="text-white text-xs"><%= attr.aivaName || ';' %></div>
+            <% if (attr.workerId) { %>
+              <div class="text-gray-500 font-mono text-[10px]"><%= String(attr.workerId).slice(0, 8) %>…</div>
+            <% } %>
+          </td>
+          <td class="p-3">
+            <span class="px-2 py-0.5 rounded text-xs font-medium <%= m.role === 'user' ? 'badge-user' : (m.role === 'assistant' ? 'badge-assistant' : 'badge-user') %>">
+              <%= m.role %>
+            </span>
+            <div class="text-xs mt-1 text-[#e2e8f0]"><%= attr.actorLabel || m.role %></div>
+          </td>
+          <td class="p-3">
+            <a href="/memories/session/<%= encodeURIComponent(m.session_id) %>" class="ops-link font-mono text-xs">
+              <%= m.session_id.slice(0, 8) %>...
+            </a>
+            <% if (attr.channel) { %>
+              <div class="text-gray-500 text-[10px]"><%= attr.channel %></div>
+            <% } %>
+          </td>
+          <td class="p-3 max-w-md">
+            <a href="/memories/<%= m.id %>" class="text-gray-400 hover:text-white text-xs">
+              Redacted · <%= Number(m.content_chars || 0) %> chars
+            </a>
+          </td>
+          <td class="p-3">
+            <form method="post" action="/memories/<%= m.id %>/delete" onsubmit="return confirm('Delete this memory record? Plaintext will be removed from the store.')">
+              <button type="submit" class="text-red-400 hover:text-red-300 text-xs">Delete</button>
+            </form>
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<% if (!memories.length) { %>
+  <p class="text-gray-500 mt-4">No memories found.</p>
+<% } %>
+
+<div class="flex gap-2 mt-4 text-sm">
+  <% if (page > 1) { %>
+    <a href="/memories<%= pageLink(page - 1) %>" class="ops-link-green">Previous</a>
+  <% } %>
+  <span class="text-gray-500">Page <%= page %> of <%= totalPages %> (<%= total %> total)</span>
+  <% if (page < totalPages) { %>
+    <a href="/memories<%= pageLink(page + 1) %>" class="ops-link-green">Next</a>
+  <% } %>
+</div>
+</div>

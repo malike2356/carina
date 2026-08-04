@@ -1,0 +1,13 @@
+{
+  "platform": "android",
+  "version": "0.1.14",
+  "build": "2026-07-18",
+  "apkUrl": "/downloads/carina-mobile.apk",
+  "minSupportedVersion": "0.1.1",
+  "releaseNotes": [
+    "Pagination on Inbox (approvals, conversations, escalations), email threads, workers, tasks, oversight, and more.",
+    "Lists show 20 items per page with Previous / Next controls."
+  ],
+  "sha256": "5db7ec7ed036f8c528baa752dfe08b4270be73b70beda68b65fb4d91436ec8ae",
+  "updatedAt": "2026-07-18T14:45:37Z"
+}

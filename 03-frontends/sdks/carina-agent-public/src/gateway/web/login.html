@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina - Sign in</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    form {
+      width: 100%; max-width: 360px; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px; padding: 32px;
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+    input {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 10px 12px; color: var(--text); font-size: 14px;
+      margin-bottom: 16px; outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      width: 100%; background: var(--send); color: #fff; border: none;
+      border-radius: 6px; padding: 10px 12px; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+    .error { color: #f85149; font-size: 13px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <form method="post" action="/login">
+    <h1>Carina</h1>
+    <p class="sub">Private instance - sign in to continue</p>
+    <div id="error" class="error" hidden></div>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required autofocus>
+    <button type="submit">Sign in</button>
+  </form>
+  <script>
+    const params = new URLSearchParams(location.search);
+    if (params.get('error')) {
+      const el = document.getElementById('error');
+      el.textContent = 'Invalid password';
+      el.hidden = false;
+    }
+  </script>
+</body>
+</html>

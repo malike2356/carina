@@ -1,0 +1,169 @@
+<% title = 'Channel Shield' %>
+<% const flash = (typeof flashMessages !== 'undefined' && flashMessages) ? flashMessages : []; %>
+
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Channel Shield</div>
+      <div class="ops-page-sub">
+        Protect inbound channels, pause/resume protections, and triage held messages.
+        Workspace default: <code class="ops-code"><%= defaultWorkspaceId %></code>
+      </div>
+    </div>
+    <a href="/settings/channel-shield" class="ops-btn-ghost">Refresh</a>
+  </div>
+
+  <% for (const msg of flash) { %>
+    <div class="ops-flash <%= msg.type === 'success' ? 'success' : msg.type === 'error' ? 'error' : 'warn' %>"><%= msg.text %></div>
+  <% } %>
+
+  <% if (!tablesReady) { %>
+    <div class="ops-flash warn">
+      Channel Shield tables are not ready in the Carina database yet. Core migrations must create
+      <code class="ops-code">channel_shield_*</code> first.
+    </div>
+  <% } else { %>
+
+  <div class="ops-metrics">
+    <div class="ops-metric"><div class="ops-metric-label">Protections</div><div class="ops-metric-value"><%= protectionCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Paused</div><div class="ops-metric-value muted"><%= pausedCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Held</div><div class="ops-metric-value <%= quarantineDepth > 0 ? 'warn' : 'ok' %>"><%= quarantineDepth %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Sandbox</div><div class="ops-metric-value muted"><%= sandboxConfigured ? 'configured' : 'off' %></div></div>
+  </div>
+
+  <section class="ops-surface" style="padding:16px;margin-bottom:16px;">
+    <div class="ops-section-title" style="margin-bottom:12px;">Create protection</div>
+    <form method="post" action="/settings/channel-shield/create" class="ops-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));align-items:end;">
+      <div class="ops-field">
+        <label class="ops-label" for="shield-channel">Channel</label>
+        <select id="shield-channel" name="channel" class="ops-select" required>
+          <% for (const ch of channelOptions) { %><option value="<%= ch %>"><%= ch %></option><% } %>
+        </select>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="shield-key">External key</label>
+        <input id="shield-key" name="externalKey" class="ops-input" placeholder="inbox or team id" required>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="shield-mode">Mode</label>
+        <select id="shield-mode" name="mode" class="ops-select">
+          <option value="protect">protect</option>
+          <option value="monitor">monitor</option>
+          <option value="off">off</option>
+        </select>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="shield-ws">Workspace id (optional)</label>
+        <input id="shield-ws" name="workspaceId" class="ops-input mono" placeholder="<%= defaultWorkspaceId %>">
+      </div>
+      <button type="submit" class="ops-btn ops-btn-green">Create</button>
+    </form>
+  </section>
+
+  <section class="ops-surface ops-table-wrap" style="margin-bottom:16px;">
+    <div class="ops-section-title" style="padding:12px 12px 0;">Protections</div>
+    <% if (!protections.length) { %>
+      <p class="ops-inline-note" style="padding:12px;">No protections yet. Create one above, then use Seed demo held to practice triage.</p>
+    <% } else { %>
+      <table class="ops-table">
+        <thead>
+          <tr><th>Channel</th><th>Key</th><th>Mode</th><th>Status</th><th>Updated</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% for (const p of protections) { %>
+            <tr>
+              <td style="font-weight:600;"><%= p.channel %></td>
+              <td class="mono"><%= p.externalKey %></td>
+              <td><%= p.mode %></td>
+              <td><span class="ops-badge <%= p.status === 'active' ? 'ops-badge-green' : 'ops-badge-amber' %>"><%= p.status %></span></td>
+              <td class="mono" style="font-size:11px;"><%= p.updatedAt.slice(0, 19).replace('T', ' ') %></td>
+              <td>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <% if (p.status === 'active') { %>
+                    <form method="post" action="/settings/channel-shield/pause"><input type="hidden" name="protectionId" value="<%= p.id %>"><button class="ops-btn-ghost" type="submit">Pause</button></form>
+                  <% } else { %>
+                    <form method="post" action="/settings/channel-shield/resume"><input type="hidden" name="protectionId" value="<%= p.id %>"><button class="ops-btn-ghost" type="submit">Resume</button></form>
+                  <% } %>
+                  <form method="post" action="/settings/channel-shield/seed-demo"><input type="hidden" name="protectionId" value="<%= p.id %>"><button class="ops-btn-ghost" type="submit">Seed demo held</button></form>
+                  <form method="post" action="/settings/channel-shield/delete" onsubmit="return confirm('Delete this protection and its messages?')"><input type="hidden" name="protectionId" value="<%= p.id %>"><button class="ops-btn-ghost" style="color:var(--red);" type="submit">Delete</button></form>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="ops-surface ops-table-wrap" style="margin-bottom:16px;">
+    <div class="ops-section-title" style="padding:12px 12px 0;">Held messages</div>
+    <% if (!heldMessages.length) { %>
+      <p class="ops-inline-note" style="padding:12px;">Nothing held. Use Seed demo held on a protection to create a triage item.</p>
+    <% } else { %>
+      <table class="ops-table">
+        <thead>
+          <tr><th>Channel</th><th>From</th><th>Subject</th><th>Verdict</th><th>Risk</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <% for (const m of heldMessages) { %>
+            <tr>
+              <td><%= m.channel %></td>
+              <td><%= m.fromLabel %></td>
+              <td><%= m.subject || (m.safeSummaryText || '').slice(0, 80) || '-' %></td>
+              <td><span class="ops-badge <%= m.verdict === 'malicious' ? 'ops-badge-red' : m.verdict === 'suspect' ? 'ops-badge-amber' : 'ops-badge-gray' %>"><%= m.verdict || 'unknown' %></span></td>
+              <td><%= Number(m.riskScore || 0).toFixed(2) %></td>
+              <td>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <form method="post" action="/settings/channel-shield/release"><input type="hidden" name="messageId" value="<%= m.id %>"><button class="ops-btn ops-btn-green" type="submit">Release</button></form>
+                  <form method="post" action="/settings/channel-shield/destroy" onsubmit="return confirm('Destroy this held message?')"><input type="hidden" name="messageId" value="<%= m.id %>"><button class="ops-btn-ghost" style="color:var(--red);" type="submit">Destroy</button></form>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="ops-surface ops-table-wrap" style="margin-bottom:16px;">
+    <div class="ops-section-title" style="padding:12px 12px 0;">Traffic by channel</div>
+    <% if (!byChannel.length) { %>
+      <p class="ops-inline-note" style="padding:12px;">No scanned messages yet.</p>
+    <% } else { %>
+      <table class="ops-table">
+        <thead><tr><th>Channel</th><th>Total</th><th>Held</th><th>Clean</th><th>Suspect</th><th>Malicious</th><th>Error</th></tr></thead>
+        <tbody>
+          <% for (const row of byChannel) { %>
+            <tr>
+              <td><%= row.channel %></td>
+              <td><%= row.total %></td>
+              <td><%= row.held %></td>
+              <td><%= row.clean %></td>
+              <td><%= row.suspect %></td>
+              <td><%= row.malicious %></td>
+              <td><%= row.error %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="ops-surface ops-table-wrap">
+    <div class="ops-section-title" style="padding:12px 12px 0;">Adapter health</div>
+    <table class="ops-table">
+      <thead><tr><th>Channel</th><th>OK</th><th>Detail</th></tr></thead>
+      <tbody>
+        <% for (const a of adapters) { %>
+          <tr>
+            <td><%= a.channel %></td>
+            <td><span class="ops-badge <%= a.ok ? 'ops-badge-green' : 'ops-badge-red' %>"><%= a.ok ? 'ok' : 'fail' %></span></td>
+            <td style="color:var(--muted);"><%= a.detail %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </section>
+
+  <% } %>
+</div>

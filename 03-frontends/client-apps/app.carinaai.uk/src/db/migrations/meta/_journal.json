@@ -1,0 +1,48 @@
+{
+  "version": "6",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1752850500000,
+      "tag": "0000_snapshot",
+      "breakpoints": false
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1752850500000,
+      "tag": "0001_snapshot",
+      "breakpoints": false
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1752850500000,
+      "tag": "0002_snapshot",
+      "breakpoints": false
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785068283647,
+      "tag": "0003_init-frontend-schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785801600000,
+      "tag": "0004_outreach-funnel",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785811800000,
+      "tag": "0005_vical-booking",
+      "breakpoints": true
+    }
+  ]
+}

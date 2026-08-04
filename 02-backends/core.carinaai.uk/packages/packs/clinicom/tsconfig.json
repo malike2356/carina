@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "rootDir": ".",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "#core/*": ["../../../dist/src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "skills.ts", "tools/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

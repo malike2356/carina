@@ -1,0 +1,53 @@
+{
+  "version": 3,
+  "voice": {
+    "mode": "duplex",
+    "duplexProvider": "openai-webrtc",
+    "allowPttFallback": true,
+    "bargeIn": true,
+    "preferServerTts": true,
+    "interruptOnSpeech": true,
+    "endpointingMs": 650,
+    "showWaveform": true
+  },
+  "skills": {
+    "autoPropose": true,
+    "requireConfirm": true,
+    "bindToolsStrict": true,
+    "conversationalSave": true,
+    "savePhrases": [
+      "save this as a skill",
+      "remember how to do this",
+      "save as a skill"
+    ]
+  },
+  "tools": {
+    "accountsEnabled": true
+  },
+  "orgs": {
+    "enabled": true,
+    "workersAsManagers": true,
+    "canvasEnabled": true,
+    "switcherEnabled": true,
+    "strictScoping": true
+  },
+  "browser": {
+    "softHttpEnabled": true,
+    "playwrightEnabled": true,
+    "captchaMode": "owner_assist",
+    "domainAllowlist": [],
+    "domainAllowlistEnforce": false
+  },
+  "search": {
+    "messageBody": true,
+    "useFullText": false
+  },
+  "projects": {
+    "autoLinkSkillRuns": true,
+    "autoAdvanceStatus": false
+  },
+  "composer": {
+    "draftPersistence": true,
+    "maxChars": 16000
+  }
+}

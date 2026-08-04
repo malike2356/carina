@@ -1,0 +1,9 @@
+{
+  "name": "smart-home",
+  "version": "1.0.0",
+  "description": "Home Assistant scenes, Philips Hue, climate control, security arming, and morning routines",
+  "author": "VERLOX Ltd",
+  "category": "smart-home",
+  "optional": true,
+  "skillCount": 5
+}

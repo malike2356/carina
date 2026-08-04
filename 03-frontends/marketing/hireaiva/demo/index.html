@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live product demos | Hire Aiva</title>
+  <meta name="description" content="Interactive walkthroughs of Aiva registration, workspace, AI automations, and Telegram - the same flows you use after you start free.">
+  <link rel="canonical" href="https://hireaiva.co.uk/demo/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="/vertical.css?v=20260802">
+  <link rel="stylesheet" href="/assets/css/live-demos.css?v=20260802f">
+  <style>
+    main { padding: 0; max-width: none; }
+    main .container { max-width: 1080px; margin: 0 auto; padding: 0 2rem; }
+    .demo-hero {
+      padding: 7.5rem 0 3rem;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(52, 152, 192, 0.18), transparent 45%),
+        radial-gradient(ellipse at 90% 20%, rgba(245, 166, 35, 0.08), transparent 40%),
+        var(--ink);
+    }
+    .demo-hero h1 {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 600;
+      line-height: 1.15;
+      margin: 0.4rem 0 0.85rem;
+      text-align: center;
+    }
+    .demo-hero .section-label { text-align: center; }
+    .demo-hero-lead {
+      text-align: center;
+      max-width: 36rem;
+      margin: 0 auto 1.5rem;
+      color: var(--silver);
+      font-size: 1.05rem;
+    }
+    .demo-hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    .section--dark { background: var(--ink); color: var(--white); padding: 1rem 0 4rem; }
+    .final-band {
+      text-align: center;
+      padding: 3.5rem 0 4.5rem;
+      border-top: 1px solid var(--border-dim);
+    }
+    .final-band h2 { font-size: 1.6rem; margin-bottom: 0.6rem; }
+    .final-band p { color: var(--silver); margin-bottom: 1.25rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
+      <div class="nav-links" aria-label="Aiva product">
+        <a href="/#how-it-works">How it works</a>
+        <a href="/demo/">Live demos</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/security/">Security</a>
+        <a href="/support/">Support</a>
+        <a href="https://admin.hireaiva.co.uk/login" class="nav-sign-in">Sign in</a>
+        <a href="/book-demo/" class="nav-sign-in">Book a demo</a>
+        <a href="https://admin.hireaiva.co.uk/register" class="nav-cta">Start free</a>
+      </div>
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu" aria-expanded="false" type="button">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+  <div class="nav-mobile-panel" id="nav-mobile-panel" aria-hidden="true">
+    <a href="/#how-it-works">How it works</a>
+    <a href="/demo/">Live demos</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/security/">Security</a>
+    <a href="/support/">Support</a>
+    <a href="/book-demo/">Book a demo</a>
+    <a href="https://admin.hireaiva.co.uk/login">Sign in</a>
+    <a href="https://admin.hireaiva.co.uk/register" class="nav-mobile-cta">Start free</a>
+  </div>
+
+  <main>
+    <section class="demo-hero">
+      <div class="container">
+        <span class="section-label">Product demos</span>
+        <h1>Watch Aiva the way you will use it.</h1>
+        <p class="demo-hero-lead">Interactive walkthroughs of registration, workspace, automations, Telegram, and the workspace tools: Email, Calendar, Notes, Documents, Contacts, and Research.</p>
+        <div class="demo-hero-actions">
+          <a href="https://admin.hireaiva.co.uk/register" class="btn btn-primary">Start free - 30 days</a>
+          <a href="#watch" class="btn btn-ghost">Play the demos</a>
+        </div>
+
+        <div id="watch" class="live-demos-section" style="padding-top:0;">
+                    <div class="live-demo-tabs" role="tablist" aria-label="Product workflow demos">
+            <button class="live-demo-tab" type="button" data-live-demo="live-register" role="tab" aria-selected="false">Registration</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-workspace" role="tab" aria-selected="false">Workspace</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-automation" role="tab" aria-selected="false">AI automation</button>
+            <button class="live-demo-tab is-active" type="button" data-live-demo="live-telegram" role="tab" aria-selected="true">Telegram</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-email" role="tab" aria-selected="false">Email</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-calendar" role="tab" aria-selected="false">Calendar</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-notes" role="tab" aria-selected="false">Notes</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-documents" role="tab" aria-selected="false">Documents</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-contacts" role="tab" aria-selected="false">Contacts</button>
+            <button class="live-demo-tab" type="button" data-live-demo="live-research" role="tab" aria-selected="false">Research</button>
+          </div>
+
+          <!-- Registration -->
+          <div class="live-demo-panel" id="live-register" role="tabpanel">
+            <div class="live-watch-grid">
+              <figure class="live-demo" data-workflow="register" aria-label="Registration walkthrough">
+                <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/register</p></div>
+                <div class="live-demo-screen">
+                  <div class="live-step is-active" data-step="0">
+                    <div class="sim-auth">
+                      <div class="sim-brand">Aiva<span class="dot">.</span></div>
+                      <div class="sim-field"><label>Name</label><div class="sim-input">Sam Rivera<span class="sim-caret"></span></div></div>
+                      <div class="sim-field"><label>Work email</label><div class="sim-input">sam@brightworks.co.uk</div></div>
+                      <div class="sim-field"><label>Password</label><div class="sim-input">********</div></div>
+                      <div class="sim-btn is-pulse">Create free account</div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="1">
+                    <div class="sim-auth">
+                      <p class="sim-onboard-title">What should your first Aiva handle?</p>
+                      <p class="sim-onboard-sub">Pick a starting role. You can expand later.</p>
+                      <div class="sim-chips">
+                        <span class="sim-chip is-on">Customer service</span>
+                        <span class="sim-chip">Booking assistant</span>
+                        <span class="sim-chip">Sales qualifier</span>
+                        <span class="sim-chip">Custom role</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="2">
+                    <div class="sim-auth">
+                      <p class="sim-onboard-title">Connect a channel</p>
+                      <p class="sim-onboard-sub">Start where your clients already message you.</p>
+                      <div class="sim-chips">
+                        <span class="sim-chip">WhatsApp</span>
+                        <span class="sim-chip is-on">Telegram</span>
+                        <span class="sim-chip">Email</span>
+                        <span class="sim-chip">Web chat</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="3">
+                    <div class="sim-auth" style="text-align:center;">
+                      <p class="sim-onboard-title">Aria is ready</p>
+                      <p class="sim-onboard-sub">Customer service Aiva provisioned for Brightworks.</p>
+                      <div class="sim-status">Online · trial active</div>
+                      <div class="sim-btn" style="margin-top:1rem;">Open workspace</div>
+                    </div>
+                  </div>
+                  <div class="workflow-chip"><span data-workflow-label>Create your account</span></div>
+                  <div class="workflow-progress" aria-hidden="true"><i></i></div>
+                </div>
+              </figure>
+              <div class="live-demo-caption">
+                <h3>Register and launch in minutes</h3>
+                <p>Create an account, choose a role, connect a channel, and land in the workspace. No card required for the 30-day trial.</p>
+                <ol class="workflow-beats" data-beats-for="register">
+                  <li class="is-active">Create your account</li>
+                  <li>Choose a starting role</li>
+                  <li>Connect a channel</li>
+                  <li>Launch into the workspace</li>
+                </ol>
+                <div class="live-demo-actions">
+                  <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/register">Try registration live</a>
+                </div>
+                <p class="live-demo-note">Click any beat to jump. The loop replays automatically.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Workspace -->
+          <div class="live-demo-panel" id="live-workspace" role="tabpanel">
+            <div class="live-watch-grid">
+              <figure class="live-demo" data-workflow="workspace" aria-label="Workspace walkthrough">
+                <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/aiva</p></div>
+                <div class="live-demo-screen">
+                  <div class="live-step is-active" data-step="0">
+                    <div class="sim-workspace">
+                      <aside class="sim-side">
+                        <strong>Aiva</strong>
+                        <div class="sim-nav-item is-on">Home</div>
+                        <div class="sim-nav-item">Workers</div>
+                        <div class="sim-nav-item">Email</div>
+                        <div class="sim-nav-item">Approvals</div>
+                      </aside>
+                      <div class="sim-main">
+                        <p class="sim-kicker">Workspace</p>
+                        <p class="sim-heading">Good morning, Sam</p>
+                        <div class="sim-cards">
+                          <div class="sim-card"><strong>Aria</strong><span>Customer service · Online</span></div>
+                          <div class="sim-card"><strong>Inbox</strong><span>8 overnight replies sent</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="1">
+                    <div class="sim-workspace">
+                      <aside class="sim-side">
+                        <strong>Aiva</strong>
+                        <div class="sim-nav-item is-on">Home</div>
+                        <div class="sim-nav-item">Workers</div>
+                        <div class="sim-nav-item">Email</div>
+                        <div class="sim-nav-item">Approvals</div>
+                      </aside>
+                      <div class="sim-main">
+                        <p class="sim-kicker">Shortcuts</p>
+                        <p class="sim-heading">Your Aivas and tools</p>
+                        <div class="sim-cards">
+                          <div class="sim-card"><strong>Aria</strong><span>Chat · Channels · Automations</span></div>
+                          <div class="sim-card"><strong>Hire another</strong><span>Booking, sales, property…</span></div>
+                          <div class="sim-card"><strong>Documents</strong><span>FAQs and product notes</span></div>
+                          <div class="sim-card"><strong>Calendar</strong><span>Synced availability</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="2">
+                    <div class="sim-workspace">
+                      <aside class="sim-side">
+                        <strong>Aiva</strong>
+                        <div class="sim-nav-item">Home</div>
+                        <div class="sim-nav-item">Workers</div>
+                        <div class="sim-nav-item">Email</div>
+                        <div class="sim-nav-item is-on">Approvals</div>
+                      </aside>
+                      <div class="sim-main">
+                        <p class="sim-kicker">Needs you</p>
+                        <p class="sim-heading">3 items flagged overnight</p>
+                        <div class="sim-cards">
+                          <div class="sim-card"><strong>Mrs Okafor</strong><span>Delivery complaint · flagged</span></div>
+                          <div class="sim-card"><strong>Mr Chan</strong><span>Booking conflict · rebook</span></div>
+                          <div class="sim-card"><strong>Accounts</strong><span>Chargeback notice</span></div>
+                          <div class="sim-card"><strong>8 done</strong><span>Routine enquiries answered</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="3">
+                    <div class="sim-workspace">
+                      <aside class="sim-side">
+                        <strong>Aiva</strong>
+                        <div class="sim-nav-item">Home</div>
+                        <div class="sim-nav-item is-on">Workers</div>
+                        <div class="sim-nav-item">Email</div>
+                        <div class="sim-nav-item">Approvals</div>
+                      </aside>
+                      <div class="sim-main">
+                        <p class="sim-kicker">Aria · Chat</p>
+                        <p class="sim-heading">Continue in the same thread</p>
+                        <div class="sim-auto-list">
+                          <div class="sim-auto-row"><div><strong>Customer</strong><span>Can I book Tuesday at 2pm?</span></div></div>
+                          <div class="sim-auto-row"><div><strong>Aria</strong><span>Tuesday 2pm is free. Name and number?</span></div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="workflow-chip"><span data-workflow-label>Open your Aiva home</span></div>
+                  <div class="workflow-progress" aria-hidden="true"><i></i></div>
+                </div>
+              </figure>
+              <div class="live-demo-caption">
+                <h3>Run the day from one workspace</h3>
+                <p>Workers, approvals, email, and document context stay in one place. Open a thread, check what needs you, and keep going.</p>
+                <ol class="workflow-beats" data-beats-for="workspace">
+                  <li class="is-active">Open your Aiva home</li>
+                  <li>See workers and shortcuts</li>
+                  <li>Review approvals and activity</li>
+                  <li>Jump into a worker chat</li>
+                </ol>
+                <div class="live-demo-actions">
+                  <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/login">Open the workspace</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Automation -->
+          <div class="live-demo-panel" id="live-automation" role="tabpanel">
+            <div class="live-watch-grid">
+              <figure class="live-demo" data-workflow="automation" aria-label="Automation walkthrough">
+                <div class="live-demo-chrome"><span></span><span></span><span></span><p>Worker · Automations</p></div>
+                <div class="live-demo-screen">
+                  <div class="live-step is-active" data-step="0">
+                    <div class="sim-worker-shell">
+                      <div class="sim-tabs">
+                        <span class="sim-tab">Chat</span>
+                        <span class="sim-tab">Channels</span>
+                        <span class="sim-tab is-on">Automations</span>
+                        <span class="sim-tab">Training</span>
+                      </div>
+                      <div class="sim-empty">No automations yet. Create a recurring job Aria can run alone.</div>
+                      <div class="sim-btn" style="max-width:200px;margin:0 auto;">New automation</div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="1">
+                    <div class="sim-modal">
+                      <h4>Create automation</h4>
+                      <div class="sim-field"><label>Name</label><div class="sim-input">Morning briefing<span class="sim-caret"></span></div></div>
+                      <div class="sim-field"><label>Schedule</label><div class="sim-input">Every day at 6:00 am</div></div>
+                      <div class="sim-field"><label>What should Aria do?</label><div class="sim-input" style="min-height:3.2rem;">Read overnight messages, reply to routine ones, and send me only what needs attention.</div></div>
+                      <div class="sim-btn is-pulse">Create automation</div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="2">
+                    <div class="sim-worker-shell">
+                      <div class="sim-tabs">
+                        <span class="sim-tab">Chat</span>
+                        <span class="sim-tab">Channels</span>
+                        <span class="sim-tab is-on">Automations</span>
+                        <span class="sim-tab">Training</span>
+                      </div>
+                      <div class="sim-auto-list">
+                        <div class="sim-auto-row">
+                          <div><strong>Morning briefing</strong><span>Every day at 6:00 am</span></div>
+                          <div class="sim-toggle is-on" aria-hidden="true"></div>
+                        </div>
+                        <div class="sim-auto-row">
+                          <div><strong>Friday invoice chase</strong><span>Every Friday at 5:00 pm</span></div>
+                          <div class="sim-toggle is-on" aria-hidden="true"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="3">
+                    <div class="sim-worker-shell">
+                      <p class="sim-kicker">Last run · Today 6:00 am</p>
+                      <p class="sim-heading">Morning briefing delivered</p>
+                      <div class="sim-cards">
+                        <div class="sim-card"><strong>11</strong><span>Overnight messages</span></div>
+                        <div class="sim-card"><strong>8</strong><span>Replied by Aria</span></div>
+                        <div class="sim-card"><strong>3</strong><span>Need your attention</span></div>
+                        <div class="sim-card"><strong>Next</strong><span>Tomorrow 6:00 am</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="workflow-chip"><span data-workflow-label>Open Automations tab</span></div>
+                  <div class="workflow-progress" aria-hidden="true"><i></i></div>
+                </div>
+              </figure>
+              <div class="live-demo-caption">
+                <h3>Set it once. It runs on schedule.</h3>
+                <p>Describe a recurring process on the worker Automations tab. Aria runs it while you are offline and surfaces only what needs you.</p>
+                <ol class="workflow-beats" data-beats-for="automation">
+                  <li class="is-active">Open Automations tab</li>
+                  <li>Describe a recurring job</li>
+                  <li>Morning briefing is live</li>
+                  <li>Runs while you sleep</li>
+                </ol>
+                <div class="live-demo-actions">
+                  <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/register">Start free and build one</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Telegram -->
+          <div class="live-demo-panel is-active" id="live-telegram" role="tabpanel">
+            <div class="live-watch-grid">
+              <figure class="live-demo" data-workflow="telegram" aria-label="Telegram walkthrough">
+                <div class="live-demo-chrome"><span></span><span></span><span></span><p>Channels · Telegram</p></div>
+                <div class="live-demo-screen">
+                  <div class="live-step is-active" data-step="0">
+                    <div class="sim-tg-layout">
+                      <div class="sim-connect-card">
+                        <p class="sim-onboard-title" style="text-align:left;">Connect Telegram</p>
+                        <p class="sim-onboard-sub" style="text-align:left;">Paste a BotFather token. Aria replies in the same chat.</p>
+                        <div class="sim-field"><label>Bot token</label><div class="sim-input">From @BotFather</div></div>
+                        <div class="sim-btn">Connect</div>
+                      </div>
+                      <div class="sim-tg-phone">
+                        <div class="sim-tg-header"><i class="ti ti-brand-telegram"></i> Waiting for bot…</div>
+                        <p style="font-size:0.78rem;color:var(--silver);">No messages yet.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="1">
+                    <div class="sim-tg-layout">
+                      <div class="sim-connect-card">
+                        <p class="sim-onboard-title" style="text-align:left;">Paste BotFather token</p>
+                        <div class="sim-field"><label>Bot token</label><div class="sim-input">7123456789:AAE…xK2<span class="sim-caret"></span></div></div>
+                        <div class="sim-btn is-pulse">Connect Telegram</div>
+                      </div>
+                      <div class="sim-tg-phone">
+                        <div class="sim-tg-header"><i class="ti ti-brand-telegram"></i> @BrightworksAriaBot</div>
+                        <p style="font-size:0.78rem;color:var(--silver);">Message the bot once to finish setup.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="2">
+                    <div class="sim-tg-layout">
+                      <div class="sim-connect-card">
+                        <p class="sim-onboard-title" style="text-align:left;">Telegram</p>
+                        <span class="sim-badge-ok">Connected</span>
+                        <p class="sim-onboard-sub" style="text-align:left;margin-top:0.75rem;">Aria can reply in DMs and groups on this bot.</p>
+                      </div>
+                      <div class="sim-tg-phone">
+                        <div class="sim-tg-header"><i class="ti ti-brand-telegram"></i> Aria · Online</div>
+                        <div class="sim-bubble sim-bubble--out">Hi, are you open on bank holidays?</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="live-step" data-step="3">
+                    <div class="sim-tg-layout">
+                      <div class="sim-connect-card">
+                        <p class="sim-onboard-title" style="text-align:left;">Live on Telegram</p>
+                        <span class="sim-badge-ok">Connected · replying</span>
+                        <p class="sim-onboard-sub" style="text-align:left;margin-top:0.75rem;">Same memory as email and web chat.</p>
+                      </div>
+                      <div class="sim-tg-phone">
+                        <div class="sim-tg-header"><i class="ti ti-brand-telegram"></i> Aria · Online</div>
+                        <div class="sim-bubble sim-bubble--out">Hi, are you open on bank holidays?</div>
+                        <div class="sim-bubble sim-bubble--in">Yes. This Monday we are open 10 am to 4 pm. Want to book?</div>
+                        <div class="sim-bubble sim-bubble--out">Tuesday at 2pm please</div>
+                        <div class="sim-bubble sim-bubble--in">Tuesday 2pm confirmed. Reminder goes out Monday evening.</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="workflow-chip"><span data-workflow-label>Open Telegram connect</span></div>
+                  <div class="workflow-progress" aria-hidden="true"><i></i></div>
+                </div>
+              </figure>
+              <div class="live-demo-caption">
+                <h3>Meet clients on Telegram</h3>
+                <p>Paste a BotFather token, message the bot once, and Aria answers in the thread. One Aiva memory across every channel you connect.</p>
+                <ol class="workflow-beats" data-beats-for="telegram">
+                  <li class="is-active">Open Telegram connect</li>
+                  <li>Paste BotFather token</li>
+                  <li>Channel shows Connected</li>
+                  <li>Aiva replies in Telegram</li>
+                </ol>
+                <div class="live-demo-actions">
+                  <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/register">Connect Telegram after signup</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-email" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="email" aria-label="Triage email with Aiva walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/email</p></div>
+              <div class="live-demo-screen">
+
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-tool-bar">
+                    <span class="sim-tab is-on">Inbox</span><span class="sim-tab">Sent</span>
+                    <span class="sim-tab">High urgency</span><span class="sim-tab">Drafts</span>
+                    <span class="sim-btn" style="width:auto;padding:0.35rem 0.65rem;margin:0;font-size:0.72rem;">Compose</span>
+                  </div>
+                  <div class="sim-mail">
+                    <div class="sim-mail-folders">
+                      <div class="is-on">Inbox · 12</div>
+                      <div>Aiva origin</div>
+                      <div>Google</div>
+                      <div>Local</div>
+                    </div>
+                    <div class="sim-mail-list">
+                      <div class="sim-mail-row is-on"><strong>Mrs Okafor</strong><span>Missed delivery complaint</span></div>
+                      <div class="sim-mail-row"><strong>Mr Chan</strong><span>Saturday booking conflict</span></div>
+                      <div class="sim-mail-row"><strong>returns@...</strong><span>Chargeback notice</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-mail-reader">
+                    <strong>Mrs Okafor</strong><span class="sim-origin">High urgency</span>
+                    <p>We still have not received Friday's parcel. Can someone confirm tracking and a refund path?</p>
+                    <p>Thread has 4 messages. Aria flagged billing language.</p>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-mail-reader">
+                    <strong>Draft reply</strong><span class="sim-origin">Generate draft</span>
+                    <p>Hi Mrs Okafor, I am sorry about the delay. Tracking shows a failed delivery attempt. I can resend today or process a refund - which do you prefer?</p>
+                    <div class="sim-tool-bar" style="margin-top:0.75rem;">
+                      <span class="sim-btn is-pulse" style="width:auto;padding:0.4rem 0.75rem;margin:0;font-size:0.75rem;">Submit for approval</span>
+                      <span class="sim-chip">Edit draft</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-mail-reader">
+                    <strong>Ready to send</strong><span class="sim-origin">Approvals</span>
+                    <p>Draft approved. Send via Gmail, or keep in Sent once Sync finishes.</p>
+                    <div class="sim-status">Queued · Send via Gmail</div>
+                    <div class="sim-btn is-pulse" style="max-width:180px;margin-top:0.85rem;">Send now</div>
+                  </div>
+                </div>
+
+                <div class="workflow-chip"><span data-workflow-label>Open the shared inbox</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Triage email with Aiva</h3>
+              <p>Shared inbox, urgency filters, draft generation, and approval before send.</p>
+              <ol class="workflow-beats" data-beats-for="email">
+                <li class="is-active">Open the shared inbox</li>
+                <li>Read a high-urgency thread</li>
+                <li>Generate a draft reply</li>
+                <li>Send or submit for approval</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/email">Open in product</a>
+                <a class="btn btn-ghost" href="#shot-email">Shot notes</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-calendar" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="calendar" aria-label="Schedule without the back-and-forth walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/calendar</p></div>
+              <div class="live-demo-screen">
+
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-tool-bar">
+                    <span class="sim-tab is-on">Month</span><span class="sim-tab">Week</span>
+                    <span class="sim-tab">Agenda</span><span class="sim-tab">Events</span>
+                  </div>
+                  <div class="sim-cal-grid">
+                    <div class="sim-cal-cell">10</div><div class="sim-cal-cell">11</div><div class="sim-cal-cell">12</div><div class="sim-cal-cell">13</div><div class="sim-cal-cell has-event is-today">14</div><div class="sim-cal-cell">15</div><div class="sim-cal-cell has-event">16</div><div class="sim-cal-cell">17</div><div class="sim-cal-cell has-event">18</div><div class="sim-cal-cell">19</div><div class="sim-cal-cell">20</div><div class="sim-cal-cell">21</div><div class="sim-cal-cell">22</div><div class="sim-cal-cell">23</div>
+                  </div>
+                  <p style="font-size:0.75rem;color:var(--silver);">No upcoming events in the next hour.</p>
+                </div>
+                <div class="live-step" data-step="1">
+                  <p class="sim-kicker">Quick add</p>
+                  <div class="sim-nl">
+                    <div class="sim-input">call Telemachus tomorrow morning<span class="sim-caret"></span></div>
+                    <div class="sim-btn" style="width:auto;margin:0;padding:0.5rem 0.75rem;">Parse</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-modal">
+                    <h4>Save event</h4>
+                    <div class="sim-field"><label>Title</label><div class="sim-input">Call Telemachus</div></div>
+                    <div class="sim-field"><label>When</label><div class="sim-input">Tomorrow · 09:30</div></div>
+                    <div class="sim-btn is-pulse">Save event</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Call Telemachus</strong><span>Tomorrow 09:30 · Local</span></div>
+                    <div class="sim-card"><strong>Synced</strong><span>Google Calendar · 14 events</span></div>
+                  </div>
+                  <div class="sim-status" style="margin-top:0.85rem;">Synced · Reminder set</div>
+                </div>
+
+                <div class="workflow-chip"><span data-workflow-label>Open your calendar</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Schedule without the back-and-forth</h3>
+              <p>Natural-language quick add, Google sync, and reminders your Aiva can act on.</p>
+              <ol class="workflow-beats" data-beats-for="calendar">
+                <li class="is-active">Open your calendar</li>
+                <li>Type a natural-language event</li>
+                <li>Confirm and save</li>
+                <li>Synced across Google and local</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/calendar">Open in product</a>
+                <a class="btn btn-ghost" href="#shot-calendar">Shot notes</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-notes" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="notes" aria-label="Capture notes, reminders, and tasks walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/notes</p></div>
+              <div class="live-demo-screen">
+
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-tool-bar">
+                    <span class="sim-tab is-on">All</span><span class="sim-tab">Reminders</span>
+                    <span class="sim-tab">Tasks</span><span class="sim-tab">Notes</span>
+                    <span class="sim-btn" style="width:auto;margin:0;padding:0.35rem 0.65rem;font-size:0.72rem;">New...</span>
+                  </div>
+                  <div class="sim-empty">No notes yet. Use New... or ask an Aiva from chat.</div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-modal">
+                    <h4>New note</h4>
+                    <div class="sim-field"><label>Title</label><div class="sim-input">Chase Maple Road keys<span class="sim-caret"></span></div></div>
+                    <div class="sim-field"><label>Body</label><div class="sim-input" style="min-height:3rem;">Follow up with agent if keys not ready by Thursday.</div></div>
+                    <div class="sim-btn is-pulse">Save note</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-auto-list">
+                    <div class="sim-auto-row">
+                      <div><strong>Chase Maple Road keys</strong><span>Reminder · Thursday 10:00</span></div>
+                      <span class="sim-chip is-on">Reminder</span>
+                    </div>
+                    <div class="sim-auto-row">
+                      <div><strong>Invoice wording</strong><span>Note · edited today</span></div>
+                      <span class="sim-chip">Note</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Open on Calendar</strong><span>Local reminder placed</span></div>
+                    <div class="sim-card"><strong>Make recurring</strong><span>Hands off to Automations</span></div>
+                  </div>
+                  <div class="sim-status" style="margin-top:0.85rem;">Linked · Aria can nudge you</div>
+                </div>
+
+                <div class="workflow-chip"><span data-workflow-label>Open Notes</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Capture notes, reminders, and tasks</h3>
+              <p>One inbox for notes. Turn reminders into calendar items or recurring automations.</p>
+              <ol class="workflow-beats" data-beats-for="notes">
+                <li class="is-active">Open Notes</li>
+                <li>Capture a note or reminder</li>
+                <li>Tag as Reminder or Task</li>
+                <li>Hand off to calendar or automation</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/notes">Open in product</a>
+                <a class="btn btn-ghost" href="#shot-notes">Shot notes</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-documents" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="documents" aria-label="Write and train on documents walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/documents</p></div>
+              <div class="live-demo-screen">
+
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-tool-bar">
+                    <span class="sim-tab is-on">Workspace</span><span class="sim-tab">Google Drive</span>
+                    <span class="sim-btn" style="width:auto;margin:0;padding:0.35rem 0.65rem;font-size:0.72rem;">Create document</span>
+                  </div>
+                  <div class="sim-empty">No documents yet. Create one, or open Drive so Aiva can learn.</div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-doc-page">
+                    <h4>Customer FAQ · Brightworks</h4>
+                    <p>Hours, pricing, and first-visit offers live here so Aria answers accurately.</p>
+                    <p style="opacity:0.55;">Start typing, or ask Aiva below...</p>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-doc-page">
+                    <h4>Customer FAQ · Brightworks</h4>
+                    <p>We are open Mon-Sat, 9am-6pm. Bank holidays run 10am-4pm.</p>
+                    <p>Full detail is £85 and takes about 90 minutes. First-visit offer is 20% until end of June.</p>
+                    <div class="sim-assist">Aiva: write the next paragraph about deposits and cancellations<span class="sim-caret"></span></div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-tool-bar">
+                    <span class="sim-tab">Workspace</span><span class="sim-tab is-on">Google Drive</span>
+                  </div>
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Price list.pdf</strong><span>Uploaded · ready to learn</span></div>
+                    <div class="sim-card"><strong>Service notes.md</strong><span>Synced from Drive</span></div>
+                  </div>
+                  <div class="sim-status" style="margin-top:0.85rem;">Training context updated</div>
+                </div>
+
+                <div class="workflow-chip"><span data-workflow-label>Open Documents</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Write and train on documents</h3>
+              <p>Workspace docs with inline Aiva assist, plus Drive uploads your employee can learn from.</p>
+              <ol class="workflow-beats" data-beats-for="documents">
+                <li class="is-active">Open Documents</li>
+                <li>Create a workspace doc</li>
+                <li>Ask Aiva to write inline</li>
+                <li>Train from Drive uploads</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/documents">Open in product</a>
+                <a class="btn btn-ghost" href="#shot-documents">Shot notes</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-contacts" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="contacts" aria-label="Keep one searchable directory walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/contacts</p></div>
+              <div class="live-demo-screen">
+
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-tool-bar">
+                    <span class="sim-btn" style="width:auto;margin:0;padding:0.35rem 0.65rem;font-size:0.72rem;">Add</span>
+                    <span class="sim-chip">Resync Google</span>
+                    <span class="sim-chip">Import CSV</span>
+                  </div>
+                  <div class="sim-empty">No contacts yet. Resync Google or import a CSV.</div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-modal">
+                    <h4>Connect directory</h4>
+                    <p class="sim-onboard-sub" style="text-align:left;">Google Contacts is not connected.</p>
+                    <div class="sim-btn is-pulse">Resync Google</div>
+                    <div class="sim-chip" style="margin-top:0.75rem;display:inline-block;">Or import CSV</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Helen Park</strong><span>helen@firma.co.uk · Google</span></div>
+                    <div class="sim-card"><strong>James Chan</strong><span>07900 112 233 · CSV</span></div>
+                    <div class="sim-card"><strong>Mrs Okafor</strong><span>Local · last email today</span></div>
+                    <div class="sim-card"><strong>+ 842 more</strong><span>Auto-resync nightly</span></div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-mail-reader">
+                    <strong>Helen Park</strong><span class="sim-origin">Dossier</span>
+                    <p>Email, phone, recent threads, and open bookings in one place.</p>
+                    <div class="sim-status">Your Aivas can search this directory when they reply</div>
+                  </div>
+                </div>
+
+                <div class="workflow-chip"><span data-workflow-label>Open Contacts</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Keep one searchable directory</h3>
+              <p>Resync Google or import CSV. Your Aivas look up people while they reply.</p>
+              <ol class="workflow-beats" data-beats-for="contacts">
+                <li class="is-active">Open Contacts</li>
+                <li>Resync Google or import CSV</li>
+                <li>Open a contact dossier</li>
+                <li>Aivas search this directory</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/contacts">Open in product</a>
+                <a class="btn btn-ghost" href="#shot-contacts">Shot notes</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="live-demo-panel" id="live-research" role="tabpanel">
+          <div class="live-watch-grid">
+            <figure class="live-demo" data-workflow="research" aria-label="Run cited research papers walkthrough">
+              <div class="live-demo-chrome"><span></span><span></span><span></span><p>admin.hireaiva.co.uk/research</p></div>
+              <div class="live-demo-screen">
+
+                <div class="live-step is-active" data-step="0">
+                  <div class="sim-modal">
+                    <h4>New research</h4>
+                    <div class="sim-field"><label>Query</label><div class="sim-input">UK GDPR email retention for SMEs<span class="sim-caret"></span></div></div>
+                    <div class="sim-chips">
+                      <span class="sim-chip is-on">APA</span><span class="sim-chip">Harvard</span>
+                      <span class="sim-chip is-on">Standard</span><span class="sim-chip">Deep</span>
+                    </div>
+                    <div class="sim-btn is-pulse" style="margin-top:0.85rem;">Start research</div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="1">
+                  <div class="sim-mail-reader">
+                    <strong>Carina is researching...</strong>
+                    <div class="sim-progress"><i></i></div>
+                    <p>12 / 20 sources analysed · ETA 04:32</p>
+                    <p>Mode: Fact-check · Depth: Standard</p>
+                  </div>
+                </div>
+                <div class="live-step" data-step="2">
+                  <div class="sim-research-side">
+                    <div class="sim-paper-list">
+                      <div class="sim-paper-item is-on">GDPR retention</div>
+                      <div class="sim-paper-item">Competitor notes</div>
+                    </div>
+                    <div>
+                      <strong style="font-size:0.85rem;">UK GDPR email retention for SMEs</strong>
+                      <div class="sim-source">1. ICO guidance on storage limitation</div>
+                      <div class="sim-source">2. NCSC email security guidance</div>
+                      <div class="sim-source">3. UK GDPR Art. 5(1)(e) summary</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="live-step" data-step="3">
+                  <div class="sim-cards">
+                    <div class="sim-card"><strong>Save to Documents</strong><span>Paper + citations exported</span></div>
+                    <div class="sim-card"><strong>Discuss</strong><span>Ask something about this paper</span></div>
+                  </div>
+                  <div class="sim-status" style="margin-top:0.85rem;">Ready for Aria to reference in replies</div>
+                </div>
+
+                <div class="workflow-chip"><span data-workflow-label>Start a research paper</span></div>
+                <div class="workflow-progress" aria-hidden="true"><i></i></div>
+              </div>
+            </figure>
+            <div class="live-demo-caption">
+              <h3>Run cited research papers</h3>
+              <p>Start a query, watch sources fill in, then save the paper to Documents for your Aivas.</p>
+              <ol class="workflow-beats" data-beats-for="research">
+                <li class="is-active">Start a research paper</li>
+                <li>Carina is researching</li>
+                <li>Review cited sources</li>
+                <li>Save to Documents</li>
+              </ol>
+              <div class="live-demo-actions">
+                <a class="btn btn-primary" href="https://admin.hireaiva.co.uk/research">Open in product</a>
+                <a class="btn btn-ghost" href="#shot-research">Shot notes</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="section--dark">
+      <div class="container">
+        <span class="section-label" style="text-align:left;">Frame by frame</span>
+        <h2 style="margin-bottom:0.5rem;">Same flows, one screen at a time</h2>
+        <p style="color:var(--silver);max-width:34rem;margin-bottom:1rem;">Scroll the shot blocks, or jump with the tabs above. Each demo maps to a real route in the product.</p>
+
+        <article class="shot-block" id="shot-register">
+          <div class="shot-copy">
+            <h3>1. Registration</h3>
+            <p>Account, role template, channel, then workspace. Deep-link roles with <code>?intent=provision&amp;role=customer_service</code> after you start free.</p>
+            <a class="btn btn-ghost" href="https://admin.hireaiva.co.uk/register">Open /register</a>
+          </div>
+          <div>
+            <p class="live-demo-note">Uses the interactive player in the Registration tab above.</p>
+          </div>
+        </article>
+
+        <article class="shot-block shot-flip" id="shot-workspace">
+          <div class="shot-copy">
+            <h3>2. Workspace</h3>
+            <p>Home, workers, approvals, email, and documents. Day-to-day work stays in <code>/aiva</code> after onboarding.</p>
+            <a class="btn btn-ghost" href="https://admin.hireaiva.co.uk/login">Sign in to workspace</a>
+          </div>
+          <div>
+            <p class="live-demo-note">Switch to the Workspace tab to replay the home and approvals beats.</p>
+          </div>
+        </article>
+
+        <article class="shot-block" id="shot-automation">
+          <div class="shot-copy">
+            <h3>3. AI automation</h3>
+            <p>Per-worker Automations tab: named routines with natural-language schedules. Morning digests and Friday chases live here, not on workspace Schedules.</p>
+            <a class="btn btn-ghost" href="#live-automation" onclick="document.querySelector('[data-live-demo=live-automation]')?.click()">Replay Automations demo</a>
+          </div>
+          <div>
+            <p class="live-demo-note">Create modal → enabled toggle → last-run briefing card.</p>
+          </div>
+        </article>
+
+        <article class="shot-block shot-flip" id="shot-telegram">
+          <div class="shot-copy">
+            <h3>4. Telegram workflow</h3>
+            <p>BotFather token connect, Connected status, then live replies in the same Telegram thread. Also offered during onboarding.</p>
+            <a class="btn btn-ghost" href="#live-telegram" onclick="document.querySelector('[data-live-demo=live-telegram]')?.click()">Replay Telegram demo</a>
+          </div>
+          <div>
+            <p class="live-demo-note">Mirrors Channels → Connect Telegram in the product.</p>
+          </div>
+        </article>
+
+
+        <article class="shot-block" id="shot-email">
+          <div class="shot-copy">
+            <h3>5. Email</h3>
+            <p>Shared mailbox with urgency filters, Generate draft, and Submit for approval. Route: <code>/email</code>.</p>
+            <a class="btn btn-ghost" href="#live-email" onclick="document.querySelector('[data-live-demo=live-email]')?.click()">Replay Email demo</a>
+          </div>
+          <div><p class="live-demo-note">Inbox triage through to Send via Gmail.</p></div>
+        </article>
+        <article class="shot-block shot-flip" id="shot-calendar">
+          <div class="shot-copy">
+            <h3>6. Calendar</h3>
+            <p>Natural-language quick add and Google sync. Route: <code>/calendar</code>.</p>
+            <a class="btn btn-ghost" href="#live-calendar" onclick="document.querySelector('[data-live-demo=live-calendar]')?.click()">Replay Calendar demo</a>
+          </div>
+          <div><p class="live-demo-note">Parse "call Telemachus tomorrow morning" into a saved event.</p></div>
+        </article>
+        <article class="shot-block" id="shot-notes">
+          <div class="shot-copy">
+            <h3>7. Notes</h3>
+            <p>Notes, reminders, and tasks with handoff to Calendar or Automations. Route: <code>/notes</code>.</p>
+            <a class="btn btn-ghost" href="#live-notes" onclick="document.querySelector('[data-live-demo=live-notes]')?.click()">Replay Notes demo</a>
+          </div>
+          <div><p class="live-demo-note">Capture once, then nudge or recur.</p></div>
+        </article>
+        <article class="shot-block shot-flip" id="shot-documents">
+          <div class="shot-copy">
+            <h3>8. Documents</h3>
+            <p>Workspace editor with inline assist, plus Drive uploads for training. Route: <code>/documents</code>.</p>
+            <a class="btn btn-ghost" href="#live-documents" onclick="document.querySelector('[data-live-demo=live-documents]')?.click()">Replay Documents demo</a>
+          </div>
+          <div><p class="live-demo-note">Write FAQs Aria can use in customer replies.</p></div>
+        </article>
+        <article class="shot-block" id="shot-contacts">
+          <div class="shot-copy">
+            <h3>9. Contacts</h3>
+            <p>Google resync or CSV import into a dossier your Aivas can search. Route: <code>/contacts</code>.</p>
+            <a class="btn btn-ghost" href="#live-contacts" onclick="document.querySelector('[data-live-demo=live-contacts]')?.click()">Replay Contacts demo</a>
+          </div>
+          <div><p class="live-demo-note">Directory stays behind every channel reply.</p></div>
+        </article>
+        <article class="shot-block shot-flip" id="shot-research">
+          <div class="shot-copy">
+            <h3>10. Research</h3>
+            <p>Cited research papers with depth and citation styles, saved into Documents. Route: <code>/research</code>.</p>
+            <a class="btn btn-ghost" href="#live-research" onclick="document.querySelector('[data-live-demo=live-research]')?.click()">Replay Research demo</a>
+          </div>
+          <div><p class="live-demo-note">From query to sources to export.</p></div>
+        </article>
+
+        <div class="final-band">
+          <h2>Ready to run it on your own account?</h2>
+          <p>30-day free trial. No card required. Governance monitoring and audit log included.</p>
+          <div class="live-demos-cta">
+            <a href="https://admin.hireaiva.co.uk/register" class="btn btn-primary">Start free</a>
+            <a href="/book-demo/" class="btn btn-ghost">Book a live demonstration</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
+      <div class="footer-links" aria-label="Aiva product">
+        <a href="https://hireaiva.co.uk/demo/">Live demos</a>
+        <a href="https://hireaiva.co.uk/#how-it-works">How it works</a>
+        <a href="https://hireaiva.co.uk/#pricing">Pricing</a>
+        <a href="https://hireaiva.co.uk/security/">Security</a>
+        <a href="/support/">Support</a>
+        <a href="https://admin.hireaiva.co.uk/register">Start free</a>
+      </div>
+      <p class="footer-platform">
+        Optional human escalation is available when you need it; Aiva is designed to run the routine work on its own.
+        Built on <a href="https://carinaai.uk/">Carina</a> from VERLOX.
+      </p>
+      <p class="footer-copy">&copy; 2026 <a href="https://verlox.uk">VERLOX Ltd</a></p>
+    </div>
+  </footer>
+
+  <script src="/assets/js/site-nav.js"></script>
+  <script src="/assets/js/live-demos.js?v=20260802d"></script>
+</body>
+</html>

@@ -5,24 +5,10 @@ bweh/
 nawafs/
 zaps/
 velox/
-verlox/
-!verlox/
-verlox/*
-!verlox/carina/
-verlox/carina/*
-!verlox/carina/02-backends/
-!verlox/carina/02-backends/**
-!verlox/carina/03-frontends/
-!verlox/carina/03-frontends/**
-!verlox/carina/scripts/
-!verlox/carina/scripts/**
-!verlox/carina/AGENTS.md
-!verlox/carina/README.md
-!verlox/carina/.easignore
-!verlox/carina/.gitignore
-!verlox/scripts/
-verlox/scripts/*
-!verlox/scripts/fix-writing-style.py
+
+# Forbidden nested platform duplicate (merged 2026-07-28 into top-level 02-/03-).
+# Do not re-add exceptions for verlox/carina. See CARINA-SOURCE-BOUNDARY.md.
+/verlox/
 
 # Node modules
 node_modules/
@@ -36,12 +22,16 @@ composer.lock
 public/build/
 storage/
 *.cache
+.next/
+dist/
+**/.deploy/
 
 # Environment
 .env
 .env.*
 !.env.example
 scripts/deploy.env
+**/.xcode.env
 
 # IDE
 .vscode/

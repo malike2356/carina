@@ -1,0 +1,49 @@
+{
+  "name": "@verlox/pack-clinicom",
+  "version": "0.1.0",
+  "description": "Clinicom sidecar domain pack for Carina (product surface contract)",
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./http": {
+      "types": "./dist/src/http.d.ts",
+      "import": "./dist/src/http.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "pack.json",
+    "README.md"
+  ],
+  "carina": {
+    "pack": "./pack.json",
+    "slug": "clinicom"
+  },
+  "imports": {
+    "#core/*": "@verlox/carina-core/internal/*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "sidecar": "node --import tsx ../../scripts/clinicom-sidecar.ts"
+  },
+  "peerDependencies": {
+    "@verlox/carina-core": "^0.2.0"
+  },
+  "devDependencies": {
+    "@verlox/carina-core": "workspace:*",
+    "tsx": "^4.19.4",
+    "typescript": "^6.0.3"
+  },
+  "keywords": ["carina", "pack", "clinicom", "healthcare"],
+  "author": "VERLOX Ltd",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,126 @@
+export const LEAF_EXCLUDED_TOOLS = [
+  'delegate-task',
+  'kanban',
+  'clarify',
+  'memory',
+  'session-search',
+  'email-send',
+  'code-exec',
+  'cronjob',
+  'webhook',
+  'checkpoint-manager',
+  'debug-helpers',
+  'mixture-of-agents',
+  'computer-use',
+] as const;
+
+export const TOOLSET_MAP: Record<string, string[]> = {
+  terminal: ['shell-exec', 'process'],
+  file: ['file-read', 'file-write', 'patch', 'search-files'],
+  web: ['http-request', 'web-search'],
+  browser: [
+    'browser-navigate',
+    'browser-click',
+    'browser-type',
+    'browser-press',
+    'browser-scroll',
+    'browser-snapshot',
+    'browser-console',
+    'browser-back',
+    'browser-get-images',
+    'browser-vision',
+    'browser-cdp',
+    'browser-dialog',
+  ],
+  search: ['web-search', 'session-search'],
+  skills: ['skills-list', 'skill-view', 'skill-manage', 'skill-curator'],
+  sync: ['agent-sync', 'contacts'],
+  messaging: ['send-message', 'webhook'],
+  media: [
+    'vision-analyze',
+    'video-analyze',
+    'transcription',
+    'text-to-speech',
+    'image-generation',
+    'video-generation',
+    'spotify-search',
+    'spotify-now-playing',
+    'spotify-play',
+  ],
+  mcp: ['mcp'],
+  orchestration: [
+    'delegate-task',
+    'kanban',
+    'kanban-show',
+    'kanban-list',
+    'kanban-create',
+    'kanban-complete',
+    'kanban-block',
+    'kanban-unblock',
+    'kanban-link',
+    'kanban-comment',
+    'kanban-heartbeat',
+    'cronjob',
+  ],
+  debug: ['debug-helpers', 'lsp'],
+  checkpoint: ['checkpoint-manager'],
+  integrations: [
+    'homeassistant',
+    'ha-list-entities',
+    'ha-get-state',
+    'ha-list-services',
+    'ha-call-service',
+    'x-search',
+    'x-post',
+    'discord',
+    'discord-admin',
+    'feishu-doc',
+    'feishu-drive',
+    'feishu-chat-send',
+    'feishu-user-lookup',
+    'yuanbao',
+    'yb-chat',
+    'yb-search',
+  ],
+  ensemble: ['mixture-of-agents'],
+};
+
+export const TOOLSET_NAMES = [
+  'terminal',
+  'file',
+  'web',
+  'browser',
+  'search',
+  'skills',
+  'sync',
+  'messaging',
+  'media',
+  'mcp',
+  'orchestration',
+  'debug',
+  'checkpoint',
+  'integrations',
+  'ensemble',
+] as const;
+
+export function resolveToolset(toolsets: string[]): string[] {
+  const names = new Set<string>();
+  for (const set of toolsets) {
+    const key = set.toLowerCase().trim();
+    const mapped = TOOLSET_MAP[key];
+    if (mapped) {
+      for (const tool of mapped) names.add(tool);
+    } else {
+      names.add(key);
+    }
+  }
+  for (const excluded of LEAF_EXCLUDED_TOOLS) {
+    names.delete(excluded);
+  }
+  return [...names];
+}
+
+export function filterLeafTools(tools: string[]): string[] {
+  const excluded = new Set<string>(LEAF_EXCLUDED_TOOLS);
+  return tools.filter((t) => !excluded.has(t));
+}

@@ -1,0 +1,61 @@
+name: Bug report
+description: Something is broken in carina-agent
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Search [existing issues](https://github.com/malike2356/carina-agent/issues) first.
+        For security bugs, see [SECURITY.md](https://github.com/malike2356/carina-agent/blob/main/SECURITY.md) instead.
+  - type: input
+    id: version
+    attributes:
+      label: carina-agent version
+      placeholder: "0.1.1 (output of carina version or npm list -g carina-agent)"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install?
+      options:
+        - npm install -g carina-agent
+        - git clone + pnpm build
+        - Docker
+        - Carina Cloud (app.carinaai.uk)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run carina setup with ...
+        2. Run carina ...
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Redact API keys and tokens.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Node 22.x, Ubuntu 24.04, etc."

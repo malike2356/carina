@@ -1,0 +1,190 @@
+<% title = 'Projects' %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">VERLOX Projects</div>
+      <div class="ops-page-sub">Kanban tracker for active client work. Drag cards between columns, edit notes, delete, or Ask Carina with project context.</div>
+    </div>
+    <button type="button" id="open-modal" class="ops-btn ops-btn-green">Add project</button>
+  </div>
+
+  <% const totalProjects = (grouped.active?.length || 0) + (grouped.paused?.length || 0) + (grouped.complete?.length || 0); %>
+  <div class="ops-metrics" style="margin-bottom:12px;">
+    <div class="ops-metric"><div class="ops-metric-label">Active</div><div class="ops-metric-value ok"><%= grouped.active?.length || 0 %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Paused</div><div class="ops-metric-value muted"><%= grouped.paused?.length || 0 %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Complete</div><div class="ops-metric-value"><%= grouped.complete?.length || 0 %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Total</div><div class="ops-metric-value"><%= totalProjects %></div></div>
+  </div>
+  <p class="ops-inline-note" style="margin-bottom:12px;">Grab the handle (or anywhere on the card) and drop it in another column to change status.</p>
+
+  <div class="ops-kanban" id="kanban">
+    <% const columns = [
+      { key: 'active', label: 'Active' },
+      { key: 'paused', label: 'Paused' },
+      { key: 'complete', label: 'Complete' },
+    ]; %>
+    <% for (const col of columns) { %>
+      <div class="ops-kanban-col" data-status="<%= col.key %>">
+        <div class="ops-kanban-head">
+          <span><%= col.label %></span>
+          <span class="ops-kanban-count"><%= grouped[col.key].length %></span>
+        </div>
+        <div class="kanban-col ops-kanban-body" data-drop="<%= col.key %>">
+          <% if (!grouped[col.key].length) { %>
+            <div class="ops-kanban-empty">Drop a card here</div>
+          <% } %>
+          <% for (const p of grouped[col.key]) { %>
+            <article class="project-card ops-project-item"
+                     draggable="true"
+                     title="Drag to another column"
+                     data-id="<%= p.id %>"
+                     data-status="<%= p.status %>"
+                     data-name="<%= p.name %>"
+                     data-client="<%= p.client %>"
+                     data-type="<%= p.type %>"
+                     data-address="<%= p.address %>"
+                     data-notes="<%= p.notes %>">
+              <div class="ops-project-handle" aria-hidden="true">⋮⋮</div>
+              <div class="ops-project-body">
+                <div class="ops-project-name"><%= p.name %></div>
+                <div class="ops-project-meta"><%= p.client || 'No client' %></div>
+                <% if (p.address) { %><div class="ops-project-meta"><%= p.address %></div><% } %>
+                <span class="ops-project-chip"><%= p.type %></span>
+                <details style="margin-top:8px;">
+                  <summary class="ops-link" style="cursor:pointer;font-size:12px;list-style:none;">Notes</summary>
+                  <form method="post" action="/projects/<%= p.id %>" style="margin-top:8px;" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">
+                    <input type="hidden" name="name" value="<%= p.name %>">
+                    <input type="hidden" name="client" value="<%= p.client %>">
+                    <input type="hidden" name="type" value="<%= p.type %>">
+                    <input type="hidden" name="address" value="<%= p.address %>">
+                    <input type="hidden" name="status" value="<%= p.status %>">
+                    <textarea name="notes" rows="3" class="ops-input" style="margin-bottom:8px;"><%= p.notes %></textarea>
+                    <button type="submit" class="ops-btn-ghost">Save notes</button>
+                  </form>
+                </details>
+                <div class="ops-project-actions" onmousedown="event.stopPropagation()">
+                  <a href="/chat?prefill=<%= encodeURIComponent("I'm working on " + p.name + " at " + p.address + ", type " + p.type + ". " + (p.notes || '')) %>"
+                     class="ops-link">Ask Carina</a>
+                  <form method="post" action="/projects/<%= p.id %>/delete" class="inline" onsubmit="return confirm('Delete?')">
+                    <button type="submit" class="ops-btn-ghost" style="color:var(--red);padding:0;border:none;">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </article>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<div id="modal" class="ops-modal-backdrop hidden">
+  <form method="post" action="/projects" class="ops-modal ops-modal-neutral">
+    <div class="ops-section-title" style="margin-bottom:16px;">New project</div>
+    <div class="ops-form-grid" style="grid-template-columns:1fr;">
+      <div class="ops-field">
+        <label class="ops-label" for="proj-name">Project name</label>
+        <input id="proj-name" name="name" placeholder="Project name" required class="ops-input">
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-client">Client</label>
+        <input id="proj-client" name="client" placeholder="Client" class="ops-input">
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-type">Type</label>
+        <select id="proj-type" name="type" class="ops-select">
+          <% for (const t of types) { %><option value="<%= t %>"><%= t %></option><% } %>
+        </select>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-status">Status</label>
+        <select id="proj-status" name="status" class="ops-select">
+          <% for (const s of statuses) { %><option value="<%= s %>"><%= s %></option><% } %>
+        </select>
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-address">Address</label>
+        <input id="proj-address" name="address" placeholder="Address" class="ops-input">
+      </div>
+      <div class="ops-field">
+        <label class="ops-label" for="proj-notes">Notes</label>
+        <textarea id="proj-notes" name="notes" placeholder="Notes" rows="3" class="ops-input"></textarea>
+      </div>
+    </div>
+    <div class="ops-actions">
+      <button type="submit" class="ops-btn ops-btn-green">Create</button>
+      <button type="button" id="close-modal" class="ops-btn-ghost">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const modal = document.getElementById('modal');
+  document.getElementById('open-modal')?.addEventListener('click', () => modal.classList.remove('hidden'));
+  document.getElementById('close-modal')?.addEventListener('click', () => modal.classList.add('hidden'));
+  modal?.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
+
+  let dragged = null;
+
+  function bindCard(card) {
+    card.addEventListener('dragstart', (e) => {
+      dragged = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', card.dataset.id || ''); } catch (_) {}
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.ops-kanban-body.drag-over').forEach((el) => el.classList.remove('drag-over'));
+      dragged = null;
+    });
+  }
+
+  document.querySelectorAll('.project-card').forEach(bindCard);
+
+  document.querySelectorAll('.kanban-col').forEach((col) => {
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.classList.add('drag-over');
+    });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      col.classList.remove('drag-over');
+      if (!dragged) return;
+      const status = col.dataset.drop;
+      const id = dragged.dataset.id;
+      const empty = col.querySelector('.ops-kanban-empty');
+      if (empty) empty.remove();
+      col.appendChild(dragged);
+      dragged.dataset.status = status;
+      const statusInput = dragged.querySelector('input[name="status"]');
+      if (statusInput) statusInput.value = status;
+      const fd = new FormData();
+      fd.append('status', status);
+      fd.append('name', dragged.dataset.name || '');
+      fd.append('client', dragged.dataset.client || '');
+      fd.append('type', dragged.dataset.type || '');
+      fd.append('address', dragged.dataset.address || '');
+      fd.append('notes', dragged.dataset.notes || '');
+      await fetch('/projects/' + id, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: fd,
+      });
+      document.querySelectorAll('.ops-kanban-col').forEach((column) => {
+        const body = column.querySelector('.ops-kanban-body');
+        const count = column.querySelector('.ops-kanban-count');
+        const cards = body.querySelectorAll('.project-card').length;
+        if (count) count.textContent = String(cards);
+        if (cards === 0 && !body.querySelector('.ops-kanban-empty')) {
+          const placeholder = document.createElement('div');
+          placeholder.className = 'ops-kanban-empty';
+          placeholder.textContent = 'Drop a card here';
+          body.appendChild(placeholder);
+        }
+      });
+    });
+  });
+</script>

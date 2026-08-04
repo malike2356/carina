@@ -1,0 +1,43 @@
+<% title = 'Skills' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Skills</h1>
+    <p>Installed skill packs from Carina core. Toggle platform visibility without duplicating pack storage.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+<% if (error) { %><div class="apu-flash warn"><%= error %></div><% } %>
+
+<% if (!available.length) { %>
+  <section class="apu-panel">
+    <div class="apu-empty">No skill packs loaded. Pair Carina and install packs from <a href="/packs">Skill Packs</a>.</div>
+  </section>
+<% } else { %>
+  <section class="apu-panel">
+    <h2>Installed packs</h2>
+    <p class="sub"><%= available.length %> pack<%= available.length === 1 ? '' : 's' %> available.</p>
+    <% for (const pack of available) { %>
+      <% const ov = overrides.get(pack.name) || { featured: false, enabled: true }; %>
+      <div class="apu-skill">
+        <div>
+          <div class="name"><%= pack.name %> <span class="apu-chip">v<%= pack.version %></span></div>
+          <div class="desc"><%= pack.description %></div>
+          <div class="meta"><%= pack.skillCount ?? '?' %> skills<% if (pack.category) { %> · <%= pack.category %><% } %></div>
+        </div>
+        <form method="post" action="/ai-platform/skills" class="apu-checks">
+          <input type="hidden" name="slug" value="<%= pack.name %>">
+          <input type="hidden" name="name" value="<%= pack.name %>">
+          <label><input type="checkbox" name="enabled" value="1" <%= ov.enabled ? 'checked' : '' %>> Enabled</label>
+          <label><input type="checkbox" name="featured" value="1" <%= ov.featured ? 'checked' : '' %>> Featured</label>
+          <button type="submit" class="apu-btn tiny ghost">Save</button>
+        </form>
+      </div>
+    <% } %>
+  </section>
+<% } %>
+</div>

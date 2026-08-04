@@ -1,0 +1,552 @@
+<%
+  title = 'Hosted Aiva email';
+  const st = typeof state === 'object' && state ? state : {};
+  const enabled = Boolean(st.enabled);
+  const secretOk = Boolean(st.secretPresent);
+  const ready = enabled && secretOk && Boolean(st.domain);
+  const providerLabel = st.provider === 'mailgun' ? 'Mailgun' : 'Cloudflare';
+  const lastInbound = st.lastInboundAt
+    ? new Date(st.lastInboundAt).toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : 'Never';
+%>
+<style>
+  .hemail-page {
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 32px 28px 48px;
+  }
+
+  .hemail-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .hemail-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(34, 197, 94, 0.12));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: #7dd3fc;
+  }
+  .hemail-icon svg { width: 22px; height: 22px; }
+  .hemail-header-text h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: -0.01em;
+  }
+  .hemail-header-text p {
+    margin: 3px 0 0;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    line-height: 1.4;
+  }
+  .hemail-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .hemail-status.on {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+  }
+  .hemail-status.off {
+    background: rgba(148, 163, 184, 0.08);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  .hemail-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .hemail-status.on .hemail-status-dot { background: #4ade80; }
+  .hemail-status.off .hemail-status-dot { background: #64748b; }
+
+  .hemail-flash {
+    margin-bottom: 18px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+  .hemail-flash.ok {
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #86efac;
+  }
+  .hemail-flash.err {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+  }
+
+  .hemail-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .hemail-metric {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 14px 16px;
+    min-height: 78px;
+  }
+  .hemail-metric-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .hemail-metric-value {
+    margin-top: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    word-break: break-word;
+    line-height: 1.35;
+  }
+  .hemail-metric-value.warn { color: #fbbf24; }
+  .hemail-metric-value.ok { color: #4ade80; }
+
+  .hemail-grid {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .hemail-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 20px;
+  }
+  .hemail-panel h2 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f1f5f9;
+  }
+  .hemail-panel-note {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .hemail-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 16px;
+  }
+  .hemail-field label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+  }
+  .hemail-field input[type="text"],
+  .hemail-field input[type="password"],
+  .hemail-field select {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.25);
+    color: #f1f5f9;
+    font-size: 0.82rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .hemail-field input:focus,
+  .hemail-field select:focus {
+    border-color: rgba(14, 165, 233, 0.5);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
+  }
+  .hemail-field input::placeholder { color: #475569; }
+  .hemail-field select option { color: #0f172a; }
+
+  .hemail-check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.84rem;
+    color: #cbd5e1;
+  }
+  .hemail-check-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #22c55e;
+    cursor: pointer;
+  }
+
+  .hemail-details {
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.15);
+    padding: 10px 12px;
+  }
+  .hemail-details summary {
+    cursor: pointer;
+    color: #93c5fd;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .hemail-details[open] summary { margin-bottom: 12px; }
+
+  .hemail-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.22);
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .hemail-submit:hover { opacity: 0.92; }
+  .hemail-submit:active { transform: scale(0.98); }
+
+  .hemail-kv {
+    display: grid;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .hemail-kv-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  .hemail-kv-meta {
+    flex: 1;
+    min-width: 0;
+  }
+  .hemail-kv-meta strong {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+  }
+  .hemail-kv-meta code {
+    display: block;
+    font-size: 0.74rem;
+    color: #e2e8f0;
+    word-break: break-all;
+    line-height: 1.45;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  }
+  .hemail-copy {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .hemail-copy:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+  }
+  .hemail-copy.copied {
+    background: rgba(34, 197, 94, 0.12);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #4ade80;
+  }
+
+  .hemail-steps {
+    margin-top: 16px;
+    display: grid;
+    gap: 0;
+  }
+  .hemail-step {
+    position: relative;
+    padding: 14px 0 14px 42px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .hemail-step:last-child { border-bottom: none; padding-bottom: 0; }
+  .hemail-step:first-child { padding-top: 0; }
+  .hemail-step::before {
+    content: attr(data-step);
+    position: absolute;
+    left: 0;
+    top: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .hemail-step:first-child::before { top: 0; }
+  .hemail-step p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #cbd5e1;
+    line-height: 1.5;
+  }
+  .hemail-step code {
+    font-size: 0.74rem;
+    color: #7dd3fc;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  }
+
+  @media (max-width: 900px) {
+    .hemail-grid { grid-template-columns: 1fr; }
+    .hemail-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .hemail-page { padding: 20px 16px 36px; }
+    .hemail-header { flex-wrap: wrap; }
+    .hemail-status { margin-left: 0; }
+    .hemail-metrics { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="hemail-page">
+  <header class="hemail-header">
+    <div class="hemail-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+        <path d="M3 7l9 7 9-7"></path>
+      </svg>
+    </div>
+    <div class="hemail-header-text">
+      <h1>Hosted Aiva email</h1>
+      <p>Give every Aiva an inbox address and route inbound mail through Core.</p>
+    </div>
+    <div class="hemail-status <%= ready ? 'on' : 'off' %>">
+      <span class="hemail-status-dot"></span>
+      <%= ready ? 'Ready' : (enabled ? 'Needs secret' : 'Disabled') %>
+    </div>
+  </header>
+
+  <% if (saved) { %>
+    <div class="hemail-flash ok">Hosted email settings saved and Core reloaded.</div>
+  <% } %>
+  <% if (errMsg || st.error) { %>
+    <div class="hemail-flash err"><%= errMsg || st.error %></div>
+  <% } %>
+
+  <section class="hemail-metrics" aria-label="Current status">
+    <div class="hemail-metric">
+      <div class="hemail-metric-label">Provider</div>
+      <div class="hemail-metric-value"><%= providerLabel %></div>
+    </div>
+    <div class="hemail-metric">
+      <div class="hemail-metric-label">Domain</div>
+      <div class="hemail-metric-value"><%= st.domain || 'Not set' %></div>
+    </div>
+    <div class="hemail-metric">
+      <div class="hemail-metric-label">Inbound secret</div>
+      <div class="hemail-metric-value <%= secretOk ? 'ok' : 'warn' %>"><%= secretOk ? 'Set' : 'Missing' %></div>
+    </div>
+    <div class="hemail-metric">
+      <div class="hemail-metric-label">Last inbound</div>
+      <div class="hemail-metric-value"><%= lastInbound %></div>
+    </div>
+    <div class="hemail-metric">
+      <div class="hemail-metric-label">Accepted</div>
+      <div class="hemail-metric-value"><%= Number(st.acceptedCount || 0).toLocaleString('en-GB') %></div>
+    </div>
+    <div class="hemail-metric">
+      <div class="hemail-metric-label">Unknown recipients</div>
+      <div class="hemail-metric-value <%= Number(st.unknownRecipientCount || 0) > 0 ? 'warn' : '' %>">
+        <%= Number(st.unknownRecipientCount || 0).toLocaleString('en-GB') %>
+      </div>
+    </div>
+  </section>
+
+  <div class="hemail-grid">
+    <section class="hemail-panel">
+      <h2>Configure routing</h2>
+      <p class="hemail-panel-note">
+        Secrets stay filled as dots when already set. Clear the field and paste a new value to rotate. New Aivas get addresses on this domain automatically.
+      </p>
+
+      <form method="post" action="<%= withV('/hosted-email/save') %>" class="hemail-form">
+        <label class="hemail-check-row">
+          <input type="checkbox" name="enabled" <%= enabled ? 'checked' : '' %>>
+          Enable hosted Aiva email
+        </label>
+
+        <div class="hemail-field">
+          <label for="hemail-provider">Provider</label>
+          <select id="hemail-provider" name="provider">
+            <option value="cloudflare" <%= st.provider === 'cloudflare' ? 'selected' : '' %>>Cloudflare Email Routing</option>
+            <option value="mailgun" <%= st.provider === 'mailgun' ? 'selected' : '' %>>Mailgun fallback</option>
+          </select>
+        </div>
+
+        <div class="hemail-field">
+          <label for="hemail-domain">Inbound email domain</label>
+          <input
+            id="hemail-domain"
+            type="text"
+            name="domain"
+            value="<%= st.domain || '' %>"
+            placeholder="inbox.hireaiva.co.uk"
+            spellcheck="false"
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="hemail-field">
+          <label for="hemail-cf-secret">Cloudflare Worker secret</label>
+          <input
+            id="hemail-cf-secret"
+            type="password"
+            name="cloudflareSecret"
+            value="<%= st.cloudflareSecretDisplay || '' %>"
+            placeholder="Paste a long random secret"
+            spellcheck="false"
+            autocomplete="new-password"
+          >
+        </div>
+
+        <details class="hemail-details">
+          <summary>Mailgun fallback settings</summary>
+          <div class="hemail-field">
+            <label for="hemail-mg-key">Mailgun webhook signing key</label>
+            <input
+              id="hemail-mg-key"
+              type="password"
+              name="mailgunSigningKey"
+              value="<%= st.mailgunSecretDisplay || '' %>"
+              placeholder="Optional fallback only"
+              spellcheck="false"
+              autocomplete="new-password"
+            >
+          </div>
+        </details>
+
+        <div>
+          <button type="submit" class="hemail-submit">Save and reload Core</button>
+        </div>
+      </form>
+    </section>
+
+    <aside class="hemail-panel">
+      <h2>Cloudflare values</h2>
+      <p class="hemail-panel-note">Copy these into Email Routing and the Email Worker.</p>
+
+      <div class="hemail-kv">
+        <div class="hemail-kv-row">
+          <div class="hemail-kv-meta">
+            <strong>Catch-all pattern</strong>
+            <code id="hemail-catch-all">*@<%= st.workerDomain %></code>
+          </div>
+          <button type="button" class="hemail-copy" data-copy-target="hemail-catch-all">Copy</button>
+        </div>
+        <div class="hemail-kv-row">
+          <div class="hemail-kv-meta">
+            <strong>Worker inbound URL</strong>
+            <code id="hemail-inbound-url"><%= st.inboundUrl %></code>
+          </div>
+          <button type="button" class="hemail-copy" data-copy-target="hemail-inbound-url">Copy</button>
+        </div>
+        <div class="hemail-kv-row">
+          <div class="hemail-kv-meta">
+            <strong>Worker secret name</strong>
+            <code id="hemail-secret-name">AIVA_EMAIL_SECRET</code>
+          </div>
+          <button type="button" class="hemail-copy" data-copy-target="hemail-secret-name">Copy</button>
+        </div>
+      </div>
+
+      <h2 style="margin-top: 22px;">Setup checklist</h2>
+      <div class="hemail-steps">
+        <div class="hemail-step" data-step="1">
+          <p>Open Cloudflare for <code><%= st.workerDomain %></code>.</p>
+        </div>
+        <div class="hemail-step" data-step="2">
+          <p>Go to <code>Compute &gt; Email Service &gt; Email Routing</code>.</p>
+        </div>
+        <div class="hemail-step" data-step="3">
+          <p>Onboard Email Routing so Cloudflare adds MX, SPF, and DKIM.</p>
+        </div>
+        <div class="hemail-step" data-step="4">
+          <p>Create an Email Worker and set secret <code>AIVA_EMAIL_SECRET</code>.</p>
+        </div>
+        <div class="hemail-step" data-step="5">
+          <p>Set Worker variable <code>AIVA_INBOUND_URL</code> to the inbound URL above.</p>
+        </div>
+        <div class="hemail-step" data-step="6">
+          <p>Route the catch-all pattern to the Worker, hire an Aiva, then send a test email.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  (function () {
+    document.querySelectorAll('.hemail-copy').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var targetId = btn.getAttribute('data-copy-target');
+        var el = targetId ? document.getElementById(targetId) : null;
+        if (!el) return;
+        var text = (el.textContent || '').trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          btn.classList.add('copied');
+          btn.textContent = 'Copied';
+          setTimeout(function () {
+            btn.classList.remove('copied');
+            btn.textContent = 'Copy';
+          }, 1400);
+        } catch (err) {
+          btn.textContent = 'Failed';
+          setTimeout(function () { btn.textContent = 'Copy'; }, 1400);
+        }
+      });
+    });
+  })();
+</script>

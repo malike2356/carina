@@ -1,0 +1,580 @@
+<% title = 'Settings' %>
+<% const llmKnown = Array.isArray(llmStatus && llmStatus.knownProviders) ? llmStatus.knownProviders : []; %>
+<% const geminiKnown = llmKnown.find(function (p) { return p.name === 'gemini'; }) || null; %>
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Settings</div>
+      <div class="ops-page-sub">Pair services, rotate passwords, configure alerts, and publish the Android build.</div>
+    </div>
+  </div>
+
+  <div class="ops-metrics">
+    <div class="ops-metric">
+      <div class="ops-metric-label">Carina agent</div>
+      <div class="ops-metric-value <%= carinaConnected ? 'ok' : (carinaPaired ? 'warn' : 'muted') %>">
+        <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
+      </div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Labyrinth Scout</div>
+      <div class="ops-metric-value <%= scoutConnected ? 'ok' : (scoutPaired ? 'warn' : 'muted') %>">
+        <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Key saved' : 'Not paired') %>
+      </div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Ops login</div>
+      <div class="ops-metric-value <%= adminPasswordSet ? 'ok' : 'warn' %>">
+        <%= adminPasswordSet ? 'Custom password' : 'Default (changeme)' %>
+      </div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Core web login</div>
+      <div class="ops-metric-value <%= coreWebPasswordSet ? 'ok' : 'warn' %>">
+        <%= coreWebPasswordSet ? 'Password set' : 'Not set' %>
+      </div>
+    </div>
+    <div class="ops-metric">
+      <div class="ops-metric-label">Gemini</div>
+      <div class="ops-metric-value <%= geminiKnown ? (geminiKnown.configured ? 'ok' : 'warn') : 'muted' %>">
+        <%= geminiKnown ? (geminiKnown.configured ? 'Visible and configured' : 'Visible, key missing') : 'Visible in core' %>
+      </div>
+    </div>
+  </div>
+
+  <% if (flashMessages && flashMessages.length) { %>
+    <div class="mb-4 space-y-2">
+      <% for (const msg of flashMessages) { %>
+        <div class="ops-flash <%= msg.type === 'success' ? 'success' : msg.type === 'error' ? 'error' : 'warn' %>"><%= msg.text %></div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <nav class="ops-tabs" aria-label="Settings sections">
+    <button type="button" data-settings-tab="connections" class="settings-tab ops-tab active">Connections</button>
+    <button type="button" data-settings-tab="passwords" class="settings-tab ops-tab">Passwords</button>
+    <button type="button" data-settings-tab="alerts" class="settings-tab ops-tab">Alerts</button>
+    <button type="button" data-settings-tab="connectors" class="settings-tab ops-tab">Connectors</button>
+  </nav>
+
+  <div id="settings-panel-connections" class="settings-panel ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <div class="ops-split">
+    <section class="ops-section">
+      <div class="ops-row-head">
+        <div>
+          <div class="ops-section-title">Carina agent</div>
+          <p class="ops-status-line <%= carinaConnected ? 'ok' : (carinaPaired ? 'warn' : '') %>">
+            <%= carinaConnected ? 'Connected' : (carinaPaired ? 'Token saved' : 'Not paired') %>
+          </p>
+          <p class="ops-inline-note">API URL: <code class="ops-code"><%= carinaApiUrl %></code></p>
+        </div>
+        <button type="button" id="test-carina" class="ops-btn-ghost">Test connection</button>
+      </div>
+      <p id="carina-status" class="ops-status-line">Not tested yet</p>
+
+      <div class="ops-section-divider"></div>
+      <div class="ops-section-title">Connect to Carina agent</div>
+      <% if (carinaConnected) { %>
+        <p class="ops-flash success">Carina agent is connected.</p>
+      <% } else if (coreEnvReadable) { %>
+        <p class="ops-section-sub">Ops can read the core token from this server automatically.</p>
+        <form method="post" action="/settings/carina-auto-pair" class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Connect automatically</button>
+          <span class="ops-inline-note">Token source: <code class="ops-code"><%= coreEnvPath %></code></span>
+        </form>
+      <% } else { %>
+        <p class="ops-flash warn">Auto-connect unavailable. Paste the ops token manually below.</p>
+      <% } %>
+
+      <details class="group" style="margin-top:12px;">
+        <summary class="ops-link" style="cursor:pointer;list-style:none;">Manual fallback: paste CARINA_OPS_TOKEN</summary>
+        <form method="post" action="/settings/carina-pairing" style="margin-top:12px;">
+          <div class="ops-field">
+            <label class="ops-label" for="carinaOpsToken">Carina ops token</label>
+            <input id="carinaOpsToken" name="carinaOpsToken" type="password" placeholder="paste CARINA_OPS_TOKEN" class="ops-input mono" />
+          </div>
+          <div class="ops-actions">
+            <button type="submit" class="ops-btn ops-btn-green">Save Carina token</button>
+          </div>
+        </form>
+      </details>
+    </section>
+
+    <section class="ops-section">
+      <div class="ops-row-head">
+        <div>
+          <div class="ops-section-title">Labyrinth Scout</div>
+          <p class="ops-status-line <%= scoutConnected ? 'ok' : (scoutPaired ? 'warn' : '') %>">
+            <%= scoutConnected ? 'Connected' : (scoutPaired ? 'Paired' : 'Not paired') %>
+          </p>
+          <p class="ops-inline-note">Scout URL: <code class="ops-code"><%= scoutUrl %></code></p>
+        </div>
+        <button type="button" id="test-scout" class="ops-btn-ghost">Test connection</button>
+      </div>
+      <p id="scout-status-msg" class="ops-status-line">Not tested yet</p>
+
+      <div class="ops-section-divider"></div>
+      <div class="ops-section-title">Scout control mode</div>
+      <p class="ops-section-sub">Monitoring keeps Scout visible without interrupting normal Aiva and Carina usage. Defensive actions can be turned back on here when you are ready.</p>
+      <form method="post" action="/settings/scout-control">
+        <div class="ops-field">
+          <label class="ops-label" for="scout-control-mode">Action mode</label>
+          <select id="scout-control-mode" name="mode" class="ops-select">
+            <option value="monitor" <%= scoutControl.mode === 'monitor' ? 'selected' : '' %>>Monitoring only</option>
+            <option value="enforce" <%= scoutControl.mode === 'enforce' ? 'selected' : '' %>>Monitoring plus defensive actions</option>
+          </select>
+        </div>
+        <div class="ops-field">
+          <label class="ops-label" for="scout-alert-minimum">Forward alerts</label>
+          <select id="scout-alert-minimum" name="alertMinimumSeverity" class="ops-select">
+            <option value="critical" <%= scoutControl.alertMinimumSeverity === 'critical' ? 'selected' : '' %>>Critical and breach only</option>
+            <option value="breach" <%= scoutControl.alertMinimumSeverity === 'breach' ? 'selected' : '' %>>Breach only</option>
+            <option value="warning" <%= scoutControl.alertMinimumSeverity === 'warning' ? 'selected' : '' %>>Warning and above</option>
+            <option value="info" <%= scoutControl.alertMinimumSeverity === 'info' ? 'selected' : '' %>>All events</option>
+          </select>
+        </div>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Save Scout controls</button>
+        </div>
+      </form>
+
+      <div class="ops-section-divider"></div>
+      <div class="ops-section-title">Connect to Labyrinth Scout</div>
+      <% if (scoutConnected) { %>
+        <p class="ops-flash success">Labyrinth Scout is connected. Engine and console APIs respond with your saved API key.</p>
+      <% } else { %>
+      <p class="ops-section-sub">Paste your Scout API key from <a href="https://console.labyrinthscout.com/account/register" target="_blank" rel="noopener" class="ops-link">console.labyrinthscout.com</a>.</p>
+      <form method="post" action="/settings/scout-pairing">
+        <div class="ops-field">
+          <label class="ops-label" for="scoutApiKey">Scout API key</label>
+          <input id="scoutApiKey" name="scoutApiKey" type="password" required placeholder="lscout_..." class="ops-input mono" />
+        </div>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Pair with Scout</button>
+        </div>
+      </form>
+      <% } %>
+    </section>
+    </div>
+
+    <div class="ops-section" style="border-top:1px solid var(--border);">
+      <div class="ops-row-head">
+        <div>
+          <div class="ops-section-title">Carina Android APK</div>
+          <p class="ops-section-sub">Publish a direct APK download link for staff installs.</p>
+        </div>
+        <% if (carinaAndroidApkUrl) { %>
+          <a href="<%= carinaAndroidApkUrl %>" target="_blank" rel="noopener noreferrer" class="ops-btn ops-btn-green">Download APK</a>
+        <% } %>
+      </div>
+      <form method="post" action="/settings/carina-android-apk">
+        <div class="ops-field">
+          <label class="ops-label" for="apkUrlConnections">APK download URL</label>
+          <input id="apkUrlConnections" name="apkUrl" type="url" required value="<%= carinaAndroidApkUrl %>" placeholder="https://example.com/carina-ai.apk" class="ops-input mono" />
+        </div>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Save APK link</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="ops-section" style="border-top:1px solid var(--border);">
+      <div class="ops-row-head">
+        <div>
+          <div class="ops-section-title">LLM providers</div>
+          <p class="ops-section-sub">Gemini, DeepSeek, Anthropic, and the rest of the configured catalog appear in the provider menu and rotation controls.</p>
+        </div>
+        <a href="/llm-providers" class="ops-btn ops-btn-green">Open provider menu</a>
+      </div>
+      <dl class="ops-kv-grid" style="margin-top:12px;">
+        <div><dt>Rotation</dt><dd><%= llmStatus && llmStatus.enabled ? 'On' : 'Off' %></dd></div>
+        <div><dt>Default</dt><dd><%= llmStatus && llmStatus.defaultProvider ? llmStatus.defaultProvider : 'none' %></dd></div>
+        <div><dt>Model</dt><dd style="word-break:break-all;"><%= llmStatus && llmStatus.model ? llmStatus.model : 'none' %></dd></div>
+        <div><dt>Configured</dt><dd><%= llmStatus && Array.isArray(llmStatus.configuredProviders) ? llmStatus.configuredProviders.length : 0 %></dd></div>
+      </dl>
+      <% if (geminiKnown) { %>
+        <p class="ops-inline-note" style="margin-top:10px;">
+          Gemini: <%= geminiKnown.configured ? 'configured' : 'discovered but not yet configured' %>,
+          model <code class="ops-code"><%= geminiKnown.model || 'gemini-2.0-flash' %></code>
+        </p>
+      <% } else { %>
+        <p class="ops-inline-note" style="margin-top:10px;">Gemini is available in Core, then surfaced here when the provider catalog is loaded.</p>
+      <% } %>
+    </div>
+  </div>
+
+  <div id="settings-panel-passwords" class="settings-panel hidden ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <div class="ops-split">
+      <section class="ops-section">
+        <div class="ops-section-title">Core web login password</div>
+        <p class="ops-status-line <%= coreWebPasswordSet ? 'ok' : 'warn' %>"><%= coreWebPasswordSet ? 'Password set' : 'Not set' %></p>
+        <p class="ops-section-sub">Sets the password for <a href="<%= carinaApiUrl %>/login" target="_blank" rel="noopener" class="ops-link">core.carinaai.uk/login</a>. Requires Carina connection.</p>
+        <form method="post" action="/settings/carina-web-password">
+          <div class="ops-form-grid">
+            <div class="ops-field">
+              <label class="ops-label" for="coreNewPassword">New password</label>
+              <input id="coreNewPassword" name="newPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+            <div class="ops-field">
+              <label class="ops-label" for="coreConfirmPassword">Confirm password</label>
+              <input id="coreConfirmPassword" name="confirmPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+          </div>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Update core login password</button></div>
+        </form>
+      </section>
+
+      <section class="ops-section">
+        <div class="ops-section-title">Ops admin password</div>
+        <p class="ops-status-line <%= adminPasswordSet ? 'ok' : 'warn' %>"><%= adminPasswordSet ? 'Password set' : 'Default (changeme)' %></p>
+        <p class="ops-section-sub">Password for <a href="/login" class="ops-link">ops.carinaai.uk</a> login.</p>
+        <form method="post" action="/settings/ops-admin-password">
+          <div class="ops-form-grid">
+            <div class="ops-field">
+              <label class="ops-label" for="opsNewPassword">New password</label>
+              <input id="opsNewPassword" name="newPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+            <div class="ops-field">
+              <label class="ops-label" for="opsConfirmPassword">Confirm password</label>
+              <input id="opsConfirmPassword" name="confirmPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+          </div>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Update ops login password</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div class="ops-split" style="border-top:1px solid var(--border);">
+      <section class="ops-section">
+        <div class="ops-section-title">Scout console password</div>
+        <p class="ops-section-sub">Login password for <a href="https://console.labyrinthscout.com" target="_blank" rel="noopener" class="ops-link">console.labyrinthscout.com</a>.</p>
+        <form method="post" action="/settings/scout-password">
+          <div class="ops-form-grid">
+            <div class="ops-field">
+              <label class="ops-label" for="newPassword">New password</label>
+              <input id="newPassword" name="newPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+            <div class="ops-field">
+              <label class="ops-label" for="confirmPassword">Confirm password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" required minlength="8" class="ops-input" />
+            </div>
+          </div>
+          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Update Scout console password</button></div>
+        </form>
+      </section>
+
+      <section class="ops-section">
+        <div class="ops-section-title">Environment (read-only)</div>
+        <dl class="ops-kv-grid" style="margin-top:12px;">
+          <div><dt>PORT</dt><dd><%= port %></dd></div>
+          <div><dt>CARINA_API_URL</dt><dd style="word-break:break-all;"><%= carinaApiUrl %></dd></div>
+          <div><dt>SCOUT_URL</dt><dd style="word-break:break-all;"><%= scoutUrl %></dd></div>
+          <div><dt>ADMIN_PASSWORD</dt><dd><%= adminPasswordSet ? '(set)' : '(default changeme)' %></dd></div>
+          <div><dt>CARINA_OPS_TOKEN</dt><dd><%= carinaPaired ? '(set)' : '(not set)' %></dd></div>
+          <div><dt>SCOUT_API_KEY</dt><dd><%= scoutPaired ? '(set)' : '(not set)' %></dd></div>
+          <div><dt>SKILL_AUTO_WRITE</dt><dd><%= skillAutoWrite ? 'true' : 'false' %></dd></div>
+        </dl>
+      </section>
+    </div>
+  </div>
+
+  <div id="settings-panel-alerts" class="settings-panel hidden ops-surface" style="margin-top:0;border-top-left-radius:0;border-top-right-radius:0;">
+    <section class="ops-section" id="alert-channels-section">
+      <div class="ops-section-title">Alert channels</div>
+      <p class="ops-section-sub">Route Scout security events to Telegram, WhatsApp, email, or Slack. Pair Scout under Connections first.</p>
+      <p id="alert-channels-status" class="ops-status-line">Loading channels...</p>
+
+      <div class="ops-field">
+        <label class="ops-label" for="alert-dashboard-url">Dashboard link in alerts</label>
+        <div class="ops-actions" style="margin-top:0;">
+          <input id="alert-dashboard-url" type="url" placeholder="https://console.labyrinthscout.com/dashboard" class="ops-input mono" style="flex:1;" />
+          <button type="button" id="save-dashboard-url" class="ops-btn-ghost">Save URL</button>
+        </div>
+      </div>
+
+      <div class="ops-split" style="margin-top:18px;border-top:1px solid var(--border);">
+        <div class="ops-section" data-channel="telegram">
+          <div class="ops-section-title">Telegram</div>
+          <div class="ops-field"><label class="ops-label">Bot token</label><input data-field="bot_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Chat ID</label><input data-field="chat_id" type="text" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="telegram" class="ops-btn ops-btn-green">Save Telegram</button>
+        </div>
+
+        <div class="ops-section" data-channel="email">
+          <div class="ops-section-title">Email (Resend)</div>
+          <div class="ops-field"><label class="ops-label">Resend API key</label><input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">To address</label><input data-field="to_address" type="email" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">From address</label><input data-field="from_address" type="email" placeholder="hello@carinaai.uk" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="email" class="ops-btn ops-btn-green">Save email</button>
+        </div>
+
+        <div class="ops-section" data-channel="slack">
+          <div class="ops-section-title">Slack</div>
+          <div class="ops-field"><label class="ops-label">Webhook URL</label><input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="slack" class="ops-btn ops-btn-green">Save Slack</button>
+        </div>
+
+        <div class="ops-section" data-channel="whatsapp">
+          <div class="ops-section-title">WhatsApp (Twilio)</div>
+          <div class="ops-field"><label class="ops-label">Account SID</label><input data-field="account_sid" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Auth token</label><input data-field="auth_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">From number</label><input data-field="from_number" type="text" placeholder="whatsapp:+14155238886" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">To number</label><input data-field="to_number" type="text" placeholder="+447700900123" class="ops-input mono" /></div>
+          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <button type="button" data-save-channel="whatsapp" class="ops-btn ops-btn-green">Save WhatsApp</button>
+        </div>
+      </div>
+
+      <div class="ops-actions" style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+        <label class="ops-label" style="margin:0;">Test severity</label>
+        <select id="alert-test-severity" class="ops-select" style="width:auto;min-width:120px;">
+          <option value="warning">warning</option>
+          <option value="critical" selected>critical</option>
+          <option value="breach">breach</option>
+        </select>
+        <button type="button" id="send-test-alert" class="ops-btn ops-btn-amber">Send test alert</button>
+        <span id="alert-test-result" class="ops-inline-note" style="margin:0;"></span>
+      </div>
+    </section>
+  </div>
+
+  <%- include('partials/settings-connectors') %>
+
+</div>
+
+<script>
+  (function settingsTabs() {
+    const tabs = document.querySelectorAll('[data-settings-tab]');
+    const panels = document.querySelectorAll('.settings-panel');
+
+    function showTab(name) {
+      tabs.forEach((tab) => {
+        const active = tab.getAttribute('data-settings-tab') === name;
+        tab.classList.toggle('active', active);
+      });
+      panels.forEach((panel) => {
+        panel.classList.toggle('hidden', panel.id !== 'settings-panel-' + name);
+      });
+      if (location.hash !== '#' + name) {
+        history.replaceState(null, '', '#' + name);
+      }
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => showTab(tab.getAttribute('data-settings-tab')));
+    });
+
+    const hash = (location.hash || '#connections').replace('#', '');
+    const valid = ['connections', 'passwords', 'alerts', 'connectors'];
+    showTab(valid.includes(hash) ? hash : 'connections');
+  })();
+
+  document.getElementById('test-carina')?.addEventListener('click', async () => {
+    const el = document.getElementById('carina-status');
+    el.textContent = 'Testing...';
+    el.className = 'text-xs text-gray-500 mb-4';
+    try {
+      const r = await fetch('/settings/test-carina', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        el.textContent = 'Connected. Service: ' + (d.service || 'carina-gateway');
+        el.className = 'text-xs text-green-400 mb-4';
+      } else {
+        el.textContent = 'Offline: ' + (d.error || 'unknown error');
+        el.className = 'text-xs text-red-400 mb-4';
+      }
+    } catch {
+      el.textContent = 'Request failed';
+      el.className = 'text-xs text-red-400 mb-4';
+    }
+  });
+
+  const alertStatus = document.getElementById('alert-channels-status');
+  const channelByType = {};
+
+  function setAlertStatus(msg, ok) {
+    if (!alertStatus) return;
+    alertStatus.textContent = msg;
+    alertStatus.className = 'text-xs mb-4 ' + (ok === true ? 'text-green-400' : ok === false ? 'text-red-400' : 'text-gray-500');
+  }
+
+  function fillChannelForm(type, channel) {
+    const panel = document.querySelector('[data-channel="' + type + '"]');
+    if (!panel) return;
+    const cfg = (channel && channel.config) || {};
+    panel.querySelectorAll('[data-field]').forEach((el) => {
+      const field = el.getAttribute('data-field');
+      if (field === 'enabled') {
+        el.checked = channel ? channel.enabled !== false : false;
+      } else if (field === 'severity_threshold') {
+        el.value = (channel && channel.severity_threshold) || 'warning';
+      } else if (el.type === 'password') {
+        el.value = '';
+        el.placeholder = cfg[field] ? cfg[field] + ' (saved)' : 'Leave blank to keep existing';
+      } else {
+        el.value = cfg[field] || '';
+      }
+    });
+  }
+
+  async function loadAlertChannels() {
+    setAlertStatus('Loading channels...', null);
+    try {
+      const r = await fetch('/settings/alert-channels');
+      const d = await r.json();
+      if (!d.ok) {
+        setAlertStatus(d.error || 'Failed to load alert channels', false);
+        return;
+      }
+      const channels = d.channels || [];
+      const dash = document.getElementById('alert-dashboard-url');
+      if (dash && d.dashboard_url) dash.value = d.dashboard_url;
+      ['telegram', 'email', 'slack', 'whatsapp'].forEach((type) => {
+        const ch = channels.find((c) => c.channel_type === type);
+        channelByType[type] = ch || null;
+        fillChannelForm(type, ch);
+      });
+      const enabled = channels.filter((c) => c.enabled).length;
+      setAlertStatus(enabled + ' channel(s) enabled. Secrets show as masked placeholders.', true);
+    } catch {
+      setAlertStatus('Could not load alert channels', false);
+    }
+  }
+
+  document.querySelectorAll('[data-save-channel]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const type = btn.getAttribute('data-save-channel');
+      const panel = document.querySelector('[data-channel="' + type + '"]');
+      if (!panel) return;
+      const body = { enabled: true };
+      panel.querySelectorAll('[data-field]').forEach((el) => {
+        const field = el.getAttribute('data-field');
+        if (field === 'enabled') body.enabled = el.checked;
+        else if (field === 'severity_threshold') body.severity_threshold = el.value;
+        else if (el.value.trim()) body[field] = el.value.trim();
+      });
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      try {
+        const r = await fetch('/settings/alert-channels/' + type, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          fillChannelForm(type, d.channel);
+          setAlertStatus(type + ' saved.', true);
+        } else {
+          setAlertStatus(d.error || 'Save failed', false);
+        }
+      } catch {
+        setAlertStatus('Save request failed', false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save ' + type.charAt(0).toUpperCase() + type.slice(1);
+      }
+    });
+  });
+
+  document.getElementById('save-dashboard-url')?.addEventListener('click', async () => {
+    const url = document.getElementById('alert-dashboard-url')?.value?.trim() || '';
+    if (!url.startsWith('http')) {
+      setAlertStatus('Dashboard URL must start with http', false);
+      return;
+    }
+    try {
+      const r = await fetch('/settings/alert-channels-platform', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dashboard_url: url }),
+      });
+      const d = await r.json();
+      setAlertStatus(d.ok ? 'Dashboard URL saved.' : (d.error || 'Save failed'), d.ok);
+    } catch {
+      setAlertStatus('Dashboard URL save failed', false);
+    }
+  });
+
+  document.getElementById('send-test-alert')?.addEventListener('click', async () => {
+    const resultEl = document.getElementById('alert-test-result');
+    const severity = document.getElementById('alert-test-severity')?.value || 'critical';
+    if (resultEl) {
+      resultEl.textContent = 'Sending...';
+      resultEl.className = 'ops-inline-note';
+    }
+    try {
+      const r = await fetch('/settings/alert-test', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ severity }),
+      });
+      const raw = await r.text();
+      let d = {};
+      try {
+        d = raw ? JSON.parse(raw) : {};
+      } catch {
+        if (resultEl) {
+          resultEl.textContent = r.status === 401 || /login/i.test(raw)
+            ? 'Session expired. Refresh and sign in, then retry.'
+            : 'Request failed (HTTP ' + r.status + ').';
+          resultEl.className = 'text-xs text-red-400';
+        }
+        return;
+      }
+      if (d.ok) {
+        const n = d.channels_notified ?? 0;
+        if (resultEl) {
+          resultEl.textContent = n > 0
+            ? 'Test sent. Event ' + (d.event_id || '') + '. Channels: ' + n + '.'
+            : 'Event created, but no channels matched this severity. Check Min severity on each channel.';
+          resultEl.className = n > 0 ? 'text-xs text-green-400' : 'text-xs text-amber-400';
+        }
+      } else {
+        if (resultEl) {
+          resultEl.textContent = d.error || ('Test failed (HTTP ' + r.status + ')');
+          resultEl.className = 'text-xs text-red-400';
+        }
+      }
+    } catch (err) {
+      if (resultEl) {
+        resultEl.textContent = 'Request failed: ' + (err && err.message ? err.message : 'network error');
+        resultEl.className = 'text-xs text-red-400';
+      }
+    }
+  });
+
+  loadAlertChannels();
+
+  document.getElementById('test-scout')?.addEventListener('click', async () => {
+    const el = document.getElementById('scout-status-msg');
+    el.textContent = 'Testing...';
+    el.className = 'text-xs text-gray-500 mb-4';
+    try {
+      const r = await fetch('/settings/test-scout', { method: 'POST' });
+      const d = await r.json();
+      if (d.ok) {
+        const n = (d.instances || []).length;
+        el.textContent = 'Connected. ' + n + ' instance(s) registered.';
+        el.className = 'text-xs text-green-400 mb-4';
+      } else {
+        el.textContent = 'Scout offline or unreachable';
+        el.className = 'text-xs text-red-400 mb-4';
+      }
+    } catch {
+      el.textContent = 'Request failed';
+      el.className = 'text-xs text-red-400 mb-4';
+    }
+  });
+</script>

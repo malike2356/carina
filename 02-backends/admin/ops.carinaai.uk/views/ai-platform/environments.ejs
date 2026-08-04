@@ -1,0 +1,84 @@
+<% title = 'Environments' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Environments</h1>
+    <p>Define runtime targets (API bases) and check reachability when Core can probe them.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/environments" class="apu-panel apu-fields">
+    <h2>Add environment</h2>
+    <p class="sub">Name a target and optional API base URL.</p>
+    <div>
+      <label class="field" for="e-name">Name</label>
+      <input id="e-name" name="name" required placeholder="production">
+    </div>
+    <div>
+      <label class="field" for="e-url">API base URL</label>
+      <input id="e-url" name="apiBaseUrl" placeholder="https://api.example.com">
+    </div>
+    <div>
+      <label class="field" for="e-notes">Notes</label>
+      <textarea id="e-notes" name="notes" rows="3" placeholder="Optional notes"></textarea>
+    </div>
+    <button type="submit" class="apu-btn">Create</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Environments</h2>
+    <p class="sub"><%= environments.length %> defined.</p>
+    <% if (!environments.length) { %>
+      <div class="apu-empty">No environments defined yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th>API URL</th>
+              <th>Health</th>
+              <th>Status</th>
+              <th>Edit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const e of environments) { %>
+              <% const h = health[e.id] || 'skip'; %>
+              <tr>
+                <td><%= e.name %></td>
+                <td class="mono"><%= e.slug %></td>
+                <td class="muted" style="word-break:break-all;"><%= e.apiBaseUrl || ';' %></td>
+                <td>
+                  <% if (h === 'ok') { %><span class="apu-chip ok">OK</span>
+                  <% } else if (h === 'fail') { %><span class="apu-chip fail">Fail</span>
+                  <% } else { %><span class="apu-chip">N/A</span><% } %>
+                </td>
+                <td><span class="apu-chip"><%= e.status %></span></td>
+                <td>
+                  <form method="post" action="/ai-platform/environments/<%= e.id %>" class="apu-stack">
+                    <input name="name" value="<%= e.name %>">
+                    <input name="apiBaseUrl" value="<%= e.apiBaseUrl || '' %>">
+                    <select name="status">
+                      <option value="active" <%= e.status === 'active' ? 'selected' : '' %>>active</option>
+                      <option value="archived" <%= e.status === 'archived' ? 'selected' : '' %>>archived</option>
+                    </select>
+                    <button type="submit" class="apu-btn tiny ghost">Save</button>
+                  </form>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

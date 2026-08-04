@@ -1,0 +1,305 @@
+<% title = 'Credits' %>
+<%
+  const monthSpendMajor = Number(ledger.month.providerCostMinor || 0) / 100;
+  const budgetLimit = Number(org.monthlyLimit || 0);
+  const budgetUsedPct = budgetLimit > 0
+    ? Math.min(100, Math.round((monthSpendMajor / budgetLimit) * 1000) / 10)
+    : 0;
+  const budgetTone = remainingBudget <= 0 ? 'danger' : budgetUsedPct >= 80 ? 'warn' : 'ok';
+  const modelSpend = (ledger.byProviderMonth || []).slice();
+  const maxModelCost = modelSpend.reduce(function (m, row) {
+    return Math.max(m, Number(row.providerCostMinor || 0));
+  }, 0) || 1;
+  const paid = Number(ledger.month.carinaPaidCalls || 0);
+  const byok = Number(ledger.month.byokCalls || 0);
+  const callMixTotal = Math.max(1, paid + byok);
+  const paidPct = Math.round((paid / callMixTotal) * 100);
+%>
+<style>
+  .cr { width:100%; max-width:none; }
+  .cr-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px; align-items:flex-end; margin-bottom:18px; }
+  .cr-head h1 { margin:0; font-size:1.45rem; font-weight:700; color:#f8fafc; }
+  .cr-head p { margin:4px 0 0; font-size:0.82rem; color:#94a3b8; }
+  .cr-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .cr-actions a {
+    display:inline-flex; padding:8px 12px; border-radius:8px; font-size:0.78rem; text-decoration:none;
+    color:#cbd5e1; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.25);
+  }
+  .cr-actions a.primary { color:#86efac; border-color:rgba(34,197,94,0.35); background:rgba(34,197,94,0.1); }
+  .cr-flash {
+    margin-bottom:14px; padding:10px 14px; border-radius:10px; font-size:0.8rem;
+  }
+  .cr-flash.ok { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#86efac; }
+  .cr-flash.warn { background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); color:#fde68a; }
+  .cr-hero { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; margin-bottom:16px; }
+  .cr-panel {
+    padding:18px; border-radius:14px;
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+  }
+  .cr-panel.glow {
+    background:
+      radial-gradient(900px 180px at 0% 0%, rgba(34,197,94,0.1), transparent 55%),
+      rgba(255,255,255,0.025);
+  }
+  .cr-panel h2 { margin:0 0 4px; font-size:0.92rem; font-weight:650; color:#f1f5f9; }
+  .cr-panel .sub { margin:0 0 14px; font-size:0.75rem; color:#64748b; line-height:1.4; }
+  .cr-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:12px; }
+  .cr-kpi {
+    padding:16px; border-radius:12px;
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .cr-kpi.accent { border-color:rgba(34,197,94,0.28); background:linear-gradient(160deg, rgba(34,197,94,0.1), rgba(255,255,255,0.02)); }
+  .cr-kpi .label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; }
+  .cr-kpi .value { margin-top:8px; font-size:1.3rem; font-weight:700; color:#f8fafc; font-variant-numeric:tabular-nums; }
+  .cr-kpi .meta { margin-top:6px; font-size:0.72rem; color:#64748b; }
+  .cr-budget-row { display:flex; justify-content:space-between; gap:12px; margin:10px 0 8px; font-size:0.78rem; color:#94a3b8; }
+  .cr-budget-row strong { color:#e2e8f0; font-variant-numeric:tabular-nums; }
+  .cr-bar-track { height:10px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; }
+  .cr-bar-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#16a34a,#4ade80); }
+  .cr-bar-fill.warn { background:linear-gradient(90deg,#d97706,#fbbf24); }
+  .cr-bar-fill.danger { background:linear-gradient(90deg,#dc2626,#f87171); }
+  .cr-mix { display:flex; height:8px; border-radius:999px; overflow:hidden; background:rgba(255,255,255,0.06); margin-top:10px; }
+  .cr-mix .paid { background:linear-gradient(90deg,#0ea5e9,#22c55e); }
+  .cr-mix .byok { background:rgba(148,163,184,0.45); }
+  .cr-grid-2 { display:grid; grid-template-columns:1.15fr 1fr; gap:14px; margin-bottom:16px; }
+  .cr-spend-row { display:grid; grid-template-columns:92px 1fr 1.4fr 70px; gap:8px; align-items:center; margin-bottom:10px; }
+  .cr-spend-row .name { font-size:0.72rem; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cr-spend-row .model { font-size:0.68rem; color:#64748b; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cr-spend-row .amt { font-size:0.75rem; color:#e2e8f0; text-align:right; font-variant-numeric:tabular-nums; }
+  .cr-spend-track { height:8px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; }
+  .cr-spend-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#0ea5e9,#22c55e); }
+  .cr-table-wrap { overflow:auto; max-height:320px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); }
+  .cr-table { width:100%; border-collapse:collapse; font-size:0.76rem; }
+  .cr-table th {
+    text-align:left; color:#64748b; font-weight:600; padding:9px 10px;
+    border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); position:sticky; top:0;
+  }
+  .cr-table td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04); color:#cbd5e1; }
+  .cr-table td.mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:0.7rem; color:#94a3b8; }
+  .cr-table td.num { text-align:right; font-variant-numeric:tabular-nums; color:#e2e8f0; }
+  .cr-form label.field { display:block; font-size:0.7rem; color:#94a3b8; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.04em; }
+  .cr-form input[type="text"], .cr-form input[type="number"], .cr-form select {
+    display:block; width:100%; height:auto !important; min-height:44px !important; max-height:none !important;
+    padding:12px 14px !important; border-radius:10px !important;
+    border:1px solid rgba(255,255,255,0.12) !important; background:#0b0f14 !important;
+    color:#f1f5f9 !important; font-size:14px !important; line-height:1.4 !important;
+    box-sizing:border-box !important; appearance:none; -webkit-appearance:none;
+  }
+  .cr-form select { padding-right:2rem !important; }
+  .cr-form .fields { display:grid; gap:12px; margin-bottom:14px; }
+  .cr-form .fields-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .cr-checks { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .cr-check {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.2); color:#cbd5e1; font-size:0.82rem;
+  }
+  .cr-check input { accent-color:#22c55e; }
+  .cr-hint { margin:0 0 14px; font-size:0.75rem; color:#64748b; line-height:1.45; }
+  .cr-btn {
+    width:100%; padding:11px 14px; border:none; border-radius:10px; cursor:pointer;
+    background:linear-gradient(135deg,#22c55e,#16a34a); color:#052e16; font-weight:700; font-size:0.85rem;
+  }
+  .cr-section-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:12px; }
+  .cr-section-head a { font-size:0.78rem; color:#67e8f9; text-decoration:none; }
+  .cr-section-head a:hover { text-decoration:underline; }
+  @media (max-width: 1100px) {
+    .cr-hero, .cr-grid-2, .cr-kpis { grid-template-columns:1fr 1fr; }
+    .cr-spend-row { grid-template-columns:80px 1fr 1fr 64px; }
+  }
+  @media (max-width: 720px) {
+    .cr-hero, .cr-grid-2, .cr-kpis, .cr-form .fields-2 { grid-template-columns:1fr; }
+    .cr-spend-row { grid-template-columns:1fr; gap:4px; }
+  }
+</style>
+
+<div class="ops-page cr">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="cr-head">
+  <div>
+    <h1>Credits and spend</h1>
+    <p>Live figures from <code>ai_usage_ledger</code>. Same source as Control center usage.</p>
+  </div>
+  <div class="cr-actions">
+    <a class="primary" href="/ai-control?tab=usage">Usage hub</a>
+    <a href="/ai-platform/analytics">Analytics</a>
+    <a href="/ai-platform/margins?days=30">Margins</a>
+  </div>
+</div>
+
+<% if (saved) { %><div class="cr-flash ok">Settings saved.</div><% } %>
+<% if (!ledger.ready) { %>
+  <div class="cr-flash warn">Usage ledger table is not available yet. Spend will appear after Core writes completed model calls.</div>
+<% } else if (!coreConnected) { %>
+  <div class="cr-flash warn">Core telemetry is offline, but ledger spend below is still live from the database.</div>
+<% } %>
+
+<div class="cr-hero">
+  <section class="cr-panel glow">
+    <h2>Monthly budget</h2>
+    <p class="sub">Soft ops budget against provider spend. Not auto-charged from Stripe yet.</p>
+    <div class="cr-budget-row">
+      <span>Used <strong><%= money(ledger.month.providerCostMinor) %></strong></span>
+      <span>Left <strong style="<%= remainingBudget <= 0 ? 'color:#fca5a5' : '' %>">£<%= remainingBudget.toFixed(2) %></strong></span>
+    </div>
+    <div class="cr-bar-track" aria-label="Budget used <%= budgetUsedPct %>%">
+      <div class="cr-bar-fill <%= budgetTone %>" style="width:<%= budgetUsedPct %>%;"></div>
+    </div>
+    <div class="cr-budget-row" style="margin-bottom:0;margin-top:8px;">
+      <span><%= budgetUsedPct %>% of £<%= budgetLimit.toFixed(0) %> / month</span>
+      <span><%= Number(ledger.month.calls || 0).toLocaleString() %> calls</span>
+    </div>
+  </section>
+
+  <section class="cr-panel">
+    <h2>Billing mix</h2>
+    <p class="sub">Carina-paid vs BYOK calls this month.</p>
+    <div class="cr-budget-row" style="margin-top:0;">
+      <span>Carina-paid <strong><%= paid.toLocaleString() %></strong></span>
+      <span>BYOK <strong><%= byok.toLocaleString() %></strong></span>
+    </div>
+    <div class="cr-mix" title="Carina-paid <%= paidPct %>%">
+      <div class="paid" style="width:<%= paidPct %>%;"></div>
+      <div class="byok" style="width:<%= 100 - paidPct %>%;"></div>
+    </div>
+    <div class="cr-budget-row" style="margin-bottom:0;margin-top:10px;">
+      <span>Cached tokens <strong><%= Number(ledger.month.cachedTokens || 0).toLocaleString() %></strong></span>
+      <span><%= paidPct %>% Carina-paid</span>
+    </div>
+  </section>
+</div>
+
+<div class="cr-kpis">
+  <div class="cr-kpi accent">
+    <div class="label">Spend this month</div>
+    <div class="value"><%= money(ledger.month.providerCostMinor) %></div>
+    <div class="meta"><%= Number(ledger.month.calls || 0).toLocaleString() %> completed calls</div>
+  </div>
+  <div class="cr-kpi">
+    <div class="label">Allocated basis</div>
+    <div class="value"><%= money(ledger.month.allocatedMinor) %></div>
+    <div class="meta">Customer charge basis</div>
+  </div>
+  <div class="cr-kpi">
+    <div class="label">Tokens this month</div>
+    <div class="value"><%= Number(ledger.month.tokens || 0).toLocaleString() %></div>
+    <div class="meta"><%= Number(ledger.month.requestTokens || 0).toLocaleString() %> in · <%= Number(ledger.month.responseTokens || 0).toLocaleString() %> out</div>
+  </div>
+  <div class="cr-kpi">
+    <div class="label">Last 24h spend</div>
+    <div class="value"><%= money(ledger.last24h.providerCostMinor) %></div>
+    <div class="meta"><%= Number(ledger.last24h.calls || 0).toLocaleString() %> calls · <%= Number(ledger.last24h.tokens || 0).toLocaleString() %> tokens</div>
+  </div>
+</div>
+
+<div class="cr-kpis">
+  <div class="cr-kpi">
+    <div class="label">Last 30 days</div>
+    <div class="value"><%= money(ledger.last30d.providerCostMinor) %></div>
+    <div class="meta"><%= Number(ledger.last30d.calls || 0).toLocaleString() %> calls</div>
+  </div>
+  <div class="cr-kpi">
+    <div class="label">Carina-paid calls</div>
+    <div class="value"><%= paid.toLocaleString() %></div>
+    <div class="meta">BYOK <%= byok.toLocaleString() %></div>
+  </div>
+  <div class="cr-kpi">
+    <div class="label">Cached tokens</div>
+    <div class="value"><%= Number(ledger.month.cachedTokens || 0).toLocaleString() %></div>
+    <div class="meta">Prompt cache hits this month</div>
+  </div>
+  <div class="cr-kpi">
+    <div class="label">Budget remaining</div>
+    <div class="value" style="<%= remainingBudget <= 0 ? 'color:#fca5a5' : '' %>">£<%= remainingBudget.toFixed(2) %></div>
+    <div class="meta">Limit £<%= budgetLimit.toFixed(0) %> / month</div>
+  </div>
+</div>
+
+<div class="cr-grid-2">
+  <section class="cr-panel">
+    <div class="cr-section-head">
+      <div>
+        <h2>Spend by model</h2>
+        <p class="sub" style="margin:0;">This month from the usage ledger.</p>
+      </div>
+      <a href="/ai-platform/analytics">Charts</a>
+    </div>
+    <% if (!modelSpend.length) { %>
+      <p style="color:#64748b;font-size:0.82rem;margin:0;">No completed ledger rows this month.</p>
+    <% } else { %>
+      <% for (const row of modelSpend.slice(0, 10)) {
+           const pct = Math.max(4, Math.round((Number(row.providerCostMinor || 0) / maxModelCost) * 100));
+      %>
+        <div class="cr-spend-row" title="<%= row.calls.toLocaleString() %> calls · <%= row.tokens.toLocaleString() %> tokens">
+          <div class="name"><%= row.provider %></div>
+          <div class="cr-spend-track"><div class="cr-spend-fill" style="width:<%= pct %>%;"></div></div>
+          <div class="model"><%= row.model %></div>
+          <div class="amt"><%= money(row.providerCostMinor) %></div>
+        </div>
+      <% } %>
+      <div class="cr-table-wrap" style="margin-top:14px;max-height:220px;">
+        <table class="cr-table">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Model</th>
+              <th class="num">Calls</th>
+              <th class="num">Tokens</th>
+              <th class="num">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const row of modelSpend) { %>
+              <tr>
+                <td><%= row.provider %></td>
+                <td class="mono"><%= row.model %></td>
+                <td class="num"><%= row.calls.toLocaleString() %></td>
+                <td class="num"><%= row.tokens.toLocaleString() %></td>
+                <td class="num"><%= money(row.providerCostMinor) %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <form method="post" action="/ai-platform/credits" class="cr-panel cr-form">
+    <h2>Budget and feature flags</h2>
+    <p class="cr-hint">Monthly limit is an ops soft budget against provider spend. It is not auto-charged from Stripe yet.</p>
+    <div class="fields">
+      <div>
+        <label class="field" for="cr-name">Organization name</label>
+        <input id="cr-name" name="name" type="text" value="<%= org.name %>">
+      </div>
+      <div class="fields-2">
+        <div>
+          <label class="field" for="cr-limit">Monthly limit (GBP)</label>
+          <input id="cr-limit" name="monthlyLimit" type="number" step="0.01" value="<%= org.monthlyLimit %>">
+        </div>
+        <div>
+          <label class="field" for="cr-credit">Manual credit balance (legacy)</label>
+          <input id="cr-credit" name="creditBalance" type="number" step="0.01" value="<%= org.creditBalance %>">
+        </div>
+      </div>
+      <p class="cr-hint" style="margin:0;">Manual credit is not deducted automatically. Prefer budget remaining above.</p>
+    </div>
+    <div class="cr-checks">
+      <label class="cr-check">
+        <input type="checkbox" name="autoReloadEnabled" value="1" <%= org.autoReloadEnabled ? 'checked' : '' %>>
+        Turn on auto-reload
+      </label>
+      <label class="cr-check">
+        <input type="checkbox" name="promptCachingEnabled" value="1" <%= org.promptCachingEnabled ? 'checked' : '' %>>
+        Enable prompt caching (ledger flag)
+      </label>
+      <label class="cr-check">
+        <input type="checkbox" name="batchEnabled" value="1" <%= org.batchEnabled ? 'checked' : '' %>>
+        Enable batch API
+      </label>
+    </div>
+    <button type="submit" class="cr-btn">Save settings</button>
+  </form>
+</div>
+</div>

@@ -1,4 +1,0 @@
-allowBuilds:
-  dtrace-provider: true
-  esbuild: true
-  llama.rn: true

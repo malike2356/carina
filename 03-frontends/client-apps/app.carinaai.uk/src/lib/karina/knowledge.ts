@@ -1,0 +1,166 @@
+import { AIVA_PRIMARY_NAV, AIVA_HIRE_ACTION, AIVA_HOME_ACTION } from '@/lib/aiva-nav';
+import { NAV_PANELS, NAV_ROUTES, SETTINGS_SECTION_LINKS } from '@/lib/workspace-nav';
+
+function renderRouteList(
+  title: string,
+  routes: Array<{ label: string; href: string; description: string }>,
+): string {
+  return [
+    `## ${title}`,
+    ...routes.map((route) => `- ${route.label} (${route.href}): ${route.description}`),
+  ].join('\n');
+}
+
+function renderNavSummary(): string {
+  const workspaceRoutes = NAV_ROUTES.filter((route) => !route.parent);
+  const workspacePanels = NAV_PANELS.map(
+    (panel) => `- ${panel.label}: ${panel.description}`,
+  );
+  const aivaPrimary = AIVA_PRIMARY_NAV.map((item) => `- ${item.label} (${item.href})`);
+  const settingsHighlights = [
+    ...SETTINGS_SECTION_LINKS.join,
+    ...SETTINGS_SECTION_LINKS.brain,
+    ...SETTINGS_SECTION_LINKS.account,
+    ...SETTINGS_SECTION_LINKS.security,
+  ]
+    .filter((link) => Boolean(link.href || link.panel))
+    .filter(
+      (link, index, all) =>
+        all.findIndex(
+          (candidate) => candidate.label === link.label && candidate.href === link.href,
+        ) === index,
+    )
+    .map(
+      (link) =>
+        `- ${link.label}${link.href ? ` (${link.href})` : ''}: ${link.description}`,
+    );
+
+  return [
+    '# Current product surface map',
+    'Use the live app surface first when you answer support questions. Do not rely on stale screenshots or old docs when the current nav tells you otherwise.',
+    'Hosts: app.carinaai.uk and admin.hireaiva.co.uk serve the same Aiva workspace product.',
+    renderRouteList('Workspace routes', workspaceRoutes),
+    '',
+    '## Workspace intelligence panels',
+    ...workspacePanels,
+    '',
+    '## Aiva shell routes',
+    ...aivaPrimary,
+    `- Home (${AIVA_HOME_ACTION.href})`,
+    `- Hire (${AIVA_HIRE_ACTION.href})`,
+    '',
+    '## Settings shortcuts that matter most',
+    ...settingsHighlights,
+  ].join('\n');
+}
+
+function renderProductBoundarySummary(): string {
+  return [
+    '# Product boundaries',
+    '- Carina is the platform engine and the in-product help assistant (Ask Carina).',
+    '- Aiva is the customer-facing AI Employee workspace (hire workers, channels, approvals, calendar, tools).',
+    '- Scout is a separate governance product. It can audit, suspend, or govern Aiva and Carina actions, but it is not the hired worker.',
+    '- Ask Carina helps with product how-to. Hired workers (Selorm, and so on) do the work in Telegram, email, and Work chat.',
+    '- When a user asks for help, prefer the current app surface and current settings over stale historical notes.',
+  ].join('\n');
+}
+
+function renderStuckPointsSummary(): string {
+  return [
+    '# When users get stuck',
+    'Use this section first when someone is confused, blocked, or says a worker lied or went quiet.',
+    '',
+    '## Schedules vs Automations vs personal tasks',
+    '- Schedules (nav label Schedules, route /tasks or /scheduled) is workspace housekeeping only: Calendar sync, Memory tidy, Session tidy. It is NOT a personal todo list.',
+    '- Worker Automations (open AI Workers → pick a worker → Automations tab) is for that employee\'s routines: morning digests, recurring prompts, check-ins.',
+    '- Personal reminders and task-list items from Telegram or Work chat should appear as Calendar note reminders and/or Notes. Ask the worker for the Task ID or Reminder ID (a stable UUID).',
+    '- If a worker said DONE but there is no ID and nothing on Calendar/Notes, the item was not saved. Tell the user to ask again and require an ID, or create a Calendar reminder themselves.',
+    '',
+    '## Reminders and Notes',
+    '- Timed reminders show on Calendar (source note_reminder). Open Calendar and use the Local only filter.',
+    '- Notes page: /notes (and admin.hireaiva.co.uk/notes) lists workspace notes, tasks, and reminders. These are real sidebar pages, not chat-only storage.',
+    '- Calendar page: /calendar (and admin.hireaiva.co.uk/calendar). Same product on app.carinaai.uk and admin.hireaiva.co.uk.',
+    '- Notes panel shortcut Ctrl+Shift+N still opens the quick side panel.',
+    '- Follow-up: quote Task ID / Reminder ID back to the worker ("update reminder <uuid>"). Session todo lists are temporary scratchpads and are not the workspace task list.',
+    '',
+    '## Telegram quiet or not replying',
+    '- Check worker → Channels → Telegram is connected with a BotFather token.',
+    '- Message the bot from the linked Telegram account; group chats usually need an @mention.',
+    '- If inbound is received but there is no reply, the LLM path may be failing (platform issue). Escalate if reconnecting the token does not help.',
+    '- Ask Carina cannot send Telegram messages as the hired worker.',
+    '',
+    '## Channels and Tools',
+    '- Per-worker Channels tab: Telegram, email, WhatsApp, Slack, social for that employee.',
+    '- Workspace Channels and Tools pages: shared product connectors (Gmail, Drive, Calendar, Trello, and so on) that workers can be granted.',
+    '- Training tab on a worker: FAQ and document knowledge for that employee only (not Ask Carina knowledge).',
+    '- Look for Guide me next to Connect buttons on Tools, Channels, Drive, Gmail, Calendar, and social connect screens. It opens a right-side drawer with numbered steps, tips, and Copy buttons. Token tools (HubSpot, Notion, Trello, Stripe, GitHub, and others) walk through creating the key, which fields to paste, and Grant after a green probe.',
+    '- Google (normal path): do not create a Google Cloud project. Shared callback URLs already live on the company Verlox platform Google app. Click Connect with Google, pick your account, Allow, then Grant to the Aiva. Unique part is which Google account you approve.',
+    '- Google (advanced BYOK only): if an org must use its own Google Cloud OAuth client, Guide me Advanced lists the shared redirect URIs to paste on THAT client, plus Client ID/secret. Calendar settings can accept a workspace Client ID and secret (Larissa-style isolation).',
+    '- If Connect with Google shows Error 403 access_denied or "has not completed the Google verification process": the OAuth consent screen for the client in use is in Testing. Platform path: Verlox ops Publishes or adds operator Test users on the company project. BYOK path: that org adds Test users or Publishes on their own Google Cloud project. Redirect URI mistakes look different (redirect_uri_mismatch), not this 403.',
+    '',
+    '## Approvals, Email, Calendar, Documents',
+    '- Approvals: drafts waiting for human review before send (email and social).',
+    '- Email: connect on the Email Handler worker Channels flow (Gmail OAuth preferred). Nothing client-facing is sent until approved unless the owner explicitly asked to send now.',
+    '- Calendar: Google sync plus local/Aiva events and note reminders. Filters: Aiva, Google, Local only.',
+    '- Documents: workspace Documents vault. Google Drive items stay in Drive unless the user asks to copy or save into Documents.',
+    '',
+    '## Billing and Scout',
+    '- Billing: /billing/aiva for plan, invoices, and portal. Plans include Starter, Growth, and Business (seat and channel limits differ).',
+    '- Scout Govern is included on paid Aiva plans for audit trail and kill switch. Scout is not the same product as the hired Aiva.',
+    '',
+    '## Escalate',
+    '- If steps fail (billing dispute, account lockout, data loss, OAuth still broken, worker silent after reconnect), invite Escalate to human support in Ask Carina.',
+  ].join('\n');
+}
+
+function renderMemoryAndKnowledgeSummary(): string {
+  return [
+    '# Memory, RAG, and shared knowledge',
+    '- Session history is not durable memory. It is the working conversation for the current thread.',
+    '- Curated memory is for stable facts, preferences, contacts, and instructions that should survive across sessions.',
+    '- Workspace Knowledge (/knowledge) is searchable uploaded docs for the workspace (pack user-resources).',
+    '- Worker Training tab is that employee\'s FAQ/docs only.',
+    '- Platform pack carina-rag teaches Carina about the product for agent sessions; Ask Carina also uses this help knowledge base.',
+    '- The GitHub memory bridge links durable notes to a private GitHub repo in Settings → Brain → GitHub memory.',
+    '- Never store secrets, tokens, passwords, or raw private transcripts in GitHub or curated memory.',
+  ].join('\n');
+}
+
+function renderGitHubBridgeSummary(): string {
+  return [
+    '# GitHub memory (durable notes)',
+    '- Users link their own private GitHub repo in Settings → Brain → GitHub memory.',
+    '- Good content: preferences, decisions, runbooks, project notes, checklists.',
+    '- Bad content: secrets, access tokens, passwords, raw chat dumps.',
+    '- Sync pattern: pull on schedule, search when answering, push only approved durable updates.',
+  ].join('\n');
+}
+
+function renderCommonFlowsSummary(): string {
+  return [
+    '# Common support flows',
+    '- Hiring a worker: open Hire, pick a role template, finish setup, then open the worker under AI Workers to connect channels and Training.',
+    '- Connect Telegram: worker → Channels → Telegram → paste BotFather token (or Connect Telegram in Work chat). Then message the bot on Telegram.',
+    '- SPSS / data analysis: not Ask Carina. Open the worker → Work → paperclip → attach .sav/.csv/.xlsx → ask the hired Aiva.',
+    '- Email setup: Email Handler worker → connect Gmail, Microsoft, IMAP, or forwarding.',
+    '- Social channels: Social Media Manager (or enabled worker) → Channels → LinkedIn, Instagram, Messenger, X, or TikTok. Drafts go to Approvals → Social.',
+    '- Personal reminder from chat: ask the worker to save a reminder and return Reminder ID; then check Calendar/Notes.',
+    '- Morning digest / recurring routine: worker → Automations (not Schedules /tasks).',
+    '- Workspace calendar sync job: Schedules (/tasks) → Calendar sync.',
+    '- Support chat: Ask Carina (bottom-right) is product help only; it cannot act as the hired worker.',
+  ].join('\n');
+}
+
+export const KARINA_KNOWLEDGE_BASE = [
+  `# Product overview\n\nAiva (Hire Aiva) is a workspace where you hire AI employees (workers) for roles like email handling, social DMs, research, and ops. Powered by Carina. Users work at app.carinaai.uk and admin.hireaiva.co.uk.\n\nAsk Carina is the in-product help assistant. It explains the product when users get stuck. Hired workers do operational work on Telegram, email, and Work chat.`,
+  renderStuckPointsSummary(),
+  renderCommonFlowsSummary(),
+  renderProductBoundarySummary(),
+  renderMemoryAndKnowledgeSummary(),
+  renderGitHubBridgeSummary(),
+  `# Troubleshooting principles\n\n- Never invent buttons or screens that do not exist.\n- When unsure, say so and offer the next best path or escalation.\n- Prefer live nav and these stuck-point rules over older docs.\n- If the user asks about Scout, keep Scout separate from Aiva workers.\n- Never tell users that Schedules (/tasks) is their personal task list.`,
+  renderNavSummary(),
+].join('\n\n');
+
+export const KARINA_GREETING =
+  "Hi, I'm Carina. I help with Aiva, Carina, and Scout product guidance, plus workers, contacts, files, memory, knowledge, billing, and sync. What do you need help with?";

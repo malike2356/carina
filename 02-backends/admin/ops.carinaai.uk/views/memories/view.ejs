@@ -1,0 +1,28 @@
+<% title = 'Memory' %>
+<% const attr = (memory && memory.attribution) || {}; %>
+<div class="ops-page">
+<div class="mb-4">
+  <a href="/memories" class="text-[#22c55e] text-sm hover:underline">Back to list</a>
+</div>
+<h1 class="text-2xl font-bold text-white mb-4">Memory detail</h1>
+
+<div class="ops-surface p-6 space-y-4">
+  <div class="text-sm text-gray-400 space-y-1">
+    <p>Session: <a href="/memories/session/<%= encodeURIComponent(memory.session_id) %>" class="text-[#06b6d4]"><%= memory.session_id %></a></p>
+    <p>Role: <span class="<%= memory.role === 'user' ? 'badge-user' : 'badge-assistant' %> px-2 py-0.5 rounded text-xs"><%= memory.role %></span></p>
+    <p>Who: <span class="text-[#e2e8f0]"><%= attr.actorLabel || memory.role %></span></p>
+    <p>Customer: <span class="text-[#e2e8f0]"><%= attr.customerLabel || 'Unknown' %></span></p>
+    <p>Aiva: <span class="text-[#e2e8f0]"><%= attr.aivaName || ';' %></span></p>
+    <p>Created: <%= new Date(memory.created_at).toLocaleString() %></p>
+    <p>Size: <%= Number(memory.content_chars || 0) %> characters</p>
+    <p>Embedding: <%= hasEmbedding ? 'present' : 'no embedding' %></p>
+  </div>
+  <div class="text-sm text-[#e0e0e0] bg-[#0f0f0f] p-4 rounded border border-[#2a2a2a]">
+    <p class="font-medium mb-1">Content redacted</p>
+    <p class="text-gray-500 text-xs">Plaintext user/assistant messages are not available in the Ops console for privacy.</p>
+  </div>
+  <form method="post" action="/memories/<%= memory.id %>/delete" onsubmit="return confirm('Delete this memory? Plaintext will be removed from the store.')">
+    <button type="submit" class="text-red-400 hover:text-red-300 text-sm">Delete memory</button>
+  </form>
+</div>
+</div>

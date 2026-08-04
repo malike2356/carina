@@ -1,0 +1,116 @@
+<% title = 'Tenant Tool Overrides' %>
+<style>
+  .att { width:100%; max-width:none; }
+  .att-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; align-items:flex-end; margin-bottom:18px; }
+  .att-head h1 { margin:0; font-size:1.35rem; font-weight:700; color:#f8fafc; }
+  .att-head p { margin:4px 0 0; font-size:0.8rem; color:#94a3b8; }
+  .att-head code { color:#67e8f9; font-size:0.78rem; }
+  .att-back { color:#67e8f9; text-decoration:none; font-size:0.8rem; }
+  .att-back:hover { text-decoration:underline; }
+  .att-flash { margin-bottom:14px; padding:10px 14px; border-radius:10px; font-size:0.8rem; }
+  .att-flash.ok { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#86efac; }
+  .att-flash.err { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+  .att-panel {
+    padding:16px; border-radius:14px;
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+  }
+  .att-wrap { overflow:auto; border-radius:10px; border:1px solid rgba(255,255,255,0.06); }
+  .att-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+  .att-table th {
+    text-align:left; color:#64748b; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:11px 12px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.28);
+  }
+  .att-table td { padding:12px; border-bottom:1px solid rgba(255,255,255,0.04); color:#cbd5e1; vertical-align:top; }
+  .att-name { color:#f8fafc; font-weight:650; }
+  .att-code { margin-top:4px; font-size:0.68rem; color:#64748b; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .att-global { font-size:0.72rem; color:#94a3b8; line-height:1.5; }
+  .att-form { display:grid; grid-template-columns:repeat(4,minmax(110px,1fr)) auto; gap:10px; align-items:end; }
+  .att-form label span {
+    display:block; font-size:0.68rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;
+  }
+  .att-form select, .att-form input {
+    width:100%; height:auto !important; min-height:40px !important; max-height:none !important;
+    padding:10px 12px !important; line-height:1.4 !important; font-size:13px !important;
+    border-radius:10px !important; border:1px solid rgba(255,255,255,0.12) !important;
+    background:#0b0f14 !important; color:#f1f5f9 !important; box-sizing:border-box !important;
+  }
+  .att-save {
+    min-height:40px; padding:0 14px; border:none; border-radius:10px; cursor:pointer;
+    background:linear-gradient(135deg,#22c55e,#16a34a); color:#052e16; font-weight:700; font-size:0.78rem;
+  }
+  @media (max-width: 980px) {
+    .att-form { grid-template-columns:1fr 1fr; }
+  }
+</style>
+
+<div class="ops-page att">
+  <div class="att-head">
+    <div>
+      <h1>Tenant tool overrides</h1>
+      <p>Workspace <code><%= workspaceId %></code></p>
+    </div>
+    <a class="att-back" href="/admin/agent-tools">Back to global tools</a>
+  </div>
+
+  <% if (message) { %>
+    <div class="att-flash <%= messageIsError ? 'err' : 'ok' %>"><%= message %></div>
+  <% } %>
+
+  <section class="att-panel">
+    <div class="att-wrap">
+      <table class="att-table">
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>Global default</th>
+            <th>Override</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% categories.forEach((cat) => { const override = overrideByCategory.get(cat.category); %>
+            <tr>
+              <td>
+                <div class="att-name"><%= cat.label %></div>
+                <div class="att-code"><%= cat.category %></div>
+              </td>
+              <td class="att-global">
+                <%= cat.enabled ? 'Enabled' : 'Disabled' %><br>
+                <%= cat.maxCalls %> calls / <%= cat.timeoutMs %>ms<br>
+                <%= cat.requiresApproval ? 'Approval required' : 'No approval' %>
+              </td>
+              <td>
+                <form method="post" action="/admin/agent-tools/tenant/<%= encodeURIComponent(workspaceId) %>/<%= encodeURIComponent(cat.category) %>" class="att-form">
+                  <label>
+                    <span>Status</span>
+                    <select name="enabled">
+                      <option value="inherit" <%= !override || override.enabled === null ? 'selected' : '' %>>Inherit</option>
+                      <option value="true" <%= override && override.enabled === true ? 'selected' : '' %>>Enabled</option>
+                      <option value="false" <%= override && override.enabled === false ? 'selected' : '' %>>Disabled</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Max calls</span>
+                    <input type="number" name="maxCalls" value="<%= override?.maxCalls ?? '' %>" min="1" max="50" placeholder="<%= cat.maxCalls %>">
+                  </label>
+                  <label>
+                    <span>Timeout</span>
+                    <input type="number" name="timeoutMs" value="<%= override?.timeoutMs ?? '' %>" min="1000" max="120000" step="1000" placeholder="<%= cat.timeoutMs %>">
+                  </label>
+                  <label>
+                    <span>Approval</span>
+                    <select name="requiresApproval">
+                      <option value="inherit" <%= !override || override.requiresApproval === null ? 'selected' : '' %>>Inherit</option>
+                      <option value="true" <%= override && override.requiresApproval === true ? 'selected' : '' %>>Required</option>
+                      <option value="false" <%= override && override.requiresApproval === false ? 'selected' : '' %>>Not required</option>
+                    </select>
+                  </label>
+                  <button type="submit" class="att-save">Save</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

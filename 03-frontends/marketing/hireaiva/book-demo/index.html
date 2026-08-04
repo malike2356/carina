@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book a live demonstration; Aiva</title>
+  <meta name="description" content="Book a live Aiva demonstration. Bring one repetitive task from your business and see how your AI employee could handle it, with human backup when needed.">
+  <link rel="canonical" href="https://hireaiva.co.uk/book-demo/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="/vertical.css?v=20260704">
+  <style>
+    main { padding: 7rem 0 4rem; }
+    .book-wrap { max-width: 760px; margin: 0 auto; padding: 0 2rem; }
+    .book-form {
+      margin-top: 1.5rem;
+      display: grid;
+      gap: 1rem;
+    }
+    .book-form label {
+      display: grid;
+      gap: 0.4rem;
+      color: var(--white);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .book-form .hint {
+      color: var(--silver);
+      font-size: 0.8rem;
+      font-weight: 300;
+    }
+    .book-form input,
+    .book-form textarea {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: rgba(7, 18, 25, 0.88);
+      color: var(--white);
+      font: inherit;
+      font-size: 0.95rem;
+    }
+    .book-form input:focus,
+    .book-form textarea:focus {
+      outline: 2px solid rgba(52, 152, 192, 0.45);
+      border-color: var(--teal-light);
+    }
+    .book-form textarea { min-height: 7rem; resize: vertical; }
+    .book-form .hp {
+      position: absolute;
+      left: -10000px;
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+    }
+    .book-form button[type="submit"] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      border: 0;
+      cursor: pointer;
+      background: var(--amber);
+      color: var(--ink);
+      padding: 0.85rem 1.35rem;
+      border-radius: var(--r-md);
+      font-size: 0.95rem;
+      font-weight: 600;
+      width: fit-content;
+    }
+    .book-form button[type="submit"]:disabled {
+      opacity: 0.65;
+      cursor: wait;
+    }
+    .form-status {
+      margin-top: 1rem;
+      padding: 0.9rem 1rem;
+      border-radius: var(--r-md);
+      font-size: 0.9rem;
+      display: none;
+    }
+    .form-status.is-visible { display: block; }
+    .form-status.is-ok {
+      background: rgba(26, 95, 122, 0.22);
+      border: 1px solid rgba(52, 152, 192, 0.45);
+      color: #d7eef8;
+    }
+    .form-status.is-err {
+      background: rgba(180, 60, 60, 0.18);
+      border: 1px solid rgba(220, 100, 100, 0.4);
+      color: #ffd7d7;
+    }
+    .success-panel {
+      display: none;
+      margin-top: 1.5rem;
+      border: 1px solid rgba(52, 152, 192, 0.45);
+      border-radius: var(--r-md);
+      padding: 1.25rem 1.35rem;
+      background: rgba(26, 95, 122, 0.18);
+    }
+    .success-panel.is-visible { display: block; }
+    .success-panel h2 {
+      font-family: var(--ff-serif);
+      font-size: 1.4rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+    .success-panel p { color: var(--silver); margin: 0; }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-inner">
+      <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
+      <div class="nav-links" aria-label="Aiva product">
+        <a href="/#how-it-works">How it works</a>
+        <a href="/#aiva-in-action">See it in action</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/security/">Security</a>
+        <a href="/support/">Support</a>
+        <a href="/book-demo/" class="nav-sign-in">Book a demo</a>
+        <a href="https://admin.hireaiva.co.uk/register" class="nav-cta">Start free</a>
+      </div>
+      <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu" aria-expanded="false" type="button">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+  <div class="nav-mobile-panel" id="nav-mobile-panel" aria-hidden="true">
+    <a href="/#how-it-works">How it works</a>
+    <a href="/#aiva-in-action">See it in action</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/security/">Security</a>
+    <a href="/support/">Support</a>
+    <a href="/book-demo/">Book a demo</a>
+    <a href="https://admin.hireaiva.co.uk/login">Sign in</a>
+    <a href="https://admin.hireaiva.co.uk/register" class="nav-mobile-cta">Start free</a>
+  </div>
+
+  <main>
+    <div class="book-wrap">
+      <p class="eyebrow">Live demonstration</p>
+      <h1>Book a live demonstration</h1>
+      <p class="lead">Bring one repetitive task from your business. We will show you how Aiva could handle it, with approvals where needed and clear governance on every step.</p>
+
+      <div class="meta-block">
+        <h2>What to expect</h2>
+        <ul>
+          <li>A short live walkthrough focused on your chosen task</li>
+          <li>Email, WhatsApp or booking workflows that match small-business work</li>
+          <li>Clear view of control: what Aiva does automatically, and when a human steps in</li>
+        </ul>
+      </div>
+
+      <form id="book-demo-form" class="book-form" novalidate>
+        <label>
+          Name
+          <input type="text" name="name" autocomplete="name" required maxlength="120" placeholder="Your name">
+        </label>
+        <label>
+          Work email
+          <input type="email" name="email" autocomplete="email" required maxlength="200" placeholder="you@business.com">
+        </label>
+        <label>
+          Business
+          <input type="text" name="business" autocomplete="organization" required maxlength="200" placeholder="Business or team name">
+        </label>
+        <label>
+          One repetitive task
+          <span class="hint">The job you want Aiva to help with</span>
+          <textarea name="task" required maxlength="2000" placeholder="Example: Answer common customer questions on WhatsApp and book appointments"></textarea>
+        </label>
+        <label>
+          Preferred time
+          <span class="hint">Day, time window, or timezone</span>
+          <input type="text" name="preferredTime" required maxlength="200" placeholder="Example: Thursday afternoon, UK time">
+        </label>
+        <label class="hp" aria-hidden="true">
+          Website
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </label>
+        <button type="submit" id="book-demo-submit">
+          <i class="ti ti-calendar-event"></i>
+          Request demonstration
+        </button>
+        <div id="book-demo-status" class="form-status" role="status" aria-live="polite"></div>
+      </form>
+
+      <div id="book-demo-success" class="success-panel" role="status">
+        <h2>Request received</h2>
+        <p>Thank you. We will confirm your live demonstration shortly and focus it on the repetitive task you shared.</p>
+      </div>
+
+      <p class="note">Prefer email? Write to <a href="mailto:contact@verlox.uk?subject=Book%20a%20live%20demonstration%20(Aiva)">contact@verlox.uk</a>. Or <a href="https://admin.hireaiva.co.uk/register">start your free trial</a>.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <a href="https://hireaiva.co.uk/" class="nav-logo">Aiva<span class="dot">.</span></a>
+      <div class="footer-links">
+        <a href="https://carinaai.uk/">Carina</a>
+        <a href="https://hireaiva.co.uk/">Aiva</a>
+        <a href="https://labyrinthscout.com/">Scout</a>
+        <a href="/#pricing">Pricing</a>
+        <a href="/support/">Support</a>
+        <a href="mailto:contact@verlox.uk">Contact</a>
+      </div>
+      <p class="footer-copy">&copy; 2026 <a href="https://verlox.uk">VERLOX Ltd</a>.</p>
+    </div>
+  </footer>
+
+  <script src="/assets/js/site-nav.js"></script>
+  <script>
+  (function () {
+    var form = document.getElementById('book-demo-form');
+    var submit = document.getElementById('book-demo-submit');
+    var statusEl = document.getElementById('book-demo-status');
+    var success = document.getElementById('book-demo-success');
+    if (!form || !submit || !statusEl || !success) return;
+
+    function showStatus(kind, message) {
+      statusEl.className = 'form-status is-visible ' + (kind === 'ok' ? 'is-ok' : 'is-err');
+      statusEl.textContent = message;
+    }
+
+    form.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      statusEl.className = 'form-status';
+      statusEl.textContent = '';
+
+      var data = new FormData(form);
+      var payload = {
+        source: 'hireaiva.co.uk',
+        name: String(data.get('name') || '').trim(),
+        email: String(data.get('email') || '').trim(),
+        business: String(data.get('business') || '').trim(),
+        task: String(data.get('task') || '').trim(),
+        preferredTime: String(data.get('preferredTime') || '').trim(),
+        website: String(data.get('website') || '').trim()
+      };
+
+      if (!payload.name || !payload.email || !payload.business || !payload.task || !payload.preferredTime) {
+        showStatus('err', 'Please complete every field before submitting.');
+        return;
+      }
+
+      submit.disabled = true;
+      try {
+        var res = await fetch('https://carinaai.uk/api/book-demo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        var body = {};
+        try { body = await res.json(); } catch (_) {}
+        if (!res.ok) {
+          showStatus('err', body.error || 'Something went wrong. Please try again or email contact@verlox.uk.');
+          return;
+        }
+        form.style.display = 'none';
+        success.classList.add('is-visible');
+      } catch (_) {
+        showStatus('err', 'Network error. Please try again or email contact@verlox.uk.');
+      } finally {
+        submit.disabled = false;
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

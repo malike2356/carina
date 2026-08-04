@@ -1,0 +1,55 @@
+import type { NavGroupId } from '@/lib/workspace-nav';
+
+export const ROUTE_LABEL_KEYS: Record<string, string> = {
+  '/launcher': 'nav.launcher',
+  '/documents': 'nav.documents',
+  '/dashboard': 'nav.dashboard',
+  '/sessions': 'nav.sessions',
+  '/calendar': 'nav.calendar',
+  '/vical': 'nav.bookings',
+  '/notes': 'nav.notes',
+  '/tasks': 'nav.tasks',
+  '/channels': 'nav.channels',
+  '/research': 'nav.research',
+  '/companies-house': 'nav.companiesHouse',
+  '/aiva/outreach/companies-house': 'nav.companiesHouse',
+  '/files': 'nav.files',
+  '/email': 'nav.email',
+  '/cron': 'nav.cron',
+  '/scheduled': 'nav.scheduled',
+  '/library': 'nav.library',
+  '/skills': 'nav.skillsPage',
+  '/models': 'nav.models',
+  '/support/chat': 'nav.productSupport',
+  '/aiva/workers': 'nav.aivaWorkers',
+  '/aiva': 'nav.aivaHire',
+  '/terminal': 'nav.terminal',
+  '/mcp': 'nav.mcp',
+  '/webhooks': 'nav.webhooks',
+  '/env': 'nav.env',
+  '/config': 'nav.config',
+  '/settings': 'nav.settings',
+  '/settings/keys': 'nav.apiKeys',
+  '/settings/calendar': 'nav.calendarSync',
+  '/settings/channels': 'nav.channelsSync',
+  '/settings/pairing': 'nav.devicePairing',
+  '/billing': 'nav.billing',
+  '/security': 'nav.security',
+  '/analytics': 'nav.analytics',
+  '/logs': 'nav.logs',
+  '/profiles': 'nav.profiles',
+};
+
+export const PANEL_LABEL_KEYS: Record<string, string> = {
+  memory: 'nav.memory',
+  skills: 'nav.skills',
+  notes: 'nav.notes',
+};
+
+export const GROUP_LABEL_KEYS: Record<NavGroupId, string> = {
+  workspace: 'navGroups.workspace',
+  intelligence: 'navGroups.intelligence',
+  aiva: 'navGroups.aiva',
+  tools: 'navGroups.tools',
+  account: 'navGroups.account',
+};

@@ -1,0 +1,87 @@
+<% title = 'Memory Stores' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Memory Stores</h1>
+    <p>Platform-scoped memory registries. Carina episodic memories still live under <a href="/memories" class="apu-link">Memories</a>.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/memory" class="apu-panel apu-fields">
+    <h2>Create store</h2>
+    <p class="sub">Register a scoped memory store for agents or sessions.</p>
+    <div>
+      <label class="field" for="m-name">Store name</label>
+      <input id="m-name" name="name" required placeholder="Customer prefs">
+    </div>
+    <div>
+      <label class="field" for="m-scope">Scope</label>
+      <select id="m-scope" name="scope">
+        <option value="org">org</option>
+        <option value="agent">agent</option>
+        <option value="session">session</option>
+        <option value="user">user</option>
+      </select>
+    </div>
+    <div>
+      <label class="field" for="m-notes">Notes</label>
+      <textarea id="m-notes" name="notes" rows="3" placeholder="Optional notes"></textarea>
+    </div>
+    <button type="submit" class="apu-btn">Create</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Stores</h2>
+    <p class="sub"><%= stores.length %> store<%= stores.length === 1 ? '' : 's' %>.</p>
+    <% if (!stores.length) { %>
+      <div class="apu-empty">No memory stores yet. Episodic chat memory is under <a href="/memories">Memories</a>.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Scope</th>
+              <th>Items</th>
+              <th>Status</th>
+              <th>Edit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const s of stores) { %>
+              <tr>
+                <td><%= s.name %></td>
+                <td><span class="apu-chip"><%= s.scope %></span></td>
+                <td class="muted"><%= s.itemCount %></td>
+                <td><span class="apu-chip <%= s.status === 'active' ? 'ok' : '' %>"><%= s.status %></span></td>
+                <td>
+                  <form method="post" action="/ai-platform/memory/<%= s.id %>" class="apu-stack">
+                    <input name="name" value="<%= s.name %>">
+                    <select name="scope">
+                      <option value="org" <%= s.scope === 'org' ? 'selected' : '' %>>org</option>
+                      <option value="agent" <%= s.scope === 'agent' ? 'selected' : '' %>>agent</option>
+                      <option value="session" <%= s.scope === 'session' ? 'selected' : '' %>>session</option>
+                      <option value="user" <%= s.scope === 'user' ? 'selected' : '' %>>user</option>
+                    </select>
+                    <select name="status">
+                      <option value="active" <%= s.status === 'active' ? 'selected' : '' %>>active</option>
+                      <option value="archived" <%= s.status === 'archived' ? 'selected' : '' %>>archived</option>
+                    </select>
+                    <button type="submit" class="apu-btn tiny ghost">Save</button>
+                  </form>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

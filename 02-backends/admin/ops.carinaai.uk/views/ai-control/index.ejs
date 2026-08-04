@@ -1,0 +1,648 @@
+<%
+  const known = Array.isArray(llm.knownProviders) ? llm.knownProviders : [];
+  const configured = known.filter(function (p) { return p.configured; });
+  const providerOptions = known.slice().sort(function (a, b) {
+    return Number(b.configured) - Number(a.configured) || String(a.displayName || a.name).localeCompare(String(b.displayName || b.name));
+  });
+  const modelsByProvider = llm.modelsByProvider || {};
+  const totals = analytics && analytics.summary && analytics.summary.totals ? analytics.summary.totals : {};
+  function scopeRow(id) {
+    return (productLlms && productLlms[id]) ? productLlms[id] : { provider: '', model: '' };
+  }
+  function sel(current, value) {
+    return String(current || '') === String(value || '') ? 'selected' : '';
+  }
+  function modelChoices(provider, current) {
+    const list = Array.isArray(modelsByProvider[provider]) ? modelsByProvider[provider].slice() : [];
+    const cur = String(current || '').trim();
+    if (cur && list.indexOf(cur) === -1) list.unshift(cur);
+    return list;
+  }
+  function providerLabel(p) {
+    return (p.displayName || p.name) + (p.configured ? '' : ' (no key)');
+  }
+%>
+<style>
+  .ac { width:100%; max-width:none; }
+  .ac-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px; margin-bottom:18px; align-items:flex-end; }
+  .ac-head h1 { margin:0; font-size:1.45rem; font-weight:700; color:#f8fafc; }
+  .ac-head p { margin:4px 0 0; color:#94a3b8; font-size:0.82rem; max-width:52rem; }
+  .ac-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:12px; }
+  .ac-tab {
+    padding:8px 14px; border-radius:999px; font-size:0.78rem; font-weight:600; text-decoration:none;
+    color:#94a3b8; border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.2);
+  }
+  .ac-tab.is-active { color:#86efac; border-color:rgba(34,197,94,0.4); background:rgba(34,197,94,0.12); }
+  .ac-flash { margin-bottom:14px; padding:10px 14px; border-radius:8px; font-size:0.82rem; }
+  .ac-flash.ok { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#86efac; }
+  .ac-flash.err { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+  .ac-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .ac-grid-2 { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; margin-bottom:16px; }
+  .ac-card {
+    padding:16px; border-radius:12px; background:rgba(255,255,255,0.02);
+    border:1px solid rgba(255,255,255,0.07);
+  }
+  .ac-card h2 { margin:0 0 6px; font-size:0.95rem; color:#f1f5f9; }
+  .ac-card .sub { margin:0 0 12px; font-size:0.78rem; color:#64748b; line-height:1.45; }
+  .ac-kpi .label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; color:#94a3b8; }
+  .ac-kpi .value { margin-top:6px; font-size:1.2rem; font-weight:700; color:#f8fafc; }
+  .ac-kpi .meta { margin-top:4px; font-size:0.72rem; color:#64748b; }
+  .ac-links { display:flex; flex-wrap:wrap; gap:8px; }
+  .ac-links a {
+    display:inline-flex; padding:8px 12px; border-radius:8px; font-size:0.78rem; text-decoration:none;
+    color:#cbd5e1; border:1px solid rgba(255,255,255,0.1); background:rgba(0,0,0,0.25);
+  }
+  .ac-links a.primary { color:#86efac; border-color:rgba(34,197,94,0.35); }
+  .ac-matrix-wrap { overflow:auto; border-radius:10px; border:1px solid rgba(255,255,255,0.08); margin-bottom:16px; }
+  .ac-matrix { width:100%; border-collapse:collapse; table-layout:fixed; min-width:900px; }
+  .ac-matrix th {
+    text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    color:#64748b; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.28);
+    white-space:nowrap;
+  }
+  .ac-matrix td {
+    padding:14px 12px; border-bottom:1px solid rgba(255,255,255,0.05);
+    vertical-align:top !important; color:#cbd5e1;
+  }
+  .ac-matrix tr:last-child td { border-bottom:0; }
+  .ac-matrix .surface { display:flex; flex-direction:column; gap:4px; min-height:40px; justify-content:flex-start; }
+  .ac-matrix .title { font-size:0.88rem; font-weight:650; color:#f8fafc; line-height:1.25; }
+  .ac-matrix .blurb { font-size:0.72rem; color:#64748b; line-height:1.35; max-width:18rem; }
+  .ac-matrix .badge {
+    display:inline-flex; align-self:flex-start; margin-top:2px; font-size:0.66rem; padding:2px 8px; border-radius:999px;
+    border:1px solid rgba(255,255,255,0.12); color:#94a3b8;
+  }
+  .ac-matrix .badge.live { color:#86efac; border-color:rgba(34,197,94,0.35); }
+  .ac-matrix .cell-ctrl { min-width:0; }
+  .ac-matrix select,
+  .ac-matrix input[type="text"] {
+    display:block; width:100%; min-width:0; height:40px !important; min-height:40px !important; max-height:40px !important;
+    padding:0 12px !important; line-height:38px !important; font-size:13px !important;
+    border-radius:10px !important; border:1px solid rgba(255,255,255,0.12) !important;
+    background:#0b0f14 !important; color:#f1f5f9 !important; box-sizing:border-box !important;
+    color-scheme:dark; margin:0 !important;
+  }
+  .ac-matrix select:disabled,
+  .ac-matrix input:disabled { opacity:0.65; cursor:not-allowed; }
+  .ac-allow {
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; margin-top:10px;
+  }
+  .ac-allow-item {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    border:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.22); color:#cbd5e1; font-size:0.8rem;
+    cursor:pointer; user-select:none;
+  }
+  .ac-allow-item.is-off { opacity:0.7; border-style:dashed; }
+  .ac-allow-item strong { color:#f1f5f9; font-weight:650; }
+  .ac-allow-item .meta { color:#64748b; font-size:0.7rem; }
+  .ac-allow-item input[type="checkbox"] {
+    -webkit-appearance: auto !important; appearance: auto !important;
+    width: 1rem !important; height: 1rem !important; min-width: 1rem !important; min-height: 1rem !important;
+    max-width: 1.25rem !important; max-height: 1.25rem !important;
+    padding: 0 !important; margin: 0 !important; flex-shrink: 0;
+    pointer-events: auto !important; cursor: pointer !important; accent-color: #22c55e;
+  }
+  .ac-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+  .ac-btn {
+    display:inline-flex; align-items:center; padding:10px 16px; border-radius:8px; border:none;
+    font-size:0.82rem; font-weight:650; cursor:pointer; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff;
+  }
+  .ac-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+  .ac-table th, .ac-table td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.06); text-align:left; }
+  .ac-table th { color:#64748b; }
+  .ac-table td { color:#cbd5e1; }
+  @media (max-width: 1100px) {
+    .ac-grid, .ac-grid-2 { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .ac-grid, .ac-grid-2 { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="ops-page ac">
+  <div class="ac-head">
+    <div>
+      <h1>AI Control</h1>
+      <p>One place for LLM routing, product model choices, token usage, trial gates, and embeddings. Old scattered links still work and land here.</p>
+    </div>
+  </div>
+
+  <% if (saved) { %><div class="ac-flash ok">Saved.</div><% } %>
+  <% if (errMsg) { %><div class="ac-flash err"><%= errMsg %></div><% } %>
+
+  <nav class="ac-tabs" aria-label="AI Control sections">
+    <% tabs.forEach(function (t) { %>
+      <a class="ac-tab<%= tab === t.id ? ' is-active' : '' %>" href="/ai-control?tab=<%= t.id %>"><%= t.label %></a>
+    <% }) %>
+  </nav>
+
+  <% if (tab === 'overview') { %>
+    <div class="ac-grid">
+      <div class="ac-card ac-kpi">
+        <div class="label">Platform default</div>
+        <div class="value"><%= llm.defaultProvider || '-' %> / <%= llm.model || '-' %></div>
+        <div class="meta"><%= llm.enabled === false ? 'Rotation locked' : 'Rotation on' %></div>
+      </div>
+      <div class="ac-card ac-kpi">
+        <div class="label">30d provider spend</div>
+        <div class="value"><%= money(Number(totals.providerCostMinor || 0)) %></div>
+        <div class="meta"><%= Number(totals.calls || 0).toLocaleString() %> calls</div>
+      </div>
+      <div class="ac-card ac-kpi">
+        <div class="label">Configured providers</div>
+        <div class="value"><%= (llm.configuredProviders || []).length %></div>
+        <div class="meta"><%= (llm.chain || []).join(' → ') || 'no chain' %></div>
+      </div>
+      <div class="ac-card ac-kpi">
+        <div class="label">Trial message cap</div>
+        <div class="value"><%= gateValues.AIVA_TRIAL_MESSAGE_LIMIT || '20' %></div>
+        <div class="meta">Credit £<%= gateValues.AIVA_TRIAL_CREDIT_GBP || '1' %></div>
+      </div>
+    </div>
+
+    <div class="ac-grid-2">
+      <section class="ac-card">
+        <h2>Go to a control</h2>
+        <p class="sub">Everything AI-related lives under these tabs. Use these shortcuts when you already know the job.</p>
+        <div class="ac-links">
+          <a class="primary" href="/ai-control?tab=models">Set models by product</a>
+          <a href="/ai-control?tab=usage">Usage and cost</a>
+          <a href="/ai-control?tab=gates">Trial and free gates</a>
+          <a href="/ai-control?tab=embeddings">Embeddings</a>
+          <a href="/llm-providers">Advanced rotation UI</a>
+          <a href="/ai-platform/analytics">Full analytics charts</a>
+          <a href="/ops-assistant/admin">Ops Assistant health</a>
+        </div>
+      </section>
+      <section class="ac-card">
+        <h2>What belongs where</h2>
+        <p class="sub">Quick map so settings stop feeling duplicated.</p>
+        <table class="ac-table">
+          <tr><th>Need</th><th>Use</th></tr>
+          <tr><td>Default LLM for Carina + Aiva</td><td>Models → Carina core</td></tr>
+          <tr><td>Ops Assistant model</td><td>Models → Ops Assistant</td></tr>
+          <tr><td>Trial vs paid Aiva model (live)</td><td>Models → Aiva free trial / paid</td></tr>
+          <tr><td>Token spend and charts</td><td>Usage and cost</td></tr>
+          <tr><td>Free allowance / soft wall</td><td>Trial and free gates</td></tr>
+          <tr><td>Embedding provider</td><td>Embeddings</td></tr>
+        </table>
+      </section>
+    </div>
+  <% } %>
+
+  <% if (tab === 'models') { %>
+    <%
+      const eng = (typeof engine === 'object' && engine) ? engine : {};
+      const engAiva = eng.aiva || {};
+      const engTrial = engAiva.trial || {};
+      const engPaid = engAiva.paid || {};
+      const engPlatform = eng.platform || {};
+      const allowlist = Array.isArray(llm.providers) && llm.providers.length
+        ? llm.providers
+        : (llm.configuredProviders || []);
+      const allowSet = {};
+      allowlist.forEach(function (n) { allowSet[String(n).toLowerCase()] = true; });
+
+      const carinaProv = scopeRow('carina_platform').provider || llm.defaultProvider || '';
+      const carinaModel = scopeRow('carina_platform').model || llm.model || '';
+      const opsProv = scopeRow('ops_assistant').provider || 'deepseek';
+      const opsModel = scopeRow('ops_assistant').model || 'deepseek-chat';
+      const trialProv = gateValues.AIVA_TRIAL_LLM_PROVIDER || scopeRow('aiva_trial').provider || 'deepseek';
+      const trialModel = gateValues.AIVA_TRIAL_LLM_MODEL || scopeRow('aiva_trial').model || 'deepseek-chat';
+      const paidProv = gateValues.AIVA_PAID_LLM_PROVIDER || scopeRow('aiva_paid').provider || llm.defaultProvider || '';
+      const paidModel = gateValues.AIVA_PAID_LLM_MODEL || scopeRow('aiva_paid').model || llm.model || '';
+
+      function renderProviderSelect(id, name, selected, modelSelectId) {
+        const configuredOpts = providerOptions.filter(function (p) { return p.configured; });
+        const otherOpts = providerOptions.filter(function (p) { return !p.configured; });
+        let html = '<select id="' + id + '" name="' + name + '" class="ac-provider" data-model-select="' + modelSelectId + '">';
+        if (configuredOpts.length) {
+          html += '<optgroup label="Configured (' + configuredOpts.length + ')">';
+          configuredOpts.forEach(function (p) {
+            html += '<option value="' + p.name + '"' + sel(selected, p.name) + '>' + (p.displayName || p.name) + '</option>';
+          });
+          html += '</optgroup>';
+        }
+        if (otherOpts.length) {
+          html += '<optgroup label="Needs API key (' + otherOpts.length + ')">';
+          otherOpts.forEach(function (p) {
+            html += '<option value="' + p.name + '"' + sel(selected, p.name) + '>' + (p.displayName || p.name) + ' (no key)</option>';
+          });
+          html += '</optgroup>';
+        }
+        html += '</select>';
+        return html;
+      }
+      function renderModelSelect(selectId, name, provider, model) {
+        const choices = modelChoices(provider, model);
+        const title = choices.length ? (choices.length + ' models available') : 'Loading models';
+        let html = '<select id="' + selectId + '" name="' + name + '" class="ac-model-select" aria-label="Model" title="' + title + '">';
+        if (!choices.length && !model) html += '<option value="">Loading models…</option>';
+        choices.forEach(function (m) {
+          html += '<option value="' + m + '"' + sel(model, m) + '>' + m + '</option>';
+        });
+        html += '<option value="__custom__">Custom model id…</option>';
+        html += '</select>';
+        return html;
+      }
+    %>
+    <form method="post" action="/ai-control/models" id="ac-models-form">
+      <section class="ac-card" style="margin-bottom:14px;">
+        <h2>Models by product</h2>
+        <p class="sub">
+          One matrix for every surface. Provider menus list the full catalog; models load live from Core.
+          Aiva trial/paid rows save into billing config keys (what Core reads). Edit them here, not under Billing.
+          Pick Custom model id… only if the model is missing from the dropdown.
+        </p>
+        <% if (llm.error) { %><div class="ac-flash err"><%= llm.error %></div><% } %>
+        <% if (eng.error) { %><div class="ac-flash err"><%= eng.error %></div><% } %>
+
+        <div class="ac-grid" style="margin-bottom:16px;">
+          <div class="ac-card ac-kpi" style="padding:12px;">
+            <div class="label">Platform live</div>
+            <div class="value" style="font-size:1rem;"><%= engPlatform.provider || llm.defaultProvider || '-' %> / <%= engPlatform.model || llm.model || '-' %></div>
+            <div class="meta">Rotation <%= engPlatform.rotationEnabled === false || llm.enabled === false ? 'OFF' : 'ON' %></div>
+          </div>
+          <div class="ac-card ac-kpi" style="padding:12px;">
+            <div class="label">Aiva trial lane</div>
+            <div class="value" style="font-size:1rem;"><%= engTrial.provider || trialProv || '-' %> / <%= engTrial.model || trialModel || '-' %></div>
+            <div class="meta"><%= engTrial.source === 'billing_config' ? 'Forced live' : 'Configured' %></div>
+          </div>
+          <div class="ac-card ac-kpi" style="padding:12px;">
+            <div class="label">Aiva paid lane</div>
+            <div class="value" style="font-size:1rem;"><%= engPaid.provider || paidProv || '-' %> / <%= engPaid.model || paidModel || '-' %></div>
+            <div class="meta"><%= engPaid.source === 'billing_config' ? 'Forced live' : 'Configured' %></div>
+          </div>
+          <div class="ac-card ac-kpi" style="padding:12px;">
+            <div class="label">Providers with keys</div>
+            <div class="value" style="font-size:1rem;"><%= configured.length %> / <%= known.length %></div>
+            <div class="meta"><%= (engPlatform.chain || llm.chain || []).join(' → ') || 'no chain' %></div>
+          </div>
+        </div>
+
+        <div class="ac-matrix-wrap">
+          <table class="ac-matrix">
+            <thead>
+              <tr>
+                <th style="width:24%;">Surface</th>
+                <th style="width:22%;">Provider</th>
+                <th style="width:34%;">Model</th>
+                <th style="width:20%;">Options</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="surface">
+                    <div class="title">Carina core</div>
+                    <div class="blurb">Platform default. Aiva inherits this when lane overrides are empty.</div>
+                    <span class="badge live">Live</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderProviderSelect('carina_platform_provider', 'carina_platform_provider', carinaProv, 'carina_platform_model_select') %>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderModelSelect('carina_platform_model_select', 'carina_platform_model', carinaProv, carinaModel) %>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <select id="rotation_enabled" name="rotation_enabled" aria-label="Rotation">
+                      <option value="1" <%= llm.enabled !== false ? 'selected' : '' %>>On (failover)</option>
+                      <option value="0" <%= llm.enabled === false ? 'selected' : '' %>>Off (locked)</option>
+                    </select>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="surface">
+                    <div class="title">Aiva platform</div>
+                    <div class="blurb">Baseline when no trial/paid override is set. BYOK still wins per workspace.</div>
+                    <span class="badge live">Inherits Carina</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <input type="text" value="<%= llm.defaultProvider || '' %>" disabled aria-label="Provider">
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <input type="text" value="<%= llm.model || '' %>" disabled aria-label="Model">
+                  </div>
+                </td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="surface">
+                    <div class="title">Ops Assistant</div>
+                    <div class="blurb">Ops chat coach (/ops-assistant). Uses Ops env API keys, not Core keys.</div>
+                    <span class="badge live">Live</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderProviderSelect('ops_assistant_provider', 'ops_assistant_provider', opsProv, 'ops_assistant_model_select') %>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderModelSelect('ops_assistant_model_select', 'ops_assistant_model', opsProv, opsModel) %>
+                  </div>
+                </td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="surface">
+                    <div class="title">Aiva free trial</div>
+                    <div class="blurb">Forced for trial / soft-wall traffic.</div>
+                    <span class="badge live">Live</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderProviderSelect('aiva_trial_provider', 'aiva_trial_provider', trialProv, 'aiva_trial_model_select') %>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderModelSelect('aiva_trial_model_select', 'aiva_trial_model', trialProv, trialModel) %>
+                  </div>
+                </td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="surface">
+                    <div class="title">Aiva paid users</div>
+                    <div class="blurb">Forced for subscribed / prepaid traffic.</div>
+                    <span class="badge live">Live</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderProviderSelect('aiva_paid_provider', 'aiva_paid_provider', paidProv, 'aiva_paid_model_select') %>
+                  </div>
+                </td>
+                <td>
+                  <div class="cell-ctrl">
+                    <%- renderModelSelect('aiva_paid_model_select', 'aiva_paid_model', paidProv, paidModel) %>
+                  </div>
+                </td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:4px;">
+          <div class="title" style="font-size:0.88rem;font-weight:650;color:#f8fafc;">Failover allowlist</div>
+          <div class="blurb" style="font-size:0.75rem;color:#64748b;margin:4px 0 0;">
+            When rotation is On, Core tries checked providers after the active one fails. Providers without keys stay listed but cannot be enabled until configured.
+          </div>
+          <div class="ac-allow">
+            <% known.forEach(function (p) {
+                 const checked = allowSet[String(p.name).toLowerCase()] || (!allowlist.length && p.configured);
+            %>
+              <label class="ac-allow-item<%= p.configured ? '' : ' is-off' %>">
+                <input type="checkbox" name="rotation_providers" value="<%= p.name %>"
+                  <%= checked ? 'checked' : '' %>
+                  <%= p.configured ? '' : 'disabled' %>>
+                <span>
+                  <strong><%= p.displayName || p.name %></strong>
+                  <div class="meta"><%= p.configured ? 'API key present' : 'No API key' %></div>
+                </span>
+              </label>
+            <% }) %>
+          </div>
+          <input type="hidden" name="rotation_providers_fallback" value="<%= allowlist.join(',') %>">
+        </div>
+
+        <div class="ac-actions">
+          <button class="ac-btn" type="submit">Save model assignments</button>
+          <a class="ac-tab" href="/llm-providers">Advanced rotation page</a>
+        </div>
+      </section>
+    </form>
+    <script>
+      (function () {
+        var CUSTOM = '__custom__';
+        var modelsByProvider = <%- JSON.stringify(modelsByProvider || {}) %>;
+
+        function setModelMeta(selectEl, count, source) {
+          var label = count ? (count + ' models') : 'No models';
+          if (source) label += ' · ' + source;
+          selectEl.title = label;
+        }
+
+        function ensureOption(selectEl, value) {
+          var v = String(value || '').trim();
+          if (!v || v === CUSTOM) return;
+          for (var i = 0; i < selectEl.options.length; i++) {
+            if (selectEl.options[i].value === v) return;
+          }
+          var opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = v;
+          // Insert before the Custom option if present
+          var customOpt = null;
+          for (var j = 0; j < selectEl.options.length; j++) {
+            if (selectEl.options[j].value === CUSTOM) { customOpt = selectEl.options[j]; break; }
+          }
+          if (customOpt) selectEl.insertBefore(opt, customOpt);
+          else selectEl.appendChild(opt);
+        }
+
+        function fillModels(selectEl, list, preferred, source) {
+          var unique = [];
+          var seen = {};
+          (list || []).forEach(function (m) {
+            var v = String(m || '').trim();
+            if (!v || seen[v]) return;
+            seen[v] = true;
+            unique.push(v);
+          });
+          unique.sort(function (a, b) { return a.localeCompare(b); });
+          var preferredValue = String(preferred || '').trim();
+          if (preferredValue && preferredValue !== CUSTOM && !seen[preferredValue]) {
+            unique.unshift(preferredValue);
+            seen[preferredValue] = true;
+          }
+          selectEl.innerHTML = '';
+          if (!unique.length) {
+            var empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = 'No models loaded yet';
+            selectEl.appendChild(empty);
+          } else {
+            unique.forEach(function (name) {
+              var opt = document.createElement('option');
+              opt.value = name;
+              opt.textContent = name;
+              if (name === preferredValue) opt.selected = true;
+              selectEl.appendChild(opt);
+            });
+          }
+          var customOpt = document.createElement('option');
+          customOpt.value = CUSTOM;
+          customOpt.textContent = 'Custom model id…';
+          selectEl.appendChild(customOpt);
+          if (preferredValue && seen[preferredValue]) selectEl.value = preferredValue;
+          else if (unique[0]) selectEl.value = unique[0];
+          setModelMeta(selectEl, unique.length, source || '');
+        }
+
+        function askCustomModel(selectEl) {
+          var current = '';
+          for (var i = 0; i < selectEl.options.length; i++) {
+            if (selectEl.options[i].value && selectEl.options[i].value !== CUSTOM) {
+              current = selectEl.options[i].value;
+              break;
+            }
+          }
+          var entered = window.prompt('Enter a custom model id', current);
+          if (entered === null) {
+            // Cancel: restore previous non-custom value
+            if (selectEl.dataset.prevModel) selectEl.value = selectEl.dataset.prevModel;
+            else if (selectEl.options[0]) selectEl.selectedIndex = 0;
+            return;
+          }
+          var value = String(entered).trim();
+          if (!value) {
+            if (selectEl.dataset.prevModel) selectEl.value = selectEl.dataset.prevModel;
+            return;
+          }
+          ensureOption(selectEl, value);
+          selectEl.value = value;
+          selectEl.dataset.prevModel = value;
+        }
+
+        function onModelChange(selectEl) {
+          if (selectEl.value === CUSTOM) {
+            askCustomModel(selectEl);
+            return;
+          }
+          selectEl.dataset.prevModel = selectEl.value;
+        }
+
+        function loadModels(providerEl) {
+          var modelSelectId = providerEl.getAttribute('data-model-select');
+          var modelSelect = modelSelectId ? document.getElementById(modelSelectId) : null;
+          if (!modelSelect) return;
+          var provider = providerEl.value;
+          var preferred = modelSelect.dataset.prevModel || modelSelect.value || '';
+          if (preferred === CUSTOM) preferred = '';
+          var cached = (modelsByProvider[provider] || []).slice();
+          fillModels(modelSelect, cached, preferred || cached[0] || '', cached.length ? 'cached' : 'loading');
+          modelSelect.dataset.prevModel = modelSelect.value;
+          if (!provider) return;
+          modelSelect.setAttribute('aria-busy', 'true');
+          fetch('/llm-providers/models?provider=' + encodeURIComponent(provider), {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+          })
+            .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
+            .then(function (result) {
+              if (!result.ok || !result.data || !Array.isArray(result.data.models)) return;
+              modelsByProvider[provider] = result.data.models;
+              var keep = preferred || result.data.currentModel || '';
+              fillModels(modelSelect, result.data.models, keep, result.data.source || 'live');
+              modelSelect.dataset.prevModel = modelSelect.value;
+            })
+            .catch(function () { /* keep curated */ })
+            .finally(function () { modelSelect.removeAttribute('aria-busy'); });
+        }
+
+        document.querySelectorAll('select.ac-provider').forEach(function (el) {
+          el.addEventListener('change', function () { loadModels(el); });
+          loadModels(el);
+        });
+        document.querySelectorAll('select.ac-model-select').forEach(function (el) {
+          el.dataset.prevModel = el.value;
+          el.addEventListener('change', function () { onModelChange(el); });
+          el.addEventListener('focus', function () {
+            if (el.value && el.value !== CUSTOM) el.dataset.prevModel = el.value;
+          });
+        });
+      })();
+    </script>
+  <% } %>
+
+  <% if (tab === 'usage') { %>
+    <div class="ac-grid">
+      <div class="ac-card ac-kpi"><div class="label">Calls (30d)</div><div class="value"><%= Number(totals.calls || 0).toLocaleString() %></div></div>
+      <div class="ac-card ac-kpi"><div class="label">Tokens</div><div class="value"><%= Number(totals.tokens || 0).toLocaleString() %></div></div>
+      <div class="ac-card ac-kpi"><div class="label">Provider spend</div><div class="value"><%= money(Number(totals.providerCostMinor || 0)) %></div></div>
+      <div class="ac-card ac-kpi"><div class="label">Platform margin</div><div class="value"><%= money(Number(totals.platformMarginMinor || 0)) %></div></div>
+    </div>
+    <section class="ac-card">
+      <h2>Usage dashboards</h2>
+      <p class="sub">All token maths and charts live under these links. This tab is the index so you do not hunt Fleet vs AI Engine.</p>
+      <div class="ac-links">
+        <a class="primary" href="/ai-platform/analytics">Full analytics charts</a>
+        <a href="/ai-usage">Ledger pricing rates (fee / margin %)</a>
+        <div style="width:100%;height:0;"></div>
+        <a href="/ai-platform/credits">Credits and monthly budget</a>
+        <a href="/ai-platform/margins">Margins floor</a>
+        <a href="/ai-platform">AI Platform overview</a>
+      </div>
+    </section>
+  <% } %>
+
+  <% if (tab === 'gates') { %>
+    <section class="ac-card">
+      <h2>Trial and free gates</h2>
+      <p class="sub">Message caps, trial credit, soft-wall escapes, and Carina free daily limits. Edit the dedicated gates form for full controls.</p>
+      <table class="ac-table" style="margin-bottom:14px;">
+        <tr><th>Gate</th><th>Value</th></tr>
+        <tr><td>Aiva trial messages</td><td><%= gateValues.AIVA_TRIAL_MESSAGE_LIMIT || '20' %></td></tr>
+        <tr><td>Aiva trial credit</td><td>£<%= gateValues.AIVA_TRIAL_CREDIT_GBP || '1' %></td></tr>
+        <tr><td>Aiva daily cap</td><td>£<%= gateValues.AIVA_TRIAL_DAILY_CAP_GBP || '2' %></td></tr>
+        <tr><td>Soft wall BYOK / top-up / upgrade / mini LLM</td><td>
+          <%= gateValues.AIVA_SOFT_WALL_ALLOW_BYOK || 'on' %> /
+          <%= gateValues.AIVA_SOFT_WALL_ALLOW_TOPUP || 'on' %> /
+          <%= gateValues.AIVA_SOFT_WALL_ALLOW_UPGRADE || 'on' %> /
+          <%= gateValues.AIVA_SOFT_WALL_ALLOW_MINI_LLM || 'off' %>
+        </td></tr>
+        <tr><td>Carina free daily msgs / tokens</td><td>
+          <%= gateValues.CARINA_CLOUD_FREE_DAILY_MESSAGES || '100' %> /
+          <%= gateValues.CARINA_CLOUD_FREE_DAILY_TOKENS || '50000' %>
+        </td></tr>
+      </table>
+      <div class="ac-links">
+        <a class="primary" href="/usage-gates">Edit free usage gates</a>
+        <a href="/billing-config">Full billing and launch config</a>
+        <a href="/ai-control?tab=models">Trial / paid preferred models</a>
+      </div>
+    </section>
+  <% } %>
+
+  <% if (tab === 'embeddings') { %>
+    <section class="ac-card">
+      <h2>Embeddings</h2>
+      <p class="sub">Vector provider and backfill controls stay on the dedicated embeddings page. Status snapshot below.</p>
+      <% if (embeddings.error) { %>
+        <div class="ac-flash err"><%= embeddings.error %></div>
+      <% } else { %>
+        <table class="ac-table" style="margin-bottom:14px;">
+          <% Object.keys(embeddings).slice(0, 12).forEach(function (key) {
+               const val = embeddings[key];
+               if (val && typeof val === 'object') return;
+          %>
+            <tr><td><%= key %></td><td><%= String(val) %></td></tr>
+          <% }) %>
+        </table>
+      <% } %>
+      <div class="ac-links">
+        <a class="primary" href="/embeddings">Open embeddings controls</a>
+      </div>
+    </section>
+  <% } %>
+</div>

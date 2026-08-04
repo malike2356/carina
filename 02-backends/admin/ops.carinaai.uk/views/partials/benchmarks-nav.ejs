@@ -1,0 +1,8 @@
+<% const path = typeof activePath !== 'undefined' ? activePath : ''; %>
+<nav class="ops-tabs" aria-label="Benchmark sections" style="margin-bottom:20px;">
+  <a href="/benchmarks/runs" class="ops-tab<%= path === '/benchmarks/runs' ? ' active' : '' %>" style="text-decoration:none;display:inline-block;">Runs</a>
+  <a href="/benchmarks/compare" class="ops-tab<%= path === '/benchmarks/compare' ? ' active' : '' %>" style="text-decoration:none;display:inline-block;">Compare</a>
+  <a href="/benchmarks/fixtures" class="ops-tab<%= path === '/benchmarks/fixtures' ? ' active' : '' %>" style="text-decoration:none;display:inline-block;">Fixtures</a>
+  <a href="/benchmarks/providers" class="ops-tab<%= path === '/benchmarks/providers' ? ' active' : '' %>" style="text-decoration:none;display:inline-block;">Providers</a>
+  <a href="/benchmarks/reports" class="ops-tab<%= path === '/benchmarks/reports' ? ' active' : '' %>" style="text-decoration:none;display:inline-block;">Reports</a>
+</nav>

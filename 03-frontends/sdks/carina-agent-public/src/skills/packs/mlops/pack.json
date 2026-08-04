@@ -1,0 +1,9 @@
+{
+  "name": "mlops",
+  "version": "1.0.0",
+  "description": "Model training, MLflow tracking, HuggingFace Hub, Docker ML deploy, dataset versioning, and evaluation",
+  "author": "VERLOX Ltd",
+  "category": "mlops",
+  "optional": true,
+  "skillCount": 6
+}

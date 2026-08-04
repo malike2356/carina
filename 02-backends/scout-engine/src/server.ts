@@ -1,0 +1,140 @@
+// scout-engine/src/server.ts
+// Scout Event Ingestion Server (P1); Express API server for Carina → Scout event streaming.
+// Handles: event ingestion, heartbeat, SSE stream, health checks.
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import chalk from 'chalk';
+import { serverConfig } from './event-server/config.js';
+import { initDb, pool } from './event-server/db.js';
+import { initRedis, getRedis, createSubscriber } from './event-server/redis.js';
+import { requireApiKey } from './event-server/middleware/auth.js';
+import { eventsRouter } from './event-server/api/events.js';
+import { sseRouter, broadcastEvent } from './event-server/api/sse.js';
+import { healthRouter } from './event-server/api/health.js';
+import { adminRouter } from './api/admin.js';
+import { customerRouter } from './api/customer.js';
+import { createInternalControlRouter } from './api/internal/control.js';
+import { getControlService } from './messaging/control-defaults.js';
+import { telegramWebhookRouter } from './api/webhooks/telegram.js';
+import { whatsappWebhookRouter } from './api/webhooks/whatsapp.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const app = express();
+
+// Trust one proxy layer (for correct req.ip behind nginx)
+app.set('trust proxy', 1);
+
+// Body parsing
+app.use(express.json({
+  limit: '64kb',
+  verify: (req, _res, buf) => {
+    if (req.url?.startsWith('/webhooks/whatsapp')) {
+      (req as express.Request & { rawBody?: string }).rawBody = buf.toString('utf8');
+    }
+  },
+}));
+
+// CORS; allow local dashboard
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Scout-Key, X-Scout-Internal-Key, X-Hub-Signature-256');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  if (_req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
+// Serve static dashboard from console.labyrinthscout.com/public
+app.use(express.static(path.join(__dirname, '../../console.labyrinthscout.com/public'), { index: false }));
+
+// Boundary API routes. Ops uses /api/admin. The customer console uses /api/customer.
+app.use('/api/admin', requireApiKey, adminRouter);
+app.use('/api/customer', requireApiKey, customerRouter);
+app.use('/api/internal/control', createInternalControlRouter(getControlService()));
+app.use('/webhooks/telegram', telegramWebhookRouter);
+app.use('/webhooks/whatsapp', whatsappWebhookRouter);
+
+// Legacy event ingestion routes kept for compatibility with existing Carina agents.
+app.use('/api/v1/health', healthRouter);
+app.use('/api/v1/events', requireApiKey, eventsRouter);
+app.use('/api/v1/events/stream', sseRouter); // no auth for SSE; local network
+
+// Root health check
+app.get('/', (_req, res) => {
+  res.json({
+    service: 'Scout Event Ingestion Server',
+    version: '1.0.0',
+    status: 'running',
+    docs: '/api/v1/health',
+    adminApi: '/api/admin',
+    customerApi: '/api/customer',
+  });
+});
+
+// Global error handler (must be last middleware)
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[scout:error]', err.message);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// Graceful shutdown
+async function shutdown(signal: string): Promise<void> {
+  console.log(chalk.gray(`\n[scout] ${signal} received, shutting down...`));
+  const redis = getRedis();
+  if (redis) redis.disconnect();
+  await pool.end().catch(() => undefined);
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+
+// SSE subscriber; listens on Redis channel for events and fans out to SSE clients
+async function initSseSubscriber(): Promise<void> {
+  try {
+    const sub = createSubscriber();
+    await sub.subscribe('scout:events');
+    sub.on('message', (_channel, message) => {
+      try {
+        const event = JSON.parse(message) as Record<string, unknown>;
+        broadcastEvent(event);
+      } catch {
+        // malformed message, ignore
+      }
+    });
+    console.log(chalk.gray('[scout] SSE Redis subscriber active on channel scout:events'));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(chalk.yellow(`[scout] SSE subscriber unavailable: ${msg}`));
+  }
+}
+
+// Startup
+async function main(): Promise<void> {
+  console.log(chalk.bold.hex('#d4af37')('LABYRINTH SCOUT') + chalk.gray(' - event ingestion server'));
+
+  await initDb();
+  await initRedis();
+  await initSseSubscriber();
+
+  app.listen(serverConfig.port, () => {
+    console.log(chalk.green(`[scout] Listening on http://localhost:${serverConfig.port}`));
+    console.log(chalk.gray(`[scout] Health: http://localhost:${serverConfig.port}/api/v1/health`));
+    console.log(chalk.gray(`[scout] Admin API: http://localhost:${serverConfig.port}/api/admin`));
+    console.log(chalk.gray(`[scout] Customer API: http://localhost:${serverConfig.port}/api/customer`));
+    console.log(chalk.gray(`[scout] Events: http://localhost:${serverConfig.port}/api/v1/events`));
+    console.log(chalk.gray(`[scout] SSE Stream: http://localhost:${serverConfig.port}/api/v1/events/stream`));
+    console.log(chalk.gray('[scout] Ready to receive events from Carina instances'));
+  });
+}
+
+main().catch((err) => {
+  console.error(chalk.red('[scout] Fatal startup error:'), err);
+  process.exit(1);
+});
+
+export default app;

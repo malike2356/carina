@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carina Cloud - Billing</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #c9d1d9; --muted: #8b949e; --accent: #58a6ff; --send: #238636;
+    }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 32px; }
+    .wrap { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    p { color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 16px; }
+    .tier { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    button, a.btn {
+      display: inline-block; background: var(--send); color: #fff; border: none;
+      border-radius: 6px; padding: 10px 16px; font-size: 14px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+    }
+    button.secondary, a.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); margin-left: 8px; }
+    .notice { padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; }
+    .notice.ok { background: rgba(35,134,54,0.15); color: #3fb950; }
+    .notice.warn { background: rgba(248,81,73,0.12); color: #f85149; }
+    nav { margin-bottom: 24px; }
+    nav a { color: var(--accent); text-decoration: none; margin-right: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <a href="/">Chat</a>
+      <a href="/settings">Settings</a>
+      <a href="/billing">Billing</a>
+      <a href="/security" id="nav-security" hidden>Security</a>
+    </nav>
+    <h1>Billing</h1>
+    <p>Manage your Carina Cloud plan. Pro includes Labyrinth Scout security monitoring. Inference is billed by your LLM provider via BYOK keys.</p>
+    <div id="notice" hidden></div>
+    <div class="card">
+      <div class="tier" id="tier-label">Loading...</div>
+      <p id="tier-desc"></p>
+      <button id="upgrade-btn" hidden>Upgrade to Pro</button>
+      <button id="portal-btn" class="secondary" hidden>Manage subscription</button>
+    </div>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const notice = document.getElementById('notice');
+    if (params.get('success')) {
+      notice.textContent = 'Payment successful. Your Pro plan is now active.';
+      notice.className = 'notice ok';
+      notice.hidden = false;
+    } else if (params.get('canceled')) {
+      notice.textContent = 'Checkout canceled. Your plan was not changed.';
+      notice.className = 'notice warn';
+      notice.hidden = false;
+    }
+
+    async function load() {
+      const res = await fetch('/app/auth/me');
+      if (!res.ok) { location.href = '/hosted-login'; return; }
+      const user = await res.json();
+      const tierLabel = document.getElementById('tier-label');
+      const tierDesc = document.getElementById('tier-desc');
+      const upgradeBtn = document.getElementById('upgrade-btn');
+      const portalBtn = document.getElementById('portal-btn');
+      if (user.tier === 'pro') {
+        tierLabel.textContent = 'Carina Pro + Labyrinth Scout';
+        tierDesc.textContent = 'Unlimited messages, security dashboard, and threat monitoring.';
+        portalBtn.hidden = false;
+        document.getElementById('nav-security').hidden = false;
+        const scoutCard = document.createElement('div');
+        scoutCard.className = 'card';
+        scoutCard.innerHTML = '<div class="tier">Labyrinth Scout</div><p>View threats, audit logs, and pairing key for self-hosted Carina.</p><a class="btn" href="/security">Open Scout</a> <a class="btn secondary" href="/dashboard">Security dashboard</a>';
+        document.querySelector('.wrap').appendChild(scoutCard);
+        if (params.get('success')) {
+          setTimeout(() => { location.href = '/security?activated=1'; }, 1500);
+        }
+      } else {
+        tierLabel.textContent = 'Free';
+        tierDesc.textContent = '100 messages per day. Add your API keys in Settings.';
+        upgradeBtn.hidden = false;
+      }
+    }
+
+    document.getElementById('upgrade-btn').addEventListener('click', async () => {
+      const res = await fetch('/app/auth/billing/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) location.href = data.url;
+      else alert(data.error || 'Checkout unavailable');
+    });
+
+    document.getElementById('portal-btn').addEventListener('click', async () => {
+      const res = await fetch('/app/auth/billing/portal', { method: 'POST' });
+      const data = await res.json();
+      if (data.url) location.href = data.url;
+      else alert(data.error || 'Portal unavailable');
+    });
+
+    load();
+  </script>
+</body>
+</html>

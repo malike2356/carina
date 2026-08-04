@@ -1,0 +1,140 @@
+<% title = 'Workbench' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Workbench</h1>
+    <p>Draft and run prompts against the platform model picker. Responses stream from Core when paired.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split wb">
+  <div style="display:grid;gap:14px;">
+    <form method="post" action="/ai-platform/workbench" class="apu-panel apu-fields">
+      <h2>Compose run</h2>
+      <p class="sub">Save a draft or run immediately. Streaming uses the live Carina session bridge.</p>
+      <div>
+        <label class="field" for="wb-title">Title</label>
+        <input id="wb-title" name="title" type="text" value="<%= selectedRun ? selectedRun.title : '' %>" placeholder="Optional run title">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end;">
+        <div>
+          <%- include('../partials/model-picker', {
+            pickerId: 'model-select',
+            selectedProvider: selectedRun ? selectedRun.provider : '',
+            selectedModelName: selectedRun ? selectedRun.model : '',
+          }) %>
+        </div>
+        <label class="apu-checks" style="padding-bottom:10px;">
+          <input type="checkbox" disabled <%= org.promptCachingEnabled ? 'checked' : '' %>>
+          Prompt cache <%= org.promptCachingEnabled ? 'on' : 'off' %>
+        </label>
+      </div>
+      <div>
+        <label class="field" for="prompt-input">Prompt</label>
+        <textarea name="prompt" id="prompt-input" rows="10" class="mono"><%= selectedRun ? selectedRun.prompt : '' %></textarea>
+      </div>
+      <div class="apu-actions">
+        <button type="submit" name="action" value="draft" class="apu-btn ghost">Save draft</button>
+        <button type="submit" name="action" value="run" id="run-btn" class="apu-btn" style="width:auto;min-width:120px;">Run now</button>
+      </div>
+    </form>
+
+    <section class="apu-panel">
+      <h2>Response</h2>
+      <p class="sub">Streamed output and run metadata.</p>
+      <div id="response-panel" class="apu-response"><%= selectedRun && selectedRun.responseText ? selectedRun.responseText : '' %></div>
+      <dl id="run-meta" class="apu-meta <%= selectedRun && selectedRun.status === 'completed' ? '' : 'hidden' %>">
+        <div><dt>Status</dt><dd id="meta-status"><%= selectedRun ? selectedRun.status : '' %></dd></div>
+        <div><dt>Tokens</dt><dd id="meta-tokens"><%= selectedRun ? (selectedRun.tokensIn + ' / ' + selectedRun.tokensOut) : '' %></dd></div>
+        <div><dt>Cost</dt><dd id="meta-cost"><%= selectedRun ? ('$' + selectedRun.costEstimate.toFixed(4)) : '' %></dd></div>
+      </dl>
+    </section>
+  </div>
+
+  <aside class="apu-panel">
+    <h2>Recent runs</h2>
+    <p class="sub">Open a run to inspect or re-stream.</p>
+    <% if (!runs.length) { %>
+      <div class="apu-empty">No runs yet.</div>
+    <% } else { %>
+      <ul class="apu-list">
+        <% for (const run of runs) { %>
+          <li>
+            <a href="/ai-platform/workbench?run=<%= run.id %>">
+              <div class="t"><%= run.title %></div>
+              <div class="m"><%= run.status %> · <%= new Date(run.createdAt).toLocaleString() %></div>
+            </a>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </aside>
+</div>
+
+<script>
+  const RUN_ID = <%- selectedRun ? JSON.stringify(selectedRun.id) : 'null' %>;
+  const AUTORUN = <%- autorun ? 'true' : 'false' %>;
+  const promptEl = document.getElementById('prompt-input');
+  const responseEl = document.getElementById('response-panel');
+  const runMeta = document.getElementById('run-meta');
+
+  async function streamRun(runId, prompt) {
+    responseEl.textContent = '';
+    runMeta.classList.remove('hidden');
+    document.getElementById('meta-status').textContent = 'running';
+
+    let full = '';
+    const sessionId = crypto.randomUUID();
+    const url = new URL('/ai-platform/stream', window.location.origin);
+    url.searchParams.set('message', prompt);
+    url.searchParams.set('sessionId', sessionId);
+
+    return new Promise((resolve) => {
+      const es = new EventSource(url.toString());
+      es.onmessage = async (e) => {
+        if (e.data === '[DONE]') {
+          es.close();
+          const tokensIn = Math.ceil(prompt.length / 4);
+          const tokensOut = Math.ceil(full.length / 4);
+          if (runId) {
+            const r = await fetch('/ai-platform/workbench/' + runId + '/complete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ responseText: full, tokensIn, tokensOut }),
+            });
+            const data = await r.json();
+            document.getElementById('meta-status').textContent = 'completed';
+            document.getElementById('meta-tokens').textContent = data.tokensIn + ' / ' + data.tokensOut;
+            document.getElementById('meta-cost').textContent = '$' + Number(data.costEstimate).toFixed(4);
+          }
+          resolve(full);
+          return;
+        }
+        try {
+          const chunk = JSON.parse(e.data);
+          if (typeof chunk === 'string') full += chunk;
+          else if (chunk.error) full = 'Error: ' + chunk.error;
+          else full += String(chunk);
+        } catch {
+          full += e.data;
+        }
+        responseEl.textContent = full;
+      };
+      es.onerror = () => {
+        es.close();
+        if (!full) responseEl.textContent = 'Connection error. Is Carina running?';
+        resolve(full);
+      };
+    });
+  }
+
+  if (RUN_ID && AUTORUN && promptEl.value.trim()) {
+    streamRun(RUN_ID, promptEl.value.trim());
+  }
+</script>
+</div>

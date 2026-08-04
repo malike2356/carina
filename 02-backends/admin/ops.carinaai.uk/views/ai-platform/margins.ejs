@@ -1,0 +1,459 @@
+<% title = 'Margins' %>
+<%
+  const s = summary || { floor: 0.65, month: '', days: days || 30, periodLabel: '', orgs: [], totals: {} };
+  const totals = s.totals || {};
+  const orgs = Array.isArray(s.orgs) ? s.orgs : [];
+  const h = health || { belowFloorOrgs: [], byokOnlyOrgs: [], healthyOrgs: [], absoluteMarginUsd: 0, planMix: [] };
+  const u = usage && usage.totals ? usage : null;
+  const spendReady = spend && spend.ready;
+  const periodDays = Number(s.days || days || 30);
+  const periodLabel = s.periodLabel || ('last ' + periodDays + ' days');
+  const floorPct = Math.round(Number(s.floor || 0.65) * 100);
+  const platformMarginPct = totals.grossMargin == null ? null : Math.round(Number(totals.grossMargin) * 100);
+  const revenueUsd = Number(totals.creditRevenueUsd || 0);
+  const costUsd = Number(totals.providerCostUsd || 0);
+  const absMargin = Number(h.absoluteMarginUsd || (revenueUsd - costUsd));
+  const fmtUsd = (n) => '$' + Number(n || 0).toFixed(4);
+  const fmtUsd2 = (n) => '$' + Number(n || 0).toFixed(2);
+  const fmtPct = (n) => n == null || !Number.isFinite(Number(n)) ? 'n/a' : Math.round(Number(n) * 100) + '%';
+  const planLabel = (id) => String(id || 'unknown').replace(/_/g, ' ');
+  const statusOf = (row) => {
+    if (row.byokCostOnly) return { label: 'BYOK cost only', cls: 'mg-pill mg-pill-muted' };
+    if (row.belowFloor) return { label: 'Below floor', cls: 'mg-pill mg-pill-bad' };
+    return { label: 'OK', cls: 'mg-pill mg-pill-ok' };
+  };
+  const share = (part, whole) => whole > 0 ? ((part / whole) * 100).toFixed(1) + '%' : '-';
+%>
+<style>
+  .mg-wrap { width:100%; max-width:none; margin:0; box-sizing:border-box; }
+  .mg-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:18px; }
+  .mg-head h1 { margin:0; font-size:1.5rem; font-weight:700; color:#f8fafc; }
+  .mg-head p { margin:4px 0 0; font-size:0.82rem; color:#94a3b8; max-width:56rem; }
+  .mg-period { display:flex; gap:8px; flex-wrap:wrap; }
+  .mg-period a {
+    display:inline-flex; align-items:center; padding:7px 12px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; font-size:0.78rem; text-decoration:none;
+    background:rgba(0,0,0,0.25);
+  }
+  .mg-period a.is-active { border-color:rgba(34,197,94,0.45); color:#86efac; background:rgba(34,197,94,0.1); }
+  .mg-links { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .mg-links a {
+    font-size:0.75rem; color:#94a3b8; text-decoration:none; padding:5px 10px; border-radius:6px;
+    border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02);
+  }
+  .mg-links a:hover { color:#e2e8f0; border-color:rgba(255,255,255,0.16); }
+  .mg-flash {
+    margin-bottom:14px; padding:10px 14px; border-radius:8px; font-size:0.8rem;
+    background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.28); color:#fecaca;
+  }
+  .mg-alert {
+    margin-bottom:10px; padding:10px 14px; border-radius:8px; font-size:0.8rem;
+    background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); color:#fde68a;
+  }
+  .mg-alert strong { color:#fef3c7; }
+  .mg-kpis {
+    display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:14px;
+  }
+  .mg-kpis-6 {
+    display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:10px; margin-bottom:14px;
+  }
+  .mg-kpi {
+    padding:14px 16px; border-radius:12px;
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07);
+  }
+  .mg-kpi .label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; color:#94a3b8; }
+  .mg-kpi .value { margin-top:6px; font-size:1.2rem; font-weight:700; color:#f8fafc; font-variant-numeric:tabular-nums; }
+  .mg-kpi .sub { margin-top:4px; font-size:0.72rem; color:#64748b; }
+  .mg-kpi.is-bad .value { color:#fca5a5; }
+  .mg-kpi.is-ok .value { color:#86efac; }
+  .mg-kpi.is-warn .value { color:#fde68a; }
+  .mg-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:14px; margin-bottom:14px; }
+  .mg-grid-3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; }
+  .mg-card {
+    padding:16px; border-radius:12px;
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07);
+    min-width:0;
+  }
+  .mg-card h2 { margin:0 0 4px; font-size:0.9rem; font-weight:650; color:#f1f5f9; }
+  .mg-card .sub { margin:0 0 12px; font-size:0.75rem; color:#64748b; }
+  .mg-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+  .mg-table th {
+    text-align:left; color:#64748b; font-weight:600; padding:7px 8px;
+    border-bottom:1px solid rgba(255,255,255,0.08); white-space:nowrap;
+  }
+  .mg-table td { padding:8px; border-bottom:1px solid rgba(255,255,255,0.04); color:#cbd5e1; vertical-align:top; }
+  .mg-table td.num { text-align:right; font-variant-numeric:tabular-nums; color:#e2e8f0; }
+  .mg-table tr.is-bad { background:rgba(248,113,113,0.05); }
+  .mg-table tr.is-muted { background:rgba(148,163,184,0.04); }
+  .mg-empty { color:#64748b; font-size:0.8rem; padding:20px 0; text-align:center; }
+  .mg-pill {
+    display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px;
+    font-size:0.68rem; font-weight:650; letter-spacing:0.02em;
+  }
+  .mg-pill-ok { color:#86efac; background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.28); }
+  .mg-pill-bad { color:#fca5a5; background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.3); }
+  .mg-pill-muted { color:#cbd5e1; background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.22); }
+  .mg-list { margin:0; padding:0; list-style:none; }
+  .mg-list li {
+    display:flex; justify-content:space-between; gap:12px; padding:8px 0;
+    border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.78rem; color:#cbd5e1;
+  }
+  .mg-list li:last-child { border-bottom:0; }
+  .mg-list .name { color:#f1f5f9; }
+  .mg-list .meta { color:#64748b; font-size:0.72rem; }
+  .mg-note {
+    margin-top:14px; padding:14px 16px; border-radius:12px; font-size:0.75rem; color:#94a3b8; line-height:1.55;
+    background:rgba(255,255,255,0.015); border:1px solid rgba(255,255,255,0.06);
+  }
+  .mg-note code { color:#cbd5e1; font-size:0.72rem; }
+  .mg-bar {
+    height:8px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; margin-top:6px;
+  }
+  .mg-bar > span { display:block; height:100%; background:linear-gradient(90deg,#22c55e,#86efac); }
+  .mg-bar > span.is-bad { background:linear-gradient(90deg,#ef4444,#fca5a5); }
+  @media (max-width: 1200px) {
+    .mg-kpis, .mg-kpis-6, .mg-grid, .mg-grid-3 { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .mg-kpis, .mg-kpis-6, .mg-grid, .mg-grid-3 { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="ops-page mg-wrap">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="mg-head">
+  <div>
+    <h1>Margin health</h1>
+    <p>
+      Rolling window: <strong style="color:#e2e8f0"><%= periodLabel %></strong>
+      (calendar month context <%= s.month || '-' %>).
+      Floor <strong style="color:#e2e8f0"><%= floorPct %>%</strong> on managed credit revenue.
+      Toggle changes org credit margins and AI usage ledger together.
+    </p>
+  </div>
+  <div class="mg-period">
+    <a href="/ai-platform/margins?days=7" class="<%= periodDays === 7 ? 'is-active' : '' %>">7d</a>
+    <a href="/ai-platform/margins?days=30" class="<%= periodDays === 30 ? 'is-active' : '' %>">30d</a>
+    <a href="/ai-platform/margins?days=90" class="<%= periodDays === 90 ? 'is-active' : '' %>">90d</a>
+  </div>
+</div>
+
+<div class="mg-links">
+  <a href="/ai-platform/analytics?days=<%= periodDays %>">Analytics</a>
+  <a href="/ai-usage">AI Usage</a>
+  <a href="/ai-platform/credits">Credits</a>
+  <a href="/billing">Billing</a>
+</div>
+
+<% if (loadError) { %>
+  <div class="mg-flash"><%= loadError %></div>
+<% } %>
+
+<% if (h.belowFloorOrgs && h.belowFloorOrgs.length) { %>
+  <div class="mg-alert">
+    <strong><%= h.belowFloorOrgs.length %> org<%= h.belowFloorOrgs.length === 1 ? '' : 's' %> below the <%= floorPct %>% floor</strong>
+    (<%= periodLabel %>)
+    · <%= h.belowFloorOrgs.slice(0, 4).map(function(r){ return r.orgName; }).join(', ') %><%= h.belowFloorOrgs.length > 4 ? '...' : '' %>
+  </div>
+<% } %>
+
+<% if (u && Array.isArray(usage.alerts) && usage.alerts.length) { %>
+  <% usage.alerts.slice(0, 4).forEach(function(alert) { %>
+    <div class="mg-alert"><%= alert.message %><% if (alert.tenantId) { %> · tenant <%= alert.tenantId %><% } %></div>
+  <% }) %>
+<% } %>
+
+<div class="mg-kpis">
+  <div class="mg-kpi <%= platformMarginPct != null && platformMarginPct < floorPct ? 'is-bad' : (platformMarginPct != null ? 'is-ok' : '') %>">
+    <div class="label">Platform gross margin</div>
+    <div class="value"><%= platformMarginPct == null ? 'n/a' : platformMarginPct + '%' %></div>
+    <div class="sub">Floor <%= floorPct %>% · <%= periodLabel %></div>
+  </div>
+  <div class="mg-kpi <%= absMargin < 0 ? 'is-bad' : 'is-ok' %>">
+    <div class="label">Absolute margin (USD)</div>
+    <div class="value"><%= fmtUsd2(absMargin) %></div>
+    <div class="sub">Revenue <%= fmtUsd2(revenueUsd) %> - cost <%= fmtUsd2(costUsd) %></div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Credit revenue (est.)</div>
+    <div class="value"><%= fmtUsd2(revenueUsd) %></div>
+    <div class="sub"><%= Number(totals.creditsBilled || 0).toLocaleString() %> credits · <%= periodLabel %></div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Provider cost (USD)</div>
+    <div class="value"><%= fmtUsd2(costUsd) %></div>
+    <div class="sub">Ops credit ledger · <%= periodLabel %></div>
+  </div>
+</div>
+
+<div class="mg-kpis-6">
+  <div class="mg-kpi <%= (h.belowFloorOrgs || []).length ? 'is-bad' : 'is-ok' %>">
+    <div class="label">Below floor</div>
+    <div class="value"><%= (h.belowFloorOrgs || []).length %></div>
+    <div class="sub">of <%= orgs.length %> active orgs</div>
+  </div>
+  <div class="mg-kpi is-warn">
+    <div class="label">BYOK cost only</div>
+    <div class="value"><%= (h.byokOnlyOrgs || []).length %></div>
+    <div class="sub">Cost with zero credit bill</div>
+  </div>
+  <div class="mg-kpi is-ok">
+    <div class="label">Healthy orgs</div>
+    <div class="value"><%= (h.healthyOrgs || []).length %></div>
+    <div class="sub">At or above floor</div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Active orgs</div>
+    <div class="value"><%= orgs.length %></div>
+    <div class="sub">With usage or cost · <%= periodDays %>d</div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Avg rev / org</div>
+    <div class="value"><%= orgs.length ? fmtUsd2(revenueUsd / orgs.length) : 'n/a' %></div>
+    <div class="sub">Credit revenue basis</div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Cost share of rev</div>
+    <div class="value"><%= revenueUsd > 0 ? ((costUsd / revenueUsd) * 100).toFixed(1) + '%' : 'n/a' %></div>
+    <div class="sub">1 - gross margin</div>
+  </div>
+</div>
+
+<% if (u || spendReady) { %>
+<div class="mg-kpis">
+  <div class="mg-kpi">
+    <div class="label">AI ledger provider (<%= periodDays %>d)</div>
+    <div class="value"><%= u ? money(Number(u.totals.providerCostMinor || 0)) : '-' %></div>
+    <div class="sub"><%= u ? Number(u.totals.calls || 0).toLocaleString() + ' calls' : 'ledger unavailable' %></div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Allocated / charge basis</div>
+    <div class="value"><%= u ? money(Number(u.totals.internalChargeBasisMinor || 0)) : '-' %></div>
+    <div class="sub">Overhead + platform margin baked in</div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Platform margin (ledger)</div>
+    <div class="value"><%= u ? money(Number(u.totals.platformMarginMinor || 0)) : '-' %></div>
+    <div class="sub">
+      <% if (u && u.pricingConfig) { %>
+        Rate <%= (Number(u.pricingConfig.platformMarginRate || 0) * 100).toFixed(2) %>% · fee <%= (Number(u.pricingConfig.paymentOverheadRate || 0) * 100).toFixed(2) %>%
+      <% } else { %>pricing n/a<% } %>
+    </div>
+  </div>
+  <div class="mg-kpi">
+    <div class="label">Billing mix</div>
+    <div class="value"><%= u ? Number(u.totals.carinaPaidCalls || 0).toLocaleString() : '-' %></div>
+    <div class="sub">Carina paid · BYOK <%= u ? Number(u.totals.byokCalls || 0).toLocaleString() : '-' %></div>
+  </div>
+</div>
+<% } %>
+
+<div class="mg-grid">
+  <section class="mg-card">
+    <h2>Organizations (<%= periodLabel %>)</h2>
+    <p class="sub">Sorted below floor first, then revenue. Same window as the period toggle.</p>
+    <% if (!orgs.length) { %>
+      <p class="mg-empty">No ledger activity in <%= periodLabel %> for metered Ops plans.</p>
+    <% } else { %>
+      <div style="overflow-x:auto;">
+        <table class="mg-table">
+          <thead>
+            <tr>
+              <th>Organization</th>
+              <th>Plan</th>
+              <th class="num">Credits</th>
+              <th class="num">Provider $</th>
+              <th class="num">Rev $</th>
+              <th class="num">Abs $</th>
+              <th class="num">Margin</th>
+              <th class="num">Rev share</th>
+              <th class="num">Cost share</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% orgs.forEach(function(row) {
+              const st = statusOf(row);
+              const abs = Number(row.creditRevenueUsd || 0) - Number(row.providerCostUsd || 0);
+              const rowCls = row.belowFloor ? 'is-bad' : (row.byokCostOnly ? 'is-muted' : '');
+            %>
+              <tr class="<%= rowCls %>">
+                <td>
+                  <div style="color:#f8fafc;font-weight:600;"><%= row.orgName %></div>
+                  <div class="meta" style="font-size:0.68rem;color:#64748b;margin-top:2px;"><%= row.orgId %></div>
+                </td>
+                <td><%= planLabel(row.planId) %></td>
+                <td class="num"><%= Number(row.creditsBilled || 0).toLocaleString() %></td>
+                <td class="num"><%= fmtUsd(row.providerCostUsd) %></td>
+                <td class="num"><%= fmtUsd(row.creditRevenueUsd) %></td>
+                <td class="num"><%= fmtUsd2(abs) %></td>
+                <td class="num"><%= fmtPct(row.grossMargin) %></td>
+                <td class="num"><%= share(Number(row.creditRevenueUsd || 0), revenueUsd) %></td>
+                <td class="num"><%= share(Number(row.providerCostUsd || 0), costUsd) %></td>
+                <td><span class="<%= st.cls %>"><%= st.label %></span></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <div>
+    <section class="mg-card" style="margin-bottom:14px;">
+      <h2>Health queue</h2>
+      <p class="sub">Orgs needing attention in <%= periodLabel %></p>
+      <% const queue = [].concat(h.belowFloorOrgs || [], h.byokOnlyOrgs || []); %>
+      <% if (!queue.length) { %>
+        <p class="mg-empty">All active orgs are at or above floor.</p>
+      <% } else { %>
+        <ul class="mg-list">
+          <% queue.slice(0, 12).forEach(function(row) {
+            const st = statusOf(row);
+          %>
+            <li>
+              <div>
+                <div class="name"><%= row.orgName %></div>
+                <div class="meta"><%= planLabel(row.planId) %> · <%= fmtPct(row.grossMargin) %></div>
+              </div>
+              <span class="<%= st.cls %>"><%= st.label %></span>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+
+    <section class="mg-card">
+      <h2>Plan mix</h2>
+      <p class="sub">Revenue and cost for <%= periodLabel %></p>
+      <% if (!(h.planMix || []).length) { %>
+        <p class="mg-empty">No plan activity yet.</p>
+      <% } else { %>
+        <ul class="mg-list">
+          <% h.planMix.forEach(function(plan) {
+            const gm = plan.revenueUsd > 0 ? (plan.revenueUsd - plan.costUsd) / plan.revenueUsd : null;
+            const bar = plan.revenueUsd > 0 ? Math.min(100, Math.max(0, (1 - (plan.costUsd / plan.revenueUsd)) * 100)) : 0;
+            const bad = gm != null && gm < Number(s.floor || 0.65);
+          %>
+            <li style="display:block;">
+              <div style="display:flex;justify-content:space-between;gap:12px;">
+                <div>
+                  <div class="name"><%= planLabel(plan.planId) %></div>
+                  <div class="meta"><%= plan.orgs %> org<%= plan.orgs === 1 ? '' : 's' %> · <%= Number(plan.credits || 0).toLocaleString() %> credits</div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="name"><%= fmtPct(gm) %></div>
+                  <div class="meta"><%= fmtUsd2(plan.revenueUsd) %> rev · <%= fmtUsd2(plan.costUsd) %> cost</div>
+                </div>
+              </div>
+              <div class="mg-bar"><span class="<%= bad ? 'is-bad' : '' %>" style="width:<%= bar.toFixed(1) %>%"></span></div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
+</div>
+
+<div class="mg-grid-3">
+  <section class="mg-card">
+    <h2>Spend windows</h2>
+    <p class="sub">AI usage ledger (GBP). Selected period highlighted.</p>
+    <% if (!spendReady && !u) { %>
+      <p class="mg-empty">Spend snapshot unavailable.</p>
+    <% } else { %>
+      <ul class="mg-list">
+        <li>
+          <span>Selected (<%= periodDays %>d)</span>
+          <span class="name"><%= u ? money(Number(u.totals.providerCostMinor || 0)) : '-' %></span>
+        </li>
+        <% if (spendReady) { %>
+        <li>
+          <span>This month (MTD)</span>
+          <span class="name"><%= money(Number(spend.month.providerCostMinor || 0)) %></span>
+        </li>
+        <li>
+          <span>Last 30 days</span>
+          <span class="name"><%= money(Number(spend.last30d.providerCostMinor || 0)) %></span>
+        </li>
+        <li>
+          <span>Last 24 hours</span>
+          <span class="name"><%= money(Number(spend.last24h.providerCostMinor || 0)) %></span>
+        </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section class="mg-card">
+    <h2>Top providers (<%= periodDays %>d)</h2>
+    <p class="sub">From AI usage ledger for the selected period</p>
+    <% const providers = u && Array.isArray(usage.byProvider) ? usage.byProvider : []; %>
+    <% if (!providers.length) { %>
+      <p class="mg-empty">No provider rows for <%= periodLabel %>.</p>
+    <% } else { %>
+      <table class="mg-table">
+        <thead>
+          <tr>
+            <th>Provider / model</th>
+            <th class="num">Calls</th>
+            <th class="num">Cost</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% providers.slice(0, 8).forEach(function(row) { %>
+            <tr>
+              <td>
+                <div style="color:#f8fafc;"><%= row.provider %></div>
+                <div style="font-size:0.68rem;color:#64748b;"><%= row.model %></div>
+              </td>
+              <td class="num"><%= Number(row.calls || 0).toLocaleString() %></td>
+              <td class="num"><%= money(Number(row.providerCostMinor || 0)) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+
+  <section class="mg-card">
+    <h2>Top tenants (<%= periodDays %>d)</h2>
+    <p class="sub">By provider cost in AI usage ledger</p>
+    <% const tenants = u && Array.isArray(usage.byTenant) ? usage.byTenant : []; %>
+    <% if (!tenants.length) { %>
+      <p class="mg-empty">No tenant rollup yet.</p>
+    <% } else { %>
+      <table class="mg-table">
+        <thead>
+          <tr>
+            <th>Tenant</th>
+            <th class="num">Calls</th>
+            <th class="num">Cost</th>
+            <th class="num">Allocated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% tenants.slice(0, 8).forEach(function(row) { %>
+            <tr>
+              <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= row.tenantId || '-' %></td>
+              <td class="num"><%= Number(row.calls || 0).toLocaleString() %></td>
+              <td class="num"><%= money(Number(row.providerCostMinor || 0)) %></td>
+              <td class="num"><%= money(Number(row.internalChargeBasisMinor || 0)) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+
+<div class="mg-note">
+  <strong style="color:#cbd5e1;">How to read this page.</strong>
+  The 7d / 30d / 90d control is a single rolling window for both Carina core org margins
+  (<code>/api/carina-ops/admin/margins?days=...</code>) and the ops <code>ai_usage_ledger</code> overlay.
+  Floor is <%= floorPct %>% implied gross margin on managed credit revenue. BYOK cost-only rows have provider cost with zero credits billed (margin n/a).
+  Cross-check with <a href="/ai-platform/analytics?days=<%= periodDays %>" style="color:#86efac;">Analytics</a>
+  and <a href="/ai-usage" style="color:#86efac;">AI Usage</a>.
+</div>
+</div>

@@ -1,0 +1,95 @@
+<% title = 'Deployments' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Deployments</h1>
+    <p>Track model deployments per environment, with version and live status.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/deployments" class="apu-panel apu-fields">
+    <h2>New deployment</h2>
+    <p class="sub">Bind a model to an environment.</p>
+    <div>
+      <label class="field" for="d-name">Deployment name</label>
+      <input id="d-name" name="name" required placeholder="prod-chat">
+    </div>
+    <div>
+      <label class="field" for="d-env">Environment</label>
+      <select id="d-env" name="environmentId">
+        <option value="">No environment</option>
+        <% for (const e of environments) { %>
+          <option value="<%= e.id %>"><%= e.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <div>
+      <%- include('../partials/model-picker', { pickerId: 'deployment-model' }) %>
+    </div>
+    <div>
+      <label class="field" for="d-ver">Version</label>
+      <input id="d-ver" name="version" value="1.0.0" placeholder="1.0.0">
+    </div>
+    <div>
+      <label class="field" for="d-status">Status</label>
+      <select id="d-status" name="status">
+        <option value="pending">pending</option>
+        <option value="live">live</option>
+        <option value="failed">failed</option>
+      </select>
+    </div>
+    <button type="submit" class="apu-btn">Create</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Deployments</h2>
+    <p class="sub"><%= deployments.length %> recorded.</p>
+    <% if (!deployments.length) { %>
+      <div class="apu-empty">No deployments yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Environment</th>
+              <th>Model</th>
+              <th>Status</th>
+              <th>Version</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const d of deployments) { %>
+              <% const env = environments.find(e => e.id === d.environmentId); %>
+              <tr>
+                <td><%= d.name %></td>
+                <td class="muted"><%= env ? env.name : 'None' %></td>
+                <td class="mono"><%= d.provider %>/<%= d.model %></td>
+                <td><span class="apu-chip <%= d.status === 'live' ? 'ok' : (d.status === 'failed' ? 'fail' : 'warn') %>"><%= d.status %></span></td>
+                <td class="muted"><%= d.version %></td>
+                <td>
+                  <form method="post" action="/ai-platform/deployments/<%= d.id %>" class="apu-inline-form">
+                    <select name="status">
+                      <option value="pending" <%= d.status === 'pending' ? 'selected' : '' %>>pending</option>
+                      <option value="live" <%= d.status === 'live' ? 'selected' : '' %>>live</option>
+                      <option value="failed" <%= d.status === 'failed' ? 'selected' : '' %>>failed</option>
+                    </select>
+                    <button type="submit" class="apu-btn tiny ghost">Update</button>
+                  </form>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

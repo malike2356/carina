@@ -1,0 +1,414 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-base: var(--background, #0f1117);
+  --color-surface: var(--card, #161921);
+  --color-elevated: var(--popover, var(--card, #1e2130));
+  --color-overlay: var(--popover, var(--card, #252838));
+  /* Shadcn-style aliases so bg-background / bg-card / bg-primary actually paint.
+     Without these, hire drawers and role cards render transparent and bleed through. */
+  --color-background: var(--background, #0f1117);
+  --color-card: var(--card, #161921);
+  --color-popover: var(--popover, var(--card, #1e2130));
+  --color-muted: var(--muted, #262626);
+  --color-primary: var(--primary, #22c55e);
+  --color-secondary: var(--secondary, #262626);
+  --color-destructive: var(--destructive, #ef4444);
+  --color-border: var(--border, #2a2d3e);
+  --color-border-focus: var(--ring, var(--primary, #22c55e));
+  --color-border-muted: var(--border, #1e2130);
+  --color-text-primary: var(--foreground, #f0f2f5);
+  --color-text-secondary: var(--muted-foreground, #8b92a5);
+  --color-text-muted: var(--muted-foreground, #4a5068);
+  --color-accent: var(--primary, #22c55e);
+  --color-accent-dim: color-mix(in srgb, var(--primary, #22c55e) 18%, transparent);
+  --color-accent-hover: var(--primary, #16a34a);
+  --color-primary-foreground: var(--primary-foreground, #fafafa);
+  --color-danger: var(--destructive, #ef4444);
+  --color-danger-dim: color-mix(in srgb, var(--destructive, #ef4444) 18%, transparent);
+  --color-bubble-user: color-mix(in srgb, var(--primary, #22c55e) 12%, var(--card, #1a1d2e));
+  --color-bubble-assistant: color-mix(in srgb, var(--muted, #262626) 70%, var(--card, #1a1d2e));
+  --color-code-bg: color-mix(in srgb, var(--background, #0d1117) 88%, black);
+  --color-code-text: var(--foreground, #e6edf3);
+}
+
+:root {
+  color-scheme: dark;
+  --chat-font-size: 12px;
+  --message-gap: 16px;
+}
+
+.google-auth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1dde6;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.google-auth-btn:hover:not(:disabled) {
+  background: #f7fafc;
+}
+
+.google-auth-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-base);
+  color: var(--color-text-primary);
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Aiva product surface: Instrument Sans. */
+body.aiva-product-font,
+body.aiva-product-font button,
+body.aiva-product-font input,
+body.aiva-product-font textarea,
+body.aiva-product-font select {
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+body.aiva-product-font h1,
+body.aiva-product-font h2,
+body.aiva-product-font h3 {
+  letter-spacing: -0.02em;
+}
+
+.aiva-lab-playground {
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.aiva-lab-playground h1,
+.aiva-lab-playground h2,
+.aiva-lab-playground h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Text links: accent by default so clickable copy is obvious.
+   Keep this in @layer base so Tailwind color utilities (text-text-muted, etc.) still win.
+   Unlayered `a { color: inherit }` previously overrode text-accent and hid links. */
+@layer base {
+  a {
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+    color: var(--color-accent-hover, var(--color-accent));
+  }
+
+  a:focus-visible {
+    outline: 2px solid var(--color-border-focus);
+    outline-offset: 2px;
+  }
+}
+
+/* Anchor buttons keep button chrome, not text-link underlines. */
+a.btn-primary,
+a.btn-ghost,
+a.btn-secondary,
+a.btn-danger,
+a.btn-outline,
+a.google-auth-btn {
+  text-decoration: none;
+}
+
+a.btn-primary:hover,
+a.btn-ghost:hover,
+a.btn-secondary:hover,
+a.btn-danger:hover,
+a.btn-outline:hover,
+a.google-auth-btn:hover {
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Shared button utilities used across Aiva/Carina UI.
+   Components rely on these class names; without them CTAs render as plain text. */
+.btn-primary,
+.btn-ghost,
+.btn-secondary,
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    opacity 150ms ease,
+    transform 150ms ease;
+}
+
+.btn-primary:disabled,
+.btn-ghost:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-primary-foreground);
+  box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--color-accent) 70%, transparent);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--color-accent) 80%, transparent);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-secondary {
+  background-color: var(--color-elevated);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--color-overlay);
+  border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-accent));
+}
+
+.btn-ghost {
+  background-color: transparent;
+  border-color: transparent;
+  color: var(--color-text-secondary);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-elevated);
+  color: var(--color-text-primary);
+}
+
+.btn-danger {
+  background-color: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 40%, transparent);
+  color: var(--color-danger);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--color-danger) 24%, transparent);
+}
+
+@keyframes carina-thinking {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-5px); opacity: 1; }
+}
+
+
+.chat-messages {
+  gap: var(--message-gap);
+}
+
+.chat-message-content {
+  font-size: var(--chat-font-size);
+}
+
+[data-code-wrap='enabled'] pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+[data-code-wrap='enabled'] pre code {
+  white-space: pre-wrap;
+}
+
+[data-animations='disabled'] *,
+[data-animations='disabled'] *::before,
+[data-animations='disabled'] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+
+[dir='rtl'] {
+  direction: rtl;
+}
+
+[dir='rtl'] aside.border-r {
+  border-right: none;
+  border-left: 1px solid var(--color-border);
+}
+
+
+
+.carina-window-layer {
+  z-index: 35;
+}
+
+.carina-window-content {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(22, 201, 126, 0.08);
+  backdrop-filter: blur(14px);
+  animation: carina-window-in 180ms ease;
+  max-height: calc(100vh - 48px);
+}
+
+.carina-window-focused .carina-window-content {
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(22, 201, 126, 0.22);
+}
+
+.carina-window-scout .carina-window-content {
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(245, 158, 11, 0.18);
+}
+
+.carina-window-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.65rem 0.85rem;
+  background: color-mix(in srgb, var(--color-elevated) 80%, transparent);
+}
+
+.carina-window-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.carina-window-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.carina-window-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  container-type: inline-size;
+}
+
+
+@keyframes carina-window-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .carina-window-content {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0;
+  }
+
+  .carina-workspace-shell {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+}
+
+html[data-voice-input-active] .theme-switcher-floating {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Radial orbital timeline (launcher embed) */
+.launcher-orbit-timeline .backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+}
+
+
+/* Wide workspace page shell (boxed layout, not a narrow column) */
+.page-container {
+  width: 100%;
+  max-width: 90rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+@media (min-width: 640px) {
+  .page-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+@media (min-width: 1024px) {
+  .page-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}

@@ -1,0 +1,16 @@
+# Folder Index: portfolio_and_tax/articles
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 81-92)
+
+81-property-auctions-guide.md | How Property Auctions Work: A Complete Guide for Investors
+82-leasehold-vs-freehold.md | Leasehold vs Freehold: What Property Investors Need to Know
+83-stamp-duty-investors.md | Stamp Duty for Property Investors in 2026
+84-new-build-vs-period-property.md | New Build vs Period Property: Which Is Better for Investment?
+85-property-investment-beginners-guide.md | Property Investment for Beginners: A Step-by-Step Guide
+86-student-property-investment.md | Student Property Investment on the South Coast
+87-holiday-let-investment.md | Holiday Let Investment on the South Coast
+88-property-resources-books-podcasts.md | Essential Property Resources: Books, Podcasts, and Tools for UK Investors
+89-property-market-cycles.md | Understanding Property Market Cycles in 2026
+90-limited-company-vs-sole-trader.md | Limited Company vs Sole Trader for Property Investment
+91-commercial-permitted-development.md | Commercial to Residential Permitted Development Rights
+92-rent-guarantee-insurance.md | Rent Guarantee Insurance for Landlords

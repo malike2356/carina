@@ -1,0 +1,78 @@
+<% title = 'Batches' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Batches</h1>
+    <p>Queue batch jobs for async prompt runs. Jobs persist locally until execution is fully wired.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+<% if (!org.batchEnabled) { %>
+  <div class="apu-flash warn">Batch API is disabled for this org. Enable it under <a href="/ai-platform/credits" style="color:#fde68a;">Credits</a>.</div>
+<% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/batches" class="apu-panel apu-fields <%= org.batchEnabled ? '' : 'opacity-50 pointer-events-none' %>">
+    <h2>Create batch job</h2>
+    <p class="sub">Name the job and set how many prompts to queue.</p>
+    <div>
+      <label class="field" for="b-name">Job name</label>
+      <input id="b-name" name="name" placeholder="Nightly eval">
+    </div>
+    <div>
+      <label class="field" for="b-count">Prompt count</label>
+      <input id="b-count" name="promptCount" type="number" min="1" value="10">
+    </div>
+    <div>
+      <label class="field" for="b-notes">Notes</label>
+      <textarea id="b-notes" name="notes" rows="3" placeholder="Optional notes"></textarea>
+    </div>
+    <button type="submit" class="apu-btn">Queue batch</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Batch jobs</h2>
+    <p class="sub"><%= batches.length %> job<%= batches.length === 1 ? '' : 's' %>.</p>
+    <% if (!batches.length) { %>
+      <div class="apu-empty">No batch jobs yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Prompts</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const b of batches) {
+                 const st = b.metadataJson.status || b.status;
+            %>
+              <tr>
+                <td><%= b.name %></td>
+                <td><span class="apu-chip <%= st === 'completed' ? 'ok' : (st === 'cancelled' ? 'fail' : 'warn') %>"><%= st %></span></td>
+                <td class="muted"><%= b.metadataJson.completedCount || 0 %> / <%= b.metadataJson.promptCount || 0 %></td>
+                <td class="muted"><%= new Date(b.createdAt).toLocaleString() %></td>
+                <td>
+                  <% if (st !== 'cancelled' && st !== 'completed') { %>
+                    <form method="post" action="/ai-platform/batches/<%= b.id %>/cancel">
+                      <button type="submit" class="apu-btn danger">Cancel</button>
+                    </form>
+                  <% } else { %>;<% } %>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

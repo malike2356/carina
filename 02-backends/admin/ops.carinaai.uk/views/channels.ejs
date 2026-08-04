@@ -1,0 +1,96 @@
+<% title = 'Channels' %>
+<% const stateBadge = (state) => {
+  switch (state) {
+    case 'connected': return 'ops-badge-green';
+    case 'configured': return 'ops-badge-cyan';
+    case 'partial': return 'ops-badge-amber';
+    case 'error': return 'ops-badge-red';
+    default: return 'ops-badge-gray';
+  }
+}; %>
+<% const connectedCount = channels.filter((c) => c.state === 'connected').length;
+   const configuredCount = channels.filter((c) => c.state === 'configured' || c.state === 'partial').length;
+   const disabledCount = channels.filter((c) => c.state === 'disabled' || c.state === 'unsupported').length; %>
+
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Channel health</div>
+      <div class="ops-page-sub">
+        Live adapter status from Carina core, plus operator notes you can CRUD here.
+        Core: <code class="ops-code"><%= carinaApiUrl %></code>
+      </div>
+    </div>
+    <a href="/channels" class="ops-btn-ghost">Refresh</a>
+  </div>
+
+  <% if (flash) { %>
+    <div class="ops-flash <%= flash.type === 'success' ? 'success' : 'error' %>"><%= flash.text %></div>
+  <% } %>
+
+  <div class="ops-metrics">
+    <div class="ops-metric"><div class="ops-metric-label">Connected</div><div class="ops-metric-value ok"><%= connectedCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Configured</div><div class="ops-metric-value"><%= configuredCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Disabled</div><div class="ops-metric-value muted"><%= disabledCount %></div></div>
+    <div class="ops-metric"><div class="ops-metric-label">Total</div><div class="ops-metric-value"><%= channels.length %></div></div>
+  </div>
+
+  <p class="ops-inline-note" style="margin-bottom:12px;">
+    Status source: <code class="ops-code"><%= source %></code>.
+    Credential wiring stays in Settings / Core env; this page is for health + operator ownership notes.
+  </p>
+
+  <% if (!channels.length) { %>
+    <div class="ops-flash warn">
+      No channel reports loaded. Check that Carina core is mounted (`CARINA_CORE_ROOT` / `/host/core`) and rebuilt.
+    </div>
+  <% } else { %>
+    <div class="ops-surface" style="display:grid;gap:12px;padding:12px;">
+      <% for (const ch of channels) { %>
+        <article class="ops-surface" style="padding:14px;border:1px solid var(--border);">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;align-items:center;">
+            <div>
+              <div style="font-weight:700;color:var(--heading);"><%= ch.name || ch.channel %></div>
+              <div class="ops-inline-note">
+                <span class="ops-badge <%= stateBadge(ch.state) %>"><%= ch.state %></span>
+                · active <%= ch.active ? 'yes' : 'no' %>
+                · <%= ch.transport || 'no transport' %>
+              </div>
+              <% if (ch.notes || ch.reason) { %>
+                <div class="ops-inline-note" style="margin-top:4px;"><%= ch.notes || ch.reason %></div>
+              <% } %>
+              <% if (ch.webhook) { %>
+                <div class="ops-inline-note mono" style="margin-top:4px;"><%= ch.webhook %></div>
+              <% } %>
+            </div>
+            <a class="ops-link" href="/settings/channel-shield">Open Channel Shield</a>
+          </div>
+
+          <form method="post" action="/channels/<%= encodeURIComponent(ch.channel) %>/notes" class="ops-form-grid" style="margin-top:12px;grid-template-columns:2fr 1fr 1fr auto auto;align-items:end;">
+            <div class="ops-field">
+              <label class="ops-label">Operator notes</label>
+              <input class="ops-input" name="notes" value="<%= ch.operatorNotes || '' %>" placeholder="Who owns this? next action?">
+            </div>
+            <div class="ops-field">
+              <label class="ops-label">Owner</label>
+              <input class="ops-input" name="owner" value="<%= ch.operatorOwner || '' %>" placeholder="ops / you">
+            </div>
+            <div class="ops-field">
+              <label class="ops-label">Priority</label>
+              <select class="ops-select" name="priority">
+                <option value="low" <%= ch.operatorPriority === 'low' ? 'selected' : '' %>>low</option>
+                <option value="normal" <%= ch.operatorPriority === 'normal' ? 'selected' : '' %>>normal</option>
+                <option value="high" <%= ch.operatorPriority === 'high' ? 'selected' : '' %>>high</option>
+              </select>
+            </div>
+            <button type="submit" class="ops-btn ops-btn-green">Save</button>
+            <button type="submit" formaction="/channels/<%= encodeURIComponent(ch.channel) %>/notes/delete" class="ops-btn-ghost" <%= ch.operatorNotes || ch.operatorOwner ? '' : 'disabled' %>>Clear</button>
+          </form>
+          <% if (ch.operatorUpdatedAt) { %>
+            <div class="ops-inline-note" style="margin-top:6px;">Note updated <%= ch.operatorUpdatedAt.slice(0, 19).replace('T', ' ') %></div>
+          <% } %>
+        </article>
+      <% } %>
+    </div>
+  <% } %>
+</div>

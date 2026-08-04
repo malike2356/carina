@@ -1,0 +1,9 @@
+{
+  "name": "clinicom",
+  "version": "0.1.0",
+  "description": "Clinicom interpreter sidecar contract: transcribe, translate, simplify, speak",
+  "author": "VERLOX Ltd",
+  "category": "healthcare",
+  "optional": true,
+  "skillCount": 4
+}

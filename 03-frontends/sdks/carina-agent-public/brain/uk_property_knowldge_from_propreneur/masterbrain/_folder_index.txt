@@ -1,0 +1,65 @@
+# Masterbrain Folder Index
+# Updated after restructure - 22 folders
+#
+# After deploy, re-run RAG ingestion for all workspaces (do not run from this prompt):
+#   php83 artisan rag:ingest-brain-knowledge --all
+
+business_and_mindset/
+  Purpose: Property entrepreneurship, money mindset, team building, business systems, SOPs, time management.
+
+calculators/
+  Purpose: All financial formulas and calculation models - ROI, cash flow, refurb cost, BTL, SA, BRR, SDLT, bridging.
+
+carina_rag/
+  Purpose: Carina AI specifications, system prompts, capability definitions, agentic architecture, Carina brain modes.
+
+compliance_and_regulation/
+  Purpose: HMO licensing, AML/KYC, EPC, legionella, data protection, planning compliance, fire safety, gas/electrical certs.
+
+deal_analysis/
+  Purpose: Due diligence methodology, property inspection, strategy-specific deal analysis, DD pack templates, valuations.
+
+deal_sourcing/
+  Purpose: Finding deals - BMV, motivated sellers, off-market, goldmine research workflow, deal packaging, sourcing fees.
+
+document_vault/
+  Purpose: Platform document vault module docs - compliance evidence, versioning, upload UI.
+
+finance_and_funding/
+  Purpose: UK property finance - BTL/commercial mortgages, bridging, development finance, JVs, private investors, SDLT, LTV.
+
+investor_relations/
+  Purpose: Investor CRM, investor portal, nurture sequences, building and targeting an investor database.
+
+leads_and_crm/
+  Purpose: Lead generation, qualification frameworks, speed-to-lead, three-bucket pipeline model, AI chatbot, CRM structure.
+
+legal_and_contracts/
+  Purpose: UK property law - ASTs, commercial leases, Renters Rights Act 2025, Awaab's Law, complaint procedures, reservation agreements.
+
+market_research/
+  Purpose: Area due diligence, comparable evidence, rental demand analysis, local market reports, letting agent contacts.
+
+marketing_and_brand/
+  Purpose: Social media strategy, content creation, personal brand, Instagram/video, lead magnets, email funnels, branding.
+
+mentoring_and_coaching/
+  Purpose: Mentoring OS, investor bootcamp content, coaching frameworks, first-time investor guidance, certification records.
+
+platform_docs/
+  Purpose: Propreneur v2 technical docs - routes, auth, database, UI components, module specs, API maps, architecture.
+
+portfolio_and_tax/
+  Purpose: Portfolio structuring, Ltd company vs personal, SPVs, CGT, income tax, corporation tax, SDLT planning, ATED.
+
+property_strategies/
+  Purpose: Strategy overviews by type - BTL, HMO, BRR, R2R, SA, C2R, commercial, development, land, social/supported housing.
+
+sales_and_conversion/
+  Purpose: Deal packaging sales, prescriptive selling, discovery questions, upselling, client journey, revenue streams.
+
+tenant_and_property_management/
+  Purpose: Tenancy management, ASTs, void management, maintenance, letting agents, HMO operations, rent collection.
+
+verification_and_ops/
+  Purpose: Platform production readiness, build checklists, backup/DR, remote access, security posture, v1 migration.

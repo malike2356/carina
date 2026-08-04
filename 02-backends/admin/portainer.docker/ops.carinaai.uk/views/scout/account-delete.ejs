@@ -1,0 +1,33 @@
+<div class="ops-page">
+  <div class="ops-page-head">
+    <div>
+      <div class="ops-page-title">Delete Scout account</div>
+      <div class="ops-page-sub">This permanently removes the customer account and scoped Scout data.</div>
+    </div>
+    <div class="ops-actions" style="margin-top:0;">
+      <a href="/scout/accounts" class="ops-btn-ghost">Back to accounts</a>
+    </div>
+  </div>
+
+  <div class="ops-surface" style="padding:20px;max-width:640px;">
+    <p style="margin:0 0 12px;">You are about to permanently delete:</p>
+    <ul style="margin:0 0 16px;padding-left:18px;">
+      <li><strong>Email:</strong> <%= account.email %></li>
+      <li><strong>Plan:</strong> <%= account.subscriptionPlan %></li>
+      <li><strong>Status:</strong> <%= account.isActive ? 'Active' : 'Inactive' %></li>
+      <li><strong>Account id:</strong> <code class="ops-code"><%= account.id %></code></li>
+    </ul>
+    <p class="ops-inline-note" style="margin-bottom:16px;">
+      This removes the account, API keys, setup tokens, and cascaded Scout data. It cannot be undone.
+    </p>
+    <div class="ops-actions" style="margin:0;">
+      <form method="post" action="/scout/accounts/<%= account.id %>/delete">
+        <button type="submit" class="ops-btn ops-btn-red"
+                onclick="return confirm('Permanently delete <%= account.email %>? This cannot be undone.')">
+          Permanently delete
+        </button>
+      </form>
+      <a href="/scout/accounts" class="ops-btn-ghost">Cancel</a>
+    </div>
+  </div>
+</div>

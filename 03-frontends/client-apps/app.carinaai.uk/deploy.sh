@@ -35,11 +35,15 @@ deploy() {
   SCRIPT_REL="$(realpath --relative-to="${GIT_ROOT}" "${SCRIPT_DIR}")"
   TRACKED_COUNT="$(git -C "${GIT_ROOT}" ls-files -- "${SCRIPT_REL}" | wc -l)"
   (( TRACKED_COUNT >= 100 )) || \
-    die "Refusing untracked deployment mirror ${SCRIPT_DIR}. Use verlox/carina/03-frontends/client-apps/app.carinaai.uk."
+    die "Refusing untracked deployment mirror ${SCRIPT_DIR}. Use 03-frontends/client-apps/app.carinaai.uk under the carina git root."
 
   if [[ -z "${SOURCE_REVISION:-}" ]]; then
     SOURCE_REVISION="$(bash "${CARINA_ROOT}/scripts/deploy-preflight.sh")"
     export SOURCE_REVISION
+  fi
+  if [[ -z "${SOURCE_CONTENT_DIGEST:-}" ]]; then
+    SOURCE_CONTENT_DIGEST="$(bash "${CARINA_ROOT}/scripts/deploy-source-digest.sh" "${SCRIPT_DIR}")"
+    export SOURCE_CONTENT_DIGEST
   fi
   check_ssh
   build_local
@@ -59,10 +63,15 @@ deploy() {
   rsync -az --delete \
     --exclude='.env' \
     --filter='protect .env' \
+    --filter='protect docker/' \
+    --filter='protect Dockerfile.runtime' \
     --exclude='start.sh' \
+    --exclude='src/db/' \
     --exclude='src/db/migrations/' \
     --exclude='scripts/' \
     --exclude='.pnpm-store/' \
+    --exclude='docker/' \
+    --exclude='Dockerfile.runtime' \
     "${STANDALONE_APP_DIR}/" "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/"
   rsync -az \
     .next/static/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/.next/static/"
@@ -78,6 +87,8 @@ deploy() {
     scripts/vps-schema-patch.sql "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/vps-schema-patch.sql"
   rsync -az \
     docker/ "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/docker/"
+  # Compose build context expects Dockerfile.runtime at the cloud app root.
+  scp docker/Dockerfile.runtime "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/Dockerfile.runtime"
   rsync -az \
     scripts/migrate.mjs "${VPS_USER}@${VPS_HOST}:${DEPLOY_DIR}/scripts/migrate.mjs"
   rsync -az \
@@ -177,6 +188,7 @@ set -a
 set +a
 export REDIS_PASSWORD
 export SOURCE_REVISION="${SOURCE_REVISION}"
+export SOURCE_CONTENT_DIGEST="${SOURCE_CONTENT_DIGEST}"
 bash docker/scripts/deploy-atomic.sh carina-cloud
 EOF
 

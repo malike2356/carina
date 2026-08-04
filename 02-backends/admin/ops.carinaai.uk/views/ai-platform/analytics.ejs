@@ -1,0 +1,568 @@
+<% title = 'Analytics' %>
+<%
+  const a = typeof analytics === 'object' && analytics ? analytics : { ready: false, summary: { totals: {}, byProvider: [], byTier: [], byTenant: [] }, daily: [], hourly24h: [], byProviderRollup: [], byChannel: [], bySurface: [], byFeature: [], byStatus: [], latency: { buckets: [] }, tokenSplit: {} };
+  const totals = a.summary && a.summary.totals ? a.summary.totals : {};
+  const chartPayload = {
+    days: days,
+    daily: a.daily || [],
+    hourly24h: a.hourly24h || [],
+    byProvider: a.byProviderRollup || [],
+    byModel: (a.summary && a.summary.byProvider) || [],
+    byTier: (a.summary && a.summary.byTier) || [],
+    byChannel: a.byChannel || [],
+    bySurface: a.bySurface || [],
+    byFeature: a.byFeature || [],
+    byStatus: a.byStatus || [],
+    byTenant: (a.summary && a.summary.byTenant) || [],
+    latencyBuckets: (a.latency && a.latency.buckets) || [],
+    tokenSplit: a.tokenSplit || {},
+    billingMix: {
+      byok: Number(totals.byokCalls || 0),
+      carina: Number(totals.carinaPaidCalls || 0),
+    },
+    costMix: {
+      provider: Number(totals.providerCostMinor || 0),
+      fee: Number(totals.paymentOverheadMinor || 0),
+      margin: Number(totals.platformMarginMinor || 0),
+    },
+  };
+%>
+<style>
+  .an-wrap {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .an-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:20px; }
+  .an-head h1 { margin:0; font-size:1.5rem; font-weight:700; color:#f8fafc; }
+  .an-head p { margin:4px 0 0; font-size:0.82rem; color:#94a3b8; }
+  .an-period { display:flex; gap:8px; flex-wrap:wrap; }
+  .an-period a {
+    display:inline-flex; align-items:center; padding:7px 12px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; font-size:0.78rem; text-decoration:none;
+    background:rgba(0,0,0,0.25);
+  }
+  .an-period a.is-active { border-color:rgba(34,197,94,0.45); color:#86efac; background:rgba(34,197,94,0.1); }
+  .an-kpis {
+    display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; margin-bottom:18px;
+  }
+  .an-kpi {
+    padding:14px 16px; border-radius:12px;
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07);
+  }
+  .an-kpi .label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; color:#94a3b8; }
+  .an-kpi .value { margin-top:6px; font-size:1.25rem; font-weight:700; color:#f8fafc; }
+  .an-kpi .sub { margin-top:4px; font-size:0.72rem; color:#64748b; }
+  .an-grid { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; margin-bottom:14px; }
+  .an-grid-3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-bottom:14px; }
+  .an-card {
+    padding:16px 16px 12px; border-radius:12px;
+    background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.07);
+    min-height:280px;
+    width: 100%;
+    min-width: 0;
+  }
+  .an-card h2 { margin:0 0 4px; font-size:0.9rem; font-weight:650; color:#f1f5f9; }
+  .an-card .sub { margin:0 0 12px; font-size:0.75rem; color:#64748b; }
+  .an-chart { position:relative; height:240px; width:100%; }
+  .an-chart.tall { height:280px; }
+  .an-chart.donut { height:230px; width:100%; max-width:none; margin:0; }
+  .an-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+  .an-table th { text-align:left; color:#64748b; font-weight:600; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .an-table td { padding:7px 8px; border-bottom:1px solid rgba(255,255,255,0.04); color:#cbd5e1; }
+  .an-table td.num { text-align:right; font-variant-numeric:tabular-nums; color:#e2e8f0; }
+  .an-empty { color:#64748b; font-size:0.8rem; padding:24px 0; text-align:center; }
+  .an-flash {
+    margin-bottom:14px; padding:10px 14px; border-radius:8px; font-size:0.8rem;
+    background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); color:#fde68a;
+  }
+  @media (max-width: 1100px) {
+    .an-kpis, .an-grid, .an-grid-3 { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .an-kpis, .an-grid, .an-grid-3 { grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="ops-page an-wrap">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="an-head">
+  <div>
+    <h1>Analytics</h1>
+    <p>
+      Live ledger metrics for the last <%= days %> days
+      <% if (coreConnected) { %> · Core telemetry connected<% } %>
+      <% if (a.ready) { %> · <%= Number(totals.calls || 0).toLocaleString() %> completed calls<% } %>
+    </p>
+  </div>
+  <div class="an-period">
+    <a href="/ai-platform/analytics?days=7" class="<%= days === 7 ? 'is-active' : '' %>">7 days</a>
+    <a href="/ai-platform/analytics?days=30" class="<%= days === 30 ? 'is-active' : '' %>">30 days</a>
+    <a href="/ai-platform/analytics?days=90" class="<%= days === 90 ? 'is-active' : '' %>">90 days</a>
+  </div>
+</div>
+
+<% if (!a.ready) { %>
+  <div class="an-flash">Usage ledger is empty or unavailable. Charts will populate after model calls write to <code>ai_usage_ledger</code>.</div>
+<% } %>
+
+<div class="an-kpis">
+  <div class="an-kpi">
+    <div class="label">Provider spend</div>
+    <div class="value"><%= money(Number(totals.providerCostMinor || 0)) %></div>
+    <div class="sub">Allocated <%= money(Number(totals.internalChargeBasisMinor || 0)) %></div>
+  </div>
+  <div class="an-kpi">
+    <div class="label">Calls</div>
+    <div class="value"><%= Number(totals.calls || 0).toLocaleString() %></div>
+    <div class="sub">BYOK <%= Number(totals.byokCalls || 0).toLocaleString() %> · Carina <%= Number(totals.carinaPaidCalls || 0).toLocaleString() %></div>
+  </div>
+  <div class="an-kpi">
+    <div class="label">Tokens</div>
+    <div class="value"><%= Number(totals.tokens || 0).toLocaleString() %></div>
+    <div class="sub">Cached <%= Number(totals.cachedTokens || 0).toLocaleString() %></div>
+  </div>
+  <div class="an-kpi">
+    <div class="label">Latency</div>
+    <div class="value"><%= a.latency && a.latency.p50Ms != null ? (a.latency.p50Ms / 1000).toFixed(1) + 's' : '-' %></div>
+    <div class="sub">p95 <%= a.latency && a.latency.p95Ms != null ? (a.latency.p95Ms / 1000).toFixed(1) + 's' : '-' %> · n=<%= a.latency ? a.latency.samples : 0 %></div>
+  </div>
+</div>
+
+<div class="an-grid">
+  <section class="an-card">
+    <h2>Daily spend and calls</h2>
+    <p class="sub">Provider cost (bars) with call volume (line)</p>
+    <div class="an-chart tall"><canvas id="chart-daily"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Last 24 hours</h2>
+    <p class="sub">Hourly call volume</p>
+    <div class="an-chart tall"><canvas id="chart-hourly"></canvas></div>
+  </section>
+</div>
+
+<div class="an-grid-3">
+  <section class="an-card">
+    <h2>Spend by provider</h2>
+    <p class="sub">Doughnut of provider cost</p>
+    <div class="an-chart donut"><canvas id="chart-provider"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Model tier mix</h2>
+    <p class="sub">Calls by tier</p>
+    <div class="an-chart donut"><canvas id="chart-tiers"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Billing mix</h2>
+    <p class="sub">BYOK vs Carina-paid calls</p>
+    <div class="an-chart donut"><canvas id="chart-billing"></canvas></div>
+  </section>
+</div>
+
+<div class="an-grid">
+  <section class="an-card">
+    <h2>Top models</h2>
+    <p class="sub">Calls and cost by model</p>
+    <div class="an-chart tall"><canvas id="chart-models"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Latency distribution</h2>
+    <p class="sub">Completed calls with measured latency</p>
+    <div class="an-chart tall"><canvas id="chart-latency"></canvas></div>
+  </section>
+</div>
+
+<div class="an-grid-3">
+  <section class="an-card">
+    <h2>Token composition</h2>
+    <p class="sub">Request / response / cached</p>
+    <div class="an-chart donut"><canvas id="chart-tokens"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Channel mix</h2>
+    <p class="sub">Calls by channel</p>
+    <div class="an-chart donut"><canvas id="chart-channel"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Surface mix</h2>
+    <p class="sub">Calls by surface</p>
+    <div class="an-chart donut"><canvas id="chart-surface"></canvas></div>
+  </section>
+</div>
+
+<div class="an-grid">
+  <section class="an-card">
+    <h2>Cost stack</h2>
+    <p class="sub">Provider cost, fee buffer, platform margin</p>
+    <div class="an-chart"><canvas id="chart-coststack"></canvas></div>
+  </section>
+  <section class="an-card">
+    <h2>Status mix</h2>
+    <p class="sub">All ledger rows in period (includes non-completed)</p>
+    <div class="an-chart"><canvas id="chart-status"></canvas></div>
+  </section>
+</div>
+
+<div class="an-grid">
+  <section class="an-card" style="min-height:auto;">
+    <h2>Top tenants</h2>
+    <p class="sub">Highest provider spend in period</p>
+    <% const tenants = (a.summary && a.summary.byTenant) || []; %>
+    <% if (!tenants.length) { %>
+      <p class="an-empty">No tenant rows yet.</p>
+    <% } else { %>
+      <table class="an-table">
+        <thead><tr><th>Tenant</th><th class="num">Calls</th><th class="num">Tokens</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          <% tenants.slice(0, 12).forEach(function (row) { %>
+            <tr>
+              <td><code><%= String(row.tenantId).slice(0, 22) %></code></td>
+              <td class="num"><%= Number(row.calls).toLocaleString() %></td>
+              <td class="num"><%= Number(row.tokens).toLocaleString() %></td>
+              <td class="num"><%= money(Number(row.providerCostMinor)) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+  <section class="an-card" style="min-height:auto;">
+    <h2>Feature breakdown</h2>
+    <p class="sub">Calls and spend by feature tag</p>
+    <% const features = a.byFeature || []; %>
+    <% if (!features.length) { %>
+      <p class="an-empty">No feature tags recorded.</p>
+    <% } else { %>
+      <table class="an-table">
+        <thead><tr><th>Feature</th><th class="num">Calls</th><th class="num">Cost</th></tr></thead>
+        <tbody>
+          <% features.forEach(function (row) { %>
+            <tr>
+              <td><%= row.label %></td>
+              <td class="num"><%= Number(row.calls).toLocaleString() %></td>
+              <td class="num"><%= money(Number(row.providerCostMinor)) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </section>
+</div>
+
+<% if (coreTelemetry) { %>
+<%
+  const tSessions = coreTelemetry.sessions && coreTelemetry.sessions.summary
+    ? coreTelemetry.sessions.summary
+    : (coreTelemetry.health && coreTelemetry.health.sessions ? coreTelemetry.health.sessions : null);
+%>
+<div class="an-grid" style="margin-top:4px;">
+  <section class="an-card" style="min-height:auto;">
+    <h2>Core live (24h)</h2>
+    <p class="sub">Gateway telemetry snapshot</p>
+    <div class="an-kpis" style="margin:0; grid-template-columns:repeat(4,minmax(0,1fr));">
+      <div class="an-kpi"><div class="label">Turns</div><div class="value" style="font-size:1.05rem;"><%= coreTelemetry.metrics.turns.total %></div></div>
+      <div class="an-kpi"><div class="label">Sessions</div><div class="value" style="font-size:1.05rem;"><%= tSessions ? tSessions.uniqueSessions : 0 %></div></div>
+      <div class="an-kpi"><div class="label">Avg latency</div><div class="value" style="font-size:1.05rem;"><%= (coreTelemetry.metrics.turns.avgLatencyMs / 1000).toFixed(1) %>s</div></div>
+      <div class="an-kpi"><div class="label">Cache hits</div><div class="value" style="font-size:1.05rem;"><%= coreTelemetry.metrics.providers.cacheHits || 0 %></div></div>
+    </div>
+  </section>
+  <section class="an-card" style="min-height:auto;">
+    <h2>Month snapshot</h2>
+    <p class="sub">From ledger spend windows</p>
+    <% if (ledger && ledger.ready) { %>
+      <table class="an-table">
+        <tbody>
+          <tr><td>This month</td><td class="num"><%= money(ledger.month.providerCostMinor) %></td><td class="num"><%= ledger.month.calls.toLocaleString() %> calls</td></tr>
+          <tr><td>Last 30d</td><td class="num"><%= money(ledger.last30d.providerCostMinor) %></td><td class="num"><%= ledger.last30d.calls.toLocaleString() %> calls</td></tr>
+          <tr><td>Last 24h</td><td class="num"><%= money(ledger.last24h.providerCostMinor) %></td><td class="num"><%= ledger.last24h.calls.toLocaleString() %> calls</td></tr>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="an-empty">Ledger snapshot unavailable.</p>
+    <% } %>
+  </section>
+</div>
+<% } %>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var data = <%- JSON.stringify(chartPayload) %>;
+  if (!window.Chart) return;
+
+  var palette = ['#22c55e', '#06b6d4', '#f59e0b', '#38bdf8', '#a3e635', '#fb7185', '#94a3b8', '#2dd4bf', '#eab308', '#67e8f9'];
+  Chart.defaults.color = '#94a3b8';
+  Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+  Chart.defaults.font.family = 'ui-sans-serif, system-ui, sans-serif';
+
+  function money(minor) {
+    return '£' + (Number(minor || 0) / 100).toFixed(2);
+  }
+
+  function doughnut(id, labels, values, opts) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var sum = values.reduce(function (a, b) { return a + b; }, 0);
+    if (!sum) {
+      el.parentElement.innerHTML = '<p class="an-empty">No data in this period.</p>';
+      return;
+    }
+    new Chart(el, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: palette.slice(0, labels.length),
+          borderWidth: 0,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '62%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw || 0);
+                var suffix = (opts && opts.money) ? money(v) : v.toLocaleString();
+                return ' ' + ctx.label + ': ' + suffix;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  function bar(id, labels, values, opts) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (!labels.length) {
+      el.parentElement.innerHTML = '<p class="an-empty">No data in this period.</p>';
+      return;
+    }
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: (opts && opts.label) || 'Value',
+          data: values,
+          backgroundColor: (opts && opts.color) || '#06b6d4',
+          borderRadius: 6,
+          maxBarThickness: 36,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw || 0);
+                return (opts && opts.money) ? money(v) : v.toLocaleString();
+              },
+            },
+          },
+        },
+        scales: {
+          x: { ticks: { maxRotation: 45, minRotation: 0, font: { size: 10 } }, grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function (v) {
+                return (opts && opts.money) ? ('£' + (v / 100).toFixed(0)) : v;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // Daily combo
+  (function () {
+    var el = document.getElementById('chart-daily');
+    if (!el) return;
+    var days = data.daily || [];
+    if (!days.length) {
+      el.parentElement.innerHTML = '<p class="an-empty">No daily ledger rows yet.</p>';
+      return;
+    }
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: days.map(function (d) { return d.day.slice(5); }),
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Provider cost',
+            data: days.map(function (d) { return d.providerCostMinor; }),
+            backgroundColor: 'rgba(34,197,94,0.55)',
+            borderRadius: 4,
+            yAxisID: 'y',
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: 'Calls',
+            data: days.map(function (d) { return d.calls; }),
+            borderColor: '#38bdf8',
+            backgroundColor: 'rgba(56,189,248,0.15)',
+            tension: 0.35,
+            pointRadius: 2,
+            yAxisID: 'y1',
+            order: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                if (ctx.dataset.yAxisID === 'y') return ' Cost: ' + money(ctx.raw);
+                return ' Calls: ' + Number(ctx.raw).toLocaleString();
+              },
+            },
+          },
+        },
+        scales: {
+          y: {
+            position: 'left',
+            beginAtZero: true,
+            title: { display: true, text: 'GBP (pence)', color: '#64748b' },
+            ticks: { callback: function (v) { return '£' + (v / 100).toFixed(0); } },
+          },
+          y1: {
+            position: 'right',
+            beginAtZero: true,
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: 'Calls', color: '#64748b' },
+          },
+        },
+      },
+    });
+  })();
+
+  // Hourly
+  (function () {
+    var el = document.getElementById('chart-hourly');
+    if (!el) return;
+    var hours = data.hourly24h || [];
+    if (!hours.length) {
+      el.parentElement.innerHTML = '<p class="an-empty">No traffic in the last 24 hours.</p>';
+      return;
+    }
+    new Chart(el, {
+      type: 'line',
+      data: {
+        labels: hours.map(function (h) {
+          var d = new Date(h.hour);
+          return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        }),
+        datasets: [{
+          label: 'Calls',
+          data: hours.map(function (h) { return h.calls; }),
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,0.18)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { maxTicksLimit: 8, font: { size: 10 } }, grid: { display: false } },
+          y: { beginAtZero: true },
+        },
+      },
+    });
+  })();
+
+  doughnut(
+    'chart-provider',
+    (data.byProvider || []).map(function (r) { return r.label; }),
+    (data.byProvider || []).map(function (r) { return r.providerCostMinor; }),
+    { money: true },
+  );
+
+  doughnut(
+    'chart-tiers',
+    (data.byTier || []).map(function (r) { return r.tier; }),
+    (data.byTier || []).map(function (r) { return r.calls; }),
+  );
+
+  doughnut(
+    'chart-billing',
+    ['BYOK', 'Carina paid'],
+    [data.billingMix.byok || 0, data.billingMix.carina || 0],
+  );
+
+  bar(
+    'chart-models',
+    (data.byModel || []).slice(0, 8).map(function (r) { return (r.model || '').slice(0, 22); }),
+    (data.byModel || []).slice(0, 8).map(function (r) { return r.calls; }),
+    { label: 'Calls', color: '#06b6d4' },
+  );
+
+  bar(
+    'chart-latency',
+    (data.latencyBuckets || []).map(function (r) { return r.label; }),
+    (data.latencyBuckets || []).map(function (r) { return r.count; }),
+    { label: 'Calls', color: '#f59e0b' },
+  );
+
+  doughnut(
+    'chart-tokens',
+    ['Request', 'Response', 'Cached'],
+    [
+      data.tokenSplit.requestTokens || 0,
+      data.tokenSplit.responseTokens || 0,
+      data.tokenSplit.cachedTokens || 0,
+    ],
+  );
+
+  doughnut(
+    'chart-channel',
+    (data.byChannel || []).map(function (r) { return r.label; }),
+    (data.byChannel || []).map(function (r) { return r.calls; }),
+  );
+
+  doughnut(
+    'chart-surface',
+    (data.bySurface || []).map(function (r) { return r.label; }),
+    (data.bySurface || []).map(function (r) { return r.calls; }),
+  );
+
+  bar(
+    'chart-coststack',
+    ['Provider', 'Fee buffer', 'Margin'],
+    [data.costMix.provider || 0, data.costMix.fee || 0, data.costMix.margin || 0],
+    { money: true, color: '#22c55e' },
+  );
+
+  bar(
+    'chart-status',
+    (data.byStatus || []).map(function (r) { return r.label; }),
+    (data.byStatus || []).map(function (r) { return r.calls; }),
+    { color: '#fb7185' },
+  );
+})();
+</script>

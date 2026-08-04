@@ -1,0 +1,9 @@
+{
+  "name": "legal-uk",
+  "version": "1.0.0",
+  "description": "UK company law, GDPR readiness, tenancy agreements, and commercial contract review",
+  "author": "VERLOX Ltd",
+  "category": "legal",
+  "optional": true,
+  "skillCount": 4
+}

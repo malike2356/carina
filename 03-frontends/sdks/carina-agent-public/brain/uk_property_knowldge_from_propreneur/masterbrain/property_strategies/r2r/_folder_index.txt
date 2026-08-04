@@ -1,0 +1,12 @@
+# Folder Index: property_strategies/r2r
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 21-28)
+
+21-rent-to-rent-explained.md | Rent to Rent Explained: How the Strategy Works for South Coast Investors
+22-r2r-deal-analysis.md | How to Analyse a Rent to Rent Deal Using Key Financial Metrics
+23-head-lease-negotiation.md | Head Lease Negotiation: Securing the Right Terms for Rent to Rent
+24-landlord-relationships-r2r.md | Building Strong Landlord Relationships for Rent to Rent Success
+25-hmo-licensing-r2r.md | HMO Licensing for Rent to Rent: What You Need to Know
+26-r2r-cash-flow-management.md | Rent to Rent Cash Flow Management: Keeping Your Numbers on Track
+27-scaling-r2r-portfolio.md | Scaling Your Rent to Rent Portfolio: From One Property to a Business
+28-r2r-legal-agreements.md | Rent to Rent Legal Agreements: What Every Operator Must Have in Place

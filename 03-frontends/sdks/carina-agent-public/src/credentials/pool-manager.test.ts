@@ -1,0 +1,54 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { CredentialPoolManager, resetCredentialPoolManager } from './pool-manager.js';
+
+describe('CredentialPoolManager', () => {
+  let tmpFile: string;
+
+  beforeEach(() => {
+    resetCredentialPoolManager();
+    tmpFile = path.join(os.tmpdir(), `carina-creds-${Date.now()}.json`);
+    process.env.CARINA_CREDENTIALS_FILE = tmpFile;
+  });
+
+  afterEach(() => {
+    delete process.env.CARINA_CREDENTIALS_FILE;
+    if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+    resetCredentialPoolManager();
+  });
+
+  it('round-robins pooled keys', () => {
+    const mgr = new CredentialPoolManager();
+    const keys = mgr.resolveKeys('openai', '', 'k1,k2,k3');
+    expect(keys).toEqual(['k1', 'k2', 'k3']);
+    expect(mgr.nextKey('openai', '', 'k1,k2,k3')).toBe('k1');
+    expect(mgr.nextKey('openai', '', 'k1,k2,k3')).toBe('k2');
+    expect(mgr.nextKey('openai', '', 'k1,k2,k3')).toBe('k3');
+    expect(mgr.nextKey('openai', '', 'k1,k2,k3')).toBe('k1');
+  });
+
+  it('skips cooling-down keys after failure', () => {
+    const mgr = new CredentialPoolManager(60_000);
+    mgr.nextKey('groq', '', 'a,b');
+    mgr.reportFailure('groq', 'a', 'rate_limit');
+    const next = mgr.nextKey('groq', '', 'a,b');
+    expect(next).toBe('b');
+  });
+
+  it('persists pool index to disk', () => {
+    const mgr = new CredentialPoolManager();
+    mgr.nextKey('deepseek', '', 'x,y');
+    const mgr2 = new CredentialPoolManager();
+    expect(mgr2.nextKey('deepseek', '', 'x,y')).toBe('y');
+  });
+
+  it('addKey merges into stored pool', () => {
+    const mgr = new CredentialPoolManager();
+    mgr.addKey('testpool', 'new-key-value');
+    const pool = mgr.describePool('testpool');
+    expect(pool.size).toBe(1);
+    expect(pool.keys[0]?.redacted).toContain('new-');
+  });
+});

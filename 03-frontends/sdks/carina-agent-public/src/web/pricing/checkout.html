@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Checkout - Labyrinth Scout</title>
+    <link rel="stylesheet" href="/pricing/pricing.css">
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="nav"><a class="brand" href="/pricing">Carina<span style="color: var(--amber)">.</span></a></nav>
+      <p class="eyebrow">Checkout</p>
+      <h1>Create your account and continue to Stripe Checkout.</h1>
+      <form class="form" id="checkout-form">
+        <div class="field">
+          <label for="plan">Plan</label>
+          <select id="plan" name="plan">
+            <option value="scout_standard">Labyrinth Scout - £79/month</option>
+          </select>
+        </div>
+        <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" required></div>
+        <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" minlength="8" required></div>
+        <button class="btn" type="submit">Continue to Stripe</button>
+        <p class="notice" id="message"></p>
+      </form>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const plan = params.get('plan');
+      if (plan) document.getElementById('plan').value = plan;
+      document.getElementById('checkout-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        const message = document.getElementById('message');
+        message.textContent = 'Creating checkout session...';
+        const res = await fetch('/api/billing/checkout/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            plan: form.get('plan'),
+            email: form.get('email'),
+            password: form.get('password'),
+            successUrl: `${window.location.origin}/billing/success`,
+            cancelUrl: `${window.location.origin}/checkout?plan=${form.get('plan')}`
+          })
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          message.textContent = body.error || 'Checkout failed';
+          return;
+        }
+        window.location.href = body.url;
+      });
+    </script>
+  </body>
+</html>

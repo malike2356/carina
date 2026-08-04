@@ -1,0 +1,3068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#06090f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Labyrinth Scout">
+  <meta name="apple-mobile-web-app-title" content="Labyrinth Scout">
+  <title>Labyrinth Scout - Observe. Verify. Control.</title>
+  <meta name="description" content="Production controls for autonomous agents. Scout Monitor for observability. Scout Govern for kill-switch, approval workflows, and policy enforcement.">
+  <meta property="og:title" content="Labyrinth Scout - Observe. Verify. Control.">
+  <meta property="og:description" content="Production controls for autonomous agents. Scout Monitor for observability. Scout Govern for kill-switch, approval workflows, and policy enforcement.">
+  <meta property="og:url" content="https://labyrinthscout.com">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Labyrinth Scout - Observe. Verify. Control.">
+  <meta name="twitter:description" content="Autonomous agents are powerful. Who is in control? Scout monitors, governs, and intervenes when AI systems go wrong.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/pwa/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/pwa/favicon.ico" sizes="any">
+  <link rel="icon" href="/assets/pwa/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/pwa/apple-touch-icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js"
+    }
+  }
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #06090f;
+      --bg-lift:      #0c1118;
+      --bg-card:      #111722;
+      --border:       rgba(255,255,255,0.07);
+      --border-mid:   rgba(255,255,255,0.12);
+      --green:        #16c97e;
+      --green-dim:    rgba(22,201,126,0.12);
+      --green-glow:   rgba(22,201,126,0.20);
+      --red:          #e63946;
+      --red-dim:      rgba(230,57,70,0.10);
+      --red-glow:     rgba(230,57,70,0.20);
+      --amber-warn:   #f59e0b;
+      --green-safe:   #16c97e;
+      --cyber:        #16c97e;
+      --text-primary: #f0f4f8;
+      --text-mid:     #8a9bb0;
+      --text-dim:     #4d6070;
+      --ff-sans:      'Inter', system-ui, sans-serif;
+      --r:            6px;
+      --r-md:         10px;
+      --r-lg:         16px;
+      --transition:   200ms cubic-bezier(0.4,0,0.2,1);
+    }
+
+    html { scroll-behavior: smooth; overflow-x: clip; max-width: 100%; }
+
+    body {
+      font-family: var(--ff-sans);
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.65;
+      overflow-x: clip;
+      font-weight: 400;
+      width: 100%;
+      max-width: 100%;
+    }
+
+    #dotted-surface {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    #dotted-surface canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .surface-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 35%, rgba(22,201,126,0.06) 0%, transparent 45%),
+                  radial-gradient(ellipse at 50% 100%, rgba(6, 9, 15, 0.25) 0%, transparent 65%);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #dotted-surface { display: none; }
+    }
+
+    .z1 { position: relative; z-index: 1; }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* --- NAV --- */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 200;
+      height: 60px;
+      background: rgba(6,9,15,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: border-color var(--transition);
+    }
+
+    .nav-inner {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    .nav-logo {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: none;
+      letter-spacing: -0.01em;
+    }
+
+    .nav-logo span { color: var(--green); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.75rem;
+    }
+
+    .nav-links a {
+      color: var(--text-mid);
+      font-size: 0.8125rem;
+      font-weight: 400;
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+
+    .nav-links a:hover { color: var(--text-primary); }
+
+    .nav-links a.nav-cta,
+    .nav-links a.nav-cta:hover,
+    .nav-links a.nav-cta:visited {
+      background: var(--green);
+      color: #06090f;
+      padding: 0.4rem 1rem;
+      border-radius: var(--r);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity var(--transition);
+    }
+
+    .nav-links a.nav-cta:hover { opacity: 0.85; }
+
+    .nav-hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .nav-hamburger span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text-mid);
+      border-radius: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-hamburger { display: flex; }
+    }
+
+    .nav-mobile-panel {
+      display: none;
+      position: fixed;
+      top: 60px; left: 0; right: 0;
+      background: rgba(6,9,15,0.97);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem;
+      z-index: 190;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .nav-mobile-panel.open { display: flex; }
+
+    .nav-mobile-panel a {
+      color: var(--text-mid);
+      text-decoration: none;
+      font-size: 0.95rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--border);
+      transition: color var(--transition);
+    }
+
+    .nav-mobile-panel a:last-child { border-bottom: none; }
+    .nav-mobile-panel a:hover { color: var(--text-primary); }
+
+    .nav-mobile-panel a.nav-mobile-cta,
+    .nav-mobile-panel a.nav-mobile-cta:hover,
+    .nav-mobile-panel a.nav-mobile-cta:visited {
+      display: block;
+      text-align: center;
+      background: var(--green);
+      color: #06090f;
+      font-weight: 600;
+      padding: 0.75rem;
+      border-radius: var(--r-md);
+      margin-top: 1rem;
+      border-bottom: none !important;
+    }
+
+    .nav-mobile-panel a.nav-mobile-cta:hover { opacity: 0.88; }
+
+    /* --- HERO --- */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 7rem 0 5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .hero-visual { order: -1; }
+    }
+
+    .hero-eyebrow,
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green);
+      font-weight: 500;
+      margin-bottom: 1.75rem;
+      padding: 0.35rem 0.85rem;
+      border: 1px solid rgba(22,201,126,0.25);
+      border-radius: 999px;
+      background: rgba(22,201,126,0.06);
+    }
+
+    .hero-eyebrow i,
+    .hero-badge i { font-size: 0.85rem; }
+
+    .hero-h1 {
+      font-size: clamp(2.2rem, 5vw, 3.6rem);
+      font-weight: 700;
+      line-height: 1.06;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.5rem;
+      color: var(--text-primary);
+    }
+
+    .hero-h1 em,
+    .hero-h1 .accent { color: var(--green); }
+
+    .hero-tagline {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-mid);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+    }
+
+    .hero-tagline span {
+      display: inline-block;
+      padding: 0 0.6rem;
+      color: var(--text-dim);
+    }
+
+    .hero-sub {
+      font-size: 1rem;
+      color: var(--text-mid);
+      max-width: 480px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 2rem;
+    }
+
+    .btn-primary,
+    .btn-primary-red {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--green);
+      color: #06090f;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--r-md);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+
+    .btn-primary:hover,
+    .btn-primary-red:hover { opacity: 0.88; transform: translateY(-1px); color: #06090f; }
+
+    .btn-secondary,
+    .btn-secondary-ghost {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: transparent;
+      color: var(--text-mid);
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--r-md);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--border-mid);
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .btn-secondary:hover,
+    .btn-secondary-ghost:hover { color: var(--text-primary); border-color: var(--green); }
+
+    .hero-callouts {
+      display: flex;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+
+    .hero-callout {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--r);
+      background: var(--bg-lift);
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-mid);
+      font-weight: 500;
+    }
+
+    .hero-callout i { color: var(--green); font-size: 0.85rem; }
+    .hero-callout--alert i { color: var(--red); }
+
+    .hero-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radar-scene {
+      position: relative;
+      width: 480px;
+      height: 480px;
+      max-width: min(92vw, 480px);
+      max-height: min(92vw, 480px);
+    }
+
+    .radar-core {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radar-sweep {
+      position: absolute;
+      inset: 0;
+      animation: radar-rotate 4s linear infinite;
+    }
+
+    .radar-beam {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 50%; height: 2px;
+      transform-origin: left center;
+      background: linear-gradient(to right, transparent, rgba(22,201,126,0.8));
+    }
+
+    @keyframes radar-rotate { to { transform: rotate(360deg); } }
+
+    .radar-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .radar-agents {
+      position: absolute;
+      inset: 0;
+    }
+
+    .radar-agent {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(calc(var(--rx, 0px) - 50%), calc(var(--ry, 0px) - 50%));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.3rem;
+      animation: agent-appear 0.6s ease calc(var(--d, 0ms)) backwards;
+    }
+
+    @keyframes agent-appear {
+      from { opacity: 0; transform: translate(calc(var(--rx, 0px) - 50%), calc(var(--ry, 0px) - 50%)) scale(0.5); }
+      to   { opacity: 1; transform: translate(calc(var(--rx, 0px) - 50%), calc(var(--ry, 0px) - 50%)) scale(1); }
+    }
+
+    .radar-agent-icon {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 2px solid rgba(22,201,126,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--cyber);
+      box-shadow: 0 0 10px rgba(22,201,126,0.12);
+    }
+
+    .radar-agent--featured {
+      z-index: 2;
+    }
+
+    .radar-agent--featured .radar-agent-icon {
+      width: 46px; height: 46px;
+      border: 2px solid rgba(22,201,126,0.9);
+      color: var(--green);
+      background: rgba(22,201,126,0.14);
+      font-size: 1.1rem;
+      box-shadow:
+        0 0 0 3px rgba(22,201,126,0.1),
+        0 0 18px rgba(22,201,126,0.28);
+      animation: carina-pulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes carina-pulse {
+      0%, 100% {
+        box-shadow:
+          0 0 0 3px rgba(22,201,126,0.1),
+          0 0 16px rgba(22,201,126,0.25);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow:
+          0 0 0 6px rgba(22,201,126,0.14),
+          0 0 24px rgba(22,201,126,0.4);
+        transform: scale(1.06);
+      }
+    }
+
+    .radar-agent-name {
+      font-size: 0.72rem;
+      color: var(--text-mid);
+      letter-spacing: 0.05em;
+      font-weight: 500;
+    }
+
+    .radar-agent--featured .radar-agent-name {
+      font-size: 0.76rem;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .radar-floor {
+      position: absolute;
+      bottom: -20px; left: 10%;
+      width: 80%; height: 20px;
+      background: radial-gradient(ellipse at center, rgba(22,201,126,0.12) 0%, transparent 70%);
+    }
+
+    /* --- SHARED SECTION STYLES --- */
+    .section {
+      padding: 7rem 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .section-lift { background: var(--bg-lift); }
+    .section-dark  { background: var(--bg); }
+
+    .section-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--green);
+      font-weight: 500;
+      margin-bottom: 1.25rem;
+    }
+
+    .section-eyebrow-pill {
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    .eyebrow-red {
+      color: var(--green);
+      border: 1px solid rgba(22,201,126,0.25);
+      background: rgba(22,201,126,0.06);
+    }
+
+    #kill-switch .section-eyebrow {
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+    }
+
+    #kill-switch .eyebrow-red {
+      color: var(--red);
+      border: 1px solid rgba(230,57,70,0.25);
+      background: rgba(230,57,70,0.06);
+    }
+
+    .eyebrow-amber {
+      color: var(--amber-warn);
+      border: 1px solid rgba(245,158,11,0.25);
+      background: rgba(245,158,11,0.06);
+    }
+
+    .eyebrow-cyber {
+      color: var(--cyber);
+      border: 1px solid rgba(22,201,126,0.25);
+      background: rgba(22,201,126,0.06);
+    }
+
+    .section-h2 {
+      font-size: clamp(1.9rem, 3.5vw, 2.9rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    .section-h2 em,
+    .section-h2 .accent-red   { color: var(--green); }
+    #kill-switch .section-h2 .accent-red,
+    #kill-switch .accent-red  { color: var(--red); }
+    .section-h2 .accent-amber { color: var(--amber-warn); }
+    .section-h2 .accent-cyber { color: var(--cyber); }
+
+    .section-sub {
+      font-size: 1rem;
+      color: var(--text-mid);
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+
+    #ecosystem {
+      background: var(--bg-lift);
+      border-bottom: 1px solid rgba(22,201,126,0.12);
+      box-shadow: inset 0 -18px 40px rgba(22,201,126,0.04);
+    }
+
+    #ecosystem::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(22,201,126,0.35), transparent);
+      pointer-events: none;
+    }
+
+    /* --- KILL SWITCH SECTION --- */
+    #kill-switch {
+      background: linear-gradient(180deg, #030508 0%, #05080d 14%, #05080d 100%);
+      border-top: 1px solid rgba(230,57,70,0.22);
+      box-shadow:
+        inset 0 1px 0 rgba(230,57,70,0.1),
+        inset 0 28px 64px rgba(0, 0, 0, 0.5);
+      padding-top: 8rem;
+    }
+
+    #kill-switch::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(920px, 100%);
+      height: 140px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(230,57,70,0.14) 0%, transparent 72%);
+      pointer-events: none;
+    }
+
+    .ks-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .ks-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    }
+
+    .ks-visual {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ks-switch {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ks-flash {
+      position: absolute;
+      inset: -40%;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(230,57,70,0.55) 0%, transparent 65%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .ks-shockwave {
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 96px; height: 96px;
+      margin: -48px 0 0 -48px;
+      border-radius: 50%;
+      border: 2px solid rgba(230,57,70,0.7);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .ks-kill-status {
+      position: absolute;
+      bottom: -2.75rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--red);
+      opacity: 0;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .ks-switch-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid;
+      animation: ks-pulse 2.5s ease-in-out infinite;
+    }
+
+    .ks-switch-ring:nth-child(4) {
+      width: 220px; height: 220px;
+      border-color: rgba(230,57,70,0.15);
+      animation-delay: 0s;
+    }
+
+    .ks-switch-ring:nth-child(5) {
+      width: 176px; height: 176px;
+      border-color: rgba(230,57,70,0.25);
+      animation-delay: 0.3s;
+    }
+
+    .ks-switch-ring:nth-child(6) {
+      width: 132px; height: 132px;
+      border-color: rgba(230,57,70,0.4);
+      animation-delay: 0.6s;
+    }
+
+    @keyframes ks-pulse {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.03); }
+    }
+
+    .ks-switch.ks-fired .ks-switch-ring {
+      animation: ks-ring-burst 0.9s ease-out forwards;
+    }
+
+    .ks-switch.ks-fired .ks-switch-ring + .ks-switch-ring {
+      animation-delay: 0.08s;
+    }
+
+    .ks-switch.ks-fired .ks-switch-ring + .ks-switch-ring + .ks-switch-ring {
+      animation-delay: 0.16s;
+    }
+
+    @keyframes ks-ring-burst {
+      0% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(2.2); border-color: rgba(230,57,70,0.8); }
+    }
+
+    .ks-switch.ks-fired .ks-flash {
+      animation: ks-flash-burst 0.7s ease-out forwards;
+    }
+
+    @keyframes ks-flash-burst {
+      0% { opacity: 0; transform: scale(0.4); }
+      20% { opacity: 1; }
+      100% { opacity: 0; transform: scale(2.5); }
+    }
+
+    .ks-shockwave.ks-shockwave-go {
+      animation: ks-shockwave 0.9s ease-out forwards;
+    }
+
+    @keyframes ks-shockwave {
+      0% { opacity: 0.9; transform: scale(1); }
+      100% { opacity: 0; transform: scale(3.5); border-width: 1px; }
+    }
+
+    .ks-visual.ks-shake {
+      animation: ks-shake 0.45s ease;
+    }
+
+    @keyframes ks-shake {
+      0%, 100% { transform: translateX(0); }
+      15% { transform: translateX(-8px); }
+      30% { transform: translateX(8px); }
+      45% { transform: translateX(-5px); }
+      60% { transform: translateX(5px); }
+      75% { transform: translateX(-2px); }
+    }
+
+    .ks-switch-button {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #ff4d5a, var(--red));
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow:
+        0 0 0 4px rgba(230,57,70,0.2),
+        0 0 32px rgba(230,57,70,0.35),
+        0 8px 24px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 2;
+      transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.3s ease;
+      animation: ks-btn-idle 2.4s ease-in-out infinite;
+    }
+
+    @keyframes ks-btn-idle {
+      0%, 100% {
+        box-shadow:
+          0 0 0 4px rgba(230,57,70,0.2),
+          0 0 28px rgba(230,57,70,0.3),
+          0 8px 24px rgba(0,0,0,0.5);
+      }
+      50% {
+        box-shadow:
+          0 0 0 7px rgba(230,57,70,0.28),
+          0 0 44px rgba(230,57,70,0.5),
+          0 8px 24px rgba(0,0,0,0.5);
+      }
+    }
+
+    .ks-switch-button:hover {
+      transform: scale(1.06);
+    }
+
+    .ks-switch-button:active {
+      transform: scale(0.9);
+    }
+
+    .ks-switch-button:focus-visible {
+      outline: 2px solid var(--red);
+      outline-offset: 4px;
+    }
+
+    .ks-switch.ks-fired .ks-switch-button {
+      animation: ks-btn-killed 0.35s ease forwards;
+      cursor: default;
+    }
+
+    @keyframes ks-btn-killed {
+      0% { transform: scale(0.85); }
+      40% { transform: scale(1.05); }
+      100% {
+        transform: scale(1);
+        background: radial-gradient(circle at 35% 35%, #2a1014, #14080a);
+        box-shadow:
+          0 0 0 4px rgba(230,57,70,0.55),
+          0 0 24px rgba(230,57,70,0.45),
+          inset 0 0 20px rgba(0,0,0,0.6);
+      }
+    }
+
+    .ks-switch.ks-fired .ks-kill-status {
+      animation: ks-status-in 0.35s ease 0.25s forwards;
+    }
+
+    @keyframes ks-status-in {
+      from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+    .ks-btn-icon-killed { display: none; }
+
+    .ks-switch.ks-fired .ks-btn-icon-power { display: none; }
+    .ks-switch.ks-fired .ks-btn-icon-killed {
+      display: flex;
+      color: var(--red);
+      font-size: 2.35rem;
+    }
+
+    .ks-action.ks-action-hit {
+      border-color: rgba(230,57,70,0.35) !important;
+      background: rgba(230,57,70,0.1) !important;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .ks-action.ks-action-hit i { color: var(--red) !important; }
+
+    .ks-action.ks-action-hit span {
+      color: var(--red) !important;
+      text-decoration: line-through;
+      text-decoration-color: rgba(230,57,70,0.5);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .ks-switch-button { animation: none; }
+      .ks-switch-ring { animation: none; }
+      .ks-visual.ks-shake { animation: none; }
+    }
+
+    .ks-switch-button i {
+      font-size: 2.35rem;
+      color: #fff;
+    }
+
+    .ks-actions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1.75rem;
+    }
+
+    .ks-action {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.85rem 1.1rem;
+      border-radius: var(--r-md);
+      background: rgba(230,57,70,0.05);
+      border: 1px solid rgba(230,57,70,0.12);
+    }
+
+    .ks-action i { color: var(--red); font-size: 1rem; width: 18px; flex-shrink: 0; }
+
+    .ks-action span { font-size: 0.875rem; color: var(--text-mid); }
+
+    .ks-authority-line {
+      display: inline-block;
+      margin-top: 2rem;
+      padding: 0.85rem 1.5rem;
+      border-radius: var(--r-md);
+      background: rgba(230,57,70,0.08);
+      border: 1px solid rgba(230,57,70,0.2);
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    /* --- TRUST PASSPORT SECTION --- */
+    .tp-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .tp-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .tp-grid .tp-content { order: 2; }
+      .tp-grid .tp-visual { order: 1; }
+    }
+
+    .tp-card {
+      border-radius: var(--r-lg);
+      background: var(--bg-card);
+      border: 1px solid rgba(22,201,126,0.2);
+      overflow: hidden;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(22,201,126,0.05);
+    }
+
+    .tp-card-header {
+      padding: 1.25rem 1.5rem;
+      background: rgba(22,201,126,0.05);
+      border-bottom: 1px solid rgba(22,201,126,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tp-card-title {
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyber);
+      font-weight: 600;
+    }
+
+    .tp-trust-score {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--green-safe);
+    }
+
+    .tp-trust-score i { font-size: 0.9rem; }
+
+    .tp-card-body {
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .tp-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .tp-field-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .tp-field-value {
+      font-size: 0.83rem;
+      color: var(--text-mid);
+    }
+
+    .tp-field-value.ok  { color: var(--green-safe); }
+    .tp-field-value.warn { color: var(--amber-warn); }
+
+    .tp-attestations {
+      padding: 0.85rem 1.5rem;
+      background: rgba(22,201,126,0.03);
+      border-top: 1px solid rgba(22,201,126,0.08);
+    }
+
+    .tp-attest-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.35rem 0;
+      font-size: 0.78rem;
+    }
+
+    .tp-attest-row span { color: var(--text-dim); }
+
+    .tp-attest-row strong { color: var(--text-mid); font-weight: 500; }
+
+    .tp-proof-pillars {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .tp-pillar {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.85rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--r-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .tp-pillar-icon {
+      width: 36px; height: 36px;
+      border-radius: var(--r);
+      background: rgba(22,201,126,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .tp-pillar-icon i { color: var(--cyber); font-size: 1rem; }
+
+    .tp-pillar-text h4 { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.2rem; }
+    .tp-pillar-text p  { font-size: 0.8rem; color: var(--text-mid); line-height: 1.5; }
+
+    /* --- INJECTION SHIELD SECTION --- */
+    .inject-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .inject-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    }
+
+    .inject-layers {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 2rem;
+    }
+
+    .inject-layer {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.25rem;
+      padding: 1.25rem 1.25rem;
+      position: relative;
+    }
+
+    .inject-layer:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      left: calc(1.25rem + 15px);
+      bottom: 0;
+      width: 2px;
+      height: 1.25rem;
+      background: linear-gradient(to bottom, rgba(22,201,126,0.3), rgba(22,201,126,0.0));
+      transform: translateY(100%);
+    }
+
+    .inject-layer-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(22,201,126,0.4);
+      background: rgba(22,201,126,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .inject-layer-text h4 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.25rem;
+    }
+
+    .inject-layer-text p {
+      font-size: 0.82rem;
+      color: var(--text-mid);
+      line-height: 1.55;
+    }
+
+    .inject-result {
+      margin-top: 2rem;
+      padding: 1rem 1.25rem;
+      border-radius: var(--r-md);
+      background: rgba(22,201,126,0.06);
+      border: 1px solid rgba(22,201,126,0.15);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.875rem;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    .inject-result i { color: var(--green); font-size: 1.1rem; }
+
+    .inject-console {
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      background: var(--bg-card);
+      border: 1px solid var(--border-mid);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+      font-family: 'Menlo', 'Monaco', 'Consolas', monospace;
+      font-size: 0.75rem;
+    }
+
+    .inject-console-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1rem;
+      background: var(--bg-lift);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .ic-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+    }
+    .ic-r { background: #ff5f57; }
+    .ic-y { background: #febc2e; }
+    .ic-g { background: #28c840; }
+
+    .inject-console-title {
+      margin-left: 0.4rem;
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+      font-family: var(--ff-sans);
+    }
+
+    .inject-console-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .ic-line {
+      display: flex;
+      gap: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .ic-time { color: var(--text-dim); min-width: 48px; }
+
+    .ic-tag {
+      padding: 0 0.45rem;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      min-width: 70px;
+      text-align: center;
+      line-height: 1.8;
+    }
+
+    .ic-tag-ok     { background: rgba(34,197,94,0.15); color: var(--green-safe); }
+    .ic-tag-warn   { background: rgba(245,158,11,0.15); color: var(--amber-warn); }
+    .ic-tag-alert  { background: rgba(230,57,70,0.2); color: var(--red); }
+    .ic-tag-kill   { background: var(--red); color: #fff; }
+
+    .ic-msg { color: var(--text-mid); }
+    .ic-msg .ic-highlight { color: var(--text-primary); }
+
+    /* --- GOVERNANCE SECTION --- */
+    .gov-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4rem;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .gov-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    }
+
+    .compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: var(--r-lg);
+      overflow: hidden;
+      margin-top: 2rem;
+    }
+
+    .compare-table th {
+      padding: 0.85rem 1.25rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .compare-table th:first-child {
+      background: rgba(255,255,255,0.03);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-right: none;
+    }
+
+    .compare-table th:last-child {
+      background: rgba(22,201,126,0.08);
+      color: var(--green);
+      border: 1px solid rgba(22,201,126,0.2);
+    }
+
+    .compare-table td {
+      padding: 0.75rem 1.25rem;
+      font-size: 0.875rem;
+      border-left: 1px solid;
+      border-right: 1px solid;
+    }
+
+    .compare-table tr:not(:last-child) td {
+      border-bottom: 1px solid;
+    }
+
+    .compare-table td:first-child {
+      color: var(--text-dim);
+      border-color: var(--border);
+      background: rgba(255,255,255,0.01);
+    }
+
+    .compare-table td:last-child {
+      color: var(--text-primary);
+      font-weight: 500;
+      border-color: rgba(22,201,126,0.15);
+      background: rgba(22,201,126,0.04);
+    }
+
+    .compare-table tr:last-child td {
+      border-bottom: 1px solid;
+    }
+
+    .compare-table tr:last-child td:first-child { border-bottom-color: var(--border); }
+    .compare-table tr:last-child td:last-child  { border-bottom-color: rgba(22,201,126,0.15); }
+
+    .gov-approval-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-top: 2rem;
+    }
+
+    .gov-flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem;
+      border-radius: var(--r-md);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .gov-flow-connector {
+      display: flex;
+      justify-content: flex-start;
+      padding-left: 1.5rem;
+      height: 1.5rem;
+    }
+
+    .gov-flow-connector::before {
+      content: '';
+      width: 2px;
+      background: var(--border);
+      display: block;
+    }
+
+    .gov-flow-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--green-dim);
+      border: 1px solid rgba(22,201,126,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .gov-flow-text h4 { font-size: 0.875rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.15rem; }
+    .gov-flow-text p  { font-size: 0.78rem; color: var(--text-mid); line-height: 1.5; }
+
+    .gov-controls-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      margin-top: 2rem;
+    }
+
+    .gov-control {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      font-size: 0.85rem;
+      color: var(--text-mid);
+    }
+
+    .gov-control i { color: var(--amber-warn); font-size: 1rem; width: 18px; }
+
+    /* --- ECOSYSTEM / JOURNEY --- */
+    .ecosystem-header {
+      max-width: 40rem;
+      margin-bottom: 0;
+    }
+
+    .ecosystem-header .section-sub {
+      margin-bottom: 0;
+      max-width: none;
+    }
+
+    .ecosystem-body {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-top: 2.5rem;
+    }
+
+    .ecosystem-path-card {
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      background: var(--bg-card);
+      padding: 0.15rem 1.35rem;
+    }
+
+    .ecosystem-path {
+      display: flex;
+      flex-direction: column;
+      margin-top: 0;
+    }
+
+    .ecosystem-step {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      gap: 1rem;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      align-items: start;
+    }
+
+    .ecosystem-step:last-child { border-bottom: none; }
+
+    .ecosystem-step-num {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background: var(--green-dim);
+      border: 1px solid rgba(22,201,126,0.25);
+      color: var(--green);
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .ecosystem-step-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .ecosystem-step-head h4 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .ecosystem-step-body p {
+      font-size: 0.82rem;
+      color: var(--text-mid);
+      line-height: 1.5;
+      max-width: 36rem;
+    }
+
+    .ecosystem-step-price {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--green);
+      white-space: nowrap;
+      flex-shrink: 0;
+      letter-spacing: 0.02em;
+    }
+
+    .ecosystem-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .ecosystem-cards { grid-template-columns: 1fr; }
+      .ecosystem-step-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+      }
+    }
+
+    .ecosystem-carina-card,
+    .ecosystem-side-card {
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 1.25rem 1.35rem;
+      background: var(--bg-card);
+    }
+
+    .ecosystem-carina-card h3,
+    .ecosystem-side-card h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .ecosystem-carina-card p,
+    .ecosystem-side-card p {
+      font-size: 0.84rem;
+      color: var(--text-mid);
+      line-height: 1.55;
+      margin-bottom: 0.75rem;
+    }
+
+    .ecosystem-carina-card p:last-child,
+    .ecosystem-side-card p:last-child {
+      margin-bottom: 0;
+    }
+
+    .ecosystem-card-links {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.75rem;
+      margin-top: 0.75rem;
+    }
+
+    .ecosystem-carina-card a,
+    .ecosystem-side-card a {
+      color: var(--green);
+      text-decoration: none;
+      font-size: 0.84rem;
+      font-weight: 600;
+    }
+
+    .ecosystem-carina-card a:hover,
+    .ecosystem-side-card a:hover { text-decoration: underline; }
+
+    .ecosystem-card-links span {
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      user-select: none;
+    }
+
+    .ecosystem-agent-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .ecosystem-agent-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      font-size: 0.82rem;
+      color: var(--text-mid);
+      line-height: 1.5;
+    }
+
+    .ecosystem-agent-list li i {
+      color: var(--green);
+      font-size: 0.95rem;
+      margin-top: 0.15rem;
+      flex-shrink: 0;
+      width: 1rem;
+      text-align: center;
+    }
+
+    .ecosystem-agent-list strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .ecosystem-agent-list code {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.06);
+      padding: 0.05rem 0.3rem;
+      border-radius: 3px;
+      font-size: 0.78rem;
+    }
+
+    /* --- PRICING SECTION --- */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.25rem;
+      margin-top: 3rem;
+    }
+
+    @media (max-width: 900px) {
+      .pricing-grid { grid-template-columns: 1fr; max-width: 420px; margin-left: auto; margin-right: auto; }
+    }
+
+    .pricing-card {
+      border-radius: var(--r-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      transition: border-color var(--transition);
+    }
+
+    .pricing-card:hover { border-color: var(--border-mid); }
+
+    .pricing-card.featured {
+      border-color: rgba(22,201,126,0.3);
+      background: linear-gradient(180deg, rgba(22,201,126,0.05) 0%, var(--bg-card) 60%);
+      position: relative;
+    }
+
+    .pricing-card.featured::before {
+      content: 'Most Popular';
+      position: absolute;
+      top: -1px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--green);
+      color: #06090f;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.9rem;
+      border-radius: 0 0 var(--r) var(--r);
+    }
+
+    .pricing-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.75rem;
+    }
+
+    .pricing-price {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      margin-bottom: 0.35rem;
+    }
+
+    .pricing-price small {
+      font-size: 0.875rem;
+      font-weight: 400;
+      color: var(--text-dim);
+      letter-spacing: 0;
+    }
+
+    .pricing-period {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-bottom: 1.75rem;
+    }
+
+    .pricing-divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    .pricing-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      flex: 1;
+      margin-bottom: 2rem;
+    }
+
+    .pricing-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      font-size: 0.83rem;
+      color: var(--text-mid);
+      line-height: 1.45;
+    }
+
+    .pricing-features li i {
+      color: var(--green);
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .pricing-features li.muted i { color: var(--text-dim); }
+    .pricing-features li.muted { color: var(--text-dim); }
+
+    .btn-pricing-primary {
+      display: block;
+      text-align: center;
+      background: var(--green);
+      color: #06090f;
+      padding: 0.75rem;
+      border-radius: var(--r-md);
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity var(--transition);
+    }
+
+    .btn-pricing-primary:hover { opacity: 0.88; color: #06090f; }
+
+    .btn-pricing-outline {
+      display: block;
+      text-align: center;
+      background: transparent;
+      color: var(--text-mid);
+      padding: 0.75rem;
+      border-radius: var(--r-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--border-mid);
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .btn-pricing-outline:hover { color: var(--text-primary); border-color: var(--green); }
+
+    .pricing-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 0.75rem;
+    }
+
+    /* --- FINAL CTA SECTION --- */
+    .cta-section {
+      background: transparent;
+      border-top: 1px solid var(--border);
+      padding: 8rem 0;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: min(700px, 100vw);
+      height: 400px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(22,201,126,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-h2 {
+      font-size: clamp(2rem, 4.5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      color: var(--text-primary);
+      margin-bottom: 1.25rem;
+    }
+
+    .cta-h2 em,
+    .cta-h2 .accent-red { color: var(--green); }
+
+    .cta-sub {
+      font-size: 1rem;
+      color: var(--text-mid);
+      max-width: 480px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .cta-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-cta-primary,
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--green);
+      color: #06090f;
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--r-md);
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity var(--transition), transform var(--transition);
+    }
+
+    .btn-cta-primary:hover,
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); color: #06090f; }
+
+    .btn-cta-ghost,
+    .btn-outline,
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: transparent;
+      color: var(--text-mid);
+      padding: 0.75rem 1.5rem;
+      border-radius: var(--r-md);
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--border-mid);
+      transition: color var(--transition), border-color var(--transition);
+    }
+
+    .btn-cta-ghost:hover,
+    .btn-outline:hover,
+    .btn-secondary:hover { color: var(--text-primary); border-color: var(--green); }
+
+    /* --- FOOTER --- */
+    footer {
+      background: rgba(6, 9, 15, 0.2);
+      backdrop-filter: blur(3px);
+      border-top: 1px solid var(--border);
+      padding: 3.5rem 0 2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-inner {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 3rem;
+      margin-bottom: 3rem;
+    }
+
+    @media (max-width: 900px) {
+      .footer-inner { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    }
+
+    @media (max-width: 520px) {
+      .footer-inner { grid-template-columns: 1fr; gap: 1.5rem; }
+    }
+
+    .footer-logo {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-decoration: none;
+      display: block;
+      margin-bottom: 0.85rem;
+    }
+
+    .footer-logo span { color: var(--green); }
+
+    .footer-tagline {
+      font-size: 0.8rem;
+      color: var(--text-mid);
+      line-height: 1.6;
+      max-width: 260px;
+    }
+
+    .footer-col h4 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+    }
+
+    .footer-col a {
+      display: block;
+      font-size: 0.83rem;
+      color: var(--text-mid);
+      text-decoration: none;
+      margin-bottom: 0.6rem;
+      transition: color var(--transition);
+    }
+
+    .footer-col a:hover { color: var(--text-primary); }
+
+    .footer-bottom {
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-bottom-left {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+
+    .footer-bottom-links {
+      display: flex;
+      gap: 1.5rem;
+    }
+
+    .footer-bottom-links a {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+
+    .footer-bottom-links a:hover { color: var(--text-mid); }
+
+    /* --- INCIDENT RECORD (landing strip) --- */
+    #incidents {
+      background: var(--bg);
+      border-top: 1px solid rgba(230,57,70,0.15);
+      box-shadow: inset 0 1px 0 rgba(230,57,70,0.06);
+    }
+
+    .incidents-intro { max-width: 600px; margin-bottom: 3rem; }
+
+    .incidents-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 900px) { .incidents-grid-3 { grid-template-columns: 1fr; } }
+
+    .incident-card {
+      border-radius: var(--r-lg);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 1.35rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      transition: border-color var(--transition);
+    }
+
+    .incident-card:hover { border-color: rgba(230,57,70,0.3); }
+
+    .incident-card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .incident-card-company {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+
+    .incident-card-date { font-size: 0.68rem; color: var(--text-dim); }
+
+    .incident-card-damage {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--red);
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+
+    .incident-card-what {
+      font-size: 0.82rem;
+      color: var(--text-mid);
+      line-height: 1.55;
+      flex: 1;
+    }
+
+    .incident-card-source {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      margin-top: auto;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .incident-card-source a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color var(--transition);
+    }
+
+    .incident-card-source a:hover { color: var(--text-mid); }
+
+    .incident-stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    @media (max-width: 768px) {
+      .incident-stats-strip { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .incident-stat {
+      padding: 1.35rem 1.25rem;
+      border-right: 1px solid var(--border);
+      background: var(--bg-card);
+    }
+
+    .incident-stat:last-child { border-right: none; }
+
+    @media (max-width: 768px) {
+      .incident-stat:nth-child(2) { border-right: none; }
+      .incident-stat:nth-child(3) { border-top: 1px solid var(--border); }
+      .incident-stat:nth-child(4) { border-right: none; border-top: 1px solid var(--border); }
+    }
+
+    .incident-stat-value {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--red);
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+
+    .incident-stat-label { font-size: 0.73rem; color: var(--text-dim); line-height: 1.4; }
+
+    .incident-closer {
+      padding: 1.1rem 1.35rem;
+      border-radius: var(--r-md);
+      background: rgba(230,57,70,0.05);
+      border: 1px solid rgba(230,57,70,0.12);
+      font-size: 0.9rem;
+      color: var(--text-mid);
+      line-height: 1.6;
+      margin-bottom: 1.75rem;
+    }
+
+    .incident-closer strong { color: var(--text-primary); }
+
+    .incident-cta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<div id="dotted-surface" aria-hidden="true"></div>
+<div class="surface-vignette" aria-hidden="true"></div>
+
+<nav id="main-nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo">Scout<span>.</span></a>
+    <div class="nav-links">
+      <a href="#kill-switch">Kill Switch</a>
+      <a href="#trust-passport">Trust Passport</a>
+      <a href="#governance">Governance</a>
+      <a href="#incidents">Incidents</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/docs/">Docs</a>
+      <a href="#pricing" class="nav-cta">Get Scout</a>
+    </div>
+    <button class="nav-hamburger" id="nav-hamburger" aria-label="Open menu" aria-expanded="false" type="button">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<div class="nav-mobile-panel" id="nav-mobile-panel" aria-hidden="true">
+  <a href="#kill-switch">Kill Switch</a>
+  <a href="#trust-passport">Trust Passport</a>
+  <a href="#governance">Governance</a>
+  <a href="#incidents">Incidents</a>
+  <a href="#pricing">Pricing</a>
+  <a href="/docs/">Docs</a>
+  <a href="#pricing" class="nav-mobile-cta">Get Scout</a>
+</div>
+
+<!-- SECTION 1: HERO -->
+<section class="hero z1">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-text">
+        <div class="hero-eyebrow">
+          <i class="ti ti-shield-bolt"></i>
+          Labyrinth Scout
+        </div>
+        <h1 class="hero-h1">
+          Autonomous agents<br>move fast.<br>
+          <em>Who keeps them safe?</em>
+        </h1>
+        <div class="hero-tagline">
+          Observe<span>·</span>Verify<span>·</span>Control
+        </div>
+        <p class="hero-sub">
+          Set one config value. Scout sees every tool call, every model decision, every workflow, and is ready to halt anything that goes wrong. It integrates with <a href="https://carinaai.uk" style="color:var(--green);text-decoration:none;">Carina</a> and <a href="https://hireaiva.co.uk" style="color:var(--green);text-decoration:none;">Aiva</a>, and it also connects to any other agent via API.
+        </p>
+        <div class="hero-actions">
+          <a href="#pricing" class="btn-primary">
+            <i class="ti ti-shield-lock"></i>
+            See pricing
+          </a>
+          <a href="https://labyrinthscout.com/docs" class="btn-secondary">
+            <i class="ti ti-sparkles"></i>
+            Open docs
+          </a>
+        </div>
+        <div class="hero-callouts">
+          <div class="hero-callout hero-callout--alert"><i class="ti ti-power"></i> Kill Switch</div>
+          <div class="hero-callout"><i class="ti ti-id-badge"></i> Trust Passport</div>
+          <div class="hero-callout"><i class="ti ti-shield-check"></i> Injection Shield</div>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="radar-scene">
+          <div class="radar-core">
+            <div class="radar-sweep"><div class="radar-beam"></div></div>
+            <div class="radar-ring" style="width:6rem;height:6rem;border-color:rgba(22,201,126,0.90);--n:1"></div>
+            <div class="radar-ring" style="width:12rem;height:12rem;border-color:rgba(22,201,126,0.75);--n:2"></div>
+            <div class="radar-ring" style="width:18rem;height:18rem;border-color:rgba(22,201,126,0.55);--n:3"></div>
+            <div class="radar-ring" style="width:24rem;height:24rem;border-color:rgba(22,201,126,0.40);--n:4"></div>
+            <div class="radar-ring" style="width:30rem;height:30rem;border-color:rgba(22,201,126,0.25);--n:5"></div>
+          </div>
+          <div class="radar-agents">
+            <div class="radar-agent radar-agent--featured" style="--d:200ms;--rx:0px;--ry:-45px">
+              <div class="radar-agent-icon"><i class="ti ti-sparkles"></i></div>
+              <span class="radar-agent-name">Carina</span>
+            </div>
+            <div class="radar-agent" style="--d:575ms;--rx:112px;--ry:-81px">
+              <div class="radar-agent-icon"><i class="ti ti-brand-open-source"></i></div>
+              <span class="radar-agent-name">OpenClaw</span>
+            </div>
+            <div class="radar-agent" style="--d:650ms;--rx:112px;--ry:81px">
+              <div class="radar-agent-icon"><i class="ti ti-code"></i></div>
+              <span class="radar-agent-name">Your agent</span>
+            </div>
+            <div class="radar-agent" style="--d:300ms;--rx:-43px;--ry:-131px">
+              <div class="radar-agent-icon"><i class="ti ti-messages"></i></div>
+              <span class="radar-agent-name">Hermes</span>
+            </div>
+            <div class="radar-agent" style="--d:500ms;--rx:-43px;--ry:131px">
+              <div class="radar-agent-icon"><i class="ti ti-robot"></i></div>
+              <span class="radar-agent-name">AutoGPT</span>
+            </div>
+            <div class="radar-agent" style="--d:400ms;--rx:-138px;--ry:0px">
+              <div class="radar-agent-icon"><i class="ti ti-compass"></i></div>
+              <span class="radar-agent-name">Odysseus</span>
+            </div>
+          </div>
+          <div class="radar-floor"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: CARINA + SCOUT ECOSYSTEM -->
+<section id="ecosystem" class="section section-lift">
+  <div class="container">
+    <div class="ecosystem-header">
+      <div class="section-eyebrow">
+        <i class="ti ti-route"></i>
+        One path
+      </div>
+      <h2 class="section-h2">
+        Carina executes. <em>Scout enforces least privilege.</em>
+      </h2>
+      <p class="section-sub">
+        Scout works with any agent stack. Bundled deployments can include Scout through the host product's own checkout flow, while standalone deployments buy Scout directly. Custom stacks, third-party agents, and open-source frameworks can add Scout at full price.
+      </p>
+    </div>
+
+      <div class="ecosystem-body">
+      <div class="ecosystem-path-card">
+        <div class="ecosystem-path">
+          <div class="ecosystem-step">
+            <div class="ecosystem-step-num">1</div>
+            <div class="ecosystem-step-body">
+              <div class="ecosystem-step-head">
+                <h4>Aiva</h4>
+                <span class="ecosystem-step-price">Included free</span>
+              </div>
+              <p>Managed AI employees that can be governed by Scout. Existing bundled plans still pair through the Carina account flow while the product boundary stays separate.</p>
+            </div>
+          </div>
+          <div class="ecosystem-step">
+            <div class="ecosystem-step-num">2</div>
+            <div class="ecosystem-step-body">
+              <div class="ecosystem-step-head">
+                <h4>Carina platform</h4>
+                <span class="ecosystem-step-price">Included in Builder / Scale</span>
+              </div>
+              <p>Build your own AI agents on Carina. Scout can integrate with those deployments, but Scout remains its own product and control plane.</p>
+            </div>
+          </div>
+          <div class="ecosystem-step">
+            <div class="ecosystem-step-num">3</div>
+            <div class="ecosystem-step-body">
+              <div class="ecosystem-step-head">
+                <h4>Open-source agents</h4>
+                <span class="ecosystem-step-price">Full price</span>
+              </div>
+              <p>LangChain, AutoGPT, open-source frameworks. Add Scout Monitor or Scout Govern via the API.</p>
+            </div>
+          </div>
+          <div class="ecosystem-step">
+            <div class="ecosystem-step-num">4</div>
+            <div class="ecosystem-step-body">
+              <div class="ecosystem-step-head">
+                <h4>Custom stack</h4>
+                <span class="ecosystem-step-price">Full price</span>
+              </div>
+              <p>Scout API and SDK connect governance to any autonomous agent or AI product.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ecosystem-cards">
+        <div class="ecosystem-carina-card">
+          <h3>Built for trust.</h3>
+          <p>
+            Carina executes. Scout makes that work safe to ship, share, and audit.
+            Scout is sold and operated as a separate product, with its own console, docs, and pricing.
+          </p>
+          <div class="ecosystem-card-links">
+            <a href="https://carinaai.uk">Carina platform</a>
+            <span aria-hidden="true">·</span>
+            <a href="https://hireaiva.co.uk">Hire Aiva</a>
+          </div>
+        </div>
+
+        <div class="ecosystem-side-card">
+          <h3>Scout-ready agents</h3>
+          <ul class="ecosystem-agent-list">
+            <li><i class="ti ti-key"></i><span><strong>Carina:</strong> set <code>SCOUT_KEY</code>. One line. Done.</span></li>
+            <li><i class="ti ti-api"></i><span><strong>OpenClaw, Hermes, AutoGPT:</strong> connect via Scout API.</span></li>
+            <li><i class="ti ti-code"></i><span><strong>Custom agents:</strong> Scout SDK available.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2: KILL SWITCH -->
+<section id="kill-switch" class="section">
+  <div class="container">
+    <div class="ks-grid">
+      <div class="ks-content">
+        <div class="section-eyebrow eyebrow-red section-eyebrow-pill">
+          <i class="ti ti-power"></i>
+          Kill Switch
+        </div>
+        <h2 class="section-h2">
+          Every Autonomous System<br>Needs <span class="accent-red">A Kill Switch.</span>
+        </h2>
+        <p class="section-sub">
+          When a governed agent drifts beyond policy, behaves unexpectedly, or encounters
+          a security event, Scout gives you one action: stop everything, from one place,
+          in one second.
+        </p>
+
+        <div class="ks-actions-list">
+          <div class="ks-action"><i class="ti ti-robot-off"></i><span>Suspend all governed agents immediately</span></div>
+          <div class="ks-action"><i class="ti ti-workflow-off"></i><span>Pause active workflows and automation</span></div>
+          <div class="ks-action"><i class="ti ti-tool-off"></i><span>Block pending tool execution calls</span></div>
+          <div class="ks-action"><i class="ti ti-world-off"></i><span>Cut external communications and egress</span></div>
+          <div class="ks-action"><i class="ti ti-history"></i><span>Capture full audit snapshot at time of kill</span></div>
+        </div>
+
+        <div class="ks-authority-line">
+          Human authority remains absolute.
+        </div>
+      </div>
+
+      <div class="ks-visual">
+        <div class="ks-switch" id="kill-switch-demo">
+          <div class="ks-flash" aria-hidden="true"></div>
+          <div class="ks-shockwave" aria-hidden="true"></div>
+          <div class="ks-shockwave" aria-hidden="true"></div>
+          <div class="ks-switch-ring"></div>
+          <div class="ks-switch-ring"></div>
+          <div class="ks-switch-ring"></div>
+          <button type="button" class="ks-switch-button" id="kill-switch-btn" aria-label="Activate kill switch demo">
+            <i class="ti ti-power ks-btn-icon-power" aria-hidden="true"></i>
+            <i class="ti ti-robot-off ks-btn-icon-killed" aria-hidden="true"></i>
+          </button>
+          <div class="ks-kill-status" aria-live="polite"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: TRUST PASSPORT -->
+<section id="trust-passport" class="section section-dark">
+  <div class="container">
+    <div class="tp-grid">
+      <div class="tp-content">
+        <div class="section-eyebrow eyebrow-cyber">
+          <i class="ti ti-id-badge"></i>
+          Trust Passport
+        </div>
+        <h2 class="section-h2">
+          Don't Trust Agent Claims.<br>
+          <span class="accent-cyber">Verify Them.</span>
+        </h2>
+        <p class="section-sub">
+          Every agent under Scout management receives a continuously updated trust
+          profile covering identity, compliance, behaviour history, and risk score.
+          Evidence. Not promises.
+        </p>
+
+        <div class="tp-proof-pillars">
+          <div class="tp-pillar">
+            <div class="tp-pillar-icon"><i class="ti ti-fingerprint"></i></div>
+            <div class="tp-pillar-text">
+              <h4>Agent identity</h4>
+              <p>Verified identity record linked to deployment metadata, ownership, and capabilities.</p>
+            </div>
+          </div>
+          <div class="tp-pillar">
+            <div class="tp-pillar-icon"><i class="ti ti-activity"></i></div>
+            <div class="tp-pillar-text">
+              <h4>Continuous behaviour scoring</h4>
+              <p>Trust score updates in real time based on observed actions, policy compliance, and anomaly history.</p>
+            </div>
+          </div>
+          <div class="tp-pillar">
+            <div class="tp-pillar-icon"><i class="ti ti-file-certificate"></i></div>
+            <div class="tp-pillar-text">
+              <h4>Audit trail and attestations</h4>
+              <p>Every action, approval, and governance event recorded and exportable as JSON, CSV, or PDF.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tp-visual">
+        <div class="tp-card">
+          <div class="tp-card-header">
+            <span class="tp-card-title">Trust Passport</span>
+            <div class="tp-trust-score"><i class="ti ti-shield-check"></i> 94 / 100</div>
+          </div>
+          <div class="tp-card-body">
+            <div class="tp-field">
+              <span class="tp-field-label">Agent ID</span>
+              <span class="tp-field-value">carina-prod-01</span>
+            </div>
+            <div class="tp-field">
+              <span class="tp-field-label">Status</span>
+              <span class="tp-field-value ok">Compliant</span>
+            </div>
+            <div class="tp-field">
+              <span class="tp-field-label">Last policy check</span>
+              <span class="tp-field-value">14:03:22 today</span>
+            </div>
+            <div class="tp-field">
+              <span class="tp-field-label">Injection attempts blocked</span>
+              <span class="tp-field-value warn">3 (last 7 days)</span>
+            </div>
+            <div class="tp-field">
+              <span class="tp-field-label">Kill switch</span>
+              <span class="tp-field-value ok">Armed and ready</span>
+            </div>
+            <div class="tp-field">
+              <span class="tp-field-label">EU AI Act tier</span>
+              <span class="tp-field-value">High Risk - Monitored</span>
+            </div>
+          </div>
+          <div class="tp-attestations">
+            <div class="tp-attest-row">
+              <span>Governance policy applied</span>
+              <strong>uk-property-v2</strong>
+            </div>
+            <div class="tp-attest-row">
+              <span>Operator approvals required</span>
+              <strong>Financial actions</strong>
+            </div>
+            <div class="tp-attest-row">
+              <span>Audit log exported</span>
+              <strong>14 days retained</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 4: INJECTION SHIELD -->
+<section id="injection" class="section section-lift">
+  <div class="container">
+    <div class="inject-grid">
+      <div class="inject-content">
+        <div class="section-eyebrow eyebrow-amber">
+          <i class="ti ti-shield-lock"></i>
+          Injection Shield
+        </div>
+        <h2 class="section-h2">
+          Stop Prompt Injection<br>Before It Becomes
+          <span class="accent-amber"> Action.</span>
+        </h2>
+        <p class="section-sub">
+          Three independent protection layers evaluate every input, tool response,
+          and model context before any action is executed. Malicious prompts are
+          blocked before they become behaviour.
+        </p>
+
+        <div class="inject-layers">
+          <div class="inject-layer">
+            <div class="inject-layer-num">1</div>
+            <div class="inject-layer-text">
+              <h4>Input Analysis</h4>
+              <p>Regex pre-filter and pattern matching on all user input and injected content before it reaches the model.</p>
+            </div>
+          </div>
+          <div class="inject-layer">
+            <div class="inject-layer-num">2</div>
+            <div class="inject-layer-text">
+              <h4>Policy Validation</h4>
+              <p>LLM judge layer evaluates context against active governance policy before approving execution.</p>
+            </div>
+          </div>
+          <div class="inject-layer">
+            <div class="inject-layer-num">3</div>
+            <div class="inject-layer-text">
+              <h4>Runtime Monitoring</h4>
+              <p>Output guard inspects model responses and tool calls for unsafe, unexpected, or policy-violating content.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="inject-result">
+          <i class="ti ti-shield-check"></i>
+          Malicious prompts are blocked before they become behaviour.
+        </div>
+      </div>
+
+      <div class="inject-console">
+        <div class="inject-console-bar">
+          <span class="ic-dot ic-r"></span>
+          <span class="ic-dot ic-y"></span>
+          <span class="ic-dot ic-g"></span>
+          <span class="inject-console-title">scout-injection-log</span>
+        </div>
+        <div class="inject-console-body">
+          <div class="ic-line">
+            <span class="ic-time">14:02:11</span>
+            <span class="ic-tag ic-tag-ok">INPUT</span>
+            <span class="ic-msg">Tool call received <span class="ic-highlight">read_file</span></span>
+          </div>
+          <div class="ic-line">
+            <span class="ic-time">14:02:11</span>
+            <span class="ic-tag ic-tag-warn">ANALYSE</span>
+            <span class="ic-msg">Pattern match: suspicious instruction fragment</span>
+          </div>
+          <div class="ic-line">
+            <span class="ic-time">14:02:12</span>
+            <span class="ic-tag ic-tag-warn">POLICY</span>
+            <span class="ic-msg">LLM judge: injection signature confidence 0.91</span>
+          </div>
+          <div class="ic-line">
+            <span class="ic-time">14:02:12</span>
+            <span class="ic-tag ic-tag-alert">BLOCK</span>
+            <span class="ic-msg">Execution halted - awaiting operator review</span>
+          </div>
+          <div class="ic-line">
+            <span class="ic-time">14:03:16</span>
+            <span class="ic-tag ic-tag-ok">INPUT</span>
+            <span class="ic-msg">Tool call received <span class="ic-highlight">send_email</span></span>
+          </div>
+          <div class="ic-line">
+            <span class="ic-time">14:03:16</span>
+            <span class="ic-tag ic-tag-kill">KILL</span>
+            <span class="ic-msg">Agent suspended - kill switch activated</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: GOVERNANCE -->
+<section id="governance" class="section section-dark">
+  <div class="container">
+    <div class="gov-grid">
+      <div class="gov-content">
+        <div class="section-eyebrow">
+          <i class="ti ti-gavel"></i>
+          Governance Engine
+        </div>
+        <h2 class="section-h2">
+          Security Tools <em>Detect.</em><br>
+          Scout <em>Governs.</em>
+        </h2>
+        <p class="section-sub">
+          Monitoring tells you what happened. Scout decides what happens next.
+        </p>
+
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Traditional Security</th>
+              <th>Scout</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Alerts</td><td>Intervention</td></tr>
+            <tr><td>Monitoring</td><td>Governance</td></tr>
+            <tr><td>Logging</td><td>Decisions</td></tr>
+            <tr><td>Reports</td><td>Control</td></tr>
+            <tr><td>Detection</td><td>Prevention</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="gov-right">
+        <div class="section-eyebrow eyebrow-amber" style="margin-top:0;">
+          <i class="ti ti-users"></i>
+          Human-in-the-loop
+        </div>
+        <h3 style="font-size:1.15rem;font-weight:600;color:var(--text-primary);margin-bottom:0.75rem;letter-spacing:-0.01em;">
+          Approval workflow
+        </h3>
+        <p style="font-size:0.875rem;color:var(--text-mid);line-height:1.65;margin-bottom:0;">
+          Before agents take high-risk actions, Scout pauses and waits. Operators
+          approve or reject from the dashboard.
+        </p>
+
+        <div class="gov-approval-flow">
+          <div class="gov-flow-step">
+            <div class="gov-flow-num">1</div>
+            <div class="gov-flow-text">
+              <h4>Agent requests action</h4>
+              <p>Tool call or external action triggers policy evaluation.</p>
+            </div>
+          </div>
+          <div class="gov-flow-connector"></div>
+          <div class="gov-flow-step">
+            <div class="gov-flow-num">2</div>
+            <div class="gov-flow-text">
+              <h4>Scout evaluates risk</h4>
+              <p>Policy engine compares action against active governance template and risk thresholds.</p>
+            </div>
+          </div>
+          <div class="gov-flow-connector"></div>
+          <div class="gov-flow-step">
+            <div class="gov-flow-num">3</div>
+            <div class="gov-flow-text">
+              <h4>Operator approves or rejects</h4>
+              <p>High-risk actions pause. Human approves from the dashboard. Agent proceeds only on approval.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="gov-controls-list">
+          <div class="gov-control"><i class="ti ti-sliders"></i> Set approval thresholds before deployment</div>
+          <div class="gov-control"><i class="ti ti-alert-circle"></i> Configure risk levels per tool and action type</div>
+          <div class="gov-control"><i class="ti ti-arrow-up"></i> Define escalation rules for policy violations</div>
+          <div class="gov-control"><i class="ti ti-certificate"></i> EU AI Act, GDPR, SOC2, ISO 42001 frameworks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION: INCIDENT RECORD -->
+<section id="incidents" class="section">
+  <div class="container">
+    <div class="incidents-intro">
+      <div class="section-eyebrow eyebrow-amber section-eyebrow-pill">
+        <i class="ti ti-alert-triangle"></i>
+        Documented damage
+      </div>
+      <h2 class="section-h2">
+        AI agents without oversight have <span class="accent-red">already done this.</span>
+      </h2>
+      <p class="section-sub">
+        Three incidents. Three different failure modes. One shared cause: nobody was watching.
+      </p>
+    </div>
+
+    <div class="incidents-grid-3">
+
+      <div class="incident-card">
+        <div class="incident-card-meta">
+          <span class="incident-card-company">Enterprise (via Axios)</span>
+          <span class="incident-card-date">May 2026</span>
+        </div>
+        <div class="incident-card-damage">$500,000,000</div>
+        <p class="incident-card-what">An enterprise deployed Claude with no spending caps and no agent budget controls. One month. Half a billion dollars.</p>
+        <div class="incident-card-source">
+          Source: <a href="https://techstartups.com/2026/05/28/company-accidentally-spent-500-million-on-claude-ai-in-one-month-after-forgetting-usage-limits/" target="_blank" rel="noopener">Axios / techstartups.com, May 2026</a>
+        </div>
+      </div>
+
+      <div class="incident-card">
+        <div class="incident-card-meta">
+          <span class="incident-card-company">Amazon / AWS</span>
+          <span class="incident-card-date">2025</span>
+        </div>
+        <div class="incident-card-damage">13-hour outage</div>
+        <p class="incident-card-what">Amazon's own AI coding tool caused multiple AWS outages including one lasting 13 hours. No approval gate. No dangerous-operation check. Production systems modified without human sign-off.</p>
+        <div class="incident-card-source">
+          Source: <a href="https://www.theguardian.com/technology/2026/feb/20/amazon-cloud-outages-ai-tools-amazon-web-services-aws" target="_blank" rel="noopener">The Guardian, Feb 2026</a>
+        </div>
+      </div>
+
+      <div class="incident-card">
+        <div class="incident-card-meta">
+          <span class="incident-card-company">Multiple platforms</span>
+          <span class="incident-card-date">2025-2026</span>
+        </div>
+        <div class="incident-card-damage">rm -rf /home</div>
+        <p class="incident-card-what">AI coding agents on Cursor, Claude Code, Replit, and Codex CLI have autonomously executed destructive shell commands. Complete codebases deleted. No confirmation requested.</p>
+        <div class="incident-card-source">
+          Source: <a href="https://www.docker.com/blog/ai-coding-agent-horror-stories-security-risks/" target="_blank" rel="noopener">Docker security blog, 2025</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="incident-stats-strip">
+      <div class="incident-stat">
+        <div class="incident-stat-value">$500M+</div>
+        <div class="incident-stat-label">single-incident financial loss, reported</div>
+      </div>
+      <div class="incident-stat">
+        <div class="incident-stat-value">13 hrs</div>
+        <div class="incident-stat-label">AWS downtime from one AI coding agent</div>
+      </div>
+      <div class="incident-stat">
+        <div class="incident-stat-value">1,000+</div>
+        <div class="incident-stat-label">incidents in the public AI incident database</div>
+      </div>
+      <div class="incident-stat">
+        <div class="incident-stat-value">#1</div>
+        <div class="incident-stat-label">Prompt Injection -- OWASP LLM Top 10, two editions</div>
+      </div>
+    </div>
+
+    <div class="incident-closer">
+      <strong>Every incident above shares one property: nobody was watching.</strong>
+      No budget cap fired. No dangerous command was intercepted. No policy blocked the change before it reached production.
+      Scout is the watching.
+    </div>
+
+    <div class="incident-cta">
+      <a href="#pricing" class="btn-primary">
+        <i class="ti ti-shield-lock"></i>
+        Add Scout to your agent
+      </a>
+      <a href="/incidents/" class="btn-secondary">
+        <i class="ti ti-file-text"></i>
+        Read the full incident record
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" class="section section-lift">
+  <div class="container">
+    <div style="text-align:center;">
+      <div class="section-eyebrow" style="display:inline-flex;margin-bottom:1.25rem;">
+        <i class="ti ti-currency-pound"></i>
+        Pricing
+      </div>
+      <h2 class="section-h2" style="max-width:580px;margin:0 auto 1rem;">
+        One licence per deployment.<br><em>Choose your level of control.</em>
+      </h2>
+      <p style="font-size:1rem;color:var(--text-mid);max-width:540px;margin:0 auto;">
+        Monitor for pure observability. Govern when you need the kill switch, injection shield, and compliance readiness. Team for multiple deployments under one account.
+      </p>
+    </div>
+
+    <div class="pricing-grid">
+          <div class="pricing-card">
+        <h3>Scout Monitor</h3>
+        <div class="pricing-price"><span data-price-key="scout_monitor">£99</span><small>/mo</small></div>
+        <div class="pricing-period">Per deployment. Observe and detect.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><i class="ti ti-eye"></i> Live monitoring dashboard</li>
+          <li><i class="ti ti-alert-triangle"></i> Risk signals and anomaly detection</li>
+          <li><i class="ti ti-history"></i> 90-day audit history and event export</li>
+          <li><i class="ti ti-certificate"></i> EU AI Act tier classification</li>
+          <li><i class="ti ti-bell"></i> Email, webhook, and API alerts</li>
+          <li><i class="ti ti-heart-rate-monitor"></i> Heartbeat and uptime monitoring</li>
+          <li class="muted"><i class="ti ti-lock"></i> Kill switch (Govern only)</li>
+          <li class="muted"><i class="ti ti-lock"></i> Approval workflows (Govern only)</li>
+        </ul>
+        <a href="https://labyrinthscout.com/checkout?plan=scout_monitor" class="btn-pricing-outline">Start Monitor</a>
+      </div>
+
+      <div class="pricing-card featured">
+        <h3>Scout Govern</h3>
+        <div class="pricing-price"><span data-price-key="scout_govern">£199</span><small>/mo</small></div>
+        <div class="pricing-period">Per deployment. Observe, intervene, comply.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><i class="ti ti-check"></i> Everything in Monitor</li>
+          <li><i class="ti ti-power"></i> Kill switch and instant response controls</li>
+          <li><i class="ti ti-gavel"></i> Pre-action approval workflow</li>
+          <li><i class="ti ti-shield-lock"></i> Injection shield and honeypot detection</li>
+          <li><i class="ti ti-building-bank"></i> Industry policy templates</li>
+          <li><i class="ti ti-report-analytics"></i> Governance dashboard and PDF reports</li>
+          <li><i class="ti ti-id-badge"></i> Trust Passport and public attestations</li>
+          <li><i class="ti ti-message"></i> Telegram, email, and Slack alerts</li>
+        </ul>
+        <a href="https://labyrinthscout.com/checkout?plan=scout_govern" class="btn-pricing-primary">Get Scout Govern</a>
+        <p class="pricing-note">Console URL and API key emailed at provisioning.</p>
+      </div>
+
+      <div class="pricing-card">
+        <h3>Scout Team</h3>
+        <div class="pricing-price"><span data-price-key="scout_team">£399</span><small>/mo</small></div>
+        <div class="pricing-period">Up to 5 deployments. Team access.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li><i class="ti ti-check"></i> Everything in Scout Govern</li>
+          <li><i class="ti ti-devices"></i> Up to 5 deployments</li>
+          <li><i class="ti ti-users"></i> Team workspace and role management</li>
+          <li><i class="ti ti-history"></i> 180-day audit log</li>
+          <li><i class="ti ti-file-certificate"></i> SOC 2 readiness export</li>
+          <li><i class="ti ti-code"></i> Sigma detection-as-code rules</li>
+          <li><i class="ti ti-headset"></i> Priority support</li>
+          <li><i class="ti ti-devices-plus"></i> Extra deployments £99/mo each</li>
+        </ul>
+        <a href="mailto:contact@verlox.uk?subject=Scout Team" class="btn-pricing-outline">Contact us</a>
+      </div>
+    </div>
+
+    <div style="border:1px solid rgba(255,255,255,0.08);border-radius:var(--r-lg);padding:1.25rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;margin-top:1.25rem;background:var(--bg-card);">
+      <div>
+        <h4 style="font-size:0.95rem;font-weight:600;margin-bottom:0.2rem;">Enterprise</h4>
+        <p style="font-size:0.83rem;color:var(--text-mid);margin:0;">Unlimited deployments, dedicated infrastructure, custom compliance templates, named support, MSSP option, and a 99.9% uptime SLA.</p>
+      </div>
+      <a href="mailto:contact@verlox.uk?subject=Scout Enterprise" style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.55rem 1.1rem;border-radius:var(--r-md);font-size:0.83rem;font-weight:500;text-decoration:none;border:1px solid rgba(255,255,255,0.12);color:var(--text-mid);white-space:nowrap;transition:color 200ms,border-color 200ms;" onmouseover="this.style.color='var(--text-primary)';this.style.borderColor='var(--green)';" onmouseout="this.style.color='var(--text-mid)';this.style.borderColor='rgba(255,255,255,0.12)';">
+        <i class="ti ti-building"></i> Talk to us
+      </a>
+    </div>
+
+    <p style="text-align:center;font-size:0.82rem;color:var(--text-dim);margin-top:1.25rem;">
+      Scout is sold as its own product. Bundled deployments are a packaging choice, not a product dependency.
+    </p>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="cta-section">
+  <div class="container">
+    <h2 class="cta-h2">
+      Your agent is running.<br>
+      <em>Scout is how you stay in control.</em>
+    </h2>
+    <p class="cta-sub">
+      Kill switch, injection shield, audit trail, and EU AI Act compliance readiness. One licence per deployment. Works with any agent stack.
+    </p>
+    <div class="cta-actions">
+      <a href="https://labyrinthscout.com/checkout?plan=scout_govern" class="btn-primary">
+        <i class="ti ti-shield-lock"></i>
+        Get Scout Govern
+      </a>
+      <a href="https://carinaai.uk" class="btn-outline">
+        <i class="ti ti-terminal-2"></i>
+        Build on Carina
+      </a>
+      <a href="https://hireaiva.co.uk" class="btn-outline">
+        <i class="ti ti-user-check"></i>
+        Hire Aiva
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="/" class="footer-logo">Scout<span>.</span></a>
+        <p class="footer-tagline">
+          Observe. Verify. Control.<br>
+          Scout is a separate control product. It integrates with Carina, Aiva, and other agent stacks.
+        </p>
+      </div>
+      <div class="footer-col">
+        <h4>Controls</h4>
+        <a href="#kill-switch">Kill Switch</a>
+        <a href="#trust-passport">Trust Passport</a>
+        <a href="#injection">Injection Shield</a>
+        <a href="#governance">Governance</a>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="https://github.com/malike2356/keprix">Keprix</a>
+        <a href="https://propreneur.uk/">Propreneur</a>
+        <a href="https://tuinapp.uk/">TuinApp</a>
+        <a href="https://propcalc.uk/">PropCalc</a>
+        <a href="https://labyrinthscout.com/">Scout</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/docs/">Documentation</a>
+        <a href="/docs/integration/carina">Carina integration</a>
+        <a href="https://labyrinthscout.com/trust">Trust API</a>
+        <a href="https://carinaai.uk">Carina</a>
+        <a href="https://hireaiva.co.uk">Aiva</a>
+      </div>
+      <div class="footer-col">
+        <h4>Get Scout</h4>
+        <a href="https://labyrinthscout.com/checkout?plan=scout_govern">Scout Govern - <span data-price-key="scout_govern">£199</span>/mo</a>
+        <a href="https://labyrinthscout.com/checkout?plan=scout_monitor">Scout Monitor - <span data-price-key="scout_monitor">£99</span>/mo</a>
+        <a href="mailto:contact@verlox.uk">Enterprise contact</a>
+        <a href="mailto:contact@verlox.uk">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-bottom-left">
+        &copy; 2026 VERLOX Ltd. All rights reserved. labyrinthscout.com
+      </span>
+      <div class="footer-bottom-links">
+        <a href="/docs/privacy/">Privacy</a>
+        <a href="/docs/terms/">Terms</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var hamburger   = document.getElementById('nav-hamburger');
+  var mobilePanel = document.getElementById('nav-mobile-panel');
+
+  if (hamburger && mobilePanel) {
+    hamburger.addEventListener('click', function () {
+      var isOpen = mobilePanel.classList.contains('open');
+      mobilePanel.classList.toggle('open', !isOpen);
+      hamburger.setAttribute('aria-expanded', String(!isOpen));
+      mobilePanel.setAttribute('aria-hidden', String(isOpen));
+    });
+
+    mobilePanel.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        mobilePanel.classList.remove('open');
+        hamburger.setAttribute('aria-expanded', 'false');
+        mobilePanel.setAttribute('aria-hidden', 'true');
+      });
+    });
+  }
+
+  var nav = document.getElementById('main-nav');
+  if (nav) {
+    window.addEventListener('scroll', function () {
+      nav.style.borderBottomColor = window.scrollY > 20
+        ? 'rgba(255,255,255,0.08)'
+        : 'rgba(255,255,255,0.04)';
+    }, { passive: true });
+  }
+
+  if ('IntersectionObserver' in window) {
+    var style = document.createElement('style');
+    style.textContent = [
+      '.fade-up { opacity: 0; transform: translateY(24px); transition: opacity 0.55s ease, transform 0.55s ease; }',
+      '.fade-up.visible { opacity: 1; transform: none; }'
+    ].join('');
+    document.head.appendChild(style);
+
+    var targets = document.querySelectorAll(
+      '.ks-content, .ks-visual, ' +
+      '.tp-content, .tp-visual, ' +
+      '.inject-content, .inject-console, ' +
+      '.gov-content, .gov-right, ' +
+      '.pricing-card, ' +
+      '.cta-h2, .cta-sub, .cta-actions, ' +
+      '.inject-layer, .tp-pillar, .ks-action, .gov-flow-step, .gov-control'
+    );
+
+    targets.forEach(function (el) { el.classList.add('fade-up'); });
+
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1 });
+
+    targets.forEach(function (el) { observer.observe(el); });
+  }
+
+  document.querySelectorAll('.inject-layer').forEach(function (el, i) {
+    el.style.transitionDelay = (i * 100) + 'ms';
+  });
+
+  document.querySelectorAll('.tp-pillar').forEach(function (el, i) {
+    el.style.transitionDelay = (i * 80) + 'ms';
+  });
+
+  document.querySelectorAll('.ks-action').forEach(function (el, i) {
+    el.style.transitionDelay = (i * 60) + 'ms';
+  });
+
+  document.querySelectorAll('.pricing-card').forEach(function (el, i) {
+    el.style.transitionDelay = (i * 100) + 'ms';
+  });
+
+  document.querySelectorAll('.gov-flow-step').forEach(function (el, i) {
+    el.style.transitionDelay = (i * 100) + 'ms';
+  });
+
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy');
+      if (text && navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(function () {
+          var orig = btn.textContent;
+          btn.textContent = 'Copied';
+          setTimeout(function () { btn.textContent = orig; }, 1500);
+        });
+      }
+    });
+  });
+
+  (function initKillSwitchDemo() {
+    var btn = document.getElementById('kill-switch-btn');
+    var ksSwitch = document.getElementById('kill-switch-demo');
+    var ksVisual = document.querySelector('.ks-visual');
+    var status = document.querySelector('.ks-kill-status');
+    var actions = document.querySelectorAll('.ks-action');
+    var shockwaves = ksSwitch ? ksSwitch.querySelectorAll('.ks-shockwave') : [];
+    var resetTimer = null;
+    var busy = false;
+    var reducedMotion = window.matchMedia &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!btn || !ksSwitch) return;
+
+    function resetKillDemo() {
+      ksSwitch.classList.remove('ks-fired');
+      if (ksVisual) ksVisual.classList.remove('ks-shake');
+      shockwaves.forEach(function (wave) { wave.classList.remove('ks-shockwave-go'); });
+      actions.forEach(function (el) { el.classList.remove('ks-action-hit'); });
+      if (status) status.textContent = '';
+      btn.disabled = false;
+      busy = false;
+    }
+
+    btn.addEventListener('click', function () {
+      if (busy) return;
+      busy = true;
+      btn.disabled = true;
+
+      if (resetTimer) clearTimeout(resetTimer);
+
+      ksSwitch.classList.add('ks-fired');
+      if (status) status.textContent = 'All agents suspended';
+
+      if (ksVisual && !reducedMotion) {
+        ksVisual.classList.remove('ks-shake');
+        void ksVisual.offsetWidth;
+        ksVisual.classList.add('ks-shake');
+      }
+
+      if (!reducedMotion) {
+        shockwaves.forEach(function (wave, i) {
+          wave.classList.remove('ks-shockwave-go');
+          void wave.offsetWidth;
+          setTimeout(function () { wave.classList.add('ks-shockwave-go'); }, i * 120);
+        });
+      }
+
+      actions.forEach(function (el, i) {
+        setTimeout(function () {
+          el.classList.add('ks-action-hit');
+        }, reducedMotion ? 0 : 180 + i * 90);
+      });
+
+      resetTimer = setTimeout(resetKillDemo, reducedMotion ? 2000 : 4500);
+    });
+  })();
+
+})();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+(function initDottedSurface() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const container = document.getElementById('dotted-surface');
+  if (!container) return;
+
+  const mobile = window.innerWidth <= 768;
+  const SEPARATION = mobile ? 120 : 150;
+  const AMOUNTX = mobile ? 28 : 40;
+  const AMOUNTY = mobile ? 42 : 60;
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x06090f, 2000, 10000);
+
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    1,
+    10000
+  );
+  camera.position.set(0, 355, 1220);
+
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x06090f, 0);
+  container.appendChild(renderer.domElement);
+
+  const positions = [];
+  const colors = [];
+  const gR = 22 / 255;
+  const gG = 201 / 255;
+  const gB = 126 / 255;
+
+  for (let ix = 0; ix < AMOUNTX; ix++) {
+    for (let iy = 0; iy < AMOUNTY; iy++) {
+      const x = ix * SEPARATION - (AMOUNTX * SEPARATION) / 2;
+      const z = iy * SEPARATION - (AMOUNTY * SEPARATION) / 2;
+      positions.push(x, 0, z);
+      const mix = 0.55 + Math.random() * 0.45;
+      colors.push(gR * mix, gG * mix, gB * mix);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+  const material = new THREE.PointsMaterial({
+    size: mobile ? 6 : 8,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.6,
+    sizeAttenuation: true,
+  });
+
+  const points = new THREE.Points(geometry, material);
+  scene.add(points);
+
+  let count = 0;
+  let animationId = 0;
+  let running = true;
+
+  function animate() {
+    if (!running) return;
+    animationId = requestAnimationFrame(animate);
+
+    const positionAttribute = geometry.attributes.position;
+    const posArr = positionAttribute.array;
+    let i = 0;
+
+    for (let ix = 0; ix < AMOUNTX; ix++) {
+      for (let iy = 0; iy < AMOUNTY; iy++) {
+        const index = i * 3;
+        posArr[index + 1] =
+          Math.sin((ix + count) * 0.3) * 50 +
+          Math.sin((iy + count) * 0.5) * 50;
+        i++;
+      }
+    }
+
+    positionAttribute.needsUpdate = true;
+    renderer.render(scene, camera);
+    count += 0.1;
+  }
+
+  function handleResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      running = false;
+      cancelAnimationFrame(animationId);
+    } else {
+      running = true;
+      animate();
+    }
+  });
+
+  window.addEventListener('resize', handleResize);
+  animate();
+})();
+</script>
+
+<script>
+(function(){
+  fetch('https://core.carinaai.uk/api/public/pricing',{cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var sym=d.symbol||'£';
+      var prices=d.prices||{};
+      document.querySelectorAll('[data-price-key]').forEach(function(el){
+        var key=el.getAttribute('data-price-key');
+        if(key&&prices[key]!=null){el.textContent=sym+prices[key];}
+      });
+    })
+    .catch(function(){});
+})();
+</script>
+<script src="app.js"></script>
+</body>
+</html>

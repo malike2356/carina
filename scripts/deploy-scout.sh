@@ -133,6 +133,7 @@ main() {
     --exclude='.env' \
     --exclude='node_modules' \
     --exclude='.git' \
+    --exclude='.pnpm-store' \
     --exclude='dist' \
     --exclude='*.deb' \
     "${ENGINE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${ENGINE_REMOTE}/"
@@ -142,6 +143,7 @@ main() {
     --exclude='.env' \
     --exclude='node_modules' \
     --exclude='.git' \
+    --exclude='.pnpm-store' \
     --exclude='dist' \
     --exclude='docs/.vitepress' \
     "${LOCAL}/" "${VPS_USER}@${VPS_HOST}:${REMOTE}/"

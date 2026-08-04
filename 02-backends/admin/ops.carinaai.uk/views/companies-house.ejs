@@ -1,0 +1,86 @@
+<%
+  title = 'Companies House';
+  const st = typeof status === 'object' && status ? status : {};
+  const ready = Boolean(st.configured && st.keyPresent);
+%>
+<style>
+  .ch-page { max-width: 40rem; margin: 0 auto; padding: 32px 28px 48px; }
+  .ch-header { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .ch-header h1 { margin: 0 0 6px; font-size: 1.5rem; }
+  .ch-muted { color: rgba(255,255,255,0.55); font-size: 0.92rem; line-height: 1.45; }
+  .ch-flash { padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 0.92rem; }
+  .ch-flash.ok { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.35); }
+  .ch-flash.err { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); }
+  .ch-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .ch-label { display: block; font-size: 0.85rem; margin-bottom: 6px; color: rgba(255,255,255,0.7); }
+  .ch-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.25); color: #fff; }
+  .ch-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; align-items: center; }
+  .ch-btn { padding: 9px 14px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 600; }
+  .ch-btn.primary { background: #0ea5e9; color: #041018; }
+  .ch-btn.secondary { background: rgba(255,255,255,0.08); color: #fff; }
+  .ch-check { display: flex; gap: 8px; align-items: center; font-size: 0.88rem; color: rgba(255,255,255,0.7); }
+  .ch-meta { font-size: 0.88rem; margin-top: 10px; color: rgba(255,255,255,0.6); }
+  .ch-meta code { color: rgba(255,255,255,0.85); }
+</style>
+
+<div class="ch-page">
+  <div class="ch-header">
+    <h1>Companies House</h1>
+    <p class="ch-muted">
+      Platform REST API key for Hire Aiva / Carina UK register lookup (companies, officers, PSC).
+      Auth is HTTP Basic with the key as username and an empty password. Read-only public data; no marketing emails.
+    </p>
+  </div>
+
+  <% if (errMsg) { %><div class="ch-flash err"><%= errMsg %></div><% } %>
+  <% if (saved) { %><div class="ch-flash ok">Key saved<%= restarted ? ' and carina-web recreated' : '' %>.</div><% } %>
+  <% if (tested) { %><div class="ch-flash ok">Test: <%= testMsg || 'OK' %></div><% } %>
+  <% if (granted) { %><div class="ch-flash ok">Granted Companies House to <%= granted %> active Aiva worker(s).</div><% } %>
+
+  <div class="ch-card">
+    <div class="ch-meta">
+      Status:
+      <strong><%= ready ? 'Configured' : 'Not configured' %></strong>
+      <% if (st.keyHint) { %> · hint <code><%= st.keyHint %></code><% } %>
+      <% if (st.source && st.source !== 'none') { %> · source <code><%= st.source %></code><% } %>
+    </div>
+    <div class="ch-meta">
+      Developer Hub:
+      <a href="https://developer.company-information.service.gov.uk/" target="_blank" rel="noopener">company-information.service.gov.uk</a>
+    </div>
+    <div class="ch-meta">
+      Aiva Tools deep link: <code>/aiva/tools?tool=companies-house</code>
+    </div>
+  </div>
+
+  <div class="ch-card">
+    <form method="post" action="<%= withV('/companies-house/save') %>">
+      <label class="ch-label" for="apiKey">COMPANIES_HOUSE_API_KEY</label>
+      <input class="ch-input" id="apiKey" name="apiKey" type="password" autocomplete="off"
+        value="<%= typeof secretDisplay === 'string' ? secretDisplay : '' %>"
+        placeholder="Paste new REST API key to rotate" />
+      <div class="ch-row">
+        <label class="ch-check">
+          <input type="checkbox" name="doRestart" value="1" checked />
+          Recreate carina-web after save (loads into process env)
+        </label>
+      </div>
+      <div class="ch-row">
+        <button class="ch-btn primary" type="submit">Save key</button>
+      </div>
+    </form>
+    <div class="ch-row">
+      <form method="post" action="<%= withV('/companies-house/test') %>">
+        <button class="ch-btn secondary" type="submit">Test (GET company 00000006)</button>
+      </form>
+      <form method="post" action="<%= withV('/companies-house/grant-all') %>"
+        onsubmit="return confirm('Grant Companies House (read) to every active Aiva worker?');">
+        <button class="ch-btn secondary" type="submit">Grant to all active Aivas</button>
+      </form>
+    </div>
+    <p class="ch-muted" style="margin-top:14px">
+      After grant, Telegram users can ask: Search Companies House for BBC
+      or Who are the officers for company 00000006?
+    </p>
+  </div>
+</div>

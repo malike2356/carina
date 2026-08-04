@@ -1,0 +1,224 @@
+<% title = 'Agent Tools' %>
+<style>
+  .at { width:100%; max-width:none; }
+  .at-head {
+    display:flex; flex-wrap:wrap; justify-content:space-between; gap:14px; align-items:flex-end;
+    margin-bottom:18px;
+  }
+  .at-head h1 { margin:0; font-size:1.4rem; font-weight:700; color:#f8fafc; }
+  .at-head p { margin:4px 0 0; font-size:0.8rem; color:#94a3b8; max-width:40rem; line-height:1.45; }
+  .at-tenant {
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+  }
+  .at-tenant input {
+    height:auto !important; min-height:40px !important; max-height:none !important;
+    padding:10px 12px !important; line-height:1.4 !important; font-size:13px !important;
+    border-radius:10px !important; border:1px solid rgba(255,255,255,0.12) !important;
+    background:#0b0f14 !important; color:#f1f5f9 !important; box-sizing:border-box !important;
+    width:min(220px,100%); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .at-tenant button {
+    height:40px; padding:0 14px; border-radius:10px; cursor:pointer;
+    border:1px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.04);
+    color:#cbd5e1; font-size:0.8rem; font-weight:600;
+  }
+  .at-tenant button:hover { background:rgba(255,255,255,0.08); color:#f8fafc; }
+  .at-flash {
+    margin-bottom:14px; padding:10px 14px; border-radius:10px; font-size:0.8rem;
+  }
+  .at-flash.ok { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#86efac; }
+  .at-flash.err { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; }
+  .at-summary {
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;
+  }
+  .at-pill {
+    display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02);
+    font-size:0.72rem; color:#94a3b8;
+  }
+  .at-pill strong { color:#e2e8f0; font-weight:650; }
+  .at-pill.on { border-color:rgba(34,197,94,0.25); color:#86efac; }
+  .at-pill.warn { border-color:rgba(251,191,36,0.25); color:#fde68a; }
+  .at-panel {
+    padding:16px; border-radius:14px; margin-bottom:16px;
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+  }
+  .at-panel h2 { margin:0 0 4px; font-size:0.92rem; font-weight:650; color:#f1f5f9; }
+  .at-panel .sub { margin:0 0 14px; font-size:0.75rem; color:#64748b; }
+  .at-table-wrap { overflow:auto; border-radius:10px; border:1px solid rgba(255,255,255,0.06); }
+  .at-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+  .at-table th {
+    text-align:left; color:#64748b; font-weight:600; font-size:0.68rem;
+    text-transform:uppercase; letter-spacing:0.04em; padding:11px 12px;
+    border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.28);
+    position:sticky; top:0; white-space:nowrap;
+  }
+  .at-table td {
+    padding:12px; border-bottom:1px solid rgba(255,255,255,0.04); color:#cbd5e1; vertical-align:middle;
+  }
+  .at-table tr.is-off td { opacity:0.55; }
+  .at-tool-name { color:#f8fafc; font-weight:650; font-size:0.88rem; }
+  .at-tool-desc { margin-top:3px; color:#64748b; font-size:0.72rem; line-height:1.35; max-width:28rem; }
+  .at-code {
+    display:inline-block; margin-top:6px; font-size:0.68rem; color:#64748b;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    padding:2px 7px; border-radius:6px; background:rgba(0,0,0,0.25); border:1px solid rgba(255,255,255,0.06);
+  }
+  .at-chip {
+    display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:0.68rem; font-weight:650;
+    border:1px solid rgba(255,255,255,0.1); color:#94a3b8;
+  }
+  .at-chip.on { color:#86efac; border-color:rgba(34,197,94,0.3); background:rgba(34,197,94,0.08); }
+  .at-chip.off { color:#94a3b8; background:rgba(255,255,255,0.03); }
+  .at-chip.approval { color:#fde68a; border-color:rgba(251,191,36,0.3); background:rgba(251,191,36,0.08); }
+  .at-field select,
+  .at-field input {
+    display:block; width:100%; min-width:110px;
+    height:auto !important; min-height:40px !important; max-height:none !important;
+    padding:10px 12px !important; line-height:1.4 !important; font-size:13px !important;
+    border-radius:10px !important; border:1px solid rgba(255,255,255,0.12) !important;
+    background:#0b0f14 !important; color:#f1f5f9 !important; box-sizing:border-box !important;
+  }
+  .at-field select { min-width:120px; }
+  .at-field input[type="number"] { min-width:100px; max-width:130px; }
+  .at-save {
+    display:inline-flex; align-items:center; justify-content:center;
+    min-height:40px; padding:0 14px; border:none; border-radius:10px; cursor:pointer;
+    background:linear-gradient(135deg,#22c55e,#16a34a); color:#052e16; font-weight:700; font-size:0.78rem;
+  }
+  .at-save:hover { filter:brightness(1.05); }
+  .at-log-mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:0.72rem; color:#94a3b8; }
+  .at-empty { text-align:center; padding:24px; color:#64748b; font-size:0.84rem; }
+  .at-status-ok { color:#86efac; }
+  .at-status-err { color:#fca5a5; }
+  @media (max-width: 900px) {
+    .at-table .hide-sm { display:none; }
+    .at-field select, .at-field input { min-width:0; max-width:none; }
+  }
+</style>
+
+<%
+  const enabledCount = categories.filter((c) => c.enabled).length;
+  const approvalCount = categories.filter((c) => c.requiresApproval).length;
+  const offCount = categories.length - enabledCount;
+%>
+
+<div class="ops-page at">
+  <div class="at-head">
+    <div>
+      <h1>Agent Tools</h1>
+      <p>Global defaults for hosted workspaces. Open a tenant to override one workspace.</p>
+    </div>
+    <form class="at-tenant" method="get" action="/admin/agent-tools/tenant/" onsubmit="event.preventDefault(); var v = this.workspaceId.value.trim(); if (v) window.location.href = '/admin/agent-tools/tenant/' + encodeURIComponent(v);">
+      <input name="workspaceId" placeholder="Workspace ID" aria-label="Workspace ID">
+      <button type="submit">Open tenant</button>
+    </form>
+  </div>
+
+  <% if (message) { %>
+    <div class="at-flash <%= messageIsError ? 'err' : 'ok' %>"><%= message %></div>
+  <% } %>
+
+  <div class="at-summary">
+    <span class="at-pill"><strong><%= categories.length %></strong> tools</span>
+    <span class="at-pill on"><strong><%= enabledCount %></strong> enabled</span>
+    <span class="at-pill"><strong><%= offCount %></strong> disabled</span>
+    <span class="at-pill warn"><strong><%= approvalCount %></strong> need approval</span>
+  </div>
+
+  <section class="at-panel">
+    <h2>Category defaults</h2>
+    <p class="sub">Edit a row and save. Changes apply to all workspaces that do not have a tenant override.</p>
+    <div class="at-table-wrap">
+      <table class="at-table">
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>State</th>
+            <th>Status</th>
+            <th>Approval</th>
+            <th>Max / msg</th>
+            <th>Timeout</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% categories.forEach((cat) => { %>
+            <tr class="<%= cat.enabled ? '' : 'is-off' %>">
+              <td>
+                <div class="at-tool-name"><%= cat.label %></div>
+                <% if (cat.description) { %><div class="at-tool-desc"><%= cat.description %></div><% } %>
+                <span class="at-code"><%= cat.category %></span>
+              </td>
+              <td>
+                <span class="at-chip <%= cat.enabled ? 'on' : 'off' %>"><%= cat.enabled ? 'On' : 'Off' %></span>
+                <% if (cat.requiresApproval) { %><div style="margin-top:6px;"><span class="at-chip approval">Approval</span></div><% } %>
+              </td>
+              <td>
+                <form id="form-<%= cat.category %>" method="post" action="/admin/agent-tools/<%= encodeURIComponent(cat.category) %>"></form>
+                <div class="at-field">
+                  <select name="enabled" form="form-<%= cat.category %>">
+                    <option value="true" <%= cat.enabled ? 'selected' : '' %>>Enabled</option>
+                    <option value="false" <%= !cat.enabled ? 'selected' : '' %>>Disabled</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <div class="at-field">
+                  <select name="requiresApproval" form="form-<%= cat.category %>">
+                    <option value="false" <%= !cat.requiresApproval ? 'selected' : '' %>>No</option>
+                    <option value="true" <%= cat.requiresApproval ? 'selected' : '' %>>Yes</option>
+                  </select>
+                </div>
+              </td>
+              <td>
+                <div class="at-field">
+                  <input form="form-<%= cat.category %>" type="number" name="maxCalls" value="<%= cat.maxCalls %>" min="1" max="50">
+                </div>
+              </td>
+              <td>
+                <div class="at-field">
+                  <input form="form-<%= cat.category %>" type="number" name="timeoutMs" value="<%= cat.timeoutMs %>" min="1000" max="120000" step="1000">
+                </div>
+              </td>
+              <td>
+                <button class="at-save" type="submit" form="form-<%= cat.category %>">Save</button>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="at-panel">
+    <h2>Recent tool calls</h2>
+    <p class="sub">Latest invocations across workspaces.</p>
+    <% if (!log?.length) { %>
+      <div class="at-empty">No tool calls recorded yet.</div>
+    <% } else { %>
+      <div class="at-table-wrap">
+        <table class="at-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Tool</th>
+              <th>Workspace</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% log.slice(0, 40).forEach((call) => { %>
+              <tr>
+                <td class="hide-sm"><%= new Date(call.createdAt).toLocaleString() %></td>
+                <td><%= call.toolName %></td>
+                <td class="at-log-mono"><%= call.workspaceId ? (call.workspaceId.slice(0, 10) + '…') : ';' %></td>
+                <td class="<%= (call.status === 'error' || call.status === 'failed') ? 'at-status-err' : 'at-status-ok' %>"><%= call.status || ';' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>

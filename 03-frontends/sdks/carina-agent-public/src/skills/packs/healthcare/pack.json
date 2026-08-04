@@ -1,0 +1,9 @@
+{
+  "name": "healthcare",
+  "version": "1.0.0",
+  "description": "Healthcare administration skills: clinical notes, scheduling, compliance, medications",
+  "author": "VERLOX Ltd",
+  "category": "healthcare",
+  "optional": true,
+  "skillCount": 5
+}

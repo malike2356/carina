@@ -1,0 +1,71 @@
+<% title = 'Agents' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Managed Agents</h1>
+    <p>Register platform agents and track their model binding and run status.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/agents" class="apu-panel apu-fields">
+    <h2>Register agent</h2>
+    <p class="sub">Name and bind a default model.</p>
+    <div>
+      <label class="field" for="a-name">Agent name</label>
+      <input id="a-name" name="name" required placeholder="Support triage">
+    </div>
+    <div>
+      <%- include('../partials/model-picker', { pickerId: 'agent-model' }) %>
+    </div>
+    <button type="submit" class="apu-btn">Create</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Agents</h2>
+    <p class="sub"><%= agents.length %> registered.</p>
+    <% if (!agents.length) { %>
+      <div class="apu-empty">No agents registered yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Model</th>
+              <th>Status</th>
+              <th>Last run</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const a of agents) { %>
+              <tr>
+                <td><%= a.name %></td>
+                <td class="mono"><%= a.provider %>/<%= a.model %></td>
+                <td><span class="apu-chip <%= a.status === 'running' ? 'ok' : (a.status === 'error' ? 'fail' : '') %>"><%= a.status %></span></td>
+                <td class="muted"><%= a.lastRunAt ? new Date(a.lastRunAt).toLocaleString() : 'Never' %></td>
+                <td>
+                  <form method="post" action="/ai-platform/agents/<%= a.id %>/status" class="apu-inline-form">
+                    <select name="status">
+                      <option value="idle" <%= a.status === 'idle' ? 'selected' : '' %>>idle</option>
+                      <option value="running" <%= a.status === 'running' ? 'selected' : '' %>>running</option>
+                      <option value="error" <%= a.status === 'error' ? 'selected' : '' %>>error</option>
+                    </select>
+                    <button type="submit" class="apu-btn tiny ghost">Set</button>
+                  </form>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

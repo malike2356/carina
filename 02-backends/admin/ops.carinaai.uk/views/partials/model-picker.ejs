@@ -1,0 +1,86 @@
+<%
+  const _pickerId = typeof pickerId !== 'undefined' && pickerId ? pickerId : ('model-picker-' + Math.random().toString(36).slice(2, 8));
+  const _selectedModelId = typeof selectedModelId !== 'undefined' ? selectedModelId : '';
+  const _selectedProvider = typeof selectedProvider !== 'undefined' ? selectedProvider : '';
+  const _selectedModelName = typeof selectedModelName !== 'undefined' ? selectedModelName : '';
+  const _byProvider = {};
+  for (const m of models) {
+    if (!_byProvider[m.provider]) _byProvider[m.provider] = [];
+    _byProvider[m.provider].push(m);
+  }
+  const _providerNames = Object.keys(_byProvider).sort(function (a, b) {
+    if (a === 'deepseek') return -1;
+    if (b === 'deepseek') return 1;
+    return a.localeCompare(b);
+  });
+  let _defaultProvider = '';
+  for (const m of models) {
+    const isSelected = _selectedModelId
+      ? _selectedModelId === m.id
+      : (_selectedProvider && _selectedModelName
+        ? _selectedProvider === m.provider && _selectedModelName === m.model
+        : m.isDefault);
+    if (isSelected) {
+      _defaultProvider = m.provider;
+      break;
+    }
+  }
+  if (!_defaultProvider && models[0]) _defaultProvider = models[0].provider;
+%>
+<div class="ops-model-picker" data-picker="<%= _pickerId %>">
+  <label class="block text-xs text-gray-400 mb-1" for="<%= _pickerId %>-provider">Provider</label>
+  <select id="<%= _pickerId %>-provider" class="ops-select w-full mb-2" autocomplete="off">
+    <% _providerNames.forEach(function (providerName) { %>
+      <option value="<%= providerName %>" <%= providerName === _defaultProvider ? 'selected' : '' %>><%= providerName %> (<%= _byProvider[providerName].length %>)</option>
+    <% }) %>
+  </select>
+  <label class="block text-xs text-gray-400 mb-1" for="<%= _pickerId %>">Model</label>
+  <select name="modelId" id="<%= _pickerId %>" class="ops-select ops-model-list w-full" size="8" required>
+    <% if (_providerNames.length === 0) { %>
+      <option value="">No models in catalog</option>
+    <% } %>
+    <% _providerNames.forEach(function (providerName) { %>
+      <% _byProvider[providerName].forEach(function (m) {
+        const isSelected = _selectedModelId
+          ? _selectedModelId === m.id
+          : (_selectedProvider && _selectedModelName
+            ? _selectedProvider === m.provider && _selectedModelName === m.model
+            : m.isDefault);
+      %>
+        <option value="<%= m.id %>" data-provider="<%= m.provider %>" data-model="<%= m.model %>"
+          <%= isSelected ? 'selected' : '' %>>
+          <%= m.provider %> / <%= m.model %><%= m.isDefault ? ' (default)' : '' %>
+        </option>
+      <% }) %>
+    <% }) %>
+  </select>
+  <p class="text-[11px] text-gray-500 mt-1"><%= models.length %> models across <%= _providerNames.length %> providers. Pick a provider, then a model.</p>
+</div>
+<script>
+(function () {
+  var root = document.querySelector('[data-picker="<%= _pickerId %>"]');
+  if (!root) return;
+  var providerEl = root.querySelector('#<%= _pickerId %>-provider');
+  var modelEl = root.querySelector('#<%= _pickerId %>');
+  if (!providerEl || !modelEl) return;
+  function applyFilter() {
+    var provider = providerEl.value;
+    var options = Array.prototype.slice.call(modelEl.options);
+    var firstVisible = null;
+    var selectedStillVisible = false;
+    options.forEach(function (opt) {
+      if (!opt.value) return;
+      var match = opt.getAttribute('data-provider') === provider;
+      opt.hidden = !match;
+      opt.disabled = !match;
+      if (match && !firstVisible) firstVisible = opt;
+      if (match && opt.selected) selectedStillVisible = true;
+    });
+    if (!selectedStillVisible && firstVisible) {
+      modelEl.value = firstVisible.value;
+    }
+  }
+  providerEl.addEventListener('change', applyFilter);
+  applyFilter();
+})();
+</script>

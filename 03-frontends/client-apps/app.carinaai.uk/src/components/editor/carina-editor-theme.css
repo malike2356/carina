@@ -1,0 +1,377 @@
+.carina-editor-root {
+  --carina-editor-min-height: 50vh;
+}
+
+.carina-editor-root .mdxeditor {
+  --basePageBg: transparent;
+  --baseBg: var(--color-surface, #1a1d27);
+  --baseBgActive: var(--color-elevated, #222633);
+  --baseBorder: var(--color-border, #2a2d3a);
+  --baseText: var(--color-text-primary, #e4e6f0);
+  --baseTextContrast: var(--color-text-primary, #e4e6f0);
+  --accentSolid: var(--color-accent, #6c8cff);
+  --accentTextContrast: #ffffff;
+  background: transparent;
+  border: 1px solid var(--color-border, #2a2d3a);
+  border-radius: 0.5rem;
+  color: var(--color-text-primary, #e4e6f0);
+}
+
+.carina-editor-root .mdxeditor-toolbar {
+  background: var(--color-elevated, #222633);
+  border-bottom: 1px solid var(--color-border, #2a2d3a);
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.carina-editor-root .mdxeditor-root-contenteditable {
+  min-height: var(--carina-editor-min-height);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+.carina-editor-root .tiptap-carina-editor {
+  min-height: var(--carina-editor-min-height);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: var(--color-text-primary, #e4e6f0);
+  outline: none;
+}
+
+.carina-editor-root .tiptap-carina-editor p {
+  margin: 0.5rem 0;
+}
+
+.carina-editor-root .tiptap-carina-editor h1,
+.carina-editor-root .tiptap-carina-editor h2,
+.carina-editor-root .tiptap-carina-editor h3,
+.carina-editor-root .tiptap-carina-editor h4 {
+  margin: 1rem 0 0.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.carina-editor-root .tiptap-carina-editor h1 { font-size: 1.75rem; }
+.carina-editor-root .tiptap-carina-editor h2 { font-size: 1.375rem; }
+.carina-editor-root .tiptap-carina-editor h3 { font-size: 1.125rem; }
+
+.carina-editor-root .tiptap-carina-editor ul,
+.carina-editor-root .tiptap-carina-editor ol {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+}
+
+.carina-editor-root .tiptap-carina-editor blockquote {
+  margin: 0.75rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--color-accent, #6c8cff);
+  color: var(--color-text-secondary, #a8afc2);
+}
+
+.carina-editor-root .tiptap-carina-editor code {
+  border-radius: 0.25rem;
+  background: var(--color-elevated, #222633);
+  padding: 0.1rem 0.3rem;
+  font-size: 0.8125rem;
+}
+
+.carina-editor-root .tiptap-carina-editor pre {
+  margin: 0.75rem 0;
+  border-radius: 0.5rem;
+  background: var(--color-elevated, #222633);
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.carina-editor-root .tiptap-carina-editor a.carina-editor-link,
+.carina-editor-root .tiptap-carina-editor a {
+  color: var(--color-accent, #6c8cff);
+  text-decoration: underline;
+}
+
+.carina-editor-root .tiptap-carina-editor img.carina-editor-image,
+.carina-editor-root .tiptap-carina-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.25rem;
+  margin: 0.75rem 0;
+}
+
+.carina-editor-root .tiptap-carina-editor table.carina-editor-table,
+.carina-editor-root .tiptap-carina-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  table-layout: fixed;
+  overflow: hidden;
+}
+
+.carina-editor-root .tiptap-carina-editor th,
+.carina-editor-root .tiptap-carina-editor td {
+  border: 1px solid var(--color-border, #2a2d3a);
+  padding: 0.4rem 0.55rem;
+  vertical-align: top;
+  min-width: 2.5rem;
+}
+
+.carina-editor-root .tiptap-carina-editor th {
+  background: color-mix(in srgb, var(--color-elevated, #222633) 80%, transparent);
+  font-weight: 600;
+}
+
+.carina-editor-root .tiptap-carina-editor .selectedCell::after {
+  background: color-mix(in srgb, var(--color-accent, #6c8cff) 18%, transparent);
+  content: '';
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.carina-editor-root .tiptap-carina-editor .column-resize-handle {
+  background-color: var(--color-accent, #6c8cff);
+  bottom: -2px;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: 0;
+  width: 4px;
+}
+
+.carina-editor-root .tiptap-carina-editor p.is-editor-empty:first-child::before,
+.carina-editor-root .tiptap-carina-editor .is-empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted, #8890a8);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.carina-editor-root .tiptap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border, #2a2d3a);
+  border-bottom: 0;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: var(--color-elevated, #222633);
+  padding: 0.35rem 0.5rem;
+}
+
+.carina-editor-root .tiptap-toolbar-full {
+  gap: 0.3rem;
+  padding: 0.45rem 0.6rem;
+}
+
+.carina-editor-root .tiptap-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 0.25rem;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--color-text-secondary, #a8afc2);
+}
+
+.carina-editor-root .tiptap-toolbar button:hover {
+  background: var(--color-surface, #1a1d27);
+  color: var(--color-text-primary, #e4e6f0);
+}
+
+.carina-editor-root .tiptap-toolbar button.is-active {
+  background: color-mix(in srgb, var(--color-accent, #6c8cff) 20%, transparent);
+  color: var(--color-text-primary, #e4e6f0);
+}
+
+.carina-editor-root .tiptap-toolbar button:disabled {
+  opacity: 0.4;
+}
+
+.carina-editor-root .tiptap-toolbar-divider {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.15rem;
+  background: var(--color-border, #2a2d3a);
+}
+
+.carina-editor-root .tiptap-toolbar-select {
+  max-width: 9rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border, #2a2d3a);
+  background: var(--color-surface, #1a1d27);
+  color: var(--color-text-primary, #e4e6f0);
+  font-size: 0.7rem;
+  padding: 0.2rem 0.35rem;
+}
+
+.carina-editor-root .tiptap-toolbar-color {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  overflow: hidden;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border, #2a2d3a);
+}
+
+.carina-editor-root .tiptap-toolbar-color input {
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Word-like Documents canvas */
+.carina-editor-page {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.carina-editor-page .tiptap-page-shell {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.carina-editor-page .tiptap-page-toolbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  border-bottom: 1px solid var(--color-border, #2a2d3a);
+  background: var(--color-elevated, #222633);
+}
+
+.carina-editor-page .tiptap-page-toolbar-sticky .tiptap-toolbar {
+  border: 0;
+  border-radius: 0;
+}
+
+.carina-editor-page .tiptap-page-canvas {
+  flex: 1;
+  overflow: auto;
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--color-accent, #6c8cff) 8%, transparent), transparent 42%),
+    var(--color-bg, #0f1117);
+  padding: 1.25rem 1rem 2.5rem;
+}
+
+.carina-editor-page .tiptap-page-sheet {
+  width: min(816px, 100%);
+  min-height: max(var(--carina-editor-min-height), 1056px);
+  margin: 0 auto;
+  border: 1px solid color-mix(in srgb, var(--color-border, #2a2d3a) 80%, transparent);
+  border-radius: 2px;
+  background: #f8f7f4;
+  color: #1f2430;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.carina-editor-page .tiptap-page-body,
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor,
+.carina-editor-page .tiptap-page-sheet .ProseMirror {
+  min-height: max(var(--carina-editor-min-height), 980px);
+  padding: 72px 64px;
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  font-size: 11pt;
+  line-height: 1.5;
+  color: #1f2430;
+  outline: none;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor h1,
+.carina-editor-page .tiptap-page-sheet .ProseMirror h1,
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor h2,
+.carina-editor-page .tiptap-page-sheet .ProseMirror h2,
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor h3,
+.carina-editor-page .tiptap-page-sheet .ProseMirror h3 {
+  color: #111827;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor h1,
+.carina-editor-page .tiptap-page-sheet .ProseMirror h1 {
+  margin: 0 0 1rem;
+  font-size: 1.75rem;
+  text-wrap: balance;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor h2,
+.carina-editor-page .tiptap-page-sheet .ProseMirror h2 {
+  margin: 1.6rem 0 0.65rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.3rem;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor h3,
+.carina-editor-page .tiptap-page-sheet .ProseMirror h3 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1.08rem;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor p,
+.carina-editor-page .tiptap-page-sheet .ProseMirror p {
+  margin: 0 0 0.85rem;
+  text-align: left;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor ul,
+.carina-editor-page .tiptap-page-sheet .ProseMirror ul,
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor ol,
+.carina-editor-page .tiptap-page-sheet .ProseMirror ol {
+  margin: 0 0 0.9rem;
+  padding-left: 1.35rem;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor th,
+.carina-editor-page .tiptap-page-sheet .ProseMirror th,
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor td,
+.carina-editor-page .tiptap-page-sheet .ProseMirror td {
+  border-color: #d1d5db;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor th,
+.carina-editor-page .tiptap-page-sheet .ProseMirror th {
+  background: #eef2f7;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor blockquote,
+.carina-editor-page .tiptap-page-sheet .ProseMirror blockquote {
+  color: #4b5563;
+}
+
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor code,
+.carina-editor-page .tiptap-page-sheet .ProseMirror code,
+.carina-editor-page .tiptap-page-sheet .tiptap-carina-editor pre,
+.carina-editor-page .tiptap-page-sheet .ProseMirror pre {
+  background: #eef2f7;
+  color: #111827;
+}
+
+@media (max-width: 640px) {
+  .carina-editor-page .tiptap-page-canvas {
+    padding: 0.75rem 0.5rem 1.5rem;
+  }
+
+  .carina-editor-page .tiptap-page-body,
+  .carina-editor-page .tiptap-page-sheet .tiptap-carina-editor,
+  .carina-editor-page .tiptap-page-sheet .ProseMirror {
+    padding: 1.5rem 1.1rem;
+    min-height: 70vh;
+  }
+}

@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+body {
+  margin: 0;
+  font-family: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.terminal-surface .xterm,
+.terminal-surface .xterm-viewport,
+.terminal-surface .xterm-screen {
+  height: 100%;
+}
+
+.terminal-surface .xterm {
+  padding: 12px;
+  box-sizing: border-box;
+}

@@ -1,0 +1,95 @@
+<% title = 'Credential Vaults' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Credential Vaults</h1>
+    <p>Secrets are AES-256 encrypted at rest. Values are never shown after save.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/vaults" class="apu-panel apu-fields">
+    <h2>Add credential</h2>
+    <p class="sub">Store a provider key for an environment or globally.</p>
+    <div>
+      <label class="field" for="v-name">Label</label>
+      <input id="v-name" name="name" required placeholder="OpenAI prod">
+    </div>
+    <div>
+      <label class="field" for="v-provider">Provider</label>
+      <select id="v-provider" name="provider">
+        <option value="gemini">gemini</option>
+        <option value="anthropic">anthropic</option>
+        <option value="openai">openai</option>
+        <option value="google">google</option>
+        <option value="custom">custom</option>
+      </select>
+    </div>
+    <div>
+      <label class="field" for="v-env">Environment</label>
+      <select id="v-env" name="environmentId">
+        <option value="">Global</option>
+        <% for (const e of environments) { %>
+          <option value="<%= e.id %>"><%= e.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <div>
+      <label class="field" for="v-secret">API key or secret</label>
+      <input id="v-secret" name="secret" type="password" required placeholder="••••••••">
+    </div>
+    <button type="submit" class="apu-btn">Store</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Stored credentials</h2>
+    <p class="sub"><%= items.length %> item<%= items.length === 1 ? '' : 's' %>. Secrets stay hidden.</p>
+    <% if (!items.length) { %>
+      <div class="apu-empty">No credentials stored yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Provider</th>
+              <th>Environment</th>
+              <th>Active</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const item of items) { %>
+              <% const env = environments.find(e => e.id === item.environmentId); %>
+              <tr>
+                <td><%= item.name %></td>
+                <td><%= item.provider %></td>
+                <td class="muted"><%= env ? env.name : 'Global' %></td>
+                <td><span class="apu-chip <%= item.isActive ? 'ok' : '' %>"><%= item.isActive ? 'Yes' : 'No' %></span></td>
+                <td class="muted"><%= new Date(item.updatedAt).toLocaleDateString() %></td>
+                <td>
+                  <div class="apu-actions">
+                    <form method="post" action="/ai-platform/vaults/<%= item.id %>/toggle">
+                      <input type="hidden" name="active" value="<%= item.isActive ? '0' : '1' %>">
+                      <button type="submit" class="apu-btn tiny ghost"><%= item.isActive ? 'Disable' : 'Enable' %></button>
+                    </form>
+                    <form method="post" action="/ai-platform/vaults/<%= item.id %>/delete" onsubmit="return confirm('Delete credential?')">
+                      <button type="submit" class="apu-btn danger">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

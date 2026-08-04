@@ -1,0 +1,34 @@
+<%
+  const _selectedModelId = typeof selectedModelId !== 'undefined' ? selectedModelId : '';
+  const _selectedProvider = typeof selectedProvider !== 'undefined' ? selectedProvider : '';
+  const _selectedModelName = typeof selectedModelName !== 'undefined' ? selectedModelName : '';
+  const _byProvider = {};
+  for (const m of models) {
+    if (!_byProvider[m.provider]) _byProvider[m.provider] = [];
+    _byProvider[m.provider].push(m);
+  }
+  const _providerNames = Object.keys(_byProvider).sort(function (a, b) {
+    if (a === 'deepseek') return -1;
+    if (b === 'deepseek') return 1;
+    return a.localeCompare(b);
+  });
+%>
+<% if (_providerNames.length === 0) { %>
+  <option value="">No models in catalog</option>
+<% } %>
+<% _providerNames.forEach(function (providerName) { %>
+  <optgroup label="<%= providerName %>">
+    <% _byProvider[providerName].forEach(function (m) {
+      const isSelected = _selectedModelId
+        ? _selectedModelId === m.id
+        : (_selectedProvider && _selectedModelName
+          ? _selectedProvider === m.provider && _selectedModelName === m.model
+          : m.isDefault);
+    %>
+      <option value="<%= m.id %>" data-provider="<%= m.provider %>" data-model="<%= m.model %>"
+        <%= isSelected ? 'selected' : '' %>>
+        <%= m.provider %> / <%= m.model %><%= m.isDefault ? ' (default)' : '' %>
+      </option>
+    <% }) %>
+  </optgroup>
+<% }) %>

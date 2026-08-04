@@ -1,0 +1,2 @@
+/* Re-export latin weight axis for bundler resolution. */
+@import '@fontsource-variable/google-sans-flex/wght.css';

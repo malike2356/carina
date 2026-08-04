@@ -1,0 +1,50 @@
+name: Skill pack proposal
+description: Propose a new domain pack for the community catalog
+title: "[pack]: "
+labels: ["skill-pack", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Skill packs are the easiest way to contribute. See [Creating packs](https://carinaai.uk/docs/user/skill-packs/creating-packs) and [CONTRIBUTING.md](https://github.com/malike2356/carina-agent/blob/main/CONTRIBUTING.md).
+  - type: input
+    id: pack-name
+    attributes:
+      label: Pack name (kebab-case)
+      placeholder: "finance-uk"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What domain does this pack cover?
+    validations:
+      required: true
+  - type: textarea
+    id: audience
+    attributes:
+      label: Who is it for?
+      placeholder: "UK accountants, indie game devs, etc."
+    validations:
+      required: true
+  - type: textarea
+    id: skills
+    attributes:
+      label: Planned skills (bullet list)
+      description: Name each skill and one-line trigger intent.
+    validations:
+      required: true
+  - type: textarea
+    id: knowledge
+    attributes:
+      label: Knowledge sources
+      description: Will you author original markdown, or adapt licensed/open content? No scraped paywalled data.
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Contributor checklist
+      options:
+        - label: I will not include API keys, credentials, or customer data in the pack
+          required: true
+        - label: I agree to MIT license for pack content contributed to the official catalog
+          required: true

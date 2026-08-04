@@ -1,9 +1,0 @@
-<% const path = typeof activePath !== 'undefined' ? activePath : ''; %>
-<nav class="ops-tabs" aria-label="AI Platform sections" style="margin-bottom:20px;">
-  <% for (const item of platformNav) { %>
-    <% const active = item.exact ? path === item.href : path.startsWith(item.href) && (item.href !== '/ai-platform' || path === '/ai-platform'); %>
-    <a href="<%= item.href %>" class="ops-tab<%= active ? ' active' : '' %>" style="text-decoration:none;display:inline-block;">
-      <%= item.label %>
-    </a>
-  <% } %>
-</nav>

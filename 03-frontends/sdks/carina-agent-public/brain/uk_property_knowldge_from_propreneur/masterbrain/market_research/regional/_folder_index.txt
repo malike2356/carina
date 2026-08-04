@@ -1,0 +1,13 @@
+# Folder Index: market_research/regional
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 57-65)
+
+57-portsmouth-investment-guide.md | Portsmouth Property Investment Guide 2026: Market Analysis and Opportunities
+58-southampton-investment-guide.md | Southampton Property Investment Guide 2026: Market Analysis and Opportunities
+59-isle-of-wight-property.md | Isle of Wight Property Investment Guide 2026: Market Analysis and Opportunities
+60-bournemouth-market.md | Bournemouth Property Investment Guide 2026: Market Analysis and Opportunities
+61-hampshire-property-overview.md | Hampshire Property Investment Overview: Markets, Yields and Opportunities in 2026
+62-waterlooville-market.md | Why Waterlooville is a Growing Property Investment Hotspot
+63-fareham-gosport-property.md | Fareham and Gosport: A Tale of Two Property Markets on the Solent
+64-chichester-property.md | Chichester Property Investment: Premium Market, Premium Returns
+65-southampton-waterside.md | Southampton and the Waterside: A Major City Investment Guide

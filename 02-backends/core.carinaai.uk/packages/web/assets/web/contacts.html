@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>Contacts; Carina</title>
+<style>
+  .layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    min-height: 0;
+  }
+  .sidebar, .detail {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar {
+    border-right: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .toolbar input,
+  .toolbar select,
+  .toolbar button,
+  .field-row input,
+  .field-row select,
+  .field-row textarea {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.65rem;
+    font-size: 0.82rem;
+  }
+  .toolbar button,
+  .actions button {
+    cursor: pointer;
+  }
+  .toolbar .secondary,
+  .actions .secondary {
+    background: var(--surface-3, #20202a);
+  }
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .filters button {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.72rem;
+  }
+  .filters button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .summary {
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.76rem;
+    line-height: 1.5;
+  }
+  .list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+  }
+  .item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0.7rem 0.75rem;
+    margin-bottom: 0.35rem;
+    cursor: pointer;
+  }
+  .item:hover {
+    background: var(--surface);
+  }
+  .item.active {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .item-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .item-name {
+    font-weight: 600;
+    font-size: 0.86rem;
+  }
+  .item-meta {
+    margin-top: 0.2rem;
+    color: var(--muted);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.12rem 0.45rem;
+    font-size: 0.68rem;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .chip.google {
+    color: var(--accent);
+    border-color: rgba(25, 196, 154, 0.3);
+    background: rgba(25, 196, 154, 0.1);
+  }
+  .chip.manual {
+    color: #8fb7ff;
+    border-color: rgba(143, 183, 255, 0.25);
+    background: rgba(143, 183, 255, 0.1);
+  }
+  .detail {
+    background: var(--bg);
+  }
+  .detail-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    padding: 2rem;
+    text-align: center;
+  }
+  .detail-panel {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 1rem;
+    gap: 0.9rem;
+  }
+  .detail-panel.open {
+    display: flex;
+  }
+  .detail-head h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1rem;
+  }
+  .detail-head .meta {
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .field-row.full {
+    grid-column: 1 / -1;
+  }
+  .field-row label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .field-row textarea {
+    min-height: 112px;
+    resize: vertical;
+  }
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+  .actions button.primary {
+    background: var(--accent);
+    color: #0d0d0f;
+    border: none;
+  }
+  .status-line {
+    color: var(--muted);
+    font-size: 0.76rem;
+  }
+  .source-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+  }
+  .source-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .source-card strong {
+    color: var(--text);
+    display: block;
+    font-size: 0.76rem;
+    margin-bottom: 0.15rem;
+  }
+  @media (max-width: 980px) {
+    .layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 280px 1fr;
+    }
+    .sidebar {
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+    }
+  }
+</style>
+</head>
+<body>
+<!--CARINA_WORKSPACE_BEGIN-->
+<header class="ws-page-header">
+  <h1>Contacts</h1>
+  <span class="status" id="status"></span>
+</header>
+<div class="layout">
+  <section class="sidebar">
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search name, email, phone" style="width:100%">
+      <button type="button" id="refresh-btn" class="secondary">Refresh</button>
+      <div class="filters" id="filters">
+        <button type="button" data-filter="all" class="active">All</button>
+        <button type="button" data-filter="google">Google</button>
+        <button type="button" data-filter="manual">Manual</button>
+        <button type="button" data-filter="imported">Imported</button>
+      </div>
+      <button type="button" id="new-btn" class="primary">New contact</button>
+      <button type="button" id="sync-btn" class="secondary">Sync Google</button>
+    </div>
+    <div class="summary" id="summary">Loading contacts...</div>
+    <div class="list" id="list"></div>
+  </section>
+  <section class="detail">
+    <div class="detail-empty" id="empty-state">Select a contact or create a new one.</div>
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-head">
+        <h2 id="detail-name"></h2>
+        <div class="meta" id="detail-meta"></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="primary" id="save-btn">Save</button>
+        <button type="button" class="secondary" id="copy-google-btn">Copy to Google</button>
+        <button type="button" class="secondary" id="delete-btn">Delete</button>
+      </div>
+      <div class="field-grid">
+        <div class="field-row full">
+          <label for="field-name">Name</label>
+          <input id="field-name" type="text" placeholder="Name">
+        </div>
+        <div class="field-row">
+          <label for="field-role">Role</label>
+          <input id="field-role" type="text" placeholder="Role">
+        </div>
+        <div class="field-row">
+          <label for="field-source">Store</label>
+          <select id="field-source">
+            <option value="manual">Manual</option>
+            <option value="google">Google</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label for="field-email">Email</label>
+          <input id="field-email" type="email" placeholder="Email">
+        </div>
+        <div class="field-row">
+          <label for="field-phone">Phone</label>
+          <input id="field-phone" type="text" placeholder="Phone">
+        </div>
+        <div class="field-row">
+          <label for="field-whatsapp">WhatsApp</label>
+          <input id="field-whatsapp" type="text" placeholder="WhatsApp">
+        </div>
+        <div class="field-row">
+          <label for="field-telegram">Telegram</label>
+          <input id="field-telegram" type="text" placeholder="Telegram">
+        </div>
+        <div class="field-row full">
+          <label for="field-tags">Tags</label>
+          <input id="field-tags" type="text" placeholder="buyer, landlord, supplier">
+        </div>
+        <div class="field-row full">
+          <label for="field-notes">Notes</label>
+          <textarea id="field-notes" placeholder="Notes"></textarea>
+        </div>
+      </div>
+      <div class="status-line" id="field-status"></div>
+      <div class="source-list" id="source-list"></div>
+    </div>
+  </section>
+</div>
+<!--CARINA_WORKSPACE_END-->
+<script src="/contacts.js"></script>
+</body>
+</html>

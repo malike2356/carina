@@ -15,21 +15,61 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-CORE_LOCAL="${REPO_ROOT}/02-backends/core.carinaai.uk"
-OPS_LOCAL="${REPO_ROOT}/02-backends/admin/ops.carinaai.uk"
-CLOUD_LOCAL="${REPO_ROOT}/03-frontends/client-apps/app.carinaai.uk"
-ADMIN_LOCAL="${REPO_ROOT}/03-frontends/client-apps/admin.carinaai.uk"
-SCOUT_CONSOLE_LOCAL="${REPO_ROOT}/02-backends/console.labyrinthscout.com"
-SCOUT_ENGINE_LOCAL="${REPO_ROOT}/02-backends/scout-engine"
-CARINA_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/carinaai.uk"
-DOCS_SUBDOMAIN_LOCAL="${REPO_ROOT}/03-frontends/marketing/docs.carinaai.uk"
-SCOUT_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/labyrinthscout.com"
-HIREAIVA_MARKETING_LOCAL="${REPO_ROOT}/03-frontends/marketing/hireaiva"
+WORKSPACE_ROOT="$(dirname "$REPO_ROOT")"
+# Single platform tree at the carina repo root (merged from former verlox/carina/).
+PLATFORM_ROOT="${REPO_ROOT}"
+CORE_LOCAL="${PLATFORM_ROOT}/02-backends/core.carinaai.uk"
+OPS_LOCAL="${PLATFORM_ROOT}/02-backends/admin/ops.carinaai.uk"
+CLOUD_LOCAL="${PLATFORM_ROOT}/03-frontends/client-apps/app.carinaai.uk"
+ADMIN_LOCAL="${PLATFORM_ROOT}/03-frontends/client-apps/admin.carinaai.uk"
+SCOUT_CONSOLE_LOCAL="${PLATFORM_ROOT}/02-backends/console.labyrinthscout.com"
+SCOUT_ENGINE_LOCAL="${PLATFORM_ROOT}/02-backends/scout-engine"
+MARKETING_ROOT="${WORKSPACE_ROOT}/shared/marketing-sites"
+CARINA_MARKETING_LOCAL="${MARKETING_ROOT}/carinaai.uk"
+DOCS_SUBDOMAIN_LOCAL="${PLATFORM_ROOT}/03-frontends/marketing/docs.carinaai.uk"
+SCOUT_MARKETING_LOCAL="${MARKETING_ROOT}/labyrinthscout.com"
+HIREAIVA_MARKETING_LOCAL="${PLATFORM_ROOT}/03-frontends/marketing/hireaiva"
 VPS_HOST="${VPS_HOST:-80.190.81.208}"
 VPS_USER="${VPS_USER:-malike}"
 APPS_ROOT="${APPS_ROOT:-/home/malike/apps}"
 
 log() { echo "[$(date +%H:%M:%S)] $*"; }
+
+# Hard stop if someone recreated carina/verlox or pointed PLATFORM_ROOT at it.
+export PLATFORM_ROOT
+bash "${WORKSPACE_ROOT}/scripts/guard-forbidden-carina-nests.sh"
+
+assert_tracked_source() {
+  local source_dir="$1"
+  local label="$2"
+  local git_root relative tracked_count
+  [[ -d "${source_dir}" ]] || {
+    echo "ERROR: Missing ${label} source: ${source_dir}" >&2
+    exit 1
+  }
+  git_root="$(git -C "${source_dir}" rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -n "${git_root}" ]] || {
+    echo "ERROR: ${label} source is not inside a Git worktree: ${source_dir}" >&2
+    exit 1
+  }
+  relative="$(realpath --relative-to="${git_root}" "${source_dir}")"
+  tracked_count="$(git -C "${git_root}" ls-files -- "${relative}" | wc -l)"
+  [[ "${tracked_count}" -gt 0 ]] || {
+    echo "ERROR: ${label} source has no tracked files: ${source_dir}" >&2
+    exit 1
+  }
+}
+
+assert_tracked_source "${CORE_LOCAL}" "Carina core"
+assert_tracked_source "${OPS_LOCAL}" "Carina ops"
+assert_tracked_source "${CLOUD_LOCAL}" "Carina cloud"
+assert_tracked_source "${ADMIN_LOCAL}" "Carina admin"
+assert_tracked_source "${SCOUT_CONSOLE_LOCAL}" "Scout console"
+assert_tracked_source "${SCOUT_ENGINE_LOCAL}" "Scout engine"
+assert_tracked_source "${CARINA_MARKETING_LOCAL}" "Carina marketing"
+assert_tracked_source "${DOCS_SUBDOMAIN_LOCAL}" "Carina documentation"
+assert_tracked_source "${SCOUT_MARKETING_LOCAL}" "Scout marketing"
+assert_tracked_source "${HIREAIVA_MARKETING_LOCAL}" "Aiva marketing"
 
 ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev/null || {
   echo "ERROR: Cannot SSH to ${VPS_USER}@${VPS_HOST}" >&2
@@ -39,9 +79,11 @@ ssh -o ConnectTimeout=8 -o BatchMode=yes "${VPS_USER}@${VPS_HOST}" echo ok >/dev
 log "Syncing core.carinaai.uk..."
 rsync -az --delete \
   --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
+  --exclude='.deploy/' \
   --exclude='docker/pgbouncer/pgbouncer.ini' \
   --exclude='docker/pgbouncer/userlist.txt' \
   --exclude='docs/.vitepress/dist/' \
+  --exclude='widget/dist/' \
   "${CORE_LOCAL}/" "${VPS_USER}@${VPS_HOST}:${APPS_ROOT}/core.carinaai.uk/"
 
 log "Building ops.carinaai.uk..."

@@ -1,0 +1,70 @@
+<% title = 'Sessions' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Sessions</h1>
+    <p>Log and review platform agent sessions with optional agent attribution.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/sessions" class="apu-panel apu-fields">
+    <h2>Log session</h2>
+    <p class="sub">Create a session record for ops tracking.</p>
+    <div>
+      <label class="field" for="s-title">Session title</label>
+      <input id="s-title" name="title" required placeholder="Customer onboarding">
+    </div>
+    <div>
+      <label class="field" for="s-agent">Agent</label>
+      <select id="s-agent" name="agentId">
+        <option value="">No agent</option>
+        <% for (const a of agents) { %>
+          <option value="<%= a.id %>"><%= a.name %></option>
+        <% } %>
+      </select>
+    </div>
+    <div>
+      <label class="field" for="s-summary">Summary</label>
+      <textarea id="s-summary" name="summary" rows="3" placeholder="What happened"></textarea>
+    </div>
+    <button type="submit" class="apu-btn">Create</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Sessions</h2>
+    <p class="sub"><%= sessions.length %> recorded.</p>
+    <% if (!sessions.length) { %>
+      <div class="apu-empty">No sessions recorded yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Status</th>
+              <th>Started</th>
+              <th>Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const s of sessions) { %>
+              <tr>
+                <td><%= s.title %></td>
+                <td><span class="apu-chip"><%= s.status %></span></td>
+                <td class="muted"><%= new Date(s.startedAt).toLocaleString() %></td>
+                <td class="muted"><%= s.summary || ';' %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

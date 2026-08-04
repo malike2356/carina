@@ -1,0 +1,81 @@
+<% title = 'Files' %>
+<%- include('../partials/ai-platform-ui') %>
+<div class="ops-page apu">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="apu-head">
+  <div>
+    <h1>Files</h1>
+    <p>Metadata registry for platform assets. Binary upload still goes through Carina tools when paired.</p>
+  </div>
+</div>
+
+<% if (saved) { %><div class="apu-flash ok">Saved.</div><% } %>
+
+<div class="apu-split">
+  <form method="post" action="/ai-platform/files" class="apu-panel apu-fields">
+    <h2>Add file record</h2>
+    <p class="sub">Create a tracked entry; content is attached separately.</p>
+    <div>
+      <label class="field" for="f-name">File name</label>
+      <input id="f-name" name="name" required placeholder="report.pdf">
+    </div>
+    <div>
+      <label class="field" for="f-mime">MIME type</label>
+      <input id="f-mime" name="mimeType" placeholder="application/pdf">
+    </div>
+    <div>
+      <label class="field" for="f-tags">Tags</label>
+      <input id="f-tags" name="tags" placeholder="Comma separated">
+    </div>
+    <button type="submit" class="apu-btn">Create</button>
+  </form>
+
+  <section class="apu-panel">
+    <h2>Registered files</h2>
+    <p class="sub"><%= files.length %> record<%= files.length === 1 ? '' : 's' %>.</p>
+    <% if (!files.length) { %>
+      <div class="apu-empty">No files registered yet.</div>
+    <% } else { %>
+      <div class="apu-table-wrap">
+        <table class="apu-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Tags</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const f of files) { %>
+              <tr>
+                <td><%= f.name %></td>
+                <td><span class="apu-chip <%= f.status === 'active' ? 'ok' : '' %>"><%= f.status %></span></td>
+                <td class="muted"><%= (f.metadataJson.tags || []).join(', ') || ';' %></td>
+                <td class="muted"><%= new Date(f.createdAt).toLocaleDateString() %></td>
+                <td>
+                  <div class="apu-actions">
+                    <form method="post" action="/ai-platform/files/<%= f.id %>" class="apu-inline-form">
+                      <input type="hidden" name="name" value="<%= f.name %>">
+                      <select name="status">
+                        <option value="active" <%= f.status === 'active' ? 'selected' : '' %>>active</option>
+                        <option value="archived" <%= f.status === 'archived' ? 'selected' : '' %>>archived</option>
+                      </select>
+                      <button type="submit" class="apu-btn tiny ghost">Update</button>
+                    </form>
+                    <form method="post" action="/ai-platform/files/<%= f.id %>/delete" onsubmit="return confirm('Delete this file record?')">
+                      <button type="submit" class="apu-btn danger">Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>

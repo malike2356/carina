@@ -1,0 +1,455 @@
+<% title = 'AI Platform' %>
+<%
+  const monthSpendMajor = Number(ledger.month.providerCostMinor || 0) / 100;
+  const budgetLimit = Number(org.monthlyLimit || 0);
+  const budgetUsedPct = budgetLimit > 0
+    ? Math.min(100, Math.round((monthSpendMajor / budgetLimit) * 1000) / 10)
+    : 0;
+  const budgetTone = remainingBudget <= 0 ? 'danger' : budgetUsedPct >= 80 ? 'warn' : 'ok';
+  const tSessions = coreTelemetry && coreTelemetry.sessions && coreTelemetry.sessions.summary
+    ? coreTelemetry.sessions.summary
+    : (coreTelemetry && coreTelemetry.health && coreTelemetry.health.sessions ? coreTelemetry.health.sessions : null);
+  const tChannels = coreTelemetry
+    ? (coreTelemetry.channels && coreTelemetry.channels.summary
+      ? coreTelemetry.channels.summary
+      : (coreTelemetry.health ? coreTelemetry.health.channels : { connected: 0, degraded: 0 }))
+    : { connected: 0, degraded: 0 };
+  const providerEntries = coreTelemetry && tSessions && tSessions.byProvider
+    ? Object.entries(tSessions.byProvider)
+    : [];
+  const modelSpend = (ledger.byProviderMonth || []).slice(0, 8);
+  const maxModelCost = modelSpend.reduce(function (m, row) {
+    return Math.max(m, Number(row.providerCostMinor || 0));
+  }, 0) || 1;
+  const healthChecks = (coreTelemetry && coreTelemetry.health && coreTelemetry.health.checks)
+    ? coreTelemetry.health.checks
+    : [];
+  const healthy = coreTelemetry && coreTelemetry.health ? Boolean(coreTelemetry.health.healthy) : null;
+%>
+<style>
+  .ap-ov { width:100%; max-width:none; }
+  .ap-hero {
+    display:grid; grid-template-columns:1.4fr 1fr; gap:14px; margin-bottom:16px;
+  }
+  .ap-panel {
+    position:relative; overflow:hidden;
+    padding:18px 18px 16px; border-radius:14px;
+    background:
+      radial-gradient(1200px 200px at 0% 0%, rgba(34,197,94,0.08), transparent 55%),
+      rgba(255,255,255,0.025);
+    border:1px solid rgba(255,255,255,0.08);
+  }
+  .ap-panel.muted {
+    background: rgba(255,255,255,0.02);
+  }
+  .ap-panel h2 {
+    margin:0 0 4px; font-size:0.92rem; font-weight:650; color:#f1f5f9;
+  }
+  .ap-panel .sub {
+    margin:0 0 14px; font-size:0.75rem; color:#64748b; line-height:1.4;
+  }
+  .ap-kpis {
+    display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px;
+  }
+  .ap-kpi {
+    padding:16px; border-radius:12px;
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .ap-kpi .label {
+    font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8;
+  }
+  .ap-kpi .value {
+    margin-top:8px; font-size:1.35rem; font-weight:700; color:#f8fafc;
+    font-variant-numeric: tabular-nums;
+  }
+  .ap-kpi .meta { margin-top:6px; font-size:0.72rem; color:#64748b; }
+  .ap-kpi.accent { border-color: rgba(34,197,94,0.28); background: linear-gradient(160deg, rgba(34,197,94,0.1), rgba(255,255,255,0.02)); }
+  .ap-health {
+    display:flex; align-items:center; gap:12px; margin-bottom:14px;
+  }
+  .ap-health-dot {
+    width:12px; height:12px; border-radius:50%;
+    box-shadow: 0 0 0 4px rgba(34,197,94,0.15);
+    background:#22c55e;
+  }
+  .ap-health-dot.bad { background:#f87171; box-shadow:0 0 0 4px rgba(248,113,113,0.15); }
+  .ap-health-dot.warn { background:#fbbf24; box-shadow:0 0 0 4px rgba(251,191,36,0.15); }
+  .ap-health-title { font-size:1.1rem; font-weight:700; color:#f8fafc; }
+  .ap-health-meta { font-size:0.75rem; color:#64748b; }
+  .ap-bar-track {
+    height:10px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden;
+  }
+  .ap-bar-fill {
+    height:100%; border-radius:999px;
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+  }
+  .ap-bar-fill.warn { background: linear-gradient(90deg, #d97706, #fbbf24); }
+  .ap-bar-fill.danger { background: linear-gradient(90deg, #dc2626, #f87171); }
+  .ap-budget-row {
+    display:flex; justify-content:space-between; gap:12px; margin:10px 0 8px;
+    font-size:0.78rem; color:#94a3b8;
+  }
+  .ap-budget-row strong { color:#e2e8f0; font-variant-numeric:tabular-nums; }
+  .ap-chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .ap-chip {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:6px 10px; border-radius:999px; font-size:0.72rem;
+    border:1px solid rgba(255,255,255,0.1); color:#cbd5e1; background:rgba(0,0,0,0.25);
+  }
+  .ap-chip .dot { width:7px; height:7px; border-radius:50%; background:#64748b; }
+  .ap-chip.ok .dot { background:#22c55e; }
+  .ap-chip.warn .dot { background:#fbbf24; }
+  .ap-chip.fail .dot { background:#f87171; }
+  .ap-chip.ok { border-color: rgba(34,197,94,0.25); color:#86efac; }
+  .ap-chip.warn { border-color: rgba(251,191,36,0.3); color:#fde68a; }
+  .ap-chip.fail { border-color: rgba(248,113,113,0.3); color:#fecaca; }
+  .ap-grid-2 { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; margin-bottom:16px; }
+  .ap-grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+  .ap-links {
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:16px;
+  }
+  .ap-link {
+    display:block; padding:14px 14px 12px; border-radius:12px; text-decoration:none;
+    border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.02);
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .ap-link:hover { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.06); }
+  .ap-link .k { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; color:#64748b; }
+  .ap-link .v { margin-top:6px; font-size:1.1rem; font-weight:700; color:#f8fafc; font-variant-numeric:tabular-nums; }
+  .ap-spend-row { display:grid; grid-template-columns:110px 1fr 72px; gap:10px; align-items:center; margin-bottom:10px; }
+  .ap-spend-row .name { font-size:0.75rem; color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ap-spend-row .amt { font-size:0.75rem; color:#e2e8f0; text-align:right; font-variant-numeric:tabular-nums; }
+  .ap-spend-track { height:8px; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; }
+  .ap-spend-fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#0ea5e9,#22c55e); }
+  .ap-flash {
+    margin-bottom:14px; padding:10px 14px; border-radius:10px; font-size:0.8rem;
+    background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.25); color:#fde68a;
+  }
+  .ap-table-wrap { overflow:auto; max-height:280px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); }
+  .ap-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+  .ap-table th {
+    text-align:left; color:#64748b; font-weight:600; padding:9px 10px;
+    border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(0,0,0,0.25); position:sticky; top:0;
+  }
+  .ap-table td { padding:8px 10px; border-bottom:1px solid rgba(255,255,255,0.04); color:#cbd5e1; }
+  .ap-table td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:0.72rem; color:#94a3b8; }
+  .ap-section-head {
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px; margin-bottom:12px;
+  }
+  .ap-section-head a { font-size:0.78rem; color:#67e8f9; text-decoration:none; }
+  .ap-section-head a:hover { text-decoration:underline; }
+  .ap-dl { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .ap-dl dt { font-size:0.7rem; color:#64748b; margin-bottom:4px; }
+  .ap-dl dd { margin:0; font-size:0.9rem; color:#f1f5f9; font-weight:600; font-variant-numeric:tabular-nums; }
+  .ap-settings { display:flex; flex-direction:column; gap:10px; }
+  .ap-settings .row {
+    display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:10px;
+    background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05);
+  }
+  .ap-settings .row span { color:#94a3b8; font-size:0.78rem; }
+  .ap-settings .row strong { color:#e2e8f0; font-size:0.82rem; font-weight:600; }
+  @media (max-width: 1100px) {
+    .ap-hero, .ap-grid-2, .ap-kpis, .ap-links, .ap-grid-3 { grid-template-columns:1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .ap-hero, .ap-grid-2, .ap-kpis, .ap-links, .ap-grid-3, .ap-dl { grid-template-columns:1fr; }
+    .ap-spend-row { grid-template-columns:90px 1fr 64px; }
+  }
+</style>
+
+<div class="ops-page ap-ov">
+<%- include('../partials/ai-platform-nav') %>
+
+<div class="ops-page-head" style="margin-bottom:18px;">
+  <div>
+    <div class="ops-page-title">AI Platform</div>
+    <div class="ops-page-sub">Live org spend from the usage ledger, plus Core telemetry for sessions and health.</div>
+  </div>
+</div>
+
+<% if (!coreConnected) { %>
+  <div class="ap-flash">Core telemetry offline. Ledger spend below still reflects completed model calls in the database.</div>
+<% } %>
+<% if (!ledger.ready) { %>
+  <div class="ap-flash">Usage ledger is not ready yet. Spend cards will populate after Core records completed calls.</div>
+<% } %>
+
+<div class="ap-hero">
+  <section class="ap-panel">
+    <div class="ap-health">
+      <% if (healthy === null) { %>
+        <span class="ap-health-dot warn"></span>
+        <div>
+          <div class="ap-health-title">Telemetry unknown</div>
+          <div class="ap-health-meta">Core not connected</div>
+        </div>
+      <% } else { %>
+        <span class="ap-health-dot<%= healthy ? '' : ' bad' %>"></span>
+        <div>
+          <div class="ap-health-title"><%= healthy ? 'System healthy' : 'System degraded' %></div>
+          <div class="ap-health-meta">
+            <%= coreTelemetry.health.generatedAt ? new Date(coreTelemetry.health.generatedAt).toLocaleString() : 'No timestamp' %>
+            · <%= tChannels.connected || 0 %> channels connected
+            <% if (tChannels.degraded) { %> · <%= tChannels.degraded %> degraded<% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+    <% if (healthChecks.length) { %>
+      <div class="ap-chips">
+        <% for (const check of healthChecks) {
+             const st = String(check.status || 'unknown');
+             const cls = st === 'ok' ? 'ok' : (st === 'fail' ? 'fail' : 'warn');
+        %>
+          <span class="ap-chip <%= cls %>" title="<%= check.detail || '' %>">
+            <span class="dot"></span>
+            <%= check.id || check.name || 'check' %>
+          </span>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="ap-panel muted">
+    <h2>Monthly budget</h2>
+    <p class="sub">Provider spend against the org monthly limit.</p>
+    <div class="ap-budget-row">
+      <span>Used <strong><%= money(ledger.month.providerCostMinor) %></strong></span>
+      <span>Left <strong class="<%= remainingBudget <= 0 ? 'text-red-400' : '' %>">£<%= remainingBudget.toFixed(2) %></strong></span>
+    </div>
+    <div class="ap-bar-track" aria-label="Budget used <%= budgetUsedPct %>%">
+      <div class="ap-bar-fill <%= budgetTone %>" style="width:<%= budgetUsedPct %>%;"></div>
+    </div>
+    <div class="ap-budget-row" style="margin-top:8px;margin-bottom:0;">
+      <span><%= budgetUsedPct %>% of £<%= budgetLimit.toFixed(0) %></span>
+      <a href="/ai-platform/credits" style="color:#67e8f9;text-decoration:none;font-size:0.75rem;">Edit budget</a>
+    </div>
+  </section>
+</div>
+
+<div class="ap-kpis">
+  <div class="ap-kpi accent">
+    <div class="label">Spend this month</div>
+    <div class="value"><%= money(ledger.month.providerCostMinor) %></div>
+    <div class="meta"><%= Number(ledger.month.calls || 0).toLocaleString() %> completed calls</div>
+  </div>
+  <div class="ap-kpi">
+    <div class="label">Tokens this month</div>
+    <div class="value"><%= Number(ledger.month.tokens || 0).toLocaleString() %></div>
+    <div class="meta">Allocated <%= money(ledger.month.allocatedMinor) %></div>
+  </div>
+  <div class="ap-kpi">
+    <div class="label">Last 24h spend</div>
+    <div class="value"><%= money(ledger.last24h.providerCostMinor) %></div>
+    <div class="meta"><%= Number(ledger.last24h.tokens || 0).toLocaleString() %> tokens</div>
+  </div>
+  <div class="ap-kpi">
+    <div class="label">Turns (24h)</div>
+    <div class="value"><%= coreTelemetry ? Number(coreTelemetry.metrics.turns.total || 0).toLocaleString() : ';' %></div>
+    <div class="meta">
+      <% if (coreTelemetry) { %>
+        Avg <%= (coreTelemetry.metrics.turns.avgLatencyMs / 1000).toFixed(1) %>s · <%= tSessions ? tSessions.uniqueSessions : 0 %> sessions
+      <% } else { %>
+        Core offline
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div class="ap-links">
+  <% const countItems = [
+    ['LLM calls (month)', counts.llmCallsMonth || ledger.month.calls, '/ai-control?tab=usage'],
+    ['Tokens (month)', counts.tokensMonth || ledger.month.tokens, '/ai-platform/analytics'],
+    ['Sessions (24h)', counts.sessions, '/ai-platform/sessions'],
+    ['Models', models.length, '/ai-platform/workbench'],
+    ['Vault items', counts.vaultItems, '/ai-platform/vaults'],
+    ['Memory stores', counts.memoryStores, '/ai-platform/memory'],
+  ]; %>
+  <% for (const [label, val, href] of countItems) { %>
+    <a class="ap-link" href="<%= href %>">
+      <div class="k"><%= label %></div>
+      <div class="v"><%= typeof val === 'number' ? val.toLocaleString() : val %></div>
+    </a>
+  <% } %>
+</div>
+
+<div class="ap-grid-2">
+  <section class="ap-panel muted">
+    <div class="ap-section-head">
+      <div>
+        <h2>Spend by model<% if (ledger.ready) { %> <span style="color:#86efac;font-size:0.7rem;font-weight:600;">live</span><% } %></h2>
+        <p class="sub" style="margin:0;">Top models this month from the usage ledger.</p>
+      </div>
+      <a href="/ai-platform/analytics">Full analytics</a>
+    </div>
+    <% if (!modelSpend.length) { %>
+      <p style="color:#64748b;font-size:0.82rem;margin:0;">No completed model usage recorded this month.</p>
+    <% } else { %>
+      <% for (const row of modelSpend) {
+           const pct = Math.max(4, Math.round((Number(row.providerCostMinor || 0) / maxModelCost) * 100));
+      %>
+        <div class="ap-spend-row" title="<%= row.provider %> / <%= row.model %> · <%= row.calls.toLocaleString() %> calls">
+          <div class="name"><%= row.provider %></div>
+          <div class="ap-spend-track"><div class="ap-spend-fill" style="width:<%= pct %>%;"></div></div>
+          <div class="amt"><%= money(row.providerCostMinor) %></div>
+        </div>
+      <% } %>
+    <% } %>
+  </section>
+
+  <section class="ap-panel muted">
+    <div class="ap-section-head">
+      <div>
+        <h2>Usage ledger</h2>
+        <p class="sub" style="margin:0;">Month-to-date totals.</p>
+      </div>
+      <a href="/ai-control?tab=usage">Usage hub</a>
+    </div>
+    <dl class="ap-dl">
+      <div><dt>Calls</dt><dd><%= Number(ledger.month.calls || 0).toLocaleString() %></dd></div>
+      <div><dt>Provider cost</dt><dd><%= money(ledger.month.providerCostMinor) %></dd></div>
+      <div><dt>Tokens</dt><dd><%= Number(ledger.month.tokens || 0).toLocaleString() %></dd></div>
+      <div><dt>Cache hits</dt><dd><%= Number(ledger.month.cachedTokens || 0).toLocaleString() %></dd></div>
+      <div><dt>Carina-paid</dt><dd><%= Number(ledger.month.carinaPaidCalls || 0).toLocaleString() %></dd></div>
+      <div><dt>BYOK</dt><dd><%= Number(ledger.month.byokCalls || 0).toLocaleString() %></dd></div>
+    </dl>
+    <% if (providerEntries.length) { %>
+      <div style="margin-top:14px;">
+        <div class="sub" style="margin-bottom:8px;">Turns by provider (24h)</div>
+        <div class="ap-chips">
+          <% for (const [prov, count] of providerEntries) { %>
+            <span class="ap-chip ok"><span class="dot"></span><%= prov %> · <%= count %></span>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<div class="ap-grid-2">
+  <section class="ap-panel muted">
+    <div class="ap-section-head">
+      <h2>Org settings</h2>
+      <a href="/ai-platform/credits">Edit flags</a>
+    </div>
+    <div class="ap-settings">
+      <div class="row"><span>Organization</span><strong><%= org.name %></strong></div>
+      <div class="row"><span>Auto reload</span><strong><%= org.autoReloadEnabled ? 'On' : 'Off' %></strong></div>
+      <div class="row"><span>Prompt caching</span><strong><%= org.promptCachingEnabled ? 'Enabled' : 'Not enabled' %></strong></div>
+      <div class="row"><span>Batch API</span><strong><%= org.batchEnabled ? 'Enabled' : 'Disabled' %></strong></div>
+    </div>
+  </section>
+
+  <section class="ap-panel muted">
+    <div class="ap-section-head">
+      <h2>Models</h2>
+      <a href="/ai-platform/workbench">Workbench</a>
+    </div>
+    <div class="ap-table-wrap" style="max-height:220px;">
+      <table class="ap-table">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th>Model</th>
+            <th>Tier</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const m of models.slice(0, 12)) { %>
+            <tr>
+              <td><%= m.provider %><% if (m.isDefault) { %> <span style="color:#86efac;font-size:0.68rem;">default</span><% } %></td>
+              <td class="mono"><%= m.model %></td>
+              <td><%= m.tier %></td>
+              <td><%= m.status %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<% if (coreTelemetry && coreTelemetry.sessions && coreTelemetry.sessions.sessions && coreTelemetry.sessions.sessions.length) { %>
+<section class="ap-panel muted" style="margin-bottom:16px;">
+  <div class="ap-section-head">
+    <h2>Recent sessions (24h)</h2>
+    <a href="/ai-platform/sessions">All sessions</a>
+  </div>
+  <div class="ap-table-wrap">
+    <table class="ap-table">
+      <thead>
+        <tr>
+          <th>Session</th>
+          <th>Platform</th>
+          <th>Status</th>
+          <th>Turns</th>
+          <th>Last activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const sess of coreTelemetry.sessions.sessions.slice(0, 20)) { %>
+          <tr>
+            <td class="mono"><%= sess.sessionId %></td>
+            <td><%= sess.platform || '-' %></td>
+            <td style="color:<%= sess.status === 'active' ? '#86efac' : '#94a3b8' %>"><%= sess.status %></td>
+            <td><%= sess.turnCount %></td>
+            <td style="color:#64748b;"><%= new Date(sess.lastActivityAt).toLocaleString() %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<% if (coreTelemetry && coreTelemetry.metrics.providers.recent && coreTelemetry.metrics.providers.recent.length) { %>
+<section class="ap-panel muted" style="margin-bottom:16px;">
+  <div class="ap-section-head">
+    <h2>Recent provider calls</h2>
+  </div>
+  <div class="ap-table-wrap">
+    <table class="ap-table">
+      <thead>
+        <tr>
+          <th>Provider</th>
+          <th>Model</th>
+          <th>Status</th>
+          <th>Latency</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const obs of coreTelemetry.metrics.providers.recent) { %>
+          <tr>
+            <td><%= obs.provider %></td>
+            <td class="mono"><%= obs.model || '-' %></td>
+            <td style="color:<%= (obs.status === 'ok' || obs.status === 'success') ? '#86efac' : '#fca5a5' %>"><%= obs.status %></td>
+            <td><%= obs.latencyMs %>ms</td>
+            <td style="color:#64748b;"><%= new Date(obs.at).toLocaleTimeString() %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<% const completedRuns = recentRuns.filter((run) => run.status === 'completed'); %>
+<% if (completedRuns.length) { %>
+<section class="ap-panel muted">
+  <h2 style="margin-bottom:12px;">Recent completed workbench runs</h2>
+  <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;">
+    <% for (const run of completedRuns.slice(0, 5)) { %>
+      <li class="ap-settings">
+        <div class="row">
+          <a href="/ai-platform/workbench?run=<%= run.id %>" style="color:#67e8f9;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><%= run.title %></a>
+          <strong style="color:#94a3b8;font-weight:500;"><%= run.status %> · $<%= run.costEstimate.toFixed(4) %></strong>
+        </div>
+      </li>
+    <% } %>
+  </ul>
+</section>
+<% } %>
+</div>

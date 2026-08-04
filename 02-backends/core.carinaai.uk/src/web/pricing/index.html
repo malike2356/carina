@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Pricing - Carina + Labyrinth Scout</title>
+    <link rel="stylesheet" href="/pricing/pricing.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Instrument+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="nav">
+        <a class="brand" href="/">Carina<span style="color: var(--amber)">.</span></a>
+        <a href="/checkout?plan=scout_govern">Get Scout Govern</a>
+      </nav>
+      <p class="eyebrow">Pricing</p>
+      <h1>Carina drives. Scout governs.</h1>
+      <p class="lead">Carina is the workspace. Scout is the control layer that makes the same workflow safe in production.</p>
+      <section class="grid">
+        <article class="card">
+          <h2>Self-hosted Carina</h2>
+          <div class="price">Free</div>
+          <ul>
+            <li>MIT licensed</li>
+            <li>Run it on your infra</li>
+            <li>Persistent memory and optional auto-written skills</li>
+            <li>CLI, Web, Telegram, WhatsApp, and supported gateways</li>
+          </ul>
+          <a class="btn secondary" href="/">Install Carina</a>
+        </article>
+        <article class="card">
+          <h2>Carina Cloud</h2>
+          <div class="price">£20<span>/month</span></div>
+          <p>Hosted workspace plus tokens for teams that want the managed path.</p>
+          <ul>
+            <li>Hosted workspace</li>
+            <li>Managed runtime and updates</li>
+            <li>Daily usage included</li>
+          </ul>
+          <a class="btn secondary" href="https://app.carinaai.uk/hosted-login">Open Cloud</a>
+        </article>
+        <article class="card">
+          <h2>Scout Monitor</h2>
+          <div class="price" data-price-key="scout_monitor">Loading...</div>
+          <p>Visibility for any production workflow.</p>
+          <ul>
+            <li>Live security dashboard</li>
+            <li>Prompt injection detection</li>
+            <li>14-day audit log</li>
+            <li>Browser alerts (dashboard open)</li>
+          </ul>
+          <a class="btn secondary" href="/checkout?plan=scout_monitor">Start Monitor</a>
+        </article>
+        <article class="card featured">
+          <h2>Scout Govern</h2>
+          <div class="price" data-price-key="scout_pro">Loading...</div>
+          <p>Production control for workflows that need audit, approvals, and operator intervention.</p>
+          <ul>
+            <li>Everything in Monitor</li>
+            <li>Kill switch and tool quarantine</li>
+            <li>Telegram, email, and Slack alerts</li>
+            <li>Honeypots, exports, trust API</li>
+          </ul>
+          <a class="btn" href="/checkout?plan=scout_govern">Get Scout Govern</a>
+        </article>
+        <article class="card">
+          <h2>Enterprise</h2>
+          <div class="price">Custom</div>
+          <ul>
+            <li>Everything in Scout Govern</li>
+            <li>Security posture for larger teams</li>
+            <li>99.9% uptime SLA</li>
+            <li>On-premise deployment option</li>
+          </ul>
+          <a class="btn secondary" href="mailto:contact@verlox.uk">Contact Sales</a>
+        </article>
+      </section>
+      <p class="notice">Carina builds the workflow. Scout makes it fit for production.</p>
+    </main>
+    <script>
+      async function loadPrices() {
+        try {
+          const res = await fetch('/api/public/pricing');
+          if (!res.ok) return;
+          const body = await res.json();
+          const prices = body.prices || {};
+          document.querySelectorAll('[data-price-key]').forEach((el) => {
+            const key = el.getAttribute('data-price-key');
+            const price = prices[key];
+            if (price === null || price === undefined) {
+              el.textContent = 'Custom';
+              return;
+            }
+            el.innerHTML = `£${price}<span>/month</span>`;
+          });
+        } catch (_err) {
+          document.querySelectorAll('[data-price-key]').forEach((el) => {
+            el.textContent = 'See checkout';
+          });
+        }
+      }
+
+      void loadPrices();
+    </script>
+  </body>
+</html>

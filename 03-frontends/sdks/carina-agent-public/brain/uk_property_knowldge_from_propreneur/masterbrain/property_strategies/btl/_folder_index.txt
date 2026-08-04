@@ -1,0 +1,14 @@
+# Folder Index: property_strategies/btl
+# Generated: 2026-05-21
+# Source: xeloxproperties/blogPosts/yearScale/ (files 11-20)
+
+11-BTL-mortgages-explained.md | Buy-to-Let Mortgages Explained: A Guide for South Coast Investors
+12-BTL-tax-changes-2026.md | Buy-to-Let Tax Changes in 2026: What South Coast Investors Need to Know
+13-portfolio-landlords-strategy.md | Portfolio Landlord Strategy: Building and Managing a BTL Portfolio
+14-HMOs-vs-single-lets.md | HMOs vs Single Lets: Which Strategy Works for Your Portfolio
+15-BTL-yields-south-coast.md | Buy-to-Let Yields on the South Coast: What Investors Can Expect in 2026
+16-financing-first-btl.md | Financing Your First Buy-to-Let: A Practical Guide
+17-BTL-exit-strategies.md | Buy-to-Let Exit Strategies: Planning Your Endgame Before You Buy
+18-section-24-incorporation.md | Section 24 and Incorporation: Should You Move Your BTL Portfolio into a Limited Company?
+19-limited-company-btl.md | Limited Company Buy-to-Let: What You Need to Know Before Incorporating
+20-btl-refurbishment-budgeting.md | Buy-to-Let Refurbishment Budgeting: What to Spend and Where

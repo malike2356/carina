@@ -1,0 +1,9 @@
+{
+  "name": "email-extended",
+  "version": "1.0.0",
+  "description": "Himalaya CLI, inbox triage, email templates, newsletter digests, and channel replies",
+  "author": "VERLOX Ltd",
+  "category": "email",
+  "optional": true,
+  "skillCount": 5
+}

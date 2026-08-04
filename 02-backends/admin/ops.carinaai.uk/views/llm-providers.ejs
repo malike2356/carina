@@ -1,0 +1,545 @@
+<%
+  const st = typeof status === 'object' && status ? status : {};
+  const enabled = st.enabled !== false;
+  const providers = Array.isArray(st.providers) ? st.providers : [];
+  const chain = Array.isArray(st.chain) ? st.chain : [];
+  const configured = Array.isArray(st.configuredProviders) ? st.configuredProviders : [];
+  const known = Array.isArray(st.knownProviders) ? st.knownProviders : [];
+  const defaultProvider = typeof st.defaultProvider === 'string' ? st.defaultProvider : '';
+  const model = typeof st.model === 'string' ? st.model : '';
+  const note = typeof st.note === 'string' ? st.note : '';
+  const source = typeof st.source === 'string' ? st.source : '';
+  const allowSet = new Set(providers);
+  const modelsByProvider = (st.modelsByProvider && typeof st.modelsByProvider === 'object')
+    ? st.modelsByProvider
+    : {};
+  const initialModels = Array.isArray(modelsByProvider[defaultProvider])
+    ? modelsByProvider[defaultProvider].slice()
+    : [];
+  if (model && !initialModels.includes(model)) initialModels.unshift(model);
+  if (initialModels.length === 0 && model) initialModels.push(model);
+%>
+<style>
+  .llm-page { max-width: 56rem; margin: 0 auto; padding: 32px 28px; }
+  .llm-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 24px; padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .llm-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.2), rgba(16,185,129,0.12));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .llm-header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc; }
+  .llm-header p { margin: 3px 0 0; font-size: 0.82rem; color: #94a3b8; }
+  .llm-status {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .llm-status.on { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .llm-status.off { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.25); }
+  .llm-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .llm-status.on .llm-dot { background: #4ade80; }
+  .llm-status.off .llm-dot { background: #fbbf24; }
+  .llm-flash {
+    margin-bottom: 16px; padding: 12px 16px; border-radius: 8px;
+    font-size: 0.82rem; line-height: 1.5;
+  }
+  .llm-flash.ok { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+  .llm-flash.err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+  .llm-stats {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+    margin-bottom: 22px;
+  }
+  .llm-stat {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .llm-stat-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .llm-stat-value { margin-top: 4px; font-size: 0.95rem; font-weight: 600; color: #f1f5f9; word-break: break-all; }
+  .llm-section {
+    margin-bottom: 22px; padding: 18px 18px 16px;
+    border-radius: 12px; background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .llm-section h2 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; color: #f1f5f9; }
+  .llm-section .sub { margin: 0 0 14px; font-size: 0.8rem; color: #94a3b8; line-height: 1.45; }
+  .llm-grid { display: grid; gap: 12px; }
+  .llm-grid.two { grid-template-columns: 1fr 1fr; }
+  .llm-field label {
+    display: block; font-size: 0.72rem; font-weight: 600; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
+  }
+  .llm-field input, .llm-field select {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1); background: #0b0f14;
+    color: #f1f5f9; font-size: 0.82rem; outline: none;
+    color-scheme: dark;
+  }
+  .llm-field select {
+    appearance: auto;
+    -webkit-appearance: menulist;
+    cursor: pointer;
+  }
+  .llm-field select option,
+  .llm-field select optgroup {
+    background-color: #0b0f14;
+    color: #f1f5f9;
+  }
+  .llm-field select option:checked {
+    background-color: #1d4ed8;
+    color: #ffffff;
+  }
+  .llm-field select option:disabled {
+    background-color: #0b0f14;
+    color: #94a3b8;
+  }
+  .llm-field input:focus, .llm-field select:focus {
+    border-color: rgba(59,130,246,0.45); box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+  }
+  .llm-model-stack { display: flex; flex-direction: column; gap: 8px; }
+  .llm-model-custom {
+    display: none;
+  }
+  .llm-model-custom.is-open {
+    display: block;
+  }
+  .llm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .llm-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px; font-size: 0.72rem;
+    background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); color: #93c5fd;
+  }
+  .llm-chip.muted {
+    background: rgba(148,163,184,0.08); border-color: rgba(148,163,184,0.2); color: #94a3b8;
+  }
+  .llm-check-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .llm-check {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; border-radius: 8px;
+    background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.8rem; color: #cbd5e1;
+    cursor: pointer;
+    user-select: none;
+  }
+  .llm-check.is-unconfigured {
+    opacity: 0.78;
+    border-style: dashed;
+  }
+  .llm-check strong { color: #f1f5f9; }
+  .llm-check .meta { color: #64748b; font-size: 0.72rem; }
+  .llm-check input[type="checkbox"] {
+    accent-color: #3b82f6;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    margin: 0;
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+  }
+  .llm-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 16px 18px; border-radius: 12px;
+    background: rgba(0,0,0,0.28); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .llm-toggle-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .llm-toggle-copy strong { font-size: 0.92rem; font-weight: 650; color: #f8fafc; }
+  .llm-toggle-copy span { font-size: 0.78rem; color: #94a3b8; line-height: 1.35; }
+  .llm-switch {
+    position: relative; display: inline-flex; align-items: center;
+    flex-shrink: 0; cursor: pointer; user-select: none;
+  }
+  .llm-switch input {
+    position: absolute; inset: 0; opacity: 0; margin: 0;
+    width: 100%; height: 100%; cursor: pointer; z-index: 2;
+  }
+  .llm-switch-ui {
+    display: inline-flex; align-items: center; gap: 12px;
+    pointer-events: none;
+  }
+  .llm-switch-track {
+    width: 56px; height: 32px; border-radius: 999px;
+    background: #475569; border: 1px solid rgba(255,255,255,0.14);
+    position: relative; flex-shrink: 0;
+    transition: background 0.18s ease, box-shadow 0.18s ease;
+  }
+  .llm-switch-track::after {
+    content: "";
+    position: absolute; top: 3px; left: 3px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.45);
+    transition: transform 0.18s ease;
+  }
+  .llm-switch input:checked + .llm-switch-ui .llm-switch-track {
+    background: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.2);
+  }
+  .llm-switch input:checked + .llm-switch-ui .llm-switch-track::after {
+    transform: translateX(24px);
+  }
+  .llm-switch-state {
+    min-width: 2.8rem;
+    font-size: 0.82rem; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #fbbf24;
+  }
+  .llm-switch input:checked + .llm-switch-ui .llm-switch-state { color: #4ade80; }
+  .llm-switch-state::before { content: "OFF"; }
+  .llm-switch input:checked + .llm-switch-ui .llm-switch-state::before { content: "ON"; }
+  .llm-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .llm-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-radius: 8px; border: none;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .llm-btn.primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
+  .llm-hint { margin-top: 10px; font-size: 0.75rem; color: #64748b; line-height: 1.45; }
+  @media (max-width: 960px) {
+    .llm-check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .llm-page { padding: 20px 16px; }
+    .llm-stats, .llm-grid.two, .llm-check-grid { grid-template-columns: 1fr; }
+    .llm-header { flex-wrap: wrap; }
+    .llm-status { margin-left: 0; }
+    .llm-toggle { flex-wrap: wrap; }
+  }
+</style>
+
+<div class="llm-page">
+  <div class="llm-header">
+    <div class="llm-icon" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="1.8">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+    </div>
+    <div>
+      <h1>LLM Providers</h1>
+      <p>Control platform rotation, default model, and failover allowlist. The full provider catalog is listed; providers without keys are marked.</p>
+    </div>
+    <div class="llm-status <%= enabled ? 'on' : 'off' %>">
+      <span class="llm-dot"></span>
+      <%= enabled ? 'Rotation on' : 'Locked' %>
+    </div>
+  </div>
+
+  <% if (saved) { %>
+    <div class="llm-flash ok">Saved. Changes apply immediately to the running Core process.</div>
+  <% } %>
+  <% if (errMsg) { %>
+    <div class="llm-flash err"><%= errMsg %></div>
+  <% } %>
+  <% if (st.error) { %>
+    <div class="llm-flash err"><%= st.error %></div>
+  <% } %>
+
+  <div class="llm-stats">
+    <div class="llm-stat">
+      <div class="llm-stat-label">Default</div>
+      <div class="llm-stat-value"><%= defaultProvider || '-' %></div>
+    </div>
+    <div class="llm-stat">
+      <div class="llm-stat-label">Model</div>
+      <div class="llm-stat-value"><%= model || '-' %></div>
+    </div>
+    <div class="llm-stat">
+      <div class="llm-stat-label">Configured</div>
+      <div class="llm-stat-value"><%= configured.length %></div>
+    </div>
+    <div class="llm-stat">
+      <div class="llm-stat-label">Source</div>
+      <div class="llm-stat-value"><%= source || 'none' %></div>
+    </div>
+  </div>
+
+  <% if (known.some(function (p) { return p.name === 'gemini'; })) { %>
+    <div class="llm-flash ok">Gemini is present in the provider catalog and can be selected for rotation, default routing, and benchmark comparison.</div>
+  <% } %>
+
+  <div class="llm-section">
+    <h2>Effective chain</h2>
+    <p class="sub"><%= note || 'Active provider first, then fallbacks when rotation is on.' %></p>
+    <div class="llm-chips">
+      <% if (chain.length === 0) { %>
+        <span class="llm-chip muted">No providers in chain</span>
+      <% } else { %>
+        <% chain.forEach(function (name, i) { %>
+          <span class="llm-chip"><%= i === 0 ? '*' : '' %><%= name %></span>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+
+  <form method="post" action="/llm-providers/save">
+    <div class="llm-section">
+      <h2>Rotation</h2>
+      <p class="sub">Off = lock to the default provider only. On = failover across the allowlist below.</p>
+      <div class="llm-toggle">
+        <div class="llm-toggle-copy">
+          <strong>Provider rotation / failover</strong>
+          <span><%= enabled ? 'Failover is on across the allowlist' : 'Locked to the default provider only' %></span>
+        </div>
+        <label class="llm-switch" title="Toggle rotation">
+          <input
+            type="checkbox"
+            name="enabled"
+            value="1"
+            <%= enabled ? 'checked' : '' %>
+            aria-label="Provider rotation"
+          />
+          <span class="llm-switch-ui">
+            <span class="llm-switch-track" aria-hidden="true"></span>
+            <span class="llm-switch-state" aria-hidden="true"></span>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="llm-section">
+      <h2>Default provider and model</h2>
+      <p class="sub">Used first on every request. When rotation is off, this is the only provider used.</p>
+      <div class="llm-grid two">
+        <div class="llm-field">
+          <label for="defaultProvider">Default provider</label>
+          <select id="defaultProvider" name="defaultProvider" class="ops-select">
+            <% 
+              const defaultOpts = known.length
+                ? known.slice().sort(function (a, b) {
+                    return Number(b.configured) - Number(a.configured) || String(a.displayName || a.name).localeCompare(String(b.displayName || b.name));
+                  })
+                : [];
+              const configuredOpts = defaultOpts.filter(function (p) { return p.configured; });
+              const otherOpts = defaultOpts.filter(function (p) { return !p.configured; });
+            %>
+            <% if (defaultOpts.length === 0) { %>
+              <option value="<%= defaultProvider %>"><%= defaultProvider || 'none configured' %></option>
+            <% } %>
+            <% if (configuredOpts.length) { %>
+              <optgroup label="Configured (<%= configuredOpts.length %>)">
+                <% configuredOpts.forEach(function (p) { %>
+                  <option value="<%= p.name %>" <%= p.name === defaultProvider ? 'selected' : '' %>><%= p.displayName || p.name %></option>
+                <% }) %>
+              </optgroup>
+            <% } %>
+            <% if (otherOpts.length) { %>
+              <optgroup label="Needs API key (<%= otherOpts.length %>)">
+                <% otherOpts.forEach(function (p) { %>
+                  <option value="<%= p.name %>" <%= p.name === defaultProvider ? 'selected' : '' %>><%= p.displayName || p.name %> (no key)</option>
+                <% }) %>
+              </optgroup>
+            <% } %>
+          </select>
+        </div>
+        <div class="llm-field">
+          <label for="modelSelect">Model</label>
+          <div class="llm-model-stack">
+            <select id="modelSelect" class="ops-select" aria-describedby="model-hint">
+              <% 
+                const modelInList = initialModels.indexOf(model) !== -1;
+                const useCustom = Boolean(model) && !modelInList;
+              %>
+              <% if (initialModels.length === 0 && !model) { %>
+                <option value="" selected>No models loaded yet</option>
+              <% } %>
+              <% initialModels.forEach(function (m) { %>
+                <option value="<%= m %>" <%= (!useCustom && m === model) ? 'selected' : '' %>><%= m %></option>
+              <% }) %>
+              <option value="__custom__" <%= useCustom ? 'selected' : '' %>>Custom model id…</option>
+            </select>
+            <input
+              id="modelCustom"
+              class="ops-input llm-model-custom<%= useCustom ? ' is-open' : '' %>"
+              type="text"
+              value="<%= useCustom ? model : '' %>"
+              placeholder="Type a custom model id"
+              autocomplete="off"
+              spellcheck="false"
+              <%= useCustom ? '' : 'disabled' %>
+            />
+            <input type="hidden" id="model" name="model" value="<%= model %>" />
+          </div>
+        </div>
+      </div>
+      <p class="llm-hint" id="model-hint">
+        Open the model menu to see every available id for this provider. Choose Custom model id if you need a value that is not listed.
+      </p>
+    </div>
+
+    <div class="llm-section">
+      <h2>Rotation allowlist</h2>
+      <p class="sub">When rotation is on, only checked providers are eligible. Leave all unchecked to use every configured provider. Providers without an API key can still be checked so they join the chain once credentials are added.</p>
+      <div class="llm-check-grid">
+        <% known.forEach(function (p) { %>
+          <label class="llm-check<%= p.configured ? '' : ' is-unconfigured' %>">
+            <input
+              type="checkbox"
+              name="providers"
+              value="<%= p.name %>"
+              <%= (allowSet.size === 0 ? p.configured : allowSet.has(p.name)) ? 'checked' : '' %>
+            />
+            <span>
+              <strong><%= p.displayName || p.name %></strong>
+              <div class="meta">
+                <%= p.name %> · <%= p.configured ? ('ready · ' + (p.model || 'default model')) : 'no API key (can pre-select)' %>
+                <%= p.local ? ' · local' : '' %>
+              </div>
+            </span>
+          </label>
+        <% }) %>
+      </div>
+      <% if (known.length === 0) { %>
+        <p class="llm-hint">No providers discovered. Set API keys in Core env, then refresh.</p>
+      <% } %>
+    </div>
+
+    <div class="llm-actions">
+      <button class="llm-btn primary" type="submit">Save LLM settings</button>
+    </div>
+  </form>
+</div>
+<script>
+(function () {
+  var modelsByProvider = <%- JSON.stringify(modelsByProvider || {}) %>;
+  var providerEl = document.getElementById('defaultProvider');
+  var selectEl = document.getElementById('modelSelect');
+  var customEl = document.getElementById('modelCustom');
+  var hiddenEl = document.getElementById('model');
+  var hintEl = document.getElementById('model-hint');
+  if (!providerEl || !selectEl || !customEl || !hiddenEl) return;
+
+  var CUSTOM = '__custom__';
+
+  function uniqueList(list, preferred) {
+    var unique = [];
+    var seen = {};
+    (list || []).forEach(function (name) {
+      if (!name || seen[name]) return;
+      seen[name] = true;
+      unique.push(name);
+    });
+    if (preferred && !seen[preferred]) unique.unshift(preferred);
+    return unique;
+  }
+
+  function syncHidden() {
+    if (selectEl.value === CUSTOM) {
+      hiddenEl.value = (customEl.value || '').trim();
+      return;
+    }
+    hiddenEl.value = selectEl.value || '';
+  }
+
+  function setCustomOpen(open, seed) {
+    if (open) {
+      customEl.classList.add('is-open');
+      customEl.disabled = false;
+      if (typeof seed === 'string') customEl.value = seed;
+      customEl.focus();
+    } else {
+      customEl.classList.remove('is-open');
+      customEl.disabled = true;
+      customEl.value = '';
+    }
+  }
+
+  function fillModels(list, preferred, meta) {
+    var unique = uniqueList(list, preferred);
+    var preferredValue = preferred || '';
+    var inList = preferredValue && unique.indexOf(preferredValue) !== -1;
+
+    selectEl.innerHTML = '';
+    if (unique.length === 0) {
+      var empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = 'No models loaded yet';
+      selectEl.appendChild(empty);
+    } else {
+      unique.forEach(function (name) {
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (inList && name === preferredValue) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    var customOpt = document.createElement('option');
+    customOpt.value = CUSTOM;
+    customOpt.textContent = 'Custom model id…';
+    selectEl.appendChild(customOpt);
+
+    if (preferredValue && !inList) {
+      selectEl.value = CUSTOM;
+      setCustomOpen(true, preferredValue);
+    } else {
+      if (!selectEl.value && unique[0]) selectEl.value = unique[0];
+      setCustomOpen(false);
+    }
+    syncHidden();
+
+    if (hintEl && meta) {
+      var src = meta.source || 'curated';
+      var count = unique.length;
+      hintEl.textContent = count
+        + ' model' + (count === 1 ? '' : 's')
+        + ' in the menu (' + src
+        + (meta.configured ? ', provider configured' : ', curated fallback only')
+        + '). Use Custom model id for anything not listed.';
+    }
+  }
+
+  function loadModels(provider, preferred) {
+    var cached = (modelsByProvider[provider] || []).slice();
+    fillModels(cached, preferred || hiddenEl.value || cached[0] || '', {
+      source: 'curated',
+      configured: false,
+    });
+    if (!provider) return;
+    selectEl.setAttribute('aria-busy', 'true');
+    fetch('/llm-providers/models?provider=' + encodeURIComponent(provider), {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    })
+      .then(function (res) {
+        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+      })
+      .then(function (result) {
+        if (!result.ok || !result.data || !Array.isArray(result.data.models)) return;
+        modelsByProvider[provider] = result.data.models;
+        var keep = preferred || hiddenEl.value || result.data.currentModel || '';
+        fillModels(result.data.models, keep, {
+          source: result.data.source,
+          configured: result.data.configured,
+        });
+      })
+      .catch(function () { /* keep curated list */ })
+      .finally(function () { selectEl.removeAttribute('aria-busy'); });
+  }
+
+  selectEl.addEventListener('change', function () {
+    if (selectEl.value === CUSTOM) {
+      setCustomOpen(true, customEl.value || '');
+    } else {
+      setCustomOpen(false);
+    }
+    syncHidden();
+  });
+
+  customEl.addEventListener('input', syncHidden);
+
+  providerEl.addEventListener('change', function () {
+    var provider = providerEl.value;
+    loadModels(provider, (modelsByProvider[provider] || [])[0] || '');
+  });
+
+  if (providerEl.value) {
+    loadModels(providerEl.value, hiddenEl.value || '');
+  } else {
+    syncHidden();
+  }
+})();
+</script>

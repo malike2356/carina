@@ -1,0 +1,297 @@
+<%
+  const st = typeof status === 'object' && status ? status : {};
+  const emb = st.status && typeof st.status === 'object' ? st.status : {};
+  const providers = Array.isArray(st.providers) ? st.providers : [];
+  const active = emb.active || null;
+  const chain = Array.isArray(emb.chain) ? emb.chain : [];
+  const preferred = typeof st.preferredProvider === 'string' ? st.preferredProvider : '';
+  const total = Number(st.totalChunks || 0);
+  const embedded = Number(st.embeddedChunks || 0);
+  const missing = Number(st.missingChunks || 0);
+  const ready = Boolean(active);
+  const byName = {};
+  providers.forEach(function (p) { byName[p.name] = p; });
+  const ollama = byName.ollama || {};
+  const gemini = byName.gemini || {};
+  const openai = byName.openai || {};
+  const voyage = byName.voyage || {};
+%>
+<style>
+  .emb-page { max-width: 56rem; margin: 0 auto; padding: 32px 28px; }
+  .emb-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 24px; padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .emb-icon {
+    width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(22,163,74,0.18), rgba(59,130,246,0.12));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .emb-header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc; }
+  .emb-header p { margin: 3px 0 0; font-size: 0.82rem; color: #94a3b8; }
+  .emb-status {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .emb-status.on { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .emb-status.off { background: rgba(148,163,184,0.08); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+  .emb-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .emb-status.on .emb-dot { background: #4ade80; }
+  .emb-status.off .emb-dot { background: #64748b; }
+  .emb-flash {
+    margin-bottom: 16px; padding: 12px 16px; border-radius: 8px;
+    font-size: 0.82rem; line-height: 1.5;
+  }
+  .emb-flash.ok { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+  .emb-flash.err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+  .emb-stats {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+    margin-bottom: 22px;
+  }
+  .emb-stat {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .emb-stat-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .emb-stat-value { margin-top: 4px; font-size: 0.95rem; font-weight: 600; color: #f1f5f9; word-break: break-all; }
+  .emb-section {
+    margin-bottom: 22px; padding: 18px 18px 16px;
+    border-radius: 12px; background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .emb-section h2 { margin: 0 0 4px; font-size: 0.95rem; font-weight: 600; color: #f1f5f9; }
+  .emb-section .sub { margin: 0 0 14px; font-size: 0.8rem; color: #94a3b8; line-height: 1.45; }
+  .emb-grid { display: grid; gap: 12px; }
+  .emb-grid.two { grid-template-columns: 1fr 1fr; }
+  .emb-field label {
+    display: block; font-size: 0.72rem; font-weight: 600; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
+  }
+  .emb-field input, .emb-field select {
+    width: 100%; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.25);
+    color: #f1f5f9; font-size: 0.82rem; outline: none;
+  }
+  .emb-field input:focus, .emb-field select:focus {
+    border-color: rgba(34,197,94,0.45); box-shadow: 0 0 0 3px rgba(34,197,94,0.08);
+  }
+  .emb-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .emb-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px; font-size: 0.72rem;
+    background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); color: #86efac;
+  }
+  .emb-chip.muted {
+    background: rgba(148,163,184,0.08); border-color: rgba(148,163,184,0.2); color: #94a3b8;
+  }
+  .emb-check {
+    display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #94a3b8;
+  }
+  .emb-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .emb-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-radius: 8px; border: none;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer;
+  }
+  .emb-btn.primary { background: linear-gradient(135deg, #16a34a, #15803d); color: #fff; }
+  .emb-btn.secondary {
+    background: rgba(255,255,255,0.05); color: #e2e8f0;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .emb-link { color: #86efac; font-size: 0.8rem; text-decoration: none; }
+  .emb-link:hover { text-decoration: underline; }
+  .emb-provider-list { display: grid; gap: 8px; margin-top: 10px; }
+  .emb-provider-row {
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    padding: 10px 12px; border-radius: 8px;
+    background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.8rem; color: #cbd5e1;
+  }
+  .emb-provider-row strong { color: #f1f5f9; font-weight: 600; }
+  @media (max-width: 720px) {
+    .emb-page { padding: 20px 16px; }
+    .emb-stats, .emb-grid.two { grid-template-columns: 1fr 1fr; }
+    .emb-header { flex-wrap: wrap; }
+    .emb-status { margin-left: 0; }
+  }
+  @media (max-width: 480px) {
+    .emb-stats, .emb-grid.two { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="emb-page">
+  <header class="emb-header">
+    <div class="emb-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2">
+        <path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Embeddings</h1>
+      <p>Choose the RAG embedding provider, keys, and models without editing server env files.</p>
+    </div>
+    <div class="emb-status <%= ready ? 'on' : 'off' %>">
+      <span class="emb-dot"></span>
+      <%= ready ? (active || 'Ready') : 'Not configured' %>
+    </div>
+  </header>
+
+  <% if (saved) { %>
+    <div class="emb-flash ok">Saved to database and applied live to Core.</div>
+  <% } %>
+  <% if (probed && probeOk) { %>
+    <div class="emb-flash ok">
+      Probe OK: <%= probeDims %> dims via <%= probeActive || 'active provider' %> in <%= probeMs %>ms.
+    </div>
+  <% } %>
+  <% if (backfilled) { %>
+    <div class="emb-flash ok">
+      Backfill batch: updated <%= bfUpdated || '0' %>, failed <%= bfFailed || '0' %>, remaining <%= bfRemaining || '0' %>.
+      <% if (Number(bfRemaining || 0) > 0) { %> Run again to continue.<% } %>
+    </div>
+  <% } %>
+  <% if (errMsg) { %>
+    <div class="emb-flash err"><%= errMsg %></div>
+  <% } else if (st.error) { %>
+    <div class="emb-flash err"><%= st.error %></div>
+  <% } %>
+
+  <div class="emb-stats">
+    <div class="emb-stat">
+      <div class="emb-stat-label">Active</div>
+      <div class="emb-stat-value"><%= active || 'none' %></div>
+    </div>
+    <div class="emb-stat">
+      <div class="emb-stat-label">Dimensions</div>
+      <div class="emb-stat-value"><%= emb.dimensions || 768 %></div>
+    </div>
+    <div class="emb-stat">
+      <div class="emb-stat-label">Chunks</div>
+      <div class="emb-stat-value"><%= embedded %>/<%= total %></div>
+    </div>
+    <div class="emb-stat">
+      <div class="emb-stat-label">Missing</div>
+      <div class="emb-stat-value"><%= missing %></div>
+    </div>
+  </div>
+
+  <div class="emb-section">
+    <h2>Fallback chain</h2>
+    <p class="sub">
+      Source: <%= st.source || 'none' %>.
+      <% if (chain.length) { %>Order: <%= chain.join(' → ') %>.<% } else { %>No embedding providers configured.<% } %>
+      <a class="emb-link" href="<%= withV('/rag') %>">Open RAG Corpus</a>
+    </p>
+    <div class="emb-provider-list">
+      <% providers.forEach(function (p) { %>
+        <div class="emb-provider-row">
+          <div>
+            <strong><%= p.displayName %></strong>
+            <span style="color:#64748b"> (<%= p.name %>)</span>
+            <% if (p.local) { %> · local<% } %>
+          </div>
+          <div style="text-align:right;color:#94a3b8">
+            <%= p.configured ? 'configured' : 'not ready' %>
+            · <%= p.embeddingModel || 'default model' %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <form method="post" action="<%= withV('/embeddings/save') %>" autocomplete="off">
+    <div class="emb-section">
+      <h2>Preferred provider</h2>
+      <p class="sub">Pin one provider first; others stay as fallback. Choose Auto to use registry priority.</p>
+      <div class="emb-grid two">
+        <div class="emb-field">
+          <label for="preferredProvider">Provider</label>
+          <select id="preferredProvider" name="preferredProvider">
+            <option value="auto" <%= !preferred ? 'selected' : '' %>>Auto (registry order)</option>
+            <% providers.forEach(function (p) { %>
+              <option value="<%= p.name %>" <%= preferred === p.name ? 'selected' : '' %>><%= p.displayName %> (<%= p.name %>)</option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="emb-field">
+          <label for="embeddingModel">Global embedding model</label>
+          <input id="embeddingModel" name="embeddingModel" type="text" value="<%= st.globalModel || '' %>" placeholder="optional override" />
+        </div>
+        <div class="emb-field">
+          <label for="maxChars">Max chars</label>
+          <input id="maxChars" name="maxChars" type="text" value="<%= st.maxChars || '' %>" placeholder="e.g. 8000" />
+        </div>
+      </div>
+    </div>
+
+    <div class="emb-section">
+      <h2>Ollama</h2>
+      <p class="sub">Local OpenAI-compatible embeddings (recommended for ops without cloud keys).</p>
+      <div class="emb-chips">
+        <span class="emb-chip <%= ollama.configured ? '' : 'muted' %>"><%= ollama.configured ? 'Ready' : 'Not ready' %></span>
+        <span class="emb-chip <%= ollama.keySet ? '' : 'muted' %>">API key <%= ollama.keySet ? 'set' : 'unset' %></span>
+        <span class="emb-chip <%= ollama.baseUrlSet ? '' : 'muted' %>">Base URL <%= ollama.baseUrlSet ? 'set' : 'unset' %></span>
+      </div>
+      <div class="emb-grid two">
+        <div class="emb-field">
+          <label for="ollamaBaseUrl">Base URL</label>
+          <input id="ollamaBaseUrl" name="ollamaBaseUrl" type="text" value="<%= ollama.baseUrl || '' %>" placeholder="http://carina-ollama-embed:11434/v1" />
+        </div>
+        <div class="emb-field">
+          <label for="ollamaEmbeddingModel">Embedding model</label>
+          <input id="ollamaEmbeddingModel" name="ollamaEmbeddingModel" type="text" value="<%= ollama.embeddingModel || '' %>" placeholder="nomic-embed-text" />
+        </div>
+        <div class="emb-field">
+          <label for="ollamaApiKey">API key</label>
+          <input id="ollamaApiKey" name="ollamaApiKey" type="password" autocomplete="new-password" placeholder="<%= ollama.keySet ? 'leave blank to keep' : 'ollama' %>" />
+        </div>
+        <div class="emb-check" style="align-self:end;padding-bottom:10px;">
+          <input type="checkbox" id="ollamaEnabled" name="ollamaEnabled" value="1" <%= ollama.enabledFlag ? 'checked' : '' %> />
+          <label for="ollamaEnabled" style="margin:0;text-transform:none;letter-spacing:0;font-weight:400;">Enable Ollama</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="emb-section">
+      <h2>Cloud providers</h2>
+      <p class="sub">Leave secret fields blank to keep the current value. Only non-empty values are written.</p>
+      <div class="emb-grid two">
+        <div class="emb-field">
+          <label for="geminiApiKey">Gemini API key <%= gemini.keySet ? '(set)' : '' %></label>
+          <input id="geminiApiKey" name="geminiApiKey" type="password" autocomplete="new-password" placeholder="<%= gemini.keySet ? 'leave blank to keep' : 'AIza...' %>" />
+        </div>
+        <div class="emb-field">
+          <label for="voyageApiKey">Voyage API key <%= voyage.keySet ? '(set)' : '' %></label>
+          <input id="voyageApiKey" name="voyageApiKey" type="password" autocomplete="new-password" placeholder="<%= voyage.keySet ? 'leave blank to keep' : 'pa-...' %>" />
+        </div>
+        <div class="emb-field">
+          <label for="openaiApiKey">OpenAI API key <%= openai.keySet ? '(set)' : '' %></label>
+          <input id="openaiApiKey" name="openaiApiKey" type="password" autocomplete="new-password" placeholder="<%= openai.keySet ? 'leave blank to keep' : 'sk-...' %>" />
+        </div>
+        <div class="emb-field">
+          <label for="openaiBaseUrl">OpenAI base URL</label>
+          <input id="openaiBaseUrl" name="openaiBaseUrl" type="text" value="<%= openai.baseUrl || '' %>" placeholder="https://api.openai.com/v1" />
+        </div>
+      </div>
+      <div class="emb-actions">
+        <button type="submit" class="emb-btn primary">Save settings</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="emb-section">
+    <h2>Actions</h2>
+    <p class="sub">Test the live embedding path, or backfill chunks that still have no vector.</p>
+    <div class="emb-actions">
+      <form method="post" action="<%= withV('/embeddings/probe') %>">
+        <button type="submit" class="emb-btn secondary">Test embedding</button>
+      </form>
+      <form method="post" action="<%= withV('/embeddings/backfill') %>" style="display:flex;gap:8px;align-items:center;">
+        <input type="hidden" name="limit" value="25" />
+        <button type="submit" class="emb-btn secondary">Backfill missing (25)</button>
+      </form>
+    </div>
+  </div>
+</div>

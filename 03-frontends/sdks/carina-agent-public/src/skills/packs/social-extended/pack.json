@@ -1,0 +1,9 @@
+{
+  "name": "social-extended",
+  "version": "1.0.0",
+  "description": "X posting, Discord community, Slack standups, Feishu announcements, social listening, and Matrix bots",
+  "author": "VERLOX Ltd",
+  "category": "social",
+  "optional": true,
+  "skillCount": 6
+}

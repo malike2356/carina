@@ -1,0 +1,380 @@
+<% title = 'Benchmarks' %>
+<%
+  // Bind optional locals so missing keys never throw ReferenceError in EJS.
+  var latest = locals.latest || null;
+  var runs = locals.runs || [];
+  var tasks = locals.tasks || [];
+  var comparison = locals.comparison || [];
+  var report = locals.report || null;
+  var models = locals.models || [];
+  var providerLatest = locals.providerLatest || null;
+  var providerRuns = locals.providerRuns || [];
+  var selectedRun = locals.selectedRun || 'latest';
+  var saved = Boolean(locals.saved);
+  var error = locals.error || '';
+  var activeTab = locals.activeTab || 'runs';
+%>
+<div class="ops-page">
+<%- include('../partials/benchmarks-nav') %>
+
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Benchmarks</div>
+    <div class="ops-page-sub">Carina capability runs, live provider comparisons, and report history.</div>
+  </div>
+  <% if (activeTab === 'runs') { %>
+  <form method="post" action="/benchmarks/run">
+    <button type="submit" class="rounded bg-[#22c55e] px-4 py-2 text-sm font-medium text-black">Run benchmark</button>
+  </form>
+  <% } else if (activeTab === 'providers') { %>
+  <form method="post" action="/benchmarks/providers/run">
+    <button type="submit" class="rounded bg-[#22c55e] px-4 py-2 text-sm font-medium text-black">Run provider benchmark</button>
+  </form>
+  <% } %>
+</div>
+
+<% if (saved) { %>
+  <div class="mb-4 rounded border border-[#22c55e]/40 bg-[#22c55e]/10 px-4 py-2 text-sm text-[#86efac]">Saved.</div>
+<% } %>
+<% if (error) { %>
+  <div class="mb-4 rounded border border-red-700 bg-red-900/30 px-4 py-2 text-sm text-red-300"><%= error %></div>
+<% } %>
+
+<% if (latest) { %>
+  <div class="grid grid-cols-2 gap-3 md:grid-cols-4 mb-6">
+    <div class="ops-stat-cell">
+      <p class="text-gray-400 text-xs">Latest score</p>
+      <p class="text-xl font-bold text-white"><%= latest.overall.percent %>%</p>
+      <p class="text-xs text-gray-500 mt-1"><%= latest.overall.weightedScore %>/100 weighted</p>
+    </div>
+    <div class="ops-stat-cell">
+      <p class="text-gray-400 text-xs">Regression</p>
+      <p class="text-lg font-semibold <%= latest.overall.regressionPassed ? 'text-[#22c55e]' : 'text-red-400' %>">
+        <%= latest.overall.regressionPassed ? 'PASS' : 'FAIL' %>
+      </p>
+      <% if (!latest.overall.regressionPassed && latest.overall.failedRegressionTasks?.length) { %>
+        <p class="text-xs text-gray-500 mt-1"><%= latest.overall.failedRegressionTasks.join(', ') %></p>
+      <% } %>
+    </div>
+    <div class="ops-stat-cell">
+      <p class="text-gray-400 text-xs">Run ID</p>
+      <p class="text-sm font-mono text-white break-all"><%= latest.runId %></p>
+    </div>
+    <div class="ops-stat-cell">
+      <p class="text-gray-400 text-xs">Generated</p>
+      <p class="text-sm text-white"><%= new Date(latest.generatedAt).toLocaleString() %></p>
+      <p class="text-xs text-gray-500 mt-1"><%= latest.hostname %></p>
+    </div>
+  </div>
+<% } %>
+
+<% if (activeTab === 'runs') { %>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">Latest run</h2>
+      <% if (!latest) { %>
+        <p class="text-gray-500 text-sm">No benchmark runs yet. Use Run benchmark to create the first report.</p>
+      <% } else { %>
+        <dl class="space-y-2 text-sm">
+          <div class="flex justify-between"><dt class="text-gray-400">Methodology</dt><dd class="text-white text-right max-w-[70%]"><%= latest.methodology %></dd></div>
+          <div class="flex justify-between"><dt class="text-gray-400">Disclaimer</dt><dd class="text-white text-right max-w-[70%]"><%= latest.disclaimer %></dd></div>
+          <div class="flex justify-between"><dt class="text-gray-400">Tasks</dt><dd class="text-white"><%= latest.tasks.length %></dd></div>
+          <div class="flex justify-between"><dt class="text-gray-400">Categories</dt><dd class="text-white"><%= latest.categories.length %></dd></div>
+        </dl>
+        <a href="/benchmarks/reports?run=<%= latest.runId %>" class="inline-block mt-3 text-sm text-[#06b6d4] hover:underline">Open full report</a>
+      <% } %>
+    </section>
+
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">Recent runs</h2>
+      <% if (!runs || !runs.length) { %>
+        <p class="text-gray-500 text-sm">No saved runs yet.</p>
+      <% } else { %>
+        <div class="max-h-80 overflow-y-auto">
+          <table class="ops-table w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-[#2a2a2a] sticky top-0 bg-[#1a1a1a]">
+                <th class="py-2 pr-3">Run</th>
+                <th class="py-2 pr-3">Score</th>
+                <th class="py-2 pr-3">Regression</th>
+                <th class="py-2">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% for (const run of runs) { %>
+                <tr class="border-b border-[#2a2a2a]/50">
+                  <td class="py-2 pr-3 text-gray-300 font-mono">
+                    <a class="hover:underline text-[#06b6d4]" href="/benchmarks/reports?run=<%= run.runId %>"><%= run.runId %></a>
+                  </td>
+                  <td class="py-2 pr-3 text-white"><%= run.overall.percent %>%</td>
+                  <td class="py-2 pr-3 <%= run.overall.regressionPassed ? 'text-[#22c55e]' : 'text-red-400' %>"><%= run.overall.regressionPassed ? 'PASS' : 'FAIL' %></td>
+                  <td class="py-2 text-gray-500"><%= new Date(run.generatedAt).toLocaleString() %></td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+  </div>
+<% } %>
+
+<% if (activeTab === 'compare') { %>
+  <% const compareRows = (comparison && comparison.length) ? comparison : (latest ? (latest.comparison || []) : []); %>
+  <% if (compareRows.length) { %>
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">Comparison</h2>
+      <% if (latest && latest.disclaimer) { %>
+        <p class="text-sm text-gray-400 mb-4"><%= latest.disclaimer %></p>
+      <% } %>
+      <div class="overflow-x-auto">
+        <table class="ops-table w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+              <th class="py-2 pr-4">Category</th>
+              <th class="py-2 pr-4">Carina</th>
+              <th class="py-2 pr-4">Comp A</th>
+              <th class="py-2 pr-4">Comp B</th>
+              <th class="py-2">Comp C</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const row of compareRows) { %>
+              <tr class="border-b border-[#2a2a2a]/50 align-top">
+                <td class="py-2 pr-4 text-white"><%= row.category %></td>
+                <td class="py-2 pr-4 text-white font-medium"><%= row.carinaScore %></td>
+                <% for (const ref of row.references) { %>
+                  <td class="py-2 pr-4 text-gray-300">
+                    <div><%= ref.referenceScore ?? '-' %></div>
+                    <% if (ref.delta != null) { %>
+                      <div class="text-xs text-gray-500">Delta <%= ref.delta %></div>
+                    <% } %>
+                  </td>
+                <% } %>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% } else { %>
+    <div class="ops-stat-cell">
+      <p class="text-gray-500 text-sm">No benchmark comparison available. Run a benchmark first.</p>
+    </div>
+  <% } %>
+<% } %>
+
+<% if (activeTab === 'fixtures') { %>
+  <section class="ops-stat-cell">
+    <h2 class="text-lg font-semibold text-white mb-3">Fixtures</h2>
+    <p class="text-sm text-gray-400 mb-4">These are the fixed benchmark tasks Carina runs against the installed kernel.</p>
+    <% if (!tasks || !tasks.length) { %>
+      <p class="text-gray-500 text-sm">No fixtures available.</p>
+    <% } else { %>
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <% for (const task of tasks) { %>
+          <div class="rounded border border-[#2a2a2a] bg-[#111111] p-3">
+            <div class="text-xs text-gray-500"><%= task.category %></div>
+            <div class="mt-1 text-sm font-medium text-white"><%= task.title %></div>
+            <div class="mt-2 text-xs text-gray-400 font-mono"><%= task.id %></div>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+<% } %>
+
+<% if (activeTab === 'providers') { %>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">Configured providers</h2>
+      <% if (!models || !models.length) { %>
+        <p class="text-gray-500 text-sm">No provider rows available from AI Platform.</p>
+      <% } else { %>
+        <div class="overflow-x-auto">
+          <table class="ops-table w-full text-sm">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+                <th class="py-2 pr-4">Provider</th>
+                <th class="py-2 pr-4">Model</th>
+                <th class="py-2 pr-4">Tier</th>
+                <th class="py-2 pr-4">Status</th>
+                <th class="py-2">Default</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% for (const model of models) { %>
+                <tr class="border-b border-[#2a2a2a]/50">
+                  <td class="py-2 pr-4 text-white"><%= model.provider %></td>
+                  <td class="py-2 pr-4 text-gray-300 font-mono text-xs"><%= model.model %></td>
+                  <td class="py-2 pr-4 text-gray-400"><%= model.tier %></td>
+                  <td class="py-2 pr-4 text-white"><%= model.status || 'ready' %></td>
+                  <td class="py-2"><%= model.isDefault ? 'yes' : '-' %></td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">How to use this benchmark</h2>
+      <ul class="space-y-2 text-sm text-gray-300 list-disc pl-5">
+        <li>Run the same benchmark after a provider change.</li>
+        <li>Compare score, pass rate, latency, and fixture failures.</li>
+        <li>Keep the fixture set fixed so results stay comparable.</li>
+        <li>Use model choice after the benchmark, not before it.</li>
+      </ul>
+      <% if (providerLatest) { %>
+        <a href="/benchmarks/providers" class="inline-block mt-4 text-sm text-[#06b6d4] hover:underline">Open latest provider report</a>
+      <% } %>
+    </section>
+  </div>
+
+  <% if (providerLatest) { %>
+    <div class="grid grid-cols-2 gap-3 md:grid-cols-4 mt-6">
+      <div class="ops-stat-cell">
+        <p class="text-gray-400 text-xs">Top provider</p>
+        <p class="text-lg font-semibold text-white"><%= providerLatest.summary.topProviderId || 'n/a' %></p>
+        <p class="text-xs text-gray-500 mt-1"><%= providerLatest.summary.topScore ?? 0 %> weighted</p>
+      </div>
+      <div class="ops-stat-cell">
+        <p class="text-gray-400 text-xs">Providers tested</p>
+        <p class="text-lg font-semibold text-white"><%= providerLatest.summary.providerCount %></p>
+        <p class="text-xs text-gray-500 mt-1">Live API calls</p>
+      </div>
+      <div class="ops-stat-cell">
+        <p class="text-gray-400 text-xs">Fixtures</p>
+        <p class="text-lg font-semibold text-white"><%= providerLatest.summary.fixtureCount %></p>
+        <p class="text-xs text-gray-500 mt-1">Shared prompt pack</p>
+      </div>
+      <div class="ops-stat-cell">
+        <p class="text-gray-400 text-xs">Generated</p>
+        <p class="text-sm text-white"><%= new Date(providerLatest.generatedAt).toLocaleString() %></p>
+        <p class="text-xs text-gray-500 mt-1"><%= providerLatest.hostname %></p>
+      </div>
+    </div>
+
+    <section class="ops-stat-cell mt-6">
+      <h2 class="text-lg font-semibold text-white mb-3">Provider summary</h2>
+      <div class="overflow-x-auto">
+        <table class="ops-table w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+              <th class="py-2 pr-4">Provider</th>
+              <th class="py-2 pr-4">Model</th>
+              <th class="py-2 pr-4">Score</th>
+              <th class="py-2 pr-4">Pass rate</th>
+              <th class="py-2 pr-4">Latency</th>
+              <th class="py-2">Tokens</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (const provider of providerLatest.providers) { %>
+              <tr class="border-b border-[#2a2a2a]/50">
+                <td class="py-2 pr-4 text-white"><%= provider.providerId %></td>
+                <td class="py-2 pr-4 text-gray-300 font-mono text-xs"><%= provider.model %></td>
+                <td class="py-2 pr-4 text-white"><%= provider.weightedScore %></td>
+                <td class="py-2 pr-4 text-gray-300"><%= Math.round(provider.passRate * 100) %>%</td>
+                <td class="py-2 pr-4 text-gray-300"><%= provider.meanLatencyMs %>ms</td>
+                <td class="py-2 text-gray-300"><%= provider.meanTokens %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="ops-stat-cell mt-6">
+      <h2 class="text-lg font-semibold text-white mb-3">Fixture comparison</h2>
+      <div class="space-y-4">
+        <% for (const row of providerLatest.comparison) { %>
+          <div class="rounded border border-[#2a2a2a] bg-[#111111] p-3">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <div class="text-sm font-medium text-white"><%= row.title %></div>
+                <div class="text-xs text-gray-500"><%= row.category %> / <%= row.fixtureId %></div>
+              </div>
+            </div>
+            <div class="mt-3 overflow-x-auto">
+              <table class="ops-table w-full text-xs">
+                <thead>
+                  <tr class="text-left text-gray-500 border-b border-[#2a2a2a]">
+                    <th class="py-2 pr-4">Provider</th>
+                    <th class="py-2 pr-4">Score</th>
+                    <th class="py-2 pr-4">Pass</th>
+                    <th class="py-2 pr-4">Latency</th>
+                    <th class="py-2">Tokens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% for (const result of row.results) { %>
+                    <tr class="border-b border-[#2a2a2a]/50">
+                      <td class="py-2 pr-4 text-white"><%= result.providerId %></td>
+                      <td class="py-2 pr-4 text-gray-300"><%= result.score %></td>
+                      <td class="py-2 pr-4 <%= result.passed ? 'text-[#22c55e]' : 'text-red-400' %>"><%= result.passed ? 'PASS' : 'FAIL' %></td>
+                      <td class="py-2 pr-4 text-gray-300"><%= result.latencyMs.toFixed(1) %>ms</td>
+                      <td class="py-2 text-gray-300"><%= result.tokensUsed %></td>
+                    </tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    </section>
+  <% } else { %>
+    <div class="ops-stat-cell mt-6">
+      <p class="text-gray-500 text-sm">No live provider benchmark has been run yet.</p>
+    </div>
+  <% } %>
+<% } %>
+
+<% if (activeTab === 'reports') { %>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">Saved reports</h2>
+      <% if (!runs || !runs.length) { %>
+        <p class="text-gray-500 text-sm">No saved reports yet.</p>
+      <% } else { %>
+        <div class="max-h-80 overflow-y-auto">
+          <ul class="space-y-2">
+            <% for (const run of runs) { %>
+              <li class="rounded border border-[#2a2a2a] bg-[#111111] px-3 py-2">
+                <a href="/benchmarks/reports?run=<%= run.runId %>" class="block">
+                  <div class="text-sm text-white font-medium"><%= run.runId %></div>
+                  <div class="mt-1 text-xs text-gray-500"><%= new Date(run.generatedAt).toLocaleString() %></div>
+                  <div class="mt-1 text-xs <%= run.overall.regressionPassed ? 'text-[#22c55e]' : 'text-red-400' %>">
+                    Score <%= run.overall.percent %>% <%= run.overall.regressionPassed ? 'PASS' : 'FAIL' %>
+                  </div>
+                </a>
+              </li>
+            <% } %>
+          </ul>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="ops-stat-cell">
+      <h2 class="text-lg font-semibold text-white mb-3">Selected report</h2>
+      <% if (!report) { %>
+        <p class="text-gray-500 text-sm">Pick a report from the list.</p>
+      <% } else { %>
+        <div class="space-y-3 text-sm">
+          <div><span class="text-gray-500">Run</span> <span class="text-white font-mono"><%= report.runId %></span></div>
+          <div><span class="text-gray-500">Generated</span> <span class="text-white"><%= new Date(report.generatedAt).toLocaleString() %></span></div>
+          <div><span class="text-gray-500">Score</span> <span class="text-white"><%= report.overall.percent %>%</span></div>
+          <div><span class="text-gray-500">Regression</span> <span class="<%= report.overall.regressionPassed ? 'text-[#22c55e]' : 'text-red-400' %>"><%= report.overall.regressionPassed ? 'PASS' : 'FAIL' %></span></div>
+          <div>
+            <span class="text-gray-500">Methodology</span>
+            <p class="mt-1 text-gray-300"><%= report.methodology %></p>
+          </div>
+        </div>
+      <% } %>
+    </section>
+  </div>
+<% } %>
+
+</div>

@@ -1,0 +1,307 @@
+<% title = 'Chat' %>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<div class="ops-chat-page">
+  <div id="carina-offline-banner" class="ops-flash warn<%= coreReachable ? ' hidden' : '' %>" style="margin:0;border-radius:0;border-left:none;border-top:3px solid var(--amber);">
+    Carina core is not responding at <code class="ops-code"><%= carinaApiUrl %></code>.
+    On the VPS restart the Docker stack:
+    <code class="ops-code">cd ~/apps/core.carinaai.uk && docker compose -f docker-compose.prod.yml restart carina-web carina-ops</code>
+  </div>
+
+  <div class="ops-chat-layout">
+    <div class="ops-chat-pane">
+      <div class="ops-chat-head">
+        <span id="provider-badge" class="ops-chat-head-meta">Provider: loading...</span>
+        <button type="button" id="clear-session" class="ops-btn-ghost">Clear session</button>
+      </div>
+      <div id="messages" class="ops-chat-messages">
+        <div class="ops-inline-note" id="chat-empty-hint" style="padding:16px;">
+          Start here: pick a quick action on the right, or type a message and hit Send.
+          Chat streams through Carina core and keeps a browser session id below.
+        </div>
+      </div>
+      <footer class="ops-chat-compose">
+        <textarea id="input" rows="2" placeholder="Message Carina..." class="ops-chat-input"><%= prefill %></textarea>
+        <button id="send" type="button" class="ops-btn ops-btn-green">Send</button>
+      </footer>
+    </div>
+
+    <aside class="ops-chat-rail">
+      <section class="ops-chat-rail-section">
+        <div class="ops-chat-rail-title">Quick actions</div>
+        <div class="ops-quick-list">
+          <% for (const action of quickActions) { %>
+            <button type="button" data-prompt="<%= action.message.replace(/"/g, '&quot;') %>" class="quick-action ops-quick-action">
+              <%= action.label %>
+            </button>
+          <% } %>
+        </div>
+      </section>
+      <section class="ops-chat-rail-section grow">
+        <div class="ops-chat-rail-title">Session</div>
+        <p id="session-id-display" class="ops-inline-note" style="font-family:'JetBrains Mono',ui-monospace,monospace;margin-top:0;"></p>
+        <p id="meta-info" class="ops-inline-note" style="margin-top:8px;"></p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+  const API = '<%= carinaApiUrl %>';
+  const SESSION_KEY = 'carina-ops-session';
+  const messagesEl = document.getElementById('messages');
+  const inputEl = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+  const metaInfo = document.getElementById('meta-info');
+  const providerBadge = document.getElementById('provider-badge');
+  const offlineBanner = document.getElementById('carina-offline-banner');
+
+  let SESSION_ID = localStorage.getItem(SESSION_KEY);
+  if (!SESSION_ID) {
+    SESSION_ID = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY, SESSION_ID);
+  }
+  document.getElementById('session-id-display').textContent = SESSION_ID.slice(0, 8) + '...';
+
+  function autoGrow() {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  }
+  inputEl.addEventListener('input', autoGrow);
+  autoGrow();
+
+  function enableInput() {
+    sendBtn.disabled = false;
+    inputEl.disabled = false;
+  }
+
+  function disableInput() {
+    sendBtn.disabled = true;
+    inputEl.disabled = true;
+  }
+
+  function showOffline() {
+    offlineBanner.classList.remove('hidden');
+  }
+
+  function hideOffline() {
+    offlineBanner.classList.add('hidden');
+  }
+
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function appendMessage(role, text) {
+    const emptyHint = document.getElementById('chat-empty-hint');
+    if (emptyHint) emptyHint.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'ops-msg ' + role;
+    const inner = document.createElement('div');
+    inner.className = 'ops-msg-bubble';
+    const content = document.createElement('div');
+    content.className = role === 'assistant' ? 'chat-md' : '';
+    if (role === 'user') {
+      content.textContent = text;
+    } else if (text) {
+      content.innerHTML = '...';
+    } else {
+      content.dataset.thinking = '1';
+      content.innerHTML = thinkingIndicatorHtml();
+    }
+    inner.appendChild(content);
+    wrap.appendChild(inner);
+    messagesEl.appendChild(wrap);
+    scrollToBottom();
+    return content;
+  }
+
+  async function loadProvider() {
+    try {
+      const r = await fetch('/chat/health', { cache: 'no-store', headers: { Accept: 'application/json' } });
+      if (r.status === 401) {
+        window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+        return null;
+      }
+      if (!r.ok) throw new Error('offline');
+      const d = await r.json();
+      if (!d.ok) throw new Error('offline');
+      providerBadge.textContent = 'Provider: ' + (d.active || 'unknown');
+      hideOffline();
+      return d.active;
+    } catch {
+      providerBadge.textContent = 'Provider: offline';
+      showOffline();
+      return null;
+    }
+  }
+
+  function thinkingIndicatorHtml() {
+    return '<span class="ops-thinking" aria-label="Carina is thinking" role="status">' +
+      '<span class="ops-thinking-dot"></span>' +
+      '<span class="ops-thinking-dot"></span>' +
+      '<span class="ops-thinking-dot"></span>' +
+      '</span>';
+  }
+
+  function renderAssistantMessage(msgDiv, full, streaming) {
+    if (!full.trim() && msgDiv.dataset.thinking === '1') {
+      msgDiv.innerHTML = thinkingIndicatorHtml();
+      return;
+    }
+    msgDiv.dataset.thinking = '0';
+    if (streaming || typeof marked === 'undefined') {
+      msgDiv.textContent = full;
+      return;
+    }
+    msgDiv.innerHTML = marked.parse(full);
+  }
+
+  function applyStreamPayload(full, payload, msgDiv) {
+    if (payload === '[DONE]') return { done: true, full };
+    try {
+      const chunk = JSON.parse(payload);
+      if (typeof chunk === 'string') {
+        full += chunk;
+      } else if (chunk.type === 'status') {
+        if (chunk.content === 'thinking' && !full.trim()) {
+          msgDiv.dataset.thinking = '1';
+          renderAssistantMessage(msgDiv, full, true);
+          scrollToBottom();
+          return { done: false, full };
+        }
+        return { done: false, full };
+      } else if (chunk.type === 'meta') {
+        if (chunk.meta?.provider) {
+          providerBadge.textContent = 'Provider: ' + chunk.meta.provider;
+        }
+        return { done: false, full };
+      } else if (chunk.type === 'error') {
+        const msg = chunk.content || chunk.error?.message || 'Request failed';
+        full = 'Error: ' + msg;
+      } else if (chunk.error) {
+        const errText = typeof chunk.error === 'string' ? chunk.error : chunk.error.message;
+        if (errText && errText.includes('Session expired')) {
+          window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+          return { done: true, full, redirect: true };
+        }
+        full = 'Error: ' + (errText || 'Request failed');
+      } else if (chunk.content && typeof chunk.content === 'string') {
+        full += chunk.content;
+      } else if (chunk.type === 'done') {
+        return { done: true, full };
+      }
+    } catch {
+      if (payload.trim()) full += payload;
+    }
+    renderAssistantMessage(msgDiv, full, true);
+    scrollToBottom();
+    return { done: false, full };
+  }
+
+  async function streamChat(text, msgDiv, provider) {
+    const response = await fetch('/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ message: text, sessionId: SESSION_ID }),
+      redirect: 'manual',
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (response.status === 401 || response.type === 'opaqueredirect' || response.status === 302) {
+      window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+      return provider;
+    }
+    if (!response.ok || !response.body) {
+      throw new Error('stream failed');
+    }
+    if (!contentType.includes('text/event-stream')) {
+      throw new Error('unexpected response type');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let full = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const dataLine = part.split('\n').find((line) => line.startsWith('data: '));
+        if (!dataLine) continue;
+        const result = applyStreamPayload(full, dataLine.slice(6), msgDiv);
+        full = result.full;
+        if (result.redirect) return provider;
+        if (result.done) {
+          renderAssistantMessage(msgDiv, full, false);
+          metaInfo.textContent = 'Provider: ' + (provider || '?') + ' · ~' + Math.ceil(full.length / 4) + ' tokens (est.)';
+          hideOffline();
+          return provider;
+        }
+      }
+    }
+
+    renderAssistantMessage(msgDiv, full, false);
+    return provider;
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim()) return;
+    appendMessage('user', text);
+    clearInput();
+    disableInput();
+
+    let provider = await loadProvider();
+    const msgDiv = appendMessage('assistant', '');
+
+    try {
+      await streamChat(text, msgDiv, provider);
+    } catch {
+      msgDiv.textContent = 'Connection error.';
+      showOffline();
+    }
+    enableInput();
+  }
+
+  function clearInput() {
+    inputEl.value = '';
+    autoGrow();
+  }
+
+  sendBtn.addEventListener('click', () => sendMessage(inputEl.value));
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(inputEl.value); }
+  });
+
+  document.querySelectorAll('.quick-action').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inputEl.value = btn.getAttribute('data-prompt') || '';
+      autoGrow();
+      inputEl.focus();
+    });
+  });
+
+  document.getElementById('clear-session')?.addEventListener('click', async () => {
+    try {
+      await fetch(API + '/api/clear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: SESSION_ID }),
+      });
+    } catch {}
+    SESSION_ID = crypto.randomUUID();
+    localStorage.setItem(SESSION_KEY, SESSION_ID);
+    document.getElementById('session-id-display').textContent = SESSION_ID.slice(0, 8) + '...';
+    messagesEl.innerHTML = '';
+    metaInfo.textContent = 'Session cleared.';
+  });
+
+  loadProvider();
+  if (<%= prefill ? 'true' : 'false' %>) {
+    appendMessage('assistant', 'Prompt loaded. Edit and send when ready.');
+  }
+</script>
