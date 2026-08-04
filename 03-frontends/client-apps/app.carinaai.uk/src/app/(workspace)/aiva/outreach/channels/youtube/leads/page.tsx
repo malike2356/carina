@@ -101,7 +101,7 @@ export default function PropertyChannelLeadsPage() {
     <div className="mx-auto max-w-[90rem] space-y-3 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-text-muted">
-          Comment leads stay here and can sync into the Outreach Program pipeline.
+          Comment leads stay here and can sync into the sales engagement pipeline.
         </p>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => void importToOutreach()}>

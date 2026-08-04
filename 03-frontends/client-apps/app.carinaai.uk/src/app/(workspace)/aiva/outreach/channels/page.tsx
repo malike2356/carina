@@ -4,7 +4,7 @@ export default function OutreachChannelsPage() {
   return (
     <div className="mx-auto max-w-[90rem] space-y-4 p-6">
       <p className="text-sm text-text-secondary">
-        Content and engagement channels that feed the Outreach Program. Email sequences live under Sequences
+        Content and engagement channels that feed sales engagement. Email sequences live under Sequences
         and Approvals; messaging channels stay under workspace Channels.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">

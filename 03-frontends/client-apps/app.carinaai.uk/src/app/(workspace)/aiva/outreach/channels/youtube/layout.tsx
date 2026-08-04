@@ -7,10 +7,10 @@ export default function YouTubeChannelLayout({ children }: { children: ReactNode
       <div className="border-b border-border px-6 pt-5 pb-0">
         <h1 className="text-base font-semibold text-text-primary">YouTube Channel</h1>
         <p className="mt-0.5 text-xs text-text-muted">
-          Outreach content channel. Scripts and scheduling exist; YouTube publish needs a completed MP4. Part of the Outreach Program.
+          Outreach content channel. Scripts and scheduling exist; YouTube publish needs a completed MP4. Part of sales engagement.
         </p>
         <p className="mt-1 text-xs">
-          <a href="/aiva/outreach" className="text-accent underline">Back to Outreach Program</a>
+          <a href="/aiva/outreach" className="text-accent underline">Back to sales engagement</a>
         </p>
         <YouTubeChannelTabNav />
       </div>

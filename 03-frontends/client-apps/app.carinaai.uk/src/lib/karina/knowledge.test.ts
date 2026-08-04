@@ -24,15 +24,29 @@ describe('karina knowledge base', () => {
     expect(KARINA_GREETING).toContain('Scout');
   });
 
-  it('retrieves contact, schedules, and reminder help', () => {
+  it('covers deep safe product-ops topics without secret playbooks', () => {
+    expect(KARINA_KNOWLEDGE_BASE).toContain('Safety and what never to disclose');
+    expect(KARINA_KNOWLEDGE_BASE).toContain('Sales engagement');
+    expect(KARINA_KNOWLEDGE_BASE).toContain('Soft Wall');
+    expect(KARINA_KNOWLEDGE_BASE).toContain('How Aiva works');
+    expect(KARINA_KNOWLEDGE_BASE).not.toContain('.access/');
+    expect(KARINA_KNOWLEDGE_BASE).not.toContain('CARINA_HOME');
+    expect(KARINA_KNOWLEDGE_BASE).not.toContain('80.190.81.208');
+  });
+
+  it('retrieves contact, schedules, reminder, outreach, and soft wall help', () => {
     const contactsContext = karinaRagContext('where do I find contacts');
     const bridgeContext = karinaRagContext('how does the GitHub sync bridge work');
     const schedulesContext = karinaRagContext('where is my task list reminder schedules');
     const telegramContext = karinaRagContext('telegram aiva not replying quiet');
+    const outreach = karinaRagContext('how does outreach program sequences soft wall work');
+    const softWall = karinaRagContext('approvals soft wall email draft before send');
 
     expect(contactsContext.toLowerCase()).toMatch(/contacts/);
     expect(bridgeContext.toLowerCase()).toMatch(/github|agent-sync|bridge/);
     expect(schedulesContext.toLowerCase()).toMatch(/schedules|reminder|todo|automations/);
     expect(telegramContext.toLowerCase()).toMatch(/telegram|botfather|channels/);
+    expect(outreach.toLowerCase()).toMatch(/outreach|sequence|soft wall/);
+    expect(softWall.toLowerCase()).toMatch(/approval|soft wall|email/);
   });
 });

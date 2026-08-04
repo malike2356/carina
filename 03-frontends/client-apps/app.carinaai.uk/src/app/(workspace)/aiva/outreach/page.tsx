@@ -56,7 +56,7 @@ export default function OutreachOverviewPage() {
   }
 
   if (!data) {
-    return <div className="p-6 text-sm text-text-muted">Could not load Outreach Program.</div>;
+    return <div className="p-6 text-sm text-text-muted">Could not load sales engagement.</div>;
   }
 
   const statusKeys = Object.keys(PIPELINE_LABELS) as PipelineStatus[];

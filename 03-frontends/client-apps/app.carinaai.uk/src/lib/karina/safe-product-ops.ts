@@ -103,8 +103,8 @@ export function renderSoftWallEmailCalendar(): string {
 
 export function renderOutreachProgram(): string {
   return [
-    '# Outreach Program',
-    'Path: sidebar Outreach (/aiva/outreach). Legacy /outreach redirects there. Same on app.carinaai.uk and admin.hireaiva.co.uk.',
+    '# Sales engagement (sidebar: Outreach)',
+    'Path: sidebar Outreach (/aiva/outreach). Page heading is Sales engagement. Legacy /outreach redirects there.',
     '',
     '## What it is',
     '- Lead intake, campaigns, lists, Soft Wall email sequences, reply review, bookings, reminders, and a pipeline board.',
@@ -118,6 +118,7 @@ export function renderOutreachProgram(): string {
     '- Bookings: pick open slots, book discovery calls, mark attended or no-show, process reminders.',
     '- Sequences: email steps; each due send is pending Soft Wall approval, not mass-send.',
     '- Channels: YouTube and links to mailbox / Approvals.',
+    '- Companies House: UK register search for lead research.',
     '',
     '## Safe guidance',
     '- Never tell users to bypass Approvals for cold email.',

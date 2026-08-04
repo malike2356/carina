@@ -66,7 +66,7 @@ describe('Aiva primary navigation', () => {
     expect(calendar?.match('/scheduled')).toBe(true);
   });
 
-  it('routes Outreach to the Aiva Outreach Program', () => {
+  it('routes Outreach to the tabbed sales engagement UI', () => {
     const outreach = AIVA_PRIMARY_NAV.find((item) => item.label === 'Outreach');
     expect(outreach?.href).toBe('/aiva/outreach');
     expect(outreach?.match('/aiva/outreach')).toBe(true);
