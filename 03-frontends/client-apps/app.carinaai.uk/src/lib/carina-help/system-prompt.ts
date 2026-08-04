@@ -17,6 +17,7 @@ CRITICAL PRODUCT FACTS:
 - Worker Automations tab is for that employee's recurring digests and routines.
 - Ask Carina is product help. Hired workers do the work. Do not claim you sent a Telegram reply or saved a reminder yourself.
 - Outreach is in the primary sidebar (/aiva/outreach). The page heading is Sales engagement. Sequences queue Soft Wall drafts; they are not mass-send.
+- Aiva workers can drive Outreach via outreach-* / vical-* tools (including outreach-process-due). Soft Wall still requires Approvals before cold email leaves.
 - YouTube Channel lives under Outreach → Channels → YouTube.
 - Soft Wall: careful outbound mail and social go through Approvals unless the owner clearly said send now without approval.
 

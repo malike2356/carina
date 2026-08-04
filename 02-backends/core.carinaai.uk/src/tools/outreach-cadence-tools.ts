@@ -59,6 +59,38 @@ export function createOutreachCadenceTools(sessionId: string): Tool[] {
         return { ok: true, data: { campaignId, ...result } };
       },
     },
+    {
+      name: 'outreach-process-due',
+      description:
+        'Process due Soft Wall sequence steps for Sales engagement (Outreach). '
+        + 'Queues email drafts into /aiva/approvals; does NOT send cold email. '
+        + 'Also backfills any pending_approval deliveries missing an Approvals row. '
+        + 'Use when the owner asks to run outreach, process due sends, or keep the funnel moving.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          workerId: { type: 'string' },
+        },
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        if (!workspaceId) return { ok: false, error: 'workspaceId required' };
+        const workerId =
+          typeof params.workerId === 'string' && params.workerId.trim()
+            ? params.workerId.trim()
+            : getWorkerSessionContext(sessionId)?.worker.id;
+        const { processDueSendsWithSoftWall } = await import('../outreach/soft-wall-approvals.js');
+        const result = await processDueSendsWithSoftWall(workspaceId, new Date(), workerId);
+        return {
+          ok: true,
+          data: {
+            ...result,
+            note: 'Soft Wall: drafts are in Approvals. Cold email is not sent until an owner approves.',
+          },
+        };
+      },
+    },
   ];
 }
 

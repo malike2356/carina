@@ -224,6 +224,17 @@ export async function sendApprovedEmail(input: {
 
   await markApprovalSent(resolved.id);
 
+  try {
+    const { markOutreachDeliveryFromApproval } = await import('../../outreach/soft-wall-approvals.js');
+    markOutreachDeliveryFromApproval({
+      workspaceId: input.workspaceId,
+      approvalId: resolved.id,
+      status: 'sent',
+    });
+  } catch {
+    // Outreach Soft Wall link is best-effort; Approvals send still succeeded.
+  }
+
   await reportAivaScoutEvent({
     workspaceId: input.workspaceId,
     workerId: resolved.workerId,
@@ -255,6 +266,18 @@ export async function rejectEmailApproval(input: {
     reviewedBy: input.reviewedBy,
   });
   if (!resolved) return null;
+
+  try {
+    const { markOutreachDeliveryFromApproval } = await import('../../outreach/soft-wall-approvals.js');
+    markOutreachDeliveryFromApproval({
+      workspaceId: input.workspaceId,
+      approvalId: resolved.id,
+      status: 'skipped',
+      lastError: 'rejected_in_approvals',
+    });
+  } catch {
+    // best-effort Soft Wall sync
+  }
 
   await reportAivaScoutEvent({
     workspaceId: input.workspaceId,

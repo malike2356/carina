@@ -932,6 +932,10 @@ export async function describeProductToolGrantsForPrompt(
       '- No relevant tool grants are connected yet.',
       '- Do not claim you can act in Gmail, Calendar, Drive, Contacts, Trello, or Companies House until the workspace owner connects them under Tools.',
       `- Missing: ${missing.map((tool) => tool.label).join(', ') || 'none'}.`,
+      'Sales engagement (Outreach) Soft Wall tools are still available:',
+      '- outreach-process-due queues cold sequence drafts into Approvals (does not send).',
+      '- Use outreach-* / vical-* for discovery, cadence, replies, bookings, and follow-ups.',
+      '- Prefer workspace-email-draft-for-approval for ad-hoc careful outbound mail.',
     ].join('\n');
   }
 
@@ -963,6 +967,16 @@ export async function describeProductToolGrantsForPrompt(
       '- Companies House does not return marketing emails. Never tell the user to open find-and-update.company-information.service.gov.uk when these tools are connected; call them instead.',
     );
   }
+
+  callableLines.push(
+    'Callable Sales engagement (Outreach) tools (Soft Wall kept):',
+    '- Discovery: outreach-discovery-plan, outreach-discovery-sheet-schema, outreach-discovery-normalize-leads, outreach-discovery-ingest-leads.',
+    '- Cadence: outreach-cadence-summary, outreach-cadence-validate-from, outreach-process-due (queues Soft Wall drafts into Approvals; does not send cold email).',
+    '- Replies: outreach-reply-ingest, outreach-reply-review-list, outreach-reply-review-resolve.',
+    '- Bookings: outreach-booking-* and vical-* for discovery call slots, confirm, reschedule, cancel.',
+    '- Ops: outreach-board-*, outreach-alert-*, outreach-follow-up-*, outreach-control-*, outreach-youtube-import.',
+    '- Soft Wall: never claim cold outreach email was sent unless Approvals shows approved/sent. Prefer workspace-email-draft-for-approval for ad-hoc careful mail.',
+  );
 
   return [
     '',

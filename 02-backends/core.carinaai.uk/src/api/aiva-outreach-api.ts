@@ -20,7 +20,6 @@ import {
   markDeliveryStatus,
   PIPELINE_STATUSES,
   pipelineSummary,
-  processDueSends,
   recordLeadBooking,
   recordLeadReply,
   recordLeadUnsubscribe,
@@ -39,6 +38,7 @@ import {
   markBookingNoShow,
   markBookingAttended,
   markBookingConfirmationSent,
+  recordPostCallOutcome,
   getBookingConfig,
   updateBookingConfig,
   listReminders,
@@ -58,7 +58,10 @@ import {
   getOutreachBookingBackend,
   isVicalOutreachBackend,
   resolveVicalHostUserId,
+  updateLeadList,
 } from '../outreach/index.js';
+import { updateSequence } from '../outreach/sequence-engine.js';
+import { createDiscoveryLead } from '../outreach/discovery-funnel.js';
 import { buildOutreachCadenceSummary } from '../outreach/cadence.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
 import { backfillOutreachBookingsToVical } from '../vical/index.js';
@@ -393,6 +396,20 @@ aivaOutreachRouter.post('/lists', (req: OutreachRequest, res: Response) => {
   res.status(201).json({ list });
 });
 
+aivaOutreachRouter.patch('/lists/:listId', (req: OutreachRequest, res: Response) => {
+  const list = updateLeadList(req.workspaceId!, routeParam(req.params.listId), {
+    name: req.body?.name,
+    description: req.body?.description,
+    leadIds: Array.isArray(req.body?.leadIds) ? req.body.leadIds.map(String) : undefined,
+    tags: Array.isArray(req.body?.tags) ? req.body.tags.map(String) : undefined,
+  });
+  if (!list) {
+    res.status(404).json({ error: 'List not found' });
+    return;
+  }
+  res.json({ list });
+});
+
 aivaOutreachRouter.post('/lists/:listId/leads', (req: OutreachRequest, res: Response) => {
   const leadIds = Array.isArray(req.body?.leadIds) ? req.body.leadIds.map(String) : [];
   const list = addLeadsToList(req.workspaceId!, routeParam(req.params.listId), leadIds);
@@ -425,6 +442,23 @@ aivaOutreachRouter.post('/sequences', (req: OutreachRequest, res: Response) => {
     stopOnUnsubscribe: req.body?.stopOnUnsubscribe,
   });
   res.status(201).json({ sequence });
+});
+
+aivaOutreachRouter.patch('/sequences/:sequenceId', (req: OutreachRequest, res: Response) => {
+  const sequence = updateSequence(req.workspaceId!, routeParam(req.params.sequenceId), {
+    name: req.body?.name,
+    description: req.body?.description,
+    channelDefault: req.body?.channelDefault,
+    steps: Array.isArray(req.body?.steps) ? req.body.steps : undefined,
+    stopOnReply: typeof req.body?.stopOnReply === 'boolean' ? req.body.stopOnReply : undefined,
+    stopOnBooking: typeof req.body?.stopOnBooking === 'boolean' ? req.body.stopOnBooking : undefined,
+    stopOnUnsubscribe: typeof req.body?.stopOnUnsubscribe === 'boolean' ? req.body.stopOnUnsubscribe : undefined,
+  });
+  if (!sequence) {
+    res.status(404).json({ error: 'Sequence not found' });
+    return;
+  }
+  res.json({ sequence });
 });
 
 aivaOutreachRouter.get('/enrollments', (req: OutreachRequest, res: Response) => {
@@ -461,11 +495,54 @@ aivaOutreachRouter.post('/enrollments/:enrollmentId/pause', (req: OutreachReques
   res.json({ enrollment });
 });
 
-aivaOutreachRouter.post('/process-due', (req: OutreachRequest, res: Response) => {
-  const result = processDueSends(req.workspaceId!);
+aivaOutreachRouter.post('/companies-house/import-lead', (req: OutreachRequest, res: Response) => {
+  const companyNumber = String(req.body?.companyNumber ?? '').trim().toUpperCase();
+  const companyName = String(req.body?.companyName ?? '').trim();
+  if (!companyNumber || !companyName) {
+    res.status(400).json({ error: 'companyNumber and companyName are required' });
+    return;
+  }
+  const officerNames = Array.isArray(req.body?.officerNames)
+    ? req.body.officerNames
+        .filter((value: unknown) => typeof value === 'string')
+        .map((value: string) => value.trim())
+        .filter(Boolean)
+    : [];
+  const notesParts = [
+    typeof req.body?.companyStatus === 'string' ? `Status: ${req.body.companyStatus}` : '',
+    typeof req.body?.registeredOffice === 'string' ? `Office: ${req.body.registeredOffice}` : '',
+    Array.isArray(req.body?.sicCodes) && req.body.sicCodes.length > 0
+      ? `SIC: ${req.body.sicCodes.map(String).join(', ')}`
+      : '',
+    officerNames.length > 0 ? `Officers: ${officerNames.join(', ')}` : '',
+  ].filter(Boolean);
+  const result = createDiscoveryLead(req.workspaceId!, {
+    name: companyName,
+    company: companyName,
+    companyNumber,
+    email: typeof req.body?.email === 'string' ? req.body.email : undefined,
+    phone: typeof req.body?.phone === 'string' ? req.body.phone : undefined,
+    source: 'companies_house',
+    campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+    tags: Array.isArray(req.body?.tags) ? req.body.tags.map(String) : ['companies_house'],
+    notes: [
+      typeof req.body?.notes === 'string' ? req.body.notes.trim() : '',
+      notesParts.join(' | '),
+    ].filter(Boolean).join('\n'),
+  });
+  res.status(result.duplicateOf ? 200 : 201).json({
+    ...result,
+    imported: !result.duplicateOf,
+  });
+});
+
+aivaOutreachRouter.post('/process-due', async (req: OutreachRequest, res: Response) => {
+  const workerId = typeof req.body?.workerId === 'string' ? req.body.workerId : undefined;
+  const { processDueSendsWithSoftWall } = await import('../outreach/soft-wall-approvals.js');
+  const result = await processDueSendsWithSoftWall(req.workspaceId!, new Date(), workerId);
   res.json({
     ...result,
-    note: 'Soft Wall: deliveries are pending_approval until the owner approves send in Approvals.',
+    note: 'Soft Wall: deliveries are queued in Approvals; cold email is not sent until an owner approves.',
   });
 });
 
@@ -718,6 +795,26 @@ aivaOutreachRouter.post('/bookings/:bookingId/attended', (req: OutreachRequest, 
   try {
     const booking = markBookingAttended(req.workspaceId!, routeParam(req.params.bookingId));
     res.json({ booking });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/bookings/:bookingId/outcome', (req: OutreachRequest, res: Response) => {
+  try {
+    const outcome = String(req.body?.outcome ?? '').trim();
+    const allowed = ['qualified', 'proposal_needed', 'needs_follow_up', 'not_a_fit', 'won', 'lost'];
+    if (!allowed.includes(outcome)) {
+      res.status(400).json({ error: 'outcome is required' });
+      return;
+    }
+    const result = recordPostCallOutcome({
+      workspaceId: req.workspaceId!,
+      bookingId: routeParam(req.params.bookingId),
+      outcome: outcome as never,
+      notes: typeof req.body?.notes === 'string' ? req.body.notes : undefined,
+    });
+    res.json({ ...result, note: 'Outcome recorded and follow-up tasks refreshed.' });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
   }

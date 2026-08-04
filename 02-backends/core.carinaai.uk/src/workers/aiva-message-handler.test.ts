@@ -110,6 +110,13 @@ describe('aiva-message-handler Propreneur bridge tools', () => {
     expect(isToolAllowedForWorker('workspace-worker-update', sessionId)).toBe(true);
     expect(isToolAllowedForWorker('google-drive-create-file', sessionId)).toBe(true);
   });
+
+  it('allows Soft Wall outreach and viCal tools for Aiva workers', async () => {
+    const { isToolAllowedForWorker } = await import('./aiva-message-handler.js');
+    expect(isToolAllowedForWorker('outreach-process-due', sessionId)).toBe(true);
+    expect(isToolAllowedForWorker('outreach-discovery-ingest-leads', sessionId)).toBe(true);
+    expect(isToolAllowedForWorker('vical-booking-create', sessionId)).toBe(true);
+  });
 });
 
 describe('propreneur write tools', () => {
