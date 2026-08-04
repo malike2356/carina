@@ -117,7 +117,7 @@ export const NAV_ROUTES: NavRoute[] = [
     description: 'UK public registry search (Outreach + More; not primary sidebar).',
     group: 'workspace',
     iconName: 'Building2',
-    parent: '/outreach',
+    parent: '/aiva/outreach',
   },
   {
     href: '/files',
@@ -134,9 +134,9 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'Mail',
   },
   {
-    href: '/outreach',
+    href: '/aiva/outreach',
     label: 'Outreach',
-    description: 'Lead funnels, replies, bookings, and handoffs.',
+    description: 'Lead funnel, Soft Wall sequences, channels, and Companies House.',
     group: 'workspace',
     iconName: 'Send',
   },

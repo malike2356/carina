@@ -86,12 +86,12 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
     feature: 'projects',
   },
   {
-    href: '/outreach',
+    href: '/aiva/outreach',
     label: 'Outreach',
     icon: Send,
     match: (pathname) =>
-      pathname.startsWith('/outreach')
-      || pathname.startsWith('/aiva/outreach')
+      pathname.startsWith('/aiva/outreach')
+      || pathname.startsWith('/outreach')
       || pathname.startsWith('/companies-house'),
     feature: 'outreach',
   },
@@ -179,7 +179,6 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
       || pathname.startsWith('/aiva/org')
       || pathname.startsWith('/aiva/marketplace')
       || pathname.startsWith('/aiva/human-assist')
-      || pathname.startsWith('/aiva/outreach')
       || pathname.startsWith('/aiva/youtube-channel')
       || pathname.startsWith('/aiva/property-channel')
       || pathname.startsWith('/settings/channel-shield')
@@ -308,12 +307,6 @@ export const AIVA_MORE_DIRECTORY: AivaDirectoryGroup[] = [
         label: 'Approvals',
         description: 'Approve drafts before your Aivas send email, messaging, or social replies.',
         icon: Inbox,
-      },
-      {
-        href: '/aiva/outreach',
-        label: 'Outreach Program',
-        description: 'Leads, campaigns, Soft Wall sequences, and YouTube content channel.',
-        icon: Send,
       },
     ],
   },

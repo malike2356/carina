@@ -66,13 +66,12 @@ describe('Aiva primary navigation', () => {
     expect(calendar?.match('/scheduled')).toBe(true);
   });
 
-  it('routes Outreach directly from the primary sidebar', () => {
+  it('routes Outreach to the Aiva Outreach Program', () => {
     const outreach = AIVA_PRIMARY_NAV.find((item) => item.label === 'Outreach');
-    expect(outreach?.href).toBe('/outreach');
-    expect(outreach?.match('/outreach')).toBe(true);
-    expect(outreach?.match('/outreach/campaigns')).toBe(true);
+    expect(outreach?.href).toBe('/aiva/outreach');
     expect(outreach?.match('/aiva/outreach')).toBe(true);
     expect(outreach?.match('/aiva/outreach/companies-house')).toBe(true);
+    expect(outreach?.match('/outreach')).toBe(true);
     expect(outreach?.match('/companies-house')).toBe(true);
   });
 });
