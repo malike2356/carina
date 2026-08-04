@@ -8,6 +8,8 @@ import {
   COMPANIES_HOUSE_DEFAULT_BASE_URL,
   type CompaniesHouseCompanyProfile,
   type CompaniesHouseCompanySearchItem,
+  type CompaniesHouseOfficerAppointmentItem,
+  type CompaniesHouseOfficerAppointmentsList,
   type CompaniesHouseOfficerItem,
   type CompaniesHouseOfficerSearchItem,
   type CompaniesHouseOfficersList,
@@ -83,6 +85,31 @@ function parseRetryAfterSeconds(header: string | null): number | undefined {
 
 function normalizeCompanyNumber(companyNumber: string): string {
   return companyNumber.trim().toUpperCase().replace(/\s+/g, '');
+}
+
+/**
+ * Accept a raw officer id, `/officers/{id}`, or `/officers/{id}/appointments` (absolute or relative).
+ */
+export function extractOfficerId(input: string): string {
+  const raw = input.trim();
+  if (!raw) throw new CompaniesHouseApiError('officerId is required');
+  try {
+    if (/^https?:\/\//i.test(raw)) {
+      const pathname = new URL(raw).pathname;
+      const fromUrl = pathname.match(/\/officers\/([^/]+)/i)?.[1];
+      if (fromUrl) return decodeURIComponent(fromUrl);
+    }
+  } catch {
+    /* fall through */
+  }
+  const fromPath = raw.match(/\/officers\/([^/]+)/i)?.[1];
+  if (fromPath) return decodeURIComponent(fromPath);
+  if (raw.includes('/')) {
+    throw new CompaniesHouseApiError(
+      'Could not parse officer id. Pass the officer id or a Companies House /officers/{id} path.',
+    );
+  }
+  return raw;
 }
 
 export class CompaniesHouseClient {
@@ -218,6 +245,62 @@ export class CompaniesHouseClient {
         start_index: clampStartIndex(params.startIndex),
       },
     );
+  }
+
+  /**
+   * Companies associated with a person (officer appointments).
+   * Accepts officer id or a /officers/{id}(/appointments) path from search results.
+   */
+  listOfficerAppointments(
+    officerIdOrPath: string,
+    params: CompaniesHousePageParams = {},
+  ): Promise<CompaniesHouseOfficerAppointmentsList> {
+    const officerId = extractOfficerId(officerIdOrPath);
+    return this.request(`/officers/${encodeURIComponent(officerId)}/appointments`, {
+      items_per_page: clampPageSize(params.itemsPerPage),
+      start_index: clampStartIndex(params.startIndex),
+    });
+  }
+
+  async listOfficerAppointmentsUpTo(
+    officerIdOrPath: string,
+    maxItems = 50,
+    pageSize = 35,
+  ): Promise<{
+    officer_id: string;
+    name?: string;
+    items: CompaniesHouseOfficerAppointmentItem[];
+    total_results?: number;
+  }> {
+    const officerId = extractOfficerId(officerIdOrPath);
+    const items: CompaniesHouseOfficerAppointmentItem[] = [];
+    let startIndex = 0;
+    let total: number | undefined;
+    let name: string | undefined;
+    const cap = Math.max(1, Math.min(200, Math.floor(maxItems)));
+    const size = clampPageSize(pageSize);
+
+    while (items.length < cap) {
+      const page = await this.listOfficerAppointments(officerId, {
+        itemsPerPage: size,
+        startIndex,
+      });
+      if (!name && page.name) name = page.name;
+      total = page.total_results;
+      const batch = page.items ?? [];
+      if (batch.length === 0) break;
+      items.push(...batch);
+      startIndex += batch.length;
+      if (typeof total === 'number' && startIndex >= total) break;
+      if (batch.length < size && typeof total !== 'number') break;
+    }
+
+    return {
+      officer_id: officerId,
+      name,
+      items: items.slice(0, cap),
+      total_results: total,
+    };
   }
 
   /**

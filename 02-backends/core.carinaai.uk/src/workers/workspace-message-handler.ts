@@ -81,6 +81,7 @@ const AIVA_WORKSPACE_TOOLS = new Set([
   'google-drive-share-file',
   'companies-house-search-companies',
   'companies-house-search-officers',
+  'companies-house-list-officer-appointments',
   'companies-house-get-company',
   'companies-house-list-officers',
   'companies-house-list-psc',

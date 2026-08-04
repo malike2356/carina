@@ -19,12 +19,53 @@ export type CompanySearchHit = {
   public_url?: string | null;
 };
 
+export type OfficerSearchHit = {
+  officer_id?: string | null;
+  name?: string | null;
+  description?: string | null;
+  appointment_count?: number | null;
+  address_snippet?: string | null;
+  date_of_birth?: { month?: number; year?: number } | null;
+  self?: string | null;
+};
+
 export type CompanySearchResult = {
   query: string;
+  mode?: 'companies' | 'officers';
   total_results?: number | null;
   items_per_page?: number;
   start_index?: number;
   items: CompanySearchHit[];
+};
+
+export type OfficerSearchResult = {
+  query: string;
+  mode?: 'companies' | 'officers';
+  total_results?: number | null;
+  items_per_page?: number;
+  start_index?: number;
+  items: OfficerSearchHit[];
+};
+
+export type OfficerAppointmentCompany = {
+  company_number?: string | null;
+  company_name?: string | null;
+  company_status?: string | null;
+  officer_role?: string | null;
+  appointed_on?: string | null;
+  resigned_on?: string | null;
+  nationality?: string | null;
+  country_of_residence?: string | null;
+  occupation?: string | null;
+  uri?: string | null;
+};
+
+export type OfficerAppointmentsResult = {
+  officer_id: string;
+  name?: string | null;
+  total_results?: number | null;
+  returned?: number;
+  companies: OfficerAppointmentCompany[];
 };
 
 export type CompanyOfficer = {
@@ -62,9 +103,21 @@ export type CompanyProfile = {
 };
 
 async function parseJson<T>(res: Response, fallback: string): Promise<T> {
-  const payload = await res.json().catch(() => null) as { error?: string; message?: string } | null;
+  const text = await res.text();
+  let payload: { error?: string; message?: string } | null = null;
+  if (text.trim()) {
+    try {
+      payload = JSON.parse(text) as { error?: string; message?: string };
+    } catch {
+      const preview = text.slice(0, 160).replace(/\s+/g, ' ');
+      throw new Error(`${fallback} (HTTP ${res.status}, non-JSON): ${preview}`);
+    }
+  }
   if (!res.ok) {
-    throw new Error(payload?.error || payload?.message || fallback);
+    throw new Error(payload?.error || payload?.message || `${fallback} (HTTP ${res.status})`);
+  }
+  if (!payload) {
+    throw new Error(`${fallback} returned an empty response`);
   }
   return payload as T;
 }
@@ -75,16 +128,31 @@ export async function fetchCompaniesHouseStatus(): Promise<CompaniesHouseStatus>
 
 export async function searchCompaniesHouse(
   query: string,
-  opts?: { items_per_page?: number; start_index?: number },
-): Promise<CompanySearchResult> {
+  opts?: { items_per_page?: number; start_index?: number; mode?: 'companies' | 'officers' },
+): Promise<CompanySearchResult | OfficerSearchResult> {
   const params = new URLSearchParams({
     q: query,
+    mode: opts?.mode ?? 'companies',
     items_per_page: String(opts?.items_per_page ?? 20),
     start_index: String(opts?.start_index ?? 0),
   });
   return parseJson(
     await fetch(`/api/companies-house/search?${params}`),
     'Companies House search failed',
+  );
+}
+
+export async function fetchOfficerAppointments(
+  officerId: string,
+  opts?: { max_items?: number },
+): Promise<OfficerAppointmentsResult> {
+  const encoded = encodeURIComponent(officerId);
+  const params = new URLSearchParams({
+    max_items: String(opts?.max_items ?? 50),
+  });
+  return parseJson(
+    await fetch(`/api/companies-house/officers/${encoded}/appointments?${params}`),
+    'Could not load officer appointments',
   );
 }
 

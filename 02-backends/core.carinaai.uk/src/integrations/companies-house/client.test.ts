@@ -131,4 +131,40 @@ describe('companies-house client', () => {
     const result = await client.searchCompanies({ q: 'Acme', itemsPerPage: 10, startIndex: 5 });
     expect(result.items?.[0]?.company_number).toBe('12345678');
   });
+
+  it('extracts officer id and lists appointments', async () => {
+    const { extractOfficerId } = await import('./client.js');
+    expect(extractOfficerId('/officers/abc123XYZ/appointments')).toBe('abc123XYZ');
+    expect(extractOfficerId('raw-officer-id')).toBe('raw-officer-id');
+
+    const fetchImpl = vi.fn(async (url: string) => {
+      expect(url).toContain('/officers/abc123XYZ/appointments');
+      return new Response(
+        JSON.stringify({
+          name: 'SMITH, Jane',
+          total_results: 1,
+          items: [
+            {
+              officer_role: 'director',
+              appointed_on: '2020-01-01',
+              appointed_to: {
+                company_name: 'ACME LTD',
+                company_number: '12345678',
+                company_status: 'active',
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    });
+    const client = createCompaniesHouseClient({
+      apiKey: 'k',
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    const result = await client.listOfficerAppointmentsUpTo('/officers/abc123XYZ/appointments', 20);
+    expect(result.officer_id).toBe('abc123XYZ');
+    expect(result.name).toBe('SMITH, Jane');
+    expect(result.items[0]?.appointed_to?.company_number).toBe('12345678');
+  });
 });

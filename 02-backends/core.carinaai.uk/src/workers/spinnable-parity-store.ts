@@ -962,7 +962,8 @@ export async function describeProductToolGrantsForPrompt(
     callableLines.push(
       'Callable tools for Companies House (UK register; read-only):',
       '- companies-house-search-companies (q required): find companies by name; returns company_number and status.',
-      '- companies-house-search-officers: find people / officers by name. ALWAYS call this in the same turn as contacts search when the user asks to find or identify a person.',
+      '- companies-house-search-officers: find people / officers by name. ALWAYS call this in the same turn as contacts search when the user asks to find or identify a person. Set includeAppointments=true (or then call companies-house-list-officer-appointments) to list associated companies.',
+      '- companies-house-list-officer-appointments (officerId): companies where that person is appointed.',
       '- companies-house-get-company, companies-house-list-officers, companies-house-list-psc: enrich by company number.',
       '- Companies House does not return marketing emails. Never tell the user to open find-and-update.company-information.service.gov.uk when these tools are connected; call them instead.',
     );

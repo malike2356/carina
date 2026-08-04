@@ -11,6 +11,7 @@ import {
   formatCompactCompanyProfile,
   formatCompactCompanySearchItem,
   formatCompactOfficer,
+  formatCompactOfficerAppointment,
   formatCompactOfficerSearchItem,
   formatCompactPsc,
   isCompaniesHouseConfigured,
@@ -129,6 +130,9 @@ export function createCompaniesHouseTools(
       name: 'companies-house-search-officers',
       description:
         'Search Companies House for officers (people) by name. '
+        + 'Returns officer_id and appointment_count. '
+        + 'When the user wants associated companies, set includeAppointments=true '
+        + 'or call companies-house-list-officer-appointments with officer_id. '
         + 'Does not invent appointments or emails. '
         + EMAIL_DISCLAIMER,
       parameters: {
@@ -137,12 +141,20 @@ export function createCompaniesHouseTools(
           q: { type: 'string', description: 'Officer name query' },
           itemsPerPage: { type: 'number', description: 'Results per page (1-100, default 20)' },
           startIndex: { type: 'number', description: 'Pagination start index (default 0)' },
+          includeAppointments: {
+            type: 'boolean',
+            description:
+              'If true, fetch associated companies (appointments) for the top matches (up to 5).',
+          },
         },
         required: ['q'],
       },
       execute: async (params) => {
         const q = String(params.q ?? '').trim();
         if (!q) return { ok: false, error: 'q is required' };
+        const includeAppointments = params.includeAppointments === true
+          || params.includeAppointments === 'true'
+          || params.includeAppointments === 1;
         return withGrant(sessionId, async () => {
           const client = clientFactory();
           const result = await client.searchOfficers({
@@ -151,10 +163,79 @@ export function createCompaniesHouseTools(
             startIndex: clampStart(params.startIndex),
           });
           const items = (result.items ?? []).slice(0, 25).map(formatCompactOfficerSearchItem);
+          if (!includeAppointments) {
+            return {
+              total_results: result.total_results ?? items.length,
+              start_index: result.start_index ?? 0,
+              items,
+              note:
+                `${EMAIL_DISCLAIMER} To list associated companies, call `
+                + 'companies-house-list-officer-appointments with officer_id from a hit, '
+                + 'or re-run with includeAppointments=true.',
+            };
+          }
+
+          const deepen = items.slice(0, 5).filter((item) => item.officer_id);
+          const withCompanies = [];
+          for (const item of deepen) {
+            try {
+              const appointments = await client.listOfficerAppointmentsUpTo(
+                item.officer_id!,
+                40,
+              );
+              withCompanies.push({
+                ...item,
+                companies: appointments.items.map(formatCompactOfficerAppointment),
+                companies_total: appointments.total_results ?? appointments.items.length,
+              });
+            } catch (err) {
+              withCompanies.push({
+                ...item,
+                companies: [],
+                companies_error: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
+
           return {
             total_results: result.total_results ?? items.length,
             start_index: result.start_index ?? 0,
-            items,
+            items: withCompanies,
+            note: EMAIL_DISCLAIMER,
+          };
+        });
+      },
+    },
+    {
+      name: 'companies-house-list-officer-appointments',
+      description:
+        'List companies associated with a Companies House officer (person). '
+        + 'Pass officerId from companies-house-search-officers (or a /officers/{id} path). '
+        + 'Returns company_number, company_name, status, role, and appointment dates. '
+        + EMAIL_DISCLAIMER,
+      parameters: {
+        type: 'object',
+        properties: {
+          officerId: {
+            type: 'string',
+            description: 'Officer id or /officers/{id}(/appointments) path from officer search',
+          },
+          maxItems: { type: 'number', description: 'Max appointments to return (default 50, max 100)' },
+        },
+        required: ['officerId'],
+      },
+      execute: async (params) => {
+        const officerId = String(params.officerId ?? params.officer_id ?? params.self ?? '').trim();
+        if (!officerId) return { ok: false, error: 'officerId is required' };
+        const maxItems = Math.min(100, Math.max(1, Number(params.maxItems ?? 50) || 50));
+        return withGrant(sessionId, async () => {
+          const result = await clientFactory().listOfficerAppointmentsUpTo(officerId, maxItems);
+          return {
+            officer_id: result.officer_id,
+            name: result.name ?? null,
+            total_results: result.total_results ?? result.items.length,
+            returned: result.items.length,
+            companies: result.items.map(formatCompactOfficerAppointment),
             note: EMAIL_DISCLAIMER,
           };
         });

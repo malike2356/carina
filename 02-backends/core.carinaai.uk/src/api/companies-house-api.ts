@@ -6,6 +6,8 @@ import {
   CompaniesHouseRateLimitError,
   companiesHouseConfigHint,
   createCompaniesHouseClient,
+  extractOfficerId,
+  formatCompactOfficerAppointment,
   formatRegisteredOffice,
   isCompaniesHouseConfigured,
 } from '../integrations/companies-house/index.js';
@@ -84,10 +86,49 @@ companiesHouseRouter.get('/search', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'q is required' });
     return;
   }
+  const modeRaw = String(req.query.mode ?? req.query.type ?? 'companies').trim().toLowerCase();
+  const mode = modeRaw === 'officers' || modeRaw === 'people' || modeRaw === 'person'
+    ? 'officers'
+    : 'companies';
   try {
     const client = createCompaniesHouseClient();
     const itemsPerPage = clampItems(req.query.items_per_page ?? req.query.itemsPerPage, 20);
     const startIndex = clampStart(req.query.start_index ?? req.query.startIndex);
+
+    if (mode === 'officers') {
+      const result = await client.searchOfficers({ q, itemsPerPage, startIndex });
+      const items = (result.items ?? []).map((item) => {
+        const self = item.links?.self ?? null;
+        let officerId: string | null = null;
+        if (self) {
+          try {
+            officerId = extractOfficerId(self);
+          } catch {
+            officerId = null;
+          }
+        }
+        return {
+          officer_id: officerId,
+          name: item.title ?? null,
+          description: item.description ?? null,
+          appointment_count: item.appointment_count ?? null,
+          address_snippet: item.address_snippet ?? null,
+          date_of_birth: item.date_of_birth ?? null,
+          self,
+        };
+      }).filter((item) => item.officer_id || item.name);
+
+      res.json({
+        query: q,
+        mode: 'officers',
+        total_results: result.total_results ?? items.length,
+        items_per_page: result.items_per_page ?? itemsPerPage,
+        start_index: result.start_index ?? startIndex,
+        items,
+      });
+      return;
+    }
+
     const result = await client.searchCompanies({ q, itemsPerPage, startIndex });
     const items = (result.items ?? []).map((item) => {
       const companyNumber = (item.company_number ?? '').trim().toUpperCase();
@@ -105,10 +146,38 @@ companiesHouseRouter.get('/search', async (req: Request, res: Response) => {
 
     res.json({
       query: q,
+      mode: 'companies',
       total_results: result.total_results ?? items.length,
       items_per_page: result.items_per_page ?? itemsPerPage,
       start_index: result.start_index ?? startIndex,
       items,
+    });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+companiesHouseRouter.get('/officers/:officerId/appointments', async (req: Request, res: Response) => {
+  if (!isCompaniesHouseConfigured()) {
+    res.status(503).json({ error: companiesHouseConfigHint() });
+    return;
+  }
+  const officerId = String(req.params.officerId ?? '').trim();
+  if (!officerId) {
+    res.status(400).json({ error: 'officerId is required' });
+    return;
+  }
+  try {
+    const client = createCompaniesHouseClient();
+    const maxItems = clampItems(req.query.max_items ?? req.query.maxItems, 50);
+    const result = await client.listOfficerAppointmentsUpTo(officerId, maxItems);
+    const companies = result.items.map(formatCompactOfficerAppointment);
+    res.json({
+      officer_id: result.officer_id || extractOfficerId(officerId),
+      name: result.name ?? null,
+      total_results: result.total_results ?? companies.length,
+      returned: companies.length,
+      companies,
     });
   } catch (err) {
     sendError(res, err);

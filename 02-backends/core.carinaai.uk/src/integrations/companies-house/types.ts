@@ -39,6 +39,42 @@ export type CompaniesHouseOfficerSearchItem = {
   };
 };
 
+/** One company appointment for an officer (person). */
+export type CompaniesHouseOfficerAppointmentItem = {
+  name?: string;
+  officer_role?: string;
+  appointed_on?: string;
+  resigned_on?: string;
+  appointed_to?: {
+    company_name?: string;
+    company_number?: string;
+    company_status?: string;
+  };
+  address?: CompaniesHouseAddress;
+  nationality?: string;
+  country_of_residence?: string;
+  occupation?: string;
+  links?: {
+    company?: string;
+  };
+};
+
+export type CompaniesHouseOfficerAppointmentsList = {
+  items?: CompaniesHouseOfficerAppointmentItem[];
+  items_per_page?: number;
+  start_index?: number;
+  total_results?: number;
+  kind?: string;
+  /** Present on some officer appointment responses */
+  name?: string;
+  date_of_birth?: { month?: number; year?: number };
+  etag?: string;
+  is_corporate_officer?: boolean;
+  links?: {
+    self?: string;
+  };
+};
+
 export type CompaniesHouseSearchResponse<T> = {
   items?: T[];
   items_per_page?: number;

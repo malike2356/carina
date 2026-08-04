@@ -1,9 +1,11 @@
 import type { CompaniesHouseClient } from './client.js';
+import { extractOfficerId } from './client.js';
 import type {
   CompaniesHouseAddress,
   CompaniesHouseCompanyProfile,
   CompaniesHouseCompanySearchItem,
   CompaniesHouseEnrichRecord,
+  CompaniesHouseOfficerAppointmentItem,
   CompaniesHouseOfficerItem,
   CompaniesHousePscItem,
 } from './types.js';
@@ -50,12 +52,40 @@ export function formatCompactOfficerSearchItem(item: {
   address_snippet?: string;
   links?: { self?: string };
 }) {
+  const self = item.links?.self ?? null;
+  let officer_id: string | null = null;
+  if (self) {
+    try {
+      officer_id = extractOfficerId(self);
+    } catch {
+      officer_id = null;
+    }
+  }
   return {
     name: item.title ?? null,
     description: item.description ?? null,
     appointment_count: item.appointment_count ?? null,
     address_snippet: item.address_snippet ?? null,
-    self: item.links?.self ?? null,
+    officer_id,
+    self,
+  };
+}
+
+export function formatCompactOfficerAppointment(item: CompaniesHouseOfficerAppointmentItem) {
+  const companyNumber = item.appointed_to?.company_number?.trim().toUpperCase() || null;
+  return {
+    company_number: companyNumber,
+    company_name: item.appointed_to?.company_name ?? null,
+    company_status: item.appointed_to?.company_status ?? null,
+    officer_role: item.officer_role ?? null,
+    appointed_on: item.appointed_on ?? null,
+    resigned_on: item.resigned_on ?? null,
+    nationality: item.nationality ?? null,
+    country_of_residence: item.country_of_residence ?? null,
+    occupation: item.occupation ?? null,
+    uri: companyNumber
+      ? `https://find-and-update.company-information.service.gov.uk/company/${companyNumber}`
+      : null,
   };
 }
 
