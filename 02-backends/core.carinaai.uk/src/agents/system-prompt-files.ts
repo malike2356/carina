@@ -30,6 +30,11 @@ export function legacyKarinaSystemDir(): string {
   return path.join(os.homedir(), '.karina', 'system');
 }
 
+/** Prefer ~/.carina/system; still reads ~/.karina/system for older installs. */
+export function legacyCarinaSystemDir(): string {
+  return path.join(os.homedir(), '.carina', 'system');
+}
+
 function readFileIfPresent(filePath: string): string | null {
   if (!fs.existsSync(filePath)) return null;
   const content = fs.readFileSync(filePath, 'utf8').trim();
@@ -44,8 +49,12 @@ export function readSystemPromptFile(
   const fromCarina = readFileIfPresent(primary);
   if (fromCarina) return fromCarina;
 
-  const legacy = path.join(legacyKarinaSystemDir(), `${key}.md`);
-  return readFileIfPresent(legacy);
+  const legacyCarina = path.join(legacyCarinaSystemDir(), `${key}.md`);
+  const fromLegacyCarina = readFileIfPresent(legacyCarina);
+  if (fromLegacyCarina) return fromLegacyCarina;
+
+  const legacyKarina = path.join(legacyKarinaSystemDir(), `${key}.md`);
+  return readFileIfPresent(legacyKarina);
 }
 
 export function loadSystemPromptFileOverlay(

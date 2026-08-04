@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { KARINA_KNOWLEDGE_BASE } from '@/lib/karina/knowledge';
-import { resolveKarinaProvider } from '@/lib/karina/provider';
-import { karinaRagContext } from '@/lib/karina/rag';
-import { KARINA_SYSTEM_PROMPT } from '@/lib/karina/system-prompt';
+import { CARINA_HELP_KNOWLEDGE_BASE } from '@/lib/carina-help/knowledge';
+import { resolveCarinaHelpProvider } from '@/lib/carina-help/provider';
+import { carinaHelpRagContext } from '@/lib/carina-help/rag';
+import { sanitizeCarinaHelpReply } from '@/lib/carina-help/sanitize-reply';
+import { CARINA_HELP_SYSTEM_PROMPT } from '@/lib/carina-help/system-prompt';
 import { getDecryptedWorkspaceKeys } from '@/lib/keys';
 import { getSession, requireWorkspace } from '@/lib/session';
 import { requireWorkspaceFeature } from '@/lib/require-workspace-feature';
@@ -23,7 +24,7 @@ const BYOK_ENDPOINTS: Record<string, { url: string; model: string }> = {
 };
 
 async function resolveProviderForWorkspace(workspaceId: string) {
-  const platform = resolveKarinaProvider();
+  const platform = resolveCarinaHelpProvider();
   if (platform) return platform;
 
   const keys = await getDecryptedWorkspaceKeys(workspaceId);
@@ -73,14 +74,15 @@ export async function POST(request: Request) {
   const pageContext = body?.currentPage
     ? `\n\nThe user is currently viewing: ${body.currentPage}`
     : '';
-  const rag = karinaRagContext(`${latestUser} ${body?.currentPage || ''}`, 5);
+  const rag = carinaHelpRagContext(`${latestUser} ${body?.currentPage || ''}`, 5);
 
   const systemContent = [
-    KARINA_SYSTEM_PROMPT,
+    CARINA_HELP_SYSTEM_PROMPT,
     pageContext,
     '',
     '--- AIVA KNOWLEDGE BASE ---',
-    KARINA_KNOWLEDGE_BASE.slice(0, 14000),
+    // Prefix keeps safety + stuck points; BM25 RAG pulls deeper product-ops sections.
+    CARINA_HELP_KNOWLEDGE_BASE.slice(0, 22000),
     rag ? `\n${rag}` : '',
   ]
     .filter(Boolean)
@@ -137,5 +139,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'AI provider returned an empty reply' }, { status: 502 });
   }
 
-  return NextResponse.json({ content });
+  return NextResponse.json({ content: sanitizeCarinaHelpReply(content) });
 }

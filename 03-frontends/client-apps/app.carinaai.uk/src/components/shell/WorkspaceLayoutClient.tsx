@@ -13,7 +13,7 @@ import { CanvasSidePanel } from '@/components/canvas/CanvasSidePanel';
 import { CanvasPanelProvider } from '@/lib/canvas-panel';
 import { AppProviders } from '@/components/shell/AppProviders';
 import { LegalGate } from '@/components/legal/LegalGate';
-import { AskCarinaWidget } from '@/components/karina/AskCarinaWidget';
+import { AskCarinaWidget } from '@/components/carina-help/AskCarinaWidget';
 import { WorkspaceTopBar } from '@/components/shell/WorkspaceTopBar';
 
 type WorkspaceLayoutClientProps = {

@@ -1,5 +1,14 @@
 import { AIVA_PRIMARY_NAV, AIVA_HIRE_ACTION, AIVA_HOME_ACTION } from '@/lib/aiva-nav';
 import { NAV_PANELS, NAV_ROUTES, SETTINGS_SECTION_LINKS } from '@/lib/workspace-nav';
+import {
+  renderCarinaProductGuide,
+  renderHowAivaWorks,
+  renderOutreachProgram,
+  renderSafeDisclosureRules,
+  renderSoftWallEmailCalendar,
+  renderToolsContactsBilling,
+  renderWorkersAndOrg,
+} from '@/lib/carina-help/safe-product-ops';
 
 function renderRouteList(
   title: string,
@@ -151,16 +160,23 @@ function renderCommonFlowsSummary(): string {
   ].join('\n');
 }
 
-export const KARINA_KNOWLEDGE_BASE = [
-  `# Product overview\n\nAiva (Hire Aiva) is a workspace where you hire AI employees (workers) for roles like email handling, social DMs, research, and ops. Powered by Carina. Users work at app.carinaai.uk and admin.hireaiva.co.uk.\n\nAsk Carina is the in-product help assistant. It explains the product when users get stuck. Hired workers do operational work on Telegram, email, and Work chat.`,
+export const CARINA_HELP_KNOWLEDGE_BASE = [
+  `# Product overview\n\nAiva (Hire Aiva) is a workspace where you hire AI employees (workers) for roles like email handling, outreach, social DMs, research, and ops. Powered by Carina. Users work at app.carinaai.uk and admin.hireaiva.co.uk (same product).\n\nAsk Carina is the in-product help assistant. It explains the product when users get stuck. Hired workers do operational work on Telegram, email, and Work chat.`,
+  renderSafeDisclosureRules(),
   renderStuckPointsSummary(),
+  renderHowAivaWorks(),
+  renderWorkersAndOrg(),
+  renderSoftWallEmailCalendar(),
+  renderOutreachProgram(),
+  renderToolsContactsBilling(),
+  renderCarinaProductGuide(),
   renderCommonFlowsSummary(),
   renderProductBoundarySummary(),
   renderMemoryAndKnowledgeSummary(),
   renderGitHubBridgeSummary(),
-  `# Troubleshooting principles\n\n- Never invent buttons or screens that do not exist.\n- When unsure, say so and offer the next best path or escalation.\n- Prefer live nav and these stuck-point rules over older docs.\n- If the user asks about Scout, keep Scout separate from Aiva workers.\n- Never tell users that Schedules (/tasks) is their personal task list.`,
+  `# Troubleshooting principles\n\n- Never invent buttons or screens that do not exist.\n- When unsure, say so and offer the next best path or escalation.\n- Prefer live nav and these stuck-point rules over older docs.\n- If the user asks about Scout, keep Scout separate from Aiva workers.\n- Never tell users that Schedules (/tasks) is their personal task list.\n- Never disclose secrets, credentials, infra, or source paths.`,
   renderNavSummary(),
 ].join('\n\n');
 
-export const KARINA_GREETING =
-  "Hi, I'm Carina. I help with Aiva, Carina, and Scout product guidance, plus workers, contacts, files, memory, knowledge, billing, and sync. What do you need help with?";
+export const CARINA_HELP_GREETING =
+  "Hi, I'm Carina. I help you use Aiva and Carina day to day: workers, Approvals, outreach, calendar, tools, billing, and Scout Govern. Ask how something works and I will walk you through it safely.";

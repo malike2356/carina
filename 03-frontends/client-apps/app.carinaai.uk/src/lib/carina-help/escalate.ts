@@ -2,7 +2,7 @@ import { db } from '@/db';
 import { auditLog } from '@/db/schema';
 import { AIVA_SUPPORT_EMAIL } from '@/lib/docs-links';
 
-export type KarinaEscalationInput = {
+export type CarinaHelpEscalationInput = {
   workspaceId: string;
   userId: string;
   userEmail: string;
@@ -12,7 +12,7 @@ export type KarinaEscalationInput = {
   currentPage?: string | null;
 };
 
-export type KarinaEscalationResult = {
+export type CarinaHelpEscalationResult = {
   id: string;
   emailed: boolean;
   telegram: boolean;
@@ -20,12 +20,12 @@ export type KarinaEscalationResult = {
 
 async function notifyTelegram(text: string): Promise<boolean> {
   const token =
-    process.env.KARINA_ESCALATION_BOT_TOKEN?.trim() ||
+    process.env.CARINA_HELP_ESCALATION_BOT_TOKEN?.trim() || process.env.KARINA_ESCALATION_BOT_TOKEN?.trim() ||
     process.env.TELEGRAM_BOT_TOKEN?.trim() ||
     '';
   const chatId =
-    process.env.KARINA_ESCALATION_CHAT_ID?.trim() ||
-    process.env.KARINA_OWNER_CHAT_ID?.trim() ||
+    process.env.CARINA_HELP_ESCALATION_CHAT_ID?.trim() || process.env.KARINA_ESCALATION_CHAT_ID?.trim() ||
+    process.env.CARINA_HELP_OWNER_CHAT_ID?.trim() || process.env.KARINA_OWNER_CHAT_ID?.trim() ||
     '';
   if (!token || !chatId) return false;
 
@@ -47,17 +47,17 @@ async function notifyTelegram(text: string): Promise<boolean> {
 
 async function notifyEmail(subject: string, body: string): Promise<boolean> {
   const to =
-    process.env.KARINA_ESCALATION_EMAIL?.trim() ||
+    process.env.CARINA_HELP_ESCALATION_EMAIL?.trim() || process.env.KARINA_ESCALATION_EMAIL?.trim() ||
     process.env.AIVA_P0_ESCALATION_CONTACT?.trim() ||
     AIVA_SUPPORT_EMAIL;
   const resendKey = process.env.RESEND_API_KEY?.trim();
   const from =
-    process.env.KARINA_ESCALATION_FROM?.trim() ||
+    process.env.CARINA_HELP_ESCALATION_FROM?.trim() || process.env.KARINA_ESCALATION_FROM?.trim() ||
     process.env.RESEND_FROM?.trim() ||
     'Carina Help <onboarding@resend.dev>';
 
   if (!resendKey) {
-    console.info('[karina-escalate] email skipped (no RESEND_API_KEY)', { to, subject });
+    console.info('[carina-help-escalate] email skipped (no RESEND_API_KEY)', { to, subject });
     return false;
   }
 
@@ -81,11 +81,11 @@ async function notifyEmail(subject: string, body: string): Promise<boolean> {
   }
 }
 
-export async function createKarinaEscalation(
-  input: KarinaEscalationInput,
-): Promise<KarinaEscalationResult> {
+export async function createCarinaHelpEscalation(
+  input: CarinaHelpEscalationInput,
+): Promise<CarinaHelpEscalationResult> {
   const detail = {
-    kind: 'karina_help_escalation',
+    kind: 'carina_help_escalation',
     summary: input.summary,
     currentPage: input.currentPage ?? null,
     userEmail: input.userEmail,
@@ -101,7 +101,7 @@ export async function createKarinaEscalation(
     .values({
       workspaceId: input.workspaceId,
       userId: input.userId,
-      action: 'karina_help_escalation',
+      action: 'carina_help_escalation',
       detail,
     })
     .returning({ id: auditLog.id });

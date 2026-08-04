@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { Loader2, Send, X } from 'lucide-react';
 import { AivaChatMarkdown } from '@/components/aiva/AivaChatMarkdown';
-import { KARINA_GREETING } from '@/lib/karina/knowledge';
+import { CARINA_HELP_GREETING } from '@/lib/carina-help/knowledge';
 import { cn } from '@/lib/utils';
 import { useIsAivaProduct } from '@/hooks/useProductSurface';
 import { useWorkspaceFeatureEnabled } from '@/hooks/useWorkspaceFeatures';
@@ -103,7 +103,7 @@ export function AskCarinaWidget() {
     if (!open) return;
     if (!greetedRef.current) {
       greetedRef.current = true;
-      setMessages([{ id: newId(), role: 'assistant', content: KARINA_GREETING }]);
+      setMessages([{ id: newId(), role: 'assistant', content: CARINA_HELP_GREETING }]);
     }
     const t = window.setTimeout(() => inputRef.current?.focus(), 80);
     return () => window.clearTimeout(t);
@@ -131,7 +131,7 @@ export function AskCarinaWidget() {
     setEscalatedId(null);
 
     try {
-      const res = await fetch('/api/karina/chat', {
+      const res = await fetch('/api/carina/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -191,7 +191,7 @@ export function AskCarinaWidget() {
         .filter((m) => m.role === 'user' || m.role === 'assistant')
         .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
       const lastUser = [...transcript].reverse().find((m) => m.role === 'user')?.content || '';
-      const res = await fetch('/api/karina/escalate', {
+      const res = await fetch('/api/carina/escalate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

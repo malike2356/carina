@@ -1,4 +1,4 @@
-import { KARINA_KNOWLEDGE_BASE } from '@/lib/karina/knowledge';
+import { CARINA_HELP_KNOWLEDGE_BASE } from '@/lib/carina-help/knowledge';
 
 type Chunk = {
   id: number;
@@ -55,7 +55,7 @@ function buildChunks(source: string): Chunk[] {
   return chunks;
 }
 
-const chunks = buildChunks(KARINA_KNOWLEDGE_BASE);
+const chunks = buildChunks(CARINA_HELP_KNOWLEDGE_BASE);
 const docFreq = new Map<string, number>();
 let avgDocLen = 0;
 
@@ -88,7 +88,7 @@ function bm25Score(queryTokens: string[], chunk: Chunk): number {
   return score;
 }
 
-export function karinaRagContext(query: string, topK = 5): string {
+export function carinaHelpRagContext(query: string, topK = 5): string {
   const queryTokens = tokenize(query);
   if (queryTokens.length === 0 || chunks.length === 0) return '';
 
@@ -110,6 +110,6 @@ export function karinaRagContext(query: string, topK = 5): string {
   return `RETRIEVED AIVA HELP CONTEXT:\n${body}`;
 }
 
-export function karinaRagStats() {
+export function carinaHelpRagStats() {
   return { chunkCount: chunks.length, avgDocLen };
 }

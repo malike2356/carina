@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { karinaRagContext, karinaRagStats } from './rag';
+import { carinaHelpRagContext, carinaHelpRagStats } from './rag';
 
-describe('karinaRagContext', () => {
+describe('carinaHelpRagContext', () => {
   it('indexes knowledge chunks', () => {
-    const stats = karinaRagStats();
+    const stats = carinaHelpRagStats();
     expect(stats.chunkCount).toBeGreaterThan(3);
   });
 
   it('retrieves email-related help', () => {
-    const context = karinaRagContext('how do I connect Gmail email to my worker');
+    const context = carinaHelpRagContext('how do I connect Gmail email to my worker');
     expect(context.toLowerCase()).toMatch(/email|gmail|oauth/);
   });
 });

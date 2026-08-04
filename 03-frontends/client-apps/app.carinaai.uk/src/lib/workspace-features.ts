@@ -510,7 +510,8 @@ export const WORKSPACE_FEATURE_ROUTE_GATES: Array<{
   {
     feature: 'ai_chat_assistant',
     match: (pathname) =>
-      pathname.startsWith('/api/karina')
+      pathname.startsWith('/api/carina')
+      || pathname.startsWith('/api/karina')
       || pathname.startsWith('/aiva/help'),
   },
   {

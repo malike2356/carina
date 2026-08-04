@@ -85,6 +85,7 @@ describe('workspace feature resolution', () => {
 
   it('maps gated paths to the correct feature', () => {
     expect(featureRequiredForPath('/research')).toBe('ai_agent_tools');
+    expect(featureRequiredForPath('/api/carina/chat')).toBe('ai_chat_assistant');
     expect(featureRequiredForPath('/api/karina/chat')).toBe('ai_chat_assistant');
     expect(featureRequiredForPath('/analytics')).toBe('activity_analytics');
     expect(featureRequiredForPath('/contacts')).toBe('contacts');

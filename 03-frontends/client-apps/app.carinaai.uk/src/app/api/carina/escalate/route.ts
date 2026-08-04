@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createKarinaEscalation } from '@/lib/karina/escalate';
+import { createCarinaHelpEscalation } from '@/lib/carina-help/escalate';
 import { getSession, requireWorkspace } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     [...transcript].reverse().find((m) => m.role === 'user')?.content?.slice(0, 240) ||
     'User requested human support from Ask Carina';
 
-  const result = await createKarinaEscalation({
+  const result = await createCarinaHelpEscalation({
     workspaceId: workspace.id,
     userId: session.user.id,
     userEmail: session.user.email ?? 'unknown',
