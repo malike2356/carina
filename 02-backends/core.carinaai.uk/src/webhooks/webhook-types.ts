@@ -6,6 +6,11 @@ export const WEBHOOK_EVENTS = [
   'kanban.move',
   'agent.turn.complete',
   'delegation.complete',
+  'vical.booking.created',
+  'vical.booking.confirmed',
+  'vical.booking.cancelled',
+  'vical.booking.rescheduled',
+  'vical.booking.outcome',
 ] as const;
 
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];

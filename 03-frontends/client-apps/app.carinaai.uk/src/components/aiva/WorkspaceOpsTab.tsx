@@ -439,13 +439,13 @@ export function WorkspaceOpsTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workerId, driveFileId }),
       });
-      const data = (await res.json()) as {
+      const data = await readResponseJson<{
         error?: string;
         aivaDocumentId?: string;
         title?: string;
         driveNewer?: boolean;
         syncStatus?: string;
-      };
+      }>(res);
       if (!res.ok || !data.aivaDocumentId) {
         throw new Error(planBlockedMessage(data) ?? data.error ?? 'Could not open Drive file in Aiva');
       }
@@ -489,7 +489,7 @@ export function WorkspaceOpsTab({
         redirectUri: `${window.location.origin}/api/aiva/tools/oauth/google/callback`,
       });
       const res = await fetch(`/api/aiva/tools/oauth/google/auth-url?${qs}`);
-      const data = (await res.json()) as { authUrl?: string; error?: string };
+      const data = await readResponseJson<{ authUrl?: string; error?: string }>(res);
       if (!res.ok || !data.authUrl) {
         throw new Error(data.error ?? 'Could not start Google OAuth');
       }
@@ -515,11 +515,11 @@ export function WorkspaceOpsTab({
           packProfile,
         }),
       });
-      const data = (await res.json()) as OpsStatus & {
+      const data = await readResponseJson<OpsStatus & {
         error?: string;
         rootFolderName?: string;
         rootReused?: boolean;
-      };
+      }>(res);
       if (!res.ok) {
         throw new Error(planBlockedMessage(data) ?? data.error ?? 'Bootstrap failed');
       }
@@ -547,7 +547,7 @@ export function WorkspaceOpsTab({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ workerId, direction: 'both' }),
       });
-      const data = (await res.json()) as OpsSyncRun & { error?: string; ok?: boolean };
+      const data = await readResponseJson<OpsSyncRun & { error?: string; ok?: boolean }>(res);
       if (!res.ok) {
         throw new Error(planBlockedMessage(data as OpsStatus) ?? data.error ?? 'Sync failed');
       }

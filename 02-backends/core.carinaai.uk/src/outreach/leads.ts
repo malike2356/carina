@@ -348,6 +348,33 @@ export function createLeadList(input: {
   return list;
 }
 
+export function updateLeadList(
+  workspaceId: string,
+  listId: string,
+  patch: Partial<{
+    name: string;
+    description: string | null;
+    leadIds: string[];
+    tags: string[];
+  }>,
+): LeadList | null {
+  const existing = listLeadLists(workspaceId).find((l) => l.id === listId);
+  if (!existing) return null;
+  const list: LeadList = {
+    ...existing,
+    name: patch.name !== undefined ? patch.name.trim() || existing.name : existing.name,
+    description: patch.description !== undefined ? (patch.description?.trim() || undefined) : existing.description,
+    leadIds: patch.leadIds !== undefined ? Array.from(new Set(patch.leadIds.map(String))) : existing.leadIds,
+    tags: patch.tags !== undefined ? Array.from(new Set(patch.tags.map(String))) : existing.tags,
+    updatedAt: nowIso(),
+  };
+  mutateOutreachStore((s) => {
+    const idx = s.lists.findIndex((l) => l.id === listId);
+    if (idx >= 0) s.lists[idx] = list;
+  });
+  return list;
+}
+
 export function addLeadsToList(workspaceId: string, listId: string, leadIds: string[]): LeadList | null {
   const store = loadOutreachStore();
   const list = store.lists.find((l) => l.workspaceId === workspaceId && l.id === listId);

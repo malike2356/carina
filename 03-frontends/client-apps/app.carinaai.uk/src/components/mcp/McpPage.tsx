@@ -14,7 +14,6 @@ import {
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CarinaEditor } from '@/components/editor';
 import { Button } from '@/components/ui/button';
-import { IconButton } from '@/components/ui/IconButton';
 import { cn } from '@/lib/utils';
 
 type McpTransport = 'stdio' | 'http';
@@ -40,6 +39,11 @@ type McpTestResult = {
   transport?: McpTransport;
   tools?: Array<{ name: string; description: string }>;
   error?: string;
+};
+
+type McpTool = {
+  name: string;
+  description: string;
 };
 
 type McpListResponse = {
@@ -85,6 +89,25 @@ function parseLines(text: string): string[] {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function parseJsonObject(text: string): Record<string, unknown> {
+  const trimmed = text.trim();
+  if (!trimmed) return {};
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Tool arguments must be a JSON object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
+function prettyJson(value: unknown): string {
+  if (value === undefined) return '';
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 async function readJsonResponse<T>(res: Response): Promise<T> {
@@ -146,6 +169,15 @@ export function McpPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [testResult, setTestResult] = useState<McpTestResult | null>(null);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const [toolsError, setToolsError] = useState('');
+  const [availableTools, setAvailableTools] = useState<McpTool[]>([]);
+  const [selectedTool, setSelectedTool] = useState('');
+  const [toolArgsText, setToolArgsText] = useState('{}');
+  const [toolCallLoading, setToolCallLoading] = useState(false);
+  const [toolCallError, setToolCallError] = useState('');
+  const [toolCallNotice, setToolCallNotice] = useState('');
+  const [toolCallResult, setToolCallResult] = useState<unknown>(null);
 
   const selected = useMemo(
     () => servers.find((server) => server.name === selectedName) ?? null,
@@ -185,6 +217,36 @@ export function McpPage() {
     }
   }
 
+  async function loadTools(serverName: string) {
+    if (!serverName) {
+      setAvailableTools([]);
+      setSelectedTool('');
+      setToolArgsText('{}');
+      return;
+    }
+    setToolsLoading(true);
+    setToolsError('');
+    try {
+      const res = await fetch(`/api/mcp/${encodeURIComponent(serverName)}/tools`);
+      const data = await readJsonResponse<{ tools?: McpTool[]; error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to load MCP tools');
+      const next = data.tools ?? [];
+      setAvailableTools(next);
+      setSelectedTool((current) => {
+        if (current && next.some((tool) => tool.name === current)) {
+          return current;
+        }
+        return next[0]?.name ?? '';
+      });
+    } catch (err) {
+      setAvailableTools([]);
+      setSelectedTool('');
+      setToolsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setToolsLoading(false);
+    }
+  }
+
   useEffect(() => {
     void load();
   }, []);
@@ -197,6 +259,14 @@ export function McpPage() {
     setForm(formFromServer(selected));
     setIsCreating(false);
   }, [selected?.name, isCreating]);
+
+  useEffect(() => {
+    void loadTools(selected?.name ?? '');
+    setToolCallResult(null);
+    setToolCallNotice('');
+    setToolCallError('');
+    setToolArgsText('{}');
+  }, [selected?.name]);
 
   async function save() {
     setSaving(true);
@@ -232,6 +302,7 @@ export function McpPage() {
       }
       setIsCreating(false);
       setTestResult(null);
+      await loadTools(data.server?.name ?? payload.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -254,6 +325,8 @@ export function McpPage() {
     setForm(EMPTY_FORM);
     setIsCreating(false);
     setTestResult(null);
+    setToolCallResult(null);
+    setToolCallNotice('');
     await load();
   }
 
@@ -287,6 +360,90 @@ export function McpPage() {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function connectServer() {
+    const target = selected?.name ?? form.name.trim();
+    if (!target) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const payload = {
+        name: form.name.trim() || selected?.name,
+        transport: form.transport,
+        command: form.transport === 'stdio' ? form.command.trim() : undefined,
+        args: form.transport === 'stdio' ? parseLines(form.argsText) : undefined,
+        url: form.transport === 'http' ? form.url.trim() : undefined,
+        env: form.transport === 'stdio' ? parseEnv(form.envText) : undefined,
+      };
+      const res = await fetch(`/api/mcp/${encodeURIComponent(target)}/connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await readJsonResponse<{ server?: McpServer; error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to connect MCP server');
+      setNotice(`Connected ${data.server?.name ?? target}`);
+      await load();
+      setSelectedName(data.server?.name ?? target);
+      await loadTools(data.server?.name ?? target);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function disconnectServer() {
+    if (!selected) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const res = await fetch(`/api/mcp/${encodeURIComponent(selected.name)}/disconnect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await readJsonResponse<{ server?: McpServer; error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to disconnect MCP server');
+      setNotice(`Disconnected ${selected.name}`);
+      await load();
+      setSelectedName(data.server?.name ?? selected.name);
+      await loadTools(data.server?.name ?? selected.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function callTool() {
+    const target = selected?.name;
+    if (!target || !selectedTool.trim()) return;
+    setToolCallLoading(true);
+    setToolCallError('');
+    setToolCallNotice('');
+    try {
+      const args = parseJsonObject(toolArgsText);
+      const res = await fetch(`/api/mcp/${encodeURIComponent(target)}/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: selectedTool.trim(),
+          arguments: args,
+        }),
+      });
+      const data = await readJsonResponse<{ result?: unknown; error?: string }>(res);
+      if (!res.ok) throw new Error(data.error ?? 'Unable to call MCP tool');
+      setToolCallResult(data.result ?? null);
+      setToolCallNotice(`Called ${selectedTool}`);
+    } catch (err) {
+      setToolCallResult(null);
+      setToolCallError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setToolCallLoading(false);
     }
   }
 
@@ -501,6 +658,14 @@ export function McpPage() {
                       <TestTube2 className="h-4 w-4" />
                       {testing ? 'Testing...' : 'Test connection'}
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => void (selected?.liveConnected ? disconnectServer() : connectServer())}
+                      disabled={saving}
+                    >
+                      {selected?.liveConnected ? 'Disconnect live' : 'Connect live'}
+                    </Button>
                     <Button type="button" variant="outline" onClick={() => void save()} disabled={saving}>
                       <Save className="h-4 w-4" />
                       {saving ? 'Saving...' : 'Save'}
@@ -522,6 +687,67 @@ export function McpPage() {
                       <div>Saved: {selected?.savedConnected ? 'connected in config' : 'not connected in config'}</div>
                       <div>Live: {selected?.liveConnected ? 'active in runtime' : 'not currently active'}</div>
                       <div>Tools: {selected?.tools.length ?? 0}</div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-surface px-4 py-3 text-xs text-text-secondary">
+                    <div className="flex items-center gap-2 text-text-primary">
+                      <Server className="h-4 w-4 text-accent" />
+                      <span className="font-medium">Tool invocation</span>
+                    </div>
+                    <div className="mt-2 space-y-3">
+                      <label className="block space-y-1">
+                        <span className="text-[11px] uppercase tracking-wide text-text-muted">Tool</span>
+                        <select
+                          value={selectedTool}
+                          onChange={(event) => {
+                            const nextTool = event.target.value;
+                            setSelectedTool(nextTool);
+                            setToolArgsText('{}');
+                            setToolCallResult(null);
+                            setToolCallError('');
+                            setToolCallNotice('');
+                          }}
+                          className="w-full rounded-md border border-border bg-elevated px-3 py-2 text-sm text-text-primary outline-none focus:border-accent"
+                          disabled={toolsLoading || availableTools.length === 0}
+                        >
+                          <option value="">{toolsLoading ? 'Loading tools...' : 'Choose a tool'}</option>
+                          {availableTools.map((tool) => (
+                            <option key={tool.name} value={tool.name}>
+                              {tool.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block space-y-1">
+                        <span className="text-[11px] uppercase tracking-wide text-text-muted">Arguments JSON</span>
+                        <CarinaEditor
+                          value={toolArgsText}
+                          onChange={setToolArgsText}
+                          placeholder={'{\n  "query": "status"\n}'}
+                          variant="compact"
+                          minHeight="8rem"
+                          showEngineSwitch={false}
+                          showToolbar={false}
+                          disabled={!selectedTool}
+                        />
+                      </label>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" onClick={() => void callTool()} disabled={toolCallLoading || !selectedTool}>
+                          {toolCallLoading ? 'Calling...' : 'Call tool'}
+                        </Button>
+                      </div>
+
+                      {toolsError ? <p className="text-xs text-danger">{toolsError}</p> : null}
+                      {toolCallError ? <p className="text-xs text-danger">{toolCallError}</p> : null}
+                      {toolCallNotice ? <p className="text-xs text-accent">{toolCallNotice}</p> : null}
+                      {toolCallResult !== null ? (
+                        <pre className="max-h-72 overflow-auto rounded-md border border-border bg-background p-3 text-[11px] leading-5 text-text-primary">
+                          {prettyJson(toolCallResult)}
+                        </pre>
+                      ) : null}
                     </div>
                   </div>
 

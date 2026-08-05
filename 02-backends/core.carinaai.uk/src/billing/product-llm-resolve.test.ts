@@ -14,7 +14,10 @@ const getSubscription = vi.fn();
 const listTenantProvidersForTenant = vi.fn();
 const getTenantProvider = vi.fn();
 
-vi.mock('./billing-config.js', () => ({ resolveConfigValue }));
+vi.mock('./billing-config.js', () => ({
+  resolveConfigValue,
+  refreshBillingConfigCache: vi.fn(async () => undefined),
+}));
 vi.mock('../workers/aiva-subscription-store.js', () => ({ getSubscription }));
 vi.mock('../brain/tenant-provider-keys.js', () => ({
   listTenantProvidersForTenant,

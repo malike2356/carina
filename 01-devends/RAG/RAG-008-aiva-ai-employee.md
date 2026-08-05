@@ -11,6 +11,10 @@ Aiva is the commercial proof of the Carina platform. Every feature Aiva uses is 
 Carina infrastructure: the channel adapters, the tool runtime, the memory system, Scout
 governance, and the billing layer.
 
+Boundary rule: Carina is the shared platform runtime. Aiva is the product surface on top of it.
+Keep Aiva-specific branding, routes, entitlements, pricing, onboarding, and persona packs thin.
+Do not fork the platform into a second runtime just to separate the product name.
+
 ## Key Source Files
 
 ```
@@ -127,19 +131,16 @@ as a context injection, so the worker is always aware of live property portfolio
 
 ## Pricing
 
-| Tier | Price | Includes |
-|---|---|---|
-| Starter | GBP 149/month | 1 named AI worker, all pre-built roles, email + WhatsApp, VA backup |
-| Team | GBP 349/month | Up to 5 workers, all channels, priority VA backup, usage dashboard |
-| Business | GBP 699/month | Up to 15 workers, white-label option, dedicated VA liaison, compliance reporting |
-| Enterprise | Custom | Unlimited workers, custom roles, full integration, dedicated VA team, SLA |
+Current commercial plan labels in the Aiva billing UI:
 
-Human VA oversight is included at every tier, not an add-on. This is a deliberate pricing
-decision: it is the reason the premium is defensible in enterprise conversations.
+| Tier | Positioning | Includes (high level) |
+|---|---|---|
+| Starter | One AI Employee, always on | 1 worker, limited channels/tasks, Scout Govern, basic approvals, email support |
+| Growth | Scale your AI team | More workers and channels, higher task allowance, advanced approvals, priority support |
+| Business | Unlimited workforce for agencies | Unlimited workers/channels (plan gates), higher allowance, white-label options, priority support |
+
+Exact Stripe prices and entitlements live in billing config and the Stripe source-of-truth file for VERLOX; do not invent pound amounts from older docs. Human VA oversight remains part of the Aiva offer where the plan includes it.
 
 ## Aiva Onboarding Flow (Current State)
 
-As of June 2026, the Aiva worker brain is built. The onboarding portal (self-serve signup,
-role configuration, and channel binding UI in `app.carinaai.uk`) is in progress. The email
-ingestion pipeline is built. Stripe billing for Aiva subscriptions is wired to the core
-billing layer. Public launch is pending completion of the onboarding portal.
+As of July 2026, Aiva is live for workspace users: hire workers, connect channels (including Telegram), Approvals, Calendar, Documents, Tools, Training, Automations, Schedules, Knowledge, and Ask Carina help. Stripe billing for Aiva is wired. Prefer live UI paths over older "onboarding in progress" notes.

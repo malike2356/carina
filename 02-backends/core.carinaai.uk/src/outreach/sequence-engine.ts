@@ -75,6 +75,54 @@ export function createSequence(input: {
   return sequence;
 }
 
+export function updateSequence(
+  workspaceId: string,
+  sequenceId: string,
+  patch: Partial<{
+    name: string;
+    description: string | null;
+    channelDefault: OutreachSequence['channelDefault'];
+    steps: Array<Partial<SequenceStep> & { subject: string; body: string }>;
+    stopOnReply: boolean;
+    stopOnBooking: boolean;
+    stopOnUnsubscribe: boolean;
+  }>,
+): OutreachSequence | null {
+  const current = getSequence(workspaceId, sequenceId);
+  if (!current) return null;
+  const steps: SequenceStep[] = patch.steps
+    ? patch.steps.map((step, index) => ({
+        id: step.id ?? crypto.randomUUID(),
+        order: step.order ?? index,
+        label: step.label ?? `Step ${index + 1}`,
+        channel: step.channel ?? patch.channelDefault ?? current.channelDefault ?? 'email',
+        subject: step.subject,
+        body: step.body,
+        delayHours: step.delayHours ?? (index === 0 ? 0 : 48),
+        cta: step.cta,
+        link: step.link,
+        attachmentNote: step.attachmentNote,
+      }))
+    : current.steps;
+
+  const next: OutreachSequence = {
+    ...current,
+    name: patch.name !== undefined ? patch.name.trim() || current.name : current.name,
+    description: patch.description !== undefined ? (patch.description?.trim() || undefined) : current.description,
+    channelDefault: patch.channelDefault ?? current.channelDefault,
+    steps,
+    stopOnReply: patch.stopOnReply ?? current.stopOnReply,
+    stopOnBooking: patch.stopOnBooking ?? current.stopOnBooking,
+    stopOnUnsubscribe: patch.stopOnUnsubscribe ?? current.stopOnUnsubscribe,
+    updatedAt: nowIso(),
+  };
+  mutateOutreachStore((s) => {
+    const idx = s.sequences.findIndex((seq) => seq.id === sequenceId);
+    if (idx >= 0) s.sequences[idx] = next;
+  });
+  return next;
+}
+
 export function defaultColdEmailSteps(): Array<Partial<SequenceStep> & { subject: string; body: string }> {
   return [
     {

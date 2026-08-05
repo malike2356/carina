@@ -9,7 +9,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 SITES = [
-    REPO / "03-frontends/marketing/carinaai.uk",
+    REPO / "shared/marketing-sites/carinaai.uk",
     REPO / "03-frontends/marketing/labyrinthscout.com",
     REPO / "03-frontends/marketing/hireaiva",
 ]

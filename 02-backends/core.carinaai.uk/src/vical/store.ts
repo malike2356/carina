@@ -17,11 +17,13 @@ function storeFilePath(): string {
 export function emptyVicalStore(): VcalStoreShape {
   return {
     eventTypes: [],
+    intakePools: [],
     availabilityRules: [],
     blackouts: [],
     bookings: [],
     slotLocks: [],
     publishProfiles: {},
+    reminders: [],
   };
 }
 
@@ -41,11 +43,13 @@ export function loadVicalStore(): VcalStoreShape {
     const raw = JSON.parse(fs.readFileSync(file, 'utf8')) as Partial<VcalStoreShape>;
     const value: VcalStoreShape = {
       eventTypes: raw.eventTypes ?? [],
+      intakePools: raw.intakePools ?? [],
       availabilityRules: raw.availabilityRules ?? [],
       blackouts: raw.blackouts ?? [],
       bookings: raw.bookings ?? [],
       slotLocks: raw.slotLocks ?? [],
       publishProfiles: raw.publishProfiles ?? {},
+      reminders: raw.reminders ?? [],
     };
     caches.set(STORE_FILE, value);
     return value;

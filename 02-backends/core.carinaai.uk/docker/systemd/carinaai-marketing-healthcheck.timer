@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Carina marketing site healthcheck every 10 minutes
+
+[Timer]
+OnBootSec=5m
+OnUnitActiveSec=10m
+Unit=carinaai-marketing-healthcheck.service
+
+[Install]
+WantedBy=timers.target

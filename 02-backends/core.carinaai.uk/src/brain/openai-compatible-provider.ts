@@ -17,6 +17,7 @@ import {
   mapThinkingLevelToProvider,
 } from '../agents/thinking-levels.js';
 import { getThinkingRequestExtras } from './thinking-request.js';
+import { getMaxCompletionTokens } from './completion-tokens.js';
 import { maybeDebugProxyBaseUrl } from './provider-proxy-routing.js';
 import { getCircuitBreaker } from '../lib/circuit-breaker.js';
 
@@ -119,7 +120,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
         const result = await client.chat.completions.create(
           applyThinkingExtrasToProviderRequest({
             model: model ?? this.defaultModel,
-            max_tokens: 8192,
+            max_tokens: getMaxCompletionTokens(),
             messages: toOpenAIMessages(messages, prompt),
             ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
             ...(cacheKeyHeader
@@ -184,7 +185,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     try {
       const result = await client.chat.completions.create({
         model: model ?? this.defaultModel,
-        max_tokens: 8192,
+        max_tokens: getMaxCompletionTokens(),
         stream: true,
         messages: toOpenAIMessages(messages, prompt),
         ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { workspaceSettings } from '@/db/schema';
+import { AIVA_DEFAULT_THEME_PREFERENCE } from '@/lib/aiva-theme';
 import { normalizeAppearance } from '@/lib/appearance';
 import { mergeBrandSettings, normalizeBrandConfig, resolveWorkspaceBrand } from '@/lib/brand';
 import { stripPlatformEquivalentBrand } from '@/lib/brand-compat';
@@ -55,7 +56,7 @@ export async function GET() {
       ? {
           ...settings,
           ...(useAivaDefaults
-            ? { theme: 'amber-minimal', appearance: aivaDefaultAppearance }
+            ? { theme: AIVA_DEFAULT_THEME_PREFERENCE.themeId, appearance: aivaDefaultAppearance }
             : {}),
           brand: workspaceBrand,
           resolvedBrand,
@@ -66,7 +67,7 @@ export async function GET() {
         }
       : {
           workspaceId: workspace.id,
-          theme: isAivaProduct ? 'amber-minimal' : 'default',
+          theme: isAivaProduct ? AIVA_DEFAULT_THEME_PREFERENCE.themeId : 'default',
           ...(isAivaProduct ? { appearance: aivaDefaultAppearance } : {}),
           brand: {},
           resolvedBrand: resolveWorkspaceBrand({}),

@@ -22,6 +22,7 @@ type Status = {
   lastIndexAt: string | null;
   lastError: string | null;
   indexedChunks: number;
+  product: 'carina' | 'aiva' | 'shared';
 };
 
 type SearchHit = {
@@ -32,7 +33,8 @@ type SearchHit = {
 
 const DEFAULT_FOLDERS = 'memory, skills, plans, AGENTS.md';
 
-type ScopeKind = 'workspace' | 'user';
+type ScopeKind = 'workspace' | 'user' | 'shared';
+type BridgeProduct = 'carina' | 'aiva' | 'shared';
 
 function scopeQuery(scopeKind: ScopeKind): string {
   return `?scopeKind=${encodeURIComponent(scopeKind)}`;
@@ -117,6 +119,7 @@ export function AgentSyncSettings({ embedded = false }: AgentSyncSettingsProps) 
   const [pullMinutes, setPullMinutes] = useState(15);
   const [pushMinutes, setPushMinutes] = useState(0);
   const [folders, setFolders] = useState(DEFAULT_FOLDERS);
+  const [product, setProduct] = useState<BridgeProduct>('shared');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
@@ -137,10 +140,17 @@ export function AgentSyncSettings({ embedded = false }: AgentSyncSettingsProps) 
     }
     setError('');
     setStatus(data);
-    setScopeKind((data.scopeKind === 'user' ? 'user' : 'workspace') as ScopeKind);
+    setScopeKind(
+      data.scopeKind === 'user' || data.scopeKind === 'shared'
+        ? data.scopeKind
+        : 'workspace',
+    );
     setEnabled(Boolean(data.enabled));
     setRepoSlug(data.repo || '');
     setBranch(data.branch || 'main');
+    setProduct((data.product === 'carina' || data.product === 'aiva' || data.product === 'shared')
+      ? data.product
+      : 'shared');
     setFolders((data.allowedFolders || []).join(', ') || DEFAULT_FOLDERS);
     if (typeof data.pullIntervalMinutes === 'number') setPullMinutes(data.pullIntervalMinutes);
     if (typeof data.pushIntervalMinutes === 'number') setPushMinutes(data.pushIntervalMinutes);
@@ -177,7 +187,7 @@ export function AgentSyncSettings({ embedded = false }: AgentSyncSettingsProps) 
           .split(',')
           .map((part) => part.trim())
           .filter(Boolean),
-        product: 'shared',
+        product,
         humanEditsWin: true,
       };
       if (token.trim()) body.token = token.trim();
@@ -268,6 +278,7 @@ export function AgentSyncSettings({ embedded = false }: AgentSyncSettingsProps) 
 
   const statusItems = [
     { label: 'Repo', value: status?.repo || 'not linked' },
+    { label: 'Product', value: status?.product || product },
     {
       label: 'Status',
       value: status?.enabled ? (status.cloneExists ? 'linked' : 'enabled, not synced') : 'off',
@@ -326,13 +337,13 @@ export function AgentSyncSettings({ embedded = false }: AgentSyncSettingsProps) 
             value={enabled}
             onChange={setEnabled}
             label="Use GitHub for agent memory"
-            description="Pull approved notes into the agent, and push durable updates back to your repo."
+            description="Pull approved notes into the agent, and push durable updates back to your repo. Secrets and chat transcripts stay local."
           />
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <Field
               label="Scope"
-              hint="Workspace is tenant-wide. User keeps the link private to this account."
+              hint="Workspace is tenant-wide. User keeps the link private to this account. Shared is for advanced cross-surface reuse."
             >
               <div className="flex gap-2">
                 <button
@@ -359,6 +370,45 @@ export function AgentSyncSettings({ embedded = false }: AgentSyncSettingsProps) 
                 >
                   User
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setScopeKind('shared')}
+                  className={cn(
+                    'rounded-md border px-3 py-1.5 text-xs',
+                    scopeKind === 'shared'
+                      ? 'border-border-focus bg-accent/10 text-text-primary'
+                      : 'border-border text-text-muted',
+                  )}
+                >
+                  Shared
+                </button>
+              </div>
+            </Field>
+
+            <Field
+              label="Product"
+              hint="Keep Carina and Aiva memory mounts separate when the same GitHub account backs both."
+            >
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'shared', label: 'Shared' },
+                  { key: 'carina', label: 'Carina' },
+                  { key: 'aiva', label: 'Aiva' },
+                ].map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setProduct(option.key as BridgeProduct)}
+                    className={cn(
+                      'rounded-md border px-3 py-1.5 text-xs',
+                      product === option.key
+                        ? 'border-border-focus bg-accent/10 text-text-primary'
+                        : 'border-border text-text-muted',
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
             </Field>
 

@@ -43,5 +43,7 @@ if ! docker exec "${NGINX_CID}" test -f /var/www/public_website/index.html; then
   exit 1
 fi
 
+touch public_website/.nginx-reloaded-at
+
 echo "OK: carinaai.uk marketing mount visible inside nginx."
 echo "Verify: curl -fsS -o /dev/null -w '%{http_code}\\n' https://carinaai.uk/"

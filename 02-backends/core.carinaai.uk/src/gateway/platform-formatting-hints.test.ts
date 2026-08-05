@@ -15,13 +15,15 @@ describe('buildPlatformFormattingContext', () => {
     expect(buildPlatformFormattingContext('slack')).toContain('Do not use markdown tables');
   });
 
-  it('asks Telegram for one cohesive spaced reply', () => {
-    expect(buildPlatformFormattingContext('telegram')).toContain('blank lines between paragraphs');
-    expect(buildPlatformFormattingContext('telegram')).toContain('one cohesive reply');
-    expect(buildPlatformFormattingContext('telegram')).toContain('Do not narrate tool use');
+  it('asks Telegram for short SPEED MODE replies', () => {
+    expect(buildPlatformFormattingContext('telegram')).toContain('SPEED MODE');
+    expect(buildPlatformFormattingContext('telegram')).toContain('under ~600 characters');
+    expect(buildPlatformFormattingContext('telegram')).toContain('Never write chain-of-thought');
+    expect(buildPlatformFormattingContext('telegram')).toContain('Never narrate tool use');
   });
 
   it('requires plain text on WhatsApp', () => {
     expect(buildPlatformFormattingContext('whatsapp')).toContain('Plain text only');
+    expect(buildPlatformFormattingContext('whatsapp')).toContain('SPEED MODE');
   });
 });

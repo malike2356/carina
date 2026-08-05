@@ -27,6 +27,7 @@ This document separates code implementation from configuration, distribution, an
 | ERC-8004 identity | Set `TRUST_ATTESTER_PRIVATE_KEY`, confirm chain/RPC, then run the registration command. | Attester wallet and gas funding. |
 | ERC-8126 on-chain verification | Enable verification env vars and run scheduled/manual verification after identity registration. | Attester wallet, registry choice, enterprise policy. |
 | Alert delivery | Add channel credentials for Slack, Discord, Telegram, Twilio/WhatsApp, email, and SMS as needed, then run `pnpm doctor`. | API keys/webhooks/sender approvals. |
+| Operator control channels | Link verified Telegram, WhatsApp, and Slack operator accounts before enabling channel-based kill switch actions. | Verified operator identity, pairing code, audit log. |
 | Traffic | Route production agents through Scout so metrics reflect real activity. | Agent onboarding and licence assignment. |
 | Public install host | Configure `install.carinaai.uk` before advertising the curl installer. | DNS/vhost and installer hosting. |
 

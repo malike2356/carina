@@ -12,7 +12,7 @@ Configured in `docker/nginx/carina-prod.conf` and `docker-compose.prod.yml`.
 
 ## Deploy source
 
-Canonical site source in git: `frontends/marketing/carinaai.uk/`
+Canonical site source in this workspace: `shared/marketing-sites/carinaai.uk/`
 
 Typical deploy from repo root:
 
@@ -37,6 +37,16 @@ cd /home/malike/apps/core.carinaai.uk
 bash docker/scripts/reload-marketing-nginx.sh
 ```
 
+The refresh script writes `public_website/.nginx-reloaded-at`. The healthcheck
+uses that stamp to detect homepage edits that were copied into `public_website/`
+without a matching nginx refresh.
+
+If the monitor is installed with the provided cron or systemd helper, it will
+attempt one self-heal by recreating nginx before failing.
+
+If you rsync into `public_website/` by hand, you must run the reload script
+immediately afterward. Otherwise the healthcheck will flag the site as stale.
+
 ## Do not
 
 - Do **not** point production `carinaai.uk` only at `/www/wwwroot/carinaai.uk` on host nginx; public traffic uses **Docker nginx** on ports 80/443.
@@ -48,6 +58,21 @@ bash docker/scripts/reload-marketing-nginx.sh
 ```bash
 docker exec corecarinaaiuk-nginx-1 test -f /var/www/public_website/index.html && echo OK
 curl -fsS -o /dev/null -w '%{http_code}\n' https://carinaai.uk/
+bash docker/scripts/check-carina-marketing.sh
+```
+
+## Install the monitor on the VPS
+
+Cron mode:
+
+```bash
+bash docker/scripts/install-marketing-healthcheck.sh cron
+```
+
+Systemd timer mode:
+
+```bash
+bash docker/scripts/install-marketing-healthcheck.sh systemd
 ```
 
 Expect `OK` and `200`.

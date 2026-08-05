@@ -162,7 +162,10 @@ export default function AivaToolAccountsPage() {
         redirectUri: `${window.location.origin}/api/aiva/tools/oauth/google/callback`,
       });
       const res = await fetch(`/api/aiva/tools/oauth/google/auth-url?${qs.toString()}`);
-      const data = (await res.json()) as { authUrl?: string; error?: string };
+      const data = await readJsonResponse<{ authUrl?: string; error?: string }>(
+        res,
+        'Google OAuth',
+      );
       if (!res.ok || !data.authUrl) {
         throw new Error(data.error ?? 'Could not start Google OAuth');
       }
@@ -191,7 +194,10 @@ export default function AivaToolAccountsPage() {
           meta,
         }),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string; account?: ToolAccount };
+      const data = await readJsonResponse<{ ok?: boolean; error?: string; account?: ToolAccount }>(
+        res,
+        'Create tool account',
+      );
       if (!res.ok || data.ok === false) {
         setError(data.error ?? 'Create/probe failed');
         await load();
@@ -213,7 +219,7 @@ export default function AivaToolAccountsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ workerId }),
     });
-    const data = (await res.json()) as { error?: string; grants?: unknown[] };
+    const data = await readJsonResponse<{ error?: string; grants?: unknown[] }>(res, 'Grant tool');
     if (!res.ok) {
       throw new Error(data.error ?? 'Grant failed');
     }
@@ -292,7 +298,7 @@ export default function AivaToolAccountsPage() {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
+        const data = await readJsonResponse<{ error?: string }>(res, 'Delete tool account');
         setError(data.error ?? 'Delete failed');
         return;
       }
@@ -328,7 +334,10 @@ export default function AivaToolAccountsPage() {
       const res = await fetch(`/api/aiva/tool-accounts/${encodeURIComponent(accountId)}/probe`, {
         method: 'POST',
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string; account?: ToolAccount };
+      const data = await readJsonResponse<{ ok?: boolean; error?: string; account?: ToolAccount }>(
+        res,
+        'Re-probe tool account',
+      );
       if (!res.ok || data.ok === false) {
         setError(data.error ?? 'Re-probe failed');
         await load();

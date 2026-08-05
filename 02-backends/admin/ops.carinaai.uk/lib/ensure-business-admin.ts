@@ -26,6 +26,7 @@ export function isAdminTokenUsable(token: string | undefined, nowMs = Date.now()
 }
 
 export async function applyBusinessAdminBridge(req: Request): Promise<boolean> {
+  // Even if a JWT still has lifetime left, allow forced refresh when caller cleared adminToken.
   if (isAdminTokenUsable(req.session?.adminToken)) return true;
 
   let email = req.session?.adminEmail?.trim().toLowerCase();

@@ -11,10 +11,11 @@ All three are built from a single mono-repo at `/opt/lampp/htdocs/verlox/carina`
 | Product | What it is | Who uses it | Where |
 |---|---|---|---|
 | Carina | Open-source AI agent engine | Developers who self-host | MIT license, npm installable |
-| Aiva | AI employee service built on Carina | Business owners (paying customers) | app.carinaai.uk |
+| Aiva | AI employee service on the Carina platform | Business owners (paying customers) | app.carinaai.uk |
 | Scout | Governance and monitoring layer | Carina self-hosters who want oversight | console.labyrinthscout.com |
 
 These are distinct products with separate pricing. Scout is optional for Carina self-hosters. Aiva plans include built-in governance monitoring that does not require a Scout subscription.
+Carina remains the shared runtime; Aiva is a soft-separated commercial surface with its own branding, onboarding, entitlements, and pricing.
 
 ---
 
@@ -151,7 +152,7 @@ Create three products with monthly and annual prices:
 
 | Product | Monthly (GBP) | Annual (GBP) | Notes |
 |---|---|---|---|
-| Aiva Starter | 49.00 | 470.40 (20% off) | 1 Aiva worker slot |
+| Aiva Starter | 69.00 | 662.40 (20% off) | 1 Aiva worker slot |
 | Aiva Team | 99.00 | 950.40 (20% off) | 5 Aiva worker slots |
 | Aiva Business | 299.00 | 2870.40 (20% off) | Unlimited worker slots |
 
@@ -200,7 +201,7 @@ docker compose restart carina-core
 | Tier | Price | Workers | Messages/month | Aiva Training | Custom Governance |
 |---|---|---|---|---|---|
 | Trial | Free (15 days) | 1 | 200 | No | No |
-| Starter | GBP 49/mo | 1 | 2000 | No | No |
+| Starter | GBP 69/mo | 1 | 2000 | No | No |
 | Team | GBP 99/mo | 5 | 10000 | No | No |
 | Business | GBP 299/mo | Unlimited | Unlimited | Yes | Yes |
 
@@ -294,7 +295,7 @@ The pricing page at `carinaai.uk/pricing` separates two distinct audiences:
 - Enterprise: custom
 
 **Track 2: Run an Aiva** (business owners, non-technical)
-- Starter: GBP 49/mo (1 Aiva worker, 2000 messages)
+- Starter: GBP 69/mo (1 Aiva worker, 2000 messages)
 - Team: GBP 99/mo (5 workers, 10000 messages)
 - Business: GBP 299/mo (unlimited, training, custom governance rules)
 - Enterprise: custom

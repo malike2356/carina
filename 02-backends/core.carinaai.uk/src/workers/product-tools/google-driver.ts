@@ -290,6 +290,23 @@ export async function invokeGoogleAction(opts: {
       const data = await res.json();
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
+    if (opts.toolSlug === 'google-calendar' && opts.action === 'delete') {
+      const eventId = String(opts.input?.eventId ?? opts.input?.id ?? '').trim();
+      if (!eventId) return { ok: false, data: null, error: 'eventId required' };
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+        {
+          method: 'DELETE',
+          headers,
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+      if (res.status === 204 || res.status === 200 || res.status === 410) {
+        return { ok: true, data: { deleted: true, eventId }, error: undefined };
+      }
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
     if (opts.toolSlug === 'google-drive' && opts.action === 'list') {
       const folderId = typeof opts.input?.folderId === 'string' ? opts.input.folderId : '';
       const q = folderId

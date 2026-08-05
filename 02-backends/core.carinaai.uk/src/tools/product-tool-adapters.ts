@@ -96,10 +96,66 @@ async function invokeGranted(
 function createGmailTools(sessionId: string): Tool[] {
   return [
     {
+      name: 'gmail-search',
+      description:
+        'Search Gmail messages for this worker (connected Google Gmail). '
+        + 'Use this for inbox search and query-based lookups. '
+        + 'Use gmail-get after this when you need the full message body. '
+        + 'For the Aiva Email page sync store (origin tags, drafts), prefer workspace-email-list.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: {
+            type: 'number',
+            description: 'Max messages to return (1-10). Default 5.',
+          },
+          q: {
+            type: 'string',
+            description: 'Optional Gmail search query (e.g. "from:alice newer_than:7d").',
+          },
+        },
+      },
+      execute: async (params) => {
+        const limit = Math.min(10, Math.max(1, Number(params.limit ?? 5)));
+        const q = typeof params.q === 'string' ? params.q.trim() : '';
+        const listed = await invokeGranted(sessionId, 'gmail', 'list', {
+          q: q || undefined,
+          maxResults: limit,
+        });
+        if (!listed || typeof listed !== 'object' || !(listed as { ok?: boolean }).ok) {
+          return listed;
+        }
+        const data = (listed as { data?: { messages?: Array<{ id?: string }> } }).data;
+        const ids = (data?.messages ?? []).map((m) => String(m.id ?? '')).filter(Boolean).slice(0, limit);
+        const messages: Array<Record<string, unknown>> = [];
+        for (const id of ids) {
+          const got = await invokeGranted(sessionId, 'gmail', 'get', { id });
+          if (!got || typeof got !== 'object' || !(got as { ok?: boolean }).ok) {
+            messages.push({ id, error: (got as { error?: string })?.error ?? 'fetch failed' });
+            continue;
+          }
+          const msg = (got as { data?: unknown }).data;
+          const headers = headersFromGmailPayload(
+            msg && typeof msg === 'object' ? (msg as { payload?: unknown }).payload : null,
+          );
+          messages.push({
+            id,
+            subject: headers.subject ?? '',
+            from: headers.from ?? '',
+            to: headers.to ?? '',
+            date: headers.date ?? '',
+            snippet: snippetFromGmailMessage(msg),
+          });
+        }
+        return { ok: true, count: messages.length, messages };
+      },
+    },
+    {
       name: 'gmail-list',
       description:
         'List recent Gmail messages for this worker (connected Google Gmail). '
-        + 'Use this for "read my last N emails", inbox checks, or searching mail. '
+        + 'Use this for "read my last N emails" and inbox checks. '
+        + 'For query-based search, prefer gmail-search. '
         + 'For the Aiva Email page sync store (origin tags, drafts), prefer workspace-email-list. '
         + 'Do NOT use email-list for Gmail; that tool only lists Resend webhook mail.',
       parameters: {
@@ -153,7 +209,7 @@ function createGmailTools(sessionId: string): Tool[] {
     {
       name: 'gmail-get',
       description:
-        'Fetch one Gmail message by id (subject, from, body text). Use after gmail-list. '
+        'Fetch one Gmail message by id (subject, from, body text). Use after gmail-search or gmail-list. '
         + 'Prefer workspace-email-get for synced Aiva Email page rows.',
       parameters: {
         type: 'object',
@@ -693,6 +749,24 @@ function createCalendarTools(sessionId: string): Tool[] {
           end: typeof params.end === 'string' ? params.end : undefined,
           description: typeof params.description === 'string' ? params.description : undefined,
         });
+      },
+    },
+    {
+      name: 'google-calendar-delete',
+      dangerous: true,
+      requiresConfirmation: true,
+      description: 'Delete a Google Calendar event by id.',
+      parameters: {
+        type: 'object',
+        properties: {
+          eventId: { type: 'string', description: 'Calendar event id' },
+        },
+        required: ['eventId'],
+      },
+      execute: async (params) => {
+        const eventId = String(params.eventId ?? '').trim();
+        if (!eventId) return { ok: false, error: 'eventId required' };
+        return invokeGranted(sessionId, 'google-calendar', 'delete', { eventId });
       },
     },
   ];

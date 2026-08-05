@@ -10,6 +10,16 @@ describe('clinicom contract v2', () => {
     expect(result).toMatchObject({ score: 73 });
   });
 
+  it('dispatches product_help with deterministic grounding', async () => {
+    const result = await dispatchClinicomTool('product_help', {
+      question: 'What is Clinicom?',
+      grounding_corpus: 'Clinicom AI is a Healthcare Communication Intelligence platform.',
+      capabilities_summary: 'product_help:live',
+    });
+    expect(String(result.answer || '')).toContain('Clinicom');
+    expect(result.grounded).toBe(true);
+  });
+
   it('returns confidence explanations', async () => {
     const result = await executeClinicomConfidenceExplain({
       score: 81,

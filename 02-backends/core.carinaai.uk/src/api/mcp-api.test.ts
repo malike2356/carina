@@ -16,6 +16,10 @@ class MockHttpClient {
   }
 
   async disconnect() {}
+
+  async callTool(toolName: string, args: Record<string, unknown>) {
+    return { toolName, args, transport: 'http', server: this.name };
+  }
 }
 
 class MockStdioClient {
@@ -31,12 +35,22 @@ class MockStdioClient {
   }
 
   async disconnect() {}
+
+  async callTool(toolName: string, args: Record<string, unknown>) {
+    return { toolName, args, transport: 'stdio', server: this.name };
+  }
 }
 
 vi.mock('../mcp/http-client.js', () => ({ McpHttpClient: MockHttpClient }));
 vi.mock('../mcp/stdio-client.js', () => ({ McpStdioClient: MockStdioClient }));
+vi.mock('../mcp/security.js', () => ({
+  getMcpSecurityManager: () => ({
+    checkPermission: async () => true,
+  }),
+}));
 
 const { mcpApiRouter } = await import('./mcp-api.js');
+const { _resetMcpRegistryForTests } = await import('../mcp/registry.js');
 
 function createTempHome(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'carina-mcp-api-'));
@@ -85,9 +99,11 @@ describe('mcp-api', () => {
 
   beforeEach(() => {
     homeDir = createTempHome();
+    _resetMcpRegistryForTests();
   });
 
   afterEach(() => {
+    _resetMcpRegistryForTests();
     fs.rmSync(homeDir, { recursive: true, force: true });
     delete process.env.CARINA_HOME;
     delete process.env.CARINA_INTERNAL_KEY;
@@ -132,6 +148,26 @@ describe('mcp-api', () => {
     });
     expect(response.res.status).toBe(200);
     expect(Array.isArray(response.json.tools)).toBe(true);
+
+    response = await request(app, 'POST', '/api/mcp/demo-renamed/connect', {
+      name: 'demo-renamed',
+      transport: 'http',
+      url: 'https://example.test/mcp',
+    });
+    expect(response.res.status).toBe(200);
+    expect(response.json.ok).toBe(true);
+    expect((response.json.server as { liveConnected: boolean }).liveConnected).toBe(true);
+
+    response = await request(app, 'POST', '/api/mcp/demo-renamed/call', {
+      tool: 'http:demo-renamed',
+      arguments: { query: 'status' },
+    });
+    expect(response.res.status).toBe(200);
+    expect((response.json.result as { toolName: string }).toolName).toBe('http:demo-renamed');
+
+    response = await request(app, 'POST', '/api/mcp/demo-renamed/disconnect');
+    expect(response.res.status).toBe(200);
+    expect((response.json.server as { liveConnected: boolean }).liveConnected).toBe(false);
 
     response = await request(app, 'DELETE', '/api/mcp/demo-renamed');
     expect(response.res.status).toBe(204);

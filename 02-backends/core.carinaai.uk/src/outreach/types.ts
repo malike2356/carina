@@ -22,6 +22,8 @@ export type LeadSource =
   | 'youtube_comment'
   | 'email'
   | 'referral'
+  | 'companies_house'
+  | 'import'
   | 'other';
 
 export type ReplyState = 'none' | 'awaiting' | 'replied' | 'unsubscribed';
@@ -199,6 +201,7 @@ export interface LeadList {
 
 export type BookingKind = 'discovery' | 'sales' | 'internal_follow_up';
 export type BookingStatus = 'confirmed' | 'rescheduled' | 'cancelled' | 'attended' | 'no_show';
+export type PostCallOutcome = 'qualified' | 'proposal_needed' | 'needs_follow_up' | 'not_a_fit' | 'won' | 'lost';
 
 export type OutreachBoardStage =
   | 'new'
@@ -256,7 +259,20 @@ export interface FollowUpTask {
   id: string;
   workspaceId: string;
   leadId: string;
-  kind: 'cold_no_reply_day_3' | 'cold_no_reply_day_7' | 'interested_day_1' | 'interested_day_3' | 'no_show_day_0_evening' | 'no_show_day_2' | 'owner_day_2_outcome';
+  kind:
+    | 'cold_no_reply_day_3'
+    | 'cold_no_reply_day_7'
+    | 'interested_day_1'
+    | 'interested_day_3'
+    | 'no_show_day_0_evening'
+    | 'no_show_day_2'
+    | 'owner_day_2_outcome'
+    | 'post_call_qualified_next_step'
+    | 'post_call_proposal_draft'
+    | 'post_call_follow_up'
+    | 'post_call_not_a_fit_close'
+    | 'post_call_won_onboarding'
+    | 'post_call_lost_closeout';
   dueAt: string;
   status: 'scheduled' | 'sent' | 'skipped' | 'cancelled';
   subject: string;
@@ -290,6 +306,8 @@ export interface OutreachBooking {
   confirmationSubject: string;
   confirmationBody: string;
   confirmationStatus: 'pending_approval' | 'sent' | 'skipped';
+  postCallOutcome?: PostCallOutcome;
+  postCallNotes?: string;
   reminderIds: string[];
   notes?: string;
   createdAt: string;

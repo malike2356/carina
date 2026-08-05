@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect } from 'react';
 import { applyBrandDocument, useWorkspaceBootstrap } from '@/components/shell/BrandProvider';
+import { AIVA_DEFAULT_THEME_PREFERENCE } from '@/lib/aiva-theme';
 import { appearanceToCSS, normalizeAppearance, type AppearanceSettings } from '@/lib/appearance';
 import type { ResolvedBrand } from '@/lib/brand';
 import {
@@ -35,9 +36,7 @@ function applyAppearance(appearance: AppearanceSettings) {
 
 function applyDefaults(isAivaProduct: boolean) {
   void applyThemePreferenceAsync(
-    isAivaProduct
-      ? { themeId: 'amber-minimal', mode: 'light' }
-      : { themeId: DEFAULT_THEME, mode: 'dark' },
+    isAivaProduct ? AIVA_DEFAULT_THEME_PREFERENCE : { themeId: DEFAULT_THEME, mode: 'dark' },
   );
   applyAppearance(normalizeAppearance(null));
 }
@@ -65,14 +64,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = readStoredThemePreference() ?? readCookieThemePreference();
-    if (stored && (!isAivaProduct || hasExplicitThemePreference())) {
-      void applyThemePreferenceAsync(stored);
-    } else {
-      applyDefaults(isAivaProduct);
-      if (isAivaProduct) {
-        storeThemePreference({ themeId: 'amber-minimal', mode: 'light' });
+      if (stored && (!isAivaProduct || hasExplicitThemePreference())) {
+        void applyThemePreferenceAsync(stored);
+      } else {
+        applyDefaults(isAivaProduct);
+        if (isAivaProduct) {
+          storeThemePreference(AIVA_DEFAULT_THEME_PREFERENCE);
+        }
       }
-    }
   }, [isAivaProduct]);
 
   useEffect(() => {

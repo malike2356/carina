@@ -106,7 +106,7 @@ Use the live app surface first when answering support questions. If the current 
 - Session history is the working conversation, not durable memory.
 - Curated memory is for stable facts, preferences, contacts, and instructions.
 - RAG is for product docs, support notes, and workspace knowledge.
-- GitHub memory lets users link agent notes to their own private GitHub repo (Obsidian alternative). No Carina/Aiva product picker.
+- GitHub memory lets users link agent notes to their own private GitHub repo (Obsidian alternative). The bridge is scoped per workspace or per user, and it can be mounted as Carina, Aiva, or shared when the operator needs separate knowledge pools.
 - Never store secrets, tokens, passwords, or raw private transcripts in GitHub or in curated memory.
 
 ## Product boundary reminders
@@ -118,7 +118,7 @@ Use the live app surface first when answering support questions. If the current 
 
 ## GitHub memory guidance
 
-- Users configure their own `owner/repo`, branch, token, and sync interval in Settings → Brain → GitHub memory.
+- Users configure their own `owner/repo`, branch, token, sync interval, scope, and product mount in Settings → Brain → GitHub memory.
 - Good content: preferences, decisions, runbooks, project notes, checklists, and approved memory summaries.
 - Bad content: secrets, access tokens, passwords, one-off debug logs, raw chat dumps, and anything that should stay local only.
 - When a user asks what the system can do today, prefer the current app surface and their linked GitHub memory repo over older static docs.

@@ -17,6 +17,7 @@ npm-debug.log*
 # PHP dependencies
 vendor/
 composer.lock
+**/.venv/
 
 # Build files
 public/build/
@@ -61,6 +62,7 @@ CLAUDE.md
 
 # Temp / backups
 tmp/
+/01-devends/planning/operations/private/
 
 # Sibling hub trees (never nest inside v2)
 propreneur-v1/

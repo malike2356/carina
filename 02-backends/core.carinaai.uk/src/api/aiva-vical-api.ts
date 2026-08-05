@@ -5,26 +5,37 @@ import {
   cancelBookingForGuest,
   cancelBookingForHost,
   createAvailabilityRule,
+  createIntakePool,
   createBlackout,
   createBooking,
   createEventType,
   deleteBlackout,
+  deleteIntakePool,
   ensureDiscoveryDefaults,
+  formatBookingIcs,
+  getIntakePool,
   getBookingByGuestToken,
   getOrCreatePublishProfile,
   isVcalError,
   listAvailabilityRules,
   listBlackouts,
+  listIntakePools,
   listBookings,
   listEventTypes,
   listOfferedSlots,
+  listVicalReminders,
+  processDueVicalReminders,
   rejectBooking,
   replaceAvailabilityRules,
   rescheduleBooking,
   rescheduleBookingForGuest,
   resolveWorkspaceByPublicSlug,
+  resolvedIntakeQuestions,
+  resolvedIntakeRoutingRules,
   setSessionOutcome,
   SlotUnavailableError,
+  syncBookingToGoogleCalendar,
+  updateIntakePool,
   updateEventType,
 } from '../vical/index.js';
 
@@ -106,6 +117,7 @@ aivaVicalRouter.post('/event-types', (req: VicalRequest, res: Response) => {
       locationMode: req.body?.locationMode,
       requiresApproval: Boolean(req.body?.requiresApproval),
       requiresDeposit: Boolean(req.body?.requiresDeposit),
+      intakePoolId: req.body?.intakePoolId ?? null,
       active: req.body?.active,
       metadata: req.body?.metadata,
     });
@@ -122,6 +134,48 @@ aivaVicalRouter.patch('/event-types/:eventTypeId', (req: VicalRequest, res: Resp
   } catch (error) {
     sendError(res, error);
   }
+});
+
+aivaVicalRouter.get('/intake-pools', (req: VicalRequest, res: Response) => {
+  res.json({ items: listIntakePools(req.workspaceId!) });
+});
+
+aivaVicalRouter.post('/intake-pools', (req: VicalRequest, res: Response) => {
+  try {
+    const headerUser = req.headers['x-user-id'];
+    const fromHeader = Array.isArray(headerUser) ? headerUser[0] : headerUser;
+    const row = createIntakePool({
+      workspaceId: req.workspaceId!,
+      hostUserId: String(req.body?.hostUserId ?? fromHeader ?? 'default-host'),
+      name: String(req.body?.name ?? 'Shared questions'),
+      slug: req.body?.slug,
+      questions: Array.isArray(req.body?.questions) ? req.body.questions : undefined,
+      routingRules: Array.isArray(req.body?.routingRules) ? req.body.routingRules : undefined,
+    });
+    res.status(201).json(row);
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+aivaVicalRouter.patch('/intake-pools/:poolId', (req: VicalRequest, res: Response) => {
+  try {
+    res.json(
+      updateIntakePool(req.workspaceId!, String(req.params.poolId), {
+        name: req.body?.name,
+        slug: req.body?.slug,
+        questions: Array.isArray(req.body?.questions) ? req.body.questions : undefined,
+        routingRules: Array.isArray(req.body?.routingRules) ? req.body.routingRules : undefined,
+      }),
+    );
+  } catch (error) {
+    sendError(res, error);
+  }
+});
+
+aivaVicalRouter.delete('/intake-pools/:poolId', (req: VicalRequest, res: Response) => {
+  const ok = deleteIntakePool(req.workspaceId!, String(req.params.poolId));
+  res.status(ok ? 204 : 404).end();
 });
 
 aivaVicalRouter.get('/availability-rules', (req: VicalRequest, res: Response) => {
@@ -348,6 +402,26 @@ aivaVicalRouter.post('/public/:slug/bookings', (req: Request, res: Response) => 
   }
 });
 
+aivaVicalRouter.get('/public/:slug/intake-pools/:eventTypeId', (req: Request, res: Response) => {
+  const workspaceId = resolveWorkspaceByPublicSlug(String(req.params.slug));
+  if (!workspaceId) {
+    res.status(404).json({ error: 'Unknown booking slug' });
+    return;
+  }
+  const eventType = listEventTypes(workspaceId, { activeOnly: true }).find((item) => item.id === String(req.params.eventTypeId));
+  if (!eventType) {
+    res.status(404).json({ error: 'Event type not found' });
+    return;
+  }
+  const storePool = eventType.intakePoolId ? getIntakePool(workspaceId, eventType.intakePoolId) : null;
+  res.json({
+    eventTypeId: eventType.id,
+    intakePool: storePool,
+    questions: resolvedIntakeQuestions(eventType),
+    routingRules: resolvedIntakeRoutingRules(eventType),
+  });
+});
+
 aivaVicalRouter.post('/guest/:token/cancel', (req: Request, res: Response) => {
   try {
     res.json(cancelBookingForGuest(String(req.params.token), req.body?.reason));
@@ -371,4 +445,48 @@ aivaVicalRouter.get('/guest/:token', (req: Request, res: Response) => {
     return;
   }
   res.json(booking);
+});
+
+aivaVicalRouter.get('/reminders', (req: VicalRequest, res: Response) => {
+  const bookingId = typeof req.query.bookingId === 'string' ? req.query.bookingId : undefined;
+  res.json({ reminders: listVicalReminders(req.workspaceId!, { bookingId }) });
+});
+
+aivaVicalRouter.post('/reminders/process-due', (req: VicalRequest, res: Response) => {
+  res.json(processDueVicalReminders(req.workspaceId!));
+});
+
+aivaVicalRouter.get('/bookings/:id/ics', (req: VicalRequest, res: Response) => {
+  const booking = listBookings(req.workspaceId!).find((b) => b.id === String(req.params.id));
+  if (!booking) {
+    res.status(404).json({ error: 'Booking not found' });
+    return;
+  }
+  const ics = formatBookingIcs(booking);
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="booking-${booking.id}.ics"`);
+  res.send(ics);
+});
+
+aivaVicalRouter.post('/bookings/:id/calendar-sync', async (req: VicalRequest, res: Response) => {
+  const workerId =
+    (typeof req.body?.workerId === 'string' && req.body.workerId.trim())
+    || (typeof req.headers['x-worker-id'] === 'string' ? req.headers['x-worker-id'] : '')
+    || '';
+  if (!workerId) {
+    res.status(400).json({ error: 'workerId required for calendar sync' });
+    return;
+  }
+  try {
+    const result = await syncBookingToGoogleCalendar({
+      workspaceId: req.workspaceId!,
+      workerId,
+      bookingId: String(req.params.id),
+      locationMode: req.body?.locationMode,
+      zoomRoomUrl: typeof req.body?.zoomRoomUrl === 'string' ? req.body.zoomRoomUrl : undefined,
+    });
+    res.json(result);
+  } catch (error) {
+    sendError(res, error);
+  }
 });

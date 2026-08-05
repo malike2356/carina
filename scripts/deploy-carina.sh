@@ -210,6 +210,7 @@ export REDIS_PASSWORD
 bash docker/scripts/stop-bare-metal-carina.sh
 bash docker/scripts/deploy-prod.sh
 bash docker/scripts/reload-marketing-nginx.sh
+bash docker/scripts/check-carina-marketing.sh
 
 # Scout stack
 cd "$APPS_ROOT/console.labyrinthscout.com"

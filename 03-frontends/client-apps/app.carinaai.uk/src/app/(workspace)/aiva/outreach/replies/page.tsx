@@ -72,7 +72,7 @@ export default function OutreachRepliesPage() {
     [push, load],
   );
 
-  const simulate = useCallback(async () => {
+  const recordInboundReply = useCallback(async () => {
     const res = await fetch('/api/aiva/outreach/replies/inbound', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -111,13 +111,13 @@ export default function OutreachRepliesPage() {
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="text-sm font-medium text-text-primary">Simulate inbound reply</h2>
+        <h2 className="text-sm font-medium text-text-primary">Record inbound reply</h2>
         <div className="mt-3 grid gap-2 md:grid-cols-3">
           <input className="rounded-md border border-border bg-elevated px-3 py-2 text-sm" value={demoFrom} onChange={(e) => setDemoFrom(e.target.value)} placeholder="from@" />
           <input className="rounded-md border border-border bg-elevated px-3 py-2 text-sm md:col-span-2" value={demoSubject} onChange={(e) => setDemoSubject(e.target.value)} placeholder="Subject" />
           <textarea className="rounded-md border border-border bg-elevated px-3 py-2 text-sm md:col-span-3" rows={3} value={demoBody} onChange={(e) => setDemoBody(e.target.value)} />
         </div>
-        <Button size="sm" className="mt-2" onClick={() => void simulate()}>
+        <Button size="sm" className="mt-2" onClick={() => void recordInboundReply()}>
           Process reply
         </Button>
       </div>

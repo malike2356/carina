@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Moon, Palette, Sun, X } from 'lucide-react';
 import { MULTI_THEMES } from '@/lib/themes';
+import { AIVA_DEFAULT_THEME_PREFERENCE } from '@/lib/aiva-theme';
 import {
   persistThemePreference,
   type ThemeMode,
@@ -46,7 +47,7 @@ export function ThemeSwitcher({
   const [preference, setPreference] = useState<ThemePreference>(
     initialPreference ??
       (isAivaProduct
-        ? { themeId: 'amber-minimal', mode: 'light' }
+        ? AIVA_DEFAULT_THEME_PREFERENCE
         : DEFAULT_THEME_PREFERENCE),
   );
 

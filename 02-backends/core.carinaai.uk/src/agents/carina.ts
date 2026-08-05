@@ -64,6 +64,10 @@ import {
   clearThinkingRequestExtras,
   setThinkingRequestExtras,
 } from '../brain/thinking-request.js';
+import {
+  clearMaxCompletionTokens,
+  setMaxCompletionTokens,
+} from '../brain/completion-tokens.js';
 import { maybeRunRemCycle } from '../memory/rem/rem-promotion.js';
 import {
   buildPlanModePromptBlock,
@@ -955,6 +959,7 @@ export class CarinaAgent {
       this.setFastMode(isFastThinkingLevel(thinkingLevel) || this.fastMode);
       getTrajectoryRecorder().ensureBundle(this.sessionId, modelName);
       setThinkingRequestExtras(mapThinkingLevelToProvider(thinkingLevel, providerName));
+      setMaxCompletionTokens(getSessionConfig(this.sessionId)?.maxCompletionTokens ?? null);
       let response;
       try {
         response = await llm.chatRouted(
@@ -966,6 +971,7 @@ export class CarinaAgent {
         );
       } finally {
         clearThinkingRequestExtras();
+        clearMaxCompletionTokens();
       }
       modelName = llm.modelFor(response.provider);
       const usage = mergeTokenUsage(

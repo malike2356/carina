@@ -7,6 +7,8 @@ import { ArrowLeft, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import type { CalendarConnectionView, CalendarProvider } from '@/lib/calendar-connection';
 import { GuideMeLink } from '@/components/integrations/GuideMeLink';
 
+const OAUTH_FLASH_KEY = 'carina.calendar.google.oauth.flash';
+
 type CalendarConnectionPanelProps = {
   backHref?: string;
   backLabel?: string;
@@ -39,10 +41,11 @@ export function CalendarConnectionPanel({
   const [error, setError] = useState<string | null>(null);
   const [oauthMessage, setOauthMessage] = useState<string | null>(null);
 
+  const usingByok = Boolean(clientId.trim());
   const oauthReady = useMemo(() => {
     if (provider !== 'google') return false;
-    return Boolean(clientId.trim() || platformGoogleConfigured);
-  }, [provider, clientId, platformGoogleConfigured]);
+    return Boolean(usingByok || platformGoogleConfigured);
+  }, [provider, usingByok, platformGoogleConfigured]);
 
   async function load() {
     const res = await fetch('/api/calendar/connection');
@@ -78,17 +81,53 @@ export function CalendarConnectionPanel({
   useEffect(() => {
     const connected = searchParams.get('google');
     const fail = searchParams.get('google_error');
-    if (!connected && !fail) return;
+
     if (connected === 'connected') {
-      setOauthMessage('Google Calendar connected successfully. Open Calendar and click Sync Google.');
+      try {
+        sessionStorage.setItem(OAUTH_FLASH_KEY, JSON.stringify({ ok: true }));
+      } catch {
+        // ignore
+      }
+      setOauthMessage(
+        'Google Calendar connected successfully. Open Calendar and click Sync Google.',
+      );
       setError(null);
       void load();
-    } else if (fail) {
+      router.replace('/settings/calendar');
+      return;
+    }
+
+    if (fail) {
+      try {
+        sessionStorage.setItem(OAUTH_FLASH_KEY, JSON.stringify({ error: fail }));
+      } catch {
+        // ignore
+      }
       setOauthMessage(null);
       setError(`Google connect failed: ${fail}`);
+      router.replace('/settings/calendar');
+      return;
     }
-    router.replace('/settings/calendar');
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- OAuth return once
+
+    // After replace (or hard remount): restore flash if React state was wiped.
+    try {
+      const raw = sessionStorage.getItem(OAUTH_FLASH_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(OAUTH_FLASH_KEY);
+      const flash = JSON.parse(raw) as { ok?: boolean; error?: string };
+      if (flash.ok) {
+        setOauthMessage(
+          'Google Calendar connected successfully. Open Calendar and click Sync Google.',
+        );
+        setError(null);
+        void load();
+      } else if (flash.error) {
+        setOauthMessage(null);
+        setError(`Google connect failed: ${flash.error}`);
+      }
+    } catch {
+      // ignore invalid flash
+    }
   }, [searchParams, router]);
 
   async function save(event: FormEvent) {
@@ -301,57 +340,65 @@ export function CalendarConnectionPanel({
               />
             </label>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={!oauthReady || connecting}
-                onClick={() => {
-                  void (async () => {
-                    setConnecting(true);
-                    setError(null);
-                    setOauthMessage(null);
-                    try {
-                      const usingByok = Boolean(clientId.trim());
-                      // Platform path: clear any stale workspace Client ID (e.g. old personal 114663 client)
-                      // so authorize/callback use company Verlox OAuth, not mixed BYOK credentials.
-                      const res = await fetch('/api/calendar/connection', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          provider: 'google',
-                          clientId: usingByok ? clientId.trim() : '',
-                          clientSecret: usingByok ? (clientSecret || undefined) : undefined,
-                          calendarId,
-                          enabled: true,
-                        }),
-                      });
-                      if (!res.ok) {
-                        const data = (await res.json()) as { error?: string };
-                        setError(data.error ?? 'Could not save Google credentials before OAuth');
+            {/* Platform Connect is a real link (no JS). A prior button+fetch path never left this page for this workspace. */}
+            <div className="flex flex-wrap items-center gap-2">
+              {!usingByok && platformGoogleConfigured ? (
+                <a
+                  href="/api/calendar/google/authorize"
+                  className="rounded-md bg-accent px-3 py-2 text-xs font-medium text-black hover:opacity-90"
+                >
+                  Connect with Google
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!oauthReady || connecting}
+                  onClick={() => {
+                    void (async () => {
+                      setConnecting(true);
+                      setError(null);
+                      setOauthMessage(null);
+                      try {
+                        const res = await fetch('/api/calendar/connection', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            provider: 'google',
+                            clientId: clientId.trim(),
+                            clientSecret: clientSecret || undefined,
+                            calendarId,
+                            enabled: true,
+                          }),
+                        });
+                        if (!res.ok) {
+                          const data = (await res.json()) as { error?: string };
+                          setError(data.error ?? 'Could not save Google credentials before OAuth');
+                          setConnecting(false);
+                          return;
+                        }
+                        window.location.assign(
+                          `/api/calendar/google/authorize?clientId=${encodeURIComponent(clientId.trim())}`,
+                        );
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : 'Could not start Google connect');
                         setConnecting(false);
-                        return;
                       }
-                      if (!usingByok) setClientId('');
-                      const params = new URLSearchParams();
-                      if (usingByok) params.set('clientId', clientId.trim());
-                      const qs = params.toString();
-                      window.location.href = qs
-                        ? `/api/calendar/google/authorize?${qs}`
-                        : '/api/calendar/google/authorize';
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : 'Could not start Google connect');
-                      setConnecting(false);
-                    }
-                  })();
-                }}
-                className={
-                  oauthReady
-                    ? 'rounded-md border border-border px-3 py-2 text-xs text-text-primary hover:bg-elevated disabled:opacity-50'
-                    : 'cursor-not-allowed rounded-md border border-border px-3 py-2 text-xs text-text-muted opacity-60'
-                }
-              >
-                {connecting ? 'Opening Google…' : 'Connect with Google'}
-              </button>
+                    })();
+                  }}
+                  className={
+                    oauthReady
+                      ? 'rounded-md bg-accent px-3 py-2 text-xs font-medium text-black hover:opacity-90 disabled:opacity-50'
+                      : 'cursor-not-allowed rounded-md border border-border px-3 py-2 text-xs text-text-muted opacity-60'
+                  }
+                >
+                  {connecting ? 'Opening Google…' : 'Connect with Google'}
+                </button>
+              )}
+              {!oauthReady ? (
+                <span className="text-xs text-danger">
+                  Add a Client ID under Advanced, or ask ops to load platform Google OAuth.
+                </span>
+              ) : null}
             </div>
           </>
         ) : (

@@ -177,6 +177,24 @@ export async function executeClinicomTranslate(params: Record<string, unknown>) 
 export async function executeClinicomSimplify(params: Record<string, unknown>) {
   const text = String(params.text ?? '');
   const targetReadingLevel = Number(params.target_reading_level ?? 8);
+  const context = String(params.context ?? 'general-practice');
+  if (text.trim() && geminiApiKey()) {
+    const gemini = await geminiGenerate(
+      `Rewrite this clinical or product text in plain language. `
+      + `Target reading level roughly UK year ${targetReadingLevel}. `
+      + `Keep meaning. Do not invent facts, user counts, certifications, or medical advice. `
+      + `Context label: ${context}. Return only the rewritten text.\n\n${text}`,
+    );
+    if (gemini) {
+      return {
+        simplified_text: gemini,
+        readability_scores: estimateReadingLevel(gemini),
+        medical_terms_preserved: extractMedicalTerms(text),
+        confidence: 0.87,
+        source: 'carina-gemini',
+      };
+    }
+  }
   const simplified = simplifyText(text, targetReadingLevel);
   return {
     simplified_text: simplified,
@@ -184,6 +202,77 @@ export async function executeClinicomSimplify(params: Record<string, unknown>) {
     medical_terms_preserved: extractMedicalTerms(text),
     confidence: 0.88,
     source: 'carina-clinicom-stub',
+  };
+}
+
+export async function executeClinicomProductHelp(params: Record<string, unknown>) {
+  const question = String(params.question ?? '').trim();
+  const grounding = String(params.grounding_corpus ?? '').trim().slice(0, 14000);
+  const capabilities = String(params.capabilities_summary ?? '').trim().slice(0, 2400);
+  if (!question) {
+    return {
+      answer: 'Ask a Clinicom product question.',
+      grounded: false,
+      confidence: 0,
+      source: V2_TOOL_SOURCE,
+      mode: 'refuse',
+    };
+  }
+  if (geminiApiKey()) {
+    const gemini = await geminiGenerateJson(
+      [
+        'Return JSON only with keys answer (string), grounded (boolean), confidence (number 0-1), mode (string).',
+        'You are Ask Clinicom product help for Clinicom AI (Healthcare Communication Intelligence).',
+        'Use ONLY the grounding corpus and capabilities summary. Additive help: explain Clinicom surfaces, interpreter vs dashboard, roles, sidecar tools, pricing location, trust posture, and how deep AI tools support clinicians.',
+        'Rules:',
+        '- Not medical advice. If the user wants diagnosis, treatment, or prescribing, refuse clearly.',
+        '- Do not invent live user counts, revenue, certifications, phishing secrets, or URLs missing from grounding.',
+        '- If grounding is insufficient, set grounded=false, mode="refuse", and answer exactly: INSUFFICIENT_GROUNDING',
+        '- Prefer clear clinician- and practice-manager language. Mention relevant Clinicom paths (/app, /dashboard, /docs, /status) when they appear in grounding.',
+        `Question: ${question}`,
+        `Capabilities summary: ${capabilities || 'unavailable'}`,
+        `Grounding corpus:\n${grounding || '(empty)'}`,
+      ].join('\n'),
+    );
+    if (gemini) {
+      const answer = String(gemini.answer ?? '').trim();
+      const grounded = Boolean(gemini.grounded) && Boolean(answer) && !/^INSUFFICIENT_GROUNDING$/i.test(answer);
+      return {
+        answer: answer || 'INSUFFICIENT_GROUNDING',
+        grounded,
+        confidence: Number(gemini.confidence ?? (grounded ? 0.7 : 0)) || 0,
+        mode: grounded ? String(gemini.mode || 'sidecar') : 'refuse',
+        source: 'carina-gemini',
+      };
+    }
+  }
+  // Deterministic fallback when Gemini is offline: prefer a clean primary answer if present.
+  if (grounding) {
+    const primary = grounding.match(/Primary grounded answer:\s*([\s\S]*?)(?:\n\nFAQ|\n\nDOC|$)/i);
+    if (primary?.[1]?.trim()) {
+      return {
+        answer: primary[1].trim().slice(0, 1200),
+        grounded: true,
+        confidence: 0.7,
+        mode: 'docs',
+        source: V2_TOOL_SOURCE,
+      };
+    }
+    const excerpt = grounding.replace(/\s+/g, ' ').trim().slice(0, 420);
+    return {
+      answer: excerpt,
+      grounded: true,
+      confidence: 0.55,
+      mode: 'docs',
+      source: V2_TOOL_SOURCE,
+    };
+  }
+  return {
+    answer: 'INSUFFICIENT_GROUNDING',
+    grounded: false,
+    confidence: 0,
+    mode: 'refuse',
+    source: V2_TOOL_SOURCE,
   };
 }
 
@@ -353,7 +442,7 @@ export async function executeClinicomConfidenceExplain(params: Record<string, un
   };
 }
 
-export type ClinicomToolRoute = 'transcribe' | 'translate' | 'simplify' | 'speak' | 'cultural_adapt' | 'teachback_score' | 'safety_triage_assist' | 'session_digest' | 'specialty_simplify' | 'confidence_explain';
+export type ClinicomToolRoute = 'transcribe' | 'translate' | 'simplify' | 'speak' | 'cultural_adapt' | 'teachback_score' | 'safety_triage_assist' | 'session_digest' | 'specialty_simplify' | 'confidence_explain' | 'product_help';
 
 export async function dispatchClinicomTool(route: ClinicomToolRoute, params: Record<string, unknown>) {
   switch (route) {
@@ -377,6 +466,8 @@ export async function dispatchClinicomTool(route: ClinicomToolRoute, params: Rec
       return executeClinicomSpecialtySimplify(params);
     case 'confidence_explain':
       return executeClinicomConfidenceExplain(params);
+    case 'product_help':
+      return executeClinicomProductHelp(params);
     default:
       return { error: `Unknown clinicom tool route: ${route}`, status: 'error' };
   }

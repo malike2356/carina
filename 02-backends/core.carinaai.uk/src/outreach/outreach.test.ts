@@ -149,4 +149,63 @@ describe('outreach program O01/O02', () => {
     expect(isPipelineStatus('new')).toBe(true);
     expect(isPipelineStatus('bogus')).toBe(false);
   });
+
+  it('updates campaigns, lists, and sequences through editable control paths', async () => {
+    const { createCampaign, createLeadList } = await import('./leads.js');
+    const { createSequence, updateSequence } = await import('./sequence-engine.js');
+    const { updateLeadList } = await import('./leads.js');
+
+    const campaign = createCampaign({
+      workspaceId: 'ws-1',
+      name: 'Initial campaign',
+      objective: 'Initial objective',
+    });
+    const editedCampaign = await import('./leads.js').then(({ updateCampaign }) => updateCampaign('ws-1', campaign.id, {
+      name: 'Updated campaign',
+      active: false,
+      dailyCap: 7,
+      businessDays: [1, 2, 3, 4],
+    }));
+    expect(editedCampaign?.name).toBe('Updated campaign');
+    expect(editedCampaign?.active).toBe(false);
+    expect(editedCampaign?.cadence.dailyCap).toBe(7);
+
+    const list = createLeadList({
+      workspaceId: 'ws-1',
+      name: 'Target list',
+      description: 'Initial description',
+      leadIds: ['lead-a'],
+      tags: ['alpha'],
+    });
+    const editedList = updateLeadList('ws-1', list.id, {
+      name: 'Target list updated',
+      leadIds: ['lead-a', 'lead-b'],
+      tags: ['alpha', 'beta'],
+    });
+    expect(editedList?.name).toBe('Target list updated');
+    expect(editedList?.leadIds).toEqual(['lead-a', 'lead-b']);
+    expect(editedList?.tags).toEqual(['alpha', 'beta']);
+
+    const sequence = createSequence({
+      workspaceId: 'ws-1',
+      name: 'Initial sequence',
+      steps: [{ subject: 'One', body: 'Body', delayHours: 0 }],
+    });
+    const editedSequence = updateSequence('ws-1', sequence.id, {
+      name: 'Updated sequence',
+      stopOnReply: false,
+      steps: [
+        {
+          label: 'Intro',
+          subject: 'Hello',
+          body: 'World',
+          delayHours: 12,
+          channel: 'email',
+        },
+      ],
+    });
+    expect(editedSequence?.name).toBe('Updated sequence');
+    expect(editedSequence?.stopOnReply).toBe(false);
+    expect(editedSequence?.steps[0]?.subject).toBe('Hello');
+  });
 });

@@ -4,29 +4,27 @@ export function buildPlatformFormattingContext(platform?: string): string {
 
   if (surface === 'telegram') {
     return [
-      'Output format (Telegram):',
-      'Send one cohesive reply with blank lines between paragraphs.',
-      'Keep each paragraph to 1-3 short sentences.',
-      'For schedules, dates, or multiple facts, use a ## heading plus bullet lines (- item).',
-      'Bold key names/times with **like this**.',
-      'Do not use markdown tables.',
-      'Do not narrate tool use (no "[using web-search]").',
-      'Do not append tool dumps, JSON, or working-set evidence to the user-facing reply.',
-      'Do not split one answer across multiple messages; the gateway keeps it as one message.',
-      'End with one clear question only when it helps.',
+      'Output format (Telegram, SPEED MODE):',
+      'Reply in under ~600 characters unless the user explicitly asks for a long document.',
+      'One short answer: 1-3 short paragraphs or a tight bullet list. No preamble.',
+      'Never write chain-of-thought, planning, or "let me check" narration into the reply.',
+      'Never narrate tool use. Never append tool dumps, JSON, or working-set evidence.',
+      'Do not use markdown tables. Bold only key names/times with **like this**.',
+      'Prefer answering from known context; use at most 1-2 tool rounds unless blocked.',
+      'Do not split one answer across multiple bot messages.',
+      'Ask at most one clarifying question, and only if you cannot act without it.',
     ].join(' ');
   }
 
   if (surface === 'web' || surface === 'aiva') {
     return [
-      'Output format (Aiva web chat):',
-      'Write a polished, scannable reply: short paragraphs, blank lines between them.',
-      'Use ## headings sparingly for multi-part answers, and - bullets for lists of facts.',
-      'Bold key names, phone numbers, and emails with **like this**.',
-      'Never narrate tool use (no "[using memory...]", no "[using session-search...]").',
-      'Never append working-set digests, JSON tool dumps, cost preflight notes, or debug evidence.',
-      'Never paste internal orchestration text, screenshots-as-text, or UI chrome into the reply.',
-      'Prefer one clear answer over a wall of text.',
+      'Output format (Aiva web chat, SPEED MODE):',
+      'Lead with the answer. Keep replies short and scannable: short paragraphs, blank lines between them.',
+      'Default to under ~1200 characters unless the user asked for a long deliverable (playbook, draft, analysis).',
+      'Never write chain-of-thought, planning monologue, or "let me check" into the visible reply.',
+      'Use ## headings sparingly and - bullets for lists. Bold key names, phones, emails with **like this**.',
+      'Never narrate tool use. Never append working-set digests, JSON tool dumps, or debug evidence.',
+      'Prefer one clear answer over a wall of text. Stop when the question is answered.',
     ].join(' ');
   }
 
@@ -49,16 +47,18 @@ export function buildPlatformFormattingContext(platform?: string): string {
 
   if (surface === 'whatsapp') {
     return [
-      'Output format (WhatsApp):',
-      'Plain text only. No markdown tables, headers, or code fences.',
-      'Use CAPS or short labels for emphasis. Use bullet lines starting with "-".',
+      'Output format (WhatsApp, SPEED MODE):',
+      'Plain text only. Under ~500 characters by default. No markdown tables, headers, or code fences.',
+      'No chain-of-thought. Answer first. Use CAPS or short labels for emphasis. Bullets with "-".',
+      'At most 1-2 tool rounds unless blocked.',
     ].join(' ');
   }
 
   if (surface === 'sms' || surface === 'signal') {
     return [
-      `Output format (${surface}):`,
-      'Plain text only. Very short replies. No tables or markdown.',
+      `Output format (${surface}, SPEED MODE):`,
+      'Plain text only. Very short replies (under ~280 characters when possible). No tables or markdown.',
+      'No chain-of-thought. Answer or ask one question.',
     ].join(' ');
   }
 

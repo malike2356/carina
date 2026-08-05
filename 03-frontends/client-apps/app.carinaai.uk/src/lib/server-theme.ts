@@ -6,10 +6,8 @@ import {
   themeStylesheetHref,
   type ThemeMode,
 } from '@/lib/theme-runtime';
+import { AIVA_DEFAULT_THEME_PREFERENCE } from '@/lib/aiva-theme';
 import { isAivaProductHost } from '@/lib/product-surface';
-
-const AIVA_DEFAULT_THEME = 'amber-minimal';
-const AIVA_DEFAULT_MODE: ThemeMode = 'light';
 
 export async function resolveServerThemePreference(): Promise<{ themeId: string; mode: ThemeMode }> {
   const cookieStore = await cookies();
@@ -27,7 +25,7 @@ export async function resolveServerThemePreference(): Promise<{ themeId: string;
   }
 
   if (isAivaProduct) {
-    return { themeId: AIVA_DEFAULT_THEME, mode: AIVA_DEFAULT_MODE };
+    return AIVA_DEFAULT_THEME_PREFERENCE;
   }
 
   return {

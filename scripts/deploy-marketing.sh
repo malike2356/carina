@@ -105,6 +105,7 @@ deploy_site() {
         "${REPO_ROOT}/02-backends/core.carinaai.uk/install.sh" \
         "${SSH_TARGET}:${remote_dir}/install/install.sh"
     fi
+    ssh -o IdentitiesOnly=yes -i "${SSH_KEY}" "${SSH_TARGET}" "rm -f '${remote_dir}/.nginx-reloaded-at'"
   fi
 
   if [[ -f "${local_dir}/nginx.clean-urls.conf" ]]; then
@@ -117,6 +118,28 @@ reload_carina_marketing_nginx() {
   log "Recreating Docker nginx (refresh public_website bind mount; avoids carinaai.uk 403)..."
   ssh -o IdentitiesOnly=yes -i "${SSH_KEY}" "${SSH_TARGET}" \
     "cd '${APPS_ROOT}' && bash docker/scripts/reload-marketing-nginx.sh"
+}
+
+check_remote_carina_marketing() {
+  log "Running remote carinaai.uk bind-mount healthcheck..."
+  ssh -o IdentitiesOnly=yes -i "${SSH_KEY}" "${SSH_TARGET}" \
+    "cd '${APPS_ROOT}' && bash docker/scripts/check-carina-marketing.sh"
+}
+
+verify_carina_marketing_site() {
+  local code
+  code="$(curl -fsS -o /dev/null -w '%{http_code}' https://carinaai.uk/ || true)"
+  if [[ "${code}" != "200" ]]; then
+    log "carinaai.uk returned ${code:-no-response}; retrying nginx refresh once..."
+    reload_carina_marketing_nginx
+    check_remote_carina_marketing
+    code="$(curl -fsS -o /dev/null -w '%{http_code}' https://carinaai.uk/ || true)"
+    if [[ "${code}" != "200" ]]; then
+      die "carinaai.uk still not healthy after deploy. Check Docker nginx and public_website mount."
+    fi
+  fi
+
+  log "Verified carinaai.uk returned 200."
 }
 
 main() {
@@ -133,6 +156,8 @@ main() {
       fi
       deploy_site "carinaai.uk-docker" "${CARINA_MARKETING_LOCAL}" "${APPS_ROOT}/public_website"
       reload_carina_marketing_nginx
+      check_remote_carina_marketing
+      verify_carina_marketing_site
       ;;
     scout)
       build_scout_docs
@@ -148,6 +173,8 @@ main() {
       build_scout_docs
       deploy_site "carinaai.uk-docker" "${CARINA_MARKETING_LOCAL}" "${APPS_ROOT}/public_website"
       reload_carina_marketing_nginx
+      check_remote_carina_marketing
+      verify_carina_marketing_site
       deploy_site "labyrinthscout.com" "${SCOUT_MARKETING_LOCAL}" "/www/wwwroot/labyrinthscout.com"
       deploy_site "hireaiva.co.uk" "${HIREAIVA_MARKETING_LOCAL}" "/www/wwwroot/hireaiva.co.uk"
       ;;

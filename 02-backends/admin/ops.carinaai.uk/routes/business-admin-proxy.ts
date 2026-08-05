@@ -1,6 +1,7 @@
 import { Readable } from 'stream';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
+import { applyBusinessAdminBridge } from '../lib/ensure-business-admin.js';
 
 function adminInternalBase(): string {
   return (process.env.CARINA_ADMIN_INTERNAL_URL ?? 'http://127.0.0.1:4200').replace(/\/$/, '');
@@ -90,7 +91,30 @@ function renderBusinessShell(req: Request, res: Response): void {
 
 type ProxyOptions = {
   requireAdminToken?: boolean;
+  /** Internal: already retried after refreshing the admin JWT. */
+  retriedAfterRefresh?: boolean;
 };
+
+function looksLikeExpiredAdminTokenError(status: number, bodyText: string): boolean {
+  if (status !== 401) return false;
+  const lower = bodyText.toLowerCase();
+  return (
+    lower.includes('invalid or expired token')
+    || lower.includes('unauthorized')
+    || lower.includes('business admin session expired')
+  );
+}
+
+async function refreshAdminTokenFromBridge(req: Request): Promise<boolean> {
+  delete req.session.adminToken;
+  delete req.session.adminUserId;
+  const bridged = await applyBusinessAdminBridge(req);
+  if (!bridged || !req.session.adminToken) return false;
+  await new Promise<void>((resolve, reject) => {
+    req.session.save((err) => (err ? reject(err) : resolve()));
+  });
+  return true;
+}
 
 async function proxyBusinessAdminRequest(
   req: Request,
@@ -171,6 +195,58 @@ async function proxyBusinessAdminRequest(
       }
     }
 
+    const upstreamType = upstream.headers.get('content-type') ?? '';
+    const isEventStream = upstreamType.includes('text/event-stream');
+    const isJsonish = upstreamType.includes('application/json')
+      || (req.originalUrl ?? '').includes('/api/admin')
+      || (req.get('accept') ?? '').includes('application/json');
+
+    // Stale JWTs can still pass expiry checks after ADMIN_TOKEN_SECRET / INTERNAL_KEY drift.
+    // Clear, re-bridge via Core Google operator login, and retry once.
+    if (
+      requireAdminToken
+      && !options.retriedAfterRefresh
+      && !isEventStream
+      && isJsonish
+      && upstream.status === 401
+    ) {
+      const peek = Buffer.from(await upstream.arrayBuffer()).toString('utf8');
+      if (looksLikeExpiredAdminTokenError(upstream.status, peek)) {
+        try {
+          const refreshed = await refreshAdminTokenFromBridge(req);
+          if (refreshed) {
+            await proxyBusinessAdminRequest(req, res, {
+              ...options,
+              retriedAfterRefresh: true,
+            });
+            return;
+          }
+        } catch (err) {
+          console.error('[ops] business admin token refresh failed:', err);
+        }
+        res.status(401).json({
+          error: 'Business admin session expired. Sign out and sign in again.',
+        });
+        return;
+      }
+      res.status(upstream.status);
+      upstream.headers.forEach((value, key) => {
+        const lower = key.toLowerCase();
+        if (
+          lower === 'transfer-encoding'
+          || lower === 'connection'
+          || lower === 'set-cookie'
+          || lower === 'content-encoding'
+          || lower === 'content-length'
+        ) {
+          return;
+        }
+        res.setHeader(key, value);
+      });
+      res.send(Buffer.from(peek));
+      return;
+    }
+
     res.status(upstream.status);
     upstream.headers.forEach((value, key) => {
       const lower = key.toLowerCase();
@@ -185,9 +261,6 @@ async function proxyBusinessAdminRequest(
       }
       res.setHeader(key, value);
     });
-
-    const upstreamType = upstream.headers.get('content-type') ?? '';
-    const isEventStream = upstreamType.includes('text/event-stream');
 
     if (upstream.body) {
       if (isEventStream) {

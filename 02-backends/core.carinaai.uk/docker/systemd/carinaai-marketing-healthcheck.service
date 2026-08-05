@@ -1,0 +1,8 @@
+[Unit]
+Description=Carina marketing site healthcheck
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/malike/apps/core.carinaai.uk
+Environment=CARINA_MARKETING_AUTO_RELOAD=1
+ExecStart=/bin/bash docker/scripts/check-carina-marketing.sh

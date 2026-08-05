@@ -196,4 +196,40 @@ describe('outreach O03/O04/O05', () => {
     });
     expect(skipped.skipped).toBe(true);
   });
+
+  it('records a post-call outcome and schedules the matching handoff task', async () => {
+    const { createLead, getLead } = await import('./leads.js');
+    const { createBooking, recordPostCallOutcome } = await import('./bookings.js');
+    const { listFollowUpTasks } = await import('./follow-ups.js');
+
+    const { lead } = createLead({
+      workspaceId: 'ws-1',
+      name: 'Maya Prospect',
+      email: 'maya@example.com',
+    });
+
+    const start = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    start.setUTCMinutes(0, 0, 0);
+    const booking = createBooking({
+      workspaceId: 'ws-1',
+      leadId: lead.id,
+      startsAt: start.toISOString(),
+      endsAt: new Date(start.getTime() + 30 * 60 * 1000).toISOString(),
+      timezone: 'UTC',
+    });
+
+    const result = recordPostCallOutcome({
+      workspaceId: 'ws-1',
+      bookingId: booking.id,
+      outcome: 'proposal_needed',
+      notes: 'Need scope and pricing details.',
+    });
+
+    expect(result.leadId).toBe(lead.id);
+    expect(result.nextActionTaskId).toBeTruthy();
+    expect(getLead('ws-1', lead.id)?.status).toBe('proposal_sent');
+    expect(getLead('ws-1', lead.id)?.bookingState).toBe('attended');
+    expect(getLead('ws-1', lead.id)?.notes).toContain('Need scope and pricing details.');
+    expect(listFollowUpTasks('ws-1').some((task) => task.kind === 'post_call_proposal_draft')).toBe(true);
+  });
 });

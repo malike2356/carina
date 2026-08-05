@@ -5,6 +5,7 @@ import { clinicomTranscribeTool } from './clinicom-transcribe.js';
 import { clinicomTranslateTool } from './clinicom-translate.js';
 import { clinicomConfidenceExplainTool } from './clinicom-confidence-explain.js';
 import { clinicomCulturalAdaptTool } from './clinicom-cultural-adapt.js';
+import { clinicomProductHelpTool } from './clinicom-product-help.js';
 import { clinicomSafetyTriageAssistTool } from './clinicom-safety-triage-assist.js';
 import { clinicomSessionDigestTool } from './clinicom-session-digest.js';
 import { clinicomSpecialtySimplifyTool } from './clinicom-specialty-simplify.js';
@@ -21,6 +22,7 @@ export const clinicomTools: Tool[] = [
   clinicomSessionDigestTool,
   clinicomSpecialtySimplifyTool,
   clinicomConfidenceExplainTool,
+  clinicomProductHelpTool,
 ];
 
 export {
@@ -30,6 +32,7 @@ export {
   clinicomTranslateTool,
   clinicomConfidenceExplainTool,
   clinicomCulturalAdaptTool,
+  clinicomProductHelpTool,
   clinicomSafetyTriageAssistTool,
   clinicomSessionDigestTool,
   clinicomSpecialtySimplifyTool,
@@ -40,6 +43,7 @@ export {
   dispatchClinicomTool,
   executeClinicomConfidenceExplain,
   executeClinicomCulturalAdapt,
+  executeClinicomProductHelp,
   executeClinicomSimplify,
   executeClinicomSpeak,
   executeClinicomSafetyTriageAssist,

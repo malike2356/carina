@@ -41,6 +41,15 @@ export async function handleAivaProxy(
     const orgId = orgFromHeader || orgFromCookie;
     if (orgId) headers.set('X-Aiva-Org-Id', orgId);
 
+    // Drive bootstrap/sync can wait on Google APIs longer than the default 12s proxy budget.
+    if (
+      corePath.includes('/workspace-ops/bootstrap')
+      || corePath.includes('/workspace-ops/sync')
+      || corePath.includes('/workspace-ops/documents/claim')
+    ) {
+      headers.set('x-aiva-proxy-timeout-ms', '90000');
+    }
+
     init.headers = headers;
     const upstream = await proxyAivaRequest(workspace.id, path, init, { userId: session.user.id });
     return nextResponseFromUpstream(upstream);

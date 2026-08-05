@@ -74,7 +74,7 @@ docker compose -f docker-compose.prod.yml ps
 | Path on VPS | Role |
 |-------------|------|
 | `core.carinaai.uk/public_website/` | Bind-mounted into nginx as `/var/www/public_website` (live marketing site) |
-| `frontends/marketing/carinaai.uk/` | Git source; deploy with `bash scripts/deploy-marketing.sh carina` |
+| `shared/marketing-sites/carinaai.uk/` | Git source; deploy with `bash scripts/deploy-marketing.sh carina` |
 
 ### Stale bind mount (403 Forbidden)
 

@@ -1,4 +1,4 @@
-import { resolveConfigValue } from './billing-config.js';
+import { refreshBillingConfigCache, resolveConfigValue } from './billing-config.js';
 import { getSubscription } from '../workers/aiva-subscription-store.js';
 import {
   getTenantProvider,
@@ -92,6 +92,8 @@ export async function resolveWorkspaceByokLlm(
 export async function resolveAivaProductLlm(workspaceId: string): Promise<ResolvedProductLlm> {
   const byok = await resolveWorkspaceByokLlm(workspaceId);
   if (byok) return byok;
+
+  await refreshBillingConfigCache().catch(() => undefined);
 
   const sub = await getSubscription(workspaceId).catch(() => null);
   const lane = aivaLlmLaneFromSubscription(sub);

@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
 import { invokeProductTool } from '../workers/product-tools/invoke.js';
@@ -8,11 +7,19 @@ import {
   getBookingConfig,
   cancelBooking,
   listAvailability,
+  recordPostCallOutcome,
   rescheduleBooking,
   sendBookingConfirmationEmail,
   updateBookingConfig,
 } from '../outreach/bookings.js';
 import { getLead } from '../outreach/leads.js';
+import {
+  deleteBookingGoogleCalendar,
+  syncBookingToGoogleCalendar,
+  updateBookingGoogleCalendar,
+} from '../vical/calendar-sync.js';
+import { formatBookingIcs } from '../vical/ics.js';
+import { getBooking as getVicalBooking } from '../vical/bookings.js';
 
 type BusyWindow = { start: string; end: string };
 
@@ -223,58 +230,35 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
           slotEnd: endsAt,
           note: typeof params.note === 'string' ? params.note : undefined,
         });
-        const googleCalendarPayload: Record<string, unknown> = {
-          summary: `Discovery call with ${lead.name}`,
-          start: startsAt,
-          end: endsAt,
-          description,
-        };
-        if (config.meetingMode === 'google_meet') {
-          googleCalendarPayload.conferenceData = {
-            createRequest: {
-              requestId: crypto.randomUUID(),
-              conferenceSolutionKey: { type: 'hangoutsMeet' },
-            },
-          };
-        } else if (config.zoomRoomUrl) {
-          googleCalendarPayload.location = config.zoomRoomUrl;
-        }
-        if (lead.email) {
-          googleCalendarPayload.attendees = [{ email: lead.email, responseStatus: 'accepted' }];
-        }
+        void description;
 
-        const calendar = await invokeProductTool({
-          workspaceId,
-          workerId,
-          slug: 'google-calendar',
-          action: 'create',
-          input: googleCalendarPayload,
-        });
-        if (!calendar.ok) {
-          return { ok: false, error: calendar.error ?? 'calendar create failed' };
-        }
-
-        const calendarData = (calendar.data ?? {}) as Record<string, unknown>;
-        const joinLink =
-          typeof (calendarData.hangoutLink) === 'string'
-            ? String(calendarData.hangoutLink)
-            : typeof (calendarData.htmlLink) === 'string'
-              ? String(calendarData.htmlLink)
-              : config.zoomRoomUrl;
-        const booking = createBooking({
+        // Book locally first (viCal SoT). Calendar sync is soft-fail and does not unconfirm.
+        let booking = createBooking({
           workspaceId,
           leadId,
           startsAt,
           endsAt,
           timezone: config.timezone,
-          hostEmail: workerId ? undefined : undefined,
-          hostName: undefined,
           calendarProvider: 'google',
-          calendarEventId: typeof calendarData.id === 'string' ? calendarData.id : undefined,
-          joinLink,
           notes: typeof params.note === 'string' ? params.note : undefined,
           busyWindows: busy,
+          joinLink: config.meetingMode === 'zoom' ? config.zoomRoomUrl : undefined,
         });
+
+        const sync = await syncBookingToGoogleCalendar({
+          workspaceId,
+          workerId,
+          bookingId: booking.id,
+          locationMode: config.meetingMode === 'zoom' ? 'zoom' : 'google_meet',
+          zoomRoomUrl: config.zoomRoomUrl,
+        });
+        booking = {
+          ...booking,
+          calendarEventId: sync.booking.calendarEventId ?? booking.calendarEventId,
+          joinLink: sync.booking.meetingUrl ?? booking.joinLink,
+        };
+
+        const joinLink = booking.joinLink ?? config.zoomRoomUrl;
         const confirmationCopy = buildBookingConfirmationEmail({
           leadName: lead.name,
           startsAt,
@@ -285,6 +269,8 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
           prepVideoTitle: config.prepVideoTitle,
           prepVideoPassword: config.prepVideoPassword,
         });
+        const vicalRow = getVicalBooking(workspaceId, booking.id);
+        const ics = vicalRow ? formatBookingIcs(vicalRow) : undefined;
         const confirmation = lead.email
           ? await sendBookingConfirmationEmail({
             workspaceId,
@@ -296,6 +282,9 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
           })
           : { sent: false, skipped: false, warning: 'Booking created, but no attendee email was available for confirmation.', booking };
         let warning: string | undefined = confirmation.warning;
+        if (sync.warning) {
+          warning = warning ? `${warning} ${sync.warning}` : sync.warning;
+        }
         if (!config.prepVideoUrl) {
           warning = warning
             ? `${warning} Prep video URL is missing; set prepVideoUrl in booking config.`
@@ -305,12 +294,55 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
           ok: true,
           data: {
             booking: confirmation.booking ?? booking,
-            calendar: calendar.data,
+            calendarSync: {
+              ok: sync.ok,
+              status: sync.booking.calendarSyncStatus,
+              error: sync.booking.calendarSyncError,
+            },
             confirmationCopy,
             confirmation,
+            ics,
             warning,
           },
         };
+      },
+    },
+    {
+      name: 'outreach-booking-outcome',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Record the post-call outcome for a discovery booking, update the lead pipeline, and schedule the right next action.',
+      parameters: {
+        type: 'object',
+        properties: {
+          bookingId: { type: 'string' },
+          outcome: {
+            type: 'string',
+            enum: ['qualified', 'proposal_needed', 'needs_follow_up', 'not_a_fit', 'won', 'lost'],
+          },
+          notes: { type: 'string' },
+          workspaceId: { type: 'string' },
+        },
+        required: ['bookingId', 'outcome'],
+      },
+      execute: async (params) => {
+        const ctx = resolveWorkspace(sessionId);
+        const workspaceId = typeof params.workspaceId === 'string' ? params.workspaceId.trim() : ctx?.workspaceId ?? '';
+        const bookingId = String(params.bookingId ?? '').trim();
+        const outcome = String(params.outcome ?? '').trim();
+        if (!workspaceId) return { ok: false, error: 'workspaceId required' };
+        if (!bookingId) return { ok: false, error: 'bookingId required' };
+        if (!['qualified', 'proposal_needed', 'needs_follow_up', 'not_a_fit', 'won', 'lost'].includes(outcome)) {
+          return { ok: false, error: 'outcome required' };
+        }
+        const result = recordPostCallOutcome({
+          workspaceId,
+          bookingId,
+          outcome: outcome as 'qualified' | 'proposal_needed' | 'needs_follow_up' | 'not_a_fit' | 'won' | 'lost',
+          notes: typeof params.notes === 'string' ? params.notes : undefined,
+        });
+        return { ok: true, data: result };
       },
     },
     {
@@ -343,7 +375,17 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
             startsAt,
             endsAt,
           });
-          return { ok: true, data: booking };
+          const workerId = ctx?.workerId ?? '';
+          let warning: string | undefined;
+          if (workerId) {
+            const sync = await updateBookingGoogleCalendar({
+              workspaceId,
+              workerId,
+              bookingId: booking.id,
+            });
+            warning = sync.warning;
+          }
+          return { ok: true, data: booking, warning };
         } catch (err) {
           return { ok: false, error: err instanceof Error ? err.message : String(err) };
         }
@@ -371,7 +413,17 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
         if (!bookingId) return { ok: false, error: 'bookingId required' };
         try {
           const booking = cancelBooking(workspaceId, bookingId, typeof params.reason === 'string' ? params.reason : undefined);
-          return { ok: true, data: booking };
+          const workerId = ctx?.workerId ?? '';
+          let warning: string | undefined;
+          if (workerId) {
+            const sync = await deleteBookingGoogleCalendar({
+              workspaceId,
+              workerId,
+              bookingId,
+            });
+            warning = sync.warning;
+          }
+          return { ok: true, data: booking, warning };
         } catch (err) {
           return { ok: false, error: err instanceof Error ? err.message : String(err) };
         }

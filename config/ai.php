@@ -6,7 +6,7 @@ return [
      * Default provider used by CarinaService when no tenant preference is set.
      * Tenant can configure their own via BYOK settings.
      */
-    'default_provider' => env('AI_DEFAULT_PROVIDER', 'anthropic'),
+    'default_provider' => env('AI_DEFAULT_PROVIDER', 'deepseek'),
 
     /*
      * Embedding model for RAG (OpenAI-compatible /embeddings only - skips Anthropic in router).
@@ -99,7 +99,7 @@ return [
      * Priority order for chat - first provider with a valid key wins.
      * Override per-tenant via BYOK settings.
      */
-    'priority' => explode(',', env('AI_PRIORITY', 'anthropic,groq,deepseek,openrouter,openai,google')),
+    'priority' => explode(',', env('AI_PRIORITY', 'deepseek,anthropic,groq,openrouter,openai,google')),
 
     /*
      * RAG embeddings use POST {base_url}/embeddings (OpenAI-compatible). Chat-first APIs (DeepSeek, Anthropic) are excluded.

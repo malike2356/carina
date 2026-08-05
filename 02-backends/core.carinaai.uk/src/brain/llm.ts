@@ -55,6 +55,7 @@ import {
   applyThinkingExtrasToProviderRequest,
 } from '../agents/thinking-levels.js';
 import { getThinkingRequestExtras } from './thinking-request.js';
+import { getMaxCompletionTokens } from './completion-tokens.js';
 import { modelPolicyRouter } from '../model-router/model-policy-router.js';
 import { recordModelPolicyDecision, recordModelUsageResult } from '../billing/ai-usage-ledger.js';
 import { optimizeMessages } from '../token-efficiency/token-efficiency.js';
@@ -142,7 +143,7 @@ export class ClaudeProvider implements LLMProvider {
         response = await client.messages.create(
           applyThinkingExtrasToProviderRequest({
             model: model ?? providerModel(def),
-            max_tokens: 8192,
+            max_tokens: getMaxCompletionTokens(),
             system: anthropicCacheControlBlocks(prompt),
             messages: toAnthropicMessages(messages),
             ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
@@ -205,7 +206,7 @@ export class ClaudeProvider implements LLMProvider {
     try {
       stream = this.client.messages.stream({
         model: model ?? providerModel(PROVIDER_MAP.anthropic),
-        max_tokens: 8192,
+        max_tokens: getMaxCompletionTokens(),
         system: anthropicCacheControlBlocks(prompt),
         messages: toAnthropicMessages(messages),
         ...(toolDefs.length > 0 ? { tools: toolDefs } : {}),
@@ -344,6 +345,7 @@ export class GeminiProvider implements LLMProvider {
       const genModel = client.getGenerativeModel({
         model: model ?? providerModel(def),
         systemInstruction: { role: 'user', parts: [{ text: prompt }] },
+        generationConfig: { maxOutputTokens: getMaxCompletionTokens() },
         ...(declarations.length > 0
           ? { tools: [{ functionDeclarations: declarations }] }
           : {}),

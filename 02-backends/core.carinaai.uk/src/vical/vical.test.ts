@@ -236,4 +236,86 @@ describe('vical booking engine', () => {
     expect(vical.getEventType('ws-b', a.eventType.id)).toBeNull();
     expect(vical.getEventType('ws-b', b.eventType.id)?.id).toBe(b.eventType.id);
   });
+
+  it('validates intake answers, disqualifies bad fits, and routes eligible bookings', async () => {
+    const vical = await load();
+    const workspaceId = 'ws-9';
+    const sharedHostId = 'host-shared';
+    const source = vical.ensureDiscoveryDefaults({ workspaceId, hostUserId: sharedHostId }).eventType;
+    const routeTarget = vical.createEventType({
+      workspaceId,
+      hostUserId: sharedHostId,
+      name: 'Enterprise follow-up',
+    });
+    const pool = vical.createIntakePool({
+      workspaceId,
+      hostUserId: 'host-intake',
+      name: 'Discovery intake',
+      questions: [
+        {
+          key: 'budget',
+          label: 'Budget',
+          type: 'select',
+          choices: ['Under 100k', '200k+'],
+          disqualifyValues: ['Under 100k'],
+          disqualifyMessage: 'Not a fit for this programme.',
+        },
+        {
+          key: 'topic',
+          label: 'Topic',
+          type: 'text',
+          required: true,
+        },
+      ],
+      routingRules: [
+        {
+          match: { topic: 'enterprise' },
+          routeToEventTypeId: routeTarget.id,
+          priority: 10,
+        },
+      ],
+    });
+    vical.updateEventType(workspaceId, source.id, { intakePoolId: pool.id });
+    const slot = vical.listOfferedSlots({
+      workspaceId,
+      eventTypeId: source.id,
+      from: new Date('2026-08-05T10:00:00.000Z'),
+      limit: 1,
+    })[0]!;
+
+    expect(() =>
+      vical.createBooking({
+        workspaceId,
+        eventTypeId: source.id,
+        guestName: 'Bad fit',
+        guestEmail: 'bad@example.com',
+        startsAt: slot.start,
+        intakeAnswers: { budget: 'Under 100k', topic: 'enterprise' },
+      }),
+    ).toThrow(/Not a fit for this programme\./);
+
+    expect(() =>
+      vical.createBooking({
+        workspaceId,
+        eventTypeId: source.id,
+        guestName: 'Missing answer',
+        guestEmail: 'missing@example.com',
+        startsAt: slot.start,
+      }),
+    ).toThrow(/Please complete the booking questions/);
+
+    const routed = vical.createBooking({
+      workspaceId,
+      eventTypeId: source.id,
+      guestName: 'Route me',
+      guestEmail: 'route@example.com',
+      startsAt: slot.start,
+      intakeAnswers: { budget: '200k+', topic: 'enterprise' },
+    });
+
+    expect(routed.eventTypeId).toBe(routeTarget.id);
+    expect(routed.metadata.intakeSourceEventTypeId).toBe(source.id);
+    expect(routed.metadata.intakeRoutedEventTypeId).toBe(routeTarget.id);
+    expect(routed.intakeAnswers).toMatchObject({ budget: '200k+', topic: 'enterprise' });
+  });
 });

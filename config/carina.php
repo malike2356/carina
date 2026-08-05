@@ -49,6 +49,18 @@ return [
     /** Directory containing Carina SKILL.md source files compiled by carina:compile-skills. */
     'skills_path' => env('CARINA_SKILLS_PATH', resource_path('carina/skills')),
 
+    /**
+     * Persistent learning memory used by the self-improvement loop.
+     * The ledger is append-only JSONL so future turns can reason about what
+     * was learned, merged, or skipped without replaying raw chat logs.
+     */
+    'skill_learning' => [
+        'ledger_path' => env('CARINA_SKILL_LEARNING_LEDGER_PATH', storage_path('app/carina/skill-learning/ledger.jsonl')),
+        'prompt_artifact_limit' => (int) env('CARINA_SKILL_LEARNING_PROMPT_ARTIFACT_LIMIT', 24),
+        'prompt_history_limit' => (int) env('CARINA_SKILL_LEARNING_PROMPT_HISTORY_LIMIT', 12),
+        'ledger_max_entries' => (int) env('CARINA_SKILL_LEARNING_LEDGER_MAX_ENTRIES', 2000),
+    ],
+
     'hub' => [
         'url' => env('SKILLS_HUB_URL', 'https://hub.carinaai.uk'),
         'publish_key' => env('SKILLS_HUB_PUBLISH_KEY', ''),

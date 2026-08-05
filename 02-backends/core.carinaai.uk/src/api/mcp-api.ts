@@ -8,10 +8,11 @@ import {
   upsertMcpServer,
   type PersistedMcpServer,
 } from '../mcp/config.js';
-import { disconnectServer, listConnections } from '../mcp/registry.js';
+import { connectServer, disconnectServer, listConnections } from '../mcp/registry.js';
 import { McpHttpClient } from '../mcp/http-client.js';
 import { McpStdioClient } from '../mcp/stdio-client.js';
 import type { McpServerConfig, McpToolDefinition } from '../mcp/types.js';
+import { callMcpTool } from '../mcp/registry.js';
 
 export const mcpApiRouter: ExpressRouter = Router();
 
@@ -401,6 +402,99 @@ mcpApiRouter.get('/:id/tools', async (req: McpApiRequest, res: Response) => {
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.post('/:id/connect', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    const servers = await readMcpServers();
+    const current = servers.find((item) => item.name === id);
+    if (!current) {
+      res.status(404).json({ error: 'MCP server not found' });
+      return;
+    }
+    const { config, name } = mergeConfigBody(current, (req.body ?? {}) as Record<string, unknown>, id);
+    if (name !== id && servers.some((server) => server.name === name)) {
+      res.status(409).json({ error: `MCP server already exists: ${name}` });
+      return;
+    }
+    const connection = await connectServer(config);
+    const connectedAt = connection.connectedAt.toISOString();
+    const updated: PersistedMcpServer = {
+      ...config,
+      enabled: enabledFromBody((req.body ?? {}) as Record<string, unknown>, true),
+      connected: true,
+      connectedAt,
+      tools: connection.tools.map((tool) => tool.name),
+      lastPing: current.lastPing,
+      lastPingMs: current.lastPingMs,
+    };
+    await upsertMcpServer(updated);
+    if (name !== id) {
+      await removeMcpServer(id);
+    }
+    res.json({
+      ok: true,
+      server: mapServer(updated),
+      tools: connection.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description ?? '',
+      })),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.post('/:id/disconnect', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    const servers = await readMcpServers();
+    const current = servers.find((item) => item.name === id);
+    if (!current) {
+      res.status(404).json({ error: 'MCP server not found' });
+      return;
+    }
+    const ok = await disconnectServer(id);
+    if (!ok) {
+      res.status(409).json({ error: `server not connected: ${id}` });
+      return;
+    }
+    const updated: PersistedMcpServer = {
+      ...current,
+      connected: false,
+      connectedAt: undefined,
+    };
+    await upsertMcpServer(updated);
+    res.json({ ok: true, server: mapServer(updated) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+mcpApiRouter.post('/:id/call', async (req: McpApiRequest, res: Response) => {
+  try {
+    const id = String(req.params.id ?? '').trim();
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const tool = String(body.tool ?? '').trim();
+    if (!id) {
+      res.status(400).json({ error: 'id is required' });
+      return;
+    }
+    if (!tool) {
+      res.status(400).json({ error: 'tool is required' });
+      return;
+    }
+    const args = body.arguments && typeof body.arguments === 'object' && !Array.isArray(body.arguments)
+      ? (body.arguments as Record<string, unknown>)
+      : {};
+    const result = await callMcpTool(id, tool, args);
+    res.json({ ok: true, server: id, tool, result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    const code = message.includes('not connected') ? 409 : 400;
+    res.status(code).json({ error: message });
   }
 });
 

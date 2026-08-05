@@ -36,14 +36,14 @@ function googlePlatformConnectSteps(opts: {
 }): IntegrationGuide['steps'] {
   return [
     {
-      title: 'Skip Google Cloud setup',
+      title: 'Normal path: skip Google Cloud setup',
       body:
-        'Hire Aiva uses a company Verlox platform Google app with the shared callback URLs already registered '
+        'For the platform-managed Google path, Hire Aiva uses a company Verlox Google app with the shared callback URLs already registered '
         + '(sign-in, Drive/tools, Gmail, Calendar, YouTube). You do not create a Google Cloud project '
-        + 'or paste redirect URIs for the normal path. Those URLs are the same for every customer.',
+        + 'or paste redirect URIs for that normal path. Those URLs are the same for every customer.',
       tip:
-        'Only use Advanced (your own Google Cloud client) below if your organisation must issue tokens '
-        + 'from its own Google Cloud project (BYOK). Most people never need that.',
+        'Use Advanced only if your organisation must issue tokens from its own Google Cloud project (BYOK). '
+        + 'If your account or workspace is configured for BYOK, you should not skip Google Cloud setup.',
     },
     {
       title: 'Click Connect with Google',

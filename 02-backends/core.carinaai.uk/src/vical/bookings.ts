@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { SlotUnavailableError, VcalError } from './errors.js';
 import { emitVcalHook } from './hooks.js';
 import { acquireSlotLock, listActiveLocks, releaseSlotLock } from './locks.js';
+import { validateAndRouteIntake } from './intake.js';
 import { assertSlotFree, offerSlots } from './slots.js';
 import { loadVicalStore, mutateVicalStore } from './store.js';
 import type {
@@ -53,6 +54,7 @@ export function createEventType(input: {
   locationMode?: VcalEventType['locationMode'];
   requiresApproval?: boolean;
   requiresDeposit?: boolean;
+  intakePoolId?: string | null;
   active?: boolean;
   metadata?: Record<string, unknown>;
 }): VcalEventType {
@@ -80,7 +82,7 @@ export function createEventType(input: {
     requiresDeposit: Boolean(input.requiresDeposit),
     depositMinor: null,
     depositCurrency: null,
-    intakePoolId: null,
+    intakePoolId: input.intakePoolId ?? null,
     active: input.active ?? true,
     metadata: input.metadata ?? {},
     createdAt: stamp,
@@ -108,6 +110,7 @@ export function updateEventType(
       | 'locationMode'
       | 'requiresApproval'
       | 'requiresDeposit'
+      | 'intakePoolId'
       | 'active'
       | 'metadata'
     >
@@ -118,6 +121,7 @@ export function updateEventType(
   const next: VcalEventType = {
     ...existing,
     ...patch,
+    intakePoolId: patch.intakePoolId ?? existing.intakePoolId,
     updatedAt: nowIso(),
   };
   mutateVicalStore((store) => {
@@ -292,8 +296,22 @@ export function createBooking(input: {
   externalBusy?: VcalBusyWindow[];
   metadata?: Record<string, unknown>;
 }): VcalBooking {
-  const eventType = getEventType(input.workspaceId, input.eventTypeId);
+  let eventType = getEventType(input.workspaceId, input.eventTypeId);
   if (!eventType || !eventType.active) throw new VcalError('not_found', 'Event type not found');
+  const intake = validateAndRouteIntake({
+    eventType,
+    answers: input.intakeAnswers ?? null,
+    store: loadVicalStore(),
+  });
+  if (intake.routedEventTypeId && intake.routedEventTypeId !== eventType.id) {
+    const routed = getEventType(input.workspaceId, intake.routedEventTypeId);
+    if (!routed || !routed.active) {
+      throw new VcalError('intake_route_missing', 'Routed event type not found', {
+        routeToEventTypeId: intake.routedEventTypeId,
+      });
+    }
+    eventType = routed;
+  }
 
   const startsAt = new Date(input.startsAt).toISOString();
   const endsAt = input.endsAt
@@ -362,9 +380,17 @@ export function createBooking(input: {
     leadId: input.leadId,
     contactId: input.contactId,
     source: input.source ?? 'api',
-    intakeAnswers: input.intakeAnswers,
+    intakeAnswers: Object.keys(intake.answers).length > 0 ? intake.answers : input.intakeAnswers,
     notes: input.notes,
-    metadata: input.metadata ?? {},
+    metadata: {
+      ...(input.metadata ?? {}),
+      ...(intake.routedEventTypeId && intake.routedEventTypeId !== input.eventTypeId
+        ? {
+            intakeSourceEventTypeId: input.eventTypeId,
+            intakeRoutedEventTypeId: intake.routedEventTypeId,
+          }
+        : {}),
+    },
     createdAt: stamp,
     updatedAt: stamp,
   };

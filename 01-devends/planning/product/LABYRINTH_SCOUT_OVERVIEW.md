@@ -251,6 +251,25 @@ Multi-granularity emergency controls:
 
 All kill switch actions are audited with operator, reason, timestamp, and scope.
 
+### 3.5.1 Channel-based emergency control
+
+The kill switch must be reachable from trusted operator channels, not only from the dashboard.
+
+Supported control surfaces for the first build:
+
+- Telegram direct messages
+- WhatsApp direct messages
+- Slack direct messages or private operator channels
+- Dashboard fallback
+
+Control rules:
+
+- The channel must be linked to a verified operator identity before it can issue actions.
+- Customer chats cannot issue controls.
+- Full kill switch actions must require a final confirm step with a short-lived token or second guard.
+- Every action must emit a durable audit record and a confirmation back to the same channel.
+- Ambiguous targets must fail closed.
+
 ### 3.6 Egress Filtering (DLP)
 
 Before any data leaves the agent:

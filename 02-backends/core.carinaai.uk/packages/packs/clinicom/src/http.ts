@@ -15,6 +15,7 @@ const ROUTE_TO_TOOL: Record<string, ClinicomToolRoute> = {
   session_digest: 'session_digest',
   specialty_simplify: 'specialty_simplify',
   confidence_explain: 'confidence_explain',
+  product_help: 'product_help',
 };
 
 function sharedToken(): string {
@@ -40,12 +41,13 @@ export function mountClinicomSidecarRoutes(app: Express): void {
   });
 
   app.get('/clinicom/capabilities', (_req, res) => {
+    const liveRoutes = new Set(['transcribe', 'translate', 'simplify', 'speak', 'product_help']);
     const tools = Object.keys(ROUTE_TO_TOOL).map((route) => ({
       name: route,
-      status: route === 'transcribe' || route === 'translate' || route === 'simplify' || route === 'speak' ? 'live' : 'stub',
-      latency_class: route === 'session_digest' || route === 'confidence_explain' ? 'low' : 'medium',
+      status: liveRoutes.has(route) ? 'live' : 'stub',
+      latency_class: route === 'session_digest' || route === 'confidence_explain' || route === 'product_help' ? 'low' : 'medium',
       requires_auth: false,
-      source: route === 'transcribe' || route === 'translate' || route === 'simplify' || route === 'speak' ? 'carina' : 'carina-clinicom-stub',
+      source: liveRoutes.has(route) ? 'carina' : 'carina-clinicom-stub',
     }));
     res.json({
       contract_version: '2.0',

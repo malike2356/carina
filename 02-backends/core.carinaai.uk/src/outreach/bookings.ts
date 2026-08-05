@@ -2,11 +2,11 @@ import crypto from 'crypto';
 import { getCampaign, getLead, updateLead } from './leads.js';
 import { appendTimeline, transitionLeadStatus } from './pipeline.js';
 import { cancelRemindersForBooking, scheduleBookingReminders } from './reminders.js';
-import { refreshFollowUpPlans, markLeadOutcomePrompted } from './follow-ups.js';
+import { refreshFollowUpPlans, markLeadOutcomePrompted, schedulePostCallOutcomeTask } from './follow-ups.js';
 import { syncLeadBoardState } from './kanban.js';
 import { recordLeadBooking } from './sequence-engine.js';
 import { loadOutreachStore, mutateOutreachStore } from './store.js';
-import type { BookingConfig, BookingKind, OutreachBooking } from './types.js';
+import type { BookingConfig, BookingKind, OutreachBooking, PostCallOutcome } from './types.js';
 import { createEmailApproval } from '../ingestion/email/worker-approval-store.js';
 import { sendApprovedEmail } from '../ingestion/email/email-draft-handler.js';
 import { isVicalOutreachBackend, resolveVicalHostUserId } from './vical-cutover.js';
@@ -601,6 +601,78 @@ export function markBookingConfirmationSent(workspaceId: string, bookingId: stri
     }
   });
   return next;
+}
+
+function appendNotes(existing: string | undefined, addition: string): string {
+  const cleaned = addition.trim();
+  if (!cleaned) return existing ?? '';
+  if (!existing?.trim()) return cleaned;
+  return `${existing.trim()}\n\n${cleaned}`;
+}
+
+export function recordPostCallOutcome(input: {
+  workspaceId: string;
+  bookingId: string;
+  outcome: PostCallOutcome;
+  notes?: string;
+}): { booking: OutreachBooking; leadId: string; nextActionTaskId?: string } {
+  const booking = getBooking(input.workspaceId, input.bookingId);
+  if (!booking) throw new Error('Booking not found');
+  const lead = getLead(input.workspaceId, booking.leadId);
+  if (!lead) throw new Error('Lead not found');
+
+  const resolvedOutcome = input.outcome;
+  const statusMap: Record<PostCallOutcome, 'attended' | 'proposal_sent' | 'follow_up' | 'lost' | 'won'> = {
+    qualified: 'attended',
+    proposal_needed: 'proposal_sent',
+    needs_follow_up: 'follow_up',
+    not_a_fit: 'lost',
+    won: 'won',
+    lost: 'lost',
+  };
+  const noteLine = [
+    `Post-call outcome recorded: ${resolvedOutcome.replaceAll('_', ' ')}`,
+    input.notes?.trim() ? `Notes: ${input.notes.trim()}` : '',
+  ].filter(Boolean).join('\n');
+
+  const nextBooking: OutreachBooking = {
+    ...booking,
+    status: statusMap[resolvedOutcome] === 'won' ? 'attended' : statusMap[resolvedOutcome] === 'lost' ? 'attended' : booking.status === 'no_show' ? 'attended' : booking.status,
+    postCallOutcome: resolvedOutcome,
+    postCallNotes: appendNotes(booking.postCallNotes, input.notes ?? ''),
+    notes: appendNotes(booking.notes, noteLine),
+    updatedAt: nowIso(),
+  };
+
+  mutateOutreachStore((store) => {
+    const idx = store.bookings.findIndex((row) => row.id === booking.id);
+    if (idx >= 0) store.bookings[idx] = nextBooking;
+  });
+
+  const leadPatch: Parameters<typeof updateLead>[2] = {
+    status: statusMap[resolvedOutcome] === 'won' ? 'won' : statusMap[resolvedOutcome] === 'lost' ? 'lost' : statusMap[resolvedOutcome],
+    bookingState: 'attended',
+    nextActionAt: null,
+    notes: appendNotes(lead.notes, noteLine),
+  };
+  const updatedLead = updateLead(input.workspaceId, lead.id, leadPatch);
+  if (updatedLead) {
+    mutateOutreachStore((store) => {
+      const idx = store.leads.findIndex((row) => row.id === lead.id);
+      if (idx >= 0) {
+        store.leads[idx] = appendTimeline(updatedLead, {
+          kind: 'system',
+          message: `Post-call outcome: ${resolvedOutcome.replaceAll('_', ' ')}`,
+          meta: { bookingId: booking.id, outcome: resolvedOutcome },
+        });
+      }
+    });
+  }
+
+  const scheduled = schedulePostCallOutcomeTask(input.workspaceId, updatedLead ?? lead, nextBooking, resolvedOutcome);
+  void refreshFollowUpPlans(input.workspaceId);
+  void syncLeadBoardState(input.workspaceId, booking.leadId, `Post-call outcome: ${resolvedOutcome}`).catch(() => undefined);
+  return { booking: nextBooking, leadId: booking.leadId, nextActionTaskId: scheduled?.id };
 }
 
 export async function sendBookingConfirmationEmail(input: {

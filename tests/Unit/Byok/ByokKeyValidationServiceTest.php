@@ -30,6 +30,26 @@ it('returns valid when OpenAI responds 200', function (): void {
     expect($result->status)->toBe('valid');
 });
 
+it('returns valid when DeepSeek responds 200', function (): void {
+    Http::fake([
+        'api.deepseek.com/*' => Http::response(['data' => []], 200),
+    ]);
+
+    $result = app(ByokKeyValidationService::class)->validateAiKey('deepseek', 'good-key');
+
+    expect($result->status)->toBe('valid');
+});
+
+it('returns valid when Gemini responds 200', function (): void {
+    Http::fake([
+        'generativelanguage.googleapis.com/*' => Http::response(['data' => []], 200),
+    ]);
+
+    $result = app(ByokKeyValidationService::class)->validateAiKey('gemini', 'good-key');
+
+    expect($result->status)->toBe('valid');
+});
+
 it('returns unverified on connection failure', function (): void {
     Http::fake(function () {
         throw new ConnectionException('timeout');

@@ -85,6 +85,7 @@ const AIVA_WORKSPACE_TOOLS = new Set([
   'companies-house-get-company',
   'companies-house-list-officers',
   'companies-house-list-psc',
+  'gmail-search',
   'gmail-list',
   'gmail-get',
   'gmail-send',

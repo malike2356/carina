@@ -49,14 +49,23 @@ export type OutreachCampaign = {
     timezone: string;
     businessHoursStart: string;
     businessHoursEnd: string;
+    businessDays?: number[];
+    weeklyTarget?: number;
+    fromEmail?: string;
+    requireApproval?: boolean;
+    warmupDays?: number;
   };
   defaultSequenceId?: string;
+  defaultBookingLink?: string;
+  sourceType?: string;
+  updatedAt?: string;
 };
 
 export type OutreachSequence = {
   id: string;
   name: string;
   description?: string;
+  channelDefault?: string;
   steps: Array<{
     id: string;
     order: number;
@@ -65,10 +74,14 @@ export type OutreachSequence = {
     subject: string;
     body: string;
     delayHours: number;
+    cta?: string;
+    link?: string;
+    attachmentNote?: string;
   }>;
   stopOnReply: boolean;
   stopOnBooking: boolean;
   stopOnUnsubscribe: boolean;
+  updatedAt?: string;
 };
 
 export type DeliveryEvent = {
@@ -88,6 +101,7 @@ export type LeadList = {
   description?: string;
   leadIds: string[];
   tags: string[];
+  updatedAt?: string;
 };
 
 export const PIPELINE_LABELS: Record<PipelineStatus, string> = {

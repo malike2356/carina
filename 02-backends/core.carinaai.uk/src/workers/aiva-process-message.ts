@@ -48,6 +48,7 @@ import {
   isAivaWorkerIsolationEnabled,
 } from '../agents/worker-pool.js';
 import { resolveWorkspacePlanTier } from '../billing/aiva-plan-gates.js';
+import { setSessionConfig } from '../config/session-config.js';
 import {
   checkAivaRequestLimits,
   estimateTokensFromText,
@@ -551,8 +552,9 @@ export async function* processAivaMessageStreamDirect(
     if (!hint && bridge.turns.length === 0 && !bridge.summaryPrefix) {
       return `\n\n${continuityRule}`;
     }
+    const historyCharBudget = messagingChannel ? 4_000 : 8_000;
     const historyBlock = bridge.turns.length > 0 || bridge.summaryPrefix
-      ? `\n\n${formatBridgeHistoryForPrompt(bridge.turns, 12_000, {
+      ? `\n\n${formatBridgeHistoryForPrompt(bridge.turns, historyCharBudget, {
         summaryPrefix: bridge.summaryPrefix,
       })}`
       : '';
@@ -562,14 +564,19 @@ export async function* processAivaMessageStreamDirect(
 
   const voiceChannelNote = params.preferAudio && messagingChannel
     ? '\n\n[Channel note: The user asked for a spoken/audio reply on Telegram. '
-      + 'Write a clear spoken summary in plain text. Do NOT call text-to-speech. '
+      + 'Write a clear spoken summary in plain text under ~120 words. Do NOT call text-to-speech. '
       + 'Do NOT mention file paths, MEDIA: links, or "listen to audio". '
       + 'The channel will convert your reply to a Telegram voice/audio message.]'
     : messagingChannel
-      ? '\n\n[Channel note: Reply in plain text only for this chat. '
+      ? '\n\n[Channel note: SPEED MODE for this messaging chat. '
+        + 'Reply in plain text only, under ~600 characters unless they asked for a long doc. '
+        + 'Answer first. No chain-of-thought, no planning monologue, no tool narration. '
+        + 'Use at most 1-2 tool rounds unless credentials are missing. '
         + 'Do NOT call text-to-speech and do NOT emit MEDIA: audio paths. '
-        + 'Telegram will show your text reply directly.]'
-      : '';
+        + 'Telegram/WhatsApp show your text reply directly.]'
+      : '\n\n[Channel note: SPEED MODE. Lead with the answer. '
+        + 'Default under ~1200 characters unless they asked for a long deliverable. '
+        + 'No chain-of-thought in the visible reply. Prefer at most a few tool rounds.]';
 
   const automationHint =
     '\n\nScheduled jobs: for recurring Telegram/Aiva tasks (morning weather + email digests, daily briefings), '
@@ -675,6 +682,26 @@ export async function* processAivaMessageStreamDirect(
   // Session tools were registered above (before capability prompt); keep adapters warm.
   registerAivaWorkspaceSessionTools(sessionId);
   await registerProductToolAdapters(sessionId);
+
+  // Cap tool rounds / thinking so Telegram and web Aiva stay snappy.
+  if (messagingChannel) {
+    setSessionConfig(sessionId, {
+      fastModeUntilTurn: true,
+      thinkingLevel: 'off',
+      maxTurns: 6,
+      iterationBudget: 10,
+      blockExpensiveModels: true,
+      maxCompletionTokens: 700,
+    });
+  } else {
+    setSessionConfig(sessionId, {
+      fastModeUntilTurn: true,
+      thinkingLevel: 'off',
+      maxTurns: 10,
+      iterationBudget: 16,
+      maxCompletionTokens: 1500,
+    });
+  }
 
   // AI Control product LLM engine: force trial/paid provider+model when configured.
   try {

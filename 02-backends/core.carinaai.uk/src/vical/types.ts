@@ -28,6 +28,37 @@ export type VcalLocationMode =
   | 'in_person'
   | 'none';
 
+export type VcalIntakeQuestionType = 'text' | 'select' | 'number';
+
+export interface VcalIntakeQuestion {
+  key: string;
+  label: string;
+  type: VcalIntakeQuestionType;
+  required?: boolean;
+  choices?: string[];
+  disqualifyValues?: string[];
+  disqualifyMessage?: string;
+}
+
+export interface VcalIntakeRoutingRule {
+  match: Record<string, string>;
+  routeToEventTypeId: string;
+  priority?: number;
+  label?: string;
+}
+
+export interface VcalIntakePool {
+  id: string;
+  workspaceId: string;
+  hostUserId: string;
+  name: string;
+  slug: string;
+  questions: VcalIntakeQuestion[];
+  routingRules: VcalIntakeRoutingRule[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface VcalEventType {
   id: string;
   workspaceId: string;
@@ -75,6 +106,8 @@ export interface VcalBlackoutDate {
   updatedAt: string;
 }
 
+export type VcalCalendarSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
+
 export interface VcalBooking {
   id: string;
   workspaceId: string;
@@ -89,6 +122,9 @@ export interface VcalBooking {
   guestToken: string;
   meetingUrl?: string;
   calendarEventId?: string;
+  calendarProvider?: 'google' | 'microsoft' | 'none';
+  calendarSyncStatus?: VcalCalendarSyncStatus;
+  calendarSyncError?: string;
   contactId?: string;
   leadId?: string;
   source: VcalBookingSource;
@@ -132,13 +168,34 @@ export interface VcalPublishProfile {
   updatedAt: string;
 }
 
+export type VcalReminderKind = '24h' | '1h' | 'custom' | 'operator_alert';
+export type VcalReminderStatus = 'scheduled' | 'sent' | 'cancelled' | 'failed';
+
+export interface VcalReminder {
+  id: string;
+  workspaceId: string;
+  bookingId: string;
+  kind: VcalReminderKind;
+  offsetMinutes: number;
+  dueAt: string;
+  status: VcalReminderStatus;
+  subject: string;
+  body: string;
+  skipReason?: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface VcalStoreShape {
   eventTypes: VcalEventType[];
+  intakePools: VcalIntakePool[];
   availabilityRules: VcalAvailabilityRule[];
   blackouts: VcalBlackoutDate[];
   bookings: VcalBooking[];
   slotLocks: VcalSlotLock[];
   publishProfiles: Record<string, VcalPublishProfile>;
+  reminders: VcalReminder[];
 }
 
 export type VcalDomainHook =

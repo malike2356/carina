@@ -6,6 +6,9 @@ export type {
   VcalBookingStatus,
   VcalBusyWindow,
   VcalEventType,
+  VcalIntakePool,
+  VcalIntakeQuestion,
+  VcalIntakeRoutingRule,
   VcalLocationMode,
   VcalOfferedSlot,
   VcalSessionOutcome,
@@ -16,6 +19,16 @@ export { emptyVicalStore, loadVicalStore, mutateVicalStore, resetVicalStoreCache
 export { isVcalError, SlotUnavailableError, VcalError } from './errors.js';
 export { onVcalHook, emitVcalHook } from './hooks.js';
 export { acquireSlotLock, listActiveLocks, pruneExpiredLocks, releaseSlotLock } from './locks.js';
+export {
+  createIntakePool,
+  deleteIntakePool,
+  getIntakePool,
+  listIntakePools,
+  resolvedIntakeQuestions,
+  resolvedIntakeRoutingRules,
+  updateIntakePool,
+  validateAndRouteIntake,
+} from './intake.js';
 export { assertSlotFree, collectBusyFromBookings, offerSlots, overlaps } from './slots.js';
 export { ensureDiscoveryDefaults } from './seed.js';
 export { syncConfigFromOutreach, readConfigAsOutreach } from './config-bridge.js';
@@ -26,6 +39,19 @@ export {
   offerSlotsViaVical,
   readMergedBookingConfig,
 } from './outreach-adapter.js';
+export {
+  deleteBookingGoogleCalendar,
+  syncBookingToGoogleCalendar,
+  updateBookingGoogleCalendar,
+} from './calendar-sync.js';
+export {
+  cancelVicalRemindersForBooking,
+  listVicalReminders,
+  processDueVicalReminders,
+  scheduleVicalReminders,
+} from './reminders.js';
+export { formatBookingIcs } from './ics.js';
+export { registerVicalSideEffects } from './side-effects.js';
 export {
   approveBooking,
   cancelBookingForGuest,

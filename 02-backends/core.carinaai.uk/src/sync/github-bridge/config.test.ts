@@ -27,6 +27,15 @@ describe('github bridge scope resolution', () => {
     });
   });
 
+  it('uses shared scope when requested', () => {
+    const resolved = resolveGithubBridgeScope({ scopeKind: 'shared', scopeId: 'shared' });
+    expect(resolved).toEqual({
+      scopeKind: 'shared',
+      scopeId: 'shared',
+      scopeKey: 'shared:shared',
+    });
+  });
+
   it('keeps files separated by scope key', () => {
     const scope = resolveGithubBridgeScope({ scopeKind: 'user', scopeId: 'user-7' });
     expect(githubBridgeConfigPath(scope.scopeKey)).toContain('user:user-7');
@@ -41,5 +50,10 @@ describe('normalizeConfig', () => {
     expect(normalized.scopeKind).toBe(DEFAULT_CONFIG.scopeKind);
     expect(normalized.scopeId).toBe(DEFAULT_CONFIG.scopeId);
     expect(normalized.enabled).toBe(false);
+  });
+
+  it('keeps the product mount explicit when supplied', () => {
+    const normalized = normalizeConfig({ product: 'carina' });
+    expect(normalized.product).toBe('carina');
   });
 });

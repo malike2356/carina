@@ -5,7 +5,7 @@ import { listBookings } from './bookings.js';
 import { getOutreachAlertTarget, sendOutreachTelegramAlert } from './alerts.js';
 import { loadOutreachStore, mutateOutreachStore } from './store.js';
 import { syncLeadBoardState } from './kanban.js';
-import type { FollowUpTask, OutreachBooking, OutreachLead } from './types.js';
+import type { FollowUpTask, OutreachBooking, OutreachLead, PostCallOutcome } from './types.js';
 
 function nowIso(d = new Date()): string {
   return d.toISOString();
@@ -96,7 +96,72 @@ function buildTaskCopy(lead: OutreachLead, kind: FollowUpTask['kind'], booking?:
         actionLabel: 'Owner outcome prompt',
         channel: 'telegram',
       };
+    case 'post_call_qualified_next_step':
+      return {
+        subject: `Create the next step for ${name}`,
+        body: `The call qualified. Create the next action and keep the deal moving.`,
+        actionLabel: 'Qualified next step',
+        channel: 'telegram',
+      };
+    case 'post_call_proposal_draft':
+      return {
+        subject: `Draft proposal work for ${name}`,
+        body: `The call needs a proposal. Create the draft, capture scope, and prepare the follow-up.`,
+        actionLabel: 'Proposal draft task',
+        channel: 'telegram',
+      };
+    case 'post_call_follow_up':
+      return {
+        subject: `Follow up with ${name}`,
+        body: `The call needs another touch. Schedule the follow-up and keep the notes visible.`,
+        actionLabel: 'Post-call follow-up',
+        channel: 'telegram',
+      };
+    case 'post_call_not_a_fit_close':
+      return {
+        subject: `Close out ${name}`,
+        body: `The call was not a fit. Close the lead cleanly and preserve the history.`,
+        actionLabel: 'Close out lead',
+        channel: 'telegram',
+      };
+    case 'post_call_won_onboarding':
+      return {
+        subject: `Start onboarding for ${name}`,
+        body: `The deal is won. Create onboarding and fulfillment handoff items now.`,
+        actionLabel: 'Won onboarding task',
+        channel: 'telegram',
+      };
+    case 'post_call_lost_closeout':
+      return {
+        subject: `Archive ${name}`,
+        body: `The deal is lost. Close the record and keep the notes for future reference.`,
+        actionLabel: 'Lost closeout task',
+        channel: 'telegram',
+      };
   }
+}
+
+function scheduleSingleTask(
+  workspaceId: string,
+  lead: OutreachLead,
+  kind: FollowUpTask['kind'],
+  dueAt: string,
+  bookingId?: string,
+): FollowUpTask | null {
+  const exists = taskExists({ workspaceId, leadId: lead.id, kind, bookingId });
+  if (exists) return exists;
+  const copy = buildTaskCopy(lead, kind);
+  return createTask({
+    workspaceId,
+    leadId: lead.id,
+    bookingId,
+    kind,
+    dueAt,
+    subject: copy.subject,
+    body: copy.body,
+    channel: copy.channel,
+    actionLabel: copy.actionLabel,
+  });
 }
 
 function scheduleColdFollowUps(workspaceId: string, lead: OutreachLead): void {
@@ -166,6 +231,7 @@ function scheduleNoShowFollowUps(workspaceId: string, lead: OutreachLead, bookin
 }
 
 function scheduleOutcomePrompt(workspaceId: string, lead: OutreachLead, booking: OutreachBooking): void {
+  if (booking.postCallOutcome) return;
   if (booking.status !== 'confirmed' && booking.status !== 'attended') return;
   if (new Date(booking.endsAt).getTime() > Date.now()) return;
   const exists = taskExists({ workspaceId, leadId: lead.id, kind: 'owner_day_2_outcome', bookingId: booking.id });
@@ -181,6 +247,49 @@ function scheduleOutcomePrompt(workspaceId: string, lead: OutreachLead, booking:
     channel: 'telegram',
     actionLabel: 'Owner outcome prompt',
   });
+}
+
+export function schedulePostCallOutcomeTask(
+  workspaceId: string,
+  lead: OutreachLead,
+  booking: OutreachBooking,
+  outcome: PostCallOutcome,
+): FollowUpTask | null {
+  const dueAtIso =
+    outcome === 'qualified'
+      ? dueAt(booking.endsAt, 1)
+      : outcome === 'proposal_needed'
+        ? dueAt(booking.endsAt, 0)
+        : outcome === 'needs_follow_up'
+          ? dueAt(booking.endsAt, 2)
+          : outcome === 'not_a_fit'
+            ? dueAt(booking.endsAt, 0)
+            : outcome === 'won'
+              ? dueAt(booking.endsAt, 0)
+              : dueAt(booking.endsAt, 0);
+  const kind =
+    outcome === 'qualified'
+      ? 'post_call_qualified_next_step'
+      : outcome === 'proposal_needed'
+        ? 'post_call_proposal_draft'
+        : outcome === 'needs_follow_up'
+          ? 'post_call_follow_up'
+          : outcome === 'not_a_fit'
+            ? 'post_call_not_a_fit_close'
+            : outcome === 'won'
+              ? 'post_call_won_onboarding'
+              : 'post_call_lost_closeout';
+  const task = scheduleSingleTask(workspaceId, lead, kind, dueAtIso, booking.id);
+  if (!task) return null;
+  if (outcome === 'qualified' || outcome === 'proposal_needed' || outcome === 'needs_follow_up') {
+    mutateOutreachStore((store) => {
+      const idx = store.leads.findIndex((row) => row.id === lead.id);
+      if (idx >= 0) {
+        store.leads[idx] = { ...store.leads[idx]!, nextActionAt: task.dueAt, updatedAt: nowIso() };
+      }
+    });
+  }
+  return task;
 }
 
 export function refreshFollowUpPlans(workspaceId: string): { created: number } {

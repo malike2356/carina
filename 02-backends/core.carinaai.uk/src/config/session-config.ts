@@ -8,6 +8,8 @@ export type SessionConfigOverrides = {
   blockExpensiveModels?: boolean;
   thinkingLevel?: ThinkingLevel;
   fastModeUntilTurn?: boolean;
+  /** Cap reply generation size for snappy channels (Telegram / chat). */
+  maxCompletionTokens?: number;
 };
 
 const sessionOverrides = new Map<string, SessionConfigOverrides>();

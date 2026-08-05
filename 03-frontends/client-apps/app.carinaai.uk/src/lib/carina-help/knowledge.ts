@@ -130,7 +130,7 @@ function renderMemoryAndKnowledgeSummary(): string {
     '- Workspace Knowledge (/knowledge) is searchable uploaded docs for the workspace (pack user-resources).',
     '- Worker Training tab is that employee\'s FAQ/docs only.',
     '- Platform pack carina-rag teaches Carina about the product for agent sessions; Ask Carina also uses this help knowledge base.',
-    '- The GitHub memory bridge links durable notes to a private GitHub repo in Settings → Brain → GitHub memory.',
+    '- The GitHub memory bridge links durable notes to a private GitHub repo in Settings → Brain → GitHub memory. You can scope it per workspace or per user, and choose whether the mount behaves as Carina, Aiva, or shared.',
     '- Never store secrets, tokens, passwords, or raw private transcripts in GitHub or curated memory.',
   ].join('\n');
 }
@@ -139,6 +139,7 @@ function renderGitHubBridgeSummary(): string {
   return [
     '# GitHub memory (durable notes)',
     '- Users link their own private GitHub repo in Settings → Brain → GitHub memory.',
+    '- Scope can be workspace, user, or shared; product mount can be Carina, Aiva, or shared.',
     '- Good content: preferences, decisions, runbooks, project notes, checklists.',
     '- Bad content: secrets, access tokens, passwords, raw chat dumps.',
     '- Sync pattern: pull on schedule, search when answering, push only approved durable updates.',

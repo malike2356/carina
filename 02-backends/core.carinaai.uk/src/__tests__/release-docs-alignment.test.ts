@@ -8,7 +8,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const coreRoot = join(here, '../..');
 const carinaRoot = join(coreRoot, '../..');
 const docsRoot = join(carinaRoot, '03-frontends/marketing/docs.carinaai.uk');
-const marketingRoot = join(carinaRoot, '03-frontends/marketing/carinaai.uk');
+const marketingRoot = join(carinaRoot, '../shared/marketing-sites/carinaai.uk');
 const runCrossProductIntegration = process.env.RUN_CROSS_PRODUCT_INTEGRATION === 'true';
 
 const GUIDE_PAGES = [
