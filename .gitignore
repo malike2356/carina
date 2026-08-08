@@ -131,3 +131,19 @@ v3-prompts/
 /.npmrc
 /docker-compose.prod.yml
 /docker/
+
+# Product-specific local-only (Carina)
+/brain/
+/carina-cli
+/app/
+/artisan
+/bootstrap/
+/composer.json
+/composer.lock
+/phpunit.xml
+/phpstan.neon
+/phpstan-baseline.neon
+/.phpstan-security.neon
+/psalm.xml
+/Procfile
+/vite.config.js
