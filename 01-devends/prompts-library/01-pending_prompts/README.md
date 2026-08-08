@@ -8,16 +8,16 @@
 
 | Prompt set | Purpose | Start here |
 |---|---|---|
-| Aiva CRM leads + outreach workspace CRUD | Visible CRM leads table, full outreach CRUD, spreadsheet lead files, channel prompts, file upload + Keprix capabilities, contact-on-ask Soft Wall | `aiva-crm-outreach-workspace-crud/README.md` (start at `00`, build `01` first) |
 | Keprix-Carina engine switch (Carina side) | C01-C05 completed; README only remains as pointer | `keprix-carina-engine-switch/README.md` |
 | VERLOX security assurance programme | Company-wide audits, controls, policies, customer assurance | `/opt/lampp/htdocs/verlox/shared/security-assurance/prompts/README.md` |
 
-Note: Stale pending rows pointing at missing folders were cleaned 2026-08-08. Completed work lives under `02-archived_prompts/archives_from_pending_prompts/` (including `aiva-outreach/`, `aiva-outreach-discovery-funnel/`, `keprix-carina-engine-switch/`).
+Note: Stale pending rows pointing at missing folders were cleaned 2026-08-08. Completed work lives under `02-archived_prompts/archives_from_pending_prompts/` (including `aiva-crm-outreach-workspace-crud/`, `aiva-outreach/`, `aiva-outreach-discovery-funnel/`, `keprix-carina-engine-switch/`).
 
 ## Archived (recent)
 
 | Prompt set | Archive path |
 |------------|--------------|
+| Aiva CRM leads + outreach workspace CRUD | `archives_from_pending_prompts/aiva-crm-outreach-workspace-crud/` |
 | Keprix-Carina engine switch C01-C05 | `archives_from_pending_prompts/keprix-carina-engine-switch/` |
 | Carina core fix patch (hallucination + session isolation) | `archives_from_pending_prompts/carina-core-fix-patch.md` |
 | Aiva / Carina viCal booking (00-09, 12) | `archives_from_pending_prompts/aiva-vical-booking/` |
