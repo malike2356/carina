@@ -82,6 +82,26 @@ export function readAgentEngineState(): AgentEngineState {
   return loadRaw();
 }
 
+/**
+ * Resolve which agent engine should handle a turn.
+ * Workspace override wins; otherwise Ops/global_engine (env-backed).
+ * Break-glass: CARINA_FORCE_CARINA_ENGINE=true always returns carina.
+ */
+export function resolveEngineForWorkspace(workspaceId?: string | null): AgentEngineName {
+  if (String(process.env.CARINA_FORCE_CARINA_ENGINE ?? '').trim().toLowerCase() === 'true') {
+    return 'carina';
+  }
+  const state = loadRaw();
+  const id = String(workspaceId ?? '').trim();
+  if (id) {
+    const row = state.workspaces[id];
+    if (row?.engine === 'keprix' || row?.engine === 'carina') {
+      return row.engine;
+    }
+  }
+  return state.config.global_engine === 'carina' ? 'carina' : 'keprix';
+}
+
 export function writeAgentEngineState(state: AgentEngineState): AgentEngineState {
   save(state);
   return state;

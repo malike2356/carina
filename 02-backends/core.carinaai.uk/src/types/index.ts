@@ -29,6 +29,10 @@ export interface CarinaMessage {
   canonicalUserId?: string;
   messageId?: string;
   replyToMessageId?: string;
+  /** Optional system prompt from cloud/hosted proxy (Keprix agent.run). */
+  systemPrompt?: string;
+  /** Client session id before gateway allocation (e.g. cloud:workspace:session). */
+  clientSessionId?: string;
 }
 
 export interface CarinaResponse {

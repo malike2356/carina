@@ -552,6 +552,76 @@ export class GatewayRouter {
     const groupChunks: string[] = [];
     const workerChunks: string[] = [];
     try {
+      // Ops global_engine / workspace assignment: Keprix primary with Carina fallback.
+      const {
+        resolveWorkspaceIdForChat,
+        resolveKeprixProductForChat,
+        shouldRouteChatThroughKeprix,
+        streamKeprixAgentRun,
+      } = await import('../ops/agent-engine/chat-engine.js');
+      const workspaceId = resolveWorkspaceIdForChat({
+        tenantId: message.tenantId,
+        sessionId: message.sessionId,
+        clientSessionId: message.clientSessionId,
+      });
+      if (shouldRouteChatThroughKeprix(workspaceId)) {
+        const product = resolveKeprixProductForChat({
+          workerPresent: Boolean(workerCtx),
+          sessionId: message.sessionId,
+          clientSessionId: message.clientSessionId,
+        });
+        const systemPrompt = [
+          message.systemPrompt?.trim() ?? '',
+          this.sessionSystemPromptSuffixes.get(message.sessionId)?.trim() ?? '',
+        ].filter(Boolean).join('\n\n');
+        let keprixOk = false;
+        const keprixChunks: string[] = [];
+        for await (const chunk of streamKeprixAgentRun({
+          workspaceId,
+          sessionId: message.sessionId,
+          message: content,
+          systemPrompt,
+          product,
+          workerId: workerCtx?.worker?.id ?? null,
+        })) {
+          keprixOk = true;
+          keprixChunks.push(chunk);
+          if (workerCtx) {
+            workerChunks.push(chunk);
+            continue;
+          }
+          if (message.chatType === 'group') {
+            groupChunks.push(chunk);
+            continue;
+          }
+          yield chunk;
+        }
+        if (keprixOk) {
+          if (workerCtx && workerChunks.length > 0) {
+            const { sanitizeAivaUserFacingReply } = await import('../workers/sanitize-aiva-reply.js');
+            const full = sanitizeAivaUserFacingReply(workerChunks.join(''));
+            if (activityOwnedByAivaProcess) {
+              const { aivaEmptyReplyFallback } = await import('../workers/sanitize-aiva-reply.js');
+              yield full || aivaEmptyReplyFallback(message.content);
+            } else {
+              const processed = await processWorkerOutbound(workerCtx, message, full || workerChunks.join(''));
+              yield processed.reply;
+            }
+          }
+          if (message.chatType === 'group') {
+            const full = groupChunks.join('');
+            if (!isNoResponseNeededToken(full)) {
+              yield full;
+              if (message.chatId && message.messageId && full.trim()) {
+                recordGroupResponse(message.chatId, message.messageId);
+              }
+            }
+          }
+          return;
+        }
+        // Fall through to native Carina on Keprix failure.
+      }
+
       for await (const event of agent.turn(content)) {
         // Never bake tool/status progress markers into the final Aiva reply.
         // Those are stream chrome, not user-facing prose.

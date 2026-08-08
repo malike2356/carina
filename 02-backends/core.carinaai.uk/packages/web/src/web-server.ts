@@ -103,7 +103,7 @@ import { isCloudProxyAuthorized } from '#core/gateway/cloud-proxy-auth.js';
 import { OPS_PAGE_FILES, requireOpsPlanGate } from '#core/hosted/plan-gates.js';
 import { mountCarinaOpsRoutes } from '#core/api/carina-ops-routes.js';
 import { mountGatewayRoutes } from '#core/api/gateway-routes.js';
-import { enforceHostedQuota, resolveExternalId } from '#core/gateway/hosted-chat.js';
+import { enforceHostedQuota, resolveClientSessionId, resolveExternalId } from '#core/gateway/hosted-chat.js';
 import { isHostedRequest } from '#core/gateway/hosted-domain.js';
 import { mountHostedContextRoute, mountHostedWebRoutes } from '#core/api/hosted-web.js';
 import { mountHostedBillingRoutes } from '#core/api/hosted-billing.js';
@@ -425,7 +425,9 @@ function setupChatRoutes(app: Express): void {
         const router = getRouter();
         const externalId = resolveExternalId(req);
         const webSession = await router.startWebSession(externalId);
-        const tenantId = await resolveTenantId(req);
+        const clientSessionId = resolveClientSessionId(req);
+        const cloudWorkspace = /^cloud:([^:]+):/i.exec(clientSessionId)?.[1];
+        const tenantId = (await resolveTenantId(req)) ?? cloudWorkspace;
         const reply = await collectResponse(router.handle({
           id: String(Date.now()),
           sessionId: webSession.sessionId,
@@ -434,6 +436,7 @@ function setupChatRoutes(app: Express): void {
           content: message,
           source: 'web',
           timestamp: new Date(),
+          clientSessionId: clientSessionId !== 'default' ? clientSessionId : undefined,
         }));
         res.json({
           reply,
@@ -543,7 +546,15 @@ function setupChatRoutes(app: Express): void {
           content: 'thinking',
         })));
 
-        const tenantId = await resolveTenantId(req);
+        const clientSessionId = String(req.query.sessionId ?? '').trim() || undefined;
+        const systemPrompt = String(req.query.systemPrompt ?? '').trim() || undefined;
+        const cloudWorkspace = clientSessionId
+          ? (/^cloud:([^:]+):/i.exec(clientSessionId)?.[1] ?? undefined)
+          : undefined;
+        const tenantId = (await resolveTenantId(req)) ?? cloudWorkspace;
+        if (systemPrompt) {
+          router.setSessionSystemPromptSuffix(webSession.sessionId, systemPrompt);
+        }
         const stream = router.handle({
           id: String(Date.now()),
           sessionId: webSession.sessionId,
@@ -552,6 +563,8 @@ function setupChatRoutes(app: Express): void {
           content: message,
           source: 'web',
           timestamp: new Date(),
+          systemPrompt,
+          clientSessionId,
         }, { turnId });
         for await (const chunk of stream) {
           if (controller.signal.aborted) break;
