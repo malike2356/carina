@@ -19,8 +19,8 @@ export default function AivaHelpPage() {
           <div>
             <h2 className="font-medium text-text-primary">Ask Carina</h2>
             <p className="mt-1 text-sm text-text-secondary">
-              Carina is your first line of product help: how to hire workers, connect channels,
-              approvals, calendar, billing, and more. If she cannot resolve it, escalate from the chat
+              Carina is your first line of product help: hire workers, CRM leads and outreach, Soft Wall
+              Approvals, channels, calendar, billing, and more. If she cannot resolve it, escalate from the chat
               and the team is notified by email or Telegram.
             </p>
           </div>
@@ -91,6 +91,21 @@ export default function AivaHelpPage() {
       <section className="rounded-xl border border-border bg-surface p-6">
         <h2 className="font-medium text-text-primary">Frequently asked questions</h2>
         <dl className="mt-4 space-y-4 text-sm">
+          <div>
+            <dt className="font-medium text-text-primary">Where are my CRM leads and lead sheets?</dt>
+            <dd className="mt-1 text-text-secondary">
+              Sidebar Outreach opens CRM Leads (/aiva/outreach/leads, also /aiva/crm/leads). Import or export CSV,
+              create linked lead files, then Sync, Rename, or Delete those files. Delete removes the linked file only,
+              not table rows. Contacts (/contacts) is a separate people directory.
+            </dd>
+          </div>
+          <div>
+            <dt className="font-medium text-text-primary">How do I ask Aiva to email leads safely?</dt>
+            <dd className="mt-1 text-text-secondary">
+              Ask your hired worker in Work chat or Telegram to contact the leads. Soft Wall drafts appear in Approvals.
+              Approve there before anything sends. Do not expect cold email to leave without Approvals.
+            </dd>
+          </div>
           <div>
             <dt className="font-medium text-text-primary">Where is my personal task list or reminder?</dt>
             <dd className="mt-1 text-text-secondary">

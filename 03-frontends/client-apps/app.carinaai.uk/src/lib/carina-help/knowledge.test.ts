@@ -26,9 +26,12 @@ describe('carina-help knowledge base', () => {
 
   it('covers deep safe product-ops topics without secret playbooks', () => {
     expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('Safety and what never to disclose');
-    expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('Sales engagement');
+    expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('CRM and Outreach');
+    expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('CRM Leads');
+    expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('Linked lead files');
     expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('Soft Wall');
     expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('How Aiva works');
+    expect(CARINA_HELP_KNOWLEDGE_BASE).toContain('Research, Bookings, Files');
     expect(CARINA_HELP_KNOWLEDGE_BASE).not.toContain('.access/');
     expect(CARINA_HELP_KNOWLEDGE_BASE).not.toContain('CARINA_HOME');
     expect(CARINA_HELP_KNOWLEDGE_BASE).not.toContain('80.190.81.208');
@@ -41,12 +44,16 @@ describe('carina-help knowledge base', () => {
     const telegramContext = carinaHelpRagContext('telegram aiva not replying quiet');
     const outreach = carinaHelpRagContext('how does outreach program sequences soft wall work');
     const softWall = carinaHelpRagContext('approvals soft wall email draft before send');
+    const crm = carinaHelpRagContext('where is CRM leads table and delete linked lead sheet');
+    const contactLeads = carinaHelpRagContext('ask aiva to contact leads discovery call soft wall');
 
     expect(contactsContext.toLowerCase()).toMatch(/contacts/);
     expect(bridgeContext.toLowerCase()).toMatch(/github|agent-sync|bridge/);
     expect(schedulesContext.toLowerCase()).toMatch(/schedules|reminder|todo|automations/);
     expect(telegramContext.toLowerCase()).toMatch(/telegram|botfather|channels/);
-    expect(outreach.toLowerCase()).toMatch(/outreach|sequence|soft wall/);
+    expect(outreach.toLowerCase()).toMatch(/outreach|sequence|soft wall|crm/);
     expect(softWall.toLowerCase()).toMatch(/approval|soft wall|email/);
+    expect(crm.toLowerCase()).toMatch(/crm|lead|sheet|delete/);
+    expect(contactLeads.toLowerCase()).toMatch(/contact|soft wall|approval|lead/);
   });
 });
