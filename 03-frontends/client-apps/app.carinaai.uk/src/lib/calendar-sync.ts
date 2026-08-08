@@ -139,7 +139,7 @@ async function fetchRemoteEvents(
   end: Date,
 ): Promise<{ events: RemoteEvent[]; syncedCalendarIds?: string[] }> {
   if (connection.provider === 'google') {
-    const creds = resolveGoogleConnectionCredentials(connection, workspaceId);
+    const creds = await resolveGoogleConnectionCredentials(connection, workspaceId);
     if (!creds) throw new Error('Google Calendar credentials are incomplete.');
 
     let calendarIds =

@@ -63,9 +63,12 @@ export function CalendarConnectionPanel({
       setEnabled(data.data.enabled);
       if (data.data.provider === 'google') {
         // Platform path: hide company Client ID from the Advanced field.
+        // Never treat an email or other junk as a BYOK Client ID.
         const storedId = data.data.clientId ?? '';
         const looksLikePlatform = /420319712907/.test(storedId);
-        setClientId(looksLikePlatform ? '' : storedId);
+        const looksLikeByok =
+          /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(storedId);
+        setClientId(looksLikePlatform || !looksLikeByok ? '' : storedId);
         setCalendarId(data.data.calendarId ?? 'primary');
       } else {
         setUrl(data.data.url ?? '');
@@ -136,39 +139,52 @@ export function CalendarConnectionPanel({
     setError(null);
     setTestOk(null);
 
-    const body =
-      provider === 'google'
-        ? {
-            provider: 'google',
-            clientId,
-            clientSecret: clientSecret || undefined,
-            refreshToken: refreshToken || undefined,
-            calendarId,
-            enabled,
-          }
-        : {
-            provider: 'caldav',
-            url,
-            username,
-            password: password || undefined,
-            enabled,
-          };
+    try {
+      const googleClientId = clientId.trim();
+      const body =
+        provider === 'google'
+          ? {
+              provider: 'google' as const,
+              // Do not persist emails/junk into the BYOK Client ID column.
+              clientId: /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(googleClientId)
+                ? googleClientId
+                : '',
+              clientSecret: clientSecret || undefined,
+              refreshToken: refreshToken || undefined,
+              calendarId,
+              enabled,
+            }
+          : {
+              provider: 'caldav' as const,
+              url,
+              username,
+              password: password || undefined,
+              enabled,
+            };
 
-    const res = await fetch('/api/calendar/connection', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    setSaving(false);
-    if (!res.ok) {
-      setError(data.error || 'Save failed');
-      return;
+      const res = await fetch('/api/calendar/connection', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(data.error || 'Save failed');
+        return;
+      }
+      setPassword('');
+      setClientSecret('');
+      setRefreshToken('');
+      if (provider === 'google' && googleClientId && body.clientId === '') {
+        setClientId('');
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
     }
-    setPassword('');
-    setClientSecret('');
-    setRefreshToken('');
-    await load();
   }
 
   async function testConnection() {
@@ -176,38 +192,58 @@ export function CalendarConnectionPanel({
     setTestOk(null);
     setError(null);
 
-    const body =
-      provider === 'google'
-        ? {
-            provider: 'google',
-            clientId,
-            clientSecret: clientSecret || undefined,
-            refreshToken: refreshToken || undefined,
-            calendarId,
-          }
-        : {
-            provider: 'caldav',
-            url,
-            username,
-            password: password || undefined,
-          };
+    try {
+      const googleClientId = clientId.trim();
+      const usingByok =
+        /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/i.test(googleClientId);
+      const body =
+        provider === 'google'
+          ? {
+              provider: 'google' as const,
+              // Never send an email/junk as Client ID; blank = platform OAuth.
+              clientId: usingByok ? googleClientId : '',
+              // Platform path: do not send Advanced secret/token (often junk / email leftovers).
+              clientSecret: usingByok ? clientSecret || undefined : undefined,
+              refreshToken: usingByok ? refreshToken || undefined : undefined,
+              calendarId,
+            }
+          : {
+              provider: 'caldav' as const,
+              url,
+              username,
+              password: password || undefined,
+            };
 
-    const res = await fetch('/api/calendar/connection/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    setTesting(false);
-    if (!res.ok) {
-      setError(data.error || 'Test failed');
-      return;
+      const res = await fetch('/api/calendar/connection/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(45_000),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        data?: { calendarId?: string; calendarUrl?: string };
+      };
+      if (!res.ok) {
+        setError(data.error || 'Test failed');
+        return;
+      }
+      setTestOk(
+        provider === 'google'
+          ? `Google Calendar (${data.data?.calendarId ?? calendarId})`
+          : (data.data?.calendarUrl ?? 'Connected'),
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error && err.name === 'TimeoutError'
+          ? 'Test timed out. Leave Advanced blank, click Connect with Google, then try again.'
+          : err instanceof Error
+            ? err.message
+            : 'Test failed';
+      setError(message);
+    } finally {
+      setTesting(false);
     }
-    setTestOk(
-      provider === 'google'
-        ? `Google Calendar (${data.data?.calendarId ?? calendarId})`
-        : (data.data?.calendarUrl ?? 'Connected'),
-    );
   }
 
   return (
@@ -391,7 +427,7 @@ export function CalendarConnectionPanel({
                       : 'cursor-not-allowed rounded-md border border-border px-3 py-2 text-xs text-text-muted opacity-60'
                   }
                 >
-                  {connecting ? 'Opening Google…' : 'Connect with Google'}
+                  {connecting ? 'Opening Google...' : 'Connect with Google'}
                 </button>
               )}
               {!oauthReady ? (

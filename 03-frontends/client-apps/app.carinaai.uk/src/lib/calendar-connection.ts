@@ -3,7 +3,13 @@ import { db } from '@/db';
 import { calendarConnections } from '@/db/schema';
 import type { CalDavCredentials } from '@/lib/caldav-client';
 import type { GoogleCalendarCredentials } from '@/lib/google-calendar-client';
+import {
+  isGoogleOAuthClientId,
+  resolvePlatformGoogleClient,
+} from '@/lib/google-oauth-config';
 import { decryptKey, encryptKey } from '@/lib/vault';
+
+export { isGoogleOAuthClientId, resolvePlatformGoogleClient } from '@/lib/google-oauth-config';
 
 export type CalendarProvider = 'caldav' | 'google';
 
@@ -26,26 +32,20 @@ export interface CalendarConnectionView {
   hasGoogleSecrets: boolean;
 }
 
-export function resolvePlatformGoogleClient(): { clientId: string; clientSecret: string } | null {
-  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
-  if (!clientId || !clientSecret) return null;
-  return { clientId, clientSecret };
-}
-
-export function resolveGoogleOAuthClient(
+export async function resolveGoogleOAuthClient(
   row: typeof calendarConnections.$inferSelect | null,
   workspaceId: string,
-): { clientId: string; clientSecret: string } | null {
-  const platform = resolvePlatformGoogleClient();
+): Promise<{ clientId: string; clientSecret: string } | null> {
   const secrets = row ? readStoredGoogleSecrets(row, workspaceId) : null;
   const workspaceClientId = row?.username?.trim() || '';
-  // BYOK: workspace Client ID must use that workspace's secret only (never mix with platform secret).
-  if (workspaceClientId) {
+  // BYOK: workspace Client ID must look like a real Google client and use that workspace's secret only.
+  if (workspaceClientId && isGoogleOAuthClientId(workspaceClientId)) {
     const clientSecret = secrets?.clientSecret?.trim() || '';
     if (!clientSecret) return null;
     return { clientId: workspaceClientId, clientSecret };
   }
+
+  const platform = await resolvePlatformGoogleClient();
   if (!platform?.clientId || !platform?.clientSecret) return null;
   return { clientId: platform.clientId, clientSecret: platform.clientSecret };
 }
@@ -123,16 +123,16 @@ export function resolveConnectionCredentials(
   };
 }
 
-export function resolveGoogleConnectionCredentials(
+export async function resolveGoogleConnectionCredentials(
   row: typeof calendarConnections.$inferSelect,
   workspaceId: string,
-): GoogleCalendarCredentials | null {
+): Promise<GoogleCalendarCredentials | null> {
   if (row.provider !== 'google') return null;
   const secrets = readStoredGoogleSecrets(row, workspaceId);
   if (!secrets?.refreshToken) return null;
 
   const workspaceClientId = row.username?.trim() || '';
-  if (workspaceClientId) {
+  if (workspaceClientId && isGoogleOAuthClientId(workspaceClientId)) {
     if (!secrets.clientSecret) return null;
     return {
       clientId: workspaceClientId,
@@ -142,7 +142,7 @@ export function resolveGoogleConnectionCredentials(
     };
   }
 
-  const platform = resolvePlatformGoogleClient();
+  const platform = await resolvePlatformGoogleClient();
   if (!platform) return null;
   return {
     clientId: platform.clientId,
@@ -242,7 +242,7 @@ export async function saveGoogleOAuthTokens(
     calendarId?: string;
   },
 ) {
-  const platform = resolvePlatformGoogleClient();
+  const platform = await resolvePlatformGoogleClient();
   const usingPlatform = Boolean(
     platform && input.clientId === platform.clientId && input.clientSecret === platform.clientSecret,
   );

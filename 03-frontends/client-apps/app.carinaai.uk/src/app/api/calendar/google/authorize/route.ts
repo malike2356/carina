@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import {
   getWorkspaceCalendarConnection,
+  isGoogleOAuthClientId,
   resolveGoogleOAuthClient,
   resolvePlatformGoogleClient,
   upsertCalendarConnection,
@@ -29,23 +30,34 @@ export async function GET(request: NextRequest) {
   const requestedClientId = url.searchParams.get('clientId')?.trim();
 
   let connection = await getWorkspaceCalendarConnection(workspace.id);
-  if (requestedClientId) {
+  const platform = await resolvePlatformGoogleClient();
+
+  if (requestedClientId && isGoogleOAuthClientId(requestedClientId)) {
     connection = await upsertCalendarConnection(workspace.id, {
       provider: 'google',
       clientId: requestedClientId,
       enabled: true,
     });
-  } else if (connection?.username?.trim() && resolvePlatformGoogleClient()) {
-    // No BYOK clientId in the request: clear a stale workspace Client ID so we
-    // do not OAuth against an old personal client after platform cutover.
+  } else if (
+    // Invalid/empty BYOK (e.g. an email left in Advanced) or reconnect: use platform client.
+    platform &&
+    (connection?.username?.trim() || requestedClientId)
+  ) {
     connection = await upsertCalendarConnection(workspace.id, {
       provider: 'google',
       clientId: '',
       enabled: true,
     });
+  } else if (requestedClientId && !isGoogleOAuthClientId(requestedClientId) && !platform) {
+    return NextResponse.redirect(
+      new URL(
+        '/settings/calendar?google_error=Google%20Client%20ID%20must%20end%20with%20.apps.googleusercontent.com',
+        origin,
+      ),
+    );
   }
 
-  const oauthClient = resolveGoogleOAuthClient(connection, workspace.id) ?? resolvePlatformGoogleClient();
+  const oauthClient = await resolveGoogleOAuthClient(connection, workspace.id);
   if (!oauthClient?.clientId) {
     return NextResponse.redirect(
       new URL('/settings/calendar?google_error=Google%20client%20ID%20required', origin),

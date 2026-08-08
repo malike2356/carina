@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from 'next/server';
 import {
   getWorkspaceCalendarConnection,
   resolveGoogleOAuthClient,
-  resolvePlatformGoogleClient,
   saveGoogleOAuthTokens,
 } from '@/lib/calendar-connection';
 import { exchangeGoogleOAuthCode } from '@/lib/google-calendar-client';
@@ -45,9 +44,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const connection = await getWorkspaceCalendarConnection(parsed.workspaceId);
-  const oauthClient =
-    resolveGoogleOAuthClient(connection, parsed.workspaceId)
-    ?? resolvePlatformGoogleClient();
+  const oauthClient = await resolveGoogleOAuthClient(connection, parsed.workspaceId);
   if (!oauthClient) {
     return NextResponse.redirect(
       new URL(

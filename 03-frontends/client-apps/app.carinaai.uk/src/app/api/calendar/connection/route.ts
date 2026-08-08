@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     envConfigured: Boolean(
       process.env.CALDAV_URL && process.env.CALDAV_USERNAME && process.env.CALDAV_PASSWORD,
     ),
-    platformGoogleConfigured: Boolean(resolvePlatformGoogleClient()),
+    platformGoogleConfigured: Boolean(await resolvePlatformGoogleClient()),
     oauth: {
       connected: url.searchParams.get('google') === 'connected',
       error: url.searchParams.get('google_error') ?? undefined,

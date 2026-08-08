@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { testCalDavConnection } from '@/lib/caldav-client';
 import {
   getWorkspaceCalendarConnection,
+  isGoogleOAuthClientId,
   resolveConnectionCredentials,
   resolveEnvCalDavCredentials,
   resolveGoogleConnectionCredentials,
@@ -31,19 +32,37 @@ export async function POST(request: Request) {
   if (body.provider === 'google') {
     const connection = await getWorkspaceCalendarConnection(workspace.id);
     const stored = connection?.provider === 'google'
-      ? resolveGoogleConnectionCredentials(connection, workspace.id)
+      ? await resolveGoogleConnectionCredentials(connection, workspace.id)
       : null;
-    const platform = resolvePlatformGoogleClient();
+    const platform = await resolvePlatformGoogleClient();
+
+    const requestedClientId = body.clientId?.trim() || '';
+    // Ignore emails / junk in the Advanced Client ID field; only real Google client IDs are BYOK.
+    const byokClientId = isGoogleOAuthClientId(requestedClientId) ? requestedClientId : '';
+    const usingByok = Boolean(byokClientId);
 
     const creds = {
-      clientId: body.clientId?.trim() || stored?.clientId || platform?.clientId || '',
-      clientSecret: body.clientSecret?.trim() || stored?.clientSecret || platform?.clientSecret || '',
-      refreshToken: body.refreshToken?.trim() || stored?.refreshToken || '',
+      clientId: byokClientId || stored?.clientId || platform?.clientId || '',
+      // Platform path: ignore Advanced secret/token fields (users often paste junk there).
+      clientSecret: usingByok
+        ? (body.clientSecret?.trim() || stored?.clientSecret || '')
+        : (stored?.clientSecret || platform?.clientSecret || ''),
+      refreshToken: usingByok
+        ? (body.refreshToken?.trim() || stored?.refreshToken || '')
+        : (stored?.refreshToken || body.refreshToken?.trim() || ''),
       calendarId: body.calendarId?.trim() || stored?.calendarId || 'primary',
     };
 
     if (!creds.clientId || !creds.clientSecret || !creds.refreshToken) {
-      return NextResponse.json({ error: 'Google client ID, secret, and refresh token are required' }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            requestedClientId && !byokClientId
+              ? 'OAuth Client ID must end with .apps.googleusercontent.com (or leave Advanced blank to use platform OAuth)'
+              : 'Google client ID, secret, and refresh token are required. Click Connect with Google first.',
+        },
+        { status: 400 },
+      );
     }
 
     const result = await testGoogleCalendarConnection(creds);
