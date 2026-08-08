@@ -65,6 +65,7 @@ import { updateSequence } from '../outreach/sequence-engine.js';
 import { createDiscoveryLead } from '../outreach/discovery-funnel.js';
 import {
   createWorkspaceLeadSheet,
+  deleteLeadSheet,
   exportLeadsCsvText,
   leadSheetCanonicalHeader,
   linkGoogleLeadSheet,
@@ -72,6 +73,7 @@ import {
   pushCrmLeadsToWorkspaceSheet,
   readWorkspaceLeadSheetRows,
   syncWorkspaceLeadSheetToCrm,
+  updateLeadSheetConfig,
 } from '../outreach/lead-sheets.js';
 import { buildOutreachCadenceSummary } from '../outreach/cadence.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
@@ -237,6 +239,32 @@ aivaOutreachRouter.post('/lead-sheets/:sheetId/push', (req: OutreachRequest, res
   const result = pushCrmLeadsToWorkspaceSheet(req.workspaceId!, sheetId);
   if (!result.ok) {
     res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+aivaOutreachRouter.patch('/lead-sheets/:sheetId', (req: OutreachRequest, res: Response) => {
+  const sheetId = routeParam(req.params.sheetId);
+  const sheet = updateLeadSheetConfig(req.workspaceId!, sheetId, {
+    name: typeof req.body?.name === 'string' ? req.body.name : undefined,
+    googleSpreadsheetId: typeof req.body?.googleSpreadsheetId === 'string' ? req.body.googleSpreadsheetId : undefined,
+    googleSheetUrl: req.body?.googleSheetUrl === null
+      ? null
+      : (typeof req.body?.googleSheetUrl === 'string' ? req.body.googleSheetUrl : undefined),
+  });
+  if (!sheet) {
+    res.status(404).json({ error: 'Lead sheet not found' });
+    return;
+  }
+  res.json({ sheet });
+});
+
+aivaOutreachRouter.delete('/lead-sheets/:sheetId', (req: OutreachRequest, res: Response) => {
+  const sheetId = routeParam(req.params.sheetId);
+  const result = deleteLeadSheet(req.workspaceId!, sheetId);
+  if (!result.ok) {
+    res.status(404).json({ error: result.error });
     return;
   }
   res.json(result);

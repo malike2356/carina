@@ -7,8 +7,10 @@ import { pauseOutreach, resumeOutreach } from '../outreach/control.js';
 import { planContactLeads } from '../outreach/contact-leads.js';
 import {
   createWorkspaceLeadSheet,
+  deleteLeadSheet,
   exportLeadsCsvText,
   leadSheetCanonicalHeader,
+  listLeadSheetConfigs,
   syncWorkspaceLeadSheetToCrm,
 } from '../outreach/lead-sheets.js';
 import { resetOutreachStoreCache } from '../outreach/store.js';
@@ -67,6 +69,10 @@ describe('outreach module CRUD + lead sheets + contact plan', () => {
     const exported = exportLeadsCsvText('ws1');
     expect(exported.count).toBeGreaterThanOrEqual(1);
     expect(exported.csv.split('\n')[0]).toContain('lead_id');
+
+    const deleted = deleteLeadSheet('ws1', sheet.id);
+    expect(deleted.ok).toBe(true);
+    expect(listLeadSheetConfigs('ws1')).toHaveLength(0);
   });
 
   it('plans Soft Wall contact and refuses when paused', () => {

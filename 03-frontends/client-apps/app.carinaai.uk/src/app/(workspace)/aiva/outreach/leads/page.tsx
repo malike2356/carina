@@ -156,6 +156,52 @@ export default function OutreachLeadsPage() {
     loadSheets();
   }, [push, load, loadSheets]);
 
+  const pushSheet = useCallback(async (sheetId: string) => {
+    const res = await fetch(`/api/aiva/outreach/lead-sheets/${encodeURIComponent(sheetId)}/push`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      push('Could not push CRM leads into sheet', 'error');
+      return;
+    }
+    const data = await res.json() as { count?: number };
+    push(`Pushed ${data.count ?? 0} leads into sheet`, 'success');
+    loadSheets();
+  }, [push, loadSheets]);
+
+  const renameSheet = useCallback(async (sheetId: string, currentName: string) => {
+    const next = window.prompt('Rename lead file', currentName);
+    if (next == null) return;
+    const name = next.trim();
+    if (!name || name === currentName) return;
+    const res = await fetch(`/api/aiva/outreach/lead-sheets/${encodeURIComponent(sheetId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      push('Could not rename lead file', 'error');
+      return;
+    }
+    push('Lead file renamed', 'success');
+    loadSheets();
+  }, [push, loadSheets]);
+
+  const deleteSheet = useCallback(async (sheetId: string, sheetName: string) => {
+    if (!window.confirm(`Delete lead file "${sheetName}"? CRM leads in the table stay; only this linked file is removed.`)) {
+      return;
+    }
+    const res = await fetch(`/api/aiva/outreach/lead-sheets/${encodeURIComponent(sheetId)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      push('Could not delete lead file', 'error');
+      return;
+    }
+    push('Lead file deleted', 'success');
+    loadSheets();
+  }, [push, loadSheets]);
+
   const sources = useMemo(
     () => Array.from(new Set(leads.map((l) => l.source).filter(Boolean))).sort(),
     [leads],
@@ -325,6 +371,9 @@ export default function OutreachLeadsPage() {
       {linkedSheets.length > 0 ? (
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="text-sm font-medium text-text-primary">Linked lead files</h3>
+          <p className="mt-1 text-xs text-text-muted">
+            These are spreadsheet handles. Delete removes the file link (and workspace CSV), not CRM table rows.
+          </p>
           <ul className="mt-2 space-y-2 text-sm text-text-muted">
             {linkedSheets.map((sheet) => (
               <li key={sheet.id} className="flex flex-wrap items-center gap-2">
@@ -332,10 +381,21 @@ export default function OutreachLeadsPage() {
                 <span>({sheet.kind})</span>
                 {sheet.lastSyncAt ? <span>Last sync {new Date(sheet.lastSyncAt).toLocaleString()}</span> : null}
                 {sheet.kind === 'workspace_csv' ? (
-                  <Button size="sm" variant="outline" onClick={() => void syncSheet(sheet.id)}>
-                    Sync to CRM
-                  </Button>
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => void syncSheet(sheet.id)}>
+                      Sync to CRM
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void pushSheet(sheet.id)}>
+                      Push from CRM
+                    </Button>
+                  </>
                 ) : null}
+                <Button size="sm" variant="outline" onClick={() => void renameSheet(sheet.id, sheet.name)}>
+                  Rename
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void deleteSheet(sheet.id, sheet.name)}>
+                  Delete
+                </Button>
                 {sheet.googleSheetUrl || sheet.googleSpreadsheetId ? (
                   <a
                     className="text-xs underline"

@@ -122,6 +122,8 @@ const AIVA_WORKSPACE_TOOLS = new Set([
   'outreach-leads-sheet-read',
   'outreach-leads-sheet-sync',
   'outreach-leads-sheet-push',
+  'outreach-leads-sheet-update',
+  'outreach-leads-sheet-delete',
   'outreach-campaigns-list',
   'outreach-campaigns-create',
   'outreach-campaigns-update',

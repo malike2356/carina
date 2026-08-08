@@ -120,6 +120,63 @@ export function createWorkspaceLeadSheet(input: {
   return config;
 }
 
+export function updateLeadSheetConfig(
+  workspaceId: string,
+  sheetId: string,
+  patch: Partial<{
+    name: string;
+    googleSpreadsheetId: string;
+    googleSheetUrl: string | null;
+  }>,
+): LeadSheetConfig | null {
+  const existing = getLeadSheetConfig(workspaceId, sheetId);
+  if (!existing) return null;
+  const next: LeadSheetConfig = {
+    ...existing,
+    name: patch.name !== undefined ? (patch.name.trim() || existing.name).slice(0, 120) : existing.name,
+    googleSpreadsheetId: patch.googleSpreadsheetId !== undefined
+      ? (patch.googleSpreadsheetId.trim() || undefined)
+      : existing.googleSpreadsheetId,
+    googleSheetUrl: patch.googleSheetUrl !== undefined
+      ? (patch.googleSheetUrl?.trim() || undefined)
+      : existing.googleSheetUrl,
+    updatedAt: nowIso(),
+  };
+  mutateOutreachStore((store) => {
+    store.leadSheetConfigs = store.leadSheetConfigs ?? {};
+    store.leadSheetConfigs[`${workspaceId}:${sheetId}`] = next;
+  });
+  return next;
+}
+
+/** Unlink a lead sheet handle. Deletes workspace CSV file when present. Does not delete CRM leads. */
+export function deleteLeadSheet(
+  workspaceId: string,
+  sheetId: string,
+): { ok: true; deleted: string; removedFile: boolean } | { ok: false; error: string } {
+  const existing = getLeadSheetConfig(workspaceId, sheetId);
+  if (!existing) return { ok: false, error: 'Lead sheet not found' };
+
+  let removedFile = false;
+  if (existing.kind === 'workspace_csv' && existing.relativePath) {
+    const abs = path.join(outreachStoreDir(), existing.relativePath);
+    try {
+      if (fs.existsSync(abs)) {
+        fs.unlinkSync(abs);
+        removedFile = true;
+      }
+    } catch {
+      // Still unlink config even if file delete fails
+    }
+  }
+
+  mutateOutreachStore((store) => {
+    store.leadSheetConfigs = store.leadSheetConfigs ?? {};
+    delete store.leadSheetConfigs[`${workspaceId}:${sheetId}`];
+  });
+  return { ok: true, deleted: sheetId, removedFile };
+}
+
 export function linkGoogleLeadSheet(input: {
   workspaceId: string;
   name?: string;

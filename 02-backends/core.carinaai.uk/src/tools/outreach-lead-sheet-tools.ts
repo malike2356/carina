@@ -2,6 +2,7 @@ import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
 import {
   createWorkspaceLeadSheet,
+  deleteLeadSheet,
   exportLeadsCsvText,
   leadSheetCanonicalHeader,
   linkGoogleLeadSheet,
@@ -9,6 +10,7 @@ import {
   pushCrmLeadsToWorkspaceSheet,
   readWorkspaceLeadSheetRows,
   syncWorkspaceLeadSheetToCrm,
+  updateLeadSheetConfig,
 } from '../outreach/lead-sheets.js';
 
 function resolveWorkspaceId(sessionId: string, explicit?: unknown): string {
@@ -155,6 +157,53 @@ export function createOutreachLeadSheetTools(sessionId: string): Tool[] {
         const sheetId = String(params.sheetId ?? '').trim();
         if (!workspaceId || !sheetId) return { ok: false, error: 'workspaceId and sheetId required' };
         return pushCrmLeadsToWorkspaceSheet(workspaceId, sheetId);
+      },
+    },
+    {
+      name: 'outreach-leads-sheet-update',
+      description: 'Rename or update metadata on a linked CRM lead spreadsheet handle.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          sheetId: { type: 'string' },
+          name: { type: 'string' },
+          googleSpreadsheetId: { type: 'string' },
+          googleSheetUrl: { type: 'string' },
+        },
+        required: ['sheetId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const sheetId = String(params.sheetId ?? '').trim();
+        if (!workspaceId || !sheetId) return { ok: false, error: 'workspaceId and sheetId required' };
+        const sheet = updateLeadSheetConfig(workspaceId, sheetId, {
+          name: typeof params.name === 'string' ? params.name : undefined,
+          googleSpreadsheetId: typeof params.googleSpreadsheetId === 'string' ? params.googleSpreadsheetId : undefined,
+          googleSheetUrl: typeof params.googleSheetUrl === 'string' ? params.googleSheetUrl : undefined,
+        });
+        if (!sheet) return { ok: false, error: 'Lead sheet not found' };
+        return { ok: true, id: sheet.id, data: { sheet } };
+      },
+    },
+    {
+      name: 'outreach-leads-sheet-delete',
+      description:
+        'Delete/unlink a CRM lead spreadsheet handle. Removes workspace CSV file when present. '
+        + 'Does NOT delete CRM leads in the table.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          sheetId: { type: 'string' },
+        },
+        required: ['sheetId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const sheetId = String(params.sheetId ?? '').trim();
+        if (!workspaceId || !sheetId) return { ok: false, error: 'workspaceId and sheetId required' };
+        return deleteLeadSheet(workspaceId, sheetId);
       },
     },
     {
