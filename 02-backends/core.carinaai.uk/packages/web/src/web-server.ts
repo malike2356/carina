@@ -700,8 +700,8 @@ export async function createWebServer(options: StartWebOptions = {}): Promise<Ex
     }
     mountCloudRawRoutes(app);
   }
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+  app.use(express.json({ limit: process.env.CARINA_JSON_BODY_LIMIT || '150mb' }));
+  app.use(express.urlencoded({ extended: false, limit: process.env.CARINA_JSON_BODY_LIMIT || '150mb' }));
   // Blanket safety net for /api/*; more specific scopes (login, signup,
   // ai_api, webhook) apply their own tighter limiter in addition to this
   // one. Trusted server-to-server callers (cloud proxy, Scout) are exempt

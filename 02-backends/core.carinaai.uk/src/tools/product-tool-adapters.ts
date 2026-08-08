@@ -1,10 +1,11 @@
 import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
-import { listToolGrants } from '../workers/spinnable-parity-store.js';
+import { listEffectiveToolGrants } from '../workers/aiva-parity-store.js';
 import { invokeProductTool } from '../workers/product-tools/invoke.js';
 import { registerSessionTool } from './session-tool-store.js';
 import { createCompaniesHouseTools } from './companies-house-tools.js';
 import { createOutreachDiscoveryTools } from './outreach-discovery-tools.js';
+import { createOutreachLeadCrudTools } from './outreach-lead-crud-tools.js';
 import { createOutreachCadenceTools } from './outreach-cadence-tools.js';
 import { createOutreachReplyTools } from './outreach-reply-tools.js';
 import { createOutreachBookingTools } from './outreach-booking-tools.js';
@@ -1327,7 +1328,7 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
   const ctx = getWorkerSessionContext(sessionId);
   if (!ctx) return [];
 
-  const grants = await listToolGrants(ctx.worker.workspaceId, ctx.worker.id);
+  const grants = await listEffectiveToolGrants(ctx.worker.workspaceId, ctx.worker.id);
   const connected = new Set(
     grants.filter((g) => g.status === 'connected').map((g) => g.toolSlug),
   );
@@ -1341,6 +1342,10 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
     }
   }
   for (const tool of createOutreachDiscoveryTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    registered.push(tool.name);
+  }
+  for (const tool of createOutreachLeadCrudTools(sessionId)) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }

@@ -236,7 +236,7 @@ export function AivaWorkerChatPanel({
           <input
             ref={fileInputRef}
             type="file"
-            accept=".sav,.csv,.tsv,.xlsx,.xls,application/x-spss-sav,text/csv"
+            accept=".sav,.csv,.tsv,.xlsx,.xls,.txt,.pdf,.png,.jpg,.jpeg,.webp,.docx,application/x-spss-sav,text/csv,application/pdf,image/*"
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];

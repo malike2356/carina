@@ -479,6 +479,7 @@ export const WORKSPACE_FEATURE_ROUTE_GATES: Array<{
     feature: 'outreach',
     match: (pathname) =>
       pathname.startsWith('/aiva/outreach')
+      || pathname.startsWith('/aiva/crm')
       || pathname.startsWith('/api/aiva/outreach'),
   },
   {

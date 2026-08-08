@@ -1,12 +1,15 @@
-/** Save Aiva chat uploads (SPSS/CSV) to a workspace-scoped disk path for analysis tools. */
+/** Save Aiva chat uploads to a workspace-scoped disk path for analysis and CRM import tools. */
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { basename, extname, join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { CARINA_DATA_DIR } from '../config/paths.js';
+import {
+  AIVA_CHAT_ATTACHMENT_EXTENSIONS,
+  AIVA_CHAT_ATTACHMENT_MAX_BYTES,
+} from './chat-attachment-limits.js';
 
-const ALLOWED_EXTENSIONS = new Set(['.sav', '.csv', '.tsv', '.xlsx', '.xls']);
-const MAX_BYTES = 40 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set<string>(AIVA_CHAT_ATTACHMENT_EXTENSIONS);
 
 export type ChatAttachmentSaved = {
   absolutePath: string;
@@ -27,6 +30,10 @@ export function isAllowedChatAttachmentFilename(filename: string): boolean {
   return ALLOWED_EXTENSIONS.has(extname(filename).toLowerCase());
 }
 
+export function chatAttachmentMaxMb(): number {
+  return Math.floor(AIVA_CHAT_ATTACHMENT_MAX_BYTES / (1024 * 1024));
+}
+
 export async function saveAivaChatAttachment(input: {
   workspaceId: string;
   workerId: string;
@@ -37,7 +44,7 @@ export async function saveAivaChatAttachment(input: {
   const extension = extname(filename).toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(extension)) {
     throw new Error(
-      `Unsupported file type "${extension || '(none)'}". Allowed: .sav, .csv, .tsv, .xlsx, .xls`,
+      `Unsupported file type "${extension || '(none)'}". Allowed: ${[...ALLOWED_EXTENSIONS].join(', ')}`,
     );
   }
 
@@ -45,8 +52,8 @@ export async function saveAivaChatAttachment(input: {
   if (!raw) throw new Error('File data is required');
   const buffer = Buffer.from(raw, 'base64');
   if (!buffer.length) throw new Error('File data is empty');
-  if (buffer.length > MAX_BYTES) {
-    throw new Error(`File must be ${Math.floor(MAX_BYTES / (1024 * 1024))}MB or smaller`);
+  if (buffer.length > AIVA_CHAT_ATTACHMENT_MAX_BYTES) {
+    throw new Error(`File must be ${chatAttachmentMaxMb()}MB or smaller`);
   }
 
   const dir = join(
@@ -73,13 +80,17 @@ export function buildAttachmentPromptBlock(
 ): string {
   if (!attachments.length) return '';
   const lines = [
-    'Attached analysis file(s) for this turn (local paths on the Carina host):',
+    'Attached file(s) for this turn (local paths on the Carina host):',
     ...attachments.map(
       (item, index) =>
         `${index + 1}. ${item.filename} -> ${item.absolutePath}`,
     ),
     '',
-    'If this is SPSS/CSV research data, use sav_read (for .sav) or stats_describe / stats_* tools on the path above, then return clear insights, key findings, and suggested next analyses. Do not ask the user for a file path you already have.',
+    'Use Keprix/Core tools as needed:',
+    '- SPSS (.sav): sav_read / stats_* tools.',
+    '- CSV/TSV/XLSX lead sheets: parse then outreach-discovery-ingest-leads or outreach-leads-import; confirm with the owner before bulk import.',
+    '- PDF/images: summarise with available document/vision tools; do not invent leads from unreadable scans.',
+    'Do not ask the user for a file path you already have. Soft Wall still applies to any outbound contact derived from the file.',
   ];
   return lines.join('\n');
 }

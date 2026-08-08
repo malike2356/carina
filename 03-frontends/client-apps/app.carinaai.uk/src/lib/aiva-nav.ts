@@ -86,11 +86,12 @@ export const AIVA_PRIMARY_NAV: AivaNavItem[] = [
     feature: 'projects',
   },
   {
-    href: '/aiva/outreach',
+    href: '/aiva/outreach/leads',
     label: 'Outreach',
     icon: Send,
     match: (pathname) =>
       pathname.startsWith('/aiva/outreach')
+      || pathname.startsWith('/aiva/crm')
       || pathname.startsWith('/outreach')
       || pathname.startsWith('/companies-house'),
     feature: 'outreach',

@@ -66,10 +66,12 @@ describe('Aiva primary navigation', () => {
     expect(calendar?.match('/scheduled')).toBe(true);
   });
 
-  it('routes Outreach to the tabbed sales engagement UI', () => {
+  it('routes Outreach to the CRM leads table (full module still under /aiva/outreach)', () => {
     const outreach = AIVA_PRIMARY_NAV.find((item) => item.label === 'Outreach');
-    expect(outreach?.href).toBe('/aiva/outreach');
+    expect(outreach?.href).toBe('/aiva/outreach/leads');
     expect(outreach?.match('/aiva/outreach')).toBe(true);
+    expect(outreach?.match('/aiva/outreach/leads')).toBe(true);
+    expect(outreach?.match('/aiva/crm/leads')).toBe(true);
     expect(outreach?.match('/aiva/outreach/companies-house')).toBe(true);
     expect(outreach?.match('/outreach')).toBe(true);
     expect(outreach?.match('/companies-house')).toBe(true);

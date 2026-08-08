@@ -13,6 +13,7 @@ import {
   type ConversationalChannelSetup,
 } from '@/lib/conversational-channel-setup';
 import type { AivaConversation, AivaEmployeeMessage, AivaWorker } from '@/lib/aiva-types';
+import { warnTone } from '@/lib/ui-tones';
 import { cn } from '@/lib/utils';
 
 async function readJsonResponse<T extends Record<string, unknown>>(
@@ -223,7 +224,14 @@ export function AivaWorkerDirectChat({
         filename: payload.filename,
       });
       if (!message.trim()) {
-        setMessage(`Please analyse this SPSS/CSV file and share key insights: ${payload.filename}`);
+        const lower = payload.filename.toLowerCase();
+        if (/\.(csv|tsv|xlsx|xls)$/.test(lower)) {
+          setMessage(
+            `Import this lead file into CRM leads (dedupe on email), then summarise how many were created: ${payload.filename}`,
+          );
+        } else {
+          setMessage(`Please analyse this file and share key insights: ${payload.filename}`);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not upload file');
@@ -518,7 +526,7 @@ export function AivaWorkerDirectChat({
           conversationAddon={
             <>
               {worker.workerConfig?.privacy?.incognito ? (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                <div className={cn('rounded-lg px-3 py-2 text-xs', warnTone.box, warnTone.textMuted)}>
                   Incognito is on. This chat is not saved on our servers. Tools you ask for still run.
                 </div>
               ) : null}

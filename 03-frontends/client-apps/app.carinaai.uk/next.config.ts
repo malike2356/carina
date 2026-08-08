@@ -28,7 +28,8 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '2mb',
+      // Aiva chat attachments are base64 JSON (up to ~100MB decoded).
+      bodySizeLimit: '150mb',
     },
   },
   async headers() {

@@ -6,6 +6,7 @@ import {
   createLead,
   createLeadList,
   createSequence,
+  deleteLead,
   ensureOutreachDefaults,
   enrollLead,
   getLead,
@@ -240,6 +241,15 @@ aivaOutreachRouter.patch('/leads/:leadId', (req: OutreachRequest, res: Response)
     return;
   }
   res.json({ lead });
+});
+
+aivaOutreachRouter.delete('/leads/:leadId', (req: OutreachRequest, res: Response) => {
+  const ok = deleteLead(req.workspaceId!, routeParam(req.params.leadId));
+  if (!ok) {
+    res.status(404).json({ error: 'Lead not found' });
+    return;
+  }
+  res.json({ ok: true });
 });
 
 aivaOutreachRouter.post('/leads/:leadId/reply', (req: OutreachRequest, res: Response) => {

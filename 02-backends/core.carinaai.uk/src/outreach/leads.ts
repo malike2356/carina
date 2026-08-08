@@ -172,6 +172,30 @@ export function updateLead(
   return lead;
 }
 
+export function deleteLead(workspaceId: string, leadId: string): boolean {
+  const existing = getLead(workspaceId, leadId);
+  if (!existing) return false;
+  mutateOutreachStore((s) => {
+    s.leads = s.leads.filter((l) => !(l.workspaceId === workspaceId && l.id === leadId));
+    s.enrollments = (s.enrollments ?? []).filter(
+      (e) => !(e.workspaceId === workspaceId && e.leadId === leadId),
+    );
+    s.deliveries = (s.deliveries ?? []).filter(
+      (d) => !(d.workspaceId === workspaceId && d.leadId === leadId),
+    );
+    s.lists = (s.lists ?? []).map((list) => {
+      if (list.workspaceId !== workspaceId) return list;
+      return {
+        ...list,
+        leadIds: list.leadIds.filter((id) => id !== leadId),
+        updatedAt: nowIso(),
+      };
+    });
+  });
+  void refreshFollowUpPlans(workspaceId);
+  return true;
+}
+
 export function importLeadBatch(
   workspaceId: string,
   rows: Array<{
