@@ -16,6 +16,7 @@ export type TenantWorkspaceConfig = {
   tenantId: string;
   activeSkillPacks: string[];
   channels: TenantChannelConfig;
+  emailIngestionEnabled: boolean;
   brand?: BrandConfig;
   updatedAt: string;
   updatedBy?: string;
@@ -39,6 +40,7 @@ function defaultConfig(tenantId: string): TenantWorkspaceConfig {
       telegram: { enabled: false },
       whatsapp: { enabled: false },
     },
+    emailIngestionEnabled: false,
     updatedAt: new Date().toISOString(),
   };
 }
@@ -62,7 +64,7 @@ export function loadTenantWorkspaceConfig(tenantId: string): TenantWorkspaceConf
 
 export function saveTenantWorkspaceConfig(
   tenantId: string,
-  patch: Partial<Pick<TenantWorkspaceConfig, 'activeSkillPacks' | 'channels' | 'brand'>>,
+  patch: Partial<Pick<TenantWorkspaceConfig, 'activeSkillPacks' | 'channels' | 'emailIngestionEnabled' | 'brand'>>,
   actor = 'system',
 ): TenantWorkspaceConfig {
   fs.mkdirSync(configDir(), { recursive: true, mode: 0o700 });
@@ -77,6 +79,7 @@ export function saveTenantWorkspaceConfig(
     ...current,
     activeSkillPacks: packs,
     channels: { ...current.channels, ...patch.channels },
+    emailIngestionEnabled: patch.emailIngestionEnabled ?? current.emailIngestionEnabled,
     brand: patch.brand !== undefined
       ? normalizeBrandConfig({ ...current.brand, ...patch.brand })
       : current.brand,
