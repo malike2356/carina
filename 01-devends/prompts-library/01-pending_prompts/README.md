@@ -2,16 +2,21 @@
 
 **Updated:** 2026-08-08
 
-> **CRITICAL for every coding agent:** When a prompt here is **fully completed** (Done When + validation), archive it immediately to `../02-archived_prompts/archives_from_pending_prompts/` (same relative path). Update this index and the set README. Delete empty folders. Do not leave finished prompts in pending. Do not archive partial or owner-blocked work. Checklist: `../00-library-docs/POST-BUILD-CHECKLIST.md`.
+> **CRITICAL for every coding agent:** When a prompt here is **fully completed** (Done When + validation), archive it immediately to `../02-archived_prompts/archives_from_pending_prompts/` (same relative path). Update this index. Delete empty folders. Do not leave finished prompts in pending. Do not archive partial or owner-blocked work into the completed tree. Checklist: `../00-library-docs/POST-BUILD-CHECKLIST.md`.
 
-## Open build prompts
+## Open build prompts (Carina)
+
+None in this folder right now.
 
 | Prompt set | Purpose | Start here |
 |---|---|---|
-| Keprix-Carina engine switch (Carina side) | C01-C05 completed; README only remains as pointer | `keprix-carina-engine-switch/README.md` |
 | VERLOX security assurance programme | Company-wide audits, controls, policies, customer assurance | `/opt/lampp/htdocs/verlox/shared/security-assurance/prompts/README.md` |
 
-Note: Stale pending rows pointing at missing folders were cleaned 2026-08-08. Completed work lives under `02-archived_prompts/archives_from_pending_prompts/` (including `aiva-crm-outreach-workspace-crud/`, `aiva-outreach/`, `aiva-outreach-discovery-funnel/`, `keprix-carina-engine-switch/`).
+## Deferred / owner-blocked (not build-now)
+
+Kept out of this queue so agents do not treat them as open builds:
+
+`../02-archived_prompts/blocked-deferred/BLOCKED/`
 
 ## Archived (recent)
 
@@ -19,6 +24,7 @@ Note: Stale pending rows pointing at missing folders were cleaned 2026-08-08. Co
 |------------|--------------|
 | Aiva CRM leads + outreach workspace CRUD | `archives_from_pending_prompts/aiva-crm-outreach-workspace-crud/` |
 | Keprix-Carina engine switch C01-C05 | `archives_from_pending_prompts/keprix-carina-engine-switch/` |
+| Carina-Keprix parity (obsolete by sidecar) | `archives_from_pending_prompts/carina-keprix-parity-obsolete-by-sidecar/` |
 | Carina core fix patch (hallucination + session isolation) | `archives_from_pending_prompts/carina-core-fix-patch.md` |
 | Aiva / Carina viCal booking (00-09, 12) | `archives_from_pending_prompts/aiva-vical-booking/` |
 | Aiva Companies House API (00-05) | `archives_from_pending_prompts/aiva-companies-house-api/` |
