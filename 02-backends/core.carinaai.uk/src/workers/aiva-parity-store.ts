@@ -1047,12 +1047,15 @@ export async function describeProductToolGrantsForPrompt(
   callableLines.push(
     'Callable Sales engagement (Outreach) tools (Soft Wall kept):',
     '- Discovery: outreach-discovery-plan, outreach-discovery-sheet-schema, outreach-discovery-normalize-leads, outreach-discovery-ingest-leads.',
-    '- CRM leads CRUD: outreach-leads-list, outreach-leads-get, outreach-leads-create, outreach-leads-update, outreach-leads-delete, outreach-leads-import.',
+    '- CRM leads CRUD: outreach-leads-list, outreach-leads-get, outreach-leads-create, outreach-leads-update, outreach-leads-delete, outreach-leads-import, outreach-leads-export.',
+    '- Lead sheets: outreach-leads-sheet-create/list/read/sync/push, outreach-leads-sheet-link-google; google-sheets-create when Sheets connected.',
+    '- Campaigns/sequences/enrollments/lists: outreach-campaigns-*, outreach-sequences-*, outreach-enrollments-*, outreach-lists-*.',
+    '- Contact: outreach-contact-leads queues Soft Wall Approvals drafts (does not send).',
     '- Cadence: outreach-cadence-summary, outreach-cadence-validate-from, outreach-process-due (queues Soft Wall drafts into Approvals; does not send cold email).',
     '- Replies: outreach-reply-ingest, outreach-reply-review-list, outreach-reply-review-resolve.',
     '- Bookings: outreach-booking-* and vical-* for discovery call slots, confirm, reschedule, cancel.',
     '- Ops: outreach-board-*, outreach-alert-*, outreach-follow-up-*, outreach-control-*, outreach-youtube-import.',
-    '- Soft Wall: never claim cold outreach email was sent unless Approvals shows approved/sent. Prefer workspace-email-draft-for-approval for ad-hoc careful mail.',
+    '- Soft Wall: never claim cold outreach email was sent unless Approvals shows approved/sent. Prefer outreach-contact-leads or workspace-email-draft-for-approval. Do not use gmail-send for cold outreach.',
   );
 
   return [

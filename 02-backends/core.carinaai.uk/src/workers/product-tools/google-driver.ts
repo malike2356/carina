@@ -527,6 +527,52 @@ export async function invokeGoogleAction(opts: {
       const data = await res.json();
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
+    if (opts.toolSlug === 'google-sheets' && opts.action === 'create') {
+      const title = String(opts.input?.title ?? 'Untitled spreadsheet').trim() || 'Untitled spreadsheet';
+      const values = Array.isArray(opts.input?.values) ? opts.input.values : null;
+      const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          properties: { title },
+          sheets: [{ properties: { title: 'Leads' } }],
+        }),
+        signal: AbortSignal.timeout(20000),
+      });
+      const data = await res.json() as Record<string, unknown>;
+      if (!res.ok) return { ok: false, data, error: JSON.stringify(data) };
+      const spreadsheetId = String(data.spreadsheetId ?? '');
+      if (spreadsheetId && values && values.length > 0) {
+        const appendRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent('Leads!A1')}:append?valueInputOption=USER_ENTERED`,
+          {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values }),
+            signal: AbortSignal.timeout(20000),
+          },
+        );
+        const appendData = await appendRes.json();
+        return {
+          ok: appendRes.ok,
+          data: {
+            spreadsheetId,
+            spreadsheetUrl: data.spreadsheetUrl,
+            properties: data.properties,
+            append: appendData,
+          },
+          error: appendRes.ok ? undefined : JSON.stringify(appendData),
+        };
+      }
+      return {
+        ok: true,
+        data: {
+          spreadsheetId,
+          spreadsheetUrl: data.spreadsheetUrl,
+          properties: data.properties,
+        },
+      };
+    }
     if (opts.toolSlug === 'google-sheets' && opts.action === 'append') {
       const spreadsheetId = String(opts.input?.spreadsheetId ?? '').trim();
       const range = String(opts.input?.range ?? 'A1').trim();

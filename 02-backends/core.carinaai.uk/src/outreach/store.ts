@@ -62,6 +62,7 @@ export function emptyOutreachStore(): OutreachStoreShape {
     alertTargets: {},
     controls: {},
     followUpTasks: [],
+    leadSheetConfigs: {},
   };
 }
 
@@ -83,6 +84,7 @@ export function loadOutreachStore(): OutreachStoreShape {
     alertTargets: raw.alertTargets ?? {},
     controls: raw.controls ?? {},
     followUpTasks: raw.followUpTasks ?? [],
+    leadSheetConfigs: raw.leadSheetConfigs ?? {},
   };
 }
 

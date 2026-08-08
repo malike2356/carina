@@ -167,9 +167,14 @@ function renderTemplate(
     .replaceAll('{{cta}}', cta ?? '');
 }
 
-export function listEnrollments(workspaceId: string, filter?: { leadId?: string; status?: SequenceEnrollment['status'] }): SequenceEnrollment[] {
+export function listEnrollments(workspaceId: string, filter?: {
+  leadId?: string;
+  campaignId?: string;
+  status?: SequenceEnrollment['status'];
+}): SequenceEnrollment[] {
   let rows = loadOutreachStore().enrollments.filter((e) => e.workspaceId === workspaceId);
   if (filter?.leadId) rows = rows.filter((e) => e.leadId === filter.leadId);
+  if (filter?.campaignId) rows = rows.filter((e) => e.campaignId === filter.campaignId);
   if (filter?.status) rows = rows.filter((e) => e.status === filter.status);
   return rows;
 }

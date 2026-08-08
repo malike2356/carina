@@ -17,3 +17,5 @@ export * from './alerts.js';
 export * from './control.js';
 export * from './kanban.js';
 export * from './follow-ups.js';
+export * from './lead-sheets.js';
+export * from './contact-leads.js';

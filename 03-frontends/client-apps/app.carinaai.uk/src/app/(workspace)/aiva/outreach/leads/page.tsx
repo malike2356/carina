@@ -9,18 +9,36 @@ import { PIPELINE_LABELS, type OutreachLead, type PipelineStatus } from '@/compo
 const STAGE_OPTIONS = Object.keys(PIPELINE_LABELS) as PipelineStatus[];
 
 function exportCsv(leads: OutreachLead[]): void {
-  const header = ['lead_id', 'contact_name', 'email', 'company', 'status', 'source', 'notes'];
+  const header = [
+    'lead_id',
+    'business_name',
+    'contact_name',
+    'email',
+    'website',
+    'source',
+    'niche',
+    'location',
+    'status',
+    'last_touch_at',
+    'notes',
+    'campaign_id',
+  ];
   const lines = [
     header.join(','),
     ...leads.map((lead) =>
       [
         lead.id,
+        JSON.stringify(lead.company ?? lead.name),
         JSON.stringify(lead.name),
         JSON.stringify(lead.email ?? ''),
-        JSON.stringify(lead.company ?? ''),
-        lead.status,
+        '""',
         lead.source,
+        JSON.stringify(lead.tags?.[0] ?? ''),
+        '""',
+        lead.status,
+        JSON.stringify(lead.lastContactedAt ?? lead.updatedAt ?? ''),
         JSON.stringify(lead.notes ?? ''),
+        JSON.stringify(lead.campaignId ?? ''),
       ].join(',')),
   ];
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -40,6 +58,15 @@ function parseCsvText(text: string): Array<{ name: string; email?: string; compa
     .filter((line) => !/^name\s*,/i.test(line) && !/^lead_id\s*,/i.test(line))
     .map((line) => {
       const parts = line.split(',').map((part) => part.trim().replace(/^"|"$/g, ''));
+      if (parts.length >= 4 && parts[0] && parts[0].includes('-') && /@/.test(parts[3] || '')) {
+        // lead_id,business_name,contact_name,email,...
+        return {
+          name: parts[2] || parts[1] || 'Unknown',
+          email: parts[3] || undefined,
+          company: parts[1] || undefined,
+          source: 'csv_import' as const,
+        };
+      }
       if (parts.length >= 3 && parts[0] && parts[0].includes('-') && parts[1]) {
         // lead_id,name,email,...
         return {
@@ -67,6 +94,21 @@ export default function OutreachLeadsPage() {
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [linkedSheets, setLinkedSheets] = useState<Array<{
+    id: string;
+    name: string;
+    kind: string;
+    lastSyncAt?: string;
+    googleSheetUrl?: string;
+    googleSpreadsheetId?: string;
+  }>>([]);
+
+  const loadSheets = useCallback(() => {
+    fetch('/api/aiva/outreach/lead-sheets')
+      .then((res) => (res.ok ? res.json() : { sheets: [] }))
+      .then((data: { sheets?: typeof linkedSheets }) => setLinkedSheets(data.sheets ?? []))
+      .catch(() => setLinkedSheets([]));
+  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -83,7 +125,36 @@ export default function OutreachLeadsPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadSheets();
+  }, [load, loadSheets]);
+
+  const createLeadSheet = useCallback(async () => {
+    const res = await fetch('/api/aiva/outreach/lead-sheets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'CRM leads', seedFromLeads: true }),
+    });
+    if (!res.ok) {
+      push('Could not create leads spreadsheet', 'error');
+      return;
+    }
+    push('Leads spreadsheet created', 'success');
+    loadSheets();
+  }, [push, loadSheets]);
+
+  const syncSheet = useCallback(async (sheetId: string) => {
+    const res = await fetch(`/api/aiva/outreach/lead-sheets/${encodeURIComponent(sheetId)}/sync`, {
+      method: 'POST',
+    });
+    if (!res.ok) {
+      push('Sheet sync failed', 'error');
+      return;
+    }
+    const data = await res.json() as { created?: number; duplicates?: number };
+    push(`Synced sheet: ${data.created ?? 0} created, ${data.duplicates ?? 0} duplicates`, 'success');
+    load();
+    loadSheets();
+  }, [push, load, loadSheets]);
 
   const sources = useMemo(
     () => Array.from(new Set(leads.map((l) => l.source).filter(Boolean))).sort(),
@@ -227,6 +298,9 @@ export default function OutreachLeadsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => void createLeadSheet()}>
+            Create leads sheet
+          </Button>
           <Button size="sm" variant="outline" onClick={() => exportCsv(filtered)} disabled={filtered.length === 0}>
             Export CSV
           </Button>
@@ -247,6 +321,36 @@ export default function OutreachLeadsPage() {
           </Button>
         </div>
       </div>
+
+      {linkedSheets.length > 0 ? (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="text-sm font-medium text-text-primary">Linked lead files</h3>
+          <ul className="mt-2 space-y-2 text-sm text-text-muted">
+            {linkedSheets.map((sheet) => (
+              <li key={sheet.id} className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-text-primary">{sheet.name}</span>
+                <span>({sheet.kind})</span>
+                {sheet.lastSyncAt ? <span>Last sync {new Date(sheet.lastSyncAt).toLocaleString()}</span> : null}
+                {sheet.kind === 'workspace_csv' ? (
+                  <Button size="sm" variant="outline" onClick={() => void syncSheet(sheet.id)}>
+                    Sync to CRM
+                  </Button>
+                ) : null}
+                {sheet.googleSheetUrl || sheet.googleSpreadsheetId ? (
+                  <a
+                    className="text-xs underline"
+                    href={sheet.googleSheetUrl || `https://docs.google.com/spreadsheets/d/${sheet.googleSpreadsheetId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open sheet
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-lg border border-border bg-card p-4">

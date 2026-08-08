@@ -25,6 +25,7 @@ export type OutreachLead = {
   replyState: string;
   bookingState: string;
   nextActionAt?: string;
+  lastContactedAt?: string;
   youtubeLeadId?: string;
   createdAt: string;
   updatedAt: string;

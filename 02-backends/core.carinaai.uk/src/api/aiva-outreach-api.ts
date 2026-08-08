@@ -63,6 +63,16 @@ import {
 } from '../outreach/index.js';
 import { updateSequence } from '../outreach/sequence-engine.js';
 import { createDiscoveryLead } from '../outreach/discovery-funnel.js';
+import {
+  createWorkspaceLeadSheet,
+  exportLeadsCsvText,
+  leadSheetCanonicalHeader,
+  linkGoogleLeadSheet,
+  listLeadSheetConfigs,
+  pushCrmLeadsToWorkspaceSheet,
+  readWorkspaceLeadSheetRows,
+  syncWorkspaceLeadSheetToCrm,
+} from '../outreach/lead-sheets.js';
 import { buildOutreachCadenceSummary } from '../outreach/cadence.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
 import { backfillOutreachBookingsToVical } from '../vical/index.js';
@@ -147,6 +157,89 @@ aivaOutreachRouter.get('/leads', (req: OutreachRequest, res: Response) => {
       tag,
     }),
   });
+});
+
+aivaOutreachRouter.get('/leads/export', (req: OutreachRequest, res: Response) => {
+  const status = typeof req.query.status === 'string' && isPipelineStatus(req.query.status)
+    ? req.query.status
+    : undefined;
+  const source = typeof req.query.source === 'string' ? req.query.source : undefined;
+  const campaignId = typeof req.query.campaignId === 'string' ? req.query.campaignId : undefined;
+  const result = exportLeadsCsvText(req.workspaceId!, {
+    status,
+    source: source as never,
+    campaignId,
+  });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="aiva-crm-leads-${new Date().toISOString().slice(0, 10)}.csv"`,
+  );
+  res.send(result.csv);
+});
+
+aivaOutreachRouter.get('/lead-sheets', (req: OutreachRequest, res: Response) => {
+  res.json({
+    sheets: listLeadSheetConfigs(req.workspaceId!),
+    header: leadSheetCanonicalHeader(),
+  });
+});
+
+aivaOutreachRouter.post('/lead-sheets', (req: OutreachRequest, res: Response) => {
+  const kind = String(req.body?.kind ?? 'workspace_csv');
+  if (kind === 'google_sheet') {
+    const googleSpreadsheetId = String(req.body?.googleSpreadsheetId ?? '').trim();
+    if (!googleSpreadsheetId) {
+      res.status(400).json({ error: 'googleSpreadsheetId required for google_sheet' });
+      return;
+    }
+    const sheet = linkGoogleLeadSheet({
+      workspaceId: req.workspaceId!,
+      googleSpreadsheetId,
+      name: typeof req.body?.name === 'string' ? req.body.name : undefined,
+      googleSheetUrl: typeof req.body?.googleSheetUrl === 'string' ? req.body.googleSheetUrl : undefined,
+    });
+    res.status(201).json({ sheet });
+    return;
+  }
+  const sheet = createWorkspaceLeadSheet({
+    workspaceId: req.workspaceId!,
+    name: typeof req.body?.name === 'string' ? req.body.name : undefined,
+    seedFromLeads: req.body?.seedFromLeads === true,
+  });
+  res.status(201).json({ sheet });
+});
+
+aivaOutreachRouter.get('/lead-sheets/:sheetId/rows', (req: OutreachRequest, res: Response) => {
+  const sheetId = routeParam(req.params.sheetId);
+  const offset = req.query.offset != null ? Number(req.query.offset) : undefined;
+  const limit = req.query.limit != null ? Number(req.query.limit) : undefined;
+  const result = readWorkspaceLeadSheetRows(req.workspaceId!, sheetId, { offset, limit });
+  if (!result.ok) {
+    res.status(404).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+aivaOutreachRouter.post('/lead-sheets/:sheetId/sync', (req: OutreachRequest, res: Response) => {
+  const sheetId = routeParam(req.params.sheetId);
+  const result = syncWorkspaceLeadSheetToCrm(req.workspaceId!, sheetId);
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+aivaOutreachRouter.post('/lead-sheets/:sheetId/push', (req: OutreachRequest, res: Response) => {
+  const sheetId = routeParam(req.params.sheetId);
+  const result = pushCrmLeadsToWorkspaceSheet(req.workspaceId!, sheetId);
+  if (!result.ok) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(result);
 });
 
 aivaOutreachRouter.post('/leads', (req: OutreachRequest, res: Response) => {
@@ -473,10 +566,12 @@ aivaOutreachRouter.patch('/sequences/:sequenceId', (req: OutreachRequest, res: R
 
 aivaOutreachRouter.get('/enrollments', (req: OutreachRequest, res: Response) => {
   const leadId = typeof req.query.leadId === 'string' ? req.query.leadId : undefined;
+  const campaignId = typeof req.query.campaignId === 'string' ? req.query.campaignId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
   res.json({
     enrollments: listEnrollments(req.workspaceId!, {
       leadId,
+      campaignId,
       status: status as never,
     }),
   });

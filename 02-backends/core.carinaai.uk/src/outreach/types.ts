@@ -334,6 +334,20 @@ export interface OutreachReminder {
   updatedAt: string;
 }
 
+export interface LeadSheetConfig {
+  id: string;
+  workspaceId: string;
+  name: string;
+  kind: 'workspace_csv' | 'google_sheet';
+  relativePath?: string;
+  googleSpreadsheetId?: string;
+  googleSheetUrl?: string;
+  documentId?: string;
+  lastSyncAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OutreachStoreShape {
   leads: OutreachLead[];
   campaigns: OutreachCampaign[];
@@ -350,6 +364,8 @@ export interface OutreachStoreShape {
   alertTargets: Record<string, OutreachAlertTarget>;
   controls: Record<string, OutreachControlState>;
   followUpTasks: FollowUpTask[];
+  /** Linked CRM lead spreadsheet handles (workspace CSV and/or Google Sheets). */
+  leadSheetConfigs: Record<string, LeadSheetConfig>;
 }
 
 export interface ReplyReview {

@@ -6,6 +6,9 @@ import { registerSessionTool } from './session-tool-store.js';
 import { createCompaniesHouseTools } from './companies-house-tools.js';
 import { createOutreachDiscoveryTools } from './outreach-discovery-tools.js';
 import { createOutreachLeadCrudTools } from './outreach-lead-crud-tools.js';
+import { createOutreachModuleCrudTools } from './outreach-module-crud-tools.js';
+import { createOutreachLeadSheetTools } from './outreach-lead-sheet-tools.js';
+import { createOutreachContactTools } from './outreach-contact-tools.js';
 import { createOutreachCadenceTools } from './outreach-cadence-tools.js';
 import { createOutreachReplyTools } from './outreach-reply-tools.js';
 import { createOutreachBookingTools } from './outreach-booking-tools.js';
@@ -887,6 +890,30 @@ function createSheetsTools(sessionId: string): Tool[] {
         });
       },
     },
+    {
+      name: 'google-sheets-create',
+      dangerous: true,
+      requiresConfirmation: true,
+      description:
+        'Create a new Google Spreadsheet. Optionally seed the first sheet with values (header + rows). '
+        + 'For CRM leads, seed with outreach-discovery-sheet-schema / outreach-leads-sheet-create header, then call outreach-leads-sheet-link-google.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' },
+          values: { type: 'array', description: 'Optional initial rows (array of row arrays)' },
+        },
+        required: ['title'],
+      },
+      execute: async (params) => {
+        const title = String(params.title ?? '').trim();
+        if (!title) return { ok: false, error: 'title required' };
+        return invokeGranted(sessionId, 'google-sheets', 'create', {
+          title,
+          values: Array.isArray(params.values) ? params.values : undefined,
+        });
+      },
+    },
   ];
 }
 
@@ -1346,6 +1373,18 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
     registered.push(tool.name);
   }
   for (const tool of createOutreachLeadCrudTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    registered.push(tool.name);
+  }
+  for (const tool of createOutreachModuleCrudTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    registered.push(tool.name);
+  }
+  for (const tool of createOutreachLeadSheetTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    registered.push(tool.name);
+  }
+  for (const tool of createOutreachContactTools(sessionId)) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }

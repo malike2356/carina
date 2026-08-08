@@ -146,6 +146,10 @@
         {
           "id": "append",
           "scope": "write"
+        },
+        {
+          "id": "create",
+          "scope": "write"
         }
       ]
     },

@@ -186,6 +186,7 @@ export function buildDiscoveryLeadSheetColumns(): DiscoverySheetColumn[] {
     { key: 'sic_codes', label: 'sic_codes', required: false, description: 'Comma-separated SIC codes' },
     { key: 'registered_office', label: 'registered_office', required: false, description: 'Registered office address' },
     { key: 'officer_names', label: 'officer_names', required: false, description: 'Comma-separated officer names' },
+    { key: 'campaign_id', label: 'campaign_id', required: false, description: 'Optional outreach campaign id' },
   ];
 }
 
@@ -225,6 +226,7 @@ export function normalizeDiscoveryLeadRow(row: DiscoveryLeadImportRow & { busine
     sic_codes: sicCodes,
     registered_office: (row.registeredOffice || '').trim(),
     officer_names: officerNames,
+    campaign_id: (row as { campaignId?: string }).campaignId?.trim?.() || '',
     phone,
   };
 }
