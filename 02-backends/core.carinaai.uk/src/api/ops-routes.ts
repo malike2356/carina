@@ -44,10 +44,14 @@ import {
   saveHumanAssistBridgeConfig,
 } from '../workers/human-assist-bridge-config.js';
 import { conversationHealthHandler } from './conversation-health.js';
+import { mountOpsAgentEngineRoutes } from './ops-agent-engine-routes.js';
+import { mountKeprixProductApi } from './keprix-product/keprix-product-api.js';
 
 export function mountOpsRoutes(app: Express): void {
   mountObservabilityRoutes(app);
   mountConversationHealthRoutes(app);
+  mountOpsAgentEngineRoutes(app);
+  mountKeprixProductApi(app);
 
   app.get('/api/ops/conversations/:workerId', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
@@ -350,7 +354,7 @@ export function mountOpsRoutes(app: Express): void {
     }
     try {
       const { pool } = await import('../memory/db.js');
-      const { upsertToolGrant } = await import('../workers/spinnable-parity-store.js');
+      const { upsertToolGrant } = await import('../workers/aiva-parity-store.js');
       const result = await pool.query(
         `SELECT id::text AS id, workspace_id::text AS workspace_id
          FROM ai_workers
@@ -684,6 +688,9 @@ export function mountOpsRoutes(app: Express): void {
         {
           activeSkillPacks: Array.isArray(req.body?.activeSkillPacks) ? req.body.activeSkillPacks.map(String) : undefined,
           channels: req.body?.channels && typeof req.body.channels === 'object' ? req.body.channels : undefined,
+          emailIngestionEnabled: typeof req.body?.emailIngestionEnabled === 'boolean'
+            ? req.body.emailIngestionEnabled
+            : undefined,
         },
         actor,
       );
