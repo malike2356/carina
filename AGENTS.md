@@ -1,5 +1,10 @@
 # Repository Guidelines
 
+
+## CRITICAL: Public GitHub hygiene (product files only)
+
+Before any commit or push to GitHub, track **only files that make this product work**. Planning docs, prompt queues, competitor research, personal notes, runtime logs, secrets, and nested foreign product trees stay workstation-local (`.gitignore` + `git rm --cached`). Canonical rule: `/opt/lampp/htdocs/verlox/shared/workspace-governance/PUBLIC-GITHUB-HYGIENE.md` and `/opt/lampp/htdocs/verlox/.cursor/rules/public-github-hygiene.mdc`. Guard: `bash /opt/lampp/htdocs/verlox/scripts/guard-public-github-hygiene.sh`.
+
 ## Writing style (hard constraint)
 
 Never use em dashes (U+2014) or en dashes (U+2013). Use `;`, `:`, `,`, `-`, parentheses, or sentence breaks instead. Never use emojis anywhere. See `/opt/lampp/htdocs/verlox/AGENTS.md` and run `python3 ../scripts/fix-writing-style.py` after bulk doc edits.
@@ -80,6 +85,8 @@ Summary for agents:
 - **Env:** set `SCOUT_ACCOUNT_PUBLIC_URL` in ops `.env` for Scout password setup links
 
 ## Production: carinaai.uk marketing site (Docker nginx)
+
+**CRITICAL (owner hard rule):** Contabo deploys must **never** leave https://carinaai.uk/ broken. After any Contabo deploy, verify HTTP 200. See `/opt/lampp/htdocs/verlox/shared/workspace-governance/CONTABO-CARINAAI-UK-NEVER-BREAK.md` and `.cursor/rules/contabo-carinaai-uk-never-break.mdc`.
 
 `https://carinaai.uk/` is served by the **Docker `nginx` container**, not host aaPanel nginx. Live files: `core.carinaai.uk/public_website/` (bind mount).
 

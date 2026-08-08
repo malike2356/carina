@@ -73,3 +73,61 @@ mobileApp/
 
 # Marketing site (separate repo)
 propreneur.co.uk/app/Console/Commands/SeedDemoDataCommand.php
+
+# ---- Public GitHub hygiene (VERLOX hard rule) ----
+# Canonical: /opt/lampp/htdocs/verlox/shared/workspace-governance/PUBLIC-GITHUB-HYGIENE.md
+# Only ship files required to build, run, test, or operate the product.
+/1st-plan/
+/01-devends/
+/01-idea/
+/02-prompts/
+/product/
+/planning/
+/notes/
+/logo-ideas/
+/apps-on-keprix/
+/scratch/
+/wip/
+/personal/
+/private/
+/research/
+**/pending_prompts/
+**/pending-prompts/
+**/archived_prompts/
+**/archived-prompts/
+**/prompts-archive/
+**/prompts-library/
+**/competitor-research/
+v3-prompts/
+/logs/
+*.ndjson
+.access/
+**/.access/
+
+# Accidental Propreneur / Laravel nest at Carina root (canonical app: propreneur/propreneur-v2/)
+/app/
+/artisan
+/bootstrap/
+/database/
+/lang/
+/resources/
+/routes/
+/tests/
+/extensions/
+/carina-cli
+/public/
+/config/
+/composer.json
+/composer.lock
+/phpunit.xml
+/phpstan.neon
+/phpstan-baseline.neon
+/.phpstan-security.neon
+/psalm.xml
+/Procfile
+/vite.config.js
+/package.json
+/package-lock.json
+/.npmrc
+/docker-compose.prod.yml
+/docker/
