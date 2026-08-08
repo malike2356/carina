@@ -1,8 +1,8 @@
-"""Carina/Aiva southbound product API for Keprix connector (CAS-03).
-
-Mounted at /api/keprix/v1/*. Default-deny for undeclared routes is enforced
-by the Keprix ProductApiConnector; this module only implements the allowlist.
-"""
+/** Carina/Aiva southbound product API for Keprix connector (CAS-03).
+ *
+ * Mounted at /api/keprix/v1/*. Default-deny for undeclared routes is enforced
+ * by the Keprix ProductApiConnector; this module only implements the allowlist.
+ */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Express, Request, Response } from 'express';

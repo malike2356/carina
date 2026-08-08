@@ -226,6 +226,9 @@ services:
       - ./docker/nginx/hireaiva.co.uk.conf:/etc/nginx/conf.d/hireaiva.co.uk.conf:ro
       - ./docker/nginx/console.labyrinthscout.com.conf:/etc/nginx/conf.d/console.labyrinthscout.com.conf:ro
       - ./docker/nginx/labyrinthscout.com.conf:/etc/nginx/conf.d/labyrinthscout.com.conf:ro
+      - ./docker/nginx/clinicomai.com.conf:/etc/nginx/conf.d/clinicomai.com.conf:ro
+      - ./docker/nginx/keprixai.com.conf:/etc/nginx/conf.d/keprixai.com.conf:ro
+      - ./docker/nginx/app.keprixai.com.conf:/etc/nginx/conf.d/app.keprixai.com.conf:ro
       - ./docker/nginx/propreneur.uk.conf:/etc/nginx/conf.d/propreneur.uk.conf:ro
       - ./docker/nginx/propcalc.uk.conf:/etc/nginx/conf.d/propcalc.uk.conf:ro
       - ./docker/nginx/verlox.uk.conf:/etc/nginx/conf.d/verlox.uk.conf:ro

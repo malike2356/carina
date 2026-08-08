@@ -1,0 +1,245 @@
+<%
+  // Do not redeclare locals (health/config/workspaces/logs/meta); that hits TDZ in EJS.
+  const healthView = (typeof locals.health === 'object' && locals.health) ? locals.health : {};
+  const configView = (typeof locals.config === 'object' && locals.config) ? locals.config : {};
+  const wsPayload = (typeof locals.workspaces === 'object' && locals.workspaces) ? locals.workspaces : {};
+  const rows = Array.isArray(wsPayload.workspaces) ? wsPayload.workspaces : [];
+  const summary = wsPayload.summary || { total: 0, on_keprix: 0, on_carina: 0 };
+  const logRows = Array.isArray(locals.logs) ? locals.logs : [];
+  const metaInfo = (typeof locals.meta === 'object' && locals.meta) ? locals.meta : {};
+  const lastDeploy = metaInfo.last_deploy || null;
+  const status = String(healthView.status || 'unknown');
+  const healthy = status === 'healthy';
+%>
+<style>
+  .ae-page { max-width: 72rem; margin: 0 auto; padding: 28px 24px 48px; }
+  .ae-header {
+    display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px;
+    padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .ae-header h1 { margin: 0; font-size: 1.25rem; font-weight: 700; color: #f8fafc; }
+  .ae-header p { margin: 4px 0 0; font-size: 0.82rem; color: #94a3b8; }
+  .ae-pill {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .ae-pill.on { background: rgba(34,197,94,0.12); color: #4ade80; border: 1px solid rgba(34,197,94,0.25); }
+  .ae-pill.off { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
+  .ae-flash { margin-bottom: 14px; padding: 12px 14px; border-radius: 8px; font-size: 0.82rem; }
+  .ae-flash.ok { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25); color: #86efac; }
+  .ae-flash.err { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+  .ae-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .ae-stat {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ae-stat-label { font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+  .ae-stat-value { margin-top: 4px; font-size: 0.95rem; font-weight: 600; color: #f1f5f9; }
+  .ae-section {
+    margin-bottom: 18px; padding: 16px 18px;
+    border-radius: 12px; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ae-section h2 { margin: 0 0 10px; font-size: 0.95rem; color: #e2e8f0; }
+  .ae-section p.hint { margin: 0 0 12px; font-size: 0.78rem; color: #94a3b8; }
+  .ae-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .ae-table th, .ae-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.06); color: #cbd5e1; }
+  .ae-table th { color: #94a3b8; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; }
+  .ae-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ae-btn {
+    appearance: none; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04);
+    color: #e2e8f0; border-radius: 8px; padding: 8px 12px; font-size: 0.78rem; cursor: pointer;
+  }
+  .ae-btn.danger { border-color: rgba(239,68,68,0.35); color: #fca5a5; }
+  .ae-btn.primary { border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+  .ae-input, .ae-select {
+    background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0;
+    border-radius: 8px; padding: 8px 10px; font-size: 0.8rem; min-width: 10rem;
+  }
+  .ae-form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: end; }
+  .ae-field label { display: block; font-size: 0.7rem; color: #94a3b8; margin-bottom: 4px; text-transform: uppercase; }
+  .ae-logs {
+    max-height: 280px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem; background: rgba(0,0,0,0.35); border-radius: 8px; padding: 10px;
+  }
+  .ae-log-line { margin-bottom: 6px; color: #cbd5e1; }
+  .ae-log-line .lvl { color: #fbbf24; margin-right: 6px; }
+  .ae-log-line .lvl.ERROR { color: #f87171; }
+  @media (max-width: 900px) {
+    .ae-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+
+<div class="ae-page">
+  <div class="ae-header">
+    <div>
+      <h1>Agent Engine</h1>
+      <p>Keprix / Carina Native health, workspace assignment, deploy, and logs.</p>
+    </div>
+    <div class="ae-pill <%= healthy ? 'on' : 'off' %>">
+      <span><%= healthy ? 'Healthy' : status %></span>
+      <span><%= healthView.engine || configView.global_engine || ';' %></span>
+    </div>
+  </div>
+
+  <% if (flashOk) { %><div class="ae-flash ok"><%= flashOk %></div><% } %>
+  <% if (flashErr) { %><div class="ae-flash err"><%= flashErr %></div><% } %>
+  <% if (healthView.error || configView.error || wsPayload.error) { %>
+    <div class="ae-flash err"><%= healthView.error || configView.error || wsPayload.error %></div>
+  <% } %>
+
+  <div class="ae-grid">
+    <div class="ae-stat">
+      <div class="ae-stat-label">Version</div>
+      <div class="ae-stat-value"><%= healthView.version || ';' %></div>
+    </div>
+    <div class="ae-stat">
+      <div class="ae-stat-label">Uptime (s)</div>
+      <div class="ae-stat-value"><%= healthView.uptime_seconds != null ? healthView.uptime_seconds : ';' %></div>
+    </div>
+    <div class="ae-stat">
+      <div class="ae-stat-label">Sessions</div>
+      <div class="ae-stat-value"><%= healthView.active_sessions != null ? healthView.active_sessions : ';' %></div>
+    </div>
+    <div class="ae-stat">
+      <div class="ae-stat-label">CPU / Memory</div>
+      <div class="ae-stat-value">
+        <%= healthView.cpu_percent != null ? healthView.cpu_percent + '%' : ';' %>
+        /
+        <%= healthView.memory_usage_mb != null ? healthView.memory_usage_mb + ' MB' : ';' %>
+      </div>
+    </div>
+  </div>
+
+  <div class="ae-section">
+    <h2>Configuration</h2>
+    <p class="hint">Global engine defaults for Aiva traffic through Keprix or Carina Native.</p>
+    <form method="post" action="<%= withV('/agent-engine/config') %>">
+      <div class="ae-form-row">
+        <div class="ae-field">
+          <label>Global engine</label>
+          <select class="ae-select" name="global_engine">
+            <option value="keprix" <%= configView.global_engine === 'keprix' ? 'selected' : '' %>>keprix</option>
+            <option value="carina" <%= configView.global_engine === 'carina' ? 'selected' : '' %>>carina</option>
+          </select>
+        </div>
+        <div class="ae-field" style="min-width: 18rem; flex: 1;">
+          <label>Keprix URL</label>
+          <input class="ae-input" style="min-width: 100%; width: 100%;" name="keprix_url" value="<%= configView.keprix_url || '' %>" placeholder="http://keprix-backend:3333" />
+        </div>
+        <div class="ae-field">
+          <label>Default model</label>
+          <input class="ae-input" name="default_model" value="<%= configView.default_model || '' %>" />
+        </div>
+        <div class="ae-field">
+          <label>Max iterations</label>
+          <input class="ae-input" name="max_iterations" type="number" min="1" max="50" value="<%= configView.max_iterations || 10 %>" />
+        </div>
+        <div class="ae-field">
+          <label>Timeout (s)</label>
+          <input class="ae-input" name="timeout_seconds" type="number" min="5" max="300" value="<%= configView.timeout_seconds || 30 %>" />
+        </div>
+        <button class="ae-btn primary" type="submit">Save config</button>
+      </div>
+      <p class="hint">Prefer Docker DNS <code>http://keprix-backend:3333</code> on Contabo (full /v1 sidecar). Scout filter: <%= configView.prompt_filter_enabled ? 'on' : 'off' %> · Kill switch: <%= configView.kill_switch_enabled ? 'on' : 'off' %>. Clinicom AI profile is separate and stays on Carina unless Clinicom OPS flips it.</p>
+    </form>
+  </div>
+
+  <div class="ae-section">
+    <h2>Workspace assignment</h2>
+    <p class="hint">
+      <%= summary.total || 0 %> workspaces · <%= summary.on_keprix || 0 %> on Keprix · <%= summary.on_carina || 0 %> on Carina
+      <% if (wsPayload.source) { %>(source: <%= wsPayload.source %>)<% } %>
+    </p>
+    <table class="ae-table">
+      <thead>
+        <tr><th>Workspace</th><th>Engine</th><th>Status</th><th>Switch</th></tr>
+      </thead>
+      <tbody>
+        <% if (!rows.length) { %>
+          <tr><td colspan="4">No workspace rows yet. Global engine still applies.</td></tr>
+        <% } %>
+        <% rows.forEach(function (row) { %>
+          <tr>
+            <td><strong><%= row.name || row.id %></strong><br><span style="color:#64748b"><%= row.id %></span></td>
+            <td><%= row.engine %></td>
+            <td><%= row.status || 'active' %></td>
+            <td>
+              <form method="post" action="<%= withV('/agent-engine/workspaces/' + encodeURIComponent(row.id) + '/switch') %>" class="ae-actions">
+                <select class="ae-select" name="engine">
+                  <option value="keprix" <%= row.engine === 'keprix' ? 'selected' : '' %>>keprix</option>
+                  <option value="carina" <%= row.engine === 'carina' ? 'selected' : '' %>>carina</option>
+                </select>
+                <button class="ae-btn" type="submit">Switch</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ae-section">
+    <h2>Deployment</h2>
+    <p class="hint">
+      <% if (lastDeploy) { %>
+        Last: <%= lastDeploy.action %> / <%= lastDeploy.status %> at <%= lastDeploy.at %>
+        <% if (lastDeploy.estimated_downtime_seconds != null) { %>(est. <%= lastDeploy.estimated_downtime_seconds %>s)<% } %>
+      <% } else { %>
+        No deploy actions recorded yet.
+      <% } %>
+    </p>
+    <div class="ae-actions">
+      <form method="post" action="<%= withV('/agent-engine/deploy') %>" onsubmit="return confirm('Restart Keprix? Estimated downtime about 5 seconds.');">
+        <input type="hidden" name="action" value="restart" />
+        <button class="ae-btn primary" type="submit">Restart engine</button>
+      </form>
+      <form method="post" action="<%= withV('/agent-engine/deploy') %>">
+        <input type="hidden" name="action" value="update" />
+        <button class="ae-btn" type="submit">Update</button>
+      </form>
+      <form method="post" action="<%= withV('/agent-engine/deploy') %>">
+        <input type="hidden" name="action" value="rollback" />
+        <button class="ae-btn" type="submit">Rollback image</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="ae-section">
+    <h2>Kill switch</h2>
+    <p class="hint">Use Scout kill switch for live workspace suspension. This page alerts when kills are recorded.</p>
+    <div class="ae-actions">
+      <a class="ae-btn" href="<%= withV('/security/killswitch') %>">Open kill switch panel</a>
+      <a class="ae-btn" href="<%= withV('/scout') %>">Scout dashboard</a>
+    </div>
+  </div>
+
+  <div class="ae-section">
+    <h2>Emergency rollback</h2>
+    <p class="hint">Switch all workspaces to Carina Native. Type SWITCH_ALL_TO_CARINA to confirm.</p>
+    <form method="post" action="<%= withV('/agent-engine/emergency-rollback') %>" class="ae-form-row">
+      <div class="ae-field">
+        <label>Confirmation</label>
+        <input class="ae-input" name="confirm" placeholder="SWITCH_ALL_TO_CARINA" autocomplete="off" />
+      </div>
+      <button class="ae-btn danger" type="submit">Switch all to Carina Native</button>
+    </form>
+  </div>
+
+  <div class="ae-section">
+    <h2>Logs</h2>
+    <div class="ae-logs">
+      <% if (!logRows.length) { %>
+        <div class="ae-log-line">No log entries yet.</div>
+      <% } %>
+      <% logRows.forEach(function (line) { %>
+        <div class="ae-log-line">
+          <span class="lvl <%= line.level %>"><%= line.level || 'INFO' %></span>
+          <span><%= line.timestamp || '' %></span>
+          <% if (line.workspace_id) { %><span> [<%= line.workspace_id %>] </span><% } %>
+          <span> <%= line.message || '' %></span>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+</div>

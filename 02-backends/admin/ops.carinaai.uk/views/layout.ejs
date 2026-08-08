@@ -91,10 +91,11 @@
           </div>
         </details>
 
-        <details class="nav-group"<%= navOpen(['/ai-control', '/llm-providers', '/ai-usage', '/usage-gates', '/embeddings', '/ai-platform', '/admin/agent-tools', '/agent-tools', '/mcp', '/standing-orders', '/ops-assistant']) ? ' open' : '' %>>
+        <details class="nav-group"<%= navOpen(['/ai-control', '/agent-engine', '/llm-providers', '/ai-usage', '/usage-gates', '/embeddings', '/ai-platform', '/admin/agent-tools', '/agent-tools', '/mcp', '/standing-orders', '/ops-assistant']) ? ' open' : '' %>>
           <summary>AI</summary>
           <div class="nav-group-body">
             <a href="<%= withV('/ai-control') %>" class="nav-link<%= ['/ai-control','/usage-gates','/embeddings'].some(function(p){ return ap === p || ap.startsWith(p + '/'); }) || ap === '/ai-platform/analytics' || ap === '/ai-platform/credits' || ap === '/ai-platform/margins' ? ' active' : '' %>">Control center</a>
+            <a href="<%= withV('/agent-engine') %>" class="nav-link<%= ap === '/agent-engine' || ap.startsWith('/agent-engine/') ? ' active' : '' %>">Agent engine</a>
             <a href="<%= withV('/llm-providers') %>" class="nav-link<%= ap.startsWith('/llm-providers') ? ' active' : '' %>">LLM Providers</a>
             <a href="<%= withV('/ai-usage') %>" class="nav-link<%= ap.startsWith('/ai-usage') ? ' active' : '' %>">Usage ledger</a>
             <a href="<%= withV('/ai-platform') %>" class="nav-link<%= ap.startsWith('/ai-platform') && ap !== '/ai-platform/analytics' && ap !== '/ai-platform/credits' && ap !== '/ai-platform/margins' ? ' active' : '' %>">Platform</a>

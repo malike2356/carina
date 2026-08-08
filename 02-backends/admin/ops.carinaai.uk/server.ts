@@ -49,6 +49,7 @@ import { billingConfigRouter } from './routes/billing-config.js';
 import { usageGatesRouter } from './routes/usage-gates.js';
 import { googleOAuthRouter } from './routes/google-oauth.js';
 import { embeddingsRouter } from './routes/embeddings.js';
+import { agentEngineRouter } from './routes/agent-engine.js';
 import { llmProvidersRouter } from './routes/llm-providers.js';
 import { humanAssistBridgeRouter } from './routes/human-assist-bridge.js';
 import { hostedEmailRouter } from './routes/hosted-email.js';
@@ -145,7 +146,7 @@ app.use(
 );
 
 app.use((req, res, next) => {
-  const uiVersion = process.env.UI_VERSION ?? '20260730k';
+  const uiVersion = process.env.UI_VERSION ?? '20260808b';
   res.locals.carinaApiUrl = CARINA_BASE;
   res.locals.webUiUrl = process.env.CARINA_HOSTED_APP_URL ?? 'https://app.carinaai.uk';
   res.locals.uiVersion = uiVersion;
@@ -183,6 +184,7 @@ app.use('/skills', skillsRouter);
 app.use('/packs', packsRouter);
 app.use('/rag', ragRouter);
 app.use('/embeddings', embeddingsRouter);
+app.use('/agent-engine', agentEngineRouter);
 app.use('/llm-providers', llmProvidersRouter);
 app.use('/chat', chatRouter);
 app.use('/projects', projectsRouter);
