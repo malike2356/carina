@@ -123,6 +123,24 @@ export function updateSequence(
   return next;
 }
 
+export function deleteSequence(workspaceId: string, sequenceId: string): boolean {
+  if (!getSequence(workspaceId, sequenceId)) return false;
+  mutateOutreachStore((store) => {
+    store.sequences = store.sequences.filter(
+      (sequence) => !(sequence.workspaceId === workspaceId && sequence.id === sequenceId),
+    );
+    store.enrollments = store.enrollments.filter(
+      (enrollment) => !(enrollment.workspaceId === workspaceId && enrollment.sequenceId === sequenceId),
+    );
+    store.campaigns = store.campaigns.map((campaign) => (
+      campaign.workspaceId === workspaceId && campaign.defaultSequenceId === sequenceId
+        ? { ...campaign, defaultSequenceId: undefined, updatedAt: nowIso() }
+        : campaign
+    ));
+  });
+  return true;
+}
+
 export function defaultColdEmailSteps(): Array<Partial<SequenceStep> & { subject: string; body: string }> {
   return [
     {

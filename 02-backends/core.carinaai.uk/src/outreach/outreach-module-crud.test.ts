@@ -16,6 +16,7 @@ import {
 import { resetOutreachStoreCache } from '../outreach/store.js';
 import { createOutreachModuleCrudTools } from '../tools/outreach-module-crud-tools.js';
 import { createOutreachLeadSheetTools } from '../tools/outreach-lead-sheet-tools.js';
+import { clearWorkerSessionContext, setWorkerSessionContext } from '../workers/worker-session-context.js';
 
 describe('outreach module CRUD + lead sheets + contact plan', () => {
   let prevHome: string | undefined;
@@ -26,21 +27,29 @@ describe('outreach module CRUD + lead sheets + contact plan', () => {
     tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'aiva-outreach-mod-'));
     process.env.CARINA_HOME = tmpHome;
     resetOutreachStoreCache();
+    setWorkerSessionContext('sess', {
+      worker: { id: 'worker-1', workspaceId: 'ws1' } as import('../types/index.js').Worker,
+      personaPrompt: 'Test worker',
+    });
   });
 
   afterEach(() => {
     if (prevHome === undefined) delete process.env.CARINA_HOME;
     else process.env.CARINA_HOME = prevHome;
     resetOutreachStoreCache();
+    clearWorkerSessionContext('sess');
     fs.rmSync(tmpHome, { recursive: true, force: true });
   });
 
   it('exposes campaign sequence enrollment and list tools', () => {
     const names = createOutreachModuleCrudTools('sess').map((t) => t.name);
     expect(names).toContain('outreach-campaigns-create');
+    expect(names).toContain('outreach-campaigns-delete');
     expect(names).toContain('outreach-sequences-create');
+    expect(names).toContain('outreach-sequences-delete');
     expect(names).toContain('outreach-enrollments-enroll');
     expect(names).toContain('outreach-lists-create');
+    expect(names).toContain('outreach-lists-delete');
   });
 
   it('creates and syncs a workspace lead sheet without duplicating emails', async () => {

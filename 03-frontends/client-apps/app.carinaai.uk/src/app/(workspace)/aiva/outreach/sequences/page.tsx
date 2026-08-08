@@ -199,6 +199,17 @@ export default function OutreachSequencesPage() {
     load();
   }, [drafts, load, push]);
 
+  const deleteSequence = useCallback(async (sequence: OutreachSequence) => {
+    if (!window.confirm(`Delete sequence "${sequence.name}"? Its enrollments will also be removed.`)) return;
+    const res = await fetch(`/api/aiva/outreach/sequences/${sequence.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      push('Could not delete sequence', 'error');
+      return;
+    }
+    push('Sequence deleted', 'success');
+    load();
+  }, [load, push]);
+
   const createSequence = useCallback(async () => {
     const res = await fetch('/api/aiva/outreach/sequences', {
       method: 'POST',
@@ -416,6 +427,9 @@ export default function OutreachSequencesPage() {
                 </Button>
                 <Button size="sm" onClick={() => void saveSequence(sequence.id)}>
                   Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => void deleteSequence(sequence)}>
+                  Delete
                 </Button>
               </div>
             </div>

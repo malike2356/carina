@@ -1,17 +1,10 @@
 import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
+import { resolveOutreachWorkspaceId as resolveWorkspaceId } from './outreach-workspace.js';
 import { planContactLeads } from '../outreach/contact-leads.js';
 import { enrollLead } from '../outreach/sequence-engine.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
 import type { PipelineStatus } from '../outreach/types.js';
-
-function resolveWorkspaceId(sessionId: string, explicit?: unknown): string {
-  const ctx = getWorkerSessionContext(sessionId);
-  const workspaceId = typeof explicit === 'string' ? explicit.trim() : '';
-  if (workspaceId) return workspaceId;
-  if (ctx?.worker.workspaceId) return ctx.worker.workspaceId;
-  return '';
-}
 
 export function createOutreachContactTools(sessionId: string): Tool[] {
   return [

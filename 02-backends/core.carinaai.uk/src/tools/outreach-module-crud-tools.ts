@@ -1,10 +1,13 @@
 import type { Tool } from '../types/index.js';
-import { getWorkerSessionContext } from '../workers/worker-session-context.js';
+import { resolveOutreachWorkspaceId as resolveWorkspaceId } from './outreach-workspace.js';
 import {
   addLeadsToList,
   createCampaign,
   createLeadList,
   createSequence,
+  deleteCampaign,
+  deleteLeadList,
+  deleteSequence,
   enrollLead,
   listCampaigns,
   listEnrollments,
@@ -15,14 +18,6 @@ import {
   updateLeadList,
   updateSequence,
 } from '../outreach/index.js';
-
-function resolveWorkspaceId(sessionId: string, explicit?: unknown): string {
-  const ctx = getWorkerSessionContext(sessionId);
-  const workspaceId = typeof explicit === 'string' ? explicit.trim() : '';
-  if (workspaceId) return workspaceId;
-  if (ctx?.worker.workspaceId) return ctx.worker.workspaceId;
-  return '';
-}
 
 export function createOutreachModuleCrudTools(sessionId: string): Tool[] {
   return [
@@ -67,6 +62,25 @@ export function createOutreachModuleCrudTools(sessionId: string): Tool[] {
           requireApproval: typeof params.requireApproval === 'boolean' ? params.requireApproval : true,
         });
         return { ok: true, id: campaign.id, data: { campaign } };
+      },
+    },
+    {
+      name: 'outreach-campaigns-delete',
+      description: 'Delete an outreach campaign and unlink it from workspace leads and enrollments.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          campaignId: { type: 'string' },
+        },
+        required: ['campaignId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const campaignId = String(params.campaignId ?? '').trim();
+        if (!workspaceId || !campaignId) return { ok: false, error: 'workspaceId and campaignId required' };
+        if (!deleteCampaign(workspaceId, campaignId)) return { ok: false, error: 'Campaign not found' };
+        return { ok: true, data: { deleted: campaignId } };
       },
     },
     {
@@ -150,6 +164,25 @@ export function createOutreachModuleCrudTools(sessionId: string): Tool[] {
             : undefined,
         });
         return { ok: true, id: sequence.id, data: { sequence } };
+      },
+    },
+    {
+      name: 'outreach-sequences-delete',
+      description: 'Delete an outreach sequence and its enrollments.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          sequenceId: { type: 'string' },
+        },
+        required: ['sequenceId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const sequenceId = String(params.sequenceId ?? '').trim();
+        if (!workspaceId || !sequenceId) return { ok: false, error: 'workspaceId and sequenceId required' };
+        if (!deleteSequence(workspaceId, sequenceId)) return { ok: false, error: 'Sequence not found' };
+        return { ok: true, data: { deleted: sequenceId } };
       },
     },
     {
@@ -310,6 +343,25 @@ export function createOutreachModuleCrudTools(sessionId: string): Tool[] {
           leadIds: Array.isArray(params.leadIds) ? params.leadIds.map(String) : undefined,
         });
         return { ok: true, id: list.id, data: { list } };
+      },
+    },
+    {
+      name: 'outreach-lists-delete',
+      description: 'Delete a CRM lead list without deleting its leads.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          listId: { type: 'string' },
+        },
+        required: ['listId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const listId = String(params.listId ?? '').trim();
+        if (!workspaceId || !listId) return { ok: false, error: 'workspaceId and listId required' };
+        if (!deleteLeadList(workspaceId, listId)) return { ok: false, error: 'List not found' };
+        return { ok: true, data: { deleted: listId } };
       },
     },
     {

@@ -1,5 +1,5 @@
 import type { Tool } from '../types/index.js';
-import { getWorkerSessionContext } from '../workers/worker-session-context.js';
+import { resolveOutreachWorkspaceId } from './outreach-workspace.js';
 import {
   createLead,
   deleteLead,
@@ -10,14 +10,6 @@ import {
 } from '../outreach/leads.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
 import type { LeadSource, PipelineStatus } from '../outreach/types.js';
-
-function resolveWorkspaceId(sessionId: string, explicit?: unknown): string {
-  const ctx = getWorkerSessionContext(sessionId);
-  const workspaceId = typeof explicit === 'string' ? explicit.trim() : '';
-  if (workspaceId) return workspaceId;
-  if (ctx?.worker.workspaceId) return ctx.worker.workspaceId;
-  return '';
-}
 
 export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
   return [
@@ -37,7 +29,7 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         },
       },
       execute: async (params) => {
-        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
         if (!workspaceId) return { ok: false, error: 'workspaceId required' };
         const status = typeof params.status === 'string' && isPipelineStatus(params.status)
           ? params.status
@@ -89,7 +81,7 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         required: ['leadId'],
       },
       execute: async (params) => {
-        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
         const leadId = String(params.leadId ?? '').trim();
         if (!workspaceId || !leadId) return { ok: false, error: 'workspaceId and leadId required' };
         const lead = getLead(workspaceId, leadId);
@@ -116,7 +108,7 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         required: ['name'],
       },
       execute: async (params) => {
-        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
         const name = String(params.name ?? '').trim();
         if (!workspaceId || !name) return { ok: false, error: 'workspaceId and name required' };
         const result = createLead({
@@ -159,7 +151,7 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         required: ['leadId'],
       },
       execute: async (params) => {
-        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
         const leadId = String(params.leadId ?? '').trim();
         if (!workspaceId || !leadId) return { ok: false, error: 'workspaceId and leadId required' };
         const status = typeof params.status === 'string' && isPipelineStatus(params.status)
@@ -191,7 +183,7 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         required: ['leadId'],
       },
       execute: async (params) => {
-        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
         const leadId = String(params.leadId ?? '').trim();
         if (!workspaceId || !leadId) return { ok: false, error: 'workspaceId and leadId required' };
         const ok = deleteLead(workspaceId, leadId);
@@ -214,7 +206,7 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         required: ['rows'],
       },
       execute: async (params) => {
-        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
         if (!workspaceId) return { ok: false, error: 'workspaceId required' };
         const rows = Array.isArray(params.rows) ? params.rows : [];
         if (rows.length === 0) return { ok: false, error: 'rows required' };

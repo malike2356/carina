@@ -6,7 +6,10 @@ import {
   createLead,
   createLeadList,
   createSequence,
+  deleteCampaign,
   deleteLead,
+  deleteLeadList,
+  deleteSequence,
   ensureOutreachDefaults,
   enrollLead,
   getLead,
@@ -507,6 +510,15 @@ aivaOutreachRouter.patch('/campaigns/:campaignId', (req: OutreachRequest, res: R
   res.json({ campaign });
 });
 
+aivaOutreachRouter.delete('/campaigns/:campaignId', (req: OutreachRequest, res: Response) => {
+  const campaignId = routeParam(req.params.campaignId);
+  if (!deleteCampaign(req.workspaceId!, campaignId)) {
+    res.status(404).json({ error: 'Campaign not found' });
+    return;
+  }
+  res.json({ deleted: campaignId });
+});
+
 aivaOutreachRouter.get('/lists', (req: OutreachRequest, res: Response) => {
   res.json({ lists: listLeadLists(req.workspaceId!) });
 });
@@ -539,6 +551,15 @@ aivaOutreachRouter.patch('/lists/:listId', (req: OutreachRequest, res: Response)
     return;
   }
   res.json({ list });
+});
+
+aivaOutreachRouter.delete('/lists/:listId', (req: OutreachRequest, res: Response) => {
+  const listId = routeParam(req.params.listId);
+  if (!deleteLeadList(req.workspaceId!, listId)) {
+    res.status(404).json({ error: 'List not found' });
+    return;
+  }
+  res.json({ deleted: listId });
 });
 
 aivaOutreachRouter.post('/lists/:listId/leads', (req: OutreachRequest, res: Response) => {
@@ -590,6 +611,15 @@ aivaOutreachRouter.patch('/sequences/:sequenceId', (req: OutreachRequest, res: R
     return;
   }
   res.json({ sequence });
+});
+
+aivaOutreachRouter.delete('/sequences/:sequenceId', (req: OutreachRequest, res: Response) => {
+  const sequenceId = routeParam(req.params.sequenceId);
+  if (!deleteSequence(req.workspaceId!, sequenceId)) {
+    res.status(404).json({ error: 'Sequence not found' });
+    return;
+  }
+  res.json({ deleted: sequenceId });
 });
 
 aivaOutreachRouter.get('/enrollments', (req: OutreachRequest, res: Response) => {

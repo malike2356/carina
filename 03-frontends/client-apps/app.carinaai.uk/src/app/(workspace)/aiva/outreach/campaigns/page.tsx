@@ -162,6 +162,17 @@ export default function OutreachCampaignsPage() {
     load();
   }, [load, push]);
 
+  const deleteCampaign = useCallback(async (campaign: OutreachCampaign) => {
+    if (!window.confirm(`Delete campaign "${campaign.name}"? Leads remain in CRM and will be unlinked.`)) return;
+    const res = await fetch(`/api/aiva/outreach/campaigns/${campaign.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      push('Could not delete campaign', 'error');
+      return;
+    }
+    push('Campaign deleted', 'success');
+    load();
+  }, [load, push]);
+
   const campaignCount = useMemo(() => campaigns.length, [campaigns.length]);
 
   return (
@@ -214,6 +225,9 @@ export default function OutreachCampaignsPage() {
                     </Button>
                     <Button size="sm" onClick={() => void saveCampaign(campaign.id)}>
                       Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void deleteCampaign(campaign)}>
+                      Delete
                     </Button>
                   </div>
                 </div>

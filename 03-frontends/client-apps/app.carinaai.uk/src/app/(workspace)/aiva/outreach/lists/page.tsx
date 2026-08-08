@@ -117,6 +117,17 @@ export default function OutreachListsPage() {
     load();
   }, [drafts, load, push]);
 
+  const deleteList = useCallback(async (list: LeadList) => {
+    if (!window.confirm(`Delete list "${list.name}"? Leads remain in CRM.`)) return;
+    const res = await fetch(`/api/aiva/outreach/lists/${list.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      push('Could not delete list', 'error');
+      return;
+    }
+    push('List deleted', 'success');
+    load();
+  }, [load, push]);
+
   const addRecentLeads = useCallback((listId: string) => {
     setDrafts((current) => {
       const draft = current[listId];
@@ -182,6 +193,9 @@ export default function OutreachListsPage() {
                     </Button>
                     <Button size="sm" onClick={() => void saveList(list.id)}>
                       Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => void deleteList(list)}>
+                      Delete
                     </Button>
                   </div>
                 </div>

@@ -344,6 +344,26 @@ export function updateCampaign(
   return campaign;
 }
 
+export function deleteCampaign(workspaceId: string, campaignId: string): boolean {
+  if (!getCampaign(workspaceId, campaignId)) return false;
+  mutateOutreachStore((store) => {
+    store.campaigns = store.campaigns.filter(
+      (campaign) => !(campaign.workspaceId === workspaceId && campaign.id === campaignId),
+    );
+    store.leads = store.leads.map((lead) => (
+      lead.workspaceId === workspaceId && lead.campaignId === campaignId
+        ? { ...lead, campaignId: undefined, updatedAt: nowIso() }
+        : lead
+    ));
+    store.enrollments = store.enrollments.map((enrollment) => (
+      enrollment.workspaceId === workspaceId && enrollment.campaignId === campaignId
+        ? { ...enrollment, campaignId: undefined, updatedAt: nowIso() }
+        : enrollment
+    ));
+  });
+  return true;
+}
+
 export function listLeadLists(workspaceId: string): LeadList[] {
   return loadOutreachStore().lists.filter((l) => l.workspaceId === workspaceId);
 }
@@ -397,6 +417,17 @@ export function updateLeadList(
     if (idx >= 0) s.lists[idx] = list;
   });
   return list;
+}
+
+export function deleteLeadList(workspaceId: string, listId: string): boolean {
+  const exists = listLeadLists(workspaceId).some((list) => list.id === listId);
+  if (!exists) return false;
+  mutateOutreachStore((store) => {
+    store.lists = store.lists.filter(
+      (list) => !(list.workspaceId === workspaceId && list.id === listId),
+    );
+  });
+  return true;
 }
 
 export function addLeadsToList(workspaceId: string, listId: string, leadIds: string[]): LeadList | null {

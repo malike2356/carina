@@ -1,15 +1,8 @@
 import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
+import { resolveOutreachWorkspaceId as resolveWorkspaceId } from './outreach-workspace.js';
 import { buildOutreachCadenceSummary, validateCampaignFromMailbox } from '../outreach/cadence.js';
 import { listCampaigns } from '../outreach/leads.js';
-
-function resolveWorkspaceId(sessionId: string, explicit?: unknown): string {
-  const ctx = getWorkerSessionContext(sessionId);
-  const workspaceId = typeof explicit === 'string' ? explicit.trim() : '';
-  if (workspaceId) return workspaceId;
-  if (ctx?.worker.workspaceId) return ctx.worker.workspaceId;
-  return '';
-}
 
 export function createOutreachCadenceTools(sessionId: string): Tool[] {
   return [
@@ -93,4 +86,3 @@ export function createOutreachCadenceTools(sessionId: string): Tool[] {
     },
   ];
 }
-
