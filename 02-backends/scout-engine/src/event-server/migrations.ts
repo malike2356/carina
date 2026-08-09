@@ -200,5 +200,19 @@ export async function runMigrations(client: pg.PoolClient): Promise<void> {
     )
   `);
 
-  console.log('[scout:migrations] Schema ready (events, alerts, kill switch, channel control)');
+  // Repository secret scanning (account-scoped for live Carina Scout / OPS).
+  // Requires accounts (+ findings for optional mirror). Skip cleanly if accounts missing.
+  const accounts = await client.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'accounts'
+     ) AS exists`,
+  );
+  if (accounts.rows[0]?.exists) {
+    const { ensureRepositorySecretSchema } = await import('../secret-scanning/migrate.js');
+    await ensureRepositorySecretSchema(client);
+    console.log('[scout:migrations] Schema ready (events, alerts, kill switch, channel control, repo secrets)');
+  } else {
+    console.log('[scout:migrations] Schema ready (events, alerts, kill switch, channel control)');
+  }
 }

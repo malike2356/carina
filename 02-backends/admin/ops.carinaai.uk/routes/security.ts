@@ -148,6 +148,9 @@ securityRouter.get('/threats',    (_req, res) => { res.render('security/threats'
 securityRouter.get('/incidents',  (_req, res) => { res.render('security/incidents',  { title: 'Incidents' }); });
 securityRouter.get('/anomalies',  (_req, res) => { res.render('security/anomalies',  { title: 'Anomalies' }); });
 securityRouter.get('/findings',   (_req, res) => { res.render('security/findings',   { title: 'Findings' }); });
+securityRouter.get('/repository-security', (_req, res) => {
+  res.render('security/repository-security', { title: 'Repository Security' });
+});
 securityRouter.get('/attack-surface', (_req, res) => { res.render('security/attack-surface', { title: 'Attack Surface' }); });
 securityRouter.get('/honeypots',  (_req, res) => { res.render('security/honeypots',  { title: 'Honeypots' }); });
 securityRouter.get('/tripwires',  (_req, res) => { res.render('security/tripwires',  { title: 'Tripwires' }); });

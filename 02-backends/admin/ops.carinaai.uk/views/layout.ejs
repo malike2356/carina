@@ -118,13 +118,14 @@
           </div>
         </details>
 
-        <details class="nav-group threats"<%= navOpen(['/security/threats', '/security/incidents', '/security/anomalies', '/security/findings', '/security/attack-surface']) ? ' open' : '' %>>
+        <details class="nav-group threats"<%= navOpen(['/security/threats', '/security/incidents', '/security/anomalies', '/security/findings', '/security/repository-security', '/security/attack-surface']) ? ' open' : '' %>>
           <summary>Threats</summary>
           <div class="nav-group-body">
             <a href="<%= withV('/security/threats') %>" class="nav-link<%= ap === '/security/threats' ? ' active' : '' %>">Live Threats</a>
             <a href="<%= withV('/security/incidents') %>" class="nav-link<%= ap === '/security/incidents' ? ' active' : '' %>">Incidents</a>
             <a href="<%= withV('/security/anomalies') %>" class="nav-link<%= ap === '/security/anomalies' ? ' active' : '' %>">Anomalies</a>
             <a href="<%= withV('/security/findings') %>" class="nav-link<%= ap === '/security/findings' ? ' active' : '' %>">Findings</a>
+            <a href="<%= withV('/security/repository-security') %>" class="nav-link<%= ap === '/security/repository-security' ? ' active' : '' %>">Repository Security</a>
             <a href="<%= withV('/security/attack-surface') %>" class="nav-link<%= ap === '/security/attack-surface' ? ' active' : '' %>">Attack Surface</a>
           </div>
         </details>

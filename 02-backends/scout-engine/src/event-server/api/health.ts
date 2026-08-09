@@ -4,6 +4,7 @@
 import { Router, type Request, type Response } from 'express';
 import { pool } from '../db.js';
 import { getRedis } from '../redis.js';
+import { getSecretScanHealth } from '../../secret-scanning/health.js';
 
 export const healthRouter = Router();
 
@@ -34,6 +35,7 @@ healthRouter.get('/', async (_req: Request, res: Response) => {
   }
 
   const allOk = Object.values(checks).every((v) => v === 'ok' || v === 'not_connected');
+  const secretScan = await getSecretScanHealth().catch(() => ({ tables_ready: false }));
 
   res.status(allOk ? 200 : 503).json({
     status: allOk ? 'healthy' : 'degraded',
@@ -44,5 +46,6 @@ healthRouter.get('/', async (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     version: '1.0.0',
     checks,
+    repository_secret_scanning: secretScan,
   });
 });

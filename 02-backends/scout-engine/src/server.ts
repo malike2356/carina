@@ -18,6 +18,7 @@ import { createInternalControlRouter } from './api/internal/control.js';
 import { getControlService } from './messaging/control-defaults.js';
 import { telegramWebhookRouter } from './api/webhooks/telegram.js';
 import { whatsappWebhookRouter } from './api/webhooks/whatsapp.js';
+import { secretScanningRouter } from './secret-scanning/routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,9 +27,9 @@ const app = express();
 // Trust one proxy layer (for correct req.ip behind nginx)
 app.set('trust proxy', 1);
 
-// Body parsing
+// Body parsing (256kb allows repository secret-scan ingest envelopes)
 app.use(express.json({
-  limit: '64kb',
+  limit: '256kb',
   verify: (req, _res, buf) => {
     if (req.url?.startsWith('/webhooks/whatsapp')) {
       (req as express.Request & { rawBody?: string }).rawBody = buf.toString('utf8');
@@ -62,6 +63,9 @@ app.use('/webhooks/whatsapp', whatsappWebhookRouter);
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/events', requireApiKey, eventsRouter);
 app.use('/api/v1/events/stream', sseRouter); // no auth for SSE; local network
+app.use('/api/v1', requireApiKey, secretScanningRouter);
+// Alias for shared/secrets delivery (posts /v1/repository-secret-scans)
+app.use('/v1', requireApiKey, secretScanningRouter);
 
 // Root health check
 app.get('/', (_req, res) => {

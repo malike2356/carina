@@ -1,0 +1,136 @@
+<% title = 'Repository Security' %>
+<div class="ops-page">
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Repository Security</div>
+    <div class="ops-page-sub">Redacted repository secret findings ingested from local scanners. Credential values never leave the workstation.</div>
+  </div>
+  <button onclick="loadRepoSecurity()" class="ops-btn ops-btn-green" style="padding:5px 12px;">Refresh</button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;">
+  <div class="ops-card"><div class="ops-card-label">Open</div><div class="ops-card-val cyan" id="rs-open">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Critical</div><div class="ops-card-val red" id="rs-critical">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">High</div><div class="ops-card-val amber" id="rs-high">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Connectors</div><div class="ops-card-val green" id="rs-connectors">-</div></div>
+  <div class="ops-card"><div class="ops-card-label">Last scan</div><div class="ops-card-val" id="rs-last" style="font-size:14px;">-</div></div>
+</div>
+
+<div class="ops-card" style="margin-bottom:16px;">
+  <div class="ops-section-title">Repositories</div>
+  <div id="rs-conn-loading" class="ops-loading">Loading connectors...</div>
+  <table class="ops-table" id="rs-conn-table" style="display:none;">
+    <thead><tr><th>Alias</th><th>Product</th><th>Status</th><th>Last ingest</th></tr></thead>
+    <tbody id="rs-conn-body"></tbody>
+  </table>
+  <div id="rs-conn-empty" class="ops-empty" style="display:none;">No repository connectors yet. Deliver scans with shared/secrets/scout_delivery.py.</div>
+</div>
+
+<div class="ops-card" style="margin-bottom:16px;">
+  <div class="ops-section-title">Open findings</div>
+  <div id="rs-find-loading" class="ops-loading">Loading findings...</div>
+  <table class="ops-table" id="rs-find-table" style="display:none;">
+    <thead><tr><th>Severity</th><th>Rule</th><th>Path</th><th>Repo</th><th>Status</th><th>Seen</th><th></th></tr></thead>
+    <tbody id="rs-find-body"></tbody>
+  </table>
+  <div id="rs-find-empty" class="ops-empty" style="display:none;">No open repository secret findings.</div>
+</div>
+
+<div class="ops-card">
+  <div class="ops-section-title">Recent scans</div>
+  <div id="rs-scan-loading" class="ops-loading">Loading scans...</div>
+  <table class="ops-table" id="rs-scan-table" style="display:none;">
+    <thead><tr><th>When</th><th>Repo</th><th>Mode</th><th>Status</th><th>Accepted</th><th>Deduped</th></tr></thead>
+    <tbody id="rs-scan-body"></tbody>
+  </table>
+  <div id="rs-scan-empty" class="ops-empty" style="display:none;">No scans recorded.</div>
+</div>
+
+<script>
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function api(path) {
+  return fetch('/scout-api' + path, { credentials: 'same-origin' }).then(function(r) {
+    if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('HTTP ' + r.status)); });
+    return r.json();
+  });
+}
+function setRemediation(id, status) {
+  fetch('/scout-api/api/v1/repository-secret-findings/' + encodeURIComponent(id) + '/remediation', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: status, reason: 'ops ui' })
+  }).then(function() { loadRepoSecurity(); }).catch(function(e) { alert(e.message || 'Update failed'); });
+}
+function loadRepoSecurity() {
+  api('/api/v1/repository-security/posture').then(function(d) {
+    var p = d.posture || {};
+    var sev = p.open_by_severity || {};
+    document.getElementById('rs-open').textContent = p.open_total != null ? p.open_total : '-';
+    document.getElementById('rs-critical').textContent = sev.critical != null ? sev.critical : 0;
+    document.getElementById('rs-high').textContent = sev.high != null ? sev.high : 0;
+    document.getElementById('rs-connectors').textContent = p.active_connectors != null ? p.active_connectors : 0;
+    document.getElementById('rs-last').textContent = p.last_scan_at ? new Date(p.last_scan_at).toLocaleString() : 'never';
+  }).catch(function() {
+    document.getElementById('rs-open').textContent = '-';
+  });
+
+  api('/api/v1/repository-connectors').then(function(d) {
+    var items = d.connectors || [];
+    document.getElementById('rs-conn-loading').style.display = 'none';
+    if (!items.length) { document.getElementById('rs-conn-empty').style.display = ''; return; }
+    document.getElementById('rs-conn-table').style.display = '';
+    document.getElementById('rs-conn-body').innerHTML = items.map(function(c) {
+      return '<tr><td>' + esc(c.repository_alias) + '</td><td>' + esc(c.product || '-') + '</td><td>' +
+        esc(c.status) + '</td><td>' + (c.last_ingest_at ? new Date(c.last_ingest_at).toLocaleString() : '-') + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    document.getElementById('rs-conn-loading').style.display = 'none';
+    document.getElementById('rs-conn-empty').style.display = '';
+    document.getElementById('rs-conn-empty').textContent = 'Connectors endpoint unavailable.';
+  });
+
+  api('/api/v1/repository-secret-findings?status=open&limit=100').then(function(d) {
+    var items = d.findings || [];
+    document.getElementById('rs-find-loading').style.display = 'none';
+    if (!items.length) { document.getElementById('rs-find-empty').style.display = ''; return; }
+    document.getElementById('rs-find-table').style.display = '';
+    var clrMap = { critical: 'ops-badge-red', high: 'ops-badge-amber', medium: 'ops-badge-cyan', low: 'ops-badge-green', info: 'ops-badge-gray' };
+    document.getElementById('rs-find-body').innerHTML = items.map(function(f) {
+      var sev = (f.severity || 'low').toLowerCase();
+      var clr = clrMap[sev] || 'ops-badge-gray';
+      return '<tr><td><span class="ops-badge ' + clr + '">' + esc(sev) + '</span></td><td>' + esc(f.rule_id) +
+        '</td><td>' + esc(f.relative_path || '-') + '</td><td>' + esc(f.repository_alias || '-') +
+        '</td><td>' + esc(f.remediation_status) + '</td><td>' + esc(f.seen_count) +
+        '</td><td><button class="ops-btn" style="padding:2px 8px;" onclick="setRemediation(\'' + esc(f.id) + '\',\'acknowledged\')">Ack</button> ' +
+        '<button class="ops-btn" style="padding:2px 8px;" onclick="setRemediation(\'' + esc(f.id) + '\',\'resolved\')">Resolve</button></td></tr>';
+    }).join('');
+  }).catch(function() {
+    document.getElementById('rs-find-loading').style.display = 'none';
+    document.getElementById('rs-find-empty').style.display = '';
+    document.getElementById('rs-find-empty').textContent = 'Findings endpoint unavailable.';
+  });
+
+  api('/api/v1/repository-secret-scans?limit=25').then(function(d) {
+    var items = d.scans || [];
+    document.getElementById('rs-scan-loading').style.display = 'none';
+    if (!items.length) { document.getElementById('rs-scan-empty').style.display = ''; return; }
+    document.getElementById('rs-scan-table').style.display = '';
+    document.getElementById('rs-scan-body').innerHTML = items.map(function(s) {
+      return '<tr><td>' + (s.observed_at ? new Date(s.observed_at).toLocaleString() : '-') + '</td><td>' +
+        esc(s.repository_alias || '-') + '</td><td>' + esc(s.mode) + '</td><td>' + esc(s.status) +
+        '</td><td>' + esc(s.findings_accepted) + '</td><td>' + esc(s.findings_deduped) + '</td></tr>';
+    }).join('');
+  }).catch(function() {
+    document.getElementById('rs-scan-loading').style.display = 'none';
+    document.getElementById('rs-scan-empty').style.display = '';
+    document.getElementById('rs-scan-empty').textContent = 'Scans endpoint unavailable.';
+  });
+}
+loadRepoSecurity();
+</script>
+</div>
