@@ -58,10 +58,13 @@ if [[ -f .env.ops.runtime ]]; then
 fi
 if [[ -f .env.cloud.runtime ]]; then
   python3 docker/scripts/sync-cloud-env.py
-elif [[ -f .env.docker.runtime ]]; then
-  echo "WARN: .env.cloud.runtime missing; creating from sync-cloud-env defaults." >&2
-  touch .env.cloud.runtime
+elif [[ -f "${CARINA_CLOUD_CONTEXT:-/home/malike/apps/app.carinaai.uk}/.env" ]]; then
+  echo "WARN: .env.cloud.runtime missing; seeding from app.carinaai.uk/.env." >&2
+  cp "${CARINA_CLOUD_CONTEXT:-/home/malike/apps/app.carinaai.uk}/.env" .env.cloud.runtime
   python3 docker/scripts/sync-cloud-env.py
+elif [[ -f .env.docker.runtime ]]; then
+  echo "ERROR: .env.cloud.runtime missing and app.carinaai.uk/.env not found; refusing empty cloud env." >&2
+  exit 1
 fi
 
 if [[ -d /home/malike/apps/ops.carinaai.uk ]]; then
