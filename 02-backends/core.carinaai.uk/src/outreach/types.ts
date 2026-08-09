@@ -2,15 +2,20 @@
 
 export const PIPELINE_STATUSES = [
   'new',
+  'enriched',
+  'ready',
   'contacted',
   'replied',
+  'qualified',
   'booked',
   'attended',
   'proposal_sent',
   'won',
+  'nurture',
   'lost',
   'ghosted',
   'follow_up',
+  'suppressed',
 ] as const;
 
 export type PipelineStatus = (typeof PIPELINE_STATUSES)[number];
@@ -24,7 +29,37 @@ export type LeadSource =
   | 'referral'
   | 'companies_house'
   | 'import'
-  | 'other';
+  | 'other'
+  | 'internet_search'
+  | 'company_website'
+  | 'property_listing'
+  | 'directory'
+  | 'google_maps'
+  | 'upload'
+  | 'google_sheet'
+  | 'channel_attachment'
+  | 'api'
+  | 'agent_research';
+
+/** Rich provenance for spreadsheet-quality lead tracking. */
+export type LeadSourceType = LeadSource;
+
+export type ConsentStatus =
+  | 'unknown'
+  | 'legitimate_interest'
+  | 'opted_in'
+  | 'opted_out'
+  | 'suppressed';
+
+export type LeadPriority = 'low' | 'medium' | 'high' | 'urgent' | string;
+
+export interface LeadProvenance {
+  sourceType: LeadSourceType;
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceCapturedAt?: string;
+  sourceJobId?: string;
+}
 
 export type ReplyState = 'none' | 'awaiting' | 'replied' | 'unsubscribed';
 export type BookingState = 'none' | 'offered' | 'booked' | 'attended' | 'no_show';
@@ -37,12 +72,16 @@ export type ReplyClassification =
   | 'not_now'
   | 'unsubscribe'
   | 'ooo'
-  | 'unknown';
+  | 'unknown'
+  | 'referral'
+  | 'bounce'
+  | 'complaint'
+  | 'uncertain';
 
 export interface LeadTimelineEvent {
   id: string;
   at: string;
-  kind: 'status_change' | 'note' | 'enrolled' | 'delivery' | 'stop' | 'import' | 'system';
+  kind: 'status_change' | 'note' | 'enrolled' | 'delivery' | 'stop' | 'import' | 'system' | 'enrichment' | 'merge' | 'conversion';
   message: string;
   fromStatus?: PipelineStatus;
   toStatus?: PipelineStatus;
@@ -52,11 +91,13 @@ export interface LeadTimelineEvent {
 export interface OutreachLead {
   id: string;
   workspaceId: string;
+  /** Contact / person name (compat: historically `name`). */
   name: string;
   email?: string;
   phone?: string;
   company?: string;
   companyNumber?: string;
+  /** Flat source enum kept for older clients. */
   source: LeadSource;
   campaignId?: string;
   status: PipelineStatus;
@@ -75,6 +116,69 @@ export interface OutreachLead {
   createdAt: string;
   updatedAt: string;
   timeline: LeadTimelineEvent[];
+
+  // Spreadsheet-quality canonical fields (additive)
+  niche?: string;
+  townCity?: string;
+  website?: string;
+  contactName?: string;
+  googleReviews?: number;
+  googleRating?: number;
+  googleMapsUrl?: string;
+  websiteScore?: number;
+  ranksTop3?: boolean | string;
+  weakness?: string;
+  priority?: LeadPriority;
+  dateAdded?: string;
+  sourceType?: LeadSourceType;
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceCapturedAt?: string;
+  sourceJobId?: string;
+  ownerWorkerId?: string;
+  listIds?: string[];
+  campaignIds?: string[];
+  sequenceId?: string;
+  pipelineStage?: string;
+  lastReplyAt?: string;
+  consentStatus?: ConsentStatus;
+  suppressionReason?: string;
+  customFields?: Record<string, unknown>;
+  archivedAt?: string;
+  convertedContactId?: string;
+  convertedCustomerAt?: string;
+  conversionValue?: number;
+}
+
+export type LeadIngestJobKind = 'import' | 'scrape' | 'sheet_sync' | 'api' | 'agent' | 'channel';
+export type LeadIngestJobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
+export interface LeadIngestRowResult {
+  rowIndex: number;
+  outcome: 'created' | 'updated' | 'duplicate' | 'rejected' | 'warning';
+  leadId?: string;
+  reason?: string;
+}
+
+export interface LeadIngestJob {
+  id: string;
+  workspaceId: string;
+  kind: LeadIngestJobKind;
+  status: LeadIngestJobStatus;
+  sourceType: LeadSourceType;
+  sourceName?: string;
+  sourceUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+  created: number;
+  updated: number;
+  duplicate: number;
+  rejected: number;
+  warning: number;
+  rowResults: LeadIngestRowResult[];
+  error?: string;
+  meta?: Record<string, string>;
 }
 
 export interface CampaignCadence {
@@ -159,13 +263,16 @@ export interface SequenceEnrollment {
 
 export type DeliveryEventStatus =
   | 'scheduled'
+  | 'queued'
   | 'pending_approval'
   | 'sent'
   | 'delivered'
   | 'bounced'
+  | 'complained'
   | 'failed'
   | 'replied'
   | 'unsubscribed'
+  | 'cancelled'
   | 'skipped';
 
 export interface DeliveryEvent {
@@ -366,6 +473,32 @@ export interface OutreachStoreShape {
   followUpTasks: FollowUpTask[];
   /** Linked CRM lead spreadsheet handles (workspace CSV and/or Google Sheets). */
   leadSheetConfigs: Record<string, LeadSheetConfig>;
+  /** Import / scrape job audit history. */
+  ingestJobs: LeadIngestJob[];
+  /** Saved CRM table views per workspace. */
+  leadViews: LeadSavedView[];
+  /** Workspace email suppression list. */
+  suppressions?: Array<{
+    workspaceId: string;
+    email: string;
+    reason: 'unsubscribe' | 'complaint' | 'hard_bounce' | 'manual' | 'opted_out' | 'policy';
+    leadId?: string;
+    note?: string;
+    createdAt: string;
+    updatedAt?: string;
+  }>;
+}
+
+export interface LeadSavedView {
+  id: string;
+  workspaceId: string;
+  name: string;
+  filters: Record<string, string | string[] | boolean | undefined>;
+  columns?: string[];
+  sort?: { field: string; dir: 'asc' | 'desc' };
+  density?: 'compact' | 'comfortable';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ReplyReview {

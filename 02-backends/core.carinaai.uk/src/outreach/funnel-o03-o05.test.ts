@@ -22,8 +22,8 @@ describe('outreach O03/O04/O05', () => {
     const { classifyReplyText, processInboundReply } = await import('./replies.js');
 
     expect(classifyReplyText('re: chat', 'Can we book a call next week?').classification).toBe('interested');
-    expect(classifyReplyText('re', 'Too expensive for us right now').classification).toBe('question');
-    expect(classifyReplyText('re', 'Not interested, thanks').classification).toBe('unsubscribe');
+    expect(classifyReplyText('re', 'Too expensive for us right now').classification).toBe('objection');
+    expect(classifyReplyText('re', 'Not interested, thanks').classification).toBe('not_interested');
 
     createLead({
       workspaceId: 'ws-1',

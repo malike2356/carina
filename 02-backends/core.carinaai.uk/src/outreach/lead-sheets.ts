@@ -35,12 +35,12 @@ export function leadToSheetRow(lead: OutreachLead): string[] {
   const map: Record<string, string> = {
     lead_id: lead.id,
     business_name: lead.company || lead.name,
-    contact_name: lead.name,
+    contact_name: lead.contactName || lead.name,
     email: lead.email || '',
-    website: '',
-    source: lead.source,
-    niche: lead.tags?.[0] || '',
-    location: '',
+    website: lead.website || '',
+    source: lead.sourceType || lead.source,
+    niche: lead.niche || lead.tags?.[0] || '',
+    location: lead.townCity || '',
     status: lead.status,
     last_touch_at: lead.lastContactedAt || lead.updatedAt || '',
     notes: lead.notes || '',
@@ -50,8 +50,79 @@ export function leadToSheetRow(lead: OutreachLead): string[] {
     registered_office: '',
     officer_names: '',
     campaign_id: lead.campaignId || '',
+    phone: lead.phone || '',
+    google_reviews: lead.googleReviews != null ? String(lead.googleReviews) : '',
+    google_rating: lead.googleRating != null ? String(lead.googleRating) : '',
+    google_maps_url: lead.googleMapsUrl || '',
+    website_score: lead.websiteScore != null ? String(lead.websiteScore) : '',
+    ranks_top3: lead.ranksTop3 == null ? '' : String(lead.ranksTop3),
+    weakness: lead.weakness || '',
+    priority: lead.priority || '',
+    date_added: lead.dateAdded || lead.createdAt || '',
+    source_url: lead.sourceUrl || '',
   };
   return header.map((col) => map[col] ?? '');
+}
+
+/** Workbook-shaped export matching the SEO lead tracker columns plus provenance. */
+export function exportCrmWorkbookCsv(workspaceId: string): { csv: string; count: number; header: string[] } {
+  const header = [
+    'Company',
+    'Niche',
+    'Town/City',
+    'Website',
+    'Contact Name',
+    'Email',
+    'Phone',
+    'Google Reviews',
+    'Google Rating',
+    'Google Maps URL',
+    'Website Score',
+    'Ranks Top3?',
+    'Weakness',
+    'Priority',
+    'Status',
+    'Date Added',
+    'Notes',
+    'Source',
+    'Source URL',
+    'Pipeline Stage',
+    'Last Contact',
+    'Last Reply',
+    'Next Action',
+    'Owner Worker',
+  ];
+  const leads = listLeads(workspaceId);
+  const lines = [
+    header.join(','),
+    ...leads.map((lead) => [
+      lead.company || '',
+      lead.niche || '',
+      lead.townCity || '',
+      lead.website || '',
+      lead.contactName || lead.name || '',
+      lead.email || '',
+      lead.phone || '',
+      lead.googleReviews ?? '',
+      lead.googleRating ?? '',
+      lead.googleMapsUrl || '',
+      lead.websiteScore ?? '',
+      lead.ranksTop3 == null ? '' : String(lead.ranksTop3),
+      lead.weakness || '',
+      lead.priority || '',
+      lead.status,
+      lead.dateAdded || lead.createdAt || '',
+      lead.notes || '',
+      lead.sourceType || lead.source || '',
+      lead.sourceUrl || '',
+      lead.pipelineStage || lead.status || '',
+      lead.lastContactedAt || '',
+      lead.lastReplyAt || '',
+      lead.nextActionAt || '',
+      lead.ownerWorkerId || lead.owner || '',
+    ].map((v) => csvEscape(String(v))).join(',')),
+  ];
+  return { csv: lines.join('\n'), count: leads.length, header };
 }
 
 export function exportLeadsCsvText(workspaceId: string, filter?: {

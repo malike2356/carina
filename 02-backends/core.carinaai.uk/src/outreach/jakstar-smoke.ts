@@ -94,8 +94,8 @@ export function runJakstarOutreachSmoke(workspaceId: string, now = new Date()): 
   const booking = createBooking({
     workspaceId,
     leadId: lead.id,
-    startsAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-    endsAt: new Date(now.getTime() + 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
+    startsAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    endsAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
     joinLink: 'https://meet.example.com/smoke',
     notes: 'Smoke booking',
   });

@@ -83,7 +83,8 @@ export function countSentToday(
 
   return deliveries.filter((d) => {
     if (!['sent', 'delivered', 'pending_approval'].includes(d.status)) return false;
-    const stamp = d.updatedAt || d.createdAt;
+    // Use createdAt for the day bucket so status updates (sent/delivered) do not move the send into another day.
+    const stamp = d.createdAt || d.updatedAt;
     let dayKey: string;
     try {
       dayKey = new Intl.DateTimeFormat('en-CA', {

@@ -8,8 +8,9 @@ import {
   listLeads,
   updateLead,
 } from '../outreach/leads.js';
+import { ingestLeads, listIngestJobs } from '../outreach/lead-ingest.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
-import type { LeadSource, PipelineStatus } from '../outreach/types.js';
+import type { LeadSource, LeadSourceType, PipelineStatus } from '../outreach/types.js';
 
 export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
   return [
@@ -213,7 +214,8 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
         const normalized = rows.map((row) => {
           const r = row as Record<string, unknown>;
           return {
-            name: String(r.name ?? r.contact_name ?? r.business_name ?? 'Unknown'),
+            ...r,
+            name: String(r.name ?? r.contactName ?? r.contact_name ?? r.business_name ?? 'Unknown'),
             email: typeof r.email === 'string' ? r.email : undefined,
             phone: typeof r.phone === 'string' ? r.phone : undefined,
             company: typeof r.company === 'string' ? r.company : undefined,
@@ -227,9 +229,81 @@ export function createOutreachLeadCrudTools(sessionId: string): Tool[] {
           data: {
             created: result.created.length,
             duplicates: result.duplicates.length,
+            updated: result.ingest?.updated ?? 0,
+            rejected: result.ingest?.rejected ?? 0,
+            warning: result.ingest?.warning ?? 0,
+            jobId: result.ingest?.jobId ?? null,
             createdIds: result.created.map((l) => l.id),
           },
         };
+      },
+    },
+    {
+      name: 'outreach-leads-ingest',
+      description:
+        'Canonical lead ingestion for CSV/sheet/scrape rows. Maps workbook aliases, preserves unknown columns in customFields, dedupes, merges, and writes job history.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          rows: { type: 'array', description: 'Raw row objects (any column headers)' },
+          sourceType: { type: 'string' },
+          sourceName: { type: 'string' },
+          sourceUrl: { type: 'string' },
+          overwrite: { type: 'boolean' },
+          campaignId: { type: 'string' },
+        },
+        required: ['rows'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
+        if (!workspaceId) return { ok: false, error: 'workspaceId required' };
+        const rows = Array.isArray(params.rows) ? params.rows as Record<string, unknown>[] : [];
+        if (rows.length === 0) return { ok: false, error: 'rows required' };
+        try {
+          const result = ingestLeads({
+            workspaceId,
+            rows,
+            sourceType: (typeof params.sourceType === 'string' ? params.sourceType : 'upload') as LeadSourceType,
+            sourceName: typeof params.sourceName === 'string' ? params.sourceName : undefined,
+            sourceUrl: typeof params.sourceUrl === 'string' ? params.sourceUrl : undefined,
+            overwrite: Boolean(params.overwrite),
+            campaignId: typeof params.campaignId === 'string' ? params.campaignId : undefined,
+            kind: 'import',
+          });
+          return {
+            ok: true,
+            data: {
+              created: result.created,
+              updated: result.updated,
+              duplicate: result.duplicate,
+              rejected: result.rejected,
+              warning: result.warning,
+              jobId: result.jobId,
+              leadIds: result.leads.map((l) => l.id),
+              rowResults: result.rowResults.slice(0, 100),
+            },
+          };
+        } catch (err) {
+          return { ok: false, error: err instanceof Error ? err.message : String(err) };
+        }
+      },
+    },
+    {
+      name: 'outreach-leads-ingest-jobs',
+      description: 'List recent lead import/scrape jobs for this workspace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          limit: { type: 'number' },
+        },
+      },
+      execute: async (params) => {
+        const workspaceId = resolveOutreachWorkspaceId(sessionId, params.workspaceId);
+        if (!workspaceId) return { ok: false, error: 'workspaceId required' };
+        const limit = Math.min(100, Math.max(1, Number(params.limit ?? 20) || 20));
+        return { ok: true, data: { jobs: listIngestJobs(workspaceId, limit) } };
       },
     },
   ];

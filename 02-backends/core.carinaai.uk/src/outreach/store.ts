@@ -63,6 +63,9 @@ export function emptyOutreachStore(): OutreachStoreShape {
     controls: {},
     followUpTasks: [],
     leadSheetConfigs: {},
+    ingestJobs: [],
+    leadViews: [],
+    suppressions: [],
   };
 }
 
@@ -85,6 +88,9 @@ export function loadOutreachStore(): OutreachStoreShape {
     controls: raw.controls ?? {},
     followUpTasks: raw.followUpTasks ?? [],
     leadSheetConfigs: raw.leadSheetConfigs ?? {},
+    ingestJobs: raw.ingestJobs ?? [],
+    leadViews: raw.leadViews ?? [],
+    suppressions: raw.suppressions ?? [],
   };
 }
 

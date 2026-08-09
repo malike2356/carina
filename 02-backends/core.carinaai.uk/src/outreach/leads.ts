@@ -4,6 +4,7 @@ import { appendTimeline, isPipelineStatus, transitionLeadStatus } from './pipeli
 import { refreshFollowUpPlans } from './follow-ups.js';
 import { syncLeadBoardState } from './kanban.js';
 import { loadOutreachStore, mutateOutreachStore } from './store.js';
+import { hydrateLeadCompat, ingestLeads } from './lead-ingest.js';
 import type {
   BookingState,
   LeadList,
@@ -23,17 +24,51 @@ export function listLeads(workspaceId: string, filter?: {
   status?: PipelineStatus;
   source?: LeadSource;
   tag?: string;
+  niche?: string;
+  priority?: string;
+  townCity?: string;
+  q?: string;
+  hasEmail?: boolean;
+  replied?: boolean;
 }): OutreachLead[] {
   let leads = loadOutreachStore().leads.filter((l) => l.workspaceId === workspaceId);
-  if (filter?.campaignId) leads = leads.filter((l) => l.campaignId === filter.campaignId);
-  if (filter?.status) leads = leads.filter((l) => l.status === filter.status);
-  if (filter?.source) leads = leads.filter((l) => l.source === filter.source);
+  if (filter?.campaignId) leads = leads.filter((l) => l.campaignId === filter.campaignId || l.campaignIds?.includes(filter.campaignId!));
+  if (filter?.status) leads = leads.filter((l) => l.status === filter.status || l.pipelineStage === filter.status);
+  if (filter?.source) {
+    leads = leads.filter((l) => l.source === filter.source || l.sourceType === filter.source);
+  }
   if (filter?.tag) leads = leads.filter((l) => l.tags.includes(filter.tag!));
-  return leads.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (filter?.niche) {
+    const niche = filter.niche.toLowerCase();
+    leads = leads.filter((l) => (l.niche || '').toLowerCase().includes(niche));
+  }
+  if (filter?.priority) {
+    leads = leads.filter((l) => String(l.priority || '').toLowerCase() === filter.priority!.toLowerCase());
+  }
+  if (filter?.townCity) {
+    const town = filter.townCity.toLowerCase();
+    leads = leads.filter((l) => (l.townCity || '').toLowerCase().includes(town));
+  }
+  if (filter?.hasEmail === true) leads = leads.filter((l) => Boolean(l.email));
+  if (filter?.hasEmail === false) leads = leads.filter((l) => !l.email);
+  if (filter?.replied === true) leads = leads.filter((l) => l.replyState === 'replied' || Boolean(l.lastReplyAt));
+  if (filter?.q) {
+    const q = filter.q.toLowerCase();
+    leads = leads.filter((l) =>
+      [l.name, l.contactName, l.email, l.company, l.niche, l.townCity, l.website, l.notes, l.source, l.status]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q));
+  }
+  return leads
+    .map(hydrateLeadCompat)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function getLead(workspaceId: string, leadId: string): OutreachLead | null {
-  return loadOutreachStore().leads.find((l) => l.workspaceId === workspaceId && l.id === leadId) ?? null;
+  const lead = loadOutreachStore().leads.find((l) => l.workspaceId === workspaceId && l.id === leadId) ?? null;
+  return lead ? hydrateLeadCompat(lead) : null;
 }
 
 export function createLead(input: {
@@ -51,74 +86,79 @@ export function createLead(input: {
   timezone?: string;
   youtubeLeadId?: string;
   youtubeChannelId?: string;
+  niche?: string;
+  townCity?: string;
+  website?: string;
+  contactName?: string;
+  googleReviews?: number;
+  googleRating?: number;
+  googleMapsUrl?: string;
+  websiteScore?: number;
+  ranksTop3?: boolean | string;
+  weakness?: string;
+  priority?: string;
+  sourceType?: LeadSource;
+  sourceName?: string;
+  sourceUrl?: string;
+  ownerWorkerId?: string;
+  customFields?: Record<string, unknown>;
+  overwrite?: boolean;
 }): { lead: OutreachLead; duplicateOf?: string } {
-  const email = normalizeEmail(input.email);
-  const phone = normalizePhone(input.phone);
-  const companyNumber = String(input.companyNumber ?? '').trim().toUpperCase() || undefined;
-  const store = loadOutreachStore();
-  const workspaceLeads = store.leads.filter((l) => l.workspaceId === input.workspaceId);
-  const duplicateOf = findDuplicateLeadId(workspaceLeads, { email, phone, companyNumber });
+  const result = ingestLeads({
+    workspaceId: input.workspaceId,
+    kind: 'api',
+    sourceType: input.sourceType ?? input.source ?? 'manual',
+    sourceName: input.sourceName,
+    sourceUrl: input.sourceUrl,
+    ownerWorkerId: input.ownerWorkerId || input.owner,
+    campaignId: input.campaignId,
+    overwrite: input.overwrite,
+    rows: [{
+      contactName: input.contactName || input.name,
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      company: input.company,
+      companyNumber: input.companyNumber,
+      niche: input.niche ?? input.tags?.[0],
+      townCity: input.townCity,
+      website: input.website,
+      googleReviews: input.googleReviews,
+      googleRating: input.googleRating,
+      googleMapsUrl: input.googleMapsUrl,
+      websiteScore: input.websiteScore,
+      ranksTop3: input.ranksTop3,
+      weakness: input.weakness,
+      priority: input.priority,
+      notes: input.notes,
+      ...(input.customFields ?? {}),
+    }],
+  });
+  let lead = result.leads[0];
+  if (!lead) throw new Error('Lead create failed');
 
-  if (duplicateOf) {
-    let primary = workspaceLeads.find((l) => l.id === duplicateOf)!;
-    primary = appendTimeline(primary, {
-      kind: 'import',
-      message: `Duplicate intake linked (matched ${email ? 'email' : 'phone'} for ${input.name})`,
-      meta: { name: input.name },
-    });
-    if (input.youtubeLeadId && !primary.youtubeLeadId) {
-      primary = { ...primary, youtubeLeadId: input.youtubeLeadId, youtubeChannelId: input.youtubeChannelId };
-    }
-    if (input.tags?.length) {
-      primary = { ...primary, tags: Array.from(new Set([...primary.tags, ...input.tags])) };
-    }
-    if (!primary.linkedLeadIds.includes(duplicateOf)) {
-      // keep structure; no new id for duplicate create
-    }
+  if (input.youtubeLeadId || input.timezone || (input.tags && input.tags.length > 0)) {
     mutateOutreachStore((s) => {
-      const idx = s.leads.findIndex((l) => l.id === primary.id);
-      if (idx >= 0) s.leads[idx] = primary;
+      const idx = s.leads.findIndex((l) => l.id === lead!.id && l.workspaceId === input.workspaceId);
+      if (idx < 0) return;
+      const cur = s.leads[idx]!;
+      s.leads[idx] = {
+        ...cur,
+        youtubeLeadId: input.youtubeLeadId ?? cur.youtubeLeadId,
+        youtubeChannelId: input.youtubeChannelId ?? cur.youtubeChannelId,
+        timezone: input.timezone ?? cur.timezone,
+        tags: Array.from(new Set([...(cur.tags ?? []), ...(input.tags ?? [])])),
+        updatedAt: nowIso(),
+      };
+      lead = s.leads[idx]!;
     });
-    return { lead: primary, duplicateOf };
   }
 
-  const stamp = nowIso();
-  let lead: OutreachLead = {
-    id: crypto.randomUUID(),
-    workspaceId: input.workspaceId,
-    name: input.name.trim() || 'Unknown',
-    email,
-    phone,
-    company: input.company?.trim() || undefined,
-    companyNumber,
-    source: input.source ?? 'manual',
-    campaignId: input.campaignId,
-    status: 'new',
-    owner: input.owner?.trim() || undefined,
-    notes: input.notes?.trim() || undefined,
-    tags: input.tags ?? [],
-    timezone: input.timezone,
-    replyState: 'none',
-    bookingState: 'none',
-    linkedLeadIds: [],
-    youtubeLeadId: input.youtubeLeadId,
-    youtubeChannelId: input.youtubeChannelId,
-    createdAt: stamp,
-    updatedAt: stamp,
-    timeline: [],
+  const wasNew = result.created > 0;
+  return {
+    lead: hydrateLeadCompat(lead),
+    duplicateOf: wasNew ? undefined : lead.id,
   };
-  lead = appendTimeline(lead, {
-    kind: 'system',
-    message: `Lead created from ${lead.source}`,
-    toStatus: 'new',
-  });
-
-  mutateOutreachStore((s) => {
-    s.leads.push(lead);
-  });
-  void refreshFollowUpPlans(input.workspaceId);
-  void syncLeadBoardState(input.workspaceId, lead.id, 'Lead created').catch(() => undefined);
-  return { lead };
 }
 
 export function updateLead(
@@ -138,6 +178,27 @@ export function updateLead(
     replyState: ReplyState;
     bookingState: BookingState;
     nextActionAt: string | null;
+    niche: string;
+    townCity: string;
+    website: string;
+    contactName: string;
+    googleReviews: number | null;
+    googleRating: number | null;
+    googleMapsUrl: string;
+    websiteScore: number | null;
+    ranksTop3: boolean | string | null;
+    weakness: string;
+    priority: string;
+    sourceUrl: string;
+    sourceName: string;
+    pipelineStage: string;
+    consentStatus: string;
+    suppressionReason: string;
+    ownerWorkerId: string;
+    listIds: string[];
+    campaignIds: string[];
+    sequenceId: string | null;
+    customFields: Record<string, unknown>;
   }>,
 ): OutreachLead | null {
   const existing = getLead(workspaceId, leadId);
@@ -148,11 +209,15 @@ export function updateLead(
     lead = transitionLeadStatus(lead, patch.status);
   }
   if (patch.name !== undefined) lead = { ...lead, name: patch.name.trim() || lead.name };
+  if (patch.contactName !== undefined) {
+    lead = { ...lead, contactName: patch.contactName.trim() || lead.contactName, name: patch.contactName.trim() || lead.name };
+  }
   if (patch.email !== undefined) lead = { ...lead, email: normalizeEmail(patch.email) };
   if (patch.phone !== undefined) lead = { ...lead, phone: normalizePhone(patch.phone) };
   if (patch.company !== undefined) lead = { ...lead, company: patch.company.trim() || undefined };
   if (patch.campaignId !== undefined) lead = { ...lead, campaignId: patch.campaignId || undefined };
   if (patch.owner !== undefined) lead = { ...lead, owner: patch.owner.trim() || undefined };
+  if (patch.ownerWorkerId !== undefined) lead = { ...lead, ownerWorkerId: patch.ownerWorkerId.trim() || undefined };
   if (patch.notes !== undefined) lead = { ...lead, notes: patch.notes };
   if (patch.tags !== undefined) lead = { ...lead, tags: patch.tags };
   if (patch.timezone !== undefined) lead = { ...lead, timezone: patch.timezone || undefined };
@@ -160,6 +225,31 @@ export function updateLead(
   if (patch.bookingState !== undefined) lead = { ...lead, bookingState: patch.bookingState };
   if (patch.nextActionAt !== undefined) {
     lead = { ...lead, nextActionAt: patch.nextActionAt || undefined };
+  }
+  if (patch.niche !== undefined) lead = { ...lead, niche: patch.niche.trim() || undefined };
+  if (patch.townCity !== undefined) lead = { ...lead, townCity: patch.townCity.trim() || undefined };
+  if (patch.website !== undefined) lead = { ...lead, website: patch.website.trim() || undefined };
+  if (patch.googleMapsUrl !== undefined) lead = { ...lead, googleMapsUrl: patch.googleMapsUrl.trim() || undefined };
+  if (patch.googleReviews !== undefined) lead = { ...lead, googleReviews: patch.googleReviews ?? undefined };
+  if (patch.googleRating !== undefined) lead = { ...lead, googleRating: patch.googleRating ?? undefined };
+  if (patch.websiteScore !== undefined) lead = { ...lead, websiteScore: patch.websiteScore ?? undefined };
+  if (patch.ranksTop3 !== undefined) lead = { ...lead, ranksTop3: patch.ranksTop3 ?? undefined };
+  if (patch.weakness !== undefined) lead = { ...lead, weakness: patch.weakness.trim() || undefined };
+  if (patch.priority !== undefined) lead = { ...lead, priority: patch.priority.trim() || undefined };
+  if (patch.sourceUrl !== undefined) lead = { ...lead, sourceUrl: patch.sourceUrl.trim() || undefined };
+  if (patch.sourceName !== undefined) lead = { ...lead, sourceName: patch.sourceName.trim() || undefined };
+  if (patch.pipelineStage !== undefined) lead = { ...lead, pipelineStage: patch.pipelineStage.trim() || undefined };
+  if (patch.consentStatus !== undefined) {
+    lead = { ...lead, consentStatus: patch.consentStatus as OutreachLead['consentStatus'] };
+  }
+  if (patch.suppressionReason !== undefined) {
+    lead = { ...lead, suppressionReason: patch.suppressionReason.trim() || undefined };
+  }
+  if (patch.listIds !== undefined) lead = { ...lead, listIds: patch.listIds };
+  if (patch.campaignIds !== undefined) lead = { ...lead, campaignIds: patch.campaignIds };
+  if (patch.sequenceId !== undefined) lead = { ...lead, sequenceId: patch.sequenceId || undefined };
+  if (patch.customFields !== undefined) {
+    lead = { ...lead, customFields: { ...(lead.customFields ?? {}), ...patch.customFields } };
   }
   lead = { ...lead, updatedAt: nowIso() };
 
@@ -169,7 +259,7 @@ export function updateLead(
   });
   void refreshFollowUpPlans(workspaceId);
   void syncLeadBoardState(workspaceId, leadId, 'Lead updated').catch(() => undefined);
-  return lead;
+  return hydrateLeadCompat(lead);
 }
 
 export function deleteLead(workspaceId: string, leadId: string): boolean {
@@ -207,26 +297,38 @@ export function importLeadBatch(
     source?: LeadSource;
     campaignId?: string;
     tags?: string[];
+    niche?: string;
+    townCity?: string;
+    website?: string;
+    contactName?: string;
+    notes?: string;
+    [key: string]: unknown;
   }>,
-): { created: OutreachLead[]; duplicates: OutreachLead[] } {
-  const created: OutreachLead[] = [];
-  const duplicates: OutreachLead[] = [];
-  for (const row of rows) {
-    const result = createLead({
-      workspaceId,
-      name: row.name,
-      email: row.email,
-      phone: row.phone,
-    company: row.company,
-    companyNumber: row.companyNumber,
-    source: row.source ?? 'csv_import',
-      campaignId: row.campaignId,
-      tags: row.tags,
-    });
-    if (result.duplicateOf) duplicates.push(result.lead);
-    else created.push(result.lead);
-  }
-  return { created, duplicates };
+): { created: OutreachLead[]; duplicates: OutreachLead[]; ingest?: ReturnType<typeof ingestLeads> } {
+  const ingest = ingestLeads({
+    workspaceId,
+    kind: 'import',
+    sourceType: 'csv_import',
+    rows: rows.map((row) => ({
+      ...row,
+      contactName: row.contactName || row.name,
+      niche: row.niche ?? row.tags?.[0],
+      sourceType: row.source ?? 'csv_import',
+    })),
+  });
+  const createdIds = new Set(
+    ingest.rowResults.filter((r) => r.outcome === 'created' && r.leadId).map((r) => r.leadId!),
+  );
+  const dupIds = new Set(
+    ingest.rowResults
+      .filter((r) => (r.outcome === 'duplicate' || r.outcome === 'updated') && r.leadId)
+      .map((r) => r.leadId!),
+  );
+  return {
+    created: ingest.leads.filter((l) => createdIds.has(l.id)),
+    duplicates: ingest.leads.filter((l) => dupIds.has(l.id) && !createdIds.has(l.id)),
+    ingest,
+  };
 }
 
 export function listCampaigns(workspaceId: string): OutreachCampaign[] {

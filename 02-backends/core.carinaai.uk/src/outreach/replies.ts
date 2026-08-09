@@ -3,6 +3,8 @@ import { appendTimeline, transitionLeadStatus } from './pipeline.js';
 import { getLead, listLeads } from './leads.js';
 import { refreshFollowUpPlans } from './follow-ups.js';
 import { syncLeadBoardState } from './kanban.js';
+import { listEnrollments, stopEnrollment, getSequence } from './sequence-engine.js';
+import { suppressLead } from './suppressions.js';
 import { loadOutreachStore, mutateOutreachStore } from './store.js';
 import type {
   OutreachLead,
@@ -104,6 +106,12 @@ export function classifyReplyText(subject: string, body: string): {
   reason: string;
 } {
   const haystack = normalizeText(`${subject}\n${body}`);
+  if (/mailer-daemon|delivery status notification|undeliverable|permanent failure|550\s|hard bounce|mailbox unavailable/.test(haystack)) {
+    return { classification: 'bounce', confidence: 0.98, reason: 'bounce language' };
+  }
+  if (/spam complaint|reported as spam|abuse report|mark(?:ed)? as spam/.test(haystack)) {
+    return { classification: 'complaint', confidence: 0.97, reason: 'complaint language' };
+  }
   if (/unsubscribe|remove me|stop (?:email|mail)?|do not contact|do not email|opt ?out|leave me alone|no more emails/.test(haystack)) {
     return { classification: 'unsubscribe', confidence: 0.99, reason: 'unsubscribe language' };
   }
@@ -111,7 +119,10 @@ export function classifyReplyText(subject: string, body: string): {
     return { classification: 'ooo', confidence: 0.97, reason: 'out of office language' };
   }
   if (/\b(not interested|no thanks|no thank you|pass on this|not a fit|don'?t contact|never contact)\b/.test(haystack)) {
-    return { classification: 'unsubscribe', confidence: 0.94, reason: 'explicit rejection language' };
+    return { classification: 'not_interested', confidence: 0.94, reason: 'explicit rejection language' };
+  }
+  if (/\b(refer(?:ral)?|try (?:reaching|contacting)|speak (?:to|with)|colleague|someone else)\b/.test(haystack)) {
+    return { classification: 'referral', confidence: 0.88, reason: 'referral language' };
   }
   if (/\b(book(?:ing)?(?:\s+a)?\s+(?:call|meeting)|schedule(?:\s+a)?\s+(?:call|meeting)|send (?:me )?times|available times|what times|calendar link|discovery call|let'?s book)\b/.test(haystack)) {
     return { classification: 'interested', confidence: 0.96, reason: 'booking intent language' };
@@ -120,13 +131,16 @@ export function classifyReplyText(subject: string, body: string): {
     return { classification: 'not_now', confidence: 0.91, reason: 'deferred timing language' };
   }
   if (/\b(too expensive|budget|pricing is|price is|cost is|already have|working with|objection|not sure this works)\b/.test(haystack)) {
-    return { classification: 'question', confidence: 0.86, reason: 'pricing or objection language' };
+    return { classification: 'objection', confidence: 0.86, reason: 'pricing or objection language' };
   }
   if (/\b(interested|sounds good|good idea|let'?s talk|yes please|count me in|let'?s chat)\b/.test(haystack)) {
     return { classification: 'interested', confidence: 0.95, reason: 'positive intent language' };
   }
   if (body.includes('?') || /\bwhat\b.*\b(price|pricing|cost|time|availability|works)\b/.test(haystack) || /\bcan you\b/.test(haystack)) {
     return { classification: 'question', confidence: 0.84, reason: 'question language' };
+  }
+  if (haystack.length < 12) {
+    return { classification: 'uncertain', confidence: 0.4, reason: 'too little signal' };
   }
   return { classification: 'unknown', confidence: 0.5, reason: 'no strong signal' };
 }
@@ -202,30 +216,63 @@ function applyLeadOutcome(input: {
   if (!lead) return null;
 
   let next = lead;
-  if (input.classification === 'interested') {
+  if (input.classification === 'interested' || input.classification === 'booking_intent') {
     next = transitionLeadStatus(next, 'replied', `Inbound reply qualified as ${input.classification}`);
-    next = { ...next, replyState: 'replied', bookingState: 'offered', nextActionAt: input.nextActionAt ?? next.nextActionAt };
-  } else if (input.classification === 'question') {
+    next = {
+      ...next,
+      replyState: 'replied',
+      lastReplyAt: nowIso(),
+      bookingState: 'offered',
+      nextActionAt: input.nextActionAt ?? next.nextActionAt,
+    };
+  } else if (input.classification === 'question' || input.classification === 'objection' || input.classification === 'referral') {
     next = transitionLeadStatus(next, 'replied', `Inbound reply qualified as ${input.classification}`);
-    next = { ...next, replyState: 'replied', bookingState: next.bookingState, nextActionAt: input.nextActionAt ?? next.nextActionAt };
+    next = {
+      ...next,
+      replyState: 'replied',
+      lastReplyAt: nowIso(),
+      nextActionAt: input.nextActionAt ?? next.nextActionAt,
+    };
   } else if (input.classification === 'not_now') {
-    next = transitionLeadStatus(next, 'follow_up', 'Prospect asked to follow up later');
-    next = { ...next, replyState: 'replied', nextActionAt: input.nextActionAt ?? next.nextActionAt };
+    next = transitionLeadStatus(next, 'nurture', 'Prospect asked to follow up later');
+    next = {
+      ...next,
+      replyState: 'replied',
+      lastReplyAt: nowIso(),
+      nextActionAt: input.nextActionAt ?? next.nextActionAt,
+    };
   } else if (input.classification === 'ooo') {
-    next = { ...next, replyState: 'replied', nextActionAt: input.nextActionAt ?? next.nextActionAt };
-    if (next.status === 'new' || next.status === 'contacted') {
+    next = { ...next, replyState: 'replied', lastReplyAt: nowIso(), nextActionAt: input.nextActionAt ?? next.nextActionAt };
+    if (next.status === 'new' || next.status === 'contacted' || next.status === 'ready') {
       next = transitionLeadStatus(next, 'follow_up', 'Auto-reply: out of office');
     }
-  } else if (input.classification === 'unsubscribe') {
-    next = transitionLeadStatus(next, 'lost', 'Prospect asked to unsubscribe');
+  } else if (
+    input.classification === 'unsubscribe'
+    || input.classification === 'not_interested'
+    || input.classification === 'complaint'
+    || input.classification === 'bounce'
+  ) {
+    next = transitionLeadStatus(
+      next,
+      'suppressed',
+      input.classification === 'bounce' ? 'Hard bounce' : `Prospect ${input.classification}`,
+    );
     next = {
       ...next,
       replyState: 'unsubscribed',
       bookingState: 'none',
       nextActionAt: undefined,
+      consentStatus: input.classification === 'bounce' ? 'suppressed' : 'opted_out',
+      suppressionReason: input.classification,
+      lastReplyAt: nowIso(),
     };
   } else {
-    next = { ...next, replyState: 'replied', nextActionAt: input.nextActionAt ?? next.nextActionAt };
+    next = {
+      ...next,
+      replyState: 'replied',
+      lastReplyAt: nowIso(),
+      nextActionAt: input.nextActionAt ?? next.nextActionAt,
+    };
   }
 
   next = appendTimeline(next, {
@@ -243,7 +290,44 @@ function applyLeadOutcome(input: {
     const idx = store.leads.findIndex((row) => row.id === input.leadId);
     if (idx >= 0) store.leads[idx] = { ...next, updatedAt: nowIso() };
   });
-  return next;
+
+  const active = listEnrollments(input.workspaceId, { leadId: input.leadId, status: 'active' });
+  for (const enrollment of active) {
+    const sequence = getSequence(input.workspaceId, enrollment.sequenceId);
+    if (
+      input.classification === 'unsubscribe'
+      || input.classification === 'not_interested'
+      || input.classification === 'complaint'
+      || input.classification === 'bounce'
+    ) {
+      if (sequence?.stopOnUnsubscribe !== false) {
+        stopEnrollment(input.workspaceId, enrollment.id, 'unsubscribe');
+      }
+    } else if (input.classification !== 'unknown' && input.classification !== 'uncertain') {
+      if (sequence?.stopOnReply !== false) {
+        stopEnrollment(input.workspaceId, enrollment.id, 'reply');
+      }
+    }
+  }
+
+  if (
+    input.classification === 'unsubscribe'
+    || input.classification === 'not_interested'
+    || input.classification === 'complaint'
+    || input.classification === 'bounce'
+  ) {
+    suppressLead(
+      next,
+      input.classification === 'complaint'
+        ? 'complaint'
+        : input.classification === 'bounce'
+          ? 'hard_bounce'
+          : 'unsubscribe',
+      `Inbound ${input.classification}`,
+    );
+  }
+
+  return getLead(input.workspaceId, input.leadId) ?? next;
 }
 
 export function processInboundReply(input: {

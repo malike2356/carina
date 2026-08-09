@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { requireCloudProxy } from '../gateway/cloud-proxy-auth.js';
+import { ingestLeads } from '../outreach/lead-ingest.js';
 import {
   addLeadsToList,
   createCampaign,
@@ -69,6 +70,7 @@ import { createDiscoveryLead } from '../outreach/discovery-funnel.js';
 import {
   createWorkspaceLeadSheet,
   deleteLeadSheet,
+  exportCrmWorkbookCsv,
   exportLeadsCsvText,
   leadSheetCanonicalHeader,
   linkGoogleLeadSheet,
@@ -80,6 +82,10 @@ import {
 } from '../outreach/lead-sheets.js';
 import { buildOutreachCadenceSummary } from '../outreach/cadence.js';
 import { isPipelineStatus } from '../outreach/pipeline.js';
+import { draftCampaignPreview, summariseCampaignOutcomes } from '../outreach/campaign-ops.js';
+import { buildFunnelReport } from '../outreach/funnel-analytics.js';
+import { convertLeadToContact, markLeadAsCustomer, suggestNextBestAction } from '../outreach/lifecycle.js';
+import { assessLeadEnrolmentEligibility } from '../outreach/eligibility.js';
 import { backfillOutreachBookingsToVical } from '../vical/index.js';
 
 export const aivaOutreachRouter: ExpressRouter = Router();
@@ -120,7 +126,34 @@ aivaOutreachRouter.get('/overview', (req: OutreachRequest, res: Response) => {
       (b) => new Date(b.startsAt).getTime() >= Date.now(),
     ).length,
     scheduledReminders: listReminders(req.workspaceId!, { status: 'scheduled' }).length,
+    funnel: buildFunnelReport(req.workspaceId!),
   });
+});
+
+aivaOutreachRouter.get('/funnel', (req: OutreachRequest, res: Response) => {
+  ensureOutreachDefaults(req.workspaceId!);
+  res.json(buildFunnelReport(req.workspaceId!));
+});
+
+aivaOutreachRouter.post('/campaigns/preview', (req: OutreachRequest, res: Response) => {
+  const sequenceId = String(req.body?.sequenceId ?? '').trim();
+  if (!sequenceId) {
+    res.status(400).json({ error: 'sequenceId required' });
+    return;
+  }
+  const preview = draftCampaignPreview({
+    workspaceId: req.workspaceId!,
+    campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+    sequenceId,
+    leadIds: Array.isArray(req.body?.leadIds) ? req.body.leadIds.map(String) : undefined,
+    listId: typeof req.body?.listId === 'string' ? req.body.listId : undefined,
+  });
+  res.json(preview);
+});
+
+aivaOutreachRouter.get('/campaigns/outcomes', (req: OutreachRequest, res: Response) => {
+  const campaignId = typeof req.query.campaignId === 'string' ? req.query.campaignId : undefined;
+  res.json(summariseCampaignOutcomes(req.workspaceId!, campaignId));
 });
 
 aivaOutreachRouter.get('/pipeline', (req: OutreachRequest, res: Response) => {
@@ -154,13 +187,34 @@ aivaOutreachRouter.get('/leads', (req: OutreachRequest, res: Response) => {
     : undefined;
   const source = typeof req.query.source === 'string' ? req.query.source : undefined;
   const tag = typeof req.query.tag === 'string' ? req.query.tag : undefined;
+  const niche = typeof req.query.niche === 'string' ? req.query.niche : undefined;
+  const priority = typeof req.query.priority === 'string' ? req.query.priority : undefined;
+  const townCity = typeof req.query.townCity === 'string' ? req.query.townCity : undefined;
+  const q = typeof req.query.q === 'string' ? req.query.q : undefined;
+  const hasEmail = req.query.hasEmail === 'true' ? true : req.query.hasEmail === 'false' ? false : undefined;
+  const replied = req.query.replied === 'true' ? true : req.query.replied === 'false' ? false : undefined;
+  const page = Math.max(1, Number(req.query.page ?? 1) || 1);
+  const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize ?? 50) || 50));
+  const all = listLeads(req.workspaceId!, {
+    campaignId,
+    status,
+    source: source as never,
+    tag,
+    niche,
+    priority,
+    townCity,
+    q,
+    hasEmail,
+    replied,
+  });
+  const start = (page - 1) * pageSize;
+  const leads = all.slice(start, start + pageSize);
   res.json({
-    leads: listLeads(req.workspaceId!, {
-      campaignId,
-      status,
-      source: source as never,
-      tag,
-    }),
+    leads,
+    total: all.length,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(all.length / pageSize)),
   });
 });
 
@@ -170,6 +224,17 @@ aivaOutreachRouter.get('/leads/export', (req: OutreachRequest, res: Response) =>
     : undefined;
   const source = typeof req.query.source === 'string' ? req.query.source : undefined;
   const campaignId = typeof req.query.campaignId === 'string' ? req.query.campaignId : undefined;
+  const format = typeof req.query.format === 'string' ? req.query.format : 'workbook';
+  if (format === 'workbook' || format === 'excel' || format === 'csv') {
+    const result = exportCrmWorkbookCsv(req.workspaceId!);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="aiva-crm-leads-${new Date().toISOString().slice(0, 10)}.csv"`,
+    );
+    res.send(result.csv);
+    return;
+  }
   const result = exportLeadsCsvText(req.workspaceId!, {
     status,
     source: source as never,
@@ -296,24 +361,49 @@ aivaOutreachRouter.post('/leads', (req: OutreachRequest, res: Response) => {
 });
 
 aivaOutreachRouter.post('/leads/import', (req: OutreachRequest, res: Response) => {
-  const rows = Array.isArray(req.body?.leads) ? req.body.leads : [];
+  const rows = Array.isArray(req.body?.leads)
+    ? req.body.leads
+    : (Array.isArray(req.body?.rows) ? req.body.rows : []);
   if (rows.length === 0) {
     res.status(400).json({ error: 'leads array is required' });
     return;
   }
-  const result = importLeadBatch(
-    req.workspaceId!,
-    rows.map((row: Record<string, unknown>) => ({
-      name: String(row.name ?? '').trim() || 'Unknown',
-      email: typeof row.email === 'string' ? row.email : undefined,
-      phone: typeof row.phone === 'string' ? row.phone : undefined,
-      company: typeof row.company === 'string' ? row.company : undefined,
-      source: typeof row.source === 'string' ? (row.source as never) : 'csv_import',
-      campaignId: typeof row.campaignId === 'string' ? row.campaignId : undefined,
-      tags: Array.isArray(row.tags) ? row.tags.map(String) : undefined,
-    })),
-  );
-  res.status(201).json(result);
+  const overwrite = Boolean(req.body?.overwrite);
+  try {
+    const ingest = ingestLeads({
+      workspaceId: req.workspaceId!,
+      rows: rows as Record<string, unknown>[],
+      sourceType: typeof req.body?.sourceType === 'string' ? req.body.sourceType : 'csv_import',
+      sourceName: typeof req.body?.sourceName === 'string' ? req.body.sourceName : undefined,
+      sourceUrl: typeof req.body?.sourceUrl === 'string' ? req.body.sourceUrl : undefined,
+      campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+      overwrite,
+      kind: 'import',
+    });
+    const createdIds = new Set(
+      ingest.rowResults.filter((r) => r.outcome === 'created' && r.leadId).map((r) => r.leadId!),
+    );
+    const dupIds = new Set(
+      ingest.rowResults
+        .filter((r) => (r.outcome === 'duplicate' || r.outcome === 'updated') && r.leadId)
+        .map((r) => r.leadId!),
+    );
+    res.status(201).json({
+      created: ingest.leads.filter((l) => createdIds.has(l.id)),
+      duplicates: ingest.leads.filter((l) => dupIds.has(l.id) && !createdIds.has(l.id)),
+      counts: {
+        created: ingest.created,
+        updated: ingest.updated,
+        duplicate: ingest.duplicate,
+        rejected: ingest.rejected,
+        warning: ingest.warning,
+      },
+      jobId: ingest.jobId,
+      rowResults: ingest.rowResults.slice(0, 200),
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 aivaOutreachRouter.post('/leads/import-youtube', (req: OutreachRequest, res: Response) => {
@@ -404,6 +494,40 @@ aivaOutreachRouter.post('/leads/:leadId/unsubscribe', (req: OutreachRequest, res
   }
   recordLeadUnsubscribe(req.workspaceId!, lead.id);
   res.json({ lead: getLead(req.workspaceId!, lead.id) });
+});
+
+aivaOutreachRouter.post('/leads/:leadId/convert-contact', (req: OutreachRequest, res: Response) => {
+  const lead = convertLeadToContact(req.workspaceId!, routeParam(req.params.leadId));
+  if (!lead) {
+    res.status(404).json({ error: 'Lead not found' });
+    return;
+  }
+  res.json({ lead, nextBestAction: suggestNextBestAction(lead) });
+});
+
+aivaOutreachRouter.post('/leads/:leadId/convert-customer', (req: OutreachRequest, res: Response) => {
+  const lead = markLeadAsCustomer(req.workspaceId!, routeParam(req.params.leadId), {
+    value: typeof req.body?.value === 'number' ? req.body.value : undefined,
+    note: typeof req.body?.note === 'string' ? req.body.note : undefined,
+  });
+  if (!lead) {
+    res.status(404).json({ error: 'Lead not found' });
+    return;
+  }
+  res.json({ lead, nextBestAction: suggestNextBestAction(lead) });
+});
+
+aivaOutreachRouter.get('/leads/:leadId/next-action', (req: OutreachRequest, res: Response) => {
+  const lead = getLead(req.workspaceId!, routeParam(req.params.leadId));
+  if (!lead) {
+    res.status(404).json({ error: 'Lead not found' });
+    return;
+  }
+  res.json({
+    lead,
+    nextBestAction: suggestNextBestAction(lead),
+    eligibility: assessLeadEnrolmentEligibility(req.workspaceId!, lead),
+  });
 });
 
 aivaOutreachRouter.get('/replies/review', (req: OutreachRequest, res: Response) => {

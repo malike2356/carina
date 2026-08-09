@@ -1,6 +1,7 @@
 import { CHANNEL_REQUIREMENTS, type ChannelRequirement } from '../channels/channel-requirements.js';
 import { ALL_CONFIG_DOMAINS } from '../config/settings-requirements.js';
-import { createLead, importLeadBatch } from './leads.js';
+import { createLead } from './leads.js';
+import { ingestLeads } from './lead-ingest.js';
 import type { LeadSource, OutreachLead, PipelineStatus } from './types.js';
 
 export type DiscoveryWorkspaceGrant = {
@@ -41,11 +42,16 @@ export type DiscoveryLeadImportRow = {
   sicCodes?: string | string[];
   registeredOffice?: string;
   officerNames?: string | string[];
+  website?: string;
+  niche?: string;
+  townCity?: string;
+  location?: string;
   source?: LeadSource;
   campaignId?: string;
   tags?: string[];
   status?: PipelineStatus;
   notes?: string;
+  sourceUrl?: string;
 };
 
 export type DiscoveryLeadImportResult = {
@@ -244,17 +250,7 @@ export function ingestDiscoveryLeadRows(
   const duplicates: OutreachLead[] = [];
   let skipped = 0;
   const sourceSummary: Record<string, number> = {};
-  const normalizedRows: Array<{
-    name: string;
-    email?: string;
-    phone?: string;
-    company?: string;
-    companyNumber?: string;
-    source?: LeadSource;
-    campaignId?: string;
-    tags?: string[];
-    notes?: string;
-  }> = [];
+  const ingestRows: Array<Record<string, unknown>> = [];
 
   for (const row of rows) {
     const source = row.source ?? 'manual';
@@ -268,34 +264,40 @@ export function ingestDiscoveryLeadRows(
       skipped++;
       continue;
     }
-    normalizedRows.push({
+    ingestRows.push({
+      contactName: normalized.contact_name || normalized.business_name,
       name: normalized.contact_name || normalized.business_name,
       email: normalized.email || undefined,
       phone: row.phone?.trim() || undefined,
       company: normalized.business_name || undefined,
       companyNumber: normalized.company_number || undefined,
-      source: source as LeadSource,
+      website: normalized.website || row.website,
+      niche: normalized.niche || row.niche || row.tags?.[0],
+      townCity: normalized.location || row.townCity || row.location,
+      notes: normalized.notes || row.notes,
+      sourceType: source,
+      sourceUrl: row.sourceUrl,
+      status: row.status,
       campaignId: row.campaignId,
-      tags: row.tags,
-      notes: row.notes,
     });
   }
 
-  const batch = importLeadBatch(
+  const batch = ingestLeads({
     workspaceId,
-    normalizedRows.map((row) => ({
-      name: row.name,
-      email: row.email,
-      phone: row.phone,
-      company: row.company,
-      companyNumber: row.companyNumber,
-      source: row.source,
-      campaignId: row.campaignId,
-      tags: row.tags,
-    })),
-  );
-  created.push(...batch.created);
-  duplicates.push(...batch.duplicates);
+    kind: 'api',
+    sourceType: rows[0]?.source ?? 'companies_house',
+    rows: ingestRows,
+  });
+
+  for (const result of batch.rowResults) {
+    const lead = result.leadId ? batch.leads.find((l) => l.id === result.leadId) : undefined;
+    if (!lead) continue;
+    if (result.outcome === 'created') {
+      if (!created.some((c) => c.id === lead.id)) created.push(lead);
+    } else if (result.outcome === 'updated' || result.outcome === 'duplicate') {
+      if (!duplicates.some((d) => d.id === lead.id)) duplicates.push(lead);
+    }
+  }
 
   return {
     created,
@@ -317,7 +319,11 @@ export function createDiscoveryLead(
     phone: row.phone,
     company: row.company,
     companyNumber: row.companyNumber,
+    website: row.website,
+    niche: row.niche,
+    townCity: row.townCity || row.location,
     source: row.source ?? 'manual',
+    sourceUrl: row.sourceUrl,
     campaignId: row.campaignId,
     notes: row.notes,
     tags: row.tags,

@@ -5,6 +5,8 @@ import { appendTimeline, transitionLeadStatus } from './pipeline.js';
 import { refreshFollowUpPlans } from './follow-ups.js';
 import { syncLeadBoardState } from './kanban.js';
 import { isOutreachPaused } from './control.js';
+import { assessLeadEnrolmentEligibility } from './eligibility.js';
+import { isAddressSuppressed, suppressLead } from './suppressions.js';
 import { loadOutreachStore, mutateOutreachStore } from './store.js';
 import type {
   DeliveryEvent,
@@ -206,6 +208,10 @@ export function enrollLead(input: {
 }): SequenceEnrollment {
   const lead = getLead(input.workspaceId, input.leadId);
   if (!lead) throw new Error('Lead not found');
+  const eligibility = assessLeadEnrolmentEligibility(input.workspaceId, lead, { allowReplied: true });
+  if (!eligibility.eligible && eligibility.reason !== 'already_replied') {
+    throw new Error(`Lead not eligible: ${eligibility.reason}`);
+  }
   const sequence = getSequence(input.workspaceId, input.sequenceId);
   if (!sequence || sequence.steps.length === 0) throw new Error('Sequence not found or empty');
 
@@ -372,6 +378,16 @@ export function processDueSends(workspaceId: string, now: Date = new Date()): Pr
       skipped.push({ enrollmentId: enrollment.id, reason: 'unsubscribed' });
       continue;
     }
+    if (lead.status === 'suppressed' || lead.consentStatus === 'opted_out' || lead.consentStatus === 'suppressed') {
+      stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
+      skipped.push({ enrollmentId: enrollment.id, reason: 'suppressed' });
+      continue;
+    }
+    if (isAddressSuppressed(workspaceId, lead.email)) {
+      stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
+      skipped.push({ enrollmentId: enrollment.id, reason: 'suppression_list' });
+      continue;
+    }
     if (lead.replyState === 'replied' && sequence.stopOnReply) {
       stopEnrollment(workspaceId, enrollment.id, 'reply');
       skipped.push({ enrollmentId: enrollment.id, reason: 'already_replied' });
@@ -533,7 +549,31 @@ export function markDeliveryStatus(
   });
 
   if (status === 'replied') recordLeadReply(workspaceId, delivery.leadId);
-  if (status === 'unsubscribed') recordLeadUnsubscribe(workspaceId, delivery.leadId);
+  if (status === 'unsubscribed') {
+    recordLeadUnsubscribe(workspaceId, delivery.leadId);
+    const lead = getLead(workspaceId, delivery.leadId);
+    if (lead) {
+      suppressLead(lead, 'unsubscribe', 'Provider unsubscribe event');
+      updateLead(workspaceId, delivery.leadId, {
+        status: 'suppressed',
+        consentStatus: 'opted_out',
+        suppressionReason: 'unsubscribe',
+      } as never);
+    }
+  }
+  if (status === 'bounced' || status === 'complained') {
+    stopEnrollment(workspaceId, delivery.enrollmentId, 'failed');
+    const lead = getLead(workspaceId, delivery.leadId);
+    if (lead) {
+      suppressLead(lead, status === 'complained' ? 'complaint' : 'hard_bounce', `Delivery ${status}`);
+      updateLead(workspaceId, delivery.leadId, {
+        status: 'suppressed',
+        consentStatus: 'suppressed',
+        suppressionReason: status,
+        replyState: status === 'complained' ? 'unsubscribed' : lead.replyState,
+      } as never);
+    }
+  }
   return next;
 }
 

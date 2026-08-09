@@ -415,5 +415,99 @@ export function createOutreachModuleCrudTools(sessionId: string): Tool[] {
         return { ok: true, id: list.id, data: { list } };
       },
     },
+    {
+      name: 'outreach-campaigns-preview',
+      description: 'Preview eligible campaign recipients and resolved first-step message samples. Soft Wall still required before send.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          sequenceId: { type: 'string' },
+          campaignId: { type: 'string' },
+          listId: { type: 'string' },
+          leadIds: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['sequenceId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const sequenceId = String(params.sequenceId ?? '').trim();
+        if (!workspaceId || !sequenceId) return { ok: false, error: 'workspaceId and sequenceId required' };
+        const { draftCampaignPreview } = await import('../outreach/campaign-ops.js');
+        return {
+          ok: true,
+          data: draftCampaignPreview({
+            workspaceId,
+            sequenceId,
+            campaignId: typeof params.campaignId === 'string' ? params.campaignId : undefined,
+            listId: typeof params.listId === 'string' ? params.listId : undefined,
+            leadIds: Array.isArray(params.leadIds) ? params.leadIds.map(String) : undefined,
+          }),
+        };
+      },
+    },
+    {
+      name: 'outreach-campaigns-outcomes',
+      description: 'Summarise campaign delivery, reply, bounce, and enrollment outcomes.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          campaignId: { type: 'string' },
+        },
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        if (!workspaceId) return { ok: false, error: 'workspaceId required' };
+        const { summariseCampaignOutcomes } = await import('../outreach/campaign-ops.js');
+        return {
+          ok: true,
+          data: summariseCampaignOutcomes(
+            workspaceId,
+            typeof params.campaignId === 'string' ? params.campaignId : undefined,
+          ),
+        };
+      },
+    },
+    {
+      name: 'outreach-funnel-report',
+      description: 'Funnel analytics with source and campaign attribution.',
+      parameters: {
+        type: 'object',
+        properties: { workspaceId: { type: 'string' } },
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        if (!workspaceId) return { ok: false, error: 'workspaceId required' };
+        const { buildFunnelReport } = await import('../outreach/funnel-analytics.js');
+        return { ok: true, data: buildFunnelReport(workspaceId) };
+      },
+    },
+    {
+      name: 'outreach-lead-convert-customer',
+      description: 'Convert a lead to contact/customer with attribution metadata.',
+      parameters: {
+        type: 'object',
+        properties: {
+          workspaceId: { type: 'string' },
+          leadId: { type: 'string' },
+          value: { type: 'number' },
+          note: { type: 'string' },
+        },
+        required: ['leadId'],
+      },
+      execute: async (params) => {
+        const workspaceId = resolveWorkspaceId(sessionId, params.workspaceId);
+        const leadId = String(params.leadId ?? '').trim();
+        if (!workspaceId || !leadId) return { ok: false, error: 'workspaceId and leadId required' };
+        const { markLeadAsCustomer } = await import('../outreach/lifecycle.js');
+        const lead = markLeadAsCustomer(workspaceId, leadId, {
+          value: typeof params.value === 'number' ? params.value : undefined,
+          note: typeof params.note === 'string' ? params.note : undefined,
+        });
+        if (!lead) return { ok: false, error: 'Lead not found' };
+        return { ok: true, id: lead.id, data: { lead } };
+      },
+    },
   ];
 }

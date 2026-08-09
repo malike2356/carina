@@ -8,24 +8,55 @@ export type PipelineStatus =
   | 'won'
   | 'lost'
   | 'ghosted'
-  | 'follow_up';
+  | 'follow_up'
+  | 'enriched'
+  | 'ready'
+  | 'qualified'
+  | 'nurture'
+  | 'suppressed';
 
 export type OutreachLead = {
   id: string;
   name: string;
+  contactName?: string;
   email?: string;
   phone?: string;
   company?: string;
+  niche?: string;
+  townCity?: string;
+  website?: string;
+  googleReviews?: number;
+  googleRating?: number;
+  googleMapsUrl?: string;
+  websiteScore?: number;
+  ranksTop3?: boolean | string;
+  weakness?: string;
+  priority?: string;
+  dateAdded?: string;
   source: string;
+  sourceType?: string;
+  sourceName?: string;
+  sourceUrl?: string;
+  sourceCapturedAt?: string;
+  sourceJobId?: string;
   campaignId?: string;
+  campaignIds?: string[];
+  listIds?: string[];
+  sequenceId?: string;
+  pipelineStage?: string;
   status: PipelineStatus;
   owner?: string;
+  ownerWorkerId?: string;
   notes?: string;
   tags: string[];
   replyState: string;
   bookingState: string;
   nextActionAt?: string;
   lastContactedAt?: string;
+  lastReplyAt?: string;
+  consentStatus?: string;
+  suppressionReason?: string;
+  customFields?: Record<string, unknown>;
   youtubeLeadId?: string;
   createdAt: string;
   updatedAt: string;
@@ -105,15 +136,47 @@ export type LeadList = {
   updatedAt?: string;
 };
 
-export const PIPELINE_LABELS: Record<PipelineStatus, string> = {
-  new: 'New',
+export const PIPELINE_LABELS: Record<string, string> = {
+  new: 'New Lead',
+  enriched: 'Enriched',
+  ready: 'Ready for Outreach',
   contacted: 'Contacted',
   replied: 'Replied',
-  booked: 'Booked',
+  qualified: 'Qualified',
+  booked: 'Appointment Booked',
   attended: 'Attended',
   proposal_sent: 'Proposal',
-  won: 'Won',
-  lost: 'Lost',
+  won: 'Customer',
+  nurture: 'Nurture',
+  lost: 'Closed Lost',
   ghosted: 'Ghosted',
   follow_up: 'Follow-up',
+  suppressed: 'Suppressed',
 };
+
+export const CRM_DEFAULT_COLUMNS = [
+  { id: 'company', label: 'Company', sticky: true },
+  { id: 'contactName', label: 'Contact Name', sticky: true },
+  { id: 'niche', label: 'Niche' },
+  { id: 'townCity', label: 'Town/City' },
+  { id: 'website', label: 'Website' },
+  { id: 'email', label: 'Email' },
+  { id: 'phone', label: 'Phone' },
+  { id: 'googleReviews', label: 'Google Reviews' },
+  { id: 'googleRating', label: 'Google Rating' },
+  { id: 'googleMapsUrl', label: 'Google Maps URL' },
+  { id: 'websiteScore', label: 'Website Score' },
+  { id: 'ranksTop3', label: 'Ranks Top3?' },
+  { id: 'weakness', label: 'Weakness' },
+  { id: 'priority', label: 'Priority' },
+  { id: 'status', label: 'Status' },
+  { id: 'dateAdded', label: 'Date Added' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'sourceType', label: 'Source' },
+  { id: 'sourceUrl', label: 'Source URL' },
+  { id: 'pipelineStage', label: 'Pipeline Stage' },
+  { id: 'lastContactedAt', label: 'Last Contact' },
+  { id: 'lastReplyAt', label: 'Last Reply' },
+  { id: 'nextActionAt', label: 'Next Action' },
+  { id: 'ownerWorkerId', label: 'Owner Worker' },
+] as const;
