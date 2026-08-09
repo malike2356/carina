@@ -265,8 +265,12 @@ export type DeliveryEventStatus =
   | 'scheduled'
   | 'queued'
   | 'pending_approval'
+  | 'accepted'
   | 'sent'
+  | 'deferred'
   | 'delivered'
+  | 'opened'
+  | 'clicked'
   | 'bounced'
   | 'complained'
   | 'failed'
@@ -297,6 +301,12 @@ export interface DeliveryEvent {
   providerThreadId?: string;
   /** RFC 5322 Message-ID when known. */
   rfcMessageId?: string;
+  provider?: string;
+  mailboxIdentity?: string;
+  openedAt?: string;
+  clickedAt?: string;
+  openCount?: number;
+  clickCount?: number;
   createdAt: string;
   updatedAt: string;
 }

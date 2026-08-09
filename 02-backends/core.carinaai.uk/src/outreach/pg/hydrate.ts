@@ -256,8 +256,14 @@ export async function saveWorkspaceOutreachToPg(
     for (const d of store.deliveries.filter((x) => x.workspaceId === workspaceId)) {
       await client.query(
         `INSERT INTO outreach_deliveries (
-          id, workspace_id, enrollment_id, lead_id, approval_id, status, scheduled_for, created_at, updated_at, payload
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          id, workspace_id, enrollment_id, lead_id, approval_id, status, scheduled_for, created_at, updated_at, payload,
+          provider, provider_message_id, provider_thread_id, rfc_message_id, mailbox_identity,
+          opened_at, clicked_at, open_count, click_count
+        ) VALUES (
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+          $11,$12,$13,$14,$15,
+          $16::timestamptz,$17::timestamptz,$18,$19
+        )`,
         [
           d.id,
           workspaceId,
@@ -269,6 +275,15 @@ export async function saveWorkspaceOutreachToPg(
           d.createdAt,
           d.updatedAt,
           JSON.stringify(d),
+          d.provider || null,
+          d.providerMessageId || null,
+          d.providerThreadId || null,
+          d.rfcMessageId || null,
+          d.mailboxIdentity || null,
+          d.openedAt || null,
+          d.clickedAt || null,
+          d.openCount ?? 0,
+          d.clickCount ?? 0,
         ],
       );
     }

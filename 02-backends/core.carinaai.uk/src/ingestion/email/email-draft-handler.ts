@@ -245,15 +245,28 @@ export async function sendApprovedEmail(input: {
   } else {
     const creds = await getEmailCredentials(existing.workerId);
     const replyTo = creds?.username;
-    await sendEmail({
+    const { findDeliveryByApprovalId } = await import('../../outreach/soft-wall-approvals.js');
+    const linkedDelivery = findDeliveryByApprovalId(input.workspaceId, input.approvalId);
+    const resendResult = await sendEmail({
       to: existing.recipient,
       subject: existing.subject,
       replyTo,
       transactional: true,
       workspaceId: input.workspaceId,
       template: React.createElement(Text, null, body),
+      tags: [
+        { name: 'workspace_id', value: input.workspaceId },
+        { name: 'approval_id', value: input.approvalId },
+        ...(linkedDelivery ? [{ name: 'delivery_id', value: linkedDelivery.id }] : []),
+      ],
+      headers: linkedDelivery
+        ? { 'X-Aiva-Delivery-Id': linkedDelivery.id, 'X-Aiva-Workspace-Id': input.workspaceId }
+        : { 'X-Aiva-Workspace-Id': input.workspaceId },
     });
     sentVia = 'resend';
+    if (resendResult && typeof resendResult === 'object' && resendResult.id) {
+      providerMessageId = resendResult.id;
+    }
   }
 
   const decision = input.modifiedBody ? 'modified' : 'approved';
@@ -277,6 +290,8 @@ export async function sendApprovedEmail(input: {
       providerMessageId,
       providerThreadId,
       rfcMessageId,
+      provider: sentVia,
+      mailboxIdentity: existing.recipient,
     });
   } catch {
     // Outreach Soft Wall link is best-effort; Approvals send still succeeded.

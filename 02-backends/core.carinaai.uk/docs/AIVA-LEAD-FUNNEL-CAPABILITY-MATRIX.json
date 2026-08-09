@@ -241,9 +241,26 @@
     {
       "id": "provider.bounce_complaint_webhooks",
       "area": "delivery_events",
-      "status": "missing",
-      "mode": "missing",
-      "notes": "Hardening prompt 05."
+      "status": "real",
+      "mode": "auto",
+      "notes": "Resend /webhooks/email/events + Mailgun /webhooks/email/mailgun/events; monotonic apply + reconcile gaps. Opens/clicks only when tracking enabled.",
+      "evidence": [
+        "src/outreach/provider-events/",
+        "src/api/email-webhook.ts",
+        "039-outreach-provider-delivery-events.sql"
+      ]
+    },
+    {
+      "id": "delivery.provider_events",
+      "area": "delivery_events",
+      "status": "real",
+      "mode": "auto",
+      "notes": "Provider message IDs from Soft Wall send; engagement never invented by reconcile.",
+      "evidence": [
+        "src/outreach/provider-events/apply.ts",
+        "src/outreach/provider-events/reconcile.ts",
+        "GET /api/aiva/outreach/provider-events"
+      ]
     }
   ]
 }

@@ -121,6 +121,9 @@ export function startOutreachProcessDueScheduler(): void {
     void import('./inbound/engine.js')
       .then(({ startMailboxReplyIngestEngine }) => startMailboxReplyIngestEngine())
       .catch((err) => console.warn('[outreach-due] mailbox ingest engine failed to start:', err));
+    void import('./provider-events/engine.js')
+      .then(({ startDeliveryReconcileEngine }) => startDeliveryReconcileEngine())
+      .catch((err) => console.warn('[outreach-due] delivery reconcile engine failed to start:', err));
     if (!auxiliaryCron) {
       auxiliaryCron = new Cron('*/5 * * * *', () => {
         void sweepAuxiliaryDue()
@@ -162,6 +165,9 @@ export function startOutreachProcessDueScheduler(): void {
       console.warn('[outreach-due] initial sweep failed:', err);
     });
   }, 60_000);
+  void import('./provider-events/engine.js')
+    .then(({ startDeliveryReconcileEngine }) => startDeliveryReconcileEngine())
+    .catch((err) => console.warn('[outreach-due] delivery reconcile engine failed to start:', err));
 }
 
 export function stopOutreachProcessDueScheduler(): void {
@@ -172,5 +178,8 @@ export function stopOutreachProcessDueScheduler(): void {
   stopOutreachDueEngine();
   void import('./inbound/engine.js')
     .then(({ stopMailboxReplyIngestEngine }) => stopMailboxReplyIngestEngine())
+    .catch(() => undefined);
+  void import('./provider-events/engine.js')
+    .then(({ stopDeliveryReconcileEngine }) => stopDeliveryReconcileEngine())
     .catch(() => undefined);
 }

@@ -1176,6 +1176,51 @@ aivaOutreachRouter.post('/mailbox/tick', async (req: OutreachRequest, res: Respo
   }
 });
 
+aivaOutreachRouter.get('/provider-events', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { listProviderEvents } = await import('../outreach/provider-events/persist.js');
+    const deliveryId = typeof req.query.deliveryId === 'string' ? req.query.deliveryId : undefined;
+    const limit = Number(req.query.limit ?? 50);
+    const events = await listProviderEvents({
+      workspaceId: req.workspaceId!,
+      deliveryId,
+      limit: Number.isFinite(limit) ? limit : 50,
+    });
+    res.json({ events });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.get('/reconcile/gaps', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { listOpenReconcileGaps } = await import('../outreach/provider-events/persist.js');
+    const limit = Number(req.query.limit ?? 50);
+    const gaps = await listOpenReconcileGaps(Number.isFinite(limit) ? limit : 50);
+    const workspaceId = req.workspaceId!;
+    res.json({
+      gaps: gaps.filter((g) => !g.workspace_id || String(g.workspace_id) === workspaceId),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/reconcile/tick', async (_req: OutreachRequest, res: Response) => {
+  try {
+    const { tickDeliveryReconciliation } = await import('../outreach/provider-events/engine.js');
+    const { isDeliveryReconcileEnabled } = await import('../outreach/provider-events/reconcile.js');
+    if (!isDeliveryReconcileEnabled()) {
+      res.status(503).json({ error: 'Delivery reconciliation is not enabled' });
+      return;
+    }
+    const result = await tickDeliveryReconciliation();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 aivaOutreachRouter.get('/bookings', (req: OutreachRequest, res: Response) => {
   const leadId = typeof req.query.leadId === 'string' ? req.query.leadId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;

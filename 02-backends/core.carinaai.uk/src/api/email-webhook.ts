@@ -2,6 +2,10 @@ import { Router, type Request, type Response, type IRouter } from 'express';
 import { pool } from '../memory/db.js';
 import { parseSvixHeaders, verifyResendWebhook } from '../lib/resend-webhook.js';
 import { resolveResendWebhookSecret } from '../email/resend-client.js';
+import {
+  verifyMailgunWebhookSignature,
+  isMailgunSignatureRequired,
+} from '../ingestion/email/mailgun-inbound.js';
 
 export const emailEvents = {
   listeners: [] as Array<(payload: InboundEmailPayload) => void>,
@@ -36,7 +40,7 @@ function parsePayload(body: Record<string, unknown>): InboundEmailPayload {
   };
 }
 
-function verifyInboundRequest(req: Request): { ok: true } | { ok: false; status: number; error: string } {
+function verifyResendSignedRequest(req: Request): { ok: true } | { ok: false; status: number; error: string } {
   const secret = resolveResendWebhookSecret();
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
@@ -54,11 +58,26 @@ function verifyInboundRequest(req: Request): { ok: true } | { ok: false; status:
   return { ok: true };
 }
 
+function verifyMailgunSignedRequest(req: Request): { ok: true } | { ok: false; status: number; error: string } {
+  if (!isMailgunSignatureRequired()) return { ok: true };
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const signature = (body.signature && typeof body.signature === 'object')
+    ? body.signature as Record<string, unknown>
+    : body;
+  const ok = verifyMailgunWebhookSignature({
+    timestamp: String(signature.timestamp ?? body.timestamp ?? ''),
+    token: String(signature.token ?? body.token ?? ''),
+    signature: String(signature.signature ?? body.signature ?? ''),
+  });
+  if (!ok) return { ok: false, status: 401, error: 'Invalid Mailgun webhook signature' };
+  return { ok: true };
+}
+
 export const emailWebhookRouter: IRouter = Router();
 
 emailWebhookRouter.post('/inbound', async (req: Request, res: Response) => {
   try {
-    const auth = verifyInboundRequest(req);
+    const auth = verifyResendSignedRequest(req);
     if (!auth.ok) {
       res.status(auth.status).json({ error: auth.error });
       return;
@@ -82,6 +101,58 @@ emailWebhookRouter.post('/inbound', async (req: Request, res: Response) => {
 
     emailEvents.emit(payload);
     res.status(200).json({ ok: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/** Resend delivery / engagement events (signed). */
+emailWebhookRouter.post('/events', async (req: Request, res: Response) => {
+  try {
+    const auth = verifyResendSignedRequest(req);
+    if (!auth.ok) {
+      res.status(auth.status).json({ error: auth.error });
+      return;
+    }
+    const svix = parseSvixHeaders(req.headers as Record<string, string | string[] | undefined>);
+    const { normalizeResendDeliveryEvent } = await import('../outreach/provider-events/normalize.js');
+    const { applyProviderEvent } = await import('../outreach/provider-events/apply.js');
+    const normalized = normalizeResendDeliveryEvent({
+      body: (req.body ?? {}) as Record<string, unknown>,
+      svixId: svix?.id,
+    });
+    if (!normalized) {
+      res.status(200).json({ ok: true, ignored: true, reason: 'unmapped_event' });
+      return;
+    }
+    const result = await applyProviderEvent(normalized);
+    res.status(200).json({ ok: true, result });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+/** Mailgun delivery / engagement events (HMAC). */
+emailWebhookRouter.post('/mailgun/events', async (req: Request, res: Response) => {
+  try {
+    const auth = verifyMailgunSignedRequest(req);
+    if (!auth.ok) {
+      res.status(auth.status).json({ error: auth.error });
+      return;
+    }
+    const { normalizeMailgunDeliveryEvent } = await import('../outreach/provider-events/normalize.js');
+    const { applyProviderEvent } = await import('../outreach/provider-events/apply.js');
+    const normalized = normalizeMailgunDeliveryEvent({
+      body: (req.body ?? {}) as Record<string, unknown>,
+    });
+    if (!normalized) {
+      res.status(200).json({ ok: true, ignored: true, reason: 'unmapped_event' });
+      return;
+    }
+    const result = await applyProviderEvent(normalized);
+    res.status(200).json({ ok: true, result });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: msg });

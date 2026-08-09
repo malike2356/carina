@@ -141,6 +141,8 @@ export function markOutreachDeliveryFromApproval(input: {
   providerMessageId?: string;
   providerThreadId?: string;
   rfcMessageId?: string;
+  provider?: string;
+  mailboxIdentity?: string;
 }): DeliveryEvent | null {
   const delivery = findDeliveryByApprovalId(input.workspaceId, input.approvalId);
   if (!delivery) return null;
@@ -150,6 +152,9 @@ export function markOutreachDeliveryFromApproval(input: {
     providerMessageId: input.providerMessageId,
     providerThreadId: input.providerThreadId,
     rfcMessageId: input.rfcMessageId,
+    provider: input.provider,
+    mailboxIdentity: input.mailboxIdentity,
+    force: true,
   });
 }
 

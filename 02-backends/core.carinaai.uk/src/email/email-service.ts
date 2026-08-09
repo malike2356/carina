@@ -37,7 +37,7 @@ function previewModeEnabled(): boolean {
   return process.env.NODE_ENV === 'development';
 }
 
-export async function sendEmail(opts: SendEmailOptions): Promise<void> {
+export async function sendEmail(opts: SendEmailOptions): Promise<{ id?: string } | void> {
   try {
     if (!opts.transactional && opts.workspaceId) {
       const optedOut = await isMarketingOptedOut(opts.workspaceId);
@@ -50,7 +50,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
     if (previewModeEnabled()) {
       const text = await render(opts.template, { plainText: true });
       console.log(`[EMAIL DEV] To: ${opts.to} | Subject: ${opts.subject}\n${text}`);
-      return;
+      return { id: `preview-${Date.now()}` };
     }
 
     const resendClient = getResendClient();
@@ -78,6 +78,12 @@ export async function sendEmail(opts: SendEmailOptions): Promise<void> {
           : 'Resend rejected the send';
       throw new Error(message);
     }
+
+    const id = result && typeof result === 'object' && 'data' in result
+      && result.data && typeof result.data === 'object' && 'id' in result.data
+      ? String((result.data as { id?: string }).id ?? '')
+      : undefined;
+    return id ? { id } : {};
   } catch (err) {
     console.error('[EMAIL] Send failed:', opts.to, opts.subject, err);
     if (opts.transactional) throw err;

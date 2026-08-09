@@ -8,6 +8,7 @@ import { isOutreachPaused } from './control.js';
 import { assessLeadEnrolmentEligibility } from './eligibility.js';
 import { isAddressSuppressed, suppressLead } from './suppressions.js';
 import { loadOutreachStore, mutateOutreachStore } from './store.js';
+import { canTransitionDeliveryStatus } from './provider-events/state-machine.js';
 import type {
   DeliveryEvent,
   EnrollmentStopReason,
@@ -570,10 +571,20 @@ export function markDeliveryStatus(
     providerMessageId?: string;
     providerThreadId?: string;
     rfcMessageId?: string;
+    provider?: string;
+    mailboxIdentity?: string;
+    force?: boolean;
   },
 ): DeliveryEvent | null {
   const delivery = loadOutreachStore().deliveries.find((d) => d.workspaceId === workspaceId && d.id === deliveryId);
   if (!delivery) return null;
+
+  if (!extra?.force) {
+    if (!canTransitionDeliveryStatus(delivery.status, status)) {
+      return delivery;
+    }
+  }
+
   const next: DeliveryEvent = {
     ...delivery,
     status,
@@ -582,6 +593,8 @@ export function markDeliveryStatus(
     providerMessageId: extra?.providerMessageId ?? delivery.providerMessageId,
     providerThreadId: extra?.providerThreadId ?? delivery.providerThreadId,
     rfcMessageId: extra?.rfcMessageId ?? delivery.rfcMessageId,
+    provider: extra?.provider ?? delivery.provider,
+    mailboxIdentity: extra?.mailboxIdentity ?? delivery.mailboxIdentity,
     attempts: delivery.attempts + (status === 'failed' ? 1 : 0),
     updatedAt: nowIso(),
   };
@@ -601,6 +614,7 @@ export function markDeliveryStatus(
   if (status === 'replied') recordLeadReply(workspaceId, delivery.leadId);
   if (status === 'unsubscribed') {
     recordLeadUnsubscribe(workspaceId, delivery.leadId);
+    stopEnrollment(workspaceId, delivery.enrollmentId, 'unsubscribe');
     const lead = getLead(workspaceId, delivery.leadId);
     if (lead) {
       suppressLead(lead, 'unsubscribe', 'Provider unsubscribe event');
