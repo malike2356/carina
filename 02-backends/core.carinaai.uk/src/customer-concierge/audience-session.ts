@@ -141,7 +141,25 @@ export async function createAudienceSession(input: {
       expiresAt.toISOString(),
     ],
   );
-  return mapSession(result.rows[0] as Record<string, unknown>);
+  const record = mapSession(result.rows[0] as Record<string, unknown>);
+  try {
+    const { appendConciergeEvent } = await import('./events.js');
+    appendConciergeEvent({
+      eventType: 'conversation.started',
+      workspaceId: input.workspaceId,
+      workerId: input.workerId,
+      actorType: 'audience',
+      payload: {
+        audienceSessionId: record.id,
+        channel: record.channel,
+        sessionMode: record.sessionMode,
+        summary: 'Audience conversation started',
+      },
+    });
+  } catch {
+    // best-effort
+  }
+  return record;
 }
 
 export async function getAudienceSessionByWidgetToken(

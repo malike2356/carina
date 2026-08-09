@@ -621,6 +621,22 @@ export function setSessionOutcome(
     if (idx >= 0) store.bookings[idx] = next;
   });
   emitVcalHook({ type: 'booking.outcome', booking: next });
+  try {
+    // Dynamic import avoids a hard cycle with customer-concierge.
+    void import('../customer-concierge/outreach-hooks.js')
+      .then(({ onBookingOutcome }) => {
+        onBookingOutcome({
+          workspaceId,
+          bookingId,
+          outcome,
+          leadId: next.leadId ?? null,
+          guestEmail: next.guestEmail,
+        });
+      })
+      .catch(() => undefined);
+  } catch {
+    // best-effort
+  }
   return next;
 }
 

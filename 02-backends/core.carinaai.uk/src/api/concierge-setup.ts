@@ -50,6 +50,14 @@ import {
   operatorTakeover,
   releaseToAiva,
 } from '../customer-concierge/handoff.js';
+import { listOperatorInbox, getOperatorInboxDetail } from '../customer-concierge/operator-inbox.js';
+import { buildCrmTimeline, getBookingEvidence } from '../customer-concierge/crm-timeline.js';
+import { buildConciergeAnalytics } from '../customer-concierge/analytics.js';
+import { operatorResumeEnrollment } from '../customer-concierge/outreach-hooks.js';
+import { listBookings } from '../vical/bookings.js';
+import { bookingInvitationView } from '../vical/calendar/reconcile.js';
+import { getConferenceArtifact } from '../vical/saga/ledger.js';
+import { getCalendarProjection } from '../vical/calendar/projection-store.js';
 import { pool } from '../memory/db.js';
 
 export const conciergeSetupRouter: ExpressRouter = Router({ mergeParams: true });
@@ -890,6 +898,169 @@ conciergeSetupRouter.post(
     } catch (err) {
       const status = (err as { status?: number }).status ?? 400;
       res.status(status).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+// Prompt 705: operator inbox, CRM timeline, bookings panel, analytics, outreach resume.
+
+conciergeSetupRouter.get('/inbox', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const conversations = await listOperatorInbox({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+      status,
+      limit: 50,
+    });
+    res.json({ conversations });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.get(
+  '/inbox/:audienceSessionId',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const audienceSessionId = String(req.params.audienceSessionId ?? '').trim();
+      const detail = await getOperatorInboxDetail({
+        workspaceId: ctx.workspaceId,
+        workerId: ctx.workerId,
+        audienceSessionId,
+      });
+      if (!detail) {
+        res.status(404).json({ error: 'Conversation not found' });
+        return;
+      }
+      res.json({ conversation: detail });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.get('/crm-timeline', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const timeline = await buildCrmTimeline({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+      leadId: typeof req.query.leadId === 'string' ? req.query.leadId : null,
+      email: typeof req.query.email === 'string' ? req.query.email : null,
+      audienceSessionId:
+        typeof req.query.audienceSessionId === 'string' ? req.query.audienceSessionId : null,
+      bookingId: typeof req.query.bookingId === 'string' ? req.query.bookingId : null,
+    });
+    res.json({ timeline });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.get('/bookings', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const bookings = listBookings(ctx.workspaceId)
+      .slice()
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 50)
+      .map((b) => {
+        const invitation = bookingInvitationView(b);
+        const conference = getConferenceArtifact(ctx.workspaceId, b.id);
+        const projection = getCalendarProjection(ctx.workspaceId, b.id);
+        return {
+          id: b.id,
+          status: b.status,
+          guestName: b.guestName,
+          guestEmail: b.guestEmail,
+          startsAt: b.startsAt,
+          endsAt: b.endsAt,
+          meetingUrl: b.meetingUrl ?? null,
+          calendarEventId: b.calendarEventId ?? projection?.providerEventId ?? null,
+          leadId: b.leadId ?? null,
+          sessionOutcome: b.sessionOutcome ?? null,
+          orchestrationStatus: b.orchestrationStatus ?? null,
+          ...invitation,
+          conferenceManaged: conference?.managed ?? null,
+          conferenceProvider: conference?.provider ?? null,
+          sourceSystem: 'vical',
+          deepLinks: {
+            outreachBookings: '/aiva/outreach/bookings',
+            vicalBookings: '/vical/bookings',
+          },
+        };
+      });
+    res.json({
+      bookings,
+      note: 'Same viCal ledger as outreach Bookings and /vical/bookings; not a divergent record set.',
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.get(
+  '/bookings/:bookingId/evidence',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const bookingId = String(req.params.bookingId ?? '').trim();
+      const evidence = getBookingEvidence(ctx.workspaceId, bookingId);
+      if (!evidence) {
+        res.status(404).json({ error: 'Booking not found' });
+        return;
+      }
+      res.json({ evidence });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.get('/analytics', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const report = await buildConciergeAnalytics({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+      since: typeof req.query.since === 'string' ? req.query.since : undefined,
+      until: typeof req.query.until === 'string' ? req.query.until : undefined,
+    });
+    res.json({ analytics: report });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.post(
+  '/outreach/enrollments/:enrollmentId/resume',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const enrollmentId = String(req.params.enrollmentId ?? '').trim();
+      const enrollment = operatorResumeEnrollment({
+        workspaceId: ctx.workspaceId,
+        workerId: ctx.workerId,
+        enrollmentId,
+        actorId: typeof req.body?.actorId === 'string' ? req.body.actorId : null,
+      });
+      if (!enrollment) {
+        res.status(404).json({ error: 'Enrollment not found' });
+        return;
+      }
+      res.json({ enrollment });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
     }
   },
 );

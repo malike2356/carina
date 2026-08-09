@@ -474,6 +474,19 @@ export async function bookWithSaga(
       orchestrationStatus: 'confirmed',
       actionRequiredReason: undefined,
     });
+    try {
+      const { onBookingConfirmed } = await import('../../customer-concierge/outreach-hooks.js');
+      onBookingConfirmed({
+        workspaceId: input.workspaceId,
+        workerId: input.workerId,
+        bookingId: booking.id,
+        leadId: input.leadId ?? booking.leadId ?? null,
+        guestEmail: booking.guestEmail,
+        correlationId: idempotencyKey,
+      });
+    } catch {
+      // Outreach linkage must not fail the booking saga.
+    }
   }
 
   return {
@@ -648,6 +661,19 @@ export async function cancelWithSaga(
       ? booking.actionRequiredReason ?? 'zoom_delete_failed'
       : undefined,
   });
+
+  try {
+    const { onBookingCancelled } = await import('../../customer-concierge/outreach-hooks.js');
+    onBookingCancelled({
+      workspaceId: input.workspaceId,
+      workerId: input.workerId,
+      bookingId: next.id,
+      leadId: next.leadId ?? null,
+      guestEmail: next.guestEmail,
+    });
+  } catch {
+    // best-effort
+  }
 
   return {
     booking: next,

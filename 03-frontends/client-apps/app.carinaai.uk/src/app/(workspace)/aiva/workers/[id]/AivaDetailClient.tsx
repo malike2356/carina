@@ -28,7 +28,7 @@ import { PlanGateSection } from '@/components/billing/PlanGateSection';
 import { CarinaEditor } from '@/components/editor';
 import { PropreneurBindingPanel } from '@/components/aiva/PropreneurBindingPanel';
 import { AivaWorkerProductTools } from '@/components/aiva/AivaWorkerProductTools';
-import { ConciergeSetupTab } from '@/components/aiva/ConciergeSetupTab';
+import { ConciergeArea } from '@/components/aiva/ConciergeArea';
 import { HostedEmailAddressPanel } from '@/components/aiva/HostedEmailAddressPanel';
 import { AivaHostedEmailCard } from '@/components/aiva/AivaHostedEmailCard';
 import { TelegramVoicePreferenceToggle } from '@/components/aiva/TelegramVoicePreferenceToggle';
@@ -1315,7 +1315,7 @@ export function AivaDetailClient({
           {isDismissed ? (
             locked('Concierge setup is locked. This Aiva was dismissed.')
           ) : (
-            <ConciergeSetupTab workerId={workerId} />
+            <ConciergeArea workerId={workerId} />
           )}
         </div>
       ) : null}

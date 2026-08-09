@@ -119,6 +119,9 @@ export function CrmLeadsGrid({
   const [focus, setFocus] = useState<{ row: number; col: number } | null>(null);
   const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   const [dragCol, setDragCol] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [bookingFilter, setBookingFilter] = useState<string>('all');
+  const [replyFilter, setReplyFilter] = useState<string>('all');
   const panelRef = useRef<HTMLDivElement>(null);
   const resizeRef = useRef<{ id: string; startX: number; startW: number } | null>(null);
 
@@ -152,7 +155,16 @@ export function CrmLeadsGrid({
     return ordered.filter((c) => !hidden.has(c.id));
   }, [hidden, order]);
 
-  const allIds = leads.map((l) => l.id);
+  const visibleLeads = useMemo(() => {
+    return leads.filter((lead) => {
+      if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
+      if (bookingFilter !== 'all' && (lead.bookingState || 'none') !== bookingFilter) return false;
+      if (replyFilter !== 'all' && (lead.replyState || 'none') !== replyFilter) return false;
+      return true;
+    });
+  }, [leads, statusFilter, bookingFilter, replyFilter]);
+
+  const allIds = visibleLeads.map((l) => l.id);
   const pad = density === 'compact' ? 'px-2 py-1.5' : density === 'spacious' ? 'px-3 py-3.5' : 'px-3 py-2.5';
   const companyLeft = 40;
   const contactLeft = companyLeft + (widths.company || COL_DEFAULT_WIDTH.company || 180);
@@ -210,7 +222,7 @@ export function CrmLeadsGrid({
 
   const copySelection = useCallback(async () => {
     if (!focus) return;
-    const lead = leads[focus.row];
+    const lead = visibleLeads[focus.row];
     const col = columns[focus.col];
     if (!lead || !col) return;
     const text = cellValue(lead, col.id);
@@ -219,7 +231,7 @@ export function CrmLeadsGrid({
     } catch {
       // ignore
     }
-  }, [focus, leads, columns]);
+  }, [focus, visibleLeads, columns]);
 
   const onKeyDown = useCallback(async (e: KeyboardEvent) => {
     if (editing) return;
@@ -236,7 +248,7 @@ export function CrmLeadsGrid({
     if (!focus) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setFocus((f) => f ? { ...f, row: Math.min(leads.length - 1, f.row + 1) } : f);
+      setFocus((f) => f ? { ...f, row: Math.min(visibleLeads.length - 1, f.row + 1) } : f);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setFocus((f) => f ? { ...f, row: Math.max(0, f.row - 1) } : f);
@@ -247,7 +259,7 @@ export function CrmLeadsGrid({
       e.preventDefault();
       setFocus((f) => f ? { ...f, col: Math.max(0, f.col - 1) } : f);
     } else if (e.key === 'Enter' && focus) {
-      const lead = leads[focus.row];
+      const lead = visibleLeads[focus.row];
       const col = columns[focus.col];
       if (lead && col) {
         setEditing({ id: lead.id, column: col.id });
@@ -255,10 +267,10 @@ export function CrmLeadsGrid({
       }
     } else if (e.key === ' ' && focus) {
       e.preventDefault();
-      const lead = leads[focus.row];
+      const lead = visibleLeads[focus.row];
       if (lead) onToggle(lead.id);
     }
-  }, [editing, focus, leads, columns, undo, copySelection, onToggle]);
+  }, [editing, focus, visibleLeads, columns, undo, copySelection, onToggle]);
 
   const stickyFor = (colId: string): { sticky: boolean; left: number } => {
     if (colId === 'company') return { sticky: true, left: companyLeft };
@@ -268,6 +280,52 @@ export function CrmLeadsGrid({
 
   return (
     <div className="space-y-3" onKeyDown={onKeyDown} tabIndex={0} role="grid" aria-label="CRM leads spreadsheet">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="text-xs text-text-muted">
+          Status{' '}
+          <select
+            className="ml-1 rounded border border-border bg-elevated px-2 py-1 text-xs"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            {Object.keys(PIPELINE_LABELS).map((status) => (
+              <option key={status} value={status}>{PIPELINE_LABELS[status as keyof typeof PIPELINE_LABELS] ?? status}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-text-muted">
+          Booking{' '}
+          <select
+            className="ml-1 rounded border border-border bg-elevated px-2 py-1 text-xs"
+            value={bookingFilter}
+            onChange={(e) => setBookingFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="none">None</option>
+            <option value="offered">Offered</option>
+            <option value="booked">Booked</option>
+            <option value="attended">Attended</option>
+            <option value="no_show">No-show</option>
+          </select>
+        </label>
+        <label className="text-xs text-text-muted">
+          Reply{' '}
+          <select
+            className="ml-1 rounded border border-border bg-elevated px-2 py-1 text-xs"
+            value={replyFilter}
+            onChange={(e) => setReplyFilter(e.target.value)}
+          >
+            <option value="all">All</option>
+            <option value="none">None</option>
+            <option value="replied">Replied</option>
+            <option value="unsubscribed">Unsubscribed</option>
+          </select>
+        </label>
+        <span className="text-xs text-text-muted">
+          Showing {visibleLeads.length} of {leads.length}
+        </span>
+      </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-text-muted">
           {columns.length} columns. Frozen: selection, Company, Contact. Arrow keys move; Enter edits; Ctrl/Cmd+Z undoes.
@@ -410,7 +468,7 @@ export function CrmLeadsGrid({
             </tr>
           </thead>
           <tbody>
-            {leads.map((lead, rowIdx) => (
+            {visibleLeads.map((lead, rowIdx) => (
               <tr key={lead.id} className="group hover:bg-overlay/40">
                 <td className={`${pad} sticky left-0 z-10 border-b border-border bg-elevated group-hover:bg-elevated`}>
                   <input
@@ -506,16 +564,18 @@ export function CrmLeadsGrid({
             ))}
           </tbody>
         </table>
-        {leads.length === 0 && (
+        {visibleLeads.length === 0 && (
           <div className="border-t border-border p-10 text-center text-sm text-text-muted">
-            No leads yet. Use Add / Import above, scrape Companies House, or connect Google Sheets.
+            {leads.length === 0
+              ? 'No leads yet. Use Add / Import above, scrape Companies House, or connect Google Sheets.'
+              : 'No leads match the current status / booking / reply filters.'}
           </div>
         )}
       </div>
 
       {/* Mobile card / reduced-column mode */}
       <div className="space-y-2 md:hidden">
-        {leads.map((lead) => (
+        {visibleLeads.map((lead) => (
           <article key={lead.id} className="rounded-lg border border-border bg-elevated p-3">
             <div className="flex items-start gap-2">
               <input
@@ -551,8 +611,10 @@ export function CrmLeadsGrid({
             </div>
           </article>
         ))}
-        {leads.length === 0 ? (
-          <p className="p-6 text-center text-sm text-text-muted">No leads yet.</p>
+        {visibleLeads.length === 0 ? (
+          <p className="p-6 text-center text-sm text-text-muted">
+            {leads.length === 0 ? 'No leads yet.' : 'No leads match the current filters.'}
+          </p>
         ) : null}
       </div>
     </div>

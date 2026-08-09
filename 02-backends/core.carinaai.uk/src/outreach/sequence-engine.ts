@@ -268,9 +268,10 @@ export function stopEnrollment(
     })
     .catch(() => undefined);
 
+  const paused = reason === 'manual_pause' || reason === 'support_case';
   const next: SequenceEnrollment = {
     ...enrollment,
-    status: reason === 'manual_pause' ? 'paused' : 'stopped',
+    status: paused ? 'paused' : 'stopped',
     stopReason: reason,
     nextActionAt: undefined,
     updatedAt: nowIso(),
@@ -282,8 +283,48 @@ export function stopEnrollment(
     if (leadIdx >= 0) {
       s.leads[leadIdx] = appendTimeline(s.leads[leadIdx]!, {
         kind: 'stop',
-        message: `Sequence ${reason === 'manual_pause' ? 'paused' : 'stopped'} (${reason})`,
+        message: `Sequence ${paused ? 'paused' : 'stopped'} (${reason})`,
         meta: { enrollmentId, reason },
+      });
+    }
+  });
+  return next;
+}
+
+/** Operator-reversible resume for paused enrollments (manual_pause / support_case). */
+export function resumeEnrollment(
+  workspaceId: string,
+  enrollmentId: string,
+): SequenceEnrollment | null {
+  const store = loadOutreachStore();
+  const enrollment = store.enrollments.find((e) => e.workspaceId === workspaceId && e.id === enrollmentId);
+  if (!enrollment) return null;
+  if (enrollment.status !== 'paused' && !(enrollment.status === 'stopped' && enrollment.stopReason === 'booking')) {
+    return enrollment;
+  }
+
+  const sequence = getSequence(workspaceId, enrollment.sequenceId);
+  const step = sequence?.steps[enrollment.currentStepIndex];
+  const nextActionAt = step
+    ? addHours(nowIso(), Math.max(0, step.delayHours ?? 0))
+    : nowIso();
+
+  const next: SequenceEnrollment = {
+    ...enrollment,
+    status: 'active',
+    stopReason: undefined,
+    nextActionAt,
+    updatedAt: nowIso(),
+  };
+  mutateOutreachStore((s) => {
+    const idx = s.enrollments.findIndex((e) => e.id === enrollmentId);
+    if (idx >= 0) s.enrollments[idx] = next;
+    const leadIdx = s.leads.findIndex((l) => l.id === enrollment.leadId);
+    if (leadIdx >= 0) {
+      s.leads[leadIdx] = appendTimeline(s.leads[leadIdx]!, {
+        kind: 'system',
+        message: 'Sequence resumed by operator',
+        meta: { enrollmentId, previousStopReason: enrollment.stopReason ?? undefined },
       });
     }
   });

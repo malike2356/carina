@@ -33,6 +33,7 @@ import {
   resolveReplyReview,
   retryFailedDelivery,
   stopEnrollment,
+  resumeEnrollment,
   updateCampaign,
   updateLead,
   listAvailability,
@@ -1089,6 +1090,15 @@ aivaOutreachRouter.post('/enrollments', (req: OutreachRequest, res: Response) =>
 
 aivaOutreachRouter.post('/enrollments/:enrollmentId/pause', (req: OutreachRequest, res: Response) => {
   const enrollment = stopEnrollment(req.workspaceId!, routeParam(req.params.enrollmentId), 'manual_pause');
+  if (!enrollment) {
+    res.status(404).json({ error: 'Enrollment not found' });
+    return;
+  }
+  res.json({ enrollment });
+});
+
+aivaOutreachRouter.post('/enrollments/:enrollmentId/resume', (req: OutreachRequest, res: Response) => {
+  const enrollment = resumeEnrollment(req.workspaceId!, routeParam(req.params.enrollmentId));
   if (!enrollment) {
     res.status(404).json({ error: 'Enrollment not found' });
     return;

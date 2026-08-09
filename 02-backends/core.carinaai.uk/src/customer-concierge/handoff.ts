@@ -80,6 +80,24 @@ export async function requestHandoff(input: {
     },
   });
 
+  try {
+    const { appendConciergeEvent } = await import('./events.js');
+    appendConciergeEvent({
+      eventType: 'handoff.requested',
+      workspaceId: input.workspaceId,
+      workerId: input.workerId,
+      actorType: 'system',
+      payload: {
+        audienceSessionId: input.audienceSessionId,
+        caseId: supportCase?.id ?? null,
+        channel: input.channel ?? 'web',
+        summary: 'Handoff requested; originating channel retained',
+      },
+    });
+  } catch {
+    // best-effort
+  }
+
   return {
     audienceSessionId: input.audienceSessionId,
     status: 'handed_off',

@@ -247,6 +247,30 @@ export async function createSupportCase(input: {
     },
   });
 
+  try {
+    const { pauseOutreachForSupportCase } = await import('./outreach-hooks.js');
+    let guestEmail: string | null = null;
+    if (input.audienceSessionId) {
+      const sessionRow = await pool.query(
+        `SELECT i.email FROM audience_sessions s
+         JOIN audience_identities i ON i.id = s.identity_id
+         WHERE s.id = $1 AND s.workspace_id = $2 LIMIT 1`,
+        [input.audienceSessionId, input.workspaceId],
+      );
+      guestEmail = sessionRow.rows[0]?.email != null ? String(sessionRow.rows[0].email) : null;
+    }
+    pauseOutreachForSupportCase({
+      workspaceId: input.workspaceId,
+      workerId: input.workerId,
+      caseId: record.id,
+      leadId: input.contactId ?? null,
+      guestEmail,
+      audienceSessionId: input.audienceSessionId ?? null,
+    });
+  } catch {
+    // Outreach pause is best-effort; case creation must succeed.
+  }
+
   return record;
 }
 

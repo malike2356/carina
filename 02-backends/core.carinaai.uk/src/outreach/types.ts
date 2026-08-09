@@ -246,6 +246,7 @@ export type EnrollmentStopReason =
   | 'booking'
   | 'unsubscribe'
   | 'manual_pause'
+  | 'support_case'
   | 'completed'
   | 'failed';
 

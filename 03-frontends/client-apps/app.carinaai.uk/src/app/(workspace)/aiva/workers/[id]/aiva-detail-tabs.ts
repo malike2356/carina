@@ -18,5 +18,5 @@ export const AIVA_CORE_TABS: AivaTab[] = [
   { id: 'automations', label: 'Automations' },
   { id: 'overview', label: 'Oversight' },
   { id: 'settings', label: 'Settings' },
-  { id: 'concierge', label: 'Concierge Setup' },
+  { id: 'concierge', label: 'Concierge' },
 ];

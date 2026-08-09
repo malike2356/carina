@@ -47,3 +47,20 @@ export {
   requestHandoff,
 } from './handoff.js';
 export { notifyConciergeOwner } from './owner-notify.js';
+export {
+  appendConciergeEvent,
+  listConciergeEvents,
+  redactConciergePayload,
+  resetConciergeEventStoreCache,
+} from './events.js';
+export { listOperatorInbox, getOperatorInboxDetail } from './operator-inbox.js';
+export { buildCrmTimeline, getBookingEvidence } from './crm-timeline.js';
+export {
+  pauseOutreachForSupportCase,
+  onBookingConfirmed,
+  onBookingCancelled,
+  onBookingOutcome,
+  operatorResumeEnrollment,
+} from './outreach-hooks.js';
+export { buildConciergeAnalytics } from './analytics.js';
+
