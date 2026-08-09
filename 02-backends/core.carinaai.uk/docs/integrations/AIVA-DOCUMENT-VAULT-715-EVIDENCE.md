@@ -1,7 +1,7 @@
 # Aiva Document Vault 715 evidence
 
 **Date:** 2026-08-09  
-**Git tip (at write):** filled at ship time  
+**Git tip:** `7d61c3ec`  
 **Prompt:** `715-e2e-cutover-documentation-and-deploy`
 
 ## Conformance
@@ -54,11 +54,12 @@ DOCUMENT_VAULT_COMPAT_ADAPTERS=1
 DOCUMENT_VAULT_RETIRE_LEGACY_STORES=0
 ```
 
-## Live ship (filled at deploy)
+## Live ship
 
-- Core revision:
-- Cloud revision:
-- `https://carinaai.uk/` HTTP:
-- `https://core.carinaai.uk/health`:
-- `https://app.carinaai.uk/api/health`:
-- Authenticated `/documents` smoke:
+- Core revision: `7d61c3ec`
+- Cloud revision: `7d61c3ec`
+- `https://carinaai.uk/` HTTP: 200
+- `https://core.carinaai.uk/health`: 200 (`7d61c3ec`)
+- `https://app.carinaai.uk/api/health`: 200
+- `/files` -> `/documents` redirect: 307
+- `admin.hireaiva.co.uk/documents`: 307 to login (auth gate intact)
