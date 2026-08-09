@@ -7,6 +7,9 @@ export type ChannelApprovalPrompt = {
   toolName: string;
   reason: string;
   paramsSummary?: string;
+  approvalId?: string;
+  approvalDigest?: string;
+  expiresAt?: string;
 };
 
 export type ChannelApprovalPayload = {

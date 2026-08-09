@@ -44,6 +44,7 @@ export function bindConfirmationButton(input: {
   channel: AivaChannelSurface;
   label?: string;
   ttlSeconds?: number;
+  boundUserId?: string;
 }): ConfirmationButtonBinding {
   const digest = computeApprovalIdDigest(input.approvalId, input.canonicalPayload);
   const ttl = Math.max(60, input.ttlSeconds ?? 900);

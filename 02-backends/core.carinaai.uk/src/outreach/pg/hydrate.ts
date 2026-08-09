@@ -74,21 +74,15 @@ export async function loadOutreachStoreFromPg(workspaceId?: string): Promise<Out
 
     store.controls = await loadMapByWorkspace<OutreachControlState>(client, 'outreach_controls', workspaceId);
     store.alertTargets = await loadMapByWorkspace<OutreachAlertTarget>(client, 'outreach_alert_targets', workspaceId);
-    store.bookingConfigs = await loadMapByWorkspace<BookingConfig & { workspaceId?: string }>(
-      client,
-      'outreach_booking_configs',
-      workspaceId,
-    ) as OutreachStoreShape['bookingConfigs'];
+    store.bookingConfigs = {};
     // booking configs are keyed by workspaceId but payload may not include workspaceId
     if (workspaceId) {
       const cfg = await client.query(`SELECT payload FROM outreach_booking_configs WHERE workspace_id = $1`, [
         workspaceId,
       ]);
-      store.bookingConfigs = {};
       if (cfg.rows[0]) store.bookingConfigs[workspaceId] = asPayload<BookingConfig>(cfg.rows[0]);
     } else {
       const cfg = await client.query(`SELECT workspace_id, payload FROM outreach_booking_configs`);
-      store.bookingConfigs = {};
       for (const row of cfg.rows) {
         store.bookingConfigs[row.workspace_id as string] = asPayload<BookingConfig>(row);
       }
@@ -208,20 +202,33 @@ export async function saveWorkspaceOutreachToPg(
     await upsertSimple(
       'outreach_campaigns',
       store.campaigns.map((c) => ({ ...c, payload: c })),
-      (c) => ({
-        sql: `INSERT INTO outreach_campaigns (id, workspace_id, active, created_at, updated_at, payload)
+      (c) => {
+        const campaign = c as unknown as OutreachCampaign;
+        return {
+          sql: `INSERT INTO outreach_campaigns (id, workspace_id, active, created_at, updated_at, payload)
               VALUES ($1,$2,$3,$4,$5,$6)`,
-        params: [c.id, workspaceId, Boolean((c as OutreachCampaign).active), c.createdAt, c.updatedAt, JSON.stringify(c)],
-      }),
+          params: [
+            campaign.id,
+            workspaceId,
+            Boolean(campaign.active),
+            campaign.createdAt,
+            campaign.updatedAt,
+            JSON.stringify(campaign),
+          ],
+        };
+      },
     );
 
     await upsertSimple(
       'outreach_sequences',
       store.sequences.map((s) => ({ ...s, payload: s })),
-      (s) => ({
-        sql: `INSERT INTO outreach_sequences (id, workspace_id, created_at, updated_at, payload) VALUES ($1,$2,$3,$4,$5)`,
-        params: [s.id, workspaceId, s.createdAt, s.updatedAt, JSON.stringify(s)],
-      }),
+      (s) => {
+        const sequence = s as unknown as OutreachSequence;
+        return {
+          sql: `INSERT INTO outreach_sequences (id, workspace_id, created_at, updated_at, payload) VALUES ($1,$2,$3,$4,$5)`,
+          params: [sequence.id, workspaceId, sequence.createdAt, sequence.updatedAt, JSON.stringify(sequence)],
+        };
+      },
     );
 
     await client.query(`DELETE FROM outreach_enrollments WHERE workspace_id = $1`, [workspaceId]);
