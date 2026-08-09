@@ -172,3 +172,14 @@ Email support@carinaai.uk with your account email and the payment reference from
 ### "How do I cancel my subscription?"
 
 Go to the Billing page. For cancellations or downgrades, email support@carinaai.uk. Include the subject line: "Billing - cancellation request."
+
+---
+
+## Keprix sibling products (Propreneur Soft Wall, workspace UI)
+
+Carina and Keprix are separate products. If the user is on **Keprix** (`app.keprixai.com`) rather than Carina:
+
+- Dead sidebar or tab clicks: hard-refresh; Keprix uses plain anchors after the MUI+Next soft-nav fix. See Keprix docs Troubleshooting → UI navigation.
+- Outreach Soft Wall approvals: `/outreach/approvals` on Keprix (not Carina OPS).
+- Propreneur calling Keprix as sidecar: shared token, fail-closed actor IDs, Contabo loopback `http://127.0.0.1:13333`. Point operators to Keprix `docs/propreneur-sidecar/` and `docs/troubleshooting/propreneur-sidecar.md`.
+- Do not fold Clinicom Contabo issues into Carina OPS unless the live profile is Carina (default today).

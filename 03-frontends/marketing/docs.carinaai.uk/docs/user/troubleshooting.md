@@ -482,6 +482,17 @@ Common topics covered there: brand not updating, custom domain TXT verification,
 
 ---
 
+## Related product: Keprix
+
+If the user is on **Keprix** (agent OS at `app.keprixai.com`) rather than this Carina docs site:
+
+- UI tabs or cards that do nothing: hard-refresh; see Keprix guide Troubleshooting → UI navigation.
+- Sales Soft Wall / outreach: Keprix `/outreach` and Soft Wall approvals (not Carina OPS).
+- Propreneur ↔ Keprix sidecar: Keprix docs under `propreneur-sidecar` and troubleshooting `propreneur-sidecar`.
+- Contabo Clinicom AI path is Carina today unless an owner flips the Keprix profile.
+
+---
+
 ## Still stuck?
 
 - [GitHub Issues](https://github.com/malike2356/carina-mutant/issues): bug reports and feature requests.
