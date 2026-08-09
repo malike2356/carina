@@ -356,6 +356,37 @@ export class DocumentVaultService {
     return { items: rows.map((r) => this.rowToItem(r)), total };
   }
 
+  /** Metadata search within a workspace (name + classification + kind). */
+  searchItems(
+    workspaceId: string,
+    query: string,
+    options: { limit?: number; offset?: number; includeTrashed?: boolean } = {},
+  ): { items: VaultItem[]; total: number } {
+    const q = query.trim().toLowerCase();
+    if (!q) return this.listItems(workspaceId, { limit: options.limit, offset: options.offset, includeTrashed: options.includeTrashed });
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 200);
+    const offset = Math.max(options.offset ?? 0, 0);
+    let where = 'workspace_id = ? AND (LOWER(name) LIKE ? OR LOWER(kind) LIKE ? OR LOWER(classification) LIKE ?)';
+    const like = `%${q.replace(/%/g, '')}%`;
+    const params: unknown[] = [workspaceId, like, like, like];
+    if (!options.includeTrashed) {
+      where += ' AND trashed_at IS NULL';
+    }
+    const total = (
+      this.db.prepare(`SELECT COUNT(*) AS c FROM document_vault_items WHERE ${where}`).get(...params) as {
+        c: number;
+      }
+    ).c;
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM document_vault_items WHERE ${where}
+         ORDER BY updated_at DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...params, limit, offset) as Array<Record<string, unknown>>;
+    return { items: rows.map((r) => this.rowToItem(r)), total };
+  }
+
   async readContent(workspaceId: string, itemId: string): Promise<Buffer> {
     const row = this.getRow(workspaceId, itemId);
     if (!row) throw new VaultError('Item not found', 'not_found');

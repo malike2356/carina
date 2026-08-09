@@ -219,6 +219,7 @@ export async function updateVaultContent(input: {
   expectedRevision?: number;
   name?: string;
   actorId?: string | null;
+  mode?: 'replace' | 'append';
 }): Promise<VaultItemDto> {
   const [row] = await db
     .select()
@@ -232,15 +233,18 @@ export async function updateVaultContent(input: {
     throw new Error('Stale revision');
   }
 
+  const previous = row.inlineContent ?? '';
+  const nextContent =
+    input.mode === 'append' ? `${previous}${input.content}` : input.content;
   const nextRev = row.currentRevision + 1;
-  const checksum = sha256(input.content);
+  const checksum = sha256(nextContent);
   const now = new Date();
   const [updated] = await db
     .update(documentVaultItems)
     .set({
-      inlineContent: input.content,
+      inlineContent: nextContent,
       checksum,
-      byteSize: Buffer.byteLength(input.content, 'utf8'),
+      byteSize: Buffer.byteLength(nextContent, 'utf8'),
       currentRevision: nextRev,
       name: input.name ? sanitizeName(input.name) : row.name,
       updatedBy: input.actorId ?? null,
@@ -261,11 +265,11 @@ export async function updateVaultContent(input: {
     workspaceId: input.workspaceId,
     revision: nextRev,
     checksum,
-    byteSize: Buffer.byteLength(input.content, 'utf8'),
+    byteSize: Buffer.byteLength(nextContent, 'utf8'),
     storageLocator: { scheme: 'inline' },
     createdBy: input.actorId ?? null,
-    note: 'update',
-    inlineContent: input.content,
+    note: input.mode === 'append' ? 'append' : 'update',
+    inlineContent: nextContent,
   });
 
   return toDto(updated);
@@ -428,6 +432,86 @@ export async function listVaultRevisions(workspaceId: string, itemId: string) {
     createdAt: row.createdAt.toISOString(),
     note: row.note,
   }));
+}
+
+export async function copyVaultItem(
+  workspaceId: string,
+  itemId: string,
+  parentId: string | null,
+  actorId?: string | null,
+): Promise<VaultItemDto> {
+  const source = await getVaultItem(workspaceId, itemId);
+  if (!source) throw new Error('Item not found');
+  if (source.trashedAt) throw new Error('Cannot copy trashed item');
+  if (parentId) {
+    const parent = await getVaultItem(workspaceId, parentId);
+    if (!parent || parent.kind !== 'folder' || parent.trashedAt) {
+      throw new Error('Parent folder not found');
+    }
+  }
+
+  const content =
+    source.kind === 'folder' ? undefined : ((await getVaultContent(workspaceId, itemId)) ?? '');
+  const copied = await createVaultItem({
+    workspaceId,
+    parentId,
+    kind: source.kind,
+    name: `${source.name} copy`,
+    content,
+    actorId,
+  });
+
+  if (source.kind === 'folder') {
+    const children = await listVaultItems(workspaceId, { parentId: itemId, scope: 'folder' });
+    for (const child of children.items) {
+      await copyVaultItem(workspaceId, child.id, copied.id, actorId);
+    }
+  }
+  return copied;
+}
+
+export async function restoreVaultRevision(
+  workspaceId: string,
+  itemId: string,
+  revision: number,
+  actorId?: string | null,
+): Promise<VaultItemDto> {
+  const [rev] = await db
+    .select()
+    .from(documentVaultRevisions)
+    .where(
+      and(
+        eq(documentVaultRevisions.workspaceId, workspaceId),
+        eq(documentVaultRevisions.itemId, itemId),
+        eq(documentVaultRevisions.revision, revision),
+      ),
+    )
+    .limit(1);
+  if (!rev) throw new Error('Revision not found');
+  return updateVaultContent({
+    workspaceId,
+    itemId,
+    content: rev.inlineContent ?? '',
+    actorId,
+    mode: 'replace',
+  });
+}
+
+export async function permanentDeleteVaultItem(
+  workspaceId: string,
+  itemId: string,
+): Promise<void> {
+  const item = await getVaultItem(workspaceId, itemId);
+  if (!item) throw new Error('Item not found');
+  if (!item.trashedAt) throw new Error('Item must be trashed before permanent delete');
+  await db
+    .delete(documentVaultRevisions)
+    .where(
+      and(eq(documentVaultRevisions.workspaceId, workspaceId), eq(documentVaultRevisions.itemId, itemId)),
+    );
+  await db
+    .delete(documentVaultItems)
+    .where(and(eq(documentVaultItems.workspaceId, workspaceId), eq(documentVaultItems.id, itemId)));
 }
 
 export async function breadcrumbsFor(

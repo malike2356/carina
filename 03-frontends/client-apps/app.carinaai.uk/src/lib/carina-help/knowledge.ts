@@ -112,7 +112,7 @@ function renderStuckPointsSummary(): string {
     '- Approvals: drafts waiting for human review before send (email, social, and Soft Wall outreach contact).',
     '- Email: connect on the Email Handler worker Channels flow (Gmail OAuth preferred). Nothing client-facing is sent until approved unless the owner explicitly asked to send now.',
     '- Calendar: Google sync plus local/Aiva events and note reminders. Filters: Aiva, Google, Local only.',
-    '- Documents: workspace Documents vault. Google Drive items stay in Drive unless the user asks to copy or save into Documents.',
+    '- Documents: Document Vault at /documents (folders, files, revisions, trash, Soft Wall approvals). Agents use vault-* tools from Work chat; public customer sessions cannot access the private vault. Google Drive sync is optional via vault-sync-status / vault-sync-request.',
     '',
     '## CRM Leads vs Contacts',
     '- Outreach (sidebar) → CRM Leads (/aiva/outreach/leads or /aiva/crm/leads): sales lead table, CSV import/export, linked lead files (create, sync, rename, delete file).',

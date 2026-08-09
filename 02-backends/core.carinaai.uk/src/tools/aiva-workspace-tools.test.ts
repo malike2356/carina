@@ -13,6 +13,21 @@ vi.mock('../workers/aiva-workspace-surfaces.js', () => ({
   getWorkspaceDocument: vi.fn(async () => ({ ok: true, data: { id: 'd1', title: 'Doc', content: 'body' } })),
 }));
 
+vi.mock('../workers/aiva-vault-surfaces.js', () => ({
+  vaultList: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultGet: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultRead: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultCreate: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultUpdate: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultPatch: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultCopy: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultTrash: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultRevisions: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultPermanentDelete: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultSyncStatus: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+  vaultSyncRequest: vi.fn(async () => ({ ok: false, error: 'vault offline' })),
+}));
+
 vi.mock('./worker-automation.js', () => ({
   createWorkerAutomationTools: vi.fn(() => [
     {
@@ -73,6 +88,9 @@ describe('aiva-workspace-tools', () => {
     expect(names).toContain('workspace-document-create');
     expect(names).toContain('workspace-document-list');
     expect(names).toContain('workspace-document-get');
+    expect(names).toContain('vault-list');
+    expect(names).toContain('vault-create-file');
+    expect(names).toContain('vault-request-approval');
     expect(names).toContain('workspace-approval-list');
     expect(names).toContain('workspace-schedule-list');
     expect(names).not.toContain('shell-exec');

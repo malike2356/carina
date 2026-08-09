@@ -32,8 +32,8 @@ function resolveAivaWorkspaceId(params: Record<string, unknown>): string | undef
 export const documentsManageTool: Tool = {
   name: 'documents-manage',
   description:
-    'Manage documents. For Aiva workspace chats prefer workspace-document-create / workspace-document-list '
-    + '(Documents page vault). When an Aiva worker session is active, create/list use that vault automatically. '
+    'Manage host operator documents. For Aiva workspace chats prefer vault-create-file / vault-list / vault-read '
+    + '(Document Vault). Legacy workspace-document-* aliases remain migration-safe. '
     + 'Actions: list, get, create, update, delete.',
   parameters: {
     type: 'object',
@@ -55,7 +55,7 @@ export const documentsManageTool: Tool = {
     if (isAivaSessionId(sessionId) && !aivaWorkspaceId) {
       return {
         error:
-          'Aiva document tools require a workspace session. Use workspace-document-create / workspace-document-list.',
+          'Aiva document tools require a workspace session. Use vault-create-file / vault-list / vault-read.',
       };
     }
 
@@ -65,20 +65,37 @@ export const documentsManageTool: Tool = {
           createWorkspaceDocument,
           listWorkspaceDocuments,
         } = await import('../workers/aiva-workspace-surfaces.js');
+        const vaultSurfaces = await import('../workers/aiva-vault-surfaces.js');
 
         if (action === 'list') {
+          const vault = await vaultSurfaces.vaultList({ workspaceId: aivaWorkspaceId, limit: 50 });
+          if (vault.ok) return { documents: vault.data, tenant_id: aivaWorkspaceId, migratedTo: 'vault-list' };
           const result = await listWorkspaceDocuments({
             workspaceId: aivaWorkspaceId,
             limit: 50,
           });
           if (!result.ok) return { error: result.error ?? 'list failed' };
-          return { documents: result.data, tenant_id: aivaWorkspaceId };
+          return { documents: result.data, tenant_id: aivaWorkspaceId, migratedTo: 'vault-list' };
         }
 
         const title = params.title !== undefined ? String(params.title) : 'Untitled';
         const content = params.content !== undefined ? String(params.content) : '';
         if (!content.trim()) return { error: 'content is required for create' };
         const format = parseFormat(params.format);
+        const vault = await vaultSurfaces.vaultCreate({
+          workspaceId: aivaWorkspaceId,
+          kind: format === 'plain' ? 'plain_text' : 'markdown',
+          name: title,
+          content,
+        });
+        if (vault.ok) {
+          return {
+            document: vault.data,
+            status: 'created',
+            openUrl: '/documents',
+            migratedTo: 'vault-create-file',
+          };
+        }
         const result = await createWorkspaceDocument({
           workspaceId: aivaWorkspaceId,
           title,
@@ -90,12 +107,13 @@ export const documentsManageTool: Tool = {
           document: result.data,
           status: 'created',
           openUrl: result.openUrl,
+          migratedTo: 'vault-create-file',
         };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         return {
           error:
-            `${msg}. Prefer workspace-document-create for Aiva Documents vault saves.`,
+            `${msg}. Prefer vault-create-file for Aiva Document Vault saves.`,
         };
       }
     }
@@ -103,15 +121,17 @@ export const documentsManageTool: Tool = {
     if (aivaWorkspaceId && (action === 'get' || action === 'update' || action === 'delete')) {
       return {
         error:
-          `For Aiva workspace documents, use workspace-document-create / workspace-document-list. `
+          `For Aiva Document Vault, use vault-read / vault-update / vault-trash. `
           + `Action "${action}" is not supported via documents-manage on the vault.`,
+        migratedTo:
+          action === 'get' ? 'vault-read' : action === 'update' ? 'vault-update' : 'vault-trash',
       };
     }
 
     if (isAivaSessionId(sessionId)) {
       return {
         error:
-          'Aiva cannot use the host documents store. Use workspace-document-create / workspace-document-list.',
+          'Aiva cannot use the host documents store. Use vault-create-file / vault-list / vault-read.',
       };
     }
 
@@ -166,7 +186,7 @@ export const documentsManageTool: Tool = {
       if (/shared librar|better_sqlite3|ERR_DLOPEN|bindings file/i.test(msg)) {
         return {
           error:
-            `${msg}. For Aiva Documents, use workspace-document-create instead of documents-manage.`,
+            `${msg}. For Aiva Documents, use vault-create-file instead of documents-manage.`,
         };
       }
       return { error: msg };

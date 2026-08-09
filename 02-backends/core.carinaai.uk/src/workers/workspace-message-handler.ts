@@ -221,7 +221,7 @@ function workerWorkspaceActionSuffix(): string {
     'Workspace action mode: you are an Aiva worker with read/write access to this workspace through tools.',
     'Use workspace-inventory first when the user asks what is in the workspace or asks whether you can see the whole workspace.',
     'When an inventory section is unavailable or returns an error, say exactly which section could not be read.',
-    'Use workspace-document-create when the user asks you to create, write, draft, or save a document in the workspace.',
+    'Use vault-create-file / vault-list / vault-read (Document Vault) when the user asks you to create, write, draft, save, list, or read documents. Legacy workspace-document-* names still work as aliases.',
     'Use workspace-research-create when the user asks for deep research and wants it saved in the workspace Research page.',
     'Use workspace-channel-connect when the user provides a Telegram BotFather token or asks you to connect Telegram for this Aiva. Never echo tokens back.',
     'Use worker-automation (or workspace-schedule-* aliases) for recurring digests and cron-like jobs. Do not use host cronjob.',

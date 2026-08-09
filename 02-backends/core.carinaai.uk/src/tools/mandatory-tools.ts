@@ -316,34 +316,51 @@ export const MANDATORY_TOOL_RULES: MandatoryToolRule[] = [
   },
   {
     id: 'workspace_document',
-    label: 'Workspace document save',
-    tools: ['workspace-document-create', 'workspace-document-list', 'workspace-document-get'],
+    label: 'Document Vault',
+    tools: [
+      'vault-list',
+      'vault-search',
+      'vault-read',
+      'vault-create-file',
+      'vault-create-folder',
+      'workspace-document-create',
+      'workspace-document-list',
+      'workspace-document-get',
+    ],
     guidance:
-      'Call workspace-document-list / workspace-document-get to find or read vault docs. '
-      + 'Call workspace-document-create for create, draft, write, or save document requests in an Aiva workspace.',
+      'Prefer vault-list / vault-search / vault-read / vault-create-file / vault-create-folder for Document Vault work. '
+      + 'Legacy workspace-document-* tools remain as migration-safe aliases. '
+      + 'Never accept a model-supplied workspaceId; the trusted session supplies the tenant.',
     patterns: [
       /\b(create|write|draft|make|save)\b.+\b(document|doc|file)\b/i,
       /\b(save|put|add)\b.+\b(documents?|document vault|workspace documents?)\b/i,
       /\bcreate.+\bin (my|the)\s+workspace\b/i,
+      /\b(list|show|find|search|open|read)\b.+\b(documents?|document vault|vault)\b/i,
+      /\bdocument\s+vault\b/i,
     ],
   },
   {
     id: 'workspace_document_drive_import',
     label: 'Find docs in vault then Drive and index',
     tools: [
+      'vault-list',
+      'vault-search',
+      'vault-read',
+      'vault-create-file',
       'workspace-document-list',
       'workspace-document-get',
       'google-drive-search',
       'google-drive-read',
       'workspace-document-create',
+      'vault-sync-request',
     ],
     guidance:
       'For investor packs, pitch decks, DBA materials, financial forecasts, or November docs: '
-      + '1) Call workspace-document-list first (returns all titles; not full bodies). '
-      + '2) Call workspace-document-get for each relevant id to read the body. '
-      + '3) If needed titles are still missing, google-drive-search then google-drive-read, then workspace-document-create. '
+      + '1) Call vault-list or vault-search first (compact metadata; not full bodies). '
+      + '2) Call vault-read for each relevant id. '
+      + '3) If needed titles are still missing, google-drive-search then google-drive-read, then vault-create-file. '
       + '4) Summarise readiness from the documents you actually listed/read. '
-      + 'Do not claim materials are missing if workspace-document-list returned matching titles.',
+      + 'Do not claim materials are missing if vault-list returned matching titles.',
     patterns: [
       /\bdba\b/i,
       /\bdorset\s+business\s+angels\b/i,

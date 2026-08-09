@@ -76,6 +76,7 @@ describe('mandatory-tools', () => {
 
   it('matches workspace document save requests to workspace document tools', () => {
     const tools = primaryMandatoryTools('create a sample document and save it in my workspace documents');
+    expect(tools).toContain('vault-create-file');
     expect(tools).toContain('workspace-document-create');
   });
 

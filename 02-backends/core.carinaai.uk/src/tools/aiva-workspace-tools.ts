@@ -4,6 +4,10 @@ import { registerSessionTool } from './session-tool-store.js';
 import { createWorkerAutomationTools } from './worker-automation.js';
 import { createAivaChannelSelfConfigTool } from './aiva-channel-self-config.js';
 import {
+  createDocumentVaultTools,
+  DOCUMENT_VAULT_TOOL_NAMES,
+} from './document-vault-tools.js';
+import {
   createWorkspaceDocument,
   createWorkspaceResearchJob,
   getWorkspaceInventory,
@@ -11,6 +15,7 @@ import {
   listWorkspaceDocuments,
   listWorkspaceResearchJobs,
 } from '../workers/aiva-workspace-surfaces.js';
+import * as vaultSurfaces from '../workers/aiva-vault-surfaces.js';
 import {
   getApproval,
   listPendingApprovals,
@@ -131,8 +136,8 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
   const documentCreate: Tool = {
     name: 'workspace-document-create',
     description:
-      'Create a document in the Aiva Documents vault (Documents page). '
-      + 'Prefer this over documents-manage for Aiva workspace saves.',
+      'Legacy alias: create a file in the Document Vault. Prefer vault-create-file. '
+      + 'Creates under the trusted workspace Documents vault.',
     parameters: {
       type: 'object',
       properties: {
@@ -148,24 +153,41 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
       const title = String(params.title ?? '').trim() || 'Untitled';
       const content = String(params.content ?? '');
       if (!content.trim()) return { ok: false, error: 'content required' };
-      const format = String(params.format ?? 'markdown') === 'plain' ? 'plain' : 'markdown';
+      const kind = String(params.format ?? 'markdown') === 'plain' ? 'plain_text' : 'markdown';
+      const vault = await vaultSurfaces.vaultCreate({
+        workspaceId: gate.ctx.worker.workspaceId,
+        kind,
+        name: title,
+        content,
+        actorId: gate.ctx.worker.id,
+      });
+      if (vault.ok) {
+        return { ok: true, data: vault.data, openUrl: '/documents', status: 'created', migratedTo: 'vault-create-file' };
+      }
+      // Compatibility fallback to legacy documents table when vault API is unavailable.
+      const format = kind === 'plain_text' ? 'plain' : 'markdown';
       const result = await createWorkspaceDocument({
         workspaceId: gate.ctx.worker.workspaceId,
         title,
         content,
         format,
       });
-      if (!result.ok) return { ok: false, error: result.error ?? 'document create failed' };
-      return { ok: true, data: result.data, openUrl: result.openUrl, status: 'created' };
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.error ?? vault.error ?? 'document create failed',
+          hint: 'Use vault-create-file when Document Vault tools are available.',
+        };
+      }
+      return { ok: true, data: result.data, openUrl: result.openUrl, status: 'created', migratedTo: 'vault-create-file' };
     },
   };
 
   const documentList: Tool = {
     name: 'workspace-document-list',
     description:
-      'List documents in the Aiva Documents vault for this workspace. '
-      + 'Returns titles and short previews only (not full bodies). '
-      + 'Use workspace-document-get with an id to read a full document.',
+      'Legacy alias: list Document Vault items. Prefer vault-list / vault-search. '
+      + 'Returns titles and short previews only (not full bodies).',
     parameters: {
       type: 'object',
       properties: {
@@ -175,11 +197,41 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
     execute: async (params) => {
       const gate = requireWorkerCtx(sessionId);
       if (!gate.ok) return gate;
+      const limit = params.limit != null ? Number(params.limit) : 50;
+      const vault = await vaultSurfaces.vaultList({
+        workspaceId: gate.ctx.worker.workspaceId,
+        q: '',
+        limit,
+      });
+      if (vault.ok) {
+        const payload = vault.data as { items?: Array<Record<string, unknown>> } | unknown[];
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray((payload as { items?: unknown[] })?.items)
+            ? ((payload as { items: Array<Record<string, unknown>> }).items)
+            : [];
+        const documents = rows.map((r) => ({
+          id: r.id,
+          title: r.name ?? r.title,
+          preview: '',
+          chars: typeof r.byteSize === 'number' ? r.byteSize : 0,
+          kind: r.kind,
+          currentRevision: r.currentRevision,
+          updatedAt: r.updatedAt,
+        }));
+        return { ok: true, count: documents.length, documents, migratedTo: 'vault-list' };
+      }
       const result = await listWorkspaceDocuments({
         workspaceId: gate.ctx.worker.workspaceId,
-        limit: params.limit != null ? Number(params.limit) : 50,
+        limit,
       });
-      if (!result.ok) return { ok: false, error: result.error ?? 'document list failed' };
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.error ?? vault.error ?? 'document list failed',
+          hint: 'Use vault-list when Document Vault tools are available.',
+        };
+      }
       const rows = Array.isArray(result.data) ? result.data : [];
       const documents = rows.map((row) => {
         const r = row as Record<string, unknown>;
@@ -198,27 +250,24 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
         return {
           id: r.id,
           title: r.title,
-          format: r.format,
-          archived: r.archived,
-          updatedAt: r.updatedAt ?? r.updated_at,
-          createdAt: r.createdAt ?? r.created_at,
+          preview: plain.slice(0, 160),
           chars,
-          preview: plain.slice(0, 180),
+          updatedAt: r.updatedAt,
         };
       });
-      return { ok: true, count: documents.length, documents };
+      return { ok: true, count: documents.length, documents, migratedTo: 'vault-list' };
     },
   };
 
   const documentGet: Tool = {
     name: 'workspace-document-get',
     description:
-      'Read one full document from the Aiva Documents vault by id '
-      + '(from workspace-document-list). Prefer this after listing when you need the body.',
+      'Legacy alias: read a Document Vault item. Prefer vault-read / vault-inspect. '
+      + 'Pass an id from workspace-document-list or vault-list.',
     parameters: {
       type: 'object',
       properties: {
-        id: { type: 'string', description: 'Document id from workspace-document-list' },
+        id: { type: 'string', description: 'Document id from workspace-document-list or vault-list' },
       },
       required: ['id'],
     },
@@ -227,22 +276,25 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
       if (!gate.ok) return gate;
       const id = String(params.id ?? '').trim();
       if (!id) return { ok: false, error: 'id required' };
+      const vault = await vaultSurfaces.vaultRead({
+        workspaceId: gate.ctx.worker.workspaceId,
+        id,
+      });
+      if (vault.ok) {
+        return { ok: true, data: vault.data, migratedTo: 'vault-read' };
+      }
       const result = await getWorkspaceDocument({
         workspaceId: gate.ctx.worker.workspaceId,
         id,
       });
-      if (!result.ok) return { ok: false, error: result.error ?? 'document get failed' };
-      const r = (result.data ?? {}) as Record<string, unknown>;
-      return {
-        ok: true,
-        document: {
-          id: r.id,
-          title: r.title,
-          format: r.format,
-          updatedAt: r.updatedAt ?? r.updated_at,
-          content: r.content,
-        },
-      };
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.error ?? vault.error ?? 'document get failed',
+          hint: 'Use vault-read when Document Vault tools are available.',
+        };
+      }
+      return { ok: true, data: result.data, migratedTo: 'vault-read' };
     },
   };
 
@@ -828,5 +880,11 @@ export function registerAivaWorkspaceSessionTools(sessionId: string): string[] {
     registerSessionTool(sessionId, tool);
     names.push(tool.name);
   }
+  for (const tool of createDocumentVaultTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    names.push(tool.name);
+  }
   return names;
 }
+
+export { DOCUMENT_VAULT_TOOL_NAMES };
