@@ -22,6 +22,7 @@ const ALLOWED_ROOTS = new Set([
   'channel-sync',
   'realtime',
   'voice',
+  'concierge',
 ]);
 
 function corePath(workerId: string, rest: string[]): string | null {

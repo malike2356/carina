@@ -7,12 +7,20 @@ export interface WidgetConfig {
   logoUrl?: string | null;
   companyName?: string | null;
   hideAttribution?: boolean;
+  personaName?: string | null;
 }
 
 function normalizeConfig(raw: Record<string, unknown>): WidgetConfig {
   const hideAttribution = Boolean(raw.hideAttribution);
+  const personaName = raw.personaName ? String(raw.personaName) : null;
   return {
-    workerName: String(raw.companyName ?? raw.workerName ?? raw.name ?? 'Aiva'),
+    workerName: String(
+      personaName
+      ?? raw.companyName
+      ?? raw.workerName
+      ?? raw.name
+      ?? 'Aiva',
+    ),
     workerRole: String(raw.workerRole ?? raw.role ?? 'Assistant'),
     welcomeMessage: String(raw.welcomeMessage ?? raw.greeting ?? 'Hi! How can I help you today?'),
     accentColor: String(raw.accentColor ?? '#1a5f7a'),
@@ -20,6 +28,7 @@ function normalizeConfig(raw: Record<string, unknown>): WidgetConfig {
     logoUrl: raw.logoUrl ? String(raw.logoUrl) : null,
     companyName: raw.companyName ? String(raw.companyName) : null,
     hideAttribution,
+    personaName,
   };
 }
 

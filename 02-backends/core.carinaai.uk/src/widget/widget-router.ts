@@ -5,6 +5,10 @@ import { getWorkspaceBranding } from '../workspace/workspace-router.js';
 import { processAivaMessageStream } from '../workers/aiva-process-message.js';
 import { getWorkerById } from '../workers/worker-store.js';
 import {
+  getConciergeProfile,
+  getPublishedConciergeProfile,
+} from '../workers/concierge-profile.js';
+import {
   checkAndEnforceLimit,
   incrementMessageCount,
   maybeSendUsageAlerts,
@@ -51,16 +55,21 @@ function isActiveWorker(worker: Awaited<ReturnType<typeof getWorkerById>>): work
 }
 
 async function widgetConfig(worker: NonNullable<Awaited<ReturnType<typeof getWorkerById>>>) {
+  const published = await getPublishedConciergeProfile(worker.id);
   const widgetSettings = worker.workerConfig?.widget;
-  const welcomeMessage = widgetSettings?.welcomeMessage?.trim()
+  const welcomeMessage = published?.greetingMessage?.trim()
+    || widgetSettings?.welcomeMessage?.trim()
     || `Hi, I am ${worker.name}. How can I help?`;
+  const displayName = published?.personaName?.trim() || worker.name;
   const branding = await getWorkspaceBranding(worker.workspaceId);
-  const companyName = branding.companyName || worker.name;
+  const companyName = published?.businessName?.trim()
+    || branding.companyName
+    || worker.name;
   const hideAttribution = branding.hideVerloxAttribution;
   const accentColor = widgetSettings?.accentColor?.trim() || branding.primaryColor;
   return {
-    workerName: worker.name,
-    workerRole: worker.roleDescription,
+    workerName: displayName,
+    workerRole: published?.businessDescription?.trim() || worker.roleDescription,
     welcomeMessage,
     accentColor,
     workspaceName: companyName,
@@ -68,10 +77,30 @@ async function widgetConfig(worker: NonNullable<Awaited<ReturnType<typeof getWor
     logoUrl: branding.logoUrl,
     hideAttribution,
     poweredByLabel: hideAttribution ? '' : 'Powered by VERLOX',
-    name: worker.name,
-    role: worker.roleDescription,
+    name: displayName,
+    role: published?.businessDescription?.trim() || worker.roleDescription,
     greeting: welcomeMessage,
+    personaName: published?.personaName ?? null,
+    conciergePublished: Boolean(published),
   };
+}
+
+/**
+ * Owner-assistant workers (no concierge_profiles row) keep legacy widget access.
+ * Workers with a concierge profile only accept new sessions when published.
+ */
+async function assertWidgetSessionAllowed(
+  worker: NonNullable<Awaited<ReturnType<typeof getWorkerById>>>,
+  res: Response,
+): Promise<boolean> {
+  const profile = await getConciergeProfile(worker.workspaceId, worker.id);
+  if (!profile) return true;
+  if (profile.published) return true;
+  res.status(404).json({
+    error: 'This concierge is not available right now.',
+    code: 'concierge_unpublished',
+  });
+  return false;
 }
 
 export const widgetRouter: ExpressRouter = Router();
@@ -93,6 +122,7 @@ widgetRouter.get('/:workerId/config', async (req: Request, res: Response) => {
     res.status(404).json({ error: 'Worker not found' });
     return;
   }
+  if (!(await assertWidgetSessionAllowed(worker, res))) return;
   res.json(await widgetConfig(worker));
 });
 
@@ -110,24 +140,31 @@ widgetRouter.post('/:workerId/session', async (req: Request, res: Response) => {
       [existingToken, worker.id],
     );
     if (found.rows.length > 0) {
+      // Existing sessions stay usable after unpublish so owners can take over.
       await pool.query(
         'UPDATE widget_sessions SET last_active_at = NOW() WHERE session_token = $1',
         [existingToken],
       );
+      const cfg = await widgetConfig(worker);
       res.json({
         sessionToken: String(found.rows[0].session_token),
         contactId: String(found.rows[0].contact_id),
         expiresAt: new Date(Date.now() + 30 * 24 * HOUR_MS).toISOString(),
+        greeting: cfg.greeting,
+        personaName: cfg.personaName,
       });
       return;
     }
   }
+
+  if (!(await assertWidgetSessionAllowed(worker, res))) return;
 
   if (!rateLimit(sessionCreatesByIp, clientIp(req), SESSION_CREATE_LIMIT)) {
     res.status(429).json({ error: 'Too many sessions. Try again later.' });
     return;
   }
 
+  const cfg = await widgetConfig(worker);
   const created = await pool.query(
     `INSERT INTO widget_sessions (worker_id, workspace_id)
      VALUES ($1, $2)
@@ -137,7 +174,9 @@ widgetRouter.post('/:workerId/session', async (req: Request, res: Response) => {
   res.status(201).json({
     sessionToken: String(created.rows[0].session_token),
     contactId: String(created.rows[0].contact_id),
-    workerName: worker.name,
+    workerName: cfg.workerName,
+    greeting: cfg.greeting,
+    personaName: cfg.personaName,
     expiresAt: new Date(Date.now() + 30 * 24 * HOUR_MS).toISOString(),
   });
 });

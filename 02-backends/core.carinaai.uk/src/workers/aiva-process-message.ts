@@ -3,6 +3,10 @@ import type { ChannelName } from '../gateway/channels/channel-adapter.interface.
 import type { CarinaMessage } from '../types/index.js';
 import { resolvePersonaWithKnowledge, stripKnowledgeFromPersona } from '../workers/knowledge-base.js';
 import { withWorkerIdentityOverride } from '../workers/persona-builder.js';
+import {
+  buildConciergePersonaOverlay,
+  getPublishedConciergeProfile,
+} from '../workers/concierge-profile.js';
 import { getWorker } from '../workers/worker-store.js';
 import {
   applyWorkerToSession,
@@ -469,6 +473,11 @@ export async function* processAivaMessageStreamDirect(
         .catch(() => ''),
     ]);
 
+  const publishedConcierge = await getPublishedConciergeProfile(worker.id).catch(() => null);
+  const personaWithConcierge = publishedConcierge
+    ? `${buildConciergePersonaOverlay(publishedConcierge)}\n\n${personaPrompt}`
+    : personaPrompt;
+
   const { buildProductSelfKnowledgeSuffix } = await import('../platform/product-self-knowledge.js');
   const selfKnowledgeSuffix = buildProductSelfKnowledgeSuffix('aiva');
   const capabilityBlockSuffix = capabilityPrompt ? `\n\n${capabilityPrompt}` : '';
@@ -667,8 +676,8 @@ export async function* processAivaMessageStreamDirect(
   const ctx = {
     worker,
     personaPrompt: withWorkerIdentityOverride(
-      worker.name,
-      personaPrompt
+      publishedConcierge?.personaName?.trim() || worker.name,
+      personaWithConcierge
         + portfolioSuffix
         + capabilitySuffix
         + scopeSuffix
@@ -683,7 +692,7 @@ export async function* processAivaMessageStreamDirect(
         + voiceChannelNote
         + workspaceActionHint
         + automationHint,
-      worker.roleDescription,
+      publishedConcierge?.businessDescription?.trim() || worker.roleDescription,
     ),
     channel: params.channel,
     channelId: params.contactId,

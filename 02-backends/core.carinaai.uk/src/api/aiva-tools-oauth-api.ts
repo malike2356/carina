@@ -16,6 +16,13 @@ import {
 } from '../workers/product-tools/google-tools-oauth.js';
 import { verifyGoogleToolsOAuthState } from '../workers/product-tools/google-tools-oauth-state.js';
 import { credentialsConfigured } from '../channels/credential-store.js';
+import {
+  buildZoomAuthUrl,
+  exchangeZoomCode,
+  isZoomOAuthConfigured,
+  resolveZoomRedirectUri,
+} from '../workers/product-tools/zoom-oauth.js';
+import { signZoomOAuthState, verifyZoomOAuthState } from '../workers/product-tools/zoom-oauth-state.js';
 
 export const aivaToolsOAuthRouter: ExpressRouter = Router();
 aivaToolsOAuthRouter.use(requireCloudProxy);
@@ -219,6 +226,88 @@ aivaToolsOAuthRouter.post('/google/callback', async (req: OAuthRequest, res: Res
       error: probed.error,
       returnPath: parsed.returnPath ?? null,
     });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaToolsOAuthRouter.post('/zoom/callback', async (req: OAuthRequest, res: Response) => {
+  try {
+    if (!credentialsConfigured()) {
+      res.status(503).json({ error: 'CHANNEL_CREDENTIAL_KEY is not configured' });
+      return;
+    }
+    if (!isZoomOAuthConfigured()) {
+      res.status(503).json({ error: 'Zoom OAuth is not configured on this server' });
+      return;
+    }
+    const code = String(req.body?.code ?? '').trim();
+    const state = String(req.body?.state ?? '').trim();
+    if (!code || !state) {
+      res.status(400).json({ error: 'code and state are required' });
+      return;
+    }
+    const parsed = verifyZoomOAuthState(state);
+    if (!parsed) {
+      res.status(400).json({ error: 'Invalid or expired OAuth state' });
+      return;
+    }
+    const tokens = await exchangeZoomCode({ code, redirectUri: parsed.redirectUri });
+    await upsertToolSession({
+      workspaceId: parsed.workspaceId,
+      workerId: parsed.workerId,
+      toolSlug: 'zoom',
+      provider: 'zoom',
+      credentials: {
+        access_token: tokens.accessToken,
+        ...(tokens.refreshToken ? { refresh_token: tokens.refreshToken } : {}),
+      },
+      meta: { connectedVia: 'zoom-oauth', expiresIn: tokens.expiresIn },
+      expiresAt: tokens.expiresIn
+        ? new Date(Date.now() + tokens.expiresIn * 1000)
+        : null,
+    });
+    res.json({
+      connected: true,
+      returnPath: parsed.returnPath ?? `/aiva/workers/${parsed.workerId}?tab=concierge`,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaToolsOAuthRouter.get('/zoom/auth-url', async (req: OAuthRequest, res: Response) => {
+  try {
+    if (!isZoomOAuthConfigured()) {
+      res.status(503).json({ error: 'Zoom OAuth is not configured on this server' });
+      return;
+    }
+    const workspaceId = resolveWorkspaceId(req);
+    const workerId = String(req.query.workerId ?? '').trim();
+    if (!workspaceId || !UUID_RE.test(workspaceId) || !UUID_RE.test(workerId)) {
+      res.status(400).json({ error: 'Valid workspaceId and workerId are required' });
+      return;
+    }
+    const worker = await getWorker(workspaceId, workerId);
+    if (!worker) {
+      res.status(404).json({ error: 'Worker not found' });
+      return;
+    }
+    const returnPath =
+      typeof req.query.returnPath === 'string'
+        ? req.query.returnPath.trim()
+        : `/aiva/workers/${workerId}?tab=concierge`;
+    const redirectUri = resolveZoomRedirectUri(
+      typeof req.query.redirectUri === 'string' ? req.query.redirectUri : undefined,
+    );
+    const state = signZoomOAuthState({
+      workspaceId,
+      workerId,
+      redirectUri,
+      returnPath,
+    });
+    const built = buildZoomAuthUrl({ state, redirectUri });
+    res.json({ authUrl: built.authUrl, redirectUri });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
   }

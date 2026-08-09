@@ -28,6 +28,7 @@ import { PlanGateSection } from '@/components/billing/PlanGateSection';
 import { CarinaEditor } from '@/components/editor';
 import { PropreneurBindingPanel } from '@/components/aiva/PropreneurBindingPanel';
 import { AivaWorkerProductTools } from '@/components/aiva/AivaWorkerProductTools';
+import { ConciergeSetupTab } from '@/components/aiva/ConciergeSetupTab';
 import { HostedEmailAddressPanel } from '@/components/aiva/HostedEmailAddressPanel';
 import { AivaHostedEmailCard } from '@/components/aiva/AivaHostedEmailCard';
 import { TelegramVoicePreferenceToggle } from '@/components/aiva/TelegramVoicePreferenceToggle';
@@ -1306,6 +1307,15 @@ export function AivaDetailClient({
               onWorkerUpdate={setWorker}
               onDismiss={() => router.push('/aiva/workers')}
             />
+          )}
+        </div>
+      ) : null}
+      {activeTab === 'concierge' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {isDismissed ? (
+            locked('Concierge setup is locked. This Aiva was dismissed.')
+          ) : (
+            <ConciergeSetupTab workerId={workerId} />
           )}
         </div>
       ) : null}
