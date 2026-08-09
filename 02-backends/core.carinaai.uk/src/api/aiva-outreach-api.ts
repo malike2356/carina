@@ -1357,7 +1357,7 @@ aivaOutreachRouter.get('/test-mode', (req: OutreachRequest, res: Response) => {
 aivaOutreachRouter.get('/demo-data', async (req: OutreachRequest, res: Response) => {
   try {
     const { previewDemoOutreachData, demoOutreachTotal } = await import('../outreach/demo-data.js');
-    const preview = await previewDemoOutreachData(req.workspaceId);
+    const preview = await previewDemoOutreachData(req.workspaceId!);
     res.json({
       preview,
       total: demoOutreachTotal(preview),
@@ -1382,7 +1382,7 @@ aivaOutreachRouter.post('/demo-data/purge', async (req: OutreachRequest, res: Re
       return;
     }
     const { purgeDemoOutreachData, demoOutreachTotal } = await import('../outreach/demo-data.js');
-    const result = await purgeDemoOutreachData(req.workspaceId);
+    const result = await purgeDemoOutreachData(req.workspaceId!);
     res.json({
       result,
       totalRemoved: demoOutreachTotal(result),
