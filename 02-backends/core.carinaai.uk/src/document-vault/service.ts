@@ -23,7 +23,7 @@ import {
   type VaultStorageLocator,
 } from './model.js';
 import { DOCUMENT_VAULT_SQLITE_SCHEMA } from './schema-sqlite.js';
-import type { VaultContentStore } from './storage/content-store.js';
+import type { VaultContentStore } from './content-store.js';
 
 export class VaultError extends Error {
   constructor(

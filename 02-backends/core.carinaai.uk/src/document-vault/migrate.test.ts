@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { migrateLegacyDocumentsToVault } from './migrate.js';
 import { sha256Hex } from './model.js';
 import { DocumentVaultService } from './service.js';
-import { LocalSandboxContentStore } from './storage/content-store.js';
+import { LocalSandboxContentStore } from './content-store.js';
 
 describe('Document vault migration (708)', () => {
   let tmp: string;

@@ -42,5 +42,5 @@ export {
   LocalSandboxContentStore,
   ObjectStorageContentStore,
   createDefaultContentStore,
-} from './storage/content-store.js';
+} from './content-store.js';
 export type { VaultItem, VaultRevision } from './model.js';
