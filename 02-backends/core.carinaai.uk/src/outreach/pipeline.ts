@@ -38,7 +38,7 @@ export function transitionLeadStatus(
     fromStatus,
     toStatus,
   });
-  next = { ...next, status: toStatus };
+  next = { ...next, status: toStatus, pipelineStage: toStatus };
 
   if (toStatus === 'contacted' && !next.lastContactedAt) {
     next = { ...next, lastContactedAt: next.updatedAt };

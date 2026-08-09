@@ -261,6 +261,7 @@ export function updateLead(
   });
   void refreshFollowUpPlans(workspaceId);
   void syncLeadBoardState(workspaceId, leadId, 'Lead updated').catch(() => undefined);
+  void import('./store.js').then(({ flushOutreachStoreAsync }) => flushOutreachStoreAsync()).catch(() => undefined);
   return hydrateLeadCompat(lead);
 }
 
