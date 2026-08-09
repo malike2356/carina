@@ -118,6 +118,9 @@ async function sweepAuxiliaryDue(): Promise<{
 export function startOutreachProcessDueScheduler(): void {
   if (isOutreachDurableSchedulerEnabled()) {
     startOutreachDueEngine();
+    void import('./inbound/engine.js')
+      .then(({ startMailboxReplyIngestEngine }) => startMailboxReplyIngestEngine())
+      .catch((err) => console.warn('[outreach-due] mailbox ingest engine failed to start:', err));
     if (!auxiliaryCron) {
       auxiliaryCron = new Cron('*/5 * * * *', () => {
         void sweepAuxiliaryDue()
@@ -167,4 +170,7 @@ export function stopOutreachProcessDueScheduler(): void {
   auxiliaryCron?.stop();
   auxiliaryCron = null;
   stopOutreachDueEngine();
+  void import('./inbound/engine.js')
+    .then(({ stopMailboxReplyIngestEngine }) => stopMailboxReplyIngestEngine())
+    .catch(() => undefined);
 }

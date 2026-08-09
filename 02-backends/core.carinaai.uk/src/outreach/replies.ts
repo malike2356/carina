@@ -339,6 +339,13 @@ export function processInboundReply(input: {
   inReplyTo?: string;
   threadId?: string;
   receivedAt?: string;
+  /** Prefer this lead when deterministic match already ran. */
+  forcedLeadId?: string;
+  /** Keep open for human review; do not auto-apply sequence stops. */
+  forceManualReview?: boolean;
+  matchMethod?: string;
+  matchConfidence?: number;
+  deliveryId?: string | null;
 }): {
   ok: boolean;
   review: ReplyReview;
@@ -367,11 +374,21 @@ export function processInboundReply(input: {
     };
   }
 
-  const matchedLead = matchReplyLead(input);
+  const forcedLead = input.forcedLeadId
+    ? getLead(input.workspaceId, input.forcedLeadId)
+    : null;
+  const matchedLead = forcedLead ?? matchReplyLead(input);
   const { classification, confidence, reason } = classifyReplyText(input.subject, input.body);
   const suggestedReply = matchedLead ? buildSuggestedReply(classification, matchedLead) : undefined;
-  const actionTaken: ReplyReview['actionTaken'] =
-    classification === 'unsubscribe'
+  const needsReview = Boolean(
+    input.forceManualReview
+    || classification === 'unknown'
+    || classification === 'uncertain'
+    || !matchedLead,
+  );
+  const actionTaken: ReplyReview['actionTaken'] = needsReview
+    ? 'manual_review'
+    : classification === 'unsubscribe'
       ? 'unsubscribe'
       : classification === 'not_now'
         ? 'nurture'
@@ -383,26 +400,31 @@ export function processInboundReply(input: {
 
   const review = createReview({
     workspaceId: input.workspaceId,
-    leadId: matchedLead?.id ?? null,
+    leadId: needsReview ? (matchedLead?.id ?? null) : (matchedLead?.id ?? null),
     fingerprint,
     fromEmail: input.fromEmail,
     subject: input.subject,
     bodyPreview: input.body.slice(0, 500),
     classification,
     confidence,
-    status: classification === 'unknown' ? 'open' : 'resolved',
+    status: needsReview ? 'open' : 'resolved',
     sourceMessageId: input.sourceMessageId,
     inReplyTo: input.inReplyTo,
     threadId: input.threadId,
     matchedLeadId: matchedLead?.id ?? null,
+    deliveryId: input.deliveryId ?? null,
+    matchMethod: input.matchMethod,
+    matchConfidence: input.matchConfidence,
     actionTaken,
     suggestedReply,
-    note: classification === 'unknown'
-      ? 'Needs manual review'
+    note: needsReview
+      ? (input.forceManualReview
+        ? `Needs manual review (${input.matchMethod ?? 'ambiguous'})`
+        : 'Needs manual review')
       : `Auto-classified as ${classification} (${reason})`,
   });
 
-  const lead = matchedLead && classification !== 'unknown'
+  const lead = matchedLead && !needsReview
     ? applyLeadOutcome({
       workspaceId: input.workspaceId,
       leadId: matchedLead.id,
@@ -417,7 +439,7 @@ export function processInboundReply(input: {
     })
     : matchedLead ?? null;
 
-  if (lead && classification !== 'unknown') {
+  if (lead && !needsReview) {
     review.leadId = lead.id;
     review.matchedLeadId = lead.id;
     review.status = 'resolved';
@@ -425,20 +447,22 @@ export function processInboundReply(input: {
     upsertReview(review);
     void refreshFollowUpPlans(input.workspaceId);
     void syncLeadBoardState(input.workspaceId, lead.id, `Reply classified as ${classification}`).catch(() => undefined);
+  } else {
+    upsertReview(review);
   }
 
-  const ownerAlert = lead
+  const ownerAlert = matchedLead
     ? {
       title: `Inbound reply from ${input.fromEmail}`,
       message: `${classification}: ${input.subject} | ${input.body.slice(0, 180)}`,
-      leadId: lead.id,
+      leadId: matchedLead.id,
     }
     : null;
 
   return {
     ok: true,
     review,
-    lead,
+    lead: needsReview ? matchedLead : lead,
     classification,
     confidence,
     reason,

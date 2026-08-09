@@ -315,6 +315,26 @@ export async function processMailgunInbound(
     console.warn(`[hosted-email] draft approval skipped for ${mapped!.workerId}: ${message}`);
   });
 
+  void import('../../outreach/inbound/ingest.js')
+    .then(({ ingestRawInbound }) => ingestRawInbound({
+      workspaceId: mapped.workspaceId,
+      workerId: mapped.workerId,
+      provider: options.source === 'hosted-cloudflare' ? 'cloudflare' : 'mailgun',
+      providerMessageId: messageId,
+      from,
+      to: recipient,
+      subject: fields.subject || '(no subject)',
+      textBody: bodyText,
+      htmlBody: fields.bodyHtml || undefined,
+      receivedAt: fields.timestamp
+        ? new Date(Number(fields.timestamp) * 1000)
+        : new Date(),
+    }))
+    .catch((ingestErr) => {
+      const message = ingestErr instanceof Error ? ingestErr.message : String(ingestErr);
+      console.warn(`[hosted-email] outreach ingest skipped for ${mapped!.workerId}: ${message}`);
+    });
+
   void (async () => {
     const { onWorkerInboundEvent } = await import('../../workers/worker-playbook-triggers.js');
     await onWorkerInboundEvent(mapped!.workerId, {

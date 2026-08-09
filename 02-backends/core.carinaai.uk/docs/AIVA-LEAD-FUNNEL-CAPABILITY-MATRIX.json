@@ -184,9 +184,14 @@
     {
       "id": "reply.ingest_automatic",
       "area": "replies",
-      "status": "missing",
-      "mode": "missing",
-      "notes": "POST /replies/inbound and tool only; no mailbox poller."
+      "status": "real",
+      "mode": "provider_backed",
+      "notes": "Gmail history/list poll + IMAP/Mailgun/Cloudflare normalize into outreach reply engine; ambiguous matches stay in review.",
+      "evidence": [
+        "src/outreach/inbound/gmail-poller.ts",
+        "src/outreach/inbound/ingest.ts",
+        "src/infrastructure/migrations/038-outreach-mailbox-reply-ingest.sql"
+      ]
     },
     {
       "id": "reply.classify",

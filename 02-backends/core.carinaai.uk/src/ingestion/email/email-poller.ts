@@ -157,6 +157,22 @@ export async function pollWorkerInbox(workerId: string): Promise<PollWorkerResul
         console.warn(`[email-poller] draft approval skipped for ${workerId}: ${message}`);
       });
 
+      void import('../../outreach/inbound/ingest.js')
+        .then(({ ingestRawInbound }) => ingestRawInbound({
+          workspaceId: worker.workspaceId,
+          workerId,
+          provider: 'imap',
+          providerMessageId: msg.messageId,
+          from: msg.fromAddress,
+          subject: msg.subject || '(no subject)',
+          textBody: msg.bodyText || '',
+          receivedAt: new Date(),
+        }))
+        .catch((ingestErr) => {
+          const message = ingestErr instanceof Error ? ingestErr.message : String(ingestErr);
+          console.warn(`[email-poller] outreach ingest skipped for ${workerId}: ${message}`);
+        });
+
       const { onWorkerInboundEvent } = await import('../../workers/worker-playbook-triggers.js');
       void onWorkerInboundEvent(workerId, {
         type: 'email_received',

@@ -138,12 +138,18 @@ export function markOutreachDeliveryFromApproval(input: {
   approvalId: string;
   status: 'sent' | 'failed' | 'skipped';
   lastError?: string;
+  providerMessageId?: string;
+  providerThreadId?: string;
+  rfcMessageId?: string;
 }): DeliveryEvent | null {
   const delivery = findDeliveryByApprovalId(input.workspaceId, input.approvalId);
   if (!delivery) return null;
   return markDeliveryStatus(input.workspaceId, delivery.id, input.status, {
     approvalId: input.approvalId,
     lastError: input.lastError,
+    providerMessageId: input.providerMessageId,
+    providerThreadId: input.providerThreadId,
+    rfcMessageId: input.rfcMessageId,
   });
 }
 

@@ -203,6 +203,9 @@ export async function sendApprovedEmail(input: {
   const body = input.modifiedBody ?? existing.draftBody;
 
   let sentVia: 'gmail' | 'resend' = 'resend';
+  let providerMessageId: string | undefined;
+  let providerThreadId: string | undefined;
+  let rfcMessageId: string | undefined;
   const { workerHasToolGrant } = await import('../../workers/aiva-parity-store.js');
   const hasGmail = await workerHasToolGrant(
     input.workspaceId,
@@ -227,6 +230,18 @@ export async function sendApprovedEmail(input: {
       throw new Error(gmailResult.error || 'Gmail send failed');
     }
     sentVia = 'gmail';
+    const data = (gmailResult.data && typeof gmailResult.data === 'object')
+      ? gmailResult.data as Record<string, unknown>
+      : {};
+    providerMessageId = typeof data.id === 'string' ? data.id : undefined;
+    providerThreadId = typeof data.threadId === 'string' ? data.threadId : undefined;
+    const headers = Array.isArray(data.payload)
+      ? []
+      : (data.payload && typeof data.payload === 'object'
+        ? (data.payload as { headers?: Array<{ name?: string; value?: string }> }).headers ?? []
+        : []);
+    const messageIdHeader = headers.find((h) => String(h.name ?? '').toLowerCase() === 'message-id');
+    if (messageIdHeader?.value) rfcMessageId = String(messageIdHeader.value).trim();
   } else {
     const creds = await getEmailCredentials(existing.workerId);
     const replyTo = creds?.username;
@@ -259,6 +274,9 @@ export async function sendApprovedEmail(input: {
       workspaceId: input.workspaceId,
       approvalId: resolved.id,
       status: 'sent',
+      providerMessageId,
+      providerThreadId,
+      rfcMessageId,
     });
   } catch {
     // Outreach Soft Wall link is best-effort; Approvals send still succeeded.

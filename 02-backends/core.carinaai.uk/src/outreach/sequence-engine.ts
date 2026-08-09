@@ -564,7 +564,13 @@ export function markDeliveryStatus(
   workspaceId: string,
   deliveryId: string,
   status: DeliveryEvent['status'],
-  extra?: { lastError?: string; approvalId?: string },
+  extra?: {
+    lastError?: string;
+    approvalId?: string;
+    providerMessageId?: string;
+    providerThreadId?: string;
+    rfcMessageId?: string;
+  },
 ): DeliveryEvent | null {
   const delivery = loadOutreachStore().deliveries.find((d) => d.workspaceId === workspaceId && d.id === deliveryId);
   if (!delivery) return null;
@@ -573,6 +579,9 @@ export function markDeliveryStatus(
     status,
     lastError: extra?.lastError,
     approvalId: extra?.approvalId ?? delivery.approvalId,
+    providerMessageId: extra?.providerMessageId ?? delivery.providerMessageId,
+    providerThreadId: extra?.providerThreadId ?? delivery.providerThreadId,
+    rfcMessageId: extra?.rfcMessageId ?? delivery.rfcMessageId,
     attempts: delivery.attempts + (status === 'failed' ? 1 : 0),
     updatedAt: nowIso(),
   };

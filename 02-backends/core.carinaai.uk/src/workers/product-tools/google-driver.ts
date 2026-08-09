@@ -141,13 +141,42 @@ export async function invokeGoogleAction(opts: {
     if (opts.toolSlug === 'gmail' && opts.action === 'list') {
       const q = typeof opts.input?.q === 'string' ? opts.input.q : '';
       const maxResults = Math.min(
-        25,
+        100,
         Math.max(1, Number(opts.input?.maxResults ?? opts.input?.limit ?? 10) || 10),
       );
       const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
       url.searchParams.set('maxResults', String(maxResults));
       if (q) url.searchParams.set('q', q);
+      const pageToken = String(opts.input?.pageToken ?? '').trim();
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) });
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'gmail' && opts.action === 'profile') {
+      const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+        headers,
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'gmail' && opts.action === 'history') {
+      const startHistoryId = String(opts.input?.startHistoryId ?? opts.input?.historyId ?? '').trim();
+      if (!startHistoryId) {
+        return { ok: false, data: null, error: 'startHistoryId required' };
+      }
+      const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/history');
+      url.searchParams.set('startHistoryId', startHistoryId);
+      url.searchParams.set('historyTypes', 'messageAdded');
+      const maxResults = Math.min(
+        100,
+        Math.max(1, Number(opts.input?.maxResults ?? 50) || 50),
+      );
+      url.searchParams.set('maxResults', String(maxResults));
+      const pageToken = String(opts.input?.pageToken ?? '').trim();
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+      const res = await fetch(url.toString(), { headers, signal: AbortSignal.timeout(20000) });
       const data = await res.json();
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }

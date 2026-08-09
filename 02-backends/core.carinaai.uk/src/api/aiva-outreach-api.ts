@@ -557,7 +557,7 @@ aivaOutreachRouter.get('/replies/review', (req: OutreachRequest, res: Response) 
   res.json({ reviews: listReplyReviews(req.workspaceId!, status ? { status } : undefined) });
 });
 
-aivaOutreachRouter.post('/replies/inbound', (req: OutreachRequest, res: Response) => {
+aivaOutreachRouter.post('/replies/inbound', async (req: OutreachRequest, res: Response) => {
   const fromEmail = String(req.body?.fromEmail ?? req.body?.from ?? '').trim();
   const subject = String(req.body?.subject ?? '').trim();
   const body = String(req.body?.body ?? req.body?.text ?? '').trim();
@@ -565,17 +565,40 @@ aivaOutreachRouter.post('/replies/inbound', (req: OutreachRequest, res: Response
     res.status(400).json({ error: 'fromEmail, subject, and body are required' });
     return;
   }
-  const result = processInboundReply({
-    workspaceId: req.workspaceId!,
-    fromEmail,
-    subject,
-    body,
-    sourceMessageId: typeof req.body?.sourceMessageId === 'string' ? req.body.sourceMessageId : undefined,
-    inReplyTo: typeof req.body?.inReplyTo === 'string' ? req.body.inReplyTo : undefined,
-    threadId: typeof req.body?.threadId === 'string' ? req.body.threadId : undefined,
-    receivedAt: typeof req.body?.receivedAt === 'string' ? req.body.receivedAt : undefined,
-  });
-  res.status(201).json(result);
+  try {
+    const { ingestRawInbound } = await import('../outreach/inbound/ingest.js');
+    const ingested = await ingestRawInbound({
+      workspaceId: req.workspaceId!,
+      workerId: typeof req.body?.workerId === 'string' ? req.body.workerId : undefined,
+      provider: typeof req.body?.provider === 'string' ? req.body.provider as 'manual' : 'manual',
+      providerMessageId: typeof req.body?.sourceMessageId === 'string' && req.body.sourceMessageId.trim()
+        ? req.body.sourceMessageId.trim()
+        : `manual-${Date.now()}-${fromEmail}`,
+      threadId: typeof req.body?.threadId === 'string' ? req.body.threadId : undefined,
+      inReplyTo: typeof req.body?.inReplyTo === 'string' ? req.body.inReplyTo : undefined,
+      references: typeof req.body?.references === 'string' ? req.body.references : undefined,
+      from: fromEmail,
+      subject,
+      textBody: body,
+      receivedAt: typeof req.body?.receivedAt === 'string' ? req.body.receivedAt : undefined,
+    });
+    const reviews = listReplyReviews(req.workspaceId!);
+    const review = reviews.find((r) => r.id === ingested.reviewId) ?? null;
+    const lead = ingested.leadId ? getLead(req.workspaceId!, ingested.leadId) : null;
+    res.status(201).json({
+      ok: true,
+      review,
+      lead,
+      classification: ingested.classification,
+      actionTaken: ingested.actionTaken,
+      matchMethod: ingested.matchMethod,
+      requiresReview: ingested.requiresReview,
+      duplicate: ingested.duplicate,
+      ingest: ingested,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 aivaOutreachRouter.post('/replies/:reviewId/resolve', (req: OutreachRequest, res: Response) => {
@@ -1121,6 +1144,32 @@ aivaOutreachRouter.post('/scheduler/tick', async (_req: OutreachRequest, res: Re
       return;
     }
     const result = await tickOutreachDueEngine();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/mailbox/tick', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { tickMailboxReplyIngest, isMailboxReplyIngestEnabled } = await import(
+      '../outreach/inbound/engine.js'
+    );
+    if (!isMailboxReplyIngestEnabled()) {
+      res.status(503).json({ error: 'Mailbox reply ingest is not enabled' });
+      return;
+    }
+    const workerId = typeof req.body?.workerId === 'string' ? req.body.workerId.trim() : '';
+    if (workerId) {
+      const { pollGmailMailboxForOutreach } = await import('../outreach/inbound/gmail-poller.js');
+      const result = await pollGmailMailboxForOutreach({
+        workspaceId: req.workspaceId!,
+        workerId,
+      });
+      res.json({ ok: true, scoped: true, ...result });
+      return;
+    }
+    const result = await tickMailboxReplyIngest();
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

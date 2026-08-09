@@ -291,6 +291,12 @@ export interface DeliveryEvent {
   attempts: number;
   lastError?: string;
   approvalId?: string;
+  /** Provider message id (Gmail id, Resend id, etc.). */
+  providerMessageId?: string;
+  /** Gmail thread id or equivalent conversation id. */
+  providerThreadId?: string;
+  /** RFC 5322 Message-ID when known. */
+  rfcMessageId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -516,6 +522,9 @@ export interface ReplyReview {
   inReplyTo?: string;
   threadId?: string;
   matchedLeadId?: string | null;
+  deliveryId?: string | null;
+  matchMethod?: string;
+  matchConfidence?: number;
   actionTaken?: 'reply' | 'booking' | 'nurture' | 'unsubscribe' | 'manual_review' | 'ignored';
   suggestedReply?: string;
   note?: string;

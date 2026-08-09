@@ -41,6 +41,19 @@ Operator APIs (cloud proxy + workspace header):
 
 Soft Wall is unchanged: jobs create `pending_approval` deliveries and Approvals rows; cold send still requires owner approval. Delayed approvals revalidate suppression, campaign status, reply, and booking before send.
 
+## Automatic mailbox reply ingestion
+
+Normalized inbound mail (`src/outreach/inbound/`) is shared by Gmail poll, IMAP poll, Mailgun/Cloudflare hosted webhooks, and `POST /replies/inbound`.
+
+Matching order: provider thread → In-Reply-To/References → `[aiva:deliveryId]` token → mailbox+sender+recent delivery → scored fallback (ambiguous stays in review).
+
+| Env | Default | Role |
+| --- | --- | --- |
+| `CARINA_OUTREACH_MAILBOX_INGEST` | on when `DATABASE_URL` set | `false` disables Gmail poll engine |
+| `CARINA_OUTREACH_MAILBOX_POLL_MS` | `120000` | Gmail poll interval |
+
+Soft Wall send stores `providerMessageId` / `providerThreadId` on the delivery when Gmail returns them. Operator tick: `POST /api/aiva/outreach/mailbox/tick` (optional `workerId`).
+
 ## Capability matrix
 
 Machine-readable baseline (real / partial / missing, and manual / scheduled / provider-backed / simulated):
