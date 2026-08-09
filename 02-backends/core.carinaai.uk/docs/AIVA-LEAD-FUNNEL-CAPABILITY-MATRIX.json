@@ -3,10 +3,12 @@
   "product": "aiva-lead-funnel",
   "auditedAt": "2026-08-09",
   "persistence": {
-    "kind": "json_file",
+    "kind": "postgres_with_json_fallback",
     "path": "$CARINA_HOME/outreach/outreach-program.json",
-    "postgres": "missing",
-    "notes": "Production hardening prompt 02 will move source of truth to PostgreSQL."
+    "postgres": "real",
+    "featureFlag": "CARINA_OUTREACH_PERSISTENCE=postgres|json",
+    "migration": "src/infrastructure/migrations/036-outreach-program.sql",
+    "notes": "JSON remains default for tests/local. Production cutover uses migrate-outreach-json-to-postgres.sh then postgres-only mode."
   },
   "deployedAtAudit": {
     "carinaWebImageRevision": "df7fc01670d6cee08ac5b0f70f0816a55a719ef9",

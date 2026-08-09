@@ -4,6 +4,23 @@
 
 Tenant-scoped CRM leads with workbook-quality fields, unified ingestion, spreadsheet CRM table, Soft Wall email campaigns, reply classification with sequence stop conditions, suppression list, conversion to customer, and funnel attribution.
 
+## Persistence
+
+Default: JSON file `$CARINA_HOME/outreach/outreach-program.json` (`CARINA_OUTREACH_PERSISTENCE=json`).
+
+Production target: PostgreSQL (`CARINA_OUTREACH_PERSISTENCE=postgres`) via migration `src/infrastructure/migrations/036-outreach-program.sql`.
+
+```bash
+# On core host with DATABASE_URL set
+bash scripts/migrate-outreach-json-to-postgres.sh --dry-run
+bash scripts/migrate-outreach-json-to-postgres.sh
+# then set CARINA_OUTREACH_PERSISTENCE=postgres and restart carina-web
+```
+
+JSON is checksum-backed under `outreach/backups/` and marked read-only after migrate. Inbound provider bodies use `outreach_inbound_messages.retention_until` (default 90 days via `CARINA_OUTREACH_INBOUND_RETENTION_DAYS`).
+
+Rollback: set `CARINA_OUTREACH_PERSISTENCE=json`, restore the backup file to `outreach-program.json`, restart.
+
 ## Capability matrix
 
 Machine-readable baseline (real / partial / missing, and manual / scheduled / provider-backed / simulated):

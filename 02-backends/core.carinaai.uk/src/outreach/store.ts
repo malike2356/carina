@@ -2,8 +2,24 @@ import fs from 'fs';
 import path from 'path';
 import { resolveCarinaHome } from '../config/paths.js';
 import type { OutreachStoreShape } from './types.js';
+import { emptyOutreachStore } from './store-shape.js';
+import { isOutreachPostgresEnabled } from './pg/config.js';
+import {
+  listWorkspaceIdsFromPg,
+  loadOutreachStoreFromPg,
+  saveOutreachStoreToPg,
+  saveWorkspaceOutreachToPg,
+} from './pg/hydrate.js';
+
+export { emptyOutreachStore } from './store-shape.js';
 
 const caches = new Map<string, unknown>();
+const STORE_FILE = 'outreach-program.json';
+
+let pgCache: OutreachStoreShape | null = null;
+let pgReady = false;
+let flushChain: Promise<void> = Promise.resolve();
+let flushTimer: NodeJS.Timeout | null = null;
 
 export function outreachStoreDir(): string {
   return path.join(resolveCarinaHome(), 'outreach');
@@ -41,35 +57,11 @@ export function saveOutreachJson<T>(fileName: string, value: T): void {
 export function resetOutreachStoreCache(fileName?: string): void {
   if (fileName) caches.delete(fileName);
   else caches.clear();
+  pgCache = null;
+  pgReady = false;
 }
 
-const STORE_FILE = 'outreach-program.json';
-
-export function emptyOutreachStore(): OutreachStoreShape {
-  return {
-    leads: [],
-    campaigns: [],
-    sequences: [],
-    enrollments: [],
-    deliveries: [],
-    lists: [],
-    replyReviews: [],
-    bookings: [],
-    reminders: [],
-    bookingConfigs: {},
-    boardConfigs: {},
-    boardRefs: {},
-    alertTargets: {},
-    controls: {},
-    followUpTasks: [],
-    leadSheetConfigs: {},
-    ingestJobs: [],
-    leadViews: [],
-    suppressions: [],
-  };
-}
-
-export function loadOutreachStore(): OutreachStoreShape {
+function loadJsonStore(): OutreachStoreShape {
   const raw = loadOutreachJson<OutreachStoreShape>(STORE_FILE, emptyOutreachStore);
   return {
     leads: raw.leads ?? [],
@@ -94,13 +86,145 @@ export function loadOutreachStore(): OutreachStoreShape {
   };
 }
 
+function cloneStore(store: OutreachStoreShape): OutreachStoreShape {
+  return JSON.parse(JSON.stringify(store)) as OutreachStoreShape;
+}
+
+function schedulePgFlush(): void {
+  if (flushTimer) return;
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    const snapshot = pgCache ? cloneStore(pgCache) : null;
+    if (!snapshot) return;
+    flushChain = flushChain
+      .then(async () => {
+        await saveOutreachStoreToPg(snapshot);
+      })
+      .catch((err) => {
+        console.error('[outreach-pg] flush failed:', err);
+      });
+  }, 25);
+}
+
+/** Prime in-memory cache from PostgreSQL. Call once at process boot when PG mode is on. */
+export async function ensureOutreachStoreReady(): Promise<void> {
+  if (!isOutreachPostgresEnabled()) {
+    pgReady = true;
+    return;
+  }
+  pgCache = await loadOutreachStoreFromPg();
+  pgReady = true;
+}
+
+export function loadOutreachStore(): OutreachStoreShape {
+  if (!isOutreachPostgresEnabled()) return loadJsonStore();
+  if (!pgReady || !pgCache) {
+    throw new Error(
+      'Outreach PostgreSQL cache is not ready. Call await ensureOutreachStoreReady() at process boot.',
+    );
+  }
+  return pgCache;
+}
+
+export async function loadOutreachStoreAsync(workspaceId?: string): Promise<OutreachStoreShape> {
+  if (!isOutreachPostgresEnabled()) return loadJsonStore();
+  if (workspaceId) return loadOutreachStoreFromPg(workspaceId);
+  if (!pgReady || !pgCache) await ensureOutreachStoreReady();
+  return pgCache!;
+}
+
 export function saveOutreachStore(store: OutreachStoreShape): void {
-  saveOutreachJson(STORE_FILE, store);
+  if (!isOutreachPostgresEnabled()) {
+    saveOutreachJson(STORE_FILE, store);
+    return;
+  }
+  pgCache = store;
+  pgReady = true;
+  schedulePgFlush();
+}
+
+export async function saveOutreachStoreAsync(store: OutreachStoreShape): Promise<void> {
+  if (!isOutreachPostgresEnabled()) {
+    saveOutreachJson(STORE_FILE, store);
+    return;
+  }
+  pgCache = store;
+  pgReady = true;
+  await saveOutreachStoreToPg(store);
 }
 
 export function mutateOutreachStore(mutator: (store: OutreachStoreShape) => void): OutreachStoreShape {
-  const store = loadOutreachStore();
-  mutator(store);
-  saveOutreachStore(store);
-  return store;
+  if (!isOutreachPostgresEnabled()) {
+    const store = loadJsonStore();
+    mutator(store);
+    saveOutreachJson(STORE_FILE, store);
+    return store;
+  }
+  if (!pgReady || !pgCache) {
+    throw new Error(
+      'Outreach PostgreSQL cache is not ready. Call await ensureOutreachStoreReady() at process boot.',
+    );
+  }
+  mutator(pgCache);
+  schedulePgFlush();
+  return pgCache;
+}
+
+export async function mutateOutreachStoreAsync(
+  mutator: (store: OutreachStoreShape) => void | Promise<void>,
+): Promise<OutreachStoreShape> {
+  if (!isOutreachPostgresEnabled()) {
+    const store = loadJsonStore();
+    await mutator(store);
+    saveOutreachJson(STORE_FILE, store);
+    return store;
+  }
+  if (!pgReady || !pgCache) await ensureOutreachStoreReady();
+  await mutator(pgCache!);
+  await saveOutreachStoreToPg(pgCache!);
+  return pgCache!;
+}
+
+export async function mutateWorkspaceOutreachAsync(
+  workspaceId: string,
+  mutator: (store: OutreachStoreShape) => void | Promise<void>,
+): Promise<OutreachStoreShape> {
+  if (!isOutreachPostgresEnabled()) {
+    const store = loadJsonStore();
+    await mutator(store);
+    saveOutreachJson(STORE_FILE, store);
+    return store;
+  }
+  const slice = await loadOutreachStoreFromPg(workspaceId);
+  await mutator(slice);
+  await saveWorkspaceOutreachToPg(workspaceId, slice);
+  // Refresh global cache after workspace write
+  pgCache = await loadOutreachStoreFromPg();
+  pgReady = true;
+  return slice;
+}
+
+export async function flushOutreachStoreAsync(): Promise<void> {
+  if (!isOutreachPostgresEnabled()) return;
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+  await flushChain;
+  if (pgCache) await saveOutreachStoreToPg(pgCache);
+}
+
+export async function listOutreachWorkspaceIdsAsync(): Promise<string[]> {
+  if (!isOutreachPostgresEnabled()) {
+    const store = loadJsonStore();
+    const ids = new Set<string>();
+    for (const row of store.enrollments) ids.add(row.workspaceId);
+    for (const row of store.reminders) ids.add(row.workspaceId);
+    for (const row of store.followUpTasks) ids.add(row.workspaceId);
+    for (const row of store.bookings) ids.add(row.workspaceId);
+    for (const row of store.deliveries) ids.add(row.workspaceId);
+    for (const row of store.leads) ids.add(row.workspaceId);
+    return [...ids];
+  }
+  return listWorkspaceIdsFromPg();
 }

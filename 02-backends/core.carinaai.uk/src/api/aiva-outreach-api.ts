@@ -180,7 +180,7 @@ aivaOutreachRouter.get('/pipeline', (req: OutreachRequest, res: Response) => {
   res.json({ columns, summary: pipelineSummary(req.workspaceId!), filteredCount: leads.length });
 });
 
-aivaOutreachRouter.get('/leads', (req: OutreachRequest, res: Response) => {
+aivaOutreachRouter.get('/leads', async (req: OutreachRequest, res: Response) => {
   const campaignId = typeof req.query.campaignId === 'string' ? req.query.campaignId : undefined;
   const status = typeof req.query.status === 'string' && isPipelineStatus(req.query.status)
     ? req.query.status
@@ -195,7 +195,7 @@ aivaOutreachRouter.get('/leads', (req: OutreachRequest, res: Response) => {
   const replied = req.query.replied === 'true' ? true : req.query.replied === 'false' ? false : undefined;
   const page = Math.max(1, Number(req.query.page ?? 1) || 1);
   const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize ?? 50) || 50));
-  const all = listLeads(req.workspaceId!, {
+  const filter = {
     campaignId,
     status,
     source: source as never,
@@ -206,7 +206,27 @@ aivaOutreachRouter.get('/leads', (req: OutreachRequest, res: Response) => {
     q,
     hasEmail,
     replied,
-  });
+  };
+
+  const { isOutreachPostgresEnabled } = await import('../outreach/pg/config.js');
+  if (isOutreachPostgresEnabled()) {
+    const { listLeadsPageFromPg } = await import('../outreach/pg/leads-repo.js');
+    // Offset emulation via repeated keyset is expensive; for page>1 fall back to limited SQL offset.
+    if (page === 1) {
+      const result = await listLeadsPageFromPg(req.workspaceId!, filter, { limit: pageSize });
+      res.json({
+        leads: result.leads,
+        total: result.total,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(result.total / pageSize)),
+        nextCursor: result.nextCursor,
+      });
+      return;
+    }
+  }
+
+  const all = listLeads(req.workspaceId!, filter);
   const start = (page - 1) * pageSize;
   const leads = all.slice(start, start + pageSize);
   res.json({

@@ -206,6 +206,8 @@ async function main(): Promise<void> {
         startGoogleRecorderPoller();
         const { startSocialApprovalTimeoutScheduler } = await import('./ingestion/social/social-approval-timeout-scheduler.js');
         startSocialApprovalTimeoutScheduler();
+        const { ensureOutreachStoreReady } = await import('./outreach/store.js');
+        await ensureOutreachStoreReady();
         const { startOutreachProcessDueScheduler } = await import('./outreach/process-due-scheduler.js');
         startOutreachProcessDueScheduler();
         if (process.env.AIVA_WORKER_ISOLATION !== 'false') {

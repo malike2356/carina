@@ -7,19 +7,12 @@ import { processDueFollowUps } from './follow-ups.js';
 import { processDueReminders } from './reminders.js';
 import { processDueSendsWithSoftWall } from './soft-wall-approvals.js';
 import { processDueVicalReminders } from '../vical/reminders.js';
-import { loadOutreachStore } from './store.js';
+import { listOutreachWorkspaceIdsAsync } from './store.js';
 
 let dueCron: Cron | null = null;
 
-function listOutreachWorkspaceIds(): string[] {
-  const store = loadOutreachStore();
-  const ids = new Set<string>();
-  for (const row of store.enrollments) ids.add(row.workspaceId);
-  for (const row of store.reminders) ids.add(row.workspaceId);
-  for (const row of store.followUpTasks) ids.add(row.workspaceId);
-  for (const row of store.bookings) ids.add(row.workspaceId);
-  for (const row of store.deliveries) ids.add(row.workspaceId);
-  return [...ids];
+async function listOutreachWorkspaceIds(): Promise<string[]> {
+  return listOutreachWorkspaceIdsAsync();
 }
 
 export async function sweepOutreachProcessDue(): Promise<{
@@ -30,7 +23,7 @@ export async function sweepOutreachProcessDue(): Promise<{
   followUps: number;
   vicalReminders: number;
 }> {
-  const workspaceIds = listOutreachWorkspaceIds();
+  const workspaceIds = await listOutreachWorkspaceIds();
   let deliveriesQueued = 0;
   let softWallBridged = 0;
   let reminders = 0;
