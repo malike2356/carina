@@ -1,0 +1,70 @@
+{
+  "contract": "aiva-document-vault",
+  "version": "1.0.0",
+  "compatibleVersions": ["1.0.0"],
+  "title": "Aiva Document Vault v1",
+  "authority": "shared/workspace-governance/AIVA-KEPRIX-DOCUMENT-VAULT.md",
+  "products": ["carina-aiva"],
+  "runtimeDependency": "carina-core + carina-cloud",
+  "phase": "707-inventory-and-consolidation",
+  "canonicalUiRoute": "/documents",
+  "compatibleRoutes": ["/files"],
+  "outOfScope": [
+    "host-filesystem-browser",
+    "file-read",
+    "file-write",
+    "propreneur-document-vault",
+    "legal_documents",
+    "skill_documents"
+  ],
+  "itemKinds": [
+    "folder",
+    "rich_document",
+    "spreadsheet",
+    "presentation",
+    "markdown",
+    "html",
+    "plain_text",
+    "pdf",
+    "binary_upload"
+  ],
+  "contentAuthority": ["workspace", "google"],
+  "minimumAgentTools": [
+    "vault-list",
+    "vault-search",
+    "vault-inspect",
+    "vault-read",
+    "vault-create-folder",
+    "vault-create-file",
+    "vault-update",
+    "vault-append",
+    "vault-rename",
+    "vault-move",
+    "vault-copy",
+    "vault-trash",
+    "vault-restore",
+    "vault-revisions",
+    "vault-import",
+    "vault-export",
+    "vault-sync-status",
+    "vault-sync-request"
+  ],
+  "ownershipMatrix": "ownership-matrix.json",
+  "migrationManifest": "migration-manifest.json",
+  "inventory": "inventory.json",
+  "featureFlags": [
+    "DOCUMENT_VAULT_V1_ENABLED",
+    "DOCUMENT_VAULT_COMPAT_ADAPTERS",
+    "DOCUMENT_VAULT_DUAL_WRITE",
+    "DOCUMENT_VAULT_MIGRATE_DRY_RUN",
+    "DOCUMENT_VAULT_RETIRE_LEGACY_STORES"
+  ],
+  "metrics": [
+    "vault_inventory_store_count",
+    "vault_inventory_caller_count",
+    "vault_report_duplicate_count",
+    "vault_report_orphan_count",
+    "vault_report_conflict_count",
+    "vault_migration_dry_run_ok"
+  ]
+}

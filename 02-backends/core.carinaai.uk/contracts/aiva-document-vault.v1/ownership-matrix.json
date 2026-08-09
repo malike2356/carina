@@ -1,0 +1,92 @@
+{
+  "version": "1.0.0",
+  "target": {
+    "metadataDb": "carina_cloud_postgres",
+    "metadataService": "document-vault.service (canonical, from 708)",
+    "contentStorage": "object-storage adapter (local FS sandbox + production bucket)",
+    "revisions": "document_vault_revisions (canonical)",
+    "providerMappings": "document_vault_provider_mappings (canonical)",
+    "syncJobs": "document_vault_jobs (canonical durable queue)",
+    "indexes": "rag_chunks / vault index jobs keyed by vault item + revision",
+    "audit": "document_vault_audit_events (immutable)"
+  },
+  "currentOwners": [
+    {
+      "concern": "aiva_workspace_documents_content",
+      "owner": "carina_cloud.documents",
+      "service": "app.carinaai.uk /api/documents + aiva-workspace-surfaces",
+      "migration": "import_as_vault_item kind=html|markdown|plain_text authority=workspace"
+    },
+    {
+      "concern": "aiva_files_union_view",
+      "owner": "carina_cloud.documents + carina_cloud.user_notes",
+      "service": "app.carinaai.uk /api/files",
+      "migration": "documents map to vault; notes stay notes store with optional vault projection filter on /files"
+    },
+    {
+      "concern": "host_operator_documents",
+      "owner": "sqlite.carina_documents",
+      "service": "gateway/documents-store + documents-manage + /api/documents (host web)",
+      "migration": "out of Aiva vault scope; remain host-operator store; Aiva sessions must never read/write"
+    },
+    {
+      "concern": "worker_knowledge_documents",
+      "owner": "postgres.aiva_knowledge_base",
+      "service": "workers/knowledge-base + workspace-api knowledge routes",
+      "migration": "map type=document rows to vault items; keep faq as knowledge FAQ or vault faq kind later"
+    },
+    {
+      "concern": "workspace_ops_drive_pack",
+      "owner": "postgres.aiva_workspace_ops_* + Google Drive",
+      "service": "aiva/workspace-ops/*",
+      "migration": "bindings/folders/mappings become vault provider mappings; knowledge bodies become vault content or google-authority stubs"
+    },
+    {
+      "concern": "google_drive_product_tools",
+      "owner": "Google Drive API + aiva_tool_accounts grants",
+      "service": "google-drive-* tools",
+      "migration": "remain provider adapter; vault sync jobs call same driver"
+    },
+    {
+      "concern": "chat_and_channel_binaries",
+      "owner": "host FS under CARINA_DATA_DIR / channel_shield_attachments",
+      "service": "chat-attachments, WhatsApp media, channel-shield",
+      "migration": "quarantine then optional import into vault; never treat host path as vault root"
+    },
+    {
+      "concern": "rag_vectors",
+      "owner": "postgres.rag_chunks",
+      "service": "memory/store",
+      "migration": "re-key citations to vault itemId + revisionId; not a content SoR"
+    }
+  ],
+  "compatibilityAdapters": [
+    {
+      "name": "workspace-document-* -> vault",
+      "until": "DOCUMENT_VAULT_RETIRE_LEGACY_STORES=true and cutover tests pass"
+    },
+    {
+      "name": "documents-manage Aiva list/create -> vault",
+      "until": "agents use vault-* tools exclusively"
+    },
+    {
+      "name": "/api/documents CRUD -> vault service",
+      "until": "cloud routes call canonical service only"
+    },
+    {
+      "name": "workspace-ops document routes -> vault + google adapter",
+      "until": "Ops UI uses /documents explorer sync badges"
+    },
+    {
+      "name": "/files -> vault list filter + notes union",
+      "until": "optional redirect to /documents"
+    }
+  ],
+  "hardRules": [
+    "Do not create a fourth unrelated document content store.",
+    "Do not expose host filesystem as Document Vault.",
+    "Aiva sessions cannot access sqlite.carina_documents.",
+    "Workspace A cannot read workspace B vault items.",
+    "Production mutation reports for inventory stay dry-run only."
+  ]
+}

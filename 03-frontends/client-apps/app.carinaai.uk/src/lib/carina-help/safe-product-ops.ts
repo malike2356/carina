@@ -169,7 +169,7 @@ export function renderResearchBookingsFiles(): string {
     '- Outreach discovery calls can also be managed from Outreach → Bookings and worker booking tools.',
     '',
     '## Files and Documents',
-    '- Documents (/documents): workspace document vault.',
+    '- Documents (/documents): primary Document Vault entry (Aiva). Contract: docs/integrations/aiva-document-vault-v1.md and shared/workspace-governance/AIVA-KEPRIX-DOCUMENT-VAULT.md. /files is a compatible union view of documents and notes, not a host filesystem browser.',
     '- Files tools and worker paperclip uploads: attach CSV, spreadsheets, PDFs, images for the hired worker to use.',
     '- Google Drive stays in Drive unless the user asks to copy into Documents.',
     '',

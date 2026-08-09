@@ -1,0 +1,94 @@
+{
+  "workspaces": [
+    {
+      "workspaceId": "ws-aaa",
+      "cloudDocuments": [
+        {
+          "id": "doc-1",
+          "title": "Pitch",
+          "content": "Hello",
+          "checksum": "sha256:aaa",
+          "archived": false
+        },
+        {
+          "id": "doc-2",
+          "title": "Notes",
+          "content": "World",
+          "checksum": "sha256:bbb",
+          "archived": false
+        }
+      ],
+      "knowledgeDocuments": [
+        {
+          "id": "doc-1",
+          "title": "Pitch",
+          "content": "Hello",
+          "checksum": "sha256:aaa",
+          "workerId": "worker-1",
+          "enabled": true
+        },
+        {
+          "id": "kb-9",
+          "title": "Orphan knowledge",
+          "content": "Only in knowledge",
+          "checksum": "sha256:ccc",
+          "workerId": "worker-1",
+          "enabled": true
+        }
+      ],
+      "opsMappings": [
+        {
+          "bindingId": "bind-1",
+          "driveFileId": "g-1",
+          "aivaDocumentId": "kb-missing",
+          "status": "synced",
+          "contentHash": "sha256:ddd"
+        },
+        {
+          "bindingId": "bind-1",
+          "driveFileId": "g-dup",
+          "aivaDocumentId": "kb-9",
+          "status": "conflict",
+          "contentHash": "sha256:eee"
+        },
+        {
+          "bindingId": "bind-2",
+          "driveFileId": "g-dup",
+          "aivaDocumentId": "doc-2",
+          "status": "pending",
+          "contentHash": "sha256:fff"
+        }
+      ],
+      "uploadFiles": [
+        {
+          "path": "aiva-uploads/ws-aaa/worker-1/file.pdf",
+          "referenced": false
+        },
+        {
+          "path": "aiva-uploads/ws-aaa/worker-1/linked.txt",
+          "referenced": true
+        }
+      ],
+      "ragCitations": [
+        { "documentId": "doc-1" },
+        { "documentId": "missing-doc" }
+      ]
+    },
+    {
+      "workspaceId": "ws-bbb",
+      "cloudDocuments": [
+        {
+          "id": "doc-other",
+          "title": "Secret",
+          "content": "tenant B",
+          "checksum": "sha256:zzz",
+          "archived": false
+        }
+      ],
+      "knowledgeDocuments": [],
+      "opsMappings": [],
+      "uploadFiles": [],
+      "ragCitations": []
+    }
+  ]
+}
