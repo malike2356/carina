@@ -276,6 +276,30 @@
         "src/outreach/provider-events/reconcile.ts",
         "GET /api/aiva/outreach/provider-events"
       ]
+    },
+    {
+      "id": "observability.outreach",
+      "area": "ops",
+      "status": "real",
+      "mode": "scheduled",
+      "notes": "Aggregated snapshot: scheduler, approvals, webhooks, reconcile gaps, funnel, DB ping.",
+      "evidence": [
+        "src/outreach/observability/snapshot.ts",
+        "GET /api/aiva/outreach/observability",
+        "docs/AIVA-LEAD-FUNNEL-RUNBOOK.md"
+      ]
+    },
+    {
+      "id": "smoke.provider_pipeline",
+      "area": "ops",
+      "status": "real",
+      "mode": "simulated",
+      "notes": "16-step controlled smoke via provider event apply + inbound ingest; live sends require allowlist.",
+      "evidence": [
+        "src/outreach/provider-smoke.ts",
+        "src/outreach/test-mode.ts",
+        "scripts/smoke-lead-funnel-provider.sh"
+      ]
     }
   ]
 }

@@ -1323,6 +1323,46 @@ aivaOutreachRouter.get('/scheduler/health', async (_req: OutreachRequest, res: R
   }
 });
 
+aivaOutreachRouter.get('/observability', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { getOutreachObservabilitySnapshot } = await import('../outreach/observability/snapshot.js');
+    const snapshot = await getOutreachObservabilitySnapshot(req.workspaceId);
+    res.json({ snapshot });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.get('/test-mode', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/test-mode.js').then(({ getOutreachTestModeStatus }) => {
+    res.json(getOutreachTestModeStatus(req.workspaceId));
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.post('/smoke/provider', async (req: OutreachRequest, res: Response) => {
+  try {
+    const mode = req.body?.mode === 'live' ? 'live' : 'simulated';
+    if (mode === 'live' && process.env.CARINA_OUTREACH_ALLOW_LIVE_SMOKE !== 'true') {
+      res.status(403).json({
+        error: 'live smoke disabled',
+        note: 'Set CARINA_OUTREACH_ALLOW_LIVE_SMOKE=true and an allowlist to enable',
+      });
+      return;
+    }
+    const { runProviderBackedSmoke } = await import('../outreach/provider-smoke.js');
+    const report = await runProviderBackedSmoke({
+      workspaceId: typeof req.body?.workspaceId === 'string' ? req.body.workspaceId : `ws-outreach-smoke-${req.workspaceId}`,
+      mode,
+      recipientEmail: typeof req.body?.recipientEmail === 'string' ? req.body.recipientEmail : undefined,
+    });
+    res.status(report.ok ? 200 : 500).json({ report });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 aivaOutreachRouter.post('/scheduler/control', async (req: OutreachRequest, res: Response) => {
   try {
     const { setSchedulerControl, isOutreachDurableSchedulerEnabled } = await import(

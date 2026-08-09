@@ -30,12 +30,13 @@ PY
 
 for url_expect in \
   "https://carinaai.uk/|200" \
+  "https://app.carinaai.uk/|200" \
   "https://app.carinaai.uk/api/health|200" \
   "https://core.carinaai.uk/health|200"
 do
   url="${url_expect%%|*}"
   expect="${url_expect##*|}"
-  code="$(curl -sS -o /tmp/lead-funnel-smoke.body -w '%{http_code}' "${url}" || true)"
+  code="$(curl -sS -o /tmp/lead-funnel-smoke.body -w '%{http_code}' -L "${url}" || true)"
   [[ "${code}" == "${expect}" ]] || fail "${url} -> ${code} (expected ${expect})"
   pass "${url} -> ${code}"
 done

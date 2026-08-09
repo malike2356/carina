@@ -6,6 +6,7 @@ import {
   verifyMailgunWebhookSignature,
   isMailgunSignatureRequired,
 } from '../ingestion/email/mailgun-inbound.js';
+import { bumpOutreachCounter } from '../outreach/observability/counters.js';
 
 export const emailEvents = {
   listeners: [] as Array<(payload: InboundEmailPayload) => void>,
@@ -53,6 +54,7 @@ function verifyResendSignedRequest(req: Request): { ok: true } | { ok: false; st
     ?? JSON.stringify(req.body ?? {});
   const svix = parseSvixHeaders(req.headers as Record<string, string | string[] | undefined>);
   if (!svix || !verifyResendWebhook(rawBody, svix, secret)) {
+    bumpOutreachCounter('webhookSignatureFailures');
     return { ok: false, status: 401, error: 'Invalid webhook signature' };
   }
   return { ok: true };
@@ -69,7 +71,10 @@ function verifyMailgunSignedRequest(req: Request): { ok: true } | { ok: false; s
     token: String(signature.token ?? body.token ?? ''),
     signature: String(signature.signature ?? body.signature ?? ''),
   });
-  if (!ok) return { ok: false, status: 401, error: 'Invalid Mailgun webhook signature' };
+  if (!ok) {
+    bumpOutreachCounter('webhookSignatureFailures');
+    return { ok: false, status: 401, error: 'Invalid Mailgun webhook signature' };
+  }
   return { ok: true };
 }
 

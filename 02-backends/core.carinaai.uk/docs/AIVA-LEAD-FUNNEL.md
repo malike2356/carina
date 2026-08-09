@@ -105,6 +105,14 @@ Lifecycle defaults:
 - Workspace suppression list blocks enrol and send.
 - Never bypass Soft Wall approval, consent, or daily caps.
 - Do not claim opens/clicks unless the provider confirmed them.
+- Test mode (`CARINA_OUTREACH_TEST_MODE`) blocks sends unless the recipient is on `CARINA_OUTREACH_SMOKE_ALLOWLIST`. The outreach UI shows a TEST MODE banner when active.
+
+## Observability and smoke
+
+- Snapshot: `GET /api/aiva/outreach/observability`
+- Test mode: `GET /api/aiva/outreach/test-mode`
+- Controlled 16-step smoke: `pnpm exec vitest run src/outreach/provider-smoke.test.ts` and `bash scripts/smoke-lead-funnel-provider.sh`
+- Operator runbook: `docs/AIVA-LEAD-FUNNEL-RUNBOOK.md`
 
 ## Troubleshooting
 

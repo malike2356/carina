@@ -202,6 +202,19 @@ export async function sendApprovedEmail(input: {
   // Send while still pending so a send failure does not leave a false "approved" row.
   const body = input.modifiedBody ?? existing.draftBody;
 
+  try {
+    const { assertRecipientAllowedForSend } = await import('../../outreach/test-mode.js');
+    const gate = assertRecipientAllowedForSend({
+      workspaceId: input.workspaceId,
+      recipient: existing.recipient,
+    });
+    if (!gate.ok) {
+      throw new Error(`Outreach send blocked (${gate.reason}): recipient not allowlisted in test mode`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Outreach send blocked')) throw err;
+  }
+
   let sentVia: 'gmail' | 'resend' = 'resend';
   let providerMessageId: string | undefined;
   let providerThreadId: string | undefined;
