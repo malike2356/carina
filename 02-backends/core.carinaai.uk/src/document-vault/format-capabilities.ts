@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { VaultItemKind } from '../kinds.js';
+import type { VaultItemKind } from './kinds.js';
 
 export const DOCUMENT_VAULT_CONVERTER_VERSION = 'document-vault-formats/1.0.0';
 
