@@ -6,6 +6,7 @@ import { getAdapter } from '../channels/adapter-registry.js';
 import { pool } from '../memory/db.js';
 
 export interface PropreneurWebhookPayload {
+  [key: string]: unknown;
   event: string;
   workerId: string;
   tenantSlug: string;
