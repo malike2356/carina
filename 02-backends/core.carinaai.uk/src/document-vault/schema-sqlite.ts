@@ -1,0 +1,125 @@
+export const DOCUMENT_VAULT_SQLITE_SCHEMA = `
+CREATE TABLE IF NOT EXISTS document_vault_items (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  parent_id TEXT,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  mime_type TEXT NOT NULL,
+  extension TEXT,
+  content_authority TEXT NOT NULL DEFAULT 'workspace',
+  storage_locator TEXT NOT NULL,
+  byte_size INTEGER NOT NULL DEFAULT 0,
+  checksum TEXT NOT NULL DEFAULT '',
+  current_revision INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT,
+  updated_by TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  favorite INTEGER NOT NULL DEFAULT 0,
+  trashed_at TEXT,
+  trash_parent_id TEXT,
+  index_policy TEXT NOT NULL DEFAULT 'inherit',
+  classification TEXT NOT NULL DEFAULT 'internal',
+  inline_content TEXT
+);
+
+CREATE INDEX IF NOT EXISTS document_vault_items_ws_parent_idx
+  ON document_vault_items (workspace_id, parent_id, trashed_at);
+CREATE INDEX IF NOT EXISTS document_vault_items_ws_updated_idx
+  ON document_vault_items (workspace_id, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS document_vault_revisions (
+  id TEXT PRIMARY KEY,
+  item_id TEXT NOT NULL,
+  workspace_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  checksum TEXT NOT NULL,
+  byte_size INTEGER NOT NULL,
+  storage_locator TEXT NOT NULL,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  note TEXT,
+  inline_content TEXT,
+  UNIQUE (item_id, revision)
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_provider_mappings (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  provider TEXT NOT NULL,
+  provider_item_id TEXT NOT NULL,
+  provider_revision_token TEXT,
+  sync_status TEXT NOT NULL DEFAULT 'pending',
+  local_checksum TEXT,
+  remote_checksum TEXT,
+  last_synced_at TEXT,
+  updated_at TEXT NOT NULL,
+  UNIQUE (workspace_id, provider, provider_item_id)
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_jobs (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'queued',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  last_error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_audit_events (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  item_id TEXT,
+  actor_id TEXT,
+  action TEXT NOT NULL,
+  detail_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_legacy_mappings (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  legacy_source TEXT NOT NULL,
+  legacy_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  checksum TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (workspace_id, legacy_source, legacy_id)
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_quotas (
+  workspace_id TEXT PRIMARY KEY,
+  max_bytes INTEGER NOT NULL,
+  used_bytes INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_approvals (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  item_ids_json TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  consumed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_migration_runs (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  source TEXT NOT NULL,
+  status TEXT NOT NULL,
+  imported INTEGER NOT NULL DEFAULT 0,
+  skipped INTEGER NOT NULL DEFAULT 0,
+  checksum_ok INTEGER NOT NULL DEFAULT 0,
+  detail_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+`;

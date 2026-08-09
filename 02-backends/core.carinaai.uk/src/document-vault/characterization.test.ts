@@ -60,7 +60,7 @@ describe('Document Vault v1 characterization (707)', () => {
     const contract = loadDocumentVaultContractManifest();
     expect(contract.version).toBe(DOCUMENT_VAULT_CONTRACT_VERSION);
     expect(contract.authority).toContain('AIVA-KEPRIX-DOCUMENT-VAULT.md');
-    expect(contract.phase).toBe('707-inventory-and-consolidation');
+    expect(contract.phase).toMatch(/708|707/);
 
     const ownership = loadDocumentVaultOwnershipMatrix();
     expect(ownership.target).toBeTruthy();

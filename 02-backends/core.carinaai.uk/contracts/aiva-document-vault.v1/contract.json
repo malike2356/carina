@@ -6,7 +6,7 @@
   "authority": "shared/workspace-governance/AIVA-KEPRIX-DOCUMENT-VAULT.md",
   "products": ["carina-aiva"],
   "runtimeDependency": "carina-core + carina-cloud",
-  "phase": "707-inventory-and-consolidation",
+  "phase": "708-canonical-tree-storage-revisions-migration",
   "canonicalUiRoute": "/documents",
   "compatibleRoutes": ["/files"],
   "outOfScope": [
