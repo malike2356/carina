@@ -2,13 +2,24 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { GripVertical, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/Toast';
-import { PIPELINE_LABELS, type OutreachLead, type PipelineStatus } from '@/components/outreach/types';
+import {
+  PIPELINE_LABELS,
+  type DeliveryEvent,
+  type OutreachLead,
+  type PipelineStatus,
+} from '@/components/outreach/types';
 import { cn } from '@/lib/utils';
 
 const STAGES = Object.keys(PIPELINE_LABELS) as PipelineStatus[];
 const DRAG_MIME = 'application/x-aiva-pipeline-lead';
+
+type LeadDetailPayload = {
+  lead: OutreachLead;
+  deliveries?: DeliveryEvent[];
+};
 
 function applyLeadToColumns(
   current: Record<string, OutreachLead[]>,
@@ -45,7 +56,9 @@ export default function OutreachPipelinePage() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<PipelineStatus | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
-  const dragMovedRef = useRef(false);
+  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<LeadDetailPayload | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const dropTargetRef = useRef<PipelineStatus | null>(null);
   const draggingIdRef = useRef<string | null>(null);
   const movingIdRef = useRef<string | null>(null);
@@ -85,12 +98,39 @@ export default function OutreachPipelinePage() {
     load();
   }, [load]);
 
+  const openLeadDetail = useCallback((lead: OutreachLead) => {
+    setDetailLeadId(lead.id);
+    setDetail({ lead, deliveries: undefined });
+    setDetailLoading(true);
+    fetch(`/api/aiva/outreach/leads/${lead.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: LeadDetailPayload | null) => {
+        if (!data?.lead) {
+          setDetail({ lead, deliveries: [] });
+          return;
+        }
+        setDetail({ lead: data.lead, deliveries: data.deliveries ?? [] });
+      })
+      .catch(() => {
+        setDetail({ lead, deliveries: [] });
+        push('Could not load full lead details', 'error');
+      })
+      .finally(() => setDetailLoading(false));
+  }, [push]);
+
+  const closeLeadDetail = useCallback(() => {
+    setDetailLeadId(null);
+    setDetail(null);
+    setDetailLoading(false);
+  }, []);
+
   const move = useCallback(
     async (leadId: string, status: PipelineStatus, fromStatus?: PipelineStatus) => {
       if (fromStatus && fromStatus === status) return;
-      if (movingId === leadId) return;
+      if (movingIdRef.current === leadId) return;
 
       const snapshot = columnsRef.current;
+      movingIdRef.current = leadId;
       setColumns((current) => applyLeadToColumns(current, leadId, status));
       setMovingId(leadId);
 
@@ -109,19 +149,24 @@ export default function OutreachPipelinePage() {
         const savedStatus = (data.lead?.status ?? status) as PipelineStatus;
         if (data.lead) {
           setColumns((current) => applyLeadToColumns(current, leadId, savedStatus, data.lead));
+          if (detailLeadId === leadId) {
+            setDetail((current) =>
+              current ? { ...current, lead: { ...current.lead, ...data.lead, status: savedStatus } } : current,
+            );
+          }
         } else if (savedStatus !== status) {
           setColumns((current) => applyLeadToColumns(current, leadId, savedStatus));
         }
-        // Soft refresh summary counts without blanking the board.
         load({ silent: true });
       } catch {
         setColumns(snapshot);
         push('Could not update lead status', 'error');
       } finally {
+        movingIdRef.current = null;
         setMovingId(null);
       }
     },
-    [push, load, movingId],
+    [push, load, detailLeadId],
   );
 
   const quick = useCallback(
@@ -132,8 +177,12 @@ export default function OutreachPipelinePage() {
         return;
       }
       load({ silent: true });
+      if (detailLeadId === leadId) {
+        const lead = Object.values(columnsRef.current).flat().find((row) => row.id === leadId);
+        if (lead) openLeadDetail(lead);
+      }
     },
-    [push, load],
+    [push, load, detailLeadId, openLeadDetail],
   );
 
   function findLeadStage(leadId: string): PipelineStatus | undefined {
@@ -171,6 +220,9 @@ export default function OutreachPipelinePage() {
     const fromStatus = findLeadStage(leadId);
     void move(leadId, targetStatus, fromStatus);
   }
+
+  const detailLead = detail?.lead ?? null;
+  const timeline = detailLead?.timeline ?? [];
 
   return (
     <div className="flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden" style={{ width: '100%', maxWidth: 'none' }}>
@@ -240,7 +292,7 @@ export default function OutreachPipelinePage() {
           ))}
         </div>
         <p className="mt-2 text-[11px] text-text-muted">
-          Drag a card into another column to change its pipeline stage.
+          Click a lead name to view details. Drag the grip handle to move a card between stages.
         </p>
       </div>
 
@@ -289,49 +341,45 @@ export default function OutreachPipelinePage() {
                     leads.map((lead) => (
                       <div
                         key={lead.id}
-                        draggable={movingId !== lead.id}
-                        onDragStart={(event) => {
-                          dragMovedRef.current = false;
-                          event.dataTransfer.effectAllowed = 'move';
-                          event.dataTransfer.setData(DRAG_MIME, lead.id);
-                          // Avoid text/plain UUID drops that some browsers treat as navigation.
-                          event.dataTransfer.setData('text/plain', '');
-                          draggingIdRef.current = lead.id;
-                          setDraggingId(lead.id);
-                        }}
-                        onDrag={(event) => {
-                          if (event.clientX !== 0 || event.clientY !== 0) {
-                            dragMovedRef.current = true;
-                          }
-                        }}
-                        onDragEnd={() => {
-                          clearDragState();
-                          window.setTimeout(() => {
-                            dragMovedRef.current = false;
-                          }, 0);
-                        }}
                         className={cn(
-                          'cursor-grab rounded-md border border-border bg-elevated p-2 active:cursor-grabbing',
+                          'rounded-md border border-border bg-elevated p-2',
                           draggingId === lead.id && 'opacity-50',
                           movingId === lead.id && 'opacity-60',
+                          detailLeadId === lead.id && 'border-accent/50',
                         )}
                       >
-                        <Link
-                          href={`/aiva/outreach/leads/${lead.id}`}
-                          className="text-sm font-medium text-accent hover:underline"
-                          onClick={(event) => {
-                            if (dragMovedRef.current || draggingIdRef.current) {
-                              event.preventDefault();
-                            }
-                          }}
-                          draggable={false}
-                        >
-                          {lead.name}
-                        </Link>
-                        <p className="mt-0.5 truncate text-xs text-text-muted">
-                          {lead.company || lead.email || lead.source}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1">
+                        <div className="flex items-start gap-1.5">
+                          <button
+                            type="button"
+                            draggable={movingId !== lead.id}
+                            aria-label={`Drag ${lead.name}`}
+                            title="Drag to another stage"
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = 'move';
+                              event.dataTransfer.setData(DRAG_MIME, lead.id);
+                              event.dataTransfer.setData('text/plain', '');
+                              draggingIdRef.current = lead.id;
+                              setDraggingId(lead.id);
+                            }}
+                            onDragEnd={() => clearDragState()}
+                            className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-text-muted hover:bg-surface hover:text-text-secondary active:cursor-grabbing"
+                          >
+                            <GripVertical className="h-3.5 w-3.5" />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <button
+                              type="button"
+                              className="block w-full truncate text-left text-sm font-medium text-accent hover:underline"
+                              onClick={() => openLeadDetail(lead)}
+                            >
+                              {lead.name}
+                            </button>
+                            <p className="mt-0.5 truncate text-xs text-text-muted">
+                              {lead.company || lead.email || lead.source}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1 pl-5">
                           <Button
                             size="sm"
                             variant="ghost"
@@ -377,6 +425,137 @@ export default function OutreachPipelinePage() {
           })}
         </div>
       )}
+
+      {detailLeadId && detailLead ? (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/30" onClick={closeLeadDetail}>
+          <aside
+            className="flex h-full w-full max-w-md flex-col border-l border-border bg-elevated shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+            aria-label="Lead details"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="min-w-0">
+                <h3 className="truncate text-sm font-semibold text-text-primary">{detailLead.name}</h3>
+                <p className="mt-0.5 text-xs text-text-muted">
+                  {PIPELINE_LABELS[detailLead.status] ?? detailLead.status}
+                  {detailLead.company ? ` · ${detailLead.company}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded p-1 text-text-muted hover:bg-surface hover:text-text-secondary"
+                onClick={closeLeadDetail}
+                aria-label="Close lead details"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+              {detailLoading ? (
+                <p className="text-xs text-text-muted">Loading details...</p>
+              ) : (
+                <div className="space-y-4">
+                  <section>
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Contact</h4>
+                    <dl className="mt-2 space-y-1.5 text-xs text-text-secondary">
+                      <div>
+                        <dt className="inline text-text-muted">Email: </dt>
+                        <dd className="inline break-all">{detailLead.email || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-text-muted">Phone: </dt>
+                        <dd className="inline">{detailLead.phone || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-text-muted">Company: </dt>
+                        <dd className="inline">{detailLead.company || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-text-muted">Source: </dt>
+                        <dd className="inline">{detailLead.sourceName || detailLead.sourceType || detailLead.source || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-text-muted">Website: </dt>
+                        <dd className="inline break-all">{detailLead.website || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-text-muted">Town/City: </dt>
+                        <dd className="inline">{detailLead.townCity || '-'}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-text-muted">Priority: </dt>
+                        <dd className="inline">{detailLead.priority || '-'}</dd>
+                      </div>
+                    </dl>
+                  </section>
+
+                  {detailLead.notes ? (
+                    <section>
+                      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Notes</h4>
+                      <p className="mt-2 whitespace-pre-wrap rounded-md border border-border bg-card px-3 py-2 text-xs text-text-secondary">
+                        {detailLead.notes}
+                      </p>
+                    </section>
+                  ) : null}
+
+                  <section>
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Timeline</h4>
+                    {timeline.length === 0 ? (
+                      <p className="mt-2 text-xs text-text-muted">No events yet.</p>
+                    ) : (
+                      <ul className="mt-2 space-y-2">
+                        {[...timeline].reverse().slice(0, 30).map((event) => (
+                          <li key={event.id} className="rounded-md border border-border bg-card px-3 py-2 text-xs">
+                            <div className="text-text-muted">
+                              {new Date(event.at).toLocaleString()} · {event.kind}
+                            </div>
+                            <p className="mt-0.5 text-text-secondary">{event.message}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  <section>
+                    <h4 className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">Deliveries</h4>
+                    {!detail?.deliveries ? (
+                      <p className="mt-2 text-xs text-text-muted">Loading deliveries...</p>
+                    ) : detail.deliveries.length === 0 ? (
+                      <p className="mt-2 text-xs text-text-muted">No deliveries yet.</p>
+                    ) : (
+                      <ul className="mt-2 space-y-2">
+                        {detail.deliveries.slice(0, 20).map((delivery) => (
+                          <li key={delivery.id} className="rounded-md border border-border bg-card px-3 py-2 text-xs">
+                            <p className="font-medium text-text-primary">
+                              {delivery.subject || 'Delivery'} · {delivery.status}
+                            </p>
+                            {delivery.body ? (
+                              <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-text-secondary">{delivery.body}</p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-3">
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/aiva/outreach/leads/${detailLead.id}`}>Open full page</Link>
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => void quick(detailLead.id, 'reply')}>
+                Mark replied
+              </Button>
+              <Button size="sm" variant="ghost" asChild>
+                <Link href={`/aiva/outreach/bookings?leadId=${detailLead.id}`}>Book</Link>
+              </Button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }
