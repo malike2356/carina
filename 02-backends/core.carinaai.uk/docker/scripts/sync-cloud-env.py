@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Rewrite cloud .env.runtime for Docker Compose networking."""
+"""Rewrite cloud .env.runtime for Docker Compose networking.
+
+Always merge missing secrets from app.carinaai.uk/.env so a truncated
+.env.cloud.runtime cannot drop BETTER_AUTH_SECRET and break Aiva auth.
+"""
 
 from __future__ import annotations
 
@@ -29,6 +33,7 @@ DOCKER_DEFAULTS = {
 }
 
 CORE_PAIRING_KEYS = ('CARINA_OPS_TOKEN', 'CARINA_INTERNAL_KEY')
+REQUIRED_KEYS = ('BETTER_AUTH_SECRET', 'DATABASE_URL')
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -55,6 +60,12 @@ def core_pairing_values() -> dict[str, str]:
     return out
 
 
+def write_env(values: dict[str, str], preferred_order: list[str]) -> None:
+    keys = list(dict.fromkeys([*preferred_order, *sorted(values.keys())]))
+    lines = [f'{key}={values[key]}' for key in keys if key in values]
+    ENV_PATH.write_text('\n'.join(lines) + '\n')
+
+
 def main() -> None:
     src = next((p for p in SRC_CANDIDATES if p.exists()), None)
     if not ENV_PATH.exists() and src is not None:
@@ -63,23 +74,37 @@ def main() -> None:
         raise SystemExit(
             f'missing {ENV_PATH}; copy from app.carinaai.uk/.env first')
 
-    lines = ENV_PATH.read_text().splitlines()
-    out: list[str] = []
-    seen: set[str] = set()
-    for line in lines:
-        key = line.split('=', 1)[0] if '=' in line else line
-        if key in DOCKER_DEFAULTS:
-            out.append(f'{key}={DOCKER_DEFAULTS[key]}')
-            seen.add(key)
+    current = parse_env_file(ENV_PATH)
+    source = parse_env_file(src) if src is not None else {}
+    preferred_order = list(current.keys())
+
+    # Fill any missing secret/config keys from the app .env (never blank auth).
+    for key, value in source.items():
+        if not value:
             continue
-        out.append(line)
+        if key not in current or not current.get(key, '').strip():
+            current[key] = value
+            if key not in preferred_order:
+                preferred_order.append(key)
+
     for key, value in DOCKER_DEFAULTS.items():
-        if key not in seen:
-            out.append(f'{key}={value}')
+        current[key] = value
+        if key not in preferred_order:
+            preferred_order.append(key)
+
     for key, value in core_pairing_values().items():
-        out = [line for line in out if not line.startswith(f'{key}=')]
-        out.append(f'{key}={value}')
-    ENV_PATH.write_text('\n'.join(out) + '\n')
+        current[key] = value
+        if key not in preferred_order:
+            preferred_order.append(key)
+
+    missing = [key for key in REQUIRED_KEYS if not current.get(key, '').strip()]
+    if missing:
+        raise SystemExit(
+            f'{ENV_PATH.name} is missing required keys after sync: {", ".join(missing)}. '
+            'Restore from /home/malike/apps/app.carinaai.uk/.env before deploying carina-cloud.'
+        )
+
+    write_env(current, preferred_order)
     print(f'updated {ENV_PATH.name} for docker networking')
 
 
