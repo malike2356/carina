@@ -88,7 +88,9 @@ export function buildAttachmentPromptBlock(
     '',
     'Use Keprix/Core tools as needed:',
     '- SPSS (.sav): sav_read / stats_* tools.',
-    '- CSV/TSV/XLSX lead sheets: parse then outreach-discovery-ingest-leads or outreach-leads-import; confirm with the owner before bulk import.',
+    '- CSV/TSV/XLS/XLSX/ODS sheets: call aiva-spreadsheet-convert first, then follow the user instruction using preview rows.',
+    '- Lead sheets: after conversion use outreach-discovery-ingest-leads or outreach-leads-import; confirm with the owner before bulk import.',
+    '- Deliver Excel by default. Offer the generated CSV as an optional download. Use google-sheets-create when the user requests Google Sheets.',
     '- PDF/images: summarise with available document/vision tools; do not invent leads from unreadable scans.',
     'Do not ask the user for a file path you already have. Soft Wall still applies to any outbound contact derived from the file.',
   ];

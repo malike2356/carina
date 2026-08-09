@@ -71,6 +71,11 @@ export function AivaWorkerDirectChat({
     absolutePath: string;
     filename: string;
   } | null>(null);
+  const [spreadsheetDownloads, setSpreadsheetDownloads] = useState<{
+    excel: string;
+    csv: string;
+    rows: number;
+  } | null>(null);
 
   const loadConversations = useCallback(async (preferredId?: string) => {
     const res = await fetch(`/api/aiva/workers/${worker.id}/direct-conversations`);
@@ -213,6 +218,11 @@ export function AivaWorkerDirectChat({
       const payload = await readJsonResponse<{
         absolutePath?: string;
         filename?: string;
+        spreadsheet?: {
+          rowCount?: number;
+          downloadExcel?: string;
+          downloadCsv?: string;
+        };
         error?: string;
       }>(res, 'Could not upload file');
       if (!res.ok) throw new Error(payload.error ?? 'Could not upload file');
@@ -223,9 +233,18 @@ export function AivaWorkerDirectChat({
         absolutePath: payload.absolutePath,
         filename: payload.filename,
       });
+      if (payload.spreadsheet?.downloadExcel && payload.spreadsheet.downloadCsv) {
+        setSpreadsheetDownloads({
+          excel: payload.spreadsheet.downloadExcel,
+          csv: payload.spreadsheet.downloadCsv,
+          rows: payload.spreadsheet.rowCount ?? 0,
+        });
+      } else {
+        setSpreadsheetDownloads(null);
+      }
       if (!message.trim()) {
         const lower = payload.filename.toLowerCase();
-        if (/\.(csv|tsv|xlsx|xls)$/.test(lower)) {
+        if (/\.(csv|tsv|xlsx|xls|ods)$/.test(lower)) {
           setMessage(
             `Import this lead file into CRM leads (dedupe on email), then summarise how many were created: ${payload.filename}`,
           );
@@ -479,6 +498,17 @@ export function AivaWorkerDirectChat({
           onSend={() => void send()}
           busy={busy || loading}
           variant="workspace"
+          headerBanner={spreadsheetDownloads ? (
+            <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-elevated/50 px-4 py-2 text-xs">
+              <span>{spreadsheetDownloads.rows} spreadsheet rows ready.</span>
+              <a className="font-medium text-accent hover:underline" href={spreadsheetDownloads.excel}>
+                Download Excel
+              </a>
+              <a className="font-medium text-accent hover:underline" href={spreadsheetDownloads.csv}>
+                Download CSV
+              </a>
+            </div>
+          ) : undefined}
           composerDisabled={readOnly || Boolean(channelSetup) || !activeConversation}
           composerDisabledMessage={
             readOnly
@@ -486,7 +516,10 @@ export function AivaWorkerDirectChat({
               : 'Finish or cancel the secure setup above.'
           }
           pendingAttachmentName={pendingAttachment?.filename ?? null}
-          onClearPendingAttachment={() => setPendingAttachment(null)}
+          onClearPendingAttachment={() => {
+            setPendingAttachment(null);
+            setSpreadsheetDownloads(null);
+          }}
           onPickAttachment={readOnly ? undefined : (file) => void pickAttachment(file)}
           canSendWithoutText
           className="h-full min-h-0 min-w-0"

@@ -8,6 +8,7 @@ import { createOutreachDiscoveryTools } from './outreach-discovery-tools.js';
 import { createOutreachLeadCrudTools } from './outreach-lead-crud-tools.js';
 import { createOutreachModuleCrudTools } from './outreach-module-crud-tools.js';
 import { createOutreachLeadSheetTools } from './outreach-lead-sheet-tools.js';
+import { createAivaSpreadsheetTools } from './aiva-spreadsheet-tools.js';
 import { createOutreachContactTools } from './outreach-contact-tools.js';
 import { createOutreachCadenceTools } from './outreach-cadence-tools.js';
 import { createOutreachReplyTools } from './outreach-reply-tools.js';
@@ -1361,6 +1362,10 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
   );
 
   const registered: string[] = [];
+  for (const tool of createAivaSpreadsheetTools(sessionId)) {
+    registerSessionTool(sessionId, tool);
+    registered.push(tool.name);
+  }
   for (const [slug, factory] of Object.entries(SLUG_TO_TOOLS)) {
     if (!connected.has(slug)) continue;
     for (const tool of factory(sessionId)) {

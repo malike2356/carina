@@ -18,6 +18,7 @@ const ALLOWED_ROOTS = new Set([
   'direct-messages',
   'direct-conversations',
   'chat-attachments',
+  'spreadsheets',
   'channel-sync',
   'realtime',
   'voice',

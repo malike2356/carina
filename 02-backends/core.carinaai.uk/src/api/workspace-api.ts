@@ -561,14 +561,49 @@ async function handleChatAttachmentUpload(req: AivaRequest, res: Response): Prom
       filename: String(req.body?.filename ?? 'upload.bin'),
       dataBase64: String(req.body?.data ?? ''),
     });
-    res.status(201).json({
+    const response: Record<string, unknown> = {
       absolutePath: saved.absolutePath,
       filename: saved.filename,
       bytes: saved.bytes,
       extension: saved.extension,
-    });
+    };
+    const { convertSpreadsheet, isSpreadsheetFilename } = await import('../aiva/spreadsheet-engine.js');
+    if (isSpreadsheetFilename(saved.filename)) {
+      const job = await convertSpreadsheet({
+        workspaceId: req.workspaceId!,
+        sourcePath: saved.absolutePath,
+        sourceName: saved.filename,
+      });
+      response.absolutePath = job.canonicalCsvPath;
+      response.spreadsheet = {
+        jobId: job.jobId,
+        rowCount: job.rowCount,
+        columnCount: job.columnCount,
+        headers: job.headers,
+        downloadExcel: `/api/aiva/workers/${workerId}/spreadsheets/${job.jobId}/download?format=xlsx`,
+        downloadCsv: `/api/aiva/workers/${workerId}/spreadsheets/${job.jobId}/download?format=csv`,
+      };
+    }
+    res.status(201).json(response);
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+async function handleSpreadsheetDownload(req: AivaRequest, res: Response): Promise<void> {
+  try {
+    const workerId = routeParam(req.params.id);
+    const existing = await getWorker(req.workspaceId!, workerId);
+    if (!existing) {
+      res.status(404).json({ error: 'Worker not found' });
+      return;
+    }
+    const format = String(req.query.format ?? 'xlsx') === 'csv' ? 'csv' : 'xlsx';
+    const { spreadsheetDownloadPath } = await import('../aiva/spreadsheet-engine.js');
+    const path = await spreadsheetDownloadPath(req.workspaceId!, routeParam(req.params.jobId), format);
+    res.download(path, format === 'csv' ? 'aiva-spreadsheet.csv' : 'aiva-spreadsheet.xlsx');
+  } catch (err) {
+    res.status(404).json({ error: err instanceof Error ? err.message : String(err) });
   }
 }
 
@@ -688,6 +723,7 @@ aivaRouter.get('/employees/:id/events', requireWorkspace, handleListEmployeeEven
 aivaRouter.get('/workers/:id/direct-thread', requireWorkspace, handleEmployeeThread);
 aivaRouter.post('/workers/:id/direct-messages', requireWorkspace, aivaChatLimiter, handleEmployeeMessage);
 aivaRouter.post('/workers/:id/chat-attachments', requireWorkspace, aivaChatLimiter, handleChatAttachmentUpload);
+aivaRouter.get('/workers/:id/spreadsheets/:jobId/download', requireWorkspace, handleSpreadsheetDownload);
 aivaRouter.get('/workers/:id/direct-conversations', requireWorkspace, handleListEmployeeConversations);
 aivaRouter.post('/workers/:id/direct-conversations', requireWorkspace, handleCreateEmployeeConversation);
 aivaRouter.patch('/workers/:id/direct-conversations/:conversationId', requireWorkspace, handleRenameEmployeeConversation);

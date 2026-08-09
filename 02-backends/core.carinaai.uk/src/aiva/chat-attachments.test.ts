@@ -11,6 +11,7 @@ describe('chat-attachments', () => {
     expect(isAllowedChatAttachmentFilename('survey.sav')).toBe(true);
     expect(isAllowedChatAttachmentFilename('data.CSV')).toBe(true);
     expect(isAllowedChatAttachmentFilename('leads.xlsx')).toBe(true);
+    expect(isAllowedChatAttachmentFilename('leads.ods')).toBe(true);
     expect(isAllowedChatAttachmentFilename('notes.pdf')).toBe(true);
     expect(isAllowedChatAttachmentFilename('shot.PNG')).toBe(true);
     expect(isAllowedChatAttachmentFilename('evil.exe')).toBe(false);
@@ -29,5 +30,6 @@ describe('chat-attachments', () => {
     expect(block).toContain('/data/aiva-uploads/ws/w/file.sav');
     expect(block).toContain('sav_read');
     expect(block).toContain('outreach-leads-import');
+    expect(block).toContain('aiva-spreadsheet-convert');
   });
 });

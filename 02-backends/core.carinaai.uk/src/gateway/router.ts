@@ -864,10 +864,16 @@ function buildInboundText(message: ChannelMessage): string {
 
   const lines = attachments.map((attachment) => {
     const ref = attachment.path ?? attachment.url ?? attachment.id ?? 'unknown';
-    return `[attachment: ${ref}]`;
+    const label = attachment.filename ? `${attachment.filename} -> ${ref}` : ref;
+    return `[attachment: ${label}]`;
   });
-  return message.text ? `${message.text}\n\n${lines.join('\n')}` : lines.join('\n');
+  const instruction = 'Follow the user instruction using these attachments. For spreadsheet files with a local path, call aiva-spreadsheet-convert before other spreadsheet or CRM tools.';
+  return message.text
+    ? `${message.text}\n\n${lines.join('\n')}\n${instruction}`
+    : `${lines.join('\n')}\n${instruction}`;
 }
+
+export const __testBuildInboundText = buildInboundText;
 
 let routerInstance: GatewayRouter | null = null;
 

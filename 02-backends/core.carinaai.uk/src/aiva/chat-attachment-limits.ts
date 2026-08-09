@@ -10,6 +10,7 @@ export const AIVA_CHAT_ATTACHMENT_EXTENSIONS = [
   '.tsv',
   '.xlsx',
   '.xls',
+  '.ods',
   '.txt',
   '.pdf',
   '.png',
