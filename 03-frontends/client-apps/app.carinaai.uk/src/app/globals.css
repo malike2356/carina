@@ -417,3 +417,12 @@ html[data-voice-input-active] .theme-switcher-floating {
     padding-right: 2rem;
   }
 }
+
+/* CRM + outreach: always use the full main column (no boxed max-width). */
+.aiva-outreach-fullbleed {
+  width: 100% !important;
+  max-width: none !important;
+}
+.aiva-outreach-fullbleed > * {
+  max-width: none;
+}

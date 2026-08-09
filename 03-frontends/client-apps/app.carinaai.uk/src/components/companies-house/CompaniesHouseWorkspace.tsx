@@ -502,7 +502,7 @@ export function CompaniesHouseWorkspace({ embedded = false }: { embedded?: boole
     : profileBusy;
 
   return (
-    <div className={cn(embedded ? 'w-full max-w-none' : 'mx-auto max-w-[1400px]')}>
+    <div className="w-full max-w-none" style={{ width: '100%', maxWidth: 'none' }}>
       {embedded ? (
         <div className="flex flex-wrap items-center justify-between gap-3 px-6 pt-5">
           <div>

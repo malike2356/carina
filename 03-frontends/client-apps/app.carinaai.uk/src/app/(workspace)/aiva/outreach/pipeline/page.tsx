@@ -76,7 +76,7 @@ export default function OutreachPipelinePage() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden" style={{ width: '100%', maxWidth: 'none' }}>
       <div className="shrink-0 overflow-x-auto border-b border-border px-4 py-3">
         <div className="flex w-max min-w-full flex-nowrap items-end gap-2">
           <div className="shrink-0">

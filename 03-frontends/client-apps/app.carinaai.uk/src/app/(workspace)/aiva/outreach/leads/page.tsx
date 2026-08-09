@@ -245,7 +245,7 @@ export default function OutreachLeadsPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="flex w-full flex-col gap-4 px-4 py-4 lg:px-6">
+    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 lg:px-6" style={{ width: '100%', maxWidth: 'none' }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-text-primary">CRM Leads</h2>

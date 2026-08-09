@@ -19,7 +19,7 @@ export const WINDOW_DEFINITIONS: Record<WorkspaceWindowId, WindowDefinition> = {
   calendar: fullTool('Calendar', 'calendar', '/calendar'),
   documents: fullTool('Documents', 'documents', '/documents'),
   research: fullTool('Research', 'research', '/research'),
-  outreach: fullTool('Outreach', 'outreach', '/aiva/outreach/leads'),
+  outreach: { ...fullTool('Outreach', 'outreach', '/aiva/outreach/leads'), minWidth: 1280, minHeight: 720 },
   library: fullTool('Library', 'library', '/library'),
   email: fullTool('Email', 'email', '/email'),
   settings: fullTool('Settings', 'settings', '/settings'),
