@@ -27,7 +27,7 @@ export default async function OpsScoutPage() {
   const unlocked = rows.filter((row) => row.scoutPairingAllowed);
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-8 p-4">
+    <div className="w-full min-w-0 max-w-none space-y-8 p-4">
       <div>
         <p className="text-xs text-text-muted">
           <Link href="/security" className="text-accent underline">

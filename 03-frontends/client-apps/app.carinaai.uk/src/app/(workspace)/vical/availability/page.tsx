@@ -125,7 +125,7 @@ export default function VicalAvailabilityPage() {
   if (loading) return <div className="p-6 text-sm text-text-muted">Loading availability...</div>;
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full min-w-0 max-w-none space-y-6 p-4 sm:p-6">
       <section className="rounded-lg border border-border bg-card p-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>

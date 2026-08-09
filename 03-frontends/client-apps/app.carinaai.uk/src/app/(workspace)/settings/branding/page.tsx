@@ -154,7 +154,7 @@ export default function BrandingSettingsPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+      <div className="w-full min-w-0 max-w-none space-y-6 p-6">
         <StatCardSkeleton />
         <StatCardSkeleton />
       </div>
@@ -162,7 +162,7 @@ export default function BrandingSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-8 p-6">
+    <div className="w-full min-w-0 max-w-none space-y-8 p-6">
       <div>
         <Link href="/settings" className="text-xs text-accent hover:underline">
           Back to settings

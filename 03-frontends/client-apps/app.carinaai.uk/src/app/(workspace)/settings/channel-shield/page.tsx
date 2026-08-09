@@ -199,7 +199,7 @@ export default function ChannelShieldPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[90rem] px-4 py-8 sm:px-6">
+    <div className="w-full min-w-0 max-w-none px-4 py-8 sm:px-6">
       <Link
         href="/settings?section=join"
         className="mb-4 inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary"

@@ -4,7 +4,7 @@ import { OutreachTabNav } from '@/components/outreach/OutreachTabNav';
 export default function OutreachLayout({ children }: { children: ReactNode }) {
   return (
     <div
-      className="aiva-outreach-fullbleed flex w-full min-w-0 max-w-none flex-1 flex-col overflow-hidden"
+      className="workspace-page-fullbleed aiva-outreach-fullbleed flex w-full min-w-0 max-w-none flex-1 flex-col overflow-hidden"
       style={{ width: '100%', maxWidth: 'none' }}
     >
       <div className="w-full max-w-none shrink-0 border-b border-border px-4 pt-5 pb-0 lg:px-6">

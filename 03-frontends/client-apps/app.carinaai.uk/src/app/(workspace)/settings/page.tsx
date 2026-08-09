@@ -388,7 +388,7 @@ export default function SettingsPage() {
         aria-label="Settings sections"
         className="sticky top-0 z-20 shrink-0 border-b border-border bg-base"
       >
-        <div className="-mx-px flex gap-1 overflow-x-auto px-4 py-2 lg:px-12 xl:px-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-px flex gap-1 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {navItems.map((item) => {
             const active = activeSection === item.id;
             return (
@@ -423,7 +423,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <div className="w-full px-4 py-6 lg:px-12 lg:py-10 xl:px-16">
+        <div className="w-full min-w-0 max-w-none px-4 py-6 sm:px-6 lg:px-8">
           {activeSection === 'join' && (
             <div className="space-y-6">
               <div>

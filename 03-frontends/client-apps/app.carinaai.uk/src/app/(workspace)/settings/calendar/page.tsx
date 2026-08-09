@@ -5,7 +5,7 @@ export default function CalendarSettingsPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-[90rem] px-6 py-8 text-xs text-text-muted">
+        <div className="w-full min-w-0 max-w-none px-6 py-8 text-xs text-text-muted">
           Loading calendar settings…
         </div>
       }

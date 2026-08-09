@@ -77,7 +77,7 @@ export default function VicalEventTypesPage() {
   if (loading) return <div className="p-6 text-sm text-text-muted">Loading event types...</div>;
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full min-w-0 max-w-none space-y-6 p-4 sm:p-6">
       <section className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-medium text-text-primary">New event type</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">

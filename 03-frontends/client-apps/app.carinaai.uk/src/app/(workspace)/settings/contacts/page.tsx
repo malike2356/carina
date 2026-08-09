@@ -132,7 +132,7 @@ export default function ContactsSettingsPage() {
   const sources = status?.sources ?? [];
 
   return (
-    <div className="mx-auto max-w-[90rem] px-6 py-8">
+    <div className="w-full min-w-0 max-w-none px-4 py-6 sm:px-6 lg:px-8">
       <Link
         href="/settings?section=join"
         className="mb-4 inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary"

@@ -398,7 +398,7 @@ export default function AivaToolAccountsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-5 px-4 py-6 sm:px-6">
+    <div className="w-full min-w-0 max-w-none space-y-5 px-4 py-6 sm:px-6 lg:px-8">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Tool accounts</h1>
         <p className="mt-1 text-sm text-text-muted">

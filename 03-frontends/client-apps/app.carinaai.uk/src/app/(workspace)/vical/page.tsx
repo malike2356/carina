@@ -119,7 +119,7 @@ export default function VicalHubPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full min-w-0 max-w-none space-y-6 p-4 sm:p-6">
       {pending.length > 0 ? (
         <div className="rounded-lg border border-amber-500/40 bg-elevated p-4">
           <p className="text-sm font-medium text-text-primary">

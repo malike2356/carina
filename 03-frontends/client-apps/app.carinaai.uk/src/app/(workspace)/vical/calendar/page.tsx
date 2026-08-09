@@ -69,7 +69,7 @@ export default function VicalCalendarPage() {
   if (loading) return <div className="p-6 text-sm text-text-muted">Loading booking calendar...</div>;
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full min-w-0 max-w-none space-y-6 p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-1">
           {(['day', 'week', 'month'] as ViewMode[]).map((mode) => (

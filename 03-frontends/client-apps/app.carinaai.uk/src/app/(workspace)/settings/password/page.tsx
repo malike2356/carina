@@ -3,7 +3,7 @@ import { ChangePasswordSettings } from '@/components/settings/ChangePasswordSett
 
 export default function PasswordSettingsPage() {
   return (
-    <main className="mx-auto max-w-[90rem] space-y-8 px-6 py-10">
+    <main className="w-full min-w-0 max-w-none space-y-8 px-6 py-10">
       <div>
         <p className="text-sm text-text-muted">
           <Link href="/settings?section=account" className="text-accent underline">

@@ -286,7 +286,7 @@ export function ContactDossier({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-4 lg:flex-row lg:items-start">
+    <div className="flex w-full min-w-0 max-w-none flex-col gap-4 lg:flex-row lg:items-start">
       <div className="min-w-0 flex-1 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">

@@ -93,7 +93,7 @@ export default function VicalBookingsPage() {
   if (loading) return <div className="p-6 text-sm text-text-muted">Loading bookings...</div>;
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full min-w-0 max-w-none space-y-6 p-4 sm:p-6">
       <ul className="space-y-3">
         {bookings.map((booking) => (
           <li key={booking.id} className="rounded-lg border border-border bg-card p-4">

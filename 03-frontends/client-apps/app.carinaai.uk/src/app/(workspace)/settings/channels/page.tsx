@@ -6,7 +6,7 @@ import { IntegrationCatalog } from '@/components/integrations/IntegrationCatalog
 
 export default function ChannelsSettingsPage() {
   return (
-    <div className="mx-auto max-w-[90rem] px-6 py-8">
+    <div className="w-full min-w-0 max-w-none px-6 py-8">
       <Link
         href="/settings?section=join"
         className="mb-4 inline-flex items-center gap-1 text-xs text-text-muted hover:text-text-primary"

@@ -418,11 +418,13 @@ html[data-voice-input-active] .theme-switcher-floating {
   }
 }
 
-/* CRM + outreach: always use the full main column (no boxed max-width). */
+/* Sidebar workspace pages: always use the full main column (no boxed max-width). */
+.workspace-page-fullbleed,
 .aiva-outreach-fullbleed {
   width: 100% !important;
   max-width: none !important;
 }
+.workspace-page-fullbleed > *,
 .aiva-outreach-fullbleed > * {
   max-width: none;
 }

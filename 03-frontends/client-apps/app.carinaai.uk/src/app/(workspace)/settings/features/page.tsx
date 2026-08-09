@@ -180,7 +180,7 @@ export default function WorkspaceFeaturesSettingsPage() {
   );
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-[90rem] flex-col overflow-y-auto px-4 py-6 sm:px-6">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-none flex-col overflow-y-auto px-4 py-6 sm:px-6">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">Features</h1>

@@ -83,7 +83,7 @@ export default function PairingPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[90rem] flex-col gap-6 px-4 py-6">
+    <div className="flex w-full min-w-0 max-w-none flex-col gap-6 px-4 py-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-text-primary">Device pairing</h1>

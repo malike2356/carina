@@ -656,7 +656,7 @@ export default function ContactsPage() {
 
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
           {editorOpen ? (
-            <form onSubmit={(event) => void saveContact(event)} className="mx-auto max-w-[90rem] space-y-4">
+            <form onSubmit={(event) => void saveContact(event)} className="w-full min-w-0 max-w-none space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-sm font-semibold text-text-primary">
                   {creating ? 'Add contact' : `Edit ${form.name || 'contact'}`}

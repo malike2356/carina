@@ -10,7 +10,7 @@ export default async function KeysPage() {
   const keys = await listWorkspaceKeys(workspace.id);
 
   return (
-    <div className="mx-auto max-w-[90rem]">
+    <div className="w-full min-w-0 max-w-none">
       <PageHeader
         title="API keys"
         description="Manage your bring-your-own-key API credentials."
