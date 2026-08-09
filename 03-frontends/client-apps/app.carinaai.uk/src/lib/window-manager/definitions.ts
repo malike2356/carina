@@ -23,7 +23,7 @@ export const WINDOW_DEFINITIONS: Record<WorkspaceWindowId, WindowDefinition> = {
   library: fullTool('Library', 'library', '/library'),
   email: fullTool('Email', 'email', '/email'),
   settings: fullTool('Settings', 'settings', '/settings'),
-  files: fullTool('Files', 'files', '/files'),
+  files: fullTool('Documents', 'files', '/documents'),
   mcp: fullTool('MCP servers', 'mcp', '/mcp'),
   webhooks: fullTool('Webhooks', 'webhooks', '/webhooks'),
   env: fullTool('Environment', 'env', '/env'),

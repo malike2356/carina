@@ -89,3 +89,9 @@ export {
   tempBackupRestoreRoundtrip,
   exportWorkspacePack,
 } from './ops/index.js';
+export {
+  buildConformanceMatrix,
+  runCeOfflineSmoke,
+  type ConformanceRow,
+  type ConformanceStatus,
+} from './conformance.js';

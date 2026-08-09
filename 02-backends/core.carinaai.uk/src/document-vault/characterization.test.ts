@@ -118,7 +118,7 @@ describe('Document Vault v1 characterization (707)', () => {
     expect(ownership.target.metadataService).toContain('document-vault.service');
   });
 
-  it('feature flags default to safe rollback posture', () => {
+  it('feature flags default to cutover-on with bounded rollback', () => {
     delete process.env.DOCUMENT_VAULT_V1_ENABLED;
     delete process.env.DOCUMENT_VAULT_COMPAT_ADAPTERS;
     delete process.env.DOCUMENT_VAULT_DUAL_WRITE;
@@ -126,10 +126,10 @@ describe('Document Vault v1 characterization (707)', () => {
     delete process.env.DOCUMENT_VAULT_RETIRE_LEGACY_STORES;
 
     const flags = documentVaultFlags();
-    expect(flags.v1Enabled).toBe(false);
+    expect(flags.v1Enabled).toBe(true);
     expect(flags.compatAdapters).toBe(true);
     expect(flags.dualWrite).toBe(false);
-    expect(flags.migrateDryRun).toBe(true);
+    expect(flags.migrateDryRun).toBe(false);
     expect(flags.retireLegacyStores).toBe(false);
     expect(documentVaultRollbackSafe(flags)).toBe(true);
 

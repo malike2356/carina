@@ -88,5 +88,20 @@
     "Aiva sessions cannot access sqlite.carina_documents.",
     "Workspace A cannot read workspace B vault items.",
     "Production mutation reports for inventory stay dry-run only."
-  ]
+  ],
+  "cutover": {
+    "prompt": "715",
+    "primaryUi": "/documents",
+    "compatOnly": [
+      "/api/documents",
+      "/api/files",
+      "FilesPage component (unmounted from window)"
+    ],
+    "outOfScope": [
+      "host sqlite carina_documents"
+    ],
+    "retireLegacyStores": false,
+    "rollback": "DOCUMENT_VAULT_V1_ENABLED=0 with COMPAT_ADAPTERS=1"
+  },
+  "generatedForPrompt": "715"
 }

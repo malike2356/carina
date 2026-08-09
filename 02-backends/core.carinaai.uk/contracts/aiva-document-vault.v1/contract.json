@@ -1,15 +1,21 @@
 {
   "contract": "aiva-document-vault",
   "version": "1.0.0",
-  "compatibleVersions": ["1.0.0"],
+  "compatibleVersions": [
+    "1.0.0"
+  ],
   "title": "Aiva Document Vault v1",
   "authority": "shared/workspace-governance/AIVA-KEPRIX-DOCUMENT-VAULT.md",
-  "products": ["carina-aiva"],
+  "products": [
+    "carina-aiva"
+  ],
   "runtimeDependency": "carina-core + carina-cloud",
-  "phase": "714-search-rag-security-and-operations",
+  "phase": "715-e2e-cutover-documentation-and-deploy",
   "formatCapabilityMatrix": "format-capability-matrix.json",
   "canonicalUiRoute": "/documents",
-  "compatibleRoutes": ["/files"],
+  "compatibleRoutes": [
+    "/files"
+  ],
   "outOfScope": [
     "host-filesystem-browser",
     "file-read",
@@ -29,7 +35,10 @@
     "pdf",
     "binary_upload"
   ],
-  "contentAuthority": ["workspace", "google"],
+  "contentAuthority": [
+    "workspace",
+    "google"
+  ],
   "minimumAgentTools": [
     "vault-list",
     "vault-search",

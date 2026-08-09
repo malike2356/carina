@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedForPrompt": "707",
+  "generatedForPrompt": "715",
   "stores": [
     {
       "id": "cloud_documents",
@@ -169,67 +169,94 @@
   "callers": [
     {
       "id": "ui_documents",
-      "storeIds": ["cloud_documents", "workspace_ops"],
+      "storeIds": [
+        "cloud_documents",
+        "workspace_ops"
+      ],
       "path": "03-frontends/client-apps/app.carinaai.uk/src/app/(workspace)/documents/page.tsx",
       "tenantBoundary": "session workspace"
     },
     {
       "id": "ui_document_editor",
-      "storeIds": ["cloud_documents"],
+      "storeIds": [
+        "cloud_documents"
+      ],
       "path": "03-frontends/client-apps/app.carinaai.uk/src/app/(workspace)/documents/[id]/page.tsx",
       "tenantBoundary": "session workspace"
     },
     {
       "id": "ui_files",
-      "storeIds": ["cloud_files_union"],
+      "storeIds": [
+        "cloud_files_union"
+      ],
       "path": "03-frontends/client-apps/app.carinaai.uk/src/app/(workspace)/files/page.tsx",
       "tenantBoundary": "session workspace"
     },
     {
       "id": "ui_research_save",
-      "storeIds": ["cloud_documents"],
+      "storeIds": [
+        "cloud_documents"
+      ],
       "path": "03-frontends/client-apps/app.carinaai.uk/src/app/(workspace)/research/page.tsx",
       "tenantBoundary": "session workspace"
     },
     {
       "id": "tool_workspace_document_create",
-      "storeIds": ["cloud_documents"],
+      "storeIds": [
+        "cloud_documents"
+      ],
       "path": "02-backends/core.carinaai.uk/src/tools/aiva-workspace-tools.ts",
       "tenantBoundary": "worker session workspaceId"
     },
     {
       "id": "tool_documents_manage",
-      "storeIds": ["host_carina_documents", "cloud_documents"],
+      "storeIds": [
+        "host_carina_documents",
+        "cloud_documents"
+      ],
       "path": "02-backends/core.carinaai.uk/src/tools/documents-manage.ts",
       "tenantBoundary": "blocks Aiva from host sqlite; routes list/create to cloud"
     },
     {
       "id": "tool_google_drive",
-      "storeIds": ["google_drive_tools"],
+      "storeIds": [
+        "google_drive_tools"
+      ],
       "path": "02-backends/core.carinaai.uk/src/tools/product-tool-adapters.ts",
       "tenantBoundary": "workspace account grant"
     },
     {
       "id": "mandatory_tools_vault_hints",
-      "storeIds": ["cloud_documents", "google_drive_tools"],
+      "storeIds": [
+        "cloud_documents",
+        "google_drive_tools"
+      ],
       "path": "02-backends/core.carinaai.uk/src/tools/mandatory-tools.ts",
       "tenantBoundary": "session tools"
     },
     {
       "id": "workspace_ops_api",
-      "storeIds": ["workspace_ops", "aiva_knowledge_base"],
+      "storeIds": [
+        "workspace_ops",
+        "aiva_knowledge_base"
+      ],
       "path": "02-backends/core.carinaai.uk/src/aiva/workspace-ops/api.ts",
       "tenantBoundary": "cloud proxy + workspace/worker"
     },
     {
       "id": "chat_attachments",
-      "storeIds": ["chat_uploads"],
+      "storeIds": [
+        "chat_uploads"
+      ],
       "path": "02-backends/core.carinaai.uk/src/aiva/chat-attachments.ts",
       "tenantBoundary": "workspaceId path segment"
     },
     {
       "id": "tenant_isolation_helpers",
-      "storeIds": ["host_carina_documents", "cloud_documents"],
+      "storeIds": [
+        "host_carina_documents",
+        "cloud_documents"
+      ],
       "path": "02-backends/core.carinaai.uk/src/security/tenant-isolation.ts",
       "tenantBoundary": "Aiva sessions blocked from host stores"
     }
@@ -241,5 +268,6 @@
     "soft_vs_hard_delete_semantics",
     "format_drift_html_markdown_plain",
     "filesystem_orphans_without_vault_id"
-  ]
+  ],
+  "cutoverNote": "715: /documents is primary; legacy stores compatibility-only until soak retires them"
 }

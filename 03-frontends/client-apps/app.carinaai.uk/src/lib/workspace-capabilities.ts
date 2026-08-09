@@ -39,7 +39,7 @@ export type TemplateDomain =
 
 export const ALL_CAPABILITY_CARDS = [
   { id: 'web-search', title: 'Web Search', description: 'Search the internet', href: '/aiva/workers' },
-  { id: 'files', title: 'Files', description: 'Read and write files', href: '/files' },
+  { id: 'files', title: 'Documents', description: 'Document Vault folders and files', href: '/documents' },
   { id: 'spreadsheets', title: 'Spreadsheets', description: 'Track data', href: '/documents' },
   { id: 'calendar', title: 'Calendar', description: 'Schedule and remind', href: '/channels/calendar' },
   { id: 'integrations', title: 'Integrations', description: 'Connect your tools', href: '/channels' },

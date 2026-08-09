@@ -1,0 +1,169 @@
+{
+  "contract_version": "1.0.0",
+  "product": "carina-aiva",
+  "programme": "aiva-document-vault",
+  "prompt": "715",
+  "generated_at": "2026-08-09T21:41:14Z",
+  "flags": {
+    "v1Enabled": true,
+    "compatAdapters": true,
+    "dualWrite": false,
+    "migrateDryRun": false,
+    "retireLegacyStores": false,
+    "channelOps": true,
+    "searchOps": true
+  },
+  "rollback_safe": true,
+  "ce_smoke": {
+    "ok": true,
+    "folder_id": "13ba1e2d-2854-4e5d-88bb-abce16dc97c0",
+    "item_id": "081cda2c-af2f-4fb7-8868-d0e7ca0f92af",
+    "pdf_id": "526d3781-954a-4fc9-887e-eaf8acb089ad",
+    "indexed": "indexed",
+    "search_hits": 1,
+    "list_count": 1,
+    "trashed": true,
+    "restored": true,
+    "backup_verified": true,
+    "cross_tenant_leak": false,
+    "ssrf_blocked": true,
+    "path": "/tmp/aiva-dv-ce-bHUcky"
+  },
+  "matrix": [
+    {
+      "capability": "canonical_service_sqlite",
+      "status": "REAL",
+      "evidence": "runCeOfflineSmoke + DocumentVaultService",
+      "notes": "/tmp/aiva-dv-ce-bHUcky"
+    },
+    {
+      "capability": "web_explorer_documents",
+      "status": "REAL",
+      "evidence": "app.carinaai.uk DocumentVaultExplorer + /documents",
+      "notes": "/files redirects to /documents; files window opens vault explorer"
+    },
+    {
+      "capability": "api_vault_crud",
+      "status": "REAL",
+      "evidence": "/api/vault/items + internal vault surfaces",
+      "notes": "Prompt 710"
+    },
+    {
+      "capability": "agent_work_chat_tools",
+      "status": "REAL",
+      "evidence": "vault-* tools + Soft Wall + document-vault-tools.test.ts",
+      "notes": "Prompt 712"
+    },
+    {
+      "capability": "telegram_channel",
+      "status": "REAL",
+      "evidence": "channel package + /vault slash + channel-ops.test.ts",
+      "notes": "Live Telegram MANUAL / BLOCKED_OPTIONAL_CREDENTIALS without bot token"
+    },
+    {
+      "capability": "storage_adapters",
+      "status": "REAL",
+      "evidence": "LocalSandboxContentStore + ObjectStorageContentStore",
+      "notes": "Host paths rejected"
+    },
+    {
+      "capability": "conversions_pdf",
+      "status": "REAL",
+      "evidence": "format-ops + format-engines tests + CE smoke pdf create",
+      "notes": "Prompt 709"
+    },
+    {
+      "capability": "search_rag",
+      "status": "REAL",
+      "evidence": "search package + search-rag-ops.test.ts",
+      "notes": "Opt-in index_policy; root inherit = no_index"
+    },
+    {
+      "capability": "approvals_soft_wall",
+      "status": "REAL",
+      "evidence": "soft-wall + vault permanent delete / classified export",
+      "notes": "Prompt 712"
+    },
+    {
+      "capability": "google_oauth_sync",
+      "status": "REAL",
+      "evidence": "cloud google/ package + google-sync.test.ts",
+      "notes": "Live Drive OAuth BLOCKED_OPTIONAL_CREDENTIALS without owner test account"
+    },
+    {
+      "capability": "google_inbound_watch",
+      "status": "REAL",
+      "evidence": "watch + webhook wakeup-only + HMAC token",
+      "notes": "Requires public HTTPS; local uses reconcile poll"
+    },
+    {
+      "capability": "conflicts",
+      "status": "REAL",
+      "evidence": "preserve-both + Soft Wall conflict resolve routes",
+      "notes": "Prompt 711/712"
+    },
+    {
+      "capability": "trash_restore",
+      "status": "REAL",
+      "evidence": "CE smoke trash/restore",
+      "notes": ""
+    },
+    {
+      "capability": "tenant_isolation",
+      "status": "REAL",
+      "evidence": "CE smoke cross-workspace getItemOrNull",
+      "notes": ""
+    },
+    {
+      "capability": "backup_restore",
+      "status": "REAL",
+      "evidence": "ops/backup tempBackupRestoreRoundtrip",
+      "notes": "Prompt 714"
+    },
+    {
+      "capability": "ops_diagnostics",
+      "status": "REAL",
+      "evidence": "/api/document-vault/ops/diagnostics + cloud /api/vault/ops/diagnostics",
+      "notes": "Prompt 714"
+    },
+    {
+      "capability": "ssrf_url_import",
+      "status": "REAL",
+      "evidence": "assertSafeFetchUrl blocks localhost/metadata",
+      "notes": ""
+    },
+    {
+      "capability": "legacy_compat_not_retired",
+      "status": "REAL",
+      "evidence": "DOCUMENT_VAULT_RETIRE_LEGACY_STORES=false; compat adapters on",
+      "notes": "Host sqlite OUT_OF_SCOPE; cloud /api/documents compatibility-only"
+    },
+    {
+      "capability": "rollback_bounded",
+      "status": "REAL",
+      "evidence": "documentVaultRollbackSafe; V1 off + compat on",
+      "notes": "Do not retire legacy until soak evidence"
+    },
+    {
+      "capability": "live_google_owner_run",
+      "status": "BLOCKED_OPTIONAL_CREDENTIALS",
+      "evidence": "docs/integrations/aiva-document-vault-live-google-runbook.md",
+      "notes": "Never put OAuth secrets in fixtures or evidence payloads"
+    }
+  ],
+  "summary": {
+    "total": 20,
+    "real": 19,
+    "partial": 0,
+    "manual": 0,
+    "blocked_optional_credentials": 1,
+    "failed": 0,
+    "green": true
+  },
+  "honesty": [
+    "No false-live Google Drive claim: live OAuth is BLOCKED_OPTIONAL_CREDENTIALS until owner runbook evidence.",
+    "Live Telegram bot delivery is MANUAL / credential-gated; hermetic channel tests are REAL.",
+    "DOCUMENT_VAULT_RETIRE_LEGACY_STORES remains false; rollback keeps compat adapters.",
+    "Host operator sqlite documents stay OUT_OF_SCOPE for Aiva vault."
+  ]
+}

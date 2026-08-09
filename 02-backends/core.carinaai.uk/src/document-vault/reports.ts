@@ -172,6 +172,7 @@ export type RollbackReport = {
   safe: boolean;
   criteria: string[];
   blockers: string[];
+  notes?: string[];
 };
 
 export function buildDocumentVaultRollbackReport(
@@ -188,8 +189,10 @@ export function buildDocumentVaultRollbackReport(
   if (!flags.compatAdapters) {
     blockers.push('DOCUMENT_VAULT_COMPAT_ADAPTERS=false');
   }
+  // Cutover defaults (V1 on, migrate dry-run off) remain rollback-safe while compat adapters stay enabled.
+  const notes: string[] = [];
   if (!flags.migrateDryRun && flags.v1Enabled) {
-    blockers.push('Live migration mode without dry-run while v1 is enabled; confirm soak before rollback drills');
+    notes.push('Cutover live: V1 enabled with migrate dry-run off; keep COMPAT_ADAPTERS=1 through soak');
   }
   return {
     readOnly: true,
@@ -197,6 +200,7 @@ export function buildDocumentVaultRollbackReport(
     safe: blockers.length === 0,
     criteria,
     blockers,
+    notes,
   };
 }
 

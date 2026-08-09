@@ -121,8 +121,8 @@ export const NAV_ROUTES: NavRoute[] = [
   },
   {
     href: '/documents',
-    label: 'Files',
-    description: 'Document Vault: folders, uploads, and editors (redirect from /files).',
+    label: 'Documents',
+    description: 'Document Vault: folders, uploads, editors, Drive sync, and revisions.',
     group: 'workspace',
     iconName: 'FolderOpen',
   },
@@ -556,7 +556,7 @@ export const SETTINGS_SECTION_LINKS: Record<
   chat: [
     { label: 'Open notes', description: 'Quick notes panel alongside chat.', panel: 'notes' },
     { label: 'Sessions', description: 'Browse session history and reopen threads.', href: '/sessions' },
-    { label: 'Files', description: 'Upload and browse workspace files.', href: '/files' },
+    { label: 'Documents', description: 'Document Vault folders and files.', href: '/documents' },
     { label: 'Email', description: 'Your mailbox: read, send, and triage mail.', href: '/email' },
     { label: 'Channels', description: 'Messaging, tools, and device connections.', href: '/channels' },
     { label: 'Cron jobs', description: 'Scheduled automations and recurring tasks.', href: '/cron' },

@@ -18,9 +18,7 @@ const ResearchPage = dynamic(() => import('@/app/(workspace)/research/page'), { 
 const LibraryPage = dynamic(() => import('@/app/(workspace)/library/page'), { ssr: false });
 const EmailPage = dynamic(() => import('@/app/(workspace)/email/page'), { ssr: false });
 const SettingsPage = dynamic(() => import('@/app/(workspace)/settings/page'), { ssr: false });
-const FilesPage = dynamic(() => import('@/components/files/FilesPage').then((m) => ({ default: m.FilesPage })), {
-  ssr: false,
-});
+// Compat: window id `files` opens Document Vault (prompt 715). Legacy FilesPage remains importable for soak.
 const McpPage = dynamic(() => import('@/components/mcp/McpPage').then((m) => ({ default: m.McpPage })), {
   ssr: false,
 });
@@ -124,7 +122,7 @@ function WindowRouteContent({ windowId }: { windowId: WorkspaceWindowId }) {
     case 'settings':
       return <SettingsPage />;
     case 'files':
-      return <FilesPage />;
+      return <DocumentsPage />;
     case 'mcp':
       return <McpPage />;
     case 'cron':

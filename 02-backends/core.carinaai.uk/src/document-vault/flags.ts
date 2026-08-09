@@ -13,7 +13,7 @@ function envFlag(name: string, defaultValue: boolean): boolean {
 }
 
 export type DocumentVaultFlags = {
-  /** Canonical vault service routing (off until 708 lands). */
+  /** Canonical vault service routing (on after 715 cutover; flip off for rollback). */
   v1Enabled: boolean;
   /** Keep legacy adapters/routes callable. */
   compatAdapters: boolean;
@@ -31,10 +31,10 @@ export type DocumentVaultFlags = {
 
 export function documentVaultFlags(): DocumentVaultFlags {
   return {
-    v1Enabled: envFlag('DOCUMENT_VAULT_V1_ENABLED', false),
+    v1Enabled: envFlag('DOCUMENT_VAULT_V1_ENABLED', true),
     compatAdapters: envFlag('DOCUMENT_VAULT_COMPAT_ADAPTERS', true),
     dualWrite: envFlag('DOCUMENT_VAULT_DUAL_WRITE', false),
-    migrateDryRun: envFlag('DOCUMENT_VAULT_MIGRATE_DRY_RUN', true),
+    migrateDryRun: envFlag('DOCUMENT_VAULT_MIGRATE_DRY_RUN', false),
     retireLegacyStores: envFlag('DOCUMENT_VAULT_RETIRE_LEGACY_STORES', false),
     channelOps: envFlag('DOCUMENT_VAULT_CHANNEL_OPS', true),
     searchOps: envFlag('DOCUMENT_VAULT_SEARCH_OPS', true),
