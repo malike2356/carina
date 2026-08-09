@@ -1,21 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/Toast';
+import { cn } from '@/lib/utils';
 
-type DemoPreview = {
-  leads: number;
-  replyReviews: number;
-  bookings: number;
-  lists: number;
-  campaigns: number;
-  enrollments: number;
-  deliveries: number;
-  followUpTasks: number;
-  softWallPending: number;
-};
+type DemoCategory =
+  | 'leads'
+  | 'lists'
+  | 'campaigns'
+  | 'enrollments'
+  | 'deliveries'
+  | 'replyReviews'
+  | 'bookings'
+  | 'followUpTasks'
+  | 'softWallPending';
+
+type DemoPreview = Record<DemoCategory, number>;
 
 type DemoStatusResponse = {
   preview: DemoPreview;
@@ -27,7 +29,7 @@ type DemoStatusResponse = {
   };
 };
 
-const COUNT_ROWS: Array<{ key: keyof DemoPreview; label: string }> = [
+const COUNT_ROWS: Array<{ key: DemoCategory; label: string }> = [
   { key: 'leads', label: 'Leads' },
   { key: 'lists', label: 'Lists' },
   { key: 'campaigns', label: 'Campaigns' },
@@ -39,12 +41,19 @@ const COUNT_ROWS: Array<{ key: keyof DemoPreview; label: string }> = [
   { key: 'softWallPending', label: 'Soft Wall drafts' },
 ];
 
+function selectedTotal(preview: DemoPreview, selected: Set<DemoCategory>): number {
+  let sum = 0;
+  for (const key of selected) sum += preview[key] ?? 0;
+  return sum;
+}
+
 export function DemoDataSettings() {
   const { push } = useToast();
   const [status, setStatus] = useState<DemoStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirm, setConfirm] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [selected, setSelected] = useState<Set<DemoCategory>>(new Set());
 
   const load = useCallback(() => {
     setLoading(true);
@@ -53,9 +62,17 @@ export function DemoDataSettings() {
         if (!res.ok) throw new Error('Could not load demo data status');
         return res.json() as Promise<DemoStatusResponse>;
       })
-      .then((data) => setStatus(data))
+      .then((data) => {
+        setStatus(data);
+        const present = COUNT_ROWS
+          .filter((row) => (data.preview[row.key] ?? 0) > 0)
+          .map((row) => row.key);
+        setSelected(new Set(present));
+        setConfirm(false);
+      })
       .catch(() => {
         setStatus(null);
+        setSelected(new Set());
         push('Could not load demo data status', 'error');
       })
       .finally(() => setLoading(false));
@@ -65,17 +82,54 @@ export function DemoDataSettings() {
     load();
   }, [load]);
 
+  const preview = status?.preview;
+  const presentRows = useMemo(
+    () => COUNT_ROWS.filter((row) => (preview?.[row.key] ?? 0) > 0),
+    [preview],
+  );
+  const total = status?.total ?? 0;
+  const chosenCount = preview ? selectedTotal(preview, selected) : 0;
+  const allPresentSelected =
+    presentRows.length > 0 && presentRows.every((row) => selected.has(row.key));
+
+  function toggleCategory(key: DemoCategory) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function selectAllPresent() {
+    setSelected(new Set(presentRows.map((row) => row.key)));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
   async function onPurge() {
     if (!confirm) {
       push('Tick the confirmation box first', 'error');
       return;
     }
+    if (selected.size === 0) {
+      push('Select at least one category', 'error');
+      return;
+    }
     setPurging(true);
     try {
+      const categories = COUNT_ROWS.map((row) => row.key).filter((key) => selected.has(key));
+      const purgeAll = allPresentSelected && categories.length === presentRows.length;
       const res = await fetch('/api/aiva/outreach/demo-data/purge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirm: true }),
+        body: JSON.stringify(
+          purgeAll
+            ? { confirm: true, all: true }
+            : { confirm: true, all: false, categories },
+        ),
       });
       const data = (await res.json().catch(() => ({}))) as {
         error?: string;
@@ -86,7 +140,7 @@ export function DemoDataSettings() {
       push(
         data.totalRemoved
           ? `Removed ${data.totalRemoved} demo item(s). Real data was kept.`
-          : 'No demo data found to remove.',
+          : 'No demo data found in the selected categories.',
         'success',
       );
       load();
@@ -96,9 +150,6 @@ export function DemoDataSettings() {
       setPurging(false);
     }
   }
-
-  const total = status?.total ?? 0;
-  const preview = status?.preview;
 
   return (
     <div className="space-y-6">
@@ -120,7 +171,7 @@ export function DemoDataSettings() {
               Deletes rows tagged <code className="text-text-secondary">SOP_DEMO</code>, emails on{' '}
               <code className="text-text-secondary">@sop-demo.test</code>, and lists or campaigns whose
               names start with &quot;SOP Demo&quot;. Soft Wall drafts that match those markers are
-              rejected. Everything else stays.
+              rejected. Choose categories below, or purge everything found.
             </p>
           </div>
         </div>
@@ -135,19 +186,57 @@ export function DemoDataSettings() {
           </p>
         ) : (
           <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7"
+                disabled={purging}
+                onClick={() => selectAllPresent()}
+              >
+                Select all
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7"
+                disabled={purging || selected.size === 0}
+                onClick={() => clearSelection()}
+              >
+                Clear
+              </Button>
+            </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {COUNT_ROWS.filter((row) => (preview[row.key] ?? 0) > 0).map((row) => (
-                <div
-                  key={row.key}
-                  className="flex items-center justify-between rounded-md border border-border bg-elevated px-3 py-2"
-                >
-                  <span className="text-xs text-text-muted">{row.label}</span>
-                  <span className="text-sm font-semibold text-text-primary">{preview[row.key]}</span>
-                </div>
-              ))}
+              {presentRows.map((row) => {
+                const checked = selected.has(row.key);
+                return (
+                  <label
+                    key={row.key}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between gap-3 rounded-md border px-3 py-2 transition-colors',
+                      checked
+                        ? 'border-accent/40 bg-accent/5'
+                        : 'border-border bg-elevated hover:border-border',
+                    )}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={purging}
+                        onChange={() => toggleCategory(row.key)}
+                      />
+                      <span className="text-xs text-text-secondary">{row.label}</span>
+                    </span>
+                    <span className="text-sm font-semibold text-text-primary">{preview[row.key]}</span>
+                  </label>
+                );
+              })}
             </div>
             <p className="text-xs text-text-secondary">
-              {total} demo item{total === 1 ? '' : 's'} ready to remove.
+              {chosenCount} of {total} demo item{total === 1 ? '' : 's'} selected.
             </p>
           </div>
         )}
@@ -157,11 +246,11 @@ export function DemoDataSettings() {
             type="checkbox"
             className="mt-0.5"
             checked={confirm}
-            disabled={loading || total === 0 || purging}
+            disabled={loading || total === 0 || purging || selected.size === 0}
             onChange={(e) => setConfirm(e.target.checked)}
           />
           <span>
-            I understand this permanently deletes matching demo outreach data and cannot be undone.
+            I understand this permanently deletes the selected demo outreach data and cannot be undone.
           </span>
         </label>
 
@@ -178,10 +267,14 @@ export function DemoDataSettings() {
           <Button
             type="button"
             size="sm"
-            disabled={loading || purging || total === 0 || !confirm}
+            disabled={loading || purging || total === 0 || !confirm || selected.size === 0}
             onClick={() => void onPurge()}
           >
-            {purging ? 'Purging...' : 'Purge demo data'}
+            {purging
+              ? 'Purging...'
+              : allPresentSelected
+                ? 'Purge everything'
+                : `Purge selected (${chosenCount})`}
           </Button>
         </div>
       </div>

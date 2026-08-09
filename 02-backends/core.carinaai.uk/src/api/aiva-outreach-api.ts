@@ -1377,15 +1377,45 @@ aivaOutreachRouter.post('/demo-data/purge', async (req: OutreachRequest, res: Re
     if (req.body?.confirm !== true) {
       res.status(400).json({
         error: 'confirm must be true',
-        note: 'POST { "confirm": true } to purge SOP_DEMO / sop-demo.test outreach rows only.',
+        note: 'POST { "confirm": true, "all": true } or { "confirm": true, "categories": ["leads", ...] }',
       });
       return;
     }
-    const { purgeDemoOutreachData, demoOutreachTotal } = await import('../outreach/demo-data.js');
-    const result = await purgeDemoOutreachData(req.workspaceId!);
+    const {
+      purgeDemoOutreachData,
+      demoOutreachSelectedTotal,
+      resolveDemoPurgeCategories,
+      isDemoOutreachCategory,
+      DEMO_OUTREACH_CATEGORIES,
+    } = await import('../outreach/demo-data.js');
+
+    const bodyCategories = Array.isArray(req.body?.categories) ? req.body.categories : undefined;
+    if (bodyCategories) {
+      const invalid = bodyCategories.filter((item: unknown) => !isDemoOutreachCategory(item));
+      if (invalid.length > 0) {
+        res.status(400).json({
+          error: 'invalid categories',
+          invalid,
+          allowed: DEMO_OUTREACH_CATEGORIES,
+        });
+        return;
+      }
+    }
+
+    const selection = {
+      all: req.body?.all === true || (!bodyCategories && req.body?.all !== false),
+      categories: bodyCategories,
+    };
+    const selected = resolveDemoPurgeCategories(selection);
+    if (selected.length === 0) {
+      res.status(400).json({ error: 'Select at least one demo data category to purge' });
+      return;
+    }
+
+    const result = await purgeDemoOutreachData(req.workspaceId!, selection);
     res.json({
       result,
-      totalRemoved: demoOutreachTotal(result),
+      totalRemoved: demoOutreachSelectedTotal(result, result.selected),
     });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });

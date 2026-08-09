@@ -95,4 +95,51 @@ describe('outreach demo-data purge', () => {
     expect(listCampaigns('ws-1').some((c) => /SOP Demo/i.test(c.name))).toBe(false);
     expect(listLeadLists('ws-1').map((l) => l.name)).toEqual(['Customer shortlist']);
   });
+
+  it('purges only selected categories', async () => {
+    const { createLead, createCampaign, createLeadList, listLeads, listCampaigns, listLeadLists } =
+      await import('./leads.js');
+    const { purgeDemoOutreachData, previewDemoOutreachData, SOP_DEMO_TAG } = await import('./demo-data.js');
+
+    createLead({
+      workspaceId: 'ws-2',
+      name: 'SOP Demo Keep',
+      email: 'keep@sop-demo.test',
+      source: 'manual',
+      tags: [SOP_DEMO_TAG],
+    });
+    createCampaign({
+      workspaceId: 'ws-2',
+      name: 'SOP Demo Campaign',
+      objective: 'demo',
+      sourceType: 'mixed',
+      targetAudience: 'demo',
+      dailyCap: 5,
+      timezone: 'Europe/London',
+      requireApproval: true,
+      warmupDays: 0,
+    });
+    createLeadList({
+      workspaceId: 'ws-2',
+      name: 'SOP Demo List',
+      leadIds: [],
+    });
+
+    const result = await purgeDemoOutreachData('ws-2', {
+      all: false,
+      categories: ['campaigns', 'lists'],
+    });
+    expect(result.selected).toEqual(['lists', 'campaigns']);
+    expect(result.campaigns).toBe(1);
+    expect(result.lists).toBe(1);
+    expect(result.leads).toBe(0);
+
+    const after = await previewDemoOutreachData('ws-2');
+    expect(after.leads).toBe(1);
+    expect(after.campaigns).toBe(0);
+    expect(after.lists).toBe(0);
+    expect(listLeads('ws-2')).toHaveLength(1);
+    expect(listCampaigns('ws-2').some((c) => /SOP Demo/i.test(c.name))).toBe(false);
+    expect(listLeadLists('ws-2')).toHaveLength(0);
+  });
 });
