@@ -28,6 +28,7 @@ import {
   type ConciergeBusinessHours,
   type ConciergeChannelConfig,
 } from '../workers/concierge-profile.js';
+import { evaluateProviderReadiness } from '../customer-concierge/readiness.js';
 import { pool } from '../memory/db.js';
 
 export const conciergeSetupRouter: ExpressRouter = Router({ mergeParams: true });
@@ -311,7 +312,25 @@ conciergeSetupRouter.get('/readiness', async (req: ConciergeRequest, res: Respon
     const ctx = await requireWorker(req, res);
     if (!ctx) return;
     const readiness = await evaluateConciergeReadiness(ctx.workspaceId, ctx.workerId);
-    res.json(readiness);
+    const providers = await evaluateProviderReadiness({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+    });
+    res.json({ ...readiness, providers });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.get('/providers/readiness', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const providers = await evaluateProviderReadiness({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+    });
+    res.json(providers);
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
   }
