@@ -43,6 +43,8 @@ interface WorkspaceSettingsData {
   appearance: AppearanceSettings;
   brain: BrainSettings;
   brand: BrandConfig;
+  emailIngestionEnabled: boolean;
+  emailIngestionManagedByCore: boolean;
 }
 
 type NotificationSettings = {
@@ -78,11 +80,13 @@ function Toggle({
   onChange,
   label,
   description,
+  disabled = false,
 }: {
   value: boolean;
   onChange: (value: boolean) => void;
   label: string;
   description?: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
@@ -94,10 +98,12 @@ function Toggle({
         type="button"
         role="switch"
         aria-checked={value}
+        disabled={disabled}
         onClick={() => onChange(!value)}
         className={cn(
           'relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors',
           value ? 'bg-accent' : 'border-border bg-elevated',
+          disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
         )}
       >
         <span
@@ -167,6 +173,8 @@ export default function SettingsPage() {
     appearance: APPEARANCE_DEFAULTS,
     brain: BRAIN_SETTINGS_DEFAULTS,
     brand: {},
+    emailIngestionEnabled: false,
+    emailIngestionManagedByCore: false,
   });
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>(
     DEFAULT_NOTIFICATION_SETTINGS,
@@ -214,6 +222,8 @@ export default function SettingsPage() {
           theme: isThemeName(data.data.theme) ? data.data.theme : DEFAULT_THEME,
           appearance: normalizeAppearance(data.data.appearance),
           brand: normalizeBrandConfig(data.data.brand ?? {}),
+          emailIngestionEnabled: Boolean(data.data.emailIngestionEnabled),
+          emailIngestionManagedByCore: Boolean(data.data.emailIngestionManagedByCore),
           brain: {
             autoExtractMemories:
               data.data.autoExtractMemories ?? BRAIN_SETTINGS_DEFAULTS.autoExtractMemories,
@@ -265,53 +275,70 @@ export default function SettingsPage() {
   }, []);
 
   async function saveSettings(payload: Record<string, unknown>) {
+    const previousSettings = workspaceSettings;
     setSaving(true);
     setSaved(false);
 
-    if (typeof payload.theme === 'string') {
-      setWorkspaceSettings((current) => ({ ...current, theme: payload.theme as string }));
-    }
-    if (payload.appearance && typeof payload.appearance === 'object') {
-      setWorkspaceSettings((current) => ({
-        ...current,
-        appearance: normalizeAppearance({
-          ...current.appearance,
-          ...(payload.appearance as AppearanceSettings),
-        }),
-      }));
-    }
-    const brainKeys = [
-      'autoExtractMemories',
-      'autoExtractSkills',
-      'autoApproveSkillsMinConfidence',
-      'maxSkillsPerRequest',
-      'injectMemoriesInChat',
-    ] as const;
-    const brainPatch = Object.fromEntries(
-      brainKeys.filter((key) => payload[key] !== undefined).map((key) => [key, payload[key]]),
-    );
-    if (Object.keys(brainPatch).length > 0) {
-      setWorkspaceSettings((current) => ({
-        ...current,
-        brain: { ...current.brain, ...brainPatch } as BrainSettings,
-      }));
-    }
-    if (payload.brand && typeof payload.brand === 'object') {
-      setWorkspaceSettings((current) => ({
-        ...current,
-        brand: normalizeBrandConfig(payload.brand),
-      }));
-    }
+    try {
+      if (typeof payload.theme === 'string') {
+        setWorkspaceSettings((current) => ({ ...current, theme: payload.theme as string }));
+      }
+      if (payload.appearance && typeof payload.appearance === 'object') {
+        setWorkspaceSettings((current) => ({
+          ...current,
+          appearance: normalizeAppearance({
+            ...current.appearance,
+            ...(payload.appearance as AppearanceSettings),
+          }),
+        }));
+      }
+      const brainKeys = [
+        'autoExtractMemories',
+        'autoExtractSkills',
+        'autoApproveSkillsMinConfidence',
+        'maxSkillsPerRequest',
+        'injectMemoriesInChat',
+      ] as const;
+      const brainPatch = Object.fromEntries(
+        brainKeys.filter((key) => payload[key] !== undefined).map((key) => [key, payload[key]]),
+      );
+      if (Object.keys(brainPatch).length > 0) {
+        setWorkspaceSettings((current) => ({
+          ...current,
+          brain: { ...current.brain, ...brainPatch } as BrainSettings,
+        }));
+      }
+      if (payload.brand && typeof payload.brand === 'object') {
+        setWorkspaceSettings((current) => ({
+          ...current,
+          brand: normalizeBrandConfig(payload.brand),
+        }));
+      }
+      if (typeof payload.emailIngestionEnabled === 'boolean') {
+        setWorkspaceSettings((current) => ({
+          ...current,
+          emailIngestionEnabled: payload.emailIngestionEnabled as boolean,
+        }));
+      }
 
-    await fetch('/api/workspace/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+      const response = await fetch('/api/workspace/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error ?? 'Could not save settings');
+      }
 
-    setSaving(false);
-    setSaved(true);
-    window.setTimeout(() => setSaved(false), 2000);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      setWorkspaceSettings(previousSettings);
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
   }
 
   function updateAppearance<K extends keyof AppearanceSettings>(key: K, value: AppearanceSettings[K]) {
@@ -767,6 +794,23 @@ export default function SettingsPage() {
                     <ChevronRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
+              </div>
+
+              <div className="divide-y divide-border rounded-lg border border-border bg-surface px-4">
+                <Toggle
+                  value={workspaceSettings.emailIngestionEnabled}
+                  onChange={(value) => {
+                    if (!workspaceSettings.emailIngestionManagedByCore) return;
+                    void saveSettings({ emailIngestionEnabled: value });
+                  }}
+                  label="Email ingestion"
+                  description={
+                    workspaceSettings.emailIngestionManagedByCore
+                      ? 'Allow this workspace to use the core email ingestion gate.'
+                      : 'Connect the core bridge to manage this setting from the GUI.'
+                  }
+                  disabled={!workspaceSettings.emailIngestionManagedByCore}
+                />
               </div>
 
               <SettingsToolLinks

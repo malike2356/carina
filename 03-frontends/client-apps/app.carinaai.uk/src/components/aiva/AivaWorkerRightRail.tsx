@@ -46,7 +46,7 @@ function RailButton({
   );
 }
 
-/** Spinnable-style worker rail: icons stay with readable labels always visible. */
+/** Aiva-style worker rail: icons stay with readable labels always visible. */
 export function AivaWorkerRightRail({ activeId, onChange, className }: AivaWorkerRightRailProps) {
   return (
     <nav

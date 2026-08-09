@@ -43,7 +43,7 @@ interface SsoDiscovery {
   ssoRequired?: boolean;
 }
 
-export function LoginForm() {
+function LoginForm() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [email, setEmail] = useState('');

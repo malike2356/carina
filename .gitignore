@@ -132,6 +132,10 @@ v3-prompts/
 /docker-compose.prod.yml
 /docker/
 
+# Generated language and test caches
+**/__pycache__/
+*.py[cod]
+
 # Product-specific local-only (Carina)
 /brain/
 /carina-cli

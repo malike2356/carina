@@ -32,6 +32,7 @@ type RegisterFormProps = {
 function RegisterFormInner({ googleAuthEnabled }: RegisterFormProps) {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   const brand = useBrand();
   const searchParams = useSearchParams();
@@ -65,6 +66,7 @@ function RegisterFormInner({ googleAuthEnabled }: RegisterFormProps) {
     e.preventDefault();
     setPending(true);
     setError('');
+    setStatus(fromAiva ? 'Creating account and setting up your trial...' : 'Creating account...');
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get('name'));
     const email = String(formData.get('email'));
@@ -87,20 +89,14 @@ function RegisterFormInner({ googleAuthEnabled }: RegisterFormProps) {
     if (result.error) {
       setError(result.error.message ?? 'Registration failed');
       setPending(false);
+      setStatus('');
       return;
     }
 
     if (fromAiva) {
-      void fetch('/api/aiva/subscription/trial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ownerEmail: email,
-          ownerName: name,
-          signupSource: signupPromo?.code,
-        }),
-      }).catch(() => {});
+      setStatus('Trial ready. Opening onboarding...');
       document.cookie = 'aiva_signup_pending=1; path=/; max-age=2592000; samesite=lax';
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
       if (provisionPath) {
         setClientProvisionIntentCookies(provisionIntent.description);
         window.location.href = provisionPath;
@@ -211,6 +207,7 @@ function RegisterFormInner({ googleAuthEnabled }: RegisterFormProps) {
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? 'Creating account...' : fromAiva ? 'Start free trial' : 'Create account'}
         </Button>
+        {status ? <p className="text-sm text-text-secondary">{status}</p> : null}
       </form>
       <p className="text-sm text-text-secondary">
         Already registered? <Link href={loginHref} className="font-medium text-accent">Sign in</Link>

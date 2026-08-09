@@ -11,13 +11,35 @@ import sys
 import tempfile
 import urllib.request
 from datetime import datetime
-from pathlib import Path
 
 import pandas as pd
 
 import config as cfg
 
-PROMPTS_DIR = Path(__file__).parent / 'prompts'
+PROMPTS = {
+    'generic': (
+        'You enrich tabular business data. Return JSON only as '
+        '{"rows":{"0":{"Column":"value"}}}. Use zero-based row indexes. '
+        'Fill only blank cells. Do not invent personal data, sensitive traits, '
+        'or facts without evidence. Omit uncertain fills.'
+    ),
+    'leads': (
+        'You enrich a lead list from supplied evidence. Return JSON only as '
+        '{"rows":{"0":{"Column":"value"}}}. Fill only blank cells. Never '
+        'guess email addresses or phone numbers. Do not infer sensitive traits. '
+        'Prefer company, role, stage, and scoring fields supported by the row.'
+    ),
+    'tenant_list': (
+        'You clean a tenant or lease table. Return JSON only as '
+        '{"rows":{"0":{"Column":"value"}}}. Fill only blank cells using '
+        'facts already present. Do not infer protected, financial, or health data.'
+    ),
+    'property_data': (
+        'You enrich property rows using supplied evidence. Return JSON only as '
+        '{"rows":{"0":{"Column":"value"}}}. Fill only blank cells. Do not '
+        'invent valuations, addresses, ownership, or contact details.'
+    ),
+}
 
 
 def _classify_sheet(df: pd.DataFrame) -> str:
@@ -34,10 +56,7 @@ def _classify_sheet(df: pd.DataFrame) -> str:
 
 
 def _load_prompt(sheet_type: str) -> str:
-    path = PROMPTS_DIR / f'enrich_{sheet_type}.txt'
-    if not path.exists():
-        path = PROMPTS_DIR / 'enrich_generic.txt'
-    return path.read_text()
+    return PROMPTS.get(sheet_type, PROMPTS['generic'])
 
 
 def _blank_report(df: pd.DataFrame) -> dict[str, int]:
@@ -79,24 +98,35 @@ def _call_deepseek(system_prompt: str, user_content: str) -> dict:
 
 
 def _enrich_batch(df: pd.DataFrame, sheet_type: str, context: str) -> dict:
-    """Send the full sheet context to DeepSeek and get fills for all rows."""
+    """Send bounded batches to DeepSeek and combine proposed fills."""
     system_prompt = _load_prompt(sheet_type)
     blank_cols = _blank_report(df)
 
     if not blank_cols and sheet_type == 'generic':
         return {'rows': {}}
 
-    sample = df.head(20).to_string()
-
-    user_msg = (
-        f'Context: {context}\n\n'
-        f'Columns: {list(df.columns)}\n'
-        f'Row count: {len(df)}\n'
-        f'Blank columns: {json.dumps(blank_cols)}\n\n'
-        f'Data (first 20 rows):\n{sample[:3000]}'
-    )
-
-    return _call_deepseek(system_prompt, user_msg)
+    combined = {'rows': {}}
+    batch_size = 20
+    max_rows = int(os.environ.get('MAX_ENRICH_ROWS', '500'))
+    for start in range(0, min(len(df), max_rows), batch_size):
+        batch = df.iloc[start:start + batch_size]
+        records = batch.where(batch.notna(), None).to_dict(orient='records')
+        user_msg = (
+            f'Context: {context[:1000]}\n\n'
+            f'Columns: {list(df.columns)}\n'
+            f'Row count: {len(df)}\n'
+            f'Blank columns: {json.dumps(blank_cols)}\n'
+            f'Row offset: {start}\n\n'
+            f'Data as JSON:\n{json.dumps(records, default=str)[:12000]}'
+        )
+        result = _call_deepseek(system_prompt, user_msg)
+        for relative_idx, values in result.get('rows', {}).items():
+            try:
+                absolute_idx = start + int(relative_idx)
+            except (TypeError, ValueError):
+                continue
+            combined['rows'][str(absolute_idx)] = values
+    return combined
 
 
 def _apply_fills(df: pd.DataFrame, fills: dict) -> tuple[pd.DataFrame, int]:
@@ -108,9 +138,11 @@ def _apply_fills(df: pd.DataFrame, fills: dict) -> tuple[pd.DataFrame, int]:
     for row_idx_str, col_vals in rows.items():
         try:
             idx = int(row_idx_str)
-        except ValueError:
+        except (TypeError, ValueError):
             continue
         if idx < 0 or idx >= len(df):
+            continue
+        if not isinstance(col_vals, dict):
             continue
         for col, value in col_vals.items():
             if col in df.columns and pd.isna(df.iloc[idx][col]):

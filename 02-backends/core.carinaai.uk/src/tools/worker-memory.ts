@@ -13,7 +13,7 @@ import { searchWorkerConversations } from '../memory/aiva/conversation-search.js
 import {
   listWorkerSkills,
   runWorkerSkill,
-} from '../workers/spinnable-parity-store.js';
+} from '../workers/aiva-parity-store.js';
 import { listActivity } from '../workers/worker-store.js';
 
 function parseTarget(value: unknown): WorkerMemoryTarget {

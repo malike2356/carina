@@ -2,7 +2,7 @@ import { pool } from '../../memory/db.js';
 import { encryptCredentials, decryptCredentials } from '../../channels/credential-store.js';
 import { getCatalogTool } from './catalog.js';
 import { loadDepthFeatures } from './features.js';
-import { upsertToolGrant } from '../spinnable-parity-store.js';
+import { upsertToolGrant } from '../aiva-parity-store.js';
 import { getWorker } from '../worker-store.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

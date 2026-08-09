@@ -151,14 +151,18 @@ export default function AivaToolAccountsPage() {
   }, [searchParams]);
 
   async function connectGoogleAccount() {
+    await connectGoogleAccountForTool(selectedTool?.slug || 'google-drive');
+  }
+
+  async function connectGoogleAccountForTool(targetToolSlug: string) {
     setBusy(true);
     setError('');
     setNotice('');
     try {
       const qs = new URLSearchParams({
         mode: 'account',
-        toolSlug: selectedTool?.slug || 'google-drive',
-        returnPath: `/aiva/tools?tool=${encodeURIComponent(selectedTool?.slug || 'google-drive')}`,
+        toolSlug: targetToolSlug,
+        returnPath: `/aiva/tools?tool=${encodeURIComponent(targetToolSlug)}`,
         redirectUri: `${window.location.origin}/api/aiva/tools/oauth/google/callback`,
       });
       const res = await fetch(`/api/aiva/tools/oauth/google/auth-url?${qs.toString()}`);
@@ -174,6 +178,14 @@ export default function AivaToolAccountsPage() {
       setError(err instanceof Error ? err.message : 'Google connect failed');
       setBusy(false);
     }
+  }
+
+  function isGoogleOauthToolSlug(slug: string) {
+    return slug === 'gmail' || slug === 'google-drive' || slug.startsWith('google-');
+  }
+
+  function isGmailAccount(account: ToolAccount) {
+    return account.toolSlug === 'gmail' || /gmail/i.test(account.label);
   }
 
   async function createAccount() {
@@ -311,6 +323,10 @@ export default function AivaToolAccountsPage() {
   }
 
   function beginReconnect(account: ToolAccount) {
+    if (isGoogleOauthToolSlug(account.toolSlug)) {
+      void reconnectGoogleAccount(account);
+      return;
+    }
     setToolSlug(account.toolSlug);
     setLabel(account.label);
     setToken('');
@@ -324,6 +340,35 @@ export default function AivaToolAccountsPage() {
         : `Reconnect ${account.label}: paste a fresh API token / secret below, then Create + probe.`,
     );
     document.getElementById('aiva-add-tool-account')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function reconnectGoogleAccount(account: ToolAccount) {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      setToolSlug(account.toolSlug);
+      setLabel(account.label);
+      const qs = new URLSearchParams({
+        mode: 'account',
+        toolSlug: account.toolSlug,
+        returnPath: `/aiva/tools?tool=${encodeURIComponent(account.toolSlug)}`,
+        redirectUri: `${window.location.origin}/api/aiva/tools/oauth/google/callback`,
+      });
+      const res = await fetch(`/api/aiva/tools/oauth/google/auth-url?${qs.toString()}`);
+      const data = await readJsonResponse<{ authUrl?: string; error?: string }>(
+        res,
+        'Google OAuth reconnect',
+      );
+      if (!res.ok || !data.authUrl) {
+        throw new Error(data.error ?? 'Could not start Google reconnect');
+      }
+      setNotice(`Reconnect ${account.label} in Google, then return here to grant it again.`);
+      window.location.href = data.authUrl;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google reconnect failed');
+      setBusy(false);
+    }
   }
 
   async function reprobeAccount(accountId: string) {
@@ -546,6 +591,7 @@ export default function AivaToolAccountsPage() {
           <ul className="space-y-2">
             {accounts.map((account) => {
               const canGrant = account.status === 'connected' && Boolean(grantWorkerId || workers[0]?.id);
+              const gmailNeedsReauth = account.status === 'needs_reauth' && isGmailAccount(account);
               return (
                 <li
                   key={account.id}
@@ -570,14 +616,25 @@ export default function AivaToolAccountsPage() {
                   <div className="flex flex-wrap gap-2">
                     {account.status !== 'connected' ? (
                       <>
-                        <button
-                          type="button"
-                          disabled={busy || !accountsEnabled}
-                          onClick={() => beginReconnect(account)}
-                          className="rounded-lg border border-accent/40 bg-accent-dim px-3 py-1.5 text-xs font-medium text-accent"
-                        >
-                          Reconnect
-                        </button>
+                        {gmailNeedsReauth ? (
+                          <button
+                            type="button"
+                            disabled={busy || !accountsEnabled}
+                            onClick={() => void reconnectGoogleAccount(account)}
+                            className="rounded-lg border border-accent/40 bg-accent px-3 py-1.5 text-xs font-medium text-white"
+                          >
+                            Reconnect Gmail
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={busy || !accountsEnabled}
+                            onClick={() => beginReconnect(account)}
+                            className="rounded-lg border border-accent/40 bg-accent-dim px-3 py-1.5 text-xs font-medium text-accent"
+                          >
+                            Reconnect
+                          </button>
+                        )}
                         <button
                           type="button"
                           disabled={busy || !accountsEnabled}

@@ -40,8 +40,8 @@ export function aivaEmptyReplyFallback(userMessage?: string): string {
   switch (resolveAivaEmptyReplyBucket(userMessage)) {
     case 'gmail':
       return [
-        'I could not finish that email search this turn.',
-        `Open Tools, choose Gmail, and reconnect if the grant shows needs_reauth: ${toolsPath('gmail')}.`,
+        'I could not finish the email search this turn.',
+        `Open Tools, choose Gmail, and reconnect the grant if it shows needs_reauth: ${toolsPath('gmail')}.`,
         'Then ask again.',
       ].join(' ');
     case 'calendar':

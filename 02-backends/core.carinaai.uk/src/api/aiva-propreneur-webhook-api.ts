@@ -6,6 +6,7 @@ import {
   type PropreneurWebhookPayload,
   verifyPropreneurWebhookSignature,
 } from '../workers/propreneur-event-webhook.js';
+import { ingestPropreneurWebhookEvent } from '../sync/propreneur-event-inbox.js';
 
 export const aivaPropreneurWebhookRouter: ExpressRouter = express.Router();
 
@@ -61,9 +62,21 @@ aivaPropreneurWebhookRouter.post('/propreneur', express.raw({ type: 'application
     return;
   }
 
+  const ingest = ingestPropreneurWebhookEvent(payload);
+  if (!ingest.ok) {
+    const status = ingest.reason === 'unsupported_schema_version' ? 422 : 400;
+    res.status(status).json({ error: ingest.reason });
+    return;
+  }
+
+  if (ingest.duplicate) {
+    res.json({ ok: true, duplicate: true, eventId: ingest.event.eventId });
+    return;
+  }
+
   try {
     const sent = await deliverPropreneurEventNotification(payload);
-    res.json({ ok: true, delivered: sent });
+    res.json({ ok: true, delivered: sent, eventId: ingest.event.eventId });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.warn('[propreneur-webhook] delivery failed:', message);

@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { carinaGet, carinaPost } from './carina.js';
 
 const execFileAsync = promisify(execFile);
@@ -54,10 +55,12 @@ async function upsertHostEnvFile(hostPath: string, updates: Record<string, strin
   }
 
   let content = '';
+  const hostDir = path.dirname(hostPath);
+  const hostFile = path.basename(hostPath);
   try {
     const { stdout } = await execFileAsync(
       'docker',
-      ['run', '--rm', '-v', `${hostPath}:/env:ro`, 'alpine:3.20', 'cat', '/env'],
+      ['run', '--rm', '-v', `${hostDir}:/envdir:ro`, 'alpine:3.20', 'sh', '-c', `cat /envdir/${hostFile}`],
       { timeout: 30_000 },
     );
     content = stdout;
@@ -74,11 +77,11 @@ async function upsertHostEnvFile(hostPath: string, updates: Record<string, strin
       'run',
       '--rm',
       '-v',
-      `${hostPath}:/env:rw`,
+      `${hostDir}:/envdir:rw`,
       'alpine:3.20',
       'sh',
       '-c',
-      `touch /env && printf '%s' '${b64}' | base64 -d > /env`,
+      `printf '%s' '${b64}' | base64 -d > /envdir/${hostFile}`,
     ],
     { timeout: 60_000 },
   );

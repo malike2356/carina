@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { resolveCoreUrl } from '@/lib/core-proxy';
+import { resolvePlatformGoogleClient } from '@/lib/google-oauth-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,12 @@ export async function GET() {
   } catch {
     checks.core_api = 'fail';
     healthy = false;
+  }
+
+  try {
+    checks.platform_google_oauth = (await resolvePlatformGoogleClient()) ? 'ok' : 'missing';
+  } catch {
+    checks.platform_google_oauth = 'fail';
   }
 
   return NextResponse.json(

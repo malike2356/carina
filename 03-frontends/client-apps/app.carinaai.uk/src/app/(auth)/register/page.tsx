@@ -16,6 +16,7 @@ import { TERMS_VERSION } from '@/lib/gdpr-constants';
 function RegisterForm() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const [status, setStatus] = useState('');
   const brand = useBrand();
   const searchParams = useSearchParams();
   const isAivaProduct = useIsAivaProduct();
@@ -25,6 +26,7 @@ function RegisterForm() {
     e.preventDefault();
     setPending(true);
     setError('');
+    setStatus(fromAiva ? 'Creating account and setting up your trial...' : 'Creating account...');
     const formData = new FormData(e.currentTarget);
     const name = String(formData.get('name'));
     const email = String(formData.get('email'));
@@ -45,16 +47,14 @@ function RegisterForm() {
     if (result.error) {
       setError(result.error.message ?? 'Registration failed');
       setPending(false);
+      setStatus('');
       return;
     }
 
     if (fromAiva) {
-      void fetch('/api/aiva/subscription/trial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ownerEmail: email, ownerName: name }),
-      }).catch(() => {});
+      setStatus('Trial ready. Opening onboarding...');
       document.cookie = 'aiva_signup_pending=1; path=/; max-age=2592000; samesite=lax';
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
       window.location.href = '/onboarding';
       return;
     }
@@ -69,7 +69,7 @@ function RegisterForm() {
         <h1 className="text-2xl font-semibold">Create your {brand.productName} account</h1>
         <p className="text-sm text-text-secondary">
           {fromAiva
-            ? 'Hire an Aiva. Powered by Carina. Governed by Scout. Backed by real humans. 15-day trial, no card required.'
+            ? 'Hire an Aiva. Powered by Carina. Governed by Scout. Backed by real humans. 30-day trial, no card required.'
             : 'Free tier includes 50k tokens per day with BYOK.'}
         </p>
       </div>
@@ -109,6 +109,7 @@ function RegisterForm() {
         <Button type="submit" className="w-full" disabled={pending}>
           {pending ? 'Creating account...' : 'Create account'}
         </Button>
+        {status ? <p className="text-sm text-text-secondary">{status}</p> : null}
       </form>
       <p className="text-sm text-text-secondary">
         Already registered? <Link href="/login" className="font-medium text-accent">Sign in</Link>

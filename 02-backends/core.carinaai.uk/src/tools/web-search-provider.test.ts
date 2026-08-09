@@ -23,7 +23,7 @@ describe('buildSearchProviderContext', () => {
     );
     vi.resetModules();
     const { buildSearchProviderContext } = await import('./web-search-provider.js');
-    const ctx = buildSearchProviderContext();
+    const ctx = await buildSearchProviderContext();
     expect(ctx).toContain('Tavily');
     expect(ctx).toContain('web-search');
     expect(ctx).not.toMatch(/Brave Search is available/);
@@ -33,7 +33,7 @@ describe('buildSearchProviderContext', () => {
     vi.doMock('../config/index.js', () => mockConfig());
     vi.resetModules();
     const { buildSearchProviderContext } = await import('./web-search-provider.js');
-    const ctx = buildSearchProviderContext();
+    const ctx = await buildSearchProviderContext();
     expect(ctx).toContain('not configured');
     expect(ctx).toMatch(/SEARXNG_URL|TAVILY_API_KEY/);
   });
@@ -44,7 +44,7 @@ describe('buildSearchProviderContext', () => {
     );
     vi.resetModules();
     const { buildSearchProviderContext } = await import('./web-search-provider.js');
-    const ctx = buildSearchProviderContext();
+    const ctx = await buildSearchProviderContext();
     expect(ctx).toContain('SearXNG');
     expect(ctx).toContain('web-search');
   });

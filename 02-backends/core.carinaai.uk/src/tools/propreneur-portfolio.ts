@@ -37,6 +37,14 @@ import {
   chatWithCarina,
 } from '../bridges/propreneur-bridge.js';
 import { registerSessionTool } from './session-tool-store.js';
+import {
+  filterToolsByContract,
+  loadPropreneurToolsContract,
+} from './propreneur-tools-registry.js';
+import {
+  getPropreneurSessionTenantState,
+  requirePropreneurSessionTenant,
+} from './propreneur-session-tenant.js';
 
 const PROPOSAL_USER_MESSAGE =
   'Submitted for review in Propreneur. Your team must approve before anything is saved. Do not tell the user the action is complete until approved.';
@@ -49,6 +57,14 @@ function requireBinding(sessionId: string) {
   if (!ctx) throw new Error('No active Aiva session');
   const binding = resolvePropreneurBinding(ctx.worker);
   if (!binding) throw new Error('This Aiva is not bound to a Propreneur workspace');
+  // Enforce session tenant selection only when multi-tenant linking was bound for this session.
+  const tenantState = getPropreneurSessionTenantState(sessionId);
+  if (tenantState.linkedUserId || tenantState.tenants.length > 0) {
+    const tenantGate = requirePropreneurSessionTenant(sessionId);
+    if (!tenantGate.ok) {
+      throw new Error(tenantGate.message);
+    }
+  }
   return { binding, worker: ctx.worker };
 }
 
@@ -730,27 +746,25 @@ export function registerPropreneurSessionTools(sessionId: string): void {
   if (!isPropreneurBridgeEnabled()) return;
   const ctx = getWorkerSessionContext(sessionId);
   if (!ctx || !resolvePropreneurBinding(ctx.worker)) return;
-  for (const tool of createPropreneurPortfolioTools(sessionId)) {
-    registerSessionTool(sessionId, tool);
-  }
-  for (const tool of createPropreneurExpandedReadTools(sessionId)) {
-    registerSessionTool(sessionId, tool);
-  }
-  if (isPropreneurBridgeWritesEnabled()) {
-    for (const tool of createPropreneurWriteTools(sessionId)) {
-      registerSessionTool(sessionId, tool);
-    }
-    for (const tool of createPropreneurExpandedWriteTools(sessionId)) {
-      registerSessionTool(sessionId, tool);
-    }
-  }
-  for (const tool of createPropreneurCarinaRelayTool(sessionId)) {
-    registerSessionTool(sessionId, tool);
-  }
-  for (const tool of createPropreneurProxyTool(sessionId)) {
-    registerSessionTool(sessionId, tool);
-  }
-  for (const tool of createPropreneurSessionLinkTool(sessionId)) {
+
+  // Reject incompatible contract versions early so tools are never half-registered.
+  loadPropreneurToolsContract();
+
+  const tools = [
+    ...createPropreneurPortfolioTools(sessionId),
+    ...createPropreneurExpandedReadTools(sessionId),
+    ...(isPropreneurBridgeWritesEnabled()
+      ? [
+          ...createPropreneurWriteTools(sessionId),
+          ...createPropreneurExpandedWriteTools(sessionId),
+        ]
+      : []),
+    ...createPropreneurCarinaRelayTool(sessionId),
+    ...createPropreneurProxyTool(sessionId),
+    ...createPropreneurSessionLinkTool(sessionId),
+  ];
+
+  for (const tool of filterToolsByContract(tools, { allowUnlisted: true })) {
     registerSessionTool(sessionId, tool);
   }
 }

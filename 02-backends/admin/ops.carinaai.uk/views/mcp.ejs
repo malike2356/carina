@@ -18,13 +18,15 @@
         <p class="ops-flash warn">Core is not connected. Set the inter-service token before using this page.</p>
       <% } else { %>
         <form method="post" action="/mcp/add">
-          <div class="ops-field"><label class="ops-label">Name</label><input name="name" required class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Transport</label><select name="transport" class="ops-select"><option value="stdio">stdio</option><option value="http">http</option></select></div>
-          <div class="ops-field"><label class="ops-label">Command</label><input name="command" placeholder="node server.js" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Args</label><textarea name="args" rows="3" placeholder="--stdio" class="ops-textarea mono"></textarea></div>
-          <div class="ops-field"><label class="ops-label">URL</label><input name="url" placeholder="https://example.test/mcp" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Env</label><textarea name="env" rows="4" placeholder="TOKEN=abc" class="ops-textarea mono"></textarea></div>
-          <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Add server</button></div>
+          <div class="ops-form-grid">
+            <div class="ops-field"><label class="ops-label">Name</label><input name="name" required class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Transport</label><select name="transport" class="ops-select"><option value="stdio">stdio</option><option value="http">http</option></select></div>
+            <div class="ops-field"><label class="ops-label">Command</label><input name="command" placeholder="node server.js" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">URL</label><input name="url" placeholder="https://example.test/mcp" class="ops-input mono" /></div>
+            <div class="ops-field" style="grid-column:1/-1;"><label class="ops-label">Args</label><textarea name="args" rows="3" placeholder="--stdio" class="ops-textarea mono"></textarea></div>
+            <div class="ops-field" style="grid-column:1/-1;"><label class="ops-label">Env</label><textarea name="env" rows="4" placeholder="TOKEN=abc" class="ops-textarea mono"></textarea></div>
+            <div class="ops-actions"><button type="submit" class="ops-btn ops-btn-green">Add server</button></div>
+          </div>
         </form>
       <% } %>
     </section>

@@ -35,8 +35,8 @@ export function stripTelegramToolStatus(raw: string): string {
     .replace(/\n[ \t]*\[using [^\]]+\][ \t]*(?=\n|$)/gim, '\n')
     .replace(/^[ \t]*\[Called tools:[^\]]*\][ \t]*\n?/gim, '')
     .replace(/\n[ \t]*\[Called tools:[^\]]*\][ \t]*(?=\n|$)/gim, '\n')
-    .replace(/^[ \t]*\[Channel note:[^\]]*\][ \t]*\n?/gim, '')
-    .replace(/\n[ \t]*\[Channel note:[^\]]*\][ \t]*(?=\n|$)/gim, '\n');
+    // Mid-line Channel notes (model echo), not only line-start.
+    .replace(/\s*\[Channel note:[^\]]*\]/gi, '');
 }
 
 /**

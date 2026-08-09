@@ -105,7 +105,7 @@ export function LegalGate({ children }: { children: React.ReactNode }) {
             Please review and accept the following:
           </p>
           {reacceptanceNote ? (
-            <p className="mt-2 text-sm text-amber-300">{reacceptanceNote}</p>
+            <p className="mt-2 text-sm text-amber-800 dark:text-amber-300">{reacceptanceNote}</p>
           ) : null}
 
           <ul className="mt-4 space-y-3">

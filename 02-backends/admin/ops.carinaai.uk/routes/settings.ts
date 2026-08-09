@@ -7,6 +7,10 @@ import { autoPairCarinaFromLocalCore, testCarinaConnection } from '../lib/carina
 import { coreEnvReadable, coreEnvSourceLabel } from '../lib/core-env.js';
 import { OPS_ENV_PATH, setEnvVar } from '../lib/env.js';
 import {
+  applyGlobalEmailIngestionEnabled,
+  getGlobalEmailIngestionStatus,
+} from '../lib/email-ingestion-global.js';
+import {
   channelShieldTablesReady,
   createShieldProtection,
   defaultOpsWorkspaceId,
@@ -46,7 +50,7 @@ const SCOUT_HTPASSWD =
   process.env.SCOUT_HTPASSWD_FILE ?? '/etc/carina/scout/.htpasswd';
 const SCOUT_HTPASSWD_USER = process.env.SCOUT_HTPASSWD_USER ?? 'admin';
 
-type FlashMessage = { type: 'success' | 'error' | 'warning'; text: string };
+type FlashMessage = { type: 'success' | 'error' | 'warning'; text: string; key: string };
 
 type LlmRotationStatus = {
   enabled?: boolean;
@@ -70,12 +74,21 @@ type LlmRotationStatus = {
   error?: string;
 };
 
-function buildFlashMessages(query: Record<string, unknown>): FlashMessage[] {
+function buildFlashMessages(
+  query: Record<string, unknown>,
+  options: { suppressGlobalEmailIngestionError?: boolean } = {},
+): FlashMessage[] {
   const messages: FlashMessage[] = [];
   const add = (okKey: string, errKey: string, okText: string) => {
-    if (query[okKey] === '1') messages.push({ type: 'success', text: okText });
+    if (query[okKey] === '1') messages.push({ type: 'success', text: okText, key: okKey });
     const err = query[errKey];
-    if (typeof err === 'string' && err.trim()) messages.push({ type: 'error', text: err });
+    if (
+      typeof err === 'string'
+      && err.trim()
+      && !(options.suppressGlobalEmailIngestionError && errKey === 'email_ingestion_global_err')
+    ) {
+      messages.push({ type: 'error', text: err, key: errKey });
+    }
   };
 
   add('scout_ok', 'scout_err', 'Scout console password updated.');
@@ -85,6 +98,8 @@ function buildFlashMessages(query: Record<string, unknown>): FlashMessage[] {
   add('carina_android_apk_ok', 'carina_android_apk_err', 'Android APK link saved.');
   add('core_web_password_ok', 'core_web_password_err', 'Core web login password updated.');
   add('ops_admin_password_ok', 'ops_admin_password_err', 'Ops admin password updated.');
+  add('email_ingestion_global_ok', 'email_ingestion_global_err', 'Global email ingestion updated.');
+  add('email_ingestion_ok', 'email_ingestion_err', 'Email ingestion gate updated.');
   add('shield_ok', 'shield_err', 'Channel Shield protection updated.');
   add('scout_control_ok', 'scout_control_err', 'Scout control settings updated.');
   return messages;
@@ -95,6 +110,9 @@ settingsRouter.get('/', async (req, res) => {
   let coreWebPasswordSet = false;
   let carinaConnected = false;
   let scoutConnected = false;
+  const globalEmailIngestion = getGlobalEmailIngestionStatus();
+  let emailIngestionEnabled = false;
+  let emailIngestionWorkspaceId = defaultOpsWorkspaceId();
   let llmStatus: LlmRotationStatus = {
     enabled: false,
     providers: [],
@@ -124,6 +142,11 @@ settingsRouter.get('/', async (req, res) => {
       if (scoutControlParsed.ok && scoutControlParsed.data) {
         scoutControl = scoutControlParsed.data;
       }
+      const emailGateResponse = await carinaGet(`/api/ops/tenant-config/${encodeURIComponent(emailIngestionWorkspaceId)}`);
+      const emailGateParsed = await carinaJson<{ emailIngestionEnabled?: boolean }>(emailGateResponse);
+      if (emailGateParsed.ok && emailGateParsed.data) {
+        emailIngestionEnabled = Boolean(emailGateParsed.data.emailIngestionEnabled);
+      }
       const llmRotationResponse = await carinaGet('/api/ops/llm-rotation');
       const llmRotationParsed = await carinaJson<LlmRotationStatus>(llmRotationResponse);
       if (llmRotationParsed.ok && llmRotationParsed.data) {
@@ -149,6 +172,9 @@ settingsRouter.get('/', async (req, res) => {
     scoutPaired: Boolean(process.env.SCOUT_API_KEY),
     scoutConnected,
     scoutControl,
+    globalEmailIngestion,
+    emailIngestionEnabled,
+    emailIngestionWorkspaceId,
     llmStatus,
     scoutPairOk: req.query['scout_pair_ok'] === '1',
     scoutPairErr: typeof req.query['scout_pair_err'] === 'string' ? req.query['scout_pair_err'] : '',
@@ -174,7 +200,9 @@ settingsRouter.get('/', async (req, res) => {
     opsAdminPasswordErr: typeof req.query['ops_admin_password_err'] === 'string'
       ? req.query['ops_admin_password_err']
       : '',
-    flashMessages: buildFlashMessages(req.query as Record<string, unknown>),
+    flashMessages: buildFlashMessages(req.query as Record<string, unknown>, {
+      suppressGlobalEmailIngestionError: globalEmailIngestion.enabled,
+    }),
   });
 });
 
@@ -198,6 +226,48 @@ settingsRouter.post('/scout-control', async (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.redirect('/settings?scout_control_err=' + encodeURIComponent('Failed: ' + msg));
+  }
+});
+
+settingsRouter.post('/email-ingestion-global', async (req, res) => {
+  const enabled = String(req.body?.enabled ?? '') === '1';
+
+  try {
+    const result = await applyGlobalEmailIngestionEnabled({ enabled });
+    if (!result.ok) {
+      res.redirect('/settings?email_ingestion_global_err=' + encodeURIComponent(result.error ?? 'Save failed'));
+      return;
+    }
+    res.redirect('/settings?email_ingestion_global_ok=1');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.redirect('/settings?email_ingestion_global_err=' + encodeURIComponent('Failed: ' + msg));
+  }
+});
+
+settingsRouter.post('/email-ingestion', async (req, res) => {
+  if (!carinaOpsTokenSet()) {
+    res.redirect('/settings?email_ingestion_err=' + encodeURIComponent('Carina ops token is not set'));
+    return;
+  }
+
+  const workspaceId = String(req.body?.workspaceId ?? '').trim() || defaultOpsWorkspaceId();
+  const enabled = String(req.body?.enabled ?? '') === '1';
+
+  try {
+    const response = await carinaPut(`/api/ops/tenant-config/${encodeURIComponent(workspaceId)}`, {
+      emailIngestionEnabled: enabled,
+      actor: 'ops-admin',
+    });
+    const parsed = await carinaJson<{ error?: string }>(response);
+    if (!response.ok || !parsed.ok) {
+      res.redirect('/settings?email_ingestion_err=' + encodeURIComponent(parsed.error ?? 'Save failed'));
+      return;
+    }
+    res.redirect('/settings?email_ingestion_ok=1');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.redirect('/settings?email_ingestion_err=' + encodeURIComponent('Failed: ' + msg));
   }
 });
 

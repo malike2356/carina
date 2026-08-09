@@ -330,18 +330,18 @@ export function KnowledgeUploadPanel({ onIngested }: KnowledgeUploadPanelProps) 
         </div>
 
         {status === 'done' && result && !result.alreadyIngested && (
-          <div className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-300">
+          <div className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-800 dark:text-green-300">
             Done. {result.chunksInserted} chunk{result.chunksInserted !== 1 ? 's' : ''} ingested from{' '}
             <span className="font-mono">{result.source}</span>.
           </div>
         )}
         {status === 'done' && result?.alreadyIngested && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
             Already ingested. Delete the existing source first to re-ingest.
           </div>
         )}
         {status === 'error' && errorMsg && (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-800 dark:text-red-300">
             {errorMsg}
           </div>
         )}

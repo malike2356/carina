@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import useSWR from 'swr';
 import { useProductSurface } from '@/hooks/useProductSurface';
 import { shouldLoadAivaSubscription } from '@/lib/aiva-subscription-context';
+import { dangerTone, warnTone } from '@/lib/ui-tones';
 import { cn } from '@/lib/utils';
 
 type BillingStatus = {
@@ -56,10 +57,10 @@ export function GracePeriodBanner() {
       className={cn(
         'flex h-auto min-h-10 shrink-0 items-center justify-center border-b px-4 py-2 text-xs',
         expiresToday
-          ? 'border-red-500/30 bg-red-500/10 text-red-300'
+          ? cn(dangerTone.box, dangerTone.text)
           : urgent
-            ? 'border-amber-500/30 bg-amber-500/15 text-amber-200'
-            : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+            ? cn(warnTone.boxStrong, warnTone.text)
+            : cn(warnTone.boxSoft, warnTone.textMuted),
       )}
     >
       <span className="text-center">

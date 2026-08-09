@@ -85,6 +85,19 @@ export function shouldRouteChatThroughKeprix(workspaceId?: string | null): boole
   return resolveEngineForWorkspace(workspaceId) === 'keprix';
 }
 
+/**
+ * Keprix chat primary currently invokes with empty tools/carina_tools.
+ * Tool-backed work (CRM leads, Companies House, Gmail, etc.) must stay on Carina
+ * until the HTTP tool bridge is populated. Otherwise the model invents results or
+ * dumps raw tool-call XML into chat.
+ */
+export function messageNeedsCarinaNativeTools(message: string): boolean {
+  const text = String(message ?? '');
+  if (!text.trim()) return false;
+  return /\b(leads?|prospects?|crm|outreach|companies[-\s]?house|company number|ingest|lead list|follow[- ]?up|find (me )?(?:\d+\s+)?(?:businesses|companies|customers|prospects)|generate .{0,40}leads?|web search|tavily|gmail|google (?:drive|calendar|contacts)|calendar sync|soft wall|approvals?)\b/i
+    .test(text);
+}
+
 export function resolveEngineName(workspaceId?: string | null): AgentEngineName {
   return resolveEngineForWorkspace(workspaceId);
 }

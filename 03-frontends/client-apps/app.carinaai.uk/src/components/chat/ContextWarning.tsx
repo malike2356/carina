@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+import { warnTone } from '@/lib/ui-tones';
 import { cn } from '@/lib/utils';
 
 interface ContextWarningProps {
@@ -22,7 +23,7 @@ export function ContextWarning({ usedTokens, maxTokens, onNewSession }: ContextW
         'mb-3 flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2 text-xs',
         critical
           ? 'border-danger/30 bg-danger/10 text-danger'
-          : 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+          : cn(warnTone.box, warnTone.textMuted),
       )}
     >
       <AlertTriangle className="h-3.5 w-3.5 shrink-0" />

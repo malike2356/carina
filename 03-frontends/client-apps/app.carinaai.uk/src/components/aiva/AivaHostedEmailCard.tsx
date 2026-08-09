@@ -167,7 +167,7 @@ export function AivaHostedEmailCard({
             className={cn(
               'rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide',
               data.status === 'active'
-                ? 'bg-green-500/15 text-green-400'
+                ? 'bg-green-500/15 text-green-800 dark:text-green-300'
                 : 'bg-overlay text-text-muted',
             )}
           >

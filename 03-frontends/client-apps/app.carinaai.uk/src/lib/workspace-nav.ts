@@ -225,6 +225,13 @@ export const NAV_ROUTES: NavRoute[] = [
     iconName: 'Mail',
   },
   {
+    href: '/aiva/propreneur',
+    label: 'Propreneur',
+    description: 'Tenant context, sync health, and Propreneur control links.',
+    group: 'aiva',
+    iconName: 'Building2',
+  },
+  {
     href: '/aiva/hire',
     label: 'Hire',
     description: 'Hire a new Aiva for your workspace.',

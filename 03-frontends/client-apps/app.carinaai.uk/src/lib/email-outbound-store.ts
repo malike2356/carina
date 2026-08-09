@@ -59,8 +59,10 @@ export async function upsertOutboundEmail(
 
   const externalId = input.externalId?.trim() || null;
   const body = emailBodyForDisplay(input.body ?? '');
-  const fromAddress = sanitizeEmailAddress(input.fromAddress) || input.fromAddress.trim() || 'unknown';
-  const toAddress = sanitizeEmailAddress(input.toAddress) ?? null;
+  const fromAddressRaw = String(input.fromAddress ?? '').trim();
+  const toAddressRaw = String(input.toAddress ?? '').trim();
+  const fromAddress = sanitizeEmailAddress(fromAddressRaw) || fromAddressRaw || 'unknown';
+  const toAddress = sanitizeEmailAddress(toAddressRaw) ?? null;
   const subject = input.subject.trim() || '(no subject)';
   const status = input.status ?? 'sent';
   const receivedAt = input.receivedAt ?? new Date();

@@ -64,6 +64,9 @@
       <div class="ops-page-sub">
         Aiva watches an email inbox for spreadsheet attachments, enriches them with AI, and replies with the completed file. Configure the inbox, AI key, and outbound email here.
       </div>
+      <div class="ops-page-sub">
+        Saved settings are the platform source of truth. The worker deployment must export them as SP_* environment variables and restart the worker; saving this form does not deploy or restart it.
+      </div>
     </div>
     <%
       const ready = Boolean(cfg['SP_IMAP_USER'] && cfg['SP_IMAP_PASSWORD'] && cfg['SP_DEEPSEEK_API_KEY']);
@@ -88,42 +91,54 @@
         <h2>Inbox (IMAP)</h2>
         <p class="sp-hint" style="margin-top:0;">The inbox Aiva watches for incoming spreadsheets.</p>
 
-        <label class="ops-label" for="imapHost">IMAP host</label>
-        <input id="imapHost" name="imapHost" type="text" class="ops-input mono"
-               value="<%= cfg['SP_IMAP_HOST'] || 'imap.gmail.com' %>"
-               placeholder="imap.gmail.com" />
-
-        <label class="ops-label" for="imapPort" style="margin-top:0.75rem;">IMAP port</label>
-        <input id="imapPort" name="imapPort" type="text" class="ops-input mono"
-               value="<%= cfg['SP_IMAP_PORT'] || '993' %>"
-               placeholder="993" />
-
-        <label class="ops-label" for="imapUser" style="margin-top:0.75rem;">IMAP user (email)</label>
-        <input id="imapUser" name="imapUser" type="text" class="ops-input mono"
-               value="<%= cfg['SP_IMAP_USER'] || '' %>"
-               placeholder="inbox@gmail.com" />
-
-        <label class="ops-label" for="imapPassword" style="margin-top:0.75rem;">IMAP password</label>
-        <input id="imapPassword" name="imapPassword" type="password" class="ops-input mono"
-               value="<%= maskedImapPwd %>"
-               placeholder="App password" autocomplete="new-password" />
-        <p class="sp-hint">Gmail: use an App Password (16 chars, no spaces).</p>
+        <div class="ops-compact-fields" style="margin-top:0.5rem;">
+          <div class="ops-field">
+            <label class="ops-label" for="imapHost">IMAP host</label>
+            <input id="imapHost" name="imapHost" type="text" class="ops-input mono"
+                   value="<%= cfg['SP_IMAP_HOST'] || 'imap.gmail.com' %>"
+                   placeholder="imap.gmail.com" />
+          </div>
+          <div class="ops-field">
+            <label class="ops-label" for="imapPort">IMAP port</label>
+            <input id="imapPort" name="imapPort" type="text" class="ops-input mono"
+                   value="<%= cfg['SP_IMAP_PORT'] || '993' %>"
+                   placeholder="993" />
+          </div>
+          <div class="ops-field ops-field-wide">
+            <label class="ops-label" for="imapUser">IMAP user (email)</label>
+            <input id="imapUser" name="imapUser" type="text" class="ops-input mono"
+                   value="<%= cfg['SP_IMAP_USER'] || '' %>"
+                   placeholder="inbox@gmail.com" />
+          </div>
+          <div class="ops-field ops-field-wide">
+            <label class="ops-label" for="imapPassword">IMAP password</label>
+            <input id="imapPassword" name="imapPassword" type="password" class="ops-input mono"
+                   value="<%= maskedImapPwd %>"
+                   placeholder="App password" autocomplete="new-password" />
+            <p class="sp-hint">Gmail: use an App Password (16 chars, no spaces).</p>
+          </div>
+        </div>
       </section>
 
       <section class="sp-section">
         <h2>AI Enrichment</h2>
         <p class="sp-hint" style="margin-top:0;">DeepSeek fills empty cells and enriches property/lead data.</p>
 
-        <label class="ops-label" for="deepseekKey">DeepSeek API key</label>
-        <input id="deepseekKey" name="deepseekKey" type="password" class="ops-input mono"
-               value="<%= maskedDeepseek %>"
-               placeholder="sk-..." autocomplete="new-password" />
-
-        <label class="ops-label" for="pollInterval" style="margin-top:0.75rem;">Poll interval (seconds)</label>
-        <input id="pollInterval" name="pollInterval" type="text" class="ops-input mono"
-               value="<%= cfg['SP_POLL_INTERVAL'] || '120' %>"
-               placeholder="120" />
-        <p class="sp-hint">How often the worker checks for new emails. Default: 120 (2 minutes).</p>
+        <div class="ops-compact-fields" style="margin-top:0.5rem;">
+          <div class="ops-field ops-field-wide">
+            <label class="ops-label" for="deepseekKey">DeepSeek API key</label>
+            <input id="deepseekKey" name="deepseekKey" type="password" class="ops-input mono"
+                   value="<%= maskedDeepseek %>"
+                   placeholder="sk-..." autocomplete="new-password" />
+          </div>
+          <div class="ops-field">
+            <label class="ops-label" for="pollInterval">Poll interval (seconds)</label>
+            <input id="pollInterval" name="pollInterval" type="text" class="ops-input mono"
+                   value="<%= cfg['SP_POLL_INTERVAL'] || '120' %>"
+                   placeholder="120" />
+            <p class="sp-hint">How often the worker checks for new emails. Default: 120 (2 minutes).</p>
+          </div>
+        </div>
       </section>
 
       <section class="sp-section sp-full">
@@ -140,10 +155,6 @@
     </div>
 
     <div class="sp-actions">
-      <label style="display:flex;gap:0.5rem;align-items:center;font-size:0.85rem;color:var(--muted);">
-        <input type="checkbox" name="deployEnv" value="1" checked />
-        <span>Write worker .env on save</span>
-      </label>
       <button type="submit" class="ops-btn ops-btn-green">Save</button>
     </div>
 

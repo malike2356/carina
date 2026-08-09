@@ -167,4 +167,24 @@ describe('executeToolCall', () => {
     expect(result).toMatchObject({ ok: true });
     expect(mockTool.execute).toHaveBeenCalled();
   });
+
+  it('injects empty-result guard when a tool returns zero hits', async () => {
+    const mockTool = {
+      name: 'contacts',
+      description: '',
+      parameters: {},
+      execute: vi.fn().mockResolvedValue({ contacts: [], count: 0, query: 'Nobody' }),
+    };
+    vi.doMock('../tools/index.js', () => ({
+      registry: mockRegistry(() => mockTool),
+      getSessionTool: () => undefined,
+    }));
+    const { executeToolCall: exec } = await import('./tool-runner.js');
+    const result = await exec(makeCall('contacts', { action: 'search', query: 'Nobody' }));
+    expect(result).toMatchObject({
+      status: 'empty',
+      code: 'TOOL_EMPTY_RESULT',
+      message: expect.stringContaining('zero results'),
+    });
+  });
 });

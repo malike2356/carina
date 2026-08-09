@@ -215,7 +215,7 @@ export function AivaMarketplaceClient() {
       />
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {error ? (
-          <div className="mb-4 rounded-lg border border-red-400/40 px-3 py-2 text-xs text-red-300">{error}</div>
+          <div className="mb-4 rounded-lg border border-red-400/40 px-3 py-2 text-xs text-red-800 dark:text-red-300">{error}</div>
         ) : null}
         <div className="space-y-4">
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-elevated p-4">

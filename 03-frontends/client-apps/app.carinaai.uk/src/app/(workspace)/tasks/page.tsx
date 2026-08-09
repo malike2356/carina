@@ -93,8 +93,12 @@ function formatDate(value: string | null) {
 }
 
 function statusClass(status: TaskStatus | TaskRunStatus) {
-  if (status === 'active' || status === 'completed') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
-  if (status === 'paused' || status === 'running') return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+  if (status === 'active' || status === 'completed') {
+    return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300';
+  }
+  if (status === 'paused' || status === 'running') {
+    return 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300';
+  }
   return 'border-border bg-elevated text-text-muted';
 }
 

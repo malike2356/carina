@@ -81,13 +81,13 @@ function categoryLabel(category: string): string {
 function tierBadgeClass(tier: string): string {
   switch (tier) {
     case 'cloud':
-      return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+      return 'bg-blue-500/10 text-blue-800 border-blue-500/20 dark:text-blue-300';
     case 'monitor':
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      return 'bg-amber-500/10 text-amber-800 border-amber-500/20 dark:text-amber-300';
     case 'govern':
-      return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+      return 'bg-purple-500/10 text-purple-800 border-purple-500/20 dark:text-purple-300';
     case 'enterprise':
-      return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+      return 'bg-purple-500/10 text-purple-800 border-purple-500/20 dark:text-purple-300';
     default:
       return 'bg-surface border-border text-text-secondary';
   }

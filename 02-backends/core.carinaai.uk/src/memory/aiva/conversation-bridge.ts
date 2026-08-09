@@ -51,9 +51,9 @@ async function listRecentWorkerEpisodicTurns(opts: {
   ];
   if (contactIds.length === 0 && !opts.conversationId) return [];
 
-  // Prefer pinned conv-* sessions. Legacy contact-/channel- session ids flood
-  // the bridge with unrelated history and blow the episodic write rate limit
-  // when hydrated after /clear or /new.
+  // Prefer pinned conv-* sessions. Legacy contact-* session ids without pinning
+  // used to also expand every channel wildcard and flood the bridge with
+  // unrelated history (and blow the episodic write rate limit after /clear).
   const sessionIds = new Set<string>();
   if (opts.conversationId) {
     sessionIds.add(`aiva-${opts.workerId}-conv-${opts.conversationId}`);
@@ -81,16 +81,10 @@ async function listRecentWorkerEpisodicTurns(opts: {
   }
 
   // Legacy fallback only when no pinned conversation exists yet.
+  // Exact canonical contact session ids only; channel wildcards caused cross-thread bleed.
   if (sessionIds.size === 0) {
-    const channels = [
-      'web', 'telegram', 'whatsapp', 'email', 'slack', 'discord',
-      'sms', 'voice', 'teams', 'linkedin', 'instagram', 'messenger', 'twitter', 'tiktok',
-    ];
     for (const contactId of contactIds) {
       sessionIds.add(`aiva-${opts.workerId}-contact-${contactId}`);
-      for (const channel of channels) {
-        sessionIds.add(`aiva-${opts.workerId}-${channel}-${contactId}`);
-      }
     }
   }
 

@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 type RouteContext = { params: Promise<{ id: string; attachmentId: string }> };
 type WorkerRow = { id?: string; name?: string; status?: string };
 type GrantRow = { toolSlug?: string; status?: string };
+type AccountGrantRow = { toolSlug?: string; status?: string };
 
 function hasConnectedGmail(grants: GrantRow[]): boolean {
   return grants.some((g) => {
@@ -48,8 +49,12 @@ async function findGmailWorker(workspaceId: string): Promise<string | null> {
     const grantsJson = (await grantsRes.json().catch(() => ({}))) as {
       grants?: GrantRow[];
       data?: GrantRow[];
+      accountGrants?: AccountGrantRow[];
     };
-    const grants = grantsJson.grants ?? grantsJson.data ?? [];
+    const grants = [
+      ...(grantsJson.grants ?? grantsJson.data ?? []),
+      ...(grantsJson.accountGrants ?? []),
+    ];
     if (hasConnectedGmail(grants)) return id;
   }
   return null;
@@ -143,7 +148,7 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 
   const bytes = decodeAttachmentData(json.data.data);
-  return new NextResponse(bytes, {
+  return new NextResponse(new Uint8Array(bytes), {
     status: 200,
     headers: {
       'Content-Type': meta.mimeType || 'application/octet-stream',

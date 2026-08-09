@@ -149,7 +149,7 @@ export function SecurityDashboardClient({ showStubWarning }: { showStubWarning?:
           </p>
         ) : null}
         {data.killSwitchActive ? (
-          <p className="rounded-md bg-red-500/10 px-3 py-1 text-xs font-medium text-red-400">
+          <p className="rounded-md bg-red-500/10 px-3 py-1 text-xs font-medium text-red-800 dark:text-red-300">
             Kill switch active
           </p>
         ) : null}

@@ -1,4 +1,4 @@
-import { listToolGrants } from './spinnable-parity-store.js';
+import { listEffectiveToolGrants } from './aiva-parity-store.js';
 
 const SETUP_ACTION_RE =
   /\b(connect|configure|set\s*up|setup|add|link|integrate|enable|authorize|authenticate|reauthori[sz]e)\b/i;
@@ -122,7 +122,7 @@ export async function buildConversationalIntegrationSetupReply(input: {
   if (targets.length === 0) return null;
 
   const explicitSetup = SETUP_ACTION_RE.test(message);
-  const grants = await listToolGrants(input.workspaceId, input.workerId).catch(() => []);
+  const grants = await listEffectiveToolGrants(input.workspaceId, input.workerId).catch(() => []);
   const grantsBySlug = new Map(grants.map((grant) => [grant.toolSlug, grant]));
 
   const blocked = targets.filter((target) => {

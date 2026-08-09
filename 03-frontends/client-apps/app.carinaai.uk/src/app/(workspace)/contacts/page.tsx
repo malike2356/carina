@@ -20,6 +20,7 @@ import {
   type ContactSourceKind,
 } from '@/components/contacts/ContactDossier';
 import { cn } from '@/lib/utils';
+import { warnTone } from '@/lib/ui-tones';
 
 export type { ContactRow, ContactSourceKind };
 
@@ -518,7 +519,7 @@ export default function ContactsPage() {
       </div>
 
       {googleConfigured === false ? (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200 sm:px-6">
+        <div className={cn('border-b px-4 py-2 text-xs sm:px-6', warnTone.box, warnTone.textMuted)}>
           Google Contacts is not connected.{' '}
           <Link href="/aiva/tools?tool=google-contacts" className="underline underline-offset-2">
             Connect in Tools
@@ -541,7 +542,7 @@ export default function ContactsPage() {
         <div className="border-b border-danger/30 bg-danger/10 px-4 py-2 text-xs text-danger sm:px-6">{error}</div>
       ) : null}
       {notice ? (
-        <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-300 sm:px-6">
+        <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-800 dark:text-emerald-300 sm:px-6">
           {notice}
         </div>
       ) : null}

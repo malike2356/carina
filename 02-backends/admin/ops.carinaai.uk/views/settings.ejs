@@ -117,24 +117,26 @@
       <div class="ops-section-title">Scout control mode</div>
       <p class="ops-section-sub">Monitoring keeps Scout visible without interrupting normal Aiva and Carina usage. Defensive actions can be turned back on here when you are ready.</p>
       <form method="post" action="/settings/scout-control">
-        <div class="ops-field">
-          <label class="ops-label" for="scout-control-mode">Action mode</label>
-          <select id="scout-control-mode" name="mode" class="ops-select">
-            <option value="monitor" <%= scoutControl.mode === 'monitor' ? 'selected' : '' %>>Monitoring only</option>
-            <option value="enforce" <%= scoutControl.mode === 'enforce' ? 'selected' : '' %>>Monitoring plus defensive actions</option>
-          </select>
-        </div>
-        <div class="ops-field">
-          <label class="ops-label" for="scout-alert-minimum">Forward alerts</label>
-          <select id="scout-alert-minimum" name="alertMinimumSeverity" class="ops-select">
-            <option value="critical" <%= scoutControl.alertMinimumSeverity === 'critical' ? 'selected' : '' %>>Critical and breach only</option>
-            <option value="breach" <%= scoutControl.alertMinimumSeverity === 'breach' ? 'selected' : '' %>>Breach only</option>
-            <option value="warning" <%= scoutControl.alertMinimumSeverity === 'warning' ? 'selected' : '' %>>Warning and above</option>
-            <option value="info" <%= scoutControl.alertMinimumSeverity === 'info' ? 'selected' : '' %>>All events</option>
-          </select>
-        </div>
-        <div class="ops-actions">
-          <button type="submit" class="ops-btn ops-btn-green">Save Scout controls</button>
+        <div class="ops-form-grid">
+          <div class="ops-field">
+            <label class="ops-label" for="scout-control-mode">Action mode</label>
+            <select id="scout-control-mode" name="mode" class="ops-select">
+              <option value="monitor" <%= scoutControl.mode === 'monitor' ? 'selected' : '' %>>Monitoring only</option>
+              <option value="enforce" <%= scoutControl.mode === 'enforce' ? 'selected' : '' %>>Monitoring plus defensive actions</option>
+            </select>
+          </div>
+          <div class="ops-field">
+            <label class="ops-label" for="scout-alert-minimum">Forward alerts</label>
+            <select id="scout-alert-minimum" name="alertMinimumSeverity" class="ops-select">
+              <option value="critical" <%= scoutControl.alertMinimumSeverity === 'critical' ? 'selected' : '' %>>Critical and breach only</option>
+              <option value="breach" <%= scoutControl.alertMinimumSeverity === 'breach' ? 'selected' : '' %>>Breach only</option>
+              <option value="warning" <%= scoutControl.alertMinimumSeverity === 'warning' ? 'selected' : '' %>>Warning and above</option>
+              <option value="info" <%= scoutControl.alertMinimumSeverity === 'info' ? 'selected' : '' %>>All events</option>
+            </select>
+          </div>
+          <div class="ops-actions">
+            <button type="submit" class="ops-btn ops-btn-green">Save Scout controls</button>
+          </div>
         </div>
       </form>
 
@@ -155,6 +157,62 @@
       </form>
       <% } %>
     </section>
+
+    <section class="ops-section">
+      <div class="ops-row-head">
+        <div>
+          <div class="ops-section-title">Global email ingestion</div>
+          <p class="ops-status-line <%= globalEmailIngestion.enabled ? 'ok' : 'warn' %>">
+            <%= globalEmailIngestion.enabled ? 'Enabled for all workspaces' : 'Disabled globally' %>
+          </p>
+          <p class="ops-inline-note">Core env: <code class="ops-code"><%= globalEmailIngestion.envPath %></code></p>
+        </div>
+      </div>
+      <p class="ops-section-sub">
+        This controls the core EMAIL_INGESTION_ENABLED flag for every workspace. The core runtime is recreated after save so the change takes effect immediately.
+      </p>
+      <form method="post" action="/settings/email-ingestion-global">
+        <div class="ops-field">
+          <label class="ops-label" for="email-ingestion-global-enabled">Global email ingestion</label>
+          <select id="email-ingestion-global-enabled" name="enabled" class="ops-select">
+            <option value="0" <%= globalEmailIngestion.enabled ? '' : 'selected' %>>Disabled</option>
+            <option value="1" <%= globalEmailIngestion.enabled ? 'selected' : '' %>>Enabled</option>
+          </select>
+        </div>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Save global email flag</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="ops-section">
+      <div class="ops-row-head">
+        <div>
+          <div class="ops-section-title">Email ingestion gate</div>
+          <p class="ops-status-line <%= emailIngestionEnabled ? 'ok' : 'warn' %>">
+            <%= emailIngestionEnabled ? 'Enabled' : 'Disabled' %>
+          </p>
+          <p class="ops-inline-note">Workspace ID: <code class="ops-code"><%= emailIngestionWorkspaceId %></code></p>
+        </div>
+      </div>
+      <p class="ops-section-sub">
+        This is the same core-backed email bridge used by Carina and Aiva. Use it here as the second ops entry point.
+      </p>
+      <form method="post" action="/settings/email-ingestion">
+        <input type="hidden" name="workspaceId" value="<%= emailIngestionWorkspaceId %>">
+        <div class="ops-field">
+          <label class="ops-label" for="email-ingestion-enabled">Email ingestion</label>
+          <select id="email-ingestion-enabled" name="enabled" class="ops-select">
+            <option value="0" <%= emailIngestionEnabled ? '' : 'selected' %>>Disabled</option>
+            <option value="1" <%= emailIngestionEnabled ? 'selected' : '' %>>Enabled</option>
+          </select>
+        </div>
+        <div class="ops-actions">
+          <button type="submit" class="ops-btn ops-btn-green">Save email gate</button>
+        </div>
+      </form>
+    </section>
+
     </div>
 
     <div class="ops-section" style="border-top:1px solid var(--border);">
@@ -295,39 +353,47 @@
       <div class="ops-split" style="margin-top:18px;border-top:1px solid var(--border);">
         <div class="ops-section" data-channel="telegram">
           <div class="ops-section-title">Telegram</div>
-          <div class="ops-field"><label class="ops-label">Bot token</label><input data-field="bot_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Chat ID</label><input data-field="chat_id" type="text" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
-          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <div class="ops-compact-fields">
+            <div class="ops-field ops-field-wide"><label class="ops-label">Bot token</label><input data-field="bot_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Chat ID</label><input data-field="chat_id" type="text" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:12px 0;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
           <button type="button" data-save-channel="telegram" class="ops-btn ops-btn-green">Save Telegram</button>
         </div>
 
         <div class="ops-section" data-channel="email">
           <div class="ops-section-title">Email (Resend)</div>
-          <div class="ops-field"><label class="ops-label">Resend API key</label><input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">To address</label><input data-field="to_address" type="email" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">From address</label><input data-field="from_address" type="email" placeholder="hello@carinaai.uk" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
-          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <div class="ops-compact-fields">
+            <div class="ops-field ops-field-wide"><label class="ops-label">Resend API key</label><input data-field="resend_api_key" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">To address</label><input data-field="to_address" type="email" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">From address</label><input data-field="from_address" type="email" placeholder="hello@carinaai.uk" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:12px 0;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
           <button type="button" data-save-channel="email" class="ops-btn ops-btn-green">Save email</button>
         </div>
 
         <div class="ops-section" data-channel="slack">
           <div class="ops-section-title">Slack</div>
-          <div class="ops-field"><label class="ops-label">Webhook URL</label><input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
-          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <div class="ops-compact-fields">
+            <div class="ops-field ops-field-wide"><label class="ops-label">Webhook URL</label><input data-field="webhook_url" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:12px 0;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
           <button type="button" data-save-channel="slack" class="ops-btn ops-btn-green">Save Slack</button>
         </div>
 
         <div class="ops-section" data-channel="whatsapp">
           <div class="ops-section-title">WhatsApp (Twilio)</div>
-          <div class="ops-field"><label class="ops-label">Account SID</label><input data-field="account_sid" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Auth token</label><input data-field="auth_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">From number</label><input data-field="from_number" type="text" placeholder="whatsapp:+14155238886" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">To number</label><input data-field="to_number" type="text" placeholder="+447700900123" class="ops-input mono" /></div>
-          <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
-          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin-bottom:12px;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
+          <div class="ops-compact-fields">
+            <div class="ops-field"><label class="ops-label">Account SID</label><input data-field="account_sid" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Auth token</label><input data-field="auth_token" type="password" placeholder="Leave blank to keep existing" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">From number</label><input data-field="from_number" type="text" placeholder="whatsapp:+14155238886" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">To number</label><input data-field="to_number" type="text" placeholder="+447700900123" class="ops-input mono" /></div>
+            <div class="ops-field"><label class="ops-label">Min severity</label><select data-field="severity_threshold" class="ops-select"><option value="info">info</option><option value="warning">warning</option><option value="critical" selected>critical</option><option value="breach">breach</option></select></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;margin:12px 0;"><input data-field="enabled" type="checkbox" checked /> Enabled</label>
           <button type="button" data-save-channel="whatsapp" class="ops-btn ops-btn-green">Save WhatsApp</button>
         </div>
       </div>

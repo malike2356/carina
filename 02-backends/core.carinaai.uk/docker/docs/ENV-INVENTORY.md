@@ -33,7 +33,7 @@ No secret values in this file. Names only.
 | ANTHROPIC_MODEL | Anthropic model id when primary is anthropic | no | no |
 | DEEPSEEK_MODEL | DeepSeek model id | no | no |
 | AI_WORKERS_ENABLED | `false` disables Aiva routes | no | no |
-| EMAIL_INGESTION_ENABLED | Per-Aiva IMAP connect API, digest storage, and poll cron (all workspaces) | no | no |
+| EMAIL_INGESTION_ENABLED | Per-Aiva IMAP connect API, digest storage, and poll cron. Global override; tenant config can still gate specific workspaces | no | no |
 | EMAIL_INGESTION_PILOT_WORKSPACE_IDS | Comma-separated workspace UUIDs for IMAP pilot when global flag is false | no | no |
 | AIVA_EMAIL_POLL_CRON | Cron for Carina IMAP poll (Europe/London); default every 5 min | no | no |
 | AIVA_EMAIL_POLL_LIMIT | Max unseen messages per worker per poll cycle | no | no |

@@ -187,6 +187,13 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
     const authorize = new URL(`https://${tenantSlug}.${tenantBaseDomain()}/aiva/authorize`);
     authorize.searchParams.set('state', state);
     authorize.searchParams.set('callback', callback);
+    authorize.searchParams.set('scope_bundle', String(req.query.scopeBundle ?? 'operational_crud'));
+    authorize.searchParams.set('aiva_workspace_id', connect.workspaceId);
+    authorize.searchParams.set('aiva_worker_id', connect.workerId);
+    const aivaUserId = String(req.query.aivaUserId ?? '').trim();
+    if (aivaUserId) authorize.searchParams.set('aiva_user_id', aivaUserId);
+    const aivaOrgId = String(req.query.aivaOrgId ?? '').trim();
+    if (aivaOrgId) authorize.searchParams.set('aiva_org_id', aivaOrgId);
     res.redirect(authorize.toString());
   });
 
@@ -227,7 +234,7 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
         redirectToSettings({ propreneur_error: 'exchange_failed' });
         return;
       }
-      const grant = await exchange.json() as { tenant_slug?: string; api_key?: string };
+      const grant = await exchange.json() as { tenant_slug?: string; api_key?: string; grant_id?: string | null };
       const tenantSlug = cleanSlug(grant.tenant_slug ?? payload.tenantSlug);
       const apiKey = String(grant.api_key ?? '').trim();
       if (!tenantSlug || !apiKey) {
@@ -245,6 +252,7 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
         propreneur_ok: '1',
         propreneur_slug: result.tenantSlug,
         propreneur_props: String(result.propertyCount),
+        ...(grant.grant_id ? { propreneur_grant_id: String(grant.grant_id) } : {}),
       });
     } catch (err) {
       console.warn('[propreneur-oauth] callback failed:', err);

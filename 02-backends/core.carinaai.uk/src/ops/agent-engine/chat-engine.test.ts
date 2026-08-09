@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   invokeKeprixAgentRun,
+  messageNeedsCarinaNativeTools,
   resolveEngineName,
   resolveKeprixProductForChat,
   resolveWorkspaceIdForChat,
@@ -86,6 +87,14 @@ describe('agent-engine chat routing (CAS-06)', () => {
     delete process.env.CARINA_FORCE_CARINA_ENGINE;
     process.env.CARINA_KEPRIX_CHAT_PRIMARY = 'false';
     expect(shouldRouteChatThroughKeprix('ws_keprix')).toBe(false);
+  });
+
+  it('flags lead/CRM/Companies House asks for Carina native tools', () => {
+    expect(messageNeedsCarinaNativeTools(
+      'find me 10 businesses in Portsmouth and save leads to CRM',
+    )).toBe(true);
+    expect(messageNeedsCarinaNativeTools('search Companies House for bakeries')).toBe(true);
+    expect(messageNeedsCarinaNativeTools('hi, how are you?')).toBe(false);
   });
 
   it('invokeKeprixAgentRun fails closed without token', async () => {

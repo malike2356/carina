@@ -42,7 +42,7 @@ describe('web-search-provider', () => {
       }),
     );
     const { resolveSearchProvider } = await import('./web-search-provider.js');
-    expect(resolveSearchProvider()).toBe('searxng');
+    expect(await resolveSearchProvider()).toBe('searxng');
   });
 
   it('prefers Tavily in auto mode when both keys exist and no SearXNG', async () => {
@@ -53,7 +53,7 @@ describe('web-search-provider', () => {
       }),
     );
     const { resolveSearchProvider } = await import('./web-search-provider.js');
-    expect(resolveSearchProvider()).toBe('tavily');
+    expect(await resolveSearchProvider()).toBe('tavily');
   });
 
   it('uses Brave in auto mode when only Brave key exists', async () => {
@@ -64,13 +64,13 @@ describe('web-search-provider', () => {
       }),
     );
     const { resolveSearchProvider } = await import('./web-search-provider.js');
-    expect(resolveSearchProvider()).toBe('brave');
+    expect(await resolveSearchProvider()).toBe('brave');
   });
 
   it('throws when no search keys are configured', async () => {
     vi.doMock('../config/index.js', () => mockConfig());
     const { resolveSearchProvider } = await import('./web-search-provider.js');
-    expect(resolveSearchProvider).toThrow(/No search provider configured/);
+    await expect(resolveSearchProvider()).rejects.toThrow(/No search provider configured/);
   });
 
   it('honours SEARCH_PROVIDER=brave even when Tavily key exists', async () => {
@@ -82,7 +82,7 @@ describe('web-search-provider', () => {
       }),
     );
     const { resolveSearchProvider } = await import('./web-search-provider.js');
-    expect(resolveSearchProvider()).toBe('brave');
+    expect(await resolveSearchProvider()).toBe('brave');
   });
 
   it('calls Tavily API with expected payload', async () => {
@@ -169,6 +169,88 @@ describe('web-search-provider', () => {
     const callUrl = (vi.mocked(fetch).mock.calls[0][0] as string);
     expect(callUrl).toContain('http://localhost:8888/search');
     expect(callUrl).toContain('format=json');
+  });
+
+  it('uses the workspace\'s own Tavily key (BYOK) over the global key', async () => {
+    vi.doMock('../config/index.js', () =>
+      mockConfig({
+        tavily: { apiKey: 'global-key', searchDepth: 'basic' },
+        search: { provider: 'tavily' },
+      }),
+    );
+    vi.doMock('../brain/tenant-provider-keys.js', () => ({
+      getTenantProvider: vi.fn(async (tenantId: string, provider: string) =>
+        tenantId === 'ws-1' && provider === 'tavily'
+          ? { provider: 'tavily', apiKey: 'tenant-own-key' }
+          : null,
+      ),
+    }));
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [{ title: 'Hit', url: 'https://example.com', content: 'Snippet' }],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { runWebSearch, resolveSearchProvider } = await import('./web-search-provider.js');
+    expect(await resolveSearchProvider('ws-1')).toBe('tavily');
+    await runWebSearch('UK inflation', 3, 'ws-1');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.tavily.com/search',
+      expect.objectContaining({
+        body: expect.stringContaining('"api_key":"tenant-own-key"'),
+      }),
+    );
+  });
+
+  it('falls back to the global Tavily key when the workspace has no BYOK key saved', async () => {
+    vi.doMock('../config/index.js', () =>
+      mockConfig({
+        tavily: { apiKey: 'global-key', searchDepth: 'basic' },
+        search: { provider: 'tavily' },
+      }),
+    );
+    vi.doMock('../brain/tenant-provider-keys.js', () => ({
+      getTenantProvider: vi.fn(async () => null),
+    }));
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ results: [] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { runWebSearch } = await import('./web-search-provider.js');
+    await runWebSearch('UK inflation', 3, 'ws-no-byok');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.tavily.com/search',
+      expect.objectContaining({
+        body: expect.stringContaining('"api_key":"global-key"'),
+      }),
+    );
+  });
+
+  it('lets a workspace with only its own Tavily BYOK key search, even with no global key configured', async () => {
+    vi.doMock('../config/index.js', () => mockConfig());
+    vi.doMock('../brain/tenant-provider-keys.js', () => ({
+      getTenantProvider: vi.fn(async () => ({ provider: 'tavily', apiKey: 'tenant-only-key' })),
+    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results: [] }) }),
+    );
+
+    const { webSearchTool } = await import('./web-search.js');
+    const { setWorkerSessionContext } = await import('../workers/worker-session-context.js');
+    setWorkerSessionContext('session-byok', {
+      worker: { workspaceId: 'ws-byok-only' },
+    } as never);
+
+    await expect(
+      webSearchTool.execute({ query: 'test', _sessionId: 'session-byok' }),
+    ).resolves.toEqual([]);
   });
 
   it('returns Brave results with count cap', async () => {

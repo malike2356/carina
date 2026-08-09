@@ -1047,6 +1047,7 @@ export async function describeProductToolGrantsForPrompt(
   callableLines.push(
     'Callable Sales engagement (Outreach) tools (Soft Wall kept):',
     '- Discovery: outreach-discovery-plan, outreach-discovery-sheet-schema, outreach-discovery-normalize-leads, outreach-discovery-ingest-leads.',
+    '- Lead research: companies-house-search-companies / companies-house-get-company, then ingest with outreach-discovery-ingest-leads. Respect sector filters (non-tech vs tech). Do not invent companies.',
     '- CRM leads CRUD: outreach-leads-list, outreach-leads-get, outreach-leads-create, outreach-leads-update, outreach-leads-delete, outreach-leads-import, outreach-leads-export.',
     '- Lead sheets: outreach-leads-sheet-create/list/read/sync/push/update/delete, outreach-leads-sheet-link-google; google-sheets-create when Sheets connected.',
     '- Campaigns/sequences/enrollments/lists: outreach-campaigns-*, outreach-sequences-*, outreach-enrollments-*, outreach-lists-*.',

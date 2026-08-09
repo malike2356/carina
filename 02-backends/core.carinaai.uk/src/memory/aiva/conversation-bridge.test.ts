@@ -143,6 +143,37 @@ describe('conversation-bridge', () => {
     expect(bridge.continuationHint).toMatch(/linked channel/);
     const episodicSql = String(vi.mocked(pool.query).mock.calls[1]?.[0] ?? '');
     expect(episodicSql).toMatch(/INTERVAL '4 hours'/);
+    const sessionArg = vi.mocked(pool.query).mock.calls[1]?.[1]?.[0] as string[] | undefined;
+    expect(sessionArg?.sort()).toEqual(['aiva-w-contact-app', 'aiva-w-contact-tg-1'].sort());
+    expect(sessionArg?.some((id) => /-(web|telegram|whatsapp|email)-/.test(id))).toBe(false);
+  });
+
+  it('legacy fallback never expands channel wildcards across contacts', async () => {
+    const { getSessionHistory } = await import('../store.js');
+    const { listEmployeeThreadMessages } = await import('../../aiva/employee-comms.js');
+    const { pool } = await import('../db.js');
+    vi.mocked(getSessionHistory).mockResolvedValue([]);
+    vi.mocked(listEmployeeThreadMessages).mockResolvedValue({ messages: [] } as never);
+    vi.mocked(pool.query)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({
+        rows: [{ role: 'user', content: 'exact contact only' }],
+      } as never);
+
+    const { resolveAivaConversationBridge } = await import('./conversation-bridge.js');
+    await resolveAivaConversationBridge({
+      sessionId: 'aiva-w-web-other',
+      workspaceId: 'ws',
+      workerId: 'w',
+      contactId: 'c1',
+      channel: 'web',
+      linkedContactIds: ['c1', 'c2'],
+    });
+
+    const sessionArg = vi.mocked(pool.query).mock.calls[1]?.[1]?.[0] as string[] | undefined;
+    expect(sessionArg).toHaveLength(2);
+    expect(sessionArg?.every((id) => id.includes('-contact-'))).toBe(true);
+    expect(sessionArg?.some((id) => id.includes('-telegram-') || id.includes('-web-'))).toBe(false);
   });
 
   it('with a pinned conversationId does not fall back to legacy contact-* sessions', async () => {

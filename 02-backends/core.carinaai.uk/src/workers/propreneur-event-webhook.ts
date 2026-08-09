@@ -10,7 +10,18 @@ export interface PropreneurWebhookPayload {
   workerId: string;
   tenantSlug: string;
   tenantId?: string;
+  tenant_id?: string;
+  event_id?: string;
+  eventId?: string;
+  schema_version?: string;
+  schemaVersion?: string;
+  resource_type?: string;
+  resource_id?: string;
+  resource_version?: number;
   occurredAt?: string;
+  occurred_at?: string;
+  correlation_id?: string;
+  correlationId?: string;
   data?: Record<string, unknown>;
 }
 

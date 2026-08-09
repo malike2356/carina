@@ -12,7 +12,7 @@ vi.mock('./features.js', () => ({
 }));
 
 import { pool } from '../../memory/db.js';
-import { assertNotManagerWorkerVaultAccess } from '../spinnable-parity-store.js';
+import { assertNotManagerWorkerVaultAccess } from '../aiva-parity-store.js';
 
 describe('workers-as-managers vault ACL', () => {
   beforeEach(() => {

@@ -8,6 +8,7 @@ import { X } from 'lucide-react';
 import { useProductSurface } from '@/hooks/useProductSurface';
 import type { AivaSubscriptionStatus } from '@/lib/aiva-types';
 import { shouldLoadAivaSubscription } from '@/lib/aiva-subscription-context';
+import { dangerTone, warnTone } from '@/lib/ui-tones';
 import { cn } from '@/lib/utils';
 
 const fetcher = (url: string) =>
@@ -15,26 +16,26 @@ const fetcher = (url: string) =>
 
 const BANNER: Record<number, { bg: string; color: string; text: string; cta: string }> = {
   3: {
-    bg: 'border-b border-amber-500/25 bg-amber-500/10',
-    color: 'text-amber-400',
+    bg: cn('border-b', warnTone.boxSoft),
+    color: warnTone.text,
     text: 'Your Aiva trial ends in 3 days.',
     cta: 'Choose a plan',
   },
   2: {
-    bg: 'border-b border-amber-500/25 bg-amber-500/10',
-    color: 'text-amber-400',
+    bg: cn('border-b', warnTone.boxSoft),
+    color: warnTone.text,
     text: '2 days left on your Aiva trial.',
     cta: 'Choose a plan',
   },
   1: {
-    bg: 'border-b border-red-500/25 bg-red-500/10',
-    color: 'text-red-400',
+    bg: cn('border-b', dangerTone.boxSoft),
+    color: dangerTone.text,
     text: 'Last day of your Aiva trial.',
     cta: 'Choose a plan now',
   },
   0: {
-    bg: 'border-b border-red-500/25 bg-red-500/10',
-    color: 'text-red-400',
+    bg: cn('border-b', dangerTone.boxSoft),
+    color: dangerTone.text,
     text: 'Your trial has ended. Your Aiva is paused.',
     cta: 'Reactivate',
   },

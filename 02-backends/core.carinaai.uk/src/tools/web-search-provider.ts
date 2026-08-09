@@ -1,4 +1,5 @@
 import { config } from '../config/index.js';
+import { getTenantProvider } from '../brain/tenant-provider-keys.js';
 
 export interface WebSearchHit {
   title: string;
@@ -7,6 +8,17 @@ export interface WebSearchHit {
 }
 
 export type SearchProvider = 'brave' | 'tavily' | 'searxng';
+
+/** Workspace's own Tavily key (BYOK), if they've saved one via /byok set tavily or the app vault. */
+async function getTenantTavilyKey(workspaceId?: string): Promise<string | undefined> {
+  if (!workspaceId) return undefined;
+  try {
+    const override = await getTenantProvider(workspaceId, 'tavily');
+    return override?.apiKey || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 interface BraveResult {
   title?: string;
@@ -24,7 +36,8 @@ function clampCount(count: number): number {
   return Math.max(1, Math.min(10, count));
 }
 
-export function resolveSearchProvider(): SearchProvider {
+export async function resolveSearchProvider(workspaceId?: string): Promise<SearchProvider> {
+  if (await getTenantTavilyKey(workspaceId)) return 'tavily';
   const pref = config.search.provider;
   if (pref === 'brave') return 'brave';
   if (pref === 'tavily') return 'tavily';
@@ -46,8 +59,11 @@ export function searchProviderLabel(provider: SearchProvider): string {
 }
 
 /** Runtime blerb for the agent system prompt (never mention Brave unless it is active). */
-export function buildSearchProviderContext(): string {
-  const configured = Boolean(config.searxng.url || config.tavily.apiKey || config.brave.apiKey);
+export async function buildSearchProviderContext(workspaceId?: string): Promise<string> {
+  const tenantTavilyKey = await getTenantTavilyKey(workspaceId);
+  const configured = Boolean(
+    tenantTavilyKey || config.searxng.url || config.tavily.apiKey || config.brave.apiKey,
+  );
   if (!configured) {
     return (
       'Web search is not configured. Set SEARXNG_URL, TAVILY_API_KEY, or BRAVE_SEARCH_API_KEY in .env. ' +
@@ -55,11 +71,17 @@ export function buildSearchProviderContext(): string {
     );
   }
   try {
-    const provider = resolveSearchProvider();
+    const provider = await resolveSearchProvider(workspaceId);
     if (provider === 'searxng') {
       return (
         'Web search is configured (SearXNG self-hosted). Use the web-search tool for any current information lookup. ' +
         'Results include title, url, and snippet from multiple engines.'
+      );
+    }
+    if (tenantTavilyKey) {
+      return (
+        'Web search is available via the web-search tool, using this workspace\'s own Tavily key (BYOK). ' +
+        'When the user asks for live or current web information, call web-search with a query.'
       );
     }
     return (
@@ -104,8 +126,13 @@ export async function searchBrave(query: string, count: number): Promise<WebSear
   }));
 }
 
-export async function searchTavily(query: string, count: number): Promise<WebSearchHit[]> {
-  if (!config.tavily.apiKey) {
+export async function searchTavily(
+  query: string,
+  count: number,
+  apiKeyOverride?: string,
+): Promise<WebSearchHit[]> {
+  const apiKey = apiKeyOverride || config.tavily.apiKey;
+  if (!apiKey) {
     throw new Error('TAVILY_API_KEY not set in .env');
   }
 
@@ -119,7 +146,7 @@ export async function searchTavily(query: string, count: number): Promise<WebSea
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      api_key: config.tavily.apiKey,
+      api_key: apiKey,
       query,
       search_depth: depth,
       max_results: capped,
@@ -164,8 +191,16 @@ export async function searchSearxng(
   }));
 }
 
-export async function runWebSearch(query: string, count: number): Promise<WebSearchHit[]> {
-  const provider = resolveSearchProvider();
+export async function runWebSearch(
+  query: string,
+  count: number,
+  workspaceId?: string,
+): Promise<WebSearchHit[]> {
+  const tenantTavilyKey = await getTenantTavilyKey(workspaceId);
+  if (tenantTavilyKey) {
+    return searchTavily(query, count, tenantTavilyKey);
+  }
+  const provider = await resolveSearchProvider(workspaceId);
   if (provider === 'searxng') {
     const results = await searchSearxng(query, count);
     return results.map((r) => ({

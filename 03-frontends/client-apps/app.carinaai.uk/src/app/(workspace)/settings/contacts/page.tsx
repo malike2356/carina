@@ -88,7 +88,7 @@ export default function ContactsSettingsPage() {
         setResult({
           error:
             data.error
-            ?? (Array.isArray(data.errors) && data.errors[0])
+            ?? (Array.isArray(data.errors) ? data.errors[0] : undefined)
             ?? 'Google sync failed',
         });
       } else if (Array.isArray(data.errors) && data.errors.length > 0 && !data.imported) {

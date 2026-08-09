@@ -362,8 +362,8 @@ export default function OutreachOverviewPage() {
               <span
                 className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ${
                   control.paused
-                    ? 'bg-amber-500/15 text-amber-300'
-                    : 'bg-emerald-500/15 text-emerald-400'
+                    ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+                    : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                 }`}
               >
                 {control.paused ? 'Paused' : 'Active'}

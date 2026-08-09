@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 
 type WorkerRow = { id?: string; name?: string; status?: string };
 type GrantRow = { toolSlug?: string; status?: string };
+type AccountGrantRow = { toolSlug?: string; status?: string };
 
 function hasConnectedGmail(grants: GrantRow[]): boolean {
   return grants.some((g) => {
@@ -76,8 +77,12 @@ export async function POST(request: Request, context: RouteContext) {
       const grantsJson = (await grantsRes.json().catch(() => ({}))) as {
         grants?: GrantRow[];
         data?: GrantRow[];
+        accountGrants?: AccountGrantRow[];
       };
-      const grants = grantsJson.grants ?? grantsJson.data ?? [];
+      const grants = [
+        ...(grantsJson.grants ?? grantsJson.data ?? []),
+        ...(grantsJson.accountGrants ?? []),
+      ];
       if (hasConnectedGmail(grants)) {
         workerId = wid;
         break;

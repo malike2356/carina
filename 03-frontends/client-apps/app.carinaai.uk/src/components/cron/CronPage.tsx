@@ -129,14 +129,16 @@ function schedulePreset(schedule: string): string {
 }
 
 function statusClass(status: JobStatus): string {
-  if (status === 'active') return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
-  if (status === 'paused') return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
+  if (status === 'active') return 'bg-emerald-500/10 text-emerald-800 border-emerald-500/30 dark:text-emerald-300';
+  if (status === 'paused') return 'bg-amber-500/10 text-amber-800 border-amber-500/30 dark:text-amber-300';
   if (status === 'completed') return 'bg-accent/10 text-accent border-accent/30';
   return 'bg-border text-text-muted border-border';
 }
 
 function badgeClass(success: boolean): string {
-  return success ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-danger/10 text-danger border-danger/30';
+  return success
+    ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/30 dark:text-emerald-300'
+    : 'bg-danger/10 text-danger border-danger/30';
 }
 
 function toForm(job: CronJob): CronFormState {

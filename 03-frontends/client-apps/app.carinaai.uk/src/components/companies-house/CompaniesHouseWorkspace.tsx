@@ -28,6 +28,7 @@ import {
   type OfficerAppointmentCompany,
   type OfficerSearchHit,
 } from '@/lib/companies-house-api';
+import { dangerTone, successTone, warnTone } from '@/lib/ui-tones';
 import { cn } from '@/lib/utils';
 
 type SearchMode = 'companies' | 'officers';
@@ -54,9 +55,9 @@ function StatusChip({ status }: { status?: string | null }) {
     <span
       className={cn(
         'inline-flex h-5 items-center rounded-md px-1.5 text-[10px] font-semibold lowercase tracking-wide',
-        tone === 'ok' && 'bg-emerald-500/15 text-emerald-400',
-        tone === 'warn' && 'bg-amber-500/15 text-amber-300',
-        tone === 'bad' && 'bg-red-500/15 text-red-300',
+        tone === 'ok' && successTone.chipSoft,
+        tone === 'warn' && warnTone.chipSoft,
+        tone === 'bad' && dangerTone.chipSoft,
         tone === 'neutral' && 'border border-border text-text-muted',
       )}
     >
@@ -137,7 +138,7 @@ function ProfilePanel({
               </span>
             ) : null}
             {profile.has_been_liquidated ? (
-              <span className="inline-flex h-5 items-center rounded-md bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-300">
+              <span className={cn('inline-flex h-5 items-center rounded-md px-1.5 text-[10px] font-semibold', warnTone.chipSoft)}>
                 Liquidated
               </span>
             ) : null}
@@ -479,8 +480,8 @@ export function CompaniesHouseWorkspace({ embedded = false }: { embedded?: boole
         className={cn(
           'inline-flex h-6 items-center rounded-md border px-2 text-[11px] font-medium',
           configured
-            ? 'border-emerald-500/40 text-emerald-400'
-            : 'border-amber-500/40 text-amber-300',
+            ? 'border-emerald-500/40 text-emerald-700 dark:text-emerald-400'
+            : 'border-amber-500/40 text-amber-800 dark:text-amber-300',
         )}
       >
         {configured ? 'Live registry' : 'Key required'}
@@ -524,13 +525,13 @@ export function CompaniesHouseWorkspace({ embedded = false }: { embedded?: boole
 
       <div className="space-y-4 px-6 py-5">
         {statusError ? (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className={cn('rounded-md px-3 py-2 text-sm', dangerTone.box, dangerTone.text)}>
             {statusError instanceof Error ? statusError.message : 'Could not load integration status'}
           </div>
         ) : null}
 
         {!configured ? (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+          <div className={cn('rounded-md px-3 py-2 text-sm', warnTone.box, warnTone.text)}>
             Add a Companies House API key via{' '}
             <Link href="/aiva/tools?tool=companies-house" className="underline underline-offset-2">
               Tools
@@ -541,9 +542,9 @@ export function CompaniesHouseWorkspace({ embedded = false }: { embedded?: boole
         ) : null}
 
         {error ? (
-          <div className="flex items-start justify-between gap-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className={cn('flex items-start justify-between gap-3 rounded-md px-3 py-2 text-sm', dangerTone.box, dangerTone.text)}>
             <span>{error}</span>
-            <button type="button" onClick={() => setError(null)} className="text-red-200/80 hover:text-red-100">
+            <button type="button" onClick={() => setError(null)} className={cn('opacity-80 hover:opacity-100', dangerTone.accent)}>
               <X className="h-4 w-4" />
             </button>
           </div>

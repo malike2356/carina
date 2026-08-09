@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/Spinner';
+import { warnTone } from '@/lib/ui-tones';
 import { cn } from '@/lib/utils';
 import type { ReactNode } from 'react';
 
@@ -409,14 +410,14 @@ export function ContactDossier({
         {sparse ? (
           <form
             onSubmit={(event) => void saveCompleteStrip(event)}
-            className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4"
+            className={cn('rounded-lg p-4', warnTone.box)}
           >
-            <p className="text-xs font-semibold text-amber-100">Complete this contact</p>
-            <p className="mt-1 text-[11px] text-amber-100/80">
+            <p className={cn('text-xs font-semibold', warnTone.text)}>Complete this contact</p>
+            <p className={cn('mt-1 text-[11px]', warnTone.textMuted)}>
               Add an email and role so Aiva can link emails, meetings, and follow-ups.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <label className="block text-[11px] font-medium text-amber-100/90">
+              <label className={cn('block text-[11px] font-medium', warnTone.textLabel)}>
                 Email
                 <input
                   value={emailDraft}
@@ -425,7 +426,7 @@ export function ContactDossier({
                   className="mt-1 w-full rounded-md border border-border bg-base px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-accent/50"
                 />
               </label>
-              <label className="block text-[11px] font-medium text-amber-100/90">
+              <label className={cn('block text-[11px] font-medium', warnTone.textLabel)}>
                 Role / company
                 <input
                   value={role}
@@ -434,7 +435,7 @@ export function ContactDossier({
                   className="mt-1 w-full rounded-md border border-border bg-base px-2.5 py-1.5 text-sm text-text-primary outline-none focus:border-accent/50"
                 />
               </label>
-              <label className="block text-[11px] font-medium text-amber-100/90">
+              <label className={cn('block text-[11px] font-medium', warnTone.textLabel)}>
                 Tags
                 <input
                   value={tagsText}

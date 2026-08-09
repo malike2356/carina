@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { buildConversationalIntegrationSetupReply } from './conversational-integration-setup.js';
 
-vi.mock('./spinnable-parity-store.js', () => ({
-  listToolGrants: vi.fn(async () => [
+vi.mock('./aiva-parity-store.js', () => ({
+  listEffectiveToolGrants: vi.fn(async () => [
     { toolSlug: 'gmail', status: 'needs_reauth', scopes: ['read'] },
     { toolSlug: 'google-calendar', status: 'connected', scopes: ['read', 'write'] },
     { toolSlug: 'trello', status: 'connected', scopes: ['read', 'write'] },
@@ -44,8 +44,8 @@ describe('buildConversationalIntegrationSetupReply', () => {
   });
 
   it('intercepts calendar use when Calendar is not connected', async () => {
-    const { listToolGrants } = await import('./spinnable-parity-store.js');
-    vi.mocked(listToolGrants).mockResolvedValueOnce([]);
+    const { listEffectiveToolGrants } = await import('./aiva-parity-store.js');
+    vi.mocked(listEffectiveToolGrants).mockResolvedValueOnce([]);
     const reply = await buildConversationalIntegrationSetupReply({
       workspaceId: '11111111-1111-4111-8111-111111111111',
       workerId: 'worker-1',
@@ -83,8 +83,8 @@ describe('buildConversationalIntegrationSetupReply', () => {
   });
 
   it('handles Companies House setup with Developer Hub reference', async () => {
-    const { listToolGrants } = await import('./spinnable-parity-store.js');
-    vi.mocked(listToolGrants).mockResolvedValueOnce([]);
+    const { listEffectiveToolGrants } = await import('./aiva-parity-store.js');
+    vi.mocked(listEffectiveToolGrants).mockResolvedValueOnce([]);
     const reply = await buildConversationalIntegrationSetupReply({
       workspaceId: '11111111-1111-4111-8111-111111111111',
       workerId: 'worker-1',

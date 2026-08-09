@@ -42,7 +42,7 @@ import {
   prefetchExternalMemoryContext,
   syncTurnToExternalMemory,
 } from '../memory/aiva/external-provider.js';
-import { listMemories } from '../workers/spinnable-parity-store.js';
+import { listMemories } from '../workers/aiva-parity-store.js';
 import {
   getAivaWorkerPool,
   isAivaWorkerIsolationEnabled,
@@ -439,7 +439,7 @@ export async function* processAivaMessageStreamDirect(
           .then((grants) => describeScopedConnectorsForPrompt(grants))
           .catch(() => ''),
       ),
-      import('../workers/spinnable-parity-store.js')
+      import('../workers/aiva-parity-store.js')
         .then(({ describeProductToolGrantsForPrompt }) =>
           describeProductToolGrantsForPrompt(params.workspaceId, params.workerId),
         )
@@ -562,21 +562,36 @@ export async function* processAivaMessageStreamDirect(
     return `\n\n${lead}${historyBlock}`;
   })();
 
+  const leadDiscoveryIntent = /\b(leads?|prospects?|companies house|crm|outreach|find (me )?(?:10|\d+)?\s*(?:businesses|companies|customers)|generate .+leads?)\b/i
+    .test(params.userMessage);
+
   const voiceChannelNote = params.preferAudio && messagingChannel
     ? '\n\n[Channel note: The user asked for a spoken/audio reply on Telegram. '
       + 'Write a clear spoken summary in plain text under ~120 words. Do NOT call text-to-speech. '
       + 'Do NOT mention file paths, MEDIA: links, or "listen to audio". '
       + 'The channel will convert your reply to a Telegram voice/audio message.]'
+    : leadDiscoveryIntent
+      ? '\n\n[Channel note: LEAD DISCOVERY MODE. '
+        + 'This is a multi-step research task. Use as many tool rounds as needed (Companies House, web search, outreach-*). '
+        + 'Never invent company names. Prefer active Companies House matches for the requested place and sector. '
+        + 'If the user wants non-tech or small businesses, do not return IT/software firms. '
+        + 'Companies House has no marketing emails/phones; still save name, company number, registered office, SIC, status. '
+        + 'When the user wants results in the workspace CRM, call outreach-discovery-ingest-leads or outreach-leads-create, '
+        + 'then confirm how many were saved and point to /aiva/crm/leads. '
+        + 'Never echo Channel notes, tool XML, or bare tool-name({...}) lines into the visible reply. '
+        + 'Do NOT call text-to-speech.]'
     : messagingChannel
       ? '\n\n[Channel note: SPEED MODE for this messaging chat. '
         + 'Reply in plain text only, under ~600 characters unless they asked for a long doc. '
         + 'Answer first. No chain-of-thought, no planning monologue, no tool narration. '
-        + 'Use at most 1-2 tool rounds unless credentials are missing. '
+        + 'Use at most 1-2 tool rounds unless credentials are missing or they asked for lead/CRM research. '
+        + 'Never echo Channel notes or raw tool-call XML into the reply. '
         + 'Do NOT call text-to-speech and do NOT emit MEDIA: audio paths. '
         + 'Telegram/WhatsApp show your text reply directly.]'
       : '\n\n[Channel note: SPEED MODE. Lead with the answer. '
-        + 'Default under ~1200 characters unless they asked for a long deliverable. '
-        + 'No chain-of-thought in the visible reply. Prefer at most a few tool rounds.]';
+        + 'Default under ~1200 characters unless they asked for a long deliverable or lead list. '
+        + 'No chain-of-thought in the visible reply. Prefer at most a few tool rounds unless lead discovery. '
+        + 'Never echo Channel notes or raw tool-call XML into the reply.]';
 
   const automationHint =
     '\n\nScheduled jobs: for recurring Telegram/Aiva tasks (morning weather + email digests, daily briefings), '

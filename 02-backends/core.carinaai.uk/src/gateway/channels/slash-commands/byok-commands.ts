@@ -34,8 +34,15 @@ export const BYOK_PROVIDER_HINTS = [
   'mistral',
   'together',
   'xai',
+  'tavily',
   'custom',
 ] as const;
+
+/**
+ * Non-LLM providers that share the same tenant_provider_keys BYOK vault but are not
+ * chat/embedding model providers, so they don't appear in provider-registry.ts.
+ */
+const NON_LLM_BYOK_PROVIDERS = new Set(['tavily']);
 
 export function maskApiKey(key: string): string {
   const trimmed = key.trim();
@@ -49,6 +56,7 @@ export function normalizeByokProvider(raw: string): string {
 }
 
 export function isByokEligibleProvider(provider: string): boolean {
+  if (NON_LLM_BYOK_PROVIDERS.has(provider)) return true;
   const def = PROVIDER_MAP[provider];
   if (!def) return false;
   if (!isRoutableProvider(def) && def.status !== 'alias') return false;
@@ -68,7 +76,7 @@ function telegramUserId(msg: ChannelMessage): string | null {
 
 function usageText(): string {
   return [
-    'BYOK (bring your own LLM key) for Carina:',
+    'BYOK (bring your own LLM/search key) for Carina:',
     '',
     '/byok claim              - bind yourself as the only user who can set/clear keys',
     '/byok list               - providers configured (keys never shown)',
@@ -79,6 +87,7 @@ function usageText(): string {
     'Examples:',
     '/byok set deepseek sk-...',
     '/byok set openai sk-... https://api.openai.com/v1 gpt-4o',
+    '/byok set tavily tvly-...   (your own web-search key)',
     '/byok clear openai',
     '',
     'After /byok set, your message with the key is deleted from this chat when possible.',

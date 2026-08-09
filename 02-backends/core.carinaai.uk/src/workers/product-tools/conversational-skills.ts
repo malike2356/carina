@@ -1,6 +1,6 @@
 import { loadDepthFeatures } from './features.js';
 import { proposeWorkerSkill } from './depth-extras.js';
-import { listToolGrants } from '../spinnable-parity-store.js';
+import { listEffectiveToolGrants } from '../aiva-parity-store.js';
 
 function normalizePhrase(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -31,7 +31,7 @@ export async function handleConversationalSaveAsSkill(input: {
   if (!matched) return { handled: false };
 
   const features = loadDepthFeatures();
-  const grants = await listToolGrants(input.workspaceId, input.workerId);
+  const grants = await listEffectiveToolGrants(input.workspaceId, input.workerId);
   const granted = new Set(
     grants.filter((g) => g.status === 'connected').map((g) => g.toolSlug),
   );

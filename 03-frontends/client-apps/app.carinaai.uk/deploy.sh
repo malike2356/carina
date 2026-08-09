@@ -208,8 +208,26 @@ EOF
   log "Public theme CSS: https://app.carinaai.uk/themes/theme-bridge.css -> HTTP ${THEME_HTTP}"
   log "App health: https://app.carinaai.uk/api/health -> HTTP ${APP_HEALTH}"
 
+  log "Verifying carinaai.uk marketing site mount..."
+  ssh "${VPS_USER}@${VPS_HOST}" "cd ${CORE_DIR} && CARINA_MARKETING_AUTO_RELOAD=1 bash docker/scripts/check-carina-marketing.sh"
+
+  MARKETING_HTTP=""
+  for _ in 1 2 3 4 5; do
+    MARKETING_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" https://carinaai.uk/ || true)
+    [[ "${MARKETING_HTTP}" == "200" ]] && break
+    sleep 2
+  done
+  log "Marketing homepage: https://carinaai.uk/ -> HTTP ${MARKETING_HTTP}"
+  if [[ "${MARKETING_HTTP}" != "200" ]]; then
+    log "Attempting marketing nginx self-heal..."
+    ssh "${VPS_USER}@${VPS_HOST}" "cd ${CORE_DIR} && bash docker/scripts/reload-marketing-nginx.sh"
+    MARKETING_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" https://carinaai.uk/ || true)
+  fi
+  [[ "${MARKETING_HTTP}" == "200" ]] || \
+    die "https://carinaai.uk/ is not healthy after cloud deploy (HTTP ${MARKETING_HTTP}). Owner hard rule: never leave marketing broken. Repair: ssh ${VPS_USER}@${VPS_HOST} 'cd ${CORE_DIR} && bash docker/scripts/reload-marketing-nginx.sh'"
+
   if [[ "${THEME_HTTP}" == "200" && "${APP_HEALTH}" == "200" ]]; then
-    log "Deploy complete. Carina Cloud is live at https://app.carinaai.uk (docker carina-cloud)"
+    log "Deploy complete. Carina Cloud is live at https://app.carinaai.uk (docker carina-cloud); carinaai.uk OK"
   else
     die "Docker carina-cloud is not healthy (theme HTTP ${THEME_HTTP}, health HTTP ${APP_HEALTH}). Check: ssh ${VPS_USER}@${VPS_HOST} 'docker compose -f ${CORE_DIR}/docker-compose.prod.yml logs --tail=50 carina-cloud'"
   fi

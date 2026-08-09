@@ -15,6 +15,12 @@ type GrantRow = {
   lastProbeError?: string | null;
   updatedAt?: string | null;
 };
+type AccountGrantRow = {
+  toolSlug?: string;
+  status?: string;
+  updatedAt?: string | null;
+  lastProbeError?: string | null;
+};
 type MailFolder = 'inbox' | 'sent';
 
 function isGmailSlug(slug: string): boolean {
@@ -70,8 +76,12 @@ async function loadWorkerGrants(
   const grantsJson = (await grantsRes.json().catch(() => ({}))) as {
     grants?: GrantRow[];
     data?: GrantRow[];
+    accountGrants?: AccountGrantRow[];
   };
-  return grantsJson.grants ?? grantsJson.data ?? [];
+  return [
+    ...(grantsJson.grants ?? grantsJson.data ?? []),
+    ...(grantsJson.accountGrants ?? []),
+  ];
 }
 
 /** Re-probe Gmail with the existing session (heals after GCP APIs are enabled). */
@@ -252,10 +262,10 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({} as Record<string, unknown>));
   const maxMessages = Math.min(25, Math.max(1, Number(body.limit ?? 15)));
   const preferredWorkerId = String(body.workerId ?? '').trim();
-  const foldersRaw = Array.isArray(body.folders) ? body.folders : ['inbox', 'sent'];
+  const foldersRaw = (Array.isArray(body.folders) ? body.folders : ['inbox', 'sent']) as unknown[];
   const folders = foldersRaw
-    .map((f) => String(f).trim().toLowerCase())
-    .filter((f): f is MailFolder => f === 'inbox' || f === 'sent');
+    .map((folder) => String(folder).trim().toLowerCase())
+    .filter((folder): folder is MailFolder => folder === 'inbox' || folder === 'sent');
   const foldersToSync: MailFolder[] = folders.length > 0 ? folders : ['inbox', 'sent'];
 
   const workersRes = await proxyAivaRequest(workspace.id, '/api/aiva/workers', { method: 'GET' });
@@ -346,16 +356,17 @@ export async function POST(request: Request) {
 
   if (!workerId) {
     const sawNeedsReauth = candidates.length > 0;
+    const gmailReconnectPath = '/aiva/tools?tool=gmail';
     return NextResponse.json(
       {
         error:
           healError
           || lastReauthError
           || (sawNeedsReauth
-            ? 'Gmail access expired or was revoked. Reconnect Gmail under Tools, then Sync again.'
+            ? 'Gmail access expired or was revoked. Use Reconnect Gmail in Tools, then Sync again.'
             : 'No worker with connected Gmail. Connect Gmail under Tools first.'),
         code: sawNeedsReauth ? 'gmail_needs_reauth' : 'gmail_not_connected',
-        reconnectPath: '/aiva/tools',
+        reconnectPath: gmailReconnectPath,
       },
       { status: 400 },
     );
@@ -392,7 +403,7 @@ export async function POST(request: Request) {
         code: /expired|revoked|unauthorized_client|API is not enabled|reconnect/i.test(errors.join(' '))
           ? 'gmail_needs_reauth'
           : 'gmail_sync_failed',
-        reconnectPath: '/aiva/tools',
+        reconnectPath: '/aiva/tools?tool=gmail',
       },
       { status: 400 },
     );

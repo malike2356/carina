@@ -23,6 +23,15 @@ const LEARNING_NOTICE_RE =
   /\n?\(?\s*noted your correction[^\n)]*\)?\s*/gi;
 const LEARNING_PAREN_RE =
   /\n?\((?:saved approach|refined skill|updated your preference|learned your preference|kept skill|indexed work summary)[^)]*\)\s*/gi;
+/** Mid-line or block Channel notes the model sometimes echoes into the reply. */
+const CHANNEL_NOTE_RE =
+  /\s*\[Channel note:[^\]]*\]/gi;
+/** Gemini/GSX-style leaked tool-call XML wrappers. */
+const GSX_TOOL_CALL_RE =
+  /<\/?gsx:tool-call-[a-f0-9]+>\s*/gi;
+/** Bare tool invocation lines (name + JSON args) that never got executed as structured calls. */
+const BARE_TOOL_INVOKE_LINE_RE =
+  /^[ \t]*[a-z][a-z0-9_-]{2,80}\(\{[\s\S]*?\}\)[ \t]*$/gim;
 
 export function sanitizeAivaUserFacingReply(raw: string): string {
   let text = String(raw ?? '').replace(/\r\n/g, '\n');
@@ -37,6 +46,9 @@ export function sanitizeAivaUserFacingReply(raw: string): string {
   text = text.replace(CALLED_TOOLS_RE, '');
   text = text.replace(LEARNING_NOTICE_RE, '');
   text = text.replace(LEARNING_PAREN_RE, '');
+  text = text.replace(CHANNEL_NOTE_RE, '');
+  text = text.replace(GSX_TOOL_CALL_RE, '');
+  text = text.replace(BARE_TOOL_INVOKE_LINE_RE, '');
 
   // Drop orphaned JSON dumps that sometimes trail a short prose answer.
   text = text.replace(/\n\{[\s\S]{80,}\}\s*$/g, (block) => {

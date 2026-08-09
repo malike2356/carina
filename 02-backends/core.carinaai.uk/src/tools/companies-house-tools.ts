@@ -1,6 +1,6 @@
 import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
-import { workerHasToolGrant } from '../workers/spinnable-parity-store.js';
+import { workerHasToolGrant } from '../workers/aiva-parity-store.js';
 import {
   CompaniesHouseAuthError,
   CompaniesHouseNotFoundError,

@@ -1,3 +1,6 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   emailIngestionPilotWorkspaceIds,
@@ -13,6 +16,7 @@ describe('aiva feature flags', () => {
   afterEach(() => {
     process.env = { ...env };
     resetEmailIngestionPilotCache();
+    delete process.env.CARINA_HOME;
   });
 
   it('enables ingestion globally when EMAIL_INGESTION_ENABLED=true', () => {
@@ -41,5 +45,23 @@ describe('aiva feature flags', () => {
     resetEmailIngestionPilotCache();
     expect(isEmailIngestionActive()).toBe(false);
     expect(isEmailIngestionEnabledForWorkspace('ws-1')).toBe(false);
+  });
+
+  it('enables ingestion for a workspace when tenant config gate is on', () => {
+    const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'carina-email-gate-'));
+    process.env.CARINA_HOME = tmpHome;
+    process.env.EMAIL_INGESTION_ENABLED = 'false';
+    delete process.env.EMAIL_INGESTION_PILOT_WORKSPACE_IDS;
+    fs.mkdirSync(path.join(tmpHome, 'tenant-config'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpHome, 'tenant-config', 'ws-tenant.json'),
+      JSON.stringify({ tenantId: 'ws-tenant', emailIngestionEnabled: true }, null, 2),
+      'utf-8',
+    );
+    resetEmailIngestionPilotCache();
+    expect(isEmailIngestionActive()).toBe(true);
+    expect(isEmailIngestionEnabledForWorkspace('ws-tenant')).toBe(true);
+    expect(isEmailIngestionEnabledForWorkspace('ws-other')).toBe(false);
+    fs.rmSync(tmpHome, { recursive: true, force: true });
   });
 });

@@ -72,8 +72,10 @@ def _extract_attachments(msg: email.message.Message) -> list[str]:
         filename = part.get_filename()
         if filename and any(filename.lower().endswith(ext) for ext in SPREADSHEET_EXTS):
             data = part.get_payload(decode=True)
-            tmp = os.path.join(tempfile.gettempdir(), f'aiva-{filename}')
-            with open(tmp, 'wb') as f:
+            suffix = os.path.splitext(filename)[1].lower()
+            safe_stem = re.sub(r'[^A-Za-z0-9._-]+', '-', os.path.splitext(filename)[0])[:80]
+            fd, tmp = tempfile.mkstemp(prefix=f'aiva-{safe_stem}-', suffix=suffix)
+            with os.fdopen(fd, 'wb') as f:
                 f.write(data)
             paths.append(tmp)
     return paths
@@ -89,7 +91,7 @@ def _poll_once(imap: imaplib.IMAP4_SSL, state: dict) -> None:
         if uid <= state['last_uid'] or uid in state.get('processed', []):
             continue
 
-        _, data = imap.uid('fetch', uid_bytes, '(RFC822)')
+        _, data = imap.uid('fetch', uid_bytes, '(BODY.PEEK[])')
         msg = email.message_from_bytes(data[0][1])
 
         attachments = _extract_attachments(msg)
@@ -104,9 +106,13 @@ def _poll_once(imap: imaplib.IMAP4_SSL, state: dict) -> None:
         print(f'[monitor] {len(attachments)} file(s) from {sender}: {subject}',
               file=sys.stderr)
 
-        for filepath in attachments:
-            result = process_spreadsheet(filepath, sender, subject, body)
-            if result:
+        succeeded = True
+        try:
+            for filepath in attachments:
+                result = process_spreadsheet(filepath, sender, subject, body)
+                if not result:
+                    succeeded = False
+                    continue
                 reply_with_enriched(
                     to=sender,
                     subject=subject,
@@ -115,9 +121,17 @@ def _poll_once(imap: imaplib.IMAP4_SSL, state: dict) -> None:
                 )
                 print(f'[monitor] replied to {sender} with {os.path.basename(result["path"])}',
                       file=sys.stderr)
+        finally:
+            for filepath in attachments:
+                try:
+                    os.unlink(filepath)
+                except OSError:
+                    pass
 
-        state['processed'] = (state.get('processed', []) + [uid])[-200:]
-        state['last_uid'] = max(state['last_uid'], uid)
+        if succeeded:
+            state['processed'] = (state.get('processed', []) + [uid])[-200:]
+            state['last_uid'] = max(state['last_uid'], uid)
+            imap.uid('store', uid_bytes, '+FLAGS', '(\\Seen)')
 
     _save_state(state)
 

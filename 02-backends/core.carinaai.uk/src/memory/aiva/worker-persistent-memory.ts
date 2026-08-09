@@ -392,7 +392,7 @@ export async function buildWorkerProceduralSkillsSuffix(opts: {
   maxSkills?: number;
 }): Promise<string> {
   try {
-    const { listWorkerSkills } = await import('../../workers/spinnable-parity-store.js');
+    const { listWorkerSkills } = await import('../../workers/aiva-parity-store.js');
     const skills = (await listWorkerSkills(opts.workspaceId, opts.workerId))
       .filter((s) => s.status === 'active')
       .slice(0, Math.min(Math.max(opts.maxSkills ?? 8, 1), 16));

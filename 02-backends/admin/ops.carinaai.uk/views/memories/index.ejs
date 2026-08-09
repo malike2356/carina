@@ -1,29 +1,63 @@
 <% title = 'Memories' %>
 <div class="ops-page">
-<div class="ops-page-head"><div><div class="ops-page-title">Memories</div>
-  <div class="ops-page-sub">Metadata only. Message plaintext is never shown in Ops (privacy).</div>
-</div></div>
-
-<div class="ops-surface p-3 mb-4 text-sm" style="border-left:3px solid #f59e0b;background:rgba(245,158,11,0.08);">
-  Message bodies stay redacted. Role shows the speaker; Customer and Aiva identify the workspace owner and worker.
+<div class="ops-page-head">
+  <div>
+    <div class="ops-page-title">Memories</div>
+    <div class="ops-page-sub">
+      Metadata only; message bodies stay redacted. Role is the speaker; Customer and Aiva identify owner and worker.
+    </div>
+  </div>
 </div>
 
-<form method="get" class="flex flex-wrap gap-3 mb-4 text-sm">
+<form method="get" class="ops-form-grid memories-filter-grid">
   <input type="hidden" name="sort" value="<%= sortBy %>">
   <input type="hidden" name="dir" value="<%= sortDir %>">
-  <select name="role" class="ops-input">
-    <option value="all" <%= role === 'all' ? 'selected' : '' %>>All roles</option>
-    <option value="user" <%= role === 'user' ? 'selected' : '' %>>User</option>
-    <option value="assistant" <%= role === 'assistant' ? 'selected' : '' %>>Assistant</option>
-    <option value="system" <%= role === 'system' ? 'selected' : '' %>>System</option>
-  </select>
-  <input type="text" name="customer" value="<%= customerFilter || '' %>" placeholder="Customer name or email..."
-         class="ops-input min-w-[180px]">
-  <input type="text" name="aiva" value="<%= aivaFilter || '' %>" placeholder="Aiva name..."
-         class="ops-input min-w-[140px]">
-  <input type="text" name="session" value="<%= sessionFilter %>" placeholder="Session ID filter..."
-         class="ops-input min-w-[180px]">
-  <button type="submit" class="ops-btn ops-btn-green">Filter</button>
+  <div class="ops-field" style="margin:0;">
+    <label class="ops-field-label" for="memories-role">Role</label>
+    <select id="memories-role" name="role" class="ops-select">
+      <option value="all" <%= role === 'all' ? 'selected' : '' %>>All roles</option>
+      <option value="user" <%= role === 'user' ? 'selected' : '' %>>User</option>
+      <option value="assistant" <%= role === 'assistant' ? 'selected' : '' %>>Assistant</option>
+      <option value="system" <%= role === 'system' ? 'selected' : '' %>>System</option>
+    </select>
+  </div>
+  <div class="ops-field" style="margin:0;">
+    <label class="ops-field-label" for="memories-customer">Customer</label>
+    <input
+      id="memories-customer"
+      type="text"
+      name="customer"
+      value="<%= customerFilter || '' %>"
+      placeholder="Name or email..."
+      class="ops-input"
+    >
+  </div>
+  <div class="ops-field" style="margin:0;">
+    <label class="ops-field-label" for="memories-aiva">Aiva</label>
+    <input
+      id="memories-aiva"
+      type="text"
+      name="aiva"
+      value="<%= aivaFilter || '' %>"
+      placeholder="Worker name..."
+      class="ops-input"
+    >
+  </div>
+  <div class="ops-field" style="margin:0;">
+    <label class="ops-field-label" for="memories-session">Session</label>
+    <input
+      id="memories-session"
+      type="text"
+      name="session"
+      value="<%= sessionFilter %>"
+      placeholder="Session ID..."
+      class="ops-input"
+    >
+  </div>
+  <div class="ops-field" style="margin:0;">
+    <label class="ops-field-label" for="memories-filter-submit">&nbsp;</label>
+    <button id="memories-filter-submit" type="submit" class="ops-btn ops-btn-green">Filter</button>
+  </div>
 </form>
 
 <div class="ops-surface ops-table-wrap">

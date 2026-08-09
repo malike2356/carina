@@ -11,7 +11,7 @@ Connect SaaS tools once under **Tools** (`/aiva/tools`) as **tool accounts**, or
 
 Reload catalog: `POST /api/aiva/tools/catalog/reload`
 
-ARCH: `aiva-spinnable-depth-ARCH.md`, `aiva-spinnable-maturity-ARCH.md`, `aiva-spinnable-polish-ARCH.md`
+ARCH: `aiva-depth-ARCH.md`, `aiva-maturity-ARCH.md`, `aiva-polish-ARCH.md`
 
 ## Google OAuth (first-class accounts)
 

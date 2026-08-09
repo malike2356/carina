@@ -1,6 +1,6 @@
 import { pool } from '../../memory/db.js';
 import { listWorkers } from '../worker-store.js';
-import { createWorkerSkill, addProjectItem, listProjects, updateProjectStatus } from '../spinnable-parity-store.js';
+import { createWorkerSkill, addProjectItem, listProjects, updateProjectStatus } from '../aiva-parity-store.js';
 import { loadDepthFeatures } from './features.js';
 
 export async function ensureDepthExtrasSchema(): Promise<void> {

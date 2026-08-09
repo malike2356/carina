@@ -38,6 +38,27 @@ describe('sanitizeAivaUserFacingReply', () => {
     expect(cleaned).not.toContain('Called tools');
     expect(cleaned).not.toContain('noted your correction');
   });
+
+  it('strips mid-line Channel notes and leaked GSX tool-call XML', () => {
+    const cleaned = sanitizeAivaUserFacingReply(
+      [
+        'Need me to draft an outreach email template? [Channel note: SPEED MODE for this messaging chat. Reply in plain text only.]',
+        '',
+        '<gsx:tool-call-98a9e764b3fb4884bb85e7a3c1ef05ad055b6932c5a9c2>',
+        '',
+        'companies-house-search-companies({"q": "IT services Portsmouth"})',
+        '',
+        '</gsx:tool-call-98a9e764b3fb4884bb85e7a3c1ef05ad055b6932c5a9c2>',
+        '',
+        'I am still searching.',
+      ].join('\n'),
+    );
+    expect(cleaned).toContain('Need me to draft an outreach email template?');
+    expect(cleaned).toContain('I am still searching.');
+    expect(cleaned).not.toContain('Channel note');
+    expect(cleaned).not.toContain('gsx:tool-call');
+    expect(cleaned).not.toContain('companies-house-search-companies');
+  });
 });
 
 describe('aivaEmptyReplyFallback', () => {

@@ -6,6 +6,7 @@ import {
   buildWorkerIdentityOverride,
   publicWorkerName,
   SUB_AGENT_AUTONOMY_BLOCK,
+  ZERO_HALLUCINATION_PROTOCOL_BLOCK,
   withWorkerIdentityOverride,
 } from './persona-builder.js';
 import { ROLE_TEMPLATES } from './role-templates.js';
@@ -19,6 +20,7 @@ describe('persona-builder', () => {
     expect(prompt).toContain('You are NOT Carina.');
     expect(prompt).toContain(template.personaBlocks.role);
     expect(prompt).toContain(SUB_AGENT_AUTONOMY_BLOCK);
+    expect(prompt).toContain(ZERO_HALLUCINATION_PROTOCOL_BLOCK);
     expect(prompt).toContain('[ESCALATE]');
     expect(prompt).toContain('Focus on Block C tenants.');
   });
@@ -28,6 +30,7 @@ describe('persona-builder', () => {
     expect(prompt).toContain('Your name is Sam.');
     expect(prompt).toContain('Handle vendor invoices.');
     expect(prompt).toContain(SUB_AGENT_AUTONOMY_BLOCK);
+    expect(prompt).toContain(ZERO_HALLUCINATION_PROTOCOL_BLOCK);
     expect(prompt).toContain('[ESCALATE]');
     expect(prompt).toContain('You are NOT Carina.');
   });

@@ -511,7 +511,7 @@ export default function NotesPage() {
       </div>
 
       {actionError ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800 dark:text-red-300">
           {actionError}
         </p>
       ) : null}
@@ -851,7 +851,7 @@ export default function NotesPage() {
                         type="button"
                         disabled={busy}
                         onClick={() => void deleteNote(note.id)}
-                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-500/30 px-2 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-50"
+                        className="inline-flex h-8 items-center gap-1 rounded-lg border border-red-500/30 px-2 text-xs text-red-700 hover:bg-red-500/10 disabled:opacity-50 dark:text-red-300"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         Delete

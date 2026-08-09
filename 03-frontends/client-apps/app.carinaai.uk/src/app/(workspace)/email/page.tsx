@@ -61,6 +61,7 @@ interface EmailRow {
 }
 
 const EMAIL_SYNC_STORAGE_KEY = 'aiva.email.lastSyncedAt';
+const GMAIL_RECONNECT_PATH = '/aiva/tools?tool=gmail';
 
 const TABS: Array<{ id: FilterTab; label: string; status?: string; urgency?: string }> = [
   { id: 'inbox', label: 'Inbox', status: 'inbox' },
@@ -198,7 +199,7 @@ export default function EmailPage() {
       void syncNow();
     } else if (fail) {
       setSyncError(`Gmail reconnect failed (${fail}). Try again.`);
-      setSyncReconnectPath('/aiva/tools');
+      setSyncReconnectPath(GMAIL_RECONNECT_PATH);
     }
     router.replace('/email');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on OAuth return
@@ -281,7 +282,7 @@ export default function EmailPage() {
       window.location.href = data.authUrl;
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : 'Could not reconnect Gmail');
-      setSyncReconnectPath('/aiva/tools');
+      setSyncReconnectPath(GMAIL_RECONNECT_PATH);
       setReconnecting(false);
     }
   }
@@ -328,7 +329,7 @@ export default function EmailPage() {
           typeof data.code === 'string'
           && (data.code === 'gmail_needs_reauth' || data.code === 'gmail_not_connected')
         ) {
-          setSyncReconnectPath('/aiva/tools');
+          setSyncReconnectPath(GMAIL_RECONNECT_PATH);
         }
         return;
       }
@@ -506,7 +507,7 @@ export default function EmailPage() {
                   href={syncReconnectPath}
                   className="text-[11px] text-text-muted underline-offset-2 hover:underline"
                 >
-                  Open Tools
+                  Open Gmail reconnect
                 </Link>
               ) : null}
             </div>
@@ -815,9 +816,9 @@ export default function EmailPage() {
                 >
                   <div className="flex min-w-0 items-center justify-between gap-2">
                     <span className="truncate text-xs font-medium text-text-primary">
-                      {row.status === 'sent' && sanitizeEmailAddress(row.toAddress)
-                        ? `To: ${sanitizeEmailAddress(row.toAddress)}`
-                        : sanitizeEmailAddress(row.fromAddress) || row.fromAddress}
+                      {row.status === 'sent' && sanitizeEmailAddress(row.toAddress ?? '')
+                        ? `To: ${sanitizeEmailAddress(row.toAddress ?? '')}`
+                        : sanitizeEmailAddress(row.fromAddress ?? '') || row.fromAddress}
                     </span>
                     <div className="flex shrink-0 items-center gap-1">
                       {(row.attachments?.length ?? 0) > 0 ? (
@@ -831,7 +832,7 @@ export default function EmailPage() {
                   </div>
                   <p className="truncate text-xs text-text-secondary">{row.subject}</p>
                   <p className="mt-0.5 line-clamp-1 text-[10px] text-text-muted">
-                    {emailPreviewLine(row.bodyPreview, row.bodyFull) || 'No preview'}
+                    {emailPreviewLine(row.bodyPreview ?? '', row.bodyFull ?? null) || 'No preview'}
                   </p>
                 </button>
               ))}
@@ -853,13 +854,13 @@ export default function EmailPage() {
                   </div>
                   <p className="text-xs text-text-muted">From</p>
                   <p className="text-sm text-text-primary">
-                    {sanitizeEmailAddress(selected.fromAddress) || selected.fromAddress}
+                    {sanitizeEmailAddress(selected.fromAddress ?? '') || selected.fromAddress}
                   </p>
-                  {sanitizeEmailAddress(selected.toAddress) ? (
+                  {sanitizeEmailAddress(selected.toAddress ?? '') ? (
                     <>
                       <p className="mt-2 text-xs text-text-muted">To</p>
                       <p className="text-sm text-text-primary">
-                        {sanitizeEmailAddress(selected.toAddress)}
+                        {sanitizeEmailAddress(selected.toAddress ?? '')}
                       </p>
                     </>
                   ) : null}
@@ -906,7 +907,7 @@ export default function EmailPage() {
                     </div>
                   ) : null}
                   <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-text-secondary">
-                    {emailBodyForDisplay(selected.bodyFull || selected.bodyPreview) || '(empty body)'}
+                    {emailBodyForDisplay(selected.bodyFull ?? selected.bodyPreview ?? '') || '(empty body)'}
                   </div>
                 </div>
 

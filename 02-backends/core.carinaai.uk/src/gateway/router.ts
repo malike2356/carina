@@ -557,6 +557,7 @@ export class GatewayRouter {
         resolveWorkspaceIdForChat,
         resolveKeprixProductForChat,
         shouldRouteChatThroughKeprix,
+        messageNeedsCarinaNativeTools,
         streamKeprixAgentRun,
       } = await import('../ops/agent-engine/chat-engine.js');
       const workspaceId = resolveWorkspaceIdForChat({
@@ -564,7 +565,11 @@ export class GatewayRouter {
         sessionId: message.sessionId,
         clientSessionId: message.clientSessionId,
       });
-      if (shouldRouteChatThroughKeprix(workspaceId)) {
+      // Keprix primary is text-only today (empty tools). Use Carina for tool-backed asks.
+      const useKeprix =
+        shouldRouteChatThroughKeprix(workspaceId)
+        && !messageNeedsCarinaNativeTools(content);
+      if (useKeprix) {
         const product = resolveKeprixProductForChat({
           workerPresent: Boolean(workerCtx),
           sessionId: message.sessionId,

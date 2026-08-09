@@ -8,10 +8,15 @@
   <a href="/skills/new" class="ops-btn ops-btn-green text-sm">New skill</a>
 </div>
 
-<form method="get" class="flex flex-wrap gap-3 mb-4 text-sm">
-  <input type="search" name="q" value="<%= search %>" placeholder="Search name or description..."
-         class="ops-input min-w-[240px]" style="flex:1;">
-  <select name="limit" class="ops-input">
+<form method="get" class="ops-filter-bar">
+  <input
+    type="search"
+    name="q"
+    value="<%= search %>"
+    placeholder="Search name or description..."
+    class="ops-input ops-input--grow"
+  >
+  <select name="limit" class="ops-select" style="min-width:110px;">
     <% [25, 50, 100].forEach(function (n) { %>
       <option value="<%= n %>" <%= pageSize === n ? 'selected' : '' %>><%= n %> / page</option>
     <% }) %>

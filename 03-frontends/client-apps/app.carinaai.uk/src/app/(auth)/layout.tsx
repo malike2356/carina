@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             </p>
           </div>
           <ul className="auth-split-trust">
-            <li>15-day free trial</li>
+            <li>30-day free trial</li>
             <li>No card required</li>
             <li>Cancel any time</li>
           </ul>

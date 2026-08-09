@@ -84,7 +84,7 @@ spreadsheetProcessorRouter.post('/save', async (req, res) => {
       maskedImapPwd: maskSecretValue((await loadSpConfig())['SP_IMAP_PASSWORD'] || ''),
       maskedDeepseek: maskSecretValue((await loadSpConfig())['SP_DEEPSEEK_API_KEY'] || ''),
       saved: true,
-      deployed: body.deployEnv === '1',
+      deployed: false,
       errMsg: '',
     });
   } catch (err) {

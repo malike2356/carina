@@ -17,10 +17,10 @@ type CanvasWorker = {
 };
 
 function statusTone(status: string): string {
-  if (status === 'active') return 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/25';
-  if (status === 'configuring') return 'bg-sky-500/15 text-sky-300 ring-sky-400/25';
+  if (status === 'active') return 'bg-emerald-500/15 text-emerald-800 ring-emerald-400/25 dark:text-emerald-300';
+  if (status === 'configuring') return 'bg-sky-500/15 text-sky-800 ring-sky-400/25 dark:text-sky-300';
   if (status === 'paused') return 'bg-white/10 text-text-muted ring-white/15';
-  if (status === 'error') return 'bg-red-500/15 text-red-300 ring-red-400/25';
+  if (status === 'error') return 'bg-red-500/15 text-red-800 ring-red-400/25 dark:text-red-300';
   return 'bg-white/10 text-text-secondary ring-white/15';
 }
 

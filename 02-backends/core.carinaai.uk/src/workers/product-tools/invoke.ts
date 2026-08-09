@@ -9,7 +9,7 @@ import {
 } from './http-driver.js';
 import { invokeGoogleAction } from './google-driver.js';
 import { getToolSession, markSessionProbe, upsertToolSession } from './sessions.js';
-import { resolveVaultSecret, workerHasToolGrant, upsertToolGrant } from '../spinnable-parity-store.js';
+import { resolveVaultSecret, workerHasToolGrant, upsertToolGrant } from '../aiva-parity-store.js';
 
 export type InvokeProductToolInput = {
   workspaceId: string;
@@ -384,7 +384,7 @@ export async function connectAndProbeTool(input: {
   const scopes = input.scopes?.length ? input.scopes : tool.scopes;
   if (input.credentials && Object.keys(input.credentials).length > 0) {
     if (tool.auth === 'vault' && tool.vaultLabel && input.credentials.value) {
-      const { createVaultSecret } = await import('../spinnable-parity-store.js');
+      const { createVaultSecret } = await import('../aiva-parity-store.js');
       await createVaultSecret({
         workspaceId: input.workspaceId,
         workerId: input.workerId,

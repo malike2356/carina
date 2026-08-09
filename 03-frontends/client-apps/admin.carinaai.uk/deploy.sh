@@ -90,12 +90,12 @@ EOF
   OPS_HTTP=""
   for _ in 1 2 3 4 5 6 7 8 9 10; do
     OPS_HTTP=$(curl -sS -o /dev/null -w "%{http_code}" https://ops.carinaai.uk/login || true)
-    ADMIN_HTTP=$(ssh "${VPS_USER}@${VPS_HOST}" "cd ${CORE_DIR} && docker compose -f docker-compose.prod.yml exec -T carina-web curl -sS -o /dev/null -w '%{http_code}' http://carina-admin:4200/business-inner/api/health" 2>/dev/null || true)
+    ADMIN_HTTP=$(ssh "${VPS_USER}@${VPS_HOST}" "ADMIN_CONTAINER=\$(docker ps --filter label=com.docker.compose.project=corecarinaaiuk --filter label=com.docker.compose.service=carina-admin --format '{{.Names}}' | head -n1); if [[ -n \"\$ADMIN_CONTAINER\" ]]; then docker exec \"\$ADMIN_CONTAINER\" node --input-type=module -e 'const urls = [\"http://127.0.0.1:4200/api/health\", \"http://127.0.0.1:4200/business-inner/api/health\"]; for (const url of urls) { try { const res = await fetch(url); if (res.ok) { console.log(res.status); process.exit(0); } } catch (error) {} } process.exit(1);'; fi" 2>/dev/null || true)
     [[ "${OPS_HTTP}" == "200" && "${ADMIN_HTTP}" == "200" ]] && break
     sleep 3
   done
   log "Ops login: https://ops.carinaai.uk/login -> HTTP ${OPS_HTTP}"
-  log "Admin health (internal): carina-admin:4200/business-inner/api/health -> HTTP ${ADMIN_HTTP}"
+  log "Admin health (internal): docker exec carina-admin api/health -> HTTP ${ADMIN_HTTP}"
 
   if [[ "${OPS_HTTP}" == "200" && "${ADMIN_HTTP}" == "200" ]]; then
     log "Deploy complete. VERLOX Console: https://ops.carinaai.uk (business at /business/customers)"

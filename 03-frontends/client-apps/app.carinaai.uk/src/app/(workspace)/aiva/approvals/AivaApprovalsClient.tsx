@@ -14,11 +14,12 @@ import { EmailApprovalInboxClient } from './EmailApprovalInboxClient';
 import { SocialApprovalInboxClient } from './SocialApprovalInboxClient';
 import { SocialApprovalSettingsPanel } from '@/components/aiva/SocialApprovalSettingsPanel';
 
-type InboxTab = 'email' | 'channels' | 'social';
+type InboxTab = 'email' | 'channels' | 'social' | 'propreneur';
 
 function tabFromSearch(raw: string | null): InboxTab {
   if (raw === 'social') return 'social';
   if (raw === 'channels' || raw === 'messaging') return 'channels';
+  if (raw === 'propreneur') return 'propreneur';
   return 'email';
 }
 
@@ -37,6 +38,7 @@ export function AivaApprovalsClient() {
       { id: 'email', label: 'Email' },
       { id: 'channels', label: 'Channels' },
       { id: 'social', label: 'Social' },
+      { id: 'propreneur', label: 'Propreneur' },
     ],
     [],
   );
@@ -108,12 +110,30 @@ export function AivaApprovalsClient() {
         ? null
         : tab === 'email'
           ? <EmailApprovalInboxClient embedded />
-          : (
-            <SocialApprovalInboxClient
-              embedded
-              channelGroup={tab === 'channels' ? 'messaging' : 'social'}
-            />
-          )}
+          : tab === 'propreneur'
+            ? (
+              <div className="rounded-xl border border-border bg-elevated px-4 py-5 space-y-3">
+                <h2 className="text-sm font-semibold text-text-primary">Propreneur approvals</h2>
+                <p className="text-sm text-text-secondary">
+                  High-risk Propreneur writes are reviewed in the tenant approval inbox (Aiva bridge review).
+                  Use Propreneur control for tenant context and sync health.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href="/aiva/propreneur"
+                    className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm hover:bg-overlay"
+                  >
+                    Open Propreneur control
+                  </Link>
+                </div>
+              </div>
+              )
+            : (
+              <SocialApprovalInboxClient
+                embedded
+                channelGroup={tab === 'channels' ? 'messaging' : 'social'}
+              />
+            )}
     </div>
   );
 }

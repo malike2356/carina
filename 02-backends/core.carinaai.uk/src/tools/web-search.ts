@@ -1,5 +1,12 @@
 import type { Tool } from '../types/index.js';
 import { runWebSearch, searchProviderLabel, resolveSearchProvider } from './web-search-provider.js';
+import { getWorkerSessionContext } from '../workers/worker-session-context.js';
+
+function resolveWorkspaceId(params: Record<string, unknown>): string | undefined {
+  const sessionId = String(params._sessionId ?? '').trim();
+  if (!sessionId) return undefined;
+  return getWorkerSessionContext(sessionId)?.worker.workspaceId?.trim() || undefined;
+}
 
 export const webSearchTool: Tool = {
   name: 'web-search',
@@ -19,8 +26,9 @@ export const webSearchTool: Tool = {
       throw new Error('web-search requires a non-empty query');
     }
     const count = Math.max(1, Math.min(10, Number(params['count'] ?? 5)));
-    resolveSearchProvider();
-    return runWebSearch(query, count);
+    const workspaceId = resolveWorkspaceId(params);
+    await resolveSearchProvider(workspaceId);
+    return runWebSearch(query, count, workspaceId);
   },
 };
 

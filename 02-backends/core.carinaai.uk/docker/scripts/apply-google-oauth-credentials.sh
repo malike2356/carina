@@ -105,6 +105,9 @@ upsert_env "${APP_DIR}/.env" GOOGLE_CLIENT_SECRET "$CLIENT_SECRET"
 # Cloud docker runtime (carina-cloud image env_file)
 upsert_env "${CORE_DIR}/.env.cloud.runtime" GOOGLE_CLIENT_ID "$CLIENT_ID"
 upsert_env "${CORE_DIR}/.env.cloud.runtime" GOOGLE_CLIENT_SECRET "$CLIENT_SECRET"
+# Keep OAuth aliases in lockstep so calendar/login never fall back to a stale personal client.
+upsert_env "${CORE_DIR}/.env.cloud.runtime" GOOGLE_OAUTH_CLIENT_ID "$CLIENT_ID"
+upsert_env "${CORE_DIR}/.env.cloud.runtime" GOOGLE_OAUTH_CLIENT_SECRET "$CLIENT_SECRET"
 
 # Core docker runtime (carina-web: Drive tools + Gmail OAuth)
 upsert_env "${CORE_DIR}/.env.docker.runtime" GOOGLE_CLIENT_ID "$CLIENT_ID"

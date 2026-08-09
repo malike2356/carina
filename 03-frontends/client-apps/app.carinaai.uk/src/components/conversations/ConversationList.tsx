@@ -85,7 +85,7 @@ function ConversationCard({
             {conv.worker.name}
           </span>
           {conv.hasEscalation || conv.status === 'escalated' ? (
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-400">
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] text-amber-800 dark:text-amber-300">
               Escalated
             </span>
           ) : null}

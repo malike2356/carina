@@ -198,7 +198,7 @@ function BillingToggle({
         Annual
       </span>
       {isAnnual ? (
-        <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-400">
+        <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-800 dark:text-green-300">
           Save 33%
         </span>
       ) : null}
@@ -363,10 +363,10 @@ const STATUS_BADGE: Record<
   AivaBillingInvoice['status'],
   { label: string; className: string }
 > = {
-  paid: { label: 'Paid', className: 'bg-green-500/15 text-green-400' },
-  open: { label: 'Open', className: 'bg-amber-500/15 text-amber-400' },
+  paid: { label: 'Paid', className: 'bg-green-500/15 text-green-800 dark:text-green-300' },
+  open: { label: 'Open', className: 'bg-amber-500/15 text-amber-800 dark:text-amber-300' },
   void: { label: 'Void', className: 'bg-overlay text-text-muted' },
-  uncollectible: { label: 'Failed', className: 'bg-red-500/15 text-red-400' },
+  uncollectible: { label: 'Failed', className: 'bg-red-500/15 text-red-800 dark:text-red-300' },
 };
 
 function InvoiceHistory({ invoices }: { invoices: AivaBillingInvoice[] }) {

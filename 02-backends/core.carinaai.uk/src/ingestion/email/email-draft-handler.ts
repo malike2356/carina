@@ -174,7 +174,7 @@ export async function sendApprovedEmail(input: {
   const body = input.modifiedBody ?? existing.draftBody;
 
   let sentVia: 'gmail' | 'resend' = 'resend';
-  const { workerHasToolGrant } = await import('../../workers/spinnable-parity-store.js');
+  const { workerHasToolGrant } = await import('../../workers/aiva-parity-store.js');
   const hasGmail = await workerHasToolGrant(
     input.workspaceId,
     existing.workerId,

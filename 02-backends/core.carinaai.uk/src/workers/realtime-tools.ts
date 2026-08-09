@@ -7,9 +7,9 @@ import {
 } from '../workers/worker-session-context.js';
 import {
   describeProductToolGrantsForPrompt,
-  listToolGrants,
+  listEffectiveToolGrants,
   listVaultSecrets,
-} from '../workers/spinnable-parity-store.js';
+} from '../workers/aiva-parity-store.js';
 import { registerProductToolAdapters } from '../tools/product-tool-adapters.js';
 import { getSessionTool } from '../tools/session-tool-store.js';
 
@@ -84,7 +84,7 @@ export async function listRealtimeToolDefinitions(
       });
     }
 
-    const grants = await listToolGrants(workspaceId, workerId);
+    const grants = await listEffectiveToolGrants(workspaceId, workerId);
     const hasVault = true;
     if (hasVault) {
       tools.push({

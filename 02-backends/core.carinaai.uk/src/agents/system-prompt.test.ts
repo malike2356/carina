@@ -8,6 +8,7 @@ import {
   buildToolPersistenceBlock,
   buildVerificationBlock,
   buildVolatileExecutionChecklist,
+  buildZeroHallucinationProtocolBlock,
   CARINA_BASE_SYSTEM_PROMPT,
 } from './system-prompt.js';
 import { buildTurnDisciplineBlock } from './turn-discipline.js';
@@ -33,6 +34,14 @@ describe('buildExecutionDisciplineBlock', () => {
     expect(block).toContain('Do not claim an action succeeded without a real tool result');
     expect(block).toContain('working artifact backed by real tool output');
     expect(block).toContain('Do not trail off mid-task');
+    expect(block).toContain('ZERO-HALLUCINATION PROTOCOL');
+    expect(block).toContain('I searched and found no matching records.');
+    expect(block).toContain('Never Fabricate');
+  });
+
+  it('exposes the zero-hallucination protocol as its own block', () => {
+    expect(buildZeroHallucinationProtocolBlock()).toContain('Empty Tool Response Rule');
+    expect(buildAntiFabricationBlock()).toContain(buildZeroHallucinationProtocolBlock());
   });
 
   it('requires tool persistence but keeps verification in volatile tier', () => {

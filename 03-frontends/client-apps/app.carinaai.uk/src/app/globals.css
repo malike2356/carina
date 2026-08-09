@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Class + data-attribute dark mode (matches ThemeProvider / theme-runtime).
+   Without this, Tailwind v4 emits bare `dark:*` utilities that always win over
+   light-mode colors (e.g. amber-100 on amber wash on Aiva light). */
+@custom-variant dark (&:where(.dark, .dark *, [data-theme-mode='dark'], [data-theme-mode='dark'] *));
+
 @theme {
   --color-base: var(--background, #0f1117);
   --color-surface: var(--card, #161921);

@@ -974,7 +974,32 @@ main.ops-main {
 }
 
 .ops-filter-bar .ops-field {
+  flex: 0 1 160px;
+  margin: 0;
   min-width: 140px;
+}
+
+.ops-filter-bar > .ops-input,
+.ops-filter-bar > .ops-select,
+.ops-filter-bar .ops-input,
+.ops-filter-bar .ops-select {
+  flex: 0 1 auto;
+  min-width: 120px;
+  width: auto;
+}
+
+.ops-filter-bar > input[type="search"].ops-input,
+.ops-filter-bar > .ops-input[type="search"],
+.ops-filter-bar .ops-input--grow {
+  flex: 1 1 220px;
+  min-width: 200px;
+  width: auto;
+}
+
+.ops-filter-bar > .ops-btn,
+.ops-filter-bar .ops-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .ops-surface-body {
@@ -1262,8 +1287,70 @@ main.ops-main {
   gap: 10px 14px;
 }
 
+.ops-form-grid > .ops-field {
+  margin: 0;
+  min-width: 0;
+}
+
+.ops-form-grid .ops-actions {
+  align-items: end;
+  display: flex;
+  gap: 8px;
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.ops-compact-fields {
+  display: grid;
+  gap: 10px 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ops-compact-fields > .ops-field {
+  margin: 0;
+  min-width: 0;
+}
+
+.ops-compact-fields > .ops-field-wide {
+  grid-column: 1 / -1;
+}
+
+.memories-filter-grid {
+  display: grid !important;
+  grid-template-columns: minmax(120px, 0.9fr) repeat(3, minmax(140px, 1.2fr)) auto !important;
+  gap: 10px 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.memories-filter-grid > .ops-field {
+  margin: 0 !important;
+  min-width: 0;
+}
+
+.memories-filter-grid .ops-input,
+.memories-filter-grid .ops-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.memories-filter-grid .ops-btn {
+  width: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .memories-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 @media (max-width: 640px) {
   .ops-form-grid { grid-template-columns: 1fr; }
+  .ops-compact-fields { grid-template-columns: 1fr; }
+  .memories-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .ops-table-wrap {
@@ -2085,6 +2172,12 @@ code.ops-code {
   margin-bottom: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.ops-filter-bar:not(:has(.ops-filter-btn)) {
+  align-items: flex-end;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 a.ops-filter-btn {
@@ -2953,6 +3046,22 @@ body.ops-app select.ops-model-list {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+.ops-incident-filters > .ops-field {
+  flex: 0 1 160px;
+  margin: 0;
+  min-width: 140px;
+}
+
+.ops-incident-filters .ops-select,
+.ops-incident-filters .ops-input {
+  width: 100%;
+}
+
+.ops-incident-filters > .ops-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .ops-incident-filter-hint {

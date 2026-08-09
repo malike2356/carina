@@ -22,6 +22,8 @@ import {
   aivaHostedEmailRouter,
 } from './api/aiva-hosted-email-api.js';
 import { aivaPropreneurWebhookRouter } from './api/aiva-propreneur-webhook-api.js';
+import { aivaPropreneurSyncHealthRouter } from './api/aiva-propreneur-sync-health-api.js';
+import { aivaPropreneurSessionRouter } from './api/aiva-propreneur-session-api.js';
 import { propreneurHubReplyRouter } from './api/propreneur-hub-reply-api.js';
 import { isAiWorkersEnabled } from './workers/workspace-message-handler.js';
 import { isEmailIngestionActive, isPropreneurBridgeEnabled } from './workers/aiva-feature-flags.js';
@@ -115,6 +117,8 @@ export function mountServerRoutes(app: Express): void {
     app.use('/api/aiva/social/approvals', aivaSocialApprovalRouter);
     app.use('/api/aiva/integrations/n8n', aivaN8nIntegrationRouter);
     app.use('/api/aiva/webhooks', aivaPropreneurWebhookRouter);
+    app.use('/api/aiva', aivaPropreneurSyncHealthRouter);
+    app.use('/api/aiva', aivaPropreneurSessionRouter);
     app.use('/api/aiva/channel-shield', channelShieldRouter);
     app.use('/api/aiva/email-shield', emailShieldAliasRouter);
     app.use('/api/aiva/workspace-ops', workspaceOpsRouter);

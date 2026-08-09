@@ -6,6 +6,7 @@ import {
   getEmailActivity,
   getPortfolio,
 } from '../bridges/propreneur-bridge.js';
+import { buildPropreneurCapabilitySystemNote } from '../tools/propreneur-channel-execution.js';
 
 const cache = new Map<string, { text: string; expiresAt: number }>();
 const TTL_MS = 5 * 60 * 1000;
@@ -47,7 +48,9 @@ export async function buildPortfolioContextSuffix(worker: Worker): Promise<strin
       getEmailActivity(binding, 24),
     ]);
     const emailTotal = Number((emailActivity as { total?: number }).total ?? 0);
-    const text = buildPortfolioContextBlock(formatPortfolioContext(portfolio), emailTotal);
+    const text =
+      buildPortfolioContextBlock(formatPortfolioContext(portfolio), emailTotal) +
+      buildPropreneurCapabilitySystemNote();
     cache.set(worker.id, { text, expiresAt: Date.now() + TTL_MS });
     return text;
   } catch (err) {

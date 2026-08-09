@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 type WorkerRow = { id?: string; name?: string; status?: string };
 type GrantRow = { toolSlug?: string; status?: string };
+type AccountGrantRow = { toolSlug?: string; status?: string };
 
 const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
@@ -101,8 +102,12 @@ export async function POST(request: Request) {
       const grantsJson = (await grantsRes.json().catch(() => ({}))) as {
         grants?: GrantRow[];
         data?: GrantRow[];
+        accountGrants?: AccountGrantRow[];
       };
-      const grants = grantsJson.grants ?? grantsJson.data ?? [];
+      const grants = [
+        ...(grantsJson.grants ?? grantsJson.data ?? []),
+        ...(grantsJson.accountGrants ?? []),
+      ];
       if (hasConnectedGmail(grants)) {
         workerId = id;
         workerName = String(worker.name ?? 'Aiva');

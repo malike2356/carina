@@ -128,6 +128,18 @@ export async function fetchCompaniesHouseStatus(): Promise<CompaniesHouseStatus>
 
 export async function searchCompaniesHouse(
   query: string,
+  opts?: { items_per_page?: number; start_index?: number; mode?: 'companies' },
+): Promise<CompanySearchResult>;
+export async function searchCompaniesHouse(
+  query: string,
+  opts: { items_per_page?: number; start_index?: number; mode: 'officers' },
+): Promise<OfficerSearchResult>;
+export async function searchCompaniesHouse(
+  query: string,
+  opts: { items_per_page?: number; start_index?: number; mode: 'companies' | 'officers' },
+): Promise<CompanySearchResult | OfficerSearchResult>;
+export async function searchCompaniesHouse(
+  query: string,
   opts?: { items_per_page?: number; start_index?: number; mode?: 'companies' | 'officers' },
 ): Promise<CompanySearchResult | OfficerSearchResult> {
   const params = new URLSearchParams({

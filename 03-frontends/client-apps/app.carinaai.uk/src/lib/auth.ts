@@ -12,6 +12,7 @@ import {
   cloudAppHost,
   hasExternalAivaProductDomain,
 } from './product-surface';
+import { resolvePlatformGoogleClient } from './google-oauth-config';
 
 const appUrl = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:4100';
 const cloudOrigin = `https://${cloudAppHost()}`;
@@ -58,14 +59,16 @@ export const auth = betterAuth({
       });
     },
   },
-  socialProviders: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-    ? {
-        google: {
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        },
-      }
-    : {},
+  socialProviders: {
+    google: async () => {
+      const google = await resolvePlatformGoogleClient();
+      return {
+        enabled: Boolean(google),
+        clientId: google?.clientId ?? '',
+        clientSecret: google?.clientSecret ?? '',
+      };
+    },
+  },
   session: {
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
@@ -88,18 +91,18 @@ export const auth = betterAuth({
       },
     },
   },
-  databaseHooks: {
-    user: {
-      create: {
-        after: async (user) => {
-          const workspace = await ensureWorkspaceForUser(user.id, user.name ?? user.email);
-          void provisionCoreAivaTrial(workspace.id, {
-            email: user.email,
-            name: user.name ?? user.email.split('@')[0],
-          });
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            const workspace = await ensureWorkspaceForUser(user.id, user.name ?? user.email);
+            await provisionCoreAivaTrial(workspace.id, {
+              email: user.email,
+              name: user.name ?? user.email.split('@')[0],
+            });
+          },
         },
       },
-    },
   },
   plugins: [nextCookies()],
 });

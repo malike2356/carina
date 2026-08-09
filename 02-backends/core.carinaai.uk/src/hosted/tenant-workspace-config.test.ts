@@ -21,16 +21,20 @@ describe('tenant-workspace-config', () => {
     const config = loadTenantWorkspaceConfig('tenant-a');
     expect(config.tenantId).toBe('tenant-a');
     expect(config.channels.web?.enabled).toBe(true);
+    expect(config.emailIngestionEnabled).toBe(false);
   });
 
-  it('saves skill packs and channels', () => {
+  it('saves skill packs, channels, and email ingestion gate', () => {
     const config = saveTenantWorkspaceConfig('tenant-a', {
       activeSkillPacks: ['finance'],
       channels: { telegram: { enabled: true, botUsername: 'carina_bot' } },
+      emailIngestionEnabled: true,
     });
     expect(config.activeSkillPacks).toEqual(['finance']);
     expect(config.channels.telegram?.enabled).toBe(true);
+    expect(config.emailIngestionEnabled).toBe(true);
     const reloaded = loadTenantWorkspaceConfig('tenant-a');
     expect(reloaded.activeSkillPacks).toEqual(['finance']);
+    expect(reloaded.emailIngestionEnabled).toBe(true);
   });
 });

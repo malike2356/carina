@@ -8,6 +8,7 @@ import { normalizeAppearance } from '@/lib/appearance';
 import { mergeBrandSettings, normalizeBrandConfig, resolveWorkspaceBrand } from '@/lib/brand';
 import { stripPlatformEquivalentBrand } from '@/lib/brand-compat';
 import { normalizeBrainSettings, parseBrainSettingsPatch } from '@/lib/brain-settings';
+import { coreProxyEnabled, resolveCoreProxyToken, resolveCoreUrl } from '@/lib/core-proxy';
 import {
   canUseTerminal,
   isWorkspaceOwner,
@@ -19,6 +20,53 @@ import { getSession, requireWorkspace } from '@/lib/session';
 import { isAivaProductHost } from '@/lib/product-surface';
 
 export const dynamic = 'force-dynamic';
+
+async function readCoreTenantConfig(tenantId: string): Promise<{ emailIngestionEnabled?: boolean } | null> {
+  if (!coreProxyEnabled()) return null;
+  const token = resolveCoreProxyToken();
+  if (!token) return null;
+
+  const coreUrl = resolveCoreUrl().replace(/\/$/, '');
+  try {
+    const response = await fetch(`${coreUrl}/api/ops/tenant-config/${encodeURIComponent(tenantId)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-internal-key': token,
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return null;
+    return (await response.json()) as { emailIngestionEnabled?: boolean };
+  } catch {
+    return null;
+  }
+}
+
+async function saveCoreTenantConfig(
+  tenantId: string,
+  payload: { emailIngestionEnabled?: boolean; actor: string },
+): Promise<boolean> {
+  if (!coreProxyEnabled()) return false;
+  const token = resolveCoreProxyToken();
+  if (!token) return false;
+
+  const coreUrl = resolveCoreUrl().replace(/\/$/, '');
+  try {
+    const response = await fetch(`${coreUrl}/api/ops/tenant-config/${encodeURIComponent(tenantId)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+        'x-internal-key': token,
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 
 export async function GET() {
   const session = await getSession();
@@ -39,6 +87,7 @@ export async function GET() {
     workspaceBrand,
     userColorTokens: settings?.customTheme,
   });
+  const coreTenantConfig = await readCoreTenantConfig(workspace.id);
   const isAivaProduct = isAivaProductHost((await headers()).get('host') ?? '');
   const storedAppearance =
     typeof settings?.appearance === 'object' && settings.appearance !== null
@@ -64,6 +113,8 @@ export async function GET() {
           isOwner: owner,
           canUseTerminal: terminalAllowed,
           members,
+          emailIngestionEnabled: coreTenantConfig?.emailIngestionEnabled ?? false,
+          emailIngestionManagedByCore: coreProxyEnabled(),
         }
       : {
           workspaceId: workspace.id,
@@ -75,6 +126,8 @@ export async function GET() {
           isOwner: owner,
           canUseTerminal: terminalAllowed,
           members,
+          emailIngestionEnabled: coreTenantConfig?.emailIngestionEnabled ?? false,
+          emailIngestionManagedByCore: coreProxyEnabled(),
           ...normalizeBrainSettings(null),
         },
   });
@@ -98,6 +151,7 @@ export async function PATCH(request: Request) {
     memberUserId?: string;
     memberTerminal?: boolean;
     brand?: unknown;
+    emailIngestionEnabled?: boolean;
   };
   const updates: Partial<typeof workspaceSettings.$inferInsert> = { updatedAt: new Date() };
   const brainPatch = parseBrainSettingsPatch(body);
@@ -159,6 +213,18 @@ export async function PATCH(request: Request) {
       current?.brand,
       stripPlatformEquivalentBrand(body.brand, 'hosted'),
     );
+  }
+  if (body.emailIngestionEnabled !== undefined) {
+    const saved = await saveCoreTenantConfig(workspace.id, {
+      emailIngestionEnabled: body.emailIngestionEnabled,
+      actor: session.user.email ?? session.user.id,
+    });
+    if (!saved) {
+      return NextResponse.json(
+        { error: 'Email ingestion is managed by the core bridge and could not be updated.' },
+        { status: 503 },
+      );
+    }
   }
 
   await db

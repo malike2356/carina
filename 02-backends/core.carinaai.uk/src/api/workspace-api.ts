@@ -119,7 +119,7 @@ import { startWorkerPlaybookRun } from '../workers/playbook-run-client.js';
 import { workerPlaybookRouter } from './worker-playbook-api.js';
 import { aivaMarketplaceRouter } from './aiva-marketplace-api.js';
 import { provisioningWizardRouter } from './provisioning-wizard-api.js';
-import { mountSpinnableParityRoutes } from './spinnable-parity-api.js';
+import { mountAivaParityRoutes } from './aiva-parity-api.js';
 import {
   assignEmployeeTask,
   createEmployeeConversation,
@@ -330,7 +330,7 @@ const requireWorkspace = enforceWorkspaceAccess;
 aivaRouter.use('/workers/:id', requireWorkspace, workerPlaybookRouter);
 aivaRouter.use('/marketplace', requireWorkspace, aivaMarketplaceRouter);
 aivaRouter.use('/provision', requireWorkspace, provisioningWizardRouter);
-mountSpinnableParityRoutes(aivaRouter, requireWorkspace);
+mountAivaParityRoutes(aivaRouter, requireWorkspace);
 
 aivaRouter.post('/workers', requireWorkspace, async (req: AivaRequest, res: Response) => {
   try {

@@ -30,7 +30,7 @@ import {
   transferWorker,
   updateProject,
   upsertWhatsAppNumber,
-} from '../workers/spinnable-parity-store.js';
+} from '../workers/aiva-parity-store.js';
 import { getCatalogTool } from '../workers/product-tools/catalog.js';
 import { connectAndProbeTool, invokeProductTool } from '../workers/product-tools/invoke.js';
 import { loadDepthFeatures } from '../workers/product-tools/features.js';
@@ -53,7 +53,7 @@ async function requireWorker(workspaceId: string, workerId: string) {
   return worker;
 }
 
-export function mountSpinnableParityRoutes(
+export function mountAivaParityRoutes(
   aivaRouter: ExpressRouter,
   requireWorkspace: (req: AivaRequest, res: Response, next: NextFunction) => void,
 ): void {
@@ -243,7 +243,7 @@ export function mountSpinnableParityRoutes(
       const actingManager = typeof req.query.actingManagerWorkerId === 'string'
         ? req.query.actingManagerWorkerId
         : undefined;
-      const { assertNotManagerWorkerVaultAccess } = await import('../workers/spinnable-parity-store.js');
+      const { assertNotManagerWorkerVaultAccess } = await import('../workers/aiva-parity-store.js');
       await assertNotManagerWorkerVaultAccess(req.workspaceId!, actingManager, workerId);
       res.json({ secrets: await listVaultSecrets(req.workspaceId!, workerId) });
     } catch (err) {

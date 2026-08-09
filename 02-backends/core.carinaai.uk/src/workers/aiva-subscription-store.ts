@@ -6,11 +6,23 @@ import { pool } from '../memory/db.js';
 import { listWorkers } from './worker-store.js';
 
 export interface AivaSubscriptionRow {
-  workspaceId: string;
-  planTier: string;
-  status: string;
-  trialEndsAt: Date | null;
-  aivaSlotLimit: number;
+    workspaceId: string;
+    planTier: string;
+    status: string;
+    trialEndsAt: Date | null;
+    aivaSlotLimit: number;
+}
+
+export interface TrialGrantStatus {
+    granted: boolean;
+    pence: number;
+}
+
+export interface TrialProvisionResult {
+    trialEndsAt: string;
+    slotLimit: number;
+    walletGrant: TrialGrantStatus;
+    existing: boolean;
 }
 
 function rowToSubscription(row: Record<string, unknown>): AivaSubscriptionRow {
@@ -29,16 +41,19 @@ export async function getSubscription(workspaceId: string): Promise<AivaSubscrip
         return null;
     return rowToSubscription(result.rows[0]);
 }
-export async function provisionTrial(workspaceId: string): Promise<{ trialEndsAt: string; slotLimit: number }> {
+export async function provisionTrial(workspaceId: string): Promise<TrialProvisionResult> {
     const existing = await getSubscription(workspaceId);
     if (existing) {
         // Idempotent: older trials may have missed the wallet grant.
-        await grantAivaTrialCredit(workspaceId).catch((err) => {
+        const walletGrant = await grantAivaTrialCredit(workspaceId).catch((err) => {
             console.warn('[aiva-subscription] trial credit grant failed:', err instanceof Error ? err.message : String(err));
+            return { granted: false, pence: 0 };
         });
         return {
             trialEndsAt: existing.trialEndsAt?.toISOString() ?? '',
             slotLimit: existing.aivaSlotLimit,
+            walletGrant,
+            existing: true,
         };
     }
     // Trial clock starts when the first channel connects (including web chat).
@@ -47,12 +62,15 @@ export async function provisionTrial(workspaceId: string): Promise<{ trialEndsAt
      VALUES ($1, 'trial', 'pending_channel', NULL, 1)
      RETURNING *`, [workspaceId]);
     const row = rowToSubscription(result.rows[0]);
-    await grantAivaTrialCredit(workspaceId).catch((err) => {
+    const walletGrant = await grantAivaTrialCredit(workspaceId).catch((err) => {
         console.warn('[aiva-subscription] trial credit grant failed:', err instanceof Error ? err.message : String(err));
+        return { granted: false, pence: 0 };
     });
     return {
         trialEndsAt: row.trialEndsAt?.toISOString() ?? '',
         slotLimit: row.aivaSlotLimit,
+        walletGrant,
+        existing: false,
     };
 }
 // Called by provision-worker-channels after the first non-web channel connects.

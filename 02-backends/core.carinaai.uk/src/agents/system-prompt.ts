@@ -43,6 +43,15 @@ export function buildToolPersistenceBlock(): string {
   ].join('\n');
 }
 
+export function buildZeroHallucinationProtocolBlock(): string {
+  return [
+    '## MANDATORY TOOL DISCIPLINE & ZERO-HALLUCINATION PROTOCOL',
+    '1. Empty Tool Response Rule: If any tool (Contacts, Google Drive, database search, RAG, or API) returns 0 results, empty arrays, status empty, or failure, you MUST state explicitly: "I searched and found no matching records."',
+    '2. Never Fabricate: Under no circumstances invent contact details, names, phone numbers, transaction amounts, file contents, or prior conversation context when tool output is empty.',
+    '3. Graceful Failure: If a tool errors or returns ambiguous data, stop and ask the user for clarification rather than guessing or continuing with simulated data.',
+  ].join('\n');
+}
+
 export function buildAntiFabricationBlock(): string {
   return loadSystemPromptFileOverlay('anti_fabrication', () => [
     'Anti-fabrication:',
@@ -51,6 +60,8 @@ export function buildAntiFabricationBlock(): string {
     'Reporting a blocker honestly is always better than inventing a result.',
     'Creative writing, drafts, letters, and fictional placeholders for unspecified names or details are allowed when the operator asks for them.',
     'Anti-fabrication is about tool results and real-world actions, not imaginative copy the operator requested.',
+    '',
+    buildZeroHallucinationProtocolBlock(),
     '',
     buildBehaviorProofPolicyBlock(),
   ].join('\n'));
@@ -292,7 +303,7 @@ export async function buildSystemPromptTierParts(opts?: {
 
   const platformContext = buildPlatformKnowledgeContext();
   if (platformContext) context.push(platformContext);
-  const searchContext = buildSearchProviderContext();
+  const searchContext = await buildSearchProviderContext(opts?.tenantId);
   if (searchContext) context.push(searchContext);
   context.push(buildWorkspaceFeaturesContext());
   context.push(buildBlogManagementBlock());

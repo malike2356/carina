@@ -44,6 +44,12 @@ tenantsRouter.use(blockWritesDuringImpersonation);
 const VALID_TABS = ['overview', 'subscription', 'payments', 'usage', 'packs', 'access', 'byok', 'audit'] as const;
 type TenantTab = typeof VALID_TABS[number];
 
+function wantsJson(req: { get(name: string): string | undefined }): boolean {
+  const accept = req.get('accept') ?? '';
+  const xRequestedWith = req.get('x-requested-with') ?? '';
+  return accept.includes('application/json') || xRequestedWith.toLowerCase() === 'fetch';
+}
+
 function flashMessage(query: Record<string, unknown>): { text: string | null; isError: boolean } {
   if (query.ok === 'created') return { text: 'Tenant created successfully.', isError: false };
   if (query.ok === 'tier') return { text: 'Tier updated.', isError: false };
@@ -337,9 +343,17 @@ tenantsRouter.post('/:id/subscription', async (req, res) => {
       action: 'tenant.plan_override',
       details: { plan },
     });
+    if (wantsJson(req)) {
+      res.json({ ok: true, plan, message: 'Subscription plan updated.' });
+      return;
+    }
     res.redirect(`/tenants/${id}?ok=plan&tab=subscription`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (wantsJson(req)) {
+      res.status(500).json({ error: message });
+      return;
+    }
     res.redirect(`/tenants/${id}?err=${encodeURIComponent(message)}&tab=subscription`);
   }
 });
@@ -417,8 +431,16 @@ tenantsRouter.post('/:id/provider-keys', async (req, res) => {
       model?.trim(),
     );
     await logAudit('byok_key_added', { provider: provider.trim() }, req.params.id);
+    if (wantsJson(req)) {
+      res.json({ ok: true, message: 'Provider key saved.' });
+      return;
+    }
     res.redirect(`/tenants/${req.params.id}?tab=byok&ok=key-saved`);
   } catch (err) {
+    if (wantsJson(req)) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
     res.redirect(`/tenants/${req.params.id}?tab=byok&err=${encodeURIComponent(String(err))}`);
   }
 });
@@ -427,8 +449,16 @@ tenantsRouter.post('/:id/provider-keys/:provider/remove', async (req, res) => {
   try {
     await removeProviderKey(req.params.id, req.params.provider);
     await logAudit('byok_key_removed', { provider: req.params.provider }, req.params.id);
+    if (wantsJson(req)) {
+      res.json({ ok: true, message: 'Provider key removed.' });
+      return;
+    }
     res.redirect(`/tenants/${req.params.id}?tab=byok&ok=key-removed`);
   } catch (err) {
+    if (wantsJson(req)) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
     res.redirect(`/tenants/${req.params.id}?tab=byok&err=${encodeURIComponent(String(err))}`);
   }
 });
@@ -437,8 +467,16 @@ tenantsRouter.post('/:id/provider-keys/:provider/toggle', async (req, res) => {
   const enabled = req.body.enabled === 'true';
   try {
     await toggleProviderKey(req.params.id, req.params.provider, enabled);
+    if (wantsJson(req)) {
+      res.json({ ok: true, message: enabled ? 'Provider key enabled.' : 'Provider key disabled.' });
+      return;
+    }
     res.redirect(`/tenants/${req.params.id}?tab=byok&ok=toggled`);
   } catch (err) {
+    if (wantsJson(req)) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
     res.redirect(`/tenants/${req.params.id}?tab=byok&err=${encodeURIComponent(String(err))}`);
   }
 });

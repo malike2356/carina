@@ -37,6 +37,7 @@ import {
   getTrajectoryRecorder,
   truncateTrajectoryResult,
 } from '../agents/trajectory-recorder.js';
+import { guardEmptyToolResult } from './tool-empty-guard.js';
 
 export type ConfirmFn = (
   toolName: string,
@@ -314,11 +315,12 @@ export async function executeToolCall(
       paramsWithSession._confirm = confirm;
     }
     const ttlSeconds = getToolCacheTtlSeconds(call.toolName, call.params);
-    const result = await withTimeout(
+    const rawResult = await withTimeout(
       withCache(call.toolName, call.params, ttlSeconds, () => tool.execute(paramsWithSession)),
       operatorPolicy.timeoutMs,
       call.toolName,
     );
+    const result = guardEmptyToolResult(call.toolName, rawResult);
     const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
     recordToolSequenceStep(sessionId, call.toolName, call.params);
     finalizeJitCredentials(sessionId, call.toolName, call.params);

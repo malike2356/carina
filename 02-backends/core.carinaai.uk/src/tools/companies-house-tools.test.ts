@@ -9,7 +9,7 @@ vi.mock('../workers/worker-session-context.js', () => ({
   getWorkerSessionContext: (...args: unknown[]) => getWorkerSessionContext(...args),
 }));
 
-vi.mock('../workers/spinnable-parity-store.js', () => ({
+vi.mock('../workers/aiva-parity-store.js', () => ({
   workerHasToolGrant: (...args: unknown[]) => workerHasToolGrant(...args),
 }));
 

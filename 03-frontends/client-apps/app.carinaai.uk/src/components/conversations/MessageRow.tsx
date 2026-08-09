@@ -95,14 +95,14 @@ export function MessageRow({
     return (
       <div className="mb-1 flex items-start gap-2">
         <div
-          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-[10px] font-semibold text-amber-400"
+          className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-[10px] font-semibold text-amber-800 dark:text-amber-300"
           aria-hidden
         >
           VA
         </div>
         <div>
           <div className="max-w-[70%] rounded-2xl rounded-tl-sm border border-amber-500/25 bg-amber-500/10 px-4 py-2.5">
-            <p className="mb-0.5 text-[10px] font-medium text-amber-400">VERLOX Team</p>
+            <p className="mb-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-300">VERLOX Team</p>
             <p className="text-sm text-text-secondary whitespace-pre-wrap">{msg.content}</p>
           </div>
           {showTimestamp ? (

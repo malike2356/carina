@@ -12,7 +12,7 @@ const PALETTES = [
 type AivaAvatarProps = {
   name: string;
   className?: string;
-  /** Square avatars match the Spinnable-style worker portrait layout (photo-ready). */
+  /** Square avatars match the Aiva-style worker portrait layout (photo-ready). */
   square?: boolean;
 };
 

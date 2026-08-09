@@ -13,7 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-const PROVIDERS = ['deepseek', 'openai', 'anthropic', 'gemini', 'groq', 'openrouter'];
+const PROVIDERS = ['deepseek', 'openai', 'anthropic', 'gemini', 'groq', 'openrouter', 'tavily'];
 
 export function AddKeyDialog() {
   const [open, setOpen] = useState(false);

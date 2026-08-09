@@ -392,9 +392,31 @@ export async function startTelegram(): Promise<void> {
 
   const useWebhook = Boolean(config.telegram.webhookUrl);
   const bot = new TelegramBot(token, useWebhook ? { polling: false as const } : { polling: true as const });
-  telegramBot = bot as TelegramWebhookBot;
-  const me = await bot.getMe();
-  telegramBotUsername = me.username ?? 'carina';
+  try {
+    const me = await bot.getMe();
+    telegramBot = bot as TelegramWebhookBot;
+    telegramBotUsername = me.username ?? 'carina';
+  } catch (err) {
+    // Invalid/revoked platform TELEGRAM_BOT_TOKEN must not crash carina-core.
+    // Aiva workers keep their own BotFather tokens on webhook routes.
+    try {
+      if (typeof (bot as { stopPolling?: () => void }).stopPolling === 'function') {
+        (bot as { stopPolling: () => void }).stopPolling();
+      }
+    } catch {
+      // ignore
+    }
+    telegramBot = null;
+    telegramBotUsername = '';
+    const detail = err instanceof Error ? err.message : String(err);
+    console.warn(
+      chalk.yellow(
+        `Telegram platform gateway skipped (token rejected: ${detail}). `
+          + 'Aiva worker Telegram bots continue via their own webhooks.',
+      ),
+    );
+    return;
+  }
   const adapter = new TelegramAdapter(true, bot, telegramBotUsername);
   channelRegistry.register(adapter);
 
@@ -419,6 +441,13 @@ export async function startTelegram(): Promise<void> {
     }
     console.log(chalk.gray('Telegram gateway: polling mode'));
   }
+
+  bot.on('polling_error', (err) => {
+    console.warn(
+      chalk.yellow('Telegram platform polling error (non-fatal):'),
+      err instanceof Error ? err.message : String(err),
+    );
+  });
 
   bot.on('message', async (msg) => {
     if (!msg.text || !msg.from) return;

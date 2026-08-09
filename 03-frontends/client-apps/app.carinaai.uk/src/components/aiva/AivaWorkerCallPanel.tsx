@@ -573,14 +573,14 @@ export function AivaWorkerCallPanel({
         <div
           className={cn(
             'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
-            useWebRtc
-              ? 'bg-violet-500/15 text-violet-300'
+              useWebRtc
+              ? 'bg-violet-500/15 text-violet-800 dark:text-violet-300'
               : callState === 'listening'
-                ? 'bg-emerald-500/15 text-emerald-300'
+                ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                 : callState === 'thinking'
-                  ? 'bg-sky-500/15 text-sky-300'
+                  ? 'bg-sky-500/15 text-sky-800 dark:text-sky-300'
                   : callState === 'speaking'
-                    ? 'bg-amber-500/15 text-amber-300'
+                    ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
                     : 'bg-primary/10 text-primary',
           )}
         >
@@ -639,7 +639,7 @@ export function AivaWorkerCallPanel({
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-medium',
               !useWebRtc
-                ? 'border-amber-400/50 bg-amber-500/10 text-amber-200'
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-200'
                 : 'border-border text-text-muted hover:text-text-secondary',
             )}
           >

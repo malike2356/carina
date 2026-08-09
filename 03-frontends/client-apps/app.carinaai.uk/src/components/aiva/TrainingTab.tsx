@@ -421,7 +421,7 @@ export function TrainingTab({ workerId }: { workerId: string }) {
               type="button"
               disabled={deleting}
               onClick={() => void confirmDelete()}
-              className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-300"
+              className="rounded-md border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-800 dark:text-red-300"
             >
               {deleting ? 'Removing...' : 'Remove'}
             </button>
