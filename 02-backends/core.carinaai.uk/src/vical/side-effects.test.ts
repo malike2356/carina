@@ -71,7 +71,7 @@ describe('viCal reminders + ICS + soft calendar sync metadata', () => {
     expect(listVicalReminders('ws-r', { bookingId: booking.id, status: 'cancelled' }).length).toBeGreaterThan(0);
   });
 
-  it('formats ICS and marks soft sync failure without unconfirming', async () => {
+  it('formats ICS and keeps calendar failure distinct from orchestration honesty', async () => {
     const { createEventType, createBooking, formatBookingIcs, mutateVicalStore, getBooking } =
       await import('./index.js');
 
@@ -102,17 +102,93 @@ describe('viCal reminders + ICS + soft calendar sync metadata', () => {
     expect(ics).toContain('BEGIN:VEVENT');
     expect(ics).toContain(booking.guestEmail);
 
+    // Prompt 706: calendar failure must surface as action_required, not a silent confirmed success.
     mutateVicalStore((store) => {
       const idx = store.bookings.findIndex((b) => b.id === booking.id);
       store.bookings[idx] = {
         ...store.bookings[idx]!,
         calendarSyncStatus: 'failed',
         calendarSyncError: 'token expired',
+        invitationDeliveryState: 'failed',
+        orchestrationStatus: 'action_required',
+        actionRequiredReason: 'calendar_invitation_failed',
         status: 'confirmed',
       };
     });
     const after = getBooking('ws-ics', booking.id)!;
-    expect(after.status).toBe('confirmed');
     expect(after.calendarSyncStatus).toBe('failed');
+    expect(after.invitationDeliveryState).toBe('failed');
+    expect(after.orchestrationStatus).toBe('action_required');
+    expect(after.actionRequiredReason).toBe('calendar_invitation_failed');
+  });
+
+  it('does not mark reminders sent without a delivery adapter', async () => {
+    const {
+      createEventType,
+      createAvailabilityRule,
+      createBooking,
+      scheduleVicalReminders,
+      processDueVicalReminders,
+      listVicalReminders,
+    } = await import('./index.js');
+
+    const eventType = createEventType({
+      workspaceId: 'ws-rem',
+      hostUserId: 'host',
+      slug: 'discovery',
+      name: 'Discovery',
+      durationMinutes: 30,
+    });
+    createAvailabilityRule({
+      workspaceId: 'ws-rem',
+      hostUserId: 'host',
+      dayOfWeek: new Date(Date.now() + 4 * 86400000).getUTCDay(),
+      startTime: '09:00',
+      endTime: '17:00',
+      timezone: 'UTC',
+    });
+    const start = new Date(Date.now() + 4 * 86400000);
+    start.setUTCHours(10, 0, 0, 0);
+    const booking = createBooking({
+      workspaceId: 'ws-rem',
+      eventTypeId: eventType.id,
+      hostUserId: 'host',
+      guestName: 'Pat',
+      guestEmail: 'pat@example.com',
+      startsAt: start.toISOString(),
+      endsAt: new Date(start.getTime() + 30 * 60000).toISOString(),
+      timezone: 'UTC',
+      source: 'api',
+    });
+    const scheduled = scheduleVicalReminders({
+      workspaceId: 'ws-rem',
+      bookingId: booking.id,
+      offsetsMinutes: [1, 1],
+    });
+    expect(scheduled.length).toBeGreaterThan(0);
+    // Force due.
+    const { mutateVicalStore } = await import('./index.js');
+    mutateVicalStore((store) => {
+      for (const row of store.reminders) {
+        if (row.bookingId === booking.id) row.dueAt = new Date(Date.now() - 1000).toISOString();
+      }
+    });
+    const without = processDueVicalReminders('ws-rem');
+    expect(without.sent).toBe(0);
+    expect(without.failed).toBeGreaterThan(0);
+    expect(listVicalReminders('ws-rem', { bookingId: booking.id, status: 'sent' })).toHaveLength(0);
+    expect(listVicalReminders('ws-rem', { bookingId: booking.id, status: 'failed' }).length).toBeGreaterThan(0);
+
+    // Re-schedule and deliver via adapter.
+    scheduleVicalReminders({ workspaceId: 'ws-rem', bookingId: booking.id, offsetsMinutes: [1, 1] });
+    mutateVicalStore((store) => {
+      for (const row of store.reminders) {
+        if (row.bookingId === booking.id && row.status === 'scheduled') {
+          row.dueAt = new Date(Date.now() - 1000).toISOString();
+        }
+      }
+    });
+    const withDeliver = processDueVicalReminders('ws-rem', new Date(), () => ({ ok: true }));
+    expect(withDeliver.sent).toBeGreaterThan(0);
   });
 });

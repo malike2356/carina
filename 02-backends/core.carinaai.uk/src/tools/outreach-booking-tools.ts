@@ -2,24 +2,26 @@ import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
 import { invokeProductTool } from '../workers/product-tools/invoke.js';
 import {
-  createBooking,
   buildBookingConfirmationEmail,
   getBookingConfig,
   cancelBooking,
   listAvailability,
   recordPostCallOutcome,
   rescheduleBooking,
-  sendBookingConfirmationEmail,
   updateBookingConfig,
 } from '../outreach/bookings.js';
 import { getLead } from '../outreach/leads.js';
+import { recordLeadBooking } from '../outreach/sequence-engine.js';
 import {
   deleteBookingGoogleCalendar,
-  syncBookingToGoogleCalendar,
   updateBookingGoogleCalendar,
 } from '../vical/calendar-sync.js';
 import { formatBookingIcs } from '../vical/ics.js';
-import { getBooking as getVicalBooking } from '../vical/bookings.js';
+import {
+  bookWithSaga,
+  ensureDiscoveryDefaults,
+  getBooking as getVicalBooking,
+} from '../vical/index.js';
 
 type BusyWindow = { start: string; end: string };
 
@@ -223,82 +225,115 @@ export function createOutreachBookingTools(sessionId: string): Tool[] {
         );
         if (conflict) return { ok: false, error: 'Slot just filled; choose another time' };
 
-        const description = bookingDescription({
+        void bookingDescription({
           leadName: lead.name,
           leadEmail: lead.email,
           slotStart: startsAt,
           slotEnd: endsAt,
           note: typeof params.note === 'string' ? params.note : undefined,
         });
-        void description;
 
-        // Book locally first (viCal SoT). Calendar sync is soft-fail and does not unconfirm.
-        let booking = createBooking({
+        // Prompt 706: never soft-confirm. Provider-neutral saga owns Zoom + calendar honesty.
+        const { eventType } = ensureDiscoveryDefaults({
           workspaceId,
-          leadId,
+          hostUserId: workerId,
+        });
+        const saga = await bookWithSaga({
+          workspaceId,
+          workerId,
+          eventTypeId: eventType.id,
+          guestName: lead.name,
+          guestEmail: lead.email || `${lead.id}@outreach.local`,
           startsAt,
           endsAt,
           timezone: config.timezone,
-          calendarProvider: 'google',
+          source: 'outreach',
+          leadId,
           notes: typeof params.note === 'string' ? params.note : undefined,
-          busyWindows: busy,
-          joinLink: config.meetingMode === 'zoom' ? config.zoomRoomUrl : undefined,
+          staticRoomUrl: config.meetingMode === 'zoom' ? config.zoomRoomUrl : undefined,
+          externalBusy: busy,
+          preferManagedZoom: config.meetingMode === 'zoom' && !config.zoomRoomUrl,
         });
 
-        const sync = await syncBookingToGoogleCalendar({
-          workspaceId,
-          workerId,
-          bookingId: booking.id,
-          locationMode: config.meetingMode === 'zoom' ? 'zoom' : 'google_meet',
-          zoomRoomUrl: config.zoomRoomUrl,
-        });
-        booking = {
-          ...booking,
-          calendarEventId: sync.booking.calendarEventId ?? booking.calendarEventId,
-          joinLink: sync.booking.meetingUrl ?? booking.joinLink,
-        };
+        const vicalRow = getVicalBooking(workspaceId, saga.booking.id) ?? saga.booking;
+        if (!saga.actionRequired) {
+          recordLeadBooking(workspaceId, leadId);
+        }
 
-        const joinLink = booking.joinLink ?? config.zoomRoomUrl;
+        const joinLink = vicalRow.meetingUrl ?? config.zoomRoomUrl;
         const confirmationCopy = buildBookingConfirmationEmail({
           leadName: lead.name,
-          startsAt,
-          endsAt,
+          startsAt: vicalRow.startsAt,
+          endsAt: vicalRow.endsAt,
           timezone: config.timezone,
           joinLink,
           prepVideoUrl: config.prepVideoUrl,
           prepVideoTitle: config.prepVideoTitle,
           prepVideoPassword: config.prepVideoPassword,
         });
-        const vicalRow = getVicalBooking(workspaceId, booking.id);
-        const ics = vicalRow ? formatBookingIcs(vicalRow) : undefined;
-        const confirmation = lead.email
-          ? await sendBookingConfirmationEmail({
-            workspaceId,
-            bookingId: booking.id,
-            workerId,
-            prepVideoUrl: config.prepVideoUrl,
-            prepVideoTitle: config.prepVideoTitle,
-            prepVideoPassword: config.prepVideoPassword,
-          })
-          : { sent: false, skipped: false, warning: 'Booking created, but no attendee email was available for confirmation.', booking };
+        const ics = formatBookingIcs(vicalRow);
+
+        // Confirmation email is Soft Wall approved; do not claim provider delivery here.
+        let confirmation: {
+          sent: boolean;
+          skipped: boolean;
+          warning?: string;
+          booking: typeof vicalRow;
+        } = {
+          sent: false,
+          skipped: true,
+          warning: saga.actionRequired
+            ? 'Booking is action_required; confirmation email withheld until providers succeed.'
+            : lead.email
+              ? 'Confirmation draft prepared; Soft Wall approval still required before send.'
+              : 'Booking created, but no attendee email was available for confirmation.',
+          booking: vicalRow,
+        };
+        if (!saga.actionRequired && lead.email) {
+          confirmation = {
+            sent: false,
+            skipped: false,
+            warning: 'Confirmation draft prepared; Soft Wall approval still required before send.',
+            booking: vicalRow,
+          };
+        }
+
         let warning: string | undefined = confirmation.warning;
-        if (sync.warning) {
-          warning = warning ? `${warning} ${sync.warning}` : sync.warning;
+        if (saga.actionRequired) {
+          warning = warning
+            ? `${warning} Orchestration status is action_required.`
+            : 'Orchestration status is action_required; not a fully confirmed meeting.';
         }
         if (!config.prepVideoUrl) {
           warning = warning
             ? `${warning} Prep video URL is missing; set prepVideoUrl in booking config.`
             : 'Prep video URL is missing; set prepVideoUrl in booking config.';
         }
+
         return {
-          ok: true,
+          ok: !saga.actionRequired,
+          error: saga.actionRequired
+            ? 'Booking needs operator action (join method and/or calendar invitation incomplete).'
+            : undefined,
           data: {
-            booking: confirmation.booking ?? booking,
+            booking: vicalRow,
+            publicBooking: saga.publicBooking,
+            actionRequired: saga.actionRequired,
+            conferenceManaged: saga.conferenceManaged,
+            orchestrationStatus: vicalRow.orchestrationStatus,
+            invitationDeliveryState: vicalRow.invitationDeliveryState ?? null,
             calendarSync: {
-              ok: sync.ok,
-              status: sync.booking.calendarSyncStatus,
-              error: sync.booking.calendarSyncError,
+              ok: Boolean(vicalRow.calendarEventId) && vicalRow.invitationDeliveryState !== 'failed',
+              status: vicalRow.calendarSyncStatus,
+              error: vicalRow.calendarSyncError,
             },
+            providerOperations: saga.providerOperations.map((op) => ({
+              provider: op.provider,
+              action: op.action,
+              status: op.status,
+              errorCode: op.errorCode,
+              errorMessage: op.errorMessage,
+            })),
             confirmationCopy,
             confirmation,
             ics,

@@ -7,16 +7,16 @@
 
 This table names exact modules to extend. Do not build parallel booking or CRM stores.
 
-## Soft-fail calendar sync (known gap)
+## Soft-fail calendar sync (closed in Prompt 706)
 
 | Path | Note |
 | --- | --- |
-| `src/vical/calendar-sync.ts` | On create failure sets `calendarSyncStatus: 'failed'` and warns that booking stays confirmed |
-| `src/tools/outreach-booking-tools.ts` | Creates booking first; calendar sync is soft-fail |
-| `docs/VICAL-OPS.md` | Documents soft-sync behavior |
+| `src/vical/saga/booking-saga.ts` | Canonical path; failures become `action_required` |
+| `src/tools/outreach-booking-tools.ts` | Confirm uses `bookWithSaga`; `ok` is false when action is required |
+| `src/vical/reminders.ts` | No `sent` without delivery adapter |
+| `docs/CUSTOMER-CONCIERGE-V1-OPS.md` | Operator runbooks and SLOs |
 
-Architecture forbids leaving a meeting fully confirmed without a usable invitation projection. Prompt 703/704 must replace soft-fail with saga + `action_required`.
-
+Architecture forbids leaving a meeting fully confirmed without a usable invitation projection. Soft-fail success returns are removed from the outreach confirm tool.
 ## Evidence table
 
 ### 1. Public widget / sessions
@@ -83,7 +83,8 @@ Architecture forbids leaving a meeting fully confirmed without a usable invitati
 | --- | --- | --- |
 | REUSABLE | `src/workers/product-tools/google-driver.ts` | list/create/update/delete |
 | REUSABLE | Google OAuth product-tool flow | Used by concierge setup |
-| INCOMPLETE | Soft-fail sync | See soft-fail section |
+| CLOSED (706) | Soft-fail sync | Outreach confirm uses saga; reminders require delivery adapter |
+
 
 ### 9. Microsoft Calendar
 
@@ -106,7 +107,8 @@ Architecture forbids leaving a meeting fully confirmed without a usable invitati
 | Status | Path | Note |
 | --- | --- | --- |
 | REUSABLE | `src/vical/reminders.ts` | Schedule on confirm |
-| INCOMPLETE | `processDueVicalReminders` | Marks sent; no proof-of-delivery channel |
+| INCOMPLETE | `processDueVicalReminders` | Closed in 706: marks `failed` without delivery adapter; `sent` only after adapter ok |
+
 
 ### 12. Booking webhooks
 

@@ -112,28 +112,54 @@ export function scheduleVicalReminders(input: {
   return created;
 }
 
+export type VicalReminderDeliverer = (reminder: VcalReminder) => {
+  ok: boolean;
+  providerMessageId?: string | null;
+  error?: string;
+};
+
+/**
+ * Process due reminders. Prompt 706: never mark `sent` without a delivery adapter result.
+ * Without `deliver`, rows become `failed` with skipReason `no_delivery_adapter`.
+ */
 export function processDueVicalReminders(
   workspaceId: string,
   now = new Date(),
-): { sent: number; reminders: VcalReminder[] } {
+  deliver?: VicalReminderDeliverer,
+): { sent: number; failed: number; reminders: VcalReminder[] } {
   const due = listVicalReminders(workspaceId, { status: 'scheduled' }).filter(
     (r) => new Date(r.dueAt).getTime() <= now.getTime(),
   );
   const stamped = nowIso(now);
-  const sentRows: VcalReminder[] = [];
+  const outRows: VcalReminder[] = [];
+  let sent = 0;
+  let failed = 0;
   mutateVicalStore((store) => {
     for (const dueRow of due) {
       const idx = store.reminders.findIndex((r) => r.id === dueRow.id);
       if (idx < 0) continue;
-      const next: VcalReminder = {
-        ...store.reminders[idx]!,
-        status: 'sent',
-        sentAt: stamped,
-        updatedAt: stamped,
-      };
+      const delivery = deliver
+        ? deliver(store.reminders[idx]!)
+        : { ok: false, error: 'no_delivery_adapter' };
+      const next: VcalReminder = delivery.ok
+        ? {
+          ...store.reminders[idx]!,
+          status: 'sent',
+          sentAt: stamped,
+          updatedAt: stamped,
+          skipReason: undefined,
+        }
+        : {
+          ...store.reminders[idx]!,
+          status: 'failed',
+          updatedAt: stamped,
+          skipReason: delivery.error ?? 'delivery_failed',
+        };
       store.reminders[idx] = next;
-      sentRows.push(next);
+      outRows.push(next);
+      if (delivery.ok) sent += 1;
+      else failed += 1;
     }
   });
-  return { sent: sentRows.length, reminders: sentRows };
+  return { sent, failed, reminders: outRows };
 }

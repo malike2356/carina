@@ -34,14 +34,14 @@ Rollback: set `VICAL_OUTREACH_BACKEND=legacy` only while legacy write path still
 ## Calendar sync
 
 - Writer: `src/vical/calendar-sync.ts` via `invokeProductTool` Google Calendar create/update/**delete**.
-- Outreach confirm books **first**, then soft-syncs. Sync failure leaves booking **confirmed** and sets `calendarSyncStatus=failed` + `calendarSyncError`.
+- Canonical confirm path: `bookWithSaga` (used by `vical-booking-create` and `outreach-booking-confirm`). Provider failure sets `orchestrationStatus=action_required` and must not claim a fully successful meeting.
 - Re-sync: `POST /api/aiva/vical/bookings/:id/calendar-sync` with `workerId` (body or `x-worker-id`).
-- Microsoft/Teams: skipped with warning until MS connection exists.
+- Microsoft/Teams: honest `not_configured` until Graph credentials exist.
 
 ## Reminders + webhooks
 
 - viCal reminder rows: store `reminders[]`; schedule on confirm/reschedule; cancel on cancel.
-- Process: `POST /api/aiva/vical/reminders/process-due`
+- Process: `POST /api/aiva/vical/reminders/process-due` (marks `sent` only when a delivery adapter succeeds; otherwise `failed`).
 - Outreach Soft Wall reminders still schedule on the mirror path for Kanban/email continuity.
 - Outbound events: `vical.booking.created|confirmed|cancelled|rescheduled|outcome` (HMAC signed when subscription has secret).
 
