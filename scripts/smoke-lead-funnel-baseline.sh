@@ -18,7 +18,7 @@ from pathlib import Path
 path = Path("/opt/lampp/htdocs/verlox/carina/02-backends/core.carinaai.uk/docs/AIVA-LEAD-FUNNEL-CAPABILITY-MATRIX.json")
 doc = json.loads(path.read_text())
 assert doc["schemaVersion"] == 1
-assert doc["persistence"]["kind"] in {"json_file", "postgres"}
+assert doc["persistence"]["kind"] in {"json_file", "postgres", "postgres_with_json_fallback"}
 caps = doc["capabilities"]
 assert isinstance(caps, list) and len(caps) >= 10
 statuses = {c["status"] for c in caps}
