@@ -110,7 +110,7 @@ export default function PropertyChannelOverviewPage() {
 
   if (!run) {
     return (
-      <div className="mx-auto max-w-[90rem] space-y-4 p-6">
+      <div className="w-full max-w-none space-y-4 p-6">
         <div className="rounded-xl border border-border bg-card p-6 text-center">
           <h2 className="text-lg font-semibold text-text-primary">No YouTube channel yet</h2>
           <p className="mt-2 text-sm text-text-muted">
@@ -128,7 +128,7 @@ export default function PropertyChannelOverviewPage() {
   const awaitingOauth = run.status === 'paused' && run.steps['channel-provision']?.status !== 'succeeded';
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-5">
         <div>
           <div className="flex items-center gap-2">

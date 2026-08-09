@@ -109,7 +109,7 @@ export default function OutreachBookingsPage() {
   if (loading) return <div className="p-6 text-sm text-text-muted">Loading bookings...</div>;
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-text-secondary">
           Availability uses business hours and blocks confirmed bookings. Calendar busy windows can be passed from Google later.

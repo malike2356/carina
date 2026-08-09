@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function OutreachChannelsPage() {
   return (
-    <div className="mx-auto max-w-[90rem] space-y-4 p-6">
+    <div className="w-full max-w-none space-y-4 p-6">
       <p className="text-sm text-text-secondary">
         Content and engagement channels that feed sales engagement. Email sequences live under Sequences
         and Approvals; messaging channels stay under workspace Channels.

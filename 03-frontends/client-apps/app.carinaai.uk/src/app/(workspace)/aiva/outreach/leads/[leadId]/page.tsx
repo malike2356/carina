@@ -88,7 +88,7 @@ export default function OutreachLeadDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div>
         <Link href="/aiva/outreach/leads" className="text-xs text-accent underline">
           All leads

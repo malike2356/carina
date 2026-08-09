@@ -77,7 +77,7 @@ export default function PropertyChannelVideosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-4 p-6">
+    <div className="w-full max-w-none space-y-4 p-6">
       <div className="rounded-lg border border-border bg-card p-4">
         <p className="text-sm text-text-primary">{renderingNote}</p>
         <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">

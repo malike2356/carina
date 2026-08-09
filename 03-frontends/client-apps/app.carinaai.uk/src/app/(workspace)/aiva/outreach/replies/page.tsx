@@ -91,7 +91,7 @@ export default function OutreachRepliesPage() {
   }, [demoFrom, demoSubject, demoBody, push, load]);
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-text-secondary">
           Unknown replies stay open for manual review. Interest and booking intent promote leads automatically.

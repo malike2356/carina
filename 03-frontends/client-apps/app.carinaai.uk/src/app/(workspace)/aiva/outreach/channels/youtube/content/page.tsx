@@ -49,7 +49,7 @@ export default function PropertyChannelContentPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-3 p-6">
+    <div className="w-full max-w-none space-y-3 p-6">
       <p className="text-sm text-text-muted">{calendar.length} videos scripted.</p>
       <div className="space-y-2">
         {calendar.slice(0, 60).map((item) => (

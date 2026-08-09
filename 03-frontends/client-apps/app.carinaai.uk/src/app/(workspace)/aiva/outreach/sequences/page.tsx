@@ -240,7 +240,7 @@ export default function OutreachSequencesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-text-secondary">
           Sequences queue Soft Wall drafts only. Approve outbound mail in Approvals before anything sends.

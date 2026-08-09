@@ -82,7 +82,7 @@ export default function PropertyChannelAnalyticsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       {dashboard ? (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

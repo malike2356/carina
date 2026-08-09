@@ -98,7 +98,7 @@ export default function PropertyChannelLeadsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-3 p-6">
+    <div className="w-full max-w-none space-y-3 p-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-text-muted">
           Comment leads stay here and can sync into the sales engagement pipeline.

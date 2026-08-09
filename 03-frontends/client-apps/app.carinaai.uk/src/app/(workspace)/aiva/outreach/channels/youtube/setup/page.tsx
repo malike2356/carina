@@ -117,7 +117,7 @@ export default function YouTubeChannelSetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       {!run ? (
         <div className="space-y-4 rounded-xl border border-border bg-card p-5">
           <div>

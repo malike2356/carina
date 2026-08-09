@@ -58,7 +58,7 @@ export default function PropertyChannelSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold text-text-primary">Workflow status</h3>

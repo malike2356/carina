@@ -176,7 +176,7 @@ export default function OutreachCampaignsPage() {
   const campaignCount = useMemo(() => campaigns.length, [campaigns.length]);
 
   return (
-    <div className="mx-auto max-w-[90rem] space-y-6 p-6">
+    <div className="w-full max-w-none space-y-6 p-6">
       <div className="rounded-lg border border-border bg-card p-4">
         <h2 className="text-sm font-medium text-text-primary">New campaign</h2>
         <div className="mt-3 flex flex-col gap-2 lg:flex-row">
