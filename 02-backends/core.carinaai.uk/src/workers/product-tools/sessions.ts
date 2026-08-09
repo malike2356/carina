@@ -90,3 +90,22 @@ export async function markSessionProbe(
     [workspaceId, workerId, toolSlug, ok, ok ? null : (error ?? 'probe_failed')],
   );
 }
+
+export async function deleteToolSession(
+  workspaceId: string,
+  workerId: string,
+  toolSlug: string,
+): Promise<boolean> {
+  const result = await pool.query(
+    `DELETE FROM aiva_product_tool_sessions
+     WHERE workspace_id = $1 AND worker_id = $2 AND tool_slug = $3`,
+    [workspaceId, workerId, toolSlug],
+  );
+  await pool.query(
+    `UPDATE aiva_worker_tool_grants
+     SET status = 'disconnected', last_probe_ok = false, updated_at = NOW()
+     WHERE workspace_id = $1 AND worker_id = $2 AND tool_slug = $3`,
+    [workspaceId, workerId, toolSlug],
+  ).catch(() => undefined);
+  return (result.rowCount ?? 0) > 0;
+}

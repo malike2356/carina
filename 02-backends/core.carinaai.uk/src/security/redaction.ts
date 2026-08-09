@@ -2,7 +2,7 @@
  * Central secret redaction for tool output, agent replies, and security audit metadata.
  */
 
-const SENSITIVE_KEY = /api[_-]?key|secret|password|token|authorization|credential/i;
+const SENSITIVE_KEY = /api[_-]?key|secret|password|token|authorization|credential|start_url|starturl|host_start_url/i;
 
 const TEXT_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\bsk-[A-Za-z0-9_-]{20,}\b/g, replacement: '[REDACTED]' },

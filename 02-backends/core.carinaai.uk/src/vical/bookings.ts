@@ -295,7 +295,14 @@ export function createBooking(input: {
   intakeAnswers?: Record<string, unknown>;
   externalBusy?: VcalBusyWindow[];
   metadata?: Record<string, unknown>;
+  idempotencyKey?: string;
 }): VcalBooking {
+  if (input.idempotencyKey) {
+    const existing = loadVicalStore().bookings.find(
+      (b) => b.workspaceId === input.workspaceId && b.idempotencyKey === input.idempotencyKey,
+    );
+    if (existing) return existing;
+  }
   let eventType = getEventType(input.workspaceId, input.eventTypeId);
   if (!eventType || !eventType.active) throw new VcalError('not_found', 'Event type not found');
   const intake = validateAndRouteIntake({
@@ -382,6 +389,8 @@ export function createBooking(input: {
     source: input.source ?? 'api',
     intakeAnswers: Object.keys(intake.answers).length > 0 ? intake.answers : input.intakeAnswers,
     notes: input.notes,
+    idempotencyKey: input.idempotencyKey,
+    orchestrationStatus: 'pending_confirmation',
     metadata: {
       ...(input.metadata ?? {}),
       ...(intake.routedEventTypeId && intake.routedEventTypeId !== input.eventTypeId

@@ -129,6 +129,14 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
     { name: 'Intro call', durationMinutes: 30, description: '' },
   ]);
   const [zoomToken, setZoomToken] = useState('');
+  const [staticZoomRoomUrl, setStaticZoomRoomUrl] = useState('');
+  const [zoomConnectionStatus, setZoomConnectionStatus] = useState<{
+    connected?: boolean;
+    account?: { email?: string | null; displayName?: string | null } | null;
+    scopeStatus?: string;
+    failureReason?: string | null;
+    safeLogs?: Array<{ at?: string | null; ok?: boolean | null }>;
+  } | null>(null);
   const [tone, setTone] = useState('helpful and professional');
   const [supportedLanguages, setSupportedLanguages] = useState('en');
   const [responseBoundaries, setResponseBoundaries] = useState(
@@ -167,6 +175,7 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
       });
       setZoomOAuthConfigured(Boolean(data.zoomOAuthConfigured));
       setGoogleOAuthConfigured(Boolean(data.googleOAuthConfigured));
+      void refreshZoomStatus();
       const p = data.profile ?? null;
       setProfile(p);
       if (p) {
@@ -485,6 +494,65 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
       }
       setZoomToken('');
       setNotice('Zoom connected');
+      await load();
+      await refreshZoomStatus();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function refreshZoomStatus() {
+    try {
+      const res = await fetch(`/api/aiva/workers/${workerId}/concierge/connections/zoom/status`);
+      const data = (await res.json()) as typeof zoomConnectionStatus & { error?: string };
+      if (res.ok) setZoomConnectionStatus(data);
+    } catch {
+      // non-fatal
+    }
+  }
+
+  async function testZoomConnection() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/aiva/workers/${workerId}/concierge/connections/zoom/test`, {
+        method: 'POST',
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        failureReason?: string | null;
+        error?: string;
+      };
+      if (!res.ok || !data.ok) {
+        setError(data.failureReason || data.error || 'Zoom connection test failed');
+      } else {
+        setNotice('Zoom connection test passed');
+      }
+      await refreshZoomStatus();
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function revokeZoomConnection() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/aiva/workers/${workerId}/concierge/connections/zoom/revoke`, {
+        method: 'POST',
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not revoke Zoom');
+        return;
+      }
+      setNotice('Zoom disconnected');
+      setZoomConnectionStatus(null);
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -984,6 +1052,74 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
             ) : null}
             {profile?.conferencingConnected ? (
               <p className="text-sm text-text-muted">Conferencing connected</p>
+            ) : null}
+            {conferencingProvider === 'zoom' ? (
+              <div className="space-y-2 rounded-md border border-border p-3 text-sm">
+                <p className="text-text-muted">
+                  Managed Zoom uses your authorised Zoom account. A static room URL may remain an
+                  explicitly labelled fallback; it does not claim managed Zoom synchronization.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {zoomOAuthConfigured ? (
+                    <button
+                      type="button"
+                      className={btnSecondary()}
+                      onClick={() => void connectZoomOAuth()}
+                    >
+                      {profile?.conferencingConnected ? 'Reconnect Zoom' : 'Connect Zoom'}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={btnSecondary()}
+                    disabled={saving}
+                    onClick={() => void testZoomConnection()}
+                  >
+                    Test connection
+                  </button>
+                  <button
+                    type="button"
+                    className={btnSecondary()}
+                    disabled={saving || !profile?.conferencingConnected}
+                    onClick={() => void revokeZoomConnection()}
+                  >
+                    Revoke Zoom
+                  </button>
+                </div>
+                {zoomConnectionStatus ? (
+                  <div className="space-y-1 text-text-muted">
+                    <p>
+                      Account:{' '}
+                      {zoomConnectionStatus.account?.email
+                        || zoomConnectionStatus.account?.displayName
+                        || (zoomConnectionStatus.connected ? 'Connected' : 'Not connected')}
+                    </p>
+                    <p>Scopes: {zoomConnectionStatus.scopeStatus ?? 'unknown'}</p>
+                    {zoomConnectionStatus.failureReason ? (
+                      <p className="text-danger">Failure: {zoomConnectionStatus.failureReason}</p>
+                    ) : null}
+                    {zoomConnectionStatus.safeLogs?.length ? (
+                      <p>
+                        Last probe:{' '}
+                        {zoomConnectionStatus.safeLogs[0]?.ok === false
+                          ? 'failed'
+                          : zoomConnectionStatus.safeLogs[0]?.ok
+                            ? 'ok'
+                            : 'n/a'}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                <label className="block space-y-1">
+                  <span className="text-text-muted">Static room URL fallback (optional, labelled)</span>
+                  <input
+                    className={AIVA_INPUT_CLASS}
+                    placeholder="https://zoom.us/j/..."
+                    value={staticZoomRoomUrl}
+                    onChange={(e) => setStaticZoomRoomUrl(e.target.value)}
+                  />
+                </label>
+              </div>
             ) : null}
           </div>
 

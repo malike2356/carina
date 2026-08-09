@@ -11,6 +11,7 @@ import { aivaYouTubeOAuthRouter } from './api/aiva-youtube-oauth-api.js';
 import { aivaPropertyChannelRouter, aivaYouTubeChannelRouter } from './api/aiva-property-channel-api.js';
 import { aivaOutreachRouter } from './api/aiva-outreach-api.js';
 import { aivaVicalRouter } from './api/aiva-vical-api.js';
+import { zoomWebhookRouter } from './api/zoom-webhook-api.js';
 import { registerVicalSideEffects } from './vical/side-effects.js';
 import { youtubeChannelAnalyticsRouter } from './analytics/youtube-channel/dashboard-api.js';
 import { aivaSocialOAuthRouter } from './api/aiva-social-oauth-api.js';
@@ -107,6 +108,7 @@ export function mountServerRoutes(app: Express): void {
     app.use('/api/aiva/youtube-channel', aivaYouTubeChannelRouter);
     app.use('/api/aiva/outreach', aivaOutreachRouter);
     app.use('/api/aiva/vical', aivaVicalRouter);
+    app.use('/api/webhooks', zoomWebhookRouter);
     registerVicalSideEffects();
     if (isEmailIngestionActive() || isPropreneurBridgeEnabled()) {
       app.use('/api/aiva/email', aivaEmailRouter);

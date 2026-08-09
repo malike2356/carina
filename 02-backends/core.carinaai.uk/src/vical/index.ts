@@ -53,6 +53,25 @@ export {
 export { formatBookingIcs } from './ics.js';
 export { registerVicalSideEffects } from './side-effects.js';
 export {
+  bookWithSaga,
+  cancelWithSaga,
+  rescheduleWithSaga,
+} from './saga/booking-saga.js';
+export type { BookWithSagaInput, SagaDeps, SagaResult } from './saga/booking-saga.js';
+export {
+  listActionRequiredBookings,
+  listProviderOperationsForBooking,
+  getConferenceArtifact,
+} from './saga/ledger.js';
+export {
+  buildZoomUrlValidationResponse,
+  handleZoomWebhookEvent,
+  verifyZoomWebhookSignature,
+} from './saga/webhook-zoom.js';
+export { toPublicBookingView, redactConferencingSecrets } from './conferencing/redact.js';
+export { ZoomConferencingAdapter } from './conferencing/zoom-adapter.js';
+export { StaticUrlConferencingAdapter } from './conferencing/static-url-adapter.js';
+export {
   approveBooking,
   cancelBookingForGuest,
   cancelBookingForHost,

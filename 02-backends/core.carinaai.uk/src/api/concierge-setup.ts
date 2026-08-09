@@ -2,7 +2,7 @@
 import { Router, type Request, type Response, type Router as ExpressRouter } from 'express';
 import { getWorker } from '../workers/worker-store.js';
 import { listKnowledgeEntries } from '../workers/knowledge-base.js';
-import { upsertToolSession, getToolSession } from '../workers/product-tools/sessions.js';
+import { upsertToolSession, getToolSession, deleteToolSession, markSessionProbe } from '../workers/product-tools/sessions.js';
 import {
   buildGoogleToolsAuthUrl,
   isGoogleToolsOAuthConfigured,
@@ -10,8 +10,10 @@ import {
 import {
   buildZoomAuthUrl,
   exchangeZoomCode,
+  fetchZoomAccountIdentity,
   isZoomOAuthConfigured,
   resolveZoomRedirectUri,
+  revokeZoomToken,
 } from '../workers/product-tools/zoom-oauth.js';
 import { signZoomOAuthState, verifyZoomOAuthState } from '../workers/product-tools/zoom-oauth-state.js';
 import { credentialsConfigured } from '../channels/credential-store.js';
@@ -472,6 +474,7 @@ conciergeSetupRouter.post('/connections/zoom/callback', async (req: ConciergeReq
       return;
     }
     const tokens = await exchangeZoomCode({ code, redirectUri: parsed.redirectUri });
+    const identity = await fetchZoomAccountIdentity(tokens.accessToken);
     await upsertToolSession({
       workspaceId: parsed.workspaceId,
       workerId: parsed.workerId,
@@ -481,7 +484,14 @@ conciergeSetupRouter.post('/connections/zoom/callback', async (req: ConciergeReq
         access_token: tokens.accessToken,
         ...(tokens.refreshToken ? { refresh_token: tokens.refreshToken } : {}),
       },
-      meta: { connectedVia: 'zoom-oauth', expiresIn: tokens.expiresIn },
+      meta: {
+        connectedVia: 'zoom-oauth',
+        expiresIn: tokens.expiresIn,
+        accountId: identity.accountId,
+        email: identity.email,
+        displayName: identity.displayName,
+        scopes: ['meeting:write', 'meeting:read', 'user:read'],
+      },
       expiresAt: tokens.expiresIn
         ? new Date(Date.now() + tokens.expiresIn * 1000)
         : null,
@@ -489,7 +499,132 @@ conciergeSetupRouter.post('/connections/zoom/callback', async (req: ConciergeReq
     res.json({
       connected: true,
       returnPath: parsed.returnPath ?? `/aiva/workers/${parsed.workerId}?tab=concierge`,
+      identity: {
+        accountId: identity.accountId,
+        email: identity.email,
+        displayName: identity.displayName,
+      },
     });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.get('/connections/zoom/status', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const session = await getToolSession(ctx.workspaceId, ctx.workerId, 'zoom');
+    if (!session || !session.credentials.access_token) {
+      res.json({
+        connected: false,
+        oauthConfigured: isZoomOAuthConfigured(),
+        account: null,
+        scopeStatus: 'missing',
+        lastProbeOk: null,
+        failureReason: null,
+        safeLogs: [],
+      });
+      return;
+    }
+    const meta = session.meta ?? {};
+    res.json({
+      connected: true,
+      oauthConfigured: isZoomOAuthConfigured(),
+      account: {
+        accountId: typeof meta.accountId === 'string' ? meta.accountId : null,
+        email: typeof meta.email === 'string' ? meta.email : null,
+        displayName: typeof meta.displayName === 'string' ? meta.displayName : null,
+      },
+      scopeStatus: Array.isArray(meta.scopes) ? 'granted' : 'unknown',
+      scopes: Array.isArray(meta.scopes) ? meta.scopes : [],
+      expiresAt: session.expiresAt,
+      lastProbeAt: session.lastProbeAt,
+      lastProbeOk: session.lastProbeOk,
+      failureReason:
+        typeof meta.lastProbeError === 'string' && meta.lastProbeError
+          ? meta.lastProbeError
+          : null,
+      safeLogs: [
+        {
+          at: session.lastProbeAt,
+          ok: session.lastProbeOk,
+          via: typeof meta.connectedVia === 'string' ? meta.connectedVia : 'unknown',
+        },
+      ].filter((row) => row.at),
+      staticFallbackNote:
+        'A static room URL may be used as an explicitly labelled fallback; it does not provide managed Zoom synchronization.',
+    });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.post('/connections/zoom/test', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const session = await getToolSession(ctx.workspaceId, ctx.workerId, 'zoom');
+    if (!session?.credentials.access_token) {
+      res.status(400).json({ ok: false, error: 'Zoom is not connected' });
+      return;
+    }
+    const identity = await fetchZoomAccountIdentity(session.credentials.access_token);
+    const ok = identity.status === 'ok';
+    await markSessionProbe(
+      ctx.workspaceId,
+      ctx.workerId,
+      'zoom',
+      ok,
+      identity.error,
+    );
+    if (ok) {
+      await upsertToolSession({
+        workspaceId: ctx.workspaceId,
+        workerId: ctx.workerId,
+        toolSlug: 'zoom',
+        provider: 'zoom',
+        credentials: session.credentials,
+        meta: {
+          ...session.meta,
+          accountId: identity.accountId,
+          email: identity.email,
+          displayName: identity.displayName,
+          lastTestAt: new Date().toISOString(),
+        },
+        expiresAt: session.expiresAt ? new Date(session.expiresAt) : null,
+      });
+    }
+    res.json({
+      ok,
+      status: identity.status,
+      account: ok
+        ? {
+            accountId: identity.accountId,
+            email: identity.email,
+            displayName: identity.displayName,
+          }
+        : null,
+      failureReason: identity.error ?? null,
+    });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.post('/connections/zoom/revoke', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const session = await getToolSession(ctx.workspaceId, ctx.workerId, 'zoom');
+    if (session?.credentials.access_token) {
+      await revokeZoomToken(session.credentials.access_token);
+    }
+    if (session?.credentials.refresh_token) {
+      await revokeZoomToken(session.credentials.refresh_token);
+    }
+    await deleteToolSession(ctx.workspaceId, ctx.workerId, 'zoom');
+    res.json({ revoked: true });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
   }

@@ -2,9 +2,6 @@ import type { Tool } from '../types/index.js';
 import { getWorkerSessionContext } from '../workers/worker-session-context.js';
 import { invokeProductTool } from '../workers/product-tools/invoke.js';
 import {
-  cancelBookingForHost,
-  createBooking,
-  createFromOutreach,
   ensureDiscoveryDefaults,
   getBooking,
   isVcalError,
@@ -12,10 +9,12 @@ import {
   listEventTypes,
   listOfferedSlots,
   readConfigAsOutreach,
-  rescheduleBooking,
   SlotUnavailableError,
   syncConfigFromOutreach,
   updateEventType,
+  bookWithSaga,
+  cancelWithSaga,
+  rescheduleWithSaga,
 } from '../vical/index.js';
 import type { BookingConfig } from '../outreach/types.js';
 import { getBookingConfig, updateBookingConfig } from '../outreach/bookings.js';
@@ -152,6 +151,8 @@ export function createVicalBookingTools(sessionId: string): Tool[] {
           leadId: { type: 'string' },
           notes: { type: 'string' },
           meetingUrl: { type: 'string' },
+          idempotencyKey: { type: 'string' },
+          staticRoomUrl: { type: 'string' },
         },
         required: ['guestEmail', 'startsAt'],
       },
@@ -165,35 +166,44 @@ export function createVicalBookingTools(sessionId: string): Tool[] {
         const startsAt = String(params.startsAt ?? '').trim();
         if (!guestEmail || !startsAt) return { ok: false, error: 'guestEmail and startsAt required' };
         try {
-          const leadId = typeof params.leadId === 'string' ? params.leadId.trim() : '';
-          const booking = leadId
-            ? createFromOutreach({
-                workspaceId,
-                leadId,
-                email: guestEmail,
-                name: String(params.guestName ?? guestEmail),
-                startsAt,
-                eventTypeId:
-                  typeof params.eventTypeId === 'string' && params.eventTypeId.trim()
-                    ? params.eventTypeId.trim()
-                    : eventType.id,
-                notes: typeof params.notes === 'string' ? params.notes : undefined,
-                meetingUrl: typeof params.meetingUrl === 'string' ? params.meetingUrl : undefined,
-              })
-            : createBooking({
-                workspaceId,
-                eventTypeId:
-                  typeof params.eventTypeId === 'string' && params.eventTypeId.trim()
-                    ? params.eventTypeId.trim()
-                    : eventType.id,
-                guestName: String(params.guestName ?? guestEmail),
-                guestEmail,
-                startsAt,
-                source: 'agent',
-                notes: typeof params.notes === 'string' ? params.notes : undefined,
-                meetingUrl: typeof params.meetingUrl === 'string' ? params.meetingUrl : undefined,
-              });
-          return { ok: true, data: booking };
+          const eventTypeId =
+            typeof params.eventTypeId === 'string' && params.eventTypeId.trim()
+              ? params.eventTypeId.trim()
+              : eventType.id;
+          const result = await bookWithSaga({
+            workspaceId,
+            workerId: hostUserId,
+            eventTypeId,
+            guestName: String(params.guestName ?? guestEmail),
+            guestEmail,
+            startsAt,
+            source: typeof params.leadId === 'string' && params.leadId.trim() ? 'outreach' : 'agent',
+            leadId: typeof params.leadId === 'string' ? params.leadId.trim() || undefined : undefined,
+            notes: typeof params.notes === 'string' ? params.notes : undefined,
+            meetingUrl: typeof params.meetingUrl === 'string' ? params.meetingUrl : undefined,
+            staticRoomUrl: typeof params.staticRoomUrl === 'string' ? params.staticRoomUrl : undefined,
+            idempotencyKey:
+              typeof params.idempotencyKey === 'string' && params.idempotencyKey.trim()
+                ? params.idempotencyKey.trim()
+                : undefined,
+          });
+          return {
+            ok: true,
+            data: {
+              booking: result.publicBooking,
+              duplicate: result.duplicate,
+              actionRequired: result.actionRequired,
+              conferenceManaged: result.conferenceManaged,
+              providerOperations: result.providerOperations.map((op) => ({
+                provider: op.provider,
+                action: op.action,
+                status: op.status,
+                errorCode: op.errorCode,
+                errorMessage: op.errorMessage,
+                attempt: op.attempt,
+              })),
+            },
+          };
         } catch (error) {
           return toolError(error);
         }
@@ -245,13 +255,19 @@ export function createVicalBookingTools(sessionId: string): Tool[] {
         const bookingId = String(params.bookingId ?? '').trim();
         if (!workspaceId || !bookingId) return { ok: false, error: 'workspaceId and bookingId required' };
         try {
+          const result = await cancelWithSaga({
+            workspaceId,
+            workerId: ctx?.workerId ?? 'default-host',
+            bookingId,
+            reason: typeof params.reason === 'string' ? params.reason : undefined,
+          });
           return {
             ok: true,
-            data: cancelBookingForHost(
-              workspaceId,
-              bookingId,
-              typeof params.reason === 'string' ? params.reason : undefined,
-            ),
+            data: {
+              booking: result.publicBooking,
+              actionRequired: result.actionRequired,
+              providerOperations: result.providerOperations,
+            },
           };
         } catch (error) {
           return toolError(error);
@@ -281,9 +297,19 @@ export function createVicalBookingTools(sessionId: string): Tool[] {
           return { ok: false, error: 'workspaceId, bookingId, and startsAt required' };
         }
         try {
+          const result = await rescheduleWithSaga({
+            workspaceId,
+            workerId: ctx?.workerId ?? 'default-host',
+            bookingId,
+            startsAt,
+          });
           return {
             ok: true,
-            data: rescheduleBooking({ workspaceId, bookingId, startsAt }),
+            data: {
+              booking: result.publicBooking,
+              actionRequired: result.actionRequired,
+              providerOperations: result.providerOperations,
+            },
           };
         } catch (error) {
           return toolError(error);

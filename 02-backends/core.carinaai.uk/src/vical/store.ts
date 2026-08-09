@@ -24,6 +24,12 @@ export function emptyVicalStore(): VcalStoreShape {
     slotLocks: [],
     publishProfiles: {},
     reminders: [],
+    availabilityHolds: [],
+    bookingIntents: [],
+    participants: [],
+    conferenceArtifacts: [],
+    providerOperations: [],
+    webhookReceipts: [],
   };
 }
 
@@ -50,6 +56,12 @@ export function loadVicalStore(): VcalStoreShape {
       slotLocks: raw.slotLocks ?? [],
       publishProfiles: raw.publishProfiles ?? {},
       reminders: raw.reminders ?? [],
+      availabilityHolds: raw.availabilityHolds ?? [],
+      bookingIntents: raw.bookingIntents ?? [],
+      participants: raw.participants ?? [],
+      conferenceArtifacts: raw.conferenceArtifacts ?? [],
+      providerOperations: raw.providerOperations ?? [],
+      webhookReceipts: raw.webhookReceipts ?? [],
     };
     caches.set(STORE_FILE, value);
     return value;

@@ -108,6 +108,119 @@ export interface VcalBlackoutDate {
 
 export type VcalCalendarSyncStatus = 'pending' | 'synced' | 'failed' | 'skipped';
 
+/** Concierge orchestration overlay (Prompt 703); legacy status remains for existing paths. */
+export const VCAL_ORCHESTRATION_STATUSES = [
+  'held',
+  'pending_confirmation',
+  'provisioning',
+  'confirmed',
+  'action_required',
+  'rescheduling',
+  'cancelled',
+  'completed',
+  'no_show',
+] as const;
+
+export type VcalOrchestrationStatus = (typeof VCAL_ORCHESTRATION_STATUSES)[number];
+
+export type VcalProviderOpStatus =
+  | 'pending'
+  | 'succeeded'
+  | 'failed'
+  | 'retryable'
+  | 'action_required'
+  | 'compensated'
+  | 'duplicate';
+
+export interface VcalAvailabilityHold {
+  id: string;
+  workspaceId: string;
+  hostUserId: string;
+  eventTypeId: string;
+  startsAt: string;
+  endsAt: string;
+  holderToken: string;
+  expiresAt: string;
+  bookingIntentId?: string;
+  createdAt: string;
+}
+
+export interface VcalBookingIntent {
+  id: string;
+  workspaceId: string;
+  workerId?: string;
+  eventTypeId: string;
+  idempotencyKey: string;
+  guestName: string;
+  guestEmail: string;
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+  status: 'open' | 'committed' | 'expired' | 'cancelled';
+  holdId?: string;
+  bookingId?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VcalBookingParticipant {
+  id: string;
+  workspaceId: string;
+  bookingId: string;
+  role: 'host' | 'guest' | 'observer';
+  email: string;
+  name?: string;
+  deliveryState?: string;
+  createdAt: string;
+}
+
+export interface VcalConferenceArtifact {
+  id: string;
+  workspaceId: string;
+  bookingId: string;
+  provider: 'zoom' | 'static_url' | 'google_meet' | 'none';
+  providerMeetingId: string | null;
+  joinUrl: string | null;
+  /** Encrypted-at-rest optional; never returned on public DTOs. */
+  hostStartUrlEnc?: string | null;
+  hostStartUrlPresent: boolean;
+  passcodeRequired: boolean;
+  waitingRoom: boolean;
+  managed: boolean;
+  fallbackLabel?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VcalProviderOperation {
+  id: string;
+  workspaceId: string;
+  bookingId: string;
+  provider: string;
+  action: string;
+  idempotencyKey: string;
+  status: VcalProviderOpStatus;
+  attempt: number;
+  providerResourceId?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VcalWebhookReceipt {
+  id: string;
+  workspaceId?: string;
+  provider: string;
+  eventId: string;
+  eventType: string;
+  receivedAt: string;
+  processedAt?: string;
+  status: 'received' | 'processed' | 'duplicate' | 'rejected';
+  payloadSafe: Record<string, unknown>;
+}
+
 export interface VcalBooking {
   id: string;
   workspaceId: string;
@@ -134,6 +247,11 @@ export interface VcalBooking {
   cancelReason?: string;
   previousStartsAt?: string;
   previousEndsAt?: string;
+  /** Prompt 703: durable duplicate suppression across entry points. */
+  idempotencyKey?: string;
+  orchestrationStatus?: VcalOrchestrationStatus;
+  actionRequiredReason?: string;
+  conferenceArtifactId?: string;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -196,6 +314,12 @@ export interface VcalStoreShape {
   slotLocks: VcalSlotLock[];
   publishProfiles: Record<string, VcalPublishProfile>;
   reminders: VcalReminder[];
+  availabilityHolds: VcalAvailabilityHold[];
+  bookingIntents: VcalBookingIntent[];
+  participants: VcalBookingParticipant[];
+  conferenceArtifacts: VcalConferenceArtifact[];
+  providerOperations: VcalProviderOperation[];
+  webhookReceipts: VcalWebhookReceipt[];
 }
 
 export type VcalDomainHook =

@@ -34,6 +34,8 @@ function bookingPayload(hook: VcalDomainHook): Record<string, unknown> {
     bookingId: booking.id,
     workspaceId: booking.workspaceId,
     status: booking.status,
+    orchestrationStatus: booking.orchestrationStatus,
+    actionRequiredReason: booking.actionRequiredReason,
     startsAt: booking.startsAt,
     endsAt: booking.endsAt,
     guestEmail: booking.guestEmail,

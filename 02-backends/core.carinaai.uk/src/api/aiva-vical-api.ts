@@ -37,6 +37,13 @@ import {
   syncBookingToGoogleCalendar,
   updateIntakePool,
   updateEventType,
+  bookWithSaga,
+  cancelWithSaga,
+  rescheduleWithSaga,
+  toPublicBookingView,
+  buildZoomUrlValidationResponse,
+  handleZoomWebhookEvent,
+  verifyZoomWebhookSignature,
 } from '../vical/index.js';
 
 export const aivaVicalRouter: ExpressRouter = Router();
@@ -247,8 +254,38 @@ aivaVicalRouter.get('/bookings', (req: VicalRequest, res: Response) => {
   });
 });
 
-aivaVicalRouter.post('/bookings', (req: VicalRequest, res: Response) => {
+aivaVicalRouter.post('/bookings', async (req: VicalRequest, res: Response) => {
   try {
+    const workerId = String(req.body?.workerId ?? req.headers['x-worker-id'] ?? '').trim();
+    const useSaga = Boolean(workerId) || req.body?.useSaga === true || req.body?.idempotencyKey;
+    if (useSaga) {
+      const result = await bookWithSaga({
+        workspaceId: req.workspaceId!,
+        workerId: workerId || 'default-host',
+        eventTypeId: String(req.body?.eventTypeId),
+        guestName: String(req.body?.guestName ?? 'Guest'),
+        guestEmail: String(req.body?.guestEmail ?? ''),
+        startsAt: String(req.body?.startsAt),
+        endsAt: req.body?.endsAt,
+        timezone: req.body?.timezone,
+        source: req.body?.source ?? 'api',
+        leadId: req.body?.leadId,
+        contactId: req.body?.contactId,
+        notes: req.body?.notes,
+        meetingUrl: req.body?.meetingUrl,
+        staticRoomUrl: req.body?.staticRoomUrl,
+        idempotencyKey: req.body?.idempotencyKey,
+        metadata: req.body?.metadata,
+      });
+      res.status(result.duplicate ? 200 : 201).json({
+        ...result.publicBooking,
+        duplicate: result.duplicate,
+        actionRequired: result.actionRequired,
+        conferenceManaged: result.conferenceManaged,
+        providerOperations: result.providerOperations,
+      });
+      return;
+    }
     const row = createBooking({
       workspaceId: req.workspaceId!,
       eventTypeId: String(req.body?.eventTypeId),
@@ -264,8 +301,9 @@ aivaVicalRouter.post('/bookings', (req: VicalRequest, res: Response) => {
       meetingUrl: req.body?.meetingUrl,
       intakeAnswers: req.body?.intakeAnswers,
       metadata: req.body?.metadata,
+      idempotencyKey: req.body?.idempotencyKey,
     });
-    res.status(201).json(row);
+    res.status(201).json(toPublicBookingView(row as unknown as Record<string, unknown>));
   } catch (error) {
     sendError(res, error);
   }
@@ -287,24 +325,40 @@ aivaVicalRouter.post('/bookings/:bookingId/reject', (req: VicalRequest, res: Res
   }
 });
 
-aivaVicalRouter.post('/bookings/:bookingId/cancel', (req: VicalRequest, res: Response) => {
+aivaVicalRouter.post('/bookings/:bookingId/cancel', async (req: VicalRequest, res: Response) => {
   try {
-    res.json(cancelBookingForHost(req.workspaceId!, String(req.params.bookingId), req.body?.reason));
+    const workerId = String(req.body?.workerId ?? req.headers['x-worker-id'] ?? 'default-host').trim();
+    const result = await cancelWithSaga({
+      workspaceId: req.workspaceId!,
+      workerId,
+      bookingId: String(req.params.bookingId),
+      reason: req.body?.reason,
+    });
+    res.json({
+      ...result.publicBooking,
+      actionRequired: result.actionRequired,
+      providerOperations: result.providerOperations,
+    });
   } catch (error) {
     sendError(res, error);
   }
 });
 
-aivaVicalRouter.post('/bookings/:bookingId/reschedule', (req: VicalRequest, res: Response) => {
+aivaVicalRouter.post('/bookings/:bookingId/reschedule', async (req: VicalRequest, res: Response) => {
   try {
-    res.json(
-      rescheduleBooking({
-        workspaceId: req.workspaceId!,
-        bookingId: String(req.params.bookingId),
-        startsAt: String(req.body?.startsAt),
-        endsAt: req.body?.endsAt,
-      }),
-    );
+    const workerId = String(req.body?.workerId ?? req.headers['x-worker-id'] ?? 'default-host').trim();
+    const result = await rescheduleWithSaga({
+      workspaceId: req.workspaceId!,
+      workerId,
+      bookingId: String(req.params.bookingId),
+      startsAt: String(req.body?.startsAt),
+      endsAt: req.body?.endsAt,
+    });
+    res.json({
+      ...result.publicBooking,
+      actionRequired: result.actionRequired,
+      providerOperations: result.providerOperations,
+    });
   } catch (error) {
     sendError(res, error);
   }
