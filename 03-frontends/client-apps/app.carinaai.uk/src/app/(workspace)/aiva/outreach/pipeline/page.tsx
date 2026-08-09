@@ -5,8 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/Toast';
 import { PIPELINE_LABELS, type OutreachLead, type PipelineStatus } from '@/components/outreach/types';
+import { cn } from '@/lib/utils';
 
 const STAGES = Object.keys(PIPELINE_LABELS) as PipelineStatus[];
+const DRAG_MIME = 'application/x-aiva-pipeline-lead';
 
 export default function OutreachPipelinePage() {
   const { push } = useToast();
@@ -17,6 +19,9 @@ export default function OutreachPipelinePage() {
   const [bookingState, setBookingState] = useState('');
   const [dueFollowUp, setDueFollowUp] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<PipelineStatus | null>(null);
+  const [movingId, setMovingId] = useState<string | null>(null);
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -48,13 +53,38 @@ export default function OutreachPipelinePage() {
   }, [load]);
 
   const move = useCallback(
-    async (leadId: string, status: PipelineStatus) => {
+    async (leadId: string, status: PipelineStatus, fromStatus?: PipelineStatus) => {
+      if (fromStatus && fromStatus === status) return;
+
+      let snapshot: Record<string, OutreachLead[]> | null = null;
+      setColumns((current) => {
+        snapshot = current;
+        let moving: OutreachLead | undefined;
+        for (const stage of STAGES) {
+          const hit = (current[stage] ?? []).find((lead) => lead.id === leadId);
+          if (hit) {
+            moving = hit;
+            break;
+          }
+        }
+        if (!moving) return current;
+        const next: Record<string, OutreachLead[]> = {};
+        for (const stage of STAGES) {
+          next[stage] = (current[stage] ?? []).filter((lead) => lead.id !== leadId);
+        }
+        next[status] = [{ ...moving, status }, ...(next[status] ?? [])];
+        return next;
+      });
+
+      setMovingId(leadId);
       const res = await fetch(`/api/aiva/outreach/leads/${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
+      setMovingId(null);
       if (!res.ok) {
+        if (snapshot) setColumns(snapshot);
         push('Could not update lead status', 'error');
         return;
       }
@@ -74,6 +104,13 @@ export default function OutreachPipelinePage() {
     },
     [push, load],
   );
+
+  function findLeadStage(leadId: string): PipelineStatus | undefined {
+    for (const stage of STAGES) {
+      if ((columns[stage] ?? []).some((lead) => lead.id === leadId)) return stage;
+    }
+    return undefined;
+  }
 
   return (
     <div className="flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden" style={{ width: '100%', maxWidth: 'none' }}>
@@ -142,6 +179,9 @@ export default function OutreachPipelinePage() {
             </div>
           ))}
         </div>
+        <p className="mt-2 text-[11px] text-text-muted">
+          Drag a card into another column to change its pipeline stage.
+        </p>
       </div>
 
       {loading ? (
@@ -150,10 +190,34 @@ export default function OutreachPipelinePage() {
         <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden px-4 py-3">
           {STAGES.map((status) => {
             const leads = columns[status] ?? [];
+            const isDropTarget = dropTarget === status && draggingId != null;
             return (
               <div
                 key={status}
-                className="flex h-full w-[min(16rem,78vw)] shrink-0 flex-col rounded-xl border border-border bg-card"
+                className={cn(
+                  'flex h-full w-[min(16rem,78vw)] shrink-0 flex-col rounded-xl border bg-card transition-colors',
+                  isDropTarget ? 'border-accent bg-accent/5' : 'border-border',
+                )}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = 'move';
+                  setDropTarget(status);
+                }}
+                onDragLeave={() => {
+                  setDropTarget((current) => (current === status ? null : current));
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const leadId =
+                    event.dataTransfer.getData(DRAG_MIME) ||
+                    event.dataTransfer.getData('text/plain') ||
+                    draggingId;
+                  setDropTarget(null);
+                  setDraggingId(null);
+                  if (!leadId) return;
+                  const fromStatus = findLeadStage(leadId);
+                  void move(leadId, status, fromStatus);
+                }}
               >
                 <div className="shrink-0 border-b border-border px-3 py-2">
                   <p className="text-xs font-medium text-text-primary">
@@ -162,13 +226,37 @@ export default function OutreachPipelinePage() {
                 </div>
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2">
                   {leads.length === 0 ? (
-                    <p className="px-1 py-4 text-center text-xs text-text-muted">Empty</p>
+                    <p className="px-1 py-4 text-center text-xs text-text-muted">
+                      {isDropTarget ? 'Drop here' : 'Empty'}
+                    </p>
                   ) : (
                     leads.map((lead) => (
-                      <div key={lead.id} className="rounded-md border border-border bg-elevated p-2">
+                      <div
+                        key={lead.id}
+                        draggable={movingId !== lead.id}
+                        onDragStart={(event) => {
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData(DRAG_MIME, lead.id);
+                          event.dataTransfer.setData('text/plain', lead.id);
+                          setDraggingId(lead.id);
+                        }}
+                        onDragEnd={() => {
+                          setDraggingId(null);
+                          setDropTarget(null);
+                        }}
+                        className={cn(
+                          'cursor-grab rounded-md border border-border bg-elevated p-2 active:cursor-grabbing',
+                          draggingId === lead.id && 'opacity-50',
+                          movingId === lead.id && 'opacity-60',
+                        )}
+                      >
                         <Link
                           href={`/aiva/outreach/leads/${lead.id}`}
                           className="text-sm font-medium text-accent hover:underline"
+                          onClick={(event) => {
+                            if (draggingId) event.preventDefault();
+                          }}
+                          draggable={false}
                         >
                           {lead.name}
                         </Link>
@@ -191,7 +279,7 @@ export default function OutreachPipelinePage() {
                             size="sm"
                             variant="ghost"
                             className="h-6 px-1.5 text-[10px]"
-                            onClick={() => void move(lead.id, 'won')}
+                            onClick={() => void move(lead.id, 'won', lead.status)}
                           >
                             Won
                           </Button>
@@ -199,7 +287,7 @@ export default function OutreachPipelinePage() {
                             size="sm"
                             variant="ghost"
                             className="h-6 px-1.5 text-[10px]"
-                            onClick={() => void move(lead.id, 'lost')}
+                            onClick={() => void move(lead.id, 'lost', lead.status)}
                           >
                             Lost
                           </Button>
@@ -207,7 +295,7 @@ export default function OutreachPipelinePage() {
                             size="sm"
                             variant="ghost"
                             className="h-6 px-1.5 text-[10px]"
-                            onClick={() => void move(lead.id, 'ghosted')}
+                            onClick={() => void move(lead.id, 'ghosted', lead.status)}
                           >
                             Ghosted
                           </Button>

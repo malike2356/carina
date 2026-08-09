@@ -7,6 +7,7 @@ import {
   Bell,
   Brain,
   ChevronRight,
+  Database,
   Keyboard,
   Link2,
   MessageSquare,
@@ -20,6 +21,7 @@ import { SsoSettings } from '@/components/settings/SsoSettings';
 import { ThemeSelector } from '@/components/settings/ThemeSelector';
 import { SettingsToolLinks } from '@/components/settings/SettingsToolLinks';
 import { AgentSyncSettings } from '@/components/settings/AgentSyncSettings';
+import { DemoDataSettings } from '@/components/settings/DemoDataSettings';
 import { Kbd } from '@/components/ui/Kbd';
 import {
   APPEARANCE_DEFAULTS,
@@ -159,6 +161,7 @@ export default function SettingsPage() {
     'shortcuts',
     'account',
     'notifications',
+    'data',
     'security',
   ]);
   const [activeSection, setActiveSection] = useState<Section>(() => {
@@ -375,6 +378,7 @@ export default function SettingsPage() {
     { id: 'brain', label: 'Brain', icon: <Brain className="h-4 w-4" /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard className="h-4 w-4" /> },
     { id: 'account', label: 'Account', icon: <User className="h-4 w-4" /> },
+    { id: 'data', label: 'Data', icon: <Database className="h-4 w-4" /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell className="h-4 w-4" /> },
     { id: 'security', label: 'Security', icon: <Shield className="h-4 w-4" /> },
   ];
@@ -701,6 +705,8 @@ export default function SettingsPage() {
               <SettingsToolLinks items={SETTINGS_SECTION_LINKS.account} />
             </div>
           )}
+
+          {activeSection === 'data' && <DemoDataSettings />}
 
           {activeSection === 'shortcuts' && (
             <div className="space-y-6">

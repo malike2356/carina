@@ -1354,6 +1354,44 @@ aivaOutreachRouter.get('/test-mode', (req: OutreachRequest, res: Response) => {
   });
 });
 
+aivaOutreachRouter.get('/demo-data', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { previewDemoOutreachData, demoOutreachTotal } = await import('../outreach/demo-data.js');
+    const preview = await previewDemoOutreachData(req.workspaceId);
+    res.json({
+      preview,
+      total: demoOutreachTotal(preview),
+      markers: {
+        tag: 'SOP_DEMO',
+        emailDomain: 'sop-demo.test',
+        listNamePrefix: 'SOP Demo',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/demo-data/purge', async (req: OutreachRequest, res: Response) => {
+  try {
+    if (req.body?.confirm !== true) {
+      res.status(400).json({
+        error: 'confirm must be true',
+        note: 'POST { "confirm": true } to purge SOP_DEMO / sop-demo.test outreach rows only.',
+      });
+      return;
+    }
+    const { purgeDemoOutreachData, demoOutreachTotal } = await import('../outreach/demo-data.js');
+    const result = await purgeDemoOutreachData(req.workspaceId);
+    res.json({
+      result,
+      totalRemoved: demoOutreachTotal(result),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 aivaOutreachRouter.post('/smoke/provider', async (req: OutreachRequest, res: Response) => {
   try {
     const mode = req.body?.mode === 'live' ? 'live' : 'simulated';

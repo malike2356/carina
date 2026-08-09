@@ -26,3 +26,4 @@ export * from './eligibility.js';
 export * from './campaign-ops.js';
 export * from './lifecycle.js';
 export * from './funnel-analytics.js';
+export * from './demo-data.js';

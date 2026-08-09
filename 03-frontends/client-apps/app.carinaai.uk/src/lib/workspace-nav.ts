@@ -530,11 +530,12 @@ export type SettingsSectionId =
   | 'shortcuts'
   | 'account'
   | 'notifications'
+  | 'data'
   | 'incident-blog'
   | 'security';
 
 export const SETTINGS_SECTION_LINKS: Record<
-  Exclude<SettingsSectionId, 'appearance' | 'shortcuts' | 'notifications'>,
+  Exclude<SettingsSectionId, 'appearance' | 'shortcuts' | 'notifications' | 'data'>,
   SettingsToolLink[]
 > = {
   join: [
