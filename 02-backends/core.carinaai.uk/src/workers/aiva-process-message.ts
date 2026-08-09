@@ -452,7 +452,10 @@ export async function* processAivaMessageStreamDirect(
         stripKnowledgeFromPersona(worker.personaPrompt),
         params.workspaceId,
         params.audiencePrincipal
-          ? { knowledgeSourceIds: params.audienceKnowledgeSourceIds ?? [] }
+          ? {
+              knowledgeSourceIds: params.audienceKnowledgeSourceIds ?? [],
+              includeDraft: params.audienceSessionMode === 'preview',
+            }
           : undefined,
       ),
       params.audiencePrincipal

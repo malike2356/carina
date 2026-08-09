@@ -24,7 +24,8 @@ export const CUSTOMER_CONCIERGE_ALLOWED_TOOLS: ReadonlySet<string> = new Set([
   // Narrow visitor identity upsert (Prompt 701)
   'audience-contact-upsert',
 
-  // Support / handoff placeholders for Prompt 702 (allowed ahead of implementation)
+  // Published knowledge search + support / handoff (Prompt 702)
+  'concierge-knowledge-search',
   'support-case-create',
   'handoff-request',
   'concierge-support-case-create',

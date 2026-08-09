@@ -28,6 +28,14 @@ function sampleProfile(overrides: Partial<ConciergeProfile> = {}): ConciergeProf
       windows: [{ dayOfWeek: 1, start: '09:00', end: '17:00' }],
     },
     escalationEmail: 'owner@example.com',
+    tone: 'warm and clear',
+    supportedLanguages: ['en'],
+    responseBoundaries: 'Do not invent legal or medical advice.',
+    contactCapturePolicy: { requireEmailBeforeBooking: true },
+    bookingPermission: 'offer_and_book',
+    slaPolicy: { firstResponseHours: 4, resolutionHours: 48 },
+    answerPolicy: { minConfidence: 0.45 },
+    escalationRules: { handoffOnSensitiveIntent: true },
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     ...overrides,
@@ -42,6 +50,8 @@ describe('concierge persona overlay', () => {
     expect(text).toContain('We help landlords in Portsmouth.');
     expect(text).toContain('owner@example.com');
     expect(text).toContain('Mon 09:00-17:00');
+    expect(text).toContain('Grounded answer rules');
+    expect(text).toContain('concierge-knowledge-search');
   });
 
   it('formats empty business hours', () => {

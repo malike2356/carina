@@ -12,6 +12,8 @@ type KnowledgeOption = {
   title: string;
   type: string;
   enabled: boolean;
+  publishState?: 'draft' | 'published' | 'archived';
+  revision?: number;
 };
 
 type Readiness = {
@@ -19,6 +21,15 @@ type Readiness = {
   checks: Array<{ key: string; label: string; status: 'done' | 'missing' | 'warning' }>;
   blockers: string[];
   warnings: string[];
+};
+
+type SupportCaseRow = {
+  id: string;
+  subject: string;
+  status: string;
+  priority: string;
+  audienceSessionId: string | null;
+  createdAt: string;
 };
 
 type ConciergeProfile = {
@@ -44,6 +55,10 @@ type ConciergeProfile = {
     windows: Array<{ dayOfWeek: number; start: string; end: string }>;
   } | null;
   escalationEmail: string | null;
+  tone?: string | null;
+  supportedLanguages?: string[];
+  responseBoundaries?: string | null;
+  bookingPermission?: 'off' | 'offer_only' | 'offer_and_book';
 };
 
 type MeetingTypeDraft = {
@@ -114,6 +129,15 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
     { name: 'Intro call', durationMinutes: 30, description: '' },
   ]);
   const [zoomToken, setZoomToken] = useState('');
+  const [tone, setTone] = useState('helpful and professional');
+  const [supportedLanguages, setSupportedLanguages] = useState('en');
+  const [responseBoundaries, setResponseBoundaries] = useState(
+    'Do not invent legal, medical, or account-access advice.',
+  );
+  const [bookingPermission, setBookingPermission] = useState<'off' | 'offer_only' | 'offer_and_book'>(
+    'offer_and_book',
+  );
+  const [supportCases, setSupportCases] = useState<SupportCaseRow[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,7 +198,24 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
             })),
           );
         }
+        setTone(p.tone ?? 'helpful and professional');
+        setSupportedLanguages((p.supportedLanguages ?? ['en']).join(', '));
+        setResponseBoundaries(
+          p.responseBoundaries
+            ?? 'Do not invent legal, medical, or account-access advice.',
+        );
+        setBookingPermission(p.bookingPermission ?? 'offer_and_book');
         if (p.channelConfig?.web || p.businessHours) setStep(2);
+      }
+
+      try {
+        const casesRes = await fetch(`/api/aiva/workers/${workerId}/concierge/support-cases`);
+        if (casesRes.ok) {
+          const casesData = (await casesRes.json()) as { cases?: SupportCaseRow[] };
+          setSupportCases(casesData.cases ?? []);
+        }
+      } catch {
+        setSupportCases([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -316,6 +357,89 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
     }
   }
 
+  async function setKnowledgePublish(entryId: string, publishState: 'draft' | 'published' | 'archived') {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/aiva/workers/${workerId}/concierge/knowledge/${entryId}/publish-state`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publishState }),
+        },
+      );
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not update publish state');
+        return;
+      }
+      setNotice(`Knowledge marked ${publishState}`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function savePolicy() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/aiva/workers/${workerId}/concierge/setup/policy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tone,
+          supportedLanguages: supportedLanguages
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean),
+          responseBoundaries,
+          bookingPermission,
+        }),
+      });
+      const data = (await res.json()) as { error?: string; profile?: ConciergeProfile };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not save policy');
+        return;
+      }
+      setProfile(data.profile ?? null);
+      setNotice('Policy saved');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function releaseCaseToAiva(audienceSessionId: string, caseId: string) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/aiva/workers/${workerId}/concierge/handoff/${audienceSessionId}/release`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ caseId }),
+        },
+      );
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? 'Could not release to Aiva');
+        return;
+      }
+      setNotice('Conversation released to Aiva');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function connectGoogle() {
     const qs = new URLSearchParams({
       workerId,
@@ -423,6 +547,100 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
             />
           </div>
         ) : null}
+
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-text-primary">Knowledge publish state</div>
+          {knowledge.length === 0 ? (
+            <p className="text-sm text-text-muted">No knowledge entries.</p>
+          ) : (
+            knowledge.map((k) => (
+              <div key={k.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
+                <span className="flex-1">
+                  {k.title} [{k.publishState ?? 'draft'}]
+                </span>
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="rounded-md border border-border px-2 py-1 text-xs"
+                  onClick={() => void setKnowledgePublish(k.id, 'published')}
+                >
+                  Publish
+                </button>
+                <button
+                  type="button"
+                  disabled={saving}
+                  className="rounded-md border border-border px-2 py-1 text-xs"
+                  onClick={() => void setKnowledgePublish(k.id, 'draft')}
+                >
+                  Draft
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-text-primary">Answer policy</div>
+          <input
+            className={AIVA_INPUT_CLASS}
+            value={tone}
+            onChange={(e) => setTone(e.target.value)}
+            placeholder="Tone"
+          />
+          <input
+            className={AIVA_INPUT_CLASS}
+            value={supportedLanguages}
+            onChange={(e) => setSupportedLanguages(e.target.value)}
+            placeholder="Languages (comma-separated)"
+          />
+          <textarea
+            className={cn(AIVA_INPUT_CLASS, 'min-h-20')}
+            value={responseBoundaries}
+            onChange={(e) => setResponseBoundaries(e.target.value)}
+            placeholder="Response boundaries"
+          />
+          <select
+            className={AIVA_INPUT_CLASS}
+            value={bookingPermission}
+            onChange={(e) =>
+              setBookingPermission(e.target.value as 'off' | 'offer_only' | 'offer_and_book')
+            }
+          >
+            <option value="offer_and_book">Offer and book</option>
+            <option value="offer_only">Offer only</option>
+            <option value="off">Booking off</option>
+          </select>
+          <button type="button" disabled={saving} onClick={() => void savePolicy()} className={btnSecondary()}>
+            Save policy
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-sm font-medium text-text-primary">Support cases</div>
+          {supportCases.length === 0 ? (
+            <p className="text-sm text-text-muted">No open support cases yet.</p>
+          ) : (
+            supportCases.map((c) => (
+              <div key={c.id} className="space-y-2 rounded-md border border-border p-3 text-sm">
+                <div className="font-medium">{c.subject}</div>
+                <div className="text-text-muted">
+                  {c.status} / {c.priority}
+                </div>
+                {c.audienceSessionId ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    className={btnSecondary()}
+                    onClick={() => void releaseCaseToAiva(c.audienceSessionId!, c.id)}
+                  >
+                    Release to Aiva
+                  </button>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+
         <button type="button" disabled={saving} onClick={() => void unpublish()} className={btnPrimary(saving)}>
           Unpublish
         </button>
@@ -517,21 +735,50 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
               <p className="text-sm text-text-muted">No knowledge entries yet. Add docs under Training.</p>
             ) : (
               knowledge.map((k) => (
-                <label key={k.id} className="flex min-h-11 items-center gap-3 rounded-md border border-border px-3">
-                  <input
-                    type="checkbox"
-                    checked={knowledgeIds.includes(k.id)}
-                    onChange={(e) => {
-                      setKnowledgeIds((prev) =>
-                        e.target.checked ? [...prev, k.id] : prev.filter((id) => id !== k.id),
-                      );
-                    }}
-                  />
-                  <span className="flex-1">
-                    {k.title}
-                    {!k.enabled ? ' (not enabled)' : ''}
-                  </span>
-                </label>
+                <div key={k.id} className="space-y-2 rounded-md border border-border px-3 py-2">
+                  <label className="flex min-h-11 items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={knowledgeIds.includes(k.id)}
+                      onChange={(e) => {
+                        setKnowledgeIds((prev) =>
+                          e.target.checked ? [...prev, k.id] : prev.filter((id) => id !== k.id),
+                        );
+                      }}
+                    />
+                    <span className="flex-1">
+                      {k.title}
+                      {!k.enabled ? ' (not enabled)' : ''}
+                      {k.publishState ? ` [${k.publishState}]` : ''}
+                    </span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={saving || k.publishState === 'published'}
+                      className="rounded-md border border-border px-2 py-1 text-xs"
+                      onClick={() => void setKnowledgePublish(k.id, 'published')}
+                    >
+                      Publish
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || k.publishState === 'draft'}
+                      className="rounded-md border border-border px-2 py-1 text-xs"
+                      onClick={() => void setKnowledgePublish(k.id, 'draft')}
+                    >
+                      Draft
+                    </button>
+                    <button
+                      type="button"
+                      disabled={saving || k.publishState === 'archived'}
+                      className="rounded-md border border-border px-2 py-1 text-xs"
+                      onClick={() => void setKnowledgePublish(k.id, 'archived')}
+                    >
+                      Archive
+                    </button>
+                  </div>
+                </div>
               ))
             )}
           </div>
@@ -546,6 +793,42 @@ export function ConciergeSetupTab({ workerId }: { workerId: string }) {
           <button type="button" className="text-left text-sm text-accent" onClick={() => setStep(1)}>
             Back to step 1
           </button>
+
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Answer policy</div>
+            <input
+              className={AIVA_INPUT_CLASS}
+              value={tone}
+              onChange={(e) => setTone(e.target.value)}
+              placeholder="Tone"
+            />
+            <input
+              className={AIVA_INPUT_CLASS}
+              value={supportedLanguages}
+              onChange={(e) => setSupportedLanguages(e.target.value)}
+              placeholder="Languages (comma-separated)"
+            />
+            <textarea
+              className={cn(AIVA_INPUT_CLASS, 'min-h-20')}
+              value={responseBoundaries}
+              onChange={(e) => setResponseBoundaries(e.target.value)}
+              placeholder="Response boundaries"
+            />
+            <select
+              className={AIVA_INPUT_CLASS}
+              value={bookingPermission}
+              onChange={(e) =>
+                setBookingPermission(e.target.value as 'off' | 'offer_only' | 'offer_and_book')
+              }
+            >
+              <option value="offer_and_book">Offer and book</option>
+              <option value="offer_only">Offer only</option>
+              <option value="off">Booking off</option>
+            </select>
+            <button type="button" disabled={saving} onClick={() => void savePolicy()} className={btnSecondary()}>
+              Save policy
+            </button>
+          </div>
 
           <div className="space-y-2">
             <div className="text-sm font-medium">Channels</div>

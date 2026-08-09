@@ -25,3 +25,25 @@ export {
   consumeAudienceRateBucket,
   assertFreshEmbedNonce,
 } from './audience-rate-limit.js';
+export {
+  buildGroundedAnswer,
+  detectSensitiveIntent,
+  listKnowledgeRevisions,
+  searchPublishedKnowledge,
+  setKnowledgePublishState,
+} from './published-knowledge.js';
+export {
+  addInternalNote,
+  createSupportCase,
+  getSupportCase,
+  listCaseEvents,
+  listInternalNotes,
+  listSupportCases,
+  updateSupportCaseStatus,
+} from './support-cases.js';
+export {
+  operatorTakeover,
+  releaseToAiva,
+  requestHandoff,
+} from './handoff.js';
+export { notifyConciergeOwner } from './owner-notify.js';

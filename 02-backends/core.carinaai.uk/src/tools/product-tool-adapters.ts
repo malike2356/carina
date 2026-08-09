@@ -15,6 +15,7 @@ import { createOutreachReplyTools } from './outreach-reply-tools.js';
 import { createOutreachBookingTools } from './outreach-booking-tools.js';
 import { createVicalBookingTools } from './vical-booking-tools.js';
 import { createAudienceContactUpsertTool } from './audience-contact-upsert.js';
+import { createConciergeSupportTools } from './concierge-support-tools.js';
 import { isCustomerConciergeToolAllowed } from '../customer-concierge/tool-policy.js';
 import { buildOutreachBoardSummary, getOutreachBoardConfig, updateOutreachBoardConfig } from '../outreach/kanban.js';
 import { buildWeeklyOwnerDigest, listFollowUpTasks, processDueFollowUps } from '../outreach/follow-ups.js';
@@ -1375,6 +1376,11 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
     const upsert = createAudienceContactUpsertTool(sessionId);
     registerSessionTool(sessionId, upsert);
     registered.push(upsert.name);
+    for (const tool of createConciergeSupportTools(sessionId)) {
+      if (!isCustomerConciergeToolAllowed(tool.name)) continue;
+      registerSessionTool(sessionId, tool);
+      registered.push(tool.name);
+    }
     return registered;
   }
 

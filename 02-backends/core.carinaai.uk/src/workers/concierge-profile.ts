@@ -6,6 +6,7 @@ import { listKnowledgeEntries } from './knowledge-base.js';
 
 export type CalendarProvider = 'google' | 'microsoft' | 'caldav';
 export type ConferencingProvider = 'zoom' | 'google_meet';
+export type BookingPermission = 'off' | 'offer_only' | 'offer_and_book';
 
 export interface ConciergeChannelConfig {
   web?: { enabled: boolean; originAllowlist?: string[] };
@@ -44,6 +45,14 @@ export interface ConciergeProfile {
   conferencingConnected: boolean;
   businessHours: ConciergeBusinessHours | null;
   escalationEmail: string | null;
+  tone: string | null;
+  supportedLanguages: string[];
+  responseBoundaries: string | null;
+  contactCapturePolicy: Record<string, unknown>;
+  bookingPermission: BookingPermission;
+  slaPolicy: Record<string, unknown>;
+  answerPolicy: Record<string, unknown>;
+  escalationRules: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,6 +79,15 @@ function mapRow(row: Record<string, unknown>): ConciergeProfile {
     row.business_hours && typeof row.business_hours === 'object'
       ? (row.business_hours as ConciergeBusinessHours)
       : null;
+  const asObject = (value: unknown): Record<string, unknown> =>
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  const bookingPermissionRaw = String(row.booking_permission ?? 'offer_and_book');
+  const bookingPermission: BookingPermission =
+    bookingPermissionRaw === 'off' || bookingPermissionRaw === 'offer_only'
+      ? bookingPermissionRaw
+      : 'offer_and_book';
   return {
     id: String(row.id),
     workerId: String(row.worker_id),
@@ -94,6 +112,17 @@ function mapRow(row: Record<string, unknown>): ConciergeProfile {
     conferencingConnected: Boolean(row.conferencing_connected),
     businessHours,
     escalationEmail: row.escalation_email != null ? String(row.escalation_email) : null,
+    tone: row.tone != null ? String(row.tone) : null,
+    supportedLanguages: Array.isArray(row.supported_languages)
+      ? row.supported_languages.map(String)
+      : [],
+    responseBoundaries:
+      row.response_boundaries != null ? String(row.response_boundaries) : null,
+    contactCapturePolicy: asObject(row.contact_capture_policy),
+    bookingPermission,
+    slaPolicy: asObject(row.sla_policy),
+    answerPolicy: asObject(row.answer_policy),
+    escalationRules: asObject(row.escalation_rules),
     createdAt: new Date(String(row.created_at)).toISOString(),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
@@ -229,6 +258,55 @@ export async function upsertConciergeStep2(params: {
   return mapRow(result.rows[0] as Record<string, unknown>);
 }
 
+export async function upsertConciergePolicy(params: {
+  workspaceId: string;
+  workerId: string;
+  tone?: string | null;
+  supportedLanguages?: string[];
+  responseBoundaries?: string | null;
+  contactCapturePolicy?: Record<string, unknown>;
+  bookingPermission?: BookingPermission;
+  slaPolicy?: Record<string, unknown>;
+  answerPolicy?: Record<string, unknown>;
+  escalationRules?: Record<string, unknown>;
+}): Promise<ConciergeProfile> {
+  const existing = await getConciergeProfile(params.workspaceId, params.workerId);
+  if (!existing) {
+    throw Object.assign(new Error('Complete step 1 before saving policy'), { status: 400 });
+  }
+
+  const bookingPermission = params.bookingPermission ?? existing.bookingPermission;
+  const result = await pool.query(
+    `UPDATE concierge_profiles SET
+       tone = COALESCE($3, tone),
+       supported_languages = COALESCE($4::text[], supported_languages),
+       response_boundaries = COALESCE($5, response_boundaries),
+       contact_capture_policy = COALESCE($6::jsonb, contact_capture_policy),
+       booking_permission = $7,
+       sla_policy = COALESCE($8::jsonb, sla_policy),
+       answer_policy = COALESCE($9::jsonb, answer_policy),
+       escalation_rules = COALESCE($10::jsonb, escalation_rules),
+       updated_at = NOW()
+     WHERE workspace_id = $1 AND worker_id = $2
+     RETURNING *`,
+    [
+      params.workspaceId,
+      params.workerId,
+      params.tone !== undefined ? params.tone : null,
+      params.supportedLanguages ?? null,
+      params.responseBoundaries !== undefined ? params.responseBoundaries : null,
+      params.contactCapturePolicy != null
+        ? JSON.stringify(params.contactCapturePolicy)
+        : null,
+      bookingPermission,
+      params.slaPolicy != null ? JSON.stringify(params.slaPolicy) : null,
+      params.answerPolicy != null ? JSON.stringify(params.answerPolicy) : null,
+      params.escalationRules != null ? JSON.stringify(params.escalationRules) : null,
+    ],
+  );
+  return mapRow(result.rows[0] as Record<string, unknown>);
+}
+
 async function resolveCalendarConnected(
   workspaceId: string,
   workerId: string,
@@ -329,7 +407,7 @@ export async function evaluateConciergeReadiness(
   if (profile && profile.knowledgeSourceIds.length > 0) {
     const entries = await listKnowledgeEntries(workerId);
     knowledgeOk = profile.knowledgeSourceIds.some((id) =>
-      entries.some((e) => e.id === id && e.enabled),
+      entries.some((e) => e.id === id && e.enabled && e.publishState === 'published'),
     );
   }
   checks.push({
@@ -433,14 +511,37 @@ export function buildConciergePersonaOverlay(profile: ConciergeProfile): string 
   const business = profile.businessName?.trim() || 'the business';
   const description = profile.businessDescription?.trim() || '';
   const escalation = profile.escalationEmail?.trim() || 'the business owner';
+  const tone = profile.tone?.trim() || 'helpful and professional';
+  const languages =
+    profile.supportedLanguages.length > 0
+      ? profile.supportedLanguages.join(', ')
+      : 'English';
+  const boundaries =
+    profile.responseBoundaries?.trim()
+    || 'Do not invent policies, prices, legal advice, medical advice, or account access steps.';
+  const booking =
+    profile.bookingPermission === 'off'
+      ? 'Do not offer or create bookings.'
+      : profile.bookingPermission === 'offer_only'
+        ? 'You may offer available slots but do not confirm bookings yourself.'
+        : 'For meeting requests, use the booking tools to offer available slots and confirm when asked.';
+
   return `
 You are ${persona}, representing ${business}.
 ${description}
 
+Tone: ${tone}. Supported languages: ${languages}.
+
+Grounded answer rules:
+- Only answer from published knowledge sources (use concierge-knowledge-search when unsure).
+- Cite or paraphrase approved sources. If confidence is low or there is no match, say you do not know and offer to escalate.
+- Never invent facts, unpublished drafts, internal notes, or workspace data.
+- Response boundaries: ${boundaries}
+- Sensitive intents (refunds, legal, medical, account access, security incidents): do not invent answers; open a support case or request handoff.
+
 Rules:
-- Only answer from published knowledge sources. If you do not know, say so and offer to escalate.
 - Never share internal workspace information, private documents, or owner conversations.
-- For meeting requests, use the booking tools to offer available slots.
+- ${booking}
 - For issues you cannot resolve, create a support case and offer escalation to ${escalation}.
 - Your business hours are ${formatBusinessHours(profile.businessHours)}. Outside these hours, tell the visitor when you will be available.
 `.trim();

@@ -21,14 +21,33 @@ import {
   publishConciergeProfile,
   publicWidgetEmbed,
   unpublishConciergeProfile,
+  upsertConciergePolicy,
   upsertConciergeStep1,
   upsertConciergeStep2,
+  type BookingPermission,
   type CalendarProvider,
   type ConferencingProvider,
   type ConciergeBusinessHours,
   type ConciergeChannelConfig,
 } from '../workers/concierge-profile.js';
 import { evaluateProviderReadiness } from '../customer-concierge/readiness.js';
+import {
+  listKnowledgeRevisions,
+  setKnowledgePublishState,
+  type KnowledgePublishState,
+} from '../customer-concierge/published-knowledge.js';
+import {
+  addInternalNote,
+  getSupportCase,
+  listInternalNotes,
+  listSupportCases,
+  updateSupportCaseStatus,
+  type SupportCaseStatus,
+} from '../customer-concierge/support-cases.js';
+import {
+  operatorTakeover,
+  releaseToAiva,
+} from '../customer-concierge/handoff.js';
 import { pool } from '../memory/db.js';
 
 export const conciergeSetupRouter: ExpressRouter = Router({ mergeParams: true });
@@ -296,6 +315,8 @@ conciergeSetupRouter.get('/profile', async (req: ConciergeRequest, res: Response
         title: k.title,
         type: k.type,
         enabled: k.enabled,
+        publishState: k.publishState,
+        revision: k.revision,
       })),
       embed,
       stats: { conversationCountToday, bookingCountToday },
@@ -473,3 +494,267 @@ conciergeSetupRouter.post('/connections/zoom/callback', async (req: ConciergeReq
     res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });
+
+conciergeSetupRouter.post('/setup/policy', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const bookingRaw = String(req.body?.bookingPermission ?? '').trim();
+    const bookingPermission =
+      bookingRaw === 'off' || bookingRaw === 'offer_only' || bookingRaw === 'offer_and_book'
+        ? (bookingRaw as BookingPermission)
+        : undefined;
+    const profile = await upsertConciergePolicy({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+      tone: req.body?.tone != null ? String(req.body.tone) : undefined,
+      supportedLanguages: Array.isArray(req.body?.supportedLanguages)
+        ? req.body.supportedLanguages.map(String)
+        : undefined,
+      responseBoundaries:
+        req.body?.responseBoundaries != null
+          ? String(req.body.responseBoundaries)
+          : undefined,
+      contactCapturePolicy:
+        req.body?.contactCapturePolicy && typeof req.body.contactCapturePolicy === 'object'
+          ? (req.body.contactCapturePolicy as Record<string, unknown>)
+          : undefined,
+      bookingPermission,
+      slaPolicy:
+        req.body?.slaPolicy && typeof req.body.slaPolicy === 'object'
+          ? (req.body.slaPolicy as Record<string, unknown>)
+          : undefined,
+      answerPolicy:
+        req.body?.answerPolicy && typeof req.body.answerPolicy === 'object'
+          ? (req.body.answerPolicy as Record<string, unknown>)
+          : undefined,
+      escalationRules:
+        req.body?.escalationRules && typeof req.body.escalationRules === 'object'
+          ? (req.body.escalationRules as Record<string, unknown>)
+          : undefined,
+    });
+    res.json({ profile });
+  } catch (err) {
+    const status = (err as { status?: number }).status ?? 400;
+    res.status(status).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.post(
+  '/knowledge/:entryId/publish-state',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const entryId = String(req.params.entryId ?? '').trim();
+      const publishState = String(req.body?.publishState ?? '').trim() as KnowledgePublishState;
+      if (!entryId || !['draft', 'published', 'archived'].includes(publishState)) {
+        res.status(400).json({ error: 'entryId and publishState (draft|published|archived) are required' });
+        return;
+      }
+      const ok = await setKnowledgePublishState({
+        workerId: ctx.workerId,
+        workspaceId: ctx.workspaceId,
+        entryId,
+        publishState,
+        createdBy: typeof req.body?.createdBy === 'string' ? req.body.createdBy : null,
+      });
+      if (!ok) {
+        res.status(404).json({ error: 'Knowledge entry not found' });
+        return;
+      }
+      const readiness = await evaluateConciergeReadiness(ctx.workspaceId, ctx.workerId);
+      res.json({ ok: true, publishState, readiness });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.get(
+  '/knowledge/:entryId/revisions',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const entryId = String(req.params.entryId ?? '').trim();
+      if (!entryId) {
+        res.status(400).json({ error: 'entryId is required' });
+        return;
+      }
+      const revisions = await listKnowledgeRevisions({
+        workerId: ctx.workerId,
+        entryId,
+      });
+      res.json({ revisions });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.get('/support-cases', async (req: ConciergeRequest, res: Response) => {
+  try {
+    const ctx = await requireWorker(req, res);
+    if (!ctx) return;
+    const statusRaw = typeof req.query.status === 'string' ? req.query.status : '';
+    const status = statusRaw
+      ? (statusRaw.split(',').map((s) => s.trim()) as SupportCaseStatus[])
+      : undefined;
+    const cases = await listSupportCases({
+      workspaceId: ctx.workspaceId,
+      workerId: ctx.workerId,
+      status,
+      limit: 50,
+    });
+    res.json({ cases });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+conciergeSetupRouter.get(
+  '/support-cases/:caseId',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const caseId = String(req.params.caseId ?? '').trim();
+      const supportCase = await getSupportCase({
+        workspaceId: ctx.workspaceId,
+        caseId,
+      });
+      if (!supportCase || supportCase.workerId !== ctx.workerId) {
+        res.status(404).json({ error: 'Support case not found' });
+        return;
+      }
+      const notes = await listInternalNotes({
+        workspaceId: ctx.workspaceId,
+        caseId,
+      });
+      res.json({ case: supportCase, notes });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.post(
+  '/support-cases/:caseId/notes',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const caseId = String(req.params.caseId ?? '').trim();
+      const supportCase = await getSupportCase({
+        workspaceId: ctx.workspaceId,
+        caseId,
+      });
+      if (!supportCase || supportCase.workerId !== ctx.workerId) {
+        res.status(404).json({ error: 'Support case not found' });
+        return;
+      }
+      const note = await addInternalNote({
+        workspaceId: ctx.workspaceId,
+        workerId: ctx.workerId,
+        caseId,
+        audienceSessionId: supportCase.audienceSessionId,
+        authorUserId:
+          typeof req.body?.authorUserId === 'string' ? req.body.authorUserId : null,
+        body: String(req.body?.body ?? ''),
+      });
+      res.json({ note });
+    } catch (err) {
+      const status = (err as { status?: number }).status ?? 400;
+      res.status(status).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.post(
+  '/support-cases/:caseId/status',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const caseId = String(req.params.caseId ?? '').trim();
+      const status = String(req.body?.status ?? '').trim() as SupportCaseStatus;
+      if (!['open', 'pending_customer', 'pending_operator', 'resolved', 'closed'].includes(status)) {
+        res.status(400).json({ error: 'Invalid status' });
+        return;
+      }
+      const existing = await getSupportCase({
+        workspaceId: ctx.workspaceId,
+        caseId,
+      });
+      if (!existing || existing.workerId !== ctx.workerId) {
+        res.status(404).json({ error: 'Support case not found' });
+        return;
+      }
+      const supportCase = await updateSupportCaseStatus({
+        workspaceId: ctx.workspaceId,
+        caseId,
+        status,
+        actorType: 'owner',
+        actorId: typeof req.body?.actorId === 'string' ? req.body.actorId : null,
+        detail: typeof req.body?.detail === 'string' ? req.body.detail : null,
+      });
+      res.json({ case: supportCase });
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.post(
+  '/handoff/:audienceSessionId/takeover',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const audienceSessionId = String(req.params.audienceSessionId ?? '').trim();
+      const operatorUserId = String(req.body?.operatorUserId ?? '').trim();
+      if (!audienceSessionId || !operatorUserId) {
+        res.status(400).json({ error: 'audienceSessionId and operatorUserId are required' });
+        return;
+      }
+      const result = await operatorTakeover({
+        workspaceId: ctx.workspaceId,
+        audienceSessionId,
+        operatorUserId,
+        caseId: typeof req.body?.caseId === 'string' ? req.body.caseId : null,
+      });
+      res.json(result);
+    } catch (err) {
+      const status = (err as { status?: number }).status ?? 400;
+      res.status(status).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);
+
+conciergeSetupRouter.post(
+  '/handoff/:audienceSessionId/release',
+  async (req: ConciergeRequest, res: Response) => {
+    try {
+      const ctx = await requireWorker(req, res);
+      if (!ctx) return;
+      const audienceSessionId = String(req.params.audienceSessionId ?? '').trim();
+      if (!audienceSessionId) {
+        res.status(400).json({ error: 'audienceSessionId is required' });
+        return;
+      }
+      const result = await releaseToAiva({
+        workspaceId: ctx.workspaceId,
+        audienceSessionId,
+        operatorUserId:
+          typeof req.body?.operatorUserId === 'string' ? req.body.operatorUserId : null,
+        caseId: typeof req.body?.caseId === 'string' ? req.body.caseId : null,
+        note: typeof req.body?.note === 'string' ? req.body.note : null,
+      });
+      res.json(result);
+    } catch (err) {
+      const status = (err as { status?: number }).status ?? 400;
+      res.status(status).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  },
+);

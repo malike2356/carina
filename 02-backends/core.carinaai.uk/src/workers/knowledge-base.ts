@@ -24,6 +24,9 @@ export interface KnowledgeEntry {
   content: string;
   charCount: number;
   enabled: boolean;
+  publishState: 'draft' | 'published' | 'archived';
+  revision: number;
+  publishedAt: string | null;
   createdAt: string;
 }
 
@@ -37,6 +40,9 @@ function mapRow(row: Record<string, unknown>): KnowledgeEntry {
     content: String(row.content),
     charCount: Number(row.char_count ?? 0),
     enabled: Boolean(row.enabled),
+    publishState: String(row.publish_state ?? 'draft') as KnowledgeEntry['publishState'],
+    revision: Number(row.revision ?? 1),
+    publishedAt: row.published_at ? new Date(String(row.published_at)).toISOString() : null,
     createdAt: new Date(String(row.created_at)).toISOString(),
   };
 }
@@ -57,6 +63,7 @@ export interface KnowledgeSummary {
   title: string;
   charCount: number;
   enabled: boolean;
+  publishState: 'draft' | 'published' | 'archived';
   createdAt: string;
   preview?: string;
 }
@@ -75,6 +82,7 @@ export async function listKnowledgeSummaries(workerId: string): Promise<Knowledg
       title: entry.title,
       charCount: entry.charCount,
       enabled: entry.enabled,
+      publishState: entry.publishState,
       createdAt: entry.createdAt,
       preview,
     };
@@ -101,7 +109,7 @@ export async function resolvePersonaWithKnowledge(
   workerId: string,
   basePersona: string,
   workspaceId: string,
-  options?: { knowledgeSourceIds?: string[] | null },
+  options?: { knowledgeSourceIds?: string[] | null; includeDraft?: boolean },
 ): Promise<string> {
   const stripped = stripKnowledgeFromPersona(basePersona);
   if (!(await workspaceHasKnowledgeAccess(workspaceId))) {
@@ -123,7 +131,7 @@ export async function getKnowledgeCharTotal(workerId: string): Promise<number> {
 export async function appendKnowledgeToPersona(
   personaPrompt: string,
   workerId: string,
-  options?: { knowledgeSourceIds?: string[] | null },
+  options?: { knowledgeSourceIds?: string[] | null; includeDraft?: boolean },
 ): Promise<string> {
   const ids = options?.knowledgeSourceIds;
   // Explicit empty list means no published knowledge for this audience.
@@ -131,11 +139,21 @@ export async function appendKnowledgeToPersona(
     return personaPrompt;
   }
 
+  const audienceScoped = Array.isArray(ids) && ids.length > 0;
+  const includeDraft = options?.includeDraft === true;
+  // Audience visitors only see published sources unless preview includeDraft is set.
+  const publishFilter = audienceScoped
+    ? (includeDraft
+      ? `AND publish_state = ANY(ARRAY['published','draft']::text[])`
+      : `AND publish_state = 'published'`)
+    : '';
+
   let result;
-  if (Array.isArray(ids) && ids.length > 0) {
+  if (audienceScoped) {
     result = await pool.query(
       `SELECT type, title, content FROM aiva_knowledge_base
        WHERE worker_id = $1 AND enabled = true AND id = ANY($2::uuid[])
+       ${publishFilter}
        ORDER BY type, created_at ASC`,
       [workerId, ids],
     );

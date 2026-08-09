@@ -190,7 +190,8 @@ export async function convertAudienceIdentityToKnown(input: {
 }
 
 export function isAudienceSessionUsable(session: AudienceSessionRecord): boolean {
-  if (session.status !== 'active') return false;
+  // handed_off keeps the channel open for operator continuity (Prompt 702).
+  if (session.status !== 'active' && session.status !== 'handed_off') return false;
   if (session.riskState === 'blocked') return false;
   if (Date.parse(session.expiresAt) <= Date.now()) return false;
   return true;

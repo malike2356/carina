@@ -598,6 +598,15 @@ widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
+  if (audience.status === 'handed_off') {
+    const holding =
+      'Thanks for your message. A human teammate has taken over this conversation and will reply here shortly.';
+    res.write(`data: ${JSON.stringify({ type: 'token', content: holding })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+    res.end();
+    return;
+  }
+
   const limitCheck = await checkAndEnforceLimit(worker.workspaceId);
   if (!limitCheck.allowed) {
     void maybeSendUsageAlerts(worker.workspaceId).catch(() => {});
