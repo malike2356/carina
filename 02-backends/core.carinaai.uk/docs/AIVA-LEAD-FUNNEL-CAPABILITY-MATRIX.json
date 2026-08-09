@@ -152,8 +152,12 @@
       "area": "campaign",
       "status": "real",
       "mode": "scheduled",
-      "notes": "In-process Croner every 5 minutes plus POST /process-due. Not a durable Postgres job queue.",
-      "evidence": ["src/outreach/process-due-scheduler.ts"]
+      "notes": "Durable Postgres due-job queue (037) with FOR UPDATE SKIP LOCKED leases; Soft Wall Approvals only. Legacy Croner sweep when CARINA_OUTREACH_DURABLE_SCHEDULER=false.",
+      "evidence": [
+        "src/outreach/scheduler/due-job-queue.ts",
+        "src/outreach/scheduler/engine.ts",
+        "src/infrastructure/migrations/037-outreach-due-jobs.sql"
+      ]
     },
     {
       "id": "approval.create",

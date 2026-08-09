@@ -260,6 +260,13 @@ export function stopEnrollment(
   if (!enrollment) return null;
   if (enrollment.status !== 'active' && enrollment.status !== 'paused') return enrollment;
 
+  void import('./scheduler/due-job-queue.js')
+    .then(({ cancelOpenJobsForEnrollment, isOutreachDurableSchedulerEnabled }) => {
+      if (!isOutreachDurableSchedulerEnabled()) return;
+      return cancelOpenJobsForEnrollment(workspaceId, enrollmentId, reason);
+    })
+    .catch(() => undefined);
+
   const next: SequenceEnrollment = {
     ...enrollment,
     status: reason === 'manual_pause' ? 'paused' : 'stopped',
@@ -333,26 +340,202 @@ export interface ProcessDueResult {
   skipped: Array<{ enrollmentId: string; reason: string }>;
 }
 
+export type ProcessEnrollmentOutcome =
+  | { kind: 'processed'; delivery: DeliveryEvent }
+  | { kind: 'skipped'; reason: string; stopEnrollment?: boolean };
+
+/**
+ * Process one due enrolment step. Soft Wall: creates a single `pending_approval` delivery.
+ * Does not call gmail-send. Exactly one delivery per enrolment+step (duplicate-safe).
+ */
+export function processEnrollmentDueStep(
+  workspaceId: string,
+  enrollmentId: string,
+  now: Date = new Date(),
+  options?: { expectedStepId?: string },
+): ProcessEnrollmentOutcome {
+  if (isOutreachPaused(workspaceId)) {
+    return { kind: 'skipped', reason: 'paused' };
+  }
+
+  const store = loadOutreachStore();
+  const enrollment = store.enrollments.find(
+    (e) => e.workspaceId === workspaceId && e.id === enrollmentId,
+  );
+  if (!enrollment) {
+    return { kind: 'skipped', reason: 'missing_lead_or_sequence' };
+  }
+  if (enrollment.status === 'paused') {
+    return { kind: 'skipped', reason: 'enrollment_paused' };
+  }
+  if (enrollment.status !== 'active') {
+    return { kind: 'skipped', reason: 'enrollment_stopped' };
+  }
+
+  const lead = getLead(workspaceId, enrollment.leadId);
+  const sequence = getSequence(workspaceId, enrollment.sequenceId);
+  if (!lead || !sequence) {
+    return { kind: 'skipped', reason: 'missing_lead_or_sequence' };
+  }
+
+  if (lead.replyState === 'unsubscribed') {
+    stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
+    return { kind: 'skipped', reason: 'unsubscribed', stopEnrollment: true };
+  }
+  if (lead.status === 'suppressed' || lead.consentStatus === 'opted_out' || lead.consentStatus === 'suppressed') {
+    stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
+    return { kind: 'skipped', reason: 'suppressed', stopEnrollment: true };
+  }
+  if (isAddressSuppressed(workspaceId, lead.email)) {
+    stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
+    return { kind: 'skipped', reason: 'suppression_list', stopEnrollment: true };
+  }
+  if (lead.replyState === 'replied' && sequence.stopOnReply) {
+    stopEnrollment(workspaceId, enrollment.id, 'reply');
+    return { kind: 'skipped', reason: 'already_replied', stopEnrollment: true };
+  }
+  if ((lead.bookingState === 'booked' || lead.bookingState === 'attended') && sequence.stopOnBooking) {
+    stopEnrollment(workspaceId, enrollment.id, 'booking');
+    return { kind: 'skipped', reason: 'already_booked', stopEnrollment: true };
+  }
+
+  const campaign = enrollment.campaignId ? getCampaign(workspaceId, enrollment.campaignId) : null;
+  if (campaign && campaign.active === false) {
+    return { kind: 'skipped', reason: 'campaign_inactive' };
+  }
+
+  const cadence = campaign?.cadence ?? {
+    dailyCap: 10,
+    timezone: lead.timezone ?? 'Europe/London',
+    businessHoursStart: '09:00',
+    businessHoursEnd: '17:00',
+    businessDays: [1, 2, 3, 4, 5],
+  };
+
+  if (
+    !isWithinBusinessHours({
+      now,
+      timezone: cadence.timezone,
+      start: cadence.businessHoursStart,
+      end: cadence.businessHoursEnd,
+      businessDays: cadence.businessDays,
+    })
+  ) {
+    return { kind: 'skipped', reason: 'outside_business_hours' };
+  }
+
+  const campaignDeliveries = loadOutreachStore().deliveries.filter(
+    (d) => d.workspaceId === workspaceId && (!enrollment.campaignId || getLead(workspaceId, d.leadId)?.campaignId === enrollment.campaignId),
+  );
+  const sentToday = countSentToday(campaignDeliveries, now, cadence.timezone);
+  if (sentToday >= cadence.dailyCap) {
+    return { kind: 'skipped', reason: 'daily_cap' };
+  }
+
+  const step = sequence.steps[enrollment.currentStepIndex];
+  if (!step) {
+    mutateOutreachStore((s) => {
+      const idx = s.enrollments.findIndex((e) => e.id === enrollment.id);
+      if (idx >= 0) {
+        s.enrollments[idx] = {
+          ...s.enrollments[idx]!,
+          status: 'completed',
+          stopReason: 'completed',
+          nextActionAt: undefined,
+          updatedAt: nowIso(now),
+        };
+      }
+    });
+    return { kind: 'skipped', reason: 'completed' };
+  }
+
+  if (options?.expectedStepId && options.expectedStepId !== step.id) {
+    return { kind: 'skipped', reason: 'step_mismatch' };
+  }
+
+  const existingForStep = loadOutreachStore().deliveries.find(
+    (d) =>
+      d.workspaceId === workspaceId
+      && d.enrollmentId === enrollment.id
+      && d.stepId === step.id
+      && !['failed', 'cancelled', 'skipped'].includes(d.status),
+  );
+  if (existingForStep) {
+    return { kind: 'skipped', reason: 'duplicate_step' };
+  }
+
+  if (!lead.email && step.channel === 'email') {
+    return { kind: 'skipped', reason: 'missing_email' };
+  }
+
+  const subject = renderTemplate(step.subject, lead, step.cta);
+  const body = renderTemplate(step.body, lead, step.cta);
+  const stamp = nowIso(now);
+  const delivery: DeliveryEvent = {
+    id: crypto.randomUUID(),
+    workspaceId,
+    enrollmentId: enrollment.id,
+    leadId: lead.id,
+    sequenceId: sequence.id,
+    stepId: step.id,
+    stepOrder: step.order,
+    channel: step.channel,
+    subject,
+    body,
+    status: 'pending_approval',
+    scheduledFor: enrollment.nextActionAt ?? stamp,
+    attempts: 1,
+    createdAt: stamp,
+    updatedAt: stamp,
+  };
+
+  const nextIndex = enrollment.currentStepIndex + 1;
+  const nextStep = sequence.steps[nextIndex];
+  const nextActionAt = nextStep ? addHours(stamp, nextStep.delayHours) : undefined;
+
+  mutateOutreachStore((s) => {
+    s.deliveries.push(delivery);
+    const eIdx = s.enrollments.findIndex((e) => e.id === enrollment.id);
+    if (eIdx >= 0) {
+      s.enrollments[eIdx] = {
+        ...s.enrollments[eIdx]!,
+        currentStepIndex: nextIndex,
+        nextActionAt,
+        status: nextStep ? 'active' : 'completed',
+        stopReason: nextStep ? undefined : 'completed',
+        updatedAt: stamp,
+      };
+    }
+    const lIdx = s.leads.findIndex((l) => l.id === lead.id);
+    if (lIdx >= 0) {
+      let updated = appendTimeline(s.leads[lIdx]!, {
+        kind: 'delivery',
+        message: `Queued ${step.label} for Soft Wall approval (${step.channel})`,
+        meta: { deliveryId: delivery.id, stepId: step.id },
+      });
+      if (updated.status === 'new') {
+        updated = transitionLeadStatus(updated, 'contacted', 'First sequence touch queued');
+      }
+      updated = {
+        ...updated,
+        lastContactedAt: stamp,
+        nextActionAt,
+        replyState: updated.replyState === 'none' ? 'awaiting' : updated.replyState,
+      };
+      s.leads[lIdx] = updated;
+    }
+  });
+  void refreshFollowUpPlans(workspaceId);
+  void syncLeadBoardState(workspaceId, lead.id, `Queued ${step.label}`).catch(() => undefined);
+
+  return { kind: 'processed', delivery };
+}
+
 /**
  * Process due sequence steps. Soft Wall: creates `pending_approval` delivery events.
  * Does not call gmail-send. Mark sent after owner approval via markDeliveryStatus.
  */
 export function processDueSends(workspaceId: string, now: Date = new Date()): ProcessDueResult {
-  if (isOutreachPaused(workspaceId)) {
-    const store = loadOutreachStore();
-    const due = store.enrollments.filter(
-      (e) =>
-        e.workspaceId === workspaceId
-        && e.status === 'active'
-        && e.nextActionAt
-        && new Date(e.nextActionAt).getTime() <= now.getTime(),
-    );
-    return {
-      processed: [],
-      skipped: due.map((enrollment) => ({ enrollmentId: enrollment.id, reason: 'paused' })),
-    };
-  }
-
   const store = loadOutreachStore();
   const due = store.enrollments.filter(
     (e) =>
@@ -366,154 +549,12 @@ export function processDueSends(workspaceId: string, now: Date = new Date()): Pr
   const skipped: Array<{ enrollmentId: string; reason: string }> = [];
 
   for (const enrollment of due) {
-    const lead = getLead(workspaceId, enrollment.leadId);
-    const sequence = getSequence(workspaceId, enrollment.sequenceId);
-    if (!lead || !sequence) {
-      skipped.push({ enrollmentId: enrollment.id, reason: 'missing_lead_or_sequence' });
-      continue;
+    const outcome = processEnrollmentDueStep(workspaceId, enrollment.id, now);
+    if (outcome.kind === 'processed') {
+      processed.push(outcome.delivery);
+    } else {
+      skipped.push({ enrollmentId: enrollment.id, reason: outcome.reason });
     }
-
-    if (lead.replyState === 'unsubscribed') {
-      stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
-      skipped.push({ enrollmentId: enrollment.id, reason: 'unsubscribed' });
-      continue;
-    }
-    if (lead.status === 'suppressed' || lead.consentStatus === 'opted_out' || lead.consentStatus === 'suppressed') {
-      stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
-      skipped.push({ enrollmentId: enrollment.id, reason: 'suppressed' });
-      continue;
-    }
-    if (isAddressSuppressed(workspaceId, lead.email)) {
-      stopEnrollment(workspaceId, enrollment.id, 'unsubscribe');
-      skipped.push({ enrollmentId: enrollment.id, reason: 'suppression_list' });
-      continue;
-    }
-    if (lead.replyState === 'replied' && sequence.stopOnReply) {
-      stopEnrollment(workspaceId, enrollment.id, 'reply');
-      skipped.push({ enrollmentId: enrollment.id, reason: 'already_replied' });
-      continue;
-    }
-    if ((lead.bookingState === 'booked' || lead.bookingState === 'attended') && sequence.stopOnBooking) {
-      stopEnrollment(workspaceId, enrollment.id, 'booking');
-      skipped.push({ enrollmentId: enrollment.id, reason: 'already_booked' });
-      continue;
-    }
-
-    const campaign = enrollment.campaignId ? getCampaign(workspaceId, enrollment.campaignId) : null;
-    const cadence = campaign?.cadence ?? {
-      dailyCap: 10,
-      timezone: lead.timezone ?? 'Europe/London',
-      businessHoursStart: '09:00',
-      businessHoursEnd: '17:00',
-      businessDays: [1, 2, 3, 4, 5],
-    };
-
-    if (
-      !isWithinBusinessHours({
-        now,
-        timezone: cadence.timezone,
-        start: cadence.businessHoursStart,
-        end: cadence.businessHoursEnd,
-        businessDays: cadence.businessDays,
-      })
-    ) {
-      skipped.push({ enrollmentId: enrollment.id, reason: 'outside_business_hours' });
-      continue;
-    }
-
-    const campaignDeliveries = loadOutreachStore().deliveries.filter(
-      (d) => d.workspaceId === workspaceId && (!enrollment.campaignId || getLead(workspaceId, d.leadId)?.campaignId === enrollment.campaignId),
-    );
-    const sentToday = countSentToday(campaignDeliveries, now, cadence.timezone);
-    if (sentToday >= cadence.dailyCap) {
-      skipped.push({ enrollmentId: enrollment.id, reason: 'daily_cap' });
-      continue;
-    }
-
-    const step = sequence.steps[enrollment.currentStepIndex];
-    if (!step) {
-      mutateOutreachStore((s) => {
-        const idx = s.enrollments.findIndex((e) => e.id === enrollment.id);
-        if (idx >= 0) {
-          s.enrollments[idx] = {
-            ...s.enrollments[idx]!,
-            status: 'completed',
-            stopReason: 'completed',
-            nextActionAt: undefined,
-            updatedAt: nowIso(now),
-          };
-        }
-      });
-      skipped.push({ enrollmentId: enrollment.id, reason: 'completed' });
-      continue;
-    }
-
-    if (!lead.email && step.channel === 'email') {
-      skipped.push({ enrollmentId: enrollment.id, reason: 'missing_email' });
-      continue;
-    }
-
-    const subject = renderTemplate(step.subject, lead, step.cta);
-    const body = renderTemplate(step.body, lead, step.cta);
-    const stamp = nowIso(now);
-    const delivery: DeliveryEvent = {
-      id: crypto.randomUUID(),
-      workspaceId,
-      enrollmentId: enrollment.id,
-      leadId: lead.id,
-      sequenceId: sequence.id,
-      stepId: step.id,
-      stepOrder: step.order,
-      channel: step.channel,
-      subject,
-      body,
-      status: 'pending_approval',
-      scheduledFor: enrollment.nextActionAt ?? stamp,
-      attempts: 1,
-      createdAt: stamp,
-      updatedAt: stamp,
-    };
-
-    const nextIndex = enrollment.currentStepIndex + 1;
-    const nextStep = sequence.steps[nextIndex];
-    const nextActionAt = nextStep ? addHours(stamp, nextStep.delayHours) : undefined;
-
-    mutateOutreachStore((s) => {
-      s.deliveries.push(delivery);
-      const eIdx = s.enrollments.findIndex((e) => e.id === enrollment.id);
-      if (eIdx >= 0) {
-        s.enrollments[eIdx] = {
-          ...s.enrollments[eIdx]!,
-          currentStepIndex: nextIndex,
-          nextActionAt,
-          status: nextStep ? 'active' : 'completed',
-          stopReason: nextStep ? undefined : 'completed',
-          updatedAt: stamp,
-        };
-      }
-      const lIdx = s.leads.findIndex((l) => l.id === lead.id);
-      if (lIdx >= 0) {
-        let updated = appendTimeline(s.leads[lIdx]!, {
-          kind: 'delivery',
-          message: `Queued ${step.label} for Soft Wall approval (${step.channel})`,
-          meta: { deliveryId: delivery.id, stepId: step.id },
-        });
-        if (updated.status === 'new') {
-          updated = transitionLeadStatus(updated, 'contacted', 'First sequence touch queued');
-        }
-        updated = {
-          ...updated,
-          lastContactedAt: stamp,
-          nextActionAt,
-          replyState: updated.replyState === 'none' ? 'awaiting' : updated.replyState,
-        };
-        s.leads[lIdx] = updated;
-      }
-    });
-    void refreshFollowUpPlans(workspaceId);
-    void syncLeadBoardState(workspaceId, lead.id, `Queued ${step.label}`).catch(() => undefined);
-
-    processed.push(delivery);
   }
 
   return { processed, skipped };

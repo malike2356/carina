@@ -1026,6 +1026,107 @@ aivaOutreachRouter.patch('/control', (req: OutreachRequest, res: Response) => {
   res.json({ state, summary: outreachControlSummary(state) });
 });
 
+aivaOutreachRouter.get('/scheduler/health', async (_req: OutreachRequest, res: Response) => {
+  try {
+    const { getSchedulerHealth, isOutreachDurableSchedulerEnabled } = await import(
+      '../outreach/scheduler/due-job-queue.js'
+    );
+    if (!isOutreachDurableSchedulerEnabled()) {
+      res.json({ durableEnabled: false, note: 'Durable scheduler disabled; legacy Croner sweep active' });
+      return;
+    }
+    const health = await getSchedulerHealth();
+    res.json({ health });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/scheduler/control', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { setSchedulerControl, isOutreachDurableSchedulerEnabled } = await import(
+      '../outreach/scheduler/due-job-queue.js'
+    );
+    if (!isOutreachDurableSchedulerEnabled()) {
+      res.status(503).json({ error: 'Durable scheduler is not enabled' });
+      return;
+    }
+    const action = String(req.body?.action ?? '').trim().toLowerCase();
+    const actor = String(req.body?.updatedBy ?? req.headers['x-user-id'] ?? 'workspace_owner').trim();
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason : undefined;
+    let patch: { paused?: boolean; drainMode?: boolean };
+    if (action === 'pause') patch = { paused: true };
+    else if (action === 'resume') patch = { paused: false, drainMode: false };
+    else if (action === 'drain') patch = { drainMode: true };
+    else if (action === 'undrain') patch = { drainMode: false };
+    else {
+      res.status(400).json({ error: 'action must be pause, resume, drain, or undrain' });
+      return;
+    }
+    const control = await setSchedulerControl({ ...patch, updatedBy: actor, reason });
+    res.json({ control });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.get('/scheduler/dead-letters', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { listDeadLetterJobs, isOutreachDurableSchedulerEnabled } = await import(
+      '../outreach/scheduler/due-job-queue.js'
+    );
+    if (!isOutreachDurableSchedulerEnabled()) {
+      res.json({ jobs: [] });
+      return;
+    }
+    const limit = Number(req.query.limit ?? 50);
+    const jobs = await listDeadLetterJobs(Number.isFinite(limit) ? limit : 50);
+    const workspaceId = req.workspaceId!;
+    res.json({ jobs: jobs.filter((j) => j.workspaceId === workspaceId) });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/scheduler/dead-letters/:jobId/replay', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { listDeadLetterJobs, replayDeadLetterJob, isOutreachDurableSchedulerEnabled } = await import(
+      '../outreach/scheduler/due-job-queue.js'
+    );
+    if (!isOutreachDurableSchedulerEnabled()) {
+      res.status(503).json({ error: 'Durable scheduler is not enabled' });
+      return;
+    }
+    const jobId = String(req.params.jobId ?? '');
+    const actor = String(req.body?.updatedBy ?? req.headers['x-user-id'] ?? 'workspace_owner').trim();
+    const dead = await listDeadLetterJobs(200);
+    const match = dead.find((j) => j.id === jobId && j.workspaceId === req.workspaceId!);
+    if (!match) {
+      res.status(404).json({ error: 'Dead-letter job not found in this workspace' });
+      return;
+    }
+    const job = await replayDeadLetterJob(jobId, actor);
+    res.json({ job });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+aivaOutreachRouter.post('/scheduler/tick', async (_req: OutreachRequest, res: Response) => {
+  try {
+    const { tickOutreachDueEngine } = await import('../outreach/scheduler/engine.js');
+    const { isOutreachDurableSchedulerEnabled } = await import('../outreach/scheduler/due-job-queue.js');
+    if (!isOutreachDurableSchedulerEnabled()) {
+      res.status(503).json({ error: 'Durable scheduler is not enabled' });
+      return;
+    }
+    const result = await tickOutreachDueEngine();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 aivaOutreachRouter.get('/bookings', (req: OutreachRequest, res: Response) => {
   const leadId = typeof req.query.leadId === 'string' ? req.query.leadId : undefined;
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;

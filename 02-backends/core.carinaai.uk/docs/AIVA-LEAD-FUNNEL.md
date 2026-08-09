@@ -21,6 +21,26 @@ JSON is checksum-backed under `outreach/backups/` and marked read-only after mig
 
 Rollback: set `CARINA_OUTREACH_PERSISTENCE=json`, restore the backup file to `outreach-program.json`, restart.
 
+## Durable sequence scheduler
+
+Production due steps use Postgres job leases (`037-outreach-due-jobs.sql`), same claim pattern as automation runs (`FOR UPDATE SKIP LOCKED`). Thin timers only enqueue and drain; they do not execute Soft Wall work inline.
+
+| Env | Default | Role |
+| --- | --- | --- |
+| `CARINA_OUTREACH_DURABLE_SCHEDULER` | on when `DATABASE_URL` set | `false` forces legacy Croner workspace sweep |
+| `CARINA_OUTREACH_ENQUEUE_MS` | `60000` | due discovery interval |
+| `CARINA_OUTREACH_DRAIN_MS` | `10000` | claim/drain interval |
+
+Operator APIs (cloud proxy + workspace header):
+
+- `GET /api/aiva/outreach/scheduler/health`
+- `POST /api/aiva/outreach/scheduler/control` (`pause` / `resume` / `drain` / `undrain`)
+- `GET /api/aiva/outreach/scheduler/dead-letters`
+- `POST /api/aiva/outreach/scheduler/dead-letters/:jobId/replay`
+- `POST /api/aiva/outreach/scheduler/tick`
+
+Soft Wall is unchanged: jobs create `pending_approval` deliveries and Approvals rows; cold send still requires owner approval. Delayed approvals revalidate suppression, campaign status, reply, and booking before send.
+
 ## Capability matrix
 
 Machine-readable baseline (real / partial / missing, and manual / scheduled / provider-backed / simulated):

@@ -170,6 +170,35 @@ export async function sendApprovedEmail(input: {
   const existing = await getApproval(input.workspaceId, input.approvalId);
   if (!existing || existing.status !== 'pending') return null;
 
+  try {
+    const { revalidateOutreachApprovalBeforeSend } = await import(
+      '../../outreach/scheduler/approval-revalidate.js'
+    );
+    const check = revalidateOutreachApprovalBeforeSend({
+      workspaceId: input.workspaceId,
+      approvalId: input.approvalId,
+    });
+    if (!check.ok) {
+      try {
+        const { markOutreachDeliveryFromApproval } = await import('../../outreach/soft-wall-approvals.js');
+        markOutreachDeliveryFromApproval({
+          workspaceId: input.workspaceId,
+          approvalId: input.approvalId,
+          status: 'skipped',
+          lastError: `revalidation_${check.reason}`,
+        });
+      } catch {
+        // best-effort
+      }
+      throw new Error(`Outreach approval revalidation failed: ${check.reason}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Outreach approval revalidation failed:')) {
+      throw err;
+    }
+    // Revalidation module missing: continue for non-outreach approvals.
+  }
+
   // Send while still pending so a send failure does not leave a false "approved" row.
   const body = input.modifiedBody ?? existing.draftBody;
 
