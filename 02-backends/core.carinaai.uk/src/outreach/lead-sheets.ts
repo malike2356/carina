@@ -65,7 +65,19 @@ export function leadToSheetRow(lead: OutreachLead): string[] {
 }
 
 /** Workbook-shaped export matching the SEO lead tracker columns plus provenance. */
-export function exportCrmWorkbookCsv(workspaceId: string): { csv: string; count: number; header: string[] } {
+export function exportCrmWorkbookCsv(
+  workspaceId: string,
+  filter?: {
+    status?: PipelineStatus;
+    source?: LeadSource;
+    campaignId?: string;
+    q?: string;
+    niche?: string;
+    priority?: string;
+    hasEmail?: boolean;
+    leadIds?: string[];
+  },
+): { csv: string; count: number; header: string[] } {
   const header = [
     'Company',
     'Niche',
@@ -92,7 +104,20 @@ export function exportCrmWorkbookCsv(workspaceId: string): { csv: string; count:
     'Next Action',
     'Owner Worker',
   ];
-  const leads = listLeads(workspaceId);
+  let leads = listLeads(workspaceId, {
+    status: filter?.status,
+    source: filter?.source,
+    campaignId: filter?.campaignId,
+    q: filter?.q,
+    niche: filter?.niche,
+    priority: filter?.priority,
+    hasEmail: filter?.hasEmail,
+  });
+  if (filter?.leadIds?.length) {
+    const allow = new Set(filter.leadIds);
+    leads = leads.filter((l) => allow.has(l.id));
+  }
+  leads = leads.filter((l) => !l.archivedAt);
   const lines = [
     header.join(','),
     ...leads.map((lead) => [

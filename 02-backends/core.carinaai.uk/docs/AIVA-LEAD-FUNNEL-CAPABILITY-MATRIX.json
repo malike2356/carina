@@ -117,20 +117,35 @@
       "area": "crm",
       "status": "real",
       "mode": "manual",
-      "notes": "Bulk pipeline stage updates from selected rows."
+      "notes": "POST /leads/bulk: stage, tags, list, nurture, campaign, archive.",
+      "evidence": ["src/outreach/bulk-leads.ts", "POST /api/aiva/outreach/leads/bulk"]
     },
     {
       "id": "crm.saved_views",
       "area": "crm",
-      "status": "partial",
-      "mode": "simulated",
-      "notes": "Hardcoded SAVED_VIEWS presets in UI. Store type leadViews exists without persist API."
+      "status": "real",
+      "mode": "manual",
+      "notes": "Owner/shared views + grid prefs persistence.",
+      "evidence": ["src/outreach/lead-views.ts", "/api/aiva/outreach/lead-views", "/api/aiva/outreach/grid-prefs"]
+    },
+    {
+      "id": "crm.grid_production",
+      "area": "crm",
+      "status": "real",
+      "mode": "manual",
+      "notes": "Frozen selection/company/contact, resize/reorder, density, keyset pagination, import wizard, activity drawer, mobile cards.",
+      "evidence": [
+        "CrmLeadsGrid.tsx",
+        "aiva/outreach/leads/page.tsx",
+        "listLeadsPageFromPg"
+      ]
     },
     {
       "id": "crm.export",
       "area": "crm",
       "status": "real",
       "mode": "manual",
+      "notes": "Filtered / selected workbook CSV export.",
       "evidence": ["GET /api/aiva/outreach/leads/export"]
     },
     {

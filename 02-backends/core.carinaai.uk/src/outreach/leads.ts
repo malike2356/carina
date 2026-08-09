@@ -199,6 +199,7 @@ export function updateLead(
     campaignIds: string[];
     sequenceId: string | null;
     customFields: Record<string, unknown>;
+    archivedAt: string | null;
   }>,
 ): OutreachLead | null {
   const existing = getLead(workspaceId, leadId);
@@ -248,6 +249,7 @@ export function updateLead(
   if (patch.listIds !== undefined) lead = { ...lead, listIds: patch.listIds };
   if (patch.campaignIds !== undefined) lead = { ...lead, campaignIds: patch.campaignIds };
   if (patch.sequenceId !== undefined) lead = { ...lead, sequenceId: patch.sequenceId || undefined };
+  if (patch.archivedAt !== undefined) lead = { ...lead, archivedAt: patch.archivedAt || undefined };
   if (patch.customFields !== undefined) {
     lead = { ...lead, customFields: { ...(lead.customFields ?? {}), ...patch.customFields } };
   }

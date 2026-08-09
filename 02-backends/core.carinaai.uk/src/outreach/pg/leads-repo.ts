@@ -14,11 +14,36 @@ export type LeadListFilter = {
   q?: string;
   hasEmail?: boolean;
   replied?: boolean;
+  includeArchived?: boolean;
+  leadIds?: string[];
 };
 
 export type LeadPageCursor = {
   updatedAt: string;
   id: string;
+};
+
+export type LeadSortField =
+  | 'updatedAt'
+  | 'createdAt'
+  | 'company'
+  | 'contactName'
+  | 'email'
+  | 'status'
+  | 'priority'
+  | 'niche'
+  | 'townCity';
+
+const SORT_SQL: Record<LeadSortField, string> = {
+  updatedAt: 'updated_at',
+  createdAt: 'created_at',
+  company: "coalesce(company,'')",
+  contactName: "coalesce(payload->>'contactName', payload->>'name', '')",
+  email: "coalesce(email,'')",
+  status: "coalesce(status,'')",
+  priority: "coalesce(priority,'')",
+  niche: "coalesce(niche,'')",
+  townCity: "coalesce(town_city,'')",
 };
 
 /**
@@ -27,13 +52,25 @@ export type LeadPageCursor = {
 export async function listLeadsPageFromPg(
   workspaceId: string,
   filter: LeadListFilter | undefined,
-  opts: { limit: number; cursor?: LeadPageCursor | null },
+  opts: {
+    limit: number;
+    cursor?: LeadPageCursor | null;
+    sortField?: LeadSortField;
+    sortDir?: 'asc' | 'desc';
+  },
 ): Promise<{ leads: OutreachLead[]; nextCursor: LeadPageCursor | null; total: number }> {
   rejectMissingWorkspaceId(workspaceId);
   const limit = Math.min(200, Math.max(1, opts.limit || 50));
   const params: unknown[] = [workspaceId];
   const where: string[] = ['workspace_id = $1'];
 
+  if (!filter?.includeArchived) {
+    where.push(`(payload->>'archivedAt' IS NULL OR payload->>'archivedAt' = '')`);
+  }
+  if (filter?.leadIds?.length) {
+    params.push(filter.leadIds);
+    where.push(`id = ANY($${params.length}::text[])`);
+  }
   if (filter?.status) {
     params.push(filter.status, filter.status);
     where.push(`(status = $${params.length - 1} OR pipeline_stage = $${params.length})`);
@@ -82,17 +119,27 @@ export async function listLeadsPageFromPg(
   );
   const total = Number(countRes.rows[0]?.c || 0);
 
+  const sortField = opts.sortField && SORT_SQL[opts.sortField] ? opts.sortField : 'updatedAt';
+  const sortDir = opts.sortDir === 'asc' ? 'ASC' : 'DESC';
+  const sortExpr = SORT_SQL[sortField];
+  const tieBreakDir = sortDir;
+
   const pageParams = [...params];
   let cursorSql = '';
-  if (opts.cursor?.updatedAt && opts.cursor?.id) {
+  if (opts.cursor?.updatedAt && opts.cursor?.id && sortField === 'updatedAt') {
     pageParams.push(opts.cursor.updatedAt, opts.cursor.id);
-    cursorSql = ` AND (updated_at, id) < ($${pageParams.length - 1}::timestamptz, $${pageParams.length})`;
+    if (sortDir === 'DESC') {
+      cursorSql = ` AND (updated_at, id) < ($${pageParams.length - 1}::timestamptz, $${pageParams.length})`;
+    } else {
+      cursorSql = ` AND (updated_at, id) > ($${pageParams.length - 1}::timestamptz, $${pageParams.length})`;
+    }
   }
+
   pageParams.push(limit + 1);
-  const res = await pool.query<{ payload: OutreachLead; updated_at: string; id: string }>(
-    `SELECT payload, updated_at, id FROM outreach_leads
+  const res = await pool.query<{ payload: OutreachLead; updated_at: string; id: string; version: number }>(
+    `SELECT payload, updated_at, id, version FROM outreach_leads
      WHERE ${whereSql}${cursorSql}
-     ORDER BY updated_at DESC, id DESC
+     ORDER BY ${sortExpr} ${sortDir}, id ${tieBreakDir}
      LIMIT $${pageParams.length}`,
     pageParams,
   );
@@ -100,7 +147,10 @@ export async function listLeadsPageFromPg(
   const rows = res.rows;
   const hasMore = rows.length > limit;
   const slice = hasMore ? rows.slice(0, limit) : rows;
-  const leads = slice.map((r) => hydrateLeadCompat(r.payload));
+  const leads = slice.map((r) => {
+    const lead = hydrateLeadCompat(r.payload);
+    return { ...lead, version: Number(r.version ?? lead.version ?? 0) };
+  });
   const last = slice[slice.length - 1];
   const nextCursor =
     hasMore && last
@@ -111,12 +161,14 @@ export async function listLeadsPageFromPg(
 
 export async function getLeadFromPg(workspaceId: string, leadId: string): Promise<OutreachLead | null> {
   rejectMissingWorkspaceId(workspaceId);
-  const res = await pool.query<{ payload: OutreachLead }>(
-    `SELECT payload FROM outreach_leads WHERE workspace_id = $1 AND id = $2`,
+  const res = await pool.query<{ payload: OutreachLead; version: number }>(
+    `SELECT payload, version FROM outreach_leads WHERE workspace_id = $1 AND id = $2`,
     [workspaceId, leadId],
   );
   const row = res.rows[0];
-  return row ? hydrateLeadCompat(row.payload) : null;
+  if (!row) return null;
+  const lead = hydrateLeadCompat(row.payload);
+  return { ...lead, version: Number(row.version ?? 0) };
 }
 
 /**
@@ -130,7 +182,7 @@ export async function updateLeadCas(
 ): Promise<OutreachLead | null> {
   rejectMissingWorkspaceId(workspaceId);
   const idxEmail = next.email || null;
-  const res = await pool.query<{ payload: OutreachLead }>(
+  const res = await pool.query<{ payload: OutreachLead; version: number }>(
     `UPDATE outreach_leads SET
       email = $4,
       status = $5,
@@ -147,7 +199,7 @@ export async function updateLeadCas(
       version = version + 1,
       payload = $16
      WHERE workspace_id = $1 AND id = $2 AND version = $3
-     RETURNING payload`,
+     RETURNING payload, version`,
     [
       workspaceId,
       leadId,
@@ -167,5 +219,7 @@ export async function updateLeadCas(
       JSON.stringify(next),
     ],
   );
-  return res.rows[0] ? hydrateLeadCompat(res.rows[0].payload) : null;
+  if (!res.rows[0]) return null;
+  const lead = hydrateLeadCompat(res.rows[0].payload);
+  return { ...lead, version: Number(res.rows[0].version) };
 }

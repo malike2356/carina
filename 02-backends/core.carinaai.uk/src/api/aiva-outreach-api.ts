@@ -193,8 +193,22 @@ aivaOutreachRouter.get('/leads', async (req: OutreachRequest, res: Response) => 
   const q = typeof req.query.q === 'string' ? req.query.q : undefined;
   const hasEmail = req.query.hasEmail === 'true' ? true : req.query.hasEmail === 'false' ? false : undefined;
   const replied = req.query.replied === 'true' ? true : req.query.replied === 'false' ? false : undefined;
-  const page = Math.max(1, Number(req.query.page ?? 1) || 1);
+  const includeArchived = req.query.includeArchived === 'true';
   const pageSize = Math.min(200, Math.max(1, Number(req.query.pageSize ?? 50) || 50));
+  const sortField = typeof req.query.sort === 'string' ? req.query.sort : 'updatedAt';
+  const sortDir = req.query.sortDir === 'asc' ? 'asc' as const : 'desc' as const;
+  let cursor: { updatedAt: string; id: string } | null = null;
+  if (typeof req.query.cursor === 'string' && req.query.cursor.trim()) {
+    try {
+      const parsed = JSON.parse(Buffer.from(req.query.cursor, 'base64url').toString('utf8')) as {
+        updatedAt?: string;
+        id?: string;
+      };
+      if (parsed.updatedAt && parsed.id) cursor = { updatedAt: parsed.updatedAt, id: parsed.id };
+    } catch {
+      cursor = null;
+    }
+  }
   const filter = {
     campaignId,
     status,
@@ -206,35 +220,56 @@ aivaOutreachRouter.get('/leads', async (req: OutreachRequest, res: Response) => 
     q,
     hasEmail,
     replied,
+    includeArchived,
   };
 
   const { isOutreachPostgresEnabled } = await import('../outreach/pg/config.js');
   if (isOutreachPostgresEnabled()) {
     const { listLeadsPageFromPg } = await import('../outreach/pg/leads-repo.js');
-    // Offset emulation via repeated keyset is expensive; for page>1 fall back to limited SQL offset.
-    if (page === 1) {
-      const result = await listLeadsPageFromPg(req.workspaceId!, filter, { limit: pageSize });
-      res.json({
-        leads: result.leads,
-        total: result.total,
-        page,
-        pageSize,
-        totalPages: Math.max(1, Math.ceil(result.total / pageSize)),
-        nextCursor: result.nextCursor,
-      });
-      return;
-    }
+    const result = await listLeadsPageFromPg(req.workspaceId!, filter, {
+      limit: pageSize,
+      cursor,
+      sortField: sortField as never,
+      sortDir,
+    });
+    const nextCursor = result.nextCursor
+      ? Buffer.from(JSON.stringify(result.nextCursor), 'utf8').toString('base64url')
+      : null;
+    res.json({
+      leads: result.leads,
+      total: result.total,
+      pageSize,
+      nextCursor,
+      sort: sortField,
+      sortDir,
+    });
+    return;
   }
 
-  const all = listLeads(req.workspaceId!, filter);
-  const start = (page - 1) * pageSize;
-  const leads = all.slice(start, start + pageSize);
+  let all = listLeads(req.workspaceId!, filter).filter((l) => includeArchived || !l.archivedAt);
+  all = all.sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const av = String((a as never)[sortField] ?? a.updatedAt ?? '');
+    const bv = String((b as never)[sortField] ?? b.updatedAt ?? '');
+    return av.localeCompare(bv) * dir;
+  });
+  let start = 0;
+  if (cursor) {
+    const idx = all.findIndex((l) => l.id === cursor!.id);
+    start = idx >= 0 ? idx + 1 : 0;
+  }
+  const slice = all.slice(start, start + pageSize);
+  const last = slice[slice.length - 1];
+  const nextCursor = start + pageSize < all.length && last
+    ? Buffer.from(JSON.stringify({ updatedAt: last.updatedAt, id: last.id }), 'utf8').toString('base64url')
+    : null;
   res.json({
-    leads,
+    leads: slice,
     total: all.length,
-    page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(all.length / pageSize)),
+    nextCursor,
+    sort: sortField,
+    sortDir,
   });
 });
 
@@ -244,9 +279,24 @@ aivaOutreachRouter.get('/leads/export', (req: OutreachRequest, res: Response) =>
     : undefined;
   const source = typeof req.query.source === 'string' ? req.query.source : undefined;
   const campaignId = typeof req.query.campaignId === 'string' ? req.query.campaignId : undefined;
+  const q = typeof req.query.q === 'string' ? req.query.q : undefined;
+  const niche = typeof req.query.niche === 'string' ? req.query.niche : undefined;
+  const priority = typeof req.query.priority === 'string' ? req.query.priority : undefined;
+  const hasEmail = req.query.hasEmail === 'true' ? true : req.query.hasEmail === 'false' ? false : undefined;
+  const idsRaw = typeof req.query.ids === 'string' ? req.query.ids : '';
+  const leadIds = idsRaw ? idsRaw.split(',').map((s) => s.trim()).filter(Boolean) : undefined;
   const format = typeof req.query.format === 'string' ? req.query.format : 'workbook';
   if (format === 'workbook' || format === 'excel' || format === 'csv') {
-    const result = exportCrmWorkbookCsv(req.workspaceId!);
+    const result = exportCrmWorkbookCsv(req.workspaceId!, {
+      status,
+      source: source as never,
+      campaignId,
+      q,
+      niche,
+      priority,
+      hasEmail,
+      leadIds,
+    });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
@@ -441,6 +491,34 @@ aivaOutreachRouter.post('/leads/import-youtube', (req: OutreachRequest, res: Res
   res.json(result);
 });
 
+aivaOutreachRouter.post('/leads/bulk', async (req: OutreachRequest, res: Response) => {
+  try {
+    const { applyBulkLeadAction } = await import('../outreach/bulk-leads.js');
+    const leadIds = Array.isArray(req.body?.leadIds) ? req.body.leadIds.map(String) : [];
+    const action = String(req.body?.action ?? '').trim() as never;
+    if (!leadIds.length || !action) {
+      res.status(400).json({ error: 'leadIds and action are required' });
+      return;
+    }
+    const result = await applyBulkLeadAction({
+      workspaceId: req.workspaceId!,
+      leadIds,
+      action,
+      status: typeof req.body?.status === 'string' ? req.body.status : undefined,
+      priority: typeof req.body?.priority === 'string' ? req.body.priority : undefined,
+      owner: typeof req.body?.owner === 'string' ? req.body.owner : undefined,
+      ownerWorkerId: typeof req.body?.ownerWorkerId === 'string' ? req.body.ownerWorkerId : undefined,
+      tags: Array.isArray(req.body?.tags) ? req.body.tags.map(String) : undefined,
+      listId: typeof req.body?.listId === 'string' ? req.body.listId : undefined,
+      sequenceId: typeof req.body?.sequenceId === 'string' ? req.body.sequenceId : undefined,
+      campaignId: typeof req.body?.campaignId === 'string' ? req.body.campaignId : undefined,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
 aivaOutreachRouter.get('/leads/:leadId', (req: OutreachRequest, res: Response) => {
   const lead = getLead(req.workspaceId!, routeParam(req.params.leadId));
   if (!lead) {
@@ -454,8 +532,9 @@ aivaOutreachRouter.get('/leads/:leadId', (req: OutreachRequest, res: Response) =
   });
 });
 
-aivaOutreachRouter.patch('/leads/:leadId', (req: OutreachRequest, res: Response) => {
-  const lead = updateLead(req.workspaceId!, routeParam(req.params.leadId), {
+aivaOutreachRouter.patch('/leads/:leadId', async (req: OutreachRequest, res: Response) => {
+  const leadId = routeParam(req.params.leadId);
+  const patch = {
     name: req.body?.name,
     email: req.body?.email,
     phone: req.body?.phone,
@@ -469,12 +548,191 @@ aivaOutreachRouter.patch('/leads/:leadId', (req: OutreachRequest, res: Response)
     replyState: req.body?.replyState,
     bookingState: req.body?.bookingState,
     nextActionAt: req.body?.nextActionAt,
-  });
+    niche: req.body?.niche,
+    townCity: req.body?.townCity,
+    website: req.body?.website,
+    contactName: req.body?.contactName,
+    googleReviews: req.body?.googleReviews,
+    googleRating: req.body?.googleRating,
+    googleMapsUrl: req.body?.googleMapsUrl,
+    websiteScore: req.body?.websiteScore,
+    ranksTop3: req.body?.ranksTop3,
+    weakness: req.body?.weakness,
+    priority: req.body?.priority,
+    sourceUrl: req.body?.sourceUrl,
+    sourceName: req.body?.sourceName,
+    pipelineStage: req.body?.pipelineStage,
+    ownerWorkerId: req.body?.ownerWorkerId,
+    listIds: Array.isArray(req.body?.listIds) ? req.body.listIds.map(String) : undefined,
+    campaignIds: Array.isArray(req.body?.campaignIds) ? req.body.campaignIds.map(String) : undefined,
+    sequenceId: req.body?.sequenceId,
+    archivedAt: req.body?.archivedAt,
+    customFields: req.body?.customFields && typeof req.body.customFields === 'object'
+      ? req.body.customFields as Record<string, unknown>
+      : undefined,
+  };
+  const lead = updateLead(req.workspaceId!, leadId, patch);
   if (!lead) {
     res.status(404).json({ error: 'Lead not found' });
     return;
   }
+
+  const expectedVersion = Number(req.body?.version);
+  if (Number.isFinite(expectedVersion)) {
+    const { isOutreachPostgresEnabled } = await import('../outreach/pg/config.js');
+    if (isOutreachPostgresEnabled()) {
+      const { updateLeadCas } = await import('../outreach/pg/leads-repo.js');
+      const cas = await updateLeadCas(req.workspaceId!, leadId, expectedVersion, lead);
+      if (!cas) {
+        res.status(409).json({ error: 'conflict', message: 'Lead was modified by another session' });
+        return;
+      }
+      res.json({ lead: cas });
+      return;
+    }
+  }
+
   res.json({ lead });
+});
+
+aivaOutreachRouter.get('/lead-views', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/lead-views.js').then(({ listLeadViews, GRID_PREFS_VIEW_NAME }) => {
+    const userId = String(req.headers['x-user-id'] ?? 'workspace_owner');
+    const views = listLeadViews(req.workspaceId!, userId)
+      .filter((v) => v.name !== GRID_PREFS_VIEW_NAME);
+    res.json({ views });
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.post('/lead-views', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/lead-views.js').then(({ createLeadView }) => {
+    const userId = String(req.headers['x-user-id'] ?? req.body?.ownerUserId ?? 'workspace_owner');
+    const view = createLeadView({
+      workspaceId: req.workspaceId!,
+      name: String(req.body?.name ?? 'Saved view'),
+      ownerUserId: userId,
+      filters: req.body?.filters && typeof req.body.filters === 'object' ? req.body.filters : {},
+      columns: Array.isArray(req.body?.columns) ? req.body.columns.map(String) : undefined,
+      columnOrder: Array.isArray(req.body?.columnOrder) ? req.body.columnOrder.map(String) : undefined,
+      columnWidths: req.body?.columnWidths && typeof req.body.columnWidths === 'object' ? req.body.columnWidths : undefined,
+      hiddenColumns: Array.isArray(req.body?.hiddenColumns) ? req.body.hiddenColumns.map(String) : undefined,
+      sort: req.body?.sort,
+      density: req.body?.density,
+      shared: Boolean(req.body?.shared),
+      sharedWith: Array.isArray(req.body?.sharedWith) ? req.body.sharedWith.map(String) : undefined,
+    });
+    res.status(201).json({ view });
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.patch('/lead-views/:viewId', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/lead-views.js').then(({ updateLeadView }) => {
+    const userId = String(req.headers['x-user-id'] ?? 'workspace_owner');
+    const view = updateLeadView(req.workspaceId!, routeParam(req.params.viewId), {
+      name: typeof req.body?.name === 'string' ? req.body.name : undefined,
+      filters: req.body?.filters,
+      columns: req.body?.columns,
+      columnOrder: req.body?.columnOrder,
+      columnWidths: req.body?.columnWidths,
+      hiddenColumns: req.body?.hiddenColumns,
+      sort: req.body?.sort,
+      density: req.body?.density,
+      shared: typeof req.body?.shared === 'boolean' ? req.body.shared : undefined,
+      sharedWith: Array.isArray(req.body?.sharedWith) ? req.body.sharedWith.map(String) : undefined,
+    }, userId);
+    if (!view) {
+      res.status(404).json({ error: 'View not found or not owned' });
+      return;
+    }
+    res.json({ view });
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.delete('/lead-views/:viewId', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/lead-views.js').then(({ deleteLeadView }) => {
+    const userId = String(req.headers['x-user-id'] ?? 'workspace_owner');
+    const ok = deleteLeadView(req.workspaceId!, routeParam(req.params.viewId), userId);
+    if (!ok) {
+      res.status(404).json({ error: 'View not found or not owned' });
+      return;
+    }
+    res.json({ ok: true });
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.get('/grid-prefs', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/lead-views.js').then(({ getGridPrefs }) => {
+    const userId = String(req.headers['x-user-id'] ?? 'workspace_owner');
+    res.json({ prefs: getGridPrefs(req.workspaceId!, userId) });
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.put('/grid-prefs', (req: OutreachRequest, res: Response) => {
+  void import('../outreach/lead-views.js').then(({ upsertGridPrefs }) => {
+    const userId = String(req.headers['x-user-id'] ?? 'workspace_owner');
+    const prefs = upsertGridPrefs({
+      workspaceId: req.workspaceId!,
+      ownerUserId: userId,
+      columnOrder: Array.isArray(req.body?.columnOrder) ? req.body.columnOrder.map(String) : undefined,
+      columnWidths: req.body?.columnWidths && typeof req.body.columnWidths === 'object' ? req.body.columnWidths : undefined,
+      hiddenColumns: Array.isArray(req.body?.hiddenColumns) ? req.body.hiddenColumns.map(String) : undefined,
+      density: req.body?.density,
+      sort: req.body?.sort,
+    });
+    res.json({ prefs });
+  }).catch((err) => {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  });
+});
+
+aivaOutreachRouter.get('/leads/:leadId/activity', async (req: OutreachRequest, res: Response) => {
+  const lead = getLead(req.workspaceId!, routeParam(req.params.leadId));
+  if (!lead) {
+    res.status(404).json({ error: 'Lead not found' });
+    return;
+  }
+  const deliveries = listDeliveries(req.workspaceId!, { leadId: lead.id });
+  const enrollments = listEnrollments(req.workspaceId!, { leadId: lead.id });
+  let providerEvents: Array<Record<string, unknown>> = [];
+  try {
+    const { listProviderEvents } = await import('../outreach/provider-events/persist.js');
+    for (const d of deliveries.slice(0, 20)) {
+      const events = await listProviderEvents({ workspaceId: req.workspaceId!, deliveryId: d.id, limit: 20 });
+      providerEvents = providerEvents.concat(events);
+    }
+  } catch {
+    providerEvents = [];
+  }
+  const bookings = listBookings(req.workspaceId!, { leadId: lead.id });
+  const tasks = listFollowUpTasks(req.workspaceId!).filter((t) => t.leadId === lead.id);
+  res.json({
+    leadId: lead.id,
+    timeline: lead.timeline || [],
+    deliveries,
+    providerEvents,
+    enrollments,
+    bookings,
+    tasks,
+    provenance: {
+      sourceType: lead.sourceType || lead.source,
+      sourceName: lead.sourceName,
+      sourceUrl: lead.sourceUrl,
+      sourceCapturedAt: lead.sourceCapturedAt,
+      sourceJobId: lead.sourceJobId,
+      confidence: lead.customFields?.confidence,
+      enrichment: lead.customFields?.enrichmentChanges,
+    },
+  });
 });
 
 aivaOutreachRouter.delete('/leads/:leadId', (req: OutreachRequest, res: Response) => {

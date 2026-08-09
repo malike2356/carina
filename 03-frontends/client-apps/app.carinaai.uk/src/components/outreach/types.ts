@@ -58,6 +58,8 @@ export type OutreachLead = {
   suppressionReason?: string;
   customFields?: Record<string, unknown>;
   youtubeLeadId?: string;
+  archivedAt?: string;
+  version?: number;
   createdAt: string;
   updatedAt: string;
   timeline: Array<{

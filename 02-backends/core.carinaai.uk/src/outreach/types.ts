@@ -148,6 +148,8 @@ export interface OutreachLead {
   convertedContactId?: string;
   convertedCustomerAt?: string;
   conversionValue?: number;
+  /** Optimistic concurrency when loaded from Postgres. */
+  version?: number;
 }
 
 export type LeadIngestJobKind = 'import' | 'scrape' | 'sheet_sync' | 'api' | 'agent' | 'channel';
@@ -509,10 +511,16 @@ export interface LeadSavedView {
   id: string;
   workspaceId: string;
   name: string;
+  ownerUserId?: string;
+  shared?: boolean;
+  sharedWith?: string[];
   filters: Record<string, string | string[] | boolean | undefined>;
   columns?: string[];
+  columnOrder?: string[];
+  columnWidths?: Record<string, number>;
+  hiddenColumns?: string[];
   sort?: { field: string; dir: 'asc' | 'desc' };
-  density?: 'compact' | 'comfortable';
+  density?: 'compact' | 'comfortable' | 'spacious';
   createdAt: string;
   updatedAt: string;
 }
