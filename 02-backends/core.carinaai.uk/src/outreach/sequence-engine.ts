@@ -324,7 +324,10 @@ export function resumeEnrollment(
       s.leads[leadIdx] = appendTimeline(s.leads[leadIdx]!, {
         kind: 'system',
         message: 'Sequence resumed by operator',
-        meta: { enrollmentId, previousStopReason: enrollment.stopReason ?? undefined },
+        meta: {
+          enrollmentId,
+          ...(enrollment.stopReason ? { previousStopReason: enrollment.stopReason } : {}),
+        },
       });
     }
   });

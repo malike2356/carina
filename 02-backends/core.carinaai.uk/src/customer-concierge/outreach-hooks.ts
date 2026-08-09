@@ -202,7 +202,9 @@ export function onBookingOutcome(input: {
           meta: {
             bookingId: input.bookingId,
             outcome: input.outcome,
-            recoverySequenceId: input.recoverySequenceId ?? undefined,
+            ...(input.recoverySequenceId
+              ? { recoverySequenceId: input.recoverySequenceId }
+              : {}),
           },
         });
         if (input.outcome === 'attended') {

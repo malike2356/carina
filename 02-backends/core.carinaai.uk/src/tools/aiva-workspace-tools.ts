@@ -210,7 +210,9 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
           : Array.isArray((payload as { items?: unknown[] })?.items)
             ? ((payload as { items: Array<Record<string, unknown>> }).items)
             : [];
-        const documents = rows.map((r) => ({
+        const documents = rows.map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
           id: r.id,
           title: r.name ?? r.title,
           preview: '',
@@ -218,7 +220,8 @@ export function createAivaWorkspaceTools(sessionId: string): Tool[] {
           kind: r.kind,
           currentRevision: r.currentRevision,
           updatedAt: r.updatedAt,
-        }));
+        };
+        });
         return { ok: true, count: documents.length, documents, migratedTo: 'vault-list' };
       }
       const result = await listWorkspaceDocuments({

@@ -51,7 +51,7 @@ export function resolveVaultAgentContext(
 
   return {
     workspaceId: trustedWs,
-    actorId: String(workerCtx.worker.id || workerCtx.worker.userId || 'agent'),
+    actorId: String(workerCtx.worker.id || 'agent'),
     sessionId,
     audience: 'private',
     workerId: workerCtx.worker.id ?? null,

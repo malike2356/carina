@@ -30,7 +30,7 @@ export function getOrCreateLocalVaultService(): DocumentVaultService {
       { dbPath: process.env.DOCUMENT_VAULT_SQLITE_PATH },
     );
   }
-  return (globalThis as { __carinaVaultSvc: DocumentVaultService }).__carinaVaultSvc;
+  return (globalThis as unknown as { __carinaVaultSvc: DocumentVaultService }).__carinaVaultSvc;
 }
 
 function toolError(err: unknown): { ok: false; error: string; code?: string } {
