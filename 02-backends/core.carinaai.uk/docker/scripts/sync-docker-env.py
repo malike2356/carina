@@ -27,6 +27,17 @@ OPS_PRODUCT_KEYS = (
     'CARINA_OPS_PRODUCT_ENABLED',
 )
 
+CLOUD_PROXY_PAIRING_KEYS = (
+    'CARINA_OPS_TOKEN',
+    'CARINA_INTERNAL_KEY',
+)
+
+CLOUD_PROXY_SECRET_CANDIDATES = [
+    Path('/home/malike/secrets/app.carinaai.uk.env'),
+    Path('/home/malike/secrets/core.carinaai.uk.env'),
+    Path('/home/malike/apps/app.carinaai.uk/.env'),
+]
+
 DB_USER = os.environ.get('DB_USER', 'carina')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', 'secret')
 PGBOUNCER_ENABLED = os.environ.get('PGBOUNCER_ENABLED', '1')
@@ -79,10 +90,27 @@ def scout_pairing_values() -> dict[str, str]:
     return out
 
 
+def cloud_proxy_pairing_values(current: dict[str, str]) -> dict[str, str]:
+    """Fill blank CARINA_OPS_TOKEN / CARINA_INTERNAL_KEY from secrets or app .env."""
+    merged: dict[str, str] = {}
+    for candidate in CLOUD_PROXY_SECRET_CANDIDATES:
+        merged.update(parse_env_file(candidate))
+    out: dict[str, str] = {}
+    for key in CLOUD_PROXY_PAIRING_KEYS:
+        existing = current.get(key, '').strip()
+        if existing:
+            continue
+        value = merged.get(key, '').strip()
+        if value:
+            out[key] = value
+    return out
+
+
 def main() -> None:
     if not ENV_PATH.exists():
         raise SystemExit(f'missing {ENV_PATH}; copy from .env first')
 
+    current = parse_env_file(ENV_PATH)
     lines = ENV_PATH.read_text().splitlines()
     out: list[str] = []
     seen: set[str] = set()
@@ -119,6 +147,23 @@ def main() -> None:
             out = [line for line in out if not line.startswith(f'{key}=')]
         out.append(f'{key}=true')
         seen.add(key)
+
+    for key, value in cloud_proxy_pairing_values(current).items():
+        out = [line for line in out if not line.startswith(f'{key}=')]
+        out.append(f'{key}={value}')
+        seen.add(key)
+        current[key] = value
+
+    final_vals: dict[str, str] = {}
+    for line in out:
+        if '=' in line and not line.strip().startswith('#'):
+            k, _, v = line.partition('=')
+            final_vals[k] = v
+    if not (final_vals.get('CARINA_OPS_TOKEN', '').strip() or final_vals.get('CARINA_INTERNAL_KEY', '').strip()):
+        raise SystemExit(
+            f'{ENV_PATH.name} is missing CARINA_OPS_TOKEN and CARINA_INTERNAL_KEY. '
+            'Restore from /home/malike/secrets/app.carinaai.uk.env before deploying carina-web.'
+        )
 
     ENV_PATH.write_text('\n'.join(out) + '\n')
     print(f'updated {ENV_PATH.name} for docker networking')
