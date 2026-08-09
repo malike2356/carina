@@ -11,7 +11,9 @@ let started = false;
 
 const TICK_MS = Number(process.env.CARINA_OUTREACH_RECONCILE_MS || 15 * 60 * 1000);
 
-export async function tickDeliveryReconciliation(): Promise<ReturnType<typeof runDeliveryReconciliation>> {
+export async function tickDeliveryReconciliation(): Promise<
+  Awaited<ReturnType<typeof runDeliveryReconciliation>>
+> {
   if (!isDeliveryReconcileEnabled()) {
     return {
       scanned: 0,

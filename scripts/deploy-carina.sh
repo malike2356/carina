@@ -80,6 +80,7 @@ log "Syncing core.carinaai.uk..."
 rsync -az --delete \
   --exclude='.env' --exclude='.env.*' --exclude='node_modules' --exclude='.git' --exclude='/data/' \
   --exclude='.deploy/' \
+  --exclude='public_website/' \
   --exclude='docker/pgbouncer/pgbouncer.ini' \
   --exclude='docker/pgbouncer/userlist.txt' \
   --exclude='docs/.vitepress/dist/' \

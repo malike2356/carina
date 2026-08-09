@@ -273,7 +273,7 @@ export async function runProviderBackedSmoke(input?: {
   const sourceType = finalLead?.sourceType || beforeConvert?.sourceType || finalLead?.source;
   const campaignId = finalLead?.campaignId || beforeConvert?.campaignId || campaign.id;
   const attributionOk = Boolean(sourceType && campaignId);
-  const funnelOk = Boolean(funnel && (funnel.totals?.total ?? funnel.totals?.leads ?? 0) >= 1);
+  const funnelOk = Boolean(funnel && (funnel.totals?.leads ?? 0) >= 1);
   steps.push(step(15, 'source_campaign_attribution', attributionOk && (funnelOk || Boolean(finalLead)), `source=${sourceType} campaign=${campaignId}`));
 
   // 16. Export Excel/CSV (workbook CSV; Excel format alias uses same exporter)

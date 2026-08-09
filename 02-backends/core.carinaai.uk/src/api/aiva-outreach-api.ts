@@ -1464,11 +1464,11 @@ aivaOutreachRouter.post('/mailbox/tick', async (req: OutreachRequest, res: Respo
         workspaceId: req.workspaceId!,
         workerId,
       });
-      res.json({ ok: true, scoped: true, ...result });
+      res.json({ scoped: true, ...result, ok: result.ok !== false });
       return;
     }
     const result = await tickMailboxReplyIngest();
-    res.json({ ok: true, ...result });
+    res.json({ ...result, ok: true });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
