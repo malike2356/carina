@@ -852,6 +852,62 @@ export class DocumentVaultService {
       );
   }
 
+  enqueueJob(input: {
+    workspaceId: string;
+    kind: string;
+    payload: Record<string, unknown>;
+  }): { id: string } {
+    const id = uuidv4();
+    const ts = nowIso();
+    this.db
+      .prepare(
+        `INSERT INTO document_vault_jobs
+         (id, workspace_id, kind, payload_json, status, attempts, last_error, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'queued', 0, NULL, ?, ?)`,
+      )
+      .run(id, input.workspaceId, input.kind, JSON.stringify(input.payload), ts, ts);
+    return { id };
+  }
+
+  updateJob(
+    workspaceId: string,
+    jobId: string,
+    patch: { status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'; lastError?: string | null },
+  ): void {
+    this.db
+      .prepare(
+        `UPDATE document_vault_jobs
+         SET status = ?, last_error = ?, attempts = attempts + 1, updated_at = ?
+         WHERE workspace_id = ? AND id = ?`,
+      )
+      .run(patch.status, patch.lastError ?? null, nowIso(), workspaceId, jobId);
+  }
+
+  getJob(workspaceId: string, jobId: string): {
+    id: string;
+    kind: string;
+    status: string;
+    payloadJson: string;
+    lastError: string | null;
+  } | null {
+    const row = this.db
+      .prepare(
+        `SELECT id, kind, status, payload_json, last_error
+         FROM document_vault_jobs WHERE workspace_id = ? AND id = ?`,
+      )
+      .get(workspaceId, jobId) as
+      | { id: string; kind: string; status: string; payload_json: string; last_error: string | null }
+      | undefined;
+    if (!row) return null;
+    return {
+      id: row.id,
+      kind: row.kind,
+      status: row.status,
+      payloadJson: row.payload_json,
+      lastError: row.last_error,
+    };
+  }
+
   /** Test helper: map cloud format labels into vault kinds. */
   static kindFromLegacyFormat(format: string | undefined): VaultItemKind {
     return kindFromFormatOrExtension(format, 'plain_text');

@@ -44,3 +44,20 @@ export {
   createDefaultContentStore,
 } from './content-store.js';
 export type { VaultItem, VaultRevision } from './model.js';
+export {
+  DOCUMENT_VAULT_CONVERTER_VERSION,
+  assertEditableFormat,
+  getFormatCapability,
+  loadFormatCapabilityMatrix,
+} from './format-capabilities.js';
+export {
+  convertExportContent,
+  convertImportUpload,
+} from './format-convert.js';
+export {
+  exportVaultItem,
+  generatePdfArtifact,
+  getDocumentVaultFormatCapabilities,
+  importBytesIntoVault,
+} from './format-ops.js';
+export { buildDeterministicPdf } from './format-pdf.js';

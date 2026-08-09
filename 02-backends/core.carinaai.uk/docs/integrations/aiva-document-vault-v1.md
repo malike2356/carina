@@ -1,6 +1,6 @@
 # Aiva Document Vault v1
 
-**Status:** Phase 707 inventory complete. Phase 708 canonical service + migrations complete. UI cutover is 710.
+**Status:** 707 inventory, 708 canonical service, 709 format engines complete. UI cutover is 710.
 
 ## Authority
 
@@ -8,18 +8,23 @@
 
 ## Contract pack
 
-`contracts/aiva-document-vault.v1/`
+`contracts/aiva-document-vault.v1/` including `format-capability-matrix.json`
 
-## Canonical service (708)
+## Canonical service
 
 `src/document-vault/`
 
-- `DocumentVaultService`: tenant-scoped tree CRUD, list pagination, rename, move, copy, trash, restore, permanent delete (approval), revisions, audit, quotas
-- Storage: `LocalSandboxContentStore` and `ObjectStorageContentStore` (no arbitrary host paths)
-- Migration: `migrateLegacyDocumentsToVault` from 707 manifest (`cloud_documents`, `aiva_knowledge_documents`), idempotent, checksum reconcile, rollback of applied mappings
-- SQLite schema for local/tests; Postgres DDL:
-  - `src/infrastructure/migrations/043-document-vault.sql`
-  - cloud `src/db/migrations/0006_document-vault.sql`
+- Tree CRUD, revisions, trash, quotas, migration (708)
+- Format engines (709): capability matrix, sniff/sanitize, import/export, deterministic PDF artifacts, conversion jobs
+- Storage adapters reject arbitrary host paths
+
+## Format engines (709)
+
+- `getDocumentVaultFormatCapabilities()` for API/UI gating
+- `importBytesIntoVault` / `exportVaultItem` / `generatePdfArtifact`
+- Lossy conversions keep `.original` binaries where needed
+- Generated PDFs are artifacts linked to the source revision; uploaded PDFs stay originals
+- Archives, executables, spoofed PDFs, and oversized uploads fail closed
 
 ## Feature flags
 
@@ -30,14 +35,6 @@
 - `DOCUMENT_VAULT_RETIRE_LEGACY_STORES` (default off)
 - `DOCUMENT_VAULT_STORAGE_MODE` = `sandbox` | `object`
 
-## Hard rules
-
-- Do not create a fourth unrelated document store.
-- Do not expose the host filesystem as Document Vault.
-- Aiva sessions never use `sqlite.carina_documents`.
-- Host operator documents are out of migration scope.
-- Permanent delete and destructive bulk require approval unless privileged.
-
 ## Tests
 
 ```bash
@@ -47,4 +44,4 @@ pnpm exec vitest run src/document-vault/
 
 ## Next
 
-709 format engines; 710 explorer UI wired to this service.
+710 document explorer UI wired to this service and format matrix.
