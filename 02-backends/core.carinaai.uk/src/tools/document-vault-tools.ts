@@ -11,27 +11,15 @@ import {
   gateVaultAction,
   redactAuditPayload,
 } from '../document-vault/soft-wall.js';
-import { createDefaultContentStore } from '../document-vault/content-store.js';
 import { importBytesIntoVault, exportVaultItem } from '../document-vault/format-ops.js';
+import {
+  getOrCreateLocalVaultService,
+  isDocumentVaultTestServiceActive,
+  setDocumentVaultToolServiceForTests,
+} from '../document-vault/runtime.js';
 import * as vaultSurfaces from '../workers/aiva-vault-surfaces.js';
 
-let testService: DocumentVaultService | null = null;
-
-export function setDocumentVaultToolServiceForTests(service: DocumentVaultService | null): void {
-  testService = service;
-}
-
-export function getOrCreateLocalVaultService(): DocumentVaultService {
-  if (testService) return testService;
-  if (!(globalThis as { __carinaVaultSvc?: DocumentVaultService }).__carinaVaultSvc) {
-    const root = process.env.CARINA_HOME || process.env.TMPDIR || '/tmp';
-    (globalThis as { __carinaVaultSvc?: DocumentVaultService }).__carinaVaultSvc = new DocumentVaultService(
-      createDefaultContentStore(`${root}/document-vault-agent`),
-      { dbPath: process.env.DOCUMENT_VAULT_SQLITE_PATH },
-    );
-  }
-  return (globalThis as unknown as { __carinaVaultSvc: DocumentVaultService }).__carinaVaultSvc;
-}
+export { setDocumentVaultToolServiceForTests, getOrCreateLocalVaultService };
 
 function toolError(err: unknown): { ok: false; error: string; code?: string } {
   if (err instanceof VaultError) {
@@ -60,7 +48,7 @@ function compactItem(item: Record<string, unknown>) {
 }
 
 function preferCloud(): boolean {
-  return Boolean(process.env.CARINA_INTERNAL_KEY?.trim()) && !testService;
+  return Boolean(process.env.CARINA_INTERNAL_KEY?.trim()) && !isDocumentVaultTestServiceActive();
 }
 
 async function runLocal<T>(

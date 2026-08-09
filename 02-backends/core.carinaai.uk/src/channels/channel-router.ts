@@ -4,9 +4,11 @@ import { emailAdapter, extractEmailRecipient } from './adapters/email-adapter.js
 import { slackAdapter, extractSlackTeamId } from './adapters/slack-adapter.js';
 import {
   deleteTelegramMessage,
+  downloadTelegramFile,
   isWorkerTelegramGroupDirected,
   registerTelegramChatCommands,
   resolveTelegramBotUsername,
+  sendTelegramDocument,
   startTelegramBusyStatus,
   telegramAdapter,
 } from './adapters/telegram-adapter.js';
@@ -18,6 +20,11 @@ import { getWorker } from '../workers/worker-store.js';
 import { logChannelScoutSignal } from './channel-scout-signals.js';
 import { interceptSlashCommand } from './slash-commands/interceptor.js';
 import { getAdapter } from './adapter-registry.js';
+import {
+  handleVaultChannelCommand,
+  looksLikeVaultImportCaption,
+} from '../document-vault/channel/index.js';
+import { documentVaultFlags } from '../document-vault/flags.js';
 import './slash-commands/index.js';
 
 export const channelWebhookRouter: ExpressRouter = Router();
@@ -188,9 +195,10 @@ channelWebhookRouter.post('/webhook/telegram/:workerId', express.json({ limit: '
       return;
     }
     const entry = lookupWorker('telegram', workerId);
+    let botToken = '';
     if (entry) {
       const credentials = getRegistryCredentials(entry);
-      const botToken = credentials.bot_token ?? credentials.token;
+      botToken = credentials.bot_token ?? credentials.token ?? '';
       if (botToken) {
         // War-room / group: only answer when @mentioned, replied-to, slash, or AIVA_GROUP_OPEN.
         if (inbound.metadata?.chatType === 'group') {
@@ -198,8 +206,10 @@ channelWebhookRouter.post('/webhook/telegram/:workerId', express.json({ limit: '
           const rawMsg = (req.body as { message?: {
             message_id: number;
             text?: string;
+            caption?: string;
             date: number;
             entities?: Array<{ type: string; offset: number; length: number }>;
+            caption_entities?: Array<{ type: string; offset: number; length: number }>;
             from?: { id: number; username?: string; is_bot?: boolean };
             chat: { id: number; type: string };
             reply_to_message?: { from?: { id: number; username?: string; is_bot?: boolean } };
@@ -224,7 +234,57 @@ channelWebhookRouter.post('/webhook/telegram/:workerId', express.json({ limit: '
             );
           });
         }
+
+        // Download Telegram file bytes once for Document Vault import / slash handlers.
+        if (documentVaultFlags().channelOps && inbound.metadata?.telegramFileId) {
+          try {
+            const downloaded = await downloadTelegramFile(botToken, inbound.metadata.telegramFileId);
+            inbound.metadata.vaultFileBase64 = downloaded.bytes.toString('base64');
+          } catch (err) {
+            console.warn(
+              '[telegram] file download failed:',
+              err instanceof Error ? err.message : String(err),
+            );
+          }
+        }
       }
+    }
+
+    // Caption-driven vault import (send file with "save to vault" / /vault import).
+    if (
+      documentVaultFlags().channelOps
+      && inbound.metadata?.vaultFileBase64
+      && looksLikeVaultImportCaption(inbound.content)
+    ) {
+      const channelUserId = inbound.metadata.telegramUserId || inbound.contactId;
+      const result = await handleVaultChannelCommand({
+        text: inbound.content.startsWith('/vault') ? inbound.content : '/vault import',
+        platform: 'telegram',
+        channelUserId,
+        workspaceId: inbound.workspaceId,
+        workerId: inbound.workerId,
+        attachment: {
+          platform: 'telegram',
+          channelUserId,
+          eventId: inbound.metadata.eventId || inbound.metadata.telegramMessageId || inbound.threadId || '',
+          filename: inbound.metadata.vaultFilename || 'upload.bin',
+          data: Buffer.from(inbound.metadata.vaultFileBase64, 'base64'),
+          declaredMime: inbound.metadata.vaultMime,
+          caption: inbound.content,
+        },
+      });
+      if (entry && botToken) {
+        await getAdapter('telegram')?.send(
+          {
+            channel: 'telegram',
+            contactId: inbound.contactId,
+            content: result.message,
+            replyToThreadId: inbound.threadId,
+          },
+          getRegistryCredentials(entry),
+        );
+      }
+      return;
     }
 
     // Slash command interceptor; handle locally, skip agent
@@ -233,9 +293,20 @@ channelWebhookRouter.post('/webhook/telegram/:workerId', express.json({ limit: '
       const adapter = getAdapter('telegram');
       if (adapter && entry) {
         const credentials = getRegistryCredentials(entry);
-        const botToken = credentials.bot_token ?? credentials.token;
-        if (slashResult.deleteInbound && botToken && inbound.threadId) {
-          await deleteTelegramMessage(botToken, inbound.contactId, inbound.threadId);
+        const token = credentials.bot_token ?? credentials.token;
+        if (slashResult.deleteInbound && token && inbound.threadId) {
+          await deleteTelegramMessage(token, inbound.contactId, inbound.threadId);
+        }
+        if (slashResult.attach && token) {
+          await sendTelegramDocument({
+            botToken: token,
+            chatId: inbound.contactId,
+            filename: slashResult.attach.filename,
+            bytes: Buffer.from(slashResult.attach.contentBase64, 'base64'),
+            caption: slashResult.response.slice(0, 1024),
+            replyToMessageId: inbound.threadId,
+          });
+          return;
         }
         await adapter.send(
           { channel: 'telegram', contactId: inbound.contactId, content: slashResult.response, replyToThreadId: inbound.threadId },

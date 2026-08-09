@@ -3,7 +3,10 @@ import type { InboundMessage } from '../types.js';
 export interface SlashCommand {
   name: string;
   description: string;
-  handler: (msg: InboundMessage, workerId: string) => Promise<string>;
+  handler: (msg: InboundMessage, workerId: string) => Promise<string | {
+    text: string;
+    attach?: { filename: string; mime: string; contentBase64: string };
+  }>;
 }
 
 const commands = new Map<string, SlashCommand>();

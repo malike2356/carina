@@ -7,6 +7,12 @@ export interface SlashInterceptResult {
   response?: string;
   /** When true, channel adapter should delete the user's inbound message (e.g. /byok set). */
   deleteInbound?: boolean;
+  /** Optional Document Vault export attachment for Telegram sendDocument. */
+  attach?: {
+    filename: string;
+    mime: string;
+    contentBase64: string;
+  };
 }
 
 export async function interceptSlashCommand(
@@ -29,5 +35,13 @@ export async function interceptSlashCommand(
 
   const response = await cmd.handler(msg, workerId);
   const deleteInbound = cmdName === 'byok' && byokShouldDeleteInbound(msg);
-  return { handled: true, response, deleteInbound };
+  if (typeof response === 'string') {
+    return { handled: true, response, deleteInbound };
+  }
+  return {
+    handled: true,
+    response: response.text,
+    deleteInbound,
+    attach: response.attach,
+  };
 }

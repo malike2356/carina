@@ -23,6 +23,7 @@ import {
   clearCommand,
 } from './memory-commands.js';
 import { chatsCommand, linkCommand } from './link-commands.js';
+import { vaultCommand } from './vault-commands.js';
 
 registerCommand(helpCommand);
 registerCommand(newCommand);
@@ -45,3 +46,4 @@ registerCommand(searchCommand);
 registerCommand(clearCommand);
 registerCommand(linkCommand);
 registerCommand(chatsCommand);
+registerCommand(vaultCommand);

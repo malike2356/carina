@@ -19,6 +19,7 @@ import {
   searchCommand,
   clearCommand,
 } from './memory-commands.js';
+import { vaultCommand } from './vault-commands.js';
 
 registerCommand(helpCommand);
 registerCommand(newCommand);
@@ -36,3 +37,4 @@ registerCommand(rememberCommand);
 registerCommand(forgetCommand);
 registerCommand(searchCommand);
 registerCommand(clearCommand);
+registerCommand(vaultCommand);

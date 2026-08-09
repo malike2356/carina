@@ -36,7 +36,13 @@ export class VaultError extends Error {
       | 'quota'
       | 'stale_revision'
       | 'approval_required'
-      | 'cycle',
+      | 'cycle'
+      | 'channel_unbound'
+      | 'channel_revoked'
+      | 'unsupported_channel'
+      | 'malware_detected'
+      | 'destination_required'
+      | 'not_configured',
   ) {
     super(message);
     this.name = 'VaultError';
@@ -936,6 +942,194 @@ export class DocumentVaultService {
       status: row.status,
       payloadJson: row.payload_json,
       lastError: row.last_error,
+    };
+  }
+
+  upsertChannelBinding(input: {
+    workspaceId: string;
+    platform: string;
+    channelUserId: string;
+    actorId: string;
+    audience?: string;
+    grants?: string[];
+    status?: 'active' | 'revoked';
+  }): Record<string, unknown> {
+    const id = uuidv4();
+    const ts = nowIso();
+    const grantsJson = JSON.stringify(input.grants ?? ['vault.read', 'vault.write', 'vault.search', 'vault.export']);
+    this.db
+      .prepare(
+        `INSERT INTO document_vault_channel_bindings
+         (id, workspace_id, platform, channel_user_id, actor_id, audience, grants_json, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(platform, channel_user_id) DO UPDATE SET
+           workspace_id = excluded.workspace_id,
+           actor_id = excluded.actor_id,
+           audience = excluded.audience,
+           grants_json = excluded.grants_json,
+           status = excluded.status,
+           updated_at = excluded.updated_at`,
+      )
+      .run(
+        id,
+        input.workspaceId,
+        input.platform,
+        input.channelUserId,
+        input.actorId,
+        input.audience ?? 'private',
+        grantsJson,
+        input.status ?? 'active',
+        ts,
+        ts,
+      );
+    return this.getChannelBinding(input.platform, input.channelUserId) ?? {};
+  }
+
+  getChannelBinding(platform: string, channelUserId: string): Record<string, unknown> | null {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM document_vault_channel_bindings
+         WHERE platform = ? AND channel_user_id = ?`,
+      )
+      .get(platform, channelUserId) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    let grants: string[] = [];
+    try {
+      grants = JSON.parse(String(row.grants_json ?? '[]')) as string[];
+    } catch {
+      grants = [];
+    }
+    return {
+      id: String(row.id),
+      workspaceId: String(row.workspace_id),
+      platform: String(row.platform),
+      channelUserId: String(row.channel_user_id),
+      actorId: String(row.actor_id),
+      audience: String(row.audience ?? 'private'),
+      grants,
+      status: String(row.status),
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+    };
+  }
+
+  setChannelBindingStatus(
+    platform: string,
+    channelUserId: string,
+    status: 'active' | 'revoked',
+  ): Record<string, unknown> | null {
+    this.db
+      .prepare(
+        `UPDATE document_vault_channel_bindings
+         SET status = ?, updated_at = ?
+         WHERE platform = ? AND channel_user_id = ?`,
+      )
+      .run(status, nowIso(), platform, channelUserId);
+    return this.getChannelBinding(platform, channelUserId);
+  }
+
+  getChannelEvent(
+    workspaceId: string,
+    platform: string,
+    eventId: string,
+    action: string,
+  ): Record<string, unknown> | null {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM document_vault_channel_events
+         WHERE workspace_id = ? AND platform = ? AND event_id = ? AND action = ?`,
+      )
+      .get(workspaceId, platform, eventId, action) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    let result: Record<string, unknown> = {};
+    try {
+      result = JSON.parse(String(row.result_json ?? '{}')) as Record<string, unknown>;
+    } catch {
+      result = {};
+    }
+    return {
+      id: String(row.id),
+      workspaceId: String(row.workspace_id),
+      platform: String(row.platform),
+      eventId: String(row.event_id),
+      action: String(row.action),
+      resultItemId: row.result_item_id == null ? null : String(row.result_item_id),
+      result,
+      createdAt: String(row.created_at),
+    };
+  }
+
+  recordChannelEvent(input: {
+    workspaceId: string;
+    platform: string;
+    eventId: string;
+    action: string;
+    resultItemId?: string | null;
+    result?: Record<string, unknown>;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO document_vault_channel_events
+         (id, workspace_id, platform, event_id, action, result_item_id, result_json, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(workspace_id, platform, event_id, action) DO NOTHING`,
+      )
+      .run(
+        uuidv4(),
+        input.workspaceId,
+        input.platform,
+        input.eventId,
+        input.action,
+        input.resultItemId ?? null,
+        JSON.stringify(input.result ?? {}),
+        nowIso(),
+      );
+  }
+
+  createDeliveryToken(input: {
+    workspaceId: string;
+    itemId: string;
+    tokenHash: string;
+    expiresAt: string;
+    createdBy?: string | null;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO document_vault_delivery_tokens
+         (id, workspace_id, item_id, token_hash, expires_at, created_by, created_at, consumed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NULL)`,
+      )
+      .run(
+        uuidv4(),
+        input.workspaceId,
+        input.itemId,
+        input.tokenHash,
+        input.expiresAt,
+        input.createdBy ?? null,
+        nowIso(),
+      );
+  }
+
+  consumeDeliveryToken(tokenHash: string): { workspaceId: string; itemId: string } | null {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM document_vault_delivery_tokens
+         WHERE token_hash = ? AND consumed_at IS NULL`,
+      )
+      .get(tokenHash) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    if (String(row.expires_at) < nowIso()) return null;
+    const changed = this.db
+      .prepare(
+        `UPDATE document_vault_delivery_tokens
+         SET consumed_at = ?
+         WHERE token_hash = ? AND consumed_at IS NULL`,
+      )
+      .run(nowIso(), tokenHash);
+    if (changed.changes !== 1) return null;
+    return {
+      workspaceId: String(row.workspace_id),
+      itemId: String(row.item_id),
     };
   }
 

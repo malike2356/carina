@@ -22,13 +22,22 @@ interface TelegramUpdate {
   message?: {
     message_id: number;
     text?: string;
+    caption?: string;
     date: number;
     entities?: TelegramMessageEntity[];
+    caption_entities?: TelegramMessageEntity[];
     from?: { id: number; first_name?: string; username?: string; is_bot?: boolean };
     chat: { id: number; type: string };
     reply_to_message?: {
       from?: { id: number; username?: string; is_bot?: boolean };
     };
+    document?: {
+      file_id: string;
+      file_name?: string;
+      mime_type?: string;
+      file_size?: number;
+    };
+    photo?: Array<{ file_id: string; file_size?: number; width?: number; height?: number }>;
   };
 }
 
@@ -66,13 +75,14 @@ export function isWorkerTelegramGroupDirected(
   msg: NonNullable<TelegramUpdate['message']>,
   botUsername: string | null | undefined,
 ): boolean {
-  const text = msg.text ?? '';
+  const text = msg.text ?? msg.caption ?? '';
   const trimmed = text.trim();
   if (trimmed.startsWith('/')) return true;
 
   const username = (botUsername ?? '').replace(/^@/, '').toLowerCase();
+  const entities = [...(msg.entities ?? []), ...(msg.caption_entities ?? [])];
   if (username) {
-    for (const entity of msg.entities ?? []) {
+    for (const entity of entities) {
       if (entity.type !== 'mention') continue;
       const mention = text
         .slice(entity.offset, entity.offset + entity.length)
@@ -89,7 +99,7 @@ export function isWorkerTelegramGroupDirected(
   } else {
     // No username yet: accept replies to bots and any @mention / command only
     if (msg.reply_to_message?.from?.is_bot) return true;
-    if ((msg.entities ?? []).some((entity) => entity.type === 'mention' || entity.type === 'text_mention')) {
+    if (entities.some((entity) => entity.type === 'mention' || entity.type === 'text_mention')) {
       return true;
     }
   }
@@ -240,7 +250,12 @@ export const telegramAdapter: ChannelAdapter = {
   parse(payload, workerId, workspaceId): InboundMessage | null {
     const update = payload as TelegramUpdate;
     const msg = update.message;
-    if (!msg?.text || !msg.from || !msg.chat) return null;
+    if (!msg?.from || !msg.chat) return null;
+    const hasText = Boolean(msg.text?.trim());
+    const hasCaption = Boolean(msg.caption?.trim());
+    const hasDocument = Boolean(msg.document?.file_id);
+    const hasPhoto = Array.isArray(msg.photo) && msg.photo.length > 0;
+    if (!hasText && !hasCaption && !hasDocument && !hasPhoto) return null;
 
     const chatType = String(msg.chat.type || '').toLowerCase();
     const isPrivate = chatType === 'private';
@@ -249,14 +264,23 @@ export const telegramAdapter: ChannelAdapter = {
     // Drop bot-origin chatter (Telegram usually withholds this; belt and braces).
     if (msg.from.is_bot) return null;
 
-    const rawText = msg.text.trim();
+    const rawText = (msg.text ?? msg.caption ?? '').trim();
     const preferAudio = wantsSpokenReply(rawText);
     const stripped = preferAudio ? stripSpeakDirective(rawText) : rawText;
     // Keep enough task text for the LLM; never reduce a voice ask to a tiny stub.
     const content =
       preferAudio && stripped.trim().length >= 8
         ? stripped
-        : rawText;
+        : (rawText || (hasDocument || hasPhoto ? '/vault import' : ''));
+
+    const photo = hasPhoto
+      ? [...(msg.photo ?? [])].sort((a, b) => (b.file_size ?? 0) - (a.file_size ?? 0))[0]
+      : undefined;
+    const fileId = msg.document?.file_id || photo?.file_id;
+    const filename =
+      msg.document?.file_name
+      || (photo ? `photo-${msg.message_id}.jpg` : undefined);
+    const mime = msg.document?.mime_type || (photo ? 'image/jpeg' : undefined);
 
     return {
       channel: 'telegram',
@@ -271,7 +295,16 @@ export const telegramAdapter: ChannelAdapter = {
       metadata: {
         ...(preferAudio ? { preferAudio: 'true', rawUserText: rawText } : {}),
         telegramUserId: String(msg.from.id),
+        telegramMessageId: String(msg.message_id),
         chatType: isPrivate ? 'private' : 'group',
+        ...(fileId
+          ? {
+              telegramFileId: fileId,
+              vaultFilename: filename || 'upload.bin',
+              vaultMime: mime || 'application/octet-stream',
+              eventId: `tg:${msg.message_id}`,
+            }
+          : {}),
       },
     };
   },
@@ -564,5 +597,49 @@ export async function deleteTelegramMessage(
       err instanceof Error ? err.message : String(err),
     );
     return false;
+  }
+}
+
+/** Download a Telegram file by file_id into a Buffer (Document Vault channel import). */
+export async function downloadTelegramFile(
+  botToken: string,
+  fileId: string,
+): Promise<{ bytes: Buffer; filePath: string }> {
+  const meta = await callTelegramApi(botToken, 'getFile', { file_id: fileId });
+  const filePath = String((meta.result as { file_path?: string } | undefined)?.file_path ?? '');
+  if (!filePath) throw new Error('Telegram getFile returned no file_path');
+  const res = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+  if (!res.ok) throw new Error(`Telegram file download failed: HTTP ${res.status}`);
+  const ab = await res.arrayBuffer();
+  return { bytes: Buffer.from(ab), filePath };
+}
+
+/** Send a document attachment to a Telegram chat. */
+export async function sendTelegramDocument(input: {
+  botToken: string;
+  chatId: string;
+  filename: string;
+  bytes: Buffer;
+  caption?: string;
+  replyToMessageId?: string | number;
+}): Promise<void> {
+  const form = new FormData();
+  form.append('chat_id', input.chatId);
+  if (input.caption) form.append('caption', input.caption.slice(0, 1024));
+  if (input.replyToMessageId != null) {
+    form.append('reply_to_message_id', String(input.replyToMessageId));
+  }
+  form.append(
+    'document',
+    new Blob([Uint8Array.from(input.bytes)]),
+    input.filename || 'document.bin',
+  );
+  const res = await fetch(`https://api.telegram.org/bot${input.botToken}/sendDocument`, {
+    method: 'POST',
+    body: form,
+  });
+  const json = (await res.json().catch(() => ({}))) as { ok?: boolean; description?: string };
+  if (!res.ok || !json.ok) {
+    throw new Error(`sendDocument failed: ${json.description ?? `HTTP ${res.status}`}`);
   }
 }

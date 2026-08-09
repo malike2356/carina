@@ -23,6 +23,8 @@ export type DocumentVaultFlags = {
   migrateDryRun: boolean;
   /** Allow retiring legacy stores after cutover evidence. */
   retireLegacyStores: boolean;
+  /** Channel / Telegram Document Vault ops (prompt 713). Default on. */
+  channelOps: boolean;
 };
 
 export function documentVaultFlags(): DocumentVaultFlags {
@@ -32,6 +34,7 @@ export function documentVaultFlags(): DocumentVaultFlags {
     dualWrite: envFlag('DOCUMENT_VAULT_DUAL_WRITE', false),
     migrateDryRun: envFlag('DOCUMENT_VAULT_MIGRATE_DRY_RUN', true),
     retireLegacyStores: envFlag('DOCUMENT_VAULT_RETIRE_LEGACY_STORES', false),
+    channelOps: envFlag('DOCUMENT_VAULT_CHANNEL_OPS', true),
   };
 }
 

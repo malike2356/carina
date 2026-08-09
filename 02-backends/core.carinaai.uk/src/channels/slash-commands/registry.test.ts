@@ -36,6 +36,6 @@ describe('slash command registry', () => {
       timestamp: new Date(),
     } satisfies InboundMessage, 'worker-1');
 
-    expect(result).toEqual({ handled: true, response: 'ok' });
+    expect(result).toMatchObject({ handled: true, response: 'ok' });
   });
 });

@@ -105,7 +105,7 @@ async function buildFriendlyStatus(msg: InboundMessage): Promise<string> {
       : 'Chat approvals: unavailable',
     securityLine,
     '',
-    'Useful commands: /help  /config  /voice_on  /voice_off  /incognito_on  /incognito_off  /memory  /new',
+      'Useful commands: /help  /config  /voice_on  /voice_off  /incognito_on  /incognito_off  /memory  /vault  /new',
     'For technical details: /status tech',
   ].join('\n');
 }

@@ -122,4 +122,44 @@ CREATE TABLE IF NOT EXISTS document_vault_migration_runs (
   detail_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS document_vault_channel_bindings (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  channel_user_id TEXT NOT NULL,
+  actor_id TEXT NOT NULL,
+  audience TEXT NOT NULL DEFAULT 'private',
+  grants_json TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (platform, channel_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS document_vault_channel_bindings_ws_idx
+  ON document_vault_channel_bindings (workspace_id, platform);
+
+CREATE TABLE IF NOT EXISTS document_vault_channel_events (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  platform TEXT NOT NULL,
+  event_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  result_item_id TEXT,
+  result_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  UNIQUE (workspace_id, platform, event_id, action)
+);
+
+CREATE TABLE IF NOT EXISTS document_vault_delivery_tokens (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  consumed_at TEXT
+);
 `;
