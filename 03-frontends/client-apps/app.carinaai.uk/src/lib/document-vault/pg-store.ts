@@ -88,8 +88,8 @@ function toDto(row: typeof documentVaultItems.$inferSelect): VaultItemDto {
     trashedAt: row.trashedAt ? row.trashedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    syncStatus: row.contentAuthority === 'google' ? 'synced' : null,
-    conflict: false,
+    syncStatus: row.syncStatus ?? (row.contentAuthority === 'google' ? 'synced' : null),
+    conflict: Boolean(row.conflict),
   };
 }
 

@@ -19,6 +19,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { WorkspaceOpsConsole } from '@/components/aiva/WorkspaceOpsConsole';
+import { DocumentVaultDrivePanel } from '@/components/documents/DocumentVaultDrivePanel';
 import { CoreSurfaceBanner } from '@/components/shell/CoreSurfaceBanner';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IconButton } from '@/components/ui/IconButton';
@@ -396,7 +397,7 @@ export function DocumentVaultExplorer() {
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-text-primary">Document Vault</h1>
               <p className="text-xs text-text-muted">
-                Google Drive Ops remains available until native vault sync ships.
+                Google Drive OAuth, sync modes, and conflict-safe reconciliation for the vault.
               </p>
             </div>
             <button
@@ -408,8 +409,16 @@ export function DocumentVaultExplorer() {
             </button>
           </div>
         </header>
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-4 sm:px-6">
-          <WorkspaceOpsConsole />
+        <div className="min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto px-3 py-4 sm:px-6">
+          <DocumentVaultDrivePanel />
+          <details className="rounded-lg border border-border bg-surface p-3">
+            <summary className="cursor-pointer text-xs font-medium text-text-secondary">
+              Legacy Workspace Ops Drive console
+            </summary>
+            <div className="mt-3 min-w-0">
+              <WorkspaceOpsConsole />
+            </div>
+          </details>
         </div>
       </div>
     );
@@ -716,6 +725,36 @@ export function DocumentVaultExplorer() {
                       </p>
                     </button>
                   </div>
+                  {item.conflict ? (
+                    <div className="mb-2 flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-0.5 text-[10px]"
+                        onClick={() =>
+                          void fetch(`/api/vault/google/conflicts/${item.id}/resolve`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ choice: 'local' }),
+                          }).then(() => load())
+                        }
+                      >
+                        Keep local
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-border px-2 py-0.5 text-[10px]"
+                        onClick={() =>
+                          void fetch(`/api/vault/google/conflicts/${item.id}/resolve`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ choice: 'google' }),
+                          }).then(() => load())
+                        }
+                      >
+                        Keep Google
+                      </button>
+                    </div>
+                  ) : null}
                   <div className="flex flex-wrap gap-1">
                     {view === 'trash' ? (
                       <button

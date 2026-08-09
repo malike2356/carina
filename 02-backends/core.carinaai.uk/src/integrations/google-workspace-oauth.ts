@@ -1,25 +1,40 @@
 /**
  * Google Workspace OAuth helpers for conversational configure.
  * Persists GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REFRESH_TOKEN.
+ *
+ * Drive scopes (prompt 711): default includes drive.file only. Full drive is
+ * requested only via buildGoogleWorkspaceAuthUrl({ scopes }) or
+ * scopesForDriveCapability('full').
  */
 
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
 
-export const GOOGLE_WORKSPACE_SCOPES = [
+export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+export const DRIVE_FULL_SCOPE = 'https://www.googleapis.com/auth/drive';
+
+/** Base Workspace scopes without privileged full-Drive access. */
+export const GOOGLE_WORKSPACE_BASE_SCOPES = [
   'openid',
   'email',
   'profile',
   'https://www.googleapis.com/auth/gmail.modify',
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/contacts',
-  // drive.file covers app-created files; full drive needed for Workspace Ops folder sync
-  'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive',
+  DRIVE_FILE_SCOPE,
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/tasks',
 ] as const;
+
+/** @deprecated Prefer GOOGLE_WORKSPACE_BASE_SCOPES; kept as alias without full drive. */
+export const GOOGLE_WORKSPACE_SCOPES = GOOGLE_WORKSPACE_BASE_SCOPES;
+
+export function scopesForDriveCapability(capability: 'file' | 'full'): string[] {
+  return capability === 'full'
+    ? [...GOOGLE_WORKSPACE_BASE_SCOPES, DRIVE_FULL_SCOPE]
+    : [...GOOGLE_WORKSPACE_BASE_SCOPES];
+}
 
 export function resolveGoogleRedirectUri(explicit?: string): string {
   const fromArg = explicit?.trim();
@@ -35,20 +50,28 @@ export function buildGoogleWorkspaceAuthUrl(opts: {
   clientId: string;
   redirectUri?: string;
   state?: string;
-}): { authUrl: string; redirectUri: string } {
+  /** Override scopes (incremental auth). Defaults to base scopes with drive.file only. */
+  scopes?: readonly string[];
+  includeGrantedScopes?: boolean;
+}): { authUrl: string; redirectUri: string; scopes: string[] } {
   const redirectUri = resolveGoogleRedirectUri(opts.redirectUri);
+  const scopes = [...(opts.scopes ?? GOOGLE_WORKSPACE_BASE_SCOPES)];
   const params = new URLSearchParams({
     client_id: opts.clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
     access_type: 'offline',
     prompt: 'consent',
-    scope: GOOGLE_WORKSPACE_SCOPES.join(' '),
+    scope: scopes.join(' '),
     state: opts.state ?? 'carina-gws',
   });
+  if (opts.includeGrantedScopes !== false) {
+    params.set('include_granted_scopes', 'true');
+  }
   return {
     authUrl: `${GOOGLE_AUTH_URL}?${params.toString()}`,
     redirectUri,
+    scopes,
   };
 }
 

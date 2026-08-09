@@ -559,6 +559,8 @@ export const documentVaultItems = pgTable(
     indexPolicy: text('index_policy').notNull().default('inherit'),
     classification: text('classification').notNull().default('internal'),
     inlineContent: text('inline_content'),
+    syncStatus: text('sync_status'),
+    conflict: boolean('conflict').notNull().default(false),
   },
   (t) => [
     index('document_vault_items_ws_parent_idx').on(t.workspaceId, t.parentId, t.trashedAt),
@@ -602,6 +604,72 @@ export const documentVaultLegacyMappings = pgTable(
   (t) => [
     index('document_vault_legacy_ws_idx').on(t.workspaceId, t.legacySource, t.legacyId),
   ],
+);
+
+export const documentVaultProviderMappings = pgTable(
+  'document_vault_provider_mappings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id').notNull(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => documentVaultItems.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    providerItemId: text('provider_item_id').notNull(),
+    providerRevisionToken: text('provider_revision_token'),
+    syncStatus: text('sync_status').notNull().default('pending'),
+    localChecksum: text('local_checksum'),
+    remoteChecksum: text('remote_checksum'),
+    lastSyncedAt: timestamp('last_synced_at'),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    contentAuthority: text('content_authority').notNull().default('workspace'),
+    conflictState: text('conflict_state'),
+    metadataJson: jsonb('metadata_json').$type<Record<string, unknown>>().notNull().default({}),
+  },
+  (t) => [
+    index('document_vault_provider_mappings_ws_idx').on(t.workspaceId, t.provider, t.providerItemId),
+    index('document_vault_provider_mappings_item_idx').on(t.itemId),
+  ],
+);
+
+/** Google Drive sync connection per workspace (prompt 711). */
+export const documentVaultDriveConnections = pgTable('document_vault_drive_connections', {
+  workspaceId: uuid('workspace_id')
+    .primaryKey()
+    .references(() => workspaces.id, { onDelete: 'cascade' }),
+  connected: boolean('connected').notNull().default(false),
+  mode: text('mode').notNull().default('outbound_only'),
+  accountEmail: text('account_email'),
+  scopesJson: jsonb('scopes_json').$type<string[]>().notNull().default([]),
+  googleRootFolderId: text('google_root_folder_id'),
+  googleRootFolderName: text('google_root_folder_name'),
+  vaultRootItemId: uuid('vault_root_item_id'),
+  pageToken: text('page_token'),
+  channelId: text('channel_id'),
+  resourceId: text('resource_id'),
+  channelExpiresAt: timestamp('channel_expires_at'),
+  verificationTokenHash: text('verification_token_hash'),
+  lastSyncAt: timestamp('last_sync_at'),
+  lastError: text('last_error'),
+  encryptedGrant: text('encrypted_grant'),
+  grantIv: text('grant_iv'),
+  grantTag: text('grant_tag'),
+  sharedDrivesEnabled: boolean('shared_drives_enabled').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const documentVaultDriveNotifications = pgTable(
+  'document_vault_drive_notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    notificationId: text('notification_id').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [index('document_vault_drive_notifications_ws_idx').on(t.workspaceId, t.createdAt)],
 );
 
 export const emailMessages = pgTable(

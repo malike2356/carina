@@ -5,6 +5,8 @@ const LEGAL_EXEMPT_API_PREFIXES = [
   '/api/auth/',
   '/api/health',
   '/api/webhooks/',
+  '/api/vault/google/webhook',
+  '/api/vault/google/oauth/callback',
 ];
 
 export function isLegalExemptApiPath(pathname: string): boolean {

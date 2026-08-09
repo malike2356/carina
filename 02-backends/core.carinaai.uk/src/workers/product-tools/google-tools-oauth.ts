@@ -1,7 +1,6 @@
 import { config } from '../../config/index.js';
 import {
   buildGoogleWorkspaceAuthUrl,
-  GOOGLE_WORKSPACE_SCOPES,
 } from '../../integrations/google-workspace-oauth.js';
 import { getCatalogTool } from './catalog.js';
 import { signGoogleToolsOAuthState, type GoogleToolsOAuthMode } from './google-tools-oauth-state.js';
@@ -32,6 +31,8 @@ export function buildGoogleToolsAuthUrl(opts: {
   returnPath?: string;
   mode?: GoogleToolsOAuthMode;
   orgId?: string;
+  /** Incremental Drive / Workspace scopes override (prompt 711). */
+  scopes?: readonly string[];
 }): { authUrl: string; redirectUri: string; scopes: string[] } {
   if (!isGoogleToolsOAuthConfigured()) {
     throw new Error('Google OAuth is not configured on this server');
@@ -58,10 +59,11 @@ export function buildGoogleToolsAuthUrl(opts: {
     clientId: config.googleOAuth.clientId,
     redirectUri,
     state,
+    scopes: opts.scopes,
   });
   return {
     authUrl: built.authUrl,
     redirectUri: built.redirectUri,
-    scopes: [...GOOGLE_WORKSPACE_SCOPES],
+    scopes: built.scopes,
   };
 }
