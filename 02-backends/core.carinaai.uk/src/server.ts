@@ -12,6 +12,7 @@ import { aivaPropertyChannelRouter, aivaYouTubeChannelRouter } from './api/aiva-
 import { aivaOutreachRouter } from './api/aiva-outreach-api.js';
 import { aivaVicalRouter } from './api/aiva-vical-api.js';
 import { documentVaultDeliveryRouter } from './api/document-vault-delivery-api.js';
+import { documentVaultSearchOpsRouter } from './api/document-vault-search-ops-api.js';
 import { zoomWebhookRouter } from './api/zoom-webhook-api.js';
 import { googleCalendarWebhookRouter } from './api/google-calendar-webhook-api.js';
 import { registerVicalSideEffects } from './vical/side-effects.js';
@@ -80,6 +81,7 @@ export function mountServerRoutes(app: Express): void {
   app.use('/api/public/trust', publicTrustRouter);
   app.use('/api/public/aiva/marketplace', aivaMarketplacePublicRouter);
   app.use('/api/document-vault', documentVaultDeliveryRouter);
+  app.use('/api/document-vault', documentVaultSearchOpsRouter);
   app.use('/api/internal/channels', channelConfigApiRouter);
   app.use('/api/internal/settings', settingsApiRouter);
   app.use('/api/agent-sync', githubAgentSyncRouter);

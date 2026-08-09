@@ -115,12 +115,13 @@ export function createDocumentVaultTools(sessionId: string): Tool[] {
 
   const search = wrap(
     'vault-search',
-    'Search Document Vault item names and kinds in the trusted workspace.',
+    'Search Document Vault by metadata or indexed content (mode=metadata|content). Honors grants, trash, and index policy.',
     {
       type: 'object',
       properties: {
         q: { type: 'string' },
         limit: { type: 'number' },
+        mode: { type: 'string', description: 'metadata (default) or content' },
       },
       required: ['q'],
     },
@@ -128,20 +129,48 @@ export function createDocumentVaultTools(sessionId: string): Tool[] {
       const ctx = (params as { __vaultCtx: ReturnType<typeof resolveVaultAgentContext> }).__vaultCtx;
       const q = String(params.q ?? '').trim();
       if (!q) return { ok: false, error: 'q required' };
+      const mode = String(params.mode ?? 'metadata').trim().toLowerCase();
+      const limit = params.limit != null ? Number(params.limit) : 50;
+      if (mode === 'content') {
+        const { contentSearch } = await import('../document-vault/search/retriever.js');
+        const { drainJobs } = await import('../document-vault/ops/jobs.js');
+        const listed = await runLocal(ctx.workspaceId, ctx.actorId, async (svc) => {
+          await drainJobs(svc, ctx.workspaceId, { limit: 20 });
+          return contentSearch(svc, ctx.workspaceId, q, { limit, grants: null });
+        });
+        return listed;
+      }
       if (preferCloud()) {
         const result = await vaultSurfaces.vaultList({
           workspaceId: ctx.workspaceId,
           q,
-          limit: params.limit != null ? Number(params.limit) : 50,
+          limit,
         });
         if (!result.ok) return { ok: false, error: result.error };
         const items = Array.isArray(result.data) ? result.data : (result.data as { items?: unknown[] })?.items ?? [];
         return { ok: true, items: (items as Record<string, unknown>[]).map(compactItem), total: items.length };
       }
       const listed = await runLocal(ctx.workspaceId, ctx.actorId, (svc) =>
-        svc.searchItems(ctx.workspaceId, q, { limit: params.limit != null ? Number(params.limit) : 50 }),
+        svc.searchItems(ctx.workspaceId, q, { limit }),
       );
       return { ok: true, items: listed.items.map((i) => compactItem(i as unknown as Record<string, unknown>)), total: listed.total };
+    },
+  );
+
+  const reindex = wrap(
+    'vault-reindex',
+    'Reindex a Document Vault item for content search (requires index policy).',
+    {
+      type: 'object',
+      properties: { id: { type: 'string' } },
+      required: ['id'],
+    },
+    async (params) => {
+      const ctx = (params as { __vaultCtx: ReturnType<typeof resolveVaultAgentContext> }).__vaultCtx;
+      const id = String(params.id ?? '').trim();
+      if (!id) return { ok: false, error: 'id required' };
+      const { reindexItem } = await import('../document-vault/ops/repair.js');
+      return runLocal(ctx.workspaceId, ctx.actorId, (svc) => reindexItem(svc, ctx.workspaceId, id));
     },
   );
 
@@ -830,6 +859,7 @@ export function createDocumentVaultTools(sessionId: string): Tool[] {
   return [
     list,
     search,
+    reindex,
     inspect,
     read,
     createFolder,
@@ -854,6 +884,7 @@ export function createDocumentVaultTools(sessionId: string): Tool[] {
 export const DOCUMENT_VAULT_TOOL_NAMES = [
   'vault-list',
   'vault-search',
+  'vault-reindex',
   'vault-inspect',
   'vault-read',
   'vault-create-folder',

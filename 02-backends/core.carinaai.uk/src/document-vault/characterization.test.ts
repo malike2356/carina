@@ -60,7 +60,7 @@ describe('Document Vault v1 characterization (707)', () => {
     const contract = loadDocumentVaultContractManifest();
     expect(contract.version).toBe(DOCUMENT_VAULT_CONTRACT_VERSION);
     expect(contract.authority).toContain('AIVA-KEPRIX-DOCUMENT-VAULT.md');
-    expect(contract.phase).toMatch(/70[789]/);
+    expect(contract.phase).toMatch(/70[789]|71[0-5]/);
 
     const ownership = loadDocumentVaultOwnershipMatrix();
     expect(ownership.target).toBeTruthy();
@@ -172,7 +172,7 @@ describe('Document Vault v1 characterization (707)', () => {
       id: 'any',
       _sessionId: 'aiva-ws1-worker-web-1',
     }) as { error?: string };
-    expect(hostBlocked.error).toMatch(/host documents store|workspace-document/i);
+    expect(hostBlocked.error).toMatch(/host documents store|workspace-document|vault-create-file|vault-list/i);
   });
 
   it('refuses cross-workspace id collisions in snapshots', () => {

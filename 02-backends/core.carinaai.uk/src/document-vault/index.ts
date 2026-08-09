@@ -61,3 +61,31 @@ export {
   importBytesIntoVault,
 } from './format-ops.js';
 export { buildDeterministicPdf } from './format-pdf.js';
+export {
+  ROOT_INHERIT_DEFAULT,
+  resolveEffectiveIndexPolicy,
+  shouldIndexItem,
+  VaultContentIndexer,
+  contentSearch,
+  onItemWritten,
+  onItemTrashedOrDeleted,
+  onItemRestored,
+  makeSourceId,
+} from './search/index.js';
+export {
+  KNOWN_GRANTS,
+  requireGrant,
+  assertSafeFetchUrl,
+  scanBytesForMalware,
+  redactSecrets,
+} from './security/index.js';
+export {
+  drainJobs,
+  retryJob,
+  failJob,
+  repairOrphanIndexEntries,
+  reindexItem,
+  buildDiagnostics,
+  tempBackupRestoreRoundtrip,
+  exportWorkspacePack,
+} from './ops/index.js';

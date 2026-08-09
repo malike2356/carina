@@ -24,30 +24,14 @@ import {
 } from './model.js';
 import { DOCUMENT_VAULT_SQLITE_SCHEMA } from './schema-sqlite.js';
 import type { VaultContentStore } from './content-store.js';
+import { VaultError } from './errors.js';
+import {
+  onItemRestored,
+  onItemTrashedOrDeleted,
+  onItemWritten,
+} from './search/hooks.js';
 
-export class VaultError extends Error {
-  constructor(
-    message: string,
-    readonly code:
-      | 'not_found'
-      | 'forbidden'
-      | 'conflict'
-      | 'validation'
-      | 'quota'
-      | 'stale_revision'
-      | 'approval_required'
-      | 'cycle'
-      | 'channel_unbound'
-      | 'channel_revoked'
-      | 'unsupported_channel'
-      | 'malware_detected'
-      | 'destination_required'
-      | 'not_configured',
-  ) {
-    super(message);
-    this.name = 'VaultError';
-  }
-}
+export { VaultError } from './errors.js';
 
 export type ActorContext = {
   actorId?: string | null;
@@ -89,16 +73,43 @@ export class DocumentVaultService {
     private readonly contentStore: VaultContentStore,
     options?: { dbPath?: string; defaultQuotaBytes?: number },
   ) {
+    this.dbPath = options?.dbPath ?? null;
     this.db = options?.dbPath ? new Database(options.dbPath) : new Database(':memory:');
     this.db.pragma('journal_mode = WAL');
     this.db.exec(DOCUMENT_VAULT_SQLITE_SCHEMA);
+    this.ensureSearchOpsColumns();
     this.defaultQuotaBytes = options?.defaultQuotaBytes ?? 50 * 1024 * 1024;
   }
 
   private readonly defaultQuotaBytes: number;
+  private readonly dbPath: string | null;
 
   close(): void {
     this.db.close();
+  }
+
+  getDbPath(): string | null {
+    return this.dbPath;
+  }
+
+  /** Additive columns for older sqlite files created before prompt 714. */
+  private ensureSearchOpsColumns(): void {
+    const jobCols = new Set(
+      (this.db.prepare(`PRAGMA table_info(document_vault_jobs)`).all() as Array<{ name: string }>).map(
+        (c) => c.name,
+      ),
+    );
+    const addJob = (name: string, ddl: string) => {
+      if (!jobCols.has(name)) this.db.exec(`ALTER TABLE document_vault_jobs ADD COLUMN ${ddl}`);
+    };
+    addJob('item_id', 'item_id TEXT');
+    addJob('idempotency_key', 'idempotency_key TEXT');
+    addJob('result_json', "result_json TEXT NOT NULL DEFAULT '{}'");
+    addJob('retry_count', 'retry_count INTEGER NOT NULL DEFAULT 0');
+    addJob('max_retries', 'max_retries INTEGER NOT NULL DEFAULT 3');
+    addJob('dead_letter_reason', 'dead_letter_reason TEXT');
+    addJob('claimed_by', 'claimed_by TEXT');
+    addJob('claimed_at', 'claimed_at TEXT');
   }
 
   ensureQuota(workspaceId: string, maxBytes = this.defaultQuotaBytes): VaultQuota {
@@ -193,10 +204,16 @@ export class DocumentVaultService {
       .get(workspaceId, itemId) as Record<string, unknown> | undefined;
   }
 
-  getItem(workspaceId: string, itemId: string): VaultItem {
-    const row = this.getRow(workspaceId, itemId);
-    if (!row) throw new VaultError('Item not found', 'not_found');
-    return this.rowToItem(row);
+  getItem(
+    workspaceId: string,
+    itemId: string,
+    options: { includeTrashed?: boolean } = {},
+  ): VaultItem {
+    const item = this.getItemOrNull(workspaceId, itemId, {
+      includeTrashed: options.includeTrashed ?? true,
+    });
+    if (!item) throw new VaultError('Item not found', 'not_found');
+    return item;
   }
 
   private assertParent(workspaceId: string, parentId: string | null | undefined): void {
@@ -324,7 +341,55 @@ export class DocumentVaultService {
       this.audit(workspaceId, 'create', id, actor, { kind: input.kind, name });
     });
     tx();
-    return this.getItem(workspaceId, id);
+    const created = this.getItem(workspaceId, id);
+    onItemWritten(this, workspaceId, created);
+    return created;
+  }
+
+  getItemOrNull(
+    workspaceId: string,
+    itemId: string,
+    options: { includeTrashed?: boolean } = {},
+  ): VaultItem | null {
+    const row = this.getRow(workspaceId, itemId);
+    if (!row) return null;
+    if (options.includeTrashed !== true && row.trashed_at) return null;
+    return this.rowToItem(row);
+  }
+
+  listAllItems(workspaceId: string): VaultItem[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM document_vault_items
+         WHERE workspace_id = ?
+         ORDER BY created_at ASC`,
+      )
+      .all(workspaceId) as Array<Record<string, unknown>>;
+    return rows.map((r) => this.rowToItem(r));
+  }
+
+  updateIndexPolicy(
+    workspaceId: string,
+    itemId: string,
+    indexPolicy: IndexPolicy,
+    actor: ActorContext = {},
+  ): VaultItem {
+    const row = this.getRow(workspaceId, itemId);
+    if (!row) throw new VaultError('Item not found', 'not_found');
+    if (!['inherit', 'index', 'no_index'].includes(indexPolicy)) {
+      throw new VaultError('Invalid index_policy', 'validation');
+    }
+    this.db
+      .prepare(
+        `UPDATE document_vault_items
+         SET index_policy = ?, updated_by = ?, updated_at = ?
+         WHERE workspace_id = ? AND id = ?`,
+      )
+      .run(indexPolicy, actor.actorId ?? null, nowIso(), workspaceId, itemId);
+    this.audit(workspaceId, 'index_policy', itemId, actor, { indexPolicy });
+    const item = this.getItem(workspaceId, itemId);
+    onItemWritten(this, workspaceId, item);
+    return item;
   }
 
   listItems(workspaceId: string, options: ListOptions = {}): { items: VaultItem[]; total: number } {
@@ -488,7 +553,9 @@ export class DocumentVaultService {
       });
     });
     tx();
-    return this.getItem(workspaceId, itemId);
+    const updated = this.getItem(workspaceId, itemId);
+    onItemWritten(this, workspaceId, updated);
+    return updated;
   }
 
   rename(
@@ -533,7 +600,9 @@ export class DocumentVaultService {
       )
       .run(newParentId, actor.actorId ?? null, nowIso(), workspaceId, itemId);
     this.audit(workspaceId, 'move', itemId, actor, { parentId: newParentId });
-    return this.getItem(workspaceId, itemId);
+    const moved = this.getItem(workspaceId, itemId);
+    onItemWritten(this, workspaceId, moved);
+    return moved;
   }
 
   async copy(
@@ -591,7 +660,10 @@ export class DocumentVaultService {
       this.audit(workspaceId, 'trash', itemId, actor, { descendantCount: ids.length });
     });
     tx();
-    return this.getItem(workspaceId, itemId);
+    for (const id of ids) {
+      onItemTrashedOrDeleted(this, workspaceId, id, 'trash');
+    }
+    return this.getItem(workspaceId, itemId, { includeTrashed: true });
   }
 
   restore(workspaceId: string, itemId: string, actor: ActorContext = {}): VaultItem {
@@ -617,7 +689,9 @@ export class DocumentVaultService {
       )
       .run(parentId, actor.actorId ?? null, ts, workspaceId, itemId);
     this.audit(workspaceId, 'restore', itemId, actor, { parentId });
-    return this.getItem(workspaceId, itemId);
+    const restored = this.getItem(workspaceId, itemId);
+    onItemRestored(this, workspaceId, restored);
+    return restored;
   }
 
   private ensureRecoveryFolder(workspaceId: string, actor: ActorContext): VaultItem {
@@ -706,6 +780,10 @@ export class DocumentVaultService {
     const row = this.getRow(workspaceId, itemId);
     if (!row) throw new VaultError('Item not found', 'not_found');
     const ids = [...this.collectDescendantIdsIncludingTrashed(workspaceId, itemId)];
+    for (const id of ids) {
+      onItemTrashedOrDeleted(this, workspaceId, id, 'permanent_delete');
+      this.deleteIndexForItem(workspaceId, id);
+    }
     const tx = this.db.transaction(() => {
       for (const id of ids) {
         const current = this.getRow(workspaceId, id);
@@ -893,23 +971,63 @@ export class DocumentVaultService {
     workspaceId: string;
     kind: string;
     payload: Record<string, unknown>;
-  }): { id: string } {
+    itemId?: string | null;
+    idempotencyKey?: string;
+  }): { id: string; idempotent?: boolean } {
+    return this.enqueueJobIdempotent({
+      workspaceId: input.workspaceId,
+      kind: input.kind,
+      itemId: input.itemId ?? (input.payload.item_id != null ? String(input.payload.item_id) : null),
+      idempotencyKey: input.idempotencyKey ?? `${input.kind}:${uuidv4().slice(0, 8)}`,
+      payload: input.payload,
+    });
+  }
+
+  enqueueJobIdempotent(input: {
+    workspaceId: string;
+    kind: string;
+    itemId?: string | null;
+    idempotencyKey: string;
+    payload?: Record<string, unknown>;
+  }): { id: string; idempotent?: boolean } {
+    const existing = this.db
+      .prepare(
+        `SELECT id FROM document_vault_jobs
+         WHERE workspace_id = ? AND idempotency_key = ?`,
+      )
+      .get(input.workspaceId, input.idempotencyKey) as { id: string } | undefined;
+    if (existing) return { id: existing.id, idempotent: true };
+
     const id = uuidv4();
     const ts = nowIso();
     this.db
       .prepare(
         `INSERT INTO document_vault_jobs
-         (id, workspace_id, kind, payload_json, status, attempts, last_error, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'queued', 0, NULL, ?, ?)`,
+         (id, workspace_id, kind, item_id, idempotency_key, payload_json, result_json, status,
+          attempts, retry_count, max_retries, last_error, dead_letter_reason, claimed_by, claimed_at,
+          created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, '{}', 'queued', 0, 0, 3, NULL, NULL, NULL, NULL, ?, ?)`,
       )
-      .run(id, input.workspaceId, input.kind, JSON.stringify(input.payload), ts, ts);
+      .run(
+        id,
+        input.workspaceId,
+        input.kind,
+        input.itemId ?? null,
+        input.idempotencyKey,
+        JSON.stringify(input.payload ?? {}),
+        ts,
+        ts,
+      );
     return { id };
   }
 
   updateJob(
     workspaceId: string,
     jobId: string,
-    patch: { status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'; lastError?: string | null },
+    patch: {
+      status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'completed' | 'dead_letter';
+      lastError?: string | null;
+    },
   ): void {
     this.db
       .prepare(
@@ -920,6 +1038,117 @@ export class DocumentVaultService {
       .run(patch.status, patch.lastError ?? null, nowIso(), workspaceId, jobId);
   }
 
+  claimJob(workspaceId: string, workerId = 'worker'): Record<string, unknown> | null {
+    const row = this.db
+      .prepare(
+        `SELECT * FROM document_vault_jobs
+         WHERE workspace_id = ? AND status = 'queued'
+         ORDER BY created_at ASC
+         LIMIT 1`,
+      )
+      .get(workspaceId) as Record<string, unknown> | undefined;
+    if (!row) return null;
+    const ts = nowIso();
+    const result = this.db
+      .prepare(
+        `UPDATE document_vault_jobs
+         SET status = 'running', claimed_by = ?, claimed_at = ?, updated_at = ?
+         WHERE id = ? AND status = 'queued'`,
+      )
+      .run(workerId, ts, ts, String(row.id));
+    if (result.changes !== 1) return null;
+    const refreshed = this.db
+      .prepare('SELECT * FROM document_vault_jobs WHERE id = ?')
+      .get(String(row.id)) as Record<string, unknown>;
+    let payload: Record<string, unknown> = {};
+    try {
+      payload = JSON.parse(String(refreshed.payload_json || '{}')) as Record<string, unknown>;
+    } catch {
+      payload = {};
+    }
+    return { ...refreshed, payload };
+  }
+
+  completeJob(
+    workspaceId: string,
+    jobId: string,
+    result: Record<string, unknown> = {},
+  ): Record<string, unknown> | null {
+    this.db
+      .prepare(
+        `UPDATE document_vault_jobs
+         SET status = 'completed', result_json = ?, last_error = NULL,
+             dead_letter_reason = NULL, updated_at = ?
+         WHERE id = ? AND workspace_id = ?`,
+      )
+      .run(JSON.stringify(result), nowIso(), jobId, workspaceId);
+    return this.getJobRecord(workspaceId, jobId);
+  }
+
+  failJob(
+    workspaceId: string,
+    jobId: string,
+    reason: string,
+  ): Record<string, unknown> | null {
+    const row = this.getJobRecord(workspaceId, jobId);
+    if (!row) return null;
+    const retries = Number(row.retry_count || 0) + 1;
+    const maxRetries = Number(row.max_retries || 3);
+    const status = retries >= maxRetries ? 'dead_letter' : 'queued';
+    const dead = status === 'dead_letter' ? reason : null;
+    this.db
+      .prepare(
+        `UPDATE document_vault_jobs
+         SET status = ?, retry_count = ?, last_error = ?, dead_letter_reason = ?,
+             claimed_by = NULL, claimed_at = NULL, updated_at = ?
+         WHERE id = ? AND workspace_id = ?`,
+      )
+      .run(status, retries, reason, dead, nowIso(), jobId, workspaceId);
+    return this.getJobRecord(workspaceId, jobId);
+  }
+
+  retryJob(workspaceId: string, jobId: string): Record<string, unknown> | null {
+    const row = this.getJobRecord(workspaceId, jobId);
+    if (!row) return null;
+    const status = String(row.status || '');
+    if (status !== 'dead_letter' && status !== 'failed') return null;
+    this.db
+      .prepare(
+        `UPDATE document_vault_jobs
+         SET status = 'queued', dead_letter_reason = NULL, last_error = NULL,
+             claimed_by = NULL, claimed_at = NULL, updated_at = ?
+         WHERE id = ? AND workspace_id = ?`,
+      )
+      .run(nowIso(), jobId, workspaceId);
+    return this.getJobRecord(workspaceId, jobId);
+  }
+
+  listJobs(workspaceId: string, status?: string): Array<Record<string, unknown>> {
+    if (status) {
+      return this.db
+        .prepare(
+          `SELECT * FROM document_vault_jobs
+           WHERE workspace_id = ? AND status = ?
+           ORDER BY created_at DESC`,
+        )
+        .all(workspaceId, status) as Array<Record<string, unknown>>;
+    }
+    return this.db
+      .prepare(
+        `SELECT * FROM document_vault_jobs
+         WHERE workspace_id = ?
+         ORDER BY created_at DESC`,
+      )
+      .all(workspaceId) as Array<Record<string, unknown>>;
+  }
+
+  private getJobRecord(workspaceId: string, jobId: string): Record<string, unknown> | null {
+    const row = this.db
+      .prepare('SELECT * FROM document_vault_jobs WHERE workspace_id = ? AND id = ?')
+      .get(workspaceId, jobId) as Record<string, unknown> | undefined;
+    return row ?? null;
+  }
+
   getJob(workspaceId: string, jobId: string): {
     id: string;
     kind: string;
@@ -927,22 +1156,168 @@ export class DocumentVaultService {
     payloadJson: string;
     lastError: string | null;
   } | null {
-    const row = this.db
-      .prepare(
-        `SELECT id, kind, status, payload_json, last_error
-         FROM document_vault_jobs WHERE workspace_id = ? AND id = ?`,
-      )
-      .get(workspaceId, jobId) as
-      | { id: string; kind: string; status: string; payload_json: string; last_error: string | null }
-      | undefined;
+    const row = this.getJobRecord(workspaceId, jobId);
     if (!row) return null;
     return {
-      id: row.id,
-      kind: row.kind,
-      status: row.status,
-      payloadJson: row.payload_json,
-      lastError: row.last_error,
+      id: String(row.id),
+      kind: String(row.kind),
+      status: String(row.status),
+      payloadJson: String(row.payload_json),
+      lastError: row.last_error == null ? null : String(row.last_error),
     };
+  }
+
+  upsertIndexEntry(input: {
+    workspaceId: string;
+    itemId: string;
+    revision: number;
+    sourceId: string;
+    status: string;
+    chunkCount?: number;
+    contentChecksum?: string | null;
+    error?: string | null;
+  }): Record<string, unknown> {
+    const existing = this.db
+      .prepare(
+        `SELECT * FROM document_vault_index_entries
+         WHERE workspace_id = ? AND item_id = ? AND revision = ?`,
+      )
+      .get(input.workspaceId, input.itemId, input.revision) as Record<string, unknown> | undefined;
+    const ts = nowIso();
+    if (existing) {
+      this.db
+        .prepare(
+          `UPDATE document_vault_index_entries SET
+             source_id = ?, status = ?, chunk_count = ?, content_checksum = ?,
+             indexed_at = ?, error = ?
+           WHERE workspace_id = ? AND item_id = ? AND revision = ?`,
+        )
+        .run(
+          input.sourceId,
+          input.status,
+          input.chunkCount ?? 0,
+          input.contentChecksum ?? null,
+          input.status === 'indexed' ? ts : existing.indexed_at ?? null,
+          input.error ?? null,
+          input.workspaceId,
+          input.itemId,
+          input.revision,
+        );
+    } else {
+      this.db
+        .prepare(
+          `INSERT INTO document_vault_index_entries
+           (id, workspace_id, item_id, revision, source_id, status, chunk_count,
+            content_checksum, indexed_at, error)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          uuidv4(),
+          input.workspaceId,
+          input.itemId,
+          input.revision,
+          input.sourceId,
+          input.status,
+          input.chunkCount ?? 0,
+          input.contentChecksum ?? null,
+          input.status === 'indexed' ? ts : null,
+          input.error ?? null,
+        );
+    }
+    return (
+      this.db
+        .prepare(
+          `SELECT * FROM document_vault_index_entries
+           WHERE workspace_id = ? AND item_id = ? AND revision = ?`,
+        )
+        .get(input.workspaceId, input.itemId, input.revision) as Record<string, unknown>
+    );
+  }
+
+  replaceIndexChunks(
+    workspaceId: string,
+    itemId: string,
+    revision: number,
+    chunks: string[],
+  ): number {
+    this.db
+      .prepare('DELETE FROM document_vault_index_chunks WHERE workspace_id = ? AND item_id = ?')
+      .run(workspaceId, itemId);
+    const insert = this.db.prepare(
+      `INSERT INTO document_vault_index_chunks
+       (id, workspace_id, item_id, revision, chunk_index, text)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    );
+    const tx = this.db.transaction(() => {
+      chunks.forEach((text, idx) => {
+        insert.run(uuidv4(), workspaceId, itemId, revision, idx, text);
+      });
+    });
+    tx();
+    return chunks.length;
+  }
+
+  deleteIndexForItem(workspaceId: string, itemId: string): number {
+    const a = this.db
+      .prepare('DELETE FROM document_vault_index_chunks WHERE workspace_id = ? AND item_id = ?')
+      .run(workspaceId, itemId);
+    const b = this.db
+      .prepare('DELETE FROM document_vault_index_entries WHERE workspace_id = ? AND item_id = ?')
+      .run(workspaceId, itemId);
+    return a.changes + b.changes;
+  }
+
+  listIndexEntries(workspaceId: string): Array<Record<string, unknown>> {
+    return this.db
+      .prepare(
+        `SELECT * FROM document_vault_index_entries
+         WHERE workspace_id = ?
+         ORDER BY indexed_at DESC`,
+      )
+      .all(workspaceId) as Array<Record<string, unknown>>;
+  }
+
+  searchIndexChunks(
+    workspaceId: string,
+    query: string,
+    limit = 50,
+  ): Array<Record<string, unknown>> {
+    const like = `%${query.replace(/%/g, '')}%`;
+    return this.db
+      .prepare(
+        `SELECT *, 1.0 AS score FROM document_vault_index_chunks
+         WHERE workspace_id = ? AND text LIKE ?
+         ORDER BY chunk_index ASC
+         LIMIT ?`,
+      )
+      .all(workspaceId, like, Math.max(1, Math.min(limit, 500))) as Array<Record<string, unknown>>;
+  }
+
+  scanOrphanIndexEntries(workspaceId: string): Array<Record<string, unknown>> {
+    return this.db
+      .prepare(
+        `SELECT e.* FROM document_vault_index_entries e
+         LEFT JOIN document_vault_items i
+           ON i.workspace_id = e.workspace_id AND i.id = e.item_id
+         WHERE e.workspace_id = ? AND i.id IS NULL`,
+      )
+      .all(workspaceId) as Array<Record<string, unknown>>;
+  }
+
+  listProviderMappings(workspaceId: string, itemId?: string): Array<Record<string, unknown>> {
+    if (itemId) {
+      return this.db
+        .prepare(
+          `SELECT * FROM document_vault_provider_mappings
+           WHERE workspace_id = ? AND item_id = ?`,
+        )
+        .all(workspaceId, itemId) as Array<Record<string, unknown>>;
+    }
+    return this.db
+      .prepare(
+        `SELECT * FROM document_vault_provider_mappings WHERE workspace_id = ?`,
+      )
+      .all(workspaceId) as Array<Record<string, unknown>>;
   }
 
   upsertChannelBinding(input: {

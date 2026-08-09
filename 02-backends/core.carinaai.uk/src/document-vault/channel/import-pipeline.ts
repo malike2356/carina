@@ -66,7 +66,7 @@ export async function importChannelAttachment(
     );
   }
 
-  const quarantine = quarantineAttachment(attachment.data, {
+  const quarantine = await quarantineAttachment(attachment.data, {
     filename: attachment.filename,
     declaredMime: attachment.declaredMime,
     platform,

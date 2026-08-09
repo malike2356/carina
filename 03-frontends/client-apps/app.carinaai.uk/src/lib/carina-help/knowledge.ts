@@ -112,7 +112,7 @@ function renderStuckPointsSummary(): string {
     '- Approvals: drafts waiting for human review before send (email, social, and Soft Wall outreach contact).',
     '- Email: connect on the Email Handler worker Channels flow (Gmail OAuth preferred). Nothing client-facing is sent until approved unless the owner explicitly asked to send now.',
     '- Calendar: Google sync plus local/Aiva events and note reminders. Filters: Aiva, Google, Local only.',
-    '- Documents: Document Vault at /documents (folders, files, revisions, trash, Soft Wall approvals). Agents use vault-* tools from Work chat; Telegram /vault commands and file captions (save to vault / /vault import) use the same vault with quarantine and webhook dedupe. Public customer sessions cannot access the private vault. Google Drive sync is optional via vault-sync-status / vault-sync-request.',
+    '- Documents: Document Vault at /documents (folders, files, revisions, trash, Soft Wall approvals). Agents use vault-* tools from Work chat including vault-search (metadata or mode=content) and vault-reindex. Content indexing is opt-in via index_policy (inherit defaults to no_index). Telegram /vault commands and file captions use the same vault with quarantine, malware hook, and webhook dedupe. Operators use /api/document-vault/ops/diagnostics, job drain/retry, orphan repair, and backup drills. Public customer sessions cannot access the private vault. Google Drive sync is optional via vault-sync-status / vault-sync-request.',
     '',
     '## CRM Leads vs Contacts',
     '- Outreach (sidebar) → CRM Leads (/aiva/outreach/leads or /aiva/crm/leads): sales lead table, CSV import/export, linked lead files (create, sync, rename, delete file).',

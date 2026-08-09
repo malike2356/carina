@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import {
   documentVaultItems,
@@ -581,6 +581,98 @@ export async function migrateLegacyDocuments(workspaceId: string): Promise<{ imp
     imported += 1;
   }
   return { imported, skipped };
+}
+
+/** Content search against index chunks when present; falls back to metadata name search. */
+export async function searchVaultContent(
+  workspaceId: string,
+  query: string,
+  limit = 20,
+): Promise<Array<Record<string, unknown>>> {
+  const q = query.trim();
+  if (!q) return [];
+  const like = `%${q.replace(/%/g, '')}%`;
+  try {
+    const rows = await db.execute(sql`
+      SELECT c.item_id, c.revision, c.text, i.name, i.current_revision
+      FROM document_vault_index_chunks c
+      JOIN document_vault_items i
+        ON i.workspace_id = c.workspace_id AND i.id = c.item_id
+      WHERE c.workspace_id = ${workspaceId}
+        AND i.trashed_at IS NULL
+        AND c.text ILIKE ${like}
+        AND c.revision = i.current_revision
+      ORDER BY c.chunk_index ASC
+      LIMIT ${Math.max(1, Math.min(limit, 100))}
+    `);
+    const list = (rows as unknown as { rows?: Array<Record<string, unknown>> }).rows
+      ?? (Array.isArray(rows) ? (rows as Array<Record<string, unknown>>) : []);
+    return list.map((row) => ({
+      item_id: row.item_id,
+      revision: Number(row.revision ?? row.current_revision ?? 0),
+      name: String(row.name || ''),
+      snippet: String(row.text || '').slice(0, 280),
+      score: 1,
+      source_id: `${workspaceId}/${row.item_id}@r${row.revision}`,
+      workspace_id: workspaceId,
+    }));
+  } catch {
+    const items = await listVaultItems(workspaceId, { q, scope: 'all' });
+    return items.items.slice(0, limit).map((item) => ({
+      item_id: item.id,
+      revision: item.currentRevision,
+      name: item.name,
+      snippet: item.name,
+      score: 0.5,
+      source_id: `${workspaceId}/${item.id}@r${item.currentRevision}`,
+      workspace_id: workspaceId,
+      fallback: 'metadata',
+    }));
+  }
+}
+
+export async function buildVaultDiagnostics(workspaceId: string): Promise<Record<string, unknown>> {
+  const items = await listVaultItems(workspaceId, { scope: 'all' });
+  let indexTotal = 0;
+  let jobDead = 0;
+  let jobQueued = 0;
+  try {
+    const idx = await db.execute(sql`
+      SELECT COUNT(*)::int AS c FROM document_vault_index_entries WHERE workspace_id = ${workspaceId}
+    `);
+    const idxRows = (idx as unknown as { rows?: Array<{ c: number }> }).rows
+      ?? (Array.isArray(idx) ? (idx as Array<{ c: number }>) : []);
+    indexTotal = Number(idxRows[0]?.c || 0);
+    const jobs = await db.execute(sql`
+      SELECT status, COUNT(*)::int AS c FROM document_vault_jobs
+      WHERE workspace_id = ${workspaceId}
+      GROUP BY status
+    `);
+    const jobRows = (jobs as unknown as { rows?: Array<{ status: string; c: number }> }).rows
+      ?? (Array.isArray(jobs) ? (jobs as Array<{ status: string; c: number }>) : []);
+    for (const row of jobRows) {
+      if (row.status === 'dead_letter') jobDead = Number(row.c);
+      if (row.status === 'queued') jobQueued = Number(row.c);
+    }
+  } catch {
+    /* migrations may lag */
+  }
+  return {
+    ok: true,
+    workspace_id: workspaceId,
+    generated_at: new Date().toISOString(),
+    items: { total: items.total },
+    index: { total: indexTotal, lag_pending: jobQueued },
+    jobs: { dead_letters: jobDead, queued: jobQueued },
+    alerts: [
+      ...(jobDead > 0
+        ? [{ code: 'job_dead_letter', severity: 'high', message: `${jobDead} dead_letter jobs` }]
+        : []),
+      ...(jobQueued > 50
+        ? [{ code: 'index_lag', severity: 'medium', message: `${jobQueued} queued jobs` }]
+        : []),
+    ],
+  };
 }
 
 export const FORMAT_CAPABILITIES = {

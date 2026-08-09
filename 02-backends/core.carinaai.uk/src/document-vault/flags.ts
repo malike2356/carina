@@ -25,6 +25,8 @@ export type DocumentVaultFlags = {
   retireLegacyStores: boolean;
   /** Channel / Telegram Document Vault ops (prompt 713). Default on. */
   channelOps: boolean;
+  /** Search / RAG / ops plane (prompt 714). Default on. */
+  searchOps: boolean;
 };
 
 export function documentVaultFlags(): DocumentVaultFlags {
@@ -35,6 +37,7 @@ export function documentVaultFlags(): DocumentVaultFlags {
     migrateDryRun: envFlag('DOCUMENT_VAULT_MIGRATE_DRY_RUN', true),
     retireLegacyStores: envFlag('DOCUMENT_VAULT_RETIRE_LEGACY_STORES', false),
     channelOps: envFlag('DOCUMENT_VAULT_CHANNEL_OPS', true),
+    searchOps: envFlag('DOCUMENT_VAULT_SEARCH_OPS', true),
   };
 }
 

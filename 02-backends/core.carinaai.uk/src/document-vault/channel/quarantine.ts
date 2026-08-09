@@ -1,12 +1,13 @@
 /**
- * Quarantine inbound channel attachments before vault import (prompt 713).
+ * Quarantine inbound channel attachments before vault import (prompt 713/714).
  */
 
 import { assertSafeUploadBytes } from '../format-safety.js';
-import { VaultError } from '../service.js';
+import { VaultError } from '../errors.js';
+import { scanBytesForMalware } from '../security/malware.js';
 import { channelMaxAttachBytes } from './contract.js';
 
-export function quarantineAttachment(
+export async function quarantineAttachment(
   data: Buffer,
   input: {
     filename?: string;
@@ -14,7 +15,7 @@ export function quarantineAttachment(
     platform?: string;
     maxBytes?: number;
   } = {},
-): { ok: true; validation: ReturnType<typeof assertSafeUploadBytes>; scan: { clean: boolean } } {
+): Promise<{ ok: true; validation: ReturnType<typeof assertSafeUploadBytes>; scan: { clean: boolean; engine?: string } }> {
   if (!data || data.byteLength === 0) {
     throw new VaultError('empty attachment', 'validation');
   }
@@ -32,7 +33,9 @@ export function quarantineAttachment(
     throw new VaultError('MIME spoofing detected; attachment rejected', 'validation');
   }
 
-  // Malware hook placeholder: fail closed only when an explicit scanner is wired.
-  const scan = { clean: true as boolean };
-  return { ok: true, validation, scan };
+  const scan = await scanBytesForMalware(data, { filename: input.filename });
+  if (!scan.clean) {
+    throw new VaultError(scan.detail || 'malware detected', 'malware_detected');
+  }
+  return { ok: true, validation, scan: { clean: true, engine: scan.engine } };
 }

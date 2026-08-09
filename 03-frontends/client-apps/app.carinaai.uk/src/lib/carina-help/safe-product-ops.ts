@@ -169,7 +169,7 @@ export function renderResearchBookingsFiles(): string {
     '- Outreach discovery calls can also be managed from Outreach → Bookings and worker booking tools.',
     '',
     '## Files and Documents',
-    '- Documents (/documents): primary Document Vault explorer (Aiva). Nested folders, editors, trash, favorites, drag-and-drop moves, and Google Drive sync (modes, changes.list, watch renewals, preserve-both conflicts). Contract: docs/integrations/aiva-document-vault-v1.md and shared/workspace-governance/AIVA-KEPRIX-DOCUMENT-VAULT.md. /files redirects to /documents; it is not a host filesystem browser.',
+    '- Documents (/documents): primary Document Vault explorer (Aiva). Nested folders, editors, trash, favorites, drag-and-drop moves, Google Drive sync, and opt-in content index/RAG (index_policy; vault-search mode=content). Ops diagnostics cover index lag, dead-letter jobs, watch expiry, orphans. Contract: docs/integrations/aiva-document-vault-v1.md and shared/workspace-governance/AIVA-KEPRIX-DOCUMENT-VAULT.md. /files redirects to /documents; it is not a host filesystem browser.',
     '- Files tools and worker paperclip uploads: attach CSV, spreadsheets, PDFs, images for the hired worker to use.',
     '- Google Drive stays in Drive unless the user asks to copy into Documents.',
     '',

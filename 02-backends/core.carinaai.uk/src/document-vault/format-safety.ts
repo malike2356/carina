@@ -63,6 +63,45 @@ function looksLikeText(bytes: Buffer): boolean {
   return odd / Math.max(sample.length, 1) < 0.05;
 }
 
+/** Lightweight zip bomb / nested archive heuristic (no full inflate). */
+export function detectZipBomb(bytes: Buffer): string | null {
+  if (!hasZipSignature(bytes)) return null;
+  if (bytes.byteLength > 40 * 1024 * 1024) {
+    return 'Archive exceeds 40MB compressed size limit';
+  }
+  // Count local file headers (PK\x03\x04) and reject nested zips by member name.
+  let members = 0;
+  let offset = 0;
+  while (offset + 30 < bytes.length && members < 20_000) {
+    if (bytes[offset] === 0x50 && bytes[offset + 1] === 0x4b
+      && bytes[offset + 2] === 0x03 && bytes[offset + 3] === 0x04) {
+      const nameLen = bytes.readUInt16LE(offset + 26);
+      const extraLen = bytes.readUInt16LE(offset + 28);
+      const compSize = bytes.readUInt32LE(offset + 18);
+      const uncompSize = bytes.readUInt32LE(offset + 22);
+      const nameStart = offset + 30;
+      const nameEnd = nameStart + nameLen;
+      if (nameEnd > bytes.length) break;
+      const name = bytes.subarray(nameStart, nameEnd).toString('utf8').toLowerCase();
+      if (name.endsWith('.zip') || name.endsWith('.7z') || name.endsWith('.rar')) {
+        return 'Nested archive members are blocked';
+      }
+      if (uncompSize > 0 && compSize > 0 && uncompSize / Math.max(compSize, 1) > 200) {
+        return 'Archive compression ratio exceeds safe limit';
+      }
+      if (uncompSize > 200 * 1024 * 1024) {
+        return 'Archive member uncompressed size exceeds 200MB';
+      }
+      members += 1;
+      offset = nameEnd + extraLen + compSize;
+      continue;
+    }
+    offset += 1;
+  }
+  if (members > 5_000) return 'Archive member count exceeds safe limit';
+  return null;
+}
+
 /** Reject nested archives and executable payloads up front. */
 export function assertSafeUploadBytes(filename: string, bytes: Buffer): SniffResult {
   const matrix = loadFormatCapabilityMatrix();
@@ -88,6 +127,21 @@ export function assertSafeUploadBytes(filename: string, bytes: Buffer): SniffRes
       blocked: true,
       reason: unsupported.reason,
     };
+  }
+
+  if (hasZipSignature(bytes)) {
+    // Archive bomb defense: reject oversized zip containers and nested zip members.
+    const bomb = detectZipBomb(bytes);
+    if (bomb) {
+      return {
+        extension: claimedExt || 'zip',
+        mimeType: 'application/zip',
+        formatId: null,
+        spoofed: false,
+        blocked: true,
+        reason: bomb,
+      };
+    }
   }
 
   const magic = sniffMagic(bytes);

@@ -63,13 +63,28 @@ CREATE TABLE IF NOT EXISTS document_vault_jobs (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL,
   kind TEXT NOT NULL,
+  item_id TEXT,
+  idempotency_key TEXT,
   payload_json TEXT NOT NULL DEFAULT '{}',
+  result_json TEXT NOT NULL DEFAULT '{}',
   status TEXT NOT NULL DEFAULT 'queued',
   attempts INTEGER NOT NULL DEFAULT 0,
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  max_retries INTEGER NOT NULL DEFAULT 3,
   last_error TEXT,
+  dead_letter_reason TEXT,
+  claimed_by TEXT,
+  claimed_at TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS document_vault_jobs_idempotency_idx
+  ON document_vault_jobs (workspace_id, idempotency_key)
+  WHERE idempotency_key IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS document_vault_jobs_ws_status_idx
+  ON document_vault_jobs (workspace_id, status, created_at);
 
 CREATE TABLE IF NOT EXISTS document_vault_audit_events (
   id TEXT PRIMARY KEY,
@@ -162,4 +177,36 @@ CREATE TABLE IF NOT EXISTS document_vault_delivery_tokens (
   created_at TEXT NOT NULL,
   consumed_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS document_vault_index_entries (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  source_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  chunk_count INTEGER NOT NULL DEFAULT 0,
+  content_checksum TEXT,
+  indexed_at TEXT,
+  error TEXT,
+  UNIQUE (workspace_id, item_id, revision)
+);
+
+CREATE INDEX IF NOT EXISTS document_vault_index_entries_ws_idx
+  ON document_vault_index_entries (workspace_id, status);
+
+CREATE TABLE IF NOT EXISTS document_vault_index_chunks (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  text TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS document_vault_index_chunks_ws_item_idx
+  ON document_vault_index_chunks (workspace_id, item_id, revision);
+
+CREATE INDEX IF NOT EXISTS document_vault_index_chunks_text_idx
+  ON document_vault_index_chunks (workspace_id, text);
 `;
