@@ -206,10 +206,6 @@ async function main(): Promise<void> {
         startGoogleRecorderPoller();
         const { startSocialApprovalTimeoutScheduler } = await import('./ingestion/social/social-approval-timeout-scheduler.js');
         startSocialApprovalTimeoutScheduler();
-        const { ensureOutreachStoreReady } = await import('./outreach/store.js');
-        await ensureOutreachStoreReady();
-        const { startOutreachProcessDueScheduler } = await import('./outreach/process-due-scheduler.js');
-        startOutreachProcessDueScheduler();
         if (process.env.AIVA_WORKER_ISOLATION !== 'false') {
           const { getAivaWorkerPool } = await import('./agents/worker-pool.js');
           const { startAivaWorkerPoolHealthCheck } = await import('./agents/worker-pool-health.js');
@@ -257,6 +253,20 @@ async function main(): Promise<void> {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(chalk.yellow(`Memory store unavailable: ${msg}`));
     console.warn(chalk.yellow('Continuing without persistent memory.'));
+  }
+
+  // Outreach PG cache must not depend on skill-pack boot succeeding above.
+  try {
+    const { ensureOutreachStoreReady } = await import('./outreach/store.js');
+    await ensureOutreachStoreReady();
+    const { startOutreachProcessDueScheduler } = await import('./outreach/process-due-scheduler.js');
+    startOutreachProcessDueScheduler();
+    console.log(chalk.gray('Outreach store ready'));
+  } catch (err) {
+    console.warn(
+      chalk.yellow('Outreach store init failed:'),
+      err instanceof Error ? err.message : String(err),
+    );
   }
 
   await initRedis();

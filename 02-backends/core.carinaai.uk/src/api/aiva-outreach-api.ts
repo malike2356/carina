@@ -104,6 +104,19 @@ function resolveWorkspaceId(req: OutreachRequest): string | null {
   return fromHeader?.trim() || null;
 }
 
+/** Lazy-init PG cache even when process boot skipped outreach (e.g. pack install failed earlier). */
+aivaOutreachRouter.use(async (_req, res, next) => {
+  try {
+    const { ensureOutreachStoreReady } = await import('../outreach/store.js');
+    await ensureOutreachStoreReady();
+    next();
+  } catch (err) {
+    res.status(503).json({
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+});
+
 aivaOutreachRouter.use((req: OutreachRequest, res: Response, next) => {
   const workspaceId = resolveWorkspaceId(req);
   if (!workspaceId) {
