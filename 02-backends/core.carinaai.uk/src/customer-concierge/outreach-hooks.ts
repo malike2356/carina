@@ -196,16 +196,15 @@ export function onBookingOutcome(input: {
           input.outcome === 'attended'
             ? 'Meeting attended; conversion funnel updated'
             : 'No-show recorded; recovery sequence eligible';
+        const meta: Record<string, string> = {
+          bookingId: input.bookingId,
+          outcome: input.outcome,
+        };
+        if (input.recoverySequenceId) meta.recoverySequenceId = input.recoverySequenceId;
         s.leads[idx] = appendTimeline(s.leads[idx]!, {
           kind: input.outcome === 'attended' ? 'conversion' : 'system',
           message,
-          meta: {
-            bookingId: input.bookingId,
-            outcome: input.outcome,
-            ...(input.recoverySequenceId
-              ? { recoverySequenceId: input.recoverySequenceId }
-              : {}),
-          },
+          meta,
         });
         if (input.outcome === 'attended') {
           s.leads[idx] = { ...s.leads[idx]!, status: 'won' };

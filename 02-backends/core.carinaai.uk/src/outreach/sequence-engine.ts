@@ -312,22 +312,21 @@ export function resumeEnrollment(
   const next: SequenceEnrollment = {
     ...enrollment,
     status: 'active',
-    stopReason: undefined,
     nextActionAt,
     updatedAt: nowIso(),
   };
+  delete (next as { stopReason?: EnrollmentStopReason }).stopReason;
   mutateOutreachStore((s) => {
     const idx = s.enrollments.findIndex((e) => e.id === enrollmentId);
     if (idx >= 0) s.enrollments[idx] = next;
     const leadIdx = s.leads.findIndex((l) => l.id === enrollment.leadId);
     if (leadIdx >= 0) {
+      const meta: Record<string, string> = { enrollmentId };
+      if (enrollment.stopReason) meta.previousStopReason = enrollment.stopReason;
       s.leads[leadIdx] = appendTimeline(s.leads[leadIdx]!, {
         kind: 'system',
         message: 'Sequence resumed by operator',
-        meta: {
-          enrollmentId,
-          ...(enrollment.stopReason ? { previousStopReason: enrollment.stopReason } : {}),
-        },
+        meta,
       });
     }
   });
