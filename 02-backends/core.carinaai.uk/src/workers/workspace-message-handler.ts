@@ -22,6 +22,8 @@ import { isSkillAllowedForActivePacks } from '../skills/index.js';
 import { isPropreneurBridgeEnabled, isPropreneurBridgeWritesEnabled } from './aiva-feature-flags.js';
 import { resolvePropreneurBinding } from './worker-bridge-store.js';
 import { filterToolsByTier, isToolAllowedForTier } from './workspace-tier-toolsets.js';
+import { isCustomerConciergeToolAllowed } from '../customer-concierge/tool-policy.js';
+import { appendSecurityAudit } from '../security/security-audit.js';
 
 const PROPREENEUR_BRIDGE_TOOLS = [
   'propreneur-get-portfolio',
@@ -287,6 +289,9 @@ export function applyWorkerToSession(
     planTier?: string;
     channel?: string;
     contactId?: string;
+    audiencePrincipal?: boolean;
+    audienceSessionId?: string;
+    audienceSessionMode?: 'public' | 'preview';
   },
 ): () => void {
   setWorkerSessionContext(sessionId, {
@@ -295,17 +300,44 @@ export function applyWorkerToSession(
     planTier: ctx.planTier,
     channel: ctx.channel,
     contactId: ctx.contactId,
+    audiencePrincipal: ctx.audiencePrincipal,
+    audienceSessionId: ctx.audienceSessionId,
+    audienceSessionMode: ctx.audienceSessionMode,
   });
+  const actionSuffix = ctx.audiencePrincipal
+    ? ''
+    : `\n${workerWorkspaceActionSuffix()}`;
   router.setSessionSystemPromptSuffix(
     sessionId,
-    `${ctx.personaPrompt}\n${workerWorkspaceActionSuffix()}`.trim(),
+    `${ctx.personaPrompt}${actionSuffix}`.trim(),
   );
-  return applyWorkerSkillPacks(sessionId, ctx.worker.skillPacks);
+  return applyWorkerSkillPacks(sessionId, ctx.audiencePrincipal ? [] : ctx.worker.skillPacks);
 }
 
 export function isToolAllowedForWorker(toolName: string, sessionId: string): boolean {
   const ctx = getWorkerSessionContext(sessionId);
   if (!ctx) return true;
+
+  // Customer Concierge audience principal: deny-by-default code gate (Prompt 701).
+  if (ctx.audiencePrincipal) {
+    const allowed = isCustomerConciergeToolAllowed(toolName);
+    if (!allowed) {
+      appendSecurityAudit({
+        category: 'tool_policy',
+        action: 'audience_tool_denied',
+        detail: `Denied tool "${toolName}" for audience session`,
+        sessionId,
+        toolName,
+        metadata: {
+          workspaceId: ctx.worker.workspaceId,
+          workerId: ctx.worker.id,
+          audienceSessionId: ctx.audienceSessionId ?? null,
+          sessionMode: ctx.audienceSessionMode ?? null,
+        },
+      });
+    }
+    return allowed;
+  }
 
   // Host-wide memory/search/sync/cron must never run under an Aiva worker context.
   if (

@@ -101,12 +101,13 @@ export async function resolvePersonaWithKnowledge(
   workerId: string,
   basePersona: string,
   workspaceId: string,
+  options?: { knowledgeSourceIds?: string[] | null },
 ): Promise<string> {
   const stripped = stripKnowledgeFromPersona(basePersona);
   if (!(await workspaceHasKnowledgeAccess(workspaceId))) {
     return stripped;
   }
-  return appendKnowledgeToPersona(stripped, workerId);
+  return appendKnowledgeToPersona(stripped, workerId, options);
 }
 
 export async function getKnowledgeCharTotal(workerId: string): Promise<number> {
@@ -122,13 +123,30 @@ export async function getKnowledgeCharTotal(workerId: string): Promise<number> {
 export async function appendKnowledgeToPersona(
   personaPrompt: string,
   workerId: string,
+  options?: { knowledgeSourceIds?: string[] | null },
 ): Promise<string> {
-  const result = await pool.query(
-    `SELECT type, title, content FROM aiva_knowledge_base
-     WHERE worker_id = $1 AND enabled = true
-     ORDER BY type, created_at ASC`,
-    [workerId],
-  );
+  const ids = options?.knowledgeSourceIds;
+  // Explicit empty list means no published knowledge for this audience.
+  if (Array.isArray(ids) && ids.length === 0) {
+    return personaPrompt;
+  }
+
+  let result;
+  if (Array.isArray(ids) && ids.length > 0) {
+    result = await pool.query(
+      `SELECT type, title, content FROM aiva_knowledge_base
+       WHERE worker_id = $1 AND enabled = true AND id = ANY($2::uuid[])
+       ORDER BY type, created_at ASC`,
+      [workerId, ids],
+    );
+  } else {
+    result = await pool.query(
+      `SELECT type, title, content FROM aiva_knowledge_base
+       WHERE worker_id = $1 AND enabled = true
+       ORDER BY type, created_at ASC`,
+      [workerId],
+    );
+  }
   if (result.rows.length === 0) return personaPrompt;
 
   const kbSection = [

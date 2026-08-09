@@ -15,6 +15,11 @@ vi.mock('../workers/worker-store.js', () => ({
   getWorkerById: vi.fn(async () => worker),
 }));
 
+vi.mock('../workers/concierge-profile.js', () => ({
+  getConciergeProfile: vi.fn(async () => null),
+  getPublishedConciergeProfile: vi.fn(async () => null),
+}));
+
 vi.mock('../workspace/workspace-router.js', () => ({
   getWorkspaceBranding: vi.fn(async () => ({
     companyName: 'Acme',
@@ -30,11 +35,87 @@ vi.mock('../usage/usage-service.js', () => ({
   maybeSendUsageAlerts: vi.fn(async () => undefined),
 }));
 
+vi.mock('../customer-concierge/audience-rate-limit.js', () => ({
+  consumeAudienceRateBucket: vi.fn(async () => ({
+    allowed: true,
+    remaining: 10,
+    resetAt: new Date().toISOString(),
+  })),
+  assertFreshEmbedNonce: vi.fn(async () => true),
+}));
+
+vi.mock('../customer-concierge/audience-session.js', async () => {
+  const actual = await vi.importActual<typeof import('../customer-concierge/audience-session.js')>(
+    '../customer-concierge/audience-session.js',
+  );
+  return {
+    ...actual,
+    upsertAudienceIdentity: vi.fn(async () => ({
+      id: 'ident-1',
+      workspaceId: worker.workspaceId,
+      channel: 'web',
+      externalKey: 'widget:visitor-1',
+      displayName: null,
+      email: null,
+      phone: null,
+      crmContactId: null,
+    })),
+    createAudienceSession: vi.fn(async () => ({
+      id: 'aud-1',
+      workspaceId: worker.workspaceId,
+      workerId: worker.id,
+      conciergeProfileId: null,
+      identityId: 'ident-1',
+      channel: 'web',
+      sessionMode: 'public' as const,
+      widgetSessionToken: 'session-token-abc',
+      origin: null,
+      locale: null,
+      consentState: 'unknown' as const,
+      riskState: 'normal' as const,
+      status: 'active' as const,
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      lastActiveAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    })),
+    getAudienceSessionByWidgetToken: vi.fn(async () => ({
+      id: 'aud-1',
+      workspaceId: worker.workspaceId,
+      workerId: worker.id,
+      conciergeProfileId: null,
+      identityId: 'ident-1',
+      channel: 'web',
+      sessionMode: 'public' as const,
+      widgetSessionToken: 'session-token-abc',
+      origin: null,
+      locale: null,
+      consentState: 'unknown' as const,
+      riskState: 'normal' as const,
+      status: 'active' as const,
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      lastActiveAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    })),
+    touchAudienceSession: vi.fn(async () => undefined),
+  };
+});
+
+vi.mock('../channel-shield/intercept.js', () => ({
+  maybeInterceptInbound: vi.fn(async () => ({ intercepted: false, allowLive: true })),
+}));
+
 vi.mock('../memory/db.js', () => ({
   pool: {
     query: vi.fn(async (sql: string) => {
-      if (sql.includes('SELECT contact_id FROM widget_sessions')) {
-        return { rows: [{ contact_id: 'visitor-1' }] };
+      if (sql.includes('FROM widget_sessions')) {
+        return {
+          rows: [{
+            contact_id: 'visitor-1',
+            audience_session_id: 'aud-1',
+            session_mode: 'public',
+            expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+          }],
+        };
       }
       if (sql.includes('UPDATE widget_sessions')) {
         return { rows: [] };
@@ -102,6 +183,8 @@ describe('widget message SSE', () => {
       channel: 'web',
       userMessage: 'Hi',
       contactId: 'visitor-1',
+      audiencePrincipal: true,
+      isWebPreviewSession: false,
     }));
   });
 });

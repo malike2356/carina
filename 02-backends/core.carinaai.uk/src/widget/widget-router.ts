@@ -13,6 +13,24 @@ import {
   incrementMessageCount,
   maybeSendUsageAlerts,
 } from '../usage/usage-service.js';
+import {
+  convertAudienceIdentityToKnown,
+  createAudienceSession,
+  getAudienceSessionByWidgetToken,
+  isAudienceSessionUsable,
+  isOriginAllowed,
+  newEmbedNonce,
+  signWidgetEmbedConfig,
+  touchAudienceSession,
+  upsertAudienceIdentity,
+  verifyWidgetEmbedConfig,
+  type AudienceSessionMode,
+} from '../customer-concierge/audience-session.js';
+import {
+  assertFreshEmbedNonce,
+  consumeAudienceRateBucket,
+} from '../customer-concierge/audience-rate-limit.js';
+import { appendSecurityAudit } from '../security/security-audit.js';
 
 const WIDGET_LIMIT_REPLY =
   'This workspace has reached its monthly message limit. Please upgrade your plan to continue.';
@@ -22,9 +40,7 @@ const WIDGET_JS = path.join(process.cwd(), 'widget/dist/widget.js');
 const SESSION_CREATE_LIMIT = 10;
 const MESSAGE_LIMIT = 20;
 const HOUR_MS = 60 * 60 * 1000;
-
-const sessionCreatesByIp = new Map<string, { count: number; resetAt: number }>();
-const messagesBySession = new Map<string, { count: number; resetAt: number }>();
+const SESSION_TTL_MS = 30 * 24 * HOUR_MS;
 
 function clientIp(req: Request): string {
   const forwarded = req.headers['x-forwarded-for'];
@@ -34,20 +50,18 @@ function clientIp(req: Request): string {
   return req.ip ?? 'unknown';
 }
 
-function rateLimit(
-  map: Map<string, { count: number; resetAt: number }>,
-  key: string,
-  limit: number,
-): boolean {
-  const now = Date.now();
-  const entry = map.get(key);
-  if (!entry || now >= entry.resetAt) {
-    map.set(key, { count: 1, resetAt: now + HOUR_MS });
-    return true;
+function requestOrigin(req: Request): string | undefined {
+  const origin = req.headers.origin;
+  if (typeof origin === 'string' && origin.trim()) return origin.trim();
+  const referer = req.headers.referer;
+  if (typeof referer === 'string' && referer.trim()) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      return undefined;
+    }
   }
-  if (entry.count >= limit) return false;
-  entry.count += 1;
-  return true;
+  return undefined;
 }
 
 function isActiveWorker(worker: Awaited<ReturnType<typeof getWorkerById>>): worker is NonNullable<typeof worker> {
@@ -103,17 +117,135 @@ async function assertWidgetSessionAllowed(
   return false;
 }
 
+async function resolveOriginAllowlist(
+  worker: NonNullable<Awaited<ReturnType<typeof getWorkerById>>>,
+): Promise<string[] | undefined> {
+  const published = await getPublishedConciergeProfile(worker.id);
+  const allowlist = published?.channelConfig?.web?.originAllowlist;
+  return Array.isArray(allowlist) ? allowlist.map(String) : undefined;
+}
+
+function applyCors(
+  req: Request,
+  res: Response,
+  allowlist: string[] | undefined,
+): boolean {
+  const origin = requestOrigin(req);
+  if (!allowlist || allowlist.length === 0) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Embed-Token, X-Requested-With');
+    res.setHeader('Vary', 'Origin');
+    return true;
+  }
+  if (!isOriginAllowed(origin, allowlist)) {
+    appendSecurityAudit({
+      category: 'auth',
+      action: 'widget_origin_denied',
+      detail: `Origin denied for widget: ${origin ?? '(missing)'}`,
+      metadata: { path: req.path, allowlist },
+    });
+    return false;
+  }
+  res.setHeader('Access-Control-Allow-Origin', origin!);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Embed-Token, X-Requested-With');
+  res.setHeader('Vary', 'Origin');
+  return true;
+}
+
+async function ensureAudienceForWidgetSession(input: {
+  worker: NonNullable<Awaited<ReturnType<typeof getWorkerById>>>;
+  sessionToken: string;
+  contactId: string;
+  origin?: string | null;
+  sessionMode: AudienceSessionMode;
+  locale?: string | null;
+}): Promise<{ audienceSessionId: string; knowledgeSourceIds: string[] | null }> {
+  const existing = await getAudienceSessionByWidgetToken(input.sessionToken);
+  if (existing && isAudienceSessionUsable(existing)) {
+    await touchAudienceSession(existing.id);
+    const published = await getPublishedConciergeProfile(input.worker.id);
+    return {
+      audienceSessionId: existing.id,
+      knowledgeSourceIds: published ? published.knowledgeSourceIds : null,
+    };
+  }
+
+  const published = await getPublishedConciergeProfile(input.worker.id);
+  const identity = await upsertAudienceIdentity({
+    workspaceId: input.worker.workspaceId,
+    channel: 'web',
+    externalKey: `widget:${input.contactId}`,
+  });
+  const audience = await createAudienceSession({
+    workspaceId: input.worker.workspaceId,
+    workerId: input.worker.id,
+    conciergeProfileId: published?.id ?? null,
+    identityId: identity.id,
+    channel: 'web',
+    sessionMode: input.sessionMode,
+    widgetSessionToken: input.sessionToken,
+    origin: input.origin ?? null,
+    locale: input.locale ?? null,
+    ttlMs: SESSION_TTL_MS,
+  });
+  await pool.query(
+    `UPDATE widget_sessions
+     SET audience_session_id = $2,
+         session_mode = $3,
+         origin = $4,
+         expires_at = $5,
+         last_active_at = NOW()
+     WHERE session_token = $1`,
+    [
+      input.sessionToken,
+      audience.id,
+      input.sessionMode,
+      input.origin ?? null,
+      audience.expiresAt,
+    ],
+  );
+  return {
+    audienceSessionId: audience.id,
+    knowledgeSourceIds: published ? published.knowledgeSourceIds : null,
+  };
+}
+
 export const widgetRouter: ExpressRouter = Router();
 
-widgetRouter.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (_req.method === 'OPTIONS') {
-    res.sendStatus(204);
-    return;
+widgetRouter.use(async (req, res, next) => {
+  try {
+    const pathMatch = String(req.path || '').match(
+      /^\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i,
+    );
+    const workerId = pathMatch?.[1] ?? '';
+    let allowlist: string[] | undefined;
+    if (workerId) {
+      const worker = await getWorkerById(workerId);
+      if (worker) allowlist = await resolveOriginAllowlist(worker);
+    }
+    if (!applyCors(req, res, allowlist)) {
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(403);
+        return;
+      }
+      res.status(403).json({ error: 'Origin not allowed', code: 'origin_denied' });
+      return;
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  } catch {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
   }
-  next();
 });
 
 widgetRouter.get('/:workerId/config', async (req: Request, res: Response) => {
@@ -126,6 +258,39 @@ widgetRouter.get('/:workerId/config', async (req: Request, res: Response) => {
   res.json(await widgetConfig(worker));
 });
 
+/** Signed embed configuration for public sites (Prompt 701). */
+widgetRouter.get('/:workerId/embed-token', async (req: Request, res: Response) => {
+  const worker = await getWorkerById(String(req.params.workerId));
+  if (!isActiveWorker(worker)) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  if (!(await assertWidgetSessionAllowed(worker, res))) return;
+
+  const allowlist = await resolveOriginAllowlist(worker);
+  const origin = requestOrigin(req);
+  if (allowlist && allowlist.length > 0 && !isOriginAllowed(origin, allowlist)) {
+    res.status(403).json({ error: 'Origin not allowed', code: 'origin_denied' });
+    return;
+  }
+
+  const nonce = newEmbedNonce();
+  const exp = Date.now() + 15 * 60 * 1000;
+  const embedToken = signWidgetEmbedConfig({
+    workerId: worker.id,
+    workspaceId: worker.workspaceId,
+    nonce,
+    exp,
+  });
+  res.json({
+    embedToken,
+    nonce,
+    exp,
+    workerId: worker.id,
+    workspaceId: worker.workspaceId,
+  });
+});
+
 widgetRouter.post('/:workerId/session', async (req: Request, res: Response) => {
   const worker = await getWorkerById(String(req.params.workerId));
   if (!isActiveWorker(worker)) {
@@ -133,10 +298,57 @@ widgetRouter.post('/:workerId/session', async (req: Request, res: Response) => {
     return;
   }
 
+  const allowlist = await resolveOriginAllowlist(worker);
+  const origin = requestOrigin(req);
+  if (allowlist && allowlist.length > 0 && !isOriginAllowed(origin, allowlist)) {
+    res.status(403).json({ error: 'Origin not allowed', code: 'origin_denied' });
+    return;
+  }
+
+  const sessionModeRaw = String(req.body?.sessionMode ?? 'public').trim().toLowerCase();
+  const sessionMode: AudienceSessionMode = sessionModeRaw === 'preview' ? 'preview' : 'public';
+
+  // When an origin allowlist is configured, require a signed embed token (replay-safe).
+  if (allowlist && allowlist.length > 0) {
+    const embedToken = String(
+      req.body?.embedToken ?? req.headers['x-embed-token'] ?? '',
+    ).trim();
+    if (!embedToken) {
+      res.status(401).json({ error: 'embedToken required', code: 'embed_token_required' });
+      return;
+    }
+    const verified = verifyWidgetEmbedConfig(embedToken, worker.id);
+    if (!verified || verified.workspaceId !== worker.workspaceId) {
+      appendSecurityAudit({
+        category: 'auth',
+        action: 'widget_embed_invalid',
+        detail: 'Invalid or forged embed token',
+        metadata: { workerId: worker.id },
+      });
+      res.status(401).json({ error: 'Invalid embed token', code: 'embed_token_invalid' });
+      return;
+    }
+    const fresh = await assertFreshEmbedNonce({
+      nonce: verified.nonce,
+      workerId: worker.id,
+    });
+    if (!fresh) {
+      appendSecurityAudit({
+        category: 'auth',
+        action: 'widget_embed_replay',
+        detail: 'Embed nonce replay rejected',
+        metadata: { workerId: worker.id, nonce: verified.nonce },
+      });
+      res.status(401).json({ error: 'Embed token already used', code: 'embed_token_replay' });
+      return;
+    }
+  }
+
   const existingToken = String(req.body?.sessionToken ?? '').trim();
   if (existingToken) {
     const found = await pool.query(
-      'SELECT session_token, contact_id FROM widget_sessions WHERE session_token = $1 AND worker_id = $2',
+      `SELECT session_token, contact_id, audience_session_id, session_mode
+       FROM widget_sessions WHERE session_token = $1 AND worker_id = $2`,
       [existingToken, worker.id],
     );
     if (found.rows.length > 0) {
@@ -145,11 +357,22 @@ widgetRouter.post('/:workerId/session', async (req: Request, res: Response) => {
         'UPDATE widget_sessions SET last_active_at = NOW() WHERE session_token = $1',
         [existingToken],
       );
+      const contactId = String(found.rows[0].contact_id);
+      const ensured = await ensureAudienceForWidgetSession({
+        worker,
+        sessionToken: existingToken,
+        contactId,
+        origin,
+        sessionMode: (found.rows[0].session_mode as AudienceSessionMode) || sessionMode,
+        locale: req.body?.locale != null ? String(req.body.locale) : null,
+      });
       const cfg = await widgetConfig(worker);
       res.json({
         sessionToken: String(found.rows[0].session_token),
-        contactId: String(found.rows[0].contact_id),
-        expiresAt: new Date(Date.now() + 30 * 24 * HOUR_MS).toISOString(),
+        contactId,
+        audienceSessionId: ensured.audienceSessionId,
+        sessionMode: sessionMode,
+        expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
         greeting: cfg.greeting,
         personaName: cfg.personaName,
       });
@@ -159,32 +382,128 @@ widgetRouter.post('/:workerId/session', async (req: Request, res: Response) => {
 
   if (!(await assertWidgetSessionAllowed(worker, res))) return;
 
-  if (!rateLimit(sessionCreatesByIp, clientIp(req), SESSION_CREATE_LIMIT)) {
+  const createBucket = await consumeAudienceRateBucket({
+    bucketKey: `widget:session:${worker.id}:${clientIp(req)}`,
+    limit: SESSION_CREATE_LIMIT,
+    windowMs: HOUR_MS,
+  }).catch(() => ({ allowed: true, remaining: SESSION_CREATE_LIMIT, resetAt: new Date().toISOString() }));
+  if (!createBucket.allowed) {
     res.status(429).json({ error: 'Too many sessions. Try again later.' });
     return;
   }
 
   const cfg = await widgetConfig(worker);
   const created = await pool.query(
-    `INSERT INTO widget_sessions (worker_id, workspace_id)
-     VALUES ($1, $2)
+    `INSERT INTO widget_sessions (worker_id, workspace_id, session_mode, origin, expires_at)
+     VALUES ($1, $2, $3, $4, $5)
      RETURNING session_token, contact_id`,
-    [worker.id, worker.workspaceId],
+    [
+      worker.id,
+      worker.workspaceId,
+      sessionMode,
+      origin ?? null,
+      new Date(Date.now() + SESSION_TTL_MS).toISOString(),
+    ],
   );
+  const sessionToken = String(created.rows[0].session_token);
+  const contactId = String(created.rows[0].contact_id);
+  const ensured = await ensureAudienceForWidgetSession({
+    worker,
+    sessionToken,
+    contactId,
+    origin,
+    sessionMode,
+    locale: req.body?.locale != null ? String(req.body.locale) : null,
+  });
+
   res.status(201).json({
-    sessionToken: String(created.rows[0].session_token),
-    contactId: String(created.rows[0].contact_id),
+    sessionToken,
+    contactId,
+    audienceSessionId: ensured.audienceSessionId,
+    sessionMode,
     workerName: cfg.workerName,
     greeting: cfg.greeting,
     personaName: cfg.personaName,
-    expiresAt: new Date(Date.now() + 30 * 24 * HOUR_MS).toISOString(),
+    expiresAt: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
   });
+});
+
+/** Anonymous → known contact conversion; preserves the same conversation. */
+widgetRouter.post('/:workerId/identify', async (req: Request, res: Response) => {
+  const worker = await getWorkerById(String(req.params.workerId));
+  if (!isActiveWorker(worker)) {
+    res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+  const sessionToken = String(req.body?.sessionToken ?? '').trim();
+  const email = String(req.body?.email ?? '').trim();
+  const displayName = req.body?.displayName != null ? String(req.body.displayName).trim() : null;
+  if (!sessionToken || !email) {
+    res.status(400).json({ error: 'sessionToken and email are required' });
+    return;
+  }
+  const session = await pool.query(
+    `SELECT contact_id, audience_session_id FROM widget_sessions
+     WHERE session_token = $1 AND worker_id = $2`,
+    [sessionToken, worker.id],
+  );
+  if (session.rows.length === 0) {
+    res.status(401).json({ error: 'Invalid session' });
+    return;
+  }
+  const audience = await getAudienceSessionByWidgetToken(sessionToken);
+  if (!audience || audience.workspaceId !== worker.workspaceId || audience.workerId !== worker.id) {
+    res.status(401).json({ error: 'Invalid audience session' });
+    return;
+  }
+  if (!isAudienceSessionUsable(audience)) {
+    res.status(401).json({ error: 'Audience session expired or blocked' });
+    return;
+  }
+  try {
+    const identity = await convertAudienceIdentityToKnown({
+      workspaceId: worker.workspaceId,
+      identityId: audience.identityId,
+      email,
+      displayName,
+    });
+    appendSecurityAudit({
+      category: 'auth',
+      action: 'audience_identify',
+      detail: 'Anonymous audience converted to known contact',
+      metadata: {
+        workspaceId: worker.workspaceId,
+        workerId: worker.id,
+        audienceSessionId: audience.id,
+        identityId: identity.id,
+      },
+    });
+    res.json({
+      ok: true,
+      audienceSessionId: audience.id,
+      identityId: identity.id,
+      email: identity.email,
+      displayName: identity.displayName,
+      contactId: String(session.rows[0].contact_id),
+      sessionToken,
+    });
+  } catch (err) {
+    const status = Number((err as { status?: number })?.status ?? 400);
+    res.status(status).json({ error: (err as Error).message || 'Identify failed' });
+  }
 });
 
 widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
   const worker = await getWorkerById(String(req.params.workerId));
   if (!isActiveWorker(worker)) {
     res.status(404).json({ error: 'Worker not found' });
+    return;
+  }
+
+  const allowlist = await resolveOriginAllowlist(worker);
+  const origin = requestOrigin(req);
+  if (allowlist && allowlist.length > 0 && !isOriginAllowed(origin, allowlist)) {
+    res.status(403).json({ error: 'Origin not allowed', code: 'origin_denied' });
     return;
   }
 
@@ -195,7 +514,12 @@ widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
     return;
   }
 
-  if (!rateLimit(messagesBySession, sessionToken, MESSAGE_LIMIT)) {
+  const msgBucket = await consumeAudienceRateBucket({
+    bucketKey: `widget:message:${worker.id}:${sessionToken}`,
+    limit: MESSAGE_LIMIT,
+    windowMs: HOUR_MS,
+  }).catch(() => ({ allowed: true, remaining: MESSAGE_LIMIT, resetAt: new Date().toISOString() }));
+  if (!msgBucket.allowed) {
     res.status(429);
     res.setHeader('Content-Type', 'text/event-stream');
     res.write(`data: ${JSON.stringify({ type: 'error', message: 'Message limit reached. Try again later.' })}\n\n`);
@@ -204,7 +528,8 @@ widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
   }
 
   const session = await pool.query(
-    'SELECT contact_id FROM widget_sessions WHERE session_token = $1 AND worker_id = $2',
+    `SELECT contact_id, audience_session_id, session_mode, expires_at
+     FROM widget_sessions WHERE session_token = $1 AND worker_id = $2`,
     [sessionToken, worker.id],
   );
   if (session.rows.length === 0) {
@@ -212,11 +537,61 @@ widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
     return;
   }
 
+  // Reject forged worker binding: session must belong to this worker (already filtered).
+  if (session.rows[0].expires_at && Date.parse(String(session.rows[0].expires_at)) <= Date.now()) {
+    res.status(401).json({ error: 'Session expired', code: 'session_expired' });
+    return;
+  }
+
   const contactId = String(session.rows[0].contact_id);
+  const sessionMode: AudienceSessionMode =
+    String(session.rows[0].session_mode ?? 'public') === 'preview' ? 'preview' : 'public';
+
+  let audienceSessionId = session.rows[0].audience_session_id
+    ? String(session.rows[0].audience_session_id)
+    : '';
+  let knowledgeSourceIds: string[] | null = null;
+  try {
+    const ensured = await ensureAudienceForWidgetSession({
+      worker,
+      sessionToken,
+      contactId,
+      origin,
+      sessionMode,
+    });
+    audienceSessionId = ensured.audienceSessionId;
+    knowledgeSourceIds = ensured.knowledgeSourceIds;
+  } catch {
+    res.status(500).json({ error: 'Failed to bind audience session' });
+    return;
+  }
+
+  const audience = await getAudienceSessionByWidgetToken(sessionToken);
+  if (!audience || !isAudienceSessionUsable(audience)) {
+    res.status(401).json({ error: 'Audience session expired or blocked' });
+    return;
+  }
+  if (audience.workspaceId !== worker.workspaceId || audience.workerId !== worker.id) {
+    appendSecurityAudit({
+      category: 'tenant_isolation',
+      action: 'widget_tenant_mismatch',
+      detail: 'Audience session workspace/worker mismatch',
+      metadata: {
+        workerId: worker.id,
+        workspaceId: worker.workspaceId,
+        audienceWorkspaceId: audience.workspaceId,
+        audienceWorkerId: audience.workerId,
+      },
+    });
+    res.status(403).json({ error: 'Forbidden', code: 'tenant_mismatch' });
+    return;
+  }
+
   await pool.query(
     'UPDATE widget_sessions SET last_active_at = NOW() WHERE session_token = $1',
     [sessionToken],
   );
+  await touchAudienceSession(audienceSessionId);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -233,6 +608,38 @@ widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
   }
 
   try {
+    const { maybeInterceptInbound } = await import('../channel-shield/intercept.js');
+    const shield = await maybeInterceptInbound({
+      workspaceId: worker.workspaceId,
+      channel: 'web',
+      externalKey: worker.id,
+      externalMessageId: `widget-${sessionToken}-${Date.now()}`,
+      conversationId: sessionToken,
+      from: { id: contactId },
+      text: content,
+      metadata: {
+        workerId: worker.id,
+        audienceSessionId,
+        sessionMode,
+        origin: origin ?? null,
+      },
+    });
+    if (shield.intercepted && !shield.allowLive) {
+      appendSecurityAudit({
+        category: 'prompt_injection',
+        action: 'widget_channel_shield_block',
+        detail: `Channel Shield blocked widget message (verdict=${shield.verdict ?? 'unknown'})`,
+        metadata: { workerId: worker.id, audienceSessionId, messageId: shield.messageId },
+      });
+      res.write(`data: ${JSON.stringify({
+        type: 'token',
+        content: 'Your message could not be processed right now. Please try again later.',
+      })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+      res.end();
+      return;
+    }
+
     let finalReply = '';
     for await (const event of processAivaMessageStream({
       workerId: worker.id,
@@ -241,7 +648,12 @@ widgetRouter.post('/:workerId/message', async (req: Request, res: Response) => {
       channel: 'web',
       contactId,
       threadId: sessionToken,
-      isWebPreviewSession: true,
+      isWebPreviewSession: sessionMode === 'preview',
+      audiencePrincipal: true,
+      audienceSessionId,
+      audienceSessionMode: sessionMode,
+      audienceKnowledgeSourceIds: knowledgeSourceIds,
+      contactMetadata: { sessionToken },
     })) {
       if (event.type === 'token') {
         finalReply += event.content;

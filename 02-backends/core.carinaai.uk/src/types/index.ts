@@ -338,4 +338,11 @@ export interface WorkerContext {
   channel?: string;
   /** Origin contact/chat id for delivery defaults. */
   contactId?: string;
+  /**
+   * When set, this turn is an external Customer Concierge visitor (Prompt 701).
+   * Tool access is deny-by-default via isCustomerConciergeToolAllowed.
+   */
+  audiencePrincipal?: boolean;
+  audienceSessionId?: string;
+  audienceSessionMode?: 'public' | 'preview';
 }

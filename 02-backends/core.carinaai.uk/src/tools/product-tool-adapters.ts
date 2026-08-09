@@ -14,6 +14,8 @@ import { createOutreachCadenceTools } from './outreach-cadence-tools.js';
 import { createOutreachReplyTools } from './outreach-reply-tools.js';
 import { createOutreachBookingTools } from './outreach-booking-tools.js';
 import { createVicalBookingTools } from './vical-booking-tools.js';
+import { createAudienceContactUpsertTool } from './audience-contact-upsert.js';
+import { isCustomerConciergeToolAllowed } from '../customer-concierge/tool-policy.js';
 import { buildOutreachBoardSummary, getOutreachBoardConfig, updateOutreachBoardConfig } from '../outreach/kanban.js';
 import { buildWeeklyOwnerDigest, listFollowUpTasks, processDueFollowUps } from '../outreach/follow-ups.js';
 import { getOutreachAlertTarget, updateOutreachAlertTarget, sendOutreachTelegramAlert } from '../outreach/alerts.js';
@@ -1356,6 +1358,25 @@ const SLUG_TO_TOOLS: Record<string, (sessionId: string) => Tool[]> = {
 export async function registerProductToolAdapters(sessionId: string): Promise<string[]> {
   const ctx = getWorkerSessionContext(sessionId);
   if (!ctx) return [];
+
+  // Audience principal: register only allowlisted booking + visitor upsert tools.
+  if (ctx.audiencePrincipal) {
+    const registered: string[] = [];
+    for (const tool of wrapOutreachTools(createOutreachBookingTools(sessionId))) {
+      if (!isCustomerConciergeToolAllowed(tool.name)) continue;
+      registerSessionTool(sessionId, tool);
+      registered.push(tool.name);
+    }
+    for (const tool of createVicalBookingTools(sessionId)) {
+      if (!isCustomerConciergeToolAllowed(tool.name)) continue;
+      registerSessionTool(sessionId, tool);
+      registered.push(tool.name);
+    }
+    const upsert = createAudienceContactUpsertTool(sessionId);
+    registerSessionTool(sessionId, upsert);
+    registered.push(upsert.name);
+    return registered;
+  }
 
   const grants = await listEffectiveToolGrants(ctx.worker.workspaceId, ctx.worker.id);
   const connected = new Set(
