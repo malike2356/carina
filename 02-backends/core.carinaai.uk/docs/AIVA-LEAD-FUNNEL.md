@@ -4,6 +4,20 @@
 
 Tenant-scoped CRM leads with workbook-quality fields, unified ingestion, spreadsheet CRM table, Soft Wall email campaigns, reply classification with sequence stop conditions, suppression list, conversion to customer, and funnel attribution.
 
+## Capability matrix
+
+Machine-readable baseline (real / partial / missing, and manual / scheduled / provider-backed / simulated):
+
+`docs/AIVA-LEAD-FUNNEL-CAPABILITY-MATRIX.json`
+
+Release alignment (required commits in carina-web and carina-cloud):
+
+```bash
+bash scripts/check-lead-funnel-release-alignment.sh local
+bash scripts/check-lead-funnel-release-alignment.sh production
+bash scripts/smoke-lead-funnel-baseline.sh
+```
+
 ## Setup
 
 1. Use an Aiva workspace with Outreach enabled.

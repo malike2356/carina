@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "product": "aiva-lead-funnel",
+  "auditedAt": "2026-08-09",
+  "persistence": {
+    "kind": "json_file",
+    "path": "$CARINA_HOME/outreach/outreach-program.json",
+    "postgres": "missing",
+    "notes": "Production hardening prompt 02 will move source of truth to PostgreSQL."
+  },
+  "deployedAtAudit": {
+    "carinaWebImageRevision": "df7fc01670d6cee08ac5b0f70f0816a55a719ef9",
+    "carinaCloudImageRevision": "ff4558b62b6b38711b92756f5e2034e7b2863268",
+    "requiredCoreCommits": [
+      "6c91730389c6ea1a6175b044ed07b76d42309ba6",
+      "8dc8e601d3a370361306dc886bfc7e32a9371b4e",
+      "df7fc01670d6cee08ac5b0f70f0816a55a719ef9"
+    ],
+    "requiredCloudCommits": [
+      "8dc8e601d3a370361306dc886bfc7e32a9371b4e",
+      "05113feb1fd2a2e645e352c31047477c28eb88c8"
+    ],
+    "preferredCloudTipAtAudit": "ff4558b62b6b38711b92756f5e2034e7b2863268",
+    "alignment": "web and cloud may use different tags when both contain required commits"
+  },
+  "capabilities": [
+    {
+      "id": "import.csv",
+      "area": "import",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["src/outreach/lead-ingest.ts", "aiva/outreach/leads/page.tsx"]
+    },
+    {
+      "id": "import.paste",
+      "area": "import",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["src/outreach/lead-ingest.ts", "aiva/outreach/leads/page.tsx"]
+    },
+    {
+      "id": "import.xls_xlsx_ods",
+      "area": "import",
+      "status": "real",
+      "mode": "provider_backed",
+      "notes": "Via chat tool aiva-spreadsheet-convert then outreach-leads-import; not CRM file picker.",
+      "evidence": ["aiva-spreadsheet-convert", "outreach-leads-import"]
+    },
+    {
+      "id": "import.google_sheets",
+      "area": "import",
+      "status": "partial",
+      "mode": "manual",
+      "notes": "Workspace CSV sheets sync; Google Sheet link stores metadata but sync path expects local CSV or Sheets tools.",
+      "evidence": ["src/outreach/lead-sheets.ts"]
+    },
+    {
+      "id": "import.channel_attachments",
+      "area": "import",
+      "status": "partial",
+      "mode": "manual",
+      "notes": "Chat attachment convert path; not a dedicated CRM inbox importer."
+    },
+    {
+      "id": "import.companies_house",
+      "area": "import",
+      "status": "real",
+      "mode": "provider_backed",
+      "evidence": ["POST /api/aiva/outreach/companies-house/import-lead"]
+    },
+    {
+      "id": "import.scrape_generic",
+      "area": "import",
+      "status": "missing",
+      "mode": "missing",
+      "notes": "No first-class scrape-to-CRM pipeline beyond Companies House / discovery helpers."
+    },
+    {
+      "id": "import.manual",
+      "area": "import",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["POST /api/aiva/outreach/leads"]
+    },
+    {
+      "id": "import.youtube",
+      "area": "import",
+      "status": "real",
+      "mode": "provider_backed",
+      "evidence": ["POST /api/aiva/outreach/leads/import-youtube"]
+    },
+    {
+      "id": "crm.display",
+      "area": "crm",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["CrmLeadsGrid.tsx"]
+    },
+    {
+      "id": "crm.edit",
+      "area": "crm",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["PATCH /api/aiva/outreach/leads/:id"]
+    },
+    {
+      "id": "crm.filter",
+      "area": "crm",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["GET /api/aiva/outreach/leads"]
+    },
+    {
+      "id": "crm.bulk_action",
+      "area": "crm",
+      "status": "real",
+      "mode": "manual",
+      "notes": "Bulk pipeline stage updates from selected rows."
+    },
+    {
+      "id": "crm.saved_views",
+      "area": "crm",
+      "status": "partial",
+      "mode": "simulated",
+      "notes": "Hardcoded SAVED_VIEWS presets in UI. Store type leadViews exists without persist API."
+    },
+    {
+      "id": "crm.export",
+      "area": "crm",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["GET /api/aiva/outreach/leads/export"]
+    },
+    {
+      "id": "campaign.create",
+      "area": "campaign",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["POST /api/aiva/outreach/campaigns"]
+    },
+    {
+      "id": "sequence.enrol",
+      "area": "campaign",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["src/outreach/sequence-engine.ts"]
+    },
+    {
+      "id": "sequence.due_process",
+      "area": "campaign",
+      "status": "real",
+      "mode": "scheduled",
+      "notes": "In-process Croner every 5 minutes plus POST /process-due. Not a durable Postgres job queue.",
+      "evidence": ["src/outreach/process-due-scheduler.ts"]
+    },
+    {
+      "id": "approval.create",
+      "area": "campaign",
+      "status": "real",
+      "mode": "scheduled",
+      "evidence": ["src/outreach/soft-wall-approvals.ts"]
+    },
+    {
+      "id": "approval.send",
+      "area": "campaign",
+      "status": "real",
+      "mode": "provider_backed",
+      "notes": "Gmail tool or Resend/transactional after Soft Wall approve. Sequence step itself only queues approval.",
+      "evidence": ["src/email/email-draft-handler.ts"]
+    },
+    {
+      "id": "delivery.state",
+      "area": "campaign",
+      "status": "partial",
+      "mode": "manual",
+      "notes": "Local delivery states (pending_approval, sent, skipped). Opens/clicks not claimed without provider confirmation."
+    },
+    {
+      "id": "reply.ingest_automatic",
+      "area": "replies",
+      "status": "missing",
+      "mode": "missing",
+      "notes": "POST /replies/inbound and tool only; no mailbox poller."
+    },
+    {
+      "id": "reply.classify",
+      "area": "replies",
+      "status": "real",
+      "mode": "simulated",
+      "notes": "Heuristic classifier on posted inbound text.",
+      "evidence": ["src/outreach/replies.ts"]
+    },
+    {
+      "id": "unsubscribe",
+      "area": "compliance",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["POST /api/aiva/outreach/leads/:id/unsubscribe"]
+    },
+    {
+      "id": "suppression",
+      "area": "compliance",
+      "status": "real",
+      "mode": "manual",
+      "notes": "Store + eligibility; no dedicated REST list API.",
+      "evidence": ["src/outreach/suppressions.ts"]
+    },
+    {
+      "id": "booking",
+      "area": "funnel",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["src/outreach/bookings.ts"]
+    },
+    {
+      "id": "conversion",
+      "area": "funnel",
+      "status": "real",
+      "mode": "manual",
+      "notes": "Within outreach store (contact UUID + won); not a separate CRM DB.",
+      "evidence": ["src/outreach/lifecycle.ts"]
+    },
+    {
+      "id": "attribution",
+      "area": "funnel",
+      "status": "real",
+      "mode": "manual",
+      "evidence": ["src/outreach/funnel-analytics.ts", "GET /api/aiva/outreach/funnel"]
+    },
+    {
+      "id": "provider.bounce_complaint_webhooks",
+      "area": "delivery_events",
+      "status": "missing",
+      "mode": "missing",
+      "notes": "Hardening prompt 05."
+    }
+  ]
+}

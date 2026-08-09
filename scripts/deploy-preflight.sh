@@ -39,6 +39,7 @@ for required in "${required_files[@]}"; do
 done
 
 bash "${SCRIPT_DIR}/verify-release.sh" source >&2
+bash "${SCRIPT_DIR}/check-lead-funnel-release-alignment.sh" local >&2
 
 if [[ -n "${STATUS}" ]]; then
   if [[ "${CARINA_ALLOW_DIRTY_DEPLOY:-0}" != "1" ]]; then
