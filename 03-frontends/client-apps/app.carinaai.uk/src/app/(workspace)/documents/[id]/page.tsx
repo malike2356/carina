@@ -53,6 +53,10 @@ export default function DocumentEditorPage() {
   const [title, setTitle] = useState('Untitled');
   const [content, setContent] = useState('');
   const [format, setFormat] = useState<'markdown' | 'html'>('html');
+  const [vaultKind, setVaultKind] = useState<string | null>(null);
+  const [revision, setRevision] = useState<number | null>(null);
+  const [conflictNote, setConflictNote] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -79,20 +83,31 @@ export default function DocumentEditorPage() {
     async (nextTitle: string, nextContent: string, nextFormat: 'markdown' | 'html' = 'html') => {
       setSaving(true);
       setSaved(false);
-      await fetch(`/api/documents/${params.id}`, {
+      setConflictNote(null);
+      const res = await fetch(`/api/documents/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: nextTitle,
           content: nextContent,
           format: nextFormat,
+          expectedRevision: revision ?? undefined,
         }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        setConflictNote(data.error || 'Stale revision. Reload before saving again.');
+        setSaving(false);
+        return;
+      }
+      if (data.data?.currentRevision != null) {
+        setRevision(Number(data.data.currentRevision));
+      }
       setSaving(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     },
-    [params.id],
+    [params.id, revision],
   );
 
   const load = useCallback(async () => {
@@ -104,13 +119,27 @@ export default function DocumentEditorPage() {
       return;
     }
     const raw = String(data.data.content ?? '');
-    const nextContent = normalizeDocumentHtml(raw);
+    const kind = typeof data.data.kind === 'string' ? data.data.kind : null;
+    setVaultKind(kind);
+    setRevision(
+      data.data.currentRevision != null ? Number(data.data.currentRevision) : null,
+    );
+    setSyncStatus(typeof data.data.syncStatus === 'string' ? data.data.syncStatus : null);
+    if (data.data.conflict) setConflictNote('Sync conflict. Keep both versions or choose one.');
     const nextTitle = String(data.data.title ?? 'Untitled');
     setTitle(nextTitle);
+
+    if (kind === 'plain_text' || kind === 'spreadsheet' || kind === 'markdown' || kind === 'presentation') {
+      setContent(raw);
+      setFormat(kind === 'markdown' ? 'markdown' : 'markdown');
+      setLoading(false);
+      return;
+    }
+
+    const nextContent = normalizeDocumentHtml(raw);
     setContent(nextContent);
     setFormat('html');
     setLoading(false);
-    // Persist recovered HTML when the vault still has markdown or a collapsed wall.
     if (nextContent && nextContent !== raw) {
       void persist(nextTitle, nextContent, 'html');
     }
@@ -437,6 +466,18 @@ export default function DocumentEditorPage() {
         />
         <div className="flex shrink-0 items-center gap-2 text-[10px] text-text-muted">
           <span>{wordCount} words</span>
+          {revision != null ? (
+            <>
+              <span aria-hidden>|</span>
+              <span>rev {revision}</span>
+            </>
+          ) : null}
+          {syncStatus ? (
+            <>
+              <span aria-hidden>|</span>
+              <span>{syncStatus}</span>
+            </>
+          ) : null}
           <span aria-hidden>|</span>
           {saving ? 'Saving...' : saved ? (
             <span className="inline-flex items-center gap-1 text-emerald-400">
@@ -502,22 +543,71 @@ export default function DocumentEditorPage() {
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="px-3 pt-2 sm:px-4">
                 <CoreSurfaceBanner surface="documents" />
+                {conflictNote ? (
+                  <div className="mb-2 rounded-md border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-danger">
+                    {conflictNote}
+                    <button
+                      type="button"
+                      className="ml-2 underline"
+                      onClick={() => void load()}
+                    >
+                      Reload
+                    </button>
+                  </div>
+                ) : null}
               </div>
               <div className="min-h-0 flex-1">
-                <CarinaEditor
-                  ref={editorRef}
-                  value={content}
-                  onChange={handleContentChange}
-                  engine="tiptap"
-                  defaultEngine="tiptap"
-                  showEngineSwitch={false}
-                  contentFormat="html"
-                  toolbarDensity="full"
-                  pageLayout
-                  className="h-full"
-                  placeholder="Start writing your document. Import a Word file, or ask Aiva to draft the next section."
-                  minHeight="70vh"
-                />
+                {vaultKind === 'plain_text' || vaultKind === 'markdown' || vaultKind === 'presentation' ? (
+                  <textarea
+                    value={content}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setContent(next);
+                      setFormat(vaultKind === 'markdown' ? 'markdown' : 'markdown');
+                      scheduleSave(title, next, vaultKind === 'markdown' ? 'markdown' : 'markdown');
+                    }}
+                    className="h-full min-h-[70vh] w-full resize-none bg-transparent px-4 py-3 font-mono text-sm text-text-primary outline-none"
+                    placeholder={
+                      vaultKind === 'markdown'
+                        ? 'Write Markdown…'
+                        : vaultKind === 'presentation'
+                          ? 'Outline slides as plain text (one slide per section)…'
+                          : 'Write plain text…'
+                    }
+                  />
+                ) : vaultKind === 'spreadsheet' ? (
+                  <textarea
+                    value={content}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setContent(next);
+                      scheduleSave(title, next, 'markdown');
+                    }}
+                    className="h-full min-h-[70vh] w-full resize-none bg-transparent px-4 py-3 font-mono text-sm text-text-primary outline-none"
+                    placeholder={'col1,col2\nvalue,value'}
+                    aria-label="Spreadsheet CSV editor"
+                  />
+                ) : vaultKind === 'pdf' || vaultKind === 'binary_upload' ? (
+                  <div className="px-4 py-8 text-sm text-text-muted">
+                    This file type is preview-only in the vault for now. Download from the explorer when binary
+                    downloads ship with sync.
+                  </div>
+                ) : (
+                  <CarinaEditor
+                    ref={editorRef}
+                    value={content}
+                    onChange={handleContentChange}
+                    engine="tiptap"
+                    defaultEngine="tiptap"
+                    showEngineSwitch={false}
+                    contentFormat="html"
+                    toolbarDensity="full"
+                    pageLayout
+                    className="h-full"
+                    placeholder="Start writing your document. Import a Word file, or ask Aiva to draft the next section."
+                    minHeight="70vh"
+                  />
+                )}
               </div>
             </div>
             <form

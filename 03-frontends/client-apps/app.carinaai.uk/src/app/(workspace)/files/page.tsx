@@ -1,5 +1,6 @@
-import { FilesPage } from '@/components/files/FilesPage';
+import { redirect } from 'next/navigation';
 
+/** /files redirects into Document Vault (prompt 710). */
 export default function WorkspaceFilesPage() {
-  return <FilesPage />;
+  redirect('/documents');
 }

@@ -43,6 +43,13 @@
       "when": 1785811800000,
       "tag": "0005_vical-booking",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0006_document-vault",
+      "breakpoints": true
     }
   ]
 }

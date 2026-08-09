@@ -120,9 +120,9 @@ export const NAV_ROUTES: NavRoute[] = [
     parent: '/aiva/outreach',
   },
   {
-    href: '/files',
+    href: '/documents',
     label: 'Files',
-    description: 'Upload and browse workspace files.',
+    description: 'Document Vault: folders, uploads, and editors (redirect from /files).',
     group: 'workspace',
     iconName: 'FolderOpen',
   },

@@ -531,6 +531,79 @@ export const documents = pgTable(
   ],
 );
 
+/** Canonical Document Vault items (prompt 708/710). */
+export const documentVaultItems = pgTable(
+  'document_vault_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id'),
+    kind: text('kind').notNull(),
+    name: text('name').notNull(),
+    mimeType: text('mime_type').notNull(),
+    extension: text('extension'),
+    contentAuthority: text('content_authority').notNull().default('workspace'),
+    storageLocator: jsonb('storage_locator').$type<Record<string, unknown>>().notNull().default({ scheme: 'inline' }),
+    byteSize: integer('byte_size').notNull().default(0),
+    checksum: text('checksum').notNull().default(''),
+    currentRevision: integer('current_revision').notNull().default(1),
+    createdBy: text('created_by'),
+    updatedBy: text('updated_by'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    favorite: boolean('favorite').notNull().default(false),
+    trashedAt: timestamp('trashed_at'),
+    trashParentId: uuid('trash_parent_id'),
+    indexPolicy: text('index_policy').notNull().default('inherit'),
+    classification: text('classification').notNull().default('internal'),
+    inlineContent: text('inline_content'),
+  },
+  (t) => [
+    index('document_vault_items_ws_parent_idx').on(t.workspaceId, t.parentId, t.trashedAt),
+    index('document_vault_items_ws_updated_idx').on(t.workspaceId, t.updatedAt),
+  ],
+);
+
+export const documentVaultRevisions = pgTable(
+  'document_vault_revisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => documentVaultItems.id, { onDelete: 'cascade' }),
+    workspaceId: uuid('workspace_id').notNull(),
+    revision: integer('revision').notNull(),
+    checksum: text('checksum').notNull(),
+    byteSize: integer('byte_size').notNull(),
+    storageLocator: jsonb('storage_locator').$type<Record<string, unknown>>().notNull(),
+    createdBy: text('created_by'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    note: text('note'),
+    inlineContent: text('inline_content'),
+  },
+  (t) => [index('document_vault_revisions_item_idx').on(t.itemId, t.revision)],
+);
+
+export const documentVaultLegacyMappings = pgTable(
+  'document_vault_legacy_mappings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workspaceId: uuid('workspace_id').notNull(),
+    legacySource: text('legacy_source').notNull(),
+    legacyId: text('legacy_id').notNull(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => documentVaultItems.id, { onDelete: 'cascade' }),
+    checksum: text('checksum').notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('document_vault_legacy_ws_idx').on(t.workspaceId, t.legacySource, t.legacyId),
+  ],
+);
+
 export const emailMessages = pgTable(
   'email_messages',
   {
@@ -1147,6 +1220,7 @@ export type ScheduledTask = typeof scheduledTasks.$inferSelect;
 export type TaskRun = typeof taskRuns.$inferSelect;
 export type ResearchJob = typeof researchJobs.$inferSelect;
 export type Document = typeof documents.$inferSelect;
+export type DocumentVaultItem = typeof documentVaultItems.$inferSelect;
 export type EmailMessage = typeof emailMessages.$inferSelect;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type CalendarConnection = typeof calendarConnections.$inferSelect;
