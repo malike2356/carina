@@ -67,6 +67,7 @@ export default function OutreachLeadsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<Array<Record<string, string>>>([]);
+  const [showIngest, setShowIngest] = useState(false);
   const [linkedSheets, setLinkedSheets] = useState<Array<{
     id: string;
     name: string;
@@ -244,90 +245,85 @@ export default function OutreachLeadsPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-6 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--text-primary)]">CRM Leads</h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Spreadsheet-style lead table with source provenance, campaigns, and funnel stages.
-          </p>
+    <div className="flex w-full flex-col gap-4 px-4 py-4 lg:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-text-primary">CRM Leads</h2>
+          <p className="text-xs text-text-muted">{total} leads in this workspace</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowIngest((v) => !v)}>
+            {showIngest ? 'Hide add / import' : 'Add / Import'}
+          </Button>
           <Button size="sm" variant="outline" onClick={exportLeads}>Export CSV</Button>
           <Button size="sm" variant="outline" onClick={() => void createLeadSheet()}>Connect sheet</Button>
-          <Link href="/aiva/outreach" className="rounded-md border border-border px-3 py-1.5 text-sm">
-            Outreach overview
+          <Link href="/aiva/outreach/companies-house" className="rounded-md border border-border px-3 py-1.5 text-xs">
+            Companies House
           </Link>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {SAVED_VIEWS.map((view) => (
-          <button
-            key={view.id}
-            type="button"
-            className={`rounded-full px-3 py-1 text-xs ${
-              statusFilter === view.status
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--bg-soft)] text-[var(--text-muted)]'
-            }`}
-            onClick={() => {
-              setStatusFilter(view.status);
-              setPage(1);
-            }}
-          >
-            {view.label}
-          </button>
-        ))}
-      </div>
+      {showIngest ? (
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-lg border border-border bg-elevated p-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Manual lead</h3>
+            <div className="mt-2 grid gap-2">
+              <input className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Contact name" value={name} onChange={(e) => setName(e.target.value)} />
+              <input className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
+              <input className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Button size="sm" onClick={() => void create()}>Add lead</Button>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border bg-elevated p-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Import CSV / paste</h3>
+            <input type="file" accept=".csv,.tsv,.txt" className="mt-2 block w-full text-xs" onChange={(e) => void onFile(e.target.files?.[0] ?? null)} />
+            <textarea
+              className="mt-2 h-20 w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-xs"
+              placeholder="Paste workbook rows (header optional)"
+              value={bulk}
+              onChange={(e) => setBulk(e.target.value)}
+            />
+            <Button size="sm" className="mt-2" onClick={() => void importBulk()}>Import paste</Button>
+            {importPreview.length > 0 ? (
+              <p className="mt-2 text-xs text-text-muted">Mapped {importPreview.length} sample rows.</p>
+            ) : null}
+          </div>
+          <div className="rounded-lg border border-border bg-elevated p-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">Linked sheets</h3>
+            {linkedSheets.length === 0 ? (
+              <p className="mt-2 text-xs text-text-muted">No linked sheet yet. Connect a sheet or ask Aiva from chat.</p>
+            ) : (
+              <ul className="mt-2 space-y-2 text-sm">
+                {linkedSheets.map((sheet) => (
+                  <li key={sheet.id} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{sheet.name}</span>
+                    <button type="button" className="text-xs text-accent" onClick={() => void syncSheet(sheet.id)}>
+                      Sync
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-          <h2 className="text-sm font-medium">Manual lead</h2>
-          <input className="mt-2 w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Contact name" value={name} onChange={(e) => setName(e.target.value)} />
-          <input className="mt-2 w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
-          <input className="mt-2 w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Button size="sm" className="mt-2" onClick={() => void create()}>Add lead</Button>
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-          <h2 className="text-sm font-medium">Import CSV / paste</h2>
-          <input type="file" accept=".csv,.tsv,.txt" className="mt-2 block w-full text-xs" onChange={(e) => void onFile(e.target.files?.[0] ?? null)} />
-          <textarea
-            className="mt-2 h-24 w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-xs"
-            placeholder="Paste workbook rows (header optional)"
-            value={bulk}
-            onChange={(e) => setBulk(e.target.value)}
-          />
-          <Button size="sm" className="mt-2" onClick={() => void importBulk()}>Import paste</Button>
-          {importPreview.length > 0 ? (
-            <p className="mt-2 text-xs text-[var(--text-muted)]">Preview mapped {importPreview.length} sample rows.</p>
-          ) : null}
-        </div>
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-elevated)] p-4">
-          <h2 className="text-sm font-medium">Linked sheets</h2>
-          {linkedSheets.length === 0 ? (
-            <p className="mt-2 text-xs text-[var(--text-muted)]">No linked sheet yet. Create one or ask Aiva to connect Google Sheets.</p>
-          ) : (
-            <ul className="mt-2 space-y-2 text-sm">
-              {linkedSheets.map((sheet) => (
-                <li key={sheet.id} className="flex items-center justify-between gap-2">
-                  <span className="truncate">{sheet.name}</span>
-                  <button type="button" className="text-xs text-[var(--accent)]" onClick={() => void syncSheet(sheet.id)}>
-                    Sync
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-3 text-xs text-[var(--text-muted)]">
-            Empty state actions: scrape, import, Companies House, manual lead, or Google Sheet.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-elevated p-2">
+        <select
+          className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
+          value={statusFilter}
+          onChange={(e) => {
+            setStatusFilter(e.target.value);
+            setPage(1);
+          }}
+          aria-label="Saved view"
+        >
+          {SAVED_VIEWS.map((view) => (
+            <option key={view.id} value={view.status}>{view.label}</option>
+          ))}
+        </select>
         <input
-          className="min-w-[12rem] flex-1 rounded-md border border-border bg-elevated px-3 py-2 text-sm"
+          className="min-w-56 flex-1 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
           placeholder="Search company, contact, email, niche, town"
           value={query}
           onChange={(e) => {
@@ -336,7 +332,7 @@ export default function OutreachLeadsPage() {
           }}
         />
         <select
-          className="rounded-md border border-border bg-elevated px-2 py-2 text-sm"
+          className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
           value={sourceFilter}
           onChange={(e) => {
             setSourceFilter(e.target.value);
@@ -349,7 +345,7 @@ export default function OutreachLeadsPage() {
           ))}
         </select>
         <input
-          className="rounded-md border border-border bg-elevated px-2 py-2 text-sm"
+          className="w-28 rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
           placeholder="Niche"
           value={nicheFilter}
           onChange={(e) => {
@@ -358,7 +354,7 @@ export default function OutreachLeadsPage() {
           }}
         />
         <input
-          className="rounded-md border border-border bg-elevated px-2 py-2 text-sm"
+          className="w-28 rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
           placeholder="Priority"
           value={priorityFilter}
           onChange={(e) => {
@@ -366,12 +362,12 @@ export default function OutreachLeadsPage() {
             setPage(1);
           }}
         />
-        <label className="inline-flex items-center gap-1 text-xs text-[var(--text-muted)]">
+        <label className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-text-muted">
           <input type="checkbox" checked={hasEmailOnly} onChange={(e) => { setHasEmailOnly(e.target.checked); setPage(1); }} />
           Has email
         </label>
         <select
-          className="rounded-md border border-border bg-elevated px-2 py-2 text-sm"
+          className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
           value={density}
           onChange={(e) => setDensity(e.target.value as 'compact' | 'comfortable')}
         >
@@ -380,7 +376,7 @@ export default function OutreachLeadsPage() {
         </select>
         {selected.size > 0 ? (
           <select
-            className="rounded-md border border-border bg-elevated px-2 py-2 text-sm"
+            className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
             defaultValue=""
             onChange={(e) => {
               const value = e.target.value as PipelineStatus;
@@ -395,7 +391,6 @@ export default function OutreachLeadsPage() {
             ))}
           </select>
         ) : null}
-        <span className="text-xs text-text-muted">{total} leads</span>
       </div>
 
       {loading ? (
@@ -433,7 +428,7 @@ export default function OutreachLeadsPage() {
         >
           Previous
         </button>
-        <span className="text-[var(--text-muted)]">Page {page} / {totalPages}</span>
+        <span className="text-text-muted">Page {page} / {totalPages}</span>
         <button
           type="button"
           className="rounded border border-border px-3 py-1 disabled:opacity-40"
