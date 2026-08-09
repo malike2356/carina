@@ -107,13 +107,26 @@ function schedulePgFlush(): void {
 }
 
 /** Prime in-memory cache from PostgreSQL. Call once at process boot when PG mode is on. */
+let readyPromise: Promise<void> | null = null;
+
 export async function ensureOutreachStoreReady(): Promise<void> {
   if (!isOutreachPostgresEnabled()) {
     pgReady = true;
     return;
   }
-  pgCache = await loadOutreachStoreFromPg();
-  pgReady = true;
+  if (pgReady && pgCache) return;
+  if (!readyPromise) {
+    readyPromise = loadOutreachStoreFromPg()
+      .then((store) => {
+        pgCache = store;
+        pgReady = true;
+      })
+      .catch((err) => {
+        readyPromise = null;
+        throw err;
+      });
+  }
+  await readyPromise;
 }
 
 export function loadOutreachStore(): OutreachStoreShape {

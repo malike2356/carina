@@ -19,6 +19,7 @@ import { buildWeeklyOwnerDigest, listFollowUpTasks, processDueFollowUps } from '
 import { getOutreachAlertTarget, updateOutreachAlertTarget, sendOutreachTelegramAlert } from '../outreach/alerts.js';
 import { getOutreachControlState, pauseOutreach, resumeOutreach, outreachControlSummary } from '../outreach/control.js';
 import { importYouTubeLeadsIntoOutreach } from '../outreach/youtube-import.js';
+import { wrapOutreachTools } from './outreach-store-ready.js';
 
 type HeaderMap = Record<string, string>;
 
@@ -1373,35 +1374,35 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
       registered.push(tool.name);
     }
   }
-  for (const tool of createOutreachDiscoveryTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachDiscoveryTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachLeadCrudTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachLeadCrudTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachModuleCrudTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachModuleCrudTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachLeadSheetTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachLeadSheetTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachContactTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachContactTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachCadenceTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachCadenceTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachReplyTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachReplyTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachBookingTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachBookingTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
@@ -1410,23 +1411,23 @@ export async function registerProductToolAdapters(sessionId: string): Promise<st
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachBoardTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachBoardTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachAlertTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachAlertTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachFollowUpTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachFollowUpTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachControlTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachControlTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
-  for (const tool of createOutreachYouTubeTools(sessionId)) {
+  for (const tool of wrapOutreachTools(createOutreachYouTubeTools(sessionId))) {
     registerSessionTool(sessionId, tool);
     registered.push(tool.name);
   }
