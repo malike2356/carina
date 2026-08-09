@@ -4,9 +4,6 @@
  */
 
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { isDatabaseConfigured } from '../../config/database-url.js';
 import { pool } from '../../memory/db.js';
 import type {
@@ -31,13 +28,90 @@ export async function ensureOutreachDueJobSchema(): Promise<void> {
   }
   if (!schemaReady) {
     schemaReady = (async () => {
-      const here = path.dirname(fileURLToPath(import.meta.url));
-      const migrationPath = path.resolve(
-        here,
-        '../../infrastructure/migrations/037-outreach-due-jobs.sql',
-      );
-      const sql = fs.readFileSync(migrationPath, 'utf8');
-      await pool.query(sql);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS outreach_due_jobs (
+          id TEXT PRIMARY KEY,
+          workspace_id TEXT NOT NULL,
+          enrollment_id TEXT NOT NULL,
+          step_id TEXT NOT NULL,
+          step_order INT NOT NULL DEFAULT 0,
+          campaign_id TEXT,
+          sequence_id TEXT,
+          status TEXT NOT NULL DEFAULT 'queued',
+          attempts INT NOT NULL DEFAULT 0,
+          max_attempts INT NOT NULL DEFAULT 8,
+          locked_at TIMESTAMPTZ,
+          locked_by TEXT,
+          available_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          due_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          last_error TEXT,
+          dead_letter_reason TEXT,
+          result_json JSONB,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          finished_at TIMESTAMPTZ
+        )
+      `);
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS outreach_due_jobs_one_open_idx
+          ON outreach_due_jobs (workspace_id, enrollment_id, step_id)
+          WHERE status IN ('queued', 'running', 'deferred')
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS outreach_due_jobs_claim_idx
+          ON outreach_due_jobs (status, available_at, created_at)
+          WHERE status IN ('queued', 'running', 'deferred')
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS outreach_due_jobs_ws_status
+          ON outreach_due_jobs (workspace_id, status, available_at)
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS outreach_scheduler_control (
+          key TEXT PRIMARY KEY DEFAULT 'global',
+          paused BOOLEAN NOT NULL DEFAULT false,
+          drain_mode BOOLEAN NOT NULL DEFAULT false,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_by TEXT,
+          reason TEXT
+        )
+      `);
+      await pool.query(`
+        INSERT INTO outreach_scheduler_control (key, paused, drain_mode)
+        VALUES ('global', false, false)
+        ON CONFLICT (key) DO NOTHING
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS outreach_scheduler_audit (
+          id BIGSERIAL PRIMARY KEY,
+          actor TEXT NOT NULL,
+          action TEXT NOT NULL,
+          detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await pool.query(`
+        CREATE INDEX IF NOT EXISTS outreach_scheduler_audit_created
+          ON outreach_scheduler_audit (created_at DESC)
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS outreach_scheduler_heartbeat (
+          key TEXT PRIMARY KEY DEFAULT 'global',
+          enqueue_at TIMESTAMPTZ,
+          drain_at TIMESTAMPTZ,
+          last_enqueue_count INT NOT NULL DEFAULT 0,
+          last_drain_count INT NOT NULL DEFAULT 0,
+          processed_total BIGINT NOT NULL DEFAULT 0,
+          retry_total BIGINT NOT NULL DEFAULT 0,
+          dead_letter_total BIGINT NOT NULL DEFAULT 0,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await pool.query(`
+        INSERT INTO outreach_scheduler_heartbeat (key)
+        VALUES ('global')
+        ON CONFLICT (key) DO NOTHING
+      `);
     })().catch((err) => {
       schemaReady = null;
       throw err;
