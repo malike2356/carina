@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { getAccountCredentialsForWorker } from './accounts.js';
 import { getToolSession, markSessionProbe, upsertToolSession } from './sessions.js';
 
@@ -272,11 +273,13 @@ export async function invokeGoogleAction(opts: {
       if (!summary || !start || !end) {
         return { ok: false, data: null, error: 'summary, start, and end required (ISO datetime)' };
       }
+      const sendUpdates = String(opts.input?.sendUpdates ?? 'all').trim() || 'all';
+      const timezone = typeof opts.input?.timezone === 'string' ? opts.input.timezone : undefined;
       const body = {
         summary,
         description: typeof opts.input?.description === 'string' ? opts.input.description : '',
-        start: { dateTime: start },
-        end: { dateTime: end },
+        start: timezone ? { dateTime: start, timeZone: timezone } : { dateTime: start },
+        end: timezone ? { dateTime: end, timeZone: timezone } : { dateTime: end },
         location: typeof opts.input?.location === 'string' ? opts.input.location : undefined,
         attendees: Array.isArray(opts.input?.attendees) ? opts.input.attendees : undefined,
         conferenceData: opts.input?.conferenceData && typeof opts.input.conferenceData === 'object'
@@ -285,11 +288,15 @@ export async function invokeGoogleAction(opts: {
         extendedProperties: {
           private: {
             aivaManaged: 'true',
+            ...(typeof opts.input?.bookingId === 'string' ? { vicalBookingId: opts.input.bookingId } : {}),
+            ...(typeof opts.input?.workspaceId === 'string' ? { vicalWorkspaceId: opts.input.workspaceId } : {}),
           },
         },
       };
       const url = new URL('https://www.googleapis.com/calendar/v3/calendars/primary/events');
       if (body.conferenceData) url.searchParams.set('conferenceDataVersion', '1');
+      // Prompt 704: explicitly request provider invitation updates.
+      url.searchParams.set('sendUpdates', sendUpdates);
       const res = await fetch(url.toString(), {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -302,39 +309,116 @@ export async function invokeGoogleAction(opts: {
     if (opts.toolSlug === 'google-calendar' && opts.action === 'update') {
       const eventId = String(opts.input?.eventId ?? opts.input?.id ?? '').trim();
       if (!eventId) return { ok: false, data: null, error: 'eventId required' };
+      const sendUpdates = String(opts.input?.sendUpdates ?? 'all').trim() || 'all';
+      const timezone = typeof opts.input?.timezone === 'string' ? opts.input.timezone : undefined;
       const patch: Record<string, unknown> = {};
       if (typeof opts.input?.summary === 'string') patch.summary = opts.input.summary;
       if (typeof opts.input?.description === 'string') patch.description = opts.input.description;
-      if (typeof opts.input?.start === 'string') patch.start = { dateTime: opts.input.start };
-      if (typeof opts.input?.end === 'string') patch.end = { dateTime: opts.input.end };
-      const res = await fetch(
+      if (typeof opts.input?.location === 'string') patch.location = opts.input.location;
+      if (typeof opts.input?.start === 'string') {
+        patch.start = timezone ? { dateTime: opts.input.start, timeZone: timezone } : { dateTime: opts.input.start };
+      }
+      if (typeof opts.input?.end === 'string') {
+        patch.end = timezone ? { dateTime: opts.input.end, timeZone: timezone } : { dateTime: opts.input.end };
+      }
+      if (Array.isArray(opts.input?.attendees)) patch.attendees = opts.input.attendees;
+      const url = new URL(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
-        {
-          method: 'PATCH',
-          headers: { ...headers, 'Content-Type': 'application/json' },
-          body: JSON.stringify(patch),
-          signal: AbortSignal.timeout(15000),
-        },
       );
+      url.searchParams.set('sendUpdates', sendUpdates);
+      const res = await fetch(url.toString(), {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+        signal: AbortSignal.timeout(15000),
+      });
       const data = await res.json();
       return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
     if (opts.toolSlug === 'google-calendar' && opts.action === 'delete') {
       const eventId = String(opts.input?.eventId ?? opts.input?.id ?? '').trim();
       if (!eventId) return { ok: false, data: null, error: 'eventId required' };
-      const res = await fetch(
+      const sendUpdates = String(opts.input?.sendUpdates ?? 'all').trim() || 'all';
+      const url = new URL(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
-        {
-          method: 'DELETE',
-          headers,
-          signal: AbortSignal.timeout(15000),
-        },
       );
+      url.searchParams.set('sendUpdates', sendUpdates);
+      const res = await fetch(url.toString(), {
+        method: 'DELETE',
+        headers,
+        signal: AbortSignal.timeout(15000),
+      });
       if (res.status === 204 || res.status === 200 || res.status === 410) {
         return { ok: true, data: { deleted: true, eventId }, error: undefined };
       }
       const data = await res.json().catch(() => ({}));
       return { ok: false, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'google-calendar' && opts.action === 'get') {
+      const eventId = String(opts.input?.eventId ?? opts.input?.id ?? '').trim();
+      if (!eventId) return { ok: false, data: null, error: 'eventId required' };
+      const res = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+        { headers, signal: AbortSignal.timeout(15000) },
+      );
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'google-calendar' && opts.action === 'watch') {
+      const address = String(opts.input?.address ?? '').trim();
+      const token = String(opts.input?.token ?? '').trim();
+      if (!address || !token) return { ok: false, data: null, error: 'address and token required' };
+      const channelId = String(opts.input?.channelId ?? crypto.randomUUID());
+      const body = {
+        id: channelId,
+        type: 'web_hook',
+        address,
+        token,
+        expiration: opts.input?.expiration != null ? String(opts.input.expiration) : undefined,
+      };
+      const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events/watch', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'google-calendar' && opts.action === 'stop_watch') {
+      const channelId = String(opts.input?.channelId ?? opts.input?.id ?? '').trim();
+      const resourceId = String(opts.input?.resourceId ?? '').trim();
+      if (!channelId || !resourceId) {
+        return { ok: false, data: null, error: 'channelId and resourceId required' };
+      }
+      const res = await fetch('https://www.googleapis.com/calendar/v3/channels/stop', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: channelId, resourceId }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.status === 204 || res.status === 200) {
+        return { ok: true, data: { stopped: true }, error: undefined };
+      }
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, data, error: JSON.stringify(data) };
+    }
+    if (opts.toolSlug === 'google-calendar' && opts.action === 'freebusy') {
+      const timeMin = String(opts.input?.timeMin ?? '').trim();
+      const timeMax = String(opts.input?.timeMax ?? '').trim();
+      if (!timeMin || !timeMax) return { ok: false, data: null, error: 'timeMin and timeMax required' };
+      const res = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timeMin,
+          timeMax,
+          items: [{ id: 'primary' }],
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await res.json();
+      return { ok: res.ok, data, error: res.ok ? undefined : JSON.stringify(data) };
     }
     if (opts.toolSlug === 'google-drive' && opts.action === 'list') {
       const folderId = typeof opts.input?.folderId === 'string' ? opts.input.folderId : '';

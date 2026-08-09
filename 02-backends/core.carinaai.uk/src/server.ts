@@ -12,6 +12,7 @@ import { aivaPropertyChannelRouter, aivaYouTubeChannelRouter } from './api/aiva-
 import { aivaOutreachRouter } from './api/aiva-outreach-api.js';
 import { aivaVicalRouter } from './api/aiva-vical-api.js';
 import { zoomWebhookRouter } from './api/zoom-webhook-api.js';
+import { googleCalendarWebhookRouter } from './api/google-calendar-webhook-api.js';
 import { registerVicalSideEffects } from './vical/side-effects.js';
 import { youtubeChannelAnalyticsRouter } from './analytics/youtube-channel/dashboard-api.js';
 import { aivaSocialOAuthRouter } from './api/aiva-social-oauth-api.js';
@@ -109,6 +110,7 @@ export function mountServerRoutes(app: Express): void {
     app.use('/api/aiva/outreach', aivaOutreachRouter);
     app.use('/api/aiva/vical', aivaVicalRouter);
     app.use('/api/webhooks', zoomWebhookRouter);
+    app.use('/api/webhooks', googleCalendarWebhookRouter);
     registerVicalSideEffects();
     if (isEmailIngestionActive() || isPropreneurBridgeEnabled()) {
       app.use('/api/aiva/email', aivaEmailRouter);

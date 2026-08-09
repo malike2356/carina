@@ -63,10 +63,10 @@ function emailDeliveryConfigured(): boolean {
 }
 
 function inboundWebhooksConfigured(): boolean {
-  // Prompt 704 will add provider receivers. Until then this is honestly not_configured
-  // unless an operator explicitly opts in with a shared secret placeholder.
   return Boolean(
     process.env.AIVA_CONCIERGE_ZOOM_WEBHOOK_SECRET?.trim()
+    || process.env.ZOOM_WEBHOOK_SECRET_TOKEN?.trim()
+    || process.env.ZOOM_WEBHOOK_SECRET?.trim()
     || process.env.AIVA_CONCIERGE_GOOGLE_CALENDAR_WEBHOOK_TOKEN?.trim()
     || process.env.AIVA_CONCIERGE_MICROSOFT_WEBHOOK_SECRET?.trim(),
   );

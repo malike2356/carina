@@ -68,9 +68,28 @@ export {
   handleZoomWebhookEvent,
   verifyZoomWebhookSignature,
 } from './saga/webhook-zoom.js';
+export {
+  googleCalendarWebhookToken,
+  handleGoogleCalendarWebhook,
+  listWatchesNeedingRenewal,
+  verifyGoogleCalendarWebhook,
+} from './saga/webhook-google.js';
 export { toPublicBookingView, redactConferencingSecrets } from './conferencing/redact.js';
 export { ZoomConferencingAdapter } from './conferencing/zoom-adapter.js';
 export { StaticUrlConferencingAdapter } from './conferencing/static-url-adapter.js';
+export { GoogleCalendarAdapter } from './calendar/google-adapter.js';
+export { MicrosoftCalendarAdapter } from './calendar/microsoft-adapter.js';
+export { uiDeliveryLabel, invitationCopyDisclaimer } from './calendar/delivery-state.js';
+export {
+  applySyntheticAttendeeResponse,
+  bookingInvitationView,
+  reconcileGoogleEventById,
+} from './calendar/reconcile.js';
+export {
+  getCalendarProjection,
+  recordDeliveryAttempt,
+  updateParticipantDelivery,
+} from './calendar/projection-store.js';
 export {
   approveBooking,
   cancelBookingForGuest,

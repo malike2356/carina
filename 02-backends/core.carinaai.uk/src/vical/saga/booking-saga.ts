@@ -440,7 +440,21 @@ export async function bookWithSaga(
       providerResourceId: sync.booking.calendarEventId,
       errorMessage: sync.warning,
     });
-    booking = getBooking(input.workspaceId, booking.id)!;
+    booking = patchBooking(input.workspaceId, booking.id, {
+      calendarEventId: sync.booking.calendarEventId,
+      calendarSyncStatus: sync.booking.calendarSyncStatus,
+      calendarSyncError: sync.booking.calendarSyncError,
+      calendarProvider: sync.booking.calendarProvider,
+      invitationDeliveryState:
+        (sync.deliveryState as VcalBooking['invitationDeliveryState'])
+        || sync.booking.invitationDeliveryState
+        || (sync.ok ? 'sent' : 'failed'),
+      calendarProjectionId: sync.booking.calendarProjectionId,
+      meetingUrl: sync.booking.meetingUrl ?? booking.meetingUrl,
+      metadata: {
+        invitation_send_requested: sync.invitationSendRequested ?? true,
+      },
+    });
   }
 
   const needsJoin = eventType.locationMode === 'zoom' || eventType.locationMode === 'google_meet';

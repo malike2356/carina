@@ -15,28 +15,54 @@ function toIcsUtc(iso: string): string {
   return `${y}${m}${day}T${h}${min}${s}Z`;
 }
 
-/** Minimal ICS for guest/host confirmation attachments. */
-export function formatBookingIcs(booking: VcalBooking): string {
+export type IcsMethod = 'PUBLISH' | 'REQUEST' | 'CANCEL';
+
+/**
+ * ICS for guest/host confirmation attachments.
+ * Use METHOD:REQUEST for invitations, CANCEL for cancellations, PUBLISH for fallback downloads.
+ */
+export function formatBookingIcs(
+  booking: VcalBooking,
+  opts?: {
+    method?: IcsMethod;
+    organizerEmail?: string;
+    sequence?: number;
+  },
+): string {
+  const method = opts?.method ?? 'REQUEST';
+  const sequence = opts?.sequence ?? (booking.previousStartsAt ? 1 : 0);
   const uid = `${booking.id}@vical.carinaai.uk`;
   const summary = icsEscape(`Meeting with ${booking.guestName}`);
   const description = icsEscape(
-    [booking.meetingUrl ? `Join: ${booking.meetingUrl}` : '', booking.notes ?? ''].filter(Boolean).join('\\n'),
+    [booking.meetingUrl ? `Join: ${booking.meetingUrl}` : '', booking.notes ?? '']
+      .filter(Boolean)
+      .join('\\n'),
   );
+  const organizer = opts?.organizerEmail
+    ? `ORGANIZER;CN=Host:mailto:${opts.organizerEmail}`
+    : 'ORGANIZER;CN=Host:mailto:noreply@carinaai.uk';
+  const attendee = booking.guestEmail
+    ? `ATTENDEE;CN=${icsEscape(booking.guestName)};RSVP=TRUE;PARTSTAT=NEEDS-ACTION;ROLE=REQ-PARTICIPANT:mailto:${booking.guestEmail}`
+    : '';
+  const status = method === 'CANCEL' ? 'STATUS:CANCELLED' : 'STATUS:CONFIRMED';
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Carina//viCal//EN',
     'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
+    `METHOD:${method}`,
     'BEGIN:VEVENT',
     `UID:${uid}`,
+    `SEQUENCE:${sequence}`,
     `DTSTAMP:${toIcsUtc(booking.updatedAt || booking.createdAt)}`,
     `DTSTART:${toIcsUtc(booking.startsAt)}`,
     `DTEND:${toIcsUtc(booking.endsAt)}`,
     `SUMMARY:${summary}`,
     description ? `DESCRIPTION:${description}` : '',
-    booking.guestEmail ? `ATTENDEE;CN=${icsEscape(booking.guestName)}:mailto:${booking.guestEmail}` : '',
+    organizer,
+    attendee,
     booking.meetingUrl ? `URL:${booking.meetingUrl}` : '',
+    status,
     'END:VEVENT',
     'END:VCALENDAR',
   ].filter(Boolean);

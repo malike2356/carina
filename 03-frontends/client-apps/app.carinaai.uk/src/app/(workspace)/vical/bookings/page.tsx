@@ -99,11 +99,26 @@ export default function VicalBookingsPage() {
           <li key={booking.id} className="rounded-lg border border-border bg-card p-4">
             <p className="text-sm font-medium text-text-primary">
               {booking.guestName} · {booking.guestEmail} · {booking.status}
+              {booking.orchestrationStatus === 'action_required' ? ' · action_required' : ''}
             </p>
             <p className="text-xs text-text-muted">
               {formatSlotLabel(booking.startsAt, booking.timezone)} · source {booking.source}
               {booking.sessionOutcome ? ` · outcome ${booking.sessionOutcome}` : ''}
             </p>
+            <p className="mt-1 text-xs text-text-muted">
+              Invitation:{' '}
+              {booking.invitationUiLabel
+                || booking.invitationDeliveryState
+                || 'pending'}
+              {booking.calendarSyncStatus ? ` · calendar ${booking.calendarSyncStatus}` : ''}
+            </p>
+            <p className="mt-1 text-[11px] text-text-muted">
+              Invitation sent means the provider was asked to notify the guest. It does not promise
+              automatic insertion on the guest calendar.
+            </p>
+            {booking.actionRequiredReason ? (
+              <p className="mt-1 text-xs text-danger">Action required: {booking.actionRequiredReason}</p>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               {booking.status === 'pending_review' ? (
                 <>

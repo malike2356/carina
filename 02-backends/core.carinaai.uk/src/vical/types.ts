@@ -171,8 +171,81 @@ export interface VcalBookingParticipant {
   role: 'host' | 'guest' | 'observer';
   email: string;
   name?: string;
-  deliveryState?: string;
+  /** Contract DeliveryState (+ UI aliases invitation_sent / delivery_failed mapped in helpers). */
+  deliveryState?: VcalDeliveryState;
+  responseStatus?: VcalAttendeeResponseStatus;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export type VcalDeliveryState =
+  | 'pending'
+  | 'sent'
+  | 'delivered'
+  | 'accepted'
+  | 'declined'
+  | 'failed'
+  | 'unknown';
+
+export type VcalAttendeeResponseStatus =
+  | 'needsAction'
+  | 'accepted'
+  | 'declined'
+  | 'tentative';
+
+export interface VcalCalendarProjectionAttendee {
+  email: string;
+  responseStatus: VcalAttendeeResponseStatus;
+  deliveryState: VcalDeliveryState;
+}
+
+export interface VcalCalendarProjection {
+  id: string;
+  workspaceId: string;
+  bookingId: string;
+  provider: 'google' | 'microsoft' | 'none';
+  providerEventId: string | null;
+  etag?: string | null;
+  htmlLink?: string | null;
+  organizerEmail?: string | null;
+  attendees: VcalCalendarProjectionAttendee[];
+  invitationSendRequested: boolean;
+  lastReconciledAt?: string | null;
+  syncError?: string | null;
+  watchChannelId?: string | null;
+  watchResourceId?: string | null;
+  watchExpiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VcalDeliveryAttempt {
+  id: string;
+  workspaceId: string;
+  bookingId: string;
+  participantId?: string | null;
+  channel: 'google_invitation' | 'microsoft_invitation' | 'email_ics' | 'sms';
+  state: VcalDeliveryState;
+  providerMessageId?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  attemptedAt: string;
+}
+
+export interface VcalCalendarWatchChannel {
+  id: string;
+  workspaceId: string;
+  workerId: string;
+  provider: 'google' | 'microsoft';
+  channelId: string;
+  resourceId: string;
+  resourceUri?: string | null;
+  token: string;
+  expiration: string;
+  syncToken?: string | null;
+  bookingId?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface VcalConferenceArtifact {
@@ -252,6 +325,9 @@ export interface VcalBooking {
   orchestrationStatus?: VcalOrchestrationStatus;
   actionRequiredReason?: string;
   conferenceArtifactId?: string;
+  /** Prompt 704: guest invitation delivery summary for UI. */
+  invitationDeliveryState?: VcalDeliveryState;
+  calendarProjectionId?: string;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -320,6 +396,9 @@ export interface VcalStoreShape {
   conferenceArtifacts: VcalConferenceArtifact[];
   providerOperations: VcalProviderOperation[];
   webhookReceipts: VcalWebhookReceipt[];
+  calendarProjections: VcalCalendarProjection[];
+  deliveryAttempts: VcalDeliveryAttempt[];
+  calendarWatchChannels: VcalCalendarWatchChannel[];
 }
 
 export type VcalDomainHook =

@@ -2,8 +2,6 @@ import { Router, type Request, type Response, type Router as ExpressRouter } fro
 import { requireCloudProxy } from '../gateway/cloud-proxy-auth.js';
 import {
   approveBooking,
-  cancelBookingForGuest,
-  cancelBookingForHost,
   createAvailabilityRule,
   createIntakePool,
   createBlackout,
@@ -14,6 +12,7 @@ import {
   ensureDiscoveryDefaults,
   formatBookingIcs,
   getIntakePool,
+  getBooking,
   getBookingByGuestToken,
   getOrCreatePublishProfile,
   isVcalError,
@@ -27,8 +26,6 @@ import {
   processDueVicalReminders,
   rejectBooking,
   replaceAvailabilityRules,
-  rescheduleBooking,
-  rescheduleBookingForGuest,
   resolveWorkspaceByPublicSlug,
   resolvedIntakeQuestions,
   resolvedIntakeRoutingRules,
@@ -41,15 +38,19 @@ import {
   cancelWithSaga,
   rescheduleWithSaga,
   toPublicBookingView,
-  buildZoomUrlValidationResponse,
-  handleZoomWebhookEvent,
-  verifyZoomWebhookSignature,
+  bookingInvitationView,
 } from '../vical/index.js';
 
 export const aivaVicalRouter: ExpressRouter = Router();
 aivaVicalRouter.use(requireCloudProxy);
 
 type VicalRequest = Request & { workspaceId?: string };
+
+function workerIdFromBooking(booking: { hostUserId: string; metadata?: Record<string, unknown> }): string {
+  const fromMeta = booking.metadata?.calendar_worker_id;
+  if (typeof fromMeta === 'string' && fromMeta.trim()) return fromMeta.trim();
+  return booking.hostUserId || 'default-host';
+}
 
 function resolveWorkspaceId(req: VicalRequest): string | null {
   const header = req.headers['x-workspace-id'];
@@ -245,13 +246,15 @@ aivaVicalRouter.delete('/blackouts/:blackoutId', (req: VicalRequest, res: Respon
 });
 
 aivaVicalRouter.get('/bookings', (req: VicalRequest, res: Response) => {
-  res.json({
-    items: listBookings(req.workspaceId!, {
-      status: typeof req.query.status === 'string' ? (req.query.status as never) : undefined,
-      leadId: typeof req.query.leadId === 'string' ? req.query.leadId : undefined,
-      guestEmail: typeof req.query.guestEmail === 'string' ? req.query.guestEmail : undefined,
-    }),
-  });
+  const items = listBookings(req.workspaceId!, {
+    status: typeof req.query.status === 'string' ? (req.query.status as never) : undefined,
+    leadId: typeof req.query.leadId === 'string' ? req.query.leadId : undefined,
+    guestEmail: typeof req.query.guestEmail === 'string' ? req.query.guestEmail : undefined,
+  }).map((booking) => ({
+    ...toPublicBookingView(booking as unknown as Record<string, unknown>),
+    ...bookingInvitationView(booking),
+  }));
+  res.json({ items });
 });
 
 aivaVicalRouter.post('/bookings', async (req: VicalRequest, res: Response) => {
@@ -431,15 +434,17 @@ aivaVicalRouter.get('/public/:slug/slots', (req: Request, res: Response) => {
   }
 });
 
-aivaVicalRouter.post('/public/:slug/bookings', (req: Request, res: Response) => {
+aivaVicalRouter.post('/public/:slug/bookings', async (req: Request, res: Response) => {
   try {
     const workspaceId = resolveWorkspaceByPublicSlug(String(req.params.slug));
     if (!workspaceId) {
       res.status(404).json({ error: 'Unknown booking slug' });
       return;
     }
-    const row = createBooking({
+    const hostUserId = String(req.body?.workerId ?? req.body?.hostUserId ?? 'default-host');
+    const result = await bookWithSaga({
       workspaceId,
+      workerId: hostUserId,
       eventTypeId: String(req.body?.eventTypeId),
       guestName: String(req.body?.guestName ?? 'Guest'),
       guestEmail: String(req.body?.guestEmail ?? ''),
@@ -448,9 +453,16 @@ aivaVicalRouter.post('/public/:slug/bookings', (req: Request, res: Response) => 
       timezone: req.body?.timezone,
       source: 'public',
       notes: req.body?.notes,
-      intakeAnswers: req.body?.intakeAnswers,
+      idempotencyKey: req.body?.idempotencyKey,
+      metadata: { intakeAnswers: req.body?.intakeAnswers },
     });
-    res.status(201).json(row);
+    res.status(result.duplicate ? 200 : 201).json({
+      ...result.publicBooking,
+      ...bookingInvitationView(result.booking),
+      actionRequired: result.actionRequired,
+      ics: formatBookingIcs(result.booking, { method: 'REQUEST' }),
+      disclaimer: bookingInvitationView(result.booking).disclaimer,
+    });
   } catch (error) {
     sendError(res, error);
   }
@@ -476,17 +488,50 @@ aivaVicalRouter.get('/public/:slug/intake-pools/:eventTypeId', (req: Request, re
   });
 });
 
-aivaVicalRouter.post('/guest/:token/cancel', (req: Request, res: Response) => {
+aivaVicalRouter.post('/guest/:token/cancel', async (req: Request, res: Response) => {
   try {
-    res.json(cancelBookingForGuest(String(req.params.token), req.body?.reason));
+    const booking = getBookingByGuestToken(String(req.params.token));
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    const result = await cancelWithSaga({
+      workspaceId: booking.workspaceId,
+      workerId: workerIdFromBooking(booking),
+      bookingId: booking.id,
+      reason: req.body?.reason ?? 'guest_cancelled',
+    });
+    res.json({
+      ...result.publicBooking,
+      ...bookingInvitationView(result.booking),
+      ics: formatBookingIcs(result.booking, { method: 'CANCEL' }),
+      actionRequired: result.actionRequired,
+    });
   } catch (error) {
     sendError(res, error);
   }
 });
 
-aivaVicalRouter.post('/guest/:token/reschedule', (req: Request, res: Response) => {
+aivaVicalRouter.post('/guest/:token/reschedule', async (req: Request, res: Response) => {
   try {
-    res.json(rescheduleBookingForGuest(String(req.params.token), String(req.body?.startsAt), req.body?.endsAt));
+    const booking = getBookingByGuestToken(String(req.params.token));
+    if (!booking) {
+      res.status(404).json({ error: 'Booking not found' });
+      return;
+    }
+    const result = await rescheduleWithSaga({
+      workspaceId: booking.workspaceId,
+      workerId: workerIdFromBooking(booking),
+      bookingId: booking.id,
+      startsAt: String(req.body?.startsAt),
+      endsAt: req.body?.endsAt,
+    });
+    res.json({
+      ...result.publicBooking,
+      ...bookingInvitationView(result.booking),
+      ics: formatBookingIcs(result.booking, { method: 'REQUEST' }),
+      actionRequired: result.actionRequired,
+    });
   } catch (error) {
     sendError(res, error);
   }
@@ -498,7 +543,10 @@ aivaVicalRouter.get('/guest/:token', (req: Request, res: Response) => {
     res.status(404).json({ error: 'Booking not found' });
     return;
   }
-  res.json(booking);
+  res.json({
+    ...toPublicBookingView(booking as unknown as Record<string, unknown>),
+    ...bookingInvitationView(booking),
+  });
 });
 
 aivaVicalRouter.get('/reminders', (req: VicalRequest, res: Response) => {
@@ -511,12 +559,13 @@ aivaVicalRouter.post('/reminders/process-due', (req: VicalRequest, res: Response
 });
 
 aivaVicalRouter.get('/bookings/:id/ics', (req: VicalRequest, res: Response) => {
-  const booking = listBookings(req.workspaceId!).find((b) => b.id === String(req.params.id));
+  const booking = getBooking(req.workspaceId!, String(req.params.id));
   if (!booking) {
     res.status(404).json({ error: 'Booking not found' });
     return;
   }
-  const ics = formatBookingIcs(booking);
+  const method = req.query.method === 'CANCEL' ? 'CANCEL' : 'REQUEST';
+  const ics = formatBookingIcs(booking, { method });
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="booking-${booking.id}.ics"`);
   res.send(ics);
@@ -538,8 +587,15 @@ aivaVicalRouter.post('/bookings/:id/calendar-sync', async (req: VicalRequest, re
       bookingId: String(req.params.id),
       locationMode: req.body?.locationMode,
       zoomRoomUrl: typeof req.body?.zoomRoomUrl === 'string' ? req.body.zoomRoomUrl : undefined,
+      sendUpdates: 'all',
     });
-    res.json(result);
+    res.json({
+      ...result,
+      booking: {
+        ...toPublicBookingView(result.booking as unknown as Record<string, unknown>),
+        ...bookingInvitationView(result.booking),
+      },
+    });
   } catch (error) {
     sendError(res, error);
   }

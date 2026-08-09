@@ -41,6 +41,13 @@ export type VicalBooking = {
   cancelReason?: string;
   previousStartsAt?: string;
   previousEndsAt?: string;
+  orchestrationStatus?: string;
+  actionRequiredReason?: string;
+  invitationDeliveryState?: string;
+  invitationUiLabel?: string;
+  disclaimer?: string;
+  calendarSyncStatus?: string;
+  calendarSyncError?: string;
   createdAt: string;
   updatedAt: string;
 };
