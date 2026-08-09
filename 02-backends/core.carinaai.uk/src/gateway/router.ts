@@ -21,6 +21,8 @@ import {
   channelSupportsInteractiveApproval,
   summarizeToolParamsForChannel,
 } from './channels/channel-approval-ui.js';
+import { createBoundApproval } from '../approvals/propreneur-action-risk.js';
+import { bindConfirmationButton } from '../tools/propreneur-channel-execution.js';
 import { normalizeChannelInbound } from './channels/channel-platform.js';
 import { buildGatewaySessionMapKey, buildGatewaySessionMapKeyAsync } from './channels/channel-session-binding.js';
 import {
@@ -130,10 +132,53 @@ export class GatewayRouter {
       const adapter = channelRegistry.getByName(channel);
       if (!target || !adapter) return false;
 
+      const isPropreneur = /propreneur/i.test(toolName);
+      const identity = getSessionIdentityState(sessionId);
+      const actorId = identity?.canonicalUserId ?? target.conversationId;
+      let approvalId: string | undefined;
+      let approvalDigest: string | undefined;
+      let expiresAt: string | undefined;
+
+      if (isPropreneur) {
+        const riskClass = /expense|payment|financial|rent/i.test(toolName)
+          ? 'financial'
+          : /compliance|certificate/i.test(toolName)
+            ? 'compliance'
+            : /delete|archive|destroy/i.test(toolName)
+              ? 'destructive'
+              : /invite|permission|credential|key/i.test(toolName)
+                ? 'access_control'
+                : /email|sms|message|telegram|slack/i.test(toolName)
+                  ? 'external_communication'
+                  : 'routine_write';
+        const bound = createBoundApproval({
+          riskClass,
+          actorId,
+          payload: { tool: toolName, ...(params as Record<string, unknown>) },
+          authFingerprint: `channel:${channel}:${actorId}`,
+        });
+        const button = bindConfirmationButton({
+          approvalId: bound.id,
+          canonicalPayload: bound.payload,
+          channel,
+          boundUserId: actorId,
+          ttlSeconds: Math.max(
+            60,
+            Math.floor((Date.parse(bound.expiresAt) - Date.now()) / 1000),
+          ),
+        });
+        approvalId = bound.id;
+        approvalDigest = button.digest;
+        expiresAt = bound.expiresAt;
+      }
+
       const payload = buildChannelApprovalPayload(channel, {
         toolName,
         reason,
         paramsSummary: summarizeToolParamsForChannel(params),
+        approvalId,
+        approvalDigest,
+        expiresAt,
       });
 
       try {
@@ -145,7 +190,12 @@ export class GatewayRouter {
         return false;
       }
 
-      return process.env.CARINA_CHANNEL_APPROVAL_STRICT !== 'true';
+      // Propreneur / digest-bound tools never auto-approve from free-text confirm.
+      if (isPropreneur || approvalDigest || process.env.CARINA_CHANNEL_APPROVAL_STRICT === 'true') {
+        return false;
+      }
+
+      return true;
     };
   }
 
@@ -520,14 +570,31 @@ export class GatewayRouter {
     const { clearWorkerSessionContext, getWorkerSessionContext } = await import('../workers/worker-session-context.js');
 
     // processAivaMessage applies session context and owns activity audit logging.
-    // When that context is already present, skip duplicate inbound/outbound logs here.
-    const activityOwnedByAivaProcess = Boolean(getWorkerSessionContext(message.sessionId));
+    // When that context is already present, skip duplicate inbound/outbound logs and Scout re-resolve.
+    const existingWorkerCtx = getWorkerSessionContext(message.sessionId);
+    const activityOwnedByAivaProcess = Boolean(existingWorkerCtx);
 
-    let workerCtx = isAiWorkersEnabled() ? await resolveWorkerForMessage(message) : null;
+    let workerCtx = existingWorkerCtx
+      ?? (isAiWorkersEnabled() ? await resolveWorkerForMessage(message) : null);
     let restorePacks: (() => void) | undefined;
 
-    if (workerCtx) {
-      restorePacks = applyWorkerToSession(this, message.sessionId, workerCtx);
+    const workerDeliveryCtx = workerCtx
+      ? {
+        worker: workerCtx.worker,
+        personaPrompt: workerCtx.personaPrompt,
+        channel: ('channel' in workerCtx && typeof workerCtx.channel === 'string' && workerCtx.channel)
+          ? workerCtx.channel
+          : message.source,
+        channelId: ('channelId' in workerCtx && typeof (workerCtx as { channelId?: string }).channelId === 'string')
+          ? (workerCtx as { channelId: string }).channelId
+          : (message.chatId ?? message.channelUserId ?? ''),
+      }
+      : null;
+
+    if (workerDeliveryCtx && !activityOwnedByAivaProcess) {
+      // processAivaMessage already applied packs + tools for hired-worker turns.
+      // Re-doing that here doubles registration cost on every Telegram/web reply.
+      restorePacks = applyWorkerToSession(this, message.sessionId, workerDeliveryCtx);
       const { registerProductToolAdapters } = await import('../tools/product-tool-adapters.js');
       const { registerAivaChannelSelfConfigTool } = await import('../tools/aiva-channel-self-config.js');
       const { registerAivaWorkspaceSessionTools } = await import('../tools/aiva-workspace-tools.js');
@@ -536,9 +603,7 @@ export class GatewayRouter {
       registerWorkerAutomationSessionTools(message.sessionId);
       registerAivaWorkspaceSessionTools(message.sessionId);
       await registerProductToolAdapters(message.sessionId);
-      if (!activityOwnedByAivaProcess) {
-        void processWorkerInbound(workerCtx, message).catch(() => {});
-      }
+      void processWorkerInbound(workerDeliveryCtx, message).catch(() => {});
     }
 
     const agent = this.getAgent(message.sessionId, message.source);
@@ -602,14 +667,14 @@ export class GatewayRouter {
           yield chunk;
         }
         if (keprixOk) {
-          if (workerCtx && workerChunks.length > 0) {
+          if (workerDeliveryCtx && workerChunks.length > 0) {
             const { sanitizeAivaUserFacingReply } = await import('../workers/sanitize-aiva-reply.js');
             const full = sanitizeAivaUserFacingReply(workerChunks.join(''));
             if (activityOwnedByAivaProcess) {
               const { aivaEmptyReplyFallback } = await import('../workers/sanitize-aiva-reply.js');
               yield full || aivaEmptyReplyFallback(message.content);
             } else {
-              const processed = await processWorkerOutbound(workerCtx, message, full || workerChunks.join(''));
+              const processed = await processWorkerOutbound(workerDeliveryCtx, message, full || workerChunks.join(''));
               yield processed.reply;
             }
           }
@@ -642,7 +707,7 @@ export class GatewayRouter {
           yield event.content;
         }
       }
-      if (workerCtx && workerChunks.length > 0) {
+      if (workerDeliveryCtx && workerChunks.length > 0) {
         const { sanitizeAivaUserFacingReply } = await import('../workers/sanitize-aiva-reply.js');
         const full = sanitizeAivaUserFacingReply(workerChunks.join(''));
         if (!full) {
@@ -652,7 +717,7 @@ export class GatewayRouter {
           const { aivaEmptyReplyFallback } = await import('../workers/sanitize-aiva-reply.js');
           yield full || aivaEmptyReplyFallback(message.content);
         } else {
-          const processed = await processWorkerOutbound(workerCtx, message, full || workerChunks.join(''));
+          const processed = await processWorkerOutbound(workerDeliveryCtx, message, full || workerChunks.join(''));
           yield processed.reply;
         }
       }

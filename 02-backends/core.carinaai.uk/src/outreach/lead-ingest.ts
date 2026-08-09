@@ -156,7 +156,7 @@ function mergeLeadFields(
     if (value === undefined || value === null || value === '') continue;
     const current = next[key];
     if (overwrite || current === undefined || current === null || current === '') {
-      (next as Record<string, unknown>)[key as string] = value;
+      (next as unknown as Record<string, unknown>)[key as string] = value;
     } else if (key === 'tags' && Array.isArray(value) && Array.isArray(current)) {
       next.tags = Array.from(new Set([...current, ...value]));
     } else if (key === 'listIds' && Array.isArray(value)) {
