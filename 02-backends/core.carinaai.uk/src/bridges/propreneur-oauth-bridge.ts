@@ -59,6 +59,29 @@ function appUrl(path: string): string {
   return `${base}${path}`;
 }
 
+type PkceEntry = { verifier: string; expiresAt: number };
+
+/** Process-local PKCE verifier store (short-lived; cleared on take). */
+const pkceByState = new Map<string, PkceEntry>();
+const PKCE_TTL_MS = 10 * 60 * 1000;
+
+export function createPkcePair(): { verifier: string; challenge: string; method: 'S256' } {
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  return { verifier, challenge, method: 'S256' };
+}
+
+export function storePkceVerifier(state: string, verifier: string, ttlMs = PKCE_TTL_MS): void {
+  pkceByState.set(state, { verifier, expiresAt: Date.now() + ttlMs });
+}
+
+export function takePkceVerifier(state: string): string | null {
+  const entry = pkceByState.get(state);
+  pkceByState.delete(state);
+  if (!entry || entry.expiresAt < Date.now()) return null;
+  return entry.verifier;
+}
+
 export function createPropreneurConnectToken(workspaceId: string, workerId: string): string {
   return sign({ workspaceId, workerId });
 }
@@ -183,10 +206,14 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
       workerId: connect.workerId,
       tenantSlug,
     });
+    const pkce = createPkcePair();
+    storePkceVerifier(state, pkce.verifier);
     const callback = `https://core.carinaai.uk/api/aiva/workers/${encodeURIComponent(connect.workerId)}/propreneur/oauth/callback`;
     const authorize = new URL(`https://${tenantSlug}.${tenantBaseDomain()}/aiva/authorize`);
     authorize.searchParams.set('state', state);
     authorize.searchParams.set('callback', callback);
+    authorize.searchParams.set('code_challenge', pkce.challenge);
+    authorize.searchParams.set('code_challenge_method', pkce.method);
     authorize.searchParams.set('scope_bundle', String(req.query.scopeBundle ?? 'operational_crud'));
     authorize.searchParams.set('aiva_workspace_id', connect.workspaceId);
     authorize.searchParams.set('aiva_worker_id', connect.workerId);
@@ -221,13 +248,19 @@ export function registerPropreneurOAuthRoutes(router: Router): void {
       return;
     }
 
+    const codeVerifier = takePkceVerifier(state);
+    if (!codeVerifier) {
+      redirectToSettings({ propreneur_error: 'pkce_missing' });
+      return;
+    }
+
     try {
       const exchange = await fetch(
         `https://${payload.tenantSlug}.${tenantBaseDomain()}/api/aiva-oauth/exchange`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ code, state }),
+          body: JSON.stringify({ code, state, code_verifier: codeVerifier }),
         },
       );
       if (!exchange.ok) {

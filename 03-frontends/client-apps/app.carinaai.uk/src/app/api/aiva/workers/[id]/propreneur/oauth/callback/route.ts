@@ -3,6 +3,7 @@ import { requireSession, requireWorkspace } from '@/lib/session';
 import { proxyAivaRequest } from '@/lib/aiva-proxy';
 import {
   propreneurExchangeUrl,
+  propreneurPkceCookieName,
   resolvePropreneurOAuthSigningSecret,
   verifyPropreneurOAuthState,
 } from '@/lib/propreneur-oauth-state';
@@ -13,7 +14,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 /**
  * OAuth-style callback after the user clicks Allow on Propreneur.
- * Exchanges the one-time code for an API key, then binds the worker.
+ * Exchanges the one-time code + PKCE verifier for an API key, then binds the worker.
  */
 export async function GET(request: NextRequest, context: RouteContext) {
   const { id: workerId } = await context.params;
@@ -22,19 +23,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const state = (url.searchParams.get('state') ?? '').trim();
   const oauthError = (url.searchParams.get('error') ?? '').trim();
 
-  const toolsRedirect = (query: Record<string, string>) => {
+  const toolsRedirect = (query: Record<string, string>, clearCookieState?: string) => {
     const target = new URL(`/aiva/workers/${encodeURIComponent(workerId)}`, url.origin);
     target.searchParams.set('tab', 'tools');
     for (const [k, v] of Object.entries(query)) {
       target.searchParams.set(k, v);
     }
-    return NextResponse.redirect(target.toString());
+    const response = NextResponse.redirect(target.toString());
+    if (clearCookieState) {
+      response.cookies.set(propreneurPkceCookieName(clearCookieState), '', {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: url.protocol === 'https:',
+        path: '/',
+        maxAge: 0,
+      });
+    }
+    return response;
   };
 
   if (oauthError) {
     return toolsRedirect({
       propreneur_error: oauthError === 'access_denied' ? 'denied' : oauthError,
-    });
+    }, state || undefined);
   }
 
   if (!code || !state) {
@@ -46,16 +57,21 @@ export async function GET(request: NextRequest, context: RouteContext) {
     const workspace = await requireWorkspace(session.user.id);
     const secret = resolvePropreneurOAuthSigningSecret();
     if (!secret) {
-      return toolsRedirect({ propreneur_error: 'not_configured' });
+      return toolsRedirect({ propreneur_error: 'not_configured' }, state);
     }
 
     const payload = verifyPropreneurOAuthState(state, secret);
     if (!payload) {
-      return toolsRedirect({ propreneur_error: 'invalid_state' });
+      return toolsRedirect({ propreneur_error: 'invalid_state' }, state);
     }
 
     if (payload.workspaceId !== workspace.id || payload.workerId !== workerId) {
-      return toolsRedirect({ propreneur_error: 'state_mismatch' });
+      return toolsRedirect({ propreneur_error: 'state_mismatch' }, state);
+    }
+
+    const codeVerifier = request.cookies.get(propreneurPkceCookieName(state))?.value?.trim() ?? '';
+    if (!codeVerifier) {
+      return toolsRedirect({ propreneur_error: 'pkce_missing' }, state);
     }
 
     const exchangeRes = await fetch(propreneurExchangeUrl(payload.tenantSlug), {
@@ -64,23 +80,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({ code, state }),
+      body: JSON.stringify({ code, state, code_verifier: codeVerifier }),
     });
 
     if (!exchangeRes.ok) {
-      return toolsRedirect({ propreneur_error: 'exchange_failed' });
+      return toolsRedirect({ propreneur_error: 'exchange_failed' }, state);
     }
 
     const grant = (await exchangeRes.json()) as {
       tenant_slug?: string;
       api_key?: string;
+      grant_id?: string | null;
     };
 
     const tenantSlug = String(grant.tenant_slug ?? payload.tenantSlug).trim();
     const apiKey = String(grant.api_key ?? '').trim();
 
     if (!tenantSlug || !apiKey) {
-      return toolsRedirect({ propreneur_error: 'incomplete_grant' });
+      return toolsRedirect({ propreneur_error: 'incomplete_grant' }, state);
     }
 
     const bindRes = await proxyAivaRequest(
@@ -94,7 +111,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     );
 
     if (!bindRes.ok) {
-      return toolsRedirect({ propreneur_error: 'bind_failed' });
+      return toolsRedirect({ propreneur_error: 'bind_failed' }, state);
     }
 
     const bindData = (await bindRes.json().catch(() => ({}))) as {
@@ -108,7 +125,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       ...(bindData.propertyCount != null
         ? { propreneur_props: String(bindData.propertyCount) }
         : {}),
-    });
+      ...(grant.grant_id ? { propreneur_grant_id: String(grant.grant_id) } : {}),
+    }, state);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'error';
     if (message === 'Unauthorized') {
@@ -119,6 +137,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
       );
       return NextResponse.redirect(login.toString());
     }
-    return toolsRedirect({ propreneur_error: 'server_error' });
+    return toolsRedirect({ propreneur_error: 'server_error' }, state);
   }
 }

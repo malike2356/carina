@@ -48,6 +48,17 @@ export function verifyPropreneurOAuthState(
   }
 }
 
+export function createPropreneurPkcePair(): { verifier: string; challenge: string; method: 'S256' } {
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  return { verifier, challenge, method: 'S256' };
+}
+
+export function propreneurPkceCookieName(state: string): string {
+  const digest = crypto.createHash('sha256').update(state).digest('hex').slice(0, 24);
+  return `aiva_pr_pkce_${digest}`;
+}
+
 export function resolvePropreneurOAuthSigningSecret(): string {
   return (
     process.env.VAULT_SECRET?.trim() ||

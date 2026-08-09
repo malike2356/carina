@@ -171,7 +171,8 @@ export class AivaWorkerPool {
     workerId: string,
     config: AivaWorkerSpawnConfig,
     msg: Extract<WorkerMessage, { type: 'process_message' }>,
-    timeoutMs = 120_000,
+    // Lead/CRM/Companies House turns regularly exceed 2 minutes with tool rounds.
+    timeoutMs = 300_000,
   ): AsyncGenerator<AivaStreamEvent> {
     this.ensureWorker(config);
 
