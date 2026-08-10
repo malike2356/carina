@@ -331,6 +331,53 @@ export function mountOpsRoutes(app: Express): void {
     res.json(hostedEmailOperatorStatus());
   });
 
+  app.get('/api/ops/conveyor/audit', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { auditCarinaCore, defaultCarinaAuditRoot } = await import('../conveyor/runtime.js');
+      const projectPath =
+        typeof req.query.projectPath === 'string' && req.query.projectPath.trim()
+          ? req.query.projectPath.trim()
+          : defaultCarinaAuditRoot();
+      const result = auditCarinaCore(projectPath);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  app.get('/api/ops/conveyor/status', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const { pipelineStatus } = await import('../conveyor/runtime.js');
+    res.json({ ok: true, status: pipelineStatus() });
+  });
+
+  app.post('/api/ops/conveyor/pipeline', async (req: Request, res: Response) => {
+    if (!authorizeOps(req)) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const { runCarinaConveyorPipeline, defaultCarinaAuditRoot } = await import('../conveyor/runtime.js');
+      const targetEnv = String(req.body?.targetEnv ?? 'staging');
+      const humanApproval = req.body?.humanApproval === true;
+      const projectPath =
+        typeof req.body?.projectPath === 'string' && req.body.projectPath.trim()
+          ? req.body.projectPath.trim()
+          : defaultCarinaAuditRoot();
+      const result = await runCarinaConveyorPipeline(targetEnv, { humanApproval, projectPath });
+      res.status(result.report.passed ? 200 : 422).json({ ok: result.report.passed, ...result });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
   app.get('/api/ops/feature-health', async (req: Request, res: Response) => {
     if (!authorizeOps(req)) {
       res.status(401).json({ error: 'Unauthorized' });
