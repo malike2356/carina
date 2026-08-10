@@ -1,7 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 export type EmailDeliverabilityPolicy = {
   version: string;
   thresholds: {
@@ -22,10 +18,26 @@ export type EmailDeliverabilityPolicy = {
   note: string;
 };
 
-const dir = dirname(fileURLToPath(import.meta.url));
-
-export const emailDeliverabilityPolicy = JSON.parse(
-  readFileSync(join(dir, 'policy.json'), 'utf8'),
-) as EmailDeliverabilityPolicy;
+/** Keep in sync with policy.json (canonical shared values). */
+export const emailDeliverabilityPolicy: EmailDeliverabilityPolicy = {
+  version: '1.0.0',
+  thresholds: {
+    inboxRateMinPct: 99.0,
+    spamComplaintRateMaxPct: 0.1,
+    bounceRateMaxPct: 2.0,
+  },
+  dmarcLadder: ['none', 'quarantine', 'reject'],
+  warmup: {
+    startPerDay: 50,
+    doubleEveryDays: 3,
+    maxDays: 28,
+  },
+  domainRoles: {
+    transactionalSubdomains: ['mail', 'receipts', 'noreply'],
+    marketingSubdomains: ['updates', 'news', 'hello'],
+  },
+  note:
+    'Inbox placement requires ESP or Postmaster signals; until then inboxRate uses delivered/(delivered+spam+bounce) as a conservative proxy and must be labelled as such.',
+};
 
 export default emailDeliverabilityPolicy;
