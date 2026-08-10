@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { CRM_DEFAULT_COLUMNS, PIPELINE_LABELS, type OutreachLead } from '@/components/outreach/types';
 
 export type GridDensity = 'compact' | 'comfortable' | 'spacious';
@@ -23,6 +23,8 @@ type Props = {
   prefs?: GridPrefs;
   density?: GridDensity;
   busyId?: string | null;
+  /** Controls rendered in the same wrap row as Status / Booking / Reply / Columns. */
+  toolbarLeading?: ReactNode;
 };
 
 const DEFAULT_HIDDEN = new Set([
@@ -103,6 +105,7 @@ export function CrmLeadsGrid({
   prefs,
   density = 'compact',
   busyId,
+  toolbarLeading,
 }: Props) {
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(prefs?.hiddenColumns ?? Array.from(DEFAULT_HIDDEN)),
@@ -279,12 +282,13 @@ export function CrmLeadsGrid({
   };
 
   return (
-    <div className="space-y-3" onKeyDown={onKeyDown} tabIndex={0} role="grid" aria-label="CRM leads spreadsheet">
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="text-xs text-text-muted">
-          Status{' '}
+    <div className="space-y-2" onKeyDown={onKeyDown} tabIndex={0} role="grid" aria-label="CRM leads spreadsheet">
+      <div className="flex flex-nowrap items-center gap-x-1.5 overflow-x-auto rounded-md border border-border bg-elevated p-1.5">
+        {toolbarLeading}
+        <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-text-muted">
+          Status
           <select
-            className="ml-1 rounded border border-border bg-elevated px-2 py-1 text-xs"
+            className="h-7 rounded border border-border bg-transparent px-1.5 text-xs"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
@@ -294,10 +298,10 @@ export function CrmLeadsGrid({
             ))}
           </select>
         </label>
-        <label className="text-xs text-text-muted">
-          Booking{' '}
+        <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-text-muted">
+          Booking
           <select
-            className="ml-1 rounded border border-border bg-elevated px-2 py-1 text-xs"
+            className="h-7 rounded border border-border bg-transparent px-1.5 text-xs"
             value={bookingFilter}
             onChange={(e) => setBookingFilter(e.target.value)}
           >
@@ -309,10 +313,10 @@ export function CrmLeadsGrid({
             <option value="no_show">No-show</option>
           </select>
         </label>
-        <label className="text-xs text-text-muted">
-          Reply{' '}
+        <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap text-xs text-text-muted">
+          Reply
           <select
-            className="ml-1 rounded border border-border bg-elevated px-2 py-1 text-xs"
+            className="h-7 rounded border border-border bg-transparent px-1.5 text-xs"
             value={replyFilter}
             onChange={(e) => setReplyFilter(e.target.value)}
           >
@@ -322,61 +326,58 @@ export function CrmLeadsGrid({
             <option value="unsubscribed">Unsubscribed</option>
           </select>
         </label>
-        <span className="text-xs text-text-muted">
-          Showing {visibleLeads.length} of {leads.length}
+        <span className="shrink-0 whitespace-nowrap text-xs text-text-muted">
+          {visibleLeads.length}/{leads.length}
         </span>
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-text-muted">
-          {columns.length} columns. Frozen: selection, Company, Contact. Arrow keys move; Enter edits; Ctrl/Cmd+Z undoes.
-        </p>
-        <div className="flex items-center gap-2">
+        <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-text-muted xl:inline" title="Frozen: selection, Company, Contact. Arrow keys move; Enter edits; Ctrl/Cmd+Z undoes.">
+          {columns.length} cols
+        </span>
+        <button
+          type="button"
+          className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2.5 text-xs disabled:opacity-40"
+          disabled={undoStack.length === 0}
+          onClick={() => void undo()}
+        >
+          Undo
+        </button>
+        <div className="relative shrink-0" ref={panelRef}>
           <button
             type="button"
-            className="rounded-md border border-border bg-elevated px-3 py-1.5 text-xs disabled:opacity-40"
-            disabled={undoStack.length === 0}
-            onClick={() => void undo()}
+            className="h-7 rounded-md border border-border bg-transparent px-2.5 text-xs font-medium text-text-primary hover:bg-overlay"
+            onClick={() => setColumnsOpen((open) => !open)}
+            aria-expanded={columnsOpen}
           >
-            Undo edit
+            Columns ({columns.length})
           </button>
-          <div className="relative" ref={panelRef}>
-            <button
-              type="button"
-              className="rounded-md border border-border bg-elevated px-3 py-1.5 text-xs font-medium text-text-primary hover:bg-overlay"
-              onClick={() => setColumnsOpen((open) => !open)}
-              aria-expanded={columnsOpen}
-            >
-              Columns ({columns.length})
-            </button>
-            {columnsOpen ? (
-              <div className="absolute right-0 z-40 mt-1 w-80 rounded-lg border border-border bg-elevated p-3 shadow-lg">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-text-primary">Show / reorder</span>
-                  <button
-                    type="button"
-                    className="text-[11px] text-accent"
-                    onClick={() => {
-                      const next = new Set<string>();
-                      setHidden(next);
-                      emitPrefs({ hidden: next });
-                    }}
-                  >
-                    Show all
-                  </button>
-                </div>
-                <div className="max-h-64 space-y-1 overflow-y-auto">
-                  {order.map((id) => {
-                    const col = CRM_DEFAULT_COLUMNS.find((c) => c.id === id);
-                    if (!col) return null;
-                    return (
-                      <div
-                        key={col.id}
-                        className="flex items-center gap-2 rounded px-1 py-1 text-xs hover:bg-overlay"
-                        draggable
-                        onDragStart={() => setDragCol(col.id)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => {
-                          if (!dragCol || dragCol === col.id) return;
+          {columnsOpen ? (
+            <div className="absolute right-0 z-40 mt-1 w-80 rounded-lg border border-border bg-elevated p-3 shadow-lg">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-text-primary">Show / reorder</span>
+                <button
+                  type="button"
+                  className="text-[11px] text-accent"
+                  onClick={() => {
+                    const next = new Set<string>();
+                    setHidden(next);
+                    emitPrefs({ hidden: next });
+                  }}
+                >
+                  Show all
+                </button>
+              </div>
+              <div className="max-h-64 space-y-1 overflow-y-auto">
+                {order.map((id) => {
+                  const col = CRM_DEFAULT_COLUMNS.find((c) => c.id === id);
+                  if (!col) return null;
+                  return (
+                    <div
+                      key={col.id}
+                      className="flex items-center gap-2 rounded px-1 py-1 text-xs hover:bg-overlay"
+                      draggable
+                      onDragStart={() => setDragCol(col.id)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (!dragCol || dragCol === col.id) return;
                           setOrder((prev) => {
                             const next = prev.filter((x) => x !== dragCol);
                             const idx = next.indexOf(col.id);
@@ -425,7 +426,6 @@ export function CrmLeadsGrid({
               </div>
             ) : null}
           </div>
-        </div>
       </div>
 
       {/* Desktop spreadsheet */}

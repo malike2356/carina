@@ -408,28 +408,10 @@ export default function OutreachLeadsPage() {
   }, [push, load, loadSheets]);
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-4 px-4 py-4 lg:px-6" style={{ width: '100%', maxWidth: 'none' }}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-text-primary">CRM Leads</h2>
-          <p className="text-xs text-text-muted">{total} leads in this workspace</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setShowIngest((v) => !v)}>
-            {showIngest ? 'Hide add / import' : 'Add / Import'}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => exportLeads(false)}>Export view</Button>
-          {selected.size > 0 ? (
-            <Button size="sm" variant="outline" onClick={() => exportLeads(true)}>Export selected</Button>
-          ) : null}
-          <Button size="sm" variant="outline" onClick={() => void createLeadSheet()}>Connect sheet</Button>
-          <Button size="sm" variant="outline" onClick={() => void saveCurrentView()}>Save view</Button>
-          <Link href="/aiva/outreach/companies-house" className="rounded-md border border-border px-3 py-1.5 text-xs">
-            Companies House
-          </Link>
-        </div>
-      </div>
-
+    <div
+      className="flex w-full max-w-none flex-col gap-2 px-4 py-3 lg:px-6"
+      style={{ width: '100%', maxWidth: 'none' }}
+    >
       {showIngest ? (
         <div className="grid gap-3 lg:grid-cols-3">
           <div className="rounded-lg border border-border bg-elevated p-3">
@@ -496,130 +478,41 @@ export default function OutreachLeadsPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-elevated p-2">
-        <select
-          className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          aria-label="Pipeline view"
-        >
-          {BUILTIN_VIEWS.map((view) => (
-            <option key={view.id} value={view.status}>{view.label}</option>
-          ))}
-          {savedViews.map((view) => (
-            <option key={view.id} value={`view:${view.id}`}>{view.name}{view.shared ? ' (shared)' : ''}</option>
-          ))}
-        </select>
-        <input
-          className="min-w-56 flex-1 rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
-          placeholder="Search company, contact, email, niche, town"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        <select className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
-          <option value="all">All sources</option>
-          {sources.map((source) => (
-            <option key={source} value={source}>{source}</option>
-          ))}
-        </select>
-        <input className="w-28 rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Niche" value={nicheFilter} onChange={(e) => setNicheFilter(e.target.value)} />
-        <input className="w-28 rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" placeholder="Priority" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)} />
-        <label className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-text-muted">
-          <input type="checkbox" checked={hasEmailOnly} onChange={(e) => setHasEmailOnly(e.target.checked)} />
-          Has email
-        </label>
-        <select className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" value={sortField} onChange={(e) => setSortField(e.target.value)}>
-          <option value="updatedAt">Sort: Updated</option>
-          <option value="company">Sort: Company</option>
-          <option value="contactName">Sort: Contact</option>
-          <option value="status">Sort: Status</option>
-          <option value="priority">Sort: Priority</option>
-        </select>
-        <select className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm" value={sortDir} onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}>
-          <option value="desc">Desc</option>
-          <option value="asc">Asc</option>
-        </select>
-        <select
-          className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-          value={density}
-          onChange={(e) => {
-            const next = e.target.value as GridDensity;
-            setDensity(next);
-            void persistPrefs({ ...gridPrefs, density: next });
-          }}
-        >
-          <option value="compact">Compact</option>
-          <option value="comfortable">Comfortable</option>
-          <option value="spacious">Spacious</option>
-        </select>
+      {loading ? (
+        <p className="text-xs text-text-muted">Loading leads...</p>
+      ) : null}
+
+      {/* Row 1: title + actions */}
+      <div className="flex flex-nowrap items-center gap-x-1.5 overflow-x-auto pb-0.5">
+        <h2 className="shrink-0 whitespace-nowrap text-sm font-semibold text-text-primary">CRM Leads</h2>
+        <span className="shrink-0 whitespace-nowrap text-xs text-text-muted">{total} leads</span>
+        <span className="hidden h-4 w-px shrink-0 bg-border sm:block" aria-hidden />
+        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => setShowIngest((v) => !v)}>
+          {showIngest ? 'Hide add / import' : 'Add / Import'}
+        </Button>
+        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => exportLeads(false)}>
+          Export view
+        </Button>
         {selected.size > 0 ? (
-          <>
-            <select
-              className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-              defaultValue=""
-              onChange={(e) => {
-                const value = e.target.value as PipelineStatus;
-                if (!value) return;
-                void runBulk('stage', { status: value });
-                e.target.value = '';
-              }}
-            >
-              <option value="">Bulk stage ({selected.size})</option>
-              {STAGE_OPTIONS.map((status) => (
-                <option key={status} value={status}>{PIPELINE_LABELS[status]}</option>
-              ))}
-            </select>
-            <select
-              className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-              defaultValue=""
-              onChange={(e) => {
-                if (!e.target.value) return;
-                void runBulk('list_add', { listId: e.target.value });
-                e.target.value = '';
-              }}
-            >
-              <option value="">Add to list</option>
-              {lists.map((list) => (
-                <option key={list.id} value={list.id}>{list.name}</option>
-              ))}
-            </select>
-            <select
-              className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-              defaultValue=""
-              onChange={(e) => {
-                if (!e.target.value) return;
-                void runBulk('nurture_enroll', { sequenceId: e.target.value });
-                e.target.value = '';
-              }}
-            >
-              <option value="">Enrol nurture</option>
-              {sequences.map((seq) => (
-                <option key={seq.id} value={seq.id}>{seq.name}</option>
-              ))}
-            </select>
-            <select
-              className="rounded-md border border-border bg-transparent px-2 py-1.5 text-sm"
-              defaultValue=""
-              onChange={(e) => {
-                if (!e.target.value) return;
-                void runBulk('campaign_attach', { campaignId: e.target.value });
-                e.target.value = '';
-              }}
-            >
-              <option value="">Attach campaign</option>
-              {campaigns.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <Button size="sm" variant="outline" onClick={() => void runBulk('archive')}>Archive</Button>
-          </>
+          <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => exportLeads(true)}>
+            Export selected
+          </Button>
         ) : null}
+        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => void createLeadSheet()}>
+          Connect sheet
+        </Button>
+        <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => void saveCurrentView()}>
+          Save view
+        </Button>
+        <Link
+          href="/aiva/outreach/companies-house"
+          className="inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-md border border-border px-2.5 text-xs"
+        >
+          Companies House
+        </Link>
       </div>
 
-      {loading ? (
-        <p className="text-sm text-text-muted">Loading leads...</p>
-      ) : (
-        <CrmLeadsGrid
+      <CrmLeadsGrid
           leads={leads}
           selected={selected}
           density={density}
@@ -627,6 +520,151 @@ export default function OutreachLeadsPage() {
           busyId={busyId}
           onPrefsChange={(prefs) => void persistPrefs(prefs)}
           onOpenActivity={(lead) => void openActivity(lead)}
+          toolbarLeading={(
+            <>
+              <select
+                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                aria-label="Pipeline view"
+              >
+                {BUILTIN_VIEWS.map((view) => (
+                  <option key={view.id} value={view.status}>{view.label}</option>
+                ))}
+                {savedViews.map((view) => (
+                  <option key={view.id} value={`view:${view.id}`}>{view.name}{view.shared ? ' (shared)' : ''}</option>
+                ))}
+              </select>
+              <input
+                className="h-7 min-w-40 max-w-xs shrink grow basis-40 rounded-md border border-border bg-transparent px-2 text-xs"
+                placeholder="Search company, contact, email, niche, town"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <select
+                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+              >
+                <option value="all">All sources</option>
+                {sources.map((source) => (
+                  <option key={source} value={source}>{source}</option>
+                ))}
+              </select>
+              <input
+                className="h-7 w-24 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                placeholder="Niche"
+                value={nicheFilter}
+                onChange={(e) => setNicheFilter(e.target.value)}
+              />
+              <input
+                className="h-7 w-24 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                placeholder="Priority"
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+              />
+              <label className="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap px-1 text-xs text-text-muted">
+                <input type="checkbox" checked={hasEmailOnly} onChange={(e) => setHasEmailOnly(e.target.checked)} />
+                Has email
+              </label>
+              <select
+                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                value={sortField}
+                onChange={(e) => setSortField(e.target.value)}
+              >
+                <option value="updatedAt">Sort: Updated</option>
+                <option value="company">Sort: Company</option>
+                <option value="contactName">Sort: Contact</option>
+                <option value="status">Sort: Status</option>
+                <option value="priority">Sort: Priority</option>
+              </select>
+              <select
+                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                value={sortDir}
+                onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+              >
+                <option value="desc">Desc</option>
+                <option value="asc">Asc</option>
+              </select>
+              <select
+                className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                value={density}
+                onChange={(e) => {
+                  const next = e.target.value as GridDensity;
+                  setDensity(next);
+                  void persistPrefs({ ...gridPrefs, density: next });
+                }}
+              >
+                <option value="compact">Compact</option>
+                <option value="comfortable">Comfortable</option>
+                <option value="spacious">Spacious</option>
+              </select>
+              {selected.size > 0 ? (
+                <>
+                  <select
+                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    defaultValue=""
+                    onChange={(e) => {
+                      const value = e.target.value as PipelineStatus;
+                      if (!value) return;
+                      void runBulk('stage', { status: value });
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="">Bulk stage ({selected.size})</option>
+                    {STAGE_OPTIONS.map((status) => (
+                      <option key={status} value={status}>{PIPELINE_LABELS[status]}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      void runBulk('list_add', { listId: e.target.value });
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="">Add to list</option>
+                    {lists.map((list) => (
+                      <option key={list.id} value={list.id}>{list.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      void runBulk('nurture_enroll', { sequenceId: e.target.value });
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="">Enrol nurture</option>
+                    {sequences.map((seq) => (
+                      <option key={seq.id} value={seq.id}>{seq.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="h-7 shrink-0 rounded-md border border-border bg-transparent px-2 text-xs"
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      void runBulk('campaign_attach', { campaignId: e.target.value });
+                      e.target.value = '';
+                    }}
+                  >
+                    <option value="">Attach campaign</option>
+                    {campaigns.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={() => void runBulk('archive')}>
+                    Archive
+                  </Button>
+                </>
+              ) : null}
+            </>
+          )}
           onToggle={(id) => {
             setSelected((prev) => {
               const next = new Set(prev);
@@ -643,12 +681,11 @@ export default function OutreachLeadsPage() {
           }}
           onPatch={patchLead}
         />
-      )}
 
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         <button
           type="button"
-          className="rounded border border-border px-3 py-1 disabled:opacity-40"
+          className="rounded border border-border px-2.5 py-1 disabled:opacity-40"
           disabled={cursorStack.length <= 1}
           onClick={() => {
             const stack = [...cursorStack];
@@ -665,7 +702,7 @@ export default function OutreachLeadsPage() {
         </span>
         <button
           type="button"
-          className="rounded border border-border px-3 py-1 disabled:opacity-40"
+          className="rounded border border-border px-2.5 py-1 disabled:opacity-40"
           disabled={!nextCursor}
           onClick={() => {
             if (!nextCursor) return;

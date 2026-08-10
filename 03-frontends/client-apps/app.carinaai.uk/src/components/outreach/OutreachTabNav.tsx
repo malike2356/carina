@@ -21,7 +21,7 @@ const TABS = [
 export function OutreachTabNav() {
   const pathname = usePathname();
   return (
-    <nav className="mt-4 flex flex-wrap gap-1">
+    <nav className="mt-2 flex flex-wrap gap-0.5 pb-2">
       {TABS.map((tab) => {
         const active = tab.href === '/aiva/outreach'
           ? pathname === tab.href
@@ -32,7 +32,7 @@ export function OutreachTabNav() {
           <Link
             key={tab.href}
             href={tab.href}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
               active
                 ? 'bg-elevated text-text-primary'
                 : 'text-text-secondary hover:bg-elevated hover:text-text-primary'

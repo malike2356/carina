@@ -28,11 +28,13 @@ export default function OutreachLayout({ children }: { children: ReactNode }) {
           {banner}
         </div>
       ) : null}
-      <div className="w-full max-w-none shrink-0 border-b border-border px-4 pt-5 pb-0 lg:px-6">
-        <h1 className="text-base font-semibold text-text-primary">CRM + outreach</h1>
-        <p className="mt-0.5 text-xs text-text-muted">
-          See leads in a table, run campaigns under Soft Wall, and ask Aiva to contact them from chat or Telegram.
-        </p>
+      <div className="w-full max-w-none shrink-0 border-b border-border px-4 pt-3 pb-0 lg:px-6">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="text-base font-semibold text-text-primary">CRM + outreach</h1>
+          <p className="text-xs text-text-muted">
+            See leads in a table, run campaigns under Soft Wall, and ask Aiva to contact them from chat or Telegram.
+          </p>
+        </div>
         <OutreachTabNav />
       </div>
       <div
