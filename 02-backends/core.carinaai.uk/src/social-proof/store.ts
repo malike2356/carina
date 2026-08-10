@@ -104,7 +104,7 @@ export class TestimonialStore {
       authorTitle: input.authorTitle ?? null,
       platform: input.platform ?? 'manual',
       url: input.url,
-      date: input.date,
+      date: input.date || new Date().toISOString().slice(0, 10),
       tags: input.tags ?? [],
       product: input.product ?? 'general',
       status: 'pending',

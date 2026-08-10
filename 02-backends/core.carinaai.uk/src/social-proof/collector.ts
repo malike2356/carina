@@ -29,7 +29,12 @@ function ingest(store: TestimonialStore, items: RawItem[], platform: Platform, p
   const out: Testimonial[] = [];
   for (const item of items) {
     const result = store.upsertIncoming({
-      ...item,
+      text: item.text,
+      author: item.author,
+      authorTitle: item.authorTitle ?? null,
+      url: item.url,
+      date: item.date,
+      tags: item.tags ?? [],
       product: item.product || product || 'general',
       platform,
       status: 'pending',
