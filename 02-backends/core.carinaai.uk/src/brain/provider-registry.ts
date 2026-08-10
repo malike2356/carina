@@ -286,9 +286,9 @@ export const PROVIDER_DEFINITIONS: ProviderDefinition[] = [
     capabilities: { chat: true, vision: false, streaming: true, tools: true, embeddings: true },
     tags: { cost: 'local', speed: 'fast' },
   }),
-  openaiCompat('keprix', 'Keprix brain', 'KEPRIX_SERVICE_TOKEN', 'KEPRIX_MODEL', 'auto', 'http://keprix-backend:3333/v1', 'KEPRIX_API_BASE_URL', 0, 4, {
+  openaiCompat('keprix', 'Keprix brain', 'KEPRIX_API_KEY', 'KEPRIX_MODEL', 'auto', 'http://keprix-backend:3333/v1', 'KEPRIX_API_BASE_URL', 0, 4, {
     capabilities: { chat: true, vision: true, streaming: true, tools: true, reasoning: true, reasoningEffort: true, streamingTools: true },
-    setupNote: 'Keprix Hermes-derived agent brain. Set KEPRIX_API_BASE_URL and KEPRIX_SERVICE_TOKEN, then select AIVA_ENGINE_POLICY=keprix_preferred.',
+    setupNote: 'Keprix Hermes-derived agent brain. Set KEPRIX_API_BASE_URL and KEPRIX_API_KEY (or KEPRIX_SERVICE_TOKEN for the sidecar adapter), then select AIVA_ENGINE_POLICY=keprix_preferred.',
     tags: { speed: 'balanced', cost: 'byo-key' },
   }),
   openaiCompat('vllm', 'vLLM', 'VLLM_API_KEY', 'VLLM_MODEL', 'default', 'http://127.0.0.1:8000/v1', 'VLLM_BASE_URL', 0, 23, {

@@ -30,6 +30,7 @@ vi.mock('../integrations/keprix-health.js', () => ({
 describe('product-llm-resolve', () => {
   beforeEach(() => {
     getSubscription.mockReset();
+    getSubscription.mockResolvedValue(null);
     listTenantProvidersForTenant.mockReset();
     getTenantProvider.mockReset();
     listTenantProvidersForTenant.mockResolvedValue([]);
@@ -39,6 +40,7 @@ describe('product-llm-resolve', () => {
     delete process.env.AIVA_ENGINE_POLICY;
     delete process.env.KEPRIX_PREFERRED;
     delete process.env.KEPRIX_SERVICE_TOKEN;
+    delete process.env.KEPRIX_API_KEY;
     delete process.env.KEPRIX_API_BASE_URL;
   });
 
@@ -97,6 +99,7 @@ describe('product-llm-resolve', () => {
   it('selects configured Keprix when the preferred engine policy is enabled', async () => {
     process.env.AIVA_ENGINE_POLICY = 'keprix_preferred';
     process.env.KEPRIX_SERVICE_TOKEN = 'test-keprix-token';
+    process.env.KEPRIX_API_KEY = 'test-keprix-token';
     process.env.KEPRIX_API_BASE_URL = 'http://keprix.test/v1';
     const { resolveAivaProductLlm, toProviderOverride } = await import('./product-llm-resolve.js');
     const resolved = await resolveAivaProductLlm('ws-keprix');

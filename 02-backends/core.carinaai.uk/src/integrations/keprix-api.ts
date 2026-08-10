@@ -25,7 +25,7 @@ export function readKeprixConfig(): KeprixConfig {
   return {
     apiBaseUrl,
     studioBaseUrl: studioBaseUrl || apiBaseUrl,
-    serviceToken: (process.env.KEPRIX_SERVICE_TOKEN ?? '').trim(),
+    serviceToken: (process.env.KEPRIX_SERVICE_TOKEN ?? process.env.KEPRIX_API_KEY ?? '').trim(),
     handoffSecret: (process.env.KEPRIX_HANDOFF_SECRET ?? '').trim(),
   };
 }
