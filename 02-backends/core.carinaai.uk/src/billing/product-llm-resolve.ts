@@ -6,6 +6,7 @@ import {
 } from '../brain/tenant-provider-keys.js';
 import type { ProviderOverride } from '../brain/llm.js';
 import { PROVIDER_MAP, isProviderConfigured, providerModel } from '../brain/provider-registry.js';
+import { probeKeprixHealth } from '../integrations/keprix-health.js';
 
 export type AivaLlmLane = 'trial' | 'paid' | 'platform' | 'byok';
 
@@ -93,7 +94,7 @@ export async function resolveWorkspaceByokLlm(
 export async function resolveAivaProductLlm(workspaceId: string): Promise<ResolvedProductLlm> {
   const enginePolicy = (process.env.AIVA_ENGINE_POLICY ?? '').trim().toLowerCase();
   const keprix = PROVIDER_MAP.keprix;
-  if ((enginePolicy === 'keprix_preferred' || process.env.KEPRIX_PREFERRED === 'true') && keprix && isProviderConfigured(keprix)) {
+  if ((enginePolicy === 'keprix_preferred' || process.env.KEPRIX_PREFERRED === 'true') && keprix && isProviderConfigured(keprix) && (await probeKeprixHealth()).healthy) {
     return {
       lane: 'platform',
       provider: 'keprix',

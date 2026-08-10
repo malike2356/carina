@@ -23,6 +23,9 @@ vi.mock('../brain/tenant-provider-keys.js', () => ({
   listTenantProvidersForTenant,
   getTenantProvider,
 }));
+vi.mock('../integrations/keprix-health.js', () => ({
+  probeKeprixHealth: vi.fn(async () => ({ healthy: true, checkedAt: new Date().toISOString(), latencyMs: 1, reason: 'test' })),
+}));
 
 describe('product-llm-resolve', () => {
   beforeEach(() => {
